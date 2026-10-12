@@ -135,7 +135,10 @@ Discover reads Beatport as you. Choose **Sign in to Beatport**, in **Settings �
 Beatport** or in the banner at the top of Discover, and sign in on Beatport's own
 page in the window that opens. The window closes by itself when you are in. Your
 password goes to Beatport, never to CuePoint. CuePoint then keeps the sign-in on
-your computer, encrypted, and renews it by itself while you use the app. Settings
+your computer, encrypted, and renews it by itself while you use the app: Beatport's
+token changes about every 12 minutes and CuePoint fetches the new one quietly (also when
+your computer wakes from sleep), and the Beatport sign-in itself lasts about 30 days
+from your last use, after which you sign in again. Settings
 shows **Signed in to Beatport · ••••abcd · renews by itself**, with **Test
 connection** and **Sign out**.
 

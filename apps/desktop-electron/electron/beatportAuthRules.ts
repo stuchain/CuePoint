@@ -27,8 +27,11 @@ export interface StoredBeatportToken {
   source: BeatportTokenOrigin;
 }
 
-/** Renew this long before the token ends. */
-export const REFRESH_LEAD_MS = 10 * 60 * 1000;
+/**
+ * Read Beatport's session endpoint this long before the token ends. The token rotates about every
+ * 12 minutes and the site renews it server-side once it has ended (measured 2026-10-12).
+ */
+export const REFRESH_LEAD_MS = 60 * 1000;
 /** Never sooner than this from now, so a token already past its end does not spin. */
 export const REFRESH_FLOOR_MS = 30 * 1000;
 /** `setTimeout` takes at most a signed 32-bit number of milliseconds. */
@@ -79,7 +82,7 @@ export function expiryMs(expiresAt: string | number | null | undefined): number 
   return Number.isNaN(ms) ? null : ms;
 }
 
-/** How long to wait before renewing: ten minutes before the end, at least 30 s; null with no end. */
+/** How long to wait before renewing: a minute before the end, at least 30 s; null with no end. */
 export function refreshDelay(expiresAt: string | number | null | undefined, now: number): number | null {
   const end = expiryMs(expiresAt);
   if (end === null) return null;
@@ -119,7 +122,7 @@ export function isUserToken(introspection: unknown): boolean {
 }
 
 /** Used when nothing says how long a token lasts, so a renewal probe still happens. */
-export const DEFAULT_TOKEN_TTL_MS = 60 * 60 * 1000;
+export const DEFAULT_TOKEN_TTL_MS = 10 * 60 * 1000;
 
 /**
  * The end an introspection names: its `exp` (seconds since the epoch), else its `expires_in`
@@ -152,58 +155,105 @@ export function jwtExpiresAt(token: string): string | null {
 }
 
 const TOKEN_KEY = /^access_?token$/i;
-const EXPIRY_KEYS = [
-  "accessTokenExpires",
-  "access_token_expires",
-  "expires_at",
-  "expiresAt",
-  "expires",
-  "expiry",
-  "exp",
-] as const;
+const EXPIRY_KEYS = ["accessTokenExpires", "access_token_expires", "expires_at", "expiresAt", "expiry", "exp"] as const;
+
+/** What Beatport's `/api/auth/session` yields: a user's token, its end, and the sign-in's end. */
+export interface SessionToken {
+  token: string;
+  /** When this access token ends (ISO); null when the JSON names no end. */
+  expiresAt: string | null;
+  /**
+   * When the website's sign-in (the session cookie, about 30 days and sliding) ends, from the
+   * top-level `expires`. Never the access token's end.
+   */
+  sessionExpiresAt: string | null;
+}
+
+function hasAnonScope(scope: unknown): boolean {
+  return typeof scope === "string" && scope.split(/\s+/).some((entry) => entry.startsWith("user:anon"));
+}
 
 /**
- * A token and its end from the website's `/api/auth/session` JSON: a string field named like
- * `access_token` or `accessToken`, at the top or inside a nested `token` or `user` object.
- * The end is a hint only; the introspection's `exp` is what is kept.
+ * A user's token from the website's `/api/auth/session` JSON, whose shape is
+ * `{ user, expires, token: { accessToken, expiresIn, tokenType, scope, anon, accessTokenExpires },
+ * introspect }`. A string field named like `access_token` or `accessToken` is read at the top or
+ * inside a nested `token`, `user`, `session` or `data` object. The anonymous token the site holds
+ * before a sign-in (`anon: true`, or a `user:anon` scope) is refused: null.
+ *
+ * The token's end is `accessTokenExpires` (seconds or milliseconds since the epoch), else
+ * `expiresIn` seconds from `now`. The top-level `expires` is the sign-in's end, kept apart.
  */
-export function tokenFromSessionJson(json: unknown, now: number = Date.now()): { token: string; expiresAt: string | null } | null {
+export function tokenFromSessionJson(json: unknown, now: number = Date.now()): SessionToken | null {
   const scopes: unknown[] = [json];
+  let top: Record<string, unknown> | null = null;
   if (json && typeof json === "object" && !Array.isArray(json)) {
-    const record = json as Record<string, unknown>;
-    for (const key of ["token", "user", "session", "data"]) scopes.push(record[key]);
+    top = json as Record<string, unknown>;
+    for (const key of ["token", "user", "session", "data"]) scopes.push(top[key]);
   }
   for (const scope of scopes) {
     if (!scope || typeof scope !== "object" || Array.isArray(scope)) continue;
     const record = scope as Record<string, unknown>;
     for (const [key, value] of Object.entries(record)) {
       if (TOKEN_KEY.test(key) && typeof value === "string" && value.trim() !== "") {
-        // Only the object the token sits in: a top-level `expires` is the session cookie's end.
-        return { token: value.trim(), expiresAt: sessionExpiry(record, now) };
+        if (record.anon === true || hasAnonScope(record.scope)) return null;
+        const introspect = top?.introspect;
+        if (introspect && typeof introspect === "object" && hasAnonScope((introspect as Record<string, unknown>).scope)) {
+          return null;
+        }
+        return { token: value.trim(), expiresAt: sessionExpiry(record, now), sessionExpiresAt: isoOf(top?.expires) };
       }
     }
   }
   return null;
 }
 
-function sessionExpiry(record: Record<string, unknown> | null, now: number): string | null {
-  if (!record || typeof record !== "object") return null;
-  const relative = record.expires_in;
-  if (typeof relative === "number" && Number.isFinite(relative) && relative > 0) {
-    return new Date(now + relative * 1000).toISOString();
+function isoOf(value: unknown): string | null {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return new Date(value < 1e12 ? value * 1000 : value).toISOString();
   }
+  if (typeof value === "string" && value !== "") {
+    const ms = Date.parse(value);
+    if (!Number.isNaN(ms)) return new Date(ms).toISOString();
+  }
+  return null;
+}
+
+function sessionExpiry(record: Record<string, unknown>, now: number): string | null {
   for (const key of EXPIRY_KEYS) {
-    const value = record[key];
-    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
-      // Seconds or milliseconds since the epoch.
-      return new Date(value < 1e11 ? value * 1000 : value).toISOString();
-    }
-    if (typeof value === "string" && value !== "") {
-      const ms = Date.parse(value);
-      if (!Number.isNaN(ms)) return new Date(ms).toISOString();
+    const end = isoOf(record[key]);
+    if (end) return end;
+  }
+  for (const key of ["expiresIn", "expires_in"]) {
+    const relative = record[key];
+    if (typeof relative === "number" && Number.isFinite(relative) && relative > 0) {
+      return new Date(now + relative * 1000).toISOString();
     }
   }
   return null;
+}
+
+/**
+ * Whether the session JSON says nobody is signed in on the site: NextAuth answers `{}` once its
+ * session cookie has ended. (An anonymous token is a different answer, with a `token` in it.)
+ */
+export function isSignedOutSession(json: unknown): boolean {
+  return !!json && typeof json === "object" && !Array.isArray(json) && Object.keys(json).length === 0;
+}
+
+/**
+ * The session JSON with `token.accessTokenExpires` moved from the server's clock onto ours, given
+ * `offsetMs` = server time minus local time (from the response's `Date` header). A seconds value
+ * is taken as seconds. Anything else is returned as it came.
+ */
+export function rebaseSessionExpiry(json: unknown, offsetMs: number): unknown {
+  if (!json || typeof json !== "object" || Array.isArray(json) || !Number.isFinite(offsetMs) || offsetMs === 0) return json;
+  const record = json as Record<string, unknown>;
+  const token = record.token;
+  if (!token || typeof token !== "object" || Array.isArray(token)) return json;
+  const ends = (token as Record<string, unknown>).accessTokenExpires;
+  if (typeof ends !== "number" || !Number.isFinite(ends) || ends <= 0) return json;
+  const ms = ends < 1e12 ? ends * 1000 : ends;
+  return { ...record, token: { ...(token as Record<string, unknown>), accessTokenExpires: ms - offsetMs } };
 }
 
 export interface AuthStateInput {
@@ -237,11 +287,15 @@ export interface BeatportEndpoints {
   apiBase: string;
   /** The website's session JSON, read in the sign-in partition. */
   sessionUrl: string;
+  /** Beatport's home page, which a hidden renewal window loads (not the NextAuth sign-in page). */
+  siteUrl: string;
   /** Exact origins the sign-in window may show beyond `isAllowedSignInUrl`'s. */
   extraOrigins: string[];
 }
 
-export const BEATPORT_SIGNIN_URL = "https://www.beatport.com/";
+/** NextAuth's sign-in for the "beatport" provider; it may show a one-click "Sign in with Beatport" page. */
+export const BEATPORT_SIGNIN_URL =
+  "https://www.beatport.com/api/auth/signin/beatport?callbackUrl=https%3A%2F%2Fwww.beatport.com%2F";
 export const BEATPORT_API_BASE = "https://api.beatport.com/v4";
 export const E2E_SIGNIN_URL_ENV = "CUEPOINT_E2E_BEATPORT_SIGNIN_URL";
 export const E2E_API_URL_ENV = "CUEPOINT_E2E_BEATPORT_API_URL";
@@ -269,8 +323,8 @@ export function beatportEndpoints(
       extraOrigins.push(overrideApi.origin);
     }
   }
-  const sessionUrl = `${new URL(signInUrl).origin}/api/auth/session`;
-  return { signInUrl, apiBase, sessionUrl, extraOrigins };
+  const origin = new URL(signInUrl).origin;
+  return { signInUrl, apiBase, sessionUrl: `${origin}/api/auth/session`, siteUrl: `${origin}/`, extraOrigins };
 }
 
 function parseUrl(value: string | undefined): URL | null {

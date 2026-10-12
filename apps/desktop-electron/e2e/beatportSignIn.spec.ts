@@ -29,6 +29,9 @@ const BEATPORT = path.join(REPO_ROOT, "src", "tests", "fixtures", "beatport", "d
 /** Long and distinctive, so finding it anywhere in the renderer is unmistakable. */
 const TOKEN = "e2e-user-token-SECRETMARKER-7d41c0ab9";
 const MASKED = `••••${TOKEN.slice(-4)}`;
+/** What the stand-in's session endpoint rotates to, as the real site does about every 12 minutes. */
+const TOKEN_2 = "e2e-user-token-ROTATED-SECRETMARKER-55e1f";
+const MASKED_2 = `••••${TOKEN_2.slice(-4)}`;
 
 type Mode = "user" | "guest";
 
@@ -37,22 +40,52 @@ interface Stand {
   origin: string;
   mode: Mode;
   introspections: number;
+  /** The session endpoint answers `{}` (the page is signed out) until this is set. */
+  sessionOpen: boolean;
+  /** The session endpoint now serves the rotated token. */
+  rotated: boolean;
+  sessionReads: number;
 }
 
-/** The stand-in: the login page, the v4 API it calls, and the website's session JSON (none). */
+/** The stand-in: the login page, the v4 API it calls, and the website's session JSON, shaped like NextAuth's (renewal reads it). */
 async function startStandIn(): Promise<Stand> {
-  const stand = { mode: "user" as Mode, introspections: 0 } as Stand;
+  const stand = { mode: "user" as Mode, introspections: 0, sessionOpen: true, rotated: false, sessionReads: 0 } as Stand;
   stand.server = createServer((request, response) => {
     const url = new URL(request.url ?? "/", "http://stand-in");
     if (url.pathname === "/login") {
-      response.writeHead(200, { "content-type": "text/html" });
+      // The login sets the cookie that the session endpoint wants, as signing in does on the site.
+      response.writeHead(200, { "content-type": "text/html", "set-cookie": "e2e_sid=1; Path=/" });
       response.end(`<!doctype html><title>Stand-in login</title><p>Stand-in login</p>
 <script>fetch("/v4/catalog/genres/", { headers: { Authorization: "Bearer ${TOKEN}" } });</script>`);
       return;
     }
+    if (url.pathname === "/api/auth/session") {
+      stand.sessionReads += 1;
+      response.writeHead(200, { "content-type": "application/json" });
+      if (!stand.sessionOpen || !(request.headers.cookie ?? "").includes("e2e_sid=1")) {
+        response.end("{}");
+        return;
+      }
+      response.end(
+        JSON.stringify({
+          user: { email: "e2e@example.com" },
+          expires: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+          token: {
+            accessToken: stand.rotated ? TOKEN_2 : TOKEN,
+            expiresIn: 70,
+            tokenType: "Bearer",
+            scope: stand.mode === "guest" ? "app:prostore user:anon" : "app:prostore user:dj",
+            anon: stand.mode === "guest",
+            // Short, so the app's first renewal falls at its 30 s floor.
+            accessTokenExpires: Date.now() + (stand.rotated ? 600_000 : 70_000),
+          },
+        }),
+      );
+      return;
+    }
     if (url.pathname === "/v4/auth/o/introspect/") {
       stand.introspections += 1;
-      const ok = request.headers.authorization === `Bearer ${TOKEN}`;
+      const ok = [`Bearer ${TOKEN}`, `Bearer ${TOKEN_2}`].includes(request.headers.authorization ?? "");
       response.writeHead(ok ? 200 : 401, { "content-type": "application/json" });
       response.end(
         JSON.stringify(
@@ -169,6 +202,45 @@ test.describe("Beatport sign-in", () => {
       await expect(window.getByText("Sign in to let Discover search Beatport.")).toBeVisible({ timeout: 15_000 });
       expect((await window.evaluate(() => window.cuepoint!.getBeatportTokenStatus())).configured).toBe(false);
       expect(await renderersHold(window)).not.toContain(TOKEN);
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("renews the token by itself, by reading the session endpoint, with no window", async () => {
+    const app = await launch(userDataDir, cuepointHome, stand.origin);
+    try {
+      const window = await ready(app);
+      await window.getByRole("link", { name: "Settings" }).click();
+      await window.getByRole("button", { name: "Sign in to Beatport" }).click();
+      await expect(window.getByText(`Signed in to Beatport · ${MASKED} · renews by itself`)).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect.poll(() => app.windows().length, { timeout: 15_000 }).toBe(1);
+
+      // Beatport rotates the token; the app picks it up at its next read, without opening a window.
+      stand.rotated = true;
+      await expect(window.getByText(`Signed in to Beatport · ${MASKED_2} · renews by itself`)).toBeVisible({
+        timeout: 90_000,
+      });
+      expect(app.windows().length).toBe(1);
+      expect(await renderersHold(window)).not.toContain(TOKEN_2);
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("signs in from the header when the session endpoint is still empty", async () => {
+    stand.sessionOpen = false;
+    const app = await launch(userDataDir, cuepointHome, stand.origin);
+    try {
+      const window = await ready(app);
+      await window.getByRole("link", { name: "Settings" }).click();
+      await window.getByRole("button", { name: "Sign in to Beatport" }).click();
+      await expect(window.getByText(`Signed in to Beatport · ${MASKED} · renews by itself`)).toBeVisible({
+        timeout: 30_000,
+      });
+      expect(stand.sessionReads).toBeGreaterThan(0);
     } finally {
       await app.close();
     }

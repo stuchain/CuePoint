@@ -1,7 +1,7 @@
 /**
  * Electron main process — Spike S1: spawn engine and expose status to renderer.
  */
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, net, safeStorage, screen, session, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, net, powerMonitor, safeStorage, screen, session, shell, systemPreferences } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 import { execFile, spawn } from "node:child_process";
 import fs from "node:fs";
@@ -216,6 +216,9 @@ function beatportAuth(): BeatportAuth {
     breadcrumb: (message) => breadcrumb("beatport", message),
   });
   beatportSignIn.init();
+  // A computer that slept past the token's end renews on waking (the timer may have been late).
+  powerMonitor.on("resume", () => beatportSignIn?.wake());
+  powerMonitor.on("unlock-screen", () => beatportSignIn?.wake());
   return beatportSignIn;
 }
 
@@ -1334,6 +1337,8 @@ async function createWindow(): Promise<void> {
   });
 
   mainWindow = win;
+  // macOS keeps the app running with no window; `dispose` stopped the renewal then, so restart it.
+  beatportSignIn?.resume();
   win.on("closed", () => {
     if (mainWindow === win) mainWindow = null;
     // A hidden renewal window would otherwise keep the app from quitting (no `window-all-closed`).

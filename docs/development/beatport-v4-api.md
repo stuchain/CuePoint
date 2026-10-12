@@ -37,7 +37,7 @@ The API uses OAuth2 with a Bearer token. CuePoint sends `Authorization: Bearer <
 | Introspect | GET | `https://api.beatport.com/v4/auth/o/introspect/` (with Bearer) |
 | Revoke | POST | `https://api.beatport.com/v4/auth/o/revoke/?client_id=<ID>&token=<ACCESS_TOKEN>` |
 
-The desktop app captures a user token from Beatport's own site when you sign in, and renews it by itself (DEC-242); it does not use a client ID or secret, and it never revokes a token. In the engine it sends only `Authorization: Bearer <access_token>`. The token comes from `BEATPORT_ACCESS_TOKEN`, then the desktop sign-in's token (held in the engine's memory), then `incrate.beatport_access_token`. The commands below are for getting a token by hand, to paste or to set in the environment.
+The desktop app captures a user token from Beatport's own site when you sign in, and renews it by itself (DEC-242: the token rotates about every 12 minutes, and the app reads the new one from the site's `/api/auth/session` in the sign-in partition); it does not use a client ID or secret, and it never revokes a token. In the engine it sends only `Authorization: Bearer <access_token>`. The token comes from `BEATPORT_ACCESS_TOKEN`, then the desktop sign-in's token (held in the engine's memory), then `incrate.beatport_access_token`. The commands below are for getting a token by hand, to paste or to set in the environment.
 
 To check that a captured token belongs to a person, the desktop app calls the introspect route above and accepts only a live token with a user on it: a `user:anon` guest token is refused, because playlist work would be too (DEC-099).
 

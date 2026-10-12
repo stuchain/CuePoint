@@ -12,6 +12,8 @@ import {
   jwtExpiresAt,
   maskToken,
   refreshDelay,
+  isSignedOutSession,
+  rebaseSessionExpiry,
   tokenFromSessionJson,
   type StoredBeatportToken,
 } from "./beatportAuthRules";
@@ -190,6 +192,40 @@ describe("jwtExpiresAt", () => {
 });
 
 describe("tokenFromSessionJson", () => {
+  const measured = (token: Record<string, unknown>) => ({
+    user: { email: "anna@example.com" },
+    expires: "2026-11-11T12:00:00.000Z",
+    token: {
+      accessToken: "user-token",
+      expiresIn: 600,
+      tokenType: "Bearer",
+      scope: "app:prostore user:dj",
+      anon: false,
+      ...token,
+    },
+    introspect: { application_id: 1, user_id: 77, username: "anna", scope: "app:prostore user:dj", feature: [] },
+  });
+
+  it("reads the measured session shape, with accessTokenExpires in milliseconds or seconds", () => {
+    const ms = Date.parse("2026-10-12T10:12:00Z");
+    expect(tokenFromSessionJson(measured({ accessTokenExpires: ms }))).toEqual({
+      token: "user-token",
+      expiresAt: "2026-10-12T10:12:00.000Z",
+      sessionExpiresAt: "2026-11-11T12:00:00.000Z",
+    });
+    expect(tokenFromSessionJson(measured({ accessTokenExpires: ms / 1000 }))?.expiresAt).toBe("2026-10-12T10:12:00.000Z");
+  });
+
+  it("falls back to expiresIn seconds from now when there is no accessTokenExpires", () => {
+    expect(tokenFromSessionJson(measured({}), 1_000_000)?.expiresAt).toBe(new Date(1_600_000).toISOString());
+  });
+
+  it("refuses the anonymous token", () => {
+    expect(tokenFromSessionJson(measured({ anon: true }))).toBeNull();
+    expect(tokenFromSessionJson(measured({ scope: "app:prostore user:anon" }))).toBeNull();
+    expect(tokenFromSessionJson({ ...measured({}), introspect: { scope: "app:prostore user:anon" } })).toBeNull();
+  });
+
   it("reads accessTokenExpires, access_token_expires and a relative expires_in", () => {
     expect(tokenFromSessionJson({ user: { accessToken: "a", accessTokenExpires: "2030-01-01T00:00:00Z" } })?.expiresAt).toBe(
       "2030-01-01T00:00:00.000Z",
@@ -200,25 +236,25 @@ describe("tokenFromSessionJson", () => {
     expect(tokenFromSessionJson({ access_token: "a", expires_in: 60 }, 1_000_000)?.expiresAt).toBe(new Date(1_060_000).toISOString());
   });
 
-  it("does not take the session's own top-level expires for a nested token", () => {
+  it("never takes the top-level expires (the sign-in's end) for the token's end", () => {
     expect(tokenFromSessionJson({ expires: "2030-01-01T00:00:00Z", user: { accessToken: "a" } })).toEqual({
       token: "a",
       expiresAt: null,
+      sessionExpiresAt: "2030-01-01T00:00:00.000Z",
     });
-  });
-
-  it("finds access_token and accessToken at the top", () => {
-    expect(tokenFromSessionJson({ access_token: "aaa" })).toEqual({ token: "aaa", expiresAt: null });
     expect(tokenFromSessionJson({ accessToken: "bbb", expires: "2030-01-01T00:00:00Z" })).toEqual({
       token: "bbb",
-      expiresAt: "2030-01-01T00:00:00.000Z",
+      expiresAt: null,
+      sessionExpiresAt: "2030-01-01T00:00:00.000Z",
     });
   });
 
-  it("finds it inside a nested token or user object", () => {
+  it("finds access_token and accessToken at the top and inside a nested object", () => {
+    expect(tokenFromSessionJson({ access_token: "aaa" })).toEqual({ token: "aaa", expiresAt: null, sessionExpiresAt: null });
     expect(tokenFromSessionJson({ token: { access_token: "ccc", expires_at: 1_900_000_000 } })).toEqual({
       token: "ccc",
       expiresAt: "2030-03-17T17:46:40.000Z",
+      sessionExpiresAt: null,
     });
     expect(tokenFromSessionJson({ user: { accessToken: "ddd" } })?.token).toBe("ddd");
   });
@@ -229,6 +265,28 @@ describe("tokenFromSessionJson", () => {
     expect(tokenFromSessionJson({ access_token: 5 })).toBeNull();
     expect(tokenFromSessionJson(null)).toBeNull();
     expect(tokenFromSessionJson([{ access_token: "x" }])).toBeNull();
+  });
+});
+
+describe("session clock and sign-out", () => {
+  it("moves accessTokenExpires onto the local clock, seconds or milliseconds", () => {
+    const json = { expires: "x", token: { accessToken: "a", accessTokenExpires: 1_800_000_000_000 } };
+    expect(rebaseSessionExpiry(json, 5_000)).toEqual({
+      expires: "x",
+      token: { accessToken: "a", accessTokenExpires: 1_799_999_995_000 },
+    });
+    expect(rebaseSessionExpiry({ token: { accessTokenExpires: 1_800_000_000 } }, -2000)).toEqual({
+      token: { accessTokenExpires: 1_800_000_002_000 },
+    });
+    expect(rebaseSessionExpiry(json, 0)).toBe(json);
+    expect(rebaseSessionExpiry({}, 5000)).toEqual({});
+  });
+
+  it("knows an empty object for a session that has ended", () => {
+    expect(isSignedOutSession({})).toBe(true);
+    expect(isSignedOutSession(null)).toBe(false);
+    expect(isSignedOutSession({ token: {} })).toBe(false);
+    expect(isSignedOutSession([])).toBe(false);
   });
 });
 
@@ -287,20 +345,24 @@ describe("beatportEndpoints", () => {
 
   it("is Beatport's own by default", () => {
     expect(beatportEndpoints(env, { packaged: false, e2e: false })).toEqual({
-      signInUrl: "https://www.beatport.com/",
+      signInUrl: "https://www.beatport.com/api/auth/signin/beatport?callbackUrl=https%3A%2F%2Fwww.beatport.com%2F",
       apiBase: "https://api.beatport.com/v4",
       sessionUrl: "https://www.beatport.com/api/auth/session",
+      siteUrl: "https://www.beatport.com/",
       extraOrigins: [],
     });
   });
 
   it("is overridden only in an end-to-end run of an unpackaged app", () => {
     expect(beatportEndpoints(env, { packaged: true, e2e: true }).apiBase).toBe("https://api.beatport.com/v4");
-    expect(beatportEndpoints(env, { packaged: false, e2e: false }).signInUrl).toBe("https://www.beatport.com/");
+    expect(beatportEndpoints(env, { packaged: false, e2e: false }).signInUrl).toBe(
+      "https://www.beatport.com/api/auth/signin/beatport?callbackUrl=https%3A%2F%2Fwww.beatport.com%2F",
+    );
     expect(beatportEndpoints(env, { packaged: false, e2e: true })).toEqual({
       signInUrl: "http://127.0.0.1:5001/login",
       apiBase: "http://127.0.0.1:5002/v4",
       sessionUrl: "http://127.0.0.1:5001/api/auth/session",
+      siteUrl: "http://127.0.0.1:5001/",
       extraOrigins: ["http://127.0.0.1:5001", "http://127.0.0.1:5002"],
     });
   });

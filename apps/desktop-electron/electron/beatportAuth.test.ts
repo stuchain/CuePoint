@@ -3,14 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BeatportAuth,
   REFRESH_WAIT_MS,
-  RETRY_AFTER_END_MS,
+  RENEW_BACKOFF_MS,
+  SESSION_READ_TIMEOUT_MS,
+  SITE_SIGNED_OUT_RETRY_MS,
+  SAME_TOKEN_GRACE_MS,
   SESSION_POLL_MS,
   type EnginePort,
   type SignInHost,
   type SignInSurface,
   type TokenStoreLike,
 } from "./beatportAuth";
-import type { BeatportAuthStatus, StoredBeatportToken } from "./beatportAuthRules";
+import { REFRESH_FLOOR_MS, type BeatportAuthStatus, type StoredBeatportToken } from "./beatportAuthRules";
 
 /**
  * The sign-in's logic, with a fake window, store, engine and Beatport (C12).
@@ -23,6 +26,7 @@ const T0 = Date.parse("2026-03-01T12:00:00Z");
 const HOUR = 3600_000;
 
 class FakeSurface implements SignInSurface {
+  constructor(private readonly host: FakeHost) {}
   bearer: Array<(t: string) => void> = [];
   closedListeners: Array<() => void> = [];
   session: unknown = null;
@@ -34,7 +38,7 @@ class FakeSurface implements SignInSurface {
     this.closedListeners.push(l);
   }
   async fetchSessionJson() {
-    return this.session;
+    return this.session ?? this.host.peek();
   }
   close() {
     this.closed = true;
@@ -48,13 +52,26 @@ class FakeSurface implements SignInSurface {
 class FakeHost implements SignInHost {
   opened: Array<{ visible: boolean; surface: FakeSurface }> = [];
   cleared = 0;
+  /** What the windowless session read returns: a value, a function of the call number, or an Error. */
+  session: unknown = null;
+  sessionReads = 0;
   /** Runs when a window opens, to script what the page does. */
   onOpen: (surface: FakeSurface, visible: boolean) => void = () => undefined;
   open({ visible }: { visible: boolean }) {
-    const surface = new FakeSurface();
+    const surface = new FakeSurface(this);
     this.opened.push({ visible, surface });
     queueMicrotask(() => this.onOpen(surface, visible));
     return surface;
+  }
+  /** The scripted session value at this read count, without counting a read (a window's page reads it). */
+  peek(): unknown {
+    return typeof this.session === "function" ? (this.session as (n: number) => unknown)(this.sessionReads) : this.session;
+  }
+  async fetchSessionJson() {
+    this.sessionReads += 1;
+    const value = this.peek();
+    if (value instanceof Error) throw value;
+    return value;
   }
   async clearData() {
     this.cleared += 1;
@@ -197,7 +214,7 @@ describe("signing in", () => {
   it("reads the expiry from the session JSON when the introspection gives none", async () => {
     const t = setup({ "from-session-wxyz": { body: { active: true, user_id: 7 } } });
     t.host.onOpen = (surface) => {
-      surface.session = { access_token: "from-session-wxyz", expires: "2026-03-01T20:00:00Z" };
+      surface.session = { access_token: "from-session-wxyz", accessTokenExpires: "2026-03-01T20:00:00Z" };
     };
     const run = t.auth.signIn();
     await vi.advanceTimersByTimeAsync(SESSION_POLL_MS + 10);
@@ -329,17 +346,18 @@ describe("when the introspection gives no end", () => {
       s.session = { user: { accessToken: "tok-ses-bbbb", accessTokenExpires: "2026-03-01T18:00:00Z" } };
     };
     // The poll also finds the token; either path ends with the session's end for it.
+    viaSession.host.session = { user: { accessToken: "tok-ses-bbbb", accessTokenExpires: "2026-03-01T18:00:00Z" } };
     await viaSession.auth.signIn();
     expect(viaSession.store.value?.expires_at).toBe("2026-03-01T18:00:00.000Z");
 
     const bare = setup({ "tok-bare-cccc": { body: { active: true, username: "a", exp: null } } });
     bare.host.onOpen = (s) => s.sendBearer("tok-bare-cccc");
     await bare.auth.signIn();
-    expect(bare.store.value?.expires_at).toBe(new Date(T0 + HOUR).toISOString());
-    // A renewal probe is therefore always on the calendar.
-    bare.host.opened.length = 0;
-    await vi.advanceTimersByTimeAsync(HOUR - 10 * 60_000 + 1000);
-    expect(bare.host.opened).toHaveLength(1);
+    // The default is ten minutes, and a renewal probe is always on the calendar.
+    expect(bare.store.value?.expires_at).toBe(new Date(T0 + 10 * MIN).toISOString());
+    bare.host.sessionReads = 0;
+    await vi.advanceTimersByTimeAsync(9 * MIN + 1000);
+    expect(bare.host.sessionReads).toBe(1);
   });
 
   it("reads the end of a JWT-shaped token", async () => {
@@ -428,6 +446,7 @@ describe("engine pushes and sign-in calls", () => {
     const joined = t.auth.signIn();
     await vi.advanceTimersByTimeAsync(REFRESH_WAIT_MS + 10);
     await Promise.all([renewing, joined]);
+    // The direct read found nothing, so the one fallback window was the only window.
     expect(t.host.opened).toHaveLength(1);
     expect(t.host.opened[0]!.visible).toBe(false);
   });
@@ -458,91 +477,335 @@ describe("engine pushes and sign-in calls", () => {
   });
 });
 
+/** The website's session JSON as measured on a live sign-in (2026-10-12, Windows). */
+function sessionJson(token: string, endsAt: number, extra: Record<string, unknown> = {}) {
+  return {
+    user: { email: "anna@example.com" },
+    expires: new Date(T0 + 30 * 24 * HOUR).toISOString(),
+    token: {
+      accessToken: token,
+      expiresIn: 600,
+      tokenType: "Bearer",
+      scope: "app:prostore user:dj",
+      anon: false,
+      accessTokenExpires: endsAt,
+      ...extra,
+    },
+    introspect: { application_id: 1, user_id: 77, username: "anna", scope: "app:prostore user:dj", feature: [] },
+  };
+}
+const MIN = 60_000;
+
+describe("signing in, with the session endpoint", () => {
+  it("learns the expiry with a session read right after a header capture", async () => {
+    const t = setup({ "hdr-token-aaaa": { body: { active: true, username: "anna", exp: null } } });
+    t.host.onOpen = (surface) => surface.sendBearer("hdr-token-aaaa");
+    t.host.session = sessionJson("hdr-token-aaaa", T0 + 12 * MIN);
+    const status = await t.auth.signIn();
+    expect(t.host.sessionReads).toBe(1);
+    expect(t.store.value?.expires_at).toBe(new Date(T0 + 12 * MIN).toISOString());
+    expect(status.expires_at).toBe(new Date(T0 + 12 * MIN).toISOString());
+  });
+
+  it("prefers the session's token when it differs from the header's", async () => {
+    const t = setup({
+      "hdr-token-aaaa": { body: { active: true, username: "anna", exp: null } },
+      "ses-token-bbbb": { body: { active: true, username: "anna", exp: null } },
+    });
+    t.host.onOpen = (surface) => surface.sendBearer("hdr-token-aaaa");
+    t.host.session = sessionJson("ses-token-bbbb", T0 + 12 * MIN);
+    await t.auth.signIn();
+    expect(t.store.value).toEqual({
+      token: "ses-token-bbbb",
+      expires_at: new Date(T0 + 12 * MIN).toISOString(),
+      source: "signin",
+    });
+  });
+
+  it("ignores the anonymous token the session also holds", async () => {
+    const t = setup({ "anon-token-0000": { body: { active: true, username: "x", scope: "app:prostore user:anon" } } });
+    t.host.onOpen = (surface) => {
+      surface.session = sessionJson("anon-token-0000", T0 + 12 * MIN, { anon: true });
+    };
+    void t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(SESSION_POLL_MS * 3);
+    expect(t.introspected).toEqual([]);
+    expect(t.store.value).toBeNull();
+  });
+});
+
 describe("renewing", () => {
   async function signedIn() {
     const t = setup({
-      "first-token-aaaa": user(T0 + 10 * HOUR),
-      "second-token-bbbb": user(T0 + 20 * HOUR),
+      "first-token-aaaa": user(T0 + 10 * MIN),
+      "second-token-bbbb": { body: { active: true, username: "anna", exp: null } },
+      "third-token-cccc": { body: { active: true, username: "anna", exp: null } },
     });
     t.host.onOpen = (surface) => surface.sendBearer("first-token-aaaa");
+    t.host.session = sessionJson("first-token-aaaa", T0 + 10 * MIN);
     await t.auth.signIn();
     t.host.opened.length = 0;
+    t.host.onOpen = () => undefined;
     return t;
   }
 
-  it("opens a hidden window ten minutes before the end and takes the new token", async () => {
+  it("reads the session endpoint a minute before the end and rotates tokens with no window", async () => {
     const t = await signedIn();
-    t.host.onOpen = (surface, visible) => {
-      expect(visible).toBe(false);
-      // The site first repeats the old token, then renews it.
-      surface.sendBearer("first-token-aaaa");
-      setTimeout(() => surface.sendBearer("second-token-bbbb"), 3000);
-    };
+    const end2 = T0 + 22 * MIN;
+    const end3 = T0 + 34 * MIN;
+    t.host.session = (n: number) =>
+      n <= 1 ? sessionJson("second-token-bbbb", end2) : sessionJson("third-token-cccc", end3);
+    t.host.sessionReads = 0;
+    t.engine.session.length = 0;
 
-    await vi.advanceTimersByTimeAsync(10 * HOUR - 10 * 60_000 - 1000);
-    expect(t.host.opened).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(9 * MIN - 1000);
+    expect(t.host.sessionReads).toBe(0);
     await vi.advanceTimersByTimeAsync(2000);
-    expect(t.host.opened).toHaveLength(1);
-    await vi.advanceTimersByTimeAsync(4000);
-
     expect(t.store.value?.token).toBe("second-token-bbbb");
-    expect(t.engine.session.at(-1)).toBe("second-token-bbbb");
-    expect(t.host.opened[0]!.surface.closed).toBe(true);
+    expect(t.store.value?.expires_at).toBe(new Date(end2).toISOString());
+    expect(t.engine.session).toEqual(["second-token-bbbb"]);
+
+    await vi.advanceTimersByTimeAsync(12 * MIN);
+    expect(t.store.value?.token).toBe("third-token-cccc");
+    expect(t.engine.session).toEqual(["second-token-bbbb", "third-token-cccc"]);
     expect(t.auth.status().state).toBe("signed_in");
-    // The old token was not asked about again.
-    expect(t.introspected.filter((x) => x === "first-token-aaaa")).toHaveLength(1);
+    expect(t.host.opened).toHaveLength(0);
+    expect(t.broadcasts.at(-1)!.expires_at).toBe(new Date(end3).toISOString());
   });
 
-  it("is not expired while the old token still has time: it looks again just after its real end", async () => {
+  it("takes seconds for accessTokenExpires as well as milliseconds", async () => {
     const t = await signedIn();
-    // The site only ever repeats the old token.
-    t.host.onOpen = (surface) => surface.sendBearer("first-token-aaaa");
-
-    await vi.advanceTimersByTimeAsync(10 * HOUR - 10 * 60_000 + REFRESH_WAIT_MS + 100);
-    expect(t.auth.status().state).toBe("signed_in");
-    expect(t.host.opened).toHaveLength(1);
-    expect(t.host.opened[0]!.surface.closed).toBe(true);
-
-    // A new token appears at the second look, after the real end.
-    t.host.onOpen = (surface) => surface.sendBearer("second-token-bbbb");
-    await vi.advanceTimersByTimeAsync(10 * 60_000 + RETRY_AFTER_END_MS[0]!);
-    expect(t.host.opened).toHaveLength(2);
-    expect(t.store.value?.token).toBe("second-token-bbbb");
-    expect(t.auth.status().state).toBe("signed_in");
+    t.host.session = sessionJson("second-token-bbbb", Math.floor((T0 + 22 * MIN) / 1000));
+    await vi.advanceTimersByTimeAsync(10 * MIN);
+    expect(t.store.value?.expires_at).toBe(new Date(T0 + 22 * MIN).toISOString());
   });
 
-  it("is expired only when nothing new has come after the real end, then keeps trying", async () => {
+  it("looks again just after the end when the same token comes back", async () => {
     const t = await signedIn();
-    t.host.onOpen = (surface) => surface.sendBearer("first-token-aaaa");
+    t.host.session = (n: number) =>
+      n === 1 ? sessionJson("first-token-aaaa", T0 + 10 * MIN) : sessionJson("second-token-bbbb", T0 + 22 * MIN);
+    t.host.sessionReads = 0;
+    await vi.advanceTimersByTimeAsync(9 * MIN + 1000);
+    expect(t.host.sessionReads).toBe(1);
+    expect(t.store.value?.token).toBe("first-token-aaaa");
+    expect(t.auth.status().state).toBe("signed_in");
 
-    // First look (before the end), then the look 2 minutes after the end.
-    await vi.advanceTimersByTimeAsync(10 * HOUR + RETRY_AFTER_END_MS[0]! + REFRESH_WAIT_MS + 100);
-    expect(t.host.opened).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(MIN + SAME_TOKEN_GRACE_MS - 2000);
+    expect(t.host.sessionReads).toBe(1);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(t.host.sessionReads).toBe(2);
+    expect(t.store.value?.token).toBe("second-token-bbbb");
+    expect(t.host.opened).toHaveLength(0);
+  });
+
+  it("retries with backoff, tries one hidden window, and is expired only after the end", async () => {
+    const t = await signedIn();
+    t.host.session = null;
+    t.host.sessionReads = 0;
+
+    // First read, a minute before the end: fails, one hidden window finds nothing, still signed in.
+    await vi.advanceTimersByTimeAsync(9 * MIN + 1000);
+    expect(t.host.sessionReads).toBe(1);
+    await vi.advanceTimersByTimeAsync(REFRESH_WAIT_MS);
+    expect(t.host.opened).toHaveLength(1);
+    expect(t.host.opened[0]!.visible).toBe(false);
+    expect(t.host.opened[0]!.surface.closed).toBe(true);
+    expect(t.auth.status().state).toBe("signed_in");
+
+    // Retry after 1 minute (end is 1 minute away at best; the token is now at its end).
+    await vi.advanceTimersByTimeAsync(RENEW_BACKOFF_MS[0]!);
+    expect(t.host.sessionReads).toBe(2);
     expect(t.auth.status().state).toBe("expired");
     expect(t.broadcasts.at(-1)!.state).toBe("expired");
+    // The fallback window is not opened again.
+    expect(t.host.opened).toHaveLength(1);
 
-    // Later looks: +10 min, +30 min, then no more.
-    await vi.advanceTimersByTimeAsync(RETRY_AFTER_END_MS[1]! + REFRESH_WAIT_MS);
-    expect(t.host.opened).toHaveLength(3);
-    await vi.advanceTimersByTimeAsync(RETRY_AFTER_END_MS[2]! + REFRESH_WAIT_MS);
-    expect(t.host.opened).toHaveLength(4);
-    await vi.advanceTimersByTimeAsync(24 * HOUR);
-    expect(t.host.opened).toHaveLength(4);
+    // Then 5 minutes, then 15 minutes, and 15 minutes after that.
+    const reads = t.host.sessionReads;
+    await vi.advanceTimersByTimeAsync(RENEW_BACKOFF_MS[1]!);
+    expect(t.host.sessionReads).toBe(reads + 1);
+    await vi.advanceTimersByTimeAsync(RENEW_BACKOFF_MS[2]!);
+    expect(t.host.sessionReads).toBe(reads + 2);
+    await vi.advanceTimersByTimeAsync(RENEW_BACKOFF_MS[2]!);
+    expect(t.host.sessionReads).toBe(reads + 3);
+    expect(t.host.opened).toHaveLength(1);
   });
 
-  it("does not take a guest token as a renewal", async () => {
+  it("recovers from expired when the endpoint serves a new token again", async () => {
     const t = await signedIn();
-    t.fetchImpl.mockImplementation(async () => new Response(JSON.stringify({ active: true }), { status: 200 }));
-    t.host.onOpen = (surface) => surface.sendBearer("guest-token-0000");
-    await vi.advanceTimersByTimeAsync(10 * HOUR);
+    t.host.session = new Error("offline");
+    await vi.advanceTimersByTimeAsync(30 * MIN);
+    expect(t.auth.status().state).toBe("expired");
+    t.host.session = sessionJson("second-token-bbbb", T0 + 120 * MIN);
+    await vi.advanceTimersByTimeAsync(15 * MIN);
+    expect(t.store.value?.token).toBe("second-token-bbbb");
+    expect(t.auth.status().state).toBe("signed_in");
+  });
+
+  it("uses the hidden window once when the direct read fails, and takes the token it yields with its end", async () => {
+    const t = await signedIn();
+    const end2 = T0 + 25 * MIN;
+    // The direct read fails; the read after the fallback's header capture finds the session again.
+    t.host.session = (n: number) => (n <= 1 ? null : sessionJson("second-token-bbbb", end2));
+    t.host.sessionReads = 0;
+    t.host.onOpen = (surface) => surface.sendBearer("second-token-bbbb");
+    await vi.advanceTimersByTimeAsync(10 * MIN);
+    expect(t.host.opened).toHaveLength(1);
+    expect(t.host.opened[0]!.visible).toBe(false);
+    expect(t.store.value?.token).toBe("second-token-bbbb");
+    expect(t.store.value?.expires_at).toBe(new Date(end2).toISOString());
+    expect(t.auth.status().state).toBe("signed_in");
+  });
+
+  it("does not wait for a session read that never answers: backoff goes on and sign-in still opens a window", async () => {
+    const t = await signedIn();
+    t.host.fetchSessionJson = () => new Promise<unknown>(() => undefined);
+    await vi.advanceTimersByTimeAsync(9 * MIN + 1000 + SESSION_READ_TIMEOUT_MS + REFRESH_WAIT_MS + 100);
+    // The one fallback window has come and gone; a retry is waiting.
+    expect(t.host.opened).toHaveLength(1);
+    expect(t.auth.status().state).toBe("signed_in");
+    await vi.advanceTimersByTimeAsync(RENEW_BACKOFF_MS[0]! + SESSION_READ_TIMEOUT_MS + 5000);
+    expect(t.auth.status().state).toBe("expired");
+    t.host.onOpen = (surface) => surface.sendBearer("second-token-bbbb");
+    const run = t.auth.signIn();
+    // Learning the end also asks the hung endpoint once, and gives up after its time limit.
+    await vi.advanceTimersByTimeAsync(SESSION_READ_TIMEOUT_MS + 100);
+    const status = await run;
+    expect(t.host.opened.at(-1)!.visible).toBe(true);
+    expect(status.state).toBe("signed_in");
+    expect(t.store.value?.token).toBe("second-token-bbbb");
+  });
+
+  it("counts the same token a little past its end as the site's own, not as a failure", async () => {
+    const t = await signedIn();
+    t.host.session = (n: number) =>
+      n <= 2 ? sessionJson("first-token-aaaa", T0 + 10 * MIN) : sessionJson("second-token-bbbb", T0 + 22 * MIN);
+    t.host.sessionReads = 0;
+    await vi.advanceTimersByTimeAsync(10 * MIN + SAME_TOKEN_GRACE_MS + 100);
+    // Reads at 9 min (same) and just after the end (same, a clock-skew's worth late): no window.
+    expect(t.host.sessionReads).toBe(2);
+    expect(t.host.opened).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(REFRESH_FLOOR_MS + 100);
+    expect(t.store.value?.token).toBe("second-token-bbbb");
+    expect(t.host.opened).toHaveLength(0);
+  });
+
+  it("stops asking every 15 minutes once the site's own sign-in has ended", async () => {
+    const t = await signedIn();
+    t.host.session = {};
+    t.host.sessionReads = 0;
+    await vi.advanceTimersByTimeAsync(9 * MIN + 1000);
+    // Still within the token's life: nothing said yet, and no window for an ended sign-in.
+    expect(t.host.sessionReads).toBe(1);
+    expect(t.auth.status().state).toBe("signed_in");
+    await vi.advanceTimersByTimeAsync(MIN + SAME_TOKEN_GRACE_MS + 100);
+    expect(t.host.sessionReads).toBe(2);
+    expect(t.auth.status().state).toBe("expired");
+    expect(t.broadcasts.at(-1)!.state).toBe("expired");
+    await vi.advanceTimersByTimeAsync(SITE_SIGNED_OUT_RETRY_MS - 10_000);
+    expect(t.host.sessionReads).toBe(2);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(t.host.sessionReads).toBe(3);
+    expect(t.host.opened).toHaveLength(0);
+  });
+
+  it("renews at once at launch when the stored token has already ended", async () => {
+    const t = setup({ "second-token-bbbb": { body: { active: true, username: "anna", exp: null } } });
+    t.store.value = { token: "first-token-aaaa", expires_at: new Date(T0 - HOUR).toISOString(), source: "signin" };
+    t.host.session = sessionJson("second-token-bbbb", T0 + 12 * MIN);
+    t.auth.init();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(t.store.value?.token).toBe("second-token-bbbb");
+  });
+
+  it("renews on waking from sleep when the token ran out, and keeps its plan otherwise", async () => {
+    const t = await signedIn();
+    t.host.session = sessionJson("second-token-bbbb", T0 + 12 * MIN);
+    t.host.sessionReads = 0;
+    t.auth.wake();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(t.host.sessionReads).toBe(0);
+    vi.setSystemTime(T0 + 30 * MIN);
+    t.auth.wake();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(t.host.sessionReads).toBe(1);
+  });
+
+  it("starts renewing again with resume() after dispose", async () => {
+    const t = await signedIn();
+    t.auth.dispose();
+    t.host.session = sessionJson("second-token-bbbb", T0 + 22 * MIN);
+    t.host.sessionReads = 0;
+    await vi.advanceTimersByTimeAsync(30 * MIN);
+    expect(t.host.sessionReads).toBe(0);
+    t.auth.resume();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(t.host.sessionReads).toBe(1);
+    expect(t.store.value?.token).toBe("second-token-bbbb");
+  });
+
+  it("does not schedule a renewal when disposed while the engine is being told", async () => {
+    const t = setup({ "user-token-abcd": user(T0 + 10 * MIN) });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    t.engine.setSession = async () => gate;
+    t.host.onOpen = (surface) => surface.sendBearer("user-token-abcd");
+    const run = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(50);
+    t.auth.dispose();
+    release();
+    await run;
+    t.host.sessionReads = 0;
+    await vi.advanceTimersByTimeAsync(HOUR);
+    expect(t.host.sessionReads).toBe(0);
+  });
+
+  it("keeps a waiting renewal when a sign-in window is closed with nothing", async () => {
+    const t = await signedIn();
+    t.host.session = null;
+    // Into the backoff: the first read failed, the fallback window came and went.
+    await vi.advanceTimersByTimeAsync(9 * MIN + 1000 + REFRESH_WAIT_MS + 100);
+    t.host.sessionReads = 0;
+    t.host.onOpen = (surface) => queueMicrotask(() => surface.close());
+    expect((await t.auth.signIn()).state).toBe("signed_in");
+    t.host.session = sessionJson("second-token-bbbb", T0 + 22 * MIN);
+    await vi.advanceTimersByTimeAsync(RENEW_BACKOFF_MS[0]! + 1000);
+    expect(t.host.sessionReads).toBe(1);
+    expect(t.store.value?.token).toBe("second-token-bbbb");
+  });
+
+  it("does not take a guest or anonymous token as a renewal", async () => {
+    const t = await signedIn();
+    t.host.session = sessionJson("anon-token-0000", T0 + 22 * MIN, { anon: true });
+    await vi.advanceTimersByTimeAsync(30 * MIN);
     expect(t.auth.status().state).toBe("expired");
     expect(t.store.value?.token).toBe("first-token-aaaa");
+    expect(t.introspected.filter((x) => x === "anon-token-0000")).toHaveLength(0);
+  });
+
+  it("stays signed out when the sign-out comes during a pending renewal read", async () => {
+    const t = await signedIn();
+    let release!: (value: unknown) => void;
+    const gate = new Promise<unknown>((resolve) => {
+      release = resolve;
+    });
+    t.host.fetchSessionJson = async () => gate;
+    await vi.advanceTimersByTimeAsync(9 * MIN + 1000);
+    await t.auth.signOut();
+    release(sessionJson("second-token-bbbb", T0 + 22 * MIN));
+    await vi.advanceTimersByTimeAsync(60 * MIN);
+    expect(t.store.value).toBeNull();
+    expect(t.engine.session.at(-1)).toBeNull();
+    expect(t.auth.status().state).toBe("signed_out");
+    expect(t.host.opened).toHaveLength(0);
   });
 
   it("signs in again from expired", async () => {
     const t = await signedIn();
-    t.host.onOpen = () => undefined;
-    await vi.advanceTimersByTimeAsync(10 * HOUR);
+    t.host.session = null;
+    await vi.advanceTimersByTimeAsync(30 * MIN);
     expect(t.auth.status().state).toBe("expired");
 
     t.host.onOpen = (surface) => surface.sendBearer("second-token-bbbb");
@@ -552,12 +815,13 @@ describe("renewing", () => {
   });
 
   it("schedules a renewal for a token stored by an earlier launch", async () => {
-    const t = setup({ "second-token-bbbb": user(T0 + 20 * HOUR) });
+    const t = setup({ "second-token-bbbb": { body: { active: true, username: "anna", exp: null } } });
     t.store.value = { token: "first-token-aaaa", expires_at: new Date(T0 + HOUR).toISOString(), source: "signin" };
-    t.host.onOpen = (surface) => surface.sendBearer("second-token-bbbb");
+    t.host.session = sessionJson("second-token-bbbb", T0 + 2 * HOUR);
     t.auth.init();
     await vi.advanceTimersByTimeAsync(HOUR);
     expect(t.store.value?.token).toBe("second-token-bbbb");
+    expect(t.host.opened).toHaveLength(0);
   });
 
   it("never renews a pasted token", async () => {
@@ -565,6 +829,7 @@ describe("renewing", () => {
     await t.auth.savePastedToken("pasted-token-1234");
     await vi.advanceTimersByTimeAsync(48 * HOUR);
     expect(t.host.opened).toHaveLength(0);
+    expect(t.host.sessionReads).toBe(0);
     expect(t.auth.status().state).toBe("pasted");
   });
 });
@@ -828,6 +1093,30 @@ describe("the sign-in window's rules", () => {
     });
     expect(options.webPreferences).not.toHaveProperty("preload");
     expect(fake.FakeWindow.last.loaded).toEqual([endpoints.signInUrl]);
+  });
+
+  it("loads the site's home page, not the sign-in page, in a hidden renewal window", async () => {
+    const { h, fake, endpoints } = await host(true);
+    h.open({ visible: false });
+    expect(fake.FakeWindow.last.loaded).toEqual([endpoints.siteUrl]);
+    expect(endpoints.siteUrl).toBe("https://www.beatport.com/");
+  });
+
+  it("reads the session with the partition's cookies, a time limit, and the token's end on this clock", async () => {
+    const { h, fake } = await host(true);
+    const server = Date.now() + 90_000;
+    const body = { token: { accessToken: "a", accessTokenExpires: server + 600_000 } };
+    fake.session.fetch.mockResolvedValue(
+      new Response(JSON.stringify(body), { status: 200, headers: { date: new Date(server).toUTCString() } }),
+    );
+    const json = (await h.fetchSessionJson()) as { token: { accessTokenExpires: number } };
+    const init = fake.session.fetch.mock.calls[0]![1] as RequestInit;
+    expect(init.credentials).toBe("include");
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    // The server runs 90 s ahead: its end is moved 90 s earlier (to within the Date header's second).
+    expect(Math.abs(json.token.accessTokenExpires - (server + 600_000 - 90_000))).toBeLessThan(2000);
+    fake.session.fetch.mockRejectedValue(new Error("offline"));
+    expect(await h.fetchSessionJson()).toBeNull();
   });
 
   it("keeps developer tools only in an unpackaged build, and a hidden window is not modal", async () => {

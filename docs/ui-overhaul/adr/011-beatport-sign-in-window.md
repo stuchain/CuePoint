@@ -27,15 +27,19 @@ The main window cannot be that place:
   false`, no preload, and devtools only in an unpackaged build. Page scripts never run beside
   `window.cuepoint`.
 - **Its own cookie jar.** The partition is not the default session, so Beatport's cookies and
-  storage never mix with the app's. Sign out clears the partition. A hidden window in the same
-  partition renews the token.
+  storage never mix with the app's. Sign out clears the partition. Measured 2026-10-12 on Windows by polling
+  `/api/auth/session` with Electron's `session.fetch` every 2 minutes for about 90 minutes: a new
+  token about every 12 minutes. CuePoint renews with no window, by reading that endpoint through
+  the partition's `fetch`, and again on waking from sleep; a hidden window in the same partition,
+  loading Beatport's home page once, is a single fallback after a failed read. The Beatport
+  sign-in itself lasts 30 days and slides with use; after that the person signs in again.
 - **A closed set of pages.** Navigation, redirects and popups are allowed only to `https` on
   `*.beatport.com` and the hosts of Beatport's social sign-ins, and `about:blank` for a popup that
   is then navigated (the navigation is checked like any other). Popups open in the same partition
   under the same rules. Downloads and every permission request are refused.
 - **Read, not drive.** Main reads the `Authorization` header of requests to `api.beatport.com/v4`
   on that partition's `webRequest`, and the website's session JSON through that partition's
-  `fetch`. It never runs script in the page and never fills a form.
+  `fetch` (while the window is open, and alone for renewal). It never runs script in the page and never fills a form.
 - **The main window is unchanged.** It still denies window opens and keeps its navigation rule.
   The sign-in window is opened only by main, on the renderer's `beatport:signIn` request, and is
   modal to the main window.

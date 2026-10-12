@@ -10,6 +10,12 @@
  * (encrypted at rest) and to the engine's memory; the renderer is only ever told a state and a
  * masked preview. Nothing here logs a header or a token.
  *
+ * Renewal (measured on a live sign-in, 2026-10-12, Windows): the token rotates about every 12
+ * minutes, and Beatport's `/api/auth/session` hands out the new one (the site renews it server-side
+ * once it has ended) for as long as the NextAuth session cookie lives, about 30 days, sliding. So
+ * `BeatportAuth` renews by reading that endpoint in the sign-in partition, with no window; a hidden
+ * window is only a single fallback after a failed read.
+ *
  * Two halves. `BeatportAuth` holds the logic and is given everything it touches, so it is tested
  * with fakes. `ElectronSignInHost` is the thin part that makes the real windows and wires the
  * partition: its navigation and permission rules are the security boundary of the second window
@@ -19,13 +25,17 @@ import type { BrowserWindow, Session, WebContents } from "electron";
 
 import {
   DEFAULT_TOKEN_TTL_MS,
+  REFRESH_FLOOR_MS,
+  REFRESH_LEAD_MS,
   authState,
   bearerFrom,
   expiryMs,
   introspectExpiresAt,
   isAllowedSignInUrl,
+  isSignedOutSession,
   isUserToken,
   jwtExpiresAt,
+  rebaseSessionExpiry,
   refreshDelay,
   tokenFromSessionJson,
   type BeatportAuthStatus,
@@ -57,6 +67,8 @@ export interface SignInSurface {
 export interface SignInHost {
   /** A window on the sign-in page: shown and modal, or hidden for a silent renewal. */
   open(options: { visible: boolean }): SignInSurface;
+  /** The website's session JSON read in the partition with no window; null when it cannot be read. */
+  fetchSessionJson(): Promise<unknown>;
   /** Cookies, storage and cache of the partition. */
   clearData(): Promise<void>;
 }
@@ -99,12 +111,22 @@ export interface BeatportAuthOptions {
 interface Verified {
   token: string;
   expiresAt: string | null;
+  /** Whether the end came from the website's session JSON, which is the one that carries it. */
+  fromSession: boolean;
 }
 
 type Verdict = { kind: "ok"; verified: Verified } | { kind: "rejected" } | { kind: "error" };
 
-/** After a renewal found nothing: when to try again, counted from the token's real end. */
-export const RETRY_AFTER_END_MS: readonly number[] = [2 * 60_000, 10 * 60_000, 30 * 60_000];
+/** After a failed renewal: how long to wait before the next try (the last one repeats). */
+export const RENEW_BACKOFF_MS: readonly number[] = [60_000, 5 * 60_000, 15 * 60_000];
+/** When the session endpoint repeats the token, look again this long after the token's end. */
+export const SAME_TOKEN_GRACE_MS = 3_000;
+/** The same token still counts as the site's current one this long after its end (clock skew). */
+export const SAME_TOKEN_SLACK_MS = 2 * 60_000;
+/** A session read that has not answered by now has failed. */
+export const SESSION_READ_TIMEOUT_MS = 12_000;
+/** The site's sign-in has ended (its session JSON is empty): look this rarely for a new one. */
+export const SITE_SIGNED_OUT_RETRY_MS = 6 * 60 * 60_000;
 
 export class BeatportAuth {
   private readonly now: () => number;
@@ -113,6 +135,8 @@ export class BeatportAuth {
   /** Bumped by sign-out and a pasted token: a capture that began before it must not store anything. */
   private generation = 0;
   private retry = 0;
+  /** The hidden-window fallback is tried once per run of failures. */
+  private fallbackTried = false;
   private signingIn: Promise<BeatportAuthStatus> | null = null;
   private refreshing: Promise<BeatportAuthStatus> | null = null;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -138,7 +162,37 @@ export class BeatportAuth {
   init(): void {
     const stored = this.options.store.load();
     if (stored) this.options.onToken?.(stored.token);
+    this.resume();
+  }
+
+  /**
+   * Arrange renewal: at once when the stored token's end has already passed (the computer slept,
+   * or the app was off), else at its time. Also called when the main window is made again after
+   * `dispose` (macOS keeps the app running with no window) and after the computer wakes.
+   */
+  resume(): void {
+    if (this.signingIn || this.refreshing || this.refreshTimer) return;
+    const stored = this.options.store.load();
+    if (!stored || stored.source !== "signin" || this.options.envTokenSet()) return;
+    const end = expiryMs(stored.expires_at);
+    if (end !== null && end <= this.now()) {
+      void this.refreshNow();
+      return;
+    }
     this.scheduleRefresh();
+  }
+
+  /** The computer woke or unlocked: renew now if the token has run out meanwhile, else keep the plan. */
+  wake(): void {
+    const stored = this.options.store.load();
+    if (!stored || stored.source !== "signin") return;
+    const end = expiryMs(stored.expires_at);
+    if (end !== null && end - REFRESH_LEAD_MS <= this.now()) {
+      this.cancelRefreshTimer();
+      void this.refreshNow();
+    } else {
+      this.resume();
+    }
   }
 
   /**
@@ -201,11 +255,56 @@ export class BeatportAuth {
     const surface = this.track(this.options.host.open({ visible: true }));
     const found = await this.capture(surface, { exclude: null, timeoutMs: null });
     this.release(surface);
-    if (found) await this.accept(found, generation);
+    if (found && generation === this.generation) {
+      await this.accept(await this.withSessionExpiry(found), generation);
+    } else if (generation === this.generation) {
+      // The window was closed with nothing: a renewal waiting for this must not have been lost.
+      this.ensureScheduled();
+    }
     return this.status();
   }
 
-  /** Renew now, in a hidden window; see `runRefresh`. */
+  /**
+   * A token taken from the API header carries no end: read the session JSON once now to learn it
+   * (and to prefer the session's own token if it differs, since that is the one that rotates).
+   */
+  private async withSessionExpiry(found: Verified): Promise<Verified> {
+    if (found.fromSession) return found;
+    const session = await this.readSession();
+    if (session.kind !== "token") return found;
+    if (session.token === found.token) {
+      return session.expiresAt ? { ...found, expiresAt: session.expiresAt, fromSession: true } : found;
+    }
+    const verdict = await this.verify(session.token, session.expiresAt);
+    return verdict.kind === "ok" ? verdict.verified : found;
+  }
+
+  /**
+   * The session JSON now, read without a window and with a time limit. "token": a user's token;
+   * "ended": the site says nobody is signed in (`{}`); "none": anything else, or a failed read.
+   */
+  private async readSession(): Promise<
+    { kind: "token"; token: string; expiresAt: string | null } | { kind: "ended" } | { kind: "none" }
+  > {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    try {
+      const json = await Promise.race([
+        this.options.host.fetchSessionJson(),
+        new Promise<null>((resolve) => {
+          timer = setTimeout(() => resolve(null), SESSION_READ_TIMEOUT_MS);
+        }),
+      ]);
+      const found = tokenFromSessionJson(json, this.now());
+      if (found) return { kind: "token", token: found.token, expiresAt: found.expiresAt };
+      return isSignedOutSession(json) ? { kind: "ended" } : { kind: "none" };
+    } catch {
+      return { kind: "none" };
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  /** Renew now; see `runRefresh`. */
   refreshNow(): Promise<BeatportAuthStatus> {
     if (this.refreshing) return this.refreshing;
     if (this.signingIn) return this.signingIn;
@@ -217,45 +316,123 @@ export class BeatportAuth {
   }
 
   /**
-   * Look for a new token in a hidden window. None is not yet the end of the sign-in: the old
-   * token lasts until its real end, so the next look is just after that, then at growing
-   * intervals. "Expired" is said only once the end has passed and nothing new has come.
+   * Read the session endpoint in the partition (no window) for the token the site has renewed.
+   * A new token is checked, stored and handed to the engine. The same token again is fine while
+   * it lasts: look once more just after its end. Anything else (nothing, a guest token, an error)
+   * is tried once more through a hidden window, then retried after growing waits. "Expired" is
+   * said only once the token's own end has passed and nothing new has come.
    */
   private async runRefresh(): Promise<BeatportAuthStatus> {
     const stored = this.options.store.load();
     if (!stored || stored.source !== "signin" || this.options.envTokenSet()) return this.status();
     const generation = this.generation;
-    const surface = this.track(this.options.host.open({ visible: false }));
-    const found = await this.capture(surface, {
-      exclude: stored.token,
-      timeoutMs: this.options.refreshWaitMs ?? REFRESH_WAIT_MS,
-    });
-    this.release(surface);
+
+    const direct = await this.renewDirect(stored);
     if (generation !== this.generation) return this.status();
-    if (found) {
-      await this.accept(found, generation);
+    if (direct.kind === "renewed") {
+      await this.accept(direct.verified, generation);
       return this.status();
     }
-    if (this.options.store.load()?.token !== stored.token) return this.status();
+    if (direct.kind === "same") {
+      this.sameToken(stored, direct.expiresAt);
+      return this.status();
+    }
+    if (direct.kind === "ended") {
+      this.siteSignInEnded(stored);
+      return this.status();
+    }
+
+    if (!this.fallbackTried) {
+      this.fallbackTried = true;
+      // The site's home page, not the NextAuth sign-in page: loading that would only ask to sign in.
+      const surface = this.track(this.options.host.open({ visible: false }));
+      const found = await this.capture(surface, {
+        exclude: stored.token,
+        timeoutMs: this.options.refreshWaitMs ?? REFRESH_WAIT_MS,
+      });
+      this.release(surface);
+      if (generation !== this.generation) return this.status();
+      if (found) {
+        const complete = await this.withSessionExpiry(found);
+        await this.accept(complete, generation);
+        return this.status();
+      }
+    }
+    if (generation !== this.generation || this.options.store.load()?.token !== stored.token) return this.status();
+    this.renewalFailed(stored);
+    return this.status();
+  }
+
+  private async renewDirect(
+    stored: StoredBeatportToken,
+  ): Promise<
+    | { kind: "renewed"; verified: Verified }
+    | { kind: "same"; expiresAt: string }
+    | { kind: "ended" }
+    | { kind: "failed" }
+  > {
+    const session = await this.readSession();
+    if (session.kind === "ended") return { kind: "ended" };
+    if (session.kind !== "token") return { kind: "failed" };
+    if (session.token === stored.token) {
+      const expiresAt = session.expiresAt ?? stored.expires_at;
+      const end = expiryMs(expiresAt);
+      // The site renews a little after the end, and clocks differ: a short way past is still "same".
+      if (expiresAt === null || end === null || end + SAME_TOKEN_SLACK_MS <= this.now()) return { kind: "failed" };
+      return { kind: "same", expiresAt };
+    }
+    const verdict = await this.verify(session.token, session.expiresAt);
+    return verdict.kind === "ok" ? { kind: "renewed", verified: verdict.verified } : { kind: "failed" };
+  }
+
+  /** The site has not renewed yet but the token lasts: keep it and look just after its end. */
+  private sameToken(stored: StoredBeatportToken, expiresAt: string): void {
+    if (this.options.store.load()?.token !== stored.token) return;
+    if (expiresAt !== stored.expires_at) {
+      this.options.store.save({ ...stored, expires_at: expiresAt });
+    }
+    const end = expiryMs(expiresAt)!;
+    this.retry = 0;
+    this.fallbackTried = false;
+    this.scheduleRetry(Math.max(REFRESH_FLOOR_MS, end + SAME_TOKEN_GRACE_MS - this.now()));
+    if (this.expired && end > this.now()) {
+      this.expired = false;
+      this.options.broadcast(this.status());
+    }
+  }
+
+  /** Beatport's own sign-in is over (empty session): say so once the token has ended; ask rarely. */
+  private siteSignInEnded(stored: StoredBeatportToken): void {
+    if (this.options.store.load()?.token !== stored.token) return;
     const end = expiryMs(stored.expires_at) ?? this.now();
     if (end > this.now()) {
-      this.scheduleRetry(end - this.now() + RETRY_AFTER_END_MS[0]!);
-      this.retry = 1;
-    } else {
+      this.scheduleRetry(end - this.now() + SAME_TOKEN_GRACE_MS);
+      return;
+    }
+    if (!this.expired) {
+      this.expired = true;
+      this.options.breadcrumb?.("beatport sign-in has ended on the site");
+      this.options.broadcast(this.status());
+    }
+    this.scheduleRetry(SITE_SIGNED_OUT_RETRY_MS);
+  }
+
+  private renewalFailed(stored: StoredBeatportToken): void {
+    const end = expiryMs(stored.expires_at) ?? this.now();
+    if (end <= this.now() && !this.expired) {
       this.expired = true;
       this.options.breadcrumb?.("beatport sign-in could not be renewed");
       this.options.broadcast(this.status());
-      const wait = RETRY_AFTER_END_MS[Math.min(this.retry, RETRY_AFTER_END_MS.length - 1)]!;
-      if (this.retry < RETRY_AFTER_END_MS.length) this.scheduleRetry(wait);
-      this.retry += 1;
     }
-    return this.status();
+    this.scheduleRetry(RENEW_BACKOFF_MS[Math.min(this.retry, RENEW_BACKOFF_MS.length - 1)]!);
+    this.retry += 1;
   }
 
   /** Forget the token everywhere: file, memory, the partition's cookies and the engine. */
   async signOut(): Promise<BeatportAuthStatus> {
     this.generation += 1;
     this.retry = 0;
+    this.fallbackTried = false;
     this.cancelRefreshTimer();
     for (const surface of [...this.open]) this.release(surface);
     this.options.store.clear();
@@ -278,6 +455,7 @@ export class BeatportAuth {
     if (token.length > MAX_PASTED_TOKEN) throw new Error("That token is too long.");
     this.generation += 1;
     this.retry = 0;
+    this.fallbackTried = false;
     this.cancelRefreshTimer();
     this.expired = false;
     if (token === "") {
@@ -306,7 +484,10 @@ export class BeatportAuth {
     this.options.onToken?.(found.token);
     this.expired = false;
     this.retry = 0;
+    this.fallbackTried = false;
     await this.pushToEngine();
+    // Signed out, or the app disposed, while the engine was being told: nothing more to arrange.
+    if (generation !== this.generation) return;
     this.scheduleRefresh();
     this.options.breadcrumb?.("beatport sign-in accepted");
     this.options.broadcast(this.status());
@@ -326,6 +507,15 @@ export class BeatportAuth {
     });
     this.pushChain = next;
     return next;
+  }
+
+  /** A renewal is always on the calendar for a signed-in token: add one if none is. */
+  private ensureScheduled(): void {
+    if (this.refreshTimer || this.refreshing) return;
+    const stored = this.options.store.load();
+    if (!stored || stored.source !== "signin" || this.options.envTokenSet()) return;
+    this.scheduleRefresh();
+    if (!this.refreshTimer) this.scheduleRetry(RENEW_BACKOFF_MS[0]!);
   }
 
   private scheduleRefresh(): void {
@@ -395,7 +585,7 @@ export class BeatportAuth {
       const consider = async (token: string, expiryHint: string | null = null): Promise<void> => {
         if (done || tried.has(token) || token === options.exclude) return;
         tried.add(token);
-        const verdict = await this.verify(token, expiryHint, surface);
+        const verdict = await this.verify(token, expiryHint);
         if (verdict.kind === "ok") finish(verdict.verified);
         else if (verdict.kind === "error") tried.delete(token);
       };
@@ -422,7 +612,7 @@ export class BeatportAuth {
   }
 
   /** Ask Beatport who the token belongs to. Only a live token with a user is accepted. */
-  private async verify(token: string, expiryHint: string | null, surface: SignInSurface): Promise<Verdict> {
+  private async verify(token: string, expiryHint: string | null): Promise<Verdict> {
     let body: unknown;
     try {
       const response = await this.options.fetch(`${this.options.apiBase.replace(/\/+$/, "")}/auth/o/introspect/`, {
@@ -436,23 +626,13 @@ export class BeatportAuth {
       return { kind: "error" };
     }
     if (!isUserToken(body)) return { kind: "rejected" };
+    // The session JSON's end is the one that holds; the introspection of this site gives none.
     const expiresAt =
-      introspectExpiresAt(body, this.now()) ??
       expiryHint ??
-      (await this.sessionExpiryOf(token, surface)) ??
+      introspectExpiresAt(body, this.now()) ??
       jwtExpiresAt(token) ??
       new Date(this.now() + DEFAULT_TOKEN_TTL_MS).toISOString();
-    return { kind: "ok", verified: { token, expiresAt } };
-  }
-
-  /** The end the website's session JSON gives for this very token, if it names one. */
-  private async sessionExpiryOf(token: string, surface: SignInSurface): Promise<string | null> {
-    try {
-      const found = tokenFromSessionJson(await surface.fetchSessionJson(), this.now());
-      return found && found.token === token ? found.expiresAt : null;
-    } catch {
-      return null;
-    }
+    return { kind: "ok", verified: { token, expiresAt, fromSession: expiryHint !== null } };
   }
 }
 
@@ -533,26 +713,38 @@ export class ElectronSignInHost implements SignInHost {
       for (const listener of [...closed]) listener();
     });
 
-    void win.loadURL(endpoints.signInUrl).catch(() => undefined);
+    // A hidden renewal window loads the site, where the page renews its token; the sign-in page
+    // (NextAuth's) would only ask for a sign-in.
+    void win.loadURL(visible ? endpoints.signInUrl : endpoints.siteUrl).catch(() => undefined);
 
     return {
       onBearer: (listener) => void bearerListeners.add(listener),
       onClosed: (listener) => void closed.add(listener),
-      fetchSessionJson: async () => {
-        try {
-          const response = await this.options.session.fetch(endpoints.sessionUrl, {
-            headers: { Accept: "application/json" },
-          });
-          return response.ok ? ((await response.json()) as unknown) : null;
-        } catch {
-          return null;
-        }
-      },
+      fetchSessionJson: () => this.fetchSessionJson(),
       close: () => {
         closePopups();
         if (!win.isDestroyed()) win.close();
       },
     };
+  }
+
+  /** The website's session JSON, read in the partition with its cookies and no window. */
+  async fetchSessionJson(): Promise<unknown> {
+    try {
+      const sent = Date.now();
+      const response = await this.options.session.fetch(this.options.endpoints.sessionUrl, {
+        headers: { Accept: "application/json" },
+        credentials: "include",
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) return null;
+      const json = (await response.json()) as unknown;
+      // The server's clock may differ from this computer's: move the token's end onto ours.
+      const date = Date.parse(response.headers.get("date") ?? "");
+      return Number.isNaN(date) ? json : rebaseSessionExpiry(json, date - (sent + Date.now()) / 2);
+    } catch {
+      return null;
+    }
   }
 
   async clearData(): Promise<void> {

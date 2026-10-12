@@ -6753,10 +6753,30 @@ a pasted token.
 - **Order.** `BEATPORT_ACCESS_TOKEN` wins, then the desktop sign-in's token, then
   `incrate.beatport_access_token`. The config key is still read, so existing files load and a
   headless engine still works.
-- **Renewal.** Before the token ends, a hidden window in the same partition loads Beatport and
-  waits for a new token. If none comes before the token's end, Settings says the sign-in ended and
-  offers Sign in again; CuePoint keeps retrying for a while after. How long Beatport's own sign-in
-  lasts was not measured; where it does not renew, that is a new sign-in about every ten hours.
+- **Renewal.** Measured 2026-10-12 on Windows by polling `/api/auth/session` with Electron's
+  `session.fetch` every 2 minutes for about 90 minutes: a new token about every 12 minutes, with no
+  page open. `GET https://www.beatport.com/api/auth/session`, sent with the partition's cookies,
+  returns the current token (`token.accessToken`, ended by `token.accessTokenExpires`; the site
+  renews it server-side once it has ended). CuePoint therefore renews by reading that endpoint
+  through the partition's `session.fetch` (cookies included, 10 s limit, the server's `Date`
+  header used to move the token's end onto this computer's clock), with no window: a minute before
+  the token ends (never sooner than 30 s), then the new token is checked by introspection, stored
+  and handed to the engine. The same token again (up to 2 minutes past its end) means look once
+  more 3 s after its end. A missing, anonymous (`anon: true` or `user:anon`) or failed answer is
+  tried once more through a hidden window that loads Beatport's home page once (not the sign-in
+  page), then retried after 1, 5 and 15 minutes (15 from then on); Settings says the sign-in ended
+  only once the token's own end has passed. An empty session (`{}`: the site's own sign-in is over)
+  is not retried every 15 minutes: Settings says it ended once the token has, and CuePoint looks
+  again only every 6 hours. A stored token already past its end is renewed at launch, and a
+  computer waking from sleep or unlocking renews at once if the token has run out. The top-level
+  `expires` of that JSON is the sign-in's end, never the token's. The Beatport sign-in itself (the
+  NextAuth session cookie, and `sessionid` on `account.beatport.com`) lasts 30 days and slides with
+  use; after that the person signs in again. The sign-in window opens
+  `https://www.beatport.com/api/auth/signin/beatport?callbackUrl=https%3A%2F%2Fwww.beatport.com%2F`;
+  right after a header capture CuePoint reads the session JSON once to learn the expiry (ten
+  minutes is assumed if it cannot), and prefers the session JSON's token when both are seen. The
+  page also sends anonymous bearers (`user:anon`, or an empty scope that gets a 401); introspection
+  rejects them as before.
 - **Migration, once.** On the first launch after the update, where secure storage exists, a token
   in the config key is moved to it as a pasted token, and the key's value is then blanked (the key
   stays). A crash between the steps leaves it in both places, and the next launch repeats the step.
@@ -6793,8 +6813,8 @@ fallback stays for that. The user guide says it in one line.
 - End-to-end runs may point the sign-in and API URLs at a local stand-in through
   `CUEPOINT_E2E_BEATPORT_SIGNIN_URL` and `CUEPOINT_E2E_BEATPORT_API_URL`, honoured only when
   `CUEPOINT_E2E_DISPLAY` is set and the app is not packaged.
-- A real sign-in on each platform, the renewal after ten hours, and a playlist push with the
-  captured token can only be checked by hand.
+- A real sign-in on each platform, a renewal across several token rotations, and a playlist push
+  with the captured token can only be checked by hand.
 
 ## DEC-243 — The Whole Set Table Takes a Drop
 
