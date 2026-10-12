@@ -105,7 +105,11 @@ test.describe("Application shell navigation", () => {
         .getByRole("link", { name: "Settings" })
         .click();
 
-      await expect(window.getByLabel("Beatport token")).toBeVisible({ timeout: 15_000 });
+      // Settings → Beatport: signed out, its one action is the Sign in button
+      // (the token field sits behind "Paste a token instead", DEC-242).
+      await expect(window.getByRole("button", { name: "Sign in to Beatport" })).toBeVisible({
+        timeout: 15_000,
+      });
     } finally {
       await app.close();
     }

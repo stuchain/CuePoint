@@ -448,7 +448,9 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         await expect(panel.getByTestId("export-remembered-notation")).toHaveText("Camelot (8A, 12B)");
         await expect(panel.getByRole("list")).toContainText("CuePoint Export.xml");
         await expect(panel.getByRole("list")).toContainText("Techno.xml");
-        await expect(panel.getByRole("button")).toHaveCount(0);
+        // Its only button is the "More about this" disclosure; nothing exports.
+        await expect(panel.getByRole("button")).toHaveCount(1);
+        await expect(panel.getByRole("button", { name: "More about this" })).toBeVisible();
       });
 
       await test.step("the exported file reads back as a collection with its tree intact", async () => {
