@@ -7885,3 +7885,25 @@ on every page, taking a table row from every short window.
   "nothing to show" captions are gone.
 
 **Decided with**: User (K8, wish list round 2) · **Date**: 2026-10-13
+
+## DEC-283 — Pages Read the Engine Through One Cache
+
+**Status**: Approved · **Related**: C19d, G1 B4, DEC-279, CLEAN-13
+
+**Context**: Every visit to a page asked the engine for everything again, and two parts of one page could ask the
+same question at once (the library summary was read twice on almost every page).
+
+**Decision**:
+- `useEngineRead(key, read, {domains})` shows the last answer at once and reads again only when that answer is
+  stale: its domain changed, or it is older than five minutes. The key holds every parameter of the read.
+- One question asked by two parts at once is one call. A failed read is never kept as an answer; the old one stays.
+- What makes an answer stale: `announceLibraryChange()` (library), the engine's revision counters moving on the jobs
+  poll (library, waveforms), and a job ending, by its kind (an import or refresh touches everything; matches, tag
+  writes, file checks and batches touch the library; the waveform analysis touches waveforms; Discover's jobs
+  touch Discover).
+- Changes that arrive while a read is out collapse into one more read after it lands, so a running job that keeps
+  changing the library cannot keep a slow answer from ever showing.
+- A page on screen reads again at once; a kept page that is hidden reads again when it is shown.
+- 200 answers are kept, least recently used dropped first, never one a page on screen is showing.
+
+**Decided with**: User (C19, "apply ALL") · **Date**: 2026-10-13
