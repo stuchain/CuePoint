@@ -61,11 +61,10 @@ test.describe("Motion switches and the system setting", () => {
     rmSync(userDataDir, { recursive: true, force: true });
   });
 
-  /** The Motion section's own Reset, found by its section. */
+  /** The Motion section's own Reset: it acts at once and says so in a toast, with Undo (DEC-267). */
   async function motionReset(window: Page): Promise<string> {
     const section = window.getByRole("region", { name: "Motion" });
-    await section.getByRole("button", { name: "Reset to defaults" }).click();
-    await window.getByRole("button", { name: "Reset", exact: true }).click();
+    await section.getByRole("button", { name: "Reset Motion" }).click();
     const toast = window.locator(".cp-toast").first();
     await expect(toast).toBeVisible();
     return toast.evaluate((el) => getComputedStyle(el).animationName);
@@ -107,8 +106,7 @@ test.describe("Motion switches and the system setting", () => {
       await window.getByRole("button", { name: "Choose each kind…" }).click();
       await window.getByRole("checkbox", { name: "Opening and closing panels and dialogs" }).uncheck();
       // Motion's own Reset would turn the switch back on, so the toast comes from Appearance's.
-      await window.getByRole("button", { name: "Reset to defaults" }).first().click();
-      await window.getByRole("button", { name: "Reset", exact: true }).click();
+      await window.getByRole("button", { name: "Reset Appearance" }).click();
       const toast = window.locator(".cp-toast").first();
       await expect(toast).toBeVisible();
       expect(await toast.evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
@@ -158,8 +156,10 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
         }).observe(document.body, { subtree: true, childList: true, attributes: true });
       });
 
-      const reset = window.getByRole("region", { name: "Motion" }).getByRole("button", { name: "Reset to defaults" });
-      await reset.click();
+      // A Settings button that opens a dialog with Cancel. Reset acts at once now (DEC-267), so
+      // the custom-theme editor is the one.
+      const create = window.getByRole("button", { name: "Create custom theme…" });
+      await create.click();
       const dialog = window.getByRole("dialog");
       await expect(dialog).toBeVisible();
 
@@ -169,7 +169,7 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
       // callback runs in that same task, before any frame, so even a slow machine's exit is still
       // on screen. Separate Playwright steps can outlast the exit on a loaded runner (ARM Mac CI).
       // The button's centre is read then too: closing hands it focus, which may scroll it.
-      const opener = (await reset.elementHandle())!;
+      const opener = (await create.elementHandle())!;
       const hit = await window.evaluate(
         (button) =>
           new Promise<{ leaving: boolean; behind: boolean; x: number; y: number }>((resolve, reject) => {

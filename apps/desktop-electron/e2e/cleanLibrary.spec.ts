@@ -225,9 +225,10 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await inspector.getByRole("button", { name: /^Yours/ }).click();
       await inspector.getByRole("button", { name: "Edit values…" }).click();
       const dialog = window.getByRole("dialog", { name: "Edit values" });
-      await expect(dialog).toContainText("Now: none");
+      await expect(dialog).toContainText("Now: not set");
       await dialog.getByLabel("Key value").fill("11A");
-      await dialog.getByRole("button", { name: "Apply" }).click();
+      // The button names the change and its count (DEC-267).
+      await dialog.getByRole("button", { name: "Change 1 track" }).click();
       await expect(dialog).toHaveCount(0, { timeout: 15_000 });
 
       // The table shows the typed value, marked, and says where it came from.
@@ -244,7 +245,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       // The engine refuses a BPM it cannot hold, in its own words.
       await inspector.getByRole("button", { name: "Edit values…" }).click();
       await dialog.getByLabel("BPM value").fill("400");
-      await dialog.getByRole("button", { name: "Apply" }).click();
+      await dialog.getByRole("button", { name: "Change 1 track" }).click();
       // In the engine's words, not wrapped in Electron's.
       await expect(dialog.getByRole("alert")).toHaveText(/^bpm must be between 20 and 300/);
       await dialog.getByRole("button", { name: "Cancel" }).click();
@@ -288,10 +289,11 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       // The editor opens at once, in place on the Library, over the three tracks chosen (K4).
       const dialog = window.getByRole("dialog", { name: "Edit values" });
       await dialog.getByRole("textbox", { name: "BPM value" }).fill("126");
-      await dialog.getByRole("button", { name: "Apply" }).click();
+      await dialog.getByRole("button", { name: "Change 3 tracks" }).click();
       await expect(window.getByText(/Set the BPM to 126 on 3 tracks/)).toBeVisible({ timeout: 15_000 });
       await window.getByRole("link", { name: "Library" }).click();
-      await expect(row(window, "Tone Two")).toContainText(/(^|\s)126(\s|$)/, { timeout: 15_000 });
+      // The BPM cell itself: the row's text runs its cells together.
+      await expect(row(window, "Tone Two").locator('[data-column="bpm"]')).toHaveText(/^126/, { timeout: 15_000 });
 
       // Reverted as one, from the batch's own entry.
       await window.keyboard.press("Control+Shift+A");
@@ -306,7 +308,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await expect(entry).toContainText("Reverted 3 changes.", { timeout: 15_000 });
       await window.keyboard.press("Escape");
       await expect(activity).toHaveCount(0);
-      await expect(row(window, "Tone Two")).toContainText(/(^|\s)124(\s|$)/, { timeout: 15_000 });
+      await expect(row(window, "Tone Two").locator('[data-column="bpm"]')).toHaveText("124", { timeout: 15_000 });
       await expect(row(window, "Tone Two").getByRole("img")).toHaveCount(0);
 
       // The Clean columns, as the engine answers them.
