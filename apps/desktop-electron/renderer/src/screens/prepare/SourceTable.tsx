@@ -31,6 +31,7 @@ import { useBeatportSelection, type Picked } from "../discover/useBeatportSelect
 import { setDraggedTrackIds } from "../library/collectionDrag";
 import { creditsFor, discoverMenuItems } from "../library/libraryDiscover";
 import { pluralize } from "../library/libraryFormat";
+import { useTrackPlayMarks } from "../../components/player/playedTracks";
 
 /** The row menu's first entry, as the panel's button says it for one track. */
 const INSERT_HERE = "Insert here";
@@ -105,6 +106,7 @@ export function SourceTable<Row extends LibraryTrackRow>({
   onOpenSimilar,
   onOpenEntity,
 }: SourceTableProps<Row>) {
+  const playMarks = useTrackPlayMarks(idOf);
   const selection = useBeatportSelection<Row>({
     key: resetKey,
     idOf,
@@ -172,6 +174,7 @@ export function SourceTable<Row extends LibraryTrackRow>({
           onSortChange={onSortChange}
           selectedKeys={selection.keys}
           getRowKey={idOf}
+          {...playMarks}
           onSelect={selection.onRowClick}
           onSelectAll={selection.selectAll}
           onRowActivate={(_row, index) => onPlayFrom(index)}

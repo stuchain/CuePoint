@@ -58,6 +58,9 @@ import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "../library/useLibraryPla
 import { COPY_LIMIT, useTrackSelection } from "../library/useTrackSelection";
 import { useTrackWindow } from "../library/useTrackWindow";
 import { userMessage } from "../../api/userMessage";
+import { useTrackPlayMarks } from "../../components/player/playedTracks";
+
+const trackIdOf = (row: LibraryTrackRow) => row.id;
 
 /** The keys table keeps a layout of its own, apart from the Library's. */
 const KEYS_TABLE_LAYOUT_KEY = "cuepoint-keys-table-layout";
@@ -125,6 +128,7 @@ export function KeysTracks({
   onOpenMatch,
   onTracksChanged,
 }: KeysTracksProps) {
+  const playMarks = useTrackPlayMarks(trackIdOf);
   const { push } = useToast();
   const mounted = useRef(true);
   useEffect(() => {
@@ -546,6 +550,7 @@ export function KeysTracks({
           onSortChange={(next) => setOrder({ sort: next.key, dir: next.direction })}
           selectedKeys={selectedKeys}
           getRowKey={(row) => row.id ?? -1}
+          {...playMarks}
           onSelect={(row, index, event) => selection.onRowClick(row, index, event)}
           onSelectAll={selection.selectAllMatching}
           // DEC-012: the row plays, and the whole of this table becomes the queue.

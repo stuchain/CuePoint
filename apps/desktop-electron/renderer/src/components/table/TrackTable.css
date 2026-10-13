@@ -185,6 +185,43 @@
   z-index: 1;
 }
 
+/* The track in the player (R4-6): its title in the accent colour, and a speaker before the content
+   of the row's title cell (its first cell when there is no title column). The speaker is a flex item
+   after the cell's own padding, so it starts where the text would. A track already played this
+   session has a muted title. Only the title column is coloured, found by its data-column; the other
+   cells keep their colour so a row still reads as a row. */
+.track-table__row--playing .track-table__cell[data-column="title"] {
+  color: var(--accent-primary);
+}
+
+.track-table__row--played .track-table__cell[data-column="title"] {
+  color: var(--fg-muted);
+}
+
+.track-table__playing-icon {
+  flex: none;
+  /* A multiple of the art's 12-unit grid, so no art pixel is fractional (as --icon-size). */
+  width: round(down, calc(12px * var(--scale)), 12px);
+  height: round(down, calc(12px * var(--scale)), 12px);
+  margin-inline-end: var(--space-xs);
+  color: var(--accent-primary);
+}
+
+/* "Now playing" for a screen reader, clipped to nothing rather than hidden: display:none would
+   take it out of the accessibility tree. */
+.track-table__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* A row that has not arrived. Same height as any other, by construction. */
 .track-table__row--placeholder {
   cursor: progress;

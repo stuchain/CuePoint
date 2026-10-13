@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { PlayerRegion } from "../shell/PlayerRegion";
 import { PlayerAnnouncer } from "./PlayerAnnouncer";
 import { PlayerBar } from "./PlayerBar";
-import type { PlayerSnapshot } from "../../api/cuepointBridge.types";
 import { WaveformDetailStrip } from "../waveform/WaveformDetailStrip";
 import { useWaveformDetailSetting } from "../waveform/waveformDetailSetting";
-import { selectCurrentItem, selectHasPlayed } from "./playerFormat";
+import { selectHasPlayed } from "./playerFormat";
+import { markPlayed, selectCurrentTrackId } from "./playedTracks";
 import { usePlayerValue } from "./playerStore";
 import { toggleQueue, useQueueOpen } from "./queuePanelState";
 import { usePlayerNotices } from "./usePlayerNotices";
@@ -38,11 +38,6 @@ import "./PlayerSlot.css";
  * in the player is in the library and Settings › Waveforms has it on. The bar
  * itself is not touched: the strip is a row of the slot, above it.
  */
-/** The library id of the track in the player; a slice, so the slot repaints for a new track only. */
-function selectCurrentTrackId(state: PlayerSnapshot | null): number | null {
-  return selectCurrentItem(state)?.trackId ?? null;
-}
-
 interface PlayerSlotProps {
   /** Open the playing track in the Library, or its artist's page (BAR-4). */
   onOpenTrack?: (trackId: number) => void;
@@ -68,6 +63,12 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
   useEffect(() => {
     if (hasPlayed) setEverPlayed(true);
   }, [hasPlayed]);
+
+  // Above the early return, like the rest: a track that is played is played whether or not the
+  // bar has been drawn yet (R4-6).
+  useEffect(() => {
+    if (trackId !== null) markPlayed(trackId);
+  }, [trackId]);
 
   // `PlayerRegion` returns null when it has no children, so this renders no
   // element at all until the first play — the zero-height promise SHELL-06

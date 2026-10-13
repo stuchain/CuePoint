@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Waveform button on the player bar.** One click hides or shows the zoomed waveform above the bar; the button is lit while it shows, and the choice is remembered and matches Settings → Waveforms (DEC-257).
 - **Scroll to zoom the zoomed waveform.** The mouse wheel over the strip zooms from 4 to 64 seconds, and the span is remembered. Its hint sits just above the strip and says the span (DEC-257).
+- **The playing track is marked in tables.** In the Library, Keys, Discover and Prepare track tables, the row of the track in the player has its title in the accent colour and a small speaker at the start of the row, and a screen reader hears "Now playing". Tracks already played since CuePoint started have a muted title (R4-6, DEC-268).
 
 ### Changed
 - **A slimmer status strip.** The strip along the bottom is one button tall, with no padding above or below, so the page above it gets a little more room (DEC-266).

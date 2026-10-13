@@ -32,6 +32,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { Hint } from "../Hint";
+import { PixelIcon } from "../PixelIcon";
 import { PixelSpinner } from "../PixelSpinner";
 import { useScale } from "../../tokens/ScaleContext";
 import {
@@ -224,6 +225,19 @@ export interface TrackTableProps<Row> {
   rowClassName?: (row: Row) => string | undefined;
 
   /**
+   * Whether a row is the track in the player (R4-6): its title takes the accent colour, its first
+   * cell gets a small speaker, and a screen reader hears "Now playing". The table does not know
+   * what a track is, so the caller says; absent, no row is marked.
+   */
+  isPlayingRow?: (row: Row) => boolean;
+
+  /**
+   * Whether a row is a track already played this session (R4-6): its title is muted. A playing
+   * row is never also a played one, whatever this answers for it.
+   */
+  wasPlayedRow?: (row: Row) => boolean;
+
+  /**
    * A cell at the right end of a row that has arrived, for a caller's buttons on the row they
    * belong to (Prepare's entry buttons, DEC-249). It is no column: it sits over the row's right
    * edge, sticky, with the row's own background, so the column layout and the picker are as
@@ -286,6 +300,8 @@ export function TrackTable<Row>({
   dragActive = false,
   canDragRow,
   rowClassName,
+  isPlayingRow,
+  wasPlayedRow,
   rowEnd,
   activeIndex = null,
   scrollToIndex = null,
@@ -777,12 +793,19 @@ export function TrackTable<Row>({
               const selected = selectedKeys?.has(key) ?? false;
               const extra = row && rowClassName ? rowClassName(row) : undefined;
               const draggable = Boolean(row && onRowDragStart && (!canDragRow || canDragRow(row)));
+              const playing = Boolean(row && isPlayingRow?.(row));
+              const played = !playing && Boolean(row && wasPlayedRow?.(row));
+              // The mark sits in the title cell; a table with no title column marks its first.
+              const markColumn = Math.max(
+                0,
+                columns.findIndex((column) => column.id === "title"),
+              );
               const end = row && rowEnd ? rowEnd(row, item.index) : null;
               const hasEnd = end != null && end !== false;
               return (
                 <div
                   key={key}
-                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${selected ? " track-table__row--selected" : ""}${keyboardCursor && cursorRow === item.index ? " track-table__row--cursor" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}${draggable ? " track-table__row--draggable" : ""}${hasEnd ? " track-table__row--end" : ""}${liftedIndex === item.index ? " track-table__row--lifted" : ""}${settledIndex === item.index ? " track-table__row--settled" : ""}`}
+                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${playing ? " track-table__row--playing" : ""}${played ? " track-table__row--played" : ""}${selected ? " track-table__row--selected" : ""}${keyboardCursor && cursorRow === item.index ? " track-table__row--cursor" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}${draggable ? " track-table__row--draggable" : ""}${hasEnd ? " track-table__row--end" : ""}${liftedIndex === item.index ? " track-table__row--lifted" : ""}${settledIndex === item.index ? " track-table__row--settled" : ""}`}
                   style={{
                     transform: `translateY(${item.start}px)`,
                     height: `${item.size}px`,
@@ -794,6 +817,7 @@ export function TrackTable<Row>({
                   aria-selected={selected}
                   data-index={item.index}
                   data-placeholder={row ? undefined : "true"}
+                  data-playing={playing ? "true" : undefined}
                   draggable={draggable}
                   onDragStart={(event) => {
                     if (!row || !draggable || !onRowDragStart || !event.dataTransfer) return;
@@ -846,6 +870,12 @@ export function TrackTable<Row>({
                       role="cell"
                       data-column={column.id}
                     >
+                      {playing && index === markColumn ? (
+                        <>
+                          <PixelIcon name="volume" className="track-table__playing-icon" />
+                          <span className="track-table__sr-only">Now playing: </span>
+                        </>
+                      ) : null}
                       {row ? (
                         column.render(row)
                       ) : (

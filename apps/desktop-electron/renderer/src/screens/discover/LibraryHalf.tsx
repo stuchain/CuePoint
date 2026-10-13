@@ -37,6 +37,9 @@ import { useTrackWindow } from "../library/useTrackWindow";
 import { DiscoverSelectionBar } from "./DiscoverSelectionBar";
 import { libraryRowMenu } from "./libraryRowMenu";
 import { nounOf } from "./entityFormat";
+import { useTrackPlayMarks } from "../../components/player/playedTracks";
+
+const trackIdOf = (row: LibraryTrackRow) => row.id;
 
 /** The page's library table keeps a layout of its own, apart from the Library's. */
 const PAGE_LIBRARY_LAYOUT_KEY = "cuepoint-discover-page-library-layout";
@@ -89,6 +92,7 @@ export function LibraryHalf({
   onOpenEntity,
   onOpenSimilar,
 }: LibraryHalfProps) {
+  const playMarks = useTrackPlayMarks(trackIdOf);
   const { push } = useToast();
   const [order, setOrder] = useState<{ sort: string; dir: "asc" | "desc" }>(PAGE_ORDER);
   const [picking, setPicking] = useState(false);
@@ -270,6 +274,7 @@ export function LibraryHalf({
           onSortChange={(next) => setOrder({ sort: next.key, dir: next.direction })}
           selectedKeys={selectedKeys}
           getRowKey={(row) => row.id ?? -1}
+          {...playMarks}
           onSelect={(row, index, event) => {
             onActivate();
             selection.onRowClick(row, index, event);

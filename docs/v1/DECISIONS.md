@@ -7561,3 +7561,24 @@ question first even though Undo was already offered afterwards.
   apply would change per field and for the ticked fields together, reading only, as no job.
 
 **Decided with**: Claude (G7 step 7) · **Date**: 2026-10-13
+
+
+
+## DEC-268 — Tables Mark the Playing and Played Tracks
+
+**Status**: Approved · **Related**: R4-6, DEC-014
+
+**Context**: With a track playing, nothing in the tables said which row it was, and nothing said what had already
+been played, so a DJ auditioning a list lost their place.
+
+**Decision**:
+- Every row of the track in the player (a Prepare set can hold the same track twice, and both are marked) has its
+  title in the accent colour and a small pixel speaker before the content of its title cell (its first cell when a
+  table has no title column); a screen reader hears "Now playing" on those rows. A track already played has its title muted. A
+  playing row is never also marked played.
+- The played set is session only (DEC-014): it is filled as each track becomes the current one and never persisted.
+- The marks are on the tables whose rows are library tracks: Library, Keys, Discover's Library half and Similar,
+  Prepare's source table and Set table (entry rows; chapter headings never match).
+- Not on Clean's Match table or Discover's Beatport results: their rows are not library tracks.
+
+**Decided with**: User (R4-6) · **Date**: 2026-10-13

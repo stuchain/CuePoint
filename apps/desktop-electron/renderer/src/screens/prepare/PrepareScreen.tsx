@@ -135,6 +135,9 @@ import { usePreparedSet, type Tone } from "./usePreparedSet";
 import "../screens.css";
 import "./prepare.css";
 import { NEEDS_DESKTOP } from "../../api/userMessage";
+import { useTrackPlayMarks } from "../../components/player/playedTracks";
+
+const trackIdOfRow = (row: PrepareRow) => (row.kind === "entry" ? row.entry.track.id : null);
 
 /** The page's own memory of the tree's folders, apart from the Library pane's. */
 const PREPARE_TREE_STORAGE_KEY = "cuepoint-prepare-tree";
@@ -179,6 +182,7 @@ export function PrepareScreen({
   onOpenMissingFiles,
   onRefreshLibrary,
 }: PrepareScreenProps = {}) {
+  const playMarks = useTrackPlayMarks(trackIdOfRow);
   const { setId: param } = useParams();
   const setId = setIdFromRoute(param);
   const navigate = useNavigate();
@@ -1161,6 +1165,7 @@ export function PrepareScreen({
           onColumnMove={columns.move}
           selectedKeys={selection.keys}
           getRowKey={idOfRow}
+          {...playMarks}
           rowClassName={(row) => (row.kind === "heading" ? "prepare-heading" : undefined)}
           rowEnd={rowEnd}
           onSelect={(row, index, event) => {

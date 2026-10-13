@@ -178,6 +178,8 @@ cursor in the search box.
 
 With the table focused (click it or Tab to it), **Up** and **Down** select the previous or next track and **Shift** with them extends the selection; **Home**, **End**, **Page Up** and **Page Down** jump; **Ctrl+Space** adds or removes the focused track (on a Mac, Cmd+click does); **Enter** plays it. Enter and **Shift+F10** act on the last row you clicked, including a Shift-click. The list scrolls to keep it in view.
 
+The track in the player is marked in the table: its title is in the accent colour, with a small speaker at the start of its row, and a screen reader hears "Now playing". Tracks already played since CuePoint started have their title in a muted colour; that is forgotten when you quit. The same marks show in the Keys, Discover and Prepare track tables.
+
 A toolbar sits directly above the table: one line when there is room, two at
 the default window size, with the six groups on the first and **Clear
 selection**, the count, **Select all** and **Columns…** on the second. If the

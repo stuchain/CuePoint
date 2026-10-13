@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import playerBarCss from "./PlayerBar.css?raw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -7,6 +7,7 @@ import { PlayerBar } from "./PlayerBar";
 import { PlayerSlot } from "./PlayerSlot";
 import { ToastProvider } from "../Toast";
 import { PLAYER_REPEAT_STORAGE_KEY, PLAYER_SHUFFLE_STORAGE_KEY } from "./playerOrderState";
+import { usePlayedTracks, resetPlayedTracksForTests } from "./playedTracks";
 import { resetPlayerStore } from "./playerStore";
 import { resetQueuePanelStateForTests, useQueueOpen } from "./queuePanelState";
 import { closeWheel, getWheelState } from "../wheel/wheelStore";
@@ -117,6 +118,7 @@ beforeEach(() => {
   resetPlayerStore();
   resetWaveformDetailForTests();
   resetQueuePanelStateForTests();
+  resetPlayedTracksForTests();
 });
 
 afterEach(() => {
@@ -1025,5 +1027,23 @@ describe("the bar's CSS (C7, C9)", () => {
     const key = rule(".cp-player-bar__keybtn");
     expect(key).toMatch(/vertical-align:\s*baseline;/);
     expect(key).not.toMatch(/text-align/);
+  });
+});
+
+describe("the played set (R4-6)", () => {
+  it("marks a track played when it becomes the current one", async () => {
+    const harness = installBridge(
+      snapshot({ playback: { filePath: null }, items: [], currentId: null }),
+    );
+    const { result } = renderHook(() => usePlayedTracks());
+    render(<Slot />);
+
+    expect(result.current.has(1)).toBe(false);
+    harness.push(snapshot({ items: [item({ trackId: 1 })] }));
+    await waitFor(() => expect(result.current.has(1)).toBe(true));
+
+    harness.push(snapshot({ items: [item({ id: "q2", trackId: 2 })] }));
+    await waitFor(() => expect(result.current.has(2)).toBe(true));
+    expect(result.current.has(1)).toBe(true);
   });
 });

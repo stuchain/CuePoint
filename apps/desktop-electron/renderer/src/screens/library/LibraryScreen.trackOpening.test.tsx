@@ -18,6 +18,9 @@ import type {
 import { ToastProvider } from "../../components";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
+import { EMPTY_AUDIO_STATE } from "../../components/player/playerFormat";
+import { resetPlayedTracksForTests } from "../../components/player/playedTracks";
+import { resetPlayerStore } from "../../components/player/playerStore";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { LibraryScreen } from "./LibraryScreen";
 
@@ -307,5 +310,58 @@ describe("the Library tells the header's wheel which track is selected (PAGES-10
     fireEvent.click(rowFor("Track 2"));
     await waitFor(() => expect(mock("getLibraryTrack")).toHaveBeenCalledWith({ trackId: 2 }));
     expect(getSelectedTrack()).toMatchObject({ id: 2, title: "Track 2" });
+  });
+});
+
+describe("the Library marks the playing track (R4-6)", () => {
+  afterEach(() => {
+    resetPlayerStore();
+    resetPlayedTracksForTests();
+  });
+
+  it("gives the row of the track in the player the playing class, and the others none", async () => {
+    const state = {
+      status: { available: true, running: true, reconnecting: false, restartAttempts: 0 },
+      playback: {
+        filePath: "C:\\music\\2.mp3",
+        playing: true,
+        paused: false,
+        positionSeconds: 1,
+        durationSeconds: 300,
+        volume: 80,
+        muted: false,
+      },
+      queue: {
+        length: 1,
+        currentId: "q1",
+        currentIndex: 0,
+        currentItem: {
+          id: "q1",
+          trackId: 2,
+          filePath: "C:\\music\\2.mp3",
+          title: "Track 2",
+          artist: "Artist 2",
+          key: "9A",
+          bpm: 128,
+          durationSeconds: 300,
+          status: "playing",
+        },
+        shuffle: false,
+        repeat: "off",
+      },
+      audio: EMPTY_AUDIO_STATE,
+    };
+    Object.assign(bridge.player as Record<string, Mock>, {
+      getState: vi.fn().mockResolvedValue(state),
+      subscribeState: vi.fn((onState: (next: unknown) => void) => {
+        onState(state);
+        return vi.fn();
+      }),
+    });
+    renderScreen();
+
+    await waitFor(() => expect(rowFor("Track 2")).toHaveClass("track-table__row--playing"));
+    expect(rowFor("Track 1")).not.toHaveClass("track-table__row--playing");
+    expect(rowFor("Track 3")).not.toHaveClass("track-table__row--playing");
   });
 });

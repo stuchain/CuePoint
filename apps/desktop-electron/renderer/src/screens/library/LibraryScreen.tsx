@@ -137,6 +137,9 @@ import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./library.css";
 import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
+import { useTrackPlayMarks } from "../../components/player/playedTracks";
+
+const trackIdOf = (row: LibraryTrackRow) => row.id;
 
 /** What the page is doing, when it is doing something. */
 type Busy = null | "importing" | "checking" | "applying";
@@ -256,6 +259,7 @@ export function LibraryScreen({
   onOpenInPrepare,
   onOpenToken,
 }: LibraryScreenProps) {
+  const playMarks = useTrackPlayMarks(trackIdOf);
   const { push } = useToast();
   const [summary, setSummary] = useState<LibrarySummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2065,6 +2069,7 @@ export function LibraryScreen({
               }
               selectedKeys={selectedKeys}
               getRowKey={(row) => row.id ?? -1}
+              {...playMarks}
               onSelect={selection.onRowClick}
               // DEC-046's seam, finally given DEC-012's meaning: the row plays
               // and the whole view — the query, not the loaded window — becomes

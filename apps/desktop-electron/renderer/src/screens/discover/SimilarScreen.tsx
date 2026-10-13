@@ -54,6 +54,7 @@ import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./discover.css";
 import { userMessage } from "../../api/userMessage";
+import { useTrackPlayMarks } from "../../components/player/playedTracks";
 
 /** The groups the bar and the menu hold (FLW-8): no More, the suggestions are not files to copy. */
 const GROUPS: readonly TrackActionGroupId[] = ["play", "explore"];
@@ -104,6 +105,7 @@ interface SimilarScreenProps {
 }
 
 export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
+  const playMarks = useTrackPlayMarks(idOf);
   const { trackId: param } = useParams();
   const seedId = trackIdFromRoute(param);
   const navigate = useNavigate();
@@ -372,6 +374,7 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
             onColumnMove={columns.move}
             selectedKeys={selection.keys}
             getRowKey={idOf}
+            {...playMarks}
             onSelect={selection.onRowClick}
             onSelectAll={selection.selectAll}
             onRowActivate={(_row, index) => void playFrom(index)}

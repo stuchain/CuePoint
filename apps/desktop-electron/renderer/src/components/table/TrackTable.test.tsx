@@ -1088,3 +1088,63 @@ describe("a column's hint (DEC-201)", () => {
     expect(onSortChange).toHaveBeenCalledWith({ key: "key", direction: "asc" });
   });
 });
+
+describe("the playing and played rows (R4-6)", () => {
+  it("marks the playing row, and only that one", () => {
+    renderTable({ isPlayingRow: (row) => row.id === 2 });
+
+    const rows = screen.getAllByRole("row").filter((row) => row.hasAttribute("data-index"));
+    const playing = rows.filter((row) => row.classList.contains("track-table__row--playing"));
+    expect(playing).toHaveLength(1);
+    expect(playing[0]).toHaveAttribute("data-playing", "true");
+    expect(within(playing[0]).getByText("Now playing:")).toBeInTheDocument();
+    expect(screen.getAllByText("Now playing:")).toHaveLength(1);
+  });
+
+  it("puts the speaker in the title cell", () => {
+    renderTable({ isPlayingRow: (row) => row.id === 2 });
+
+    const cell = document.querySelector<HTMLElement>(
+      '.track-table__row--playing [data-column="title"]',
+    );
+    expect(cell?.querySelector('svg[data-icon="volume"]')).not.toBeNull();
+    expect(cell?.textContent).toContain("Now playing: ");
+  });
+
+  it("puts the mark in the title cell even when another column comes first", () => {
+    renderTable({
+      columns: [COLUMNS[2]!, COLUMNS[1]!, COLUMNS[0]!],
+      isPlayingRow: (row) => row.id === 2,
+    });
+
+    const row = document.querySelector<HTMLElement>(".track-table__row--playing")!;
+    expect(row.querySelector('[data-column="title"] svg[data-icon="volume"]')).not.toBeNull();
+    expect(row.querySelectorAll('svg[data-icon="volume"]')).toHaveLength(1);
+  });
+
+  it("falls back to the first cell when there is no title column", () => {
+    renderTable({ columns: [COLUMNS[1]!, COLUMNS[2]!], isPlayingRow: (row) => row.id === 2 });
+
+    const first = document.querySelector<HTMLElement>(".track-table__row--playing .track-table__cell");
+    expect(first?.querySelector('svg[data-icon="volume"]')).not.toBeNull();
+  });
+
+  it("marks a played row, unless it is the playing one", () => {
+    renderTable({ isPlayingRow: (row) => row.id === 2, wasPlayedRow: (row) => row.id <= 2 });
+
+    expect(document.querySelectorAll(".track-table__row--played")).toHaveLength(1);
+    expect(document.querySelector(".track-table__row--played")).toHaveAttribute("data-index", "0");
+    expect(document.querySelector(".track-table__row--playing")).not.toHaveClass(
+      "track-table__row--played",
+    );
+  });
+
+  it("marks nothing when the props are absent", () => {
+    renderTable();
+
+    expect(document.querySelector(".track-table__row--playing")).toBeNull();
+    expect(document.querySelector(".track-table__row--played")).toBeNull();
+    expect(document.querySelector("[data-playing]")).toBeNull();
+    expect(screen.queryByText("Now playing:")).toBeNull();
+  });
+});
