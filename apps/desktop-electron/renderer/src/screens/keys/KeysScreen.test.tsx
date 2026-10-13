@@ -789,7 +789,7 @@ describe("choosing keys", () => {
     await waitFor(() => expect(getSelectedTrack()).toMatchObject({ id: 3, key: "9A" }));
   });
 
-  it("shows the Library's selection bar over the table", async () => {
+  it("shows the Library's selection bar over the table, with Play only", async () => {
     renderKeys();
     await opened();
     fireEvent.click(rowButton("8A"));
@@ -798,8 +798,10 @@ describe("choosing keys", () => {
     expect(screen.queryByRole("toolbar", { name: "Selected tracks" })).toBeNull();
     fireEvent.click((await within(table).findByText("Track 3")).closest("[role=row]")!);
     const bar = await screen.findByRole("toolbar", { name: "Selected tracks" }, LOADED);
-    for (const name of ["Play", "Organize", "Beatport", "More"]) {
-      expect(within(bar).getByRole("button", { name: new RegExp(`^${name}`) })).toBeInTheDocument();
+    // K15: only Play, the page's job, is on the bar; the rest stays in the right-click menu.
+    expect(within(bar).getByRole("button", { name: /^Play/ })).toBeInTheDocument();
+    for (const name of ["Organize", "Beatport", "More"]) {
+      expect(within(bar).queryByRole("button", { name: new RegExp(`^${name}`) })).toBeNull();
     }
     expect(within(bar).getByRole("button", { name: "Clear selection, 1 selected" })).toBeInTheDocument();
   });

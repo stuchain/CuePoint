@@ -115,6 +115,9 @@ interface KeysTracksProps {
   onTracksChanged: () => void;
 }
 
+/** The bar's groups on Keys: Play only (K15). */
+const KEYS_BAR_GROUPS: readonly TrackActionGroupId[] = ["play"];
+
 export function KeysTracks({
   rules,
   onSelectTrack,
@@ -429,6 +432,7 @@ export function KeysTracks({
     return menuFromGroups(groups);
   }, [groupsFor, menu]);
 
+  // K15: the bar keeps only Play, the page's job; every other action stays one right-click away.
   const barGroups = groupsFor({
     x: 0,
     y: 0,
@@ -439,7 +443,7 @@ export function KeysTracks({
     group: null,
     first: selection.count > 0 ? 0 : null,
     credits: null,
-  });
+  }).filter((group) => KEYS_BAR_GROUPS.includes(group.id));
 
   const openGroup = useCallback(
     async (id: TrackActionGroupId, anchor: { x: number; y: number }) => {

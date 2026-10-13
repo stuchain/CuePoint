@@ -32,8 +32,9 @@ Every count is written on the page; nothing waits for you to hover.
 ## Opening the tracks
 
 Click a key on the wheel or in the list. The page scrolls to the tracks in that
-key, which appear in a table below, with the same buttons above it as the Library. Select a track to
-see it in Track details, or double-click it to play it.
+key, which appear in a table below. Select tracks and the bar above the table offers
+**Play**; everything else the Library's bar offers is in the right-click menu. Select a
+track to see it in Track details, or double-click it to play it.
 
 - **Ctrl+Click** (**Cmd+Click** on a Mac) adds a key to the choice or takes it away.
 - **Shift+Click** chooses every key between the last one you clicked and this one.
