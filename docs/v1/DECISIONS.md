@@ -7273,3 +7273,30 @@ refuses it, Discover already offers **Sign in again**. The end-to-end stand-in n
 real site (an anonymous bearer first, a Sign in click, a callback, introspection without `active`).
 
 **Decided with**: User · **Date**: 2026-10-13
+
+## DEC-255 — One Page Header, One Empty State, and Shared Button Sizes
+
+**Status**: Approved · **Related**: DEC-241, DEC-253, THEME-REVIEW T4 T5 T6 T8 T9 T10 T12 T14, N10
+
+**Context**: Each page drew its own title row and its own "nothing here yet" box, disabled buttons were
+a faded copy of the enabled one, status badges carried a hard shadow, close buttons and menu arrows
+were typed characters (×, ▸), and the app had no small button or sub-tab look, so pages made their own.
+
+**Decision**:
+- `ScreenHeader` is the one page header: title (always the page's one h1), optional `display`,
+  `crumb`, `beside`, `summary`, `actions`, `tabs`, `status`, one divider under all of it. `EmptyState`
+  is the one empty box: headline, one muted line, at most one button. Each page's owner moves its
+  page onto both while rebuilding it (★ Q2); the last step makes that a test.
+- Buttons: primary fills with `--accent-fill`, danger with `--danger-fill`; disabled is a flat panel
+  with greyed text, no fading; `size="sm"`; `iconOnly` with a required label. Dialog close buttons
+  and menu arrows are pixel icons (`close`, `chevron-right`), new icons `chevron-down`, `arrow-up`,
+  `arrow-down`, `edit`.
+- Status badges and toasts: a thin border in the status colour, `--fg-on-status` text, no shadow.
+  The player bar's queue badge keeps its look (C16c).
+- Menus highlight with the selected-row look. Tabs gain a quieter `sub` variant. `Select` draws its
+  own chevron.
+- Guards: no raw `<select>` and no typed arrow or close symbols outside allowlists that can only shrink.
+
+**Rejected**: G6 moving all seven pages at the end (a second pass over pages others just rebuilt).
+
+**Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13

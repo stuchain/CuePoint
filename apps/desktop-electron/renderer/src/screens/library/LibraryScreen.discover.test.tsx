@@ -231,11 +231,11 @@ describe("the operations list's Discover entries", () => {
     const top = labels(menu);
     // Explore is a parent after Organize, with Play's three entries first.
     expect(top.slice(0, 3)).toEqual(["Play", "Play next", "Add to queue"]);
-    expect(top.indexOf("Organize▸")).toBeLessThan(top.indexOf("Explore▸"));
+    expect(top.indexOf("Organize")).toBeLessThan(top.indexOf("Explore"));
     await userEvent.click(within(menu).getByRole("menuitem", { name: /^Explore/ }));
     expect(labels(screen.getByRole("menu", { name: "Explore" }))).toEqual([
       "Similar tracks",
-      "Artist page▸",
+      "Artist page",
       "Label page",
     ]);
   });
@@ -274,7 +274,7 @@ describe("the operations list's Discover entries", () => {
     await userEvent.click(screen.getByText("Track 1"));
     await userEvent.click(screen.getByRole("button", { name: "Explore" }));
     const menu = await screen.findByRole("menu");
-    expect(labels(menu)).toEqual(["Similar tracks", "Artist page▸", "Label page"]);
+    expect(labels(menu)).toEqual(["Similar tracks", "Artist page", "Label page"]);
     await userEvent.click((await menuItem("Similar tracks")));
     expect(hooks.onOpenSimilar).toHaveBeenCalledWith(1);
   });

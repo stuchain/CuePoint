@@ -122,3 +122,36 @@ describe("toPixelRuns", () => {
     expect(pixelRunsFor("settings").length).toBeLessThan(lit / 2);
   });
 });
+
+describe("G6 T10 icons", () => {
+  it("draws the select chevron, the sort arrows and the edit pencil", () => {
+    expect(PIXEL_ICON_NAMES).toEqual(
+      expect.arrayContaining(["chevron-down", "arrow-up", "arrow-down", "edit", "repeat"]),
+    );
+  });
+
+  it("draws chevron-down as the transpose of chevron-right", () => {
+    const right = PIXEL_ICONS["chevron-right"];
+    const down = PIXEL_ICONS["chevron-down"];
+    for (let r = 0; r < PIXEL_GRID_SIZE; r++) {
+      for (let c = 0; c < PIXEL_GRID_SIZE; c++) {
+        expect(down[r]![c]).toBe(right[c]![r]);
+      }
+    }
+  });
+
+  it("draws the sort arrows as vertical mirror images with the same vertical extent", () => {
+    const up = PIXEL_ICONS["arrow-up"];
+    const down = PIXEL_ICONS["arrow-down"];
+    expect(down).toEqual([...up].reverse());
+    const extent = (rows: readonly string[]) => {
+      const lit = rows.map((row, i) => (row.includes("#") ? i : -1)).filter((i) => i >= 0);
+      return [Math.min(...lit), Math.max(...lit)];
+    };
+    const [upTop, upBottom] = extent(up);
+    const [downTop, downBottom] = extent(down);
+    expect(upBottom! - upTop!).toBe(downBottom! - downTop!);
+    // Centred in the grid: as many empty rows above as below.
+    expect(upTop).toBe(PIXEL_GRID_SIZE - 1 - upBottom!);
+  });
+});

@@ -10,11 +10,13 @@ interface TabsProps {
   tabs: TabItem[];
   activeId: string;
   onChange: (id: string) => void;
+  /** `"page"` is the underline strip; `"sub"` is the quiet pill row inside a page (T8). */
+  variant?: "page" | "sub";
 }
 
-export function Tabs({ tabs, activeId, onChange }: TabsProps) {
+export function Tabs({ tabs, activeId, onChange, variant = "page" }: TabsProps) {
   return (
-    <div className="cp-tabs" role="tablist">
+    <div className={`cp-tabs ${variant === "sub" ? "cp-tabs--sub" : ""}`.trim()} role="tablist">
       {tabs.map((tab) => (
         <button
           key={tab.id}

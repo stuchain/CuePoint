@@ -16,6 +16,8 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { TrackContextMenu, type TrackContextMenuItem } from "./TrackContextMenu";
+import css from "./TrackContextMenu.css?raw";
+import { parseRules, stripComments } from "../test/cssRules";
 
 function items(overrides: Partial<TrackContextMenuItem>[] = []): TrackContextMenuItem[] {
   const base: TrackContextMenuItem[] = [
@@ -450,5 +452,39 @@ describe("a submenu inside a submenu (FLW-8)", () => {
     expect(onClose).not.toHaveBeenCalled();
     await userEvent.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalled();
+  });
+
+  describe("stylesheet (T1, T14, T10)", () => {
+    const rules = parseRules(stripComments(css));
+    const body = (selector: string) => rules.find((r) => r.selector === selector)?.body ?? "";
+
+    it("draws the submenu chevron at half the icon cell", () => {
+      expect(body(".cp-track-menu__arrow .cp-pixel-icon")).toMatch(/calc\(var\(--icon-size\) \* 0\.5\)/);
+    });
+
+    it("sets the item font size to the control size", () => {
+      expect(body(".cp-track-menu__item")).toMatch(/font-size:\s*var\(--control-font-size\)/);
+    });
+
+    it("highlights the current item with the selected-row look, not the accent", () => {
+      const active = body(".cp-track-menu__item--active:not(:disabled)");
+      expect(active).toMatch(/background:\s*var\(--selected-row-background\)/);
+      expect(active).toMatch(/color:\s*var\(--fg-primary\)/);
+      expect(active).not.toMatch(/accent-primary|fg-inverse/);
+    });
+  });
+
+  it("draws a submenu's arrow as a chevron icon, not a typed glyph (T10)", () => {
+    const { container } = render(
+      <TrackContextMenu
+        x={0}
+        y={0}
+        onClose={vi.fn()}
+        items={[{ id: "org", label: "Organize", onSelect: vi.fn(), items: [{ id: "x", label: "X", onSelect: vi.fn() }] }]}
+      />,
+    );
+    const arrow = container.querySelector(".cp-track-menu__arrow");
+    expect(arrow?.querySelector('svg[data-icon="chevron-right"]')).not.toBeNull();
+    expect(arrow?.textContent).toBe("");
   });
 });

@@ -10,6 +10,23 @@
   color: var(--fg-muted);
 }
 
+.cp-select__field {
+  position: relative;
+  display: flex;
+}
+
+/* The native arrow is replaced by a pixel chevron on the right (T3). */
+.cp-select__chevron {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: var(--space-sm);
+  display: flex;
+  align-items: center;
+  color: var(--fg-muted);
+  pointer-events: none;
+}
+
 .cp-select__control {
   min-height: var(--control-height);
   padding: 0 var(--space-sm);
@@ -22,6 +39,20 @@
   cursor: pointer;
 }
 
+/* Only the shared Select hides the native arrow; a raw select reusing the class keeps it. */
+.cp-select__field > .cp-select__control {
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  padding-block: 0;
+  padding-right: calc(var(--icon-size) * 0.5 + var(--space-sm) * 2);
+}
+
+.cp-select__chevron .cp-pixel-icon {
+  width: calc(var(--icon-size) * 0.5);
+  height: calc(var(--icon-size) * 0.5);
+}
+
 .cp-select__control:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
 }

@@ -12,8 +12,13 @@
 .cp-modal {
   width: min(520px, 100%);
   background: var(--bg-panel);
-  border: var(--control-border-width) solid var(--border-control);
+  border: var(--divider);
   box-shadow: var(--shadow-dialog);
+}
+
+/* Focus starts on the dialog itself (Modal.tsx), so it draws no ring; nothing shows until the first Tab. */
+.cp-modal:focus {
+  outline: none;
 }
 
 /* For rows rather than sentences: a log at 520px clips every line. */
@@ -30,7 +35,7 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-md) var(--space-lg);
-  border-bottom: var(--border-width) solid var(--border-outline);
+  border-bottom: var(--divider);
   background: var(--overlay-header);
 }
 
@@ -39,18 +44,9 @@
   font-size: var(--font-size-lg);
 }
 
-.cp-modal__close {
-  min-width: var(--control-height);
-  min-height: var(--control-height);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-toolbar);
-  color: var(--fg-primary);
-  font-size: var(--font-size-xl);
-  cursor: pointer;
-}
-
 .cp-modal__body {
   padding: var(--space-lg);
+  font-size: var(--text-body);
 }
 
 /* A tall dialog scrolls its body, so the title and the buttons stay on screen. */
@@ -70,5 +66,5 @@
   justify-content: flex-end;
   gap: var(--space-md);
   padding: var(--space-md) var(--space-lg);
-  border-top: var(--border-width) solid var(--border-outline);
+  border-top: var(--divider);
 }

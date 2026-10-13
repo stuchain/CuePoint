@@ -39,22 +39,22 @@
 
 .cp-toast--info {
   background: var(--accent-info);
-  color: var(--fg-inverse);
+  color: var(--fg-on-status);
 }
 
 .cp-toast--success {
   background: var(--accent-success);
-  color: var(--fg-inverse);
+  color: var(--fg-on-status);
 }
 
 .cp-toast--warning {
   background: var(--accent-warning);
-  color: var(--fg-inverse);
+  color: var(--fg-on-status);
 }
 
 .cp-toast--error {
   background: var(--accent-danger);
-  color: var(--fg-primary);
+  color: var(--fg-on-status);
 }
 
 /* The slide steps in whole --motion-step-px (DEC-135). */

@@ -266,7 +266,7 @@ const BETWEEN = [
   "Add to Collection…",
   "Add tag…",
   "Remove tag…",
-  "Rate▸",
+  "Rate",
   "Favorite",
   "Remove favorite",
   "Match tracks…",
@@ -302,10 +302,10 @@ describe("the operations list", () => {
       "Play",
       "Play next",
       "Add to queue",
-      "Organize▸",
-      "Beatport▸",
-      "Fix▸",
-      "More▸",
+      "Organize",
+      "Beatport",
+      "Fix",
+      "More",
     ]);
     // Each parent opens exactly the entries the bar's button for it opens.
     const seen = BETWEEN.slice(0, 3);

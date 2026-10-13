@@ -2,34 +2,45 @@
   display: inline-flex;
   align-items: center;
   padding: round(nearest, calc(var(--space-xs) * 0.75), 1px) var(--space-sm);
-  border: var(--border-width) solid var(--border-outline);
+  /* The badge's own colour, drawn as a hairline (T5). */
+  border: var(--hairline) solid currentColor;
   font-size: var(--font-size-xs);
   font-weight: 700;
   line-height: 1;
+}
+
+/* The player bar's queue badge keeps its bevelled look (C16c). */
+.cp-badge--player {
+  border: var(--border-width) solid var(--border-outline);
   box-shadow: var(--shadow-badge);
 }
 
 .cp-badge--default {
+  border-color: var(--border-muted);
   background: var(--bg-panel-alt);
   color: var(--fg-primary);
 }
 
 .cp-badge--success {
+  border-color: var(--accent-success);
   background: var(--accent-success);
-  color: var(--fg-inverse);
+  color: var(--fg-on-status);
 }
 
 .cp-badge--warning {
+  border-color: var(--accent-warning);
   background: var(--accent-warning);
-  color: var(--fg-inverse);
+  color: var(--fg-on-status);
 }
 
 .cp-badge--danger {
+  border-color: var(--accent-danger);
   background: var(--accent-danger);
-  color: var(--fg-primary);
+  color: var(--fg-on-status);
 }
 
 .cp-badge--info {
+  border-color: var(--accent-info);
   background: var(--accent-info);
-  color: var(--fg-inverse);
+  color: var(--fg-on-status);
 }

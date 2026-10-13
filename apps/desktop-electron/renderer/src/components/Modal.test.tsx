@@ -12,6 +12,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { Modal } from "./Modal";
+import css from "./Modal.css?raw";
 
 function open(props: Partial<Parameters<typeof Modal>[0]> = {}) {
   const onClose = vi.fn();
@@ -195,5 +196,24 @@ describe("the title", () => {
     const chapter = screen.getByRole("dialog", { name: "Chapter “Warm-up”" });
     expect(notes).toContainElement(screen.getByLabelText("Set notes"));
     expect(chapter).toContainElement(screen.getByLabelText("Chapter notes"));
+  });
+
+  it("closes with an icon button named Close, not a typed cross (T10, N10)", () => {
+    const { onClose } = open();
+    const close = screen.getByRole("button", { name: "Close" });
+    expect(close).toHaveClass("cp-btn--icon");
+    expect(close.querySelector('svg[data-icon="close"]')).not.toBeNull();
+    expect(close.textContent).toBe("");
+    expect(css).not.toMatch(/cp-modal__close/);
+    close.click();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("sets its body size, uses the divider and keeps no focus ring on the frame (T1, T2, T16)", () => {
+    expect(css).toMatch(/\.cp-modal__body\s*\{[^}]*font-size:\s*var\(--text-body\)/);
+    expect(css).toMatch(/\.cp-modal:focus\s*\{[^}]*outline:\s*none/);
+    expect(css).not.toMatch(/--border-width/);
+    expect(css).toMatch(/border-bottom:\s*var\(--divider\)/);
+    expect(css).toMatch(/border-top:\s*var\(--divider\)/);
   });
 });

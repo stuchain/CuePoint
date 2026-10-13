@@ -1,4 +1,5 @@
 import type { SelectHTMLAttributes } from "react";
+import { PixelIcon } from "./PixelIcon";
 import "./Select.css";
 
 export interface SelectOption {
@@ -42,7 +43,8 @@ export function Select({ label, options, id, className = "", ...rest }: SelectPr
   return (
     <label className={`cp-select ${className}`.trim()} htmlFor={fieldId}>
       <span className="cp-select__label">{label}</span>
-      <select id={fieldId} className="cp-select__control" {...rest}>
+      <span className="cp-select__field">
+        <select id={fieldId} className="cp-select__control" {...rest}>
         {runsOf(options).map((run, index) =>
           run.group === undefined ? (
             run.options.map(drawn)
@@ -52,7 +54,11 @@ export function Select({ label, options, id, className = "", ...rest }: SelectPr
             </optgroup>
           ),
         )}
-      </select>
+        </select>
+        <span className="cp-select__chevron" aria-hidden="true">
+          <PixelIcon name="chevron-down" />
+        </span>
+      </span>
     </label>
   );
 }

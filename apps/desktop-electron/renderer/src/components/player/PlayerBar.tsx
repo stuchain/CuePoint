@@ -415,7 +415,7 @@ export function PlayerBar({
             >
               <PixelIcon name="queue" />
               {queueLength > 0 && (
-                <Badge className="cp-player-bar__count" aria-hidden="true">
+                <Badge className="cp-badge--player cp-player-bar__count" aria-hidden="true">
                   {queueLength.toLocaleString()}
                 </Badge>
               )}

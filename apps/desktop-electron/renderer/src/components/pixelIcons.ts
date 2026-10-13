@@ -608,6 +608,56 @@ const keys = [
   "............",
 ];
 
+// G6 T10: the chevron that marks a Select, the sort arrows and the edit pencil, so none of
+// them is a typed glyph any more.
+// G6 T10: the chevron that marks a Select, the sort arrows and the edit pencil.
+const chevronDown = [
+  "............",
+  "............",
+  "............",
+  "..#......#..",
+  "..##....##..",
+  "...##..##...",
+  "....####....",
+  ".....##.....",
+  "............",
+  "............",
+  "............",
+  "............",
+];
+
+const arrowUp = [
+  "............",
+  ".....##.....",
+  "....####....",
+  "...######...",
+  "..########..",
+  ".....##.....",
+  ".....##.....",
+  ".....##.....",
+  ".....##.....",
+  ".....##.....",
+  ".....##.....",
+  "............",
+];
+
+const arrowDown = [...arrowUp].reverse();
+
+const edit = [
+  "............",
+  "........##..",
+  ".......####.",
+  "......####..",
+  ".....####...",
+  "....####....",
+  "...####.....",
+  "..####......",
+  ".####.......",
+  ".###........",
+  ".##.........",
+  "............",
+];
+
 export const PIXEL_ICONS = {
   play,
   pause,
@@ -646,6 +696,10 @@ export const PIXEL_ICONS = {
   // NAV-2, HDR-6: the sidebar's toggle and its brand.
   "chevron-left": chevronLeft,
   "chevron-right": chevronRight,
+  "chevron-down": chevronDown,
+  "arrow-up": arrowUp,
+  "arrow-down": arrowDown,
+  edit,
   close,
   logo,
   // HDR-4: the header's Camelot wheel button.

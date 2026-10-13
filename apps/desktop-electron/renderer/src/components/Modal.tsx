@@ -148,9 +148,7 @@ export function Modal({
           <h2 id={titleId} className="cp-modal__title">
             {title}
           </h2>
-          <button type="button" className="cp-modal__close" onClick={onClose} aria-label="Close">
-            ×
-          </button>
+          <Button variant="secondary" iconOnly icon="close" onClick={onClose} aria-label="Close" />
         </header>
         <div className="cp-modal__body">{children}</div>
         {(primaryAction || secondaryAction || backAction) && (

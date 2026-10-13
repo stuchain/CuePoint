@@ -15,6 +15,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { Button } from "./Button";
+import css from "./Button.css?raw";
+import { parseRules, stripComments } from "../test/cssRules";
 
 describe("Button", () => {
   it("renders its label", () => {
@@ -86,5 +88,57 @@ describe("Button", () => {
   it("keeps caller-supplied class names", () => {
     render(<Button className="extra">Go</Button>);
     expect(screen.getByRole("button")).toHaveClass("extra");
+  });
+
+  it("draws a disabled button by colour, with no opacity (T6)", () => {
+    const rules = parseRules(stripComments(css)).filter((r) => /:disabled/.test(r.selector));
+    expect(rules.length).toBeGreaterThan(0);
+    for (const rule of rules) {
+      expect(rule.body).not.toMatch(/opacity/);
+    }
+    const body = rules.map((r) => r.body).join("\n");
+    expect(body).toMatch(/background:\s*var\(--bg-panel\)/);
+    expect(body).toMatch(/border-color:\s*var\(--border-muted\)/);
+    expect(body).toMatch(/color:\s*var\(--fg-disabled\)/);
+  });
+
+  it("fills primary with --accent-fill and danger with --danger-fill (R2-8)", () => {
+    expect(css).toMatch(/\.cp-btn--primary\s*\{[^}]*background:\s*var\(--accent-fill\)[^}]*color:\s*var\(--fg-inverse\)/);
+    expect(css).toMatch(/\.cp-btn--danger\s*\{[^}]*background:\s*var\(--danger-fill\)[^}]*color:\s*var\(--fg-primary\)/);
+  });
+
+  it("is small with size=sm (T12)", () => {
+    render(<Button size="sm">Go</Button>);
+    expect(screen.getByRole("button")).toHaveClass("cp-btn--sm");
+    expect(css).toMatch(/--control-height-sm:[^;]*0\.8/);
+  });
+
+  it("is only its icon with iconOnly, named by its aria-label (T10)", () => {
+    render(<Button iconOnly icon="close" aria-label="Close" />);
+    const button = screen.getByRole("button", { name: "Close" });
+    expect(button).toHaveClass("cp-btn--icon");
+    expect(button.querySelector('svg[data-icon="close"]')).not.toBeNull();
+    expect(button.querySelector(".cp-btn__label")).toBeNull();
+  });
+
+  it("requires an aria-label on an icon-only button, in its types (T10)", () => {
+    // @ts-expect-error an icon-only button with no name does not compile
+    const nameless = <Button iconOnly icon="close" />;
+    expect(nameless).toBeTruthy();
+  });
+
+  it("draws an icon-only glyph at half the icon cell (T10)", () => {
+    expect(css).toMatch(/\.cp-btn--icon \.cp-pixel-icon\s*\{[^}]*width:\s*calc\(var\(--icon-size\) \* 0\.5\)[^}]*height:\s*calc\(var\(--icon-size\) \* 0\.5\)/);
+  });
+
+  it("greys only a disabled button that is not loading, and marks a loading icon button busy", () => {
+    expect(css).toMatch(/\.cp-btn:disabled:not\(\.cp-btn--loading\)\s*\{/);
+    render(<Button iconOnly icon="close" aria-label="Close" loading />);
+    expect(screen.getByRole("button", { name: "Close" })).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("shares one small height between sm and icon-only sm", () => {
+    expect(css).toMatch(/--control-height-sm:/);
+    expect(css).not.toMatch(/\.cp-btn--sm\s*\{[^}]*calc\(var\(--control-height\) \* 0\.8\)/);
   });
 });

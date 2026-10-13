@@ -72,7 +72,12 @@ ROOT = Path(__file__).resolve().parent.parent
 #: nothing reaching them, as ``path -> why it is genuinely used``. Only a use the
 #: scan cannot see belongs here; otherwise delete the file or wire it in. An
 #: entry whose file is gone or is now reached fails the guard, so this cannot rot.
-ALLOWLIST: dict[str, str] = {}
+ALLOWLIST: dict[str, str] = {
+    "apps/desktop-electron/renderer/src/components/EmptyState.css": "G6 shared page component (DEC-255), adopted by the page threads in round 2 wave 2; the first page that imports it removes this entry",
+    "apps/desktop-electron/renderer/src/components/EmptyState.tsx": "G6 shared page component (DEC-255), adopted by the page threads in round 2 wave 2; the first page that imports it removes this entry",
+    "apps/desktop-electron/renderer/src/components/shell/ScreenHeader.css": "G6 shared page component (DEC-255), adopted by the page threads in round 2 wave 2; the first page that imports it removes this entry",
+    "apps/desktop-electron/renderer/src/components/shell/ScreenHeader.tsx": "G6 shared page component (DEC-255), adopted by the page threads in round 2 wave 2; the first page that imports it removes this entry",
+}
 
 SECTIONS = (
     "counts",

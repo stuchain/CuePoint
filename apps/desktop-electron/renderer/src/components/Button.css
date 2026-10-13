@@ -1,4 +1,5 @@
 .cp-btn {
+  --control-height-sm: round(nearest, calc(var(--control-height) * 0.8), 1px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -21,8 +22,8 @@
 }
 
 .cp-btn--primary {
-  border-color: var(--accent-primary);
-  background: var(--accent-primary);
+  border-color: var(--accent-fill);
+  background: var(--accent-fill);
   color: var(--fg-inverse);
 }
 
@@ -32,7 +33,8 @@
 }
 
 .cp-btn--danger {
-  background: var(--accent-danger);
+  border-color: var(--danger-fill);
+  background: var(--danger-fill);
   color: var(--fg-primary);
 }
 
@@ -45,10 +47,35 @@
   transform: translate(var(--hairline), var(--hairline));
 }
 
-.cp-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+/* Greyed by colour, not by opacity (T6): the same panel look for every variant. */
+.cp-btn:disabled:not(.cp-btn--loading) {
+  background: var(--bg-panel);
+  border-color: var(--border-muted);
   color: var(--fg-disabled);
+  cursor: not-allowed;
+}
+
+/* Small (T12): rows and chips. */
+.cp-btn--sm {
+  min-height: var(--control-height-sm);
+}
+
+/* Icon only (T10): a square at the control height. */
+.cp-btn--icon {
+  width: var(--control-height);
+  min-width: var(--control-height);
+  padding: 0;
+}
+
+.cp-btn--icon.cp-btn--sm {
+  width: var(--control-height-sm);
+  min-width: var(--control-height-sm);
+}
+
+/* Half the icon cell, as in PickerDialog: the glyph sits inside the square, not filling it. */
+.cp-btn--icon .cp-pixel-icon {
+  width: calc(var(--icon-size) * 0.5);
+  height: calc(var(--icon-size) * 0.5);
 }
 
 .cp-btn__icon {

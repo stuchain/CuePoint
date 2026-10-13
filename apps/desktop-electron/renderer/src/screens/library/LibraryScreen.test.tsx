@@ -2069,7 +2069,7 @@ describe("organizing a selection (ORG-11)", () => {
         .map((node) => node.textContent);
       // Playback first: DEC-013 made it the first-class gesture.
       expect(top.slice(0, 3)).toEqual(["Play", "Play next", "Add to queue"]);
-      expect(top).toContain("Organize▸");
+      expect(top).toContain("Organize");
       await userEvent.click(within(menu).getByRole("menuitem", { name: /^Organize/ }));
       const labels = within(screen.getByRole("menu", { name: "Organize" }))
         .getAllByRole("menuitem")
@@ -2440,7 +2440,7 @@ describe("organizing a selection (ORG-11)", () => {
         "Add to Collection…",
         "Add tag…",
         "Remove tag…",
-        "Rate▸",
+        "Rate",
         "Favorite",
         "Remove favorite",
       ]);

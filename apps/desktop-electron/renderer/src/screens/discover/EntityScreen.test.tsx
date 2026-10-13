@@ -633,8 +633,8 @@ describe("the library half: library rows", () => {
       "Play",
       "Play next",
       "Add to queue",
-      "Explore▸",
-      "More▸",
+      "Explore",
+      "More",
     ]);
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Add to queue" }));
     await waitFor(() => expect(player.addToQueue).toHaveBeenCalledWith([toQueueItem(row)]));
@@ -706,7 +706,7 @@ describe("the library half: library rows", () => {
       });
       const menu = await screen.findByRole("menu", {}, LOADED);
       const top = entriesOf(menu);
-      expect(top.slice(-2)).toEqual(["Explore▸", "More▸"]);
+      expect(top.slice(-2)).toEqual(["Explore", "More"]);
       const inMenu: Record<string, string[]> = { Play: top.slice(0, -2) };
       for (const group of ["Explore", "More"]) {
         await userEvent.click(within(menu).getByRole("menuitem", { name: new RegExp(`^${group}`) }));
@@ -735,8 +735,8 @@ describe("the library half: library rows", () => {
       "Play 2 tracks",
       "Play next",
       "Add to queue",
-      "Explore▸",
-      "More▸",
+      "Explore",
+      "More",
     ]);
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Play 2 tracks" }));
     await waitFor(() => expect(player.playQueue).toHaveBeenCalledTimes(1));

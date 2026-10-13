@@ -34,6 +34,7 @@
   background: transparent;
   color: var(--fg-primary);
   font: inherit;
+  font-size: var(--control-font-size);
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
@@ -42,8 +43,8 @@
 /* One highlight for both pointer and keyboard: hovering sets the active item,
    so the menu never shows two "current" rows at once. */
 .cp-track-menu__item--active:not(:disabled) {
-  background: var(--accent-primary);
-  color: var(--fg-inverse);
+  background: var(--selected-row-background);
+  color: var(--fg-primary);
 }
 
 .cp-track-menu__item:disabled {
@@ -80,8 +81,13 @@
   color: var(--fg-muted);
 }
 
+.cp-track-menu__arrow .cp-pixel-icon {
+  width: calc(var(--icon-size) * 0.5);
+  height: calc(var(--icon-size) * 0.5);
+}
+
 .cp-track-menu__item--active .cp-track-menu__arrow {
-  color: var(--fg-inverse);
+  color: var(--fg-primary);
 }
 
 /*

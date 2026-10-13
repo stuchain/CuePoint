@@ -30,12 +30,12 @@ describe("the player bar keeps its look", () => {
     expect(button["background"]).toBe("var(--bg-panel)");
   });
 
-  it("keeps the structural tokens and the badge shadow", () => {
+  it("keeps the structural tokens and the player badge shadow", () => {
     const tokens = stripComments(tokensCss);
     expect(tokens).toMatch(/--border-width:\s*calc\(2px \* var\(--scale\)\);/);
     expect(tokens).toMatch(/--hit-min:\s*calc\(44px \* var\(--scale\)\);/);
     expect(tokens).toMatch(/--shadow-badge:/);
-    expect(ruleDecls(badgeCss, ".cp-badge")["box-shadow"]).toBe("var(--shadow-badge)");
+    expect(ruleDecls(badgeCss, ".cp-badge--player")["box-shadow"]).toBe("var(--shadow-badge)");
   });
 
   it("is styled only from components/player/", () => {

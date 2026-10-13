@@ -25,7 +25,7 @@
 
 .cp-tabs__tab:hover:not(:disabled) {
   color: var(--fg-primary);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-panel-alt);
 }
 
 /* Colour is not the only cue: the active tab is also heavier. qtEvolved's accent is under
@@ -39,4 +39,30 @@
 .cp-tabs__tab:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* Sub-tabs (T8): no strip, no rule, small and muted; the active one is a panel-alt pill. */
+.cp-tabs--sub {
+  width: auto;
+  padding: 0;
+  background: transparent;
+  border-bottom: 0;
+}
+
+.cp-tabs--sub .cp-tabs__tab {
+  border-bottom: 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--control-font-weight);
+}
+
+/* Hover is a colour change only, so it never looks like the active pill. */
+.cp-tabs--sub .cp-tabs__tab:hover:not(:disabled):not(.cp-tabs__tab--active) {
+  background: transparent;
+  color: var(--fg-primary);
+}
+
+.cp-tabs--sub .cp-tabs__tab--active {
+  background: var(--bg-panel-alt);
+  color: var(--fg-primary);
+  font-weight: var(--control-font-weight);
 }

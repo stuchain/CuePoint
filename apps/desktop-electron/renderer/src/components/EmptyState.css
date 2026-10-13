@@ -1,0 +1,26 @@
+.cp-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xl) var(--space-lg);
+  text-align: center;
+}
+
+.cp-empty-state__headline {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--fg-primary);
+}
+
+.cp-empty-state__description {
+  margin: 0;
+  max-width: 60ch;
+  font-size: var(--text-body);
+  color: var(--fg-muted);
+}
+
+.cp-empty-state .cp-btn {
+  margin-top: var(--space-sm);
+}

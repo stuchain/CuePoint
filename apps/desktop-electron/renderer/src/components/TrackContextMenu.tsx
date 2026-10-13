@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLeaveGhost } from "../tokens/useLeaveGhost";
+import { PixelIcon } from "./PixelIcon";
 import "./TrackContextMenu.css";
 
 /**
@@ -278,7 +279,7 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
             {item.label}
             {parent && (
               <span className="cp-track-menu__arrow" aria-hidden="true">
-                ▸
+                <PixelIcon name="chevron-right" />
               </span>
             )}
           </button>
