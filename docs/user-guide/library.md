@@ -55,7 +55,7 @@ track's waveform, and that you can browse and play while it works. A "Now:" line
 shows the step and how far it is, for example *Now: drawing waveforms, 1,204 of
 12,000*. Close it with **Dismiss**; it goes by itself when the work ends. When
 that work is done and no track has a Beatport key yet, the same line says so.
-Matching is done in [Clean](clean.md#matching), or from **Beatport ▸ Match
+Matching is done in [Clean](clean.md#match), or from **Beatport ▸ Match
 tracks…** on a selection.
 
 A 50,000-track collection takes about eleven seconds to import. See

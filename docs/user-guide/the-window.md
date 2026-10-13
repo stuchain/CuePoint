@@ -227,7 +227,7 @@ more before it does anything. See
 [Restoring](library.md#restoring).
 
 An interrupted Beatport match is listed here too, with **Resume**: resuming
-matches only the tracks it had not reached. See [Clean](clean.md#matching).
+matches only the tracks it had not reached. See [Clean](clean.md#match).
 
 ## Keyboard shortcuts
 

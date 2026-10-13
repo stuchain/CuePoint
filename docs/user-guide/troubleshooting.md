@@ -92,7 +92,7 @@ If you start processing with no internet connection:
 
 ### Resume After Interruption
 
-If a Beatport match is interrupted in the desktop app, it is listed in **Activity** with **Resume**, which matches only the tracks it had not reached. See [Clean](clean.md#matching).
+If a Beatport match is interrupted in the desktop app, it is listed in **Activity** with **Resume**, which matches only the tracks it had not reached. See [Clean](clean.md#match).
 
 If a command-line run is interrupted:
 - Run the same command again with `--resume` to continue from the last checkpoint. `--no-resume` ignores the checkpoint and starts fresh.
