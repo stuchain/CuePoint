@@ -278,6 +278,31 @@ describe("the Plays section (STATS-05)", () => {
       expect(within(region).queryByRole("button", { name: /Window seven/ })).toBeNull();
     });
 
+    it("learns again when the answer by id names a newer read than the one it asked by", async () => {
+      window.localStorage.setItem(PLAYS_STORAGE_KEY, JSON.stringify({ limit: 10, since: "refresh" }));
+      const window7 = [{ id: 1, title: "Window seven", artist: "A", plays: 3 }];
+      const window8 = [{ id: 2, title: "Window eight", artist: "A", plays: 2 }];
+      let refreshed = false;
+      const read = vi.fn((params: { sinceRead?: string }) => {
+        if (params.sinceRead === undefined) {
+          return Promise.resolve(plays({ last_read_id: refreshed ? 8 : 7 }));
+        }
+        // A refresh happened between the first ask and this one, with no announce for the
+        // page to hear: the answer names the newer read.
+        const asked = params.sinceRead;
+        refreshed = true;
+        return Promise.resolve(plays({ last_read_id: 8, tracks: asked === "8" ? window8 : window7 }));
+      });
+      install({ getStatisticsPlays: read });
+      renderPage();
+      const region = await section();
+
+      expect(
+        await within(region).findByRole("button", { name: "1. Window eight by A, 2 plays" }),
+      ).toBeVisible();
+      expect(read.mock.calls[read.mock.calls.length - 1]![0]).toMatchObject({ sinceRead: "8" });
+    });
+
     it("forgets a read the route no longer knows and learns the newest again", async () => {
       window.localStorage.setItem(PLAYS_STORAGE_KEY, JSON.stringify({ limit: 10, since: "refresh" }));
       const gone = Object.assign(new Error("No read with id 7"), { status: 404, code: "NOT_FOUND" });

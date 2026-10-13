@@ -18,8 +18,8 @@ import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { useLibraryChanges } from "../../api/libraryChanges";
 import type { CleanJobStarted, LibrarySummary } from "../../api/cuepointBridge.types";
+import { LIBRARY_SUMMARY, useSharedRead } from "../../api/sharedReads";
 import { useToast } from "../../components";
 import { Button } from "../../components/Button";
 import { PixelSpinner } from "../../components/PixelSpinner";
@@ -41,7 +41,6 @@ import {
   statisticsScopeOptions,
 } from "./statisticsScope";
 import {
-  useLibraryJobsFinished,
   useStatisticsHealth,
   useStatisticsPlays,
   useStatisticsSpreads,
@@ -86,55 +85,32 @@ function Section({ id, title, status, loading, failed, onRetry, children }: Sect
 
 export function StatisticsScreen() {
   const navigate = useNavigate();
-  const [refresh, setRefresh] = useState(0);
   const [remembered, setRemembered] = useState<string | null>(() => loadScope());
-  // The library summary and the refresh it answered for; a summary that cannot be read is not
-  // "empty". A summary of an earlier refresh is not this refresh's.
-  const [answered, setAnswered] = useState<{
-    summary: LibrarySummary | null;
-    generation: number;
-  } | null>(null);
+  // The library summary, through the shared cache (C19d), which reads it again when the
+  // library changes or an import or a refresh ends. A summary that cannot be read is not
+  // "empty".
+  const summaryRead = useSharedRead(LIBRARY_SUMMARY);
+  const answered =
+    summaryRead.value !== undefined || summaryRead.error !== undefined || summaryRead.unavailable
+      ? { summary: (summaryRead.value ?? null) as LibrarySummary | null }
+      : null;
 
-  const again = useCallback(() => setRefresh((value) => value + 1), []);
-  useLibraryChanges(again);
-  useLibraryJobsFinished(again);
-
-  useEffect(() => {
-    const read = window.cuepoint?.getLibrarySummary;
-    if (!read) {
-      setAnswered({ summary: null, generation: refresh });
-      return;
-    }
-    let cancelled = false;
-    read().then(
-      (value) => {
-        if (!cancelled) setAnswered({ summary: value ?? null, generation: refresh });
-      },
-      () => {
-        if (!cancelled) setAnswered({ summary: null, generation: refresh });
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [refresh]);
-
-  const trees = useStatisticsTrees(refresh);
+  const trees = useStatisticsTrees();
   const options = useMemo(
     () => statisticsScopeOptions(trees.playlists, trees.collections),
     [trees.collections, trees.playlists],
   );
   const scope = effectiveScope(remembered, options, trees.playlists);
 
-  const settled = answered !== null && answered.generation === refresh && trees.settled;
+  const settled = answered !== null && trees.settled;
   const libraryEmpty = answered?.summary?.library_empty === true;
-  // Nothing is asked until this refresh's summary and trees are in: there is a library, and the
+  // Nothing is asked until the summary and trees are in: there is a library, and the
   // remembered scope has been judged against the trees as they are now.
   const reading = settled && !libraryEmpty ? scope : null;
   const [playsChoice, setPlaysChoice] = useState(loadPlaysChoice);
-  const plays = useStatisticsPlays(reading, refresh, playsChoice);
-  const spreads = useStatisticsSpreads(reading, refresh);
-  const health = useStatisticsHealth(reading, refresh);
+  const plays = useStatisticsPlays(reading, playsChoice, trees.refreshing);
+  const spreads = useStatisticsSpreads(reading, trees.refreshing);
+  const health = useStatisticsHealth(reading, trees.refreshing);
 
   // The cover-art read is run here, not in HealthSection: a scope change or a failed re-read
   // swaps that section for a spinner, and a follower living in it would be dropped mid-scan
@@ -142,7 +118,10 @@ export function StatisticsScreen() {
   const { push } = useToast();
   const message = useCallback((text: string, tone: CleanMessageTone) => push(text, tone), [push]);
   const { running: jobRunning, run: runJob } = useCleanJob(message);
-  const retryHealth = health.retry;
+  // A scan outlives the scope it started under: when it ends, Health is read for the scope then.
+  const healthRetry = useRef(health.retry);
+  healthRetry.current = health.retry;
+  const retryHealth = useCallback(() => healthRetry.current(), []);
   // The same start Clean's Health tab made: every track, however the library is scoped here,
   // because the read is of files and not of Collections.
   const readCoverArt = useCallback(() => {
@@ -264,7 +243,7 @@ export function StatisticsScreen() {
         {spreads.data && (
           <div className="statistics-panels">
             <SpreadsSection spreads={spreads.data} />
-            <KeySummary scope={spreads.data.scope} collections={trees.collections} refresh={refresh} />
+            <KeySummary scope={spreads.data.scope} collections={trees.collections} />
           </div>
         )}
       </Section>

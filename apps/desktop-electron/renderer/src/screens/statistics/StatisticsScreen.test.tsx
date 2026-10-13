@@ -23,6 +23,7 @@ import { announceLibraryChange } from "../../api/libraryChanges";
 import { reportUnexpected } from "../../reporting/reporting";
 import { StatisticsScreen } from "./StatisticsScreen";
 import { statisticsFocusState } from "./statisticsLink";
+import { PLAYS_STORAGE_KEY } from "./playsChoice";
 import { STATISTICS_SCOPE_STORAGE_KEY } from "./statisticsScope";
 import { useLibraryJobsFinished } from "./useStatistics";
 
@@ -512,26 +513,92 @@ describe("the Statistics page (STATS-04)", () => {
       expect(mock("getStatisticsSpreads")).toHaveBeenCalledTimes(2);
     });
 
-    it("reads nothing with a scope the refreshed trees no longer have", async () => {
-      window.localStorage.setItem(STATISTICS_SCOPE_STORAGE_KEY, "collection:10");
-      const collections = vi
-        .fn()
-        .mockResolvedValueOnce({ collections: [collection(10, "Box", "collection")], total: 1 })
-        .mockResolvedValue({ collections: [], total: 0 });
-      install({ getCollections: collections });
-      renderPage();
-      await waitFor(() =>
-        expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "collection:10" }),
-      );
-      const before = mock("getStatisticsPlays").mock.calls.length;
+    // The cache reads the scope on screen again the moment the library announces, in the
+    // same tick as the trees, so a scope the new trees no longer have is read once and
+    // refused. What matters is that the page does not take that for a failure.
+    describe("a scope the refreshed trees no longer have", () => {
+      const gone = () => Object.assign(new Error("No such Collection"), { status: 404, code: "NOT_FOUND" });
 
-      act(() => announceLibraryChange());
+      async function dropScopeWhileTreesRefresh(): Promise<{ release: () => void; deadBefore: number }> {
+        window.localStorage.setItem(STATISTICS_SCOPE_STORAGE_KEY, "collection:10");
+        let release!: () => void;
+        const later = new Promise<{ collections: CollectionNode[]; total: number }>((resolve) => {
+          release = () => resolve({ collections: [], total: 0 });
+        });
+        const collections = vi
+          .fn()
+          .mockResolvedValueOnce({ collections: [collection(10, "Box", "collection")], total: 1 })
+          .mockReturnValue(later);
+        const asked = (params: { scope: string }) =>
+          params.scope === "collection:10" ? Promise.resolve(plays()) : Promise.resolve(plays());
+        install({
+          getCollections: collections,
+          getStatisticsPlays: vi.fn(asked),
+        });
+        renderPage();
+        await waitFor(() =>
+          expect(mock("getStatisticsPlays")).toHaveBeenCalledWith(
+            expect.objectContaining({ scope: "collection:10" }),
+          ),
+        );
+        await screen.findByText(/Never played: 3,120/);
+        // From here the dead scope is refused, as the engine does.
+        mock("getStatisticsPlays").mockImplementation((params: { scope: string }) =>
+          params.scope === "collection:10" ? Promise.reject(gone()) : Promise.resolve(plays()),
+        );
+        mock("getStatisticsSpreads").mockImplementation((params: { scope: string }) =>
+          params.scope === "collection:10" ? Promise.reject(gone()) : Promise.resolve(spreads()),
+        );
+        mock("getStatisticsHealth").mockImplementation((params: { scope: string }) =>
+          params.scope === "collection:10" ? Promise.reject(gone()) : Promise.resolve(health()),
+        );
+        const deadBefore = mock("getStatisticsPlays").mock.calls.filter(
+          ([params]) => params.scope === "collection:10",
+        ).length;
+        act(() => announceLibraryChange());
+        await waitFor(() => expect(mock("getCollections")).toHaveBeenCalledTimes(2));
+        // Let the refused reads land while the collection tree is still on its way.
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        return { release, deadBefore };
+      }
 
-      await waitFor(() =>
-        expect(mock("getStatisticsPlays")).toHaveBeenLastCalledWith({ limit: 10, scope: "library" }),
-      );
-      const after = mock("getStatisticsPlays").mock.calls.slice(before);
-      expect(after).toEqual([[{ limit: 10, scope: "library" }]]);
+      it("shows no failure for it while the trees refresh, then reads the whole library once", async () => {
+        const before = () => mock("getStatisticsPlays").mock.calls.length;
+        const { release } = await dropScopeWhileTreesRefresh();
+        expect(before()).toBeGreaterThan(0);
+
+        expect(screen.queryByText(/could not be read/)).toBeNull();
+        expect(screen.queryByRole("alert")).toBeNull();
+        expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+
+        const callsBeforeRelease = before();
+        await act(async () => release());
+        await waitFor(() =>
+          expect(mock("getStatisticsPlays")).toHaveBeenLastCalledWith({ limit: 10, scope: "library" }),
+        );
+        const after = mock("getStatisticsPlays").mock.calls.slice(callsBeforeRelease);
+        expect(after.filter(([params]) => params.scope === "library")).toEqual([
+          [{ limit: 10, scope: "library" }],
+        ]);
+        expect(screen.queryByText(/could not be read/)).toBeNull();
+      });
+
+      it("does not relearn \"Your last refresh\" because of it", async () => {
+        window.localStorage.setItem(PLAYS_STORAGE_KEY, JSON.stringify({ limit: 10, since: "refresh" }));
+        const { release, deadBefore } = await dropScopeWhileTreesRefresh();
+        const dead = () =>
+          mock("getStatisticsPlays").mock.calls.filter(([params]) => params.scope === "collection:10");
+        // The announce read the scope on screen's two entries (the first ask, the one by id)
+        // once each; neither refusal asked a third time to learn the last read again.
+        expect(dead().length).toBe(deadBefore + 2);
+        expect(screen.queryByText(/could not be read/)).toBeNull();
+        await act(async () => release());
+        await waitFor(() =>
+          expect(mock("getStatisticsPlays")).toHaveBeenLastCalledWith(
+            expect.objectContaining({ scope: "library" }),
+          ),
+        );
+      });
     });
 
     const running = (id: string, type = "library_import") => ({
@@ -765,8 +832,11 @@ describe("reading cover art from Health", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Read cover art" }));
     await waitFor(() => expect(jobEnds).not.toBeNull());
 
-    // The next health read never answers, so changing scope swaps Health for its spinner.
-    mock("getStatisticsHealth").mockImplementation(never);
+    // The next health read is slow, so changing scope swaps Health for its spinner.
+    let answerSlow!: (value: StatisticsHealth) => void;
+    mock("getStatisticsHealth").mockImplementation(
+      () => new Promise<StatisticsHealth>((resolve) => (answerSlow = resolve)),
+    );
     const picker = screen.getByRole("combobox", { name: "Scope" });
     await waitFor(() => expect(within(picker).getAllByRole("option").length).toBeGreaterThan(1));
     await userEvent.selectOptions(picker, "playlist:2");
@@ -776,9 +846,71 @@ describe("reading cover art from Health", () => {
 
     mock("getStatisticsHealth").mockResolvedValue(health());
     await act(async () => jobEnds!({ state: "succeeded" }));
+    // The read on its way is let answer (not superseded); the one the scan's end asked for follows it.
+    expect(mock("getStatisticsHealth")).toHaveBeenCalledTimes(reads);
+    await act(async () => answerSlow(health()));
 
     await waitFor(() => expect(mock("getStatisticsHealth")).toHaveBeenCalledTimes(reads + 1));
     expect(await screen.findByText("Finished reading cover art.")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Read cover art" })).toBeEnabled();
   });
 });
+
+describe("revisiting the page (C19d)", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    install();
+  });
+
+  afterEach(() => {
+    delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+    vi.clearAllMocks();
+  });
+
+  it("revisit shows the old value immediately and refetches after an announce", async () => {
+    const first = renderPage();
+    const plays = await screen.findByRole("region", { name: "Plays" });
+    await waitFor(() => expect(within(plays).getByText(/Never played: 3,120/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole("region", { name: "Health" })).getByText(/Last checked/),
+      ).toBeInTheDocument(),
+    );
+    first.unmount();
+
+    const reads = () => ({
+      summary: mock("getLibrarySummary").mock.calls.length,
+      playlists: mock("getLibraryPlaylists").mock.calls.length,
+      collections: mock("getCollections").mock.calls.length,
+      plays: mock("getStatisticsPlays").mock.calls.length,
+      spreads: mock("getStatisticsSpreads").mock.calls.length,
+      health: mock("getStatisticsHealth").mock.calls.length,
+    });
+    const before = reads();
+
+    renderPage();
+    // The first render: no section is reading, the numbers are already there.
+    expect(screen.queryAllByRole("status")).toEqual([]);
+    expect(screen.getByText(/Never played: 3,120/)).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(reads()).toEqual(before);
+
+    mock("getStatisticsPlays").mockResolvedValue(plays_(3121));
+    act(() => announceLibraryChange());
+    expect(await screen.findByText(/Never played: 3,121/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(reads()).toEqual({
+        summary: before.summary + 1,
+        playlists: before.playlists + 1,
+        collections: before.collections + 1,
+        plays: before.plays + 1,
+        spreads: before.spreads + 1,
+        health: before.health + 1,
+      }),
+    );
+  });
+});
+
+function plays_(neverPlayed: number): StatisticsPlays {
+  return plays({ never_played: count(neverPlayed) });
+}

@@ -26,17 +26,15 @@ interface KeySummaryProps {
   /** The Statistics scope: `library`, `playlist:<id>` or `collection:<id>`. */
   scope: string;
   collections: readonly CollectionNode[];
-  /** Moves when the library changed, so the counts are read again. */
-  refresh: number;
 }
 
-export function KeySummary({ scope, collections, refresh }: KeySummaryProps) {
+export function KeySummary({ scope, collections }: KeySummaryProps) {
   const navigate = useNavigate();
   const keysScope = useMemo(() => keysScopeFor(scope, collections), [scope, collections]);
   const picked = useMemo(() => (keysScope.kind === "sources" ? keysScope.picked : []), [keysScope]);
   const sources = useMemo(() => requestSources(picked), [picked]);
   const counted = keysScope.kind === "sources";
-  const population = useKeysPopulation(sources, refresh, counted, noSourceGone);
+  const population = useKeysPopulation(sources, 0, counted, noSourceGone);
 
   // A read of the same scope again (the library changed) keeps the numbers on screen meanwhile.
   const lastRead = useRef<{ scope: string; data: NonNullable<typeof population.data> } | null>(null);

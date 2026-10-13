@@ -83,12 +83,13 @@ export function statisticsPlays(params?: PlaysParams): SharedRead<Answer<"getSta
   return over("getStatisticsPlays", `statistics/plays?${JSON.stringify(params ?? {})}`, ["library"], [params]);
 }
 
+// The engine caches spreads and health on the library and the waveforms (loudness, analysis counts).
 export function statisticsSpreads(params?: ScopeParams): SharedRead<Answer<"getStatisticsSpreads">> {
-  return over("getStatisticsSpreads", `statistics/spreads?${JSON.stringify(params ?? {})}`, ["library"], [params]);
+  return over("getStatisticsSpreads", `statistics/spreads?${JSON.stringify(params ?? {})}`, ["library", "waveforms"], [params]);
 }
 
 export function statisticsHealth(params?: ScopeParams): SharedRead<Answer<"getStatisticsHealth">> {
-  return over("getStatisticsHealth", `statistics/health?${JSON.stringify(params ?? {})}`, ["library"], [params]);
+  return over("getStatisticsHealth", `statistics/health?${JSON.stringify(params ?? {})}`, ["library", "waveforms"], [params]);
 }
 
 // ------------------------------------------------------------------- discover

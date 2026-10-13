@@ -1,13 +1,13 @@
 /**
  * The Statistics page's reads (STATS-04): one hook per route, over one scope.
  *
- * Each reads again when the scope changes, when `refresh` moves (the library
- * changed, or an import or a refresh finished) and when Try again is pressed.
- * A scope of `null` means "not yet": the page is still finding out whether
- * there is a library and which scope is still there, and a read made earlier
- * would only be wasted.
+ * Each goes through the shared cache (C19d), keyed by its scope and parameters: a page shown
+ * again has its answers at once, and they are read again when the library announces a
+ * change or an import or a refresh ends. Try again reads now. A scope of `null` means
+ * "not yet": the page is still finding out whether there is a library and which scope is
+ * still there, and a read made earlier would only be wasted.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import type {
   CollectionNode,
@@ -18,6 +18,17 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { onJobFinished, subscribeActiveJobs } from "../../api/jobsStore";
 import { bridgeErrorFields, isEngineRefusal } from "../../api/bridgeError";
+import {
+  COLLECTIONS,
+  LIBRARY_PLAYLISTS,
+  statisticsHealth,
+  statisticsPlays,
+  statisticsSpreads,
+  useOnReadError,
+  useReportReadError,
+  useSharedRead,
+  type SharedRead,
+} from "../../api/sharedReads";
 import { reportUnexpected } from "../../reporting/reporting";
 import { playsParams, type PlaysChoice } from "./playsChoice";
 
@@ -29,55 +40,33 @@ interface StatisticsRead<T> {
   retry: () => void;
 }
 
-type RouteName = "getStatisticsPlays" | "getStatisticsSpreads" | "getStatisticsHealth";
+/**
+ * True for the engine's "no such scope" while the trees that name the scopes are being read
+ * again: the scope on screen was read at the same moment the trees were, and is about to be
+ * replaced by one they still have, so its refusal is not a failure.
+ */
+function isScopeGone(error: unknown, treesRefreshing: boolean): boolean {
+  return treesRefreshing && error !== undefined && bridgeErrorFields(error).status === 404;
+}
 
 function useStatisticsRead<T>(
-  route: RouteName,
+  descriptor: (params: { scope: string }) => SharedRead<T>,
   scope: string | null,
-  refresh: number,
+  treesRefreshing = false,
 ): StatisticsRead<T> {
-  const [result, setResult] = useState<{ scope: string; data: T } | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [unavailable, setUnavailable] = useState(false);
-  const [retries, setRetries] = useState(0);
-
-  useEffect(() => {
-    if (scope === null) return;
-    const read = window.cuepoint?.[route] as
-      | ((params: { scope: string }) => Promise<T>)
-      | undefined;
-    if (!read) {
-      setUnavailable(true);
-      return;
-    }
-    setUnavailable(false);
-    setFailed(false);
-    let cancelled = false;
-    read({ scope }).then(
-      (data) => {
-        if (!cancelled) setResult({ scope, data });
-      },
-      (cause: unknown) => {
-        reportUnexpected(cause);
-        if (!cancelled) setFailed(true);
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [route, scope, refresh, retries]);
-
-  const retry = useCallback(() => setRetries((value) => value + 1), []);
-  // An answer for another scope is not this scope's answer.
-  const data = result && result.scope === scope ? result.data : null;
-  const status: ReadStatus = unavailable
-    ? "unavailable"
-    : failed
-      ? "error"
+  const read = useSharedRead(descriptor({ scope: scope ?? "" }), scope !== null);
+  useReportReadError(read.error);
+  // The key carries the scope, so an answer for another scope is never this scope's answer.
+  const data = read.value ?? null;
+  const status: ReadStatus =
+    scope !== null && read.unavailable
+      ? "unavailable"
       : data
         ? "ready"
-        : "loading";
-  return { status, data, retry };
+        : read.error !== undefined && !isScopeGone(read.error, treesRefreshing)
+          ? "error"
+          : "loading";
+  return { status, data, retry: read.refresh };
 }
 
 interface PlaysRead extends StatisticsRead<StatisticsPlays> {
@@ -95,88 +84,82 @@ interface PlaysRead extends StatisticsRead<StatisticsPlays> {
  * the controls that made it are not torn down under the person's hands; a read that fails
  * with an answer on screen sets `failed` and leaves the answer, and the page says so beside
  * it. "Your last refresh" is asked of the route by the id of the last read, which only a read
- * can report: the first ask is without it, and the answer is asked for again with the id it
- * named. An id the route no longer knows (404) is forgotten, so the next ask learns it again.
+ * can report: the first ask is without it (its own cached read), and the answer is asked for
+ * again with the id it named. An id the route no longer knows (404) is forgotten, so the
+ * first ask is made again and learns it again.
  */
 export function useStatisticsPlays(
   scope: string | null,
-  refresh: number,
   choice: PlaysChoice,
+  treesRefreshing = false,
 ): PlaysRead {
-  const [result, setResult] = useState<{ scope: string; data: StatisticsPlays } | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [pending, setPending] = useState(false);
-  const [unavailable, setUnavailable] = useState(false);
-  const [retries, setRetries] = useState(0);
-  const [readId, setReadId] = useState<number | null>(null);
-
   const { limit, since } = choice;
-  const asking = since === "refresh" ? readId : null;
+  const sinceRefresh = since === "refresh";
+  const known = scope !== null;
+  // "Today" is worked out at each render, so a page left open past midnight counts
+  // "the last 7 days" from the new day (its key moves with the day).
+  const first = known ? { ...playsParams({ limit, since }, null, new Date()), scope } : undefined;
+  const learn = useSharedRead(statisticsPlays(first), known && sinceRefresh);
+  const learnedId = learn.value?.last_read_id;
+  const learning = learnedId === undefined || learnedId === null;
+  const asked =
+    known && sinceRefresh
+      ? learning
+        ? undefined
+        : { ...playsParams({ limit, since }, learnedId, new Date()), scope }
+      : first;
+  const main = useSharedRead(statisticsPlays(asked), asked !== undefined);
+  // Until the last read's id is known (or when there is none), the first ask is the answer.
+  const shown = sinceRefresh && learning ? learn : main;
 
+  const forgotten =
+    sinceRefresh && bridgeErrorFields(main.error).status === 404 && !isScopeGone(main.error, treesRefreshing);
+  const relearn = learn.refresh;
+  const refreshingNow = useRef(treesRefreshing);
+  refreshingNow.current = treesRefreshing;
+  // "Your last refresh" is asked by the id of the last read; the answer names the newest
+  // one, and when that is not the id learned, the learned one is out of date (a refresh
+  // since it was read, with nothing announced to this page): learn it again.
+  const answeredId = main.value?.last_read_id;
   useEffect(() => {
-    if (scope === null) return;
-    const read = window.cuepoint?.getStatisticsPlays;
-    if (!read) {
-      setUnavailable(true);
+    if (!sinceRefresh || answeredId === undefined || answeredId === null) return;
+    if (learnedId !== undefined && learnedId !== null && answeredId !== learnedId) relearn();
+  }, [sinceRefresh, answeredId, learnedId, relearn]);
+  useOnReadError(main.error, (cause) => {
+    // The scope is gone from the trees being read: the page moves to one they have.
+    if (isScopeGone(cause, refreshingNow.current)) return;
+    if (sinceRefresh && bridgeErrorFields(cause).status === 404) {
+      // That read is gone (the history was cleared): learn the last one again.
+      relearn();
       return;
     }
-    setUnavailable(false);
-    setFailed(false);
-    setPending(true);
-    let cancelled = false;
-    // "Today" is read each time the page is read, so a page left open past midnight counts
-    // "the last 7 days" from the new day.
-    const params = playsParams({ limit, since }, asking, new Date());
-    read({ ...params, scope }).then(
-      (data) => {
-        if (cancelled) return;
-        // The route says which read is the last. If the one asked about was not it (or none was
-        // asked about), ask again with that one rather than show the wrong window.
-        if (since === "refresh" && data.last_read_id !== asking) {
-          setReadId(data.last_read_id);
-          return;
-        }
-        setResult({ scope, data });
-        setPending(false);
-      },
-      (cause: unknown) => {
-        if (cancelled) return;
-        if (since === "refresh" && asking !== null && bridgeErrorFields(cause).status === 404) {
-          // That read is gone (the history was cleared): learn the last one again.
-          setReadId(null);
-          return;
-        }
-        if (!isEngineRefusal(cause)) reportUnexpected(cause);
-        setFailed(true);
-        setPending(false);
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [scope, refresh, retries, limit, since, asking]);
+    if (!isEngineRefusal(cause)) reportUnexpected(cause);
+  });
+  useOnReadError(learn.error, (cause) => {
+    if (!isEngineRefusal(cause)) reportUnexpected(cause);
+  });
 
-  const retry = useCallback(() => setRetries((value) => value + 1), []);
-  const data = result && result.scope === scope ? result.data : null;
-  // Without an answer a failed read is the section's; with one it is the page's, inline.
-  const status: ReadStatus = unavailable
-    ? "unavailable"
-    : data
-      ? "ready"
-      : failed
-        ? "error"
-        : "loading";
-  return { status, data, retry, stale: data !== null && pending && !failed, failed };
+  // The last answer for this scope stays up while the next is read.
+  const last = useRef<{ scope: string; data: StatisticsPlays } | null>(null);
+  const own = shown.value ?? null;
+  if (own && scope !== null) last.current = { scope, data: own };
+  const data = own ?? (scope !== null && last.current?.scope === scope ? last.current.data : null);
+  const failed = shown.error !== undefined && !forgotten && !isScopeGone(shown.error, treesRefreshing);
+  const reading = shown.loading || shown.refreshing || forgotten;
+
+  const status: ReadStatus =
+    known && shown.unavailable ? "unavailable" : data ? "ready" : failed ? "error" : "loading";
+  return { status, data, retry: shown.refresh, stale: data !== null && reading && !failed, failed };
 }
 
 /** Your library: how the scope spreads by genre, tempo, year, date added, rating and loudness. */
-export function useStatisticsSpreads(scope: string | null, refresh: number) {
-  return useStatisticsRead<StatisticsSpreads>("getStatisticsSpreads", scope, refresh);
+export function useStatisticsSpreads(scope: string | null, treesRefreshing = false) {
+  return useStatisticsRead<StatisticsSpreads>(statisticsSpreads, scope, treesRefreshing);
 }
 
 /** Health: file, Beatport and analysis counts. */
-export function useStatisticsHealth(scope: string | null, refresh: number) {
-  return useStatisticsRead<StatisticsHealth>("getStatisticsHealth", scope, refresh);
+export function useStatisticsHealth(scope: string | null, treesRefreshing = false) {
+  return useStatisticsRead<StatisticsHealth>(statisticsHealth, scope, treesRefreshing);
 }
 
 /** The work whose end changes what Statistics counts: a new library, or a refresh of it. */
@@ -221,42 +204,29 @@ interface StatisticsTrees {
   playlists: LibraryPlaylistNode[];
   collections: CollectionNode[];
   /**
-   * True once both trees have answered, or failed to, for the current `refresh`: the scope
-   * can be judged. It is false again the moment a refresh asks, so nothing is read with a
-   * scope judged against the trees of the time before.
+   * True once both trees have answered, or failed to, so the scope can be judged. A tree read
+   * again behind the one shown does not unsettle it: the scope is judged again when it lands.
    */
   settled: boolean;
+  /** True while either tree is being read again behind the one shown. */
+  refreshing: boolean;
 }
 
 /**
  * The Rekordbox playlists and CuePoint's Collections the picker offers, read as Clean's scope
  * list reads them. One failing leaves its part empty rather than the page without a picker.
  */
-export function useStatisticsTrees(refresh: number): StatisticsTrees {
-  const [loaded, setLoaded] = useState<{
-    playlists: LibraryPlaylistNode[];
-    collections: CollectionNode[];
-    generation: number;
-  }>({ playlists: [], collections: [], generation: -1 });
-
-  useEffect(() => {
-    const bridge = window.cuepoint;
-    let cancelled = false;
-    void Promise.all([
-      bridge?.getLibraryPlaylists?.().catch(() => null) ?? Promise.resolve(null),
-      bridge?.getCollections?.().catch(() => null) ?? Promise.resolve(null),
-    ]).then(([playlists, collections]) => {
-      if (cancelled) return;
-      setLoaded({
-        playlists: playlists?.playlists ?? [],
-        collections: collections?.collections ?? [],
-        generation: refresh,
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [refresh]);
-
-  return { playlists: loaded.playlists, collections: loaded.collections, settled: loaded.generation === refresh };
+export function useStatisticsTrees(): StatisticsTrees {
+  const playlists = useSharedRead(LIBRARY_PLAYLISTS);
+  const collections = useSharedRead(COLLECTIONS);
+  const playlistNodes = playlists.value?.playlists;
+  const collectionNodes = collections.value?.collections;
+  const settled =
+    (playlists.value !== undefined || playlists.error !== undefined || playlists.unavailable) &&
+    (collections.value !== undefined || collections.error !== undefined || collections.unavailable);
+  const refreshing = playlists.refreshing || collections.refreshing;
+  return useMemo(
+    () => ({ playlists: playlistNodes ?? [], collections: collectionNodes ?? [], settled, refreshing }),
+    [playlistNodes, collectionNodes, settled, refreshing],
+  );
 }

@@ -3,11 +3,12 @@
  * and Open in Keys carrying the scope as ticked sources.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
 import type { CollectionNode, KeysPopulation } from "../../api/cuepointBridge.types";
+import { announceLibraryChange } from "../../api/libraryChanges";
 import { keysOpening } from "../keys/keysLink";
 import { KeySummary } from "./KeySummary";
 import { keysScopeFor } from "./statisticsKeys";
@@ -77,7 +78,7 @@ function renderSummary(scope: string, answer: KeysPopulation = POPULATION) {
   (window as unknown as { cuepoint: unknown }).cuepoint = { getKeysPopulation: population };
   return render(
     <MemoryRouter initialEntries={["/statistics"]}>
-      <KeySummary scope={scope} collections={COLLECTIONS} refresh={0} />
+      <KeySummary scope={scope} collections={COLLECTIONS} />
       <Where />
     </MemoryRouter>,
   );
@@ -178,15 +179,11 @@ describe("the key summary (STATS-06)", () => {
   });
 
   it("keeps the last numbers on screen while the same scope is read again", async () => {
-    const { rerender } = renderSummary("library");
+    renderSummary("library");
     await screen.findByText(/have a Beatport key/);
     population.mockReturnValue(new Promise(() => {}));
-    rerender(
-      <MemoryRouter initialEntries={["/statistics"]}>
-        <KeySummary scope="library" collections={COLLECTIONS} refresh={1} />
-        <Where />
-      </MemoryRouter>,
-    );
+    act(() => announceLibraryChange());
+    await waitFor(() => expect(population).toHaveBeenCalledTimes(2));
     expect(screen.getByText(/have a Beatport key/)).toBeInTheDocument();
     expect(screen.queryByText("Reading keys…")).toBeNull();
   });
@@ -196,7 +193,7 @@ describe("the key summary (STATS-06)", () => {
     (window as unknown as { cuepoint: unknown }).cuepoint = { getKeysPopulation: population };
     render(
       <MemoryRouter>
-        <KeySummary scope="library" collections={[]} refresh={0} />
+        <KeySummary scope="library" collections={[]} />
       </MemoryRouter>,
     );
     expect(await screen.findByText("The keys could not be read.")).toBeInTheDocument();

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 
 import { invalidateReads } from "./engineReads";
 import {
@@ -7,7 +7,9 @@ import {
   LIBRARY_HEALTH,
   LIBRARY_PLAYLISTS,
   LIBRARY_SUMMARY,
+  statisticsHealth,
   statisticsPlays,
+  statisticsSpreads,
   keysPopulation,
   useOnReadError,
   useSharedRead,
@@ -92,6 +94,28 @@ describe("useSharedRead", () => {
     await waitFor(() => expect(ten.result.current.value).toEqual({ limit: 10 }));
     await waitFor(() => expect(twentyFive.result.current.value).toEqual({ limit: 25 }));
     expect(getStatisticsPlays).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("statistics domains", () => {
+  it("spreads and health read again when a waveform analysis ends, plays do not", async () => {
+    const getStatisticsSpreads = vi.fn().mockResolvedValue({ total: 1 });
+    const getStatisticsHealth = vi.fn().mockResolvedValue({ total: 1 });
+    const getStatisticsPlays = vi.fn().mockResolvedValue({ tracks: [] });
+    install({ getStatisticsSpreads, getStatisticsHealth, getStatisticsPlays });
+    const params = { scope: "library" };
+    renderHook(() => {
+      useSharedRead(statisticsSpreads(params));
+      useSharedRead(statisticsHealth(params));
+      useSharedRead(statisticsPlays(params));
+    });
+    await waitFor(() => expect(getStatisticsHealth).toHaveBeenCalledTimes(1));
+
+    act(() => invalidateReads(["waveforms"]));
+
+    await waitFor(() => expect(getStatisticsSpreads).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(getStatisticsHealth).toHaveBeenCalledTimes(2));
+    expect(getStatisticsPlays).toHaveBeenCalledTimes(1);
   });
 });
 
