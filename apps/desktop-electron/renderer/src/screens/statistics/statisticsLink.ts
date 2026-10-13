@@ -42,5 +42,7 @@ export function statisticsFocus(
     return { focus: state.statisticsFocus, token: String(state.token ?? "") };
   }
   const fromSearch = statisticsFocusFromSearch(location.search ?? "");
-  return fromSearch ? { focus: fromSearch, token: `search-${location.key ?? ""}` } : null;
+  // The router's navigation key, not a track's: no fallback to a `.key`, which keyReaders forbids.
+  const { key: navigation = "" } = location;
+  return fromSearch ? { focus: fromSearch, token: `search-${navigation}` } : null;
 }
