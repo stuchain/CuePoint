@@ -230,6 +230,10 @@ const IDLE_PLAYBACK: PlaybackState = {
 
 /** How long a seek refused while a file opens waits for it to open. */
 const OPENING_WAIT_MS = 5_000;
+/** How long after mpv answers a seek a `time-pos` far from the target is still held off. */
+const SEEK_SETTLE_MS = 750;
+/** A `time-pos` this close to the seek target counts as mpv having arrived. */
+const SEEK_NEAR_S = 0.75;
 
 export class PlayerSupervisor {
   private child: ChildProcess | null = null;
@@ -263,6 +267,14 @@ export class PlayerSupervisor {
   private opened: (() => void) | null = null;
   /** The playlist entry the current open waits on; see the `end-file` handler. */
   private openingEntryId: number | null | undefined = null;
+  /**
+   * Where the last seek was sent, held until mpv reports a position near it. A
+   * `time-pos` sent before the seek can arrive after its reply and would put
+   * the playhead back. `until` is infinite while the seek is in flight.
+   */
+  private seekTarget: { seconds: number; until: number } | null = null;
+  /** Counts `play` and `stopPlayback`, so a seek can tell its track was replaced. */
+  private trackEpoch = 0;
   /** What the user asked for; see `AudioState`. */
   private audio: AudioSettings = { ...DEFAULT_AUDIO_SETTINGS };
   /** What is actually in use, which a fallback can pull away from it. */
@@ -630,6 +642,7 @@ export class PlayerSupervisor {
       ) {
         this.settleOpening();
       }
+      this.seekTarget = null;
       this.playback = { ...this.playback, playing: false };
       this.push(true);
       for (const listener of this.endFileListeners) listener(info);
@@ -790,12 +803,24 @@ export class PlayerSupervisor {
     let significant = false;
     let idle = false;
     switch (name) {
-      case "time-pos":
+      case "time-pos": {
+        const target = this.seekTarget;
+        if (target) {
+          // mpv reports null while a file opens, which is no arrival either.
+          if (
+            Date.now() < target.until &&
+            (typeof value !== "number" || Math.abs(value - target.seconds) > SEEK_NEAR_S)
+          ) {
+            return;
+          }
+          this.seekTarget = null;
+        }
         this.playback = {
           ...this.playback,
           positionSeconds: typeof value === "number" ? value : null,
         };
         break;
+      }
       case "duration":
         this.playback = {
           ...this.playback,
@@ -993,6 +1018,8 @@ export class PlayerSupervisor {
     await this.ensureRunning();
     const client = this.requireClient();
     this.restartAttempts = 0;
+    this.seekTarget = null;
+    this.trackEpoch += 1;
     this.playback = {
       ...this.playback,
       filePath,
@@ -1072,6 +1099,13 @@ export class PlayerSupervisor {
 
   async seek(seconds: number): Promise<void> {
     const client = this.requireClient();
+    // Before the command, so the drawing moves at once and every push carries the target.
+    const target = { seconds, until: Number.POSITIVE_INFINITY };
+    const before = this.playback.positionSeconds;
+    const epoch = this.trackEpoch;
+    this.seekTarget = target;
+    this.playback = { ...this.playback, positionSeconds: seconds };
+    this.push(true);
     try {
       await client.seek(seconds, "absolute");
     } catch (error) {
@@ -1079,11 +1113,24 @@ export class PlayerSupervisor {
       // seek once it has, or give up after OPENING_WAIT_MS, as a stalled open
       // ends in an `end-file` that settles the wait anyway.
       const opening = this.opening;
-      if (!opening) throw error;
-      await Promise.race([opening, new Promise((resolve) => setTimeout(resolve, OPENING_WAIT_MS))]);
-      await this.requireClient().seek(seconds, "absolute");
+      try {
+        if (!opening) throw error;
+        await Promise.race([opening, new Promise((resolve) => setTimeout(resolve, OPENING_WAIT_MS))]);
+        // Another track was played or playback stopped meanwhile: this seek is not meant for it.
+        if (this.trackEpoch !== epoch) return;
+        await this.requireClient().seek(seconds, "absolute");
+      } catch (failure) {
+        if (this.seekTarget === target) {
+          // mpv never reached the target: show where it still is.
+          this.seekTarget = null;
+          this.playback = { ...this.playback, positionSeconds: before };
+          this.push(true);
+        }
+        throw failure;
+      }
     }
-    this.playback = { ...this.playback, positionSeconds: seconds };
+    // A newer seek or a stop has replaced or cleared the target; leave that alone.
+    if (this.seekTarget === target) target.until = Date.now() + SEEK_SETTLE_MS;
     this.push(true);
   }
 
@@ -1110,6 +1157,8 @@ export class PlayerSupervisor {
   /** Stop playback without shutting the process down. */
   async stopPlayback(): Promise<void> {
     this.settleOpening();
+    this.seekTarget = null;
+    this.trackEpoch += 1;
     const client = this.client;
     this.playback = { ...IDLE_PLAYBACK, volume: this.playback.volume, muted: this.playback.muted };
     this.push(true);

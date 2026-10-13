@@ -672,6 +672,185 @@ describe("transport", () => {
   });
 });
 
+describe("seeking", () => {
+  /** A harness whose `seek` answers only when the returned function is called. */
+  async function withDeferredSeek() {
+    const h = track(harness());
+    await h.supervisor.play("/music/a.flac");
+    const client = h.clients[0]!;
+    let release: () => void = () => undefined;
+    client.seek = async (seconds: number, mode = "absolute") => {
+      client.commands.push(["seek", seconds, mode]);
+      await new Promise<void>((resolve) => (release = resolve));
+    };
+    return { ...h, client, release: () => release() };
+  }
+  const position = (s: PlayerSupervisor) => s.getSnapshot().playback.positionSeconds;
+
+  it("keeps the target against a stale time-pos from before and after the reply", async () => {
+    const { supervisor, client, release } = await withDeferredSeek();
+    const seeking = supervisor.seek(42);
+    expect(position(supervisor)).toBe(42);
+    client.emitProperty("time-pos", 10);
+    expect(position(supervisor)).toBe(42);
+    release();
+    await seeking;
+    client.emitProperty("time-pos", 10.1);
+    expect(position(supervisor)).toBe(42);
+  });
+
+  it("takes a value near the target and stops holding", async () => {
+    const { supervisor, client, release } = await withDeferredSeek();
+    const seeking = supervisor.seek(42);
+    release();
+    await seeking;
+    client.emitProperty("time-pos", 42.05);
+    expect(position(supervisor)).toBe(42.05);
+    client.emitProperty("time-pos", 90);
+    expect(position(supervisor)).toBe(90);
+  });
+
+  it("takes a far value again once the settle window has passed", async () => {
+    const { supervisor, client, release } = await withDeferredSeek();
+    const now = vi.spyOn(Date, "now");
+    const t0 = Date.now();
+    now.mockReturnValue(t0);
+    const seeking = supervisor.seek(42);
+    release();
+    await seeking;
+    client.emitProperty("time-pos", 10);
+    expect(position(supervisor)).toBe(42);
+    now.mockReturnValue(t0 + 751);
+    client.emitProperty("time-pos", 10.2);
+    expect(position(supervisor)).toBe(10.2);
+  });
+
+  it("stopPlayback clears the hold", async () => {
+    const { supervisor, client, release } = await withDeferredSeek();
+    const seeking = supervisor.seek(42);
+    release();
+    await seeking;
+    await supervisor.stopPlayback();
+    client.emitProperty("time-pos", 10);
+    expect(position(supervisor)).toBe(10);
+  });
+
+  it("play of a new track clears the hold", async () => {
+    const { supervisor, client, release } = await withDeferredSeek();
+    const seeking = supervisor.seek(42);
+    release();
+    await seeking;
+    await supervisor.play("/music/b.flac");
+    client.emitProperty("time-pos", 1);
+    expect(position(supervisor)).toBe(1);
+  });
+
+  it("end-file clears the hold", async () => {
+    const { supervisor, client, release } = await withDeferredSeek();
+    const seeking = supervisor.seek(42);
+    release();
+    await seeking;
+    client.emit("end-file", {});
+    client.emitProperty("time-pos", 3);
+    expect(position(supervisor)).toBe(3);
+  });
+
+  it("clears the hold when the seek throws", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    const c = clients[0]!;
+    c.seek = async () => {
+      throw new Error("error running command");
+    };
+    c.emit("event", { event: "file-loaded" });
+    await expect(supervisor.seek(42)).rejects.toThrow("error running command");
+    c.emitProperty("time-pos", 10);
+    expect(position(supervisor)).toBe(10);
+  });
+
+  it("puts the old position back when the seek is refused", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    const c = clients[0]!;
+    c.emitProperty("time-pos", 10);
+    c.seek = async () => {
+      throw new Error("error running command");
+    };
+    c.emit("event", { event: "file-loaded" });
+    await expect(supervisor.seek(120)).rejects.toThrow();
+    expect(position(supervisor)).toBe(10);
+  });
+
+  it("does not let a null time-pos release the hold during the open wait", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    const c = clients[0]!;
+    const seek = c.seek.bind(c);
+    let refused = false;
+    c.seek = async (seconds: number, mode = "absolute") => {
+      if (!refused) {
+        refused = true;
+        throw new Error("error running command");
+      }
+      await seek(seconds, mode);
+    };
+    const seeking = supervisor.seek(30);
+    await new Promise((resolve) => setImmediate(resolve));
+    c.emitProperty("time-pos", null);
+    expect(position(supervisor)).toBe(30);
+    c.emitProperty("time-pos", 0.2);
+    expect(position(supervisor)).toBe(30);
+    c.emit("event", { event: "file-loaded" });
+    await seeking;
+  });
+
+  it("does not send an old seek to a track played during the open wait", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    const c = clients[0]!;
+    const seek = c.seek.bind(c);
+    let refused = false;
+    c.seek = async (seconds: number, mode = "absolute") => {
+      if (!refused) {
+        refused = true;
+        throw new Error("error running command");
+      }
+      await seek(seconds, mode);
+    };
+    const seeking = supervisor.seek(30);
+    await new Promise((resolve) => setImmediate(resolve));
+    await supervisor.play("/music/b.flac");
+    c.emit("event", { event: "file-loaded" });
+    await seeking;
+    expect(c.commands.filter((command) => command[0] === "seek")).toHaveLength(0);
+    expect(position(supervisor)).toBe(null);
+  });
+
+  it("holds the target over the open wait", async () => {
+    const { supervisor, clients } = track(harness());
+    await supervisor.play("/music/a.flac");
+    const c = clients[0]!;
+    const seek = c.seek.bind(c);
+    let refused = false;
+    c.seek = async (seconds: number, mode = "absolute") => {
+      if (!refused) {
+        refused = true;
+        throw new Error("error running command");
+      }
+      await seek(seconds, mode);
+    };
+    const seeking = supervisor.seek(30);
+    await new Promise((resolve) => setImmediate(resolve));
+    const now = vi.spyOn(Date, "now");
+    now.mockReturnValue(Date.now() + 10_000);
+    c.emitProperty("time-pos", 0.2);
+    expect(position(supervisor)).toBe(30);
+    c.emit("event", { event: "file-loaded" });
+    await seeking;
+    expect(position(supervisor)).toBe(30);
+  });
+});
+
 /**
  * The audio output (PLAYER-11, DEC-055).
  *
