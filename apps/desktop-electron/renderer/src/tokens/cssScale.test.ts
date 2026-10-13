@@ -139,8 +139,6 @@ describe("sizes at 1.5×", () => {
  * lengths it still has, and may only shrink.
  */
 const KNOWN_EXCEPTIONS: Record<string, number> = {
-  "components/PrivacyDialog.css": 1,
-  "components/ShortcutsDialog.css": 1,
   "components/player/PlayerBar.css": 2,
   "components/player/QueuePanel.css": 1,
   "screens/rekordbox-export-settings.css": 2,

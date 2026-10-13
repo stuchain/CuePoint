@@ -5,7 +5,7 @@
 }
 
 .shortcuts-dialog__table-wrap {
-  max-height: 20rem;
+  max-height: calc(320px * var(--scale));
   overflow: auto;
   border: var(--divider);
 }

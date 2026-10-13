@@ -1,7 +1,7 @@
 .privacy-dialog__text {
   margin: 0 0 var(--space-sm);
   padding: var(--space-sm);
-  max-height: 14rem;
+  max-height: calc(224px * var(--scale));
   overflow: auto;
   white-space: pre-wrap;
   font-size: var(--font-size-xs);
