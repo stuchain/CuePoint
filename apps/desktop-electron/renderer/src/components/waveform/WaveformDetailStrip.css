@@ -53,3 +53,13 @@
   flex: 1 1 auto;
   min-width: 0;
 }
+
+/* Paused, the strip is dimmed (R4-11); the full-width strip itself is not changed. */
+.cp-detail-strip[data-playing="false"] .cp-detail-strip__canvas {
+  opacity: 0.45;
+}
+
+/* It fades only where scrolling may move (Settings, Motion, "Scrolling"). */
+:root[data-motion-scroll] .cp-detail-strip__canvas {
+  transition: opacity var(--motion-base) var(--motion-fade);
+}

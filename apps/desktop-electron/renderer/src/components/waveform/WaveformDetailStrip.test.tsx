@@ -359,6 +359,19 @@ describe("a click", () => {
   });
 });
 
+describe("playing or paused (R4-11)", () => {
+  it("follows the store: true while playing, false once paused, true again on play", async () => {
+    const { push } = install();
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"));
+    expect(strip().getAttribute("data-playing")).toBe("true");
+    await push(snapshot(item(), { playing: false, paused: true }));
+    expect(strip().getAttribute("data-playing")).toBe("false");
+    await push(snapshot());
+    expect(strip().getAttribute("data-playing")).toBe("true");
+  });
+});
+
 describe("the wheel", () => {
   /** A wheel event that can be cancelled, as the browser's is. */
   let clock = 0;

@@ -332,6 +332,7 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
         ref={strip}
         className="cp-detail-strip"
         data-span-ms={spanMs}
+        data-playing={playing ? "true" : "false"}
         data-testid="waveform-detail-strip"
         data-detail={detailEntry?.kind === "detail" ? detailEntry.detail.state : (detailEntry?.kind ?? "loading")}
         data-source={detailReady ? "detail" : source ? "overview" : "none"}
