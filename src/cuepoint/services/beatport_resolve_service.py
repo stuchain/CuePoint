@@ -83,9 +83,9 @@ OUTCOME_CANCELLED = "cancelled"
 OUTCOME_FAILED = "failed"
 
 _STOPPED_BECAUSE = {
-    ERROR_NO_TOKEN: "no Beatport token is configured",
-    ERROR_REJECTED: "Beatport rejected the token",
-    ERROR_FORBIDDEN: "the token is not allowed to read the catalog",
+    ERROR_NO_TOKEN: "you are not signed in to Beatport",
+    ERROR_REJECTED: "Beatport refused the sign-in",
+    ERROR_FORBIDDEN: "this sign-in is not allowed to read the catalog",
     ERROR_RATE_LIMITED: "Beatport asked CuePoint to slow down",
 }
 

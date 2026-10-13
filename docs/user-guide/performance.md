@@ -13,22 +13,22 @@ Measured, not estimated. The numbers below come from
 refreshes it and prints this table. Run it yourself if you want the numbers for
 your machine — these are from a Windows 11 desktop, Python 3.12, on an SSD.
 
-**50,000 tracks, 250 playlists, 175,000 playlist entries** (a 20 MB export):
+**50,000 tracks, 250 playlists, 175,000 playlist entries** (a 20 MB Rekordbox file):
 
 | Operation | Time | Peak memory |
 | --- | --- | --- |
 | Import | 10.9 s | 52 MB |
 | Re-import the same file | 13.9 s | 112 MB |
-| **Check Rekordbox for changes, nothing changed** | **under 10 ms** | negligible |
-| Check Rekordbox for changes, something changed | 12.1 s | 69 MB |
+| **Check for changes, nothing changed** | **under 10 ms** | negligible |
+| Check for changes, something changed | 12.1 s | 69 MB |
 | Apply a refresh | 14.0 s | 112 MB |
 
 The resulting library file is about 20 MB.
 
 **Checking an unchanged collection is instant on purpose.** Reading a
-50,000-track export to conclude that nothing happened takes 11 seconds — as long
+50,000-track Rekordbox file to conclude that nothing happened takes 11 seconds — as long
 as importing it — and re-checking an untouched file is the common case. CuePoint
-compares the export's modified time and size against what it recorded at import
+compares the Rekordbox file's modified time and size against what it recorded at import
 and answers from that, so the Library page can tell you where you stand without
 a wait. It only ever answers "nothing changed" this way; anything that might
 have changed is read in full.
@@ -135,7 +135,7 @@ what a live match stored per track when CLEAN-02 measured it.
 | Check every file (48,000 present, 2,000 missing) | 8.6 s |
 | Look for duplicates | 2.3 s |
 | Apply Beatport's values to 5,000 tracks | 3.2 s |
-| Revert that (25,000 changes) | 3.4 s |
+| Undo that (25,000 changes) | 3.4 s |
 
 The library file is **299 MB** at this size, almost all of it the kept
 candidates: about 250 bytes each. A library that has not been matched is about
@@ -150,11 +150,11 @@ what they are sorted by, then reads the hundred rows: 131 ms for BPM, 55 ms
 for title. Sorting by artist still uses its index and takes 3 ms.
 
 **No artwork is the slowest count** because it asks, for all 45,000 tracks
-without a picture of their own, whether an accepted Beatport match would give
+without a picture of their own, whether a confirmed Beatport match would give
 them one. Health is read once when you open it.
 
 The file check and the duplicate scan run in the background after every
-import and refresh, with a progress bar and **Stop**; the apply and its revert
+import and refresh, with a progress bar and **Stop**; the apply and its undo
 run in the background too.
 
 ## Your own Collections, tags and ratings
@@ -213,7 +213,7 @@ sends the question, and the answer is worked out once, in the database.
 Measured with `python scripts/bench_sets.py` on a 50,000-track library shaped as
 Similar tracks was measured (70% of it between 120 and 130 BPM), holding a Set
 at its largest: **1,000 entries in 10 chapters, each with a target and a BPM
-range, half of them timed, and 100 warnings accepted.** Two runs, the second
+range, half of them timed, and 100 warnings marked OK.** Two runs, the second
 figure in each pair from the second run.
 
 | What you did | Time |
@@ -250,7 +250,7 @@ each pair from the second run.
 | Read a typical collection, with its cues and grids | 2.38 / 2.39 s (1.97 s without them) |
 | Read a collection where every track is prepared | 3.37 / 3.39 s (2.64 s without them) |
 | Import it: 350,000 cues and 50,000 grid markers | 9.6 / 9.5 s (6.4 s without them) |
-| Check Rekordbox for changes after one cue moved in Rekordbox | 7.6 / 7.5 s |
+| Check for changes after one cue moved in Rekordbox | 7.6 / 7.5 s |
 | Read the cues of a library imported before this release | 6.7 / 6.6 s, once, in the background |
 
 **Reading cues adds about a fifth to reading a typical collection**, and a little

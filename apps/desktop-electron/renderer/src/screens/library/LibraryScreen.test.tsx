@@ -527,7 +527,7 @@ function renderScreen(
     </ScaleProvider>
   );
   const view = render(tree(props));
-  /** Ask the page to start an import, as File → Import another file… does (K9). */
+  /** Ask the page to start an import, as File → Import a Rekordbox file… does (K9). */
   rerenderWith = (next) => view.rerender(tree({ ...props, ...next }));
   return view;
 }
@@ -593,7 +593,7 @@ describe("the empty state", () => {
     renderScreen();
 
     expect(await screen.findByText(/Export Collection in xml format/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Import your Rekordbox collection/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Import a Rekordbox file/i })).toBeInTheDocument();
     // Zeroes would read as "your library is empty", which is a different
     // problem from "you have not imported anything".
     expect(screen.queryByTestId("library-track-count")).not.toBeInTheDocument();
@@ -603,7 +603,7 @@ describe("the empty state", () => {
     const onOpen = vi.fn();
     renderScreen({ onOpenRekordboxInstructions: onOpen });
 
-    await userEvent.click(await screen.findByRole("button", { name: /How do I export/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /How do I get/i }));
 
     expect(onOpen).toHaveBeenCalled();
   });
@@ -621,9 +621,9 @@ describe("the empty state", () => {
       "In Rekordbox choose File → Export Collection in xml format, then import that file. Nothing in Rekordbox is changed.",
     );
     expect(within(first).getByRole("button", { name: "Import…" })).toBeInTheDocument();
-    expect(within(first).getByRole("button", { name: "How do I export one?" })).toBeInTheDocument();
+    expect(within(first).getByRole("button", { name: "How do I get one?" })).toBeInTheDocument();
     // The header keeps its own import button.
-    expect(screen.getAllByRole("button", { name: /Import your Rekordbox collection/ })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /Import a Rekordbox file/ })).toHaveLength(1);
   });
 
   it("the first step's Import… runs the import", async () => {
@@ -647,7 +647,7 @@ describe("the empty state", () => {
     renderScreen();
     await screen.findByText(/Export Collection in xml format/i);
 
-    expect(screen.queryByRole("button", { name: /How do I export/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /How do I get/i })).not.toBeInTheDocument();
   });
 });
 
@@ -658,7 +658,7 @@ describe("importing", () => {
       .mockResolvedValue(loadedSummary());
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Import your Rekordbox collection/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Import a Rekordbox file/i }));
 
     await waitFor(() => expect(bridge.startLibraryImport).toHaveBeenCalled());
     expect(bridge.startLibraryImport).toHaveBeenCalledWith({
@@ -673,7 +673,7 @@ describe("importing", () => {
     bridge.openXmlFileDialog.mockResolvedValue({ canceled: true });
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Import your Rekordbox collection/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Import a Rekordbox file/i }));
 
     expect(bridge.startLibraryImport).not.toHaveBeenCalled();
   });
@@ -686,7 +686,7 @@ describe("importing", () => {
     });
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Import your Rekordbox collection/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Import a Rekordbox file/i }));
 
     expect(await screen.findByText(/That file has no collection in it/i)).toBeInTheDocument();
   });
@@ -695,7 +695,7 @@ describe("importing", () => {
     bridge.startLibraryImport.mockRejectedValue(new Error("No such file: /gone.xml"));
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Import your Rekordbox collection/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Import a Rekordbox file/i }));
 
     expect(await screen.findByText(/No such file/i)).toBeInTheDocument();
   });
@@ -727,7 +727,7 @@ describe("the notice line (LIB-1, DEC-201)", () => {
   });
 
   async function importAnother() {
-    // The header has no Import button any more (K9): File → Import another file…
+    // The header has no Import button any more (K9): File → Import a Rekordbox file…
     // reaches the page as an opening, which is what is asked here.
     await screen.findByTestId("library-track-count");
     importAsks += 1;
@@ -1003,7 +1003,7 @@ describe("the refresh preview (DEC-032)", () => {
 
   async function openPreview() {
     renderScreen();
-    await userEvent.click(await screen.findByRole("button", { name: /Check Rekordbox for changes/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Check for changes/i }));
     return screen.findByRole("dialog");
   }
 
@@ -1088,7 +1088,7 @@ describe("the refresh preview (DEC-032)", () => {
     expect(bridge.startLibraryRefreshApply).not.toHaveBeenCalled();
   });
 
-  it("says so plainly when there is nothing to do", async () => {
+  it("says so in a toast, with no dialog, when there is nothing to do", async () => {
     bridge.getJobResults.mockResolvedValue({
       id: "job-preview",
       state: "succeeded",
@@ -1105,13 +1105,12 @@ describe("the refresh preview (DEC-032)", () => {
         playlists: { added: category(), changed: category(), removed: category() },
       }),
     });
-    const dialog = await openPreview();
+    renderScreen();
+    await userEvent.click(await screen.findByRole("button", { name: /Check for changes/i }));
 
-    expect(within(dialog).getByText(/already matches this export/i)).toBeInTheDocument();
-    // Nothing to confirm, so there is no confirm button to press by mistake.
-    expect(
-      within(dialog).queryByRole("button", { name: /refresh|Apply/i }),
-    ).not.toBeInTheDocument();
+    // No dialog to dismiss (R3-11): a toast says the file has no changes.
+    expect(await screen.findByText("collection.xml has no changes.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("explains a preview that failed rather than opening an empty dialog", async () => {
@@ -1122,9 +1121,9 @@ describe("the refresh preview (DEC-032)", () => {
     });
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Check Rekordbox for changes/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Check for changes/i }));
 
-    expect(await screen.findByText(/Import a Rekordbox collection first/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Import a Rekordbox file first/i)).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -1176,7 +1175,7 @@ describe("the reference warning (DEC-011)", () => {
 
   async function openPreview() {
     renderScreen();
-    await userEvent.click(await screen.findByRole("button", { name: /Check Rekordbox for changes/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /Check for changes/i }));
     return screen.findByRole("dialog");
   }
 
@@ -1223,7 +1222,7 @@ describe("without an engine", () => {
     // way to work on this page.
     expect(await screen.findByText(/Export Collection in xml format/i)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /Import your Rekordbox collection/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Import a Rekordbox file/i }));
     expect(await screen.findByText(/needs the CuePoint desktop app/i)).toBeInTheDocument();
   });
 });
@@ -1317,12 +1316,12 @@ describe("nothing to show (LIBUI-10)", () => {
   it("says the library is empty when nothing is asked of it", async () => {
     renderScreen();
 
-    expect(await screen.findByText("This Rekordbox export has no tracks in it.")).toBeInTheDocument();
+    expect(await screen.findByText("This Rekordbox file has no tracks in it.")).toBeInTheDocument();
   });
 
   it("says the playlist is empty when one is in scope", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox export has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it.");
 
     const tree = await screen.findByRole("tree", { name: "Playlists" });
     await userEvent.click(within(tree).getByText("Friday"));
@@ -1336,7 +1335,7 @@ describe("nothing to show (LIBUI-10)", () => {
     // and "this playlist is empty" would send a user to look at the wrong
     // thing. Without this the two branches could be in either order.
     renderScreen();
-    await screen.findByText("This Rekordbox export has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it.");
 
     const tree = await screen.findByRole("tree", { name: "Playlists" });
     await userEvent.click(within(tree).getByText("Friday"));
@@ -1350,7 +1349,7 @@ describe("nothing to show (LIBUI-10)", () => {
 
   it("says nothing matched when there is a search to blame", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox export has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it.");
 
     await userEvent.type(await screen.findByLabelText("Search"), "zz");
 
@@ -1363,32 +1362,32 @@ describe("nothing to show (LIBUI-10)", () => {
 
   it("offers to import another file when the export itself is empty", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox export has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it.");
     expect(
       screen.getByText("Export again from Rekordbox and import that file."),
     ).toBeInTheDocument();
 
     const table = screen.getByRole("table", { name: "Library tracks" });
-    await userEvent.click(within(table).getByRole("button", { name: "Import another file…" }));
+    await userEvent.click(within(table).getByRole("button", { name: "Import a Rekordbox file…" }));
 
     await waitFor(() => expect(bridge.openXmlFileDialog).toHaveBeenCalledTimes(1));
   });
 
   it("offers to check Rekordbox from an empty playlist", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox export has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it.");
     const tree = await screen.findByRole("tree", { name: "Playlists" });
     await userEvent.click(within(tree).getByText("Friday"));
     await screen.findByText("This playlist is empty.");
     expect(
       screen.getByText(
-        "Playlists come from Rekordbox. Add tracks to it there, then Check Rekordbox for changes.",
+        "Playlists come from Rekordbox. Add tracks to it there, then Check for changes.",
       ),
     ).toBeInTheDocument();
 
     const table = screen.getByRole("table", { name: "Library tracks" });
     await userEvent.click(
-      within(table).getByRole("button", { name: "Check Rekordbox for changes" }),
+      within(table).getByRole("button", { name: "Check for changes" }),
     );
 
     await waitFor(() => expect(bridge.startLibraryRefreshPreview).toHaveBeenCalledTimes(1));
@@ -1396,7 +1395,7 @@ describe("nothing to show (LIBUI-10)", () => {
 
   it("clears the search from the empty table that the search emptied", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox export has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it.");
     const search = await screen.findByLabelText("Search");
     await userEvent.type(search, "zz");
     await screen.findByText("No tracks match this search.");
@@ -1406,13 +1405,13 @@ describe("nothing to show (LIBUI-10)", () => {
 
     expect(search).toHaveValue("");
     expect(
-      await screen.findByText("This Rekordbox export has no tracks in it."),
+      await screen.findByText("This Rekordbox file has no tracks in it."),
     ).toBeInTheDocument();
   });
 
   it("clears every filter from the empty table the filters emptied", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox export has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it.");
     await userEvent.click(await screen.findByRole("button", { name: "Add filter" }));
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
@@ -1422,14 +1421,14 @@ describe("nothing to show (LIBUI-10)", () => {
     await userEvent.click(within(table).getByRole("button", { name: "Clear all filters" }));
 
     expect(
-      await screen.findByText("This Rekordbox export has no tracks in it."),
+      await screen.findByText("This Rekordbox file has no tracks in it."),
     ).toBeInTheDocument();
     expect(lastBrowse().filters ?? null).toBeNull();
   });
 
   it("opens Add filter from an empty Smart Collection's Edit the rules", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox export has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it.");
     const tree = await screen.findByRole("tree", { name: "Collections" });
     await userEvent.click(within(tree).getByText("Recent techno"));
     await screen.findByText("Nothing matches these rules right now.");
@@ -1441,7 +1440,7 @@ describe("nothing to show (LIBUI-10)", () => {
 
   it("sends an empty Collection back to the whole library to pick tracks", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox export has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it.");
     const tree = await screen.findByRole("tree", { name: "Collections" });
     await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
     await userEvent.click(within(tree).getByText("Warmups"));
@@ -1451,7 +1450,7 @@ describe("nothing to show (LIBUI-10)", () => {
 
     await waitFor(() => expect(lastBrowse().collectionId ?? null).toBeNull());
     expect(
-      await screen.findByText("This Rekordbox export has no tracks in it."),
+      await screen.findByText("This Rekordbox file has no tracks in it."),
     ).toBeInTheDocument();
   });
 });
@@ -1532,7 +1531,7 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
     await userEvent.click(screen.getByText("Track 2"));
     await screen.findByText("1 selected");
 
-    await userEvent.click(screen.getByRole("button", { name: /Check Rekordbox for changes/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.type(dialog, "{Escape}");
 
@@ -1928,7 +1927,7 @@ describe("after a refresh (LIBUI-10)", () => {
     const browsesBefore = bridge.browseLibrary.mock.calls.length;
     const treesBefore = bridge.getLibraryPlaylists.mock.calls.length;
 
-    await userEvent.click(screen.getByRole("button", { name: /Check Rekordbox for changes/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.click(within(dialog).getByRole("button", { name: /Remove 2 tracks and refresh/i }));
 
@@ -2410,7 +2409,7 @@ describe("organizing a selection (ORG-11)", () => {
       expect(bridge.applyBatch).not.toHaveBeenCalled();
     });
 
-    it("says the batch can be reverted from Activity (DEC-008, CLEAN-13)", async () => {
+    it("says the batch can be undone from Activity (DEC-008, CLEAN-13)", async () => {
       // No undo stack, but since CLEAN-13 a batch is reverted as one from
       // Activity, and the confirmation says where rather than "no undo".
       renderScreen();
@@ -3414,7 +3413,7 @@ describe("the table's empty state (ORG-13)", () => {
     renderScreen();
     await tableReady();
 
-    await userEvent.click(screen.getByRole("button", { name: /Check Rekordbox for changes/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
     const dialog = await screen.findByRole("dialog");
     // The warning is real now, with real numbers.
     expect(dialog).toHaveTextContent(
@@ -3428,7 +3427,7 @@ describe("the table's empty state (ORG-13)", () => {
     await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
     await userEvent.click(within(tree).getByText("Warmups"));
 
-    expect(await screen.findByText(/no longer in your Rekordbox export/)).toBeInTheDocument();
+    expect(await screen.findByText(/no longer in your Rekordbox file/)).toBeInTheDocument();
     expect(screen.queryByText(/Drop tracks onto it/)).not.toBeInTheDocument();
   });
 
@@ -3462,7 +3461,7 @@ describe("the table's empty state (ORG-13)", () => {
 
     renderScreen();
     await tableReady();
-    await userEvent.click(screen.getByRole("button", { name: /Check Rekordbox for changes/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.click(within(dialog).getByLabelText(/I understand/i));
     await userEvent.click(within(dialog).getByRole("button", { name: /Remove 2 tracks/i }));
@@ -3473,7 +3472,7 @@ describe("the table's empty state (ORG-13)", () => {
     await userEvent.click(within(tree).getByText("Warmups"));
 
     expect(await screen.findByText(/Drop tracks onto it/)).toBeInTheDocument();
-    expect(screen.queryByText(/no longer in your Rekordbox export/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no longer in your Rekordbox file/)).not.toBeInTheDocument();
   });
 });
 
@@ -3494,7 +3493,7 @@ describe("opened on a Health count's rules (CLEAN-12)", () => {
     expect(lastBrowse().scope).toBeUndefined();
   });
 
-  it("says on the notice line how many tracks have no key, for Key is empty (FLW-14)", async () => {
+  it("says on the notice line how many tracks have no key, for Key is not set (FLW-14)", async () => {
     const NO_KEY: FilterRuleSet = { match: "all", rules: [{ field: "key", operator: "is_empty" }] };
     const onOpenMatch = vi.fn();
     renderScreen({ openWith: { rules: NO_KEY, token: "nav-1" }, onOpenMatch });

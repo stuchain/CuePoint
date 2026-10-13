@@ -10,7 +10,7 @@ const PRIVACY_TEXT = `CuePoint respects your privacy.
 
 Data collection:
 - No analytics or usage tracking
-- Error reports: when CuePoint hits an unexpected error, a released build sends a report to Sentry (EU region) unless you turn it off. Reports are cleaned on your computer so they do not include file, folder, track, artist, label or playlist names, the notes and tags you keep in CuePoint, or tokens. The Privacy Notice says what a report carries and how long it is kept.
+- Error reports: when CuePoint hits an unexpected error, a released build sends a report to Sentry (EU region) unless you turn it off. Reports are cleaned on your computer so they do not include file, folder, track, artist, label or playlist names, the notes and tags you keep in CuePoint, or your Beatport sign-in. The Privacy Notice says what a report carries and how long it is kept.
 
 Network requests:
 - Beatport scraping/search: user-initiated only
@@ -18,7 +18,7 @@ Network requests:
 
 Local storage:
 - Match history CSV exports and configuration on disk
-- Beatport token stored locally when configured
+- Your Beatport sign-in stored locally when you sign in
 - Logs and cache for debugging (can be cleared)
 
 You can clear the cache and the logs now. Whether CuePoint sends error reports, and whether

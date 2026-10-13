@@ -509,15 +509,15 @@ test.describe("the website's pictures (SITE-04)", () => {
         await expect(dialog).toHaveCount(0);
       });
 
-      await test.step("discover: a search's results", async () => {
+      await test.step("discover: a dig's results", async () => {
         await window.getByRole("link", { name: "Discover", exact: true }).click();
-        await window.getByRole("tab", { name: "New search" }).click();
-        const panel = window.getByRole("region", { name: "New search" });
+        await window.getByRole("tab", { name: "New dig" }).click();
+        const panel = window.getByRole("region", { name: "New dig" });
         await expect(panel).toBeVisible({ timeout: 30_000 });
         await panel.getByRole("checkbox", { name: "House", exact: true }).check();
         await panel.getByRole("button", { name: "Start looking" }).click();
         await expect(window.getByText(/^Found \d+ tracks from 1 chart/)).toBeVisible({ timeout: 90_000 });
-        const found = window.getByRole("table", { name: "Tracks this search found" });
+        const found = window.getByRole("table", { name: "Tracks this dig found" });
         await expect(found.locator(".track-table__row").first()).toBeVisible();
         await idle(window);
         // Beatport's rows have nothing to inspect: the panel away gives the search its width

@@ -184,7 +184,7 @@ export function CleanScreen({
         <ScreenHeader title="Clean" inset />
         <EmptyState
           headline="No collection imported yet"
-          description="Clean works on your library. Import a Rekordbox collection in the Library first."
+          description="Clean works on your library. Import a Rekordbox file in the Library first."
           action={{ label: IMPORT_COLLECTION_LABEL, onClick: () => navigate("/library", { state: libraryImportState() }) }}
         />
       </div>

@@ -211,7 +211,7 @@ test.describe("Phase 3 end to end (LIBRARY-12)", () => {
       await window.getByRole("link", { name: "Library" }).click();
       await expect(window.getByText("Changed in Rekordbox")).toBeVisible({ timeout: 30_000 });
 
-      await window.getByRole("button", { name: /Check Rekordbox for changes/i }).click();
+      await window.getByRole("button", { name: /Check for changes/i }).click();
       const dialog = window.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 30_000 });
 

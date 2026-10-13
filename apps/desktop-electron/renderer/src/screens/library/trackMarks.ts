@@ -86,7 +86,7 @@ export const VARIABLE_GRID_HINT = "The tempo changes during the track";
  * missing, they are waiting, and "No cues" would say otherwise.
  */
 export const MARKS_NOT_READ =
-  "Cue points and the beat grid are read from Rekordbox. They appear after you Check Rekordbox for changes.";
+  "Cue points and the beat grid are read from Rekordbox. They appear after you Check for changes.";
 
 /** The grid in one line: "Beat grid · 128 BPM", or a variable grid's range. */
 export function beatGridLine(grid: TrackBeatGridSummary | null, read: boolean): string | null {

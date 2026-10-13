@@ -305,7 +305,7 @@ def apply_or_start(
 # ---------------------------------------------------------------------------
 
 #: What the status strip says while a batch is reverted.
-REVERT_PROGRESS_MESSAGE = "Reverting changes"
+REVERT_PROGRESS_MESSAGE = "Undoing changes"
 
 
 def _revert_service() -> Any:

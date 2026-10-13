@@ -6,6 +6,7 @@ import type {
 } from "../api/cuepointBridge.types";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
 import { BEATPORT_TOKEN_STATUS, useReportReadError, useSharedRead } from "../api/sharedReads";
+import { NEEDS_DESKTOP } from "../api/userMessage";
 
 /** What Settings shows when there is no desktop bridge, or main cannot answer. */
 const SIGNED_OUT: BeatportAuth = {
@@ -96,7 +97,7 @@ export function useBeatportToken() {
 
   const signIn = useCallback(async () => {
     if (!window.cuepoint?.beatportSignIn) {
-      setAuthError("Open CuePoint as a desktop app to sign in.");
+      setAuthError(NEEDS_DESKTOP);
       return null;
     }
     setSigningIn(true);
@@ -138,7 +139,7 @@ export function useBeatportToken() {
   // The paste fallback goes to main, which encrypts it; the engine never writes it to a file.
   const savePasted = useCallback(async () => {
     if (!window.cuepoint?.saveBeatportPastedToken) {
-      setAuthError("Open CuePoint as a desktop app to save a token.");
+      setAuthError(NEEDS_DESKTOP);
       return null;
     }
     const token = draft.trim();
@@ -166,7 +167,7 @@ export function useBeatportToken() {
   // and environment buttons test the token CuePoint holds, whatever the field holds.
   const test = useCallback(async (useDraft = false) => {
     if (!window.cuepoint?.testBeatportToken) {
-      throw new Error("Open CuePoint as a desktop app to test a token.");
+      throw new Error(NEEDS_DESKTOP);
     }
     setTesting(true);
     setTestMessage(null);

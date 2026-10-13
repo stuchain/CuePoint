@@ -356,10 +356,10 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
       <div className="screen screen--scroll keys-page">
         {header}
         <div className="keys-empty keys-empty--page">
-          <p className="keys-empty__headline">Import your Rekordbox collection first</p>
+          <p className="keys-empty__headline">Import a Rekordbox file first</p>
           <p className="keys-note">The Keys page counts the keys of the tracks in your library.</p>
           <Button variant="primary" onClick={() => navigate("/library", { state: libraryImportState() })}>
-            Import your Rekordbox collection…
+            Import a Rekordbox file…
           </Button>
         </div>
       </div>

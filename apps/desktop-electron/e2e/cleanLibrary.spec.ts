@@ -201,7 +201,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await expect(tone.locator('[data-column="key"]')).toHaveText("—");
       await tone.getByText("Tone One").click();
       const inspector = window.locator(".cp-track-detail");
-      await expect(inspector.locator(".cp-track-detail__keyline")).toContainText("No Beatport key");
+      await expect(inspector.locator(".cp-track-detail__keyline")).toContainText("—");
       const resolved = await window.evaluate(async () => {
         const rows = await window.cuepoint!.browseLibrary!({ limit: 10 });
         return rows.tracks.map((t) => ({ key: t.key, effective: t.effective_key, source: t.key_source }));
@@ -232,7 +232,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await expect(dialog).toHaveCount(0, { timeout: 15_000 });
 
       // The table shows the typed value, marked, and says where it came from.
-      const mark = row(window, "Tone One").getByRole("img", { name: /^Key typed by you\. Rekordbox.s key is not used\./ });
+      const mark = row(window, "Tone One").getByRole("img", { name: /^Key typed by you\. CuePoint uses Beatport.s key, not Rekordbox.s\./ });
       await expect(mark).toBeVisible({ timeout: 15_000 });
       await expect(row(window, "Tone One")).toContainText("11A");
       await expect(inspector.locator(".cp-track-detail__keyline")).toContainText("11A");
@@ -252,7 +252,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
 
       // Reverted from History, the imported value shows again, unmarked.
       await inspector.getByRole("button", { name: /^History/ }).click();
-      await inspector.getByRole("button", { name: /^Revert: Your key/ }).click();
+      await inspector.getByRole("button", { name: /^Undo: Your key/ }).click();
       await expect(row(window, "Tone One").getByRole("img")).toHaveCount(0, { timeout: 15_000 });
       // Rekordbox's key is not used: with the correction gone the Key column is empty.
       await expect(row(window, "Tone One").locator('[data-column="key"]')).toHaveText("—");
@@ -286,7 +286,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
         await expect(menu.getByRole("menuitem", { name: entry, exact: true })).toBeVisible();
       }
       // Saving into the files is the save bar's (C23), not More's.
-      await expect(menu.getByRole("menuitem", { name: "Save changes into the files…" })).toHaveCount(0);
+      await expect(menu.getByRole("menuitem", { name: "Save to files…" })).toHaveCount(0);
       await menu.getByRole("menuitem", { name: "Edit values…" }).click();
       // The editor opens at once, in place on the Library, over the three tracks chosen (K4).
       const dialog = window.getByRole("dialog", { name: "Edit values" });
@@ -305,9 +305,9 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
         .getByRole("listitem")
         .filter({ hasText: /Set the BPM to 126(\.0)? on 3 tracks/ })
         .filter({ hasNotText: "changes of" });
-      await entry.getByRole("button", { name: "Revert this batch" }).click();
-      await entry.getByRole("button", { name: "Revert", exact: true }).click();
-      await expect(entry).toContainText("Reverted 3 changes.", { timeout: 15_000 });
+      await entry.getByRole("button", { name: "Undo this batch" }).click();
+      await entry.getByRole("button", { name: "Undo", exact: true }).click();
+      await expect(entry).toContainText("Undid 3 changes.", { timeout: 15_000 });
       await window.keyboard.press("Escape");
       await expect(activity).toHaveCount(0);
       await expect(row(window, "Tone Two").locator('[data-column="bpm"]')).toHaveText("124", { timeout: 15_000 });
@@ -373,12 +373,12 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       // The write's Activity entry offers Restore, and it puts the values back.
       await window.keyboard.press("Control+Shift+A");
       const activity = window.getByRole("dialog", { name: "Activity" });
-      const entry = activity.getByRole("listitem").filter({ hasText: "Wrote tags to 1 file" });
-      await expect(entry).toContainText("can be put back", { timeout: 15_000 });
-      await entry.getByRole("button", { name: "Restore" }).click();
-      await entry.getByRole("button", { name: "Restore" }).click();
-      await expect(entry).toContainText("Restored 1 file.", { timeout: 30_000 });
-      await expect(entry).toContainText("Everything saved into files has been put back.");
+      const entry = activity.getByRole("listitem").filter({ hasText: "Saved to 1 file" });
+      await expect(entry).toContainText("can be undone", { timeout: 15_000 });
+      await entry.getByRole("button", { name: "Undo" }).click();
+      await entry.getByRole("button", { name: "Undo" }).click();
+      await expect(entry).toContainText("Undid 1 file.", { timeout: 30_000 });
+      await expect(entry).toContainText("Everything saved to files has been undone.");
       expect(readFileSync(files[0]!).includes(Buffer.from("TKEY"))).toBe(false);
 
       const record = await window.evaluate(async () => {
@@ -403,13 +403,13 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
 
       const zone = window.getByRole("region", { name: "Beatport" });
       // Folded until asked for, with its news on the heading.
-      await expect(zone.getByRole("button", { name: /^Beatport · Accepted/ })).toHaveAttribute(
+      await expect(zone.getByRole("button", { name: /^Beatport · Confirmed/ })).toHaveAttribute(
         "aria-expanded",
         "false",
         { timeout: 15_000 },
       );
       await zone.getByRole("button", { name: /^Beatport/ }).click();
-      await expect(zone).toContainText("Accepted automatically", { timeout: 15_000 });
+      await expect(zone).toContainText("Confirmed automatically", { timeout: 15_000 });
       const genre = zone.locator('[data-field="genre"]');
       await expect(genre).toContainText("Rekordbox House");
       await expect(genre).toContainText("Beatport Melodic House & Techno");
@@ -429,7 +429,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
         timeout: 15_000,
       });
       await expect(
-        row(window, "Tone One").getByRole("img", { name: /^Genre applied from Beatport\. Rekordbox has House\./ }),
+        row(window, "Tone One").getByRole("img", { name: /^Genre applied from Beatport\. In Rekordbox it is House\./ }),
       ).toBeAttached();
 
       await zone.getByRole("button", { name: "Open on the Clean page" }).click();

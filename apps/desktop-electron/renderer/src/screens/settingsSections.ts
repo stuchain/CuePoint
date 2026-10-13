@@ -11,7 +11,7 @@ export const SETTINGS_SECTIONS = [
   { id: "settings-playback", title: "Playback" },
   { id: "settings-waveforms", title: "Waveforms" },
   { id: "settings-beatport", title: "Beatport" },
-  { id: "settings-rekordbox-export", title: "Rekordbox export" },
+  { id: "settings-rekordbox-export", title: "Rekordbox" },
   { id: "settings-privacy", title: "Privacy" },
   { id: "settings-about", title: "About & updates" },
 ] as const;

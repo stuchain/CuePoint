@@ -135,7 +135,7 @@ a line what it looks for and has one button to where it is dealt with.
   with the date of the latest check, or "Files have not been checked yet".
   **Fix in Clean ›** opens Clean's Missing files tab, where the check is run.
 - **Beatport** is where each track stands in matching, in the words Clean
-  uses: **Accepted**, **Waiting for you** (a match is waiting for your
+  uses: **Confirmed**, **Waiting for you** (a match is waiting for your
   decision), **Rejected**, **No match** and **Not matched**. **Fix in
   Clean ›** opens Clean's Match tab to review and match. Clean, Statistics and
   the Library's filter use the same words for these states.

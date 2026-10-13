@@ -21,7 +21,7 @@ Common issues and solutions.
 The desktop app does not run preflight. The CLI runs it when `product.preflight_enabled` is `true` in `~/.cuepoint/config.yaml`, and always for `--preflight-only` (or `--dry-run`). `--no-preflight` skips it. Each issue prints as `code: message`. `--preflight-report PATH` writes them as JSON.
 
 **Solutions**:
-- **XML file not found**: reselect the XML export file and confirm the path
+- **XML file not found**: reselect the Rekordbox file and confirm the path
 - **XML unreadable**: check file permissions and ensure the file isn't locked
 - **Playlist not found**: choose a playlist name that exists in the XML
 - **Playlist empty**: export a playlist that contains tracks
@@ -183,7 +183,7 @@ If a command-line run is interrupted:
 
 **Workaround**: Download the latest installer from [Releases](https://github.com/stuchain/CuePoint/releases) and install it over your current version.
 
-### Large XML Exports May Be Slow
+### Large Rekordbox Files May Be Slow
 
 **Problem**: Processing stalls or takes very long for large XML files.
 
@@ -196,7 +196,7 @@ If a command-line run is interrupted:
 The **Help** menu has the tools you need to find out what went wrong and to report it.
 
 - **Get help...** is the one place to go. It sends a note you write (with the app's version and the id of the last error report) when you press **Send note**, and **Save a help file...** saves your settings and CuePoint's log as one file you can attach to an email or a GitHub issue; your sign-in and your user folder name are left out. **Open log folder** is there too. When sending is off, the dialog says so and the help file still works.
-- Under **Details for support** in Get help, **Diagnostics...** shows whether CuePoint's library service is connected, its version and the session ID.
+- Under **Details for support** in Get help, **Diagnostics...** shows whether CuePoint's engine is connected, its version and the session ID.
 - **Log viewer...** (also under **Details for support**) shows the application log. Filter by **Level**, **Search** the text, turn on **Auto-refresh**, or use **Refresh**, **Clear logs**, **Export...** (saves what you see to a text file) and **Open logs folder**.
 - From the CLI, `python main.py --export-support-bundle` writes the same help file and prints its path.
 - **Privacy...** shows whether error reports are on, sets whether the cache and logs are cleared when you quit, and clears them now. See the [Privacy Notice](../policy/privacy-notice.md).

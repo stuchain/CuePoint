@@ -18,7 +18,7 @@ export function LibraryNoKeyNote({ count }: LibraryNoKeyNoteProps) {
     <div className="library-notice" role="status" aria-label="Tracks with no Beatport key">
       <p className="library-notice__line">
         {`${count.toLocaleString()} ${count === 1 ? "track has" : "tracks have"} no Beatport key.`}{" "}
-        A key comes from a track&apos;s accepted match. A track that was matched can still have
+        A key comes from a track&apos;s confirmed match. A track that was matched can still have
         none when Beatport&apos;s record has none, so this is not the same as Not matched.
       </p>
     </div>

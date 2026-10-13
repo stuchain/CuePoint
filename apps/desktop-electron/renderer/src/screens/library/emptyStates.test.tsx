@@ -184,7 +184,7 @@ describe("a Collection holding nothing", () => {
       emptiedByRefresh: true,
     });
 
-    expect(view.hint).toMatch(/no longer in your Rekordbox export/);
+    expect(view.hint).toMatch(/no longer in your Rekordbox file/);
     // The invitation is wrong here: these tracks were not missing, they were
     // taken (DEC-011).
     expect(view.hint).not.toMatch(/Drop tracks onto it/);

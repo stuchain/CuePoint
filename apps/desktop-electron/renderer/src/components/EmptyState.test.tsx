@@ -7,7 +7,7 @@ import css from "./EmptyState.css?raw";
 
 describe("EmptyState", () => {
   it("exports the one import label", () => {
-    expect(IMPORT_COLLECTION_LABEL).toBe("Import your Rekordbox collection…");
+    expect(IMPORT_COLLECTION_LABEL).toBe("Import a Rekordbox file…");
   });
 
   it("shows the headline and the muted line", () => {

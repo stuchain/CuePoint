@@ -3,7 +3,7 @@
  *
  * Accepting, rejecting, applying and typing values run as ORG-11's batches, so
  * they need the same sentences: the confirmation above the threshold, and the
- * counts afterwards. And since a batch can now be reverted from Activity, the
+ * counts afterwards. And since a batch can now be undone from Activity, the
  * sentences say so — except for Collection membership, which cannot be.
  */
 import { describe, expect, it } from "vitest";
@@ -50,7 +50,7 @@ const clearKey: BatchAction = {
 
 describe("the question above the threshold", () => {
   it.each([
-    [accept, "Accept the proposed Beatport match on 2,000 tracks?"],
+    [accept, "Confirm the proposed Beatport match on 2,000 tracks?"],
     [reject, "Reject the proposed Beatport match on 2,000 tracks?"],
     [apply, "Apply Beatport's key and BPM to 2,000 tracks?"],
     [setBpm, "Set the BPM to 128 on 2,000 tracks?"],
@@ -63,26 +63,26 @@ describe("the question above the threshold", () => {
 describe("what happened", () => {
   it("counts decisions, and says why the rest were left", () => {
     expect(batchSummary(accept, result({ changed: 1, unchanged: 3 }))).toBe(
-      "Accepted the match on 1 track — 3 were already decided or had nothing proposed.",
+      "Confirmed the match on 1 track — 3 were already decided or had nothing proposed.",
     );
     expect(batchSummary(reject, result({ changed: 1 }))).toBe("Rejected the match on 1 track.");
   });
 
   it("counts applied and typed values", () => {
     expect(batchSummary(apply, result({ changed: 1, unchanged: 2 }))).toBe(
-      "Applied Beatport's key and BPM to 1 track — 2 had no accepted match or already held those values.",
+      "Applied Beatport's key and BPM to 1 track — 2 had no confirmed match or already held those values.",
     );
     expect(batchSummary(setBpm, result({ changed: 1, unchanged: 1 }))).toBe(
       "Set the BPM to 128 on 1 track — 1 already had it.",
     );
     expect(batchSummary(clearKey, result({ changed: 1, unchanged: 4 }))).toBe(
-      "Cleared your key on 1 track — 4 had none.",
+      "Cleared your key on 1 track — 4 were already not set.",
     );
   });
 
   it("points at Activity for a batch that can be reverted", () => {
     expect(batchSummary(setBpm, result({ changed: 40 }))).toBe(
-      "Set the BPM to 128 on 40 tracks. Each change is in the track's History, and the whole batch can be reverted from Activity.",
+      "Set the BPM to 128 on 40 tracks. Each change is in the track's History, and the whole batch can be undone from Activity.",
     );
   });
 

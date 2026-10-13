@@ -2,7 +2,7 @@
  * What an Activity entry offers (CLEAN-13).
  *
  * Decided from what the engine recorded: a batch offers a revert — disabled,
- * with its reason, for Collection membership — and a tag write offers Restore.
+ * with its reason, for Collection membership — and a save to files offers Undo.
  * Unconfirmed writes are counted as unfinished, never as written.
  */
 import { describe, expect, it } from "vitest";
@@ -109,16 +109,16 @@ describe("an interrupted match's entry (CLEAN-14)", () => {
 describe("what a record of writes says", () => {
   it("never calls an unconfirmed write written", () => {
     expect(writesLine(5, 2)).toBe(
-      "2 saves may not have finished, and 3 values were saved. Putting the files back restores every one.",
+      "2 saves may not have finished, and 3 values were saved. Undoing the save puts every one back as it was.",
     );
     expect(writesLine(2, 2)).toBe(
-      "2 saves may not have finished. Putting the files back restores every one; a file still holding its old value counts as put back.",
+      "2 saves may not have finished. Undoing the save puts every one back as it was; a file still holding its old value counts as undone.",
     );
   });
 
-  it("counts confirmed writes, and says when all are put back", () => {
-    expect(writesLine(1, 0)).toBe("1 value saved into files can be put back.");
-    expect(writesLine(0, 0)).toBe("Everything saved into files has been put back.");
+  it("counts confirmed writes, and says when all are undone", () => {
+    expect(writesLine(1, 0)).toBe("1 value saved to files can be undone.");
+    expect(writesLine(0, 0)).toBe("Everything saved to files has been undone.");
   });
 });
 
@@ -162,18 +162,18 @@ function restored(overrides: Partial<TagRestoreResult> = {}): TagRestoreResult {
 describe("what an action says when it is done", () => {
   it("counts a revert's changes, skips and failures", () => {
     expect(revertedLine(reverted())).toBe(
-      "Reverted 3 changes, 1 skipped because the value changed since, 1 already in place.",
+      "Undid 3 changes, 1 skipped because the value changed since, 1 already in place.",
     );
     expect(revertedLine(reverted({ changed: 1, skipped: 0, unchanged: 0, failed: 2, cancelled: true }))).toBe(
-      "Stopped early. Reverted 1 change, 2 could not be reverted.",
+      "Stopped early. Undid 1 change, 2 could not be undone.",
     );
-    expect(revertedLine(null)).toBe("Reverted.");
+    expect(revertedLine(null)).toBe("Undone.");
   });
 
   it("adds up restores", () => {
     expect(restoredLine([restored(), restored({ files: 1, skipped: 2, failed: 1 })])).toBe(
-      "Restored 3 files, 2 values left alone because the file changed since, 1 could not be restored.",
+      "Undid 3 files, 2 values left alone because the file changed since, 1 could not be undone.",
     );
-    expect(restoredLine([])).toBe("Restored 0 files.");
+    expect(restoredLine([])).toBe("Undid 0 files.");
   });
 });

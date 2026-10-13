@@ -187,7 +187,7 @@ describe("nothing missing (K13)", () => {
   it("shows no steps, table, headers, count or Columns", async () => {
     await nothingMissing();
     expect(screen.queryByRole("list", { name: "How to fix a missing file" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Check Rekordbox for changes" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Check for changes" })).toBeNull();
     expect(screen.queryByRole("table", { name: "Missing files" })).toBeNull();
     expect(screen.queryByRole("columnheader")).toBeNull();
     expect(screen.queryByText(/0 tracks/)).toBeNull();

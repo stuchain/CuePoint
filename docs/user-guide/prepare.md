@@ -54,7 +54,7 @@ A Set holds at most 1,000 entries. A Collection holds larger lists.
   bar's **Organize ▸**, makes a Set of the tracks you selected, in the order the
   table shows them.
 - **Duplicate**, on a Set's right-click menu in the Library, copies a Set
-  whole — chapters, times, notes and accepted warnings — which is how last
+  whole — chapters, times, notes and warnings marked OK — which is how last
   week's plan becomes this week's.
 
 Every one of these is a copy. The Collection, playlist or selection it came
@@ -119,7 +119,7 @@ open. Its three buttons are **Play Set**, **Set** and **View**. Under them, one 
 says how many tracks the Set has, its planned running time (left out until you type
 a time), and how many warnings its checks found ("32 tracks · 19 warnings"; hover
 the time for how many entries have no time, and the warnings for what they are and
-how many you accepted), and — when it applies — "Files not checked" with
+how many you marked OK), and — when it applies — "Files not checked" with
 **Missing files ›**, which opens the [Clean](clean.md) page's Missing files (Prepare
 no longer runs the file check itself; run **Check every file** there), and "3 without
 key" (hover for the whole sentence). A missing key is not a warning: those entries
@@ -231,14 +231,14 @@ counted. A Set whose files were never checked says so rather than claiming none
 are missing; choose **Missing files ›** beside "Files not checked" in the header's line, or run
 **Check every file** on the [Clean](clean.md) page.
 
-**Accepting a transition warning.** Select the entry, and in **In this Set**, or
+**Marking a transition warning OK.** Select the entry, and in **In this Set**, or
 beside the warning in the [transition strip](#the-transition-strip), choose
-**Accept** once you have heard the mix work. It stays
-visible, muted and marked accepted, and **Undo accept** takes the acceptance
-back. An accepted warning comes back on its own when either track, or
+**Mark OK** once you have heard the mix work. It stays
+visible, muted and marked OK, and **Undo Mark OK** takes the mark
+off. A warning marked OK comes back on its own when either track, or
 the value it compared, changes — a different track in the slot, a corrected BPM
-or key — because what you accepted is no longer what is there. A key clash
-accepted under one pair of keys comes back when Beatport's key replaces
+or key — because what you marked OK is no longer what is there. A key clash
+marked OK under one pair of keys comes back when Beatport's key replaces
 Rekordbox's and the new pair still clashes.
 
 ## Suggestions and the Library tab
@@ -336,8 +336,8 @@ after it, so you can see how one track ends and the next begins:
   [Loudness](waveforms.md#loudness).
 - **A warning on that transition** is a few words at the end of the caption ("Tempo
   jump", "Keys clash"; hover for the sentence), with
-  **Accept** beside it ("Undo accept" once accepted). Only one is shown, the first
-  you have not accepted (a key clash before a tempo jump); any others, accepted or
+  **Mark OK** beside it ("Undo Mark OK" once marked). Only one is shown, the first
+  you have not marked OK (a key clash before a tempo jump); any others, marked or
   not, are counted as "+1 more" (hover it), and the Inspector lists them all. The strip is no taller for
   it.
 
@@ -387,7 +387,7 @@ recorded in **Activity**. The Library's right-click menu on a Set has both too.
 **Set → Export to Rekordbox…** opens the export with the Set ticked. The
 Set is written as **one playlist**, in its running order with its repeats, under
 the export's `CuePoint` folder at the folder path it has in CuePoint. Its
-chapters, times, notes and accepted warnings are not written: the playlist is
+chapters, times, notes and warnings marked OK are not written: the playlist is
 the running order and nothing else. Everything else about the export is as
 [Exporting to Rekordbox](rekordbox-export.md) describes.
 
@@ -402,7 +402,7 @@ says so when you open it.
 
 In the same database as the rest of your library, which CuePoint backs up on
 launch. **Those backups are the only copy of a Set's plan.** A Set's tracks can
-be exported, but its chapters, times, notes and accepted warnings exist nowhere
+be exported, but its chapters, times, notes and warnings marked OK exist nowhere
 else. Restoring a backup brings all of it back together with the Collections
 beside it.
 

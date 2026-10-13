@@ -134,7 +134,7 @@ export function SetSourceDialog({ open, groups, onChoose, onClose }: SetSourceDi
         {all.length === 0 ? (
           <p className="prepare-dialog__note">
             There is nothing to copy yet: make a Collection in the Library, or import a
-            Rekordbox collection with playlists.
+            Rekordbox file with playlists.
           </p>
         ) : (
           <Select

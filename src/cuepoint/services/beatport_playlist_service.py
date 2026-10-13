@@ -94,19 +94,17 @@ NAME_FORMAT_KEY = "incrate.playlist_name_format"
 _NAME_FORMATS = ("short", "iso")
 
 _STOPPED_BECAUSE = {
-    ERROR_NO_TOKEN: "no Beatport token is configured",
-    ERROR_REJECTED: "Beatport rejected the token",
-    ERROR_FORBIDDEN: "the token is not allowed to change playlists",
+    ERROR_NO_TOKEN: "you are not signed in to Beatport",
+    ERROR_REJECTED: "Beatport refused the sign-in",
+    ERROR_FORBIDDEN: "this sign-in is not allowed to change playlists",
     ERROR_RATE_LIMITED: "Beatport asked CuePoint to slow down",
 }
 
 #: What a refused create says, by class. A 403 here is DEC-099's case.
 _CREATE_REFUSED = {
-    ERROR_NO_TOKEN: "no Beatport token is configured",
-    ERROR_REJECTED: "Beatport rejected the token; it may have expired",
-    ERROR_FORBIDDEN: (
-        "Beatport accepted the token but won't allow making playlists with it."
-    ),
+    ERROR_NO_TOKEN: "you are not signed in to Beatport",
+    ERROR_REJECTED: "Beatport refused the sign-in; it may have ended",
+    ERROR_FORBIDDEN: ("Beatport let CuePoint in but won't allow making playlists."),
     ERROR_RATE_LIMITED: "Beatport asked CuePoint to slow down; try again later",
 }
 

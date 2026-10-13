@@ -329,7 +329,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         // The accepted match's key ("E Minor") is the key: Camelot 9A, not Rekordbox's 8A.
         await expect(row).toContainText("9A");
         await expect(
-          row.getByRole("img", { name: /^BPM applied from Beatport\. Rekordbox has 124/ }),
+          row.getByRole("img", { name: /^BPM applied from Beatport\. In Rekordbox it is 124/ }),
         ).toBeAttached();
       });
 
@@ -339,7 +339,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         // History starts folded in Track details (PAGES-06): open it first.
         await inspector.getByRole("button", { name: /^History/ }).click();
         await inspector
-          .getByRole("button", { name: /^Revert: .*BPM/i })
+          .getByRole("button", { name: /^Undo: .*BPM/i })
           .first()
           .click();
         const row = libraryRow(window, "Tone Two");
@@ -386,8 +386,8 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
           timeout: 30_000,
         });
         expect(readFileSync(library.files[1]!).includes(Buffer.from("TKEY"))).toBe(true);
-        await dialog.getByRole("button", { name: "Restore these files" }).click();
-        await expect(dialog).toContainText(/Restored \d[\d,]* files?/, { timeout: 30_000 });
+        await dialog.getByRole("button", { name: "Undo this save" }).click();
+        await expect(dialog).toContainText(/Undid \d[\d,]* files?/, { timeout: 30_000 });
         expect(readFileSync(library.files[1]!).includes(Buffer.from("TKEY"))).toBe(false);
         await dialog.getByRole("button", { name: "Done" }).click();
         await idle(window);
@@ -397,7 +397,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
 
       await test.step("a refresh that removes the reviewed track names it first", async () => {
         exportXml(library.xml, library.files, TRACKS.filter((track) => track.name !== "Tone Two"));
-        await window.getByRole("button", { name: /Check Rekordbox for changes/ }).click();
+        await window.getByRole("button", { name: /Check for changes/ }).click();
         const dialog = window.getByRole("dialog", { name: "Review this refresh" });
         await expect(dialog).toBeVisible({ timeout: 60_000 });
         await expect(dialog.getByRole("alert").filter({ hasText: "your own work" })).toContainText(

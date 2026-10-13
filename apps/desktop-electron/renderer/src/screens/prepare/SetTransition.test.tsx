@@ -466,7 +466,7 @@ describe("the caption and its warning (FLW-19)", () => {
     expect(within(caption).getByTestId("transition-words")).toBeInTheDocument();
     const warning = within(caption).getByTestId("transition-warning");
     // A few words on the line, the whole sentence in the title (the strip has no room for it).
-    expect(warning).toHaveTextContent(/^Keys clashAccept$/);
+    expect(warning).toHaveTextContent(/^Keys clashMark OK$/);
     expect(within(warning).getByTitle("Keys clash: 8A → 3B")).toBeInTheDocument();
     // The caption still says "keys clash", in the warning colour, as the mockup draws it.
     expect(within(caption).getByTestId("transition-words")).toHaveTextContent(
@@ -475,7 +475,7 @@ describe("the caption and its warning (FLW-19)", () => {
     expect(
       screen.getByTestId("transition-words").compareDocumentPosition(warning) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    fireEvent.click(within(warning).getByRole("button", { name: "Accept" }));
+    fireEvent.click(within(warning).getByRole("button", { name: "Mark OK" }));
     expect(onAccept).toHaveBeenCalledWith(CLASH, true);
     await drawn("from", "to");
   });
@@ -501,10 +501,10 @@ describe("the caption and its warning (FLW-19)", () => {
     );
     const shown = screen.getAllByTestId("transition-warning");
     expect(shown).toHaveLength(1);
-    expect(shown[0]).toHaveTextContent(/^Keys clashAccept\+1 more$/);
+    expect(shown[0]).toHaveTextContent(/^Keys clashMark OK\+1 more$/);
     const more = within(screen.getByTestId("transition-caption")).getByText("+1 more");
     expect(more).toHaveAttribute("title", expect.stringContaining(describeSetWarning(jump)));
-    fireEvent.click(within(shown[0]).getByRole("button", { name: "Accept" }));
+    fireEvent.click(within(shown[0]).getByRole("button", { name: "Mark OK" }));
     expect(onAccept).toHaveBeenCalledWith(CLASH, true);
     await drawn("from", "to");
   });
@@ -527,12 +527,12 @@ describe("the caption and its warning (FLW-19)", () => {
         onAccept={vi.fn()}
       />,
     );
-    expect(screen.getByTestId("transition-warning")).toHaveTextContent(/^Tempo jumpAccept\+1 more$/);
+    expect(screen.getByTestId("transition-warning")).toHaveTextContent(/^Tempo jumpMark OK\+1 more$/);
     expect(screen.getByText("+1 more")).toBeInTheDocument();
     await drawn("from", "to");
   });
 
-  it("shows an accepted warning with Undo accept, and no warning when there is none", async () => {
+  it("shows an accepted warning with Undo Mark OK, and no warning when there is none", async () => {
     install();
     const onAccept = vi.fn();
     const { rerender } = render(
@@ -546,9 +546,9 @@ describe("the caption and its warning (FLW-19)", () => {
       />,
     );
     const warning = screen.getByTestId("transition-warning");
-    expect(warning).toHaveTextContent(/^Keys clash \(accepted\)Undo accept$/);
-    expect(within(warning).getByTitle("Keys clash: 8A → 3B (accepted)")).toBeInTheDocument();
-    fireEvent.click(within(warning).getByRole("button", { name: "Undo accept" }));
+    expect(warning).toHaveTextContent(/^Keys clash \(OK\)Undo Mark OK$/);
+    expect(within(warning).getByTitle("Keys clash: 8A → 3B (OK)")).toBeInTheDocument();
+    fireEvent.click(within(warning).getByRole("button", { name: "Undo Mark OK" }));
     expect(onAccept).toHaveBeenCalledWith({ ...CLASH, acknowledged: true }, false);
     await drawn("from", "to");
 

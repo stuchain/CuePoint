@@ -432,7 +432,7 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
           const refused = dialog.getByRole("region", { name: "Refused" });
           await expect(refused).toContainText("not there any more", { timeout: 30_000 });
           await expect(refused).toContainText(library.xml);
-          await expect(dialog.getByRole("button", { name: "Import another file…" })).toBeVisible();
+          await expect(dialog.getByRole("button", { name: "Import a Rekordbox file…" })).toBeVisible();
           await expect(dialog.getByRole("button", { name: /^Export/ })).toBeDisabled();
           await dialog.getByRole("button", { name: "Cancel" }).click();
         } finally {
@@ -443,7 +443,7 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
 
       await test.step("Settings shows where exports go, and offers no way to start one", async () => {
         await window.getByRole("link", { name: "Settings" }).click();
-        const panel = window.locator(".cp-panel").filter({ hasText: "Rekordbox export" });
+        const panel = window.locator(".cp-panel").filter({ hasText: "Import a Rekordbox file…" });
         await expect(panel.getByTestId("export-remembered-folder")).toHaveText(exports, { timeout: 30_000 });
         await expect(panel.getByTestId("export-remembered-notation")).toHaveText("Camelot (8A, 12B)");
         await expect(panel.getByRole("list")).toContainText("CuePoint Export.xml");
@@ -451,7 +451,7 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         // Nothing here starts an export: the buttons are the "More about this" disclosure and
         // the import of another file (which reads a file, it does not write one).
         await expect(panel.getByRole("button", { name: /export/i })).toHaveCount(0);
-        await expect(panel.getByRole("button", { name: "Import another Rekordbox file…" })).toBeVisible();
+        await expect(panel.getByRole("button", { name: "Import a Rekordbox file…" })).toBeVisible();
         await expect(panel.getByRole("button", { name: "More about this" })).toBeVisible();
       });
 

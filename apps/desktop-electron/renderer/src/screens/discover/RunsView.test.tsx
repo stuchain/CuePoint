@@ -66,7 +66,7 @@ function view(props: { runsVersion?: number } = {}) {
 }
 
 describe("the Results list", () => {
-  it("keeps 'Show older searches' busy until the bigger list answers", async () => {
+  it("keeps 'Show older digs' busy until the bigger list answers", async () => {
     let answerBigger!: () => void;
     const list = vi.fn((params: { limit: number }) =>
       params.limit > 50
@@ -77,24 +77,24 @@ describe("the Results list", () => {
     );
     install(list);
     render(view());
-    const more = await screen.findByRole("button", { name: "Show older searches" });
+    const more = await screen.findByRole("button", { name: "Show older digs" });
 
     fireEvent.click(more);
     // The key moves to the bigger list, which has no answer yet: still waiting.
     await act(async () => {});
-    const nav = screen.getByRole("navigation", { name: "Past searches" });
+    const nav = screen.getByRole("navigation", { name: "Past digs" });
     const busy = nav.querySelector(".cp-btn--loading");
     expect(busy).not.toBeNull();
     expect(busy).toBeDisabled();
 
     await act(async () => answerBigger());
-    await waitFor(() => expect(within(nav).getByRole("button", { name: "Show older searches" })).toBeEnabled());
+    await waitFor(() => expect(within(nav).getByRole("button", { name: "Show older digs" })).toBeEnabled());
   });
 
   it("hands the list the same array while nothing about it changed", async () => {
     install(vi.fn(async () => ({ value: RUNS, refusal: null })));
     render(view());
-    const nav = await screen.findByRole("navigation", { name: "Past searches" });
+    const nav = await screen.findByRole("navigation", { name: "Past digs" });
     const items = within(nav)
       .getAllByRole("button")
       .filter((button) => button.className.includes("discover-runs__item"));

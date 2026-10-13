@@ -114,7 +114,7 @@ describe("the list", () => {
     mount();
     const steps = within(screen.getByRole("list", { name: "First steps" })).getAllByRole("listitem");
     expect(steps.map((li) => li.querySelector(".first-steps__label")?.textContent)).toEqual([
-      "Import your Rekordbox collection",
+      "Import a Rekordbox file",
       "Match your tracks",
       "Play a track",
       "Sign in to Beatport",
@@ -133,23 +133,23 @@ describe("the list", () => {
 });
 
 describe("the import step (K16)", () => {
-  it("carries Import… and How do I export one? while not done, and calls them", async () => {
+  it("carries Import… and How do I get one? while not done, and calls them", async () => {
     install();
     const { onImport, onHowToExport } = mount();
-    const first = item("Import your Rekordbox collection");
+    const first = item("Import a Rekordbox file");
     expect(first).toHaveTextContent(
       "In Rekordbox choose File → Export Collection in xml format, then import that file. Nothing in Rekordbox is changed.",
     );
     await userEvent.click(within(first).getByRole("button", { name: "Import…" }));
     expect(onImport).toHaveBeenCalledTimes(1);
-    await userEvent.click(within(first).getByRole("button", { name: "How do I export one?" }));
+    await userEvent.click(within(first).getByRole("button", { name: "How do I get one?" }));
     expect(onHowToExport).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves out How do I export one? when there is no help to open", () => {
+  it("leaves out How do I get one? when there is no help to open", () => {
     install();
     mount({ withHelp: false });
-    expect(screen.queryByRole("button", { name: "How do I export one?" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "How do I get one?" })).toBeNull();
     expect(screen.getByRole("button", { name: "Import…" })).toBeInTheDocument();
   });
 
@@ -157,7 +157,7 @@ describe("the import step (K16)", () => {
     install();
     mount({ imported: true });
     expect(screen.queryByRole("button", { name: "Import…" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "How do I export one?" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "How do I get one?" })).toBeNull();
   });
 });
 
@@ -165,7 +165,7 @@ describe("ticking from real state", () => {
   it("ticks Import when the library has been imported", async () => {
     install();
     mount({ imported: true });
-    await waitFor(() => expect(done("Import your Rekordbox collection")).toBe("true"));
+    await waitFor(() => expect(done("Import a Rekordbox file")).toBe("true"));
   });
 
   it("ticks Match your tracks once some track has been looked up", async () => {
@@ -255,7 +255,7 @@ describe("the buttons", () => {
     mount();
     expect(screen.getByRole("button", { name: "Sign in to Beatport…" })).toBeInTheDocument();
     // The Library's own header has the import button, and there is nothing to match yet.
-    expect(screen.queryByRole("button", { name: "Import your Rekordbox collection…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Import a Rekordbox file…" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
     expect(within(item("Play a track")).queryByRole("button")).toBeNull();
   });
@@ -291,7 +291,7 @@ describe("after the import (RUN-3)", () => {
     install({ health: health(10, 10) });
     mount({ imported: true });
     await waitFor(() => expect(window.cuepoint!.getLibraryHealth).toHaveBeenCalled());
-    expect(done("Import your Rekordbox collection")).toBe("true");
+    expect(done("Import a Rekordbox file")).toBe("true");
     expect(done("Match your tracks")).toBe("false");
   });
 

@@ -1,11 +1,11 @@
 /**
- * Take ticked values, with the values to take in its own menu (K12).
+ * Correct ticked values, with the values to take in its own menu (K12).
  *
  * The button takes the ticked rows with the ticked values; the arrow beside it
  * opens the five values as tick entries (Key, BPM, Genre, Label, Year) that
  * stay open while several are changed. The same remembered preference as the
  * ticks under One at a time (OQ5). When not every value is ticked the button
- * says how many: "Take ticked values (2 tracks, 4 fields)".
+ * says how many: "Correct ticked values (2 tracks, 4 fields)".
  */
 import { useRef, useState } from "react";
 
@@ -14,11 +14,11 @@ import { TrackContextMenu } from "../../../components/TrackContextMenu";
 import { trackCount } from "../cleanFormat";
 import { CARD_FIELDS, CARD_FIELD_LABELS, type CardField } from "./matchCard";
 
-/** "Take ticked values (2 tracks)", and the number of fields when not all are ticked. */
+/** "Correct ticked values (2 tracks)", and the number of fields when not all are ticked. */
 function takeLabel(tracks: number, fields: number): string {
   const parts = [trackCount(tracks)];
   if (fields < CARD_FIELDS.length) parts.push(`${fields} ${fields === 1 ? "field" : "fields"}`);
-  return `Take ticked values (${parts.join(", ")})`;
+  return `Correct ticked values (${parts.join(", ")})`;
 }
 
 interface TakeMenuProps {

@@ -245,7 +245,7 @@ describe("the Beatport zone", () => {
   it("shows where the track stands and what was decided", async () => {
     panel();
     const zone = await screen.findByRole("region", { name: "Beatport" });
-    expect(await within(zone).findByText("Accepted by you")).toBeInTheDocument();
+    expect(await within(zone).findByText("Confirmed by you")).toBeInTheDocument();
     expect(within(zone).getByText("Strobe (Original Mix)")).toBeInTheDocument();
     expect(zone.querySelector(".cp-track-beatport__meta")).toHaveTextContent(
       "mau5trap · For Lack of a Better Name · match score 96.5",
@@ -261,7 +261,7 @@ describe("the Beatport zone", () => {
   it("shows three values per field, and the source of the one shown", async () => {
     panel();
     const zone = await screen.findByRole("region", { name: "Beatport" });
-    await within(zone).findByText("Accepted by you");
+    await within(zone).findByText("Confirmed by you");
     // The key is not one of the rows: an accepted match gives it (DEC-201).
     expect(field(zone, "key")).toBeNull();
     expect(field(zone, "bpm")).toHaveTextContent("Using 126 (typed by you)");
@@ -272,7 +272,7 @@ describe("the Beatport zone", () => {
   it("never applies a field from here: that is Review's and Fix values' job (FLW-2)", async () => {
     panel();
     const zone = await screen.findByRole("region", { name: "Beatport" });
-    await within(zone).findByText("Accepted by you");
+    await within(zone).findByText("Confirmed by you");
     expect(within(zone).queryByRole("button", { name: /^Apply/ })).toBeNull();
     expect(bridge.applyMatch).not.toHaveBeenCalled();
   });
@@ -289,7 +289,7 @@ describe("the Beatport zone", () => {
     bridge.getTrackMatches.mockResolvedValue(matches({ disputed: true, newer_attempt_id: 9 }));
     panel();
     expect(
-      await screen.findByText("Accepted by you — changed since you decided"),
+      await screen.findByText("Confirmed by you — changed since you decided"),
     ).toBeInTheDocument();
   });
 
@@ -331,7 +331,7 @@ describe("the imported record", () => {
     rerender(
       <TrackDetailPanel detail={{ ...detail, track: { ...detail.track, effective_key: null, key_name: null } }} />,
     );
-    expect(document.querySelector(".cp-track-detail__keyline")).toHaveTextContent("No Beatport key");
+    expect(document.querySelector(".cp-track-detail__keyline")).toHaveTextContent("—");
   });
 });
 
@@ -398,7 +398,7 @@ describe("your five values (DEC-205)", () => {
 
   it("goes back to Rekordbox's value", async () => {
     const handlers = panel();
-    await userEvent.click(await screen.findByRole("button", { name: "Go back to Rekordbox's BPM" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Undo your BPM, back to Rekordbox's" }));
     await waitFor(() => expect(bridge.setTrackOverrides).toHaveBeenCalledWith({ trackId: 12, bpm: null }));
     await waitFor(() => expect(handlers.onTrackChanged).toHaveBeenCalled());
   });
@@ -426,7 +426,7 @@ describe("History", () => {
   it("offers Revert for CuePoint's changes and not Rekordbox's", async () => {
     panel();
     await screen.findByText("Your BPM");
-    const reverts = screen.getAllByRole("button", { name: /^Revert:/ });
+    const reverts = screen.getAllByRole("button", { name: /^Undo:/ });
     expect(reverts.map((button) => button.getAttribute("aria-label"))).toEqual([
       expect.stringContaining("Your BPM"),
       expect.stringContaining("Tagged Peak"),
@@ -442,10 +442,10 @@ describe("History", () => {
     window.addEventListener(LIBRARY_CHANGED_EVENT, announced);
     const handlers = panel();
     await screen.findByText("Your BPM");
-    await userEvent.click(screen.getAllByRole("button", { name: /^Revert:/ })[0]!);
+    await userEvent.click(screen.getAllByRole("button", { name: /^Undo:/ })[0]!);
 
     await waitFor(() => expect(bridge.revertChange).toHaveBeenCalledWith({ change_id: 7 }));
-    await waitFor(() => expect(handlers.onMessage).toHaveBeenCalledWith("Reverted."));
+    await waitFor(() => expect(handlers.onMessage).toHaveBeenCalledWith("Undone."));
     expect(handlers.onTrackChanged).toHaveBeenCalled();
     expect(announced).toHaveBeenCalled();
     await waitFor(() => expect(bridge.getTrackHistory).toHaveBeenCalledTimes(2));
@@ -458,7 +458,7 @@ describe("History", () => {
     );
     const handlers = panel();
     await screen.findByText("Your BPM");
-    await userEvent.click(screen.getAllByRole("button", { name: /^Revert:/ })[0]!);
+    await userEvent.click(screen.getAllByRole("button", { name: /^Undo:/ })[0]!);
     await waitFor(() =>
       expect(handlers.onError).toHaveBeenCalledWith(expect.stringContaining("it is now 128")),
     );
@@ -469,7 +469,7 @@ describe("History", () => {
     delete bridge.revertChange;
     panel();
     await screen.findByText("Your BPM");
-    expect(screen.queryByRole("button", { name: /^Revert:/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Undo:/ })).toBeNull();
   });
 });
 
@@ -478,18 +478,18 @@ describe("values saved into the music file", () => {
     panel();
     const note = await screen.findByText(/may not have finished/);
     expect(note).toHaveTextContent(
-      "2 saves may not have finished, and 1 value was saved. Putting the files back restores every one.",
+      "2 saves may not have finished, and 1 value was saved. Undoing the save puts every one back as it was.",
     );
     expect(note.textContent).not.toMatch(/3 values? (were )?saved/);
-    expect(screen.getByRole("button", { name: "Put the file back as it was" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Undo this save" })).toBeEnabled();
   });
 
   it("restores this track's file and reads again", async () => {
     const handlers = panel();
-    await userEvent.click(await screen.findByRole("button", { name: "Put the file back as it was" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Undo this save" }));
     await waitFor(() => expect(bridge.startTagRestore).toHaveBeenCalledWith({ track_id: 12 }));
     await waitFor(() =>
-      expect(handlers.onMessage).toHaveBeenCalledWith("Put the file back as it was."),
+      expect(handlers.onMessage).toHaveBeenCalledWith("Save undone."),
     );
     expect(handlers.onTrackChanged).toHaveBeenCalled();
     await waitFor(() => expect(bridge.getTagWrites).toHaveBeenCalledTimes(2));
@@ -498,7 +498,7 @@ describe("values saved into the music file", () => {
   it("say a failed restore in the engine's words", async () => {
     bridge.getJob.mockResolvedValue({ id: "r-1", state: "failed", error: { message: "The file is locked" } });
     const handlers = panel();
-    await userEvent.click(await screen.findByRole("button", { name: "Put the file back as it was" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Undo this save" }));
     await waitFor(() => expect(handlers.onError).toHaveBeenCalledWith(expect.stringContaining("The file is locked")));
   });
 

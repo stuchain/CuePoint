@@ -397,7 +397,7 @@
     "verdict": "exempt",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
   },
-  "cuepoint/data/rekordbox_export.py::_document_encoding::Unsupported XML encoding {declared!r}: CuePoint can export only UTF-8 or ASCII Rekordbox collections. Re-export the collection from Rekordbox and import it again.": {
+  "cuepoint/data/rekordbox_export.py::_document_encoding::Unsupported XML encoding {declared!r}: CuePoint can export only UTF-8 or ASCII Rekordbox files. Save the file again from Rekordbox and import it again.": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
@@ -2406,12 +2406,12 @@
     "verdict": "exempt",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers"
   },
-  "cuepoint/services/match_apply.py::MatchApplyService.apply_match::The accepted Beatport match for track {track_id} has no usable {', '.join(missing)}, so nothing was applied": {
+  "cuepoint/services/match_apply.py::MatchApplyService.apply_match::The confirmed Beatport match for track {track_id} has no usable {', '.join(missing)}, so nothing was applied": {
     "holds": "an integer id, our own field, label or code name",
     "verdict": "exempt",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
   },
-  "cuepoint/services/match_apply.py::MatchApplyService.apply_match::Track {track_id} has no accepted match, so there is nothing to apply": {
+  "cuepoint/services/match_apply.py::MatchApplyService.apply_match::Track {track_id} has no confirmed match, so there is nothing to apply": {
     "holds": "an integer id",
     "verdict": "exempt",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers"
@@ -2685,7 +2685,7 @@
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
-  "cuepoint/services/revert_service.py::RevertService.check_batch::Batch {wanted!r} changed nothing, so there is nothing to revert": {
+  "cuepoint/services/revert_service.py::RevertService.check_batch::Batch {wanted!r} changed nothing, so there is nothing to undo": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },

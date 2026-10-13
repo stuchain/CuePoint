@@ -1,6 +1,6 @@
 # Your library
 
-CuePoint keeps its own copy of your Rekordbox collection. Import an XML export
+CuePoint keeps its own copy of your Rekordbox file. Import a Rekordbox file
 once and CuePoint holds your tracks, your playlists and what is in them, so
 everything else it does can start from your actual music instead of asking you
 for a file every time. The Library page is also where you browse it: playlists,
@@ -8,11 +8,11 @@ filters, sorting and a track's full detail.
 
 Open **Library** in the sidebar.
 
-## Importing your Rekordbox collection
+## Importing a Rekordbox file
 
 Until something is imported, the Library shows only its header and **First
-steps**, a short checklist. Its first step, **Import your Rekordbox
-collection**, has **Import…** and **How do I export one?** beside it, and the
+steps**, a short checklist. Its first step, **Import a Rekordbox
+file**, has **Import…** and **How do I get one?** beside it, and the
 hint under it says: in Rekordbox choose File → Export Collection in xml format,
 then import that file; nothing in Rekordbox is changed. The steps are:
 
@@ -39,14 +39,14 @@ leave.
 Beside the title is the file the library came from, as its name and a badge:
 **In sync**, **Changed in Rekordbox**, **File not found** or **Not checked
 yet**. Point at the name for the full path and when CuePoint last read the
-file. Two buttons sit on the right: **Check Rekordbox for changes** (it turns
+file. Two buttons sit on the right: **Check for changes** (it turns
 primary when the file changed or went missing) and **Export to Rekordbox…** —
 see [Exporting to Rekordbox](rekordbox-export.md). In a narrow window or at a
-large size they read **Check Rekordbox** and **Export…**; their full names are
+large size they read **Check** and **Export…**; their full names are
 what a screen reader hears.
 
-To switch to a different Rekordbox file, use **Import another Rekordbox
-file…** in **Settings → Rekordbox export**, or **File → Import a Rekordbox
+To switch to a different Rekordbox file, use **Import a Rekordbox
+file…** in **Settings → Rekordbox**, or **File → Import a Rekordbox
 file…** (**Ctrl+O**).
 
 **After an import**, a note under the header says CuePoint is checking that your
@@ -63,7 +63,7 @@ A 50,000-track collection takes about eleven seconds to import. See
 
 ### If the file is not right
 
-CuePoint refuses a file that is not a Rekordbox collection export rather than
+CuePoint refuses a file that is not a Rekordbox file rather than
 importing an empty library and telling you it worked. If you exported a single
 playlist instead of the whole collection, the file has no collection in it and
 CuePoint will say so — export again with **File → Export Collection**.
@@ -131,11 +131,11 @@ these two filters may find fewer tracks than they should.
 
 **Beatport artist** and **Beatport label** find an artist's or a label's tracks
 by its Beatport id, the number at the end of its page address on
-beatport.com. A track counts when its accepted Beatport match credits that
+beatport.com. A track counts when its confirmed Beatport match credits that
 artist or label, and so does a track that is not matched yet when its artist or
 label name has been tied to that id by the tracks that are, and to no other
 artist of the same name. They need CuePoint to have read your matched tracks'
-credits from Beatport, which needs a Beatport token, and until it has they
+credits from Beatport, which needs you to be signed in to Beatport, and until it has they
 find nothing.
 
 A playlist opens in the order you arranged it in Rekordbox, which is what a set
@@ -150,9 +150,9 @@ An empty table says why and offers the next step as a button:
 | --- | --- |
 | **No tracks match this search.** | **Clear the search** (or **Clear all filters**, or **Clear search and filters**, whichever is narrowing the view) |
 | **Nothing matches these rules right now.** (a Smart Collection) | **Edit the rules**, which opens **Add filter** |
-| **This playlist is empty.** Playlists come from Rekordbox, so add tracks there | **Check Rekordbox for changes** |
+| **This playlist is empty.** Playlists come from Rekordbox, so add tracks there | **Check for changes** |
 | **This Collection is empty.** (or Set) Drop tracks onto it, or use **Add to Collection** | **Browse the whole library** |
-| **This Rekordbox export has no tracks in it.** | **Import another file…** |
+| **This Rekordbox file has no tracks in it.** | **Import a Rekordbox file…** |
 
 ### Choosing columns
 
@@ -178,13 +178,13 @@ list repeats what the marks mean. A key is marked only when you typed it: a key
 from Beatport is the track's key, not an edit.
 
 **Key is Beatport's key.** A track's key is the one you typed, or else the key
-of its accepted Beatport match, shown in Camelot (8A) as a small colored chip.
+of its confirmed Beatport match, shown in Camelot (8A) as a small colored chip.
 The colors follow the Camelot wheel, one hue for each number, deeper for A and
 lighter for B, as in Mixed In Key; point at a chip for the key's name ("A
 minor"). The same chips are in Keys, Discover, Clean and Prepare. **Settings →
 Appearance → Tables → Color keys** (on to start with) turns them back into
 plain text. Rekordbox's key is never
-used, so a track with no accepted match shows "—" in the Key column (point at
+used, so a track with no confirmed match shows "—" in the Key column (point at
 the heading: *Keys come from Beatport matches*), and every
 key filter, count, check and export leaves it out. After a fresh import no track
 has a key until matching runs: open [Clean](clean.md) and match your library.
@@ -193,8 +193,8 @@ Beatport key is "A minor".
 
 There is one **Key** field, and it compares keys by what they mean, so 8A,
 "A minor" and "Am" are the same. The one that used to be called "CuePoint key"
-is **Your key**, and Rekordbox's own is **Key from Rekordbox (not used)**, in
-the Rekordbox only group.
+is **Your key**, and Rekordbox's own is **Key from Rekordbox**, in
+the Rekordbox only group; CuePoint uses Beatport's key, not that one.
 
 ### Row height
 
@@ -291,7 +291,7 @@ Then the sections, each folded or opened by clicking its heading:
 - **Where it is** — the Collections, Sets and playlists the track is in. Click
   one to jump to it.
 - **Beatport** — where the track stands with its Beatport match. Folded until you
-  open it; its heading says how the match stands ("Beatport · Accepted"). See
+  open it; its heading says how the match stands ("Beatport · Confirmed"). See
   [The Beatport section](#the-beatport-section).
 - **History** — every change to the track, and who made it. Folded, its heading
   counts the changes ("History · 4 changes").
@@ -317,15 +317,15 @@ than moving everything around it. See
 Your collection moves on: you buy tracks, you rate them, you delete things.
 CuePoint does not watch the file, so you decide when to catch up.
 
-Open **Library** and press **Check Rekordbox for changes**.
+Open **Library** and press **Check for changes**.
 
 - If nothing has changed, CuePoint says so immediately. It does not re-read a
   50,000-track file to tell you nothing happened — it compares the file's
   modified time and size against what it recorded when it imported.
-- If something has changed, CuePoint reads the export and shows you **exactly
+- If something has changed, CuePoint reads your Rekordbox file and shows you **exactly
   what a refresh would do** before doing any of it.
 
-The page also tells you, without being asked, when the export has changed since
+The page also tells you, without being asked, when your Rekordbox file has changed since
 your last import — that is what **Changed in Rekordbox** means next to the file
 name. **Not checked yet** means CuePoint could not tell, so check to be sure.
 
@@ -333,9 +333,9 @@ name. **Not checked yet** means CuePoint could not tell, so check to be sure.
 
 | Line | Means |
 | --- | --- |
-| New tracks | In the export, not yet in CuePoint |
+| New tracks | In your Rekordbox file, not yet in CuePoint |
 | Updated tracks | In both, with something different in Rekordbox |
-| **Tracks removed from Rekordbox** | In CuePoint, no longer in the export — **these get deleted** |
+| **Tracks removed from Rekordbox** | In CuePoint, no longer in your Rekordbox file — **these get deleted** |
 | Re-linked after renumbering | Rekordbox gave the track a new ID; CuePoint recognized the file and kept everything |
 | Tracks whose cues or beat grid changed | Tracks you kept whose cue points or grid are different in Rekordbox |
 | New / edited / deleted playlists | The same, for your playlist tree |
@@ -345,7 +345,7 @@ the preview only reads.
 
 ### What a refresh deletes
 
-**A refresh deletes the tracks that are no longer in your export, and it cannot
+**A refresh deletes the tracks that are no longer in your Rekordbox file, and it cannot
 be undone.**
 
 Anything CuePoint has attached to those tracks goes with them: ratings, tags,
@@ -370,7 +370,7 @@ deleted and re-added, and they do not appear in the removal count.
 
 ### When CuePoint cannot tell whether the file changed
 
-If CuePoint says it **could not tell** whether the export changed, check it
+If CuePoint says it **could not tell** whether your Rekordbox file changed, check it
 anyway — that message means the file's details could not be read, not that
 nothing happened.
 
@@ -384,12 +384,12 @@ time.
 ### What you do in CuePoint stays in CuePoint
 
 **Collections, tags, ratings, favorites, notes and your own values are
-CuePoint's, and they are invisible in Rekordbox.** CuePoint reads your export
+CuePoint's, and they are invisible in Rekordbox.** CuePoint reads your Rekordbox file
 and never writes to it, so nothing you organize here changes what Rekordbox
 shows you. Two things take your work out of CuePoint, and each happens only
 when you ask, after a preview: [Exporting to Rekordbox](rekordbox-export.md),
 which writes a new XML file with your values and Collections (tags, notes and
-favorites stay behind), and [Writing tags to files](#writing-tags-to-files).
+favorites stay behind), and [Saving to files](#saving-to-files).
 See [Organizing your library](organization.md).
 
 ### CuePoint checks that your files are still there — and never moves them
@@ -435,7 +435,7 @@ were put together:
 
 | Grouped by | Means |
 | --- | --- |
-| File path | One file is in your Rekordbox collection twice |
+| File path | One file is listed twice in your Rekordbox file |
 | Beatport track | Two tracks were matched to the same Beatport track |
 | Artist and title | The same artist, title and mix, with lengths within two seconds of each other |
 
@@ -458,9 +458,9 @@ After every file check, CuePoint reads the picture each of your files carries.
 The status strip shows **Reading artwork** while it does, and the Activity panel
 records how many files have a picture. Only files the check found are opened.
 
-For a track whose Beatport match you accepted, CuePoint also knows Beatport's
+For a track whose Beatport match you confirmed, CuePoint also knows Beatport's
 artwork for that release. It is downloaded only when it is needed, only from
-Beatport, and never for a match you have not accepted. Offline, it is simply not
+Beatport, and never for a match you have not confirmed. Offline, it is simply not
 there — nothing fails.
 
 Filter the Library with **Artwork**, or show it as a column:
@@ -468,8 +468,8 @@ Filter the Library with **Artwork**, or show it as a column:
 | Value | Means |
 | --- | --- |
 | In the file | The file carries its own picture |
-| From Beatport | The file has none, and Beatport's artwork for the accepted match is used |
-| None | The file was read and carries no picture, and there is no Beatport artwork |
+| From Beatport | The file has none, and Beatport's artwork for the confirmed match is used |
+| — | The file was read and carries no picture, and there is no Beatport artwork |
 | Not read yet | The file has not been read yet where it is now |
 
 A picture is only opened if it is a JPEG, PNG, WebP, GIF or BMP of a sensible
@@ -484,7 +484,7 @@ copies are made again as they are needed.
 
 **Reading artwork writes nothing to your files.** Adding Beatport's artwork to a
 file that has none is an option when you
-[write tags to files](#writing-tags-to-files), and it never replaces a picture a
+[save to files](#saving-to-files), and it never replaces a picture a
 file already has.
 
 ### Cue points and beat grids come from Rekordbox — and stay there
@@ -510,7 +510,7 @@ Beat grid · 128.00 BPM
   [export to Rekordbox](rekordbox-export.md) never writes one: it leaves every
   cue in your collection exactly as it was. To change a cue, change it in
   Rekordbox, export, and refresh.
-- A refresh replaces a track's cues and grid with the export's, and the preview
+- A refresh replaces a track's cues and grid with the file's, and the preview
   counts the tracks whose cues or grid changed, in one line.
 - A mark CuePoint does not recognize, or one Rekordbox wrote incompletely, is
   skipped rather than guessed at, and the import says how many it skipped.
@@ -520,7 +520,7 @@ collection file it was imported from, the first time CuePoint starts, if that
 file is still exactly as it was. The status strip shows **Reading your cue points**
 while it does, and Activity records it. If the file has changed since, the
 Track details says *Cue points and the beat grid are read from Rekordbox. They
-appear after you Check Rekordbox for changes.* and they do.
+appear after you Check for changes.* and they do.
 
 ### One import, for everything
 
@@ -534,13 +534,13 @@ inCrate kept a separate copy of its own, which nothing reads any more — see
 Everything the [Clean](clean.md) page knows about a track is visible here too,
 and the Clean actions on a track are in the toolbar's **Beatport ▸** and
 **More ▸** and in its right-click menu. They open Clean with the tracks you
-selected; deciding a match (accept or reject) is done there, in Review.
+selected; deciding a match (confirm or reject) is done there, in Review.
 
 ### Columns and filters
 
 | Column | Shows |
 | --- | --- |
-| Match | Where the track stands with Beatport: Waiting for you, Accepted, Rejected, No match or Not matched — and *changed since you decided* when a newer search found a different best match than the one you chose |
+| Match | Where the track stands with Beatport: Waiting for you, Confirmed, Rejected, No match or Not matched — and *changed since you decided* when a newer search found a different best match than the one you chose |
 | Score | The score of the Beatport match the track points at |
 | File status | What the last file check found |
 | Artwork | The track's picture, or where it would come from |
@@ -555,11 +555,11 @@ filters: **Beatport match**, **Match decided by (you or CuePoint)**,
 | Action | Does |
 | --- | --- |
 | Match tracks… | Opens Clean's match window with the selected tracks, to look them up on Beatport. A decision you made is kept, and a newer match that disagrees marks the track *changed since you decided* |
-| Review these matches | Opens Clean's Review on the first selected track, where matches are accepted or rejected |
-| Use Beatport's values… | Opens a dialog here to copy the fields you choose from each track's accepted match into your values |
+| Review these matches | Opens Clean's Review on the first selected track, where matches are confirmed or rejected |
+| Use Beatport's values… | Opens a dialog here to copy the fields you choose from each track's confirmed match into your values |
 | Edit values… (in More) | Opens a dialog here to set or clear your key, BPM, genre, label or year |
 
-Accepting a match changes no value on its own. **Apply** is what copies
+Confirming a match changes no value on its own. **Apply** is what copies
 Beatport's values, and they become your values — Rekordbox's stay underneath.
 
 ### The Beatport section
@@ -591,27 +591,27 @@ stays when a match is rejected. Your values are what the Library shows, sorts an
 Collections match. Rekordbox's value is still there: filter with **Rekordbox
 BPM**, for example, to ask about it alone.
 
-### Taking a change back
+### Undoing a change
 
-Track details' **History** offers **Revert** beside every change you made in
+Track details' **History** offers **Undo** beside every change you made in
 CuePoint — a rating, a favorite, a note, a tag, one of your values or a match
 decision. Changes Rekordbox made are not offered: change those in Rekordbox.
 
-A revert that would throw away a later change is refused, and says what the
-value is now. Revert the later change first, or edit the value directly.
+An undo that would throw away a later change is refused, and says what the
+value is now. Undo the later change first, or edit the value directly.
 
 A change made to many tracks at once is taken back from its entry in the
-**Activity** panel: **Revert this batch**, then **Revert** to confirm. Adding
-tracks to a Collection or removing them from one cannot be reverted; its entry
-says so. A revert is itself a change, and can be reverted too.
+**Activity** panel: **Undo this batch**, then **Undo** to confirm. Adding
+tracks to a Collection or removing them from one cannot be undone; its entry
+says so. An undo is itself a change, and can be undone too.
 
-## Writing tags to files
+## Saving to files
 
 **Save to files…**, on the green bar at the bottom of the Library and of Clean, puts your values into the audio files themselves, so
 Rekordbox and other software can read them. It is the one thing CuePoint does
 outside its own library, so it always goes in the same order:
 
-1. **Choose what to write**: key (in the notation you choose; a track with no
+1. **Choose what to save**: key (in the notation you choose; a track with no
    key keeps the key its file already has), BPM, year,
    genre, label, a comment, and whether to add Beatport's artwork to files that
    have none. The comment is off to start with, because it replaces whatever
@@ -622,14 +622,14 @@ outside its own library, so it always goes in the same order:
 3. **Write.** Only after a preview has answered. Each value a file held is
    recorded before it is replaced.
 
-What is written is the value you see in the Library: yours where you have one,
-Rekordbox's otherwise. A field a file already holds is not written again.
+What is saved is the value you see in the Library: yours where you have one,
+Rekordbox's otherwise. A field a file already holds is not saved again.
 
 ### Files that are skipped
 
 | Skipped | Why |
 | --- | --- |
-| WAV files | CuePoint does not write tags into WAV files |
+| WAV files | CuePoint does not save to WAV files |
 | Other formats | CuePoint writes MP3, AIFF, FLAC and Ogg Vorbis only |
 | Missing or unreadable files | The last file check did not find them |
 | Files never checked | CuePoint writes only to a file it checked where it is now — run **Check every file** on Clean ▸ Missing files first |
@@ -646,31 +646,31 @@ showing the old values. In Rekordbox, select the tracks and choose
 **Reload Tag**. Then refresh CuePoint's library, if you want Rekordbox's values
 here to match.
 
-### Restoring
+### Undoing a save
 
-After a write, the dialog offers **Restore these files**, and so does the
-write's entry in the **Activity** panel. Track details' History offers
-**Put the file back as it was** for one track. A restore puts back every tag value
-the write replaced, and removes a picture it added.
+After a save, the dialog offers **Undo this save**, and so does the
+save's entry in the **Activity** panel. Track details' History offers
+**Undo this save** for one track. Undoing puts back every tag value
+the save replaced, and removes a picture it added.
 
-A value you or another program changed in the file since the write is left
-alone, and the restore says so.
+A value you or another program changed in the file since the save is left
+alone, and the undo says so.
 
-**A restored file can stay slightly larger than it was.** Every value is back,
+**An undone file can stay slightly larger than it was.** Every value is back,
 but the tag keeps the room it grew into, as every tagging program does. That
-room is reused by the next write.
+room is reused by the next save.
 
 ### "May not have finished"
 
 CuePoint records each value before it touches the file, and confirms it after
 reading the file back. If CuePoint closes while writing — it is quit, it
 crashes, the computer shuts down — some values are recorded but not confirmed.
-The Activity panel then says **Writing tags stopped when CuePoint closed**, and
-how many writes **may not have finished**. They are never counted as written.
+The Activity panel then says **Saving to files stopped when CuePoint closed**, and
+how many writes **may not have finished**. They are never counted as saved.
 
-Such a file may hold the new value or still hold the old one. **Restore** is the
+Such a file may hold the new value or still hold the old one. **Undo** is the
 safe answer either way: a file that still holds its old value counts as already
-restored, and one that holds the new value gets the old one back. Then write
+undone, and one that holds the new value gets the old one back. Then save
 again if you still want to.
 
 ## Where the data lives

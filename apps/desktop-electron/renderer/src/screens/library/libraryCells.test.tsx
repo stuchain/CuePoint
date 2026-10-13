@@ -54,7 +54,7 @@ describe("the edited-value marker", () => {
       </div>,
     );
 
-    const marker = screen.getByRole("img", { name: "BPM typed by you. Rekordbox has 128." });
+    const marker = screen.getByRole("img", { name: "BPM typed by you. In Rekordbox it is 128." });
     expect(marker).toHaveAttribute("tabindex", "-1");
 
     await userEvent.tab();
@@ -78,7 +78,7 @@ describe("the edited-value marker", () => {
 
   it("says it on hover too, through the title", () => {
     render(<OverriddenValue row={typed} field="bpm" />);
-    expect(screen.getByRole("img")).toHaveAttribute("title", "BPM typed by you. Rekordbox has 128.");
+    expect(screen.getByRole("img")).toHaveAttribute("title", "BPM typed by you. In Rekordbox it is 128.");
   });
 
   it("says a value from Beatport came from Beatport", () => {
@@ -92,7 +92,7 @@ describe("the edited-value marker", () => {
     expect(screen.getByRole("img")).toHaveTextContent("B");
     expect(screen.getByRole("img")).toHaveAttribute(
       "title",
-      "Genre applied from Beatport. Rekordbox has none.",
+      "Genre applied from Beatport. In Rekordbox it is not set.",
     );
   });
 });
@@ -151,7 +151,7 @@ describe("the Key cell", () => {
     );
     expect(screen.getByRole("img")).toHaveAttribute(
       "title",
-      "Key typed by you. Rekordbox's key is not used.",
+      "Key typed by you. CuePoint uses Beatport's key, not Rekordbox's.",
     );
     expect(screen.getByRole("img")).not.toHaveTextContent("B");
   });

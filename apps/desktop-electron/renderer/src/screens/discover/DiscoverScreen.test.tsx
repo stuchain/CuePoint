@@ -4,7 +4,7 @@
  * The specification's component tests, against the real page over a faked
  * bridge whose every answer is the engine's own (`discoverPage.fixture.json`,
  * produced by `test_discover_page_fixture.py`):
- * - the three tabs (FLW-15): New search, Results with its past searches, Wantlist;
+ * - the three tabs (FLW-15): New dig, Results with its past searches, Wantlist;
  * - a search's tracks with the ones in the library hidden and shown;
  * - the wantlist's filters;
  * - every Beatport token state, and the lookup prompt;
@@ -182,17 +182,17 @@ function renderDiscover() {
 }
 
 async function openRun(id: number) {
-  const list = await screen.findByRole("navigation", { name: "Past searches" });
+  const list = await screen.findByRole("navigation", { name: "Past digs" });
   const item = within(list)
     .getAllByRole("button")
     .find((button) => button.textContent?.includes(id === 1 ? "Finished" : "Failed"))!;
   fireEvent.click(item);
 }
 
-/** The New search tab, which holds the form. */
+/** The New dig tab, which holds the form. */
 async function openNewSearch() {
-  fireEvent.click(await screen.findByRole("tab", { name: "New search" }));
-  return screen.findByRole("region", { name: "New search" });
+  fireEvent.click(await screen.findByRole("tab", { name: "New dig" }));
+  return screen.findByRole("region", { name: "New dig" });
 }
 
 function table(name: string) {
@@ -247,7 +247,7 @@ describe("the page", () => {
   it("opens on Results with the three tabs, and remembers the one last used", async () => {
     const first = renderDiscover();
     const tabs = await screen.findAllByRole("tab");
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["New search", "Results", "Wantlist"]);
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["New dig", "Results", "Wantlist"]);
     expect(tabs[1]).toHaveAttribute("aria-selected", "true");
     fireEvent.click(tabs[2]!);
     expect(localStorage.getItem(DISCOVER_SECTION_STORAGE_KEY)).toBe("wantlist");
@@ -269,7 +269,7 @@ describe("the page", () => {
   it("never shows the word Run to the user", async () => {
     install({ listDiscoveryRuns: vi.fn(async () => asAnswer(fixture.runs_empty)) });
     renderDiscover();
-    await screen.findByText("No searches yet");
+    await screen.findByText("No digs yet");
     await openNewSearch();
     expect(document.body.textContent ?? "").not.toMatch(/\bruns?\b/i);
   });
@@ -277,14 +277,14 @@ describe("the page", () => {
   it("never shows the word Run on an open search: title, toolbar, delete dialog, running note", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
     expect(document.body.textContent ?? "").not.toMatch(/\bruns?\b/i);
-    const list = screen.getByRole("navigation", { name: "Past searches" });
+    const list = screen.getByRole("navigation", { name: "Past digs" });
     const row = within(list)
       .getAllByRole("listitem")
       .find((item) => item.textContent?.includes("Finished"))!;
-    fireEvent.click(within(row).getByRole("button", { name: "Delete this search…" }));
-    const dialog = await screen.findByRole("dialog", { name: "Delete this search?" });
+    fireEvent.click(within(row).getByRole("button", { name: "Delete this dig…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete this dig?" });
     expect(dialog.textContent ?? "").not.toMatch(/\bruns?\b/i);
     expect(document.body.textContent ?? "").not.toMatch(/\bruns?\b/i);
   });
@@ -329,8 +329,8 @@ describe("the page", () => {
 describe("Beatport's state", () => {
   it.each([
     ["options_no_token", "Sign in to Beatport to search its charts and releases.", "Sign in to Beatport"],
-    ["options_rejected", "Beatport sign-in ended or the token was refused.", "Sign in again"],
-    ["options_forbidden", "Beatport refused this token.", "Sign in again"],
+    ["options_rejected", "Beatport sign-in ended or was refused.", "Sign in again"],
+    ["options_forbidden", "Beatport refused this sign-in.", "Sign in again"],
     ["options_rate_limited", "Beatport is limiting requests", "Try again"],
     ["options_unavailable", "Beatport cannot be reached", "Try again"],
   ] as const)("draws %s, and the page stays usable", async (state, headline, action) => {
@@ -344,17 +344,17 @@ describe("Beatport's state", () => {
     if (state === "options_rate_limited") expect(button).toHaveAttribute("title", expect.stringMatching(/^Wait /));
     else if (state === "options_unavailable") expect(button).toHaveAttribute("title", "Beatport answered 503.");
     else expect(button).not.toHaveAttribute("title");
-    // Past searches still open without Beatport.
-    expect(await screen.findByRole("navigation", { name: "Past searches" })).toBeInTheDocument();
+    // Past digs still open without Beatport.
+    expect(await screen.findByRole("navigation", { name: "Past digs" })).toBeInTheDocument();
   });
 
   it("says nothing when Beatport answered", async () => {
     renderDiscover();
-    await screen.findByRole("navigation", { name: "Past searches" });
+    await screen.findByRole("navigation", { name: "Past digs" });
     for (const headline of [
       "Sign in to Beatport to search its charts and releases.",
-      "Beatport sign-in ended or the token was refused.",
-      "Beatport refused this token.",
+      "Beatport sign-in ended or was refused.",
+      "Beatport refused this sign-in.",
       "Beatport is limiting requests",
       "Beatport cannot be reached",
     ]) {
@@ -505,7 +505,7 @@ describe("the lookup prompt (DSC-4)", () => {
   it("is not offered when nothing is left to look up, or Beatport cannot be asked", async () => {
     install({ getDiscoverOptions: vi.fn(async () => asAnswer(fixture.options_resolved)) });
     const first = renderDiscover();
-    await screen.findByRole("navigation", { name: "Past searches" });
+    await screen.findByRole("navigation", { name: "Past digs" });
     expect(screen.queryByRole("status", { name: "Beatport lookup" })).toBeNull();
     first.unmount();
 
@@ -516,7 +516,7 @@ describe("the lookup prompt (DSC-4)", () => {
       ),
     });
     renderDiscover();
-    await screen.findByRole("navigation", { name: "Past searches" });
+    await screen.findByRole("navigation", { name: "Past digs" });
     expect(screen.queryByRole("status", { name: "Beatport lookup" })).toBeNull();
   });
 });
@@ -524,26 +524,26 @@ describe("the lookup prompt (DSC-4)", () => {
 describe("Results", () => {
   it("lists the past searches newest first, each titled by its date, with its state, scope and count", async () => {
     renderDiscover();
-    const list = await screen.findByRole("navigation", { name: "Past searches" });
+    const list = await screen.findByRole("navigation", { name: "Past digs" });
     const items = within(list).getAllByRole("listitem");
     expect(items).toHaveLength(2);
-    expect(items[0]).toHaveTextContent(/^Search of /);
+    expect(items[0]).toHaveTextContent(/^Dig of /);
     expect(items[0]).toHaveTextContent("Failed");
     expect(items[0]).toHaveTextContent("0 tracks found");
     expect(items[1]).toHaveTextContent("Finished");
     expect(items[1]).toHaveTextContent("House, Techno (Peak Time / Driving) · 30 days of releases");
     expect(items[1]).toHaveTextContent("7 tracks found");
     for (const item of items) {
-      expect(within(item).getByRole("button", { name: "Delete this search…" })).toBeInTheDocument();
+      expect(within(item).getByRole("button", { name: "Delete this dig…" })).toBeInTheDocument();
     }
   });
 
   it("keeps each card's delete button beside its text, not inside it, with the long text titled", async () => {
     renderDiscover();
-    const list = await screen.findByRole("navigation", { name: "Past searches" });
+    const list = await screen.findByRole("navigation", { name: "Past digs" });
     for (const item of within(list).getAllByRole("listitem")) {
       const card = item.querySelector<HTMLElement>(".discover-runs__item")!;
-      const remove = within(item).getByRole("button", { name: "Delete this search…" });
+      const remove = within(item).getByRole("button", { name: "Delete this dig…" });
       // A sibling of the card, so layout can put it on its own line.
       expect(card.contains(remove)).toBe(false);
       expect(remove.parentElement?.closest("li")).toBe(item);
@@ -556,21 +556,21 @@ describe("Results", () => {
     renderDiscover();
     expect(
       await screen.findByText(
-        "Stopped because Beatport rejected the token, after 0 tracks from 0 charts and 0 releases.",
+        "Stopped because Beatport refused the sign-in, after 0 tracks from 0 charts and 0 releases.",
       ),
     ).toBeInTheDocument();
-    expect(await screen.findByText("This search found nothing.")).toBeInTheDocument();
+    expect(await screen.findByText("This dig found nothing.")).toBeInTheDocument();
   });
 
-  it("says there are no searches yet, and opens New search from there", async () => {
+  it("says there are no searches yet, and opens New dig from there", async () => {
     install({ listDiscoveryRuns: vi.fn(async () => asAnswer(fixture.runs_empty)) });
     renderDiscover();
-    expect(await screen.findByText("No searches yet")).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "New search" })).toBeNull();
+    expect(await screen.findByText("No digs yet")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "New dig" })).toBeNull();
     const tabpanel = screen.getByRole("tabpanel", { name: "Results" });
-    fireEvent.click(within(tabpanel).getByRole("button", { name: "New search" }));
-    expect(await screen.findByRole("region", { name: "New search" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "New search" })).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(within(tabpanel).getByRole("button", { name: "New dig" }));
+    expect(await screen.findByRole("region", { name: "New dig" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "New dig" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("says what it looked for, under a line of that name", async () => {
@@ -590,7 +590,7 @@ describe("Results", () => {
   it("hides what is already in your library, with one switch and one count line (DSC-6, DEC-092)", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found")).toHaveLength(HIDDEN.total), LOADED);
+    await waitFor(() => expect(rowsOf("Tracks this dig found")).toHaveLength(HIDDEN.total), LOADED);
     const hide = screen.getByRole("checkbox", { name: "Hide tracks already in your library" });
     expect(hide).toBeChecked();
     const hiddenLine = foundLine(HIDDEN.tracks, HIDDEN.owned, true);
@@ -604,10 +604,10 @@ describe("Results", () => {
     );
 
     fireEvent.click(hide);
-    await waitFor(() => expect(rowsOf("Tracks this search found")).toHaveLength(ALL.total), LOADED);
+    await waitFor(() => expect(rowsOf("Tracks this dig found")).toHaveLength(ALL.total), LOADED);
     expect(screen.queryByText(hiddenLine)).toBeNull();
     expect(screen.getByText(foundLine(HIDDEN.tracks, HIDDEN.owned, false))).toBeInTheDocument();
-    const owned = rowsOf("Tracks this search found").filter((row) =>
+    const owned = rowsOf("Tracks this dig found").filter((row) =>
       within(row).queryByText("In your library"),
     );
     expect(owned).toHaveLength(2);
@@ -636,35 +636,35 @@ describe("Results", () => {
     renderDiscover();
     await openRun(1);
     expect(
-      await screen.findByText("Every track this search found is already in your library."),
+      await screen.findByText("Every track this dig found is already in your library."),
     ).toBeInTheDocument();
   });
 
   it("sorts by what the engine sorts by", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
-    fireEvent.click(within(table("Tracks this search found")).getByRole("button", { name: "Released" }));
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    fireEvent.click(within(table("Tracks this dig found")).getByRole("button", { name: "Released" }));
     await waitFor(() =>
       expect(bridge.getDiscoveryRunTracks).toHaveBeenLastCalledWith(
         expect.objectContaining({ sort: "release_date", dir: "asc" }),
       ),
     );
     // A column the engine cannot order by is not a button that pretends to.
-    expect(within(table("Tracks this search found")).getByRole("button", { name: "Label" })).toBeDisabled();
+    expect(within(table("Tracks this dig found")).getByRole("button", { name: "Label" })).toBeDisabled();
   });
 
   it("shows the actions always, those that need rows disabled with their reason until rows are selected (DEC-209)", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(2), LOADED);
-    const bar = actionsBar("Tracks this search found");
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(2), LOADED);
+    const bar = actionsBar("Tracks this dig found");
     const names = ["Add to wantlist", "Make a Beatport playlist…", "Open on Beatport"];
     expect(buttonsOf(bar)).toEqual(names);
     // Columns… is the table header's corner icon (K21), not a word in the actions bar.
     expect(within(bar).queryByRole("button", { name: "Columns…" })).toBeNull();
     fireEvent.click(
-      screen.getByRole("table", { name: "Tracks this search found" }).querySelector<HTMLElement>(
+      screen.getByRole("table", { name: "Tracks this dig found" }).querySelector<HTMLElement>(
         '[aria-label="Columns…"]',
       )!,
     );
@@ -678,7 +678,7 @@ describe("Results", () => {
     expect(bar).toHaveTextContent(`${HIDDEN.total} tracks`);
     expect(bar).toHaveTextContent(`All ${HIDDEN.total} shown`);
 
-    const [first, , third] = rowsOf("Tracks this search found");
+    const [first, , third] = rowsOf("Tracks this dig found");
     fireEvent.click(first!);
     expect(buttonsOf(bar)).toEqual(names);
     expect(button("Add to wantlist")).toBeEnabled();
@@ -706,8 +706,8 @@ describe("Results", () => {
     });
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(1), LOADED);
-    const [first, second] = rowsOf("Tracks this search found");
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(1), LOADED);
+    const [first, second] = rowsOf("Tracks this dig found");
     expect(getSelectedTrack()).toBeNull();
     fireEvent.click(first!);
     expect(getSelectedTrack()).toEqual({
@@ -721,15 +721,15 @@ describe("Results", () => {
       key: null,
       title: HIDDEN.rows[1]!.title,
     });
-    fireEvent.click(within(actionsBar("Tracks this search found")).getByRole("button", { name: "Clear" }));
+    fireEvent.click(within(actionsBar("Tracks this dig found")).getByRole("button", { name: "Clear" }));
     expect(getSelectedTrack()).toBeNull();
   });
 
   it("links the artist and label names to their pages, without selecting the row (FLW-16)", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
-    const row = rowsOf("Tracks this search found")[0]!;
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    const row = rowsOf("Tracks this dig found")[0]!;
     const artist = HIDDEN.rows[0]!.artists[0]!;
     const artistLink = within(row).getByRole("button", { name: artist });
     fireEvent.click(artistLink);
@@ -741,13 +741,13 @@ describe("Results", () => {
   it("reaches the links by Tab inside the row, and a click on one selects nothing", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
-    const row = rowsOf("Tracks this search found")[0]!;
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    const row = rowsOf("Tracks this dig found")[0]!;
     const links = within(row).getAllByRole("button");
     expect(links.length).toBeGreaterThanOrEqual(2);
     for (const link of links) expect(link).not.toHaveAttribute("tabindex", "-1");
     const label = within(row).getByRole("button", { name: HIDDEN.rows[0]!.label_name! });
-    const bar = actionsBar("Tracks this search found");
+    const bar = actionsBar("Tracks this dig found");
     fireEvent.click(label);
     expect(bar).not.toHaveTextContent("selected");
     expect(await screen.findByTestId("where")).toHaveTextContent(
@@ -758,8 +758,8 @@ describe("Results", () => {
   it("feeds the wheel from the row last clicked, not the last row selected", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(1), LOADED);
-    const [first, second] = rowsOf("Tracks this search found");
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(1), LOADED);
+    const [first, second] = rowsOf("Tracks this dig found");
     fireEvent.click(second!);
     fireEvent.click(first!, { ctrlKey: true });
     expect(getSelectedTrack()?.id).toBe(`bp-${HIDDEN.rows[0]!.beatport_track_id}`);
@@ -769,18 +769,18 @@ describe("Results", () => {
     const user = userEvent.setup();
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(2), LOADED);
-    const bar = actionsBar("Tracks this search found");
-    const grid = table("Tracks this search found");
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(2), LOADED);
+    const bar = actionsBar("Tracks this dig found");
+    const grid = table("Tracks this dig found");
     // Tab reaches the table, then the name links inside its rows, in order.
     await user.tab();
     while (document.activeElement !== grid && document.activeElement !== document.body) await user.tab();
     expect(grid).toHaveFocus();
     await user.keyboard("{ArrowDown}");
-    expect(rowsOf("Tracks this search found")[0]).toHaveAttribute("aria-selected", "true");
+    expect(rowsOf("Tracks this dig found")[0]).toHaveAttribute("aria-selected", "true");
     await user.keyboard("{ArrowDown}");
-    expect(rowsOf("Tracks this search found")[1]).toHaveAttribute("aria-selected", "true");
-    expect(rowsOf("Tracks this search found")[0]).toHaveAttribute("aria-selected", "false");
+    expect(rowsOf("Tracks this dig found")[1]).toHaveAttribute("aria-selected", "true");
+    expect(rowsOf("Tracks this dig found")[0]).toHaveAttribute("aria-selected", "false");
     await user.keyboard("{Shift>}{ArrowDown}{/Shift}");
     expect(bar).toHaveTextContent("2 tracks selected");
     // The range keeps growing: the keyboard's row moves on while the range's anchor holds still.
@@ -789,7 +789,7 @@ describe("Results", () => {
     // Enter selects just the keyboard's row (the fourth), not the range's anchor.
     await user.keyboard("{Enter}");
     expect(bar).toHaveTextContent("1 track selected");
-    expect(rowsOf("Tracks this search found")[3]).toHaveAttribute("aria-selected", "true");
+    expect(rowsOf("Tracks this dig found")[3]).toHaveAttribute("aria-selected", "true");
     // Ctrl+Space takes it out and puts it back, once each.
     await user.keyboard("{Control>} {/Control}");
     expect(bar).not.toHaveTextContent("selected");
@@ -804,9 +804,9 @@ describe("Results", () => {
     const user = userEvent.setup();
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
     const artist = HIDDEN.rows[0]!.artists[0]!;
-    within(rowsOf("Tracks this search found")[0]!).getByRole("button", { name: artist }).focus();
+    within(rowsOf("Tracks this dig found")[0]!).getByRole("button", { name: artist }).focus();
     await user.keyboard("{Enter}");
     expect(await screen.findByTestId("where")).toHaveTextContent("/discover/artist/");
   });
@@ -815,24 +815,24 @@ describe("Results", () => {
     localStorage.setItem(HIDE_OWNED_STORAGE_KEY, "0");
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
     expect(screen.getByRole("checkbox", { name: "Hide tracks already in your library" })).not.toBeChecked();
     expect(bridge.getDiscoveryRunTracks!.mock.calls.at(-1)![0]).toMatchObject({ owned: "all" });
     fireEvent.click(screen.getByRole("checkbox", { name: "Hide tracks already in your library" }));
     expect(localStorage.getItem(HIDE_OWNED_STORAGE_KEY)).toBe("1");
-    const header = within(table("Tracks this search found")).getByRole("button", { name: "In your library" });
+    const header = within(table("Tracks this dig found")).getByRole("button", { name: "In your library" });
     expect(header).toHaveAttribute("title", IN_LIBRARY_EXPLAINER);
   });
 
   it("adds the selection to the wantlist from the search, and reads it again", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(1), LOADED);
-    const [first, second] = rowsOf("Tracks this search found");
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(1), LOADED);
+    const [first, second] = rowsOf("Tracks this dig found");
     fireEvent.click(first!);
     fireEvent.click(second!, { ctrlKey: true });
     const reads = bridge.getDiscoveryRunTracks!.mock.calls.length;
-    fireEvent.click(within(actionsBar("Tracks this search found")).getByRole("button", { name: "Add to wantlist" }));
+    fireEvent.click(within(actionsBar("Tracks this dig found")).getByRole("button", { name: "Add to wantlist" }));
     expect(await screen.findByText("Added 2 tracks to the wantlist")).toBeInTheDocument();
     expect(bridge.addToWantlist).toHaveBeenCalledWith({
       track_ids: [HIDDEN.rows[0]!.beatport_track_id, HIDDEN.rows[1]!.beatport_track_id],
@@ -844,8 +844,8 @@ describe("Results", () => {
   it("opens a track on Beatport", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
-    fireEvent.click(rowsOf("Tracks this search found")[0]!);
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    fireEvent.click(rowsOf("Tracks this dig found")[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Open on Beatport" }));
     await waitFor(() => expect(bridge.openBeatportPage).toHaveBeenCalledWith(HIDDEN.rows[0]!.url));
   });
@@ -854,8 +854,8 @@ describe("Results", () => {
     install({ openBeatportPage: vi.fn(async () => false) });
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
-    fireEvent.click(rowsOf("Tracks this search found")[0]!);
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    fireEvent.click(rowsOf("Tracks this dig found")[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Open on Beatport" }));
     expect(await screen.findByText(/CuePoint opens only pages on beatport\.com/)).toBeInTheDocument();
   });
@@ -863,9 +863,9 @@ describe("Results", () => {
   it("does nothing on a double-click: a Beatport row has no file to play", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
     const calls = Object.values(bridge).reduce((sum, fn) => sum + fn.mock.calls.length, 0);
-    fireEvent.doubleClick(rowsOf("Tracks this search found")[0]!);
+    fireEvent.doubleClick(rowsOf("Tracks this dig found")[0]!);
     await act(async () => {});
     const after = Object.values(bridge).reduce((sum, fn) => sum + fn.mock.calls.length, 0);
     expect(after).toBe(calls);
@@ -875,21 +875,21 @@ describe("Results", () => {
   it("offers the same actions on a right-click, selecting the row", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
-    fireEvent.contextMenu(rowsOf("Tracks this search found")[1]!);
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    fireEvent.contextMenu(rowsOf("Tracks this dig found")[1]!);
     const menu = await screen.findByRole("menu");
     expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
       "Add to wantlist",
       "Make a Beatport playlist…",
       "Open on Beatport",
     ]);
-    expect(actionsBar("Tracks this search found")).toHaveTextContent("1 track selected");
+    expect(actionsBar("Tracks this dig found")).toHaveTextContent("1 track selected");
   });
 
   it("makes a playlist of the whole table by the search, in its order, with the library's tracks left out", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
     fireEvent.click(screen.getByRole("button", { name: "Make a Beatport playlist…" }));
     const dialog = await screen.findByRole("dialog", { name: "Make a playlist on Beatport" });
     expect(within(dialog).getByLabelText("Playlist name")).toHaveValue(OPTIONS.defaults.playlist_name);
@@ -924,8 +924,8 @@ describe("Results", () => {
   it("makes the playlist in the order the table is sorted by", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
-    const released = within(table("Tracks this search found")).getByRole("button", { name: "Released" });
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    const released = within(table("Tracks this dig found")).getByRole("button", { name: "Released" });
     fireEvent.click(released);
     fireEvent.click(released);
     await waitFor(() =>
@@ -955,8 +955,8 @@ describe("Results", () => {
     });
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
-    fireEvent.click(rowsOf("Tracks this search found")[0]!);
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
+    fireEvent.click(rowsOf("Tracks this dig found")[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Make a Beatport playlist…" }));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("the 1 selected track");
@@ -979,7 +979,7 @@ describe("Results", () => {
   it("refuses a playlist name the engine would refuse", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this search found").length).toBeGreaterThan(0), LOADED);
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
     fireEvent.click(screen.getByRole("button", { name: "Make a Beatport playlist…" }));
     const dialog = await screen.findByRole("dialog");
     const name = within(dialog).getByLabelText("Playlist name");
@@ -993,21 +993,21 @@ describe("Results", () => {
   it("deletes an ended search from its row after asking, and opens the next", async () => {
     renderDiscover();
     await openRun(1);
-    const list = screen.getByRole("navigation", { name: "Past searches" });
+    const list = screen.getByRole("navigation", { name: "Past digs" });
     const row = within(list)
       .getAllByRole("listitem")
       .find((item) => item.textContent?.includes("Finished"))!;
-    fireEvent.click(within(row).getByRole("button", { name: "Delete this search…" }));
-    const dialog = await screen.findByRole("dialog", { name: "Delete this search?" });
+    fireEvent.click(within(row).getByRole("button", { name: "Delete this dig…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete this dig?" });
     install({
       ...bridge,
       listDiscoveryRuns: vi.fn(async () =>
         value({ ...RUNS, runs: RUNS.runs.filter((run) => run.id !== 1), total: 1 }),
       ),
     });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Delete search" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete dig" }));
     await waitFor(() => expect(bridge.deleteDiscoveryRun).toHaveBeenCalledWith({ run_id: 1 }));
-    expect(await screen.findByText(/Deleted the search/)).toBeInTheDocument();
+    expect(await screen.findByText(/Deleted the dig/)).toBeInTheDocument();
     await waitFor(() => expect(within(list).getAllByRole("listitem")).toHaveLength(1));
   });
 
@@ -1019,9 +1019,9 @@ describe("Results", () => {
       getJob: vi.fn(async (id: string) => ({ id, state: "running" })),
     });
     renderDiscover();
-    const button = await screen.findByRole("button", { name: "Delete this search…" });
+    const button = await screen.findByRole("button", { name: "Delete this dig…" });
     expect(button).toBeDisabled();
-    expect(button).toHaveAttribute("title", "A running search cannot be deleted.");
+    expect(button).toHaveAttribute("title", "A running dig cannot be deleted.");
   });
 
   it("leaves the running explainer to the status strip (K17)", async () => {
@@ -1045,11 +1045,11 @@ describe("Results", () => {
     renderDiscover();
     await openRun(1);
     await waitFor(() => expect(bridge.listDiscoveryRuns.mock.calls.length).toBeGreaterThan(1));
-    expect(await screen.findByText(/Stopped because Beatport rejected the token/)).toBeInTheDocument();
+    expect(await screen.findByText(/Stopped because Beatport refused the sign-in/)).toBeInTheDocument();
   });
 });
 
-describe("New search", () => {
+describe("New dig", () => {
   beforeEach(() => {
     install({ listDiscoveryRuns: vi.fn(async () => asAnswer(fixture.runs_empty)) });
   });
@@ -1099,7 +1099,7 @@ describe("New search", () => {
       }),
     );
     expect(
-      await screen.findByText("The search found 7 tracks from 3 charts and 2 releases."),
+      await screen.findByText("The dig found 7 tracks from 3 charts and 2 releases."),
     ).toBeInTheDocument();
   });
 
@@ -1110,7 +1110,7 @@ describe("New search", () => {
     await waitFor(() =>
       expect(screen.getByRole("tab", { name: "Results" })).toHaveAttribute("aria-selected", "true"),
     );
-    expect(screen.queryByRole("region", { name: "New search" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "New dig" })).toBeNull();
   });
 
   it("picks artists from the Library's facet, with counts", async () => {
@@ -1262,7 +1262,7 @@ describe("the wantlist", () => {
     renderDiscover();
     expect(await screen.findByText("Your wantlist is empty")).toBeInTheDocument();
     expect(
-      screen.getByText("Add tracks from a search's results with Add to wantlist."),
+      screen.getByText("Add tracks from a dig's results with Add to wantlist."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("toolbar")).toBeNull();
     expect(screen.queryByRole("columnheader")).toBeNull();
@@ -1418,7 +1418,7 @@ describe("revisiting the page (C19d)", () => {
   it("revisit shows the old value immediately and refetches after an announce", async () => {
     install();
     const first = renderDiscover();
-    const list = await screen.findByRole("navigation", { name: "Past searches" }, LOADED);
+    const list = await screen.findByRole("navigation", { name: "Past digs" }, LOADED);
     expect(within(list).getAllByRole("button").length).toBeGreaterThan(1);
     first.unmount();
     const reads = () => ({
@@ -1432,14 +1432,14 @@ describe("revisiting the page (C19d)", () => {
     expect(screen.queryByText("Opening Discover…")).toBeNull();
     expect(screen.getByRole("tab", { name: "Results" })).toBeInTheDocument();
     expect(screen.queryByText("Reading your searches…")).toBeNull();
-    expect(screen.getByRole("navigation", { name: "Past searches" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Past digs" })).toBeInTheDocument();
     await act(async () => {});
     expect(reads()).toEqual(before);
 
     bridge.listDiscoveryRuns.mockResolvedValue(value({ ...RUNS, runs: RUNS.runs.filter((run) => run.id === 1), total: 1 }));
     act(() => invalidateReads(["discover"]));
     const failed = () =>
-      within(screen.getByRole("navigation", { name: "Past searches" }))
+      within(screen.getByRole("navigation", { name: "Past digs" }))
         .getAllByRole("button")
         .some((button) => button.textContent?.includes("Failed"));
     expect(failed()).toBe(true);

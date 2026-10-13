@@ -397,8 +397,8 @@ class TestFailures:
     @pytest.mark.parametrize(
         "status, error_class, reason",
         [
-            (401, "rejected", "Beatport rejected the token"),
-            (403, "forbidden", "the token is not allowed to read the catalog"),
+            (401, "rejected", "Beatport refused the sign-in"),
+            (403, "forbidden", "this sign-in is not allowed to read the catalog"),
             (429, "rate_limited", "Beatport asked CuePoint to slow down"),
         ],
     )

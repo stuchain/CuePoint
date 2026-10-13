@@ -8150,3 +8150,25 @@ waiting states, six dropdowns and seventeen files of typed arrows and crosses we
 **Notes**: DEC-255 (the shared header and controls), DEC-260 (the other guards).
 
 **Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13
+
+## DEC-295 — One Word for Each Idea, Held by a Test
+
+**Status**: Accepted · **Related**: DEC-155, DEC-158, DEC-267, DEC-274, G7 R3-3 R3-8 R3-11 R3-12 W3 W8
+
+**Context**: The same idea had up to five names ("Revert", "Restore", "Put back", "Go back to…" for Undo;
+"accepted" and "Take" next to Correct; "token" in 26 strings; "Rekordbox export" for the file you
+import). Missing values read "none", "empty", "No value" or "(not used)".
+
+**Decision**:
+- `docs/user-guide/glossary.md` "Words CuePoint uses" is the word list: Rekordbox file / Import / Export to
+  Rekordbox (its only meaning) / Save to files / Undo / Correct and "confirmed" / Mark OK (Prepare
+  warnings) / Sign in to Beatport / the background process unnamed / "—" in tables and "not set" in
+  sentences / Search, and a Discover run is a dig.
+- `renderer/src/userWords.test.ts` holds a `GLOSSARY` of never-forms run by the same scanner as DEC-155,
+  with exact-string exceptions only (the pasted-token fallback, Diagnostics and the Log viewer);
+  `electron/appMenu.test.ts` checks the menu the same way.
+- Only user text changes: states, API fields, config keys and identifiers keep their names (the
+  `accepted` match state stays). Engine messages the app shows verbatim follow the list.
+- Check for changes with nothing changed shows a message ("rekordbox.xml has no changes.") and no dialog.
+
+**Decided with**: User (R3-3, wish list round 2, "apply ALL") · **Date**: 2026-10-13

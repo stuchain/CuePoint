@@ -47,6 +47,9 @@ interface Hit {
 /** Reads like text for a person rather than an identifier, path or key. */
 function readsAsText(text: string): boolean {
   const t = text.trim();
+  // A piece of a template or a JSX line that is padded with a space is a sentence's
+  // middle (" accepted", "(accepted) "); a key is never padded.
+  if (t !== text && /[A-Za-z]/.test(t) && !/^[\w-]*[-_][\w-]*$/.test(t)) return true;
   // A single token counts when it is capitalized ("Engine", "ENGINE") or ends in
   // punctuation ("Jobs:", "engine…"), case-blind; a bare lowercase word is a key.
   return (
@@ -82,7 +85,17 @@ function isHidden(node: ts.Node): boolean {
   return false;
 }
 
-function scan(file: string, source: string): Hit[] {
+/** The word a literal breaks, for the engine/job and British rules. */
+function internalWord(text: string): string | undefined {
+  return INTERNAL.exec(text)?.[0] ?? BRITISH.exec(text)?.[0];
+}
+
+function scan(
+  file: string,
+  source: string,
+  find: (text: string, file: string) => string | undefined = internalWord,
+  allowed: { file: RegExp }[] = ALLOWED,
+): Hit[] {
   const hits: Hit[] = [];
   const tree = ts.createSourceFile(
     file,
@@ -93,13 +106,13 @@ function scan(file: string, source: string): Hit[] {
   );
   const check = (node: ts.Node, text: string) => {
     if (!text.trim()) return;
-    const word = INTERNAL.exec(text)?.[0] ?? BRITISH.exec(text)?.[0];
+    const word = find(text, file);
     if (!word) return;
     // British spellings are looked for in every literal that reads as text; the
     // stored ids that keep them (DEC-158) are single tokens and so are skipped.
     if (!readsAsText(text) && !(node.kind === ts.SyntaxKind.JsxText)) return;
     if (isHidden(node)) return;
-    if (ALLOWED.some((a) => a.file.test(file))) return;
+    if (allowed.some((a) => a.file.test(file))) return;
     hits.push({
       file,
       line: tree.getLineAndCharacterOfPosition(node.getStart()).line + 1,
@@ -154,6 +167,86 @@ describe("user-visible words", () => {
     expect(
       scan("x.ts", 'import x from "engine thing"; console.warn("engine is slow");'),
     ).toEqual([]);
+  });
+});
+
+/**
+ * The glossary guard (docs/user-guide/glossary.md, "Words CuePoint uses").
+ *
+ * One word for each idea: the "never" form is what older screens said. Each
+ * entry is checked in every literal that reads as text, the same way as above.
+ */
+const TOKEN = /\btokens?\b/i;
+const GLOSSARY: { never: RegExp; say: string; only?: RegExp }[] = [
+  { never: TOKEN, say: "Sign in to Beatport" },
+  { never: /\b(revert|reverted|reverting|reverts|put back)\b/i, say: "Undo" },
+  { never: /\bgo back to\b/i, say: "Undo" },
+  { never: /\brestor(e|ed|es|ing)\b/i, say: "Undo" },
+  { never: /\baccepted\b/i, say: "confirmed (a match), Mark OK (a warning)" },
+  { never: /rekordbox export|xml export|your export|this export/i, say: "Rekordbox file" },
+  { never: /library service/i, say: "not named (CuePoint stopped working in the background)" },
+  { never: /rekordbox collection/i, say: "Rekordbox file" },
+  { never: /save changes into the files|into the files themselves/i, say: "Save to files" },
+  { never: /\bundo accept\b|^accept$/i, say: "Mark OK (a Prepare warning)" },
+  { never: /import another file/i, say: "Import a Rekordbox file…" },
+  { never: /\bwrit(e|ing) tags\b/i, say: "Save to files" },
+  { never: /\(not used\)|\bno value\b/i, say: "— in a table, not set in a sentence" },
+  {
+    never: /\bnew search\b|this search found/i,
+    say: "New dig / This dig found nothing",
+    only: /\.\/(screens\/discover|components\/discover)\//,
+  },
+];
+
+/**
+ * Where a never-form is not a word the user reads as that idea, by file and why.
+ * ("engine" in Diagnostics and the log viewer is allowed by ALLOWED above.)
+ */
+const GLOSSARY_ALLOWED: { file: RegExp; text: RegExp; reason: string }[] = [
+  {
+    file: /\.\/screens\/BeatportSettingsPanel\.tsx$/,
+    text: /^(Paste a token instead|Beatport token|Paste a new token to replace the saved one|Paste your Beatport access token|Loading token status…|Save token|Using a pasted token|Saved token|\. Paste a new one to replace it\.)$/,
+    reason: "the pasted-token fallback behind \"Paste a token instead\" (glossary)",
+  },
+  {
+    file: /\.\/hooks\/useBeatportToken\.ts$/,
+    text: /^Couldn't save the token\. Try again\.$/,
+    reason: "the pasted-token fallback's own error (glossary)",
+  },
+];
+
+function glossaryWord(text: string, file: string): string | undefined {
+  for (const g of GLOSSARY) {
+    if (g.only && !g.only.test(file)) continue;
+    const m = g.never.exec(text);
+    if (!m) continue;
+    if (g.never === TOKEN && GLOSSARY_ALLOWED.some((a) => a.file.test(file) && a.text.test(text.trim()))) continue;
+    return `${m[0]} -> ${g.say}`;
+  }
+  return undefined;
+}
+
+describe("the glossary", () => {
+  it("uses one word for each idea", () => {
+    const report = Object.entries(SOURCES)
+      .flatMap(([file, source]) => scan(file, source, glossaryWord, []))
+      .map((h) => `${h.file}:${h.line}  "${h.text}"  (${h.word})`);
+    expect(report).toEqual([]);
+  });
+
+  it("finds a never-form in a literal, in JSX text and in a template", () => {
+    const found = scan(
+      "./screens/discover/x.tsx",
+      'const a = "Revert this"; const b = <p>Your export is old</p>; const c = `Paste a token ${a}`; const d = "tokenKey"; const e = "New search";',
+      glossaryWord,
+      [],
+    );
+    expect(found.map((h) => h.text)).toEqual([
+      "Revert this",
+      "Your export is old",
+      "Paste a token",
+      "New search",
+    ]);
   });
 });
 

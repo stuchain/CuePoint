@@ -225,11 +225,11 @@ function collectionRow(name: string): HTMLElement {
 }
 
 describe("the Library header's entry (DEC-087)", () => {
-  it("has no import button of its own; File \u2192 Import another file\u2026 still imports (K9)", async () => {
+  it("has no import button of its own; File \u2192 Import a Rekordbox file\u2026 still imports (K9)", async () => {
     const view = renderScreen();
     await ready();
 
-    expect(screen.queryByRole("button", { name: "Import another file…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Import a Rekordbox file…" })).toBeNull();
     view.rerender(<Page importWith="from-the-file-menu" />);
     await waitFor(() => expect(mock("openXmlFileDialog")).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("dialog", { name: "Export to Rekordbox" })).toBeNull();
@@ -248,7 +248,7 @@ describe("the Library header's entry (DEC-087)", () => {
       .map((button) => button.textContent);
     // Two buttons, never a menu (FLW-11, K9): where they do not fit, the visible labels
     // shorten and the full names stay (see LibraryHeader.tsx).
-    expect(actions).toEqual(["Check Rekordbox for changes", "Export to Rekordbox…"]);
+    expect(actions).toEqual(["Check for changes", "Export to Rekordbox…"]);
 
     await user.click(within(header).getByRole("button", { name: "Export to Rekordbox…" }));
     const dialog = await exportDialog();
@@ -399,7 +399,7 @@ describe("what the dialog hands back to the page", () => {
 
     await exportFromHeader(user);
     const dialog = await exportDialog();
-    await user.click(await within(dialog).findByRole("button", { name: "Import another file…" }));
+    await user.click(await within(dialog).findByRole("button", { name: "Import a Rekordbox file…" }));
 
     await waitFor(() => expect(mock("openXmlFileDialog")).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("dialog", { name: "Export to Rekordbox" })).toBeNull();

@@ -271,7 +271,7 @@ describe("the tracks", () => {
 
   it("describes an export that changes nothing as a copy", () => {
     expect(WHOLE.changes_nothing).toBe(true);
-    expect(copyLine(WHOLE)).toContain("exact copy of your collection file");
+    expect(copyLine(WHOLE)).toContain("exact copy of your Rekordbox file");
     expect(copyLine(CHOSEN)).toBeNull();
   });
 });
@@ -429,14 +429,14 @@ describe("confirming", () => {
 describe("refusals", () => {
   it("name the file and the next step for each source refusal", () => {
     expect(refusalText(refusal("never_imported"))).toBe(
-      "There is no collection file to export from. Import your Rekordbox collection first.",
+      "There is no Rekordbox file to export from. Import a Rekordbox file first.",
     );
     expect(refusalText(refusal("source_missing"))).toBe(
-      "The collection file this library was imported from is not there any more: " +
+      "The Rekordbox file this library was imported from is not there any more: " +
         "C:\\Users\\dj\\Music\\collection.xml. The export patches that file, so it has to be " +
         "found first: import it again from where it is now.",
     );
-    expect(refusalText(refusal("source_invalid"))).toContain("cannot be read as a Rekordbox collection");
+    expect(refusalText(refusal("source_invalid"))).toContain("cannot be read as a Rekordbox file");
     expect(refusalText(refusal("source_invalid"))).toContain("collection.xml");
   });
 

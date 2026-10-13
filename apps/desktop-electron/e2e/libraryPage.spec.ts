@@ -177,10 +177,10 @@ test.describe("The Library page (LIBRARY-11)", () => {
 
       await expect(window.getByText(/Export Collection in xml format/i)).toBeVisible();
       await expect(
-        window.getByRole("button", { name: /Import your Rekordbox collection/i }),
+        window.getByRole("button", { name: /Import a Rekordbox file/i }),
       ).toBeVisible();
       await expect(window.getByRole("button", { name: "Import…", exact: true })).toBeVisible();
-      await expect(window.getByRole("button", { name: "How do I export one?" })).toBeVisible();
+      await expect(window.getByRole("button", { name: "How do I get one?" })).toBeVisible();
     } finally {
       await app.close();
     }
@@ -222,7 +222,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
       expect(chipBox.x, "chip sits to the right of the heading").toBeGreaterThan(title.x);
       expect(Math.abs(chipBox.y + chipBox.height / 2 - (title.y + title.height / 2))).toBeLessThan(title.height);
 
-      const names = ["Check Rekordbox for changes", "Export to Rekordbox…"];
+      const names = ["Check for changes", "Export to Rekordbox…"];
       const tops: number[] = [];
       const shown: string[] = [];
       for (const name of names) {
@@ -255,7 +255,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
       await expect(table.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
 
       // Two buttons, never a menu, and on one line whatever their labels say.
-      const names = ["Check Rekordbox for changes", "Export to Rekordbox…"];
+      const names = ["Check for changes", "Export to Rekordbox…"];
       const tops: number[] = [];
       const shown: string[] = [];
       for (const name of names) {
@@ -493,7 +493,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
       writeExport(workspace, [0, 1, 2, 3]);
       await openLibrary(window);
 
-      await window.getByRole("button", { name: /Check Rekordbox for changes/i }).click();
+      await window.getByRole("button", { name: /Check for changes/i }).click();
       const dialog = window.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 30_000 });
       await expect(dialog.getByTestId("count-removed")).toHaveText("2");
@@ -519,7 +519,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
       writeExport(workspace, [0, 1, 2, 3, 9]);
       await openLibrary(window);
 
-      await window.getByRole("button", { name: /Check Rekordbox for changes/i }).click();
+      await window.getByRole("button", { name: /Check for changes/i }).click();
       const dialog = window.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 30_000 });
       await expect(dialog.getByTestId("count-added")).toHaveText("1");
@@ -584,22 +584,17 @@ test.describe("The Library page (LIBRARY-11)", () => {
     }
   });
 
-  test("says so plainly when a refresh would change nothing", async () => {
+  test("says so in a toast when a refresh would change nothing", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
       await importCollection(window, writeExport(workspace, [0, 1, 2]));
       await openLibrary(window);
 
-      await window.getByRole("button", { name: /Check Rekordbox for changes/i }).click();
-      const dialog = window.getByRole("dialog");
-
-      await expect(dialog).toBeVisible({ timeout: 30_000 });
-      await expect(dialog.getByText(/already matches this export/i)).toBeVisible();
-      // Nothing to confirm means no confirm button to press by mistake.
-      await expect(
-        dialog.getByRole("button", { name: /Remove|Apply changes/i }),
-      ).toHaveCount(0);
+      await window.getByRole("button", { name: /Check for changes/i }).click();
+      // No dialog to dismiss (R3-11): a toast says the file has no changes.
+      await expect(window.getByText(/ has no changes\.$/)).toBeVisible({ timeout: 30_000 });
+      await expect(window.getByRole("dialog")).toHaveCount(0);
     } finally {
       await app.close();
     }

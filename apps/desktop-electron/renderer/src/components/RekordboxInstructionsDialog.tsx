@@ -5,7 +5,7 @@ const STEPS = [
   "Open Rekordbox on your computer.",
   "Use File → Export Collection in xml format.",
   "Save the XML file somewhere easy to find (Downloads works well).",
-  "In CuePoint's Library, choose Import your Rekordbox collection… and pick the XML file.",
+  "In CuePoint's Library, choose Import a Rekordbox file… and pick the XML file.",
   "To match on Beatport, open Clean and match a playlist, a Collection or the whole library.",
 ];
 
@@ -24,7 +24,7 @@ export function RekordboxInstructionsDialog({ open, onClose }: RekordboxInstruct
     >
       <div className="rekordbox-instructions">
         <p>
-          A Rekordbox XML export holds your collection and playlists. CuePoint imports it into its
+          A Rekordbox file holds your collection and playlists. CuePoint imports it into its
           library, and matches tracks on Beatport from there.
         </p>
         <ol>

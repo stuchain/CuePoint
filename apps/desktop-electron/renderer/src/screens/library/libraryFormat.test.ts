@@ -221,7 +221,7 @@ describe("sourceState", () => {
     // checked.
     expect(sourceState(source({ changed: null }))).toBe("unknown");
     expect(sourceStateMessage("unknown")).toBe(
-      "CuePoint could not tell whether this export has changed. Check Rekordbox for changes to compare.",
+      "CuePoint could not tell whether this Rekordbox file has changed. Check for changes to compare.",
     );
   });
 

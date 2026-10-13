@@ -127,11 +127,11 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await expect(window.getByRole("heading", { name: "Discover", level: 1 })).toBeVisible();
       await expect(window.getByText("Sign in to Beatport to search its charts and releases.")).toBeVisible({ timeout: 30_000 });
       // Usable without a token: past searches and the wantlist are CuePoint's own.
-      await window.getByRole("tab", { name: "New search" }).click();
+      await window.getByRole("tab", { name: "New dig" }).click();
       await expect(window.getByRole("button", { name: "Start looking" })).toBeDisabled();
       await window.getByRole("tab", { name: "Wantlist" }).click();
       await expect(window.getByText("Your wantlist is empty")).toBeVisible();
-      await expect(window.getByText("Add tracks from a search's results with Add to wantlist.")).toBeVisible();
+      await expect(window.getByText("Add tracks from a dig's results with Add to wantlist.")).toBeVisible();
 
       // The banner offers the sign-in itself; the paste fallback is still in Settings.
       await expect(window.getByRole("button", { name: "Sign in to Beatport" })).toBeVisible();
@@ -151,8 +151,8 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await window.evaluate(() => window.cuepoint!.saveBeatportPastedToken("e2e-not-a-real-token"));
 
       await window.getByRole("link", { name: "Discover" }).click();
-      await window.getByRole("tab", { name: "New search" }).click();
-      const panel = window.getByRole("region", { name: "New search" });
+      await window.getByRole("tab", { name: "New dig" }).click();
+      const panel = window.getByRole("region", { name: "New dig" });
       await expect(panel).toBeVisible({ timeout: 30_000 });
       await expect(window.getByText("Sign in to Beatport to search its charts and releases.")).toHaveCount(0);
       await panel.getByRole("checkbox", { name: "House" }).check();
@@ -168,7 +168,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await expect(window.getByText("Found 3 tracks from 1 chart and 0 releases.", { exact: true })).toBeVisible({
         timeout: 60_000,
       });
-      const found = "Tracks this search found";
+      const found = "Tracks this dig found";
       await expect(row(window, found, /Harbour Lights/)).toBeVisible({ timeout: 15_000 });
       await expect(window.getByRole("table", { name: found }).getByRole("row")).toHaveCount(4);
       await expect(row(window, found, /Harbour Lights/)).toContainText("On a chart by Mara Veil: “Journey Selects”");

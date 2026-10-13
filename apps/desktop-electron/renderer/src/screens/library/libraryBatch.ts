@@ -162,7 +162,7 @@ export function describeBatch(action: BatchAction, count: number): string {
     case "remove_from_collection":
       return `Remove ${many} from “${action.target}”?`;
     case "accept_match":
-      return `Accept the proposed Beatport match on ${many}?`;
+      return `Confirm the proposed Beatport match on ${many}?`;
     case "reject_match":
       return `Reject the proposed Beatport match on ${many}?`;
     case "apply_match":
@@ -196,7 +196,7 @@ function pastTense(action: BatchAction): string {
     case "remove_from_collection":
       return "Removed";
     case "accept_match":
-      return "Accepted the match on";
+      return "Confirmed the match on";
     case "reject_match":
       return "Rejected the match on";
     case "apply_match":
@@ -227,9 +227,9 @@ function alreadyWere(action: BatchAction): string {
     case "reject_match":
       return "were already decided or had nothing proposed";
     case "apply_match":
-      return "had no accepted match or already held those values";
+      return "had no confirmed match or already held those values";
     case "set_override":
-      return isClearing(action) ? "had none" : "already had it";
+      return isClearing(action) ? "were already not set" : "already had it";
   }
 }
 
@@ -267,7 +267,7 @@ export function batchSummary(action: BatchAction, result: BatchResult): string {
   // Not for a single track, where the toast would be longer than the edit.
   if (result.changed <= 1) return opened;
   return canRevertKind(action.kind)
-    ? `${opened} Each change is in the track's History, and the whole batch can be reverted from Activity.`
+    ? `${opened} Each change is in the track's History, and the whole batch can be undone from Activity.`
     : `${opened} There is no undo for ${action.holder === "set" ? "Set" : "Collection"} changes.`;
 }
 
@@ -282,5 +282,5 @@ export function batchConsequence(kind: LibraryBatchKind, holder?: "set"): string
     return BATCH_RECORDED_NOTE;
   }
   const node = holder === "set" ? "a Set" : "a Collection";
-  return `It runs in the background, and there is no undo: adding tracks to or removing them from ${node} cannot be reverted.`;
+  return `It runs in the background, and there is no undo: adding tracks to or removing them from ${node} cannot be undone.`;
 }

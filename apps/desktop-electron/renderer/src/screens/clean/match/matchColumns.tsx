@@ -6,7 +6,7 @@
  * as the colour); one it would leave reads as the value. A row Beatport gave
  * no single answer for says what to do about it in the last column, where it
  * has the room. The Preview cell plays the candidate's sample (R4-7). The
- * first column is the tick that chooses a row for "Take ticked values".
+ * first column is the tick that chooses a row for "Correct ticked values".
  *
  * The columns are static, so the layout a user made is never rebuilt by a
  * click; the tick reads the selection through a context the table provides.
@@ -38,7 +38,7 @@ function TickCell({ row }: { row: LibraryTrackRow }) {
     <input
       type="checkbox"
       className="match-table__tick"
-      aria-label={`Take ${row.title}`}
+      aria-label={`Choose ${row.title}`}
       checked={isTicked(row)}
       // The row's own click would select only this row.
       onClick={(event) => event.stopPropagation()}
@@ -99,7 +99,7 @@ const field = (
 export const MATCH_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
   {
     id: "tick",
-    header: "Take",
+    header: "Choose",
     minWidthPx: 48,
     defaultWidthPx: 52,
     render: (row) => <TickCell row={row} />,

@@ -127,7 +127,7 @@ class TestAFiveThousandChangeBatch:
         assert job.type == JOB_TYPE_LIBRARY_BATCH
         finished(job)
         assert job.state == JobState.SUCCEEDED
-        assert job.progress.status_message == "Reverting changes"
+        assert job.progress.status_message == "Undoing changes"
         assert (job.progress.completed_tracks, job.progress.total_tracks) == (
             TRACKS,
             TRACKS,
@@ -152,7 +152,7 @@ class TestAFiveThousandChangeBatch:
         ]
         assert len(summaries) == 2
         # The quoted sentence is ORG-07's own, which does not group digits.
-        assert summaries[-1] == "Reverted 5,000 changes of “Rated 5000 tracks 4 stars”"
+        assert summaries[-1] == "Undid 5,000 changes of “Rated 5000 tracks 4 stars”"
 
     def test_at_the_threshold_it_reverts_inline(self, library, store, monkeypatch):
         monkeypatch.setattr(batch_jobs, "BATCH_JOB_THRESHOLD", 10)

@@ -30,12 +30,12 @@ are not a page of their own: they are the tree in the Library's left pane. **Key
 follows **Clean** (see [Keys](keys.md)). When the window is too short for every page, only the
 list of pages scrolls; the logo stays put. **Settings** is pinned to the bottom, under a thin line.
 
-Until you import a Rekordbox collection, **Clean**, **Keys**, **Discover**,
+Until you import a Rekordbox file, **Clean**, **Keys**, **Discover**,
 **Prepare** and **Statistics** are dimmed, with one line above them reading "Import your
 library to use these". They still open: they just have nothing to show yet. They light up on their
 own after the first import.
 
-**Library** is where your Rekordbox collection lives — see
+**Library** is where your Rekordbox file lives — see
 [Your library](library.md). **Clean** is where it is matched on Beatport and
 kept tidy — see [Clean](clean.md). **Discover** finds new music on Beatport — see
 [Discover](discover.md). **Prepare** is where a set is planned as a running
@@ -67,7 +67,7 @@ its details in Track details, and **Shift+Enter** plays it. Each row also has a
 small play button. **Enter** or a click closes the window and opens the track. **Esc**
 closes it without doing anything, and puts you back where you were.
 
-If you have not imported a Rekordbox collection yet, search says so rather than
+If you have not imported a Rekordbox file yet, search says so rather than
 reporting that nothing matched — those are different problems. Import one from
 the [Library](library.md) page. If CuePoint is still starting, search says "Search
 will work once CuePoint has finished starting." If a search fails, it says "Search
@@ -120,12 +120,12 @@ the small Help menu CuePoint used to draw inside the window.
 - **CuePoint** (on a Mac only): **About CuePoint**, **Settings...** (**Cmd+,**) and
   **Quit**.
 - **File**: **Import a Rekordbox file...** (**Ctrl+O**) opens the Library and asks for a
-  Rekordbox XML file (the same as **Import another Rekordbox file…** in Settings →
-  Rekordbox export); **Check Rekordbox for
+  Rekordbox XML file (the same as **Import a Rekordbox file…** in Settings →
+  Rekordbox); **Check for
   changes** starts the same check. Exporting is not here: it stays on the Library
   and on a Collection's or Set's own bar, because a menu item has no scope.
 - **Edit**: **Undo**, **Redo**, **Cut**, **Copy**, **Paste** and **Select all**, so
-  copying and pasting work in every text field, including the Beatport token.
+  copying and pasting work in every text field, including the pasted Beatport token.
 - **View**: **Size** (Small, Compact, Medium, Large and Extra large, with the one in use
   ticked; a size too big for your screen is greyed), **Bigger** (**Ctrl+=**), **Smaller** (**Ctrl+-**), **Default size**
   (**Ctrl+0**), **Track details**, **Sidebar**, and, on Windows and Linux,
@@ -221,10 +221,10 @@ entry has a short word for its kind and the counts and names that matter; the
 rest of what was recorded is behind its **Details**.
 
 Some entries can be acted on where they are listed. A change to many tracks
-offers **Revert this batch**, and a tag write offers **Restore**; each asks once
+offers **Undo this batch**, and a save to files offers **Undo**; each asks once
 more before it does anything. See
-[Taking a change back](library.md#taking-a-change-back) and
-[Restoring](library.md#restoring).
+[Undoing a change](library.md#undoing-a-change) and
+[Undoing a save](library.md#undoing-a-save).
 
 An interrupted Beatport match is listed here too, with **Resume**: resuming
 matches only the tracks it had not reached. See [Clean](clean.md#match).
@@ -264,7 +264,7 @@ In Clean's Match area, One at a time:
 
 | Shortcut | Does |
 | --- | --- |
-| **A** | Correct: accept the match and update the ticked values |
+| **A** | Correct: confirm the match and update the ticked values |
 | **R** | Not this track |
 | **N** | Skip for now |
 | **Left** / **Right** | Choose another result |
@@ -290,7 +290,7 @@ Short messages (a save, a reset) appear in the bottom-right corner above the pla
 
 **Settings** is one page in sections, with a list of links at the top (in a rail
 on the left when the window is wide) that scroll to each: **Appearance**,
-**Motion**, **Playback**, **Waveforms**, **Beatport**, **Rekordbox export**,
+**Motion**, **Playback**, **Waveforms**, **Beatport**, **Rekordbox**,
 **Privacy** and **About & updates**. A setting that applies the moment you change
 it shows a small **Saved** beside it for a couple of seconds. **About & updates**
 shows the version and has **Getting started**, which opens the first-run
@@ -343,7 +343,7 @@ Here is where each kind shows:
   when you open it. That is the only one: a table row you pick does not move, so a
   double-click to play and a shift-click range always land.
 - **Alerts and confirmations**: a time Prepare refuses, a chapter length it
-  refuses, shakes; new search results and a finished background task pulse once.
+  refuses, shakes; new dig results and a finished background task pulse once.
 - **Loading**: a small pixel spinner turns while the library is being read, and
   rows of a table that have not arrived yet pulse. Rows hold still while you scroll.
 - **Scrolling**: in Settings, the link for the section you are reading steps in, and a
@@ -381,7 +381,7 @@ message that follows has **Undo**. Your custom themes are kept.
 When CuePoint hits an unexpected error, it sends one report to Sentry (EU region) so the bug can be
 fixed. A report says what went wrong, where in CuePoint's code, the steps that led to it, the
 version and your operating system. It never carries your file, folder, track, artist, label or
-playlist names, your notes, tags or tokens. Turn the switch off and nothing more is sent, at once,
+playlist names, your notes, tags or Beatport sign-in. Turn the switch off and nothing more is sent, at once,
 with no restart. **Help → Privacy** opens Settings → Privacy, where the switch is; the full
 list, and how long Sentry keeps a report, is in the [Privacy Notice](../policy/privacy-notice.md).
 The CLI never sends error reports.

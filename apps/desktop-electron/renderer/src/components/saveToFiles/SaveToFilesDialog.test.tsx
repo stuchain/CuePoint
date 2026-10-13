@@ -368,7 +368,7 @@ describe("marking tracks as saved", () => {
 
   it("turns the button into Mark N tracks as saved when the bar counted them", async () => {
     open({ canMarkSaved: true });
-    const button = await screen.findByRole("button", { name: "Mark 47 tracks as saved" });
+    const button = await screen.findByRole("button", { name: "Mark 47 tracks as already saved" });
     expect(button).toBeEnabled();
     expect(screen.getByText("These files already hold these values.")).toBeInTheDocument();
   });
@@ -376,7 +376,7 @@ describe("marking tracks as saved", () => {
   it("calls the write, which records them, and says they are marked", async () => {
     results["w-1"] = { ...WRITTEN, total: 47, completed: 47, written: 0, skipped: { nothing_to_write: 47 } };
     const props = open({ canMarkSaved: true });
-    await userEvent.click(await screen.findByRole("button", { name: "Mark 47 tracks as saved" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Mark 47 tracks as already saved" }));
     await waitFor(() =>
       expect(bridge.startTagWrite).toHaveBeenCalledWith({
         preview_id: "p-1",
@@ -385,7 +385,7 @@ describe("marking tracks as saved", () => {
     );
     expect(await screen.findByText("47 tracks are marked as saved.")).toBeInTheDocument();
     // Nothing was written, so there is nothing to restore.
-    expect(screen.queryByRole("button", { name: /Restore/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Undo this save/ })).toBeNull();
     expect(props.onChanged).toHaveBeenCalled();
   });
 });
@@ -476,18 +476,18 @@ describe("Save", () => {
     expect(props.onClose).toHaveBeenCalled();
   });
 
-  it("offers Restore after a write and restores that write", async () => {
+  it("offers Undo this save after a save and undoes that save", async () => {
     const props = open();
     await ready();
     await userEvent.click(screen.getByRole("button", { name: /^Save to 38 files$/ }));
-    await userEvent.click(await screen.findByRole("button", { name: "Restore these files" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Undo this save" }));
     await waitFor(() => expect(bridge.startTagRestore).toHaveBeenCalledWith({ job_id: "w-1" }));
-    expect(await screen.findByText("Restored 38 files.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Restore these files" })).toBeNull();
+    expect(await screen.findByText("Undid 38 files.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Undo this save" })).toBeNull();
     expect(props.onChanged).toHaveBeenCalledTimes(2);
   });
 
-  it("offers Restore for a write that started and failed", async () => {
+  it("offers Undo this save for a save that started and failed", async () => {
     bridge.getJob.mockImplementation(async (id: string) =>
       id === "w-1" ? { id, state: "failed", error: { message: "The disk is full" } } : { id, state: "succeeded" },
     );
@@ -495,8 +495,8 @@ describe("Save", () => {
     await ready();
     await userEvent.click(screen.getByRole("button", { name: /^Save to 38 files$/ }));
     expect(await screen.findByRole("alert")).toHaveTextContent("The disk is full");
-    expect(screen.getByText(/The write did not finish/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Restore these files" })).toBeEnabled();
+    expect(screen.getByText(/The save did not finish/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Undo this save" })).toBeEnabled();
   });
 
   it("reads the files again when the engine no longer holds the preview, and clears its line once ready", async () => {
@@ -510,7 +510,7 @@ describe("Save", () => {
     await ready();
     await userEvent.click(screen.getByRole("button", { name: /^Save to 38 files$/ }));
     await waitFor(() => expect(bridge.previewTagWrite).toHaveBeenCalledTimes(2));
-    expect(screen.queryByRole("button", { name: /Restore/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Undo this save/ })).toBeNull();
     expect(props.onChanged).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
     await ready();
@@ -535,7 +535,7 @@ describe("Save", () => {
     await ready();
     await userEvent.click(screen.getByRole("button", { name: /^Save to 38 files$/ }));
     expect(await screen.findByText("47 tracks are marked as saved.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Restore/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Undo this save/ })).toBeNull();
   });
 
   it("moves focus to the result, and the library is told once", async () => {

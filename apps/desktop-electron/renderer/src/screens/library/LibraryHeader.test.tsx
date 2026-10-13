@@ -3,8 +3,8 @@
  *
  * It names the scope you are in (the h1 stays "Library"), says what the scope
  * holds, and gives the source as a short line. Two buttons, never a menu:
- * **Check Rekordbox for changes** and **Export to Rekordbox…**. Before the
- * first import there is one, **Import your Rekordbox collection…**. Where the
+ * **Check for changes** and **Export to Rekordbox…**. Before the
+ * first import there is one, **Import a Rekordbox file…**. Where the
  * two do not fit the visible labels shorten and the full names stay as the
  * buttons' accessible names.
  *
@@ -114,7 +114,7 @@ describe("after an import", () => {
   it("has two buttons named for what they do, and no menu", () => {
     renderHeader();
 
-    for (const name of ["Check Rekordbox for changes", "Export to Rekordbox…"]) {
+    for (const name of ["Check for changes", "Export to Rekordbox…"]) {
       expect(screen.getByRole("button", { name })).toBeInTheDocument();
     }
     expect(screen.queryByRole("button", { name: /Import/ })).toBeNull();
@@ -126,7 +126,7 @@ describe("after an import", () => {
   it("does what each button says", () => {
     const handlers = renderHeader();
 
-    fireEvent.click(screen.getByRole("button", { name: "Check Rekordbox for changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check for changes" }));
     fireEvent.click(screen.getByRole("button", { name: "Export to Rekordbox…" }));
 
     expect(handlers.onCheck).toHaveBeenCalledTimes(1);
@@ -147,7 +147,7 @@ describe("after an import", () => {
         {...HANDLERS()}
       />,
     );
-    const check = () => screen.getByRole("button", { name: "Check Rekordbox for changes" });
+    const check = () => screen.getByRole("button", { name: "Check for changes" });
     expect(check()).toHaveClass("cp-btn--secondary");
     for (const next of [summaryWith(true), summaryWith(false, false)]) {
       view.rerender(
@@ -173,7 +173,7 @@ describe("after an import", () => {
     widths = { "library-header": 1000, "library-header-measure": 400 };
     renderHeader();
 
-    expect(screen.getByText("Check Rekordbox for changes")).toBeVisible();
+    expect(screen.getByText("Check for changes")).toBeVisible();
     expect(screen.queryByText("Export…")).toBeNull();
   });
 
@@ -181,12 +181,12 @@ describe("after an import", () => {
     widths = { "library-header": 500, "library-header-measure": 400 };
     renderHeader();
 
-    const check = screen.getByRole("button", { name: "Check Rekordbox for changes" });
+    const check = screen.getByRole("button", { name: "Check for changes" });
     const exported = screen.getByRole("button", { name: "Export to Rekordbox…" });
-    expect(check).toHaveTextContent("Check Rekordbox");
+    expect(check).toHaveTextContent("Check");
     expect(exported).toHaveTextContent("Export…");
     // The full name is the accessible name, not only a tooltip.
-    expect(check).toHaveAttribute("aria-label", "Check Rekordbox for changes");
+    expect(check).toHaveAttribute("aria-label", "Check for changes");
     expect(exported).toHaveAttribute("aria-label", "Export to Rekordbox…");
     expect(screen.queryByRole("menu")).toBeNull();
   });
@@ -345,10 +345,10 @@ describe("the source line (K9)", () => {
   it("explains an export it could not compare, without calling it urgent", () => {
     renderHeader({ summary: summaryWith(null) });
     const note = screen.getByRole("status");
-    expect(note).toHaveTextContent(/could not tell whether this export has changed/);
+    expect(note).toHaveTextContent(/could not tell whether this Rekordbox file has changed/);
     expect(note).not.toHaveClass("library-header__state--attention");
     // Check stays a secondary button: nothing is known to need a look.
-    expect(screen.getByRole("button", { name: "Check Rekordbox for changes" })).toHaveClass(
+    expect(screen.getByRole("button", { name: "Check for changes" })).toHaveClass(
       "cp-btn--secondary",
     );
   });
@@ -365,9 +365,9 @@ describe("before the first import", () => {
     const handlers = renderHeader({ summary: null });
 
     expect(screen.getAllByRole("button")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Import your Rekordbox collection…" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import a Rekordbox file…" }));
     expect(handlers.onImport).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole("button", { name: /Check Rekordbox/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Check/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Export/ })).toBeNull();
     expect(screen.queryByTestId("library-track-count")).toBeNull();
   });

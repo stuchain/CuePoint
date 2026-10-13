@@ -236,7 +236,7 @@ describe("a history entry as a line", () => {
     const line = (old_value: unknown, new_value: unknown) =>
       historyLine(change({ field: "match_state", old_value, new_value }));
 
-    expect(line(null, decision("accepted", "user")).title).toBe("Accepted the Beatport match");
+    expect(line(null, decision("accepted", "user")).title).toBe("Confirmed the Beatport match");
     expect(line(decision("needs_review", "auto"), decision("rejected", "user")).title).toBe(
       "Rejected the Beatport match",
     );

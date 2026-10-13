@@ -224,7 +224,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
       return (
         <span className="cp-activity__offer">
           <button type="button" className="cp-activity__action" disabled>
-            Revert this batch
+            Undo this batch
           </button>
           <span className="cp-activity__reason">{offer.disabledReason}</span>
         </span>
@@ -234,13 +234,13 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
       <span className="cp-activity__offer" aria-live="polite">
         {reverted ? null : asking ? (
           <>
-            <span>Revert every change this batch made?</span>
+            <span>Undo every change this batch made?</span>
             <button
               type="button"
               className="cp-activity__action"
               onClick={() => void revert(offer.batchId)}
             >
-              Revert
+              Undo
             </button>
             <button type="button" className="cp-activity__action" onClick={() => setAsking(false)}>
               Keep
@@ -253,7 +253,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
             disabled={busy}
             onClick={() => setAsking(true)}
           >
-            {busy ? "Reverting…" : "Revert this batch"}
+            {busy ? "Undoing…" : "Undo this batch"}
           </button>
         )}
         {said && <span className="cp-activity__said">{said}</span>}
@@ -272,13 +272,13 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
       {record && record.restorable > 0 &&
         (asking ? (
           <>
-            <span>Put back every value these writes replaced?</span>
+            <span>Undo these saves? Every value they replaced goes back.</span>
             <button
               type="button"
               className="cp-activity__action"
               onClick={() => void restore(offer.jobIds)}
             >
-              Restore
+              Undo
             </button>
             <button type="button" className="cp-activity__action" onClick={() => setAsking(false)}>
               Keep
@@ -291,7 +291,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
             disabled={busy}
             onClick={() => setAsking(true)}
           >
-            {busy ? "Restoring…" : "Restore"}
+            {busy ? "Undoing…" : "Undo"}
           </button>
         ))}
       {said && <span className="cp-activity__said">{said}</span>}

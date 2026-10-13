@@ -5,7 +5,7 @@
  * query path (DEC-041). Each row reads from its `match_proposal`: a value
  * Correct would change shows "before → after". The ticks over the table are
  * the same remembered preference as the ticks under One at a time (OQ5), and
- * **Take ticked values** (in the toolbar above) sends the ticked rows' own
+ * **Correct ticked values** (in the toolbar above) sends the ticked rows' own
  * proposals through one `correctMatches`.
  *
  * Double-click a row, or press Enter on it, to open it in One at a time.
@@ -45,7 +45,7 @@ interface MatchTableProps {
   onCursor: (index: number) => void;
   /** Double-click or Enter: open this row in One at a time. */
   onOpen: (index: number) => void;
-  /** Which values "Take ticked values" copies (changed in the Take button's menu). */
+  /** Which values "Correct ticked values" copies (changed in the Correct button's menu). */
   ticks: ReadonlySet<CardField>;
   status: MatchStatus | null;
   busy: boolean;

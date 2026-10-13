@@ -87,9 +87,9 @@ export function sourceStateMessage(state: SourceState): string {
     case "missing":
       return "That file is no longer where it was. Import it again from its new location.";
     case "changed":
-      return "This export has changed since your last import. Check what a refresh would do.";
+      return "This Rekordbox file has changed since your last import. Check what a refresh would do.";
     case "unknown":
-      return "CuePoint could not tell whether this export has changed. Check Rekordbox for changes to compare.";
+      return "CuePoint could not tell whether this Rekordbox file has changed. Check for changes to compare.";
     case "unchanged":
       return "Unchanged since your last import.";
   }
@@ -148,7 +148,7 @@ export function removalWarning(diff: RefreshDiff): string | null {
   const count = diff.tracks.removed.count;
   if (count === 0) return null;
   return (
-    `${pluralize(count, "track")} in your library are no longer in this export. ` +
+    `${pluralize(count, "track")} in your library are no longer in this Rekordbox file. ` +
     "Refreshing deletes them, along with any ratings, tags and history CuePoint " +
     "has for them. This cannot be undone."
   );
@@ -238,7 +238,7 @@ export function appliedLine(result: RefreshApplied): string {
 export function jobErrorMessage(error?: { code?: string; message?: string }): string {
   switch (error?.code) {
     case "LIBRARY_NOT_IMPORTED":
-      return "Import a Rekordbox collection first.";
+      return "Import a Rekordbox file first.";
     case "LIBRARY_XML_NO_COLLECTION":
       return (
         "That file has no collection in it. In Rekordbox, use " +

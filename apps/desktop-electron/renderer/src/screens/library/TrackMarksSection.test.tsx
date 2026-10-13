@@ -99,7 +99,7 @@ describe("the cue points", () => {
     expect(screen.queryByText("No cues")).toBeNull();
     expect(screen.queryByText("No beat grid")).toBeNull();
     expect(
-      screen.getByText("Cue points and the beat grid are read from Rekordbox. They appear after you Check Rekordbox for changes."),
+      screen.getByText("Cue points and the beat grid are read from Rekordbox. They appear after you Check for changes."),
     ).toBeInTheDocument();
   });
 });

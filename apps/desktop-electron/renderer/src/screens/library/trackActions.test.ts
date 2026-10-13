@@ -103,7 +103,7 @@ describe("the groups", () => {
       "Artist page",
       "Label page",
       "Edit values…",
-      "Save changes into the files…",
+      "Save to files…",
       "Show in folder",
     ]);
   });

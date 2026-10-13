@@ -81,7 +81,7 @@ afterEach(() => localStorage.clear());
 describe("the remembered tab", () => {
   it("has the three tabs FLW-15 names, and never says Run", () => {
     expect(DISCOVER_SECTIONS.map((section) => section.label)).toEqual([
-      "New search",
+      "New dig",
       "Results",
       "Wantlist",
     ]);
@@ -112,8 +112,8 @@ describe("Beatport's state", () => {
 
   it.each([
     ["options_no_token", "Sign in to Beatport to search its charts and releases.", "signin", "Sign in to Beatport"],
-    ["options_rejected", "Beatport sign-in ended or the token was refused.", "signin", "Sign in again"],
-    ["options_forbidden", "Beatport refused this token.", "signin", "Sign in again"],
+    ["options_rejected", "Beatport sign-in ended or was refused.", "signin", "Sign in again"],
+    ["options_forbidden", "Beatport refused this sign-in.", "signin", "Sign in again"],
     ["options_rate_limited", "Beatport is limiting requests", "retry", "Try again"],
     ["options_unavailable", "Beatport cannot be reached", "retry", "Try again"],
   ] as const)("draws %s from the engine's class", (state, headline, action, label) => {
@@ -159,7 +159,7 @@ describe("Beatport's state", () => {
     for (const state of ["no_token", "rejected", "forbidden"] as const) {
       expect(beatportUsable(state)).toBe(false);
       expect(unusableReason(state)).toBe(
-        state === "forbidden" ? "Beatport refused this token." : "Needs a Beatport sign-in.",
+        state === "forbidden" ? "Beatport refused this sign-in." : "Needs a Beatport sign-in.",
       );
     }
     expect(unusableReason("ok")).toBeNull();
@@ -244,7 +244,7 @@ describe("what a selection offers", () => {
   });
 });
 
-describe("the New search form", () => {
+describe("the New dig form", () => {
   const form = (patch: Partial<NewRunForm> = {}): NewRunForm => ({
     ...defaultForm(OPTIONS.defaults),
     ...patch,
@@ -308,7 +308,7 @@ describe("the New search form", () => {
     [{ days: "3.5" }, "Releases reach back from 1 to 366 days."],
     [{ artists: "picked" }, "Choose at least one artist, or look for every one."],
     [{ labels: "picked" }, "Choose at least one label, or look for every one."],
-    [{ artists: "none", labels: "none" }, "A search needs artists or labels to look for."],
+    [{ artists: "none", labels: "none" }, "A dig needs artists or labels to look for."],
     [
       { artists: "none", genreIds: [5] },
       "Charts come from your artists. Choose some artists, or untick every genre.",
@@ -331,7 +331,7 @@ describe("the sentences", () => {
     expect(runStateLabel({ ...FINISHED, outcome: "cancelled" })).toBe("Stopped");
     expect(runOutcome(FINISHED)).toBe("Found 7 tracks from 3 charts and 2 releases.");
     expect(runOutcome(FAILED)).toBe(
-      "Stopped because Beatport rejected the token, after 0 tracks from 0 charts and 0 releases.",
+      "Stopped because Beatport refused the sign-in, after 0 tracks from 0 charts and 0 releases.",
     );
     expect(runOutcome({ ...FINISHED, running: true })).toBe(
       "Running: 7 tracks from 3 charts and 2 releases so far.",
@@ -433,7 +433,7 @@ describe("the sentences", () => {
   });
 
   it("titles a search by its date, and counts what it found on one line (DSC-2, DSC-6)", () => {
-    expect(searchTitle(FINISHED.started_at)).toMatch(/^Search of /);
+    expect(searchTitle(FINISHED.started_at)).toMatch(/^Dig of /);
     expect(searchTitle(FINISHED.started_at)).not.toMatch(/run/i);
     expect(foundLine(40, 12, true)).toBe("40 found · 12 already in your library (hidden)");
     expect(foundLine(40, 12, false)).toBe("40 found · 12 already in your library");
@@ -446,7 +446,7 @@ describe("the sentences", () => {
       "Made “Friday finds” on Beatport with 2 tracks. 1 track already in your library was left out.",
     );
     expect(pushOutcome(fixture.playlist_refused as BeatportPlaylistResult)).toBe(
-      "Making the playlist stopped because Beatport refused the token for this, before “Friday” was made.",
+      "Making the playlist stopped because Beatport refused the sign-in for this, before “Friday” was made.",
     );
     expect(
       pushOutcome({ ...(fixture.playlist_result as BeatportPlaylistResult), outcome: "cancelled" }),
@@ -455,14 +455,14 @@ describe("the sentences", () => {
       "Looked up 2 tracks on Beatport.",
     );
     expect(discoveryEnded(fixture.discovery_result as DiscoveryRunResult)).toBe(
-      "The search found 7 tracks from 3 charts and 2 releases.",
+      "The dig found 7 tracks from 3 charts and 2 releases.",
     );
     expect(stoppedBecause(null)).toBe("of an error");
   });
 
   it("words a busy refusal for a person, and every other as CuePoint did", () => {
     expect(refusalText(fixture.refusal_busy.refusal as DiscoverRefusal)).toBe(
-      "A search is already running. It is in the Results tab.",
+      "A dig is already running. It is in the Results tab.",
     );
     expect(refusalText(refusal("DISCOVER_BUSY", { job_type: "beatport_playlist" }))).toBe(
       "A Beatport playlist is already being made. Try again when it has finished.",

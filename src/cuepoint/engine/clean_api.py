@@ -593,7 +593,7 @@ def decide(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
     if decision == DECISION_CLEAR:
         raise bad_request(
             "Clearing decisions is done one track at a time. To take back a batch"
-            " of decisions, revert that batch"
+            " of decisions, undo that batch"
         )
     if candidate_id is not None:
         raise bad_request(

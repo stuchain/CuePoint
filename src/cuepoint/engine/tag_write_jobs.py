@@ -91,8 +91,8 @@ MAX_STORED_PREVIEWS = 4
 
 #: What the status strip says while each job runs.
 PREVIEW_MESSAGE = "Reading tags"
-WRITE_MESSAGE = "Writing tags"
-RESTORE_MESSAGE = "Restoring tags"
+WRITE_MESSAGE = "Saving to files"
+RESTORE_MESSAGE = "Undoing the save"
 
 _PROGRESS_REPORT_INTERVAL_SECONDS = 0.1
 _ACTIVE_STATES = ("queued", "running")

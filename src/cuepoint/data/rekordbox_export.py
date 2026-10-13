@@ -726,7 +726,7 @@ def _document_encoding(data: bytes) -> str:
     if declared not in _SUPPORTED_ENCODINGS:
         raise ValidationError(
             f"Unsupported XML encoding {declared!r}: CuePoint can export only "
-            "UTF-8 or ASCII Rekordbox collections. Re-export the collection from "
+            "UTF-8 or ASCII Rekordbox files. Save the file again from "
             "Rekordbox and import it again."
         )
     return "utf-8"

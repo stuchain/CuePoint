@@ -407,7 +407,7 @@ describe("reading a clause back", () => {
 
   it("reads a valueless clause without inventing a value", () => {
     expect(describeRule(VOCABULARY, { field: "genre", operator: "is_empty" })).toBe(
-      "Genre is empty",
+      "Genre is not set",
     );
   });
 

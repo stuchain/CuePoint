@@ -139,7 +139,7 @@ describe("RefreshPreviewDialog", () => {
 
     expect(screen.getByText("Tracks whose cues or beat grid changed")).toBeInTheDocument();
     expect(screen.getByTestId("count-marks_changed")).toHaveTextContent("12");
-    expect(screen.queryByText(/already matches this export/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/already matches this file/)).not.toBeInTheDocument();
     fireEvent.click(apply());
     expect(onApply).toHaveBeenCalledWith({ confirmReferences: false });
   });

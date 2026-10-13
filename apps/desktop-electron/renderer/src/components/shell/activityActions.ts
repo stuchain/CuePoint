@@ -27,7 +27,7 @@ const MEMBERSHIP_OPERATIONS: ReadonlySet<string> = new Set([
  * which one it was, so the sentence names both rather than guessing.
  */
 export const MEMBERSHIP_REVERT_REASON =
-  "Adding tracks to or removing them from a Collection or a Set cannot be reverted: tracks hold positions that later edits move. Add or remove them again instead.";
+  "Adding tracks to or removing them from a Collection or a Set cannot be undone: tracks hold positions that later edits move. Add or remove them again instead.";
 
 /** The activity events a batch records: one applied, one reverted (DEC-063). */
 const BATCH_EVENTS: ReadonlySet<string> = new Set(["library.batch", "library.batch_reverted"]);
@@ -61,7 +61,7 @@ export function activityOffer(event: ActivityEvent): ActivityOffer {
     }
     const changed = detail.changed;
     if (typeof changed === "number" && changed <= 0) {
-      return { kind: "revert-batch", batchId, disabledReason: "It changed nothing, so there is nothing to revert." };
+      return { kind: "revert-batch", batchId, disabledReason: "It changed nothing, so there is nothing to undo." };
     }
     return { kind: "revert-batch", batchId, disabledReason: null };
   }
@@ -106,24 +106,24 @@ function count(number: number, noun: string): string {
  * those the engine never saw finish (CLEAN-10, CLEAN-11).
  */
 export function writesLine(restorable: number, unconfirmed: number): string {
-  if (restorable <= 0) return "Everything saved into files has been put back.";
+  if (restorable <= 0) return "Everything saved to files has been undone.";
   const confirmed = restorable - unconfirmed;
   if (unconfirmed <= 0) {
-    return `${count(confirmed, "value")} saved into files can be put back.`;
+    return `${count(confirmed, "value")} saved to files can be undone.`;
   }
   const unfinished = `${count(unconfirmed, "save")} may not have finished`;
   return confirmed > 0
-    ? `${unfinished}, and ${count(confirmed, "value")} ${confirmed === 1 ? "was" : "were"} saved. Putting the files back restores every one.`
-    : `${unfinished}. Putting the files back restores every one; a file still holding its old value counts as put back.`;
+    ? `${unfinished}, and ${count(confirmed, "value")} ${confirmed === 1 ? "was" : "were"} saved. Undoing the save puts every one back as it was.`
+    : `${unfinished}. Undoing the save puts every one back as it was; a file still holding its old value counts as undone.`;
 }
 
 /** What a batch revert did, in its counts. */
 export function revertedLine(result: BatchRevertResult | null): string {
-  if (!result) return "Reverted.";
-  const parts = [`Reverted ${count(result.changed, "change")}`];
+  if (!result) return "Undone.";
+  const parts = [`Undid ${count(result.changed, "change")}`];
   if (result.skipped > 0) parts.push(`${result.skipped.toLocaleString()} skipped because the value changed since`);
   if (result.unchanged > 0) parts.push(`${result.unchanged.toLocaleString()} already in place`);
-  if (result.failed > 0) parts.push(`${result.failed.toLocaleString()} could not be reverted`);
+  if (result.failed > 0) parts.push(`${result.failed.toLocaleString()} could not be undone`);
   const line = `${parts.join(", ")}.`;
   return result.cancelled ? `Stopped early. ${line}` : line;
 }
@@ -133,8 +133,8 @@ export function restoredLine(results: readonly TagRestoreResult[]): string {
   const files = results.reduce((sum, result) => sum + result.files, 0);
   const skipped = results.reduce((sum, result) => sum + result.skipped, 0);
   const failed = results.reduce((sum, result) => sum + result.failed, 0);
-  const parts = [`Restored ${count(files, "file")}`];
+  const parts = [`Undid ${count(files, "file")}`];
   if (skipped > 0) parts.push(`${skipped.toLocaleString()} values left alone because the file changed since`);
-  if (failed > 0) parts.push(`${failed.toLocaleString()} could not be restored`);
+  if (failed > 0) parts.push(`${failed.toLocaleString()} could not be undone`);
   return `${parts.join(", ")}.`;
 }

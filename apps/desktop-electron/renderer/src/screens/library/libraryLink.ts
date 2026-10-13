@@ -155,7 +155,7 @@ const IMPORT_KEY = "cuepointLibraryImport";
 
 /**
  * The location state that opens the Library and starts the import's file choice: File →
- * "Import another file…" (FLW-20) does what the Library's own button does.
+ * "Import a Rekordbox file…" (FLW-20) does what the Library's own button does.
  */
 export function libraryImportState(): Record<string, unknown> {
   return { [IMPORT_KEY]: true };

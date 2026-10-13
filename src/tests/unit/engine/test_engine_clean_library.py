@@ -308,8 +308,8 @@ class TestInterruptedTagJobs:
         [event] = offers()
         assert event.detail["write_job_ids"] == ["write-1"]
         assert event.detail["job_type"] == JOB_TYPE_TAG_RESTORE
-        assert event.summary.startswith("Restoring tags stopped")
-        assert "1 value may not have been put back" in event.summary
+        assert event.summary.startswith("Undoing the save stopped")
+        assert "1 value may not have been undone" in event.summary
 
     def test_finished_and_empty_jobs_are_not_offered(self, library_db):
         [track_id] = add_tracks(track("Written"))
@@ -347,29 +347,29 @@ class TestTheSentence:
                 False,
                 5,
                 2,
-                "Writing tags stopped when CuePoint closed: 2 values may not have"
-                " finished writing, and 3 did. Restore them to put the files back",
+                "Saving to files stopped when CuePoint closed: 2 values may not have"
+                " finished saving, and 3 did. Undo the save to bring back the files' old values",
             ),
             (
                 False,
                 1,
                 0,
-                "Writing tags stopped when CuePoint closed after writing 1 value."
-                " Restore them to put the files back",
+                "Saving to files stopped when CuePoint closed after saving 1 value."
+                " Undo the save to bring back the files' old values",
             ),
             (
                 True,
                 4,
                 1,
-                "Restoring tags stopped when CuePoint closed: 1 value may not have"
-                " been put back. Restore again to finish",
+                "Undoing the save stopped when CuePoint closed: 1 value may not have"
+                " been undone. Undo again to finish",
             ),
             (
                 True,
                 4,
                 0,
-                "Restoring tags stopped when CuePoint closed before every file was"
-                " put back. Restore again to finish",
+                "Undoing the save stopped when CuePoint closed before every file was"
+                " back to its old values. Undo again to finish",
             ),
         ],
     )

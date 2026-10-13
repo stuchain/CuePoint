@@ -58,8 +58,8 @@ const OPERATOR_LABELS: Record<string, string> = {
   between: "is between",
   before: "is before",
   after: "is after",
-  is_empty: "is empty",
-  is_not_empty: "is not empty",
+  is_empty: "is not set",
+  is_not_empty: "is set",
   // Membership (ORG-05). Spelled for what they ask rather than as another
   // "is": a track has as many tags as it was given, so "Tag is Peak-time"
   // would read as a claim that it has exactly one.

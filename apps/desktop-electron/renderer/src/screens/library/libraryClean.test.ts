@@ -110,7 +110,7 @@ describe("overridden values", () => {
     const typed = row({ overridden: ["bpm"], effective_bpm: 126, override_sources: { bpm: "cuepoint" } });
     expect(overrideMark(typed, "bpm")).toEqual({
       source: "cuepoint",
-      title: "BPM typed by you. Rekordbox has 128.",
+      title: "BPM typed by you. In Rekordbox it is 128.",
     });
     const yours = row({
       overridden: ["key"],
@@ -121,7 +121,7 @@ describe("overridden values", () => {
     // Rekordbox's key is never quoted as what is underneath (DEC-201).
     expect(overrideMark(yours, "key")).toEqual({
       source: "cuepoint",
-      title: "Key typed by you. Rekordbox's key is not used.",
+      title: "Key typed by you. CuePoint uses Beatport's key, not Rekordbox's.",
     });
   });
 
@@ -152,7 +152,7 @@ describe("overridden values", () => {
 
   it("say when Rekordbox has nothing underneath, and when the source is unknown", () => {
     const mark = overrideMark(row({ genre: null, overridden: ["genre"], effective_genre: "Techno" }), "genre");
-    expect(mark).toEqual({ source: null, title: "Genre set in CuePoint. Rekordbox has none." });
+    expect(mark).toEqual({ source: null, title: "Genre set in CuePoint. In Rekordbox it is not set." });
   });
 
   it("show the effective value, and a resolved nothing as nothing", () => {
@@ -187,7 +187,7 @@ describe("the Clean columns' words", () => {
   it("says where artwork would come from", () => {
     expect(artworkText("embedded")).toBe("In the file");
     expect(artworkText("beatport")).toBe("From Beatport");
-    expect(artworkText("none")).toBe("None");
+    expect(artworkText("none")).toBe("—");
     expect(artworkText("unknown")).toBe("Not read yet");
     expect(artworkText(null)).toBe("");
   });
@@ -271,7 +271,7 @@ describe("the edit and save entries of the operations list", () => {
   it("offer editing and saving into the files, and no file check (Clean's)", () => {
     expect(fixMenuItems({ count: 3 }, handlers()).map((item) => item.label)).toEqual([
       "Edit values…",
-      "Save changes into the files…",
+      "Save to files…",
     ]);
   });
 

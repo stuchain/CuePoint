@@ -1049,7 +1049,7 @@ describe("when there is nothing to count", () => {
       getKeysPopulation: vi.fn().mockResolvedValue({ total: 0, keys: [], no_key: 0 }),
     });
     renderKeys();
-    expect(await screen.findByText("Import your Rekordbox collection first")).toBeInTheDocument();
+    expect(await screen.findByText("Import a Rekordbox file first")).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Keys in these sources" })).toBeNull();
   });
 
@@ -1104,7 +1104,7 @@ describe("when there is nothing to count", () => {
     renderKeys();
     await waitFor(() => expect(mock("getKeysPopulation")).toHaveBeenCalled());
     answer({ library_empty: true, track_count: 0 });
-    expect(await screen.findByText("Import your Rekordbox collection first")).toBeInTheDocument();
+    expect(await screen.findByText("Import a Rekordbox file first")).toBeInTheDocument();
     expect(screen.queryByText(/playlists are empty/)).toBeNull();
   });
 

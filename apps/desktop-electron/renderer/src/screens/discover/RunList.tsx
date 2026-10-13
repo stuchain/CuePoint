@@ -3,7 +3,7 @@
  *
  * Each titled "Search of {date}", with its state, what it looked for and what
  * it found, so one can be told from the next without opening it, and with
- * **Delete this search…** on its row. Starting a search is the New search tab's
+ * **Delete this dig…** on its row. Starting a search is the New search tab's
  * job, so nothing here starts one.
  */
 import type { DiscoverGenre, DiscoverRun } from "../../api/cuepointBridge.types";
@@ -39,7 +39,7 @@ export function RunList({
   loadingMore,
 }: RunListProps) {
   return (
-    <nav className="discover-runs" aria-label="Past searches">
+    <nav className="discover-runs" aria-label="Past digs">
       <ul className="discover-runs__list">
         {runs.map((run) => (
           <li key={run.id} className="discover-runs__row">
@@ -60,9 +60,9 @@ export function RunList({
                 {pluralize(run.tracks_found, "track")} found
               </span>
             </button>
-            <Hint text={run.running ? "A running search cannot be deleted." : undefined}>
+            <Hint text={run.running ? "A running dig cannot be deleted." : undefined}>
               <Button variant="secondary" disabled={run.running} onClick={() => onDelete(run)}>
-                Delete this search…
+                Delete this dig…
               </Button>
             </Hint>
           </li>
@@ -70,7 +70,7 @@ export function RunList({
       </ul>
       {runs.length < total && (
         <Button variant="secondary" loading={loadingMore} onClick={onShowMore}>
-          Show older searches
+          Show older digs
         </Button>
       )}
     </nav>

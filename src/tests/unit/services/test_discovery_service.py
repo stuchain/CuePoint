@@ -645,7 +645,7 @@ class TestFailures:
         assert found(db, run.id) == [1, 2, 3, 4, 5]
         assert run.labels_resolved == 1
         assert events(db)[0]["summary"] == (
-            "Discovery stopped because Beatport rejected the token;"
+            "Discovery stopped because Beatport refused the sign-in;"
             " found 5 tracks in 3 charts and 0 releases"
         )
         assert events(db)[0]["detail"]["error_class"] == "rejected"

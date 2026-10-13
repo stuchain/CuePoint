@@ -9,7 +9,7 @@ Common workflows for using CuePoint effectively.
 3. **Preflight**: Fix any validation errors or proceed past warnings
 4. **Process**: Enrich tracks with Beatport data
 5. **Run summary**: Matched, unmatched, and output paths
-6. **Match**: On the Clean page, open **Match** and go through what waits for you, one track at a time, with **Correct** to accept a match and update the ticked values (see [Clean](clean.md#match))
+6. **Match**: On the Clean page, open **Match** and go through what waits for you, one track at a time, with **Correct** to confirm a match and update the ticked values (see [Clean](clean.md#match))
 7. **Export**: Save results to file
 
 ## Batch Processing Workflow
@@ -52,7 +52,7 @@ See [Prepare](prepare.md) for each step in full.
    Track details; the running time and **Starts at** follow
 4. Select the entry before a gap and take a track from **Suggestions**, with
    **Insert here** or a drag
-5. Read the **Transition** column; **Accept** a warning you have heard and
+5. Read the **Transition** column; **Mark OK** a warning you have heard and
    are happy with
 6. **Play Set** to hear it through, then **Export ▾** to save a set list or
    export it to Rekordbox as one playlist

@@ -129,7 +129,7 @@ describe("cuesSummary", () => {
     expect(cuesSummary(marks())).toBe("none");
     expect(cuesSummary(marks({ read: false }))).toBeNull();
     expect(MARKS_NOT_READ).toBe(
-      "Cue points and the beat grid are read from Rekordbox. They appear after you Check Rekordbox for changes.",
+      "Cue points and the beat grid are read from Rekordbox. They appear after you Check for changes.",
     );
   });
 

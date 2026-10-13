@@ -150,7 +150,7 @@ function loudnessOf(entry: WaveformEntry | undefined): WaveformLoudness | null {
 
 /** A warning's whole sentence, for a title. */
 const describeShown = (warning: SetWarning) =>
-  `${describeSetWarning(warning)}${warning.acknowledged ? " (accepted)" : ""}`;
+  `${describeSetWarning(warning)}${warning.acknowledged ? " (OK)" : ""}`;
 
 function Title({ half, entry }: { half: TransitionHalf; entry: WaveformEntry | undefined }) {
   const track = entry?.kind === "track" ? entry.track : null;
@@ -254,7 +254,7 @@ export function SetTransition({
                 data-testid="transition-warning"
               >
                 <span className="prepare-transition__sentence" title={describeShown(shown)}>
-                  {`${stripWarningWords(shown)}${shown.acknowledged ? " (accepted)" : ""}`}
+                  {`${stripWarningWords(shown)}${shown.acknowledged ? " (OK)" : ""}`}
                 </span>
                 {onAccept && (
                   <Button
@@ -262,7 +262,7 @@ export function SetTransition({
                     className="prepare-transition__accept"
                     onClick={() => onAccept(shown, !shown.acknowledged)}
                   >
-                    {shown.acknowledged ? "Undo accept" : "Accept"}
+                    {shown.acknowledged ? "Undo Mark OK" : "Mark OK"}
                   </Button>
                 )}
                 {others.length > 0 && (

@@ -231,7 +231,7 @@ describe("the quick filters (FLW-4)", () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole("button", { name: "Key" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "No Beatport key: 5" }));
-    expect(screen.getByText("Key is empty")).toBeInTheDocument();
+    expect(screen.getByText("Key is not set")).toBeInTheDocument();
   });
 
   /** The whole library's Key answer, which the empty Key list is told apart by. */

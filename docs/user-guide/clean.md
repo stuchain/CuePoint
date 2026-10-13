@@ -31,7 +31,7 @@ their dialogs in place, and an old link to Fix values opens the Library.
 
 ## Match
 
-CuePoint looks each track up on Beatport. Sure matches are accepted for you; the
+CuePoint looks each track up on Beatport. Sure matches are confirmed for you; the
 rest wait here for a yes or no. Match has four views of the same work:
 **Playlists**, **One at a time**, **Table** and **Past searches**. It opens on
 **Playlists**; after that it reopens on the view you used last.
@@ -109,7 +109,7 @@ One at a time, and from Track details.
 
 | After a match | Means |
 | --- | --- |
-| **Accepted** | The best candidate scored 95 or more and passed every check. CuePoint accepted it for you, and says so |
+| **Confirmed** | The best candidate scored 95 or more and passed every check. CuePoint confirmed it for you, and says so |
 | **Waiting for you** | Beatport found candidates, but none was certain enough |
 | **No match** | Beatport was asked and nothing fit |
 | **Not matched** | The track has not been looked up yet, or every search came back empty |
@@ -130,7 +130,7 @@ larger.
 The two menus above the card are **Show** and **From**:
 
 - **Show**: which tracks: **Waiting for you**, **Changed since you decided**,
-  **Accepted**, **Rejected**, **No match** or **Not matched**. When **From** is
+  **Confirmed**, **Rejected**, **No match** or **Not matched**. When **From** is
   one search, **Everything in this search** is there too.
 - **From**: **All searches**, or one of your past searches, named by when it ran
   and what it matched ("Today 13:42 · Playlist "all""). It shows only when you
@@ -154,18 +154,18 @@ The ticks under the cards say which values **Correct** also copies:
 > When I say "Correct", also update: ☑ BPM 126 → 128 ☑ Genre ☑ Label ☑ Year
 
 Your ticks are remembered. **Rekordbox keeps its own values**: Correct changes
-CuePoint's view of the track and nothing in your Rekordbox collection or your
-audio files until you [save them into the files](#saving-values-into-your-files).
+CuePoint's view of the track and nothing in Rekordbox or your
+audio files until you [save them to files](#saving-values-into-your-files).
 The **Key** tick is off until you turn it on, and it only appears when you had
 typed a key of your own that differs from Beatport's. Ticking it replaces your
 key with Beatport's. Otherwise the key row reads **comes with Correct**:
-accepting a match already gives the track Beatport's key. To type a key yourself,
+confirming a match already gives the track Beatport's key. To type a key yourself,
 use **Edit values…** in the Library or Track details.
 
 The buttons decide, and stay at the bottom of the screen however tall the card
 is:
 
-- **Correct** accepts the match and updates the ticked values in one step.
+- **Correct** confirms the match and updates the ticked values in one step.
   Titles, artists, remixers and albums are never changed.
 - **Not this track** says none of the results is right.
 - **Skip for now** moves on without deciding.
@@ -175,9 +175,9 @@ After Correct, a line says what happened ("Corrected "Tone Two"."), with an
 **Undo** next to it when something was changed. If the track already had all of
 it, the line says "Nothing to change" and there is nothing to undo. **Undo**
 takes back the last Correct: the track is back to waiting for you, with the
-values it had. To take a correction back later, use **Revert** in Track details'
-History, or **Revert this batch** in the Activity panel. See [Taking a change
-back](library.md#taking-a-change-back). To go to the list, choose **Table**
+values it had. To take a correction back later, use **Undo** in Track details'
+History, or **Undo this batch** in the Activity panel. See [Undoing a
+change](library.md#undoing-a-change). To go to the list, choose **Table**
 above.
 
 The keyboard does the same, which is the quick way through a long list. Every
@@ -224,14 +224,14 @@ nothing", "You said not this track" or "Not looked up yet". Double-click a row,
 or press **Enter** on it, to open it in **One at a time**.
 
 The **Preview** column plays Beatport's short sample of the proposed match, so
-you can hear it before you take it. Only one sample plays at a time.
+you can hear it before you correct. Only one sample plays at a time.
 
-Tick the rows you want and choose **Take ticked values (N tracks)** to Correct
-them all: it accepts each track's best match and updates the values you ticked.
-The chevron beside the button, **Values to take**, opens a menu with Key, BPM,
+Tick the rows you want and choose **Correct ticked values (N tracks)** to Correct
+them all: it confirms each track's best match and updates the values you ticked.
+The chevron beside the button, **Values to correct**, opens a menu with Key, BPM,
 Genre, Label and Year. These are the same remembered ticks as in One at a time,
 with the same rule for the key, which is off until you turn it on. When not all
-five are ticked the button says how many ("Take ticked values (4 fields)"). Over
+five are ticked the button says how many ("Correct ticked values (4 fields)"). Over
 many tracks it runs in the background, and **Undo** takes the batch back.
 **Columns…** chooses the columns.
 
@@ -254,7 +254,7 @@ name or date.
 
 ## Saving values into your files
 
-Correcting a match, **Take ticked values**, **Edit values…** and **Use Beatport's
+Correcting a match, **Correct ticked values**, **Edit values…** and **Use Beatport's
 values…** change the values CuePoint shows, not your audio files. When some of
 those values are not in their files yet, a green bar appears under every Clean
 tab (and at the bottom of the Library):
@@ -271,9 +271,9 @@ window: tick the values to save (Key, with the key style, Genre, Label, Year,
 BPM and Artwork), each with the number of files it would change, and **Keep
 values already in the files** to leave a field alone that the file already holds.
 A preview comes first, and nothing is written until you choose **Save to N
-files**. Your choices are remembered. After a save, **Restore** puts the files
-back as they were. See [Writing tags to
-files](library.md#writing-tags-to-files).
+files**. Your choices are remembered. After a save, **Undo this save** puts the files
+back as they were. See [Saving to
+files](library.md#saving-to-files).
 
 A playlist row on **Playlists** that says **N ready to save** has its own
 **Save N to files…**, which opens the same window on just that playlist's unsaved
@@ -298,7 +298,7 @@ but CuePoint cannot open it. To fix a missing file, use **Show in folder** to
 find where it was, then follow the three steps on the page: in Rekordbox,
 right-click the track, choose **Relocate** and point it at the file; in
 Rekordbox, choose File, then Export Collection in xml format; then here, choose
-**Check Rekordbox for changes**, a button that takes you to the Library and
+**Check for changes**, a button that takes you to the Library and
 starts it. See [CuePoint checks that your files are still
 there](library.md#cuepoint-checks-that-your-files-are-still-there--and-never-moves-them).
 
@@ -325,10 +325,10 @@ Earlier versions matched from a separate **inKey** screen and showed matches on
 
 | Before | Now |
 | --- | --- |
-| inKey: load an XML or M3U file, choose playlists, match | Import the collection once in the Library, then match a playlist, a Collection or the whole library here |
+| inKey: load an XML or M3U file, choose playlists, match | Import your Rekordbox file once in the Library, then match a playlist, a Collection or the whole library here |
 | Results: review, pick another candidate | **Match**: **One at a time** and the keyboard, or the **Table** |
 | Export results to CSV, JSON or Excel | **Save review list as a file…** on each run in **Past searches** |
-| Sync tags with Rekordbox | **Save to files…** on the [green bar](#saving-values-into-your-files), previewed, recorded and restorable |
+| Sync tags with Rekordbox | **Save to files…** on the [green bar](#saving-values-into-your-files), previewed, recorded and undoable |
 | Past searches | **Past searches** in Match lists each search; the results are also kept with each track |
 
 The CSV files earlier runs wrote are still where they were saved; CuePoint no
@@ -337,13 +337,13 @@ playlist file rather than your library. An old bookmark or remembered page for
 inKey or Results opens Clean.
 
 **The command-line tool is unchanged.** `python main.py --xml … --playlist …`
-still matches a playlist from an XML export and writes its CSV files, exactly as
+still matches a playlist from a Rekordbox file and writes its CSV files, exactly as
 before.
 
 ## See also
 
 - [Your library](library.md) — importing, refreshing, Track details, editing
-  values, writing tags to files and taking changes back
+  values, saving to files and undoing changes
 - [Statistics](statistics.md) — the Health tab
 - [The CuePoint window](the-window.md) — the status strip, Activity and the
   keyboard

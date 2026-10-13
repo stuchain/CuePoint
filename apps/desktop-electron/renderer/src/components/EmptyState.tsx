@@ -3,7 +3,7 @@ import { Button } from "./Button";
 import "./EmptyState.css";
 
 /** The one label for the action that fills an empty Library (G6 T9). */
-export const IMPORT_COLLECTION_LABEL = "Import your Rekordbox collection…";
+export const IMPORT_COLLECTION_LABEL = "Import a Rekordbox file…";
 
 export interface EmptyStateProps {
   /** What is missing, in a few words (sm, bold). */

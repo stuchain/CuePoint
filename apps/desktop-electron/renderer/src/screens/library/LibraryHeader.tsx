@@ -13,9 +13,9 @@
  * `libraryFormat.ts`, because whether a user understands that a refresh's
  * deletions are permanent is decided by those words and not by the layout.
  *
- * **Two buttons, never a menu** (FLW-11). **Check Rekordbox for changes** and
+ * **Two buttons, never a menu** (FLW-11). **Check for changes** and
  * **Export to Rekordbox…** are the library's relationship with its file and
- * the look at what moved, and each is one click. Import another file moved to
+ * the look at what moved, and each is one click. Import a Rekordbox file moved to
  * Settings and the File menu (K9). Check is the primary button only when the
  * file changed or went missing; otherwise it is a secondary like Export. Where
  * the two do not fit with the title the visible labels shorten to "Check
@@ -68,7 +68,7 @@ interface LibraryHeaderProps {
 
 /** The full names, and the shorter ones that stand in where the full ones do not fit. */
 const LABELS = {
-  check: { full: "Check Rekordbox for changes", short: "Check Rekordbox" },
+  check: { full: "Check for changes", short: "Check" },
   export: { full: "Export to Rekordbox…", short: "Export…" },
 } as const;
 
@@ -141,7 +141,7 @@ export function LibraryHeader({
           title="Library"
           actions={
             <Button variant="primary" onClick={onImport} disabled={disabled}>
-              {busy === "importing" ? busyLabel : "Import your Rekordbox collection…"}
+              {busy === "importing" ? busyLabel : "Import a Rekordbox file…"}
             </Button>
           }
         />

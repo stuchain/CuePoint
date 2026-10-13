@@ -122,7 +122,7 @@ describe("a run as a scope", () => {
     expect(matchScopeOptions(false).map((option) => option.label)).toEqual([
       "Waiting for you",
       "Changed since you decided",
-      "Accepted",
+      "Confirmed",
       "Rejected",
       "No match",
       "Not matched",

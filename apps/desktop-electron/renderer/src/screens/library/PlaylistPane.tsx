@@ -102,7 +102,7 @@ export function PlaylistPane({
     <nav className="cp-playlist-pane" aria-label="Playlists">
       <div className="cp-playlist-pane__head">
         <span className="cp-playlist-pane__title">Playlists</span>
-        <span className="cp-playlist-pane__source" title="Mirrored from your Rekordbox export">
+        <span className="cp-playlist-pane__source" title="Mirrored from your Rekordbox file">
           from Rekordbox
         </span>
       </div>
@@ -170,7 +170,7 @@ export function PlaylistPane({
         }}
       >
         {status === "ready" && rows.length === 0 && (
-          <p className="cp-playlist-pane__note">Your export has no playlists in it.</p>
+          <p className="cp-playlist-pane__note">Your Rekordbox file has no playlists in it.</p>
         )}
       </PaneTree>
 

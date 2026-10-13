@@ -565,7 +565,7 @@ describe("the summary and Details (DEC-247)", () => {
     await previewed();
     expect(within(dialog()).getByTestId("export-summary")).toHaveTextContent(/exact copy/);
     await openDetails();
-    expect(within(dialog()).getByText(/exact copy of your collection file/)).toBeInTheDocument();
+    expect(within(dialog()).getByText(/exact copy of your Rekordbox file/)).toBeInTheDocument();
   });
 });
 
@@ -798,8 +798,8 @@ describe("confirming", () => {
 describe("refusals (DEC-082, DEC-083)", () => {
   it.each([
     ["source_missing", /not there any more/],
-    ["source_invalid", /cannot be read as a Rekordbox collection/],
-    ["never_imported", /Import your Rekordbox collection first/],
+    ["source_invalid", /cannot be read as a Rekordbox file/],
+    ["never_imported", /Import a Rekordbox file first/],
   ] as const)("a %s refusal holds confirm and offers importing", async (name, words) => {
     const user = userEvent.setup();
     bridge.previewRekordboxExport.mockResolvedValue(answer(name));
@@ -813,7 +813,7 @@ describe("refusals (DEC-082, DEC-083)", () => {
     expect(within(dialog()).getByTestId("export-blocker")).toHaveTextContent("problem above");
     expect(within(dialog()).queryByRole("region", { name: "Tracks" })).toBeNull();
 
-    await user.click(within(refused).getByRole("button", { name: "Import another file…" }));
+    await user.click(within(refused).getByRole("button", { name: "Import a Rekordbox file…" }));
     expect(handlers.onImport).toHaveBeenCalledTimes(1);
     expect(bridge.startRekordboxExport).not.toHaveBeenCalled();
   });

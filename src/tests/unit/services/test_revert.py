@@ -384,7 +384,7 @@ class TestEveryCuepointFieldReverts:
         revert.revert_change(change_id)
 
         (event,) = activity.recent_events(event_type=EVENT_FIELD_REVERTED)
-        assert event.summary == "Reverted your BPM on A - T1"
+        assert event.summary == "Undid your BPM on A - T1"
         assert event.detail == {
             "track_id": ids["1"],
             "field": "cuepoint_bpm",
@@ -541,7 +541,7 @@ class TestAStaleRevertIsRefused:
         change = last_change(db, f"cuepoint_{field}", ids["1"])
         metadata.set_override(ids["1"], field, values[1])
 
-        with pytest.raises(StaleRevertError, match="Revert the later change first"):
+        with pytest.raises(StaleRevertError, match="Undo the later change first"):
             revert.revert_change(change)
 
     def test_reverting_the_later_change_first_lets_the_earlier_one_revert(
@@ -800,7 +800,7 @@ class TestRevertingABatch:
         assert {row["old"] for row in written} == {5}
 
         (event,) = activity.recent_events(event_type=EVENT_BATCH_REVERTED)
-        assert event.summary == "Reverted 4 changes of “Rated 4 tracks 5 stars”"
+        assert event.summary == "Undid 4 changes of “Rated 4 tracks 5 stars”"
         assert event.detail == result.to_dict()
         assert event.detail["revert_of"] == applied.batch_id
         assert event.detail["skipped"] == 0

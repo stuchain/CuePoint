@@ -26,12 +26,12 @@ describe("the words for reasons and fields", () => {
   });
 
   it.each([
-    ["no_value", "no value"],
+    ["no_value", "nothing to save"],
     ["unchanged", "already the same"],
     ["file_has_value", "already has a value"],
     ["key_unrecognized", "not a key"],
     ["has_artwork", "already has a picture"],
-    ["no_beatport_artwork", "no accepted Beatport match"],
+    ["no_beatport_artwork", "no confirmed Beatport match"],
     ["artwork_unavailable", "could not be used"],
     ["odd_case", "odd case"],
   ])("a field skipped for %s", (reason, words) => {
@@ -90,10 +90,10 @@ describe("a finished write and restore", () => {
       summary_line: "",
     };
     expect(restoreHeadline(result)).toBe(
-      "Restored 2 files, 1 value already back, 1 value left alone because the file changed since.",
+      "Undid 2 files, 1 value already back, 1 value left alone because the file changed since.",
     );
     expect(restoreHeadline({ ...result, already: 0, skipped: 0, failed: 2, cancelled: true })).toBe(
-      "Stopped early. Restored 2 files, 2 could not be restored.",
+      "Stopped early. Undid 2 files, 2 could not be undone.",
     );
   });
 });

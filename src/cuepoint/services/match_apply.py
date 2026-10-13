@@ -77,7 +77,7 @@ def chosen_fields(fields: Iterable[str]) -> List[str]:
     if not wanted:
         if named_key:
             raise ValueError(
-                "The key comes from the accepted match, so there is nothing to apply"
+                "The key comes from the confirmed match, so there is nothing to apply"
             )
         raise ValueError("Choose at least one field to apply")
     return wanted
@@ -125,7 +125,7 @@ class MatchApplyService(IMatchApplyService):
         candidate = self._accepted_candidate(track_id)
         if candidate is None:
             raise ValueError(
-                f"Track {track_id} has no accepted match, so there is nothing to apply"
+                f"Track {track_id} has no confirmed match, so there is nothing to apply"
             )
         # No key is applied (DEC-201), so no key notation is needed.
         notation = NOTATION_CLASSIC
@@ -133,7 +133,7 @@ class MatchApplyService(IMatchApplyService):
         missing = [name for name, value in values.items() if value is None]
         if missing:
             raise ValueError(
-                f"The accepted Beatport match for track {track_id} has no usable"
+                f"The confirmed Beatport match for track {track_id} has no usable"
                 f" {', '.join(missing)}, so nothing was applied"
             )
 

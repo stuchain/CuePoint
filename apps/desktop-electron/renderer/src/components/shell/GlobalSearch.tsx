@@ -159,7 +159,7 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
 
           {status === "empty-library" && (
             <p className="cp-global-search__note">
-              No library yet. Import a Rekordbox collection to search it.
+              No library yet. Import a Rekordbox file to search it.
             </p>
           )}
 

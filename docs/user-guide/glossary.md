@@ -15,7 +15,7 @@ as they are replaced.
 | Taking back a change | **Undo** | "Revert", "Restore", "Put back", "Go back to…" |
 | Agreeing with a Beatport match | **Correct** (the button), **confirmed** (the state) | "accepted", "Take", "Resolved" |
 | Agreeing a Prepare warning is fine | **Mark OK** | "Accept", "Undo accept" |
-| Getting Beatport access | **Sign in to Beatport** | "token", except in "Sign in with a pasted token" |
+| Getting Beatport access | **Sign in to Beatport** | "token", except in the fallback "Paste a token instead" |
 | CuePoint's background process | not named: "CuePoint stopped working in the background" | "library service", "engine" (only Diagnostics and the log viewer keep it) |
 | A value that isn't there | **—** in tables and cards, **not set** in sentences | "empty", "none", "No value", "(not used)" |
 | Looking for text in a list | **Search** | "search" for a Discover run, which is a **dig** |
@@ -24,11 +24,11 @@ as they are replaced.
 
 ## Terms
 
-- **Rekordbox XML**: An export file from Rekordbox containing tracks and playlists.
+- **Rekordbox file**: The `rekordbox.xml` you import: a file Rekordbox saved with its tracks and playlists.
 - **Key**: A track's musical key, shown in Camelot ("8A") with its name ("A
   minor") in Track details. It is the key you typed, or else the key of the
-  track's accepted Beatport match. Rekordbox's key is never used; a track with
-  neither has "No Beatport key".
+  track's confirmed Beatport match. Rekordbox's key is never used; a track with
+  neither shows "—".
 - **Track details**: The panel on the right that shows the selected track: buttons to
   play it, your own values, what Rekordbox sent, its cue points, where it is, its Beatport
   match and its history. It opens when you select a track; close or open it with Ctrl+I, and it folds to a "Details" tab you can click.
@@ -76,7 +76,7 @@ as they are replaced.
 - **Waveform analysis**: The background work that makes a waveform for every
   track whose file was found. It can be paused, and carries on where it stopped.
 - **Hot cue**, **memory cue**, **beat grid**: Rekordbox's marks on a track, read
-  from your export and drawn on its waveform. CuePoint never changes them.
+  from your Rekordbox file and drawn on its waveform. CuePoint never changes them.
 - **Transition strip**: The view on the Prepare page that shows the selected
   entry's waveform beside the next one's, with their planned times and
   loudness.

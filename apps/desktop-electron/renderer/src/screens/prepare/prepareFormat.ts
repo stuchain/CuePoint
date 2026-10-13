@@ -50,7 +50,7 @@ export function warningCountLine(analysis: SetAnalysis): string {
 
 /** "2 accepted"; null when none is. */
 function acceptedLine(analysis: SetAnalysis): string | null {
-  return analysis.acknowledged > 0 ? `${analysis.acknowledged.toLocaleString()} accepted` : null;
+  return analysis.acknowledged > 0 ? `${analysis.acknowledged.toLocaleString()} marked OK` : null;
 }
 
 /** One fact in the header's line: its words, a longer title, and whether it is a warning. */
@@ -186,12 +186,12 @@ export function summarizeWarnings(warnings: readonly SetWarning[]): WarningSumma
   if (warnings.length === 0) return { tone: "none", text: "", title: "" };
   const open = warnings.filter((warning) => !warning.acknowledged);
   const title = warnings
-    .map((warning) => `${describeSetWarning(warning)}${warning.acknowledged ? " (accepted)" : ""}`)
+    .map((warning) => `${describeSetWarning(warning)}${warning.acknowledged ? " (OK)" : ""}`)
     .join("\n");
   if (open.length > 0) {
     return { tone: "open", text: open.map(shortWarning).join(" · "), title };
   }
-  return { tone: "accepted", text: `${warnings.map(shortWarning).join(" · ")} accepted`, title };
+  return { tone: "accepted", text: `${warnings.map(shortWarning).join(" · ")} OK`, title };
 }
 
 /** A planned time for a cell: "4:30", or empty when there is none. */

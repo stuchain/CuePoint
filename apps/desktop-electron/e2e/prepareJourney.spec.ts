@@ -376,10 +376,10 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await at(win, row(win, "Peak Jump"));
       const zone = inspector(win).getByRole("region", { name: "In this Set" });
       const clash = zone.getByRole("listitem").filter({ hasText: /Keys clash/ });
-      await clash.getByRole("button", { name: "Accept" }).click();
+      await clash.getByRole("button", { name: "Mark OK" }).click();
       // "1 accepted" is in the warnings count's title, not the line (C15d).
-      await expect(facts(win).getByTitle(/1 accepted/)).toBeVisible({ timeout: 15_000 });
-      await expect(clash.getByRole("button", { name: "Undo accept" })).toBeVisible();
+      await expect(facts(win).getByTitle(/1 marked OK/)).toBeVisible({ timeout: 15_000 });
+      await expect(clash.getByRole("button", { name: "Undo Mark OK" })).toBeVisible();
       expect((await readSet(win, setId)).analysis.acknowledged).toBe(1);
       // FLW-19: the strip's caption reads the keys and tempos of the selected entry into the next,
       // and one warning on that transition ends it, with Accept beside it.
@@ -391,8 +391,8 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await expect(caption.getByTestId("transition-words")).toContainText(/→/);
       // One warning is shown, the first still open; the accepted key clash is the "+1 more" (C15d).
       await expect(caption.getByTestId("transition-warning")).toHaveCount(1);
-      await expect(caption.getByText(/^\+\d+ more$/)).toHaveAttribute("title", /Keys clash.*\(accepted\)/);
-      await expect(caption.getByTestId("transition-warning").getByRole("button", { name: "Accept" })).toBeVisible();
+      await expect(caption.getByText(/^\+\d+ more$/)).toHaveAttribute("title", /Keys clash.*\(OK\)/);
+      await expect(caption.getByTestId("transition-warning").getByRole("button", { name: "Mark OK" })).toBeVisible();
       await win.getByRole("button", { name: "View", exact: true }).click();
       await win.getByRole("menuitem", { name: "Hide transition strip" }).click();
 
@@ -468,7 +468,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await waitForEngine(win);
       await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
       await expect(row(win, "Warm-up")).toBeVisible({ timeout: 30_000 });
-      await expect(facts(win).getByTitle(/1 accepted/)).toBeVisible();
+      await expect(facts(win).getByTitle(/1 marked OK/)).toBeVisible();
       await win.getByRole("button", { name: "Set", exact: true }).click();
       await expect(win.getByRole("menuitem", { name: "Notes (1)…", exact: true })).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
       await win.keyboard.press("Escape");
@@ -479,7 +479,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const later = statSync(xml).mtime.getTime() / 1000 + 5;
       utimesSync(xml, later, later);
       await win.getByRole("link", { name: "Library", exact: true }).click();
-      await win.getByRole("button", { name: /Check Rekordbox for changes/i }).click();
+      await win.getByRole("button", { name: /Check for changes/i }).click();
       const preview = win.getByRole("dialog");
       await expect(preview.getByTestId("count-removed")).toHaveText("1", { timeout: 60_000 });
       await expect(preview).toContainText("1 in 1 Set");

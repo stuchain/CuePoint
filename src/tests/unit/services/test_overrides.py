@@ -403,7 +403,7 @@ class TestApplyingAMatch:
         elif state == "rejected":
             matched(ids["1"])
             states.reject(ids["1"])
-        with pytest.raises(ValueError, match="no accepted match"):
+        with pytest.raises(ValueError, match="no confirmed match"):
             apply.apply_match(ids["1"], ["bpm"])
         assert count(db, "track_metadata") == 0
 
@@ -466,7 +466,7 @@ class TestApplyingAMatch:
         self, apply, matched, ids
     ):
         matched(ids["1"])
-        with pytest.raises(ValueError, match="comes from the accepted match"):
+        with pytest.raises(ValueError, match="comes from the confirmed match"):
             apply.apply_match(ids["1"], ["key"])
 
     def test_a_track_that_is_not_there_is_refused(self, apply):

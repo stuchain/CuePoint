@@ -1144,10 +1144,10 @@ class TestTheJobsAnswer:
 
         [written] = world.events(EVENT_TAGS_WRITTEN)
         assert written.detail["written"] == 3 and written.detail["job_id"] == "job-1"
-        assert written.summary == "Wrote tags to 3 files"
+        assert written.summary == "Saved to 3 files"
         [restored] = world.events(EVENT_TAGS_RESTORED)
         assert (restored.detail["restored"], restored.detail["files"]) == (3, 3)
-        assert restored.summary == "Restored 3 fields in 3 files"
+        assert restored.summary == "Undid 3 fields in 3 files"
 
     def test_writing_nothing_records_no_event(self, world):
         track = world.add(world.file("wav"), key="Am")

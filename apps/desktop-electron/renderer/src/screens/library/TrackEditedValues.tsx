@@ -18,6 +18,7 @@ import { effectiveText, overrideSourceText } from "./libraryClean";
 import { EDIT_FIELDS } from "./metadataEdits";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
+import { NO_VALUE } from "../../words";
 
 interface TrackEditedValuesProps {
   track: LibraryTrackRow & { id: number };
@@ -40,10 +41,12 @@ function editedFields(track: LibraryTrackRow): OverrideField[] {
   });
 }
 
-/** What "go back" says for a field. */
-function goBackLabel(field: OverrideField, beatportKey: string | null | undefined): string {
-  if (field === "key") return beatportKey ? "Go back to Beatport's key" : "Go back to no key";
-  return `Go back to Rekordbox's ${fieldWord(field)}`;
+/** What a field's Undo does, for a screen reader: the visible word is Undo. */
+function undoLabel(field: OverrideField, beatportKey: string | null | undefined): string {
+  if (field === "key") {
+    return beatportKey ? "Undo your key, back to Beatport's" : "Undo your key, back to no key";
+  }
+  return `Undo your ${fieldWord(field)}, back to Rekordbox's`;
 }
 
 export function TrackEditedValues({ track, beatportKey, onSaved, onError }: TrackEditedValuesProps) {
@@ -102,7 +105,7 @@ export function TrackEditedValues({ track, beatportKey, onSaved, onError }: Trac
             {edited.map((field) => (
               <li key={field} className="cp-track-values__item">
                 <span className="cp-track-values__field">{fieldWord(field)}</span>
-                <span className="cp-track-values__value">{current[field] || "none"}</span>
+                <span className="cp-track-values__value">{current[field] || NO_VALUE}</span>
                 <span className="cp-track-yours__source">
                   {overrideSourceText(track.override_sources?.[field])}
                 </span>
@@ -110,9 +113,10 @@ export function TrackEditedValues({ track, beatportKey, onSaved, onError }: Trac
                   type="button"
                   className="cp-track-yours__clear"
                   disabled={busy !== null}
+                  aria-label={undoLabel(field, beatportKey)}
                   onClick={() => void goBack(field)}
                 >
-                  {goBackLabel(field, beatportKey)}
+                  Undo
                 </button>
               </li>
             ))}

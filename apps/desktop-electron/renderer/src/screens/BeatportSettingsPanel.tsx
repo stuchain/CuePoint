@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from "react";
 
 import { Button, MoreAbout, Panel, TextField } from "../components";
 import type { BeatportAuth } from "../api/cuepointBridge.types";
+import { NEEDS_DESKTOP } from "../api/userMessage";
 import { useBeatportToken } from "../hooks/useBeatportToken";
 import "./beatport-settings.css";
 
@@ -83,7 +84,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
     ? status.configured
       ? `Saved token ${status.masked ?? ""}. Paste a new one to replace it.`
       : "Kept on this computer only."
-    : "Open CuePoint as a desktop app to save a token.";
+    : NEEDS_DESKTOP;
 
   const settled = (): void => lineRef.current?.focus();
 
@@ -93,9 +94,9 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
       role="status"
     >
       {testOk
-        ? "Accepted. Beatport took the token."
+        ? "Connected. Beatport let CuePoint in."
         : testReason === "rejected"
-          ? `Beatport rejected the token. ${testMessage}`
+          ? `Beatport refused the sign-in. ${testMessage}`
           : testReason === "unreachable"
             ? `Couldn't reach Beatport. ${testMessage}`
             : testMessage}
@@ -110,7 +111,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
         </p>
         {fromConfig ? (
           <p className="cp-beatport-settings__lead">
-            Using the token saved in CuePoint&apos;s config file · {status.masked ?? "••••"}
+            Using the sign-in saved in CuePoint&apos;s config file · {status.masked ?? "••••"}
           </p>
         ) : null}
         {!env && !auth.secure_storage ? (
@@ -119,7 +120,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
           </p>
         ) : null}
         {noDesktop ? (
-          <p className="cp-beatport-settings__lead">Open CuePoint as a desktop app to sign in.</p>
+          <p className="cp-beatport-settings__lead">{NEEDS_DESKTOP}</p>
         ) : null}
         {signingIn ? (
           <p className="cp-beatport-settings__lead" role="status">
@@ -168,7 +169,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
           <MoreAbout label="Paste a token instead" describedBy={lineId} defaultOpen={focusToken !== null}>
             <div className="settings-form">
               <p className="cp-beatport-settings__lead">
-                Without a sign-in, past runs and wantlist still open.
+                Without a sign-in, past digs and wantlist still open.
               </p>
               <TextField
                 label="Beatport token"

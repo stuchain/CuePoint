@@ -25,6 +25,7 @@ import { APPLY_FIELDS, APPLY_FIELD_LABELS, applyValue } from "../clean/compariso
 import type { BatchSelection } from "../../api/cuepointBridge.types";
 import type { CleanTracks } from "../clean/cleanTracks";
 import { formatBpm } from "./trackValues";
+import { NOT_SET, NO_VALUE } from "../../words";
 
 export { writesLine } from "../../components/shell/activityActions";
 
@@ -89,11 +90,11 @@ export function overrideMark(
   const said = overrideSourceText(source);
   if (field === "key") {
     // Rekordbox's key is not the track's key (DEC-201); say so rather than quote it.
-    return { source, title: `${label} ${said}. Rekordbox's key is not used.` };
+    return { source, title: `${label} ${said}. CuePoint uses Beatport's key, not Rekordbox's.` };
   }
   return {
     source,
-    title: `${label} ${said}. Rekordbox has ${underneath === "" ? "none" : underneath}.`,
+    title: `${label} ${said}. In Rekordbox it is ${underneath === "" ? NOT_SET : underneath}.`,
   };
 }
 
@@ -105,7 +106,7 @@ export function artworkText(state: ArtworkState | null | undefined): string {
     case "beatport":
       return "From Beatport";
     case "none":
-      return "None";
+      return NO_VALUE;
     case "unknown":
       return "Not read yet";
     default:
@@ -121,7 +122,7 @@ export function coverArtText(state: ArtworkState | null | undefined): string {
     case "beatport":
       return "from Beatport";
     case "none":
-      return "none";
+      return NO_VALUE;
     case "unknown":
       return "not looked at yet";
     default:
@@ -164,7 +165,7 @@ export interface BeatportMenuHandlers {
   onUseBeatport?: () => void;
 }
 
-/** What Edit values… and Save changes into the files… do; More ▸ holds them (FLW-8). */
+/** What Edit values… and Save to files… do; More ▸ holds them (FLW-8). */
 export interface FixMenuHandlers {
   onEdit?: () => void;
   onWriteTags?: () => void;
@@ -244,7 +245,7 @@ export function fixMenuItems(
   if (handlers.onWriteTags) {
     items.push({
       id: "fix-write-tags",
-      label: "Save changes into the files…",
+      label: "Save to files…",
       onSelect: handlers.onWriteTags,
     });
   }

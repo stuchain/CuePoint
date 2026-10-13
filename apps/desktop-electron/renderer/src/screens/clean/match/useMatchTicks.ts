@@ -2,7 +2,7 @@
  * Which values "Correct" also copies, remembered (C14, OQ5).
  *
  * One preference for both views: the ticks under the card in One at a time and
- * the "Take" ticks over the Table are the same set, stored in one key. All on
+ * the "Correct" ticks over the Table are the same set, stored in one key. All on
  * by default except the key: replacing a key the user typed is the one value
  * Correct would take from them, so it is ticked only by choice, and a choice
  * made is remembered.

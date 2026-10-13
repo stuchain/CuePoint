@@ -133,7 +133,7 @@ MEMBERSHIP_OPERATIONS = frozenset(
     {OPERATION_ADD_TO_COLLECTION, OPERATION_REMOVE_FROM_COLLECTION}
 )
 MEMBERSHIP_REFUSAL = (
-    "Adding tracks to or removing them from a Collection cannot be reverted."
+    "Adding tracks to or removing them from a Collection cannot be undone."
     " Tracks hold positions in a Collection that later edits move, so putting"
     " them back would be right only sometimes. Add or remove the tracks again"
     " instead"
@@ -174,7 +174,7 @@ class StaleRevertError(ValueError):
             f"{_field_words(change).capitalize()} on track {change.track_id} has"
             f" changed since change {change.id}: that change set it to"
             f" {_shown(change, change.new_value)}, and it is now"
-            f" {_shown(change, current)}. Revert the later change first, or edit"
+            f" {_shown(change, current)}. Undo the later change first, or edit"
             " it directly"
         )
 
@@ -317,7 +317,7 @@ class RevertService(IRevertService):
             if outcome.changed:
                 self._activity.record_event(
                     EVENT_FIELD_REVERTED,
-                    f"Reverted {_field_words(change)} on {self._track_name(change)}",
+                    f"Undid {_field_words(change)} on {self._track_name(change)}",
                     {
                         "track_id": change.track_id,
                         "field": change.field_name,
@@ -351,7 +351,7 @@ class RevertService(IRevertService):
         if not counts:
             if events:
                 raise ValueError(
-                    f"Batch {wanted!r} changed nothing, so there is nothing to revert"
+                    f"Batch {wanted!r} changed nothing, so there is nothing to undo"
                 )
             raise ValueError(f"No such batch: {wanted!r}")
         foreign = sorted(set(counts) - CUEPOINT_REVERTABLE_FIELDS)
@@ -443,7 +443,7 @@ class RevertService(IRevertService):
             return counts
         except (ValueError, sqlite3.Error) as exc:
             _logger.warning(
-                "[revert] a chunk of %d changes could not be reverted together"
+                "[revert] a chunk of %d changes could not be undone together"
                 " (%s); retrying one change at a time",
                 len(change_ids),
                 exc,
@@ -614,9 +614,9 @@ class RevertService(IRevertService):
             for event in self._history.batch_events(result.reverted_batch_id)
         ]
         head = (
-            f"Reverted {changes} of “{original[0]}”"
+            f"Undid {changes} of “{original[0]}”"
             if original
-            else f"Reverted {changes} from a batch"
+            else f"Undid {changes} from a batch"
         )
         notes: List[str] = []
         if result.skipped:
@@ -624,7 +624,7 @@ class RevertService(IRevertService):
         if result.unchanged:
             notes.append(f"{result.unchanged} already as they were")
         if result.failed:
-            notes.append(f"{result.failed} could not be reverted")
+            notes.append(f"{result.failed} could not be undone")
         if result.cancelled:
             notes.append(f"cancelled after {result.completed} of {result.total}")
         return f"{head} — {', '.join(notes)}" if notes else head

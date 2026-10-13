@@ -163,7 +163,7 @@ describe("the Health section (STATS-07, K3)", () => {
   it("draws the five Beatport states in the words the rest of the app uses", () => {
     renderSection();
     expect(bars("beatport")).toEqual([
-      "Accepted, 50 tracks",
+      "Confirmed, 50 tracks",
       "Waiting for you, 10 tracks",
       "Rejected, 2 tracks",
       "No match, 3 tracks",

@@ -26,7 +26,7 @@ const TITLES = [
   "Playback",
   "Waveforms",
   "Beatport",
-  "Rekordbox export",
+  "Rekordbox",
   "Privacy",
   "About & updates",
 ];
@@ -232,7 +232,7 @@ describe("the Beatport test result", () => {
 
   it("says Beatport rejected the token only when it did", async () => {
     const result = await runTest({ ok: false, message: "The token is invalid or has expired.", reason: "rejected" });
-    expect(result).toHaveTextContent("Beatport rejected the token.");
+    expect(result).toHaveTextContent("Beatport refused the sign-in.");
     expect(result).toHaveClass("cp-beatport-settings__result--rejected");
   });
 

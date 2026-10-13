@@ -46,6 +46,7 @@ import {
   useStatisticsSpreads,
   useStatisticsTrees,
 } from "./useStatistics";
+import { NEEDS_DESKTOP } from "../../api/userMessage";
 import "../screens.css";
 import "./statistics.css";
 
@@ -127,7 +128,7 @@ export function StatisticsScreen() {
   const readCoverArt = useCallback(() => {
     const begin = window.cuepoint?.startArtworkScan;
     if (!begin) {
-      push("That needs the desktop app with CuePoint's library service running.", "warning");
+      push(NEEDS_DESKTOP, "warning");
       return;
     }
     void runJob<CleanJobStarted>("artwork_scan", () => begin({ selection: { query: {} } }), {

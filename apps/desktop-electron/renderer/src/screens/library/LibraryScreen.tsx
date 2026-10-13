@@ -130,7 +130,7 @@ import { useSaveToFiles } from "../../components/saveToFiles/useSaveToFiles";
 import { usePageActive } from "../../components/shell/pageActive";
 import { useScopeTotal } from "./useScopeTotal";
 import { followJob } from "./followJob";
-import { appliedLine, jobErrorMessage } from "./libraryFormat";
+import { appliedLine, fileName, jobErrorMessage } from "./libraryFormat";
 import { DEFAULT_LIBRARY_QUERY, type LibraryQuery, queryKey } from "./libraryQuery";
 import { copySummary, gatherTracksAsText, writeClipboard } from "./trackClipboard";
 import { isSelected, onlySelectedId, selectedRowIndex } from "./trackSelection";
@@ -202,7 +202,7 @@ export interface LibraryScreenProps {
   trackWith?: TrackOpening | null;
   /**
    * Start the import's file choice once, for the navigation this token names: File →
-   * "Import another file…" (FLW-20) does what the Library's own button does.
+   * "Import a Rekordbox file…" (FLW-20) does what the Library's own button does.
    */
   importWith?: string | null;
   /**
@@ -1594,7 +1594,7 @@ export function LibraryScreen({
     setQuery({ ...DEFAULT_LIBRARY_QUERY });
     window_.reload();
     setImportedAt(rememberImport());
-    push("Rekordbox export imported.", "success");
+    push("Rekordbox file imported.", "success");
   }, [loadSummary, pickFile, playlists, push, run, window_]);
 
   const handleCheck = useCallback(async () => {
@@ -1614,6 +1614,12 @@ export function LibraryScreen({
       const previewed = payload.result as RefreshDiff | undefined;
       if (!previewed) {
         push("The check finished without a result.", "warning");
+        return;
+      }
+      // Nothing changed: no dialog to dismiss, a toast says so (R3-11).
+      if (previewed.is_empty) {
+        const name = fileName(previewed.xml_path ?? "");
+        push(name ? `${name} has no changes.` : "Your Rekordbox file has no changes.", "info");
         return;
       }
       if (mounted.current) setDiff(previewed);

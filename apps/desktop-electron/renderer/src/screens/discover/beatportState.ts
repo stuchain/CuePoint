@@ -65,7 +65,7 @@ export function beatportNotice(
     case "rejected":
       return {
         state,
-        headline: "Beatport sign-in ended or the token was refused.",
+        headline: "Beatport sign-in ended or was refused.",
         hint: "",
         action: "signin",
         actionLabel: "Sign in again",
@@ -73,7 +73,7 @@ export function beatportNotice(
     case "forbidden":
       return {
         state,
-        headline: "Beatport refused this token.",
+        headline: "Beatport refused this sign-in.",
         hint: "",
         action: "signin",
         actionLabel: "Sign in again",
@@ -120,5 +120,5 @@ export function beatportUsable(state: DiscoverBeatportState): boolean {
 /** Why an action that asks Beatport is not offered, in the button's hint. */
 export function unusableReason(state: DiscoverBeatportState): string | null {
   if (beatportUsable(state)) return null;
-  return state === "forbidden" ? "Beatport refused this token." : "Needs a Beatport sign-in.";
+  return state === "forbidden" ? "Beatport refused this sign-in." : "Needs a Beatport sign-in.";
 }

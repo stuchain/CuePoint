@@ -120,8 +120,8 @@ imported. Track details shows both; hover the stars to see which one you are loo
 
 Every change is recorded. Track details' History shows what changed, when,
 and what it was before — which is how you find out what a refresh did, and what
-you did last Tuesday. A change you made in CuePoint has a **Revert** button
-there; see [Taking a change back](library.md#taking-a-change-back).
+you did last Tuesday. A change you made in CuePoint has an **Undo** button
+there; see [Undoing a change](library.md#undoing-a-change).
 
 ## Changing a lot of tracks at once
 
@@ -136,13 +136,13 @@ while it does. Cancelling stops it where it is; what was already changed stays
 changed, and the History of each track says what happened.
 
 There is no undo button, but a whole change can be taken back: its entry in the
-**Activity** panel offers **Revert this batch**. The exception is adding tracks
-to a Collection or removing them from one, which cannot be reverted — add or
+**Activity** panel offers **Undo this batch**. The exception is adding tracks
+to a Collection or removing them from one, which cannot be undone — add or
 remove them again instead. That is why every step says its number first.
 
 ## What a refresh does to all of this
 
-Refreshing re-reads your Rekordbox export. Tracks that are no longer in it are
+Refreshing re-reads your Rekordbox file. Tracks that are no longer in it are
 deleted, and **their ratings, tags, notes, history and Collection membership go
 with them.**
 
@@ -193,7 +193,7 @@ from Rekordbox; a rating, a note, a tag, a Collection and a Set's plan cannot be
 recovered from anything else. Restoring a backup brings all of it back
 together — the tree, the membership and its order, the tags with their colors
 and categories, the ratings, the notes, the history behind them, and each Set's
-chapters, planned times, notes and accepted warnings.
+chapters, planned times, notes and warnings marked OK.
 
 ## See also
 

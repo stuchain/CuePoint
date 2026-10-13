@@ -229,12 +229,12 @@ describe("the words", () => {
   it("sums a transition up, open warnings first, accepted ones muted", () => {
     const into4 = summarizeWarnings(entryRow(E4).transition);
     expect(into4).toMatchObject({ tone: "open", text: "+9.4% tempo" });
-    expect(into4.title).toContain("Keys clash: 8A → 3B (accepted)");
+    expect(into4.title).toContain("Keys clash: 8A → 3B (OK)");
     expect(summarizeWarnings(entryRow(E6).transition).text).toBe("−12.9% tempo · Key clash");
     const accepted = entryRow(E4).transition.map((warning) => ({ ...warning, acknowledged: true }));
     expect(summarizeWarnings(accepted as SetWarning[])).toMatchObject({
       tone: "accepted",
-      text: "+9.4% tempo · Key clash accepted",
+      text: "+9.4% tempo · Key clash OK",
     });
     expect(summarizeWarnings([]).tone).toBe("none");
   });
@@ -276,7 +276,7 @@ describe("the words", () => {
     // Transitions, then entries, then chapters, in words that count.
     expect(facts[2]).toEqual({
       text: "5 warnings",
-      title: "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range, 1 accepted",
+      title: "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range, 1 marked OK",
       strong: true,
     });
     // The files fact is the one that links: it opens Clean's Missing files.
@@ -289,7 +289,7 @@ describe("the words", () => {
     const checked = { ...FRIDAY.analysis.files, never_checked: false, checked: 5, unchecked: 0 };
     const quiet = headerFacts(1, FRIDAY.plan.running_time, { ...FRIDAY.analysis, counts: {}, files: checked });
     expect(quiet.map((fact) => fact.text)).toEqual(["1 track", "9:00 planned", "No warnings"]);
-    expect(quiet[2]).toEqual({ text: "No warnings", title: "1 accepted", strong: false });
+    expect(quiet[2]).toEqual({ text: "No warnings", title: "1 marked OK", strong: false });
   });
 
   it("says no times are planned only in the count's title, and that times are optional (PRP-3)", () => {

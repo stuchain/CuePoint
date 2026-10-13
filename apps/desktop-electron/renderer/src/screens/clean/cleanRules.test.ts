@@ -41,7 +41,7 @@ describe("the review scopes", () => {
     expect(REVIEW_SCOPES.map((scope) => [scope.id, scope.label])).toEqual([
       ["needs_review", "Waiting for you"],
       ["disputed", "Changed since you decided"],
-      ["accepted", "Accepted"],
+      ["accepted", "Confirmed"],
       ["rejected", "Rejected"],
       ["no_match", "No match"],
       ["not_matched", "Not matched"],

@@ -637,16 +637,14 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(() => existsSync(file), { timeout: 15_000 }).toBe(true);
   });
 
-  test("Check Rekordbox for changes and Export to Rekordbox: the Library header", async () => {
+  test("Check for changes and Export to Rekordbox: the Library header", async () => {
     await openLibrary(win);
     const header = win.locator('[data-slot="library-header"]');
 
-    // Check Rekordbox for changes: the file has not changed, and the page says so.
-    await use(win, header.getByRole("button", { name: "Check Rekordbox for changes" }), "Check Rekordbox for changes");
-    const unchanged = win.getByRole("dialog", { name: "Nothing has changed" });
-    await expect(unchanged).toBeVisible({ timeout: 30_000 });
-    await win.keyboard.press("Escape");
-    await expect(unchanged).toBeHidden();
+    // Check for changes: the file has not changed, and a toast says so (R3-11).
+    await use(win, header.getByRole("button", { name: "Check for changes" }), "Check for changes");
+    await expect(win.getByText(/ has no changes\.$/)).toBeVisible({ timeout: 30_000 });
+    await expect(win.getByRole("dialog")).toHaveCount(0);
 
     // Export to Rekordbox…
     await use(win, header.getByRole("button", { name: "Export to Rekordbox…" }), "Export to Rekordbox…");
@@ -656,7 +654,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect(exporting).toBeHidden();
   });
 
-  test("Import another Rekordbox file…: Settings", async () => {
+  test("Import a Rekordbox file…: Settings", async () => {
     // The Library header no longer has an import button (K9); Settings does, and so does the File menu.
     await win.getByRole("link", { name: "Settings" }).click();
     const xml = path.join(workspace, "collection.xml");
@@ -664,7 +662,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
       (dialog as unknown as { showOpenDialog: unknown }).showOpenDialog = async () => ({ canceled: false, filePaths: [chosen] });
     }, xml);
     const imports = await jobsOf(win, "library_import");
-    await use(win, win.getByRole("button", { name: "Import another Rekordbox file…" }), "Import another Rekordbox file…");
+    await use(win, win.getByRole("button", { name: "Import a Rekordbox file…" }), "Import a Rekordbox file…");
     await expect.poll(() => jobsOf(win, "library_import"), { timeout: 60_000 }).toBeGreaterThan(imports);
   });
 
@@ -719,7 +717,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await pick(win, "Warm One", "Warm Two");
     await use(win, toolbar(win).getByRole("button", { name: "More", exact: true }), "the bar's More");
     await expect(win.getByRole("menuitem", { name: "Edit values…" })).toBeVisible();
-    await expect(win.getByRole("menuitem", { name: "Save changes into the files…" })).toHaveCount(0);
+    await expect(win.getByRole("menuitem", { name: "Save to files…" })).toHaveCount(0);
     await win.keyboard.press("Escape");
 
     // The Library's own save bar counts the values made above and opens the save window.

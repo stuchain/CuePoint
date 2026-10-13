@@ -396,7 +396,7 @@ describe("what the entries do", () => {
     await tableReady();
     await select("Track 1", "Track 2");
     const more = await openGroup("More");
-    expect(within(more).queryByRole("menuitem", { name: "Save changes into the files…" })).toBeNull();
+    expect(within(more).queryByRole("menuitem", { name: "Save to files…" })).toBeNull();
     expect(within(more).getByRole("menuitem", { name: "Edit values…" })).toBeInTheDocument();
   });
 
@@ -560,10 +560,10 @@ describe("the table", () => {
     renderScreen();
     await tableReady();
     const first = screen.getByText("Track 1").closest("[role=row]") as HTMLElement;
-    const typed = within(first).getByRole("img", { name: "BPM typed by you. Rekordbox has 128." });
+    const typed = within(first).getByRole("img", { name: "BPM typed by you. In Rekordbox it is 128." });
     expect(typed.closest(".library-cell__overridden")).toHaveTextContent("126");
     const second = screen.getByText("Track 2").closest("[role=row]") as HTMLElement;
-    expect(within(second).getByRole("img", { name: "Genre applied from Beatport. Rekordbox has Techno." })).toHaveTextContent("B");
+    expect(within(second).getByRole("img", { name: "Genre applied from Beatport. In Rekordbox it is Techno." })).toHaveTextContent("B");
     const third = screen.getByText("Track 3").closest("[role=row]") as HTMLElement;
     expect(third.querySelector(".library-cell__mark")).toBeNull();
   });
@@ -599,7 +599,7 @@ describe("the table", () => {
     expect(text("match_state")).toBe("Waiting for you");
     expect(text("match_score")).toBe("81.0");
     expect(text("file_status")).toBe("Present");
-    expect(text("artwork")).toBe("None");
+    expect(text("artwork")).toBe("—");
   });
 
   it("draws the Clean columns once they are chosen", async () => {

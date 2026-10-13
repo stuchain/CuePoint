@@ -238,13 +238,13 @@ describe("Add to Set, as a batch", () => {
       "Added 40 tracks to “Friday” — 1 were already there. There is no undo for Set changes.",
     );
     expect(batchConsequence("add_to_collection", "set")).toBe(
-      "It runs in the background, and there is no undo: adding tracks to or removing them from a Set cannot be reverted.",
+      "It runs in the background, and there is no undo: adding tracks to or removing them from a Set cannot be undone.",
     );
-    expect(batchConsequence("add_to_collection")).toMatch(/from a Collection cannot be reverted/);
+    expect(batchConsequence("add_to_collection")).toMatch(/from a Collection cannot be undone/);
   });
 
   it("is said of both in Activity, which does not record which it was", () => {
-    expect(MEMBERSHIP_REVERT_REASON).toMatch(/from a Collection or a Set cannot be reverted/);
+    expect(MEMBERSHIP_REVERT_REASON).toMatch(/from a Collection or a Set cannot be undone/);
   });
 });
 

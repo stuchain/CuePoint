@@ -555,10 +555,10 @@ describe("the Set", () => {
     expect(within(facts).getByText("9:00 planned")).toHaveAttribute("title", "4 without times");
     expect(within(facts).getByText(/5 warnings/)).toHaveAttribute(
       "title",
-      "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range, 1 accepted",
+      "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range, 1 marked OK",
     );
     expect(facts).not.toHaveTextContent("without times");
-    expect(facts).not.toHaveTextContent("accepted");
+    expect(facts).not.toHaveTextContent("marked OK");
     expect(within(facts).getByRole("button", { name: "Missing files ›" })).toHaveAttribute(
       "title",
       expect.stringMatching(/^Files in this Set have never been checked/),
@@ -1000,12 +1000,12 @@ describe("the entry's plan in the Inspector", () => {
   it("acknowledges a transition warning, and withdraws an acknowledged one", async () => {
     const zone = await select(5);
     const jump = within(zone).getByText(/Tempo jumps 9.4% faster/).closest("li") as HTMLElement;
-    fireEvent.click(within(jump).getByRole("button", { name: "Accept" }));
+    fireEvent.click(within(jump).getByRole("button", { name: "Mark OK" }));
     await waitFor(() =>
       expect(sets.acknowledge).toHaveBeenCalledWith({ from_entry_id: E3, to_entry_id: E4, warning: "tempo_jump" }),
     );
-    const clash = within(zone).getByText(/Keys clash: 8A → 3B \(accepted\)/).closest("li") as HTMLElement;
-    fireEvent.click(within(clash).getByRole("button", { name: "Undo accept" }));
+    const clash = within(zone).getByText(/Keys clash: 8A → 3B \(OK\)/).closest("li") as HTMLElement;
+    fireEvent.click(within(clash).getByRole("button", { name: "Undo Mark OK" }));
     await waitFor(() =>
       expect(sets.unacknowledge).toHaveBeenCalledWith({ from_entry_id: E3, to_entry_id: E4, warning: "key_clash" }),
     );
@@ -1015,7 +1015,7 @@ describe("the entry's plan in the Inspector", () => {
     const zone = await select(5);
     const list = within(zone).getByRole("list", { name: "What the checks found" });
     const hint = within(zone).getByText(
-      "Accept a warning once you have heard the mix work. It comes back if either track changes.",
+      "Mark a warning OK once you have heard the mix work. It comes back if either track changes.",
     );
     expect(hint.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(zone).queryByText(/acknowledge/i)).toBeNull();
@@ -1899,9 +1899,9 @@ describe("the transition strip's caption and Accept (FLW-19)", () => {
     // The tempo jump is open and the key clash accepted: one is shown, the other is "+1 more".
     const warning = await screen.findByTestId("transition-warning");
     expect(screen.getAllByTestId("transition-warning")).toHaveLength(1);
-    expect(warning).toHaveTextContent(/^Tempo jumpAccept\+1 more$/);
-    expect(within(warning).getByText("+1 more")).toHaveAttribute("title", "Keys clash: 8A → 3B (accepted)");
-    fireEvent.click(within(warning).getByRole("button", { name: "Accept" }));
+    expect(warning).toHaveTextContent(/^Tempo jumpMark OK\+1 more$/);
+    expect(within(warning).getByText("+1 more")).toHaveAttribute("title", "Keys clash: 8A → 3B (OK)");
+    fireEvent.click(within(warning).getByRole("button", { name: "Mark OK" }));
     await waitFor(() =>
       expect(sets.acknowledge).toHaveBeenCalledWith({ from_entry_id: E3, to_entry_id: E4, warning: "tempo_jump" }),
     );

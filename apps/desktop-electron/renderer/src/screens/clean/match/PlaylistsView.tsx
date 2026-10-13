@@ -203,7 +203,7 @@ export function PlaylistsView({
         {data.playlists.length === 0 && (
           <EmptyState
             headline="No playlists yet"
-            description="Playlists from your Rekordbox collection show here. Import it in the Library first."
+            description="Playlists from your Rekordbox file show here. Import it in the Library first."
           />
         )}
         {data.playlists.length > 0 && text && shown.length === 0 && (

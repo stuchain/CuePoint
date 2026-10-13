@@ -897,7 +897,7 @@ class TestDecidingASelection:
             ),
             400,
             "INVALID_REQUEST",
-            "revert",
+            "undo",
         )
 
     def test_a_selection_names_no_candidate(self, engine):
@@ -981,7 +981,7 @@ class TestApplying:
             ),
             400,
             "INVALID_REQUEST",
-            "accepted",
+            "confirmed",
         )
 
     @pytest.mark.parametrize("fields", [None, [], "genre", [1], ["colour"]])

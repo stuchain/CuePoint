@@ -31,20 +31,20 @@ open in Rekordbox.
 - **Tags, notes and favorites.** Rekordbox's XML has nowhere to put them, so
   they stay in CuePoint. To get a tag into Rekordbox, make a Smart Collection
   whose rule is that tag and export it as a playlist.
-- **A Set's plan.** Its chapters, planned in and out times, notes and accepted
-  warnings stay in CuePoint: the playlist is the running order and nothing
+- **A Set's plan.** Its chapters, planned in and out times, notes and warnings marked
+  OK stay in CuePoint: the playlist is the running order and nothing
   else, and a Set with three chapters is still one playlist, not a folder. A
   [set list](prepare.md#set-lists) carries the times as text or CSV.
 - **Your audio files.** An export writes one file — the XML you choose — and
-  never opens an audio file. To put your values into the files themselves, use
-  [Save changes into the files](library.md#writing-tags-to-files).
+  never opens an audio file. To put your values into the audio files, use
+  [Save to files](library.md#saving-to-files).
 - **The file you imported.** CuePoint never writes over it. Choosing it as the
   destination is refused.
 
 ## Exporting
 
 1. On the **Library** page, click **Export to Rekordbox…** in the header, beside
-   **Check Rekordbox for changes**. Or right-click a Collection, Smart Collection, Set or folder in
+   **Check for changes**. Or right-click a Collection, Smart Collection, Set or folder in
    the left pane and choose **Export to Rekordbox…** — it opens with that one
    already ticked. On the Prepare page, **Export ▾ → Export to Rekordbox…**
    opens it with the open Set ticked.
@@ -73,7 +73,7 @@ open in Rekordbox.
 The export runs in the background and shows in the status strip; you can stop
 it. A stopped export leaves nothing behind — the file only appears once it is
 complete. Afterwards the export is listed in **Activity**, and **Settings →
-Rekordbox export** shows where your exports went.
+Rekordbox** shows where your exports went.
 
 ## What the preview may tell you
 
@@ -118,7 +118,7 @@ The notation you use becomes the default for your next export. The choice lives
 under **Details**; when it is not the default, the summary line at the top names it
 (for example, "Keys written as Camelot (8A).").
 
-The key written is the track's own: yours, or else its accepted Beatport match's
+The key written is the track's own: yours, or else its confirmed Beatport match's
 key. A track with neither keeps the key Rekordbox already has in the file; the
 export never blanks a key.
 
@@ -136,7 +136,7 @@ second library in the tree, called **rekordbox xml**, beside your own:
 
 ## Settings
 
-**Settings → Rekordbox export** shows the folder the next save dialog opens in,
+**Settings → Rekordbox** shows the folder the next save dialog opens in,
 the notation the next export writes keys in (**Keys written as**), and your
 recent exports — when each ran, where it went, and what it wrote (for example
 "4 tracks · 3 with new tags · 4 playlists · Camelot (8A)"). Both remembered

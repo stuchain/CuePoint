@@ -244,7 +244,7 @@ export function saveState({ choices, preview, total, count, canMarkSaved }: Save
     );
   }
   if (canMarkSaved) {
-    return { label: `Mark ${trackWords(count)} as saved`, enabled: true, reason: ALREADY_HOLD, mark: true };
+    return { label: `Mark ${trackWords(count)} as already saved`, enabled: true, reason: ALREADY_HOLD, mark: true };
   }
   return idle(ALREADY_HOLD);
 }

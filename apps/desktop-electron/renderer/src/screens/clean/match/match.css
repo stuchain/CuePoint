@@ -578,7 +578,7 @@
   color: var(--fg-muted);
 }
 
-/* Take ticked values and the arrow that opens its values (K12): one control. */
+/* Correct ticked values and the arrow that opens its values (K12): one control. */
 .match-take {
   display: inline-flex;
   align-items: stretch;

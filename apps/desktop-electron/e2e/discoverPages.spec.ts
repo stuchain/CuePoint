@@ -332,7 +332,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
   test("the whole of Phase 9, in the order a person meets it (DISCOVER-12)", async () => {
     test.setTimeout(420_000);
     const nav = (window: Page) => window.getByRole("navigation", { name: /main navigation/i });
-    const found = "Tracks this search found";
+    const found = "Tracks this dig found";
     const app = await launch(userDataDir, cuepointHome, PHASE_BEATPORT);
     try {
       const window = await ready(app);
@@ -373,8 +373,8 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
       });
 
       await test.step("search, and see the two accepted tracks hidden as already in the library", async () => {
-        await window.getByRole("tab", { name: "New search" }).click();
-        const panel = window.getByRole("region", { name: "New search" });
+        await window.getByRole("tab", { name: "New dig" }).click();
+        const panel = window.getByRole("region", { name: "New dig" });
         await expect(panel).toBeVisible({ timeout: 30_000 });
         await panel.getByRole("checkbox", { name: "House" }).check();
         await panel.getByRole("button", { name: "Start looking" }).click();
@@ -534,7 +534,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(bpRow(window, "Wantlist", "Undertow")).toBeVisible({ timeout: 15_000 });
         await window.getByRole("tab", { name: "Results" }).click();
         await window
-          .getByRole("navigation", { name: "Past searches" })
+          .getByRole("navigation", { name: "Past digs" })
           .getByRole("button", { name: /4 tracks found/ })
           .click();
         await expect(window.getByText("Found 4 tracks from 1 chart and 0 releases.")).toBeVisible({

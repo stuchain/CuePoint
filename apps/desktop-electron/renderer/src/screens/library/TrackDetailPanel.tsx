@@ -67,6 +67,7 @@ import { useTrackWrites } from "./useTrackWrites";
 import { reportUnexpected } from "../../reporting/reporting";
 import "./TrackDetailPanel.css";
 import { userMessage } from "../../api/userMessage";
+import { NO_VALUE } from "../../words";
 
 /** A Collection as the track-detail read names it — enough to show and to open. */
 type TrackCollectionRef = Pick<CollectionNode, "id" | "name" | "kind">;
@@ -272,7 +273,7 @@ export function TrackDetailPanel({
       setReverting(change.id);
       try {
         const { revert: done } = await bridge({ change_id: change.id });
-        onMessage?.(done.changed ? "Reverted." : "It already held that value; nothing changed.");
+        onMessage?.(done.changed ? "Undone." : "It already held that value; nothing changed.");
         onChanged();
         announceLibraryChange();
       } catch (cause) {
@@ -294,7 +295,7 @@ export function TrackDetailPanel({
       const started = await bridge({ track_id: trackId });
       const finished = await followJob(started.job_id).finished;
       if (finished.state === "failed") report(jobErrorMessage(finished.error));
-      else onMessage?.("Put the file back as it was.");
+      else onMessage?.("Save undone.");
     } catch (cause) {
       reportUnexpected(cause);
       report(userMessage(cause));
@@ -476,7 +477,7 @@ export function TrackDetailPanel({
                   </>
                 ) : (
                   <span className="cp-track-detail__file">
-                    <span>No Beatport key</span>
+                    <span>{NO_VALUE}</span>
                     {keyMatchOffered && track.id != null && <MatchOnBeatport trackId={track.id} />}
                   </span>
                 )

@@ -727,9 +727,9 @@ describe("missing files", () => {
     expect(items).toHaveLength(3);
     expect(items[0]).toHaveTextContent("In Rekordbox, right-click the track, choose Relocate and point it at the file.");
     expect(items[1]).toHaveTextContent("In Rekordbox, choose File, then Export Collection in xml format.");
-    expect(items[2]).toHaveTextContent("Here, Check Rekordbox for changes.");
+    expect(items[2]).toHaveTextContent("Here, Check for changes.");
 
-    fireEvent.click(within(items[2]!).getByRole("button", { name: "Check Rekordbox for changes" }));
+    fireEvent.click(within(items[2]!).getByRole("button", { name: "Check for changes" }));
     const location = JSON.parse((await screen.findByTestId("location")).textContent ?? "{}");
     expect(location).toEqual({ pathname: "/library", state: libraryRefreshState() });
   });

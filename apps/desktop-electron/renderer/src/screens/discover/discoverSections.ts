@@ -11,7 +11,7 @@
 export type DiscoverSection = "new" | "results" | "wantlist";
 
 export const DISCOVER_SECTIONS: ReadonlyArray<{ id: DiscoverSection; label: string }> = [
-  { id: "new", label: "New search" },
+  { id: "new", label: "New dig" },
   { id: "results", label: "Results" },
   { id: "wantlist", label: "Wantlist" },
 ];

@@ -30,7 +30,7 @@ export function matchStateLabel(state: MatchState | null | undefined): string {
     case "needs_review":
       return "Waiting for you";
     case "accepted":
-      return "Accepted";
+      return "Confirmed";
     case "rejected":
       return "Rejected";
     case "no_match":
@@ -51,7 +51,7 @@ export function decisionLine(state: TrackMatchState): string {
   let line: string;
   switch (state.state) {
     case "accepted":
-      line = `Accepted ${by}`;
+      line = `Confirmed ${by}`;
       break;
     case "rejected":
       line = `Rejected ${by}`;

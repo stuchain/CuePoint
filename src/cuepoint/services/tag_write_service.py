@@ -252,8 +252,8 @@ NOTHING_TO_WRITE = (
     "That selection names no tracks in the library, so there are no files to write"
 )
 NOTHING_TO_RESTORE = (
-    "There is nothing to restore: CuePoint has written no tags there that it has"
-    " not already restored"
+    "There is nothing to undo: CuePoint has saved nothing to files there that it has"
+    " not already undone"
 )
 
 #: Reads a file's tag fields.
@@ -385,23 +385,25 @@ def describe_interrupted_tags(restoring: bool, recorded: int, unconfirmed: int) 
     the sentence says how many, and never calls them written.
     """
     if restoring:
-        head = "Restoring tags stopped when CuePoint closed"
+        head = "Undoing the save stopped when CuePoint closed"
         if unconfirmed:
             return (
-                f"{head}: {_count(unconfirmed, 'value')} may not have been put back."
-                " Restore again to finish"
+                f"{head}: {_count(unconfirmed, 'value')} may not have been undone."
+                " Undo again to finish"
             )
-        return f"{head} before every file was put back. Restore again to finish"
-    head = "Writing tags stopped when CuePoint closed"
+        return (
+            f"{head} before every file was back to its old values. Undo again to finish"
+        )
+    head = "Saving to files stopped when CuePoint closed"
     written = recorded - unconfirmed
     if unconfirmed:
         return (
             f"{head}: {_count(unconfirmed, 'value')} may not have finished"
-            f" writing, and {written:,} did. Restore them to put the files back"
+            f" saving, and {written:,} did. Undo the save to bring back the files' old values"
         )
     return (
-        f"{head} after writing {_count(written, 'value')}."
-        " Restore them to put the files back"
+        f"{head} after saving {_count(written, 'value')}."
+        " Undo the save to bring back the files' old values"
     )
 
 
@@ -804,9 +806,9 @@ class TagWriteResult:
         """The activity feed's sentence."""
         head = (
             f"Stopped after {self.completed:,} of {_count(self.total, 'file')},"
-            f" having written tags to {self.written:,}"
+            f" having saved to {self.written:,}"
             if self.cancelled
-            else f"Wrote tags to {_count(self.written, 'file')}"
+            else f"Saved to {_count(self.written, 'file')}"
         )
         parts = []
         if self.skipped_count:
@@ -898,9 +900,9 @@ class TagRestoreResult:
     def summary_line(self) -> str:
         """The activity feed's sentence."""
         head = (
-            f"Stopped after restoring {_count(self.restored, 'field')} of {self.total:,}"
+            f"Stopped after undoing {_count(self.restored, 'field')} of {self.total:,}"
             if self.cancelled
-            else f"Restored {_count(self.restored, 'field')}"
+            else f"Undid {_count(self.restored, 'field')}"
             f" in {_count(self.files, 'file')}"
         )
         parts = []
@@ -1799,7 +1801,7 @@ class TagWriteService(ITagWriteService):
                     self._writes.confirm(row_id, row.new_value_json)
                     outcome[index] = None
                 else:
-                    reason = error or "The file did not take the restored value"
+                    reason = error or "The file did not take the old value back"
                     self._writes.fail(row_id, reason)
                     outcome[index] = reason
             if after is not None and any(reason is None for reason in outcome.values()):

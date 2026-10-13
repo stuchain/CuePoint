@@ -160,8 +160,8 @@ export function emptyStateFor(input: EmptyStateInput): EmptyStateView {
     return {
       title: "This playlist is empty.",
       rules: [],
-      hint: "Playlists come from Rekordbox. Add tracks to it there, then Check Rekordbox for changes.",
-      action: { id: "check-rekordbox", label: "Check Rekordbox for changes" },
+      hint: "Playlists come from Rekordbox. Add tracks to it there, then Check for changes.",
+      action: { id: "check-rekordbox", label: "Check for changes" },
     };
   }
 
@@ -176,7 +176,7 @@ export function emptyStateFor(input: EmptyStateInput): EmptyStateView {
         title: `This ${kind} is empty.`,
         rules: [],
         hint:
-          "The tracks it held are no longer in your Rekordbox export, so the " +
+          "The tracks it held are no longer in your Rekordbox file, so the " +
           "last refresh removed them.",
         action,
       };
@@ -190,9 +190,9 @@ export function emptyStateFor(input: EmptyStateInput): EmptyStateView {
   }
 
   return {
-    title: "This Rekordbox export has no tracks in it.",
+    title: "This Rekordbox file has no tracks in it.",
     rules: [],
     hint: "Export again from Rekordbox and import that file.",
-    action: { id: "import", label: "Import another file…" },
+    action: { id: "import", label: "Import a Rekordbox file…" },
   };
 }

@@ -55,7 +55,7 @@ export function jobPercent(job: EngineJobSummary | null): number | null {
  */
 const JOB_VERBS: Record<string, string> = {
   library_import: "Importing",
-  library_refresh_preview: "Checking your Rekordbox export for changes",
+  library_refresh_preview: "Checking your Rekordbox file for changes",
   library_refresh_apply: "Refreshing",
   // ORG-07's batch. Without its own verb it fell through to "Working", which
   // is the fallback for a job type this build has never heard of — and this
@@ -78,8 +78,8 @@ const JOB_VERBS: Record<string, string> = {
   // keeps "on Beatport" because that is where the work is happening.
   clean_match: "Matching on Beatport",
   tag_write_preview: "Reading tags",
-  tag_write: "Writing tags",
-  tag_restore: "Restoring tags",
+  tag_write: "Saving to files",
+  tag_restore: "Undoing the save",
   // EXPORT-05's Rekordbox export. "Exporting" alone would read as the CSV,
   // JSON and Excel export Settings offers, which is a different thing that
   // writes a different file.
@@ -163,11 +163,11 @@ export function aboutDuration(seconds: number): string {
 /** What a kind of background work is for, and that the user can carry on (STR-3, DEC-132). */
 export const JOB_EXPLAINERS: Record<string, string> = {
   library_import:
-    "CuePoint is reading your Rekordbox collection into its library. You can keep working while it finishes.",
+    "CuePoint is reading your Rekordbox file into its library. You can keep working while it finishes.",
   library_refresh_preview:
-    "CuePoint is comparing your Rekordbox export with its library. Nothing changes yet, and you can keep working.",
+    "CuePoint is comparing your Rekordbox file with its library. Nothing changes yet, and you can keep working.",
   library_refresh_apply:
-    "CuePoint is applying the changes from your Rekordbox export. You can keep working.",
+    "CuePoint is applying the changes from your Rekordbox file. You can keep working.",
   library_batch:
     "CuePoint is changing the tracks you chose. Work already done stays done if you stop, and you can keep working.",
   file_check:
@@ -177,17 +177,17 @@ export const JOB_EXPLAINERS: Record<string, string> = {
   clean_match:
     "CuePoint is looking your tracks up on Beatport to fill in what is missing. You can keep working.",
   tag_write_preview:
-    "CuePoint is reading the tags in your files to show what would change. Nothing is written, and you can keep working.",
-  tag_write: "CuePoint is writing tags into your audio files. Please keep CuePoint open until it finishes.",
+    "CuePoint is reading the tags in your files to show what would change. Nothing is saved, and you can keep working.",
+  tag_write: "CuePoint is saving to your audio files. Please keep CuePoint open until it finishes.",
   tag_restore:
-    "CuePoint is putting the earlier tags back into your audio files. Please keep CuePoint open until it finishes.",
+    "CuePoint is undoing the save in your audio files. Please keep CuePoint open until it finishes.",
   rekordbox_export:
     "CuePoint is writing your changes to a Rekordbox file. You can keep working.",
   credit_index:
     "CuePoint is getting artist and label pages ready so Discover can open them. You can keep working.",
   marks_backfill:
-    "CuePoint is reading the cue points and beat grids in your Rekordbox collection. You can keep working.",
-  discovery: "CuePoint is searching Beatport for tracks you may like. You can keep working.",
+    "CuePoint is reading the cue points and beat grids in your Rekordbox file. You can keep working.",
+  discovery: "CuePoint is digging through Beatport for tracks you may like. You can keep working.",
   beatport_playlist: "CuePoint is building your playlist on Beatport. You can keep working.",
   beatport_resolve:
     "CuePoint is matching your tracks to their Beatport pages. You can keep working.",

@@ -379,8 +379,8 @@ describe("a page's identity (DEC-095)", () => {
 describe("the Beatport half, in every state", () => {
   const STANDING_IN: Array<[Fixture, string, string | null]> = [
     ["half_no_token", "Sign in to Beatport to search its charts and releases.", "Sign in to Beatport"],
-    ["half_rejected", "Beatport sign-in ended or the token was refused.", "Sign in again"],
-    ["half_forbidden", "Beatport refused this token.", "Sign in again"],
+    ["half_rejected", "Beatport sign-in ended or was refused.", "Sign in again"],
+    ["half_forbidden", "Beatport refused this sign-in.", "Sign in again"],
     ["half_rate_limited", "Beatport is limiting requests", "Try again"],
     ["half_unavailable", "Beatport cannot be reached", "Try again"],
     ["half_not_resolved_resolvable", "Not linked to Beatport yet", "Look up"],

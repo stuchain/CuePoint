@@ -84,12 +84,12 @@ export function reviewEmptyState(input: ReviewEmptyInput): CleanEmptyView {
     case "needs_review":
       return view(
         `Nothing is waiting for you${where}.`,
-        "Every match was accepted automatically, decided by you, or found nothing.",
+        "Every match was confirmed automatically, decided by you, or found nothing.",
       );
     case "disputed":
       return view(`Nothing has changed since you decided${where}.`, DISPUTED_HINT);
     case "accepted":
-      return view(`Nothing is accepted${where}.`);
+      return view(`Nothing is confirmed${where}.`);
     case "rejected":
       return view(`Nothing is rejected${where}.`);
     case "no_match":

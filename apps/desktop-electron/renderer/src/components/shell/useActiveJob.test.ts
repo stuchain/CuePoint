@@ -46,7 +46,7 @@ describe("jobLabel", () => {
     // One reads and one deletes (DEC-003). A single verb for both would leave
     // the only place the app reports background work unable to say whether the
     // irreversible half had started.
-    expect(jobLabel(job({ type: "library_refresh_preview" }))).toBe("Checking your Rekordbox export for changes · 3 of 10");
+    expect(jobLabel(job({ type: "library_refresh_preview" }))).toBe("Checking your Rekordbox file for changes · 3 of 10");
     expect(jobLabel(job({ type: "library_refresh_apply" }))).toBe("Refreshing · 3 of 10");
   });
 
@@ -71,8 +71,8 @@ describe("jobLabel", () => {
     // CLEAN-10: the one job that writes audio files must not read as the
     // preview that only reads them, nor as the restore that undoes it.
     expect(jobLabel(job({ type: "tag_write_preview" }))).toBe("Reading tags · 3 of 10");
-    expect(jobLabel(job({ type: "tag_write" }))).toBe("Writing tags · 3 of 10");
-    expect(jobLabel(job({ type: "tag_restore" }))).toBe("Restoring tags · 3 of 10");
+    expect(jobLabel(job({ type: "tag_write" }))).toBe("Saving to files · 3 of 10");
+    expect(jobLabel(job({ type: "tag_restore" }))).toBe("Undoing the save · 3 of 10");
   });
 
   it("names the Rekordbox export apart from the other exports (EXPORT-05)", () => {

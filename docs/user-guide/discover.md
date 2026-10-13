@@ -3,14 +3,14 @@
 **Discover** finds new music on Beatport from the artists and labels already in
 your library, lets you keep what you want on a **wantlist**, and sends it to a
 playlist on your Beatport account. It reads the charts your artists made and the
-recent releases on your labels, remembers every search it makes, and knows which
+recent releases on your labels, remembers every dig it makes, and knows which
 of the tracks it finds are already in your library.
 
 It works on the library you imported on the [Library](library.md) page, so
 import a collection first. It reads Beatport as you, once you sign in to Beatport (see
 [Signing in to Beatport](#signing-in-to-beatport)).
 
-Discover has three tabs, **New search**, **Results** and **Wantlist**, and
+Discover has three tabs, **New dig**, **Results** and **Wantlist**, and
 reopens on the tab you used last. From any artist or label name in a table you
 can open that [artist's or label's page](#artist-and-label-pages), and from a
 track's details in the Library you can open its
@@ -20,9 +20,9 @@ keeps **Discover** highlighted while you are on them.
 Discover replaces **inCrate**, which used to sit under **Tools** in the sidebar.
 See [Where inCrate went](#where-incrate-went) if you used it.
 
-## New search
+## New dig
 
-**New search** asks what to look for, starting from your defaults. Press
+**New dig** asks what to look for, starting from your defaults. Press
 **Start looking** when you are ready.
 
 - **Genres for DJ charts.** On Beatport, artists publish charts, which are short
@@ -37,20 +37,20 @@ See [Where inCrate went](#where-incrate-went) if you used it.
   ones you choose (from a list of the names in your library, with how many
   tracks each has), or none.
 
-**Start looking** hands the search to CuePoint, which does it in the
+**Start looking** hands the dig to CuePoint, which does it in the
 background. The status strip shows how far it has got, with a **Stop** button,
-and you can keep working; the page opens **Results** on the new search as soon
-as it begins. A search you stop keeps what it had found. The form keeps what you
+and you can keep working; the page opens **Results** on the new dig as soon
+as it begins. A dig you stop keeps what it had found. The form keeps what you
 filled in while you look at another tab.
 
 ## Results
 
-**Results** lists every search you have made, newest first, each titled "Search
+**Results** lists every dig you have made, newest first, each titled "Dig
 of" its date, with how it ended, what it looked for and how many tracks it found.
-Choose a search to open it beside the list; when the page is narrow, the list
-sits above it instead. With no search yet it says so and offers **New search**.
+Choose a dig to open it beside the list; when the page is narrow, the list
+sits above it instead. With no dig yet it says so and offers **New dig**.
 
-An open search shows how it ended, including why, if Beatport stopped it, and
+An open dig shows how it ended, including why, if Beatport stopped it, and
 one line saying what it looked for (for example "House · last 30 days · 67
 artists · 28 labels"); open that line for the full wording and the artist and
 label names. While it works, the tracks it has found appear as they arrive and
@@ -66,22 +66,22 @@ them within a row; a click on one opens the page without selecting the row.
 **Hide tracks already in your library**, and one count line over the table:
 "40 found · 12 already in your library (hidden)". Turn the switch off to see them,
 marked **In your library**. A track counts as in your library when a track there
-has an accepted Beatport match to it (see [Clean](clean.md)).
+has a confirmed Beatport match to it (see [Clean](clean.md)).
 
 **"Not in your library" means CuePoint has no match for it, not that the file is
-missing.** It is worked out from your accepted matches every time a search is
+missing.** It is worked out from your confirmed matches every time a dig is
 opened, so a track you have but have not matched on the Clean page is shown as
-not in your library, and is marked as soon as you accept its match, in every
-search, old ones included. If Discover shows you a track you know you have,
+not in your library, and is marked as soon as you confirm its match, in every
+dig, old ones included. If Discover shows you a track you know you have,
 match that track in Clean.
 
-Sort by title, artists, release date, or the order the search found them, by
+Sort by title, artists, release date, or the order the dig found them, by
 clicking a column's header. The **Columns…** icon in the table header's right
 corner chooses which columns to show, and the table remembers its layout.
 
-**Delete this search…**, on the search's row in the list, removes a search and
+**Delete this dig…**, on the dig's row in the list, removes a dig and
 its list of tracks after asking. Tracks you added to the wantlist from it stay
-there. A search that is still running cannot be deleted.
+there. A dig that is still running cannot be deleted.
 
 ## The wantlist
 
@@ -91,7 +91,7 @@ including ones now in your library, which are marked **In your library**: it is
 your own list, so nothing is hidden from it. Two filters, used together, each
 **Any**, **No** or **Yes**:
 
-- **In your library**: tracks your library has (through an accepted match), or not.
+- **In your library**: tracks your library has (through a confirmed match), or not.
 - **Marked bought**: tracks you marked bought, or not.
 
 So "bought, but not in my library yet" is **Marked bought: Yes** with **In your
@@ -99,7 +99,7 @@ library: No**. Marking a track bought is your own note; it reads as in your
 library once you import the file and Clean matches it. One line counts the
 wanted tracks, how many are marked bought and how many are in your library.
 
-An empty wantlist shows only a short note on how to fill it (use **Add to wantlist** on a search's results); its filters and table appear once it holds a track.
+An empty wantlist shows only a short note on how to fill it (use **Add to wantlist** on a dig's results); its filters and table appear once it holds a track.
 
 ## What you can do with Beatport tracks
 
@@ -110,7 +110,7 @@ hint says why. From the keyboard, Up and Down move the selection, Shift extends 
 
 | Action | Where | What it does |
 | --- | --- | --- |
-| **Add to wantlist** | Results, artist and label pages | Adds the selected tracks to your wantlist, noting the search they came from. A track already there is left as it is |
+| **Add to wantlist** | Results, artist and label pages | Adds the selected tracks to your wantlist, noting the dig they came from. A track already there is left as it is |
 | **Make a Beatport playlist…** | Everywhere | Makes a new playlist on your Beatport account with the selected tracks, or, with nothing selected, every track the table shows, in its order. The hint beside it says which: "All 48 shown" or "3 selected" |
 | **Open on Beatport** | Everywhere | Opens each selected track's Beatport page in your browser, up to ten at once |
 | **Edit note…** | Wantlist, one track | A note of your own, up to 1,000 characters. Leave it empty to clear it |
@@ -122,7 +122,7 @@ and whether to include tracks already in your library, which it leaves out
 unless you tick **Include tracks already in your library**. It makes a new
 playlist each time. It works in the background, shown in the status strip, and
 when it ends the page says how many tracks it made the playlist with and offers
-**Open the playlist**. If Beatport refuses the token for playlists, the page says
+**Open the playlist**. If Beatport refuses your sign-in for playlists, the page says
 so and nothing is made.
 
 Beatport tracks are not tracks in your library: they have no file, so a
@@ -146,7 +146,7 @@ Beatport** or in the banner at the top of Discover, and sign in on Beatport's ow
 page in the window that opens. The window closes by itself when you are in. Your
 password goes to Beatport, never to CuePoint. CuePoint then keeps the sign-in on
 your computer, encrypted, and renews it by itself while you use the app: Beatport's
-token changes about every 12 minutes and CuePoint fetches the new one quietly (also when
+access changes about every 12 minutes and CuePoint fetches the new one quietly (also when
 your computer wakes from sleep), and the Beatport sign-in itself lasts about 30 days
 from your last use, after which you sign in again. Settings
 shows **Signed in to Beatport · ••••abcd · renews by itself**, with **Test
@@ -161,13 +161,13 @@ When the page says something else:
 | The page says | Means | What to do |
 | --- | --- | --- |
 | **Sign in to Beatport to search its charts and releases.** | You are not signed in | **Sign in to Beatport** |
-| **Beatport sign-in ended or the token was refused.** | The sign-in ran out and could not be renewed, or Beatport refused it | **Sign in again** |
-| **Beatport refused this token.** | The token works but is not allowed to do this | **Sign in again**; a pasted token that is refused needs replacing under **Paste a token instead** |
+| **Beatport sign-in ended or was refused.** | The sign-in ran out and could not be renewed, or Beatport refused it | **Sign in again** |
+| **Beatport refused this sign-in.** | The sign-in works but is not allowed to do this | **Sign in again**; a pasted token that is refused needs replacing under **Paste a token instead** |
 | **Beatport is limiting requests** | Too many requests; it says how long to wait | **Try again** later |
 | **Beatport cannot be reached** | No connection, or Beatport is down | **Try again** later |
 
-Without a sign-in you can still open past searches and use your wantlist; a new
-search and a playlist need one.
+Without a sign-in you can still open past digs and use your wantlist; a new
+dig and a playlist need one.
 
 **Sign out** deletes the sign-in from your computer and clears what the sign-in
 window kept. Where the system has no secure key store (some Linux setups without
@@ -183,11 +183,11 @@ signed in. If you are not, CuePoint wrote what happened to `beatport-signin.log`
 - Windows: `%LOCALAPPDATA%\CuePoint\Logs\beatport-signin.log`
 - macOS: `~/Library/Application Support/CuePoint/Logs/beatport-signin.log`
 
-If CuePoint's background engine was slow to start, the first lines may be in
+If CuePoint was slow to start, the first lines may be in
 `%APPDATA%\CuePoint\logs` (Windows) or `~/Library/Logs/CuePoint` (macOS) instead.
 
 **Help → Get help… → Open log folder** opens that folder. The
-log has no password or token in it, so you can send it as it is when you report
+log has no password or sign-in in it, so you can send it as it is when you report
 the problem.
 
 ### Pasting a token instead
@@ -195,7 +195,7 @@ the problem.
 If the sign-in window does not work for you, **Settings → Beatport → Paste a
 token instead** takes a token you already have. Paste it into **Beatport token**,
 choose **Save token**, then **Test connection**: CuePoint calls Beatport once and
-tells you whether it accepted the token (in green) or rejected it (in red). Once
+tells you whether Beatport let it in (in green) or refused it (in red). Once
 it is saved, the field is replaced by **Using a pasted token · ••••abcd** with
 **Test connection** and **Sign out**; to replace the token, sign out first.
 
@@ -215,11 +215,11 @@ and then exchange what they give you for a token.
 3. Paste the token as above.
 
 A pasted token is not renewed. It expires after a while (Beatport's answer says
-when, in `expires_in`); when Discover says **Beatport sign-in ended or the token
-was refused.**, sign in, or paste a new one.
+when, in `expires_in`); when Discover says **Beatport sign-in ended or was
+refused.**, sign in, or paste a new one.
 
 You can set the environment variable `BEATPORT_ACCESS_TOKEN` instead. It takes
-priority over a sign-in and over a saved token; Settings then says **Using
+priority over a sign-in and over a saved one; Settings then says **Using
 BEATPORT_ACCESS_TOKEN from the environment** and turns the sign-in button off.
 
 ### Linking tracks to Beatport
@@ -231,7 +231,7 @@ find your artists and labels exactly rather than by spelling. **CuePoint does
 this by itself** when a match finishes, as long as you are signed in, and the status
 strip shows it as **Linking tracks to Beatport**. When you are not signed in it does nothing.
 
-If some tracks are still waiting, for example because you added the token later,
+If some tracks are still waiting, for example because you signed in later,
 the page says how many and offers **Look up**. While it works, the status bar
 shows the progress and you can leave the page.
 
@@ -312,19 +312,19 @@ When there is nothing to list, the half says why:
 | **Not linked to Beatport yet** | CuePoint does not know which Beatport artist this is. It never searches Beatport for an artist by name, because the wrong artist of the same name is worse than none | **Look up**, when some of the artist's tracks are matched on Beatport |
 | **Several Beatport artists share this name** | Your tracks by this name are matched to different Beatport artists | Choose the one you mean |
 | **No match** | Beatport has no label by this name | None |
-| **Sign in to Beatport to search its charts and releases.**, and the other token states | As at the top of Discover (see [Signing in to Beatport](#signing-in-to-beatport)) | **Sign in to Beatport**, **Sign in again**, or **Try again** |
+| **Sign in to Beatport to search its charts and releases.**, and the other sign-in states | As at the top of Discover (see [Signing in to Beatport](#signing-in-to-beatport)) | **Sign in to Beatport**, **Sign in again**, or **Try again** |
 
 A label known only by name is looked up on Beatport by its name, and the page
 says **Found by name on Beatport** when it was.
 
-Your tracks half works without a token and offline; only the Beatport half
+Your tracks half works without a sign-in and offline; only the Beatport half
 needs Beatport.
 
 ## Similar tracks
 
 **Similar** in a track's details in the Library (and on its right-click
 menu), lists the tracks in your library that **mix well** with it, best match
-first, and says why each one is there. It works offline, needs no token, and only
+first, and says why each one is there. It works offline, needs no sign-in, and only
 ever suggests your own tracks.
 
 A suggestion is close in tempo (or at half or double the tempo), compatible in
@@ -386,9 +386,9 @@ Playlists inCrate made on your Beatport account are yours and stay there.
 
 **Settings keep their `incrate.` names.** The config key `incrate.beatport_access_token`
 in `~/.cuepoint/config.yaml` is still read. Where the system has a secure key
-store, a token in it is moved into the encrypted store the first time you start
+store, a saved sign-in in it is moved into the encrypted store the first time you start
 CuePoint after updating (the key stays, emptied); otherwise it stays in the file
-and is still used, and Settings says **Using the token saved in CuePoint's config
+and is still used, and Settings says **Using the sign-in saved in CuePoint's config
 file**. Discover's
 defaults as `incrate.new_releases_days`, `incrate.discovery_genre_ids` and
 `incrate.playlist_name_format`: the prefix is historical, and renaming it would

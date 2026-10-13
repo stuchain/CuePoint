@@ -636,7 +636,7 @@ describe("a Set a refresh emptied (DEC-011, PREP-02)", () => {
     renderScreen();
     await ready();
 
-    await userEvent.click(screen.getByRole("button", { name: /Check Rekordbox for changes/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Check for changes/i }));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent(/1 in 1 Collection, 1 in 1 Set/);
     await userEvent.click(within(dialog).getByLabelText(/I understand/i));
@@ -645,7 +645,7 @@ describe("a Set a refresh emptied (DEC-011, PREP-02)", () => {
 
     await userEvent.click(within(treeRow("Friday", "set")).getByText("Friday"));
     expect(await screen.findByText("This Set is empty.")).toBeInTheDocument();
-    expect(screen.getByText(/no longer in your Rekordbox export/)).toBeInTheDocument();
+    expect(screen.getByText(/no longer in your Rekordbox file/)).toBeInTheDocument();
     expect(screen.queryByText(/Drop tracks onto it/)).toBeNull();
   });
 });

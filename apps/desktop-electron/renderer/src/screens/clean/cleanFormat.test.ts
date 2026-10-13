@@ -51,8 +51,8 @@ describe("a run's name within the engine's limit", () => {
 
 describe("where a track stands", () => {
   it("says who decided", () => {
-    expect(decisionLine(state({ decided_by: "auto" }))).toBe("Accepted automatically");
-    expect(decisionLine(state({ decided_by: "user" }))).toBe("Accepted by you");
+    expect(decisionLine(state({ decided_by: "auto" }))).toBe("Confirmed automatically");
+    expect(decisionLine(state({ decided_by: "user" }))).toBe("Confirmed by you");
     expect(decisionLine(state({ state: "rejected", decided_by: "user" }))).toBe("Rejected by you");
     expect(decisionLine(state({ state: "needs_review", decided_by: null }))).toBe("Waiting for you");
     expect(decisionLine(state({ state: "no_match" }))).toBe("No match");
@@ -61,14 +61,14 @@ describe("where a track stands", () => {
 
   it("says when a newer match disagrees", () => {
     expect(decisionLine(state({ decided_by: "user", disputed: true }))).toBe(
-      "Accepted by you — changed since you decided",
+      "Confirmed by you — changed since you decided",
     );
   });
 
   it("labels every state and nothing for none", () => {
     // CLN-4: one set of words for the Match area, the Library and the Inspector.
     expect(matchStateLabel("needs_review")).toBe("Waiting for you");
-    expect(matchStateLabel("accepted")).toBe("Accepted");
+    expect(matchStateLabel("accepted")).toBe("Confirmed");
     expect(matchStateLabel("rejected")).toBe("Rejected");
     expect(matchStateLabel("no_match")).toBe("No match");
     expect(matchStateLabel("not_matched")).toBe("Not matched");

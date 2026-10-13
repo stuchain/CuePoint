@@ -247,22 +247,22 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
     <div className="discover-empty">
       {tracks.status === "error" ? (
         <>
-          <p className="discover-empty__headline">The search's tracks could not be read.</p>
+          <p className="discover-empty__headline">The dig's tracks could not be read.</p>
           <p className="discover-note">{tracks.error}</p>
           <Button variant="secondary" onClick={reload}>
             Try again
           </Button>
         </>
       ) : tracks.loading ? (
-        <p className="discover-note">Reading the search's tracks…</p>
+        <p className="discover-note">Reading the dig's tracks…</p>
       ) : (page?.tracks ?? 0) === 0 ? (
         <p className="discover-empty__headline">
-          {run?.running ? "Nothing found yet." : "This search found nothing."}
+          {run?.running ? "Nothing found yet." : "This dig found nothing."}
         </p>
       ) : (
         <>
           <p className="discover-empty__headline">
-            Every track this search found is already in your library.
+            Every track this dig found is already in your library.
           </p>
           <Button variant="secondary" onClick={() => setHiding(false)}>
             Show them
@@ -273,14 +273,14 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
   );
 
   return (
-    <section className="discover-run" aria-label="Search">
+    <section className="discover-run" aria-label="Dig">
       <header className="discover-run__header">
         {headerError ? (
           <p className="discover-note discover-note--warning" role="alert">
             {headerError}
           </p>
         ) : !run || !header ? (
-          <p className="discover-note">Reading the search…</p>
+          <p className="discover-note">Reading the dig…</p>
         ) : (
           <>
             <div className="discover-run__title-row">
@@ -304,7 +304,7 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
         )}
       </header>
 
-      <div className="discover-toolbar" role="toolbar" aria-label="This search's tracks">
+      <div className="discover-toolbar" role="toolbar" aria-label="This dig's tracks">
         <HideOwnedSwitch
           hiding={owned === "hide"}
           onChange={setHiding}
@@ -329,7 +329,7 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
         }}
         actions={actions}
         onAction={onAction}
-        label="Tracks this search found"
+        label="Tracks this dig found"
         summary={pluralize(tracks.total, "track")}
         emptyState={emptyState}
         resetKey={windowKey}

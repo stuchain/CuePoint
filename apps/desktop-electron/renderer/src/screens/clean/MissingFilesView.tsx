@@ -11,7 +11,7 @@
  * **Nothing here fixes a file.** Relocation is Rekordbox's (DEC-073), and the
  * page gives the fix in three steps (CLN-8) rather than offering a control that
  * would have to be undone by the next refresh. The last step is a button to the
- * Library's Check Rekordbox for changes. A disconnected drive is one line above the
+ * Library's Check for changes. A disconnected drive is one line above the
  * table, not four thousand rows to scroll past.
  *
  * **Nothing missing is one line** (K13): "All 300 files found · checked <time> ·
@@ -260,7 +260,7 @@ export function MissingFilesView({
               variant="secondary"
               onClick={() => navigate("/library", { state: libraryRefreshState() })}
             >
-              Check Rekordbox for changes
+              Check for changes
             </Button>
             .
           </li>

@@ -450,3 +450,25 @@ describe("installAppMenu", () => {
     expect(() => (settings.click as unknown as () => void)()).not.toThrow();
   });
 });
+
+describe("the glossary (docs/user-guide/glossary.md)", () => {
+  // The same never-forms as the renderer's words guard (renderer/src/userWords.test.ts).
+  const NEVER =
+    /\btokens?\b|\b(revert|reverted|reverting|put back)\b|\bgo back to\b|\brestor(e|ed|es|ing)\b|\baccepted\b|rekordbox export|xml export|your export|this export|rekordbox collection|library service|\bengine\b|import another file|\bwrit(e|ing) tags\b|save changes into the files|check rekordbox for changes|\bno value\b/i;
+
+  it.each(["darwin", "win32", "linux"] as const)("uses no never-form in a %s menu label", (platform) => {
+    const { items } = template(platform, { packaged: true });
+    const labels = walk(items)
+      .map((item) => item.label)
+      .filter((label): label is string => typeof label === "string");
+    expect(labels.length).toBeGreaterThan(10);
+    expect(labels.filter((label) => NEVER.test(label))).toEqual([]);
+  });
+
+  it("names the Rekordbox file in the File and Help menus", () => {
+    const { items } = template("linux");
+    const labels = walk(items).map(labelOf);
+    expect(labels).toContain("Import a Rekordbox file…");
+    expect(labels).toContain("How to get your Rekordbox file…");
+  });
+});

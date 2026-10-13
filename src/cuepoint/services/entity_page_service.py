@@ -138,12 +138,12 @@ RELATED_FIELDS = {ENTITY_ARTIST: "label_name", ENTITY_LABEL: "artist_name"}
 #: What each refusal says, and what the page can offer for it.
 _REFUSALS: Dict[str, Tuple[str, Optional[str]]] = {
     STATE_NO_TOKEN: (
-        "No Beatport token is set, so CuePoint cannot read Beatport",
+        "You are not signed in to Beatport, so CuePoint cannot read it",
         ACTION_SETTINGS,
     ),
-    STATE_REJECTED: ("Beatport rejected the token", ACTION_SETTINGS),
+    STATE_REJECTED: ("Beatport refused the sign-in", ACTION_SETTINGS),
     STATE_FORBIDDEN: (
-        "The Beatport token is not allowed to read the catalog",
+        "This Beatport sign-in is not allowed to read the catalog",
         ACTION_SETTINGS,
     ),
     STATE_RATE_LIMITED: (

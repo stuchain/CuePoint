@@ -88,7 +88,7 @@ export function RefreshPreviewDialog({
 
         {diff.is_empty ? (
           <p className="library-preview__empty">
-            Your library already matches this export. Nothing would be added, changed
+            Your library already matches this file. Nothing would be added, changed
             or removed.
           </p>
         ) : (

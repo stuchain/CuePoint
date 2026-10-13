@@ -189,7 +189,7 @@ describe("what the button says", () => {
 
   it("offers to mark the tracks as saved when no file changes and the bar counted tracks", () => {
     expect(saveState({ ...base, total: 0, canMarkSaved: true })).toEqual({
-      label: "Mark 47 tracks as saved",
+      label: "Mark 47 tracks as already saved",
       enabled: true,
       reason: "These files already hold these values.",
       mark: true,
@@ -233,7 +233,7 @@ describe("what the button says", () => {
   it("marks tracks as saved when the only thing skipped is files that already hold the values", () => {
     const covered = preview({ total: 10, files: 0, skipped: { nothing_to_write: { count: 10, examples: [] } } });
     expect(saveState({ ...base, preview: covered, total: 0, canMarkSaved: true })).toMatchObject({
-      label: "Mark 47 tracks as saved",
+      label: "Mark 47 tracks as already saved",
       mark: true,
     });
   });

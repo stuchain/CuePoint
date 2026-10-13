@@ -152,15 +152,15 @@ export function NewRunPanel({
   };
 
   return (
-    <section className="discover-new" aria-label="New search">
+    <section className="discover-new" aria-label="New dig">
       <header className="discover-new__header">
-        <h2 className="discover-section__title">New search</h2>
+        <h2 className="discover-section__title">New dig</h2>
       </header>
 
       {emptyLibrary && (
         <p className="discover-note discover-note--warning">
-          Your library has no artists or labels yet. Import a Rekordbox collection in the Library
-          first: a search looks for music by them.
+          Your library has no artists or labels yet. Import a Rekordbox file in the Library
+          first: a dig looks for music by them.
         </p>
       )}
       {!options.index_current && (
@@ -281,7 +281,7 @@ export function NewRunPanel({
         </Button>
         {!usable && unusableReason && <span className="discover-note">{unusableReason}</span>}
         {usable && busy && !starting && (
-          <span className="discover-note">A search is already running.</span>
+          <span className="discover-note">A dig is already running.</span>
         )}
       </div>
 

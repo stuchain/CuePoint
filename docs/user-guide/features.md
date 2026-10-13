@@ -1,6 +1,6 @@
 # Features
 
-CuePoint keeps your Rekordbox collection in a library of its own, matches it to
+CuePoint keeps your Rekordbox file in a library of its own, matches it to
 Beatport, and helps you keep it clean. For the window around everything —
 navigation, search, Track details, the status strip and the keyboard
 shortcuts — see [The CuePoint window](the-window.md).
@@ -9,13 +9,13 @@ shortcuts — see [The CuePoint window](the-window.md).
 
 | Page | What it is for | Guide |
 | --- | --- | --- |
-| **Library** | Your imported Rekordbox collection: browse, search, filter, sort, play, and edit your own values | [Your library](library.md) |
+| **Library** | Your imported Rekordbox file: browse, search, filter, sort, play, and edit your own values | [Your library](library.md) |
 | **Collections** | CuePoint's own Collections and Smart Collections, beside Rekordbox's playlists | [Organizing your library](organization.md) |
 | **Keys** | See which keys your playlists, Collections and Sets hold, with a count for each, and open the tracks in any of them | [Keys](keys.md) |
 | **Clean** | Match tracks on Beatport, review the matches, find missing files and possible duplicates, and see what needs you | [Clean](clean.md) |
 | **Discover** | Find new music on Beatport from your artists and labels, keep a wantlist, push tracks to a Beatport playlist, open an artist's or label's page, and find similar tracks in your library | [Discover](discover.md) |
 | **Prepare** | Plan a set: a running order in chapters, with planned times, transition checks, suggestions for any gap, and set lists | [Prepare](prepare.md) |
-| **Settings** | One page in sections: theme and size, playback output, waveforms, the Beatport token Discover uses, where Rekordbox exports go, privacy and the version | [The CuePoint window](the-window.md#settings), [Privacy and error reports](the-window.md#privacy-and-error-reports) |
+| **Settings** | One page in sections: theme and size, playback output, waveforms, the Beatport sign-in Discover uses, where Rekordbox exports go, privacy and the version | [The CuePoint window](the-window.md#settings), [Privacy and error reports](the-window.md#privacy-and-error-reports) |
 
 Music plays in the player along the bottom of the window — see
 [Playing music](player.md).
@@ -37,7 +37,7 @@ keyboard. See [Clean](clean.md).
 
 ### Your values over Rekordbox's
 
-An accepted match gives a track Beatport's key. Apply Beatport's BPM, genre, label or year, or type your own. Rekordbox's
+A confirmed match gives a track Beatport's key. Apply Beatport's BPM, genre, label or year, or type your own. Rekordbox's
 values stay underneath, every change is in the track's history, and any change
 can be taken back. See [Your own values](library.md#your-own-values).
 
@@ -49,13 +49,13 @@ can be taken back. See [Your own values](library.md#your-own-values).
   mix, and never deleted.
 - **Health**: a count of everything that needs you, each opening the Library on
   exactly those tracks.
-- **Artwork**: read from your files and, for accepted matches, from Beatport.
+- **Artwork**: read from your files and, for confirmed matches, from Beatport.
 
-### Save changes into the files
+### Save to files
 
-Put your values into the audio files themselves, after a preview, with a record
-that lets every file be restored. Rekordbox shows the new values after it
-re-reads the files. See [Writing tags to files](library.md#writing-tags-to-files).
+Put your values into the audio files, after a preview, with a record
+that lets every file be undone. Rekordbox shows the new values after it
+re-reads the files. See [Saving to files](library.md#saving-to-files).
 
 ### Export to Rekordbox
 
@@ -101,19 +101,19 @@ analysis can be paused and carries on after a restart. See
   database. An export to Rekordbox is always a new file you choose.
 - It never deletes, moves or renames a track or a file. Moving a file is done in
   Rekordbox with **Relocate**.
-- It never writes to an audio file unless you choose **Save changes into the files**,
+- It never writes to an audio file unless you choose **Save to files**,
   after a preview.
 
 ## The command line
 
 `python main.py --xml collection.xml --playlist "My Playlist"` matches one
-playlist from an XML export and writes CSV files, as it always has. See
+playlist from a Rekordbox file and writes CSV files, as it always has. See
 [CLI and arguments](../features/cli-and-arguments.md).
 
 ## Supported environments and limits
 
 - **Supported OS**: Windows 10+ (x64), macOS 12+ (Apple Silicon and Intel)
-- **Rekordbox export**: XML export format from recent Rekordbox versions
+- **Rekordbox file**: the XML format from recent Rekordbox versions
 - **Library size**: measured at 50,000 tracks — see [Performance](performance.md)
 - **Support policy**: see [Support policy](support-policy.md) for update cadence and EOL policy
 

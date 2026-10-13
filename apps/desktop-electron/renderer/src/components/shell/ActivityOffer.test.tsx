@@ -109,19 +109,19 @@ describe("a batch's entry", () => {
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Rated 3 tracks");
 
-    await userEvent.click(within(entry).getByRole("button", { name: "Revert this batch" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo this batch" }));
     expect(bridge.revertBatch).not.toHaveBeenCalled();
-    expect(within(entry).getByText("Revert every change this batch made?")).toBeInTheDocument();
-    await userEvent.click(within(entry).getByRole("button", { name: "Revert" }));
+    expect(within(entry).getByText("Undo every change this batch made?")).toBeInTheDocument();
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
 
     await waitFor(() => expect(bridge.revertBatch).toHaveBeenCalledWith({ batch_id: "b-1" }));
-    expect(await within(entry).findByText("Reverted 3 changes.")).toBeInTheDocument();
+    expect(await within(entry).findByText("Undid 3 changes.")).toBeInTheDocument();
     // Reverted once from here; its revert has an entry of its own to revert.
-    expect(within(entry).queryByRole("button", { name: "Revert this batch" })).toBeNull();
+    expect(within(entry).queryByRole("button", { name: "Undo this batch" })).toBeNull();
     expect(announced).toHaveBeenCalled();
     await waitFor(() => expect(bridge.getRecentActivity).toHaveBeenCalledTimes(2));
     // Read again quietly: the entry and what it said stay on screen.
-    expect(screen.getByText("Reverted 3 changes.")).toBeInTheDocument();
+    expect(screen.getByText("Undid 3 changes.")).toBeInTheDocument();
     window.removeEventListener(LIBRARY_CHANGED_EVENT, announced);
   });
 
@@ -129,10 +129,10 @@ describe("a batch's entry", () => {
     events = [event(1, "library.batch", { batch_id: "b-1", operation: "add_tag", changed: 2 }, "Tagged 2")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Tagged 2");
-    await userEvent.click(within(entry).getByRole("button", { name: "Revert this batch" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo this batch" }));
     await userEvent.click(within(entry).getByRole("button", { name: "Keep" }));
     expect(bridge.revertBatch).not.toHaveBeenCalled();
-    expect(within(entry).getByRole("button", { name: "Revert this batch" })).toBeEnabled();
+    expect(within(entry).getByRole("button", { name: "Undo this batch" })).toBeEnabled();
   });
 
   it("follows a revert that runs as a job", async () => {
@@ -156,10 +156,10 @@ describe("a batch's entry", () => {
     events = [event(1, "library.batch", { batch_id: "b-1", operation: "set_favorite", changed: 2000 }, "Big")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Big");
-    await userEvent.click(within(entry).getByRole("button", { name: "Revert this batch" }));
-    await userEvent.click(within(entry).getByRole("button", { name: "Revert" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo this batch" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
     expect(
-      await within(entry).findByText("Reverted 1,990 changes, 10 skipped because the value changed since."),
+      await within(entry).findByText("Undid 1,990 changes, 10 skipped because the value changed since."),
     ).toBeInTheDocument();
     expect(bridge.getJob).toHaveBeenCalledWith("j-1");
   });
@@ -169,8 +169,8 @@ describe("a batch's entry", () => {
     events = [event(1, "library.batch", { batch_id: "b-1", operation: "add_tag" }, "Odd")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Odd");
-    await userEvent.click(within(entry).getByRole("button", { name: "Revert this batch" }));
-    await userEvent.click(within(entry).getByRole("button", { name: "Revert" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo this batch" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
     expect(await within(entry).findByText(/nothing to revert/)).toBeInTheDocument();
   });
 
@@ -180,7 +180,7 @@ describe("a batch's entry", () => {
     ];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Added 5");
-    expect(within(entry).getByRole("button", { name: "Revert this batch" })).toBeDisabled();
+    expect(within(entry).getByRole("button", { name: "Undo this batch" })).toBeDisabled();
     expect(within(entry).getByText(MEMBERSHIP_REVERT_REASON)).toBeInTheDocument();
   });
 
@@ -192,7 +192,7 @@ describe("a batch's entry", () => {
     ];
     render(<ActivityPanel open onClose={() => undefined} />);
     await row("Tagged");
-    expect(screen.queryByRole("button", { name: /Revert/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Undo/ })).toBeNull();
   });
 });
 
@@ -201,16 +201,16 @@ describe("a tag write's entry", () => {
     events = [event(1, "clean.tags.written", { job_id: "w-1" }, "Wrote tags to 2 files")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Wrote tags to 2 files");
-    expect(await within(entry).findByText("4 values saved into files can be put back.")).toBeInTheDocument();
+    expect(await within(entry).findByText("4 values saved to files can be undone.")).toBeInTheDocument();
     expect(bridge.getTagWrites).toHaveBeenCalledWith({ jobId: "w-1", limit: 1 });
 
-    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
     expect(bridge.startTagRestore).not.toHaveBeenCalled();
-    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
 
     await waitFor(() => expect(bridge.startTagRestore).toHaveBeenCalledWith({ job_id: "w-1" }));
-    expect(await within(entry).findByText("Restored 2 files.")).toBeInTheDocument();
-    expect(within(entry).getByText("Everything saved into files has been put back.")).toBeInTheDocument();
+    expect(await within(entry).findByText("Undid 2 files.")).toBeInTheDocument();
+    expect(within(entry).getByText("Everything saved to files has been undone.")).toBeInTheDocument();
   });
 
   it("shows unconfirmed writes as unfinished, never as written", async () => {
@@ -224,7 +224,7 @@ describe("a tag write's entry", () => {
     expect(note).toHaveTextContent("3 saves may not have finished.");
     expect(note.textContent).not.toMatch(/were saved/);
     expect(entry.querySelector(".cp-activity__offer--unfinished")).not.toBeNull();
-    expect(within(entry).getByRole("button", { name: "Restore" })).toBeEnabled();
+    expect(within(entry).getByRole("button", { name: "Undo" })).toBeEnabled();
   });
 
   it("restores every write a stopped restore was undoing, one after another", async () => {
@@ -238,15 +238,15 @@ describe("a tag write's entry", () => {
     ];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Restoring tags stopped");
-    await within(entry).findByText(/can be put back/);
-    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
-    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
+    await within(entry).findByText(/can be undone/);
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(bridge.startTagRestore).toHaveBeenCalledTimes(2));
     expect(bridge.startTagRestore.mock.calls.map((call) => call[0])).toEqual([
       { job_id: "w-1" },
       { job_id: "w-2" },
     ]);
-    expect(await within(entry).findByText("Restored 4 files.")).toBeInTheDocument();
+    expect(await within(entry).findByText("Undid 4 files.")).toBeInTheDocument();
   });
 
   it("says what was done when the background process is lost after a restore started", async () => {
@@ -263,9 +263,9 @@ describe("a tag write's entry", () => {
     ];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Restoring tags stopped");
-    await within(entry).findByText(/can be put back/);
-    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
-    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
+    await within(entry).findByText(/can be undone/);
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
     expect(await within(entry).findByText(OUTAGE_PARTWAY_MESSAGE)).toBeInTheDocument();
   });
 
@@ -274,19 +274,19 @@ describe("a tag write's entry", () => {
     events = [event(1, "clean.tags.written", { job_id: "w-1" }, "Wrote tags")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Wrote tags");
-    await within(entry).findByText(/can be put back/);
-    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
-    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
+    await within(entry).findByText(/can be undone/);
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
     expect(await within(entry).findByText(OUTAGE_MESSAGE)).toBeInTheDocument();
   });
 
-  it("offers no Restore once everything is back", async () => {
+  it("offers no Undo once everything is undone", async () => {
     bridge.getTagWrites.mockResolvedValue(record(0, 0));
     events = [event(1, "clean.tags.written", { job_id: "w-1" }, "Wrote tags")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Wrote tags");
-    expect(await within(entry).findByText("Everything saved into files has been put back.")).toBeInTheDocument();
-    expect(within(entry).queryByRole("button", { name: "Restore" })).toBeNull();
+    expect(await within(entry).findByText("Everything saved to files has been undone.")).toBeInTheDocument();
+    expect(within(entry).queryByRole("button", { name: "Undo" })).toBeNull();
   });
 
   it("shows a failed restore in the engine's words", async () => {
@@ -294,9 +294,9 @@ describe("a tag write's entry", () => {
     events = [event(1, "clean.tags.written", { job_id: "w-1" }, "Wrote tags")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Wrote tags");
-    await within(entry).findByText(/can be put back/);
-    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
-    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
+    await within(entry).findByText(/can be undone/);
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
     expect(await within(entry).findByText(/The file is locked/)).toBeInTheDocument();
   });
 });

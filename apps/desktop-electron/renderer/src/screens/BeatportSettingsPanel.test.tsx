@@ -96,7 +96,7 @@ describe("signed out", () => {
     expect(field).not.toBeVisible();
     await userEvent.click(toggle);
     expect(field).toBeVisible();
-    expect(screen.getByText("Without a sign-in, past runs and wantlist still open.")).toBeVisible();
+    expect(screen.getByText("Without a sign-in, past digs and wantlist still open.")).toBeVisible();
     expect(screen.getByRole("button", { name: "Save token" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Test connection" })).toBeVisible();
   });
@@ -222,7 +222,7 @@ describe("signed out", () => {
       getBeatportTokenStatus: vi.fn(async () => ({ configured: true, masked: "••••cfg1", source: "config" })),
     });
     renderPanel();
-    expect(await screen.findByText("Using the token saved in CuePoint's config file · ••••cfg1")).toBeInTheDocument();
+    expect(await screen.findByText("Using the sign-in saved in CuePoint's config file · ••••cfg1")).toBeInTheDocument();
   });
 
   it("has no 'How do I get a token?' help any more", async () => {
@@ -249,7 +249,7 @@ describe("signed in", () => {
     renderPanel();
     await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
     await waitFor(() => expect(bridge.testBeatportToken).toHaveBeenCalledWith(undefined));
-    expect(await screen.findByRole("status")).toHaveTextContent("Accepted. Beatport took the token.");
+    expect(await screen.findByRole("status")).toHaveTextContent("Connected. Beatport let CuePoint in.");
   });
 
   it("tests the held token even with text typed into the replace field", async () => {
@@ -374,7 +374,7 @@ describe("without the desktop app", () => {
     expect(screen.getByText("Sign in to let Discover search Beatport.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign in to Beatport" })).toBeDisabled();
     // Said in plain view, not inside the collapsed paste region.
-    expect(screen.getByText("Open CuePoint as a desktop app to sign in.")).toBeVisible();
+    expect(screen.getAllByText("This needs the CuePoint desktop app.")[0]).toBeVisible();
   });
 });
 

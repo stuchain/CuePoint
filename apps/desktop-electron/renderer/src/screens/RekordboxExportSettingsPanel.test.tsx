@@ -48,12 +48,12 @@ afterEach(() => {
 });
 
 describe("the Rekordbox export in Settings", () => {
-  it("offers Import another Rekordbox file\u2026, which opens the Library on its import", async () => {
+  it("offers Import a Rekordbox file\u2026, which opens the Library on its import", async () => {
     renderPanel();
     expect(
-      screen.getByText("Read a different Rekordbox XML export in place of the current one."),
+      screen.getByText("Read a different Rekordbox file in place of the current one."),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Import another Rekordbox file\u2026" }));
+    await userEvent.click(screen.getByRole("button", { name: "Import a Rekordbox file\u2026" }));
     expect(arrived?.pathname).toBe("/library");
     expect(arrived?.state).toEqual(libraryImportState());
     expect(importOpening({ state: arrived?.state, key: arrived?.key ?? "" })).not.toBeNull();
@@ -118,7 +118,7 @@ describe("the Rekordbox export in Settings", () => {
 
     // Nothing starts an export: the buttons are the import and "More about this".
     expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
-      "Import another Rekordbox file…",
+      "Import a Rekordbox file…",
       "More about this",
     ]);
     expect(screen.getByText(/To export, use “Export to Rekordbox…” in the Library/)).toBeInTheDocument();

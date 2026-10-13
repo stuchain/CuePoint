@@ -161,7 +161,7 @@ afterEach(() => {
 describe("the order (INS-3)", () => {
   it("reads Yours, Details from Rekordbox, Cue points, Where it is, Beatport, History", async () => {
     show();
-    await screen.findByText(/Beatport · Accepted/);
+    await screen.findByText(/Beatport · Confirmed/);
     const names = screen
       .getAllByRole("heading", { level: 3 })
       .map((heading) => (heading.textContent ?? ""));
@@ -178,7 +178,7 @@ describe("the order (INS-3)", () => {
     expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "false");
     expect(section("Beatport")).toHaveAttribute("aria-expanded", "false");
     expect(section("History")).toHaveAttribute("aria-expanded", "false");
-    await screen.findByText(/Beatport · Accepted/);
+    await screen.findByText(/Beatport · Confirmed/);
   });
 
   it("summarizes a folded section in its heading", async () => {
@@ -191,7 +191,7 @@ describe("the order (INS-3)", () => {
       ],
     });
     show();
-    expect(await screen.findByText(/Beatport · Accepted/)).toBeInTheDocument();
+    expect(await screen.findByText(/Beatport · Confirmed/)).toBeInTheDocument();
     expect(await screen.findByText(/History · 2 changes/)).toBeInTheDocument();
   });
 });
@@ -354,7 +354,7 @@ describe("Edit values… (INS-4, DEC-205)", () => {
         override_sources: { bpm: "cuepoint" },
       }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Go back to Rekordbox's BPM" }));
+    fireEvent.click(screen.getByRole("button", { name: "Undo your BPM, back to Rekordbox's" }));
     await waitFor(() =>
       expect(bridge.setTrackOverrides).toHaveBeenCalledWith({ trackId: 12, bpm: null }),
     );
@@ -372,14 +372,14 @@ describe("Edit values… (INS-4, DEC-205)", () => {
     withKey.candidate = { key: "8A", score: 90 } as TrackMatches["candidate"];
     bridge.getTrackMatches.mockResolvedValue(withKey);
     const first = show({}, detailOf(edited));
-    fireEvent.click(await screen.findByRole("button", { name: "Go back to Beatport's key" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Undo your key, back to Beatport's" }));
     await waitFor(() =>
       expect(bridge.setTrackOverrides).toHaveBeenCalledWith({ trackId: 12, key: null }),
     );
     first.unmount();
     bridge.getTrackMatches.mockResolvedValue(matchesOf("no_match"));
     show({}, detailOf(edited));
-    expect(await screen.findByRole("button", { name: "Go back to no key" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Undo your key, back to no key" })).toBeInTheDocument();
   });
 
   it.each(["needs_review", "rejected"] as const)(
@@ -396,8 +396,8 @@ describe("Edit values… (INS-4, DEC-205)", () => {
       proposed.candidate = { key: "8A", score: 90 } as TrackMatches["candidate"];
       bridge.getTrackMatches.mockResolvedValue(proposed);
       show({}, detailOf(edited));
-      expect(await screen.findByRole("button", { name: "Go back to no key" })).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "Go back to Beatport's key" })).toBeNull();
+      expect(await screen.findByRole("button", { name: "Undo your key, back to no key" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Undo your key, back to Beatport's" })).toBeNull();
     },
   );
 
@@ -453,7 +453,7 @@ describe("the key with its source (FLW-9, DEC-201)", () => {
       detailOf({ ...TRACK, effective_key: null, key_name: null, key_source: null, match_state: "no_match" }),
     );
     bridge.getTrackMatches.mockResolvedValue(matchesOf("no_match"));
-    expect(keyRow()).toHaveTextContent("No Beatport key");
+    expect(keyRow()).toHaveTextContent("—");
     fireEvent.click(await within(keyRow()).findByRole("button", { name: "Match on Beatport" }));
     expect(where().path).toBe("/clean");
     expect(cleanMatchOpening({ state: where().state, key: "k" })?.tracks).toEqual({ ids: [12] });
@@ -490,7 +490,7 @@ describe("an unmatched track (INS-5)", () => {
   it("no longer offers Apply for a field", async () => {
     show();
     fireEvent.click(section("Beatport"));
-    await screen.findByText("Accepted by you");
+    await screen.findByText("Confirmed by you");
     expect(screen.queryByRole("button", { name: /^Apply/ })).toBeNull();
   });
 });

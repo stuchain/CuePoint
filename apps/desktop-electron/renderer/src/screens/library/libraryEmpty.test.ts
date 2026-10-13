@@ -162,11 +162,11 @@ describe("an empty playlist", () => {
     const empty = view({ playlistId: 3 });
     expect(empty.title).toBe("This playlist is empty.");
     expect(empty.hint).toBe(
-      "Playlists come from Rekordbox. Add tracks to it there, then Check Rekordbox for changes.",
+      "Playlists come from Rekordbox. Add tracks to it there, then Check for changes.",
     );
     expect(empty.action).toEqual({
       id: "check-rekordbox",
-      label: "Check Rekordbox for changes",
+      label: "Check for changes",
     });
   });
 });
@@ -184,7 +184,7 @@ describe("an empty Collection", () => {
     // was warned before it happened. Inviting them to drop more in would be
     // answering a question nobody asked.
     const emptied = view({ scope: "collection", emptiedByRefresh: true });
-    expect(emptied.hint).toMatch(/no longer in your Rekordbox export/);
+    expect(emptied.hint).toMatch(/no longer in your Rekordbox file/);
     expect(emptied.hint).not.toMatch(/Drop tracks/);
   });
 
@@ -200,10 +200,10 @@ describe("an empty Collection", () => {
 describe("a library with nothing in it", () => {
   it("says the export is empty and what to do about it (LIB-5)", () => {
     const nothing = view();
-    expect(nothing.title).toBe("This Rekordbox export has no tracks in it.");
+    expect(nothing.title).toBe("This Rekordbox file has no tracks in it.");
     expect(nothing.rules).toEqual([]);
     expect(nothing.hint).toBe("Export again from Rekordbox and import that file.");
-    expect(nothing.action).toEqual({ id: "import", label: "Import another file…" });
+    expect(nothing.action).toEqual({ id: "import", label: "Import a Rekordbox file…" });
   });
 });
 

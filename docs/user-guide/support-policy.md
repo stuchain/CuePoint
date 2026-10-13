@@ -32,16 +32,16 @@ To run CuePoint from source or use the CLI, you need Python 3.11 or newer. CI te
 
 Before each major release, the full suite runs on every supported OS. New OS versions and new Rekordbox versions are checked when they ship: run the integration tests with sample XML, then update this page and the [Rekordbox Compatibility Matrix](../schema/rekordbox-compatibility-matrix.md), and add the change to the release notes.
 
-## Rekordbox Export Expectations
+## Rekordbox File Expectations
 
-- **Format**: Rekordbox XML export
+- **Format**: Rekordbox file (XML)
 - **Content**: Playlists and track entries present in the XML
-- **Version**: Recent Rekordbox versions (exported using standard XML export). The [Rekordbox Compatibility Matrix](../schema/rekordbox-compatibility-matrix.md) lists the versions that are supported and experimental.
+- **Version**: Recent Rekordbox versions (saved with Rekordbox's standard XML export command). The [Rekordbox Compatibility Matrix](../schema/rekordbox-compatibility-matrix.md) lists the versions that are supported and experimental.
 
 ## File Size Guidance
 
-- Recommended XML export size is **<= 100MB**.
-- CuePoint rejects an XML export larger than 100 MiB (104,857,600 bytes); it does not parse it. Exports close to the limit take longer to parse and process.
+- Recommended Rekordbox file size is **<= 100MB**.
+- CuePoint rejects a Rekordbox file larger than 100 MiB (104,857,600 bytes); it does not parse it. Files close to the limit take longer to parse and process.
 
 ## Update Cadence
 

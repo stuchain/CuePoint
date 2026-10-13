@@ -6,7 +6,7 @@
  * mechanism: a preview that undersells a warning is how someone exports what
  * they did not mean to. Every sentence the dialog shows is therefore made
  * here, from the engine's preview and nothing else, in the shape `tagWriting.ts`
- * set for "Save changes into the files" — so a test can hold each sentence against a
+ * set for "Save to files" — so a test can hold each sentence against a
  * real engine answer without drawing a pixel.
  *
  * The engine counts; this names what it counted. No number is computed here
@@ -67,7 +67,7 @@ export function keyFormatConsequence(format: RekordboxKeyFormat): string | null 
   const name = format === "camelot" ? "Camelot keys (8A)" : "short keys (Amin)";
   return (
     `If you import this file into CuePoint later, its ${name} become CuePoint's own key — ` +
-    "mixed with classic keys (Am) on any track this export does not rewrite."
+    "mixed with classic keys (Am) on any track this file does not rewrite."
   );
 }
 
@@ -208,7 +208,7 @@ export function fieldLines(preview: RekordboxExportPreview): string[] {
  */
 export function copyLine(preview: RekordboxExportPreview): string | null {
   return preview.changes_nothing
-    ? "As it stands this export is an exact copy of your collection file: nothing is rewritten and no playlist is added."
+    ? "As it stands, the file would be an exact copy of your Rekordbox file: nothing is rewritten and no playlist is added."
     : null;
 }
 
@@ -384,21 +384,21 @@ export function refusalText(refusal: RekordboxExportRefusal): string {
   const where = refusal.path ? `: ${refusal.path}` : "";
   switch (refusal.reason) {
     case "source_never_imported":
-      return "There is no collection file to export from. Import your Rekordbox collection first.";
+      return "There is no Rekordbox file to export from. Import a Rekordbox file first.";
     case "source_missing":
       return (
-        `The collection file this library was imported from is not there any more${where}. ` +
+        `The Rekordbox file this library was imported from is not there any more${where}. ` +
         "The export patches that file, so it has to be found first: import it again from where it is now."
       );
     case "source_unreadable":
       return (
-        `The collection file could not be read${where}. ` +
+        `The Rekordbox file could not be read${where}. ` +
         "Close anything that has it open, or check that it can be read, and try again."
       );
     case "source_invalid":
       return (
-        `The collection file cannot be read as a Rekordbox collection${where}. ` +
-        "Export the collection from Rekordbox again and import that file."
+        `That file cannot be read as a Rekordbox file${where}. ` +
+        "Save the file from Rekordbox again and import that."
       );
     case "destination_is_source":
       return "That is the file your library was imported from, and an export never writes over it. Choose a different file.";

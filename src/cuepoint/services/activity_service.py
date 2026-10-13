@@ -250,7 +250,7 @@ class ActivityService(IActivityService):
         )
         self.record_event(
             EVENT_FIELD_REVERTED,
-            f"Reverted {change.field_name} on {track.artist} - {track.title}",
+            f"Undid {change.field_name} on {track.artist} - {track.title}",
             {
                 "track_id": change.track_id,
                 "field": change.field_name,

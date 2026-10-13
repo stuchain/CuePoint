@@ -117,7 +117,7 @@ export function ErrorReportingSettingsPanel({
           <p className="cp-error-reporting__text">
             A report says what went wrong, where in CuePoint&apos;s code, and the steps that led to
             it. It is built not to carry your file, folder, track, artist, label or playlist names,
-            your notes, tags or tokens: they are removed on your computer before it is sent.
+            your notes, tags or Beatport sign-in: they are removed on your computer before it is sent.
           </p>
           <button type="button" className="cp-error-reporting__link" onClick={() => onOpenPrivacy?.()}>
             Privacy details

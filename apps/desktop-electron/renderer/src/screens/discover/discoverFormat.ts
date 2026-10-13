@@ -24,9 +24,9 @@ export { formatWhen };
 
 /** What stopped a run or a push, in the words that finish "…because". */
 const STOPPED_BECAUSE: Record<BeatportErrorClass, string> = {
-  no_token: "no Beatport token is set",
-  rejected: "Beatport rejected the token",
-  forbidden: "Beatport refused the token for this",
+  no_token: "you are not signed in to Beatport",
+  rejected: "Beatport refused the sign-in",
+  forbidden: "Beatport refused the sign-in for this",
   rate_limited: "Beatport limited the requests",
   unavailable: "Beatport could not be reached",
 };
@@ -37,7 +37,7 @@ export function stoppedBecause(errorClass: BeatportErrorClass | null): string {
 
 /** A past search's title: "Search of Sep 27, 2026, 9:14 AM" (DSC-2). */
 export function searchTitle(startedAt: string): string {
-  return `Search of ${formatWhen(startedAt)}`;
+  return `Dig of ${formatWhen(startedAt)}`;
 }
 
 /** A search's state, as its badge says it. */
@@ -138,9 +138,9 @@ export function runScopeLine(run: DiscoverRun, genres: readonly DiscoverGenre[])
 /** What a search's end says, from the run it kept. */
 export function discoveryEnded(result: DiscoveryRunResult): string {
   const found = runFound(result);
-  if (result.outcome === "succeeded") return `The search found ${found}.`;
-  if (result.outcome === "cancelled") return `The search stopped when asked, after ${found}.`;
-  return `The search stopped because ${stoppedBecause(result.error_class)}, after ${found}.`;
+  if (result.outcome === "succeeded") return `The dig found ${found}.`;
+  if (result.outcome === "cancelled") return `The dig stopped when asked, after ${found}.`;
+  return `The dig stopped because ${stoppedBecause(result.error_class)}, after ${found}.`;
 }
 
 /** One line for the run list: what the run looked for, briefly. */
@@ -231,7 +231,7 @@ export function resolveOutcome(result: BeatportResolveResult): string {
 
 /** What each Discover job is, for a sentence saying one is already running. */
 const RUNNING_ALREADY: Record<string, string> = {
-  discovery: "A search is already running. It is in the Results tab.",
+  discovery: "A dig is already running. It is in the Results tab.",
   beatport_playlist: "A Beatport playlist is already being made. Try again when it has finished.",
   beatport_resolve: "Tracks are already being looked up on Beatport.",
 };

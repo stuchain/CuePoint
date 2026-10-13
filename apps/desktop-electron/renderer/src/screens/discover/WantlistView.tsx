@@ -58,7 +58,7 @@ const OWNED_CHOICES = [
 const BOUGHT_CHOICES = OWNED_CHOICES;
 
 const EMPTY_HEADLINE = "Your wantlist is empty";
-const EMPTY_DESCRIPTION = "Add tracks from a search's results with Add to wantlist.";
+const EMPTY_DESCRIPTION = "Add tracks from a dig's results with Add to wantlist.";
 
 const idOf = (row: WantlistRow) => row.beatport_track_id;
 

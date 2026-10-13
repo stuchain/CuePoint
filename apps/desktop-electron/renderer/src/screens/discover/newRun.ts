@@ -83,7 +83,7 @@ export function formProblems(form: NewRunForm, limits: DiscoverLimits): string[]
   // nothing: a search's charts are the ones your artists curated, and a search
   // with neither artists nor labels has nothing to look for.
   if (form.artists === "none" && form.labels === "none") {
-    problems.push("A search needs artists or labels to look for.");
+    problems.push("A dig needs artists or labels to look for.");
   } else if (form.artists === "none" && form.genreIds.length > 0) {
     problems.push("Charts come from your artists. Choose some artists, or untick every genre.");
   }

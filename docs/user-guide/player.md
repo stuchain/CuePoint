@@ -166,4 +166,4 @@ next time you ask for it — the drive may well be back.
   a DJ deck's job, not a library tool's.
 - **No resume.** Quitting loses the queue and the position, deliberately.
 - **No play counts.** Playing a track in CuePoint changes nothing in your
-  library or your Rekordbox collection.
+  library or Rekordbox.

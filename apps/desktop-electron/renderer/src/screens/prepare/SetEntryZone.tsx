@@ -34,7 +34,7 @@ interface SetEntryZoneProps {
 }
 
 /** What accepting a warning means, once above the list (PRP-5). */
-const ACCEPT_HINT = "Accept a warning once you have heard the mix work. It comes back if either track changes.";
+const ACCEPT_HINT = "Mark a warning OK once you have heard the mix work. It comes back if either track changes.";
 
 function blankToNull(text: string): string | null {
   const trimmed = text.trim();
@@ -169,14 +169,14 @@ export function SetEntryZone({
             >
               <span>
                 {describeSetWarning(warning)}
-                {warning.acknowledged ? " (accepted)" : ""}
+                {warning.acknowledged ? " (OK)" : ""}
               </span>
               {isAcknowledgeable(warning) && (
                 <Button
                   variant="secondary"
                   onClick={() => onAcknowledge(warning, !warning.acknowledged)}
                 >
-                  {warning.acknowledged ? "Undo accept" : "Accept"}
+                  {warning.acknowledged ? "Undo Mark OK" : "Mark OK"}
                 </Button>
               )}
             </li>

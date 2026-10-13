@@ -52,17 +52,17 @@ export function RekordboxExportSettingsPanel() {
   const remembered = history?.remembered ?? null;
 
   return (
-    <Panel title="Rekordbox export">
+    <Panel title="Rekordbox">
       <div className="cp-export-settings">
         <p className="cp-export-settings__hint">
-          Read a different Rekordbox XML export in place of the current one.
+          Read a different Rekordbox file in place of the current one.
         </p>
         <div>
           <Button
             variant="secondary"
             onClick={() => navigate("/library", { state: libraryImportState() })}
           >
-            Import another Rekordbox file…
+            Import a Rekordbox file…
           </Button>
         </div>
         <p id={lineId} className="cp-export-settings__hint">

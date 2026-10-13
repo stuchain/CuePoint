@@ -76,11 +76,11 @@ function useFirstSteps(imported: boolean, { onMatch, onAddToken, onImport, onHow
   const steps: Step[] = [
     {
       id: "import",
-      label: "Import your Rekordbox collection",
+      label: "Import a Rekordbox file",
       hint: "In Rekordbox choose File → Export Collection in xml format, then import that file. Nothing in Rekordbox is changed.",
       done: imported,
       action: onImport ? { label: "Import…", onClick: onImport, primary: true } : undefined,
-      secondary: onHowToExport ? { label: "How do I export one?", onClick: onHowToExport } : undefined,
+      secondary: onHowToExport ? { label: "How do I get one?", onClick: onHowToExport } : undefined,
     },
     {
       id: "match",

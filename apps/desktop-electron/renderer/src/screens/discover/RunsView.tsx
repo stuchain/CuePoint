@@ -190,7 +190,7 @@ export function RunsView({
       if (answer.refusal) {
         tools.notify(refusalText(answer.refusal), "warning");
       } else {
-        tools.notify("Deleted the search. Tracks on your wantlist stay there.", "success");
+        tools.notify("Deleted the dig. Tracks on your wantlist stay there.", "success");
         afterRemoval(target.id);
       }
     } catch (cause) {
@@ -203,7 +203,7 @@ export function RunsView({
   };
 
   if (runs === null) {
-    return <p className="discover-note discover-runs-view__waiting">Reading your searches…</p>;
+    return <p className="discover-note discover-runs-view__waiting">Reading your digs…</p>;
   }
 
   // A search just started is on its way to the list: not "none yet".
@@ -219,9 +219,9 @@ export function RunsView({
             </Button>
           </div>
         )}
-        <p className="discover-empty__headline">No searches yet</p>
-        <p className="discover-note">What a search finds appears here.</p>
-        <Button onClick={onNewSearch}>New search</Button>
+        <p className="discover-empty__headline">No digs yet</p>
+        <p className="discover-note">What a dig finds appears here.</p>
+        <Button onClick={onNewSearch}>New dig</Button>
       </div>
     );
   }
@@ -253,7 +253,7 @@ export function RunsView({
       </div>
       <div className="discover-runs-view__detail">
         {selected === null ? (
-          <p className="discover-note">Reading your searches…</p>
+          <p className="discover-note">Reading your digs…</p>
         ) : (
           <RunDetail
             key={selected}
@@ -267,17 +267,17 @@ export function RunsView({
 
       <Modal
         open={deleting !== null}
-        title="Delete this search?"
+        title="Delete this dig?"
         onClose={() => setDeleting(null)}
-        secondaryAction={{ label: "Keep it", onClick: () => setDeleting(null) }}
+        secondaryAction={{ label: "Cancel", onClick: () => setDeleting(null) }}
         primaryAction={{
-          label: "Delete search",
+          label: "Delete dig",
           onClick: () => void remove(),
           loading: deletePending,
         }}
       >
         <p className="discover-dialog__text">
-          The search and the list of what it found go. Tracks you added to your wantlist from it
+          The dig and the list of what it found go. Tracks you added to your wantlist from it
           stay there.
         </p>
       </Modal>

@@ -127,7 +127,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await app.evaluate(({ dialog }) => {
         (dialog as unknown as { showOpenDialog: unknown }).showOpenDialog = async () => ({ canceled: true, filePaths: [] });
       });
-      await window.getByRole("button", { name: "Import your Rekordbox collection…" }).click();
+      await window.getByRole("button", { name: "Import a Rekordbox file…" }).click();
       await expect(window.getByRole("heading", { name: "Library", level: 1 })).toBeVisible();
       await expect(window).toHaveURL(/#\/library/);
     } finally {

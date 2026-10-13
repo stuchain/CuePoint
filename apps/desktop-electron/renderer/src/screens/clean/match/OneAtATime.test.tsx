@@ -121,7 +121,7 @@ describe("the two cards", () => {
     expect(changes).toEqual([
       "126 → becomes 128",
       "Label One → becomes Label Two",
-      "empty → becomes 2020",
+      "— → becomes 2020",
     ]);
     expect(within(theirs).getByText(/comes with Correct/)).toBeInTheDocument();
   });
@@ -177,7 +177,7 @@ describe("the two cards", () => {
     expect(boxes.map((box) => box.parentElement?.textContent)).toEqual([
       "BPM 126 → 128",
       "Label Label One → Label Two",
-      "Year empty → 2020",
+      "Year — → 2020",
     ]);
   });
 

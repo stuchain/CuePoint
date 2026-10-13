@@ -205,7 +205,7 @@ class TestWhenItStops:
         assert job.state == JobState.FAILED
         assert job.error["code"] == "BEATPORT_REJECTED"
         assert job.error["message"].startswith(
-            "Discovery stopped because Beatport rejected"
+            "Discovery stopped because Beatport refused"
         )
         assert (job.result["outcome"], job.result["error_class"]) == (
             RUN_FAILED,

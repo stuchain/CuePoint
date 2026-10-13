@@ -194,7 +194,7 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
       secondaryAction={{ label: "Cancel", onClick: onClose }}
     >
       <p>
-        CuePoint searches Beatport for each track and proposes a match. Sure matches are accepted
+        CuePoint searches Beatport for each track and proposes a match. Sure matches are confirmed
         for you; the rest wait in Match.
       </p>
       <fieldset className="clean-match-choice">

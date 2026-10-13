@@ -1363,7 +1363,7 @@
     }
   },
   {
-    "name": "cuepoint/data/rekordbox_export.py::_document_encoding::Unsupported XML encoding {declared!r}: CuePoint can export only UTF-8 or ASCII Rekordbox collections. Re-export the collection from Rekordbox and import it again.",
+    "name": "cuepoint/data/rekordbox_export.py::_document_encoding::Unsupported XML encoding {declared!r}: CuePoint can export only UTF-8 or ASCII Rekordbox files. Save the file again from Rekordbox and import it again.",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -1375,7 +1375,7 @@
         "values": [
           {
             "type": "ValidationError",
-            "value": "Unsupported XML encoding 'Smoke & Mirrors (Extended Mix)': CuePoint can export only UTF-8 or ASCII Rekordbox collections. Re-export the collection from Rekordbox and import it again."
+            "value": "Unsupported XML encoding 'Smoke & Mirrors (Extended Mix)': CuePoint can export only UTF-8 or ASCII Rekordbox files. Save the file again from Rekordbox and import it again."
           }
         ]
       }
@@ -1385,7 +1385,7 @@
         "values": [
           {
             "type": "ValidationError",
-            "value": "Unsupported XML encoding '<value>': CuePoint can export only UTF-8 or ASCII Rekordbox collections. Re-export the collection from Rekordbox and import it again."
+            "value": "Unsupported XML encoding '<value>': CuePoint can export only UTF-8 or ASCII Rekordbox files. Save the file again from Rekordbox and import it again."
           }
         ]
       }
@@ -9686,7 +9686,7 @@
     }
   },
   {
-    "name": "cuepoint/services/revert_service.py::RevertService.check_batch::Batch {wanted!r} changed nothing, so there is nothing to revert",
+    "name": "cuepoint/services/revert_service.py::RevertService.check_batch::Batch {wanted!r} changed nothing, so there is nothing to undo",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -9698,7 +9698,7 @@
         "values": [
           {
             "type": "ValueError",
-            "value": "Batch \"Lovin' You (Ol' Skool Mix)\" changed nothing, so there is nothing to revert"
+            "value": "Batch \"Lovin' You (Ol' Skool Mix)\" changed nothing, so there is nothing to undo"
           }
         ]
       }
@@ -9708,7 +9708,7 @@
         "values": [
           {
             "type": "ValueError",
-            "value": "Batch \"<value>\" changed nothing, so there is nothing to revert"
+            "value": "Batch \"<value>\" changed nothing, so there is nothing to undo"
           }
         ]
       }

@@ -69,7 +69,7 @@ describe("the Match list with nothing in it", () => {
 
   it.each([
     ["disputed", "Nothing has changed since you decided."],
-    ["accepted", "Nothing is accepted."],
+    ["accepted", "Nothing is confirmed."],
     ["rejected", "Nothing is rejected."],
     ["no_match", "Beatport had something for every track."],
   ] as const)("says what an empty %s queue means", (scope, headline) => {

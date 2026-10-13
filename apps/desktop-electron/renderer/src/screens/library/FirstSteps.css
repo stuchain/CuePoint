@@ -107,7 +107,7 @@
   border: var(--control-border-width) solid var(--border-control);
 }
 
-/* A step with two buttons (Import… and How do I export one?). */
+/* A step with two buttons (Import… and How do I get one?). */
 .first-steps__actions {
   flex: none;
   display: flex;

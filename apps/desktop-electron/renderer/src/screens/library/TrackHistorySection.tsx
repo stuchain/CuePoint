@@ -38,7 +38,7 @@ interface TrackHistorySectionProps {
   reverting?: number | null;
   /** What was written into the file, when the build can say. */
   writes?: TrackWritesState;
-  /** Restore every value written into this file. */
+  /** Undo every value saved to this file. */
   onRestore?: () => void;
   restoring?: boolean;
 }
@@ -95,10 +95,10 @@ export function TrackHistorySection({
                   type="button"
                   className="cp-track-history__revert"
                   disabled={reverting !== null}
-                  aria-label={`Revert: ${line.title}, ${line.when}`}
+                  aria-label={`Undo: ${line.title}, ${line.when}`}
                   onClick={() => onRevert(change)}
                 >
-                  {reverting === change.id ? "Reverting…" : "Revert"}
+                  {reverting === change.id ? "Undoing…" : "Undo"}
                 </button>
               )}
             </li>
@@ -112,7 +112,7 @@ export function TrackHistorySection({
           }`}
         >
           <p className="cp-track-history__note">
-            <strong>Saved into the music file.</strong> {writesLine(writes.restorable, writes.unconfirmed)}
+            <strong>Saved to the music file.</strong> {writesLine(writes.restorable, writes.unconfirmed)}
           </p>
           {onRestore && (
             <button
@@ -121,7 +121,7 @@ export function TrackHistorySection({
               disabled={restoring}
               onClick={onRestore}
             >
-              {restoring ? "Putting back…" : "Put the file back as it was"}
+              {restoring ? "Undoing…" : "Undo this save"}
             </button>
           )}
         </div>

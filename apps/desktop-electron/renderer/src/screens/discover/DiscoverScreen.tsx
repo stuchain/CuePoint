@@ -140,7 +140,7 @@ export function DiscoverScreen() {
     if (result) {
       toast(discoveryEnded(result), result.outcome === "succeeded" ? "success" : "warning");
     } else if (finished.state !== "succeeded") {
-      toast(finished.error?.message ?? "The search did not finish.", "warning");
+      toast(finished.error?.message ?? "The dig did not finish.", "warning");
     }
   });
 
@@ -367,7 +367,7 @@ export function DiscoverScreen() {
         {newSearchSeen && (
           <div
             role="tabpanel"
-            aria-label="New search"
+            aria-label="New dig"
             hidden={section !== "new"}
             className="discover-screen__panel"
           >

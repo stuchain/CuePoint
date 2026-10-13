@@ -324,9 +324,9 @@ test.describe("Beatport sign-in", () => {
       await window.getByRole("link", { name: "Discover" }).click();
       await expect(window.getByRole("heading", { name: "Discover", level: 1 })).toBeVisible();
       // First a sign that Beatport is usable (its genres were read), then that no banner asks for a sign-in.
-      await window.getByRole("tab", { name: "New search" }).click();
+      await window.getByRole("tab", { name: "New dig" }).click();
       await expect(
-        window.getByRole("region", { name: "New search" }).getByRole("checkbox", { name: "House" }),
+        window.getByRole("region", { name: "New dig" }).getByRole("checkbox", { name: "House" }),
       ).toBeVisible({ timeout: 30_000 });
       await expect(window.getByText("Sign in to Beatport to search its charts and releases.")).toHaveCount(0);
       await expect(window.getByRole("button", { name: "Sign in to Beatport" })).toHaveCount(0);

@@ -201,7 +201,7 @@ function matchDecisionTitle(value: unknown): string {
       ? (value as { state?: unknown; decided_by?: unknown })
       : null;
   if (decision?.decided_by === "user") {
-    if (decision.state === "accepted") return "Accepted the Beatport match";
+    if (decision.state === "accepted") return "Confirmed the Beatport match";
     if (decision.state === "rejected") return "Rejected the Beatport match";
   }
   return "Cleared the match decision";

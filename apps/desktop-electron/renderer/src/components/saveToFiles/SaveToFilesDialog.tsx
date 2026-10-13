@@ -10,7 +10,7 @@
  *
  * A preview or a save large enough to be a job is followed like every job: it shows
  * "Reading 412 of 1,200 files…" and waits for its answer. After a save the window
- * offers Restore, which puts every value back, and Done.
+ * offers Undo this save, which undoes every value, and Done.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -68,7 +68,7 @@ interface SaveToFilesDialogProps {
   initialView?: "choices" | "changes";
   /**
    * The window was opened for tracks the save bar counted. When no file would change,
-   * Save then becomes "Mark N tracks as saved", which records them as already in the files.
+   * Save then becomes "Mark N tracks as already saved", which records them as already in the files.
    */
   canMarkSaved?: boolean;
   onClose: () => void;
@@ -495,7 +495,7 @@ export function SaveToFilesDialog({
                 ? marked
                   ? `${trackWords(count)} ${count === 1 ? "is" : "are"} marked as saved.`
                   : writeHeadline(written)
-                : "The write did not finish. Some files may have been written; restoring puts them back."}
+                : "The save did not finish. Some files may have been changed; undoing the save sets them back as they were."}
             </p>
             {written && written.problems.length > 0 && (
               <ul className="save-dialog__lines">
@@ -510,10 +510,10 @@ export function SaveToFilesDialog({
             {!marked && phase !== "restored" && (
               <div className="save-dialog__restore">
                 <Button variant="secondary" loading={phase === "restoring"} onClick={() => void runRestore()}>
-                  Restore these files
+                  Undo this save
                 </Button>
                 <span className="save-dialog__note">
-                  Puts back every value this save replaced. It is also offered in Activity.
+                  Undoes every value this save replaced. It is also offered in Activity.
                 </span>
               </div>
             )}

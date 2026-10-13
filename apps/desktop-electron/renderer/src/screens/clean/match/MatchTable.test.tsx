@@ -2,7 +2,7 @@
  * The Match table (C14): every track's before → after, to tick and take many.
  *
  * Over the real area, because the table is one of two views of its list: the
- * ticks, "Take ticked values" and opening a row in One at a time are the
+ * ticks, "Correct ticked values" and opening a row in One at a time are the
  * area's together. A row's cells come from its `match_proposal` only.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -119,7 +119,7 @@ function rowOf(title: string): HTMLElement {
   return row;
 }
 
-/** Open the Take button's menu of values. */
+/** Open the Correct button's menu of values. */
 function openValues(): HTMLElement {
   fireEvent.click(screen.getByRole("button", { name: "Values to take" }));
   return screen.getByRole("menu", { name: "Values to take" });
@@ -198,7 +198,7 @@ describe("the table", () => {
     ).toBeInTheDocument();
   });
 
-  it("offers which values to take in the Take button's menu, all on but the key at first", async () => {
+  it("offers which values to take in the Correct button's menu, all on but the key at first", async () => {
     const { unmount } = renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
     const menu = openValues();
@@ -230,10 +230,10 @@ describe("the table", () => {
       "year",
     ]);
     // All five: no count.
-    expect(screen.getByRole("button", { name: "Take ticked values (0 tracks)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Correct ticked values (0 tracks)" })).toBeInTheDocument();
     fireEvent.click(within(menu).getByRole("menuitemcheckbox", { name: "Year" }));
     expect(
-      screen.getByRole("button", { name: "Take ticked values (0 tracks, 4 fields)" }),
+      screen.getByRole("button", { name: "Correct ticked values (0 tracks, 4 fields)" }),
     ).toBeInTheDocument();
     fireEvent.click(within(menu).getByRole("menuitemcheckbox", { name: "Year" }));
     unmount();
@@ -262,8 +262,8 @@ describe("the table", () => {
     localStorage.setItem(MATCH_TICKS_STORAGE_KEY, JSON.stringify([]));
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
-    fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Take Track 1" }));
-    const take = screen.getByRole("button", { name: "Take ticked values (1 track, 0 fields)" });
+    fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Choose Track 1" }));
+    const take = screen.getByRole("button", { name: "Correct ticked values (1 track, 0 fields)" });
     expect(take).toHaveAttribute("aria-disabled", "true");
     expect(take).toHaveAttribute("title", "Tick at least one value.");
     fireEvent.click(take);
@@ -275,7 +275,7 @@ describe("the table", () => {
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
     expect(
-      screen.getByRole("button", { name: "Take ticked values (0 tracks, 1 field)" }),
+      screen.getByRole("button", { name: "Correct ticked values (0 tracks, 1 field)" }),
     ).toBeInTheDocument();
   });
 
@@ -288,7 +288,7 @@ describe("the table", () => {
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
     for (const title of ["Track 1", "Track 2", "Track 3"]) {
-      fireEvent.click(within(rowOf(title)).getByRole("checkbox", { name: `Take ${title}` }));
+      fireEvent.click(within(rowOf(title)).getByRole("checkbox", { name: `Choose ${title}` }));
     }
     expect(screen.queryByTestId("replacing")).toBeNull();
 
@@ -298,23 +298,23 @@ describe("the table", () => {
     );
 
     // An unticked row is not counted.
-    fireEvent.click(within(rowOf("Track 2")).getByRole("checkbox", { name: "Take Track 2" }));
+    fireEvent.click(within(rowOf("Track 2")).getByRole("checkbox", { name: "Choose Track 2" }));
     expect(screen.getByTestId("replacing")).toHaveTextContent("1 hand-corrected key among");
   });
 
   it("takes nothing until a row is ticked", async () => {
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
-    expect(screen.getByRole("button", { name: "Take ticked values (0 tracks, 4 fields)" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Correct ticked values (0 tracks, 4 fields)" })).toBeDisabled();
   });
 
   it("takes the ticked rows through one correctMatches, with the ticked values", async () => {
     const { props } = renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
-    fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Take Track 1" }));
-    fireEvent.click(within(rowOf("Track 3")).getByRole("checkbox", { name: "Take Track 3" }));
+    fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Choose Track 1" }));
+    fireEvent.click(within(rowOf("Track 3")).getByRole("checkbox", { name: "Choose Track 3" }));
 
-    const take = screen.getByRole("button", { name: "Take ticked values (2 tracks, 4 fields)" });
+    const take = screen.getByRole("button", { name: "Correct ticked values (2 tracks, 4 fields)" });
     expect(take).toBeEnabled();
     fireEvent.click(take);
 
@@ -336,8 +336,8 @@ describe("the table", () => {
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
     fireEvent.click(within(openValues()).getByRole("menuitemcheckbox", { name: "Key (replaces yours)" }));
-    fireEvent.click(within(rowOf("Track 2")).getByRole("checkbox", { name: "Take Track 2" }));
-    fireEvent.click(screen.getByRole("button", { name: "Take ticked values (1 track)" }));
+    fireEvent.click(within(rowOf("Track 2")).getByRole("checkbox", { name: "Choose Track 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Correct ticked values (1 track)" }));
     await waitFor(() => expect(bridge.correctMatches).toHaveBeenCalledTimes(1));
     expect(bridge.correctMatches).toHaveBeenCalledWith({
       selection: { track_ids: [2] },
@@ -361,8 +361,8 @@ describe("the table", () => {
     });
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
-    fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Take Track 1" }));
-    fireEvent.click(screen.getByRole("button", { name: "Take ticked values (1 track, 4 fields)" }));
+    fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Choose Track 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Correct ticked values (1 track, 4 fields)" }));
     expect(await screen.findByText("Nothing to change for those tracks.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
   });
@@ -377,8 +377,8 @@ describe("the table", () => {
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
     expect(screen.getByText("0 of 3 checked")).toBeInTheDocument();
-    fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Take Track 1" }));
-    fireEvent.click(screen.getByRole("button", { name: "Take ticked values (1 track, 4 fields)" }));
+    fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Choose Track 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Correct ticked values (1 track, 4 fields)" }));
     expect(await screen.findByText("Corrected the ticked tracks.")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText("1 of 3 checked")).toBeInTheDocument());
   });
@@ -421,8 +421,8 @@ describe("the table", () => {
     const menu = openValues();
     fireEvent.click(within(menu).getByRole("menuitemcheckbox", { name: "Genre" }));
     fireEvent.click(within(menu).getByRole("menuitemcheckbox", { name: "Year" }));
-    fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Take Track 1" }));
-    fireEvent.click(screen.getByRole("button", { name: "Take ticked values (1 track, 2 fields)" }));
+    fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Choose Track 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Correct ticked values (1 track, 2 fields)" }));
     await waitFor(() => expect(bridge.correctMatches).toHaveBeenCalledTimes(1));
     expect(bridge.correctMatches).toHaveBeenCalledWith({
       selection: { track_ids: [1] },
@@ -454,7 +454,7 @@ describe("the Preview column (R4-7)", () => {
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
     fireEvent.click(within(rowOf("Track 1")).getByRole("button", { name: "Play preview of Track 1" }));
-    expect(within(rowOf("Track 1")).getByRole("checkbox", { name: "Take Track 1" })).not.toBeChecked();
+    expect(within(rowOf("Track 1")).getByRole("checkbox", { name: "Choose Track 1" })).not.toBeChecked();
   });
 
   it("shows a muted dash cell with a title when Beatport has no sample", async () => {

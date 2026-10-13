@@ -52,6 +52,7 @@ import { MATCH_KEYS, matchCommand, type MatchCommand } from "./matchKeyboard";
 import { StatusLine, type MatchStatus } from "./StatusLine";
 import { useCandidateMedia } from "./useCandidateMedia";
 import { queryShown } from "../../../components/shell/pageActive";
+import { NO_VALUE } from "../../../words";
 
 interface OneAtATimeProps {
   /** The track under the cursor; null when the list is empty or still being read. */
@@ -82,7 +83,7 @@ interface OneAtATimeProps {
 const MARKS: Record<CardRow["status"], string> = {
   same: "matches",
   changes: "would change",
-  none: "Beatport has none",
+  none: "not set on Beatport",
   "comes-with-correct": "comes with Correct",
   "replaces-yours": "would replace yours",
 };
@@ -112,7 +113,7 @@ function theirCell(entry: CardRow): ReactNode {
     default:
       return (
         <span className="match-card__changes" data-changes="true">
-          {entry.yours ?? "empty"} <span aria-hidden>→</span>
+          {entry.yours ?? NO_VALUE} <span aria-hidden>→</span>
           <span className="match-visually-hidden"> becomes</span> {entry.theirs}
         </span>
       );
@@ -333,12 +334,12 @@ export function OneAtATime({
                 {rows.map((entry) => (
                   <div key={entry.id} className="match-card__row">
                     <dt>{entry.label}</dt>
-                    <dd>{yours[entry.id] ?? <Value muted>empty</Value>}</dd>
+                    <dd>{yours[entry.id] ?? <Value muted>{NO_VALUE}</Value>}</dd>
                   </div>
                 ))}
                 <div className="match-card__row">
                   <dt>Length</dt>
-                  <dd>{length ?? <Value muted>empty</Value>}</dd>
+                  <dd>{length ?? <Value muted>{NO_VALUE}</Value>}</dd>
                 </div>
               </dl>
               <Button variant="secondary" onClick={playFile}>
@@ -519,7 +520,7 @@ export function OneAtATime({
                 onChange={() => onToggleTick(entry.id)}
               />
               <span>
-                {CARD_FIELD_LABELS[entry.id]} {entry.yours ?? "empty"} → {entry.theirs}
+                {CARD_FIELD_LABELS[entry.id]} {entry.yours ?? NO_VALUE} → {entry.theirs}
                 {entry.id === "key" ? " (replaces yours)" : ""}
               </span>
             </label>

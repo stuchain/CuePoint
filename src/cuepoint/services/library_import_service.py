@@ -933,7 +933,7 @@ class LibraryImportService(ILibraryImportService):
             raise ValidationError(
                 message=(
                     "No library has been imported yet, so there is nothing to "
-                    "refresh. Import a Rekordbox collection first."
+                    "refresh. Import a Rekordbox file first."
                 ),
                 error_code="LIBRARY_NOT_IMPORTED",
                 context={},

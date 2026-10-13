@@ -213,7 +213,7 @@ class TestWhenItStops:
         assert job.state == JobState.FAILED
         assert job.error["code"] == "BEATPORT_REJECTED"
         assert job.error["message"].endswith(
-            "stopped because Beatport rejected the token"
+            "stopped because Beatport refused the sign-in"
         )
         assert job.result["error_class"] == "rejected"
         assert (job.result["resolved"], cached()) == (100, 100)

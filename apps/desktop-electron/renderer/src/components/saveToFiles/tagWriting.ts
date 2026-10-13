@@ -71,7 +71,7 @@ export function fieldName(field: string): string {
 export function fieldSkipText(reason: string): string {
   switch (reason) {
     case "no_value":
-      return "no value to write";
+      return "nothing to save";
     case "unchanged":
       return "already the same";
     case "file_has_value":
@@ -81,7 +81,7 @@ export function fieldSkipText(reason: string): string {
     case "has_artwork":
       return "the file already has a picture";
     case "no_beatport_artwork":
-      return "no accepted Beatport match with artwork";
+      return "no confirmed Beatport match with artwork";
     case "artwork_unavailable":
       return "Beatport's picture could not be used";
     default:
@@ -101,12 +101,12 @@ export function writeHeadline(result: TagWriteResult): string {
 
 /** What a finished restore says. */
 export function restoreHeadline(result: TagRestoreResult): string {
-  const parts = [`Restored ${count(result.files, "file")}`];
+  const parts = [`Undid ${count(result.files, "file")}`];
   if (result.already > 0) parts.push(`${count(result.already, "value")} already back`);
   if (result.skipped > 0) {
     parts.push(`${count(result.skipped, "value")} left alone because the file changed since`);
   }
-  if (result.failed > 0) parts.push(`${result.failed.toLocaleString()} could not be restored`);
+  if (result.failed > 0) parts.push(`${result.failed.toLocaleString()} could not be undone`);
   const line = `${parts.join(", ")}.`;
   return result.cancelled ? `Stopped early. ${line}` : line;
 }
