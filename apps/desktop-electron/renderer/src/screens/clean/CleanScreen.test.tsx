@@ -477,7 +477,7 @@ describe("the Match tab", () => {
     expect(screen.queryByLabelText("In")).toBeNull();
   });
 
-  it("holds Save review list as a file… in the Table, not in the header (CLN-11)", async () => {
+  it("holds Save review list as a file… beside each past search, not in the header (CLN-11, K12)", async () => {
     renderClean();
     await screen.findByText("1 of 3");
     const header = screen.getByTestId("clean-header");
@@ -485,7 +485,17 @@ describe("the Match tab", () => {
     expect(screen.queryByRole("button", { name: /Export review list/ })).toBeNull();
 
     fireEvent.click(screen.getByRole("tab", { name: "Table" }));
-    expect(await screen.findByRole("button", { name: "Save review list as a file…" })).toBeInTheDocument();
+    await act(async () => {});
+    expect(screen.queryByRole("button", { name: /Save review list/ })).toBeNull();
+
+    bridge.getMatchJobs!.mockResolvedValue({
+      jobs: [run({ job_id: "job-1", label: 'Playlist "all"' })],
+      total: 1,
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Past searches" }));
+    expect(
+      await screen.findByRole("button", { name: 'Save review list of Playlist "all" as a file…' }),
+    ).toBeInTheDocument();
   });
 
   it("matches the chosen tracks as a job, names the run, and says what it left out", async () => {
@@ -785,7 +795,7 @@ describe("missing files", () => {
       fixture.checked.missing_files as LibrarySearchResponse,
     );
     renderClean("missing");
-    expect(await screen.findByText("No missing files.")).toBeInTheDocument();
+    expect(await screen.findByText(/^All 3 files found/)).toBeInTheDocument();
   });
 });
 

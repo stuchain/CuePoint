@@ -465,7 +465,6 @@
   padding: var(--space-sm) var(--space-md);
 }
 
-.match-table__hint,
 .match-table__replacing {
   margin: 0;
   font-size: var(--control-font-size);
@@ -577,4 +576,15 @@
 
 .match-result__dot {
   color: var(--fg-muted);
+}
+
+/* Take ticked values and the arrow that opens its values (K12): one control. */
+.match-take {
+  display: inline-flex;
+  align-items: stretch;
+  gap: var(--space-xs);
+}
+
+.match-take__arrow {
+  display: inline-flex;
 }

@@ -79,6 +79,7 @@ import { MatchTable } from "./MatchTable";
 import { OneAtATime } from "./OneAtATime";
 import { PastSearches } from "./PastSearches";
 import { PlaylistsView } from "./PlaylistsView";
+import { TakeMenu } from "./TakeMenu";
 import type { CleanPlaylistsState } from "./useCleanPlaylists";
 import type { MatchStatus } from "./StatusLine";
 import { useMatchJobs } from "./useMatchJobs";
@@ -606,6 +607,20 @@ export function MatchArea({
     return runs;
   }, [jobs.runs, run]);
   const now = new Date();
+  // K12: with one search or none, From has nothing to choose between. It shows
+  // for two or more, and while a search or a playlist is the source, so that
+  // can be seen and cleared.
+  const showFrom = fromOptions.length >= 2 || run !== null || playlist !== null;
+  // From going away under the user's focus (clearing the only source) must not
+  // drop focus to the page: it moves to Show, the select beside it.
+  const fromShown = useRef(showFrom);
+  useEffect(() => {
+    const was = fromShown.current;
+    fromShown.current = showFrom;
+    if (!was || showFrom) return;
+    const active = document.activeElement;
+    if (!active || active === document.body) document.getElementById("match-show")?.focus();
+  }, [showFrom]);
 
   // ----------------------------------------------------------- the Inspector
 
@@ -689,28 +704,30 @@ export function MatchArea({
             }}
             options={scopeOptions.map((option) => ({ value: option.id, label: option.label }))}
           />
-          <Select
-            label="From"
-            id="match-from"
-            value={playlist ? `playlist:${playlist.id}` : (runId ?? ALL_SEARCHES)}
-            onChange={(event) => {
-              const picked = fromOptions.find((entry) => entry.job_id === event.target.value) ?? null;
-              setRun(picked);
-              setPlaylist(null);
-              if (!picked && scope === EVERYTHING) setScope(DEFAULT_MATCH_SCOPE);
-              restart();
-            }}
-            options={[
-              { value: ALL_SEARCHES, label: "All searches" },
-              ...(playlist
-                ? [{ value: `playlist:${playlist.id}`, label: `This playlist: ${playlist.name}` }]
-                : []),
-              ...fromOptions.map((entry) => ({
-                value: entry.job_id,
-                label: runOptionLabel(entry, now),
-              })),
-            ]}
-          />
+          {showFrom && (
+            <Select
+              label="From"
+              id="match-from"
+              value={playlist ? `playlist:${playlist.id}` : (runId ?? ALL_SEARCHES)}
+              onChange={(event) => {
+                const picked = fromOptions.find((entry) => entry.job_id === event.target.value) ?? null;
+                setRun(picked);
+                setPlaylist(null);
+                if (!picked && scope === EVERYTHING) setScope(DEFAULT_MATCH_SCOPE);
+                restart();
+              }}
+              options={[
+                { value: ALL_SEARCHES, label: "All searches" },
+                ...(playlist
+                  ? [{ value: `playlist:${playlist.id}`, label: `This playlist: ${playlist.name}` }]
+                  : []),
+                ...fromOptions.map((entry) => ({
+                  value: entry.job_id,
+                  label: runOptionLabel(entry, now),
+                })),
+              ]}
+            />
+          )}
           {waitingList ? (
             <div className="match-progress">
               <span className="match-progress__text">
@@ -734,14 +751,14 @@ export function MatchArea({
             <span className="match-progress__text">{trackCount(list.total)}</span>
           )}
           <span className="match-toolbar__spacer" />
-          {tab === "table" ? (
-            <Button disabled={busy || selection.count === 0} onClick={() => void takeTicked()}>
-              {`Take ticked values (${trackCount(selection.count)})`}
-            </Button>
-          ) : (
-            <Button variant="secondary" onClick={() => chooseTab("table")}>
-              Back to Table
-            </Button>
+          {tab === "table" && (
+            <TakeMenu
+              ticks={ticks}
+              onToggleTick={toggle}
+              tracks={selection.count}
+              busy={busy}
+              onTake={() => void takeTicked()}
+            />
           )}
         </div>
       )}
@@ -797,7 +814,6 @@ export function MatchArea({
               chooseTab("one");
             }}
             ticks={ticks}
-            onToggleTick={toggle}
             status={status}
             busy={busy}
             onUndo={() => void undo()}

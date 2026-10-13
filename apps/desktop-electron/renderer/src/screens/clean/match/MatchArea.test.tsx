@@ -233,8 +233,64 @@ describe("Review N on a playlist (C22)", () => {
     localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
     renderArea({ playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() } });
     fireEvent.click(await screen.findByRole("button", { name: "Review 18 for Whole library" }));
-    expect(await screen.findByLabelText("From")).toHaveValue("");
+    await onTrack(1);
+    // No playlist as the source, and no past search to choose between: From is not offered.
+    expect(screen.queryByLabelText("From")).toBeNull();
     await waitFor(() => expect(lastBrowse().playlistId).toBeNull());
+  });
+});
+
+describe("From shows only when there is something to choose (K12)", () => {
+  it("is hidden with no past search", async () => {
+    renderArea();
+    await onTrack(1);
+    await waitFor(() => expect(bridge.getMatchJobs).toHaveBeenCalled());
+    expect(screen.queryByLabelText("From")).toBeNull();
+    expect(screen.getByLabelText("Show")).toBeInTheDocument();
+  });
+
+  it("is hidden with one past search", async () => {
+    world.runs = [run({ job_id: "job-9" })];
+    renderArea();
+    await onTrack(1);
+    await waitFor(() => expect(bridge.getMatchJobs).toHaveBeenCalled());
+    expect(screen.queryByLabelText("From")).toBeNull();
+  });
+
+  it("shows with two past searches", async () => {
+    world.runs = [run({ job_id: "job-9" }), run({ job_id: "job-8", label: "Older" })];
+    renderArea();
+    await onTrack(1);
+    expect(await screen.findByLabelText("From")).toHaveValue("");
+  });
+
+  it("shows while a playlist is the source, so it can be cleared", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea({ playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() } });
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 for Peak time" }));
+    await onTrack(1);
+    expect(screen.getByLabelText("From")).toHaveValue("playlist:7");
+  });
+
+  it("moves focus to Show when From goes away under it", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea({ playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() } });
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 for Peak time" }));
+    await onTrack(1);
+    const from = screen.getByLabelText("From");
+    from.focus();
+    fireEvent.change(from, { target: { value: "" } });
+    await waitFor(() => expect(screen.queryByLabelText("From")).toBeNull());
+    expect(screen.getByLabelText("Show")).toHaveFocus();
+  });
+
+  it("shows while one past search is open, so it can be cleared", async () => {
+    world.runs = [run({ job_id: "job-9" })];
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "past");
+    renderArea();
+    fireEvent.click(await screen.findByRole("button", { name: /^Open / }));
+    await screen.findByRole("region", { name: "One at a time" });
+    expect(screen.getByLabelText("From")).toHaveValue("job-9");
   });
 });
 
@@ -257,11 +313,11 @@ describe("Show and From", () => {
   });
 
   it("add the match_run rule, with the run's root job, when From is a past search", async () => {
-    world.runs = [run({ job_id: "job-9", label: 'Playlist "Friday"' })];
+    world.runs = [run({ job_id: "job-9", label: 'Playlist "Friday"' }), run({ job_id: "job-8", label: "Older" })];
     world.runTracks = { "job-9": [2, 3] };
     renderArea();
     await onTrack(1);
-    const from = screen.getByLabelText("From");
+    const from = await screen.findByLabelText("From");
     expect(from).toHaveValue("");
     await screen.findByRole("option", { name: /Playlist "Friday"/ });
     // Without a run there is no "Everything in this search".
@@ -493,12 +549,11 @@ describe("deciding in One at a time", () => {
     );
   });
 
-  it("Back to Table goes to the Table, on the same list", async () => {
+  it("has no Back to Table: the Table tab is right above (K12)", async () => {
     renderArea();
     await onTrack(1);
-    fireEvent.click(screen.getByRole("button", { name: "Back to Table" }));
-    expect(await screen.findByRole("region", { name: "Table" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Table" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("button", { name: "Back to Table" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Table" })).toBeInTheDocument();
   });
 });
 

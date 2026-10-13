@@ -28,3 +28,9 @@
 .preview-cell:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
 }
+
+/* A candidate with no sample (Clean ▸ Table): a dash, nothing to press. */
+.preview-cell--none {
+  color: var(--fg-muted);
+  cursor: default;
+}

@@ -279,3 +279,66 @@ describe("Resume and Match again", () => {
     expect(screen.getByRole("button", { name: 'Open Playlist "all"' })).toBeEnabled();
   });
 });
+
+describe("Save review list (K12)", () => {
+  function install(pick: Fn) {
+    bridge.saveExportFileDialog = pick;
+    bridge.exportReviewList = vi.fn().mockResolvedValue({
+      file_path: "C:\\out\\review-list.xlsx",
+      format: "excel",
+      count: 179,
+      columns: [],
+    });
+  }
+
+  it("saves that run's own list, saying what it holds", async () => {
+    install(vi.fn().mockResolvedValue({ canceled: false, filePath: "C:\\out\\review-list.xlsx" }));
+    renderPast();
+    await screen.findByRole("table", { name: /Every match run/ }, LOADED);
+    fireEvent.click(screen.getByRole("button", { name: 'Save review list of Playlist "all" as a file…' }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Saves the tracks of this search");
+    fireEvent.change(within(dialog).getByLabelText("Format"), { target: { value: "excel" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Choose where to save…" }));
+
+    await waitFor(() =>
+      expect(bridge.exportReviewList).toHaveBeenCalledWith({
+        selection: {
+          query: { filters: { match: "all", rules: [{ field: "match_run", operator: "is", value: "job-1" }] } },
+        },
+        format: "excel",
+        file_path: "C:\\out\\review-list.xlsx",
+        overwrite: true,
+      }),
+    );
+    expect(bridge.saveExportFileDialog).toHaveBeenCalledWith({
+      defaultPath: "review-list-Playlist-all-2026-10-12.xlsx",
+      format: "xlsx",
+    });
+    expect(dialog).not.toHaveTextContent(/\d tracks/);
+    expect(await screen.findByText("Exported 179 tracks to review-list.xlsx.")).toBeInTheDocument();
+  });
+
+  it("is on every run, each saving its own", async () => {
+    install(vi.fn().mockResolvedValue({ canceled: false, filePath: "C:\\out\\review-list.csv" }));
+    renderPast();
+    await screen.findByRole("table", { name: /Every match run/ }, LOADED);
+    expect(screen.getAllByRole("button", { name: /^Save review list of/ })).toHaveLength(RUNS.length);
+    fireEvent.click(screen.getByRole("button", { name: "Save review list of Whole library as a file…" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Choose where to save…" }));
+    await waitFor(() => expect(bridge.exportReviewList).toHaveBeenCalled());
+    const selection = bridge.exportReviewList!.mock.calls[0]![0].selection;
+    expect(JSON.stringify(selection)).toContain("job-2");
+  });
+
+  it("writes nothing when the save dialog is cancelled", async () => {
+    install(vi.fn().mockResolvedValue({ canceled: true }));
+    renderPast();
+    await screen.findByRole("table", { name: /Every match run/ }, LOADED);
+    fireEvent.click(screen.getByRole("button", { name: 'Save review list of Playlist "all" as a file…' }));
+    fireEvent.click(await screen.findByRole("button", { name: "Choose where to save…" }));
+    await waitFor(() => expect(bridge.saveExportFileDialog).toHaveBeenCalled());
+    expect(bridge.exportReviewList).not.toHaveBeenCalled();
+  });
+});

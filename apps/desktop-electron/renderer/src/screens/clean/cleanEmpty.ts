@@ -38,7 +38,7 @@ function countOf(health: LibraryHealth, id: string): number | null {
 }
 
 /** When a detection last ran: a time, null for never, undefined when not reported. */
-function lastRun(health: LibraryHealth, id: string): string | null | undefined {
+export function lastRun(health: LibraryHealth, id: string): string | null | undefined {
   const detection = health.detections.find((run) => run.id === id);
   return detection ? detection.last_run_at : undefined;
 }

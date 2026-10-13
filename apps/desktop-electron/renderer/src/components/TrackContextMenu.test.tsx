@@ -11,6 +11,7 @@
  * underneath while the user is reading the child — and ArrowLeft has to mean
  * "back" rather than "somewhere else entirely".
  */
+import * as React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -519,5 +520,53 @@ describe("a submenu inside a submenu (FLW-8)", () => {
     const arrow = container.querySelector(".cp-track-menu__arrow");
     expect(arrow?.querySelector('svg[data-icon="chevron-right"]')).not.toBeNull();
     expect(arrow?.textContent).toBe("");
+  });
+});
+
+describe("tickable entries (K12)", () => {
+  it("are menu checkboxes that say whether they are ticked", () => {
+    open({
+      items: items([{ checked: true }, { checked: false }]),
+    });
+    const boxes = screen.getAllByRole("menuitemcheckbox");
+    expect(boxes.map((node) => node.getAttribute("aria-checked"))).toEqual(["true", "false"]);
+    // The third is an ordinary entry.
+    expect(screen.getAllByRole("menuitem").map((node) => node.textContent)).toEqual(["Add to queue"]);
+  });
+
+  it("run and leave the menu open, so several can be changed", async () => {
+    const chosen = vi.fn();
+    const { onClose } = open({ items: items([{ checked: false, onSelect: chosen }]) });
+    await userEvent.click(screen.getByRole("menuitemcheckbox", { name: "Play" }));
+    expect(chosen).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("toggle with Enter or Space and keep the menu open", async () => {
+    const chosen = vi.fn();
+    const { onClose } = open({ items: items([{ checked: false, onSelect: chosen }]) });
+    await userEvent.keyboard("{Enter}");
+    await userEvent.keyboard(" ");
+    expect(chosen).toHaveBeenCalledTimes(2);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
+
+  it("return focus to the opener on Escape", async () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+    function Host() {
+      const [shown, setShown] = React.useState(true);
+      return shown ? (
+        <TrackContextMenu x={0} y={0} items={items([{ checked: true }])} onClose={() => setShown(false)} />
+      ) : null;
+    }
+    render(<Host />);
+    expect(screen.getByRole("menu")).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(opener).toHaveFocus();
+    opener.remove();
   });
 });

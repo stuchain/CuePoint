@@ -6,7 +6,8 @@
  * now, which is what still needs the reader: "42 waiting for you" goes down as
  * tracks are corrected. Each row has its buttons — **Open** (its tracks, in One
  * at a time and the Table), **Resume** (a stopped one, only what it had not
- * reached), **Match again** — so nothing is hidden behind a hover or a menu.
+ * reached), **Match again**, **Save review list…** (that run's list as a file,
+ * K12) — so nothing is hidden behind a hover or a menu.
  */
 import { useEffect, useState } from "react";
 
@@ -15,6 +16,7 @@ import { Badge, type BadgeVariant } from "../../../components/Badge";
 import { Button } from "../../../components/Button";
 import { TextField } from "../../../components/TextField";
 import { canResume, resultParts, statusOf, whatLine, whenLabel, type StatusTone } from "./pastSearchWords";
+import { ReviewListSave } from "./ReviewListSave";
 import { useMatchJobs } from "./useMatchJobs";
 import { NEEDS_DESKTOP } from "../../../api/userMessage";
 
@@ -46,6 +48,7 @@ export function PastSearches({
 }: PastSearchesProps) {
   const [typed, setTyped] = useState("");
   const [query, setQuery] = useState("");
+  const [saving, setSaving] = useState<{ run: MatchRun; open: boolean } | null>(null);
   // The engine does the searching: wait for a pause in typing before asking.
   useEffect(() => {
     const timer = window.setTimeout(() => setQuery(typed), 250);
@@ -138,6 +141,13 @@ export function PastSearches({
                       >
                         Open
                       </Button>
+                      <Button
+                        variant="secondary"
+                        aria-label={`Save review list of ${what} as a file…`}
+                        onClick={() => setSaving({ run, open: true })}
+                      >
+                        Save review list…
+                      </Button>
                       {run.status !== "running" && (
                         <Button
                           variant="secondary"
@@ -162,6 +172,12 @@ export function PastSearches({
           )}
         </div>
       )}
+
+      <ReviewListSave
+        run={saving?.run ?? null}
+        open={saving?.open ?? false}
+        onClose={() => setSaving((last) => (last ? { ...last, open: false } : null))}
+      />
     </section>
   );
 }

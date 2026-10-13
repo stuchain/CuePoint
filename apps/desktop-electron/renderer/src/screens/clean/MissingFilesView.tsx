@@ -13,6 +13,10 @@
  * would have to be undone by the next refresh. The last step is a button to the
  * Library's Check Rekordbox for changes. A disconnected drive is one line above the
  * table, not four thousand rows to scroll past.
+ *
+ * **Nothing missing is one line** (K13): "All 300 files found · checked <time> ·
+ * Check again". The steps, the table, its headers, "0 tracks" and Columns show
+ * only when something is missing; before any check, the one "Check every file".
  */
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -40,8 +44,9 @@ import { useTrackDetail } from "../library/useTrackDetail";
 import { useTrackSelection } from "../library/useTrackSelection";
 import { useTrackWindow } from "../library/useTrackWindow";
 import { MISSING_COLUMNS, MISSING_TABLE_LAYOUT_KEY } from "./cleanColumns";
-import { missingEmptyState } from "./cleanEmpty";
 import { trackCount } from "./cleanFormat";
+import { lastRun, missingEmptyState } from "./cleanEmpty";
+import { whenLabel } from "./match/pastSearchWords";
 import { MISSING_FILES_RULES, WHOLE_LIBRARY, cleanQuery } from "./cleanRules";
 import { revealTrack } from "./revealTrack";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
@@ -180,6 +185,60 @@ export function MissingFilesView({
   // the one check button is "Check every file" (K4).
   const neverChecked = empty.offer === "check_files";
 
+  const checkButton = neverChecked ? (
+    <Button
+      variant="secondary"
+      disabled={running}
+      loading={jobs.running === "check-all"}
+      onClick={() => check("check-all", WHOLE_LIBRARY_SELECTION)}
+    >
+      Check every file
+    </Button>
+  ) : (
+    <Button
+      variant="secondary"
+      disabled={running}
+      loading={jobs.running === "check-again"}
+      onClick={() =>
+        check(
+          "check-again",
+          selection.count > 0 ? batchSelection(selection.selection, query) : WHOLE_LIBRARY_SELECTION,
+        )
+      }
+    >
+      {selection.count > 0 ? `Check ${selection.count.toLocaleString()} again` : "Check again"}
+    </Button>
+  );
+
+  // K13: the last check found nothing missing, and the loaded list agrees. One
+  // line with the one button; the steps and the table have nothing to say. Health
+  // says only whether files were ever checked. Until the list has loaded, the
+  // button alone, so the steps do not flash up for a library with nothing missing.
+  if (!neverChecked && !window_.error && (!window_.answered || window_.total === 0)) {
+    const found = health?.track_count ?? 0;
+    const when = health ? whenLabel(lastRun(health, "files")) : "";
+    const checkedAt = when.replace(/^(Today|Yesterday)/, (word) => word.toLowerCase());
+    return (
+      <div className="clean-missing">
+        <div className="clean-toolbar" role="toolbar" aria-label="Missing files">
+          {window_.answered && (
+            <span className="clean-toolbar__count" role="status">
+              {`All ${found.toLocaleString()} ${found === 1 ? "file" : "files"} found`}
+              {checkedAt && (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  {`checked ${checkedAt}`}
+                </>
+              )}
+              <span aria-hidden="true"> · </span>
+            </span>
+          )}
+          {checkButton}
+        </div>
+      </div>
+    );
+  }
+
   const emptyState = (
     <div className="clean-empty">
       <p className="clean-empty__headline">{empty.headline}</p>
@@ -215,30 +274,7 @@ export function MissingFilesView({
 
       <div className="clean-toolbar" role="toolbar" aria-label="Missing files">
         <span className="clean-toolbar__spacer" />
-        {neverChecked ? (
-          <Button
-            variant="secondary"
-            disabled={running}
-            loading={jobs.running === "check-all"}
-            onClick={() => check("check-all", WHOLE_LIBRARY_SELECTION)}
-          >
-            Check every file
-          </Button>
-        ) : (
-          <Button
-            variant="secondary"
-            disabled={running}
-            loading={jobs.running === "check-again"}
-            onClick={() =>
-              check(
-                "check-again",
-                selection.count > 0 ? batchSelection(selection.selection, query) : WHOLE_LIBRARY_SELECTION,
-              )
-            }
-          >
-            {selection.count > 0 ? `Check ${selection.count.toLocaleString()} again` : "Check again"}
-          </Button>
-        )}
+        {checkButton}
       </div>
 
       <div className="clean-missing__table">

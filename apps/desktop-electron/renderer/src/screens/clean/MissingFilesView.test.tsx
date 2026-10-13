@@ -149,11 +149,74 @@ describe("the check button (K4)", () => {
     expect(selection).toEqual({ track_ids: MISSING.map((row) => row.id) });
   });
 
-  it("has no check button in the empty state of a checked library", async () => {
+  it("has one check button and no second one in the empty state of a checked library", async () => {
     install([]);
     bridge.browseLibrary!.mockResolvedValue(fixture.checked.missing_files as LibrarySearchResponse);
     renderView(CHECKED);
-    await screen.findByText("No missing files.");
+    await screen.findByText(/^All 3 files found/);
     expect(checkButtons()).toEqual(["Check again"]);
+  });
+});
+
+describe("nothing missing (K13)", () => {
+  async function nothingMissing() {
+    install([]);
+    bridge.browseLibrary!.mockResolvedValue(fixture.checked.missing_files as LibrarySearchResponse);
+    renderView(CHECKED);
+    return screen.findByText(/^All 3 files found/);
+  }
+
+  it("is one line: all found, when it was checked, and Check again", async () => {
+    const line = await nothingMissing();
+    expect(line).toHaveTextContent(/^All 3 files found · checked .*\d/);
+    expect(screen.getByRole("button", { name: "Check again" })).toBeInTheDocument();
+  });
+
+  it("words the time short, and hides the separators from a screen reader", async () => {
+    const line = await nothingMissing();
+    expect(line).toHaveTextContent(/checked \d{1,2} Sep 10:00/);
+    expect(line.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("decides from the loaded list: a missing file the Health count has not caught up with shows the table", async () => {
+    renderView(CHECKED);
+    await screen.findByText("Track 1");
+    expect(screen.queryByText(/files found/)).toBeNull();
+  });
+
+  it("shows no steps, table, headers, count or Columns", async () => {
+    await nothingMissing();
+    expect(screen.queryByRole("list", { name: "How to fix a missing file" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Check Rekordbox for changes" })).toBeNull();
+    expect(screen.queryByRole("table", { name: "Missing files" })).toBeNull();
+    expect(screen.queryByRole("columnheader")).toBeNull();
+    expect(screen.queryByText(/0 tracks/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Columns…" })).toBeNull();
+  });
+
+  it("checks every file again", async () => {
+    await nothingMissing();
+    fireEvent.click(screen.getByRole("button", { name: "Check again" }));
+    await waitFor(() =>
+      expect(bridge.startFileCheck).toHaveBeenCalledWith({ selection: { query: {} } }),
+    );
+  });
+
+  it("is the table, as before, when something is missing", async () => {
+    renderView(CHECKED);
+    await screen.findByText("Track 1");
+    expect(screen.getByRole("list", { name: "How to fix a missing file" })).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Missing files" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Columns…" })).toBeInTheDocument();
+    expect(screen.queryByText(/^All \d+ files found/)).toBeNull();
+  });
+
+  it("is the one 'Check every file' before any check, with the steps as today", async () => {
+    install([]);
+    bridge.browseLibrary!.mockResolvedValue(fixture.untouched.missing_files as LibrarySearchResponse);
+    renderView(UNTOUCHED);
+    await screen.findByText("Files have not been checked yet.");
+    expect(checkButtons()).toEqual(["Check every file"]);
+    expect(screen.queryByText(/files found/)).toBeNull();
   });
 });

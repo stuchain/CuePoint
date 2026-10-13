@@ -8,41 +8,31 @@
  * **Take ticked values** (in the toolbar above) sends the ticked rows' own
  * proposals through one `correctMatches`.
  *
- * Double-click a row, or press Enter on it, to open it in One at a time. Save
- * review list as a file… and Columns… live here: they are about this table.
+ * Double-click a row, or press Enter on it, to open it in One at a time.
+ * Columns… lives here: it is about this table. The values to take are the Take
+ * button's own menu in the toolbar above, and Save review list as a file… is
+ * each run's, in Past searches (K12). The Preview column plays the candidate's
+ * sample, one sound at a time across the app (R4-7).
  */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import type {
-  LibraryTrackRow,
-  ReviewExportFormat,
-} from "../../../api/cuepointBridge.types";
-import { Button, Modal, useToast } from "../../../components";
-import { Select } from "../../../components/Select";
+import type { LibraryTrackRow } from "../../../api/cuepointBridge.types";
+import { Button, useToast } from "../../../components";
+import { canPreview, stopAllPreviews } from "../../../components/preview/useBeatportPreview";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../../components/table";
 import { SelectionActions } from "../../library/SelectionActions";
-import { batchSelection } from "../../library/libraryBatch";
 import { queryKey, type LibraryQuery, type SortDirection } from "../../library/libraryQuery";
 import { copySummary, gatherTracksAsText, writeClipboard } from "../../library/trackClipboard";
-import { EMPTY_SELECTION, isSelected, onlySelectedId, selectAll } from "../../library/trackSelection";
+import { isSelected, onlySelectedId } from "../../library/trackSelection";
 import type { useTrackSelection } from "../../library/useTrackSelection";
 import type { useTrackWindow } from "../../library/useTrackWindow";
-import { reportUnexpected } from "../../../reporting/reporting";
-import { exportedLine, trackCount } from "../cleanFormat";
 import { revealTrack } from "../revealTrack";
-import { CARD_FIELDS, CARD_FIELD_LABELS, proposalCells, type CardField } from "./matchCard";
+import { proposalCells, type CardField } from "./matchCard";
 import { MATCH_COLUMNS, MATCH_TABLE_LAYOUT_KEY, TickContext } from "./matchColumns";
 import { StatusLine, type MatchStatus } from "./StatusLine";
-import { NEEDS_DESKTOP, userMessage } from "../../../api/userMessage";
 
 /** A tick toggles its row like a Ctrl-click, leaving the others as they are. */
 const TICK_CLICK = { shiftKey: false, ctrlKey: true, metaKey: false };
-
-const EXPORT_FORMATS: Array<{ value: ReviewExportFormat; label: string }> = [
-  { value: "csv", label: "CSV" },
-  { value: "excel", label: "Excel" },
-  { value: "json", label: "JSON" },
-];
 
 interface MatchTableProps {
   list: ReturnType<typeof useTrackWindow>;
@@ -55,9 +45,8 @@ interface MatchTableProps {
   onCursor: (index: number) => void;
   /** Double-click or Enter: open this row in One at a time. */
   onOpen: (index: number) => void;
-  /** Which values "Take ticked values" copies, and the way to change it. */
+  /** Which values "Take ticked values" copies (changed in the Take button's menu). */
   ticks: ReadonlySet<CardField>;
-  onToggleTick: (field: CardField) => void;
   status: MatchStatus | null;
   busy: boolean;
   onUndo: () => void;
@@ -74,22 +63,28 @@ export function MatchTable({
   onCursor,
   onOpen,
   ticks,
-  onToggleTick,
   status,
   busy,
   onUndo,
   emptyState,
 }: MatchTableProps) {
   const { push } = useToast();
-  const columns = useColumnLayout<LibraryTrackRow>(MATCH_TABLE_LAYOUT_KEY, MATCH_COLUMNS);
+  // A build whose bridge cannot fetch samples has no Preview column, in the
+  // table, its picker or a copy (as Discover's table, DEC-269).
+  const available = useMemo(
+    () =>
+      canPreview("candidate") ? MATCH_COLUMNS : MATCH_COLUMNS.filter((c) => c.id !== "preview"),
+    [],
+  );
+  const columns = useColumnLayout<LibraryTrackRow>(MATCH_TABLE_LAYOUT_KEY, available);
   const [columnsOpen, setColumnsOpen] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
-  const [exportFormat, setExportFormat] = useState<ReviewExportFormat>("csv");
-  const [exporting, setExporting] = useState(false);
   const [copying, setCopying] = useState(false);
 
   const selected = selection.selection;
-  const everything = useMemo(() => batchSelection(selectAll(EMPTY_SELECTION), query), [query]);
+
+  // Preview cells scroll in and out of the windowed table while their sample
+  // plays: the table, not a cell, ends the sound.
+  useEffect(() => stopAllPreviews, []);
 
   // One pass over the rows read so far: where each is, which are ticked, and
   // how many of those would have a key of the user's own replaced.
@@ -160,63 +155,20 @@ export function MatchTable({
     });
   }, [push, trackId]);
 
-  const exportList = useCallback(async () => {
-    const save = window.cuepoint?.saveExportFileDialog;
-    const write = window.cuepoint?.exportReviewList;
-    if (!save || !write) {
-      push(NEEDS_DESKTOP, "warning");
-      return;
-    }
-    const extension = exportFormat === "excel" ? "xlsx" : exportFormat;
-    setExporting(true);
-    try {
-      const picked = await save({ defaultPath: `review-list.${extension}`, format: extension });
-      if (picked.canceled) return;
-      // The save dialog has already asked about replacing a file that is
-      // there, so the engine is told the answer rather than asking again.
-      const written = await write({
-        selection: selection.count > 0 ? batchSelection(selection.selection, query) : everything,
-        format: exportFormat,
-        file_path: picked.filePath,
-        overwrite: true,
-      });
-      setExportOpen(false);
-      push(exportedLine(written.count, written.file_path), "success");
-    } catch (cause) {
-      reportUnexpected(cause);
-      push(userMessage(cause), "warning");
-    } finally {
-      setExporting(false);
-    }
-  }, [everything, exportFormat, push, query, selection]);
-
   return (
     <section className="match-table" aria-label="Table">
-      <div className="match-table__head">
-        <fieldset className="match-ticks match-ticks--table">
-          <legend className="match-ticks__legend">Values to take</legend>
-          {CARD_FIELDS.map((field) => (
-            <label key={field} className="match-ticks__field">
-              <input
-                type="checkbox"
-                checked={ticks.has(field)}
-                disabled={busy}
-                onChange={() => onToggleTick(field)}
-              />
-              <span>{field === "key" ? "Key (replaces yours)" : CARD_FIELD_LABELS[field]}</span>
-            </label>
-          ))}
-        </fieldset>
-        <p className="match-table__hint">Double-click a row to open it in One at a time.</p>
-        {ticks.has("key") && replacing > 0 && (
-          <p className="match-table__replacing" data-testid="replacing">
-            Key is ticked: {replacing.toLocaleString()} hand-corrected{" "}
-            {replacing === 1 ? "key" : "keys"} among the ticked tracks would be replaced
-            {selected.all ? " (counting the tracks read so far)" : ""}.
-          </p>
-        )}
-        <StatusLine status={status} busy={busy} onUndo={onUndo} />
-      </div>
+      {((ticks.has("key") && replacing > 0) || status !== null) && (
+        <div className="match-table__head">
+          {ticks.has("key") && replacing > 0 && (
+            <p className="match-table__replacing" data-testid="replacing">
+              Key is ticked: {replacing.toLocaleString()} hand-corrected{" "}
+              {replacing === 1 ? "key" : "keys"} among the ticked tracks would be replaced
+              {selected.all ? " (counting the tracks read so far)" : ""}.
+            </p>
+          )}
+          <StatusLine status={status} busy={busy} onUndo={onUndo} />
+        </div>
+      )}
 
       <div className="match-table__grid">
         <TickContext.Provider value={tickValue}>
@@ -259,47 +211,17 @@ export function MatchTable({
         <Button variant="secondary" onClick={() => setColumnsOpen(true)}>
           Columns…
         </Button>
-        <Button variant="secondary" disabled={list.total === 0} onClick={() => setExportOpen(true)}>
-          Save review list as a file…
-        </Button>
       </div>
 
       <ColumnPicker
         open={columnsOpen}
         onClose={() => setColumnsOpen(false)}
-        columns={MATCH_COLUMNS}
+        columns={available}
         layout={columns.layout}
         onToggle={columns.toggle}
         onNudge={columns.nudge}
         onReset={columns.reset}
       />
-
-      <Modal
-        open={exportOpen}
-        title="Save review list as a file"
-        onClose={() => setExportOpen(false)}
-        primaryAction={{
-          label: "Choose where to save…",
-          onClick: () => void exportList(),
-          loading: exporting,
-        }}
-        secondaryAction={{ label: "Cancel", onClick: () => setExportOpen(false) }}
-      >
-        <p>
-          {selection.count > 0
-            ? `Saves the ${trackCount(selection.count)} selected`
-            : `Saves the ${trackCount(list.total)} shown`}{" "}
-          — with their match state and Beatport link — as a spreadsheet you can share or check by
-          hand.
-        </p>
-        <Select
-          label="Format"
-          id="match-export-format"
-          value={exportFormat}
-          onChange={(event) => setExportFormat(event.target.value as ReviewExportFormat)}
-          options={EXPORT_FORMATS}
-        />
-      </Modal>
     </section>
   );
 }

@@ -108,3 +108,17 @@
   border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-panel);
 }
+
+/* A tickable entry (K12): a fixed slot for the tick, so labels line up ticked or not. */
+.cp-track-menu__check {
+  display: inline-block;
+  width: calc(var(--icon-size) * 0.5);
+  height: calc(var(--icon-size) * 0.5);
+  margin-right: var(--space-sm);
+  vertical-align: middle;
+}
+
+.cp-track-menu__check .cp-pixel-icon {
+  width: 100%;
+  height: 100%;
+}

@@ -47,6 +47,11 @@ export interface TrackContextMenuItem {
    * An item with children never runs `onSelect`; choosing it opens the list.
    */
   items?: TrackContextMenuItem[];
+  /**
+   * A tickable entry (K12): present, it is a menu checkbox, and choosing it
+   * runs `onSelect` and leaves the menu open so several can be toggled.
+   */
+  checked?: boolean;
 }
 
 interface TrackContextMenuProps {
@@ -56,6 +61,12 @@ interface TrackContextMenuProps {
   onClose: () => void;
   /** Describes what the menu acts on, for assistive technology. */
   label?: string;
+  /**
+   * The button that opened it. A press on it is not "elsewhere": the button's
+   * own click toggles the menu, rather than this one closing it first and the
+   * click opening it again.
+   */
+  anchor?: React.RefObject<HTMLElement | null>;
 }
 
 /** Keeps a box on screen when it opens near an edge. */
@@ -123,7 +134,7 @@ function Submenu({ label, children }: { label: string; children: React.ReactNode
 const hasChildren = (item: TrackContextMenuItem | undefined) =>
   Boolean(item?.items && item.items.length > 0);
 
-export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMenuProps) {
+export function TrackContextMenu({ x, y, items, onClose, label, anchor }: TrackContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   // Closing leaves a still copy that fades (Opening and closing panels and dialogs).
   useLeaveGhost(menuRef);
@@ -174,7 +185,9 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
   // context menu follows, and the reason one never lingers over stale content.
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) close();
+      const target = event.target as Node;
+      if (anchor?.current?.contains(target)) return;
+      if (!menuRef.current?.contains(target)) close();
     };
     const onScroll = () => close();
     document.addEventListener("mousedown", onPointerDown, true);
@@ -185,7 +198,7 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
       window.removeEventListener("resize", onScroll);
       window.removeEventListener("blur", onScroll);
     };
-  }, [close]);
+  }, [anchor, close]);
 
   /** Open (or shut) a parent listed at `at`. A parent opens; it never acts. */
   const toggleParent = (item: TrackContextMenuItem, at: number) => {
@@ -200,6 +213,10 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
     if (hasChildren(item)) {
       // Closing the menu here would dismiss the list the user was reaching for.
       toggleParent(item, at);
+      return;
+    }
+    if (item.checked !== undefined) {
+      item.onSelect();
       return;
     }
     // Close first: the action may open a dialog or move focus, and a menu
@@ -265,7 +282,8 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
           {item.separatorBefore && <div className="cp-track-menu__separator" role="separator" />}
           <button
             type="button"
-            role="menuitem"
+            role={item.checked === undefined ? "menuitem" : "menuitemcheckbox"}
+            aria-checked={item.checked}
             className={`cp-track-menu__item${index === activeAt(at) ? " cp-track-menu__item--active" : ""}${parent ? " cp-track-menu__item--parent" : ""}`}
             disabled={item.disabled}
             aria-disabled={item.disabled || undefined}
@@ -280,6 +298,11 @@ export function TrackContextMenu({ x, y, items, onClose, label }: TrackContextMe
             }}
             onClick={() => choose(item, at)}
           >
+            {item.checked !== undefined && (
+              <span className="cp-track-menu__check" aria-hidden="true">
+                {item.checked && <PixelIcon name="clean" />}
+              </span>
+            )}
             {item.label}
             {parent && (
               <span className="cp-track-menu__arrow" aria-hidden="true">

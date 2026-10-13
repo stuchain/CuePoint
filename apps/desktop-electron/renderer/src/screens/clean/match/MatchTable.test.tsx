@@ -28,6 +28,54 @@ import { MATCH_TAB_STORAGE_KEY, MatchArea } from "./MatchArea";
 import { MATCH_TICKS_STORAGE_KEY } from "./useMatchTicks";
 import { statusCell, valueCell, likelyCell } from "./matchColumns";
 
+// The shared preview hook is Discover's thread's: here it is a store the tests set.
+const { setPreview, resetPreviews, toggles, stopAll, mockHook } = vi.hoisted(() => {
+  const states = new Map<string, string>();
+  const listeners = new Set<() => void>();
+  const toggles: string[] = [];
+  const stopAll = vi.fn();
+  return {
+    toggles,
+    stopAll,
+    setPreview(name: string, state: string) {
+      states.set(name, state);
+      listeners.forEach((listener) => listener());
+    },
+    resetPreviews() {
+      states.clear();
+      toggles.length = 0;
+      stopAll.mockClear();
+    },
+    mockHook: { states, listeners },
+  };
+});
+
+vi.mock("../../../components/preview/useBeatportPreview", async () => {
+  const { useSyncExternalStore } = await import("react");
+  return {
+    canPreview: () => true,
+    stopAllPreviews: () => stopAll(),
+    useBeatportPreview: (key: { kind: string; id: number } | null) => {
+      const name = key ? `${key.kind}:${key.id}` : null;
+      const state = useSyncExternalStore(
+        (listener) => {
+          mockHook.listeners.add(listener);
+          return () => mockHook.listeners.delete(listener);
+        },
+        () => (name ? (mockHook.states.get(name) ?? "idle") : "idle"),
+      );
+      return {
+        state,
+        toggle: () => {
+          if (name) toggles.push(name);
+        },
+        stop: () => undefined,
+        canPreview: true,
+      };
+    },
+  };
+});
+
 type Fn = ReturnType<typeof vi.fn>;
 type Props = ComponentProps<typeof MatchArea>;
 
@@ -69,6 +117,12 @@ function rowOf(title: string): HTMLElement {
   const row = screen.getByText(title).closest('[role="row"]');
   if (!(row instanceof HTMLElement)) throw new Error(`no row for ${title}`);
   return row;
+}
+
+/** Open the Take button's menu of values. */
+function openValues(): HTMLElement {
+  fireEvent.click(screen.getByRole("button", { name: "Values to take" }));
+  return screen.getByRole("menu", { name: "Values to take" });
 }
 
 beforeAll(installTableEnvironment);
@@ -122,7 +176,17 @@ describe("the table", () => {
     expect(within(row).getAllByText("(Correct would change this)").length).toBeGreaterThan(0);
     expect(within(row).getByText("92%")).toBeInTheDocument();
     expect(within(row).getByText("Waiting for you")).toBeInTheDocument();
-    expect(screen.getByText("Double-click a row to open it in One at a time.")).toBeInTheDocument();
+  });
+
+  it("has no values box, no tip line and no save button of its own (K12)", async () => {
+    renderTable();
+    await screen.findByText("Track 1", undefined, LOADED);
+    expect(screen.queryByRole("group", { name: "Values to take" })).toBeNull();
+    expect(screen.queryByText(/Double-click a row to open it/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Save review list/ })).toBeNull();
+    // What is about the table stays in its footer.
+    expect(screen.getByRole("button", { name: "Columns…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select all" })).toBeInTheDocument();
   });
 
   it("says what a track without a proposal needs, in its own row", async () => {
@@ -134,12 +198,12 @@ describe("the table", () => {
     ).toBeInTheDocument();
   });
 
-  it("offers which values to take, all on but the key at first, and remembers a change", async () => {
+  it("offers which values to take in the Take button's menu, all on but the key at first", async () => {
     const { unmount } = renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
-    const values = screen.getByRole("group", { name: "Values to take" });
-    const boxes = within(values).getAllByRole("checkbox");
-    expect(boxes.map((box) => box.parentElement?.textContent)).toEqual([
+    const menu = openValues();
+    const items = within(menu).getAllByRole("menuitemcheckbox");
+    expect(items.map((item) => item.textContent)).toEqual([
       "Key (replaces yours)",
       "BPM",
       "Genre",
@@ -147,15 +211,17 @@ describe("the table", () => {
       "Year",
     ]);
     // Replacing a key the user typed is ticked only by choice.
-    expect(boxes.map((box) => (box as HTMLInputElement).checked)).toEqual([
-      false,
-      true,
-      true,
-      true,
-      true,
+    expect(items.map((item) => item.getAttribute("aria-checked"))).toEqual([
+      "false",
+      "true",
+      "true",
+      "true",
+      "true",
     ]);
 
-    fireEvent.click(within(values).getByRole("checkbox", { name: "Key (replaces yours)" }));
+    // The menu stays open while several are changed, and the button says how many are on.
+    fireEvent.click(within(menu).getByRole("menuitemcheckbox", { name: "Key (replaces yours)" }));
+    expect(screen.getByRole("menu", { name: "Values to take" })).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem(MATCH_TICKS_STORAGE_KEY)!)).toEqual([
       "key",
       "bpm",
@@ -163,16 +229,54 @@ describe("the table", () => {
       "label",
       "year",
     ]);
+    // All five: no count.
+    expect(screen.getByRole("button", { name: "Take ticked values (0 tracks)" })).toBeInTheDocument();
+    fireEvent.click(within(menu).getByRole("menuitemcheckbox", { name: "Year" }));
+    expect(
+      screen.getByRole("button", { name: "Take ticked values (0 tracks, 4 fields)" }),
+    ).toBeInTheDocument();
+    fireEvent.click(within(menu).getByRole("menuitemcheckbox", { name: "Year" }));
     unmount();
 
     // The same preference One at a time reads.
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
     expect(
-      within(screen.getByRole("group", { name: "Values to take" })).getByRole("checkbox", {
-        name: "Key (replaces yours)",
-      }),
-    ).toBeChecked();
+      within(openValues()).getByRole("menuitemcheckbox", { name: "Key (replaces yours)" }),
+    ).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("closes its menu from the arrow that opened it", async () => {
+    renderTable();
+    await screen.findByText("Track 1", undefined, LOADED);
+    const arrow = screen.getByRole("button", { name: "Values to take" });
+    fireEvent.mouseDown(arrow);
+    fireEvent.click(arrow);
+    expect(screen.getByRole("menu", { name: "Values to take" })).toBeInTheDocument();
+    fireEvent.mouseDown(arrow);
+    fireEvent.click(arrow);
+    expect(screen.queryByRole("menu", { name: "Values to take" })).toBeNull();
+  });
+
+  it("will not take with no value ticked, and says why", async () => {
+    localStorage.setItem(MATCH_TICKS_STORAGE_KEY, JSON.stringify([]));
+    renderTable();
+    await screen.findByText("Track 1", undefined, LOADED);
+    fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Take Track 1" }));
+    const take = screen.getByRole("button", { name: "Take ticked values (1 track, 0 fields)" });
+    expect(take).toHaveAttribute("aria-disabled", "true");
+    expect(take).toHaveAttribute("title", "Tick at least one value.");
+    fireEvent.click(take);
+    expect(bridge.correctMatches).not.toHaveBeenCalled();
+  });
+
+  it("says one field in the singular", async () => {
+    localStorage.setItem(MATCH_TICKS_STORAGE_KEY, JSON.stringify(["bpm"]));
+    renderTable();
+    await screen.findByText("Track 1", undefined, LOADED);
+    expect(
+      screen.getByRole("button", { name: "Take ticked values (0 tracks, 1 field)" }),
+    ).toBeInTheDocument();
   });
 
   it("says how many hand-corrected keys the Key tick would replace, only while it is ticked", async () => {
@@ -188,11 +292,7 @@ describe("the table", () => {
     }
     expect(screen.queryByTestId("replacing")).toBeNull();
 
-    fireEvent.click(
-      within(screen.getByRole("group", { name: "Values to take" })).getByRole("checkbox", {
-        name: "Key (replaces yours)",
-      }),
-    );
+    fireEvent.click(within(openValues()).getByRole("menuitemcheckbox", { name: "Key (replaces yours)" }));
     expect(screen.getByTestId("replacing")).toHaveTextContent(
       "Key is ticked: 2 hand-corrected keys among the ticked tracks would be replaced.",
     );
@@ -205,7 +305,7 @@ describe("the table", () => {
   it("takes nothing until a row is ticked", async () => {
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
-    expect(screen.getByRole("button", { name: "Take ticked values (0 tracks)" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Take ticked values (0 tracks, 4 fields)" })).toBeDisabled();
   });
 
   it("takes the ticked rows through one correctMatches, with the ticked values", async () => {
@@ -214,7 +314,7 @@ describe("the table", () => {
     fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Take Track 1" }));
     fireEvent.click(within(rowOf("Track 3")).getByRole("checkbox", { name: "Take Track 3" }));
 
-    const take = screen.getByRole("button", { name: "Take ticked values (2 tracks)" });
+    const take = screen.getByRole("button", { name: "Take ticked values (2 tracks, 4 fields)" });
     expect(take).toBeEnabled();
     fireEvent.click(take);
 
@@ -235,11 +335,7 @@ describe("the table", () => {
   it("replaces the key only when its tick is on", async () => {
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
-    fireEvent.click(
-      within(screen.getByRole("group", { name: "Values to take" })).getByRole("checkbox", {
-        name: "Key (replaces yours)",
-      }),
-    );
+    fireEvent.click(within(openValues()).getByRole("menuitemcheckbox", { name: "Key (replaces yours)" }));
     fireEvent.click(within(rowOf("Track 2")).getByRole("checkbox", { name: "Take Track 2" }));
     fireEvent.click(screen.getByRole("button", { name: "Take ticked values (1 track)" }));
     await waitFor(() => expect(bridge.correctMatches).toHaveBeenCalledTimes(1));
@@ -266,7 +362,7 @@ describe("the table", () => {
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
     fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Take Track 1" }));
-    fireEvent.click(screen.getByRole("button", { name: "Take ticked values (1 track)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Take ticked values (1 track, 4 fields)" }));
     expect(await screen.findByText("Nothing to change for those tracks.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
   });
@@ -282,7 +378,7 @@ describe("the table", () => {
     await screen.findByText("Track 1", undefined, LOADED);
     expect(screen.getByText("0 of 3 checked")).toBeInTheDocument();
     fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Take Track 1" }));
-    fireEvent.click(screen.getByRole("button", { name: "Take ticked values (1 track)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Take ticked values (1 track, 4 fields)" }));
     expect(await screen.findByText("Corrected the ticked tracks.")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText("1 of 3 checked")).toBeInTheDocument());
   });
@@ -319,56 +415,70 @@ describe("the table", () => {
     expect(bridge.decideMatch).not.toHaveBeenCalled();
   });
 
-  it("saves the review list as a file, saying what it holds", async () => {
-    bridge.saveExportFileDialog = vi
-      .fn()
-      .mockResolvedValue({ canceled: false, filePath: "C:\\out\\review-list.xlsx" });
-    bridge.exportReviewList = vi.fn().mockResolvedValue({
-      file_path: "C:\\out\\review-list.xlsx",
-      format: "excel",
-      count: 3,
-      columns: [],
-    });
+  it("takes only the ticked values, as the menu has them", async () => {
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: "Save review list as a file…" }));
-    const dialog = await screen.findByRole("dialog");
-    expect(dialog).toHaveTextContent(
-      "Saves the 3 tracks shown — with their match state and Beatport link — as a spreadsheet you can share or check by hand.",
-    );
-    fireEvent.change(within(dialog).getByLabelText("Format"), { target: { value: "excel" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Choose where to save…" }));
-
-    await waitFor(() =>
-      expect(bridge.exportReviewList).toHaveBeenCalledWith({
-        selection: {
-          query: {
-            q: undefined,
-            playlist_id: null,
-            collection_id: null,
-            filters: fixture.rules.needs_review,
-          },
-        },
-        format: "excel",
-        file_path: "C:\\out\\review-list.xlsx",
-        overwrite: true,
-      }),
-    );
-    expect(bridge.saveExportFileDialog).toHaveBeenCalledWith({
-      defaultPath: "review-list.xlsx",
-      format: "xlsx",
+    const menu = openValues();
+    fireEvent.click(within(menu).getByRole("menuitemcheckbox", { name: "Genre" }));
+    fireEvent.click(within(menu).getByRole("menuitemcheckbox", { name: "Year" }));
+    fireEvent.click(within(rowOf("Track 1")).getByRole("checkbox", { name: "Take Track 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Take ticked values (1 track, 2 fields)" }));
+    await waitFor(() => expect(bridge.correctMatches).toHaveBeenCalledTimes(1));
+    expect(bridge.correctMatches).toHaveBeenCalledWith({
+      selection: { track_ids: [1] },
+      fields: ["bpm", "label"],
     });
-    expect(await screen.findByText("Exported 3 tracks to review-list.xlsx.")).toBeInTheDocument();
+  });
+});
+
+describe("the Preview column (R4-7)", () => {
+  beforeEach(() => {
+    resetPreviews();
   });
 
-  it("writes nothing when the save dialog is cancelled", async () => {
-    bridge.saveExportFileDialog = vi.fn().mockResolvedValue({ canceled: true });
-    bridge.exportReviewList = vi.fn();
+  it("plays and stops the candidate's sample through the shared hook", async () => {
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: "Save review list as a file…" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Choose where to save…" }));
-    await waitFor(() => expect(bridge.saveExportFileDialog).toHaveBeenCalled());
-    expect(bridge.exportReviewList).not.toHaveBeenCalled();
+    const row = rowOf("Track 1");
+    const candidate = proposed(1).match_proposal!.candidate_id;
+
+    fireEvent.click(within(row).getByRole("button", { name: "Play preview of Track 1" }));
+    expect(toggles).toEqual([`candidate:${candidate}`]);
+
+    act(() => setPreview(`candidate:${candidate}`, "playing"));
+    fireEvent.click(within(rowOf("Track 1")).getByRole("button", { name: "Stop preview of Track 1" }));
+    expect(toggles).toEqual([`candidate:${candidate}`, `candidate:${candidate}`]);
+  });
+
+  it("does not select the row it is in", async () => {
+    renderTable();
+    await screen.findByText("Track 1", undefined, LOADED);
+    fireEvent.click(within(rowOf("Track 1")).getByRole("button", { name: "Play preview of Track 1" }));
+    expect(within(rowOf("Track 1")).getByRole("checkbox", { name: "Take Track 1" })).not.toBeChecked();
+  });
+
+  it("shows a muted dash cell with a title when Beatport has no sample", async () => {
+    renderTable();
+    await screen.findByText("Track 1", undefined, LOADED);
+    const candidate = proposed(1).match_proposal!.candidate_id;
+    act(() => setPreview(`candidate:${candidate}`, "none"));
+    const dash = await within(rowOf("Track 1")).findByRole("img", { name: "No preview for Track 1" });
+    expect(dash).toHaveTextContent("—");
+    expect(dash).toHaveAttribute("title", "No preview");
+    expect(within(rowOf("Track 1")).queryByRole("button", { name: /preview/i })).toBeNull();
+  });
+
+  it("has an empty cell for a track with no candidate", async () => {
+    world.tracks = [track(7, { title: "Mystery" }), proposed(1)];
+    renderTable();
+    await screen.findByText("Mystery", undefined, LOADED);
+    expect(within(rowOf("Mystery")).queryByRole("button", { name: /preview/i })).toBeNull();
+  });
+
+  it("stops every sample when the table goes", async () => {
+    const { unmount } = renderTable();
+    await screen.findByText("Track 1", undefined, LOADED);
+    unmount();
+    expect(stopAll).toHaveBeenCalled();
   });
 });

@@ -5,8 +5,8 @@
  * would change reads "before → after" (the arrow and the words say it as well
  * as the colour); one it would leave reads as the value. A row Beatport gave
  * no single answer for says what to do about it in the last column, where it
- * has the room. The first column is the tick that chooses a row for "Take
- * ticked values".
+ * has the room. The Preview cell plays the candidate's sample (R4-7). The
+ * first column is the tick that chooses a row for "Take ticked values".
  *
  * The columns are static, so the layout a user made is never rebuilt by a
  * click; the tick reads the selection through a context the table provides.
@@ -15,6 +15,7 @@ import { createContext, useContext } from "react";
 
 import type { LibraryTrackRow } from "../../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../../components/table";
+import { PreviewCell } from "../../discover/PreviewCell";
 import { DISPUTED_HINT, matchStateLabel } from "../cleanFormat";
 import { proposalCells, noProposalLine, yoursOf, type CardField } from "./matchCard";
 
@@ -120,6 +121,22 @@ export const MATCH_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     minWidthPx: 100,
     defaultWidthPx: 170,
     render: (row) => row.artist,
+  },
+  {
+    // R4-7: the candidate's 2-minute sample, Discover's cell on the Beatport side of the row.
+    id: "preview",
+    header: "Preview",
+    minWidthPx: 56,
+    defaultWidthPx: 64,
+    render: (row) =>
+      row.match_proposal ? (
+        <PreviewCell
+          kind="candidate"
+          beatportTrackId={row.match_proposal.candidate_id}
+          title={row.title}
+        />
+      ) : null,
+    text: () => "",
   },
   {
     id: "likely",
