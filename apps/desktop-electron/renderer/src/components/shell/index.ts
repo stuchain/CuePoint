@@ -12,6 +12,7 @@ export {
   useInspectorContent,
   useInspectorSlot,
 } from "./inspectorSlot";
+export { usePageActive } from "./pageActive";
 export { StatusStrip } from "./StatusStrip";
 export {
   enabledDestinations,

@@ -9,6 +9,7 @@ import { matchedLabel } from "../../screens/library/searchMatch";
 import { toQueueItem } from "../../screens/library/useLibraryPlayback";
 import { sharedTransition } from "../../tokens/sharedTransition";
 import { usePresence } from "../../tokens/usePresence";
+import { queryShown } from "./pageActive";
 import {
   MIN_QUERY_LENGTH,
   resultSummary,
@@ -96,7 +97,7 @@ export function GlobalSearch() {
           setOpen(false);
           navigate("/library", { state: libraryTrackState(id) });
         },
-        () => document.querySelector(".track-table__row--selected"),
+        () => queryShown(".track-table__row--selected"),
       );
     },
     [navigate],

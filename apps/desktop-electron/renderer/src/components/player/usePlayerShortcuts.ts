@@ -4,6 +4,7 @@ import { focusReachedByKeyboard, installFocusOrigin } from "../shell/focusOrigin
 import { hasShortcutModifier } from "../shell/platformKeys";
 import { selectVolume } from "./playerFormat";
 import { usePlayerValue } from "./playerStore";
+import { queryShown } from "../shell/pageActive";
 
 /**
  * Driving playback from the keyboard (PLAYER-12, SHELL-10).
@@ -80,9 +81,12 @@ function isTextEntry(target: EventTarget | null): boolean {
   return target.tagName === "TEXTAREA" || target.tagName === "SELECT";
 }
 
-/** Whether a modal or an open menu is on top of the app. */
+/**
+ * Whether a modal or an open menu is on top of the app. One left open in a page kept
+ * hidden behind the current one does not count: it is not on screen.
+ */
 function dialogOrMenuOpen(): boolean {
-  return document.querySelector('[role="dialog"], dialog[open], [role="menu"]') !== null;
+  return queryShown('[role="dialog"], dialog[open], [role="menu"]') !== null;
 }
 
 export function usePlayerShortcuts(): void {

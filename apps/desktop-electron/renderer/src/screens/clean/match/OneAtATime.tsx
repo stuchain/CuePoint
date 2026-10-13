@@ -51,6 +51,7 @@ import {
 import { MATCH_KEYS, matchCommand, type MatchCommand } from "./matchKeyboard";
 import { StatusLine, type MatchStatus } from "./StatusLine";
 import { useCandidateMedia } from "./useCandidateMedia";
+import { queryShown } from "../../../components/shell/pageActive";
 
 interface OneAtATimeProps {
   /** The track under the cursor; null when the list is empty or still being read. */
@@ -293,7 +294,7 @@ export function OneAtATime({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       // A dialog of the page — the match window, a menu — owns the keys while it is open.
-      if (document.querySelector('[role="dialog"], dialog[open], [role="menu"]')) return;
+      if (queryShown('[role="dialog"], dialog[open], [role="menu"]')) return;
       const which = matchCommand(event, "one");
       if (!which) return;
       if (latest.current(which)) event.preventDefault();
