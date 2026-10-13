@@ -6,7 +6,7 @@
 
 .cp-fit-bar {
   display: inline-flex;
-  gap: calc(1px * var(--scale));
+  gap: calc(2px * var(--scale));
   vertical-align: middle;
 }
 
