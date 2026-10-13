@@ -5,6 +5,7 @@ import type {
   BeatportTokenTestResult,
 } from "../api/cuepointBridge.types";
 import { hasEngineBridge } from "../api/cuepointBridge.types";
+import { BEATPORT_TOKEN_STATUS, useReportReadError, useSharedRead } from "../api/sharedReads";
 
 /** What Settings shows when there is no desktop bridge, or main cannot answer. */
 const SIGNED_OUT: BeatportAuth = {
@@ -13,6 +14,11 @@ const SIGNED_OUT: BeatportAuth = {
   expires_at: null,
   secure_storage: true,
 };
+
+/** The status read, switched off where there is no engine to ask. */
+const NO_ENGINE_READ = { ...BEATPORT_TOKEN_STATUS, available: () => false };
+
+const NO_TOKEN: BeatportTokenStatus = { configured: false, masked: null };
 
 /** Whether the paste field is the way to a token: signed out, ended, or no sign-in available. */
 function canPasteIn(state: BeatportAuth["state"]): boolean {
@@ -25,10 +31,13 @@ function canPasteIn(state: BeatportAuth["state"]): boolean {
  */
 export function useBeatportToken() {
   const engineAvailable = hasEngineBridge();
-  const [status, setStatus] = useState<BeatportTokenStatus>({
-    configured: false,
-    masked: null,
-  });
+  // The status is read through the shared cache (C19d), under the key the first-run
+  // progress also reads: every sign-in, sign-out, paste and test here refreshes it, so
+  // the other screens showing it follow.
+  const statusRead = useSharedRead(engineAvailable ? BEATPORT_TOKEN_STATUS : NO_ENGINE_READ);
+  useReportReadError(statusRead.error);
+  const status: BeatportTokenStatus = statusRead.value ?? NO_TOKEN;
+  const refreshStatus = statusRead.refresh;
   // Null until main has answered (or there is no main to ask), so the page shows neither state
   // before it knows which one is true.
   const [auth, setAuth] = useState<BeatportAuth | null>(null);
@@ -38,10 +47,10 @@ export function useBeatportToken() {
   // One line saying why a sign-in, sign-out or paste did not work; null otherwise.
   const [authError, setAuthError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
-  const [loading, setLoading] = useState(false);
+  const loading = statusRead.loading || statusRead.refreshing;
   // Whether the status has been read once: until then the field is about to
   // be disabled for the read, and anything that focuses it would lose focus.
-  const [loaded, setLoaded] = useState(false);
+  const loaded = statusRead.value !== undefined || statusRead.error !== undefined;
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
@@ -51,25 +60,8 @@ export function useBeatportToken() {
   const [testReason, setTestReason] = useState<BeatportTokenTestResult["reason"] | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!window.cuepoint?.getBeatportTokenStatus) {
-      setStatus({ configured: false, masked: null });
-      return;
-    }
-    setLoading(true);
-    try {
-      const next = await window.cuepoint.getBeatportTokenStatus();
-      setStatus(next);
-    } finally {
-      setLoading(false);
-      setLoaded(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (engineAvailable) {
-      void refresh();
-    }
-  }, [engineAvailable, refresh]);
+    refreshStatus();
+  }, [refreshStatus]);
 
   // The sign-in state, read once and then followed: main announces every change, including a
   // renewal that happens while Settings is open. The token status follows each change.

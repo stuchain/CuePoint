@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useId, useState } from "react";
+import { useId } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { RekordboxExportHistory } from "../api/cuepointBridge.types";
+import { exportHistory, useReportReadError, useSharedRead } from "../api/sharedReads";
 import { Button, MoreAbout, Panel } from "../components";
 import { fileName } from "./library/libraryFormat";
 import { libraryImportState } from "./library/libraryLink";
@@ -11,7 +12,6 @@ import {
   keyFormatLabel,
   rememberedFolderLine,
 } from "./library/rekordboxExport";
-import { reportUnexpected } from "../reporting/reporting";
 import "./rekordbox-export-settings.css";
 import { userMessage } from "../api/userMessage";
 
@@ -36,31 +36,16 @@ export const SETTINGS_HISTORY_LIMIT = 10;
  * so someone who looked for it in Settings learns where it lives.
  */
 export function RekordboxExportSettingsPanel() {
-  const [history, setHistory] = useState<RekordboxExportHistory | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const read = window.cuepoint?.getRekordboxExportHistory;
-  const available = Boolean(read);
-
-  const load = useCallback(async () => {
-    const bridge = window.cuepoint?.getRekordboxExportHistory;
-    if (!bridge) return;
-    setLoading(true);
-    try {
-      setHistory(await bridge({ limit: SETTINGS_HISTORY_LIMIT }));
-      setError(null);
-    } catch (problem) {
-      reportUnexpected(problem);
-      setError(userMessage(problem, "Could not read the export history."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // The history is read through the shared cache (C19d): Settings shown again has
+  // it at once, and it is read again when an export finishes or the library changes.
+  const read = useSharedRead(exportHistory(SETTINGS_HISTORY_LIMIT));
+  useReportReadError(read.error);
+  const history: RekordboxExportHistory | null = read.value ?? null;
+  const error =
+    read.error !== undefined ? userMessage(read.error, "Could not read the export history.") : null;
+  const loading = read.loading;
+  const available = !read.unavailable;
+  const load = read.refresh;
 
   const navigate = useNavigate();
   const lineId = useId();
@@ -98,7 +83,7 @@ export function RekordboxExportSettingsPanel() {
         {error && (
           <div className="cp-export-settings__problem" role="alert">
             <span>{error}</span>
-            <Button variant="secondary" onClick={() => void load()}>
+            <Button variant="secondary" onClick={load}>
               Try again
             </Button>
           </div>

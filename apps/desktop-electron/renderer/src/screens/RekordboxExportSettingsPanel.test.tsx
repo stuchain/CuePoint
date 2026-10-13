@@ -7,10 +7,11 @@
  * start an export, which DEC-087 keeps where the scope is in view.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
+import { announceLibraryChange } from "../api/libraryChanges";
 import type { RekordboxExportHistory } from "../api/cuepointBridge.types";
 import fixture from "./library/rekordboxExport.fixture.json";
 import { libraryImportState, importOpening } from "./library/libraryLink";
@@ -147,5 +148,27 @@ describe("the Rekordbox export in Settings", () => {
     delete (window as unknown as { cuepoint?: unknown }).cuepoint;
     renderPanel();
     expect(screen.getByText(/Open CuePoint as a desktop app/)).toBeInTheDocument();
+  });
+});
+
+describe("revisiting Settings (C19d)", () => {
+  it("revisit shows the old value immediately and refetches after an announce", async () => {
+    read.mockResolvedValue(EMPTY);
+    const first = renderPanel();
+    expect(await screen.findByText("No exports yet.")).toBeInTheDocument();
+    first.unmount();
+    const before = read.mock.calls.length;
+
+    renderPanel();
+    // The first render: no "Reading past exports…", the history is already there.
+    expect(screen.queryByText("Reading past exports…")).toBeNull();
+    expect(screen.getByText("No exports yet.")).toBeInTheDocument();
+    await act(async () => {});
+    expect(read.mock.calls.length).toBe(before);
+
+    read.mockResolvedValue(HISTORY);
+    act(() => announceLibraryChange());
+    expect(await screen.findByRole("list")).toBeInTheDocument();
+    expect(read.mock.calls.length).toBe(before + 1);
   });
 });

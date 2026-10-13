@@ -4,10 +4,13 @@
  * sign-in is tested on its own.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { invalidateReads } from "../api/engineReads";
 import type { BeatportAuth } from "../api/cuepointBridge.types";
+import { BEATPORT_TOKEN_STATUS, useSharedRead } from "../api/sharedReads";
+import { useBeatportToken } from "../hooks/useBeatportToken";
 import { BeatportSettingsPanel } from "./BeatportSettingsPanel";
 
 const FIELD_ID = "settings-beatport-token";
@@ -367,5 +370,47 @@ describe("without the desktop app", () => {
     expect(screen.getByRole("button", { name: "Sign in to Beatport" })).toBeDisabled();
     // Said in plain view, not inside the collapsed paste region.
     expect(screen.getByText("Open CuePoint as a desktop app to sign in.")).toBeVisible();
+  });
+});
+
+function StatusProbe() {
+  const status = useSharedRead(BEATPORT_TOKEN_STATUS).value;
+  return <output data-testid="probe">{status ? `${status.configured}:${status.masked}` : "none"}</output>;
+}
+
+describe("revisiting Settings (C19d)", () => {
+  it("revisit shows the old value immediately and refetches after an announce", async () => {
+    install(SIGNED_OUT, {
+      getBeatportTokenStatus: vi.fn(async () => ({ configured: true, masked: "••••cfg1", source: "config" })),
+    });
+    const first = renderHook(() => useBeatportToken());
+    await waitFor(() => expect(first.result.current.status.masked).toBe("••••cfg1"));
+    first.unmount();
+    const before = bridge.getBeatportTokenStatus.mock.calls.length;
+
+    const again = renderHook(() => useBeatportToken());
+    // The first render: no loading, the saved token is already there.
+    expect(again.result.current.status.masked).toBe("••••cfg1");
+    expect(again.result.current.loading).toBe(false);
+    expect(again.result.current.loaded).toBe(true);
+    await waitFor(() => expect(again.result.current.auth).not.toBeNull());
+    expect(bridge.getBeatportTokenStatus.mock.calls.length).toBe(before);
+
+    bridge.getBeatportTokenStatus.mockResolvedValue({ configured: true, masked: "••••cfg2", source: "config" });
+    act(() => invalidateReads(["settings"]));
+    await waitFor(() => expect(again.result.current.status.masked).toBe("••••cfg2"));
+  });
+
+  it("leaves the new status on the shared key after a sign-in, for the other screens", async () => {
+    install(SIGNED_OUT);
+    render(
+      <>
+        <BeatportSettingsPanel fieldId={FIELD_ID} focusToken={null} />
+        <StatusProbe />
+      </>,
+    );
+    await waitFor(() => expect(screen.getByTestId("probe")).toHaveTextContent("false:null"));
+    await userEvent.click(await screen.findByRole("button", { name: "Sign in to Beatport" }));
+    await waitFor(() => expect(screen.getByTestId("probe")).toHaveTextContent("true:••••abcd"));
   });
 });

@@ -31,6 +31,7 @@ import type {
   RememberedRekordboxExport,
 } from "../../api/cuepointBridge.types";
 import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
+import { exportHistory, useSharedRead } from "../../api/sharedReads";
 import { Button, Modal, MoreAbout } from "../../components";
 import { Select } from "../../components/Select";
 import type { CollectionTreeNode } from "./collectionTree";
@@ -92,6 +93,9 @@ type Phase = "choosing" | "exporting" | "done";
 /** How long ticking waits before asking, so three quick ticks are one preview. */
 const PREVIEW_SETTLE_MS = 150;
 
+/** The history read, switched off while the dialog is closed or cannot export. */
+const NOT_OPEN = { ...exportHistory(1), available: () => false };
+
 interface Answer {
   /** The request this answers, so a late answer to an old one is recognized. */
   key: string;
@@ -123,7 +127,6 @@ export function RekordboxExportDialog({
 }: RekordboxExportDialogProps) {
   const [ticked, setTicked] = useState<ReadonlySet<number>>(() => new Set());
   const [keyFormat, setKeyFormat] = useState<RekordboxKeyFormat>(DEFAULT_EXPORT_KEY_FORMAT);
-  const [remembered, setRemembered] = useState<RememberedRekordboxExport | null>(null);
   /** False until the remembered notation is known, so the first preview uses it. */
   const [ready, setReady] = useState(false);
   const [answer, setAnswer] = useState<Answer | null>(null);
@@ -137,6 +140,8 @@ export function RekordboxExportDialog({
   const [jobId, setJobId] = useState<string | null>(null);
   const [result, setResult] = useState<RekordboxExportResult | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  /** The notation last taken from what the engine remembers; null until this opening has one. */
+  const seededFormat = useRef<RekordboxKeyFormat | null>(null);
   const alive = useRef(true);
   const following = useRef<FollowHandle[]>([]);
 
@@ -158,8 +163,8 @@ export function RekordboxExportDialog({
     if (!open) return;
     setTicked(new Set(initialKey ? initialKey.split(",").map(Number) : []));
     setKeyFormat(DEFAULT_EXPORT_KEY_FORMAT);
-    setRemembered(null);
     setReady(false);
+    seededFormat.current = null;
     setAnswer(null);
     setDestination(null);
     setStartRefusal(null);
@@ -167,29 +172,24 @@ export function RekordboxExportDialog({
     setJobId(null);
     setResult(null);
     setProblem(null);
-
-    const history = rekordboxExportBridge()?.getRekordboxExportHistory;
-    if (!history) {
-      setReady(true);
-      return;
-    }
-    let current = true;
-    history({ limit: 1 })
-      .then((payload) => {
-        if (!current) return;
-        setRemembered(payload.remembered);
-        setKeyFormat(payload.remembered.key_format);
-      })
-      .catch(() => {
-        // Remembering is a convenience: the dialog works from the default.
-      })
-      .finally(() => {
-        if (current) setReady(true);
-      });
-    return () => {
-      current = false;
-    };
   }, [open, initialKey]);
+
+  // What the engine remembers comes through the shared cache (C19d): an opening
+  // finds the last answer at once, and the notation follows a newer one until
+  // the person has chosen their own.
+  const historyRead = useSharedRead(open && bridge ? exportHistory(1) : NOT_OPEN);
+  const remembered: RememberedRekordboxExport | null = open ? (historyRead.value?.remembered ?? null) : null;
+  const historySettled = historyRead.unavailable || !historyRead.loading;
+  useEffect(() => {
+    if (!open || !historySettled) return;
+    // A failure is a convenience lost: the dialog works from the default.
+    const next = remembered?.key_format ?? DEFAULT_EXPORT_KEY_FORMAT;
+    if (seededFormat.current === null || keyFormat === seededFormat.current) {
+      setKeyFormat(next);
+      seededFormat.current = next;
+    }
+    setReady(true);
+  }, [open, historySettled, remembered, keyFormat]);
 
   const choice = useMemo(() => exportChoice(tree, ticked), [tree, ticked]);
   const covered = useMemo(() => coveredByFolder(tree, ticked), [tree, ticked]);

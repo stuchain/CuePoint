@@ -14,7 +14,7 @@
  * - **A busy library is waited for**, and the preview asked again when it ends.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type {
@@ -24,6 +24,7 @@ import type {
   RekordboxExportResult,
   RekordboxExportStartAnswer,
 } from "../../api/cuepointBridge.types";
+import { announceLibraryChange } from "../../api/libraryChanges";
 import { buildCollectionTree, type CollectionTreeNode } from "./collectionTree";
 import fixture from "./rekordboxExport.fixture.json";
 import { OPEN_IN_REKORDBOX } from "./rekordboxExport";
@@ -912,5 +913,32 @@ describe("without the desktop app", () => {
     ).toBeInTheDocument();
     expect(confirmButton()).toBeDisabled();
     expect(within(dialog()).getByRole("button", { name: "Choose…" })).toBeDisabled();
+  });
+});
+
+describe("opening it again (C19d)", () => {
+  it("revisit shows the old value immediately and refetches after an announce", async () => {
+    bridge.getRekordboxExportHistory.mockResolvedValue(HISTORY);
+    const closed = vi.fn();
+    const view = render(
+      <RekordboxExportDialog open initialIds={[7]} tree={TREE} onClose={closed} onRefreshFirst={vi.fn()} onImport={vi.fn()} onOpenMissingFiles={vi.fn()} />,
+    );
+    await previewed();
+    expect(within(dialog()).getByTestId("export-summary")).toHaveTextContent(/Keys written as Camelot \(8A\)\.$/);
+    view.unmount();
+    const before = bridge.getRekordboxExportHistory.mock.calls.length;
+
+    renderDialog({ initialIds: [7] });
+    await previewed();
+    // The remembered notation came from the kept answer: nothing was asked again.
+    expect(within(dialog()).getByTestId("export-summary")).toHaveTextContent(/Keys written as Camelot \(8A\)\.$/);
+    expect(bridge.getRekordboxExportHistory.mock.calls.length).toBe(before);
+
+    bridge.getRekordboxExportHistory.mockResolvedValue(HISTORY_EMPTY);
+    act(() => announceLibraryChange());
+    await waitFor(() => expect(bridge.getRekordboxExportHistory.mock.calls.length).toBe(before + 1));
+    await waitFor(() =>
+      expect(within(dialog()).getByTestId("export-summary")).not.toHaveTextContent(/Keys written/),
+    );
   });
 });
