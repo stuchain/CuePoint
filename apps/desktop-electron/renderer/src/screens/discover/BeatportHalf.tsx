@@ -409,7 +409,7 @@ export function BeatportHalf({
             loading={resolve.jobId !== null}
             onClick={() => void startResolve()}
           >
-            Look them up now
+            Look up
           </Button>
         )}
         {(half.state === "rate_limited" || half.state === "unavailable") && (

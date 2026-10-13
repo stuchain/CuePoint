@@ -130,7 +130,8 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await window.getByRole("tab", { name: "New search" }).click();
       await expect(window.getByRole("button", { name: "Start looking" })).toBeDisabled();
       await window.getByRole("tab", { name: "Wantlist" }).click();
-      await expect(window.getByText("Your wantlist is empty.")).toBeVisible();
+      await expect(window.getByText("Your wantlist is empty")).toBeVisible();
+      await expect(window.getByText("Add tracks from a search's results with Add to wantlist.")).toBeVisible();
 
       // The banner offers the sign-in itself; the paste fallback is still in Settings.
       await expect(window.getByRole("button", { name: "Sign in to Beatport" })).toBeVisible();

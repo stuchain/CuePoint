@@ -35,6 +35,7 @@ import {
   resolvePrompt,
   runFound,
   runOutcome,
+  runScopeLine,
   runStateLabel,
   runSummary,
   scopeLine,
@@ -339,6 +340,49 @@ describe("the sentences", () => {
     );
   });
 
+  it("sums a run's scope up in one short line, leaving empty parts out", () => {
+    const genres = [{ id: 5, name: "House" }] as unknown as typeof OPTIONS.genres;
+    const run = (params: Partial<typeof FINISHED.params>) => ({
+      ...FINISHED,
+      params: {
+        ...FINISHED.params,
+        genre_ids: [5],
+        releases_from: null,
+        releases_to: null,
+        new_releases_days: 30,
+        artists: { picked: null, count: 67, linked_ids: 0 },
+        labels: { picked: null, count: 28, linked_ids: 0 },
+        ...params,
+      },
+    });
+    expect(runScopeLine(run({}), genres)).toBe("House · last 30 days · 67 artists · 28 labels");
+    expect(
+      runScopeLine(
+        run({
+          genre_ids: [],
+          new_releases_days: null,
+          artists: { picked: ["A"], count: 1, linked_ids: 0 },
+          labels: { picked: [], count: 0, linked_ids: 0 },
+        }),
+        genres,
+      ),
+    ).toBe("1 artist");
+    expect(runScopeLine(run({ releases_from: "2026-01-01", releases_to: "2026-02-01" }), genres)).toBe(
+      "House · 2026-01-01 to 2026-02-01 · 67 artists · 28 labels",
+    );
+    expect(
+      runScopeLine(
+        run({
+          genre_ids: [],
+          new_releases_days: null,
+          artists: { picked: [], count: 0, linked_ids: 0 },
+          labels: { picked: [], count: 0, linked_ids: 0 },
+        }),
+        genres,
+      ),
+    ).toBe("What it looked for");
+  });
+
   it("says what a run looked for", () => {
     const genres = OPTIONS.genres;
     expect(chartsLine(FINISHED, genres)).toBe(
@@ -433,14 +477,11 @@ describe("the sentences", () => {
   });
 
   it("offers a lookup for the tracks the engine counted, in plain words (DSC-4)", () => {
-    expect(resolvePrompt(OPTIONS.resolve.to_read)).toBe(
-      "2 of your matched tracks still need their Beatport artist and label looked up. " +
-        "This makes artist pages and searches more accurate.",
-    );
-    expect(resolvePrompt(1)).toMatch(/^1 of your matched tracks still needs their Beatport/);
-    expect(lookingUpLine(2)).toBe("Looking up 2 tracks on Beatport…");
-    expect(lookingUpLine(1)).toBe("Looking up 1 track on Beatport…");
-    expect(lookingUpLine(0)).toBe("Looking up tracks on Beatport…");
+    expect(resolvePrompt(OPTIONS.resolve.to_read)).toBe("2 tracks need artist info");
+    expect(resolvePrompt(1)).toBe("1 track needs artist info");
+    expect(resolvePrompt(283)).toBe("283 tracks need artist info");
+    expect(lookingUpLine(283)).toBe("Looking up 283…");
+    expect(lookingUpLine(0)).toBe("Looking up tracks…");
     for (const words of [resolvePrompt(2), lookingUpLine(2)]) {
       expect(words).not.toMatch(/\bid\b|resolve|identit/i);
     }

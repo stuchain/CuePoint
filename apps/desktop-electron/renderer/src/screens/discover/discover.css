@@ -25,20 +25,6 @@
   gap: var(--space-lg);
 }
 
-.discover-screen__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm) var(--space-lg);
-  padding: var(--space-sm) var(--space-md);
-  border-bottom: var(--divider);
-}
-
-.discover-screen__header > .cp-tabs {
-  flex: 1;
-  min-width: min(100%, calc(240px * var(--scale)));
-}
-
 /* The body scrolls only when the window is too short for a part's header and
    its table's floor together; otherwise the table fills it and scrolls itself. */
 .discover-screen__body {
@@ -54,12 +40,14 @@
 
 .discover-banner {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm) var(--space-md);
-  padding: var(--space-sm) var(--space-md);
+  gap: var(--space-md);
+  min-height: 0;
+  max-height: calc(40px * var(--scale));
+  padding: var(--space-xs) var(--space-md);
   border-bottom: var(--divider);
   background: var(--bg-panel-alt);
+  overflow: hidden;
 }
 
 /* A token to fix is the one thing on the page a person has to act on before
@@ -68,12 +56,24 @@
   border-left: var(--border-width-heavy) solid var(--accent-warning);
 }
 
+.discover-banner > [role="alert"] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discover-banner > .cp-btn {
+  flex: none;
+  white-space: nowrap;
+}
+
 .discover-banner__text {
-  display: flex;
   flex: 1;
-  flex-direction: column;
-  gap: var(--space-xs);
-  min-width: min(100%, calc(240px * var(--scale)));
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: var(--font-size-xs);
 }
 
@@ -618,23 +618,6 @@
   flex: 1 1 0;
 }
 
-/* DSC-11: the card that points at the artist, label and Similar tracks pages. */
-.discover-hint {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm) var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  border-bottom: var(--divider);
-  background: var(--bg-panel-alt);
-}
-
-.discover-hint__text {
-  flex: 1;
-  margin: 0;
-  font-size: var(--font-size-sm);
-}
-
 /* An action and the few words beside it ("All 48 shown"). */
 .discover-table__action {
   display: inline-flex;
@@ -652,13 +635,6 @@
 .discover-new__more > summary {
   cursor: pointer;
   font-size: var(--font-size-sm);
-}
-
-/* DSC-12: what a running search is doing, under its outcome. */
-.discover-run__explainer {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--fg-muted);
 }
 
 /* A past search's row: the search, and the way to delete it on its own line
@@ -698,4 +674,21 @@
 
 .discover-screen__panel[hidden] {
   display: none;
+}
+
+/* An open search's scope: one summary line; the full wording opens beneath it. */
+.discover-run__scope > summary {
+  cursor: pointer;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.discover-run__scope[open] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.discover-wantlist:focus {
+  outline: none;
 }

@@ -513,8 +513,6 @@ test.describe("the website's pictures (SITE-04)", () => {
         const found = window.getByRole("table", { name: "Tracks this search found" });
         await expect(found.locator(".track-table__row").first()).toBeVisible();
         await idle(window);
-        const tip = window.getByRole("note", { name: "Also in Discover" });
-        if (await tip.count()) await tip.getByRole("button", { name: "Got it" }).click();
         // Beatport's rows have nothing to inspect: the panel away gives the search its width
         const hide = window.getByRole("button", { name: "Hide track details" });
         if (await hide.count()) await hide.click();

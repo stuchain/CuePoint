@@ -116,6 +116,25 @@ export function releasesLine(run: DiscoverRun): string {
   return "Releases";
 }
 
+/**
+ * One short line for an open search's header: "House · last 30 days · 67 artists · 28 labels".
+ * Parts that are empty are left out; the full wording is `chartsLine` and its siblings.
+ */
+export function runScopeLine(run: DiscoverRun, genres: readonly DiscoverGenre[]): string {
+  const { genre_ids: ids, new_releases_days: days, releases_from: from, releases_to: to } = run.params;
+  const count = (scope: DiscoverRunScope, one: string) => {
+    const n = scope.picked === null ? scope.count : scope.picked.length;
+    return n > 0 ? pluralize(n, one) : null;
+  };
+  const parts = [
+    ids.length > 0 ? genreNames(ids, genres).join(", ") : null,
+    from && to ? `${from} to ${to}` : days != null ? `last ${pluralize(days, "day")}` : null,
+    count(run.params.artists, "artist"),
+    count(run.params.labels, "label"),
+  ];
+  return parts.filter((part): part is string => part !== null).join(" · ") || "What it looked for";
+}
+
 /** What a search's end says, from the run it kept. */
 export function discoveryEnded(result: DiscoveryRunResult): string {
   const found = runFound(result);
@@ -235,15 +254,12 @@ export function refusalText(refusal: DiscoverRefusal): string {
 
 /** The lookup prompt's sentence, for `toRead` tracks (DSC-4). */
 export function resolvePrompt(toRead: number): string {
-  return (
-    `${formatCount(toRead)} of your matched ${toRead === 1 ? "tracks still needs" : "tracks still need"} ` +
-    "their Beatport artist and label looked up. This makes artist pages and searches more accurate."
-  );
+  return `${formatCount(toRead)} ${toRead === 1 ? "track needs" : "tracks need"} artist info`;
 }
 
 /** What the prompt says while the lookup works (DSC-12). */
 export function lookingUpLine(toRead: number): string {
   // The count was read before the lookup began; once it has caught up it is 0.
-  if (toRead <= 0) return "Looking up tracks on Beatport…";
-  return `Looking up ${pluralize(toRead, "track")} on Beatport…`;
+  if (toRead <= 0) return "Looking up tracks…";
+  return `Looking up ${formatCount(toRead)}…`;
 }

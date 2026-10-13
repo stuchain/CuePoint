@@ -10,7 +10,7 @@
  * not hide what the library has: it shows every wanted track (the filter is
  * Any) and marks the ones it now has.
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent } from "react";
 
 import type {
   DiscoverAnswer,
@@ -22,6 +22,7 @@ import type {
   WantlistSort,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { EmptyState } from "../../components/EmptyState";
 import { Select } from "../../components/Select";
 import type { TrackTableSort } from "../../components/table";
 import { formatCount, pluralize } from "../library/libraryFormat";
@@ -56,6 +57,9 @@ const OWNED_CHOICES = [
 
 const BOUGHT_CHOICES = OWNED_CHOICES;
 
+const EMPTY_HEADLINE = "Your wantlist is empty";
+const EMPTY_DESCRIPTION = "Add tracks from a search's results with Add to wantlist.";
+
 const idOf = (row: WantlistRow) => row.beatport_track_id;
 
 function isFilter(value: string): value is DiscoverOwnedFilter {
@@ -73,6 +77,10 @@ export function WantlistView({ tools }: WantlistViewProps) {
   const [noteFor, setNoteFor] = useState<WantlistRow | null>(null);
   const [working, setWorking] = useState(false);
   const { notify } = tools;
+  const sectionRef = useRef<HTMLElement>(null);
+  const focusInside = useRef(false);
+  const wasBare = useRef(false);
+  const seenPage = useRef(false);
 
   const windowKey = `${owned}|${bought}|${order.sort}|${order.dir}`;
   const fetchPage = useCallback(
@@ -213,6 +221,28 @@ export function WantlistView({ tools }: WantlistViewProps) {
   const page = list.page;
   const sort: TrackTableSort = { key: order.sort, direction: order.dir };
   const filtered = owned !== "all" || bought !== "all";
+  if (page != null) seenPage.current = true;
+  // Nothing wanted and nothing filtered: no bar, header or Columns over an empty list.
+  const bareEmpty =
+    !filtered && !list.loading && list.status !== "error" && page != null && page.entries === 0;
+
+  // The last row removed takes focus with it: land on the empty state, not on the page's top.
+  useEffect(() => {
+    if (bareEmpty && !wasBare.current && focusInside.current) {
+      sectionRef.current?.focus();
+    }
+    wasBare.current = bareEmpty;
+  }, [bareEmpty]);
+
+  const trackFocus = {
+    ref: sectionRef,
+    onFocus: () => {
+      focusInside.current = true;
+    },
+    onBlur: (event: FocusEvent<HTMLElement>) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) focusInside.current = false;
+    },
+  };
 
   const emptyState = (
     <div className="discover-empty">
@@ -228,10 +258,8 @@ export function WantlistView({ tools }: WantlistViewProps) {
         <p className="discover-note">Reading your wantlist…</p>
       ) : (page?.entries ?? 0) === 0 ? (
         <>
-          <p className="discover-empty__headline">Your wantlist is empty.</p>
-          <p className="discover-note">
-            Add tracks from Results or an artist page.
-          </p>
+          <p className="discover-empty__headline">{EMPTY_HEADLINE}</p>
+          <p className="discover-note">{EMPTY_DESCRIPTION}</p>
         </>
       ) : (
         <>
@@ -252,8 +280,25 @@ export function WantlistView({ tools }: WantlistViewProps) {
     </div>
   );
 
+  if (bareEmpty) {
+    return (
+      <section className="discover-wantlist" aria-label="Wantlist" tabIndex={-1} {...trackFocus}>
+        <EmptyState headline={EMPTY_HEADLINE} description={EMPTY_DESCRIPTION} />
+      </section>
+    );
+  }
+
+  // Before the first page ever arrives there is nothing to filter or sort: just say it is reading.
+  if (!seenPage.current && page == null && list.status !== "error") {
+    return (
+      <section className="discover-wantlist" aria-label="Wantlist" {...trackFocus}>
+        <p className="discover-note">Reading your wantlist…</p>
+      </section>
+    );
+  }
+
   return (
-    <section className="discover-wantlist" aria-label="Wantlist">
+    <section className="discover-wantlist" aria-label="Wantlist" {...trackFocus}>
       <div className="discover-toolbar" role="toolbar" aria-label="Wantlist filters">
         <Select
           label="In your library"

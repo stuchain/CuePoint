@@ -15,8 +15,7 @@ reopens on the tab you used last. From any artist or label name in a table you
 can open that [artist's or label's page](#artist-and-label-pages), and from a
 track's details in the Library you can open its
 [Similar tracks](#similar-tracks). Both are part of Discover, so the sidebar
-keeps **Discover** highlighted while you are on them. The first time you open
-Discover a card says where they are; choose **Got it** and it stays away.
+keeps **Discover** highlighted while you are on them.
 
 Discover replaces **inCrate**, which used to sit under **Tools** in the sidebar.
 See [Where inCrate went](#where-incrate-went) if you used it.
@@ -51,9 +50,11 @@ of" its date, with how it ended, what it looked for and how many tracks it found
 Choose a search to open it beside the list; when the page is narrow, the list
 sits above it instead. With no search yet it says so and offers **New search**.
 
-An open search says what it looked for and how it ended, including why, if
-Beatport stopped it. While it works, the page says so in words and that it can
-take a few minutes; the tracks it has found appear as they arrive. It lists what
+An open search shows how it ended, including why, if Beatport stopped it, and
+one line saying what it looked for (for example "House · last 30 days · 67
+artists · 28 labels"); open that line for the full wording and the artist and
+label names. While it works, the tracks it has found appear as they arrive and
+the status bar at the bottom shows how far it has got. It lists what
 it found: title and mix, artists, label, release date, BPM, key, genre, **Why
 it's here** (the chart or release the track was found in), whether it is
 **In your library**, and whether it is on your wantlist.
@@ -98,7 +99,7 @@ library: No**. Marking a track bought is your own note; it reads as in your
 library once you import the file and Clean matches it. One line counts the
 wanted tracks, how many are marked bought and how many are in your library.
 
-An empty wantlist says how to fill it: add tracks from Results or an artist page.
+An empty wantlist shows only a short note on how to fill it (use **Add to wantlist** on a search's results); its filters and table appear once it holds a track.
 
 ## What you can do with Beatport tracks
 
@@ -222,8 +223,8 @@ this by itself** when a match finishes, as long as you are signed in, and the st
 strip shows it as **Linking tracks to Beatport**. When you are not signed in it does nothing.
 
 If some tracks are still waiting, for example because you added the token later,
-the page says how many and offers **Look them up now**. While it works, the page
-says what it is doing and that you can leave it.
+the page says how many and offers **Look up**. While it works, the status bar
+shows the progress and you can leave the page.
 
 ## Artist and label pages
 
@@ -300,7 +301,7 @@ When there is nothing to list, the half says why:
 
 | It says | Means | What to do |
 | --- | --- | --- |
-| **Not linked to Beatport yet** | CuePoint does not know which Beatport artist this is. It never searches Beatport for an artist by name, because the wrong artist of the same name is worse than none | **Look them up now**, when some of the artist's tracks are matched on Beatport |
+| **Not linked to Beatport yet** | CuePoint does not know which Beatport artist this is. It never searches Beatport for an artist by name, because the wrong artist of the same name is worse than none | **Look up**, when some of the artist's tracks are matched on Beatport |
 | **Several Beatport artists share this name** | Your tracks by this name are matched to different Beatport artists | Choose the one you mean |
 | **No match** | Beatport has no label by this name | None |
 | **Sign in to Beatport to search its charts and releases.**, and the other token states | As at the top of Discover (see [Signing in to Beatport](#signing-in-to-beatport)) | **Sign in to Beatport**, **Sign in again**, or **Try again** |

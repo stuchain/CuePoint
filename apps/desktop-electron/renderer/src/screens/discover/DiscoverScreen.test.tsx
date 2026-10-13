@@ -34,7 +34,6 @@ import { ScaleProvider } from "../../tokens/ScaleContext";
 import { DiscoverScreen } from "./DiscoverScreen";
 import fixture from "./discoverPage.fixture.json";
 import { DISCOVER_SECTION_STORAGE_KEY } from "./discoverSections";
-import { HINT_CARD_STORAGE_KEY } from "./DiscoverHintCard";
 import { IN_LIBRARY_EXPLAINER } from "./HideOwnedSwitch";
 import { HIDE_OWNED_STORAGE_KEY } from "./useHideOwned";
 import { foundLine } from "./discoverFormat";
@@ -325,33 +324,6 @@ describe("the page", () => {
   });
 });
 
-describe("the card that points to the other pages (DSC-11)", () => {
-  it("names the artist and label links and Similar tracks in Track details, not a right-click", async () => {
-    renderDiscover();
-    const card = await screen.findByRole("note", { name: "Also in Discover" });
-    expect(card).toHaveTextContent("artist");
-    expect(card).toHaveTextContent("label");
-    expect(card).toHaveTextContent("Similar tracks");
-    expect(card).toHaveTextContent("Track details");
-    expect(card).not.toHaveTextContent(/right-click/i);
-  });
-
-  it("is shown once: dismissed, it stays away", async () => {
-    const first = renderDiscover();
-    fireEvent.click(
-      within(await screen.findByRole("note", { name: "Also in Discover" })).getByRole("button", {
-        name: "Got it",
-      }),
-    );
-    expect(screen.queryByRole("note", { name: "Also in Discover" })).toBeNull();
-    expect(localStorage.getItem(HINT_CARD_STORAGE_KEY)).toBe("1");
-    first.unmount();
-    renderDiscover();
-    await screen.findAllByRole("tab");
-    expect(screen.queryByRole("note", { name: "Also in Discover" })).toBeNull();
-  });
-});
-
 describe("Beatport's state", () => {
   it.each([
     ["options_no_token", "Sign in to Beatport to search its charts and releases.", "Sign in to Beatport"],
@@ -363,7 +335,13 @@ describe("Beatport's state", () => {
     install({ getDiscoverOptions: vi.fn(async () => asAnswer(fixture[state])) });
     renderDiscover();
     const notice = (await screen.findByText(headline)).closest(".discover-banner") as HTMLElement;
-    expect(within(notice).getByRole("button", { name: action })).toBeInTheDocument();
+    const button = within(notice).getByRole("button", { name: action });
+    expect(button).toBeInTheDocument();
+    // One line: the longer hint is the button's tooltip, never drawn as text.
+    expect(notice.querySelectorAll(".discover-banner__text > *")).toHaveLength(1);
+    if (state === "options_rate_limited") expect(button).toHaveAttribute("title", expect.stringMatching(/^Wait /));
+    else if (state === "options_unavailable") expect(button).toHaveAttribute("title", "Beatport answered 503.");
+    else expect(button).not.toHaveAttribute("title");
     // Past searches still open without Beatport.
     expect(await screen.findByRole("navigation", { name: "Past searches" })).toBeInTheDocument();
   });
@@ -472,11 +450,10 @@ describe("the lookup prompt (DSC-4)", () => {
   it("says how many matched tracks still need looking up, and starts the lookup", async () => {
     renderDiscover();
     const prompt = await screen.findByRole("status", { name: "Beatport lookup" });
-    expect(prompt).toHaveTextContent(
-      "2 of your matched tracks still need their Beatport artist and label looked up. This makes artist pages and searches more accurate.",
-    );
+    expect(prompt).toHaveTextContent("2 tracks need artist info");
+    expect(prompt).not.toHaveTextContent("more accurate");
     install({ ...bridge, getDiscoverOptions: vi.fn(async () => asAnswer(fixture.options_resolved)) });
-    fireEvent.click(within(prompt).getByRole("button", { name: "Look them up now" }));
+    fireEvent.click(within(prompt).getByRole("button", { name: "Look up" }));
     await waitFor(() => expect(bridge.startBeatportResolve).toHaveBeenCalledTimes(1));
     expect(await screen.findByText("Looked up 2 tracks on Beatport.")).toBeInTheDocument();
     // Options read again: nothing left to look up, so no prompt.
@@ -487,14 +464,14 @@ describe("the lookup prompt (DSC-4)", () => {
     install({ getJob: vi.fn(async (id: string) => ({ id, state: "running" })) });
     renderDiscover();
     const prompt = await screen.findByRole("status", { name: "Beatport lookup" });
-    fireEvent.click(within(prompt).getByRole("button", { name: "Look them up now" }));
+    fireEvent.click(within(prompt).getByRole("button", { name: "Look up" }));
     await waitFor(() => expect(bridge.startBeatportResolve).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(screen.getByRole("status", { name: "Beatport lookup" })).toHaveTextContent(
-        "Looking up 2 tracks on Beatport…",
+        "Looking up 2…",
       ),
     );
-    expect(screen.getByRole("status", { name: "Beatport lookup" })).toHaveTextContent(
+    expect(screen.getByRole("status", { name: "Beatport lookup" })).not.toHaveTextContent(
       jobExplainer("beatport_resolve"),
     );
   });
@@ -512,7 +489,7 @@ describe("the lookup prompt (DSC-4)", () => {
     renderDiscover();
     const prompt = await screen.findByRole("status", { name: "Beatport lookup" });
     // Nothing left to count, yet it is working: never "Looking up 0 tracks".
-    expect(prompt).toHaveTextContent("Looking up tracks on Beatport…");
+    expect(prompt).toHaveTextContent("Looking up tracks…");
     expect(prompt).not.toHaveTextContent("0 tracks");
     expect(bridge.startBeatportResolve).not.toHaveBeenCalled();
     const reads = bridge.getDiscoverOptions!.mock.calls.length;
@@ -597,7 +574,10 @@ describe("Results", () => {
   it("says what it looked for, under a line of that name", async () => {
     renderDiscover();
     await openRun(1);
-    const looked = await screen.findByRole("list", { name: "What it looked for" });
+    const looked = await screen.findByRole("list", { name: "What it looked for", hidden: true });
+    const scope = looked.closest("details") as HTMLDetailsElement;
+    expect(scope).not.toHaveAttribute("open");
+    expect(scope.querySelector("summary")).toHaveTextContent(/House, Techno.*artists.*labels/);
     expect(screen.getByText("What it looked for")).toBeInTheDocument();
     expect(looked).toHaveTextContent("in House, Techno (Peak Time / Driving)");
     expect(looked).toHaveTextContent("Artists: every artist in your library (3)");
@@ -1033,7 +1013,7 @@ describe("Results", () => {
     expect(button).toHaveAttribute("title", "A running search cannot be deleted.");
   });
 
-  it("explains a running search on the page, in the strip's own words (DSC-12)", async () => {
+  it("leaves the running explainer to the status strip (K17)", async () => {
     const running = { ...RUNS.runs[1]!, running: true, outcome: null };
     install({
       listDiscoveryRuns: vi.fn(async () => value({ ...RUNS, runs: [running], total: 1 })),
@@ -1041,9 +1021,8 @@ describe("Results", () => {
     });
     renderDiscover();
     expect(await screen.findByText(/Running: 7 tracks from 3 charts/)).toBeInTheDocument();
-    const note = screen.getByText(jobExplainer("discovery"), { exact: false });
-    expect(note).toHaveTextContent("This can take a few minutes");
-    expect(note).toHaveTextContent("the bar at the bottom shows how far it has got");
+    expect(screen.queryByText(jobExplainer("discovery"), { exact: false })).toBeNull();
+    expect(screen.queryByText(/This can take a few minutes/)).toBeNull();
   });
 
   it("goes back to the list when a search is gone", async () => {
@@ -1270,8 +1249,14 @@ describe("the wantlist", () => {
   it("says the wantlist is empty, and how to fill it", async () => {
     install({ getWantlist: vi.fn(async () => asAnswer(fixture.wantlist_empty)) });
     renderDiscover();
-    expect(await screen.findByText("Your wantlist is empty.")).toBeInTheDocument();
-    expect(screen.getByText("Add tracks from Results or an artist page.")).toBeInTheDocument();
+    expect(await screen.findByText("Your wantlist is empty")).toBeInTheDocument();
+    expect(
+      screen.getByText("Add tracks from a search's results with Add to wantlist."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("toolbar")).toBeNull();
+    expect(screen.queryByRole("columnheader")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Columns" })).toBeNull();
+    expect(screen.queryByLabelText("In your library")).toBeNull();
     expect(screen.queryByText(/Select tracks in a run/)).toBeNull();
   });
 

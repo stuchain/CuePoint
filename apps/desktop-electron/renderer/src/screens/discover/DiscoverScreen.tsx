@@ -32,10 +32,10 @@ import type {
 import { Button } from "../../components/Button";
 import { Panel } from "../../components/Panel";
 import { Tabs } from "../../components/Tabs";
-import { jobExplainer, useActiveJob } from "../../components/shell/useActiveJob";
+import { ScreenHeader } from "../../components/shell/ScreenHeader";
+import { useActiveJob } from "../../components/shell/useActiveJob";
 import { useToast } from "../../components/Toast";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
-import { DiscoverHintCard } from "./DiscoverHintCard";
 import { NewRunPanel } from "./NewRunPanel";
 import { RunsView } from "./RunsView";
 import { WantlistView } from "./WantlistView";
@@ -274,9 +274,7 @@ export function DiscoverScreen() {
   if (!tools) {
     return (
       <div className="screen screen--stack screen--scroll discover-screen--waiting">
-        <header>
-          <h1 className="screen__title">Discover</h1>
-        </header>
+        <ScreenHeader title="Discover" />
         {optionsError ? (
           <Panel title="Discover could not open">
             <p className="discover-note">{optionsError}</p>
@@ -298,25 +296,30 @@ export function DiscoverScreen() {
 
   return (
     <div className="screen discover-screen">
-      <header className="discover-screen__header">
-        <h1 className="screen__title">Discover</h1>
-        <Tabs
-          tabs={DISCOVER_SECTIONS.map((entry) => ({ id: entry.id, label: entry.label }))}
-          activeId={section}
-          onChange={choose}
-        />
-      </header>
+      <ScreenHeader
+        title="Discover"
+        tabs={
+          <Tabs
+            tabs={DISCOVER_SECTIONS.map((entry) => ({ id: entry.id, label: entry.label }))}
+            activeId={section}
+            onChange={choose}
+          />
+        }
+      />
 
       {notice && (
         <div className="discover-banner discover-banner--warning" role="status">
           <div className="discover-banner__text">
             <strong>{notice.headline}</strong>
-            {notice.hint ? <span>{notice.hint}</span> : null}
           </div>
           {notice.action === "signin" ? (
-            <BeatportSignInButton label={notice.actionLabel} onDone={reloadOptions} />
+            <BeatportSignInButton
+              label={notice.actionLabel}
+              title={notice.hint || undefined}
+              onDone={reloadOptions}
+            />
           ) : (
-            <Button variant="secondary" onClick={reloadOptions}>
+            <Button variant="secondary" title={notice.hint || undefined} onClick={reloadOptions}>
               {notice.actionLabel}
             </Button>
           )}
@@ -326,17 +329,10 @@ export function DiscoverScreen() {
       {(toRead > 0 || looking) && beatportUsable(state) && (
         <div className="discover-banner" role="status" aria-label="Beatport lookup">
           <div className="discover-banner__text">
-            {looking ? (
-              <>
-                <strong>{lookingUpLine(toRead)}</strong>
-                <span>{jobExplainer("beatport_resolve")}</span>
-              </>
-            ) : (
-              <span>{resolvePrompt(toRead)}</span>
-            )}
+            {looking ? <strong>{lookingUpLine(toRead)}</strong> : <span>{resolvePrompt(toRead)}</span>}
           </div>
           <Button variant="secondary" loading={looking} onClick={() => void startResolve()}>
-            Look them up now
+            Look up
           </Button>
         </div>
       )}
@@ -367,8 +363,6 @@ export function DiscoverScreen() {
           </Button>
         </div>
       )}
-
-      <DiscoverHintCard />
 
       <div className="discover-screen__body">
         {newSearchSeen && (

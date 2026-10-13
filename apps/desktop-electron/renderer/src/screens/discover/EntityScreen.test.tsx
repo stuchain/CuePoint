@@ -381,7 +381,7 @@ describe("the Beatport half, in every state", () => {
     ["half_forbidden", "Beatport refused this token.", "Sign in again"],
     ["half_rate_limited", "Beatport is limiting requests", "Try again"],
     ["half_unavailable", "Beatport cannot be reached", "Try again"],
-    ["half_not_resolved_resolvable", "Not linked to Beatport yet", "Look them up now"],
+    ["half_not_resolved_resolvable", "Not linked to Beatport yet", "Look up"],
     ["half_not_resolved", "Not linked to Beatport yet", null],
     ["half_not_on_beatport", "No match", null],
   ];
@@ -446,7 +446,7 @@ describe("the Beatport half, in every state", () => {
   it("starts the lookup for a name it could link, and reads the page again after", async () => {
     mock("getEntityBeatport").mockResolvedValue(pages.half_not_resolved_resolvable);
     renderAt(entityPath("artist", "name:Kiko"));
-    fireEvent.click(await screen.findByRole("button", { name: "Look them up now" }, LOADED));
+    fireEvent.click(await screen.findByRole("button", { name: "Look up" }, LOADED));
     await waitFor(() => expect(mock("startBeatportResolve")).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mock("getEntityPage")).toHaveBeenCalledTimes(2), LOADED);
   });

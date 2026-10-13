@@ -7711,3 +7711,27 @@ never shown at all. The recovery button said "Restart library service".
   Amends DEC-028's recovery UI and DEC-155's "library service" wording.
 
 **Decided with**: User (R3-1, wish list round 2, "dim the page" ★) · **Date**: 2026-10-13
+
+
+
+## DEC-275 — Discover Says Each Thing Once
+
+**Status**: Approved · **Related**: K6, K17, DSC-11, DEC-209, G6 T4
+
+**Context**: Every Discover tab opened with two banners (about 125 px), one of them a tip card; Results repeated the
+search's details in a six-line block; an empty Wantlist drew a toolbar, a column header and Columns over nothing.
+
+**Decision**:
+- The artist-info lookup banner is one line: "283 tracks need artist info · Look up" ("Looking up 283…" while it
+  runs; Activity shows the progress). The artist and label pages say **Look up** too. Running it automatically after
+  matches stays manual (round 2 answer 24).
+- The "Also in Discover" tip card is removed (amends DSC-11): the names are already drawn as links.
+- The sign-in or refusal banner is one line, its headline and its button; the hint is the button's tooltip.
+  Banners are one row, at most 40 px, and ellipsize.
+- Results shows the search's title, state and outcome, then one closed summary line ("House · last 30 days ·
+  67 artists · 28 labels") that opens to what it looked for.
+- An empty Wantlist with no filter on shows only "Your wantlist is empty" and how to add to it. This is the one
+  exception to DEC-209's always-shown buttons: with nothing in the list there is nothing for them to act on.
+- Discover uses the shared page header (ScreenHeader) with its tabs.
+
+**Decided with**: User (K6, K17, "apply ALL") · **Date**: 2026-10-13

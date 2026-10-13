@@ -32,6 +32,7 @@ import {
   foundLine,
   refusalText,
   releasesLine,
+  runScopeLine,
   runOutcome,
   runStateLabel,
   runStateTone,
@@ -46,7 +47,6 @@ import { beatportRowKey } from "./beatportKey";
 import { HideOwnedSwitch } from "./HideOwnedSwitch";
 import { useHideOwned } from "./useHideOwned";
 import { beatportSelectedId, useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
-import { jobExplainer } from "../../components/shell/useActiveJob";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
 
@@ -288,21 +288,18 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
               <Badge variant={BADGE[runStateTone(run)]}>{runStateLabel(run)}</Badge>
             </div>
             <p className="discover-run__outcome">{runOutcome(run)}</p>
-            {run.running && (
-              <p className="discover-run__explainer">
-                {jobExplainer("discovery")} This can take a few minutes, and the bar at the bottom
-                shows how far it has got.
-              </p>
-            )}
-            <p className="discover-run__looked-title">What it looked for</p>
-            <ul className="discover-run__looked" aria-label="What it looked for">
-              <li>{chartsLine(run, tools.options.genres)}</li>
-              <li>{releasesLine(run)}</li>
-              <li>Artists: {scopeLine(run.params.artists, "artist", "artists")}</li>
-              <li>Labels: {scopeLine(run.params.labels, "label", "labels")}</li>
-            </ul>
-            <ScopeNames names={header.artists} noun="artist" />
-            <ScopeNames names={header.labels} noun="label" />
+            <details className="discover-run__scope">
+              <summary>{runScopeLine(run, tools.options.genres)}</summary>
+              <p className="discover-run__looked-title">What it looked for</p>
+              <ul className="discover-run__looked" aria-label="What it looked for">
+                <li>{chartsLine(run, tools.options.genres)}</li>
+                <li>{releasesLine(run)}</li>
+                <li>Artists: {scopeLine(run.params.artists, "artist", "artists")}</li>
+                <li>Labels: {scopeLine(run.params.labels, "label", "labels")}</li>
+              </ul>
+              <ScopeNames names={header.artists} noun="artist" />
+              <ScopeNames names={header.labels} noun="label" />
+            </details>
           </>
         )}
       </header>
