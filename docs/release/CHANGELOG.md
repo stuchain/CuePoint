@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Discover's banner says **Sign in to Beatport** (or **Sign in again**, also when Beatport refused the token) with the button beside it, where it said Open Settings. Settings → Beatport lost its "How do I get a token?" help.
 - The Camelot wheel (header and Keys page) is drawn as smooth wedges with even gaps.
+- **The key wheel's labels have room.** Key names sit clear of the wedge edges, with the track count a little smaller beneath them.
 - **Space plays and pauses after a click.** Space now plays or pauses unless you are typing, a dialog or menu is open, or you Tabbed to the control. Clicking Next and then pressing Space pauses instead of skipping again, and Space works after clicking the waveform. The player bar and the queue can no longer be drag-selected.
 - The player bar's waveform sits centred between the controls on either side of it.
 - **Quieter look.** A selected row now shows a lighter fill with a thin accent bar on its left, in every list, instead of a heavy frame; the frame only appears while you move with the keyboard. Buttons, menus, dialogs and the search box lose their bevels and black drop shadows: buttons keep the pixel font at one height with a thin border, and tabs are underlined instead of boxed. The player bar keeps its look (DEC-241).

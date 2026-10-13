@@ -17,7 +17,9 @@ import { cleanMatchOpening } from "../../screens/clean/cleanLink";
 import { setSelectedTrack } from "../shell/selectedTrack";
 import { EMPTY_AUDIO_STATE } from "../player/playerFormat";
 import { resetPlayerStore } from "../player/playerStore";
+import { declarations, parseRules, stripComments } from "../../test/cssRules";
 import { CamelotWheel } from "./CamelotWheel";
+import wheelCss from "./CamelotWheel.css?raw";
 import { WheelButton } from "./WheelButton";
 import { closeWheel, openWheel } from "./wheelStore";
 
@@ -449,6 +451,28 @@ describe("the wheel in counts mode (PAGES-16)", () => {
     expect(label("1A")).toHaveTextContent("1A0");
     // Short enough for a wedge; the list beside it writes the whole number.
     expect(label("11B")).toHaveTextContent("11B1.2k");
+  });
+
+  it("sets the count smaller than the key name (C21)", () => {
+    const size = (selector: string) => {
+      const rule = parseRules(stripComments(wheelCss)).find((r) => r.selector === selector)!;
+      return declarations(rule.body).find(([name]) => name === "font-size")![1];
+    };
+    // "round(<mode>, calc(var(--font-size-xs) * a / b), 1px)" at font-xs = 10px * scale.
+    const pixels = (selector: string, scale: number) => {
+      const match = /^round\((nearest|down), calc\(var\(--font-size-xs\) \* (\d+) \/ (\d+)\), 1px\)$/.exec(
+        size(selector),
+      )!;
+      expect(match).not.toBeNull();
+      const value = (10 * scale * Number(match[2])) / Number(match[3]);
+      return match[1] === "down" ? Math.floor(value) : Math.round(value);
+    };
+    const scales = [1, 1.25, 1.5, 2, 3];
+    const labels = scales.map((scale) => pixels(".cp-wheel__label", scale));
+    const countSizes = scales.map((scale) => pixels(".cp-wheel__count", scale));
+    expect(labels).toEqual([9, 12, 14, 19, 28]);
+    expect(countSizes).toEqual([8, 10, 13, 17, 26]);
+    labels.forEach((label, index) => expect(countSizes[index]).toBeLessThan(label));
   });
 
   it("is darker where there are more, by level on the shape", () => {

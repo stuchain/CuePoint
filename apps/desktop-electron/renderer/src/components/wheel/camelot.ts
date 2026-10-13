@@ -13,11 +13,13 @@ export const GRID_CELLS = 48;
 const CENTER = GRID_CELLS / 2;
 /** Each ring's inner and outer radius, in units from the center: A (minor keys) inside, B outside. */
 export const RING_RADII: Readonly<Record<Ring, readonly [inner: number, outer: number]>> = {
-  A: [7, 15.5],
-  B: [16.5, 23.5],
+  A: [6.6, 16],
+  B: [16.6, 23.8],
 };
+/** Where a ring's label sits across the ring: 0 at the inner arc, 1 at the outer (C21). */
+export const LABEL_AT: Readonly<Record<Ring, number>> = { A: 0.62, B: 0.5 };
 /** The straight gap between two neighbouring wedges, in units (as wide everywhere). */
-export const WEDGE_GAP = 1;
+export const WEDGE_GAP = 0.6;
 /** An arc is drawn as one SVG arc, and cut for clicks as chords this many degrees apart. */
 export const ARC_STEP_DEGREES = 2;
 
@@ -211,7 +213,7 @@ export function segmentShape(code: string): SegmentShape {
   const sector = sectorOf(place);
   const points = sectorOutline(sector);
   const radians = radiansOf(place.number * 30);
-  const radius = (sector.inner + sector.outer) / 2;
+  const radius = sector.inner + (sector.outer - sector.inner) * LABEL_AT[place.letter];
   return {
     sector,
     points,

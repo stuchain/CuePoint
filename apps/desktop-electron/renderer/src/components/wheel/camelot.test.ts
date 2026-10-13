@@ -8,6 +8,9 @@ import {
   CAMELOT_CODES,
   COUNT_LEVEL_MIX,
   GRID_CELLS,
+  LABEL_AT,
+  RING_RADII,
+  WEDGE_GAP,
   ARC_STEP_DEGREES,
   compactCount,
   countLevel,
@@ -212,7 +215,7 @@ describe("the shapes", () => {
     expect(holders).toEqual([code]);
   });
 
-  it.each(CAMELOT_CODES)("%s keeps the gap straight: its edge ends sit 0.5 from the radial line", (code) => {
+  it.each(CAMELOT_CODES)("%s keeps the gap straight: its edge ends sit WEDGE_GAP / 2 from the radial line", (code) => {
     const { sector, points, path } = segmentShape(code);
     // Distance from the radial line at `degrees` to a point, in units.
     const away = (degrees: number, [x, y]: readonly [number, number]) => {
@@ -230,15 +233,34 @@ describe("the shapes", () => {
       [sector.end, points[half]!],
       [sector.start, points[last]!],
     ];
-    for (const [degrees, point] of ends) expect(Math.abs(away(degrees, point) - 0.5)).toBeLessThan(1e-3);
+    const halfGap = WEDGE_GAP / 2;
+    for (const [degrees, point] of ends) expect(Math.abs(away(degrees, point) - halfGap)).toBeLessThan(1e-3);
     // The path's M and L corners are the same four points.
     const corners = [...path.matchAll(/[ML]([\d.]+) ([\d.]+)/g)].map(
       (match) => [Number(match[1]), Number(match[2])] as [number, number],
     );
     expect(corners).toHaveLength(2);
-    expect(Math.abs(away(sector.start, corners[0]!) - 0.5)).toBeLessThan(1e-3);
-    expect(Math.abs(away(sector.end, corners[1]!) - 0.5)).toBeLessThan(1e-3);
-    expect(edgeInset(sector.inner, 1)).toBeGreaterThan(edgeInset(sector.outer, 1));
+    expect(Math.abs(away(sector.start, corners[0]!) - halfGap)).toBeLessThan(1e-3);
+    expect(Math.abs(away(sector.end, corners[1]!) - halfGap)).toBeLessThan(1e-3);
+    expect(edgeInset(sector.inner, WEDGE_GAP)).toBeGreaterThan(edgeInset(sector.outer, WEDGE_GAP));
+  });
+
+  it("has the decided radii, gap and label places (C21)", () => {
+    expect(RING_RADII.A).toEqual([6.6, 16]);
+    expect(RING_RADII.B).toEqual([16.6, 23.8]);
+    expect(WEDGE_GAP).toBe(0.6);
+    expect(LABEL_AT).toEqual({ A: 0.62, B: 0.5 });
+  });
+
+  it("puts an A label at 62% of its ring and a B label at 50%", () => {
+    const fraction = (code: string) => {
+      const { sector, label } = segmentShape(code);
+      const radius = Math.hypot(((label.x - 50) / 100) * GRID_CELLS, ((label.y - 50) / 100) * GRID_CELLS);
+      return (radius - sector.inner) / (sector.outer - sector.inner);
+    };
+    for (const code of CAMELOT_CODES) {
+      expect(fraction(code)).toBeCloseTo(code.endsWith("A") ? 0.62 : 0.5, 2);
+    }
   });
 });
 

@@ -60,11 +60,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  line-height: 1;
 }
 
 .keys-page__wheel .cp-wheel__center small {
   color: var(--fg-muted);
-  font-size: var(--font-size-xs);
+  font-size: round(down, calc(var(--font-size-xs) * 13 / 15), 1px);
 }
 
 /* The three actions are one row at the default size; the buttons take the one control
