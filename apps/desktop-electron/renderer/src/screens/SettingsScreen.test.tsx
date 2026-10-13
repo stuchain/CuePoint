@@ -245,9 +245,9 @@ describe("the Beatport test result", () => {
 });
 
 describe("Motion and About & updates", () => {
-  it("holds the ten motion switches", () => {
+  it("holds the On, Off and Custom choice", () => {
     renderSettings();
-    expect(within(region("Motion")).getAllByRole("checkbox")).toHaveLength(10);
+    expect(within(region("Motion")).getAllByRole("radio")).toHaveLength(3);
   });
 
   it("shows the version, opens Getting started, and keeps a slot for updates", async () => {

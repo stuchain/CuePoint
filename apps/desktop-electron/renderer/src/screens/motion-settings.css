@@ -25,6 +25,27 @@
   gap: var(--space-md);
 }
 
+.motion-settings__modes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.motion-settings__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* The display above would otherwise beat the hidden attribute. */
+.motion-settings__list[hidden] {
+  display: none;
+}
+
 .motion-settings__group {
   display: flex;
   flex-direction: column;

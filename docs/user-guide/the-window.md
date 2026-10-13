@@ -271,18 +271,22 @@ walkthrough again.
 
 ## Motion
 
-**Settings → Motion** has a switch for each of ten kinds of movement, in three
-groups. **When you act**: **Button presses**, **Things you drag and drop** and
-**Hover and keyboard focus**. **When things change**: **Changing state**,
-**Opening and closing panels and dialogs**, **Changing page**, **Moving between
-views** and **Alerts and confirmations**. **While you wait or scroll**:
-**Loading** and **Scrolling**. Each switch has a line saying what moves, and a
-small square beside it that moves once when you turn the switch on. **Turn all
-on** and **Turn all off** set all ten at once, and **Reset Motion** (which acts at
-once, and offers **Undo**) turns them all back on.
+**Settings → Motion** is one choice: **On**, **Off** or **Custom**. **On** (the
+default) turns every kind of movement on and **Off** turns every kind off.
+**Custom** is chosen for you when the kinds differ, and choosing it yourself
+changes nothing until you change a kind. **Choose each kind…** opens the list
+(it opens by itself when Custom is the state): a switch for each of ten kinds of
+movement, in three groups. **When you act**: **Button presses**, **Things you
+drag and drop** and **Hover and keyboard focus**. **When things change**:
+**Changing state**, **Opening and closing panels and dialogs**, **Changing
+page**, **Moving between views** and **Alerts and confirmations**. **While you
+wait or scroll**: **Loading** and **Scrolling**. Each switch has a line saying
+what moves, and a small square beside it that moves once when you turn the
+switch on. **Reset Motion** (which acts at once, and offers **Undo**) turns
+them all back on.
 
 The first line says whether your system's Reduce motion setting is on. While it
-is, nothing moves, whatever the switches say, and they work again as soon as you
+is, nothing moves, even with **On** chosen, and motion works again as soon as you
 turn it off. Turning a kind off never hides anything: you still see the same
 words and states, just without the movement.
 

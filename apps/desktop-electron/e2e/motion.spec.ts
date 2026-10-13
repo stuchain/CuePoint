@@ -44,7 +44,7 @@ async function openSettings(window: Page, motion?: Record<string, boolean>): Pro
     .getByRole("navigation", { name: /main navigation/i })
     .getByRole("link", { name: "Settings" })
     .click();
-  await expect(window.getByRole("checkbox", { name: "Button presses" })).toBeVisible({
+  await expect(window.getByRole("radio", { name: "On", exact: true })).toBeVisible({
     timeout: 15_000,
   });
 }
@@ -103,6 +103,8 @@ test.describe("Motion switches and the system setting", () => {
       const window = await app.firstWindow({ timeout: 60_000 });
       await window.emulateMedia({ reducedMotion: "no-preference" });
       await openSettings(window);
+      // The per-kind list is behind "Choose each kind…" unless the page loads on Custom.
+      await window.getByRole("button", { name: "Choose each kind…" }).click();
       await window.getByRole("checkbox", { name: "Opening and closing panels and dialogs" }).uncheck();
       // Motion's own Reset would turn the switch back on, so the toast comes from Appearance's.
       await window.getByRole("button", { name: "Reset to defaults" }).first().click();
@@ -145,7 +147,7 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
       const window = await app.firstWindow({ timeout: 60_000 });
       await ready(window);
       await window.getByRole("navigation", { name: /main navigation/i }).getByRole("link", { name: "Settings" }).click();
-      await expect(window.getByRole("checkbox", { name: "Button presses" })).toBeChecked({ timeout: 15_000 });
+      await expect(window.getByRole("radio", { name: "On", exact: true })).toBeChecked({ timeout: 15_000 });
 
       // Watch for the leaving copy, so the test knows the exit really held an element.
       await window.evaluate(() => {
@@ -292,7 +294,7 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
       const window = await app.firstWindow({ timeout: 60_000 });
       await ready(window);
       await window.getByRole("navigation", { name: /main navigation/i }).getByRole("link", { name: "Settings" }).click();
-      await expect(window.getByRole("checkbox", { name: "Button presses" })).toBeVisible({ timeout: 15_000 });
+      await expect(window.getByRole("radio", { name: "On", exact: true })).toBeVisible({ timeout: 15_000 });
       const timings = await window.evaluate(() => {
         const button = document.querySelector(".cp-btn") as HTMLElement;
         const style = getComputedStyle(button);

@@ -22,8 +22,10 @@ interface MotionContextValue {
   /** Each kind's switch, the defaults under what the user changed. */
   switches: MotionSwitches;
   setKind: (kind: MotionKindId, on: boolean) => void;
-  /** "Turn all on" and "Turn all off": writes all ten. */
+  /** The Motion choice's On and Off: writes all ten the same. */
   setAll: (on: boolean) => void;
+  /** Writes all ten as given: Custom's last set, put back. */
+  setSwitches: (next: MotionSwitches) => void;
   /** Back to the defaults; returns the way to put back what was there. */
   reset: () => () => void;
   /** The system's Reduce motion setting. While it is on, nothing is switched on. */
@@ -89,6 +91,8 @@ export function MotionProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
+  const setSwitches = useCallback((next: MotionSwitches) => commit({ ...next }), [commit]);
+
   const reset = useCallback(() => {
     const before = overrides;
     commit({});
@@ -96,8 +100,8 @@ export function MotionProvider({ children }: { children: ReactNode }) {
   }, [commit, overrides]);
 
   const value = useMemo(
-    () => ({ switches, setKind, setAll, reset, systemReduced }),
-    [switches, setKind, setAll, reset, systemReduced],
+    () => ({ switches, setKind, setAll, setSwitches, reset, systemReduced }),
+    [switches, setKind, setAll, setSwitches, reset, systemReduced],
   );
 
   return <MotionContext.Provider value={value}>{children}</MotionContext.Provider>;

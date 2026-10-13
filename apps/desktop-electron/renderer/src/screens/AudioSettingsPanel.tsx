@@ -142,17 +142,18 @@ export function AudioSettingsPanel() {
           </MoreAbout>
         )}
 
-        <label className="cp-audio-settings__toggle">
-          <input
-            type="checkbox"
-            checked={audio.exclusive}
-            disabled={!available || busy || !audio.exclusiveSupported}
-            onChange={(event) => void apply({ exclusive: event.target.checked })}
-          />
-          <span>Exclusive output</span>
-        </label>
-        {audio.exclusiveSupported ? (
+        {/* Where the system has no such mode, the control is not drawn at all. */}
+        {audio.exclusiveSupported && (
           <>
+            <label className="cp-audio-settings__toggle">
+              <input
+                type="checkbox"
+                checked={audio.exclusive}
+                disabled={!available || busy}
+                onChange={(event) => void apply({ exclusive: event.target.checked })}
+              />
+              <span>Exclusive output</span>
+            </label>
             <p id={exclusiveId} className="cp-audio-settings__hint">
               Plays straight to your audio interface. Other apps can&apos;t use it meanwhile.
             </p>
@@ -161,18 +162,6 @@ export function AudioSettingsPanel() {
                 Leave it off unless you use an audio interface. CuePoint bypasses the system mixer
                 (no resampling, no outside volume), and uses shared output if another app already
                 has the device.
-              </p>
-            </MoreAbout>
-          </>
-        ) : (
-          <>
-            <p id={exclusiveId} className="cp-audio-settings__hint">
-              Not available on this system.
-            </p>
-            <MoreAbout describedBy={exclusiveId}>
-              <p className="cp-audio-settings__hint">
-                Exclusive output is a Windows and macOS feature. This system has no equivalent, so
-                CuePoint plays through the shared device.
               </p>
             </MoreAbout>
           </>

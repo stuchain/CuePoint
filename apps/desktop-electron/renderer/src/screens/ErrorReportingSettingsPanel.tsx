@@ -119,6 +119,9 @@ export function ErrorReportingSettingsPanel({
             it. It is built not to carry your file, folder, track, artist, label or playlist names,
             your notes, tags or tokens: they are removed on your computer before it is sent.
           </p>
+          <button type="button" className="cp-error-reporting__link" onClick={() => onOpenPrivacy?.()}>
+            Privacy details
+          </button>
         </MoreAbout>
         {!available && (
           <p className="cp-error-reporting__text">Open CuePoint as a desktop app to change this.</p>
@@ -128,9 +131,6 @@ export function ErrorReportingSettingsPanel({
             {error}
           </p>
         )}
-        <button type="button" className="cp-error-reporting__link" onClick={() => onOpenPrivacy?.()}>
-          Privacy details
-        </button>
         {children}
       </div>
     </Panel>

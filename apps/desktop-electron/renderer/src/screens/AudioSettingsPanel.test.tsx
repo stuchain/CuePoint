@@ -271,14 +271,24 @@ describe("exclusive output", () => {
     );
   });
 
-  it("is disabled with a reason where the platform has no such mode", async () => {
-    // DEC-055: a control that lies is worse than one that explains itself.
+  it("is not drawn at all where the platform has no such mode", async () => {
+    // DEC-055 asked for a reason; the page now leaves the control out instead.
     install({ audio: { exclusiveSupported: false } });
     renderPanel();
 
-    await waitFor(() => expect(exclusive()).toBeDisabled());
-    expect(screen.getByText("Not available on this system.")).toBeInTheDocument();
-    expect(screen.getByText(/Exclusive output is a Windows and macOS feature/i)).not.toBeVisible();
+    await screen.findByRole("combobox", { name: /Output device/i });
+    expect(screen.queryByRole("checkbox", { name: /Exclusive output/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Not available on this system/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Windows and macOS feature/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Plays straight to your audio interface/)).not.toBeInTheDocument();
+  });
+
+  it("is drawn, with its hint, where the platform has it", async () => {
+    install({ audio: { exclusiveSupported: true } });
+    renderPanel();
+
+    await waitFor(() => expect(exclusive()).toBeEnabled());
+    expect(screen.getByText(/Plays straight to your audio interface/)).toBeInTheDocument();
   });
 });
 
@@ -330,7 +340,8 @@ describe("without a player", () => {
     renderPanel();
 
     await waitFor(() => expect(device()).toBeDisabled());
-    expect(exclusive()).toBeDisabled();
+    // Nothing says exclusive output is supported, so it is not drawn.
+    expect(screen.queryByRole("checkbox", { name: /Exclusive output/i })).not.toBeInTheDocument();
     expect(screen.getByText(/Open CuePoint as a desktop app/i)).toBeInTheDocument();
   });
 });

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Motion is one choice.** **Settings → Motion** is now **On**, **Off** or **Custom**; **Choose each kind…** opens the ten switches, and Custom is chosen for you when they differ. On still gives way to your system's Reduce motion. Playback no longer shows **Exclusive output** where the system has none, and Privacy has one **More about this** (K11).
 - **Compact size (1.25×), and a size picked for your screen.** **Settings → Appearance** and **View → Size** gain **Compact (1.25×)** between Small and Medium. A new install opens at Compact on a screen shorter than 860 pixels and at Medium otherwise; if you updated, your size is unchanged. A size too big for your screen is greyed with the reason, and the one that suits the screen is marked (R2-5).
 - **Zoomed waveform above the player.** While a track plays, a strip above the player bar shows about 8 seconds either side of the playhead, scrolling with the music, with a line on every beat and a stronger one on each bar from the track's Rekordbox beat grid (a track without one shows no lines). Click it to seek. The first play of a track takes a second or two to sharpen; recently played tracks are kept, up to 256 MB. Turn it off in **Settings → Waveforms** (DEC-250).
 - **Hover hints.** Resting the pointer on a button for a moment shows its themed hint, the same one the keyboard shows, everywhere in the app, disabled buttons included. The player bar's title, artist and key have one too.

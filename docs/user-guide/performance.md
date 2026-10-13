@@ -328,8 +328,7 @@ pass and 211–222 MB after a second, over three runs, with no task over 50 ms a
 
 ## Motion
 
-All ten kinds of motion are on in these measurements (Settings > Motion, **Turn all
-on**), and the system's Reduce motion setting is off. Motion moves only `transform`
+All ten kinds of motion are on in these measurements (Settings > Motion, **On**), and the system's Reduce motion setting is off. Motion moves only `transform`
 and `opacity`, steps in whole pixels, and never runs on a track table's rows while
 it scrolls (placeholder rows hold still until the scroll stops, and a row's hover bar
 is drawn only on the row under the pointer and not while the table scrolls), so

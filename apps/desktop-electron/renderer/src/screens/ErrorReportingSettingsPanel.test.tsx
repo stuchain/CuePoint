@@ -102,8 +102,21 @@ describe("the error-reporting switch", () => {
   it("opens Help → Privacy from its link", async () => {
     const onOpenPrivacy = vi.fn();
     render(<ErrorReportingSettingsPanel onOpenPrivacy={onOpenPrivacy} />);
+    // The link sits inside "More about this", so it is reached by opening that.
+    await userEvent.click(screen.getByRole("button", { name: "More about this" }));
     await userEvent.click(screen.getByRole("button", { name: "Privacy details" }));
     expect(onOpenPrivacy).toHaveBeenCalledTimes(1);
+  });
+
+  it("has one \"More about this\", holding the paragraph and the Privacy details link", async () => {
+    render(<ErrorReportingSettingsPanel />);
+    expect(screen.getAllByRole("button", { name: "More about this" })).toHaveLength(1);
+    // Closed, the link is not on the page to be found.
+    expect(screen.queryByRole("button", { name: "Privacy details" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "More about this" }));
+    const link = screen.getByRole("button", { name: "Privacy details" });
+    expect(link).toBeVisible();
+    expect(screen.getByText(/built not to carry your file, folder, track/)).toBeVisible();
   });
 });
 

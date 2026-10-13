@@ -118,7 +118,7 @@ interface. It takes the device for CuePoint alone
 and plays to it directly, bypassing the system mixer: no resampling, no volume
 applied by anything else, the file's own format handed to the hardware. While
 it is on, other applications cannot use that device. Linux has no equivalent,
-so the control is switched off there.
+so the control is not shown there.
 
 If exclusive output is not available — because another application already has
 the device — CuePoint plays through the shared device instead and says so. If
