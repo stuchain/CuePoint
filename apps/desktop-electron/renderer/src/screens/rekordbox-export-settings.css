@@ -36,7 +36,7 @@
 
 .cp-export-settings__facts > div {
   display: grid;
-  grid-template-columns: minmax(8rem, auto) minmax(0, 1fr);
+  grid-template-columns: minmax(calc(128px * var(--scale)), auto) minmax(0, 1fr);
   gap: var(--space-sm);
   font-size: var(--font-size-sm);
 }
@@ -70,7 +70,7 @@
 
 .cp-export-settings__item {
   display: grid;
-  grid-template-columns: minmax(8rem, auto) minmax(0, 1fr) minmax(0, 2fr);
+  grid-template-columns: minmax(calc(128px * var(--scale)), auto) minmax(0, 1fr) minmax(0, 2fr);
   gap: var(--space-sm);
   padding-bottom: calc(2px * var(--scale));
   border-bottom: var(--divider);

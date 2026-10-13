@@ -141,7 +141,6 @@ describe("sizes at 1.5×", () => {
 const KNOWN_EXCEPTIONS: Record<string, number> = {
   "components/player/PlayerBar.css": 2,
   "components/player/QueuePanel.css": 1,
-  "screens/rekordbox-export-settings.css": 2,
 };
 
 const REM = /(?<![\w-])-?\d*\.?\d+rem\b/g;
