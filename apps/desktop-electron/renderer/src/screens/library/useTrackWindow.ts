@@ -163,8 +163,34 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
   // The question the held total answers, to tell a reload from a new question.
   const totalKey = useRef(key);
 
+  // The question the effects below last reset for, and whether this run of them is the page
+  // being shown again (a kept-alive page re-runs its effects on show with nothing changed).
+  const resetFor = useRef<string | null>(null);
+  const shownAgain = useRef(false);
+  // Pages that had failed when the page was hidden: asked for again on show.
+  const failedBeforeShow = useRef<number[]>([]);
+
   // A new question: everything loaded belongs to the old one.
   useEffect(() => {
+    if (resetFor.current === identity) {
+      // Shown again with the same question: the rows on screen are kept (the table would
+      // otherwise draw skeletons until the engine answers) and the pages near the window are
+      // asked for again behind them. Pages further away are let go, so no stale row is
+      // scrolled back to.
+      shownAgain.current = true;
+      // A failure before the page was hidden is no reason to keep refusing the page: the
+      // engine may be back, and a failed page left out would be a gap in a "ready" table.
+      failedBeforeShow.current = [...failedPages.current];
+      failedPages.current = new Set();
+      const near = (page: number) => Math.abs(page - centre.current) <= 1;
+      loadedPages.current = new Set([...loadedPages.current].filter(near));
+      setPages((previous) => {
+        const kept = new Map([...previous].filter(([page]) => near(page)));
+        return kept.size === previous.size ? previous : kept;
+      });
+      return;
+    }
+    resetFor.current = identity;
     queryRef.current = identity;
     inFlight.current = new Set();
     failedPages.current = new Set();
@@ -192,7 +218,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
    * would disagree the moment one of them learned about eviction.
    */
   const fetchPages = useCallback(
-    (wanted: number[]): boolean => {
+    (wanted: number[], again = false): boolean => {
       const bridge = window.cuepoint?.browseLibrary;
       if (!bridge) {
         setStatus("error");
@@ -204,7 +230,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
         (page) =>
           !inFlight.current.has(page) &&
           !failedPages.current.has(page) &&
-          !loadedPages.current.has(page),
+          (again || !loadedPages.current.has(page)),
       );
       if (missing.length === 0) return false;
 
@@ -246,7 +272,9 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
                   (page - first) * PAGE_SIZE,
                   (page - first + 1) * PAGE_SIZE,
                 );
+                // A page that now answers empty (the library shrank) lets go of its old rows.
                 if (slice.length > 0) next.set(page, slice);
+                else next.delete(page);
               }
               for (const page of pagesToEvict([...next.keys()], centre.current)) {
                 next.delete(page);
@@ -276,6 +304,14 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
   // The first page, so the table knows how many rows there are before anyone
   // scrolls. Without it an empty table would never ask for anything.
   useEffect(() => {
+    if (shownAgain.current) {
+      // Shown again: ask for the first page and the window's pages once more, held ones included.
+      shownAgain.current = false;
+      const near = [...loadedPages.current, ...failedBeforeShow.current];
+      failedBeforeShow.current = [];
+      fetchPages([...new Set([0, ...near])], true);
+      return;
+    }
     fetchPages([0]);
     // Deliberately keyed on the query, not on fetchPages: this runs once per
     // question, and fetchPages is rebuilt on every render of a new query.

@@ -33,6 +33,7 @@ import { copySummary, gatherTracksAsText, writeClipboard } from "../library/trac
 import { isSelected, onlySelectedId } from "../library/trackSelection";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "../library/useLibraryPlayback";
 import { COPY_LIMIT, useTrackSelection } from "../library/useTrackSelection";
+import { useReloadOnToken } from "../library/useReloadOnToken";
 import { useTrackWindow } from "../library/useTrackWindow";
 import { DiscoverSelectionBar } from "./DiscoverSelectionBar";
 import { libraryRowMenu } from "./libraryRowMenu";
@@ -111,9 +112,7 @@ export function LibraryHalf({
   const { reload } = window_;
   const { clear } = selection;
 
-  useEffect(() => {
-    if (reloadToken > 0) reload();
-  }, [reload, reloadToken]);
+  useReloadOnToken(reload, reloadToken);
 
   // One selection per page: the other half took it.
   useEffect(() => {

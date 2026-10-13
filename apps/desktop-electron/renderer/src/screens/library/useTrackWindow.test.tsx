@@ -15,7 +15,8 @@
  * The bridge is faked because there is no engine here; nothing else is. The
  * hook under test is the real one, driven through a real render.
  */
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { Activity } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
@@ -574,5 +575,104 @@ describe("the paging arithmetic", () => {
 
   it("keeps the page in view", () => {
     expect(pagesToEvict([0, 10, 20, 30], 10, 1)).not.toContain(10);
+  });
+});
+
+describe("a page kept alive hidden and shown again (React Activity)", () => {
+  /** A stand-in for the table: a title for a row it holds, a skeleton for one it does not. */
+  function Rows({ mode, q }: { mode: "visible" | "hidden"; q?: string }) {
+    return (
+      <Activity mode={mode}>
+        <RowsInner q={q} />
+      </Activity>
+    );
+  }
+  function RowsInner({ q }: { q?: string }) {
+    const { source } = useTrackWindow(query(q ? { q } : {}));
+    return (
+      <div>
+        {[0, 1, 2].map((index) => {
+          const held = source.getRow(index);
+          return held ? (
+            <span key={index} data-testid="row">
+              {held.title}
+            </span>
+          ) : (
+            <span key={index} className="track-table__skeleton" />
+          );
+        })}
+      </div>
+    );
+  }
+  const titles = () => screen.queryAllByTestId("row").map((node) => node.textContent);
+
+  it("keeps its rows while the revisit asks again, and asks once", async () => {
+    const view = render(<Rows mode="visible" />);
+    await waitFor(() => expect(screen.getAllByTestId("row")).toHaveLength(3));
+    expect(calls).toHaveLength(1);
+
+    view.rerender(<Rows mode="hidden" />);
+    // The engine is slow this time: the answer to the second ask has not come back.
+    browseLibrary.mockImplementation(() => new Promise(() => {}));
+    view.rerender(<Rows mode="visible" />);
+
+    await waitFor(() => expect(browseLibrary).toHaveBeenCalledTimes(2));
+    expect(document.querySelectorAll(".track-table__skeleton")).toHaveLength(0);
+    expect(titles()).toEqual(["Track 1", "Track 2", "Track 3"]);
+    expect(browseLibrary).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks again after an engine error, and shows the rows when it recovers", async () => {
+    browseLibrary.mockImplementationOnce(async () => {
+      throw new Error("engine down");
+    });
+    const view = render(<Rows mode="visible" />);
+    await waitFor(() => expect(browseLibrary).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(document.querySelectorAll(".track-table__skeleton")).toHaveLength(3));
+
+    view.rerender(<Rows mode="hidden" />);
+    view.rerender(<Rows mode="visible" />);
+
+    await waitFor(() => expect(browseLibrary).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(titles()).toEqual(["Track 1", "Track 2", "Track 3"]));
+  });
+
+  it("resets to skeletons when the query changed while hidden", async () => {
+    const view = render(<Rows mode="visible" />);
+    await waitFor(() => expect(screen.getAllByTestId("row")).toHaveLength(3));
+
+    view.rerender(<Rows mode="hidden" q="other" />);
+    browseLibrary.mockImplementation(() => new Promise(() => {}));
+    view.rerender(<Rows mode="visible" q="other" />);
+
+    await waitFor(() => expect(browseLibrary).toHaveBeenCalledTimes(2));
+    expect(titles()).toEqual([]);
+    expect(document.querySelectorAll(".track-table__skeleton")).toHaveLength(3);
+  });
+
+  it("replaces the kept rows with the answer to the re-ask, an empty page included", async () => {
+    const view = render(<Rows mode="visible" />);
+    await waitFor(() => expect(screen.getAllByTestId("row")).toHaveLength(3));
+
+    view.rerender(<Rows mode="hidden" />);
+    browseLibrary.mockImplementationOnce(async (params: Call & Record<string, unknown>) => {
+      calls.push({ offset: params.offset ?? 0, limit: params.limit ?? PAGE_SIZE });
+      const response = respond(params);
+      return {
+        ...response,
+        tracks: response.tracks.map((track) => ({ ...track, title: `New ${track.id}` })),
+      };
+    });
+    view.rerender(<Rows mode="visible" />);
+    await waitFor(() => expect(titles()).toEqual(["New 1", "New 2", "New 3"]));
+
+    // And a page that now answers empty drops its old rows.
+    view.rerender(<Rows mode="hidden" />);
+    browseLibrary.mockImplementationOnce(async (params: Call & Record<string, unknown>) => ({
+      ...respond(params),
+      tracks: [],
+    }));
+    view.rerender(<Rows mode="visible" />);
+    await waitFor(() => expect(titles()).toEqual([]));
   });
 });

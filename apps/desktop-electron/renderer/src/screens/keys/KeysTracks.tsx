@@ -56,6 +56,7 @@ import { useLibraryBatch } from "../library/useLibraryBatch";
 import { useLibraryClean } from "../library/useLibraryClean";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "../library/useLibraryPlayback";
 import { COPY_LIMIT, useTrackSelection } from "../library/useTrackSelection";
+import { useReloadOnToken } from "../library/useReloadOnToken";
 import { useTrackWindow } from "../library/useTrackWindow";
 import { TAGS, useSharedRead } from "../../api/sharedReads";
 import { userMessage } from "../../api/userMessage";
@@ -165,9 +166,7 @@ export function KeysTracks({
   const playback = useLibraryPlayback({ query, onMessage: (message) => push(message, "info") });
   const { reload } = window_;
 
-  useEffect(() => {
-    if (reloadToken > 0) reload();
-  }, [reload, reloadToken]);
+  useReloadOnToken(reload, reloadToken);
 
   const lastId = selection.selection.lastId;
   const count = selection.count;
