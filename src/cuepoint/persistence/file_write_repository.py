@@ -392,7 +392,9 @@ class FileWriteRepository(IFileWriteRepository):
         Asked once as the engine starts, before stale job records are closed
         out, for :func:`~cuepoint.engine.match_jobs.offer_interrupted_matches`'s
         reason: a record still running then belongs to a process that is gone.
-        A job that recorded nothing touched no file and is not listed.
+        A job that recorded nothing touched no file and is not listed; rows only
+        noting that a file already held a value (skipped, naming no write) are not
+        a record of anything written.
         """
         kinds = [str(kind) for kind in job_types]
         if not kinds:
@@ -404,6 +406,8 @@ class FileWriteRepository(IFileWriteRepository):
             " FROM file_writes AS w JOIN jobs AS j ON j.id = w.job_id"
             f" WHERE j.type IN ({', '.join('?' for _ in kinds)})"
             " AND j.state IN ('queued', 'running')"
+            # A row noting a field the file already held is no write to restore.
+            " AND NOT (w.outcome = 'skipped' AND w.restore_of IS NULL)"
             " GROUP BY w.job_id, j.type ORDER BY first",
             tuple(kinds),
         ).fetchall()

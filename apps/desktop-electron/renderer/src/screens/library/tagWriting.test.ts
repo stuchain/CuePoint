@@ -124,6 +124,7 @@ describe("the words for reasons and fields", () => {
   it.each([
     ["no_value", "no value"],
     ["unchanged", "already the same"],
+    ["file_has_value", "already has a value"],
     ["key_unrecognized", "not a key"],
     ["has_artwork", "already has a picture"],
     ["no_beatport_artwork", "no accepted Beatport match"],

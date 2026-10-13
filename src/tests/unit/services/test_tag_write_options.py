@@ -57,7 +57,11 @@ class TestFromARequest:
     def test_nothing_named_is_todays_defaults_without_artwork(self):
         for raw in (None, {}):
             options = TagWriteOptions.from_request(raw)
-            assert options.to_dict() == {**DEFAULTS, "embed_missing_artwork": False}
+            assert options.to_dict() == {
+                **DEFAULTS,
+                "embed_missing_artwork": False,
+                "keep_existing": False,
+            }
 
     def test_the_fields_in_order(self):
         options = TagWriteOptions.from_request(
@@ -92,9 +96,37 @@ class TestFromARequest:
         assert options.fields == ()
         assert options.embed_missing_artwork
 
+    def test_keeping_what_the_file_holds_is_off_unless_asked(self):
+        assert TagWriteOptions.from_request({}).keep_existing is False
+        asked = TagWriteOptions.from_request({"keep_existing": True})
+        assert asked.keep_existing is True and asked.to_dict()["keep_existing"] is True
+
+    def test_nothing_ticked_uses_the_effective_toggles(self):
+        off = {
+            "write_key": False,
+            "write_year": False,
+            "write_label": False,
+            "write_comment": False,
+        }
+        assert TagWriteOptions.nothing_ticked(off) is True
+        assert TagWriteOptions.nothing_ticked({**off, "write_bpm": False}) is True
+        assert TagWriteOptions.nothing_ticked({**off, "write_genre": True}) is False
+        assert (
+            TagWriteOptions.nothing_ticked({**off, "embed_missing_artwork": True})
+            is False
+        )
+        assert TagWriteOptions.nothing_ticked({}) is False
+        with pytest.raises(ValueError, match="write_bpm must be true or false"):
+            TagWriteOptions.nothing_ticked({**off, "write_bpm": "no"})
+
     def test_it_round_trips_through_its_dict(self):
         options = TagWriteOptions.from_request(
-            {"key_format": "short", "write_bpm": True, "embed_missing_artwork": True}
+            {
+                "key_format": "short",
+                "write_bpm": True,
+                "embed_missing_artwork": True,
+                "keep_existing": True,
+            }
         )
         assert TagWriteOptions.from_request(options.to_dict()) == options
 
@@ -104,6 +136,8 @@ class TestFromARequest:
             ({"write_genre": "false"}, "write_genre must be true or false"),
             ({"write_key": 1}, "write_key must be true or false"),
             ({"embed_missing_artwork": "yes"}, "embed_missing_artwork"),
+            ({"keep_existing": "true"}, "keep_existing must be true or false"),
+            ({"keep_existing": 1}, "keep_existing must be true or false"),
             ({"key_format": "open_key"}, "key_format must be one of"),
             ({"key_format": 8}, "key_format must be text"),
             ({"comment_text": 5}, "comment_text must be text"),
@@ -144,6 +178,8 @@ class TestBuiltDirectly:
             TagWriteOptions(**{**base, "write_bpm": "no"})
         with pytest.raises(ValueError, match="comment_text"):
             TagWriteOptions(**{**base, "comment_text": ""})
+        with pytest.raises(ValueError, match="keep_existing"):
+            TagWriteOptions(**{**base, "keep_existing": "yes"})
 
     def test_the_toggles_name_every_tag_field(self):
         from cuepoint.data.tag_fields import TAG_FIELDS

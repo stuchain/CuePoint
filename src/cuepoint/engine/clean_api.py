@@ -889,13 +889,47 @@ def preview_tags(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, A
 
 
 def write_tags(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
-    """Write what a preview planned, once."""
-    from cuepoint.engine.tag_write_jobs import start_tag_write_job
+    """Write what a preview planned, once.
 
-    _only(data, ("preview_id",))
+    ``options``, when named, choose what to write from what the preview covered
+    (C29); without them the write is the preview's own. Options the preview did
+    not cover are a 400, before any job starts.
+    """
+    from cuepoint.engine.tag_write_jobs import start_tag_write_job
+    from cuepoint.services.tag_write_options import TagWriteOptions
+
+    _only(data, ("preview_id", "options"))
     preview_id = _require_str(data, "preview_id")
-    job = start_tag_write_job(job_store, preview_id)
+    options = (
+        None
+        if data.get("options") is None
+        else TagWriteOptions.from_request(data["options"])
+    )
+    job = start_tag_write_job(job_store, preview_id, options)
     return _started(job, {"preview_id": preview_id})
+
+
+def count_tag_write(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
+    """Count what writing some options from a kept preview would change.
+
+    Answered from the preview in memory, with no file read, so a save window can
+    ask on every tick. The preview is kept, not taken.
+    """
+    from cuepoint.engine.tag_write_jobs import count_tag_preview, get_preview_store
+    from cuepoint.services.tag_write_options import TagWriteOptions
+    from cuepoint.services.tag_write_service import count_fields
+
+    _only(data, ("preview_id", "options"))
+    preview_id = _require_str(data, "preview_id")
+    raw = data.get("options")
+    if not isinstance(raw, dict):
+        raise bad_request("options is required and must be an object")
+    if TagWriteOptions.nothing_ticked(raw):
+        # Nothing ticked is a count of nothing, not a bad request.
+        get_preview_store().get(preview_id)
+        return 200, {"files": 0, "fields": count_fields(())}
+    options = TagWriteOptions.from_request(raw)
+    return 200, count_tag_preview(preview_id, options)
 
 
 def _writes_scope(job_id: Optional[str], track_id: Optional[int]) -> None:
@@ -1119,6 +1153,7 @@ _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], Any], Tuple[int, Dict[str, Any
     "/api/v1/clean/duplicates/restore": restore_duplicates,
     "/api/v1/clean/artwork/scan": scan_artwork,
     "/api/v1/clean/tags/preview": preview_tags,
+    "/api/v1/clean/tags/preview/count": count_tag_write,
     "/api/v1/clean/tags/write": write_tags,
     "/api/v1/clean/tags/restore": restore_tags,
     "/api/v1/clean/export": export_review,

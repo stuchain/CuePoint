@@ -19,6 +19,10 @@ Today's options and defaults
 CLEAN-10 adds ``embed_missing_artwork``, **off** by default: putting a picture
 into a user's files is new, and it is something a person asks for (DEC-076).
 
+``keep_existing`` is **off** by default too, so a request that does not name it
+means what it always did: a field the file already holds is replaced. When on, a
+field whose file value is not empty is left alone (C29).
+
 Why the job is stricter than Sync Tags was
 ------------------------------------------
 Sync Tags read a toggle with ``bool(...)``, so ``"false"`` turned a field on.
@@ -53,7 +57,10 @@ FIELD_TOGGLES: Tuple[Tuple[str, str], ...] = (
     ("comment", "write_comment"),
 )
 
-_FLAGS = tuple(toggle for _field, toggle in FIELD_TOGGLES) + ("embed_missing_artwork",)
+_FLAGS = tuple(toggle for _field, toggle in FIELD_TOGGLES) + (
+    "embed_missing_artwork",
+    "keep_existing",
+)
 _TEXTS = ("key_format", "comment_text")
 _NAMES = frozenset(_FLAGS + _TEXTS)
 
@@ -97,6 +104,7 @@ class TagWriteOptions:
     write_comment: bool
     comment_text: str
     embed_missing_artwork: bool = False
+    keep_existing: bool = False
 
     def __post_init__(self) -> None:
         """Hold the options to what a write can do.
@@ -130,6 +138,32 @@ class TagWriteOptions:
         Raises:
             ValueError: Naming the option at fault.
         """
+        raw = cls._checked(raw)
+        values = normalize_sync_options(raw)
+        return cls(
+            **values,
+            embed_missing_artwork=bool(raw.get("embed_missing_artwork", False)),
+            keep_existing=bool(raw.get("keep_existing", False)),
+        )
+
+    @classmethod
+    def nothing_ticked(cls, raw: Any) -> bool:
+        """True when a well-formed request, defaults applied, writes nothing at all.
+
+        A save window with every box unticked is a question with an answer, not a
+        bad request; this lets a counting route tell it from a malformed one.
+
+        Raises:
+            ValueError: Naming the option at fault, as :meth:`from_request` does.
+        """
+        raw = cls._checked(raw)
+        values = normalize_sync_options(raw)
+        ticked = any(values[toggle] for _field, toggle in FIELD_TOGGLES)
+        return not ticked and not bool(raw.get("embed_missing_artwork", False))
+
+    @staticmethod
+    def _checked(raw: Any) -> Dict[str, Any]:
+        """The request as an object, once every option in it is of the right type."""
         if raw is None:
             raw = {}
         if not isinstance(raw, dict):
@@ -150,11 +184,7 @@ class TagWriteOptions:
                 f"key_format must be one of {', '.join(KEY_FORMATS)},"
                 f" not {raw['key_format']!r}"
             )
-        values = normalize_sync_options(raw)
-        return cls(
-            **values,
-            embed_missing_artwork=bool(raw.get("embed_missing_artwork", False)),
-        )
+        return raw
 
     @property
     def fields(self) -> Tuple[str, ...]:
@@ -173,6 +203,7 @@ class TagWriteOptions:
             "write_comment": self.write_comment,
             "comment_text": self.comment_text,
             "embed_missing_artwork": self.embed_missing_artwork,
+            "keep_existing": self.keep_existing,
         }
 
 

@@ -1583,6 +1583,264 @@ class TestTagWrites:
         )
         assert error["preview_id"] == preview["preview_id"]
 
+    def test_a_write_with_options_writes_only_those_fields(
+        self, engine, store, audio, tmp_path
+    ):
+        preview = ok(
+            post(
+                engine,
+                "/api/v1/clean/tags/preview",
+                {
+                    "selection": ids_selection(*audio),
+                    "options": {"write_year": False, "write_label": False},
+                },
+            )
+        )["preview"]
+        assert preview["fields"]["comment"] == 3
+
+        started = ok(
+            post(
+                engine,
+                "/api/v1/clean/tags/write",
+                {"preview_id": preview["preview_id"], "options": KEY_ONLY},
+            ),
+            202,
+        )
+        job = finished(store, started["job_id"])
+
+        assert job.state == JobState.SUCCEEDED, job.error
+        assert job.result["fields"]["key"] == 3 and job.result["fields"]["comment"] == 0
+        record = ok(get(engine, "/api/v1/clean/tags/writes", job_id=started["job_id"]))
+        assert {row["field"] for row in record["writes"]} == {"key"}
+
+    def test_a_write_wider_than_its_preview_is_a_400_and_keeps_the_preview(
+        self, engine, store, audio
+    ):
+        preview = self.preview(engine, audio)
+
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/tags/write",
+                {
+                    "preview_id": preview["preview_id"],
+                    "options": {**KEY_ONLY, "write_comment": True},
+                },
+            ),
+            400,
+            "INVALID_REQUEST",
+            "comment",
+        )
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/tags/write",
+                {
+                    "preview_id": preview["preview_id"],
+                    "options": {**KEY_ONLY, "embed_missing_artwork": True},
+                },
+            ),
+            400,
+            "INVALID_REQUEST",
+            "artwork",
+        )
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/tags/write",
+                {"preview_id": preview["preview_id"], "options": {"write_genre": "x"}},
+            ),
+            400,
+            "INVALID_REQUEST",
+            "write_genre",
+        )
+        started = ok(
+            post(
+                engine,
+                "/api/v1/clean/tags/write",
+                {"preview_id": preview["preview_id"]},
+            ),
+            202,
+        )
+        assert finished(store, started["job_id"]).state == JobState.SUCCEEDED
+
+    def test_the_count_route_says_what_a_write_would_do(self, engine, store, audio):
+        preview = ok(
+            post(
+                engine,
+                "/api/v1/clean/tags/preview",
+                {"selection": ids_selection(*audio), "options": {"write_year": False}},
+            )
+        )["preview"]
+        assert "field_choices" in preview
+        counted = ok(
+            post(
+                engine,
+                "/api/v1/clean/tags/preview/count",
+                {"preview_id": preview["preview_id"], "options": KEY_ONLY},
+            )
+        )
+        assert counted["files"] == 3
+        assert counted["fields"]["key"] == 3 and counted["fields"]["comment"] == 0
+        assert set(counted["fields"]) == set(preview["fields"])
+        nothing = ok(
+            post(
+                engine,
+                "/api/v1/clean/tags/preview/count",
+                {
+                    "preview_id": preview["preview_id"],
+                    "options": {**KEY_ONLY, "write_key": False, "write_genre": True},
+                },
+            )
+        )
+        assert nothing["files"] == 0 and nothing["fields"]["genre"] == 0
+
+        # The preview is kept, and a write with the same options does what was counted.
+        started = ok(
+            post(
+                engine,
+                "/api/v1/clean/tags/write",
+                {"preview_id": preview["preview_id"], "options": KEY_ONLY},
+            ),
+            202,
+        )
+        job = finished(store, started["job_id"])
+        assert job.result["written"] == counted["files"]
+        assert job.result["fields"] == counted["fields"]
+
+    def test_the_count_route_follows_keep_existing(
+        self, engine, store, audio, tmp_path
+    ):
+        from cuepoint.data.tag_fields import display_value, read_tag_fields
+        from cuepoint.data.tag_writer import write_key_comment_year_to_file
+
+        held = tmp_path / "music" / "song0.mp3"
+        write_key_comment_year_to_file(str(held), "C", None, None, None, None, None)
+        preview = self.preview(engine, audio)
+        base = {"preview_id": preview["preview_id"]}
+        count = "/api/v1/clean/tags/preview/count"
+        keep = {**KEY_ONLY, "keep_existing": True}
+
+        replacing = ok(post(engine, count, {**base, "options": KEY_ONLY}))
+        keeping = ok(post(engine, count, {**base, "options": keep}))
+
+        assert (replacing["files"], keeping["files"]) == (3, 2)
+        assert (replacing["fields"]["key"], keeping["fields"]["key"]) == (3, 2)
+        assert preview["field_choices"]["key"]["normal"] == {"replace": 1, "fill": 2}
+
+        started = ok(
+            post(engine, "/api/v1/clean/tags/write", {**base, "options": keep}), 202
+        )
+        job = finished(store, started["job_id"])
+        assert job.state == JobState.SUCCEEDED, job.error
+        assert job.result["written"] == keeping["files"]
+        assert job.result["fields"] == keeping["fields"]
+        assert display_value(read_tag_fields(held).value("key")) == "C"
+        record = ok(get(engine, "/api/v1/clean/tags/writes", job_id=started["job_id"]))
+        by_outcome = {}
+        for row in record["writes"]:
+            by_outcome.setdefault(row["outcome"], []).append(row)
+        assert len(by_outcome["written"]) == 2
+        [kept] = by_outcome["skipped"]
+        assert (kept["track_id"], kept["field"]) == (audio[0], "key")
+        assert record["restorable"] == 2
+
+    def test_nothing_ticked_counts_nothing_and_keeps_the_preview(
+        self, engine, store, audio
+    ):
+        preview = self.preview(engine, audio)
+        base = {"preview_id": preview["preview_id"]}
+        none = {
+            "write_key": False,
+            "write_year": False,
+            "write_label": False,
+            "write_bpm": False,
+            "write_genre": False,
+            "write_comment": False,
+        }
+        count = "/api/v1/clean/tags/preview/count"
+
+        counted = ok(post(engine, count, {**base, "options": none}))
+
+        assert counted["files"] == 0
+        assert set(counted["fields"]) == set(preview["fields"])
+        assert set(counted["fields"].values()) == {0}
+        refused(
+            post(engine, count, {**base, "options": {**none, "key_format": "x"}}),
+            400,
+            "INVALID_REQUEST",
+            "key_format",
+        )
+        refused(
+            post(engine, count, {"preview_id": "never-made", "options": none}),
+            404,
+            "TAG_WRITE_PREVIEW_NOT_FOUND",
+        )
+        # Omitted toggles mean their defaults: bpm and genre are off already.
+        omitted = {"write_key": False, "write_year": False, "write_label": False}
+        omitted["write_comment"] = False
+        again = ok(post(engine, count, {**base, "options": omitted}))
+        assert again["files"] == 0 and set(again["fields"].values()) == {0}
+        started = ok(post(engine, "/api/v1/clean/tags/write", base), 202)
+        assert finished(store, started["job_id"]).state == JobState.SUCCEEDED
+
+    def test_a_write_that_changes_no_file_is_accepted_and_records_why(
+        self, engine, store, audio, tmp_path
+    ):
+        from cuepoint.data.tag_writer import write_key_comment_year_to_file
+
+        for number in range(3):
+            path = tmp_path / "music" / f"song{number}.mp3"
+            write_key_comment_year_to_file(
+                str(path), "Am", None, None, None, None, None
+            )
+        preview = self.preview(engine, audio)
+        assert preview["files"] == 0
+
+        started = ok(
+            post(
+                engine,
+                "/api/v1/clean/tags/write",
+                {"preview_id": preview["preview_id"], "options": KEY_ONLY},
+            ),
+            202,
+        )
+        job = finished(store, started["job_id"])
+
+        assert job.state == JobState.SUCCEEDED, job.error
+        assert job.result["total"] == 0 and job.result["written"] == 0
+        record = ok(get(engine, "/api/v1/clean/tags/writes", job_id=started["job_id"]))
+        assert record["total"] == 3 and record["restorable"] == 0
+        assert {row["outcome"] for row in record["writes"]} == {"skipped"}
+
+    def test_the_count_route_refuses_what_it_cannot_count(self, engine, audio):
+        preview = self.preview(engine, audio)
+        base = {"preview_id": preview["preview_id"]}
+        count = "/api/v1/clean/tags/preview/count"
+
+        refused(
+            post(engine, count, {"preview_id": "never-made", "options": KEY_ONLY}),
+            404,
+            "TAG_WRITE_PREVIEW_NOT_FOUND",
+        )
+        refused(
+            post(
+                engine, count, {**base, "options": {**KEY_ONLY, "write_comment": True}}
+            ),
+            400,
+            "INVALID_REQUEST",
+            "comment",
+        )
+        refused(post(engine, count, base), 400, "INVALID_REQUEST", "options")
+        refused(post(engine, count, {**base, "options": "all"}), 400, "INVALID_REQUEST")
+        refused(post(engine, count, {"options": KEY_ONLY}), 400, "INVALID_REQUEST")
+        refused(
+            post(engine, count, {**base, "options": KEY_ONLY, "extra": 1}),
+            400,
+            "INVALID_REQUEST",
+            "extra",
+        )
+
     def test_an_unknown_preview(self, engine):
         refused(
             post(engine, "/api/v1/clean/tags/write", {"preview_id": "never-made"}),

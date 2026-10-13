@@ -2938,19 +2938,19 @@
     "verdict": "exempt",
     "reason": "names of our own fields, parameters and code values, never a user value"
   },
-  "cuepoint/services/tag_write_options.py::TagWriteOptions.from_request::Unknown option {', '.join(unknown)!r}. Options: {', '.join(sorted(_NAMES))}": {
+  "cuepoint/services/tag_write_options.py::TagWriteOptions._checked::Unknown option {', '.join(unknown)!r}. Options: {', '.join(sorted(_NAMES))}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
-  "cuepoint/services/tag_write_options.py::TagWriteOptions.from_request::key_format must be one of {', '.join(KEY_FORMATS)}, not {raw['key_format']!r}": {
+  "cuepoint/services/tag_write_options.py::TagWriteOptions._checked::key_format must be one of {', '.join(KEY_FORMATS)}, not {raw['key_format']!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
-  "cuepoint/services/tag_write_options.py::TagWriteOptions.from_request::{name} must be text, not {raw[name]!r}": {
+  "cuepoint/services/tag_write_options.py::TagWriteOptions._checked::{name} must be text, not {raw[name]!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
-  "cuepoint/services/tag_write_options.py::TagWriteOptions.from_request::{name} must be true or false, not {raw[name]!r}": {
+  "cuepoint/services/tag_write_options.py::TagWriteOptions._checked::{name} must be true or false, not {raw[name]!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
@@ -2963,6 +2963,11 @@
     "holds": "a number or count",
     "verdict": "exempt",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/services/tag_write_service.py::TagWritePreview.require_covers::These options go beyond what the preview covers ({'; '.join(beyond)}); preview again": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
   },
   "cuepoint/services/tag_write_service.py::TagWritePreview.__post_init__::Unknown field skip {name}: {sorted(reasons)}": {
     "holds": "our own field, label or code name",

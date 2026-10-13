@@ -10469,7 +10469,7 @@
     }
   },
   {
-    "name": "cuepoint/services/tag_write_options.py::TagWriteOptions.from_request::Unknown option {', '.join(unknown)!r}. Options: {', '.join(sorted(_NAMES))}",
+    "name": "cuepoint/services/tag_write_options.py::TagWriteOptions._checked::Unknown option {', '.join(unknown)!r}. Options: {', '.join(sorted(_NAMES))}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -10498,7 +10498,7 @@
     }
   },
   {
-    "name": "cuepoint/services/tag_write_options.py::TagWriteOptions.from_request::key_format must be one of {', '.join(KEY_FORMATS)}, not {raw['key_format']!r}",
+    "name": "cuepoint/services/tag_write_options.py::TagWriteOptions._checked::key_format must be one of {', '.join(KEY_FORMATS)}, not {raw['key_format']!r}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -10527,7 +10527,7 @@
     }
   },
   {
-    "name": "cuepoint/services/tag_write_options.py::TagWriteOptions.from_request::{name} must be text, not {raw[name]!r}",
+    "name": "cuepoint/services/tag_write_options.py::TagWriteOptions._checked::{name} must be text, not {raw[name]!r}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",
@@ -10556,7 +10556,7 @@
     }
   },
   {
-    "name": "cuepoint/services/tag_write_options.py::TagWriteOptions.from_request::{name} must be true or false, not {raw[name]!r}",
+    "name": "cuepoint/services/tag_write_options.py::TagWriteOptions._checked::{name} must be true or false, not {raw[name]!r}",
     "ctx": {
       "home": "/Users/anna",
       "user_name": "anna",

@@ -158,12 +158,14 @@ _READY = "ready"
 _NO_IMAGE = "none"
 _REFUSED = "refused"
 _FAILED = "failed"
+_UNKNOWN = "unknown"
 
 #: The same answers, for callers outside this module (CLEAN-10).
 ARTWORK_READY = _READY
 ARTWORK_NONE = _NO_IMAGE
 ARTWORK_REFUSED = _REFUSED
 ARTWORK_FAILED = _FAILED
+ARTWORK_UNKNOWN = _UNKNOWN
 
 #: The side of the Beatport image fetched to embed into a file: Beatport's
 #: full-size artwork. The image is re-encoded no larger than
@@ -794,6 +796,42 @@ class ArtworkService(IArtworkService):
         )
         return status, artwork
 
+    def known_beatport_artwork(self, track_id: int) -> Tuple[str, Optional[str]]:
+        """``(status, artwork URL)`` from what is already known; never the network (C29).
+
+        The accepted match's own artwork URL, else the artwork recorded for its
+        page: ``ready`` with the URL; ``none`` when there is no accepted match, its
+        page was read and names no Beatport image, or the image is one the guard
+        refused; ``unknown`` when the page was never read, which only a fetch can
+        settle. A save preview counts on this; the write fetches.
+        """
+        from cuepoint.data.beatport import is_beatport_artwork_url
+
+        record = self._artwork.get(int(track_id))
+        accepted = self._artwork.accepted_candidate(int(track_id))
+        if accepted is None:
+            return _NO_IMAGE, None
+        page_url, candidate_artwork = accepted
+        if candidate_artwork:
+            artwork: Optional[str] = candidate_artwork
+        elif (
+            record is not None
+            and record.beatport_page == page_url
+            and record.beatport_url is not None
+        ):
+            artwork = record.beatport_url
+        else:
+            return _UNKNOWN, None
+        if not artwork or not is_beatport_artwork_url(artwork):
+            return _NO_IMAGE, None
+        if (
+            record is not None
+            and record.beatport_refused is not None
+            and record.beatport_url == artwork
+        ):
+            return _NO_IMAGE, None
+        return _READY, artwork
+
     def embeddable_artwork(self, track_id: int) -> EmbeddableArtwork:
         """Beatport's image for a track, as a clean, bounded JPEG to embed (CLEAN-10).
 
@@ -1048,6 +1086,7 @@ __all__: Sequence[str] = (
     "ARTWORK_NONE",
     "ARTWORK_READY",
     "ARTWORK_REFUSED",
+    "ARTWORK_UNKNOWN",
     "ArtworkScanResult",
     "ArtworkService",
     "BEATPORT_FETCH_SIZE",

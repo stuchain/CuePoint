@@ -324,6 +324,53 @@ class TestWriting:
         with pytest.raises(PreviewNotFoundError, match="preview again"):
             start_tag_write_job(store, preview.preview_id, previews=previews)
 
+    def test_a_write_with_options_writes_only_those_fields(
+        self, store, tmp_path, previews
+    ):
+        [path] = music(tmp_path, 1)
+        tracks = add_tracks([path])
+        key_and_comment = TagWriteOptions.from_request(
+            {"write_year": False, "write_label": False}
+        )
+        preview, _ = preview_or_start(
+            store, BatchSelection.of_ids(tracks), key_and_comment, previews=previews
+        )
+        assert preview is not None and preview.files[0].fields == ("key", "comment")
+
+        job = start_tag_write_job(
+            store, preview.preview_id, options=KEY_ONLY, previews=previews
+        )
+        done = finished(store, job)
+
+        assert done.state is JobState.SUCCEEDED and done.result is not None
+        assert (done.result["fields"]["key"], done.result["fields"]["comment"]) == (
+            1,
+            0,
+        )
+        tags = read_tag_fields(path)
+        assert display_value(tags.value("key")) == "Am"
+        assert display_value(tags.value("comment")) is None
+
+    def test_options_wider_than_the_preview_are_refused_before_a_job_exists(
+        self, store, tmp_path, previews
+    ):
+        tracks = add_tracks(music(tmp_path, 1))
+        preview, _ = preview_or_start(
+            store, BatchSelection.of_ids(tracks), KEY_ONLY, previews=previews
+        )
+        assert preview is not None
+        wider = TagWriteOptions.from_request(
+            {"write_year": False, "write_label": False}
+        )
+
+        with pytest.raises(ValueError, match="comment"):
+            start_tag_write_job(
+                store, preview.preview_id, options=wider, previews=previews
+            )
+
+        assert store.list_all() == []
+        assert previews.get(preview.preview_id) is preview
+
     def test_an_unknown_preview_is_refused_before_a_job_exists(self, store, previews):
         with pytest.raises(PreviewNotFoundError):
             start_tag_write_job(store, "never-previewed", previews=previews)
@@ -534,6 +581,17 @@ class TestTheStore:
         first = kept.put(self.preview("a"))
         kept.put(self.preview("b"))
         kept.put(first)
+        kept.put(self.preview("c"))
+
+        assert kept.get("a") is first
+        with pytest.raises(PreviewNotFoundError):
+            kept.get("b")
+
+    def test_getting_one_keeps_it_alive(self):
+        kept = TagWritePreviewStore(max_entries=2)
+        first = kept.put(self.preview("a"))
+        kept.put(self.preview("b"))
+        assert kept.get("a") is first
         kept.put(self.preview("c"))
 
         assert kept.get("a") is first

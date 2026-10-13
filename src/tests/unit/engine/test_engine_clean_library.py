@@ -32,7 +32,12 @@ from cuepoint.engine.tag_write_jobs import (
     JOB_TYPE_TAG_WRITE,
     offer_interrupted_tag_jobs,
 )
-from cuepoint.models.file_write import WRITE_RESTORED, WRITE_WRITTEN, FileWrite
+from cuepoint.models.file_write import (
+    WRITE_RESTORED,
+    WRITE_SKIPPED,
+    WRITE_WRITTEN,
+    FileWrite,
+)
 from cuepoint.persistence.job_repository import JobRecord
 from cuepoint.services.tag_write_service import (
     EVENT_TAGS_INTERRUPTED,
@@ -250,6 +255,36 @@ class TestInterruptedTagJobs:
         }
         assert event.summary == describe_interrupted_tags(False, 3, 2)
         assert "2 values may not have finished" in event.summary
+
+    def test_rows_that_only_note_a_value_the_file_held_are_not_offered(
+        self, library_db
+    ):
+        [track_id] = add_tracks(track("Kept"))
+        running("write-1", JOB_TYPE_TAG_WRITE)
+        kept = [
+            FileWrite(
+                job_id="write-1",
+                file_path="/music/kept.mp3",
+                field=field,
+                outcome=WRITE_SKIPPED,
+                written_at=NOW,
+                track_id=track_id,
+                old_value_json='"old"',
+                new_value_json='"new"',
+                reason="Kept the value the file already holds",
+            )
+            for field in ("key", "genre")
+        ]
+        with resolve("IDatabaseService").transaction():
+            resolve("IFileWriteRepository").record(kept)
+
+        assert offer_interrupted_tag_jobs() == 0
+        assert offers() == []
+
+        recorded("write-1", track_id, pending=1, done=1)
+        assert offer_interrupted_tag_jobs() == 1
+        [event] = offers()
+        assert event.detail["recorded"] == 2
 
     def test_a_stopped_restore_names_the_writes_it_was_undoing(self, library_db):
         [track_id] = add_tracks(track("Written"))

@@ -105,6 +105,8 @@ export function fieldSkipText(reason: string): string {
       return "no value to write";
     case "unchanged":
       return "already the same";
+    case "file_has_value":
+      return "the file already has a value";
     case "key_unrecognized":
       return "not a key CuePoint can write";
     case "has_artwork":

@@ -17,14 +17,26 @@ answers which files will change, field by field, and which are skipped and
 why: WAV (the rule both existing callers apply), a format whose tags CuePoint
 does not write, a file the check found missing or unreadable or never checked
 at its current path (DEC-073), tags that cannot be read, or nothing that would
-change. For artwork it confirms Beatport's image can be fetched and passes the
-guard, and skips a file whose image cannot be.
+change. For artwork it counts the files with no picture whose accepted match
+has Beatport artwork, from what is already recorded; it fetches nothing, and the
+write reports an image it then cannot fetch (C29, amending DEC-076).
+
+One preview covers every save choice (C29)
+------------------------------------------
+Each file is read once, and what it holds is kept beside what every field would
+become — key in all three notations, genre, label, year and BPM whether or not
+they were asked, and the comment when it was — as a :class:`FileChoices`. The
+files a write changes under *any* options the preview covers are then planned
+from those records without reading a file again (:meth:`TagWritePreview.plan`),
+and :attr:`TagWritePreview.field_choices` counts, per field, the files a choice
+would fill (empty now) and replace (a different value now).
 
 A write writes what its preview planned, and nothing else. Each file is looked
 at again first: a track whose path, file check, effective values or accepted
 artwork changed since the preview is skipped as ``changed_since_preview`` rather
 than written with either the old values or the new ones, because neither is
-what a person confirmed. A field the file already holds is not written.
+what a person confirmed. A field the file already holds is not written, and
+with ``keep_existing`` neither is a field holding any other value.
 
 Recorded before written
 -----------------------
@@ -117,6 +129,8 @@ from cuepoint.persistence.track_query import BrowseQueryError
 from cuepoint.services.artwork_service import (
     ARTWORK_FAILED,
     ARTWORK_NONE,
+    ARTWORK_READY,
+    ARTWORK_UNKNOWN,
     UNREACHABLE_AFTER_FAILURES,
     EmbeddableArtwork,
 )
@@ -141,6 +155,7 @@ from cuepoint.services.override_values import (
 from cuepoint.services.tag_write_options import (
     KEY_FORMAT_CAMELOT,
     KEY_FORMAT_SHORT,
+    KEY_FORMATS,
     TagWriteOptions,
 )
 
@@ -191,9 +206,11 @@ FIELD_KEY_UNRECOGNIZED = "key_unrecognized"
 FIELD_HAS_ARTWORK = "has_artwork"
 FIELD_NO_BEATPORT_ARTWORK = "no_beatport_artwork"
 FIELD_ARTWORK_UNAVAILABLE = "artwork_unavailable"
+FIELD_FILE_HAS_VALUE = "file_has_value"
 FIELD_SKIP_REASONS: Tuple[str, ...] = (
     FIELD_NO_VALUE,
     FIELD_UNCHANGED,
+    FIELD_FILE_HAS_VALUE,
     FIELD_KEY_UNRECOGNIZED,
     FIELD_HAS_ARTWORK,
     FIELD_NO_BEATPORT_ARTWORK,
@@ -205,8 +222,24 @@ FIELD_SKIP_REASONS: Tuple[str, ...] = (
 PREVIEW_WORKERS = 8
 PREVIEW_CHUNK_SIZE = 200
 
-#: Tracks whose Beatport image a preview fetches between two looks at the cancel.
-ARTWORK_CHUNK_SIZE = 20
+#: A planned picture whose URL the preview could not know, because the accepted
+#: match's page was never read (C29). The write fetches and finds out.
+ARTWORK_URL_UNKNOWN = "unknown"
+
+#: The tag fields a preview keeps choices for whether or not they were asked.
+CHOICE_FIELDS: Tuple[str, ...] = tuple(
+    name for name in TAG_FIELDS if name != FIELD_COMMENT
+)
+
+#: Skipped rows a write holds before recording them in one go (C29).
+KEPT_ROWS_CHUNK = 500
+
+#: Why a ticked field was recorded as skipped: the file already holds the value,
+#: or the person chose to keep the file's own.
+KEPT_REASONS = {
+    FIELD_UNCHANGED: "The file already holds this value",
+    FIELD_FILE_HAS_VALUE: "Kept the value the file already holds",
+}
 
 #: How many files each list in a preview or result names; the counts are whole.
 EXAMPLE_LIMIT = 50
@@ -272,6 +305,27 @@ def _text(value: Optional[str]) -> Optional[str]:
     return text or None
 
 
+def _field_text(
+    target: TagTarget, name: str, key_format: str, comment_text: str
+) -> Tuple[Optional[str], str]:
+    """The text a field would write for a track, or None and why not."""
+    reason = FIELD_NO_VALUE
+    text: Optional[str]
+    if name == FIELD_KEY:
+        text, reason = key_text(target.key, key_format)
+    elif name == FIELD_YEAR:
+        text = None if target.year is None else _normalize_year(str(target.year))
+    elif name == FIELD_BPM:
+        text = bpm_text(target.bpm)
+    elif name == FIELD_LABEL:
+        text = _text(target.label)
+    elif name == FIELD_GENRE:
+        text = _text(target.genre)
+    else:
+        text = _text(comment_text)
+    return (text, "") if text else (None, reason or FIELD_NO_VALUE)
+
+
 def written_values(
     target: TagTarget, options: TagWriteOptions
 ) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -284,25 +338,27 @@ def written_values(
     values: Dict[str, str] = {}
     missing: Dict[str, str] = {}
     for name in options.fields:
-        reason = FIELD_NO_VALUE
-        text: Optional[str]
-        if name == FIELD_KEY:
-            text, reason = key_text(target.key, options.key_format)
-        elif name == FIELD_YEAR:
-            text = None if target.year is None else _normalize_year(str(target.year))
-        elif name == FIELD_BPM:
-            text = bpm_text(target.bpm)
-        elif name == FIELD_LABEL:
-            text = _text(target.label)
-        elif name == FIELD_GENRE:
-            text = _text(target.genre)
-        else:
-            text = _text(options.comment_text)
+        text, reason = _field_text(
+            target, name, options.key_format, options.comment_text
+        )
         if text:
             values[name] = text
         else:
-            missing[name] = reason or FIELD_NO_VALUE
+            missing[name] = reason
     return values, missing
+
+
+def _held(before: FieldValue, after: FieldValue, keep_existing: bool) -> Optional[str]:
+    """Why a field is left alone, or None to write it.
+
+    A file already holding the value is ``unchanged``; with ``keep_existing`` a
+    file holding any other value is ``file_has_value``.
+    """
+    if before == after:
+        return FIELD_UNCHANGED
+    if keep_existing and display_value(before) is not None:
+        return FIELD_FILE_HAS_VALUE
+    return None
 
 
 def _dumps(value: Any) -> str:
@@ -311,6 +367,15 @@ def _dumps(value: Any) -> str:
 
 def _count(number: int, noun: str) -> str:
     return f"{number:,} {noun}{'' if number == 1 else 's'}"
+
+
+def count_fields(files: Sequence["PlannedFile"]) -> Dict[str, int]:
+    """How many of these files each field will be written into, artwork included."""
+    counts = {name: 0 for name in WRITE_FIELDS}
+    for planned in files:
+        for name in planned.fields:
+            counts[name] += 1
+    return counts
 
 
 def describe_interrupted_tags(restoring: bool, recorded: int, unconfirmed: int) -> str:
@@ -387,14 +452,15 @@ class PlannedFile:
         changes: For each field that will change, what the file holds now and
             what it will hold.
         artwork_url: The accepted match's artwork, when a picture will be
-            embedded.
+            embedded; :data:`ARTWORK_URL_UNKNOWN` when one is planned but the
+            match's page was never read, so the write finds the URL out.
     """
 
     track_id: int
     file_path: str
     tag_format: str
     values: Dict[str, str]
-    changes: Dict[str, Tuple[FieldValue, Dict[str, Any]]]
+    changes: Dict[str, Tuple[FieldValue, FieldValue]]
     artwork_url: Optional[str] = None
 
     @property
@@ -419,6 +485,79 @@ class PlannedFile:
         }
 
 
+#: What a field would become: the text to write, and how the tag holds it.
+Prediction = Tuple[str, FieldValue]
+
+
+@dataclass(frozen=True)
+class FileChoices:
+    """What one readable file holds, and what every choice would make of it (C29).
+
+    Kept by a preview from the one read it makes of the file, so that the
+    files a write changes under other options are known without reading again.
+
+    Attributes:
+        track_id: The library track.
+        file_path: The file, as the preview read it.
+        tag_format: Its tag family.
+        before: What the file holds now, for key, year, label, BPM and genre,
+            and the comment when the preview asked for it.
+        after: For those fields, the text the track would write and how the tag
+            holds it, whenever the track has a value; the key is in the
+            preview's notation.
+        after_key: The key in each of the three notations, when it has one.
+        has_picture: Whether the file already holds a picture.
+        artwork_url: When the preview asked for artwork and the file has no
+            picture: the accepted match's image, :data:`ARTWORK_URL_UNKNOWN`
+            when it is not known yet, and None when there is none.
+    """
+
+    track_id: int
+    file_path: str
+    tag_format: str
+    before: Dict[str, FieldValue]
+    after: Dict[str, Prediction]
+    after_key: Dict[str, Prediction]
+    has_picture: bool = False
+    artwork_url: Optional[str] = None
+
+    def chosen(self, options: TagWriteOptions) -> Dict[str, Prediction]:
+        """The fields ``options`` write that the track has a value for."""
+        chosen: Dict[str, Prediction] = {}
+        for name in options.fields:
+            picked = (
+                self.after_key.get(options.key_format)
+                if name == FIELD_KEY
+                else self.after.get(name)
+            )
+            if picked is not None:
+                chosen[name] = picked
+        return chosen
+
+    def plan(self, options: TagWriteOptions) -> Optional["PlannedFile"]:
+        """The file a write of ``options`` would change, or None if it changes nothing."""
+        chosen = self.chosen(options)
+        changes: Dict[str, Tuple[FieldValue, FieldValue]] = {}
+        for name, (_text_value, after) in chosen.items():
+            if _held(self.before[name], after, options.keep_existing) is None:
+                changes[name] = (self.before[name], after)
+        artwork_url = (
+            self.artwork_url
+            if options.embed_missing_artwork and not self.has_picture
+            else None
+        )
+        if not changes and artwork_url is None:
+            return None
+        return PlannedFile(
+            track_id=self.track_id,
+            file_path=self.file_path,
+            tag_format=self.tag_format,
+            values={name: text for name, (text, _after) in chosen.items()},
+            changes=changes,
+            artwork_url=artwork_url,
+        )
+
+
 @dataclass(frozen=True)
 class TagWritePreview:
     """What a tag write would do, before it does anything.
@@ -434,6 +573,8 @@ class TagWritePreview:
         cancelled: Whether a cancel stopped it; a cancelled preview is not written.
         computed_at: When.
         duration_seconds: How long it took.
+        choices: Every readable file the preview read that was not skipped for
+            what it is, with what each choice would make of it, in path order.
     """
 
     preview_id: str
@@ -445,6 +586,7 @@ class TagWritePreview:
     cancelled: bool = False
     computed_at: str = ""
     duration_seconds: float = 0.0
+    choices: Tuple[FileChoices, ...] = ()
 
     def __post_init__(self) -> None:
         """Hold the counts to what a preview can produce."""
@@ -473,11 +615,97 @@ class TagWritePreview:
     @property
     def field_counts(self) -> Dict[str, int]:
         """How many files each field will be written into, artwork included."""
-        counts = {name: 0 for name in WRITE_FIELDS}
-        for planned in self.files:
-            for name in planned.fields:
-                counts[name] += 1
-        return counts
+        return count_fields(self.files)
+
+    @property
+    def field_choices(self) -> Dict[str, Any]:
+        """For each choice, the files it would fill and the files it would replace.
+
+        ``fill``: files whose value is empty now and would receive one.
+        ``replace``: files holding a different value now. Files already holding
+        the value count in neither. The key is counted in each notation; the
+        comment only when the preview asked for it, and artwork (``fill`` only)
+        likewise.
+        """
+
+        def tally() -> Dict[str, int]:
+            return {"replace": 0, "fill": 0}
+
+        def count(
+            counts: Dict[str, int], before: FieldValue, after: FieldValue
+        ) -> None:
+            if before == after:
+                return
+            counts["fill" if display_value(before) is None else "replace"] += 1
+
+        names = [
+            *CHOICE_FIELDS,
+            *((FIELD_COMMENT,) if self.options.write_comment else ()),
+        ]
+        counts = {name: tally() for name in names if name != FIELD_KEY}
+        styles = {style: tally() for style in KEY_FORMATS}
+        pictures = 0
+        for choice in self.choices:
+            for style, (_text_value, after) in choice.after_key.items():
+                count(styles[style], choice.before[FIELD_KEY], after)
+            for name, tallies in counts.items():
+                if name in choice.after:
+                    count(tallies, choice.before[name], choice.after[name][1])
+            if choice.artwork_url is not None and not choice.has_picture:
+                pictures += 1
+        choices: Dict[str, Any] = {FIELD_KEY: styles, **counts}
+        if self.options.embed_missing_artwork:
+            choices[FIELD_ARTWORK] = {"fill": pictures}
+        return choices
+
+    def uncovered(self, options: TagWriteOptions) -> List[str]:
+        """What ``options`` ask for that this preview did not read, one phrase each.
+
+        A preview covers key (any notation), year, label, BPM and genre always;
+        the comment only when it asked, and then only the text it used; artwork
+        only when it asked.
+        """
+        beyond: List[str] = []
+        if options.write_comment:
+            if not self.options.write_comment:
+                beyond.append("comment: the preview did not read it")
+            elif options.comment_text != self.options.comment_text:
+                beyond.append("comment_text: the preview used a different text")
+        if options.embed_missing_artwork and not self.options.embed_missing_artwork:
+            beyond.append("artwork: the preview did not look for it")
+        return beyond
+
+    def covers(self, options: TagWriteOptions) -> bool:
+        """True when this preview holds everything ``options`` need."""
+        return not self.uncovered(options)
+
+    def require_covers(self, options: TagWriteOptions) -> None:
+        """Refuse options this preview did not cover, naming what it did not.
+
+        Raises:
+            ValueError: Listing each part of ``options`` beyond the preview.
+        """
+        if not isinstance(options, TagWriteOptions):
+            raise ValueError("options must be TagWriteOptions")
+        beyond = self.uncovered(options)
+        if beyond:
+            raise ValueError(
+                "These options go beyond what the preview covers"
+                f" ({'; '.join(beyond)}); preview again"
+            )
+
+    def plan(self, options: TagWriteOptions) -> Tuple[PlannedFile, ...]:
+        """The files a write of ``options`` would change, without reading a file.
+
+        Built from the choices the preview kept, honouring ``keep_existing``;
+        ``plan(preview.options)`` is :attr:`files`.
+
+        Raises:
+            ValueError: If the preview does not cover ``options``.
+        """
+        self.require_covers(options)
+        planned = (choice.plan(options) for choice in self.choices)
+        return tuple(file for file in planned if file is not None)
 
     def summary_line(self) -> str:
         """What the preview found, in a sentence."""
@@ -514,6 +742,7 @@ class TagWritePreview:
                 name: dict(reasons) for name, reasons in self.field_skipped.items()
             },
             "changes": [planned.to_dict() for planned in self.files[:EXAMPLE_LIMIT]],
+            "field_choices": self.field_choices,
             "cancelled": self.cancelled,
             "computed_at": self.computed_at,
             "duration_seconds": round(self.duration_seconds, 3),
@@ -705,15 +934,19 @@ class TagRestoreResult:
 
 
 @dataclass
-class _Read:
-    """A file the preview read, and what it would change in it."""
+class _Candidate:
+    """A file the preview will read, and what its track would write into it."""
 
     target: TagTarget
     tag_format: str
     values: Dict[str, str]
-    snapshot: TagSnapshot
-    changes: Dict[str, Tuple[FieldValue, Dict[str, Any]]] = field(default_factory=dict)
-    artwork_url: Optional[str] = None
+    after: Dict[str, Prediction]
+    after_key: Dict[str, Prediction]
+
+    @property
+    def worth_reading(self) -> bool:
+        """True when some choice has a value to put in the file."""
+        return bool(self.values or self.after or self.after_key)
 
 
 @dataclass
@@ -725,6 +958,9 @@ class _Tally:
     fields: Dict[str, int] = field(default_factory=dict)
     field_skipped: Dict[str, Dict[str, int]] = field(default_factory=dict)
     problems: List[FileProblem] = field(default_factory=list)
+    kept: List[FileWrite] = field(default_factory=list)
+    kept_recorded: int = 0
+    artwork_failures: int = 0
 
     def skip(self, reason: str) -> None:
         self.skipped[reason] = self.skipped.get(reason, 0) + 1
@@ -845,7 +1081,10 @@ class TagWriteService(ITagWriteService):
             if track_id not in found:
                 skip(SKIP_VANISHED, track_id, "")
 
-        to_read: List[Tuple[TagTarget, str, Dict[str, str]]] = []
+        # Files the asked options have no value for are listed first, as they
+        # were when such a file was never read.
+        quiet: List[FileRef] = []
+        to_read: List[_Candidate] = []
         for target in targets:
             reason = _file_skip(target)
             if reason is not None:
@@ -854,17 +1093,20 @@ class TagWriteService(ITagWriteService):
             values, missing = written_values(target, options)
             for name, why in missing.items():
                 skip_field(name, why)
-            if not values and not options.embed_missing_artwork:
-                skip(SKIP_NOTHING_TO_WRITE, target.track_id, target.file_path)
-                continue
             tag_format = tag_format_of(target.file_path)
             assert tag_format is not None  # _file_skip refused every other format
-            to_read.append((target, tag_format, values))
+            candidate = _Candidate(
+                target, tag_format, values, *_predictions(target, tag_format, options)
+            )
+            if not candidate.worth_reading and not options.embed_missing_artwork:
+                quiet.append(FileRef(target.track_id, target.file_path))
+                continue
+            to_read.append(candidate)
 
         decided = total - len(to_read)
         _report(on_progress, decided, total)
         cancelled = False
-        reads: List[_Read] = []
+        reads: List[Tuple[FileChoices, Optional[PlannedFile], bool]] = []
         with ThreadPoolExecutor(
             max_workers=self._workers, thread_name_prefix="tag-preview"
         ) as pool:
@@ -874,44 +1116,46 @@ class TagWriteService(ITagWriteService):
                     break
                 chunk = to_read[start : start + PREVIEW_CHUNK_SIZE]
                 snapshots = list(
-                    pool.map(lambda item: self._read_quietly(item[0].file_path), chunk)
+                    pool.map(
+                        lambda item: self._read_quietly(item.target.file_path), chunk
+                    )
                 )
-                for (target, tag_format, values), snapshot in zip(chunk, snapshots):
+                for candidate, snapshot in zip(chunk, snapshots):
+                    target = candidate.target
+                    asked_empty = (
+                        not candidate.values and not options.embed_missing_artwork
+                    )
                     if snapshot is None:
-                        skip(SKIP_TAGS_UNREADABLE, target.track_id, target.file_path)
+                        if asked_empty:
+                            quiet.append(FileRef(target.track_id, target.file_path))
+                        else:
+                            skip(
+                                SKIP_TAGS_UNREADABLE, target.track_id, target.file_path
+                            )
                         decided += 1
                         continue
-                    read = _Read(target, tag_format, values, snapshot)
-                    for name, text in values.items():
-                        after = predicted_value(tag_format, name, text)
-                        before = snapshot.value(name)
-                        if before == after:
-                            skip_field(name, FIELD_UNCHANGED)
-                        else:
-                            read.changes[name] = (before, after)
-                    reads.append(read)
+                    choices = self._choices_of(candidate, snapshot, options, skip_field)
+                    for name, (_text_value, after) in choices.chosen(options).items():
+                        held = _held(choices.before[name], after, options.keep_existing)
+                        if held is not None:
+                            skip_field(name, held)
+                    reads.append((choices, choices.plan(options), asked_empty))
                 _report(on_progress, decided + len(reads), total)
 
-            if options.embed_missing_artwork and not cancelled:
-                cancelled = self._preview_artwork(
-                    reads, pool, skip_field, should_cancel
-                )
-
         files: List[PlannedFile] = []
-        for read in reads:
-            if not read.changes and read.artwork_url is None:
-                skip(SKIP_NOTHING_TO_WRITE, read.target.track_id, read.target.file_path)
+        for choices, planned, asked_empty in reads:
+            if planned is None:
+                ref = FileRef(choices.track_id, choices.file_path)
+                if asked_empty:
+                    quiet.append(ref)
+                else:
+                    skip(SKIP_NOTHING_TO_WRITE, choices.track_id, choices.file_path)
                 continue
-            files.append(
-                PlannedFile(
-                    track_id=read.target.track_id,
-                    file_path=read.target.file_path,
-                    tag_format=read.tag_format,
-                    values=dict(read.values),
-                    changes=dict(read.changes),
-                    artwork_url=read.artwork_url,
-                )
-            )
+            files.append(planned)
+        if quiet:
+            quiet.sort(key=lambda ref: (ref.file_path, ref.track_id or 0))
+            late = skipped.get(SKIP_NOTHING_TO_WRITE, [])
+            skipped[SKIP_NOTHING_TO_WRITE] = [*quiet, *late]
         preview = TagWritePreview(
             preview_id=preview_id,
             options=options,
@@ -922,52 +1166,49 @@ class TagWriteService(ITagWriteService):
             cancelled=cancelled,
             computed_at=self._clock(),
             duration_seconds=self._monotonic() - started,
+            choices=tuple(choices for choices, _planned, _quiet in reads),
         )
         _report(on_progress, preview.decided, total)
         _logger.info("[tags] preview %s: %s", preview_id, preview.summary_line())
         return preview
 
-    def _preview_artwork(
+    def _choices_of(
         self,
-        reads: Sequence[_Read],
-        pool: ThreadPoolExecutor,
+        candidate: _Candidate,
+        snapshot: TagSnapshot,
+        options: TagWriteOptions,
         skip_field: Callable[[str, str], None],
-        should_cancel: Optional[Callable[[], bool]],
-    ) -> bool:
-        """Find which files with no picture can receive Beatport's; True if cancelled."""
-        wanting: List[_Read] = []
-        for read in reads:
-            if read.snapshot.pictures:
+    ) -> FileChoices:
+        """What a read file holds, and what each choice would make of it.
+
+        When artwork was asked, counts it from what is recorded: a file with no
+        picture whose accepted match has an image, or may have (its page was
+        never read). Fetches nothing.
+        """
+        names = [*CHOICE_FIELDS, *((FIELD_COMMENT,) if options.write_comment else ())]
+        artwork_url: Optional[str] = None
+        has_picture = bool(snapshot.pictures)
+        if options.embed_missing_artwork:
+            if has_picture:
                 skip_field(FIELD_ARTWORK, FIELD_HAS_ARTWORK)
             else:
-                wanting.append(read)
-        failures_in_a_row = 0
-        for start in range(0, len(wanting), ARTWORK_CHUNK_SIZE):
-            chunk = wanting[start : start + ARTWORK_CHUNK_SIZE]
-            if failures_in_a_row >= UNREACHABLE_AFTER_FAILURES:
-                # Beatport cannot be reached; every further track would only
-                # spend a timeout to say the same.
-                for _read in chunk:
-                    skip_field(FIELD_ARTWORK, FIELD_ARTWORK_UNAVAILABLE)
-                continue
-            if should_cancel is not None and should_cancel():
-                return True
-            looks = list(
-                pool.map(
-                    lambda read: self._artwork_quietly(read.target.track_id), chunk
-                )
-            )
-            for read, look in zip(chunk, looks):
-                if look.ready:
-                    read.artwork_url = look.source_url
-                elif look.status == ARTWORK_NONE:
-                    skip_field(FIELD_ARTWORK, FIELD_NO_BEATPORT_ARTWORK)
+                status, url = self._known_artwork_quietly(candidate.target.track_id)
+                if status == ARTWORK_READY and url:
+                    artwork_url = url
+                elif status == ARTWORK_UNKNOWN:
+                    artwork_url = ARTWORK_URL_UNKNOWN
                 else:
-                    skip_field(FIELD_ARTWORK, FIELD_ARTWORK_UNAVAILABLE)
-                failures_in_a_row = (
-                    failures_in_a_row + 1 if look.status == ARTWORK_FAILED else 0
-                )
-        return False
+                    skip_field(FIELD_ARTWORK, FIELD_NO_BEATPORT_ARTWORK)
+        return FileChoices(
+            track_id=candidate.target.track_id,
+            file_path=candidate.target.file_path,
+            tag_format=candidate.tag_format,
+            before={name: snapshot.value(name) for name in names},
+            after=candidate.after,
+            after_key=candidate.after_key,
+            has_picture=has_picture,
+            artwork_url=artwork_url,
+        )
 
     # ---------------------------------------------------------------- write
 
@@ -975,29 +1216,54 @@ class TagWriteService(ITagWriteService):
         self,
         preview: TagWritePreview,
         job_id: str,
+        options: Optional[TagWriteOptions] = None,
         *,
         on_progress: Optional[Callable[[int, int], None]] = None,
         should_cancel: Optional[Callable[[], bool]] = None,
     ) -> TagWriteResult:
         """Write what a preview planned, one file at a time, recording each field first.
 
+        With no ``options`` that is the preview's own files and options. With
+        ``options`` it is the files those would change, planned from what the
+        preview kept (:meth:`TagWritePreview.plan`): any choice the preview
+        covers, and nothing it does not.
+
+        With ``options``, a ticked field the file already holds, or keeps under
+        ``keep_existing``, is recorded as a ``skipped`` row (old value, the value
+        that would have been written) for every file the preview read, even when
+        no file changes. A write may then plan no files at all. Restore ignores
+        these rows.
+
         Raises:
-            ValueError: If the preview was cancelled.
+            ValueError: If the preview was cancelled, or does not cover ``options``.
         """
         required_text(job_id, "job_id")
         if preview.cancelled:
             raise ValueError("A cancelled preview cannot be written; preview again")
+        given = options is not None
+        if options is None:
+            options, files = preview.options, preview.files
+        else:
+            files = preview.plan(options)
+        record_kept = given
         started = self._monotonic()
-        total = len(preview.files)
+        total = len(files)
         tally = _Tally()
         cancelled = False
         _report(on_progress, 0, total)
-        for index, planned in enumerate(preview.files):
+        if record_kept:
+            cancelled = self._record_unvisited(
+                preview, files, options, job_id, tally, should_cancel
+            )
+        for index, planned in enumerate(files if not cancelled else ()):
             if should_cancel is not None and should_cancel():
                 cancelled = True
                 break
-            self._write_file(planned, preview.options, job_id, tally)
+            self._write_file(planned, options, job_id, tally, record_kept)
+            if len(tally.kept) >= KEPT_ROWS_CHUNK:
+                self._flush_kept(tally)
             _report(on_progress, index + 1, total)
+        self._flush_kept(tally)
 
         result = TagWriteResult(
             job_id=job_id,
@@ -1014,11 +1280,17 @@ class TagWriteService(ITagWriteService):
             duration_seconds=self._monotonic() - started,
         )
         _logger.info("[tags] %s (job %s)", result.summary_line(), job_id)
+        marked_only = total == 0 and tally.kept_recorded > 0
         self._record_event(
             EVENT_TAGS_WRITTEN,
-            result.summary_line(),
+            (
+                f"Marked {_count(tally.kept_recorded, 'value')} as already in the files"
+                if marked_only
+                else result.summary_line()
+            ),
             {
                 "job_id": job_id,
+                "kept": tally.kept_recorded,
                 "total": result.total,
                 "written": result.written,
                 "skipped": result.skipped_count,
@@ -1026,8 +1298,13 @@ class TagWriteService(ITagWriteService):
                 "fields": {name: result.fields.get(name, 0) for name in WRITE_FIELDS},
                 "failed_fields": result.failed_fields,
                 "cancelled": result.cancelled,
+                "options": {
+                    name: value
+                    for name, value in options.to_dict().items()
+                    if name != "comment_text"
+                },
             },
-            when=total > 0,
+            when=total > 0 or marked_only,
         )
         return result
 
@@ -1037,6 +1314,7 @@ class TagWriteService(ITagWriteService):
         options: TagWriteOptions,
         job_id: str,
         tally: _Tally,
+        record_kept: bool = False,
     ) -> None:
         """Look at one planned file again, record, write, read back, confirm."""
         path = planned.file_path
@@ -1056,7 +1334,8 @@ class TagWriteService(ITagWriteService):
         if values != planned.values:
             tally.skip(SKIP_CHANGED_SINCE_PREVIEW)
             return
-        if planned.artwork_url is not None:
+        known_url = planned.artwork_url not in (None, ARTWORK_URL_UNKNOWN)
+        if known_url:
             _status, artwork_now = self._artwork.beatport_artwork_source(
                 planned.track_id
             )
@@ -1080,19 +1359,40 @@ class TagWriteService(ITagWriteService):
             text = planned.values[name]
             after = predicted_value(planned.tag_format, name, text)
             before = snapshot.value(name)
-            if before == after:
-                tally.skip_field(name, FIELD_UNCHANGED)
+            why = _held(before, after, options.keep_existing)
+            if why is not None:
+                tally.skip_field(name, why)
             else:
                 changes[name] = (text, before, after)
+        if record_kept:
+            for name, text in planned.values.items():
+                after = predicted_value(planned.tag_format, name, text)
+                before = snapshot.value(name)
+                kept_why = _held(before, after, options.keep_existing)
+                if kept_why is not None:
+                    tally.kept.append(
+                        self._kept_row(planned, name, before, after, kept_why, job_id)
+                    )
 
         image: Optional[EmbeddableArtwork] = None
         if planned.artwork_url is not None:
             if snapshot.pictures:
                 tally.skip_field(FIELD_ARTWORK, FIELD_HAS_ARTWORK)
+            elif tally.artwork_failures >= UNREACHABLE_AFTER_FAILURES:
+                # Beatport cannot be reached; every further file would only
+                # spend a timeout to say the same.
+                tally.skip_field(FIELD_ARTWORK, FIELD_ARTWORK_UNAVAILABLE)
             else:
                 look = self._artwork_quietly(planned.track_id)
-                if look.ready and look.source_url == planned.artwork_url:
+                tally.artwork_failures = (
+                    tally.artwork_failures + 1 if look.status == ARTWORK_FAILED else 0
+                )
+                if look.ready and (
+                    not known_url or look.source_url == planned.artwork_url
+                ):
                     image = look
+                elif look.status == ARTWORK_NONE:
+                    tally.skip_field(FIELD_ARTWORK, FIELD_NO_BEATPORT_ARTWORK)
                 else:
                     tally.skip_field(FIELD_ARTWORK, FIELD_ARTWORK_UNAVAILABLE)
 
@@ -1555,6 +1855,92 @@ class TagWriteService(ITagWriteService):
             _logger.warning("[tags] track %s: artwork not fetched: %s", track_id, exc)
             return EmbeddableArtwork(ARTWORK_FAILED)
 
+    def _kept_row(
+        self,
+        planned: Any,
+        name: str,
+        before: FieldValue,
+        after: FieldValue,
+        why: str,
+        job_id: str,
+    ) -> FileWrite:
+        """The record that a ticked field was not written because the file holds it."""
+        return FileWrite(
+            job_id=job_id,
+            file_path=planned.file_path,
+            field=name,
+            outcome=WRITE_SKIPPED,
+            written_at=self._clock(),
+            track_id=planned.track_id,
+            old_value_json=_dumps(before),
+            new_value_json=_dumps(after),
+            reason=KEPT_REASONS[why],
+        )
+
+    def _record_unvisited(
+        self,
+        preview: TagWritePreview,
+        files: Sequence[PlannedFile],
+        options: TagWriteOptions,
+        job_id: str,
+        tally: _Tally,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> bool:
+        """Record the kept fields of files the write has nothing to write into.
+
+        These files are never visited, so the preview's own read is what they
+        held. A track whose path, file check or values changed since the preview
+        gets no row: it is no longer the file the person saw. Returns True if a
+        cancel stopped it.
+        """
+        visited = {planned.track_id for planned in files}
+        waiting = [c for c in preview.choices if c.track_id not in visited]
+        for start in range(0, len(waiting), KEPT_ROWS_CHUNK):
+            if should_cancel is not None and should_cancel():
+                return True
+            chunk = waiting[start : start + KEPT_ROWS_CHUNK]
+            now = {
+                t.track_id: t for t in self._writes.targets([c.track_id for c in chunk])
+            }
+            for choice in chunk:
+                chosen = choice.chosen(options)
+                target = now.get(choice.track_id)
+                if (
+                    target is None
+                    or target.file_path != choice.file_path
+                    or _file_skip(target) is not None
+                    or written_values(target, options)[0]
+                    != {name: text for name, (text, _after) in chosen.items()}
+                ):
+                    continue
+                for name, (_text_value, after) in chosen.items():
+                    why = _held(choice.before[name], after, options.keep_existing)
+                    if why is not None:
+                        tally.kept.append(
+                            self._kept_row(
+                                choice, name, choice.before[name], after, why, job_id
+                            )
+                        )
+            self._flush_kept(tally)
+        return False
+
+    def _flush_kept(self, tally: _Tally) -> None:
+        """Record the skipped rows held so far, in one go."""
+        if not tally.kept:
+            return
+        rows = list(tally.kept)
+        tally.kept.clear()
+        self._with_database(lambda: self._writes.record(rows))
+        tally.kept_recorded += len(rows)
+
+    def _known_artwork_quietly(self, track_id: int) -> Tuple[str, Optional[str]]:
+        """What is recorded about a track's Beatport image; none if it cannot say."""
+        try:
+            return self._artwork.known_beatport_artwork(track_id)
+        except Exception as exc:  # noqa: BLE001 — one track does not stop a job
+            _logger.warning("[tags] track %s: artwork not looked up: %s", track_id, exc)
+            return ARTWORK_NONE, None
+
     def _with_database(self, work: Callable[[], Any]) -> Any:
         return write_waiting(
             self._db,
@@ -1572,6 +1958,30 @@ class TagWriteService(ITagWriteService):
             self._activity.record_event(event_type, summary, detail)
         except Exception as exc:  # noqa: BLE001 — the feed is best-effort
             _logger.debug("[activity] could not record %s: %s", event_type, exc)
+
+
+def _predictions(
+    target: TagTarget, tag_format: str, options: TagWriteOptions
+) -> Tuple[Dict[str, Prediction], Dict[str, Prediction]]:
+    """What every choice would write for a track, from the track alone.
+
+    Returns:
+        ``(after, after_key)``: for key, year, label, BPM and genre whenever the
+        track has a value, and for the comment when ``options`` ask for it; and
+        the key in each notation.
+    """
+    after: Dict[str, Prediction] = {}
+    names = [*CHOICE_FIELDS, *((FIELD_COMMENT,) if options.write_comment else ())]
+    for name in names:
+        text, _why = _field_text(target, name, options.key_format, options.comment_text)
+        if text:
+            after[name] = (text, predicted_value(tag_format, name, text))
+    after_key: Dict[str, Prediction] = {}
+    for style in KEY_FORMATS:
+        text, _why = key_text(target.key, style)
+        if text:
+            after_key[style] = (text, predicted_value(tag_format, FIELD_KEY, text))
+    return after, after_key
 
 
 def _file_skip(target: TagTarget) -> Optional[str]:
@@ -1604,9 +2014,13 @@ __all__: Sequence[str] = (
     "EVENT_TAGS_INTERRUPTED",
     "EVENT_TAGS_RESTORED",
     "EVENT_TAGS_WRITTEN",
+    "ARTWORK_URL_UNKNOWN",
+    "CHOICE_FIELDS",
     "FIELD_ARTWORK",
+    "FIELD_FILE_HAS_VALUE",
     "FIELD_SKIP_REASONS",
     "FILE_SKIP_REASONS",
+    "FileChoices",
     "FileProblem",
     "FileRef",
     "NOTHING_TO_RESTORE",
@@ -1618,6 +2032,7 @@ __all__: Sequence[str] = (
     "TagWriteService",
     "WRITE_FIELDS",
     "bpm_text",
+    "count_fields",
     "describe_interrupted_tags",
     "key_text",
     "written_values",

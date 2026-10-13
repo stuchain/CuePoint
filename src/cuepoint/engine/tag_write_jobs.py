@@ -13,6 +13,13 @@ the refresh's shape (LIBRARY-10), for the same reason: a person confirms a
 statement about their files, and the write acts on that statement rather than on
 a second computation nobody saw.
 
+A preview also covers every choice a person can make in the save window (C29): it
+holds what each file would become under each field and key notation, so a write
+may name options, narrower than or equal to what the preview covered, and write
+only those. Options beyond the preview are refused before a job exists, as is a
+count of what they would write, which is answered from the stored preview with no
+file read.
+
 Unlike a refresh diff, a preview does not go stale as a whole. Its write looks
 at each file again and skips the ones that changed since, so the statement stays
 true file by file. A preview is written once: the write takes it out of the
@@ -55,7 +62,7 @@ from cuepoint.engine.library_refresh import JOB_TYPE_LIBRARY_REFRESH_APPLY
 from cuepoint.exceptions.cuepoint_exceptions import CuePointException
 from cuepoint.services.batch_service import BATCH_JOB_THRESHOLD, BatchSelection
 from cuepoint.services.tag_write_options import TagWriteOptions
-from cuepoint.services.tag_write_service import TagWritePreview
+from cuepoint.services.tag_write_service import TagWritePreview, count_fields
 
 _logger = logging.getLogger(__name__)
 
@@ -133,13 +140,17 @@ class TagWritePreviewStore:
         return preview
 
     def get(self, preview_id: str) -> TagWritePreview:
-        """Return a preview, keeping it.
+        """Return a preview, keeping it and counting it as the freshest.
+
+        A person counting what a save would do keeps the preview alive.
 
         Raises:
             PreviewNotFoundError: If it is not remembered.
         """
         with self._lock:
             preview = self._entries.get(str(preview_id))
+            if preview is not None:
+                self._entries.move_to_end(str(preview_id))
         if preview is None:
             raise PreviewNotFoundError(str(preview_id))
         return preview
@@ -297,23 +308,49 @@ def run_tag_preview_job(
     _run(job, store, PREVIEW_MESSAGE, work, "TAG_WRITE_PREVIEW_FAILED")
 
 
-def start_tag_write_job(
-    store: JobStore,
+def count_tag_preview(
     preview_id: str,
+    options: TagWriteOptions,
     *,
     previews: Optional[TagWritePreviewStore] = None,
-) -> Job:
-    """Start writing what a preview planned.
+) -> Dict[str, Any]:
+    """What writing ``options`` from a kept preview would change, without reading a file.
+
+    The preview stays remembered, so a person can count again and then write.
+
+    Returns:
+        ``{"files": n, "fields": {field: n}}``, the fields as a preview names them.
 
     Raises:
         PreviewNotFoundError: If the preview is not remembered.
+        ValueError: If the preview does not cover ``options``.
+    """
+    kept = previews if previews is not None else get_preview_store()
+    planned = kept.get(preview_id).plan(options)
+    return {"files": len(planned), "fields": count_fields(planned)}
+
+
+def start_tag_write_job(
+    store: JobStore,
+    preview_id: str,
+    options: Optional[TagWriteOptions] = None,
+    *,
+    previews: Optional[TagWritePreviewStore] = None,
+) -> Job:
+    """Start writing what a preview planned, or the part of it ``options`` choose.
+
+    Raises:
+        PreviewNotFoundError: If the preview is not remembered.
+        ValueError: If the preview does not cover ``options``.
         JobTypeBusyError: If a conflicting job is running.
     """
     kept = previews if previews is not None else get_preview_store()
-    kept.get(preview_id)
+    preview = kept.get(preview_id)
+    if options is not None:
+        preview.require_covers(options)
 
     def runner(job: Job) -> None:
-        run_tag_write_job(job, store, preview_id, kept)
+        run_tag_write_job(job, store, preview_id, kept, options)
 
     return store.create_job(
         job_type=JOB_TYPE_TAG_WRITE,
@@ -324,9 +361,13 @@ def start_tag_write_job(
 
 
 def run_tag_write_job(
-    job: Job, store: JobStore, preview_id: str, previews: TagWritePreviewStore
+    job: Job,
+    store: JobStore,
+    preview_id: str,
+    previews: TagWritePreviewStore,
+    options: Optional[TagWriteOptions] = None,
 ) -> None:
-    """Write a preview under ``job``, taking it out of the store first."""
+    """Write a preview under ``job`` with ``options``, taking it out of the store first."""
     try:
         preview = previews.take(preview_id)
     except PreviewNotFoundError as exc:
@@ -341,7 +382,11 @@ def run_tag_write_job(
         store,
         WRITE_MESSAGE,
         lambda on_progress, should_cancel: _tag_write_service().write(
-            preview, job.id, on_progress=on_progress, should_cancel=should_cancel
+            preview,
+            job.id,
+            options,
+            on_progress=on_progress,
+            should_cancel=should_cancel,
         ),
         "TAG_WRITE_FAILED",
     )
@@ -511,6 +556,7 @@ __all__ = (
     "TAG_FILE_CONFLICTS",
     "TAG_FILE_JOB_TYPES",
     "TagWritePreviewStore",
+    "count_tag_preview",
     "get_preview_store",
     "offer_interrupted_tag_jobs",
     "preview_or_start",

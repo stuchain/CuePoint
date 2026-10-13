@@ -89,7 +89,9 @@ from cuepoint.services.tag_write_service import (
     EVENT_TAGS_RESTORED,
     EVENT_TAGS_WRITTEN,
     FIELD_ARTWORK,
+    KEPT_REASONS,
     FIELD_ARTWORK_UNAVAILABLE,
+    FIELD_FILE_HAS_VALUE,
     FIELD_HAS_ARTWORK,
     FIELD_KEY_UNRECOGNIZED,
     FIELD_NO_BEATPORT_ARTWORK,
@@ -868,7 +870,7 @@ class TestArtwork:
             picture_hash(data),
         )
         assert world.statuses.get(track).size_bytes == os.stat(path).st_size
-        assert world.web.fetched == [embed_url("one"), embed_url("one")]
+        assert world.web.fetched == [embed_url("one")]
 
         restored = world.service().restore("restore-1", job_id="job-1")
 
@@ -933,14 +935,18 @@ class TestArtwork:
         assert read_tag_fields(path).pictures == (picture_hash(jpeg_bytes("green")),)
         assert result.failed == 1 and result.written == 0
 
-    def test_an_image_that_cannot_be_fetched_is_skipped_with_that_reason(self, world):
+    def test_an_image_that_cannot_be_fetched_is_skipped_by_the_write(self, world):
         path, track = self.artworked(world, "ogg")
         world.web.images.clear()
 
         preview = world.preview([track], **ARTWORK_ONLY)
+        assert preview.field_counts[FIELD_ARTWORK] == 1
+        assert preview.field_skipped == {}
+        result = world.service().write(preview, "job-1")
 
-        assert preview.files == ()
-        assert preview.field_skipped == {FIELD_ARTWORK: {FIELD_ARTWORK_UNAVAILABLE: 1}}
+        assert result.skipped == {SKIP_NOTHING_TO_WRITE: 1}
+        assert result.field_skipped == {FIELD_ARTWORK: {FIELD_ARTWORK_UNAVAILABLE: 1}}
+        assert read_tag_fields(path).pictures == ()
 
     def test_an_image_the_guard_refuses_is_never_embedded(self, world):
         path, track = self.artworked(world, "mp3")
@@ -949,8 +955,9 @@ class TestArtwork:
         world.web.images[embed_url("one")] = tiff.getvalue()
 
         preview = world.preview([track], **ARTWORK_ONLY)
+        result = world.service().write(preview, "job-1")
 
-        assert preview.field_skipped == {FIELD_ARTWORK: {FIELD_ARTWORK_UNAVAILABLE: 1}}
+        assert result.field_skipped == {FIELD_ARTWORK: {FIELD_ARTWORK_UNAVAILABLE: 1}}
         assert world.artwork.get(track).beatport_refused == "format"
         assert read_tag_fields(path).pictures == ()
 
@@ -961,20 +968,17 @@ class TestArtwork:
 
         assert preview.field_skipped == {FIELD_ARTWORK: {FIELD_NO_BEATPORT_ARTWORK: 1}}
 
-    def test_fetching_stops_once_beatport_cannot_be_reached(self, world):
+    def test_a_preview_of_many_tracks_never_touches_beatport(self, world):
         tracks = []
-        for index in range(UNREACHABLE_AFTER_FAILURES + 25):
+        for index in range(60):
             track = world.add(world.file("mp3"))
             world.accept(track, art(f"n{index}"))
             tracks.append(track)
 
         preview = world.preview(tracks, **ARTWORK_ONLY)
 
-        assert preview.field_skipped == {
-            FIELD_ARTWORK: {FIELD_ARTWORK_UNAVAILABLE: len(tracks)}
-        }
-        assert len(world.web.fetched) < len(tracks)
-        assert len(world.web.fetched) >= UNREACHABLE_AFTER_FAILURES
+        assert preview.field_counts[FIELD_ARTWORK] == len(tracks)
+        assert world.web.fetched == []
 
     def test_a_different_accepted_image_since_the_preview_skips_the_file(self, world):
         path, track = self.artworked(world, "aiff")
@@ -1229,24 +1233,24 @@ class TestTheSecondLines:
     def test_beatports_image_is_fetched_at_its_full_1400_pixels(self, world):
         path, track = self.artworked(world)
 
-        world.preview([track], **ARTWORK_ONLY)
+        world.service().write(world.preview([track], **ARTWORK_ONLY), "job-1")
 
         assert world.web.fetched == [
             "https://geo-media.beatport.com/image_size/1400x1400/one.jpg"
         ]
 
-    def test_an_image_the_guard_refused_is_not_fetched_again(self, world):
+    def test_an_image_the_guard_refused_is_not_counted_or_fetched_again(self, world):
         path, track = self.artworked(world)
         tiff = io.BytesIO()
         Image.new("RGB", (40, 40), "red").save(tiff, "TIFF")
         world.web.images[embed_url("one")] = tiff.getvalue()
-        world.preview([track], **ARTWORK_ONLY)
+        world.service().write(world.preview([track], **ARTWORK_ONLY), "job-1")
         fetched = list(world.web.fetched)
 
         again = world.preview([track], **ARTWORK_ONLY)
 
         assert world.web.fetched == fetched
-        assert again.field_skipped == {FIELD_ARTWORK: {FIELD_ARTWORK_UNAVAILABLE: 1}}
+        assert again.field_skipped == {FIELD_ARTWORK: {FIELD_NO_BEATPORT_ARTWORK: 1}}
 
     def test_an_image_that_is_not_the_previewed_artwork_is_not_embedded(self, world):
         path, track = self.artworked(world)
@@ -1347,3 +1351,776 @@ class TestTheSecondLines:
 
         assert skipped_ids(preview) == {SKIP_NOTHING_TO_WRITE: [track]}
         assert opened == []
+
+
+# ------------------------------------------- one preview covers every choice
+
+MIXED = dict(key="8A", year=2019, label="New Label", bpm=124.5, genre="House")
+EVERYTHING = dict(write_bpm=True, write_genre=True)
+
+
+def seed_file(path: Path, state: str) -> None:
+    """A file whose tags hold nothing, the values MIXED names, or other ones."""
+    if state == "same":
+        write_key_comment_year_to_file(
+            str(path), "Am", None, "2019", "New Label", "124.5", "House"
+        )
+    elif state == "different":
+        write_key_comment_year_to_file(
+            str(path), "C", None, "2001", "Old Label", "120", "Old Genre"
+        )
+
+
+def mixed_library(world) -> Dict[str, int]:
+    """An MP3 and a FLAC in each of three states: empty, same and different."""
+    tracks: Dict[str, int] = {}
+    for kind in ("mp3", "flac"):
+        for state in ("empty", "same", "different"):
+            path = world.file(kind, f"{state}.{kind}")
+            seed_file(path, state)
+            tracks[f"{state}.{kind}"] = world.add(path, **MIXED)
+    return tracks
+
+
+class Reads:
+    """A tag reader that counts what it is asked to read."""
+
+    def __init__(self) -> None:
+        self.paths: List[str] = []
+
+    def __call__(self, path: str):
+        self.paths.append(path)
+        return read_tag_fields(path)
+
+
+def label_only(world, **raw: Any) -> TagWriteOptions:
+    return world.options(
+        write_key=False,
+        write_year=False,
+        write_label=True,
+        write_comment=False,
+        **raw,
+    )
+
+
+@pytest.mark.unit
+class TestKeepExisting:
+    @pytest.mark.parametrize("kind", ["mp3", "flac"])
+    def test_a_field_the_file_holds_is_left_and_an_empty_one_is_filled(
+        self, world, kind
+    ):
+        held = world.file(kind, f"held.{kind}")
+        write_key_comment_year_to_file(
+            str(held), None, None, None, "Old Label", None, None
+        )
+        empty = world.file(kind, f"empty.{kind}")
+        tracks = [world.add(held, **MIXED), world.add(empty, **MIXED)]
+
+        preview = world.preview(tracks, write_comment=False, keep_existing=True)
+        result = world.service().write(preview, "job-1")
+
+        by_track = {planned.track_id: planned.fields for planned in preview.files}
+        assert by_track == {
+            tracks[0]: ("key", "year"),
+            tracks[1]: ("key", "year", "label"),
+        }
+        assert preview.field_skipped == {"label": {FIELD_FILE_HAS_VALUE: 1}}
+        assert display_value(read_tag_fields(held).value("label")) == "Old Label"
+        assert display_value(read_tag_fields(empty).value("label")) == "New Label"
+        assert result.fields["label"] == 1
+
+    def test_it_is_off_unless_asked_and_replaces_as_before(self, world):
+        path = world.file("mp3")
+        write_key_comment_year_to_file(
+            str(path), None, None, None, "Old Label", None, None
+        )
+        track = world.add(path, **MIXED)
+
+        preview = world.preview([track], write_comment=False)
+
+        assert preview.options.keep_existing is False
+        assert preview.files[0].fields == ("key", "year", "label")
+
+    def test_equal_values_are_unchanged_not_held(self, world):
+        path = world.file("flac")
+        write_key_comment_year_to_file(
+            str(path), None, None, None, "New Label", None, None
+        )
+        track = world.add(path, label="New Label")
+
+        preview = world.preview([track], write_comment=False, keep_existing=True)
+
+        assert preview.field_skipped["label"] == {FIELD_UNCHANGED: 1}
+
+    def test_a_value_that_arrived_after_the_preview_is_left_at_write_time(self, world):
+        path = world.file("ogg")
+        track = world.add(path, **MIXED)
+        preview = world.preview([track], write_comment=False, keep_existing=True)
+        assert preview.files[0].fields == ("key", "year", "label")
+        write_key_comment_year_to_file(
+            str(path), None, None, None, "Theirs", None, None
+        )
+
+        result = world.service().write(preview, "job-1")
+
+        assert result.field_skipped == {"label": {FIELD_FILE_HAS_VALUE: 1}}
+        assert [row.field for row in world.writes.for_job("job-1")] == ["key", "year"]
+        assert display_value(read_tag_fields(path).value("label")) == "Theirs"
+
+
+@pytest.mark.unit
+class TestFieldChoices:
+    def test_counts_on_files_that_are_empty_the_same_or_different(self, world):
+        tracks = mixed_library(world)
+
+        choices = world.preview(list(tracks.values()), **EVERYTHING).to_dict()[
+            "field_choices"
+        ]
+
+        for name in ("year", "label", "bpm", "genre"):
+            assert choices[name] == {"replace": 2, "fill": 2}, name
+        # "same" holds Am: equal in Rekordbox's spelling, different in the others.
+        assert choices["key"] == {
+            "normal": {"replace": 2, "fill": 2},
+            "camelot": {"replace": 4, "fill": 2},
+            "short": {"replace": 4, "fill": 2},
+        }
+        assert set(choices) == {"key", "year", "label", "bpm", "genre", "comment"}
+        assert choices["comment"] == {"replace": 0, "fill": 6}
+
+    def test_every_field_is_counted_whatever_the_asked_options_leave_out(self, world):
+        tracks = mixed_library(world)
+
+        shown = world.preview(
+            list(tracks.values()), write_comment=False, write_label=False
+        ).to_dict()
+
+        assert shown["fields"]["label"] == 0
+        assert shown["field_choices"]["label"] == {"replace": 2, "fill": 2}
+        assert shown["field_choices"]["bpm"] == {"replace": 2, "fill": 2}
+        assert "comment" not in shown["field_choices"]
+        assert "artwork" not in shown["field_choices"]
+
+    def test_the_existing_outputs_mean_what_they_did(self, world):
+        tracks = mixed_library(world)
+
+        shown = world.preview(
+            list(tracks.values()), write_comment=False, write_label=False
+        ).to_dict()
+
+        # The two "same" files hold everything asked for.
+        assert shown["total"] == 6 and shown["files"] == 4
+        assert shown["skipped"][SKIP_NOTHING_TO_WRITE]["count"] == 2
+        assert shown["fields"]["key"] == 4 and shown["fields"]["year"] == 4
+        assert shown["fields"]["bpm"] == 0
+        assert shown["field_skipped"] == {
+            "key": {FIELD_UNCHANGED: 2},
+            "year": {FIELD_UNCHANGED: 2},
+        }
+        assert shown["summary_line"] == (
+            "4 files would change: 4 key, 4 year. 2 files skipped"
+        )
+
+    def test_a_file_is_read_once_however_many_choices_it_serves(self, world):
+        tracks = mixed_library(world)
+        world.accept(tracks["empty.mp3"], art("one"))
+        reads = Reads()
+
+        preview = world.preview(
+            list(tracks.values()),
+            service=world.service(reader=reads),
+            embed_missing_artwork=True,
+            **EVERYTHING,
+        )
+
+        assert len(preview.files) == 6
+        assert len(reads.paths) == 6 and len(set(reads.paths)) == 6
+
+    def test_a_file_the_asked_fields_leave_alone_is_still_read_for_the_others(
+        self, world
+    ):
+        path = world.file("mp3")
+        track = world.add(path, genre="House")
+        reads = Reads()
+
+        preview = world.preview(
+            [track], service=world.service(reader=reads), write_comment=False
+        )
+
+        assert skipped_ids(preview) == {SKIP_NOTHING_TO_WRITE: [track]}
+        assert reads.paths == [str(path)]
+        assert preview.to_dict()["field_choices"]["genre"] == {"replace": 0, "fill": 1}
+
+    def test_the_comment_is_a_choice_only_when_it_was_asked(self, world):
+        path = world.file("flac")
+        write_key_comment_year_to_file(
+            str(path), None, "old note", None, None, None, None
+        )
+        empty = world.file("mp3")
+        tracks = [world.add(path, key="Am"), world.add(empty, key="Am")]
+
+        asked = world.preview(tracks, comment_text="reviewed").to_dict()
+        not_asked = world.preview(tracks, write_comment=False).to_dict()
+
+        assert asked["field_choices"]["comment"] == {"replace": 1, "fill": 1}
+        assert "comment" not in not_asked["field_choices"]
+
+    def test_artwork_counts_files_with_no_picture_that_could_receive_one(self, world):
+        bare = world.file("mp3")
+        held = world.file("flac")
+        embed_front_cover(held, jpeg_bytes("green"), 40, 20)
+        none = world.file("ogg")
+        tracks = [world.add(bare), world.add(held), world.add(none)]
+        world.accept(tracks[0], art("one"))
+        world.accept(tracks[1], art("two"))
+
+        shown = world.preview(tracks, **ARTWORK_ONLY).to_dict()
+
+        assert shown["field_choices"]["artwork"] == {"fill": 1}
+        assert shown["field_skipped"]["artwork"] == {
+            FIELD_HAS_ARTWORK: 1,
+            FIELD_NO_BEATPORT_ARTWORK: 1,
+        }
+
+
+@pytest.mark.unit
+class TestPlan:
+    def test_the_plan_for_the_previews_own_options_is_its_files(self, world):
+        tracks = mixed_library(world)
+        world.accept(tracks["empty.mp3"], art("one"))
+        for raw in (
+            dict(**EVERYTHING),
+            dict(write_comment=False, key_format="camelot"),
+            dict(keep_existing=True, **EVERYTHING),
+            dict(embed_missing_artwork=True, keep_existing=True),
+        ):
+            preview = world.preview(list(tracks.values()), **raw)
+
+            assert preview.plan(preview.options) == preview.files, raw
+
+    def test_a_plan_is_built_without_reading_a_file(self, world):
+        tracks = mixed_library(world)
+        reads = Reads()
+        preview = world.preview(
+            list(tracks.values()), service=world.service(reader=reads), **EVERYTHING
+        )
+        reads.paths.clear()
+
+        preview.plan(world.options(write_genre=True, keep_existing=True))
+
+        assert reads.paths == []
+
+    def test_a_subset_plans_only_those_fields_and_the_files_they_change(self, world):
+        tracks = mixed_library(world)
+        preview = world.preview(list(tracks.values()), **EVERYTHING)
+
+        planned = preview.plan(
+            world.options(
+                write_key=False,
+                write_year=False,
+                write_label=False,
+                write_comment=False,
+                write_genre=True,
+            )
+        )
+
+        # "same" files already hold House.
+        assert sorted(p.track_id for p in planned) == sorted(
+            tracks[name]
+            for name in ("empty.mp3", "empty.flac", "different.mp3", "different.flac")
+        )
+        assert {p.fields for p in planned} == {("genre",)}
+
+    def test_keep_existing_and_the_key_style_are_chosen_at_plan_time(self, world):
+        tracks = mixed_library(world)
+        preview = world.preview(list(tracks.values()), write_comment=False)
+
+        replacing = preview.plan(
+            world.options(write_comment=False, key_format="camelot")
+        )
+        keeping = preview.plan(
+            world.options(write_comment=False, key_format="camelot", keep_existing=True)
+        )
+
+        assert {p.values["key"] for p in replacing} == {"8A"}
+        assert len(replacing) == 6
+        assert sorted(p.track_id for p in keeping) == sorted(
+            tracks[name] for name in ("empty.mp3", "empty.flac")
+        )
+        assert {p.fields for p in keeping} == {("key", "year", "label")}
+
+    def test_options_beyond_what_the_preview_covers_are_refused_by_name(self, world):
+        tracks = mixed_library(world)
+        preview = world.preview(
+            list(tracks.values()), write_comment=False, comment_text="seen"
+        )
+
+        assert preview.covers(world.options(write_comment=False, write_genre=True))
+        for raw, word in [
+            (dict(write_comment=True), "comment"),
+            (dict(write_comment=False, embed_missing_artwork=True), "artwork"),
+        ]:
+            assert preview.covers(world.options(**raw)) is False
+            with pytest.raises(ValueError, match=word):
+                preview.plan(world.options(**raw))
+
+    def test_a_comment_is_covered_only_with_the_text_the_preview_used(self, world):
+        tracks = mixed_library(world)
+        preview = world.preview(list(tracks.values()), comment_text="seen")
+
+        assert preview.covers(world.options(comment_text="seen"))
+        with pytest.raises(ValueError, match="comment_text"):
+            preview.plan(world.options(comment_text="other"))
+
+    def test_artwork_asked_by_the_preview_may_be_dropped_not_added(self, world):
+        path = world.file("mp3")
+        track = world.add(path)
+        world.accept(track, art("one"), key="Am")
+        with_art = world.preview(
+            [track], embed_missing_artwork=True, write_comment=False
+        )
+        without = world.preview([track], write_comment=False)
+
+        assert with_art.covers(world.options(write_comment=False))
+        assert not without.covers(
+            world.options(write_comment=False, embed_missing_artwork=True)
+        )
+        assert [
+            p.fields for p in with_art.plan(world.options(write_comment=False))
+        ] == [("key",)]
+
+
+@pytest.mark.unit
+class TestWriteWithOptions:
+    def test_a_subset_writes_only_those_fields(self, world):
+        tracks = mixed_library(world)
+        paths = {name: Path(world.path_of(track)) for name, track in tracks.items()}
+        preview = world.preview(list(tracks.values()), **EVERYTHING)
+        before = {name: tag_dump(path) for name, path in paths.items()}
+
+        result = world.service().write(
+            preview, "job-1", label_only(world, keep_existing=True)
+        )
+
+        rows = [
+            row for row in world.writes.for_job("job-1") if row.outcome == WRITE_WRITTEN
+        ]
+        assert {row.field for row in rows} == {"label"}
+        assert {row.track_id for row in rows} == {
+            tracks["empty.mp3"],
+            tracks["empty.flac"],
+        }
+        assert result.total == 2 and result.written == 2
+        assert result.fields["label"] == 2
+        for name, path in paths.items():
+            if name.startswith("empty"):
+                assert display_value(read_tag_fields(path).value("label")) == (
+                    "New Label"
+                )
+            else:
+                assert tag_dump(path) == before[name]
+
+    def test_a_key_style_other_than_the_previews_is_written(self, world):
+        path = world.file("flac")
+        track = world.add(path, key="Am")
+        preview = world.preview([track], write_comment=False)
+
+        world.service().write(
+            preview, "job-1", world.options(write_comment=False, key_format="camelot")
+        )
+
+        assert display_value(read_tag_fields(path).value("key")) == "8A"
+
+    def test_a_write_wider_than_its_preview_is_refused_and_writes_nothing(self, world):
+        path = world.file("mp3")
+        track = world.add(path, **MIXED)
+        preview = world.preview([track], write_comment=False)
+        before = path.read_bytes()
+
+        with pytest.raises(ValueError, match="artwork"):
+            world.service().write(
+                preview,
+                "job-1",
+                world.options(write_comment=False, embed_missing_artwork=True),
+            )
+
+        assert path.read_bytes() == before
+        assert world.writes.for_job("job-1") == []
+
+    def test_without_options_it_writes_what_the_preview_planned(self, world):
+        path = world.file("mp3")
+        track = world.add(path, **MIXED)
+        preview = world.preview([track], keep_existing=True, **EVERYTHING)
+
+        result = world.service().write(preview, "job-1", None)
+
+        assert result.total == len(preview.files) == 1
+        assert result.fields["genre"] == 1
+
+
+@pytest.mark.unit
+class TestArtworkIsCountedNotFetched:
+    def forbid_the_network(self, world, monkeypatch) -> None:
+        def refuses(*_args: Any, **_kwargs: Any):
+            raise AssertionError("a preview must not fetch artwork")
+
+        for name in ("embeddable_artwork", "beatport_artwork_source", "thumbnail"):
+            monkeypatch.setattr(world.artwork_service, name, refuses)
+        # Nor may it get as far as the page reader or the gate every request passes.
+        monkeypatch.setattr(world.artwork_service, "_lookup_page", refuses)
+        monkeypatch.setattr(world.artwork_service._gate, "run", refuses)
+
+    def page_of(self, world, track: int) -> str:
+        accepted = world.artwork_service._artwork.accepted_candidate(track)
+        assert accepted is not None
+        return accepted[0]
+
+    def test_a_preview_calls_no_fetching_method_and_makes_no_request(
+        self, world, monkeypatch
+    ):
+        tracks = []
+        for kind in ("mp3", "flac", "ogg"):
+            track = world.add(world.file(kind), key="Am")
+            world.accept(track, art(kind))
+            tracks.append(track)
+        world.accept(tracks[2], None)  # a match whose page nobody has read
+        self.forbid_the_network(world, monkeypatch)
+
+        preview = world.preview(tracks, embed_missing_artwork=True, write_comment=False)
+
+        assert preview.field_counts[FIELD_ARTWORK] == 3
+        assert world.web.fetched == [] and world.web.pages == {}
+
+    def test_a_match_whose_page_was_never_read_is_counted_and_fetched_at_write(
+        self, world
+    ):
+        path = world.file("mp3")
+        track = world.add(path)
+        world.accept(track, None)
+        world.web.pages[self.page_of(world, track)] = art("one")
+        world.web.images[embed_url("one")] = big_jpeg()
+
+        preview = world.preview([track], **ARTWORK_ONLY)
+        [planned] = preview.files
+
+        assert planned.fields == (FIELD_ARTWORK,)
+        assert planned.to_dict()["artwork"] is True
+        assert world.web.fetched == []
+        result = world.service().write(preview, "job-1")
+        assert result.fields == {FIELD_ARTWORK: 1}
+        assert len(read_tag_fields(path).pictures) == 1
+
+    def test_the_write_says_when_the_page_names_no_image(self, world):
+        path = world.file("flac")
+        track = world.add(path)
+        world.accept(track, None)
+        world.web.pages[self.page_of(world, track)] = "https://example.com/x.jpg"
+
+        preview = world.preview([track], **ARTWORK_ONLY)
+        result = world.service().write(preview, "job-1")
+
+        assert preview.field_counts[FIELD_ARTWORK] == 1
+        assert result.field_skipped == {FIELD_ARTWORK: {FIELD_NO_BEATPORT_ARTWORK: 1}}
+        assert read_tag_fields(path).pictures == ()
+
+    def test_known_artwork_by_what_is_already_recorded(self, world, monkeypatch):
+        service = world.artwork_service
+        none = world.add(world.file("mp3"))
+        by_candidate = world.add(world.file("mp3"))
+        read_page = world.add(world.file("mp3"))
+        page_without_image = world.add(world.file("mp3"))
+        unread = world.add(world.file("mp3"))
+        for track, url in [
+            (by_candidate, art("one")),
+            (read_page, None),
+            (page_without_image, None),
+            (unread, None),
+        ]:
+            world.accept(track, url)
+        world.artwork.record_beatport(
+            read_page, self.page_of(world, read_page), art("two")
+        )
+        world.artwork.record_beatport(
+            page_without_image, self.page_of(world, page_without_image), ""
+        )
+        self.forbid_the_network(world, monkeypatch)
+
+        assert service.known_beatport_artwork(none) == ("none", None)
+        assert service.known_beatport_artwork(by_candidate) == ("ready", art("one"))
+        assert service.known_beatport_artwork(read_page) == ("ready", art("two"))
+        assert service.known_beatport_artwork(page_without_image) == ("none", None)
+        assert service.known_beatport_artwork(unread) == ("unknown", None)
+        assert world.web.fetched == []
+
+
+def written_rows(world, job_id: str):
+    return [r for r in world.writes.for_job(job_id) if r.outcome == WRITE_WRITTEN]
+
+
+def skipped_rows(world, job_id: str):
+    return [r for r in world.writes.for_job(job_id) if r.outcome == WRITE_SKIPPED]
+
+
+@pytest.mark.unit
+class TestKeptFieldsAreRecorded:
+    """A ticked field not written because the file holds it leaves a skipped row (C29)."""
+
+    def test_unchanged_and_kept_fields_record_what_the_file_holds_and_what_would_go(
+        self, world
+    ):
+        tracks = mixed_library(world)
+        by_name = {Path(world.path_of(t)).name: t for t in tracks.values()}
+        preview = world.preview(list(tracks.values()), write_comment=False)
+
+        world.service().write(
+            preview,
+            "job-1",
+            world.options(
+                write_comment=False, key_format="camelot", keep_existing=True
+            ),
+        )
+
+        by_file = {}
+        for row in skipped_rows(world, "job-1"):
+            by_file.setdefault(Path(row.file_path).name, {})[row.field] = row
+        assert set(by_file) == {
+            "same.mp3",
+            "same.flac",
+            "different.mp3",
+            "different.flac",
+        }
+        for kind in ("mp3", "flac"):
+            written = read_tag_fields(world.music / f"empty.{kind}")
+            same = by_file[f"same.{kind}"]
+            assert set(same) == {"key", "year", "label"}
+            # Equal values are unchanged; Am against camelot's 8A is a kept value.
+            assert same["year"].reason == KEPT_REASONS[FIELD_UNCHANGED]
+            assert same["year"].old_value == same["year"].new_value
+            assert same["key"].reason == KEPT_REASONS[FIELD_FILE_HAS_VALUE]
+            assert display_value(same["key"].old_value) == "Am"
+            different = by_file[f"different.{kind}"]
+            assert set(different) == {"key", "year", "label"}
+            assert {r.reason for r in different.values()} == {
+                KEPT_REASONS[FIELD_FILE_HAS_VALUE]
+            }
+            assert display_value(different["key"].old_value) == "C"
+            for name in ("key", "year", "label"):
+                # What would have gone in is what an empty file received.
+                assert different[name].new_value == written.value(name), name
+            assert same["key"].new_value == written.value("key")
+            for row in (*same.values(), *different.values()):
+                assert (row.outcome, row.pending, row.restore_of) == (
+                    WRITE_SKIPPED,
+                    False,
+                    None,
+                )
+                assert row.track_id == by_name[Path(row.file_path).name]
+
+    def test_files_with_nothing_to_write_get_rows_and_the_write_may_plan_none(
+        self, world
+    ):
+        tracks = {
+            name: track
+            for name, track in mixed_library(world).items()
+            if name.startswith("same")
+        }
+        preview = world.preview(list(tracks.values()), write_comment=False)
+        assert preview.files == ()
+
+        result = world.service().write(
+            preview, "job-1", world.options(write_comment=False)
+        )
+
+        assert (result.total, result.written) == (0, 0)
+        rows = world.writes.for_job("job-1")
+        assert {r.outcome for r in rows} == {WRITE_SKIPPED}
+        assert sorted((r.track_id, r.field) for r in rows) == sorted(
+            (track, name)
+            for track in tracks.values()
+            for name in ("key", "year", "label")
+        )
+        [event] = world.events(EVENT_TAGS_WRITTEN)
+        assert event.summary == "Marked 6 values as already in the files"
+        assert event.detail["kept"] == 6 and event.detail["total"] == 0
+        assert event.detail["options"]["write_comment"] is False
+        assert "comment_text" not in event.detail["options"]
+
+    def test_restore_ignores_them(self, world):
+        tracks = mixed_library(world)
+        preview = world.preview(list(tracks.values()), write_comment=False)
+        world.service().write(
+            preview, "job-1", world.options(write_comment=False, keep_existing=True)
+        )
+        written = written_rows(world, "job-1")
+        assert skipped_rows(world, "job-1") and written
+
+        assert len(world.writes.restorable(job_id="job-1")) == len(written)
+        assert world.writes.restorable_counts(job_id="job-1") == (len(written), 0)
+        restored = world.service().restore("restore-1", job_id="job-1")
+        assert restored.total == len(written) and restored.skipped == 0
+
+    def test_a_job_with_only_skipped_rows_has_nothing_to_restore(self, world):
+        tracks = {
+            name: track
+            for name, track in mixed_library(world).items()
+            if name.startswith("same")
+        }
+        preview = world.preview(list(tracks.values()), write_comment=False)
+        world.service().write(preview, "job-1", world.options(write_comment=False))
+
+        assert world.writes.restorable_counts(job_id="job-1") == (0, 0)
+        with pytest.raises(ValueError, match=NOTHING_TO_RESTORE):
+            world.service().restore("restore-1", job_id="job-1")
+
+    def test_a_write_without_options_records_no_skipped_rows(self, world):
+        tracks = mixed_library(world)
+        preview = world.preview(list(tracks.values()), keep_existing=True)
+
+        world.service().write(preview, "job-1")
+
+        rows = world.writes.for_job("job-1")
+        assert rows and {r.outcome for r in rows} == {WRITE_WRITTEN}
+
+    def test_rows_are_recorded_in_chunks(self, world, monkeypatch):
+        tracks = mixed_library(world)
+        preview = world.preview(list(tracks.values()), write_comment=False)
+        monkeypatch.setattr(tag_write_module, "KEPT_ROWS_CHUNK", 4)
+        calls: List[int] = []
+        original = world.writes.record
+
+        def counting(rows):
+            calls.append(len(rows))
+            return original(rows)
+
+        monkeypatch.setattr(world.writes, "record", counting)
+
+        world.service().write(preview, "job-1", world.options(write_comment=False))
+
+        kept = len(skipped_rows(world, "job-1"))
+        assert kept > 4
+        assert sum(calls) == kept + len(written_rows(world, "job-1"))
+        assert max(calls) <= 4 + 3  # a chunk, plus at most one file's fields
+
+    def test_the_written_event_carries_the_options_without_the_comment(self, world):
+        track = world.add(world.file("mp3"), key="Am")
+        preview = world.preview([track], comment_text="secret note")
+
+        world.service().write(preview, "job-1")
+
+        [event] = world.events(EVENT_TAGS_WRITTEN)
+        assert event.detail["options"]["write_key"] is True
+        assert event.detail["options"]["keep_existing"] is False
+        assert "comment_text" not in event.detail["options"]
+        assert "secret note" not in str(event.detail)
+
+
+@pytest.mark.unit
+class TestPreviewAnswersKeepTheirMeaning:
+    def test_a_file_that_will_not_read_and_has_nothing_asked_is_nothing_to_write(
+        self, world
+    ):
+        world.music.mkdir(parents=True, exist_ok=True)
+        noise = world.music / "noise.flac"
+        noise.write_bytes(b"not a flac" * 100)
+        broken = world.add(noise, genre="House")
+        asked = world.add(world.file("flac", "a.flac"), key="Am")
+        quiet = world.add(world.file("mp3", "z.mp3"))
+        held = world.file("ogg", "m.ogg")
+        write_key_comment_year_to_file(str(held), "Am", None, None, None, None, None)
+        late = world.add(held, key="Am")
+
+        preview = world.preview([broken, asked, quiet, late], write_comment=False)
+
+        assert skipped_ids(preview) == {
+            SKIP_NOTHING_TO_WRITE: sorted([broken, quiet, late])
+        }
+        # Files with no value for what was asked come first, as they always did.
+        names = [Path(r.file_path).name for r in preview.skipped[SKIP_NOTHING_TO_WRITE]]
+        assert names == ["noise.flac", "z.mp3", "m.ogg"]
+
+    def test_a_lookup_that_fails_does_not_count_an_image(self, world, monkeypatch):
+        track = world.add(world.file("mp3"))
+        world.accept(track, art("one"))
+
+        def fails(_track_id: int):
+            raise RuntimeError("the database is busy")
+
+        monkeypatch.setattr(world.artwork_service, "known_beatport_artwork", fails)
+
+        preview = world.preview([track], **ARTWORK_ONLY)
+
+        assert preview.files == ()
+        assert preview.field_skipped == {FIELD_ARTWORK: {FIELD_NO_BEATPORT_ARTWORK: 1}}
+
+
+@pytest.mark.unit
+class TestWriteStopsAskingWhenBeatportIsUnreachable:
+    def test_artwork_stops_after_a_run_of_failures_and_tags_are_still_written(
+        self, world
+    ):
+        tracks = []
+        for index in range(UNREACHABLE_AFTER_FAILURES + 15):
+            track = world.add(world.file("mp3"))
+            world.accept(track, art(f"n{index}"), key="Am")
+            tracks.append(track)
+
+        preview = world.preview(tracks, write_comment=False, embed_missing_artwork=True)
+        assert preview.field_counts[FIELD_ARTWORK] == len(tracks)
+        result = world.service().write(preview, "job-1")
+
+        assert result.fields["key"] == len(tracks)
+        assert result.fields.get(FIELD_ARTWORK, 0) == 0
+        assert result.field_skipped[FIELD_ARTWORK] == {
+            FIELD_ARTWORK_UNAVAILABLE: len(tracks)
+        }
+        assert UNREACHABLE_AFTER_FAILURES <= len(world.web.fetched) < len(tracks)
+
+
+@pytest.mark.unit
+class TestKeptRowsOfFilesNotVisited:
+    def held_files(self, world):
+        return {
+            name: track
+            for name, track in mixed_library(world).items()
+            if name.startswith(("same", "different"))
+        }
+
+    def test_a_track_that_changed_since_the_preview_gets_no_row(self, world):
+        tracks = self.held_files(world)
+        preview = world.preview(list(tracks.values()), write_comment=False)
+        with world.db.transaction() as conn:
+            conn.execute(
+                "UPDATE tracks SET file_path = ? WHERE id = ?",
+                (str(world.file("mp3", "elsewhere.mp3")), tracks["same.mp3"]),
+            )
+        world.override(tracks["different.mp3"], "label", "Changed Label")
+        world.check(tracks["same.flac"], FILE_MISSING)
+
+        world.service().write(
+            preview, "job-1", world.options(write_comment=False, keep_existing=True)
+        )
+
+        assert {r.track_id for r in skipped_rows(world, "job-1")} == {
+            tracks["different.flac"]
+        }
+
+    def test_a_cancel_stops_recording_before_the_next_chunk(self, world, monkeypatch):
+        tracks = self.held_files(world)
+        preview = world.preview(list(tracks.values()), write_comment=False)
+        monkeypatch.setattr(tag_write_module, "KEPT_ROWS_CHUNK", 1)
+        asked: List[int] = []
+
+        def cancel_after_two_looks() -> bool:
+            asked.append(1)
+            return len(asked) > 2
+
+        result = world.service().write(
+            preview,
+            "job-1",
+            world.options(write_comment=False, keep_existing=True),
+            should_cancel=cancel_after_two_looks,
+        )
+
+        assert result.cancelled
+        recorded_tracks = {r.track_id for r in skipped_rows(world, "job-1")}
+        assert len(recorded_tracks) == 2 < len(tracks)

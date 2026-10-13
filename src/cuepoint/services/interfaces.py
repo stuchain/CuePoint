@@ -2474,6 +2474,14 @@ class IArtworkService(ABC):
         ...
 
     @abstractmethod
+    def known_beatport_artwork(self, track_id: int) -> Tuple[str, Optional[str]]:
+        """``(status, artwork URL)`` from what is already known, never the network.
+
+        ``ready``, ``none`` or ``unknown`` (the accepted match's page never read).
+        """
+        ...
+
+    @abstractmethod
     def embeddable_artwork(self, track_id: int) -> "EmbeddableArtwork":
         """Beatport's image for a track, fetched, guarded and re-encoded to embed."""
         ...
@@ -2714,11 +2722,15 @@ class ITagWriteService(ABC):
         self,
         preview: "TagWritePreview",
         job_id: str,
+        options: Optional["TagWriteOptions"] = None,
         *,
         on_progress: Optional[Callable[[int, int], None]] = None,
         should_cancel: Optional[Callable[[], bool]] = None,
     ) -> "TagWriteResult":
-        """Write what a preview planned, recording each field before writing it."""
+        """Write what a preview planned, or the part of it ``options`` choose.
+
+        Recording each field before writing it.
+        """
         ...
 
     @abstractmethod
