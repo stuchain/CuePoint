@@ -74,8 +74,18 @@
   width: calc(var(--unit) * 3);
   height: calc(var(--unit) * 3);
   margin-top: var(--space-xs);
+  position: relative;
   background: transparent;
   border: var(--divider);
+}
+
+/* The fill: an accent layer kept invisible at rest; only its opacity moves (compositor-only). */
+.motion-settings__preview::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--accent-primary);
+  opacity: 0;
 }
 
 /* Outlined at rest. It fills only inside the play animation below, so with motion off or
@@ -93,8 +103,20 @@
   /* The move steps and the fade does not (DEC-135). */
   animation:
     motion-preview-move var(--motion-slow) steps(var(--motion-steps-long)) 1,
-    motion-preview-fade var(--motion-slow) var(--motion-fade) 1,
-    motion-preview-fill var(--motion-slow) steps(1) 1;
+    motion-preview-fade var(--motion-slow) var(--motion-fade) 1;
+}
+
+:root[data-motion-micro] .motion-settings__preview[data-kind="micro"][data-play]::before,
+:root[data-motion-interaction] .motion-settings__preview[data-kind="interaction"][data-play]::before,
+:root[data-motion-state] .motion-settings__preview[data-kind="state"][data-play]::before,
+:root[data-motion-page] .motion-settings__preview[data-kind="page"][data-play]::before,
+:root[data-motion-entrance] .motion-settings__preview[data-kind="entrance"][data-play]::before,
+:root[data-motion-hover] .motion-settings__preview[data-kind="hover"][data-play]::before,
+:root[data-motion-scroll] .motion-settings__preview[data-kind="scroll"][data-play]::before,
+:root[data-motion-loading] .motion-settings__preview[data-kind="loading"][data-play]::before,
+:root[data-motion-shared] .motion-settings__preview[data-kind="shared"][data-play]::before,
+:root[data-motion-feedback] .motion-settings__preview[data-kind="feedback"][data-play]::before {
+  animation: motion-preview-fill var(--motion-slow) var(--motion-fade) 1;
 }
 
 @keyframes motion-preview-move {
@@ -112,7 +134,7 @@
 @keyframes motion-preview-fill {
   0%,
   100% {
-    background: var(--accent-primary);
+    opacity: 1;
   }
 }
 

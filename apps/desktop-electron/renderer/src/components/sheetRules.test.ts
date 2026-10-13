@@ -69,8 +69,9 @@ describe("motion preview swatch (N1)", () => {
     expect(rest).toContain("background: transparent;");
     // No static fill: data-play stays set after the first play, so the fill lives in the animation.
     expect(motionSettings).not.toMatch(/\.motion-settings__preview\[data-play\] \{/);
-    expect(motionSettings).toMatch(/motion-preview-fill var\(--motion-slow\) steps\(1\) 1/);
-    expect(motionSettings).toMatch(/@keyframes motion-preview-fill \{[^}]*\{[^}]*background: var\(--accent-primary\)/);
+    expect(motionSettings).toMatch(/motion-preview-fill var\(--motion-slow\) var\(--motion-fade\) 1/);
+    expect(motionSettings).toMatch(/\.motion-settings__preview::before \{[^}]*background: var\(--accent-primary\);[^}]*opacity: 0;/);
+    expect(motionSettings).toMatch(/@keyframes motion-preview-fill \{[^}]*\{[^}]*opacity: 1;/);
   });
 });
 
