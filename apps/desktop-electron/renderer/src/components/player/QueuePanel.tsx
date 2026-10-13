@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { QueueItem } from "../../api/cuepointBridge.types";
 import { Button } from "../Button";
 import { Hint } from "../Hint";
 import { Modal } from "../Modal";
 import { PixelIcon } from "../PixelIcon";
+import { useRowHeight } from "../table/trackTableLayout";
 import { formatTime, formatTrackMeta } from "./playerFormat";
 import { useQueueWindow } from "./useQueueWindow";
 import "./QueuePanel.css";
@@ -32,8 +33,8 @@ import "./QueuePanel.css";
  * PLAYER-08 was flagged for.
  */
 
-/** Height of one row in CSS pixels at 1x, before the scale multiplier. */
-const QUEUE_ROW_HEIGHT = 44;
+/** An entry is two lines (title, then the meta line), so two of the table's rows. */
+const TABLE_ROWS_PER_ENTRY = 2;
 
 interface QueuePanelProps {
   onClose: () => void;
@@ -44,15 +45,10 @@ const bridge = () => window.cuepoint?.player;
 export function QueuePanel({ onClose }: QueuePanelProps) {
   const { items, offset, total, requestRange, refresh } = useQueueWindow();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [rowHeight, setRowHeight] = useState(QUEUE_ROW_HEIGHT);
+  // The table's row height, so the queue follows the size and Row density as the
+  // tables do (R4-1); measured from the stylesheet, so geometry and drawing agree.
+  const rowHeight = useRowHeight() * TABLE_ROWS_PER_ENTRY;
   const [visible, setVisible] = useState({ start: 0, end: 30 });
-
-  // Row height follows the app's scale, so the virtual geometry and
-  // what is actually drawn cannot disagree.
-  useEffect(() => {
-    const scale = Number(document.documentElement.dataset.scale ?? "1") || 1;
-    setRowHeight(QUEUE_ROW_HEIGHT * scale);
-  }, []);
 
   const onScroll = useCallback(() => {
     const element = scrollRef.current;

@@ -139,8 +139,6 @@ describe("sizes at 1.5×", () => {
  * lengths it still has, and may only shrink.
  */
 const KNOWN_EXCEPTIONS: Record<string, number> = {
-  "components/player/PlayerBar.css": 2,
-  "components/player/QueuePanel.css": 1,
 };
 
 const REM = /(?<![\w-])-?\d*\.?\d+rem\b/g;

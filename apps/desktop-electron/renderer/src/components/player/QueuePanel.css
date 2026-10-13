@@ -14,7 +14,7 @@
   /* Fills the right column and scrolls inside it (R2-1, DEC-264). */
   height: 100%;
   box-sizing: border-box;
-  width: min(28rem, 40vw);
+  width: min(max(calc(300px * var(--scale)), 448px), 40vw);
   border-left: var(--border-width) solid var(--border-outline);
   background: var(--bg-panel);
 }

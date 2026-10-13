@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PlayerSnapshot, QueueItem, QueueWindow } from "../../api/cuepointBridge.types";
 import { QueuePanel } from "./QueuePanel";
+import { ROW_HEIGHT_FALLBACK } from "../table/trackTableLayout";
 import { resetPlayerStore } from "./playerStore";
 import { EMPTY_AUDIO_STATE } from "./playerFormat";
 
@@ -374,6 +375,20 @@ describe("a queue too big to render", () => {
     expect(Number.parseInt(sizer.style.height, 10)).toBeGreaterThan(5_000 * 20);
   });
 
+  it("makes each row two table rows tall, following the size and Row density (R4-1)", async () => {
+    // Two lines per entry (title, then artist and key), so two of the table's rows.
+    document.documentElement.style.setProperty("--row-height", "29px");
+    try {
+      install(3);
+      render(<QueuePanel onClose={() => undefined} />);
+      await waitFor(() => expect(rows().length).toBe(3));
+      expect(rows()[1]!.style.height).toBe("58px");
+      expect(rows()[1]!.style.top).toBe("58px");
+    } finally {
+      document.documentElement.style.removeProperty("--row-height");
+    }
+  });
+
   it("asks for a different slice when scrolled", async () => {
     const harness = install(5_000);
     const { container } = render(<QueuePanel onClose={() => undefined} />);
@@ -382,7 +397,8 @@ describe("a queue too big to render", () => {
 
     const scroller = container.querySelector(".cp-queue__scroll") as HTMLElement;
     Object.defineProperty(scroller, "clientHeight", { configurable: true, value: 400 });
-    scroller.scrollTop = 44 * 1_000;
+    // jsdom has no stylesheet, so the table's fallback row height applies: two per entry.
+    scroller.scrollTop = ROW_HEIGHT_FALLBACK * 2 * 1_000;
     fireEvent.scroll(scroller);
 
     await waitFor(() => expect(harness.requests.length).toBeGreaterThan(before));
