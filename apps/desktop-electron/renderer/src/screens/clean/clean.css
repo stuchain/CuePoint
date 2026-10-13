@@ -373,3 +373,8 @@
 .clean-progress::-webkit-progress-value {
   background: var(--accent-primary);
 }
+
+/* The save bar sits under the tab's body and never shrinks away (C23). */
+.clean-screen > .save-bar {
+  flex: none;
+}

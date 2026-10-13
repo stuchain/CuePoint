@@ -1096,6 +1096,106 @@ describe("Match N playlists on Beatport (C22)", () => {
   });
 });
 
+describe("Save to files (C23)", () => {
+  const UNSAVED_RULE = { field: "unsaved_values", operator: "is", value: true };
+
+  function withSaving(unsaved: number) {
+    bridge.getUnsavedValues = vi.fn().mockResolvedValue({ tracks: unsaved, fields: {} });
+    bridge.previewTagWrite = vi.fn(() => new Promise(() => {}));
+    bridge.startTagWrite = vi.fn();
+  }
+
+  it("draws no bar when every value is in the files", async () => {
+    withSaving(0);
+    renderClean(undefined, "playlists");
+    await waitFor(() => expect(bridge.getUnsavedValues).toHaveBeenCalled());
+    // Let the answer land before asking whether a bar was drawn for it.
+    await act(async () => {});
+    expect(screen.queryByRole("region", { name: "Save to files" })).toBeNull();
+  });
+
+  it("opens See changes on the list of changes", async () => {
+    withSaving(47);
+    renderClean(undefined, "playlists");
+    const bar = await screen.findByRole("region", { name: "Save to files" });
+    fireEvent.click(within(bar).getByRole("button", { name: "See changes" }));
+    const dialog = await screen.findByRole("dialog", { name: "Save 47 tracks to your files" });
+    expect(within(dialog).getByRole("button", { name: /Back/ })).toBeInTheDocument();
+  });
+
+  it("opens the Whole library row's Save on every unsaved track", async () => {
+    withSaving(47);
+    bridge.getCleanPlaylists!.mockResolvedValue({
+      ...PLAYLISTS,
+      whole_library: { ...PLAYLISTS.whole_library, not_matched: 0, accepted: 50, unsaved: 47 },
+    });
+    renderClean(undefined, "playlists");
+    fireEvent.click(await screen.findByRole("button", { name: "Save 47 to files… for Whole library" }));
+    expect(await screen.findByRole("dialog", { name: "Save 47 tracks to your files" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(bridge.previewTagWrite).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selection: { query: { filters: { match: "all", rules: [UNSAVED_RULE] } } },
+        }),
+      ),
+    );
+  });
+
+  it.each(["review", "missing", "duplicates"])("shows the bar on %s and opens the window on every unsaved track", async (section) => {
+    withSaving(47);
+    renderClean(section);
+    const bar = await screen.findByRole("region", { name: "Save to files" });
+    fireEvent.click(within(bar).getByRole("button", { name: "Save to files…" }));
+    expect(await screen.findByRole("dialog", { name: "Save 47 tracks to your files" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(bridge.previewTagWrite).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selection: { query: { filters: { match: "all", rules: [UNSAVED_RULE] } } },
+        }),
+      ),
+    );
+  });
+
+  it("opens a playlist's Save N to files… on that playlist's unsaved tracks", async () => {
+    withSaving(47);
+    bridge.getCleanPlaylists!.mockResolvedValue({
+      ...PLAYLISTS,
+      playlists: PLAYLISTS.playlists.map((entry) =>
+        entry.id === 11 ? { ...entry, unsaved: 6 } : entry.id === 14 ? { ...entry, waiting: 0, unsaved: 2 } : entry,
+      ),
+    });
+    renderClean(undefined, "playlists");
+    fireEvent.click(await screen.findByRole("button", { name: "Save 6 to files… for Closing" }));
+    expect(await screen.findByRole("dialog", { name: "Save 6 tracks to your files" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(bridge.previewTagWrite).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selection: {
+            query: {
+              filters: {
+                match: "all",
+                rules: [
+                  UNSAVED_RULE,
+                  { field: "in_playlist", operator: "any_of", value: [{ kind: "playlist", id: 11 }] },
+                ],
+              },
+            },
+          },
+        }),
+      ),
+    );
+
+    // Closed and opened on another playlist: a new window, reading that playlist's files.
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save 2 to files… for all" }));
+    expect(await screen.findByRole("dialog", { name: "Save 2 tracks to your files" })).toBeInTheDocument();
+    await waitFor(() => expect(bridge.previewTagWrite).toHaveBeenCalledTimes(2));
+    expect(bridge.previewTagWrite.mock.calls[1]![0].selection.query.filters.rules[1].value).toEqual([
+      { kind: "playlist", id: 14 },
+    ]);
+  });
+});
+
 describe("the match window, opened from elsewhere (FLW-13)", () => {
   function Opened() {
     const location = useLocation();

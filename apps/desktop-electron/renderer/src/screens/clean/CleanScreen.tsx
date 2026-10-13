@@ -24,7 +24,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import type { EntityKind, LibrarySummary } from "../../api/cuepointBridge.types";
+import type { CleanPlaylistStatus, EntityKind, LibrarySummary } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
@@ -47,6 +47,8 @@ import {
   saveCleanSection,
   type CleanSection,
 } from "./cleanSections";
+import { unsavedInPlaylist, useSaveToFiles } from "../../components/saveToFiles/useSaveToFiles";
+import { UNSAVED_SELECTION } from "../../components/saveToFiles/saveChoices";
 import { useCleanHealth } from "./useCleanHealth";
 import { useCleanMatch } from "./useCleanMatch";
 import "../screens.css";
@@ -122,6 +124,32 @@ export function CleanScreen({
   const playlists = useCleanPlaylists(match.matching, section === "review" && pageActive);
   const playlistTicks = usePlaylistTicks(playlists.data);
   const [matchTab, setMatchTab] = useState<MatchTab>(loadMatchTab);
+  // The save bar under every tab, and its window (C23); a playlist's row opens it on that
+  // playlist's tracks. A decision made here (Correct, Take, Undo, a run ending) is not
+  // announced as a library change, so it bumps `decided` and the bar and the rows count again.
+  const [decided, setDecided] = useState(0);
+  const save = useSaveToFiles({ active: pageActive, refreshKey: decided });
+  const { open: openSave } = save;
+  const { reload: reloadPlaylists } = playlists;
+  const matchChanged = useCallback(() => {
+    reloadHealth();
+    reloadPlaylists();
+    setDecided((count) => count + 1);
+  }, [reloadHealth, reloadPlaylists]);
+  // A run ending counts too, whichever tab is open (MatchArea is mounted only on Match).
+  const endedSeen = useRef(match.ended);
+  useEffect(() => {
+    if (endedSeen.current === match.ended) return;
+    endedSeen.current = match.ended;
+    setDecided((count) => count + 1);
+  }, [match.ended]);
+  const savePlaylist = useCallback(
+    (playlist: CleanPlaylistStatus | null) => {
+      if (playlist) openSave(unsavedInPlaylist(playlist.id), playlist.unsaved);
+      else openSave(UNSAVED_SELECTION, playlists.data?.whole_library.unsaved ?? 0);
+    },
+    [openSave, playlists.data],
+  );
   const [summary, setSummary] = useState<LibrarySummary | null | undefined>(undefined);
 
   useEffect(() => {
@@ -258,7 +286,7 @@ export function CleanScreen({
         {section === "review" && (
           <MatchArea
             health={cleanHealth.health}
-            onHealthChanged={reloadHealth}
+            onHealthChanged={matchChanged}
             focus={focus}
             onOpenEntity={openEntity}
             match={match}
@@ -267,6 +295,7 @@ export function CleanScreen({
             ticked={playlistTicks.ticked}
             onTick={playlistTicks.onTick}
             onTabChange={setMatchTab}
+            onSavePlaylist={savePlaylist}
           />
         )}
         {section === "missing" && (
@@ -280,6 +309,7 @@ export function CleanScreen({
           <DuplicatesView health={cleanHealth.health} onHealthChanged={reloadHealth} />
         )}
       </div>
+      {save.bar}
       <MatchWindow
         open={matchOpen}
         tracks={matchTracks}
@@ -289,6 +319,7 @@ export function CleanScreen({
         }
         onClose={() => setMatchOpen(false)}
       />
+      {save.dialog}
     </div>
   );
 }

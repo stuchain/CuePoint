@@ -50,4 +50,20 @@ describe("useUnsavedValues", () => {
     const bare = renderHook(() => useUnsavedValues());
     expect(bare.result.current.unsaved).toBeNull();
   });
+
+  it("reads nothing while its page is hidden, once when shown again, and again on a new refresh key", async () => {
+    const getUnsavedValues = vi.fn().mockResolvedValue({ tracks: 2, fields: {} });
+    (window as unknown as { cuepoint?: unknown }).cuepoint = { getUnsavedValues };
+    const { rerender } = renderHook(({ active, key }) => useUnsavedValues(active, key), {
+      initialProps: { active: false, key: 0 },
+    });
+    act(() => announceLibraryChange());
+    await act(async () => {});
+    expect(getUnsavedValues).not.toHaveBeenCalled();
+
+    rerender({ active: true, key: 0 });
+    await waitFor(() => expect(getUnsavedValues).toHaveBeenCalledTimes(1));
+    rerender({ active: true, key: 1 });
+    await waitFor(() => expect(getUnsavedValues).toHaveBeenCalledTimes(2));
+  });
 });

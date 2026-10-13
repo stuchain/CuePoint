@@ -142,6 +142,8 @@ interface MatchAreaProps {
   onTick: (key: string, on: boolean) => void;
   /** Which sub-tab is open, said up so the header shows Match N playlists only on Playlists (C22). */
   onTabChange?: (tab: MatchTab) => void;
+  /** A row's "Save N to files…": the window on that playlist, or the library for its row (C22, C23). */
+  onSavePlaylist?: (playlist: CleanPlaylistStatus | null) => void;
 }
 
 export function MatchArea({
@@ -155,6 +157,7 @@ export function MatchArea({
   ticked,
   onTick,
   onTabChange,
+  onSavePlaylist,
 }: MatchAreaProps) {
   const { push } = useToast();
   const [tab, setTab] = useState<MatchTab>(loadMatchTab);
@@ -753,6 +756,7 @@ export function MatchArea({
             ticked={ticked}
             onTick={onTick}
             onReview={reviewPlaylist}
+            onSave={onSavePlaylist}
           />
         )}
         {tab === "one" && (

@@ -15,10 +15,14 @@ interface SaveToFilesBarProps {
   onSeeChanges: (tracks: number) => void;
   /** Open the window on its choices, for this many tracks. */
   onSave: (tracks: number) => void;
+  /** False while the page is hidden: the count is not read until it is shown again. */
+  active?: boolean;
+  /** Changed by the page after a change it made itself, so the count is read again. */
+  refreshKey?: number;
 }
 
-export function SaveToFilesBar({ onSeeChanges, onSave }: SaveToFilesBarProps) {
-  const { unsaved } = useUnsavedValues();
+export function SaveToFilesBar({ onSeeChanges, onSave, active = true, refreshKey = 0 }: SaveToFilesBarProps) {
+  const { unsaved } = useUnsavedValues(active, refreshKey);
   if (!unsaved || unsaved.tracks <= 0) return null;
   const tracks = unsaved.tracks;
   return (
