@@ -51,7 +51,7 @@ const ALT: Record<string, string> = {
   library: "The Library page: the table of tracks with the Collections and playlists beside it, and the Track details panel open on one track, showing its cover, key and waveform.",
   window: "The CuePoint window on a library of tracks, with the Camelot wheel open and the selected track's key lit with the keys that mix with it.",
   waveforms: "The player bar with a paused track's waveform, and Track details showing the track's waveform, loudness and cue points.",
-  keys: "The Keys page: the keys of three playlists counted on the Camelot wheel and as a list, with one key opened and its tracks counted beneath.",
+  keys: "The Keys page: the keys of three playlists counted on the Camelot wheel, with one key opened and its tracks counted beneath.",
   statistics: "The Statistics page's Your library section: four charts of how the whole library spreads by genre, tempo, year and date added, with the count on every bar.",
   prepare: "The Prepare page: a Set as a running order in chapters, with the checks between tracks and the transition strip open on one of them.",
   export: "The Export to Rekordbox window: how many tracks and which playlists the new Rekordbox file will hold, before anything is written.",
@@ -439,13 +439,16 @@ test.describe("the website's pictures (SITE-04)", () => {
         const sources = window.getByRole("group", { name: "Sources" });
         for (const name of ["Peak time", "Festival set", "Rooftop"]) await sources.getByRole("checkbox", { name, exact: true }).check();
         await expect(window.getByRole("status").filter({ hasText: "in 3 playlists" })).toBeVisible({ timeout: 30_000 });
+        // The page opens on the wheel (K15); these steps read the list.
+        await window.getByRole("tab", { name: "List" }).click();
         const list = window.getByRole("group", { name: "Keys in these sources" });
         // the key with the most tracks in it
         const counts = await list.locator(".keys-counts__count").allInnerTexts();
         const best = counts.map((text, index) => ({ n: Number(text.replace(/\D/g, "")) || 0, index })).sort((a, b) => b.n - a.n)[0]!;
         await list.getByRole("button").nth(best.index).click();
         await expect(window.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
-        // the wheel and the counts at the top, the tracks under them
+        // back to the wheel for the picture, then the wheel at the top and the tracks under it
+        await window.getByRole("tab", { name: "Wheel" }).click();
         await window.getByRole("heading", { name: "Keys", level: 1 }).evaluate((el) => el.scrollIntoView({ block: "start" }));
         await shoot(window, "keys", taken);
       });

@@ -2,9 +2,10 @@
  * The Keys page (PAGES-16, FLW-21, DEC-200).
  *
  * Which keys the playlists, Collections and Sets you pick hold, and the tracks in the keys you
- * click. On the left, the sources; in the middle, the Camelot wheel with each key's count on
- * its segment, darker where there are more; beside it the same counts as a list with a bar
- * each, in Camelot order, and "No Beatport key: N" on its own line. Clicking keys (Ctrl or
+ * click. On the left, the sources; beside them the Camelot wheel, with each key's count on its
+ * segment (and in its name) and darker where there are more, or the same counts as a list with
+ * a bar each, in Camelot order and "No Beatport key: N" on its own line. A Wheel | List switch
+ * picks the one shown, one at a time, and the page remembers it (K15). Clicking keys (Ctrl or
  * Command for several, Shift for a run) lists those tracks below in the Library's table with
  * the Library's selection bar. Every count is written on the page: the list is the reading of
  * the wheel for anyone who cannot see its colors, and nothing here waits on a hover.
@@ -19,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 
 import type { EntityKind, FilterRuleSet, LibraryPlaylistNode } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Tabs } from "../../components/Tabs";
 import { useToast } from "../../components/Toast";
 import { CamelotWheel, type PickModifiers } from "../../components/wheel/CamelotWheel";
 import { CAMELOT_CODES, tracksWord } from "../../components/wheel/camelot";
@@ -40,7 +42,7 @@ import { useFilterVocabulary } from "../library/useFilterVocabulary";
 import { useTrackDetail } from "../library/useTrackDetail";
 import "../screens.css";
 import "./keys.css";
-import { KeysCountsList } from "./KeysCountsList";
+import { KeysCountsList, KeysNoKeyRow } from "./KeysCountsList";
 import { KeysSourcePicker } from "./KeysSourcePicker";
 import { KeysTracks } from "./KeysTracks";
 import {
@@ -66,9 +68,15 @@ import {
   toggleSource,
   type PickedSource,
 } from "./keysSources";
+import { loadView, saveView, type KeysView } from "./keysView";
 import { useKeysPopulation } from "./useKeysPopulation";
 
 const CLICK_A_KEY = "Click a key first";
+
+const VIEWS = [
+  { id: "wheel", label: "Wheel" },
+  { id: "list", label: "List" },
+];
 
 interface KeysScreenProps {
   /** Sources to open on, from the Library's Key list; replaces what was remembered. */
@@ -112,6 +120,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
   const [picked, setPicked] = useState<PickedSource[]>(() => openWith?.sources ?? loadSources());
   const [choice, setChoice] = useState<KeyChoice>(EMPTY_CHOICE);
   const [showMix, setShowMix] = useState(false);
+  const [view, setView] = useState<KeysView>(loadView);
   const [libraryEmpty, setLibraryEmpty] = useState(false);
   const [inspected, setInspected] = useState<{ id: number | null; count: number }>({
     id: null,
@@ -431,34 +440,52 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
         )}
 
         {countable && data && (
-          <>
-            <div className="keys-page__wheel">
-              <CamelotWheel
-                lit={lit}
-                focusCode={choice.anchor ?? order[0] ?? CAMELOT_CODES[0]!}
-                onFocusCode={() => undefined}
-                onPick={pick}
-                counts={counts}
-                chosen={chosen}
-                center={
-                  <>
-                    <strong>{(data.total - data.no_key).toLocaleString()}</strong>
-                    <small>with a key</small>
-                  </>
-                }
-              />
-            </div>
-            <KeysCountsList
-              keys={keys}
-              noKey={data.no_key}
-              chosen={chosen}
-              noneChosen={choice.none}
-              lit={lit}
-              mixKey={mixKey}
-              onPick={pick}
-              onPickNone={pickNone}
+          <div className="keys-page__view" data-view={view}>
+            <Tabs
+              variant="sub"
+              tabs={VIEWS}
+              activeId={view}
+              onChange={(id) => {
+                const next: KeysView = id === "list" ? "list" : "wheel";
+                setView(next);
+                saveView(next);
+              }}
             />
-          </>
+            <div role="tabpanel" aria-label={view === "wheel" ? "Wheel" : "List"} className="keys-page__panel">
+              {view === "wheel" ? (
+                <>
+                <div className="keys-page__wheel">
+                  <CamelotWheel
+                    lit={lit}
+                    focusCode={choice.anchor ?? order[0] ?? CAMELOT_CODES[0]!}
+                    onFocusCode={() => undefined}
+                    onPick={pick}
+                    counts={counts}
+                    chosen={chosen}
+                    center={
+                      <>
+                        <strong>{(data.total - data.no_key).toLocaleString()}</strong>
+                        <small>with a key</small>
+                      </>
+                    }
+                  />
+                </div>
+                <KeysNoKeyRow noKey={data.no_key} noneChosen={choice.none} onPickNone={pickNone} />
+                </>
+              ) : (
+                <KeysCountsList
+                  keys={keys}
+                  noKey={data.no_key}
+                  chosen={chosen}
+                  noneChosen={choice.none}
+                  lit={lit}
+                  mixKey={mixKey}
+                  onPick={pick}
+                  onPickNone={pickNone}
+                />
+              )}
+            </div>
+          </div>
         )}
       </div>
 

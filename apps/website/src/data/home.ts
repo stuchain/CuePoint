@@ -89,7 +89,7 @@ export const APP_SHOTS: Readonly<Record<AppShotId, AppShotDef>> = {
   },
   keys: {
     label: "Keys",
-    alt: "The Keys page: the keys of three playlists counted on the Camelot wheel and as a list, with one key opened and its tracks counted beneath.",
+    alt: "The Keys page: the keys of three playlists counted on the Camelot wheel, with one key opened and its tracks counted beneath.",
     ...WINDOW,
   },
   discover: {

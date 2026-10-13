@@ -902,6 +902,8 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await use(win, win.getByRole("link", { name: "Keys" }), "the Keys link in the sidebar");
     await expect(win.getByRole("heading", { name: "Keys", level: 1 })).toBeVisible({ timeout: 15_000 });
 
+    // The page opens on the wheel (K15); these steps read the list.
+    await win.getByRole("tab", { name: "List" }).click();
     const list = win.getByRole("group", { name: "Keys in these sources" });
     const countOf = (code: string) => list.getByRole("button", { name: new RegExp(`^${code},`) }).locator(".keys-counts__count");
     // The whole library to start: 8A on 1, 3, 5 and 7; 9A on 2 and 6; 8B on 4.

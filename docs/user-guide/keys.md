@@ -17,9 +17,13 @@ of them is counted once. CuePoint remembers your choice for next time.
 
 ## Reading the counts
 
+A **Wheel | List** switch above the counts shows one of the two at a time.
+CuePoint opens on the wheel and remembers which you chose.
+
 - **The wheel.** The 24 keys as two rings, minor (A) inside and major (B)
   outside, each with its track count written on it. The darker a key, the more
-  tracks it holds.
+  tracks it holds. Each key's name, such as "8A, A minor, 12 tracks", includes
+  its count, for a screen reader.
 - **The list.** The same counts in Camelot order (1A, 1B, 2A, and so on), with a
   bar for each. **No Beatport key** and its count have a line of their own.
 

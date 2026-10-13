@@ -280,6 +280,8 @@ const countsList = () => screen.getByRole("group", { name: "Keys in these source
 const wheel = () => screen.getByRole("group", { name: "Keys" });
 const rowButton = (code: string) =>
   within(countsList()).getByRole("button", { name: new RegExp(`^${code},`) });
+const showWheel = () => fireEvent.click(screen.getByRole("tab", { name: "Wheel" }));
+const showList = () => fireEvent.click(screen.getByRole("tab", { name: "List" }));
 const findList = () => screen.findByRole("group", { name: "Keys in these sources" }, LOADED);
 const where = () => screen.getByTestId("where");
 const state = () => JSON.parse(where().getAttribute("data-state") ?? "null");
@@ -307,6 +309,8 @@ afterAll(() => {
 beforeEach(() => {
   vi.mocked(reportUnexpected).mockClear();
   localStorage.clear();
+  // The tests below read the list unless they ask for the wheel; the first visit shows the wheel.
+  localStorage.setItem("cuepoint-keys-view", "list");
   install();
 });
 
@@ -492,6 +496,7 @@ describe("the counts", () => {
   it("writes the counts on the wheel's segments, in the same numbers", async () => {
     renderKeys();
     await opened();
+    showWheel();
     expect(wheel().querySelector('[data-label-for="8A"]')).toHaveTextContent("8A12");
     expect(wheel().querySelector('[data-label-for="1A"]')).toHaveTextContent("1A0");
     expect(wheel().querySelector('[data-shape="11B"]')).toHaveAttribute("data-level");
@@ -503,6 +508,120 @@ describe("the counts", () => {
     for (const entry of ALL.keys) {
       expect(rowButton(entry.code)).toHaveTextContent(entry.count.toLocaleString());
     }
+  });
+});
+
+describe("the Wheel | List switch (K15)", () => {
+  const tab = (name: "Wheel" | "List") => screen.getByRole("tab", { name });
+
+  it("is visible above the counts, one view at a time, on the wheel at first", async () => {
+    localStorage.clear();
+    renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+    expect(tab("Wheel")).toHaveAttribute("aria-selected", "true");
+    expect(tab("List")).toHaveAttribute("aria-selected", "false");
+    expect(wheel()).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Keys in these sources" })).not.toBeInTheDocument();
+  });
+
+  it("switches to the list, which takes the wheel's place, and back", async () => {
+    localStorage.clear();
+    renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+
+    showList();
+    expect(tab("List")).toHaveAttribute("aria-selected", "true");
+    expect(countsList()).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Keys" })).not.toBeInTheDocument();
+    expect(rowButton("8A")).toHaveTextContent("12");
+
+    showWheel();
+    expect(wheel()).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Keys in these sources" })).not.toBeInTheDocument();
+  });
+
+  it("names each wheel segment with its count, so the wheel reads without the list", async () => {
+    localStorage.clear();
+    renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+    expect(within(wheel()).getByRole("button", { name: /^8A, .*12 tracks/ })).toBeInTheDocument();
+    expect(within(wheel()).getByRole("button", { name: /^1A, .*no tracks/ })).toBeInTheDocument();
+  });
+
+  it("remembers the choice under cuepoint-keys-view and opens on it next time", async () => {
+    localStorage.clear();
+    const first = renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+    showList();
+    expect(localStorage.getItem("cuepoint-keys-view")).toBe("list");
+    first.unmount();
+
+    renderKeys();
+    await findList();
+    expect(tab("List")).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("group", { name: "Keys" })).not.toBeInTheDocument();
+    showWheel();
+    expect(localStorage.getItem("cuepoint-keys-view")).toBe("wheel");
+  });
+
+  it("keeps 'No Beatport key: N' as a button in the wheel view too", async () => {
+    localStorage.clear();
+    renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+    const none = screen.getByRole("button", { name: "No Beatport key: 246" });
+    expect(none).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(none);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "No Beatport key: 246" })).toHaveAttribute("aria-pressed", "true"),
+    );
+    // Drawn once: the list does not add a second one.
+    showList();
+    expect(screen.getAllByRole("button", { name: "No Beatport key: 246" })).toHaveLength(1);
+  });
+
+  it("names the shown view as a tab panel", async () => {
+    localStorage.clear();
+    renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+    expect(screen.getByRole("tabpanel", { name: "Wheel" })).toContainElement(wheel());
+    showList();
+    expect(screen.getByRole("tabpanel", { name: "List" })).toContainElement(countsList());
+  });
+
+  it("keeps the key chosen when the view changes", async () => {
+    renderKeys();
+    await opened();
+    fireEvent.click(rowButton("9A"));
+    showWheel();
+    expect(within(wheel()).getByRole("button", { name: /^9A,/ })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("still works when storage throws", async () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+    showList();
+    expect(countsList()).toBeInTheDocument();
+    fireEvent.click(rowButton("8A"));
+    expect(rowButton("8A")).toHaveAttribute("aria-pressed", "true");
+    showWheel();
+    expect(wheel()).toBeInTheDocument();
+  });
+
+  it("keeps the list one click away, with every count written, whichever view is open", async () => {
+    localStorage.clear();
+    renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+    showList();
+    for (const entry of ALL.keys) {
+      expect(rowButton(entry.code)).toHaveTextContent(entry.count.toLocaleString());
+    }
+    expect(within(countsList()).getByRole("button", { name: "No Beatport key: 246" })).toBeInTheDocument();
   });
 });
 
@@ -568,9 +687,13 @@ describe("choosing keys", () => {
   it("chooses with a click on the wheel as well", async () => {
     renderKeys();
     await opened();
+    showWheel();
     fireEvent.click(within(wheel()).getByRole("button", { name: /^9A,/ }));
-    await waitFor(() => expect(rowButton("9A")).toHaveAttribute("aria-pressed", "true"));
-    expect(within(wheel()).getByRole("button", { name: /^9A,/ })).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() =>
+      expect(within(wheel()).getByRole("button", { name: /^9A,/ })).toHaveAttribute("aria-pressed", "true"),
+    );
+    showList();
+    expect(rowButton("9A")).toHaveAttribute("aria-pressed", "true");
   });
 
   it("adds a key with Ctrl and a run of keys with Shift, and lists them together", async () => {
@@ -643,6 +766,7 @@ describe("choosing keys", () => {
   it("does not choose a key nothing is in", async () => {
     renderKeys();
     await opened();
+    showWheel();
     fireEvent.click(within(wheel()).getByRole("button", { name: /^1A,/ }));
     expect(screen.getByText("Click a key to list its tracks.")).toBeInTheDocument();
   });
@@ -743,13 +867,12 @@ describe("the keys that mix", () => {
     fireEvent.click(screen.getByRole("button", { name: "Show keys that mix with 8A" }));
 
     await waitFor(() => expect(mock("getCompatibleKeys")).toHaveBeenCalledWith({ key: "8A" }));
-    await waitFor(() =>
-      expect(wheel().querySelector('[data-shape="9A"]')).toHaveAttribute("data-lit", "adjacent"),
-    );
-    expect(wheel().querySelector('[data-shape="8B"]')).toHaveAttribute("data-lit", "relative");
     // Not by color alone: the list says it in words.
-    expect(rowButton("9A")).toHaveTextContent("mixes with 8A");
+    await waitFor(() => expect(rowButton("9A")).toHaveTextContent("mixes with 8A"));
     expect(rowButton("11B")).not.toHaveTextContent("mixes");
+    showWheel();
+    expect(wheel().querySelector('[data-shape="9A"]')).toHaveAttribute("data-lit", "adjacent");
+    expect(wheel().querySelector('[data-shape="8B"]')).toHaveAttribute("data-lit", "relative");
     expect(screen.getByRole("button", { name: "Show keys that mix with 8A" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -762,6 +885,7 @@ describe("the keys that mix", () => {
     fireEvent.click(rowButton("8A"));
     const button = screen.getByRole("button", { name: "Show keys that mix with 8A" });
     fireEvent.click(button);
+    showWheel();
     await waitFor(() =>
       expect(wheel().querySelector('[data-shape="9A"]')).toHaveAttribute("data-lit"),
     );
@@ -769,6 +893,7 @@ describe("the keys that mix", () => {
     await waitFor(() =>
       expect(wheel().querySelector('[data-shape="9A"]')).not.toHaveAttribute("data-lit"),
     );
+    showList();
     expect(rowButton("9A")).not.toHaveTextContent("mixes");
   });
 

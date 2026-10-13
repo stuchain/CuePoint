@@ -117,6 +117,8 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
     await win.getByRole("link", { name: "Keys" }).click();
     await expect(win.getByRole("heading", { name: "Keys", level: 1 })).toBeVisible();
 
+    // The page opens on the wheel (K15); these steps read the list.
+    await win.getByRole("tab", { name: "List" }).click();
     const list = win.getByRole("group", { name: "Keys in these sources" });
     // The exact count on a key's row (its count cell, not a substring of the row).
     const countOf = (code: string) =>

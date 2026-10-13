@@ -51,6 +51,36 @@
   align-self: center;
 }
 
+/* The Wheel | List switch over the one view shown. The wheel keeps its whole-pixel size; the
+   list takes the room beside the sources. */
+.keys-page__view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.keys-page__view[data-view="wheel"] {
+  flex: 0 0 var(--keys-wheel);
+  width: var(--keys-wheel);
+}
+
+.keys-page__view[data-view="list"] {
+  flex: 1 1 calc(240px * var(--scale));
+}
+
+.keys-page__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+/* In the column above, the list's own flex basis would set its height; keep it as tall as before. */
+.keys-page__view .keys-counts {
+  flex: 0 1 auto;
+}
+
 .keys-page__wheel {
   flex: 0 0 var(--keys-wheel);
   width: var(--keys-wheel);

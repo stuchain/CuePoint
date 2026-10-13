@@ -82,20 +82,34 @@ export function KeysCountsList({
           );
         })}
       </ul>
-      <div className="keys-counts__none" data-line="no-key">
-        <button
-          type="button"
-          className="keys-counts__row keys-counts__row--none"
-          aria-pressed={noneChosen}
-          aria-disabled={noKey === 0 ? true : undefined}
-          title={noKey === 0 ? "Every track here has a key" : undefined}
-          onClick={() => {
-            if (noKey > 0) onPickNone();
-          }}
-        >
-          No Beatport key: {noKey.toLocaleString()}
-        </button>
-      </div>
+      <KeysNoKeyRow noKey={noKey} noneChosen={noneChosen} onPickNone={onPickNone} />
+    </div>
+  );
+}
+
+/**
+ * "No Beatport key: N" on its own line, a button that chooses the tracks without a key. The
+ * list ends with it and the wheel view draws it under the wheel, so it is on the page in both.
+ */
+export function KeysNoKeyRow({
+  noKey,
+  noneChosen,
+  onPickNone,
+}: Pick<KeysCountsListProps, "noKey" | "noneChosen" | "onPickNone">) {
+  return (
+    <div className="keys-counts__none" data-line="no-key">
+      <button
+        type="button"
+        className="keys-counts__row keys-counts__row--none"
+        aria-pressed={noneChosen}
+        aria-disabled={noKey === 0 ? true : undefined}
+        title={noKey === 0 ? "Every track here has a key" : undefined}
+        onClick={() => {
+          if (noKey > 0) onPickNone();
+        }}
+      >
+        No Beatport key: {noKey.toLocaleString()}
+      </button>
     </div>
   );
 }
