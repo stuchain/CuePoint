@@ -22,7 +22,7 @@
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
   background: var(--bg-input);
 }
 
@@ -50,7 +50,7 @@
   top: 0;
   z-index: 3;
   background: var(--bg-toolbar);
-  border-bottom: var(--border-width) solid var(--border-outline);
+  border-bottom: var(--divider);
 }
 
 .track-table__header-cell-wrap {
@@ -135,6 +135,10 @@
   background: color-mix(in srgb, var(--accent-info) 35%, transparent);
 }
 
+.track-table__col-resizer:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+}
+
 .track-table__body {
   position: relative;
   min-width: var(--track-table-min-width);
@@ -176,7 +180,7 @@
 /* The keyboard's row, drawn only after a key moved it. Dashed and inset one ring width in
    from the edge, so on a selected row it stays visible against the selected fill and its bar. */
 .track-table__row--cursor {
-  outline: var(--focus-ring-width) dashed var(--accent-info);
+  outline: var(--focus-ring-width) dashed var(--focus-ring);
   outline-offset: calc(-2 * var(--focus-ring-width));
   z-index: 1;
 }

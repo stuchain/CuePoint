@@ -32,7 +32,7 @@
   align-items: baseline;
   gap: var(--space-xs) var(--space-md);
   padding: var(--space-sm) var(--space-md);
-  border-bottom: var(--border-width) solid var(--border-muted);
+  border-bottom: var(--divider);
 }
 
 /* Sources, wheel and counts share one row at the default size (1.5x in a 1,280-wide window with
@@ -82,7 +82,7 @@
   flex-direction: column;
   gap: var(--space-xs);
   padding: var(--space-xs) var(--space-md) var(--space-md);
-  border-top: var(--border-width) solid var(--border-muted);
+  border-top: var(--divider);
 }
 
 .keys-section-title {
@@ -115,7 +115,7 @@
   padding: var(--space-xs);
   overflow-y: auto;
   background: var(--bg-panel);
-  border: var(--border-width) solid var(--border-muted);
+  border: var(--divider);
 }
 
 /* The label stays for assistive technology; the placeholder names the box, and a box of one
@@ -220,7 +220,7 @@
 }
 
 .keys-counts__row:focus-visible {
-  outline: var(--border-width) solid var(--fg-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: round(up, calc(-2px * var(--scale)), 1px);
 }
 
@@ -319,13 +319,15 @@
 
 .keys-empty__headline {
   margin: 0;
+  font-size: var(--text-heading);
+  font-weight: 700;
 }
 
 .keys-link {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--accent-primary);
+  color: var(--link);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;

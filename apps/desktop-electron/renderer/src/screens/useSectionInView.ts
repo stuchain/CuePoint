@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react";
-import { useMotion } from "../tokens/MotionContext";
 
 /**
  * Which of a page's sections is at the top of its scroll, so a link list can follow the
- * scroll (Scrolling, PAGES-12: the Settings section links). Nothing is observed while the
- * kind is off or the system asks for reduced motion, and the answer is then null.
+ * scroll (Scrolling, PAGES-12: the Settings section links). The current link is
+ * marked whatever the motion setting is (T15); only its slide belongs to the scroll kind.
  */
 export function useSectionInView(ids: readonly string[]): string | null {
-  const moves = useMotion("scroll");
   const [current, setCurrent] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!moves || typeof IntersectionObserver !== "function") {
+    if (typeof IntersectionObserver !== "function") {
       setCurrent(null);
       return;
     }
@@ -35,7 +33,7 @@ export function useSectionInView(ids: readonly string[]): string | null {
     );
     for (const section of sections) observer.observe(section);
     return () => observer.disconnect();
-  }, [moves, ids]);
+  }, [ids]);
 
   return current;
 }

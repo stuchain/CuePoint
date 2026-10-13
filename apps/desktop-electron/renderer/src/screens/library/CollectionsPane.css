@@ -24,7 +24,7 @@
   min-height: 0;
   min-width: 0;
   overflow: auto;
-  border-right: var(--border-width) solid var(--border-outline);
+  border-right: var(--divider);
   background: var(--bg-panel);
 }
 
@@ -45,7 +45,7 @@
 }
 
 .cp-collections {
-  border-bottom: var(--border-width) solid var(--border-muted);
+  border-bottom: var(--divider);
 }
 
 /* The whole section folds from its heading, which is also the heading. */
@@ -62,7 +62,7 @@
 }
 
 .cp-collections__fold:focus-visible {
-  outline: var(--border-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -125,7 +125,7 @@
 
 .cp-collections__make:focus-visible,
 .cp-collections__bar-button:focus-visible {
-  outline: var(--border-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -172,7 +172,7 @@
 }
 
 .cp-collections__action:focus-visible {
-  outline: var(--border-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -243,7 +243,7 @@
 
 /* The row a drop would land on. */
 .cp-playlist-pane__row--drop {
-  outline: var(--border-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--accent-primary);
   outline-offset: -1px;
 }
 

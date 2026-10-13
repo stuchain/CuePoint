@@ -22,11 +22,6 @@
    * carry existed for the floating lab nav pill, which SHELL-02 deleted; with
    * the pill gone it was just dead space under every screen.
    */
-  --safe-top: var(--screen-padding);
-  --safe-right: var(--screen-padding);
-  --safe-bottom: var(--screen-padding);
-  --safe-left: var(--screen-padding);
-
   --screen-padding: var(--space-xl);
   --results-min-rows: 10;
   --row-height: round(nearest, calc(var(--hit-min) * 0.75), 1px);
@@ -50,14 +45,27 @@
     var(--results-col-min) var(--results-col-min);
 }
 
-@media (max-width: 900px) {
-  :root {
+/*
+ * The --safe-* are declared on .screen, where --screen-padding is read, so a container query
+ * that sets only --screen-padding on .screen reaches all four. Declared on :root they would
+ * keep the value resolved there. Narrow means the content region, not the window: the sidebar
+ * and inspector take width the viewport does not know about.
+ */
+.screen {
+  --safe-top: var(--screen-padding);
+  --safe-right: var(--screen-padding);
+  --safe-bottom: var(--screen-padding);
+  --safe-left: var(--screen-padding);
+}
+
+@container content (max-width: 900px) {
+  .screen {
     --screen-padding: var(--space-lg);
   }
 }
 
-@media (max-width: 600px) {
-  :root {
+@container content (max-width: 600px) {
+  .screen {
     --screen-padding: var(--space-md);
   }
 }

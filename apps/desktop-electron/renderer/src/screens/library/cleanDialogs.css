@@ -87,7 +87,7 @@
   gap: var(--space-xs);
   margin: 0;
   padding: var(--space-sm);
-  border: var(--hairline) solid var(--border-muted);
+  border: var(--divider);
 }
 
 /* Checkboxes side by side, so the dialog fits a 1x window with its buttons. */

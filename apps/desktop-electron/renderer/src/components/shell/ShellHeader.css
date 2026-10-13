@@ -9,7 +9,7 @@
   width: 100%;
   padding: var(--space-xs) var(--space-sm);
   background: var(--bg-toolbar);
-  border-bottom: var(--border-width) solid var(--border-outline);
+  border-bottom: var(--divider);
 }
 
 .cp-shell-header__row {

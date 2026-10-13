@@ -22,7 +22,7 @@
 }
 
 .cp-field__input:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--hairline);
 }
 

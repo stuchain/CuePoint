@@ -128,7 +128,7 @@ body {
   background: var(--bg-app);
   color: var(--fg-primary);
   font-family: var(--font-pixel);
-  font-size: var(--font-size-md);
+  font-size: var(--text-body);
   /* The pixel font ships an "fi" ligature that draws "Add filter" as "Add Alter". */
   font-variant-ligatures: none;
   image-rendering: pixelated;

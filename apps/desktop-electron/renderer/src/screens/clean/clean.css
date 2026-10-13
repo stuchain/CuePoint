@@ -33,7 +33,7 @@
   align-items: center;
   gap: var(--space-sm) var(--space-lg);
   padding: var(--space-sm) var(--space-md);
-  border-bottom: var(--border-width) solid var(--border-muted);
+  border-bottom: var(--divider);
 }
 
 /* The tabs take the rest of the title's row: the queue needs the height more
@@ -82,7 +82,7 @@
   align-items: flex-end;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
-  border-bottom: var(--border-width) solid var(--border-muted);
+  border-bottom: var(--divider);
 }
 
 .clean-toolbar__spacer {
@@ -99,7 +99,7 @@
   flex-direction: column;
   gap: var(--space-xs);
   padding: var(--space-sm) var(--space-md);
-  border-bottom: var(--border-width) solid var(--border-muted);
+  border-bottom: var(--divider);
 }
 
 .clean-hint-line,
@@ -115,7 +115,7 @@
 .clean-note__finding {
   margin: 0;
   padding: var(--space-xs) var(--space-sm);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
   background: var(--accent-warning);
   color: var(--fg-inverse);
   font-weight: 700;
@@ -134,6 +134,8 @@
 
 .clean-empty__headline {
   margin: 0;
+  font-size: var(--text-heading);
+  font-weight: 700;
 }
 
 .clean-empty__actions {
@@ -224,7 +226,7 @@
   flex-direction: column;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
   background: var(--bg-panel);
 }
 
@@ -273,6 +275,7 @@
 
 .clean-group__track {
   grid-area: track;
+  font-size: var(--text-body);
   overflow-wrap: anywhere;
 }
 
@@ -354,6 +357,10 @@
   background: var(--bg-selected);
 }
 
+.clean-health__count:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+}
+
 .clean-health__count[data-zero="true"] {
   color: var(--fg-muted);
 }
@@ -383,7 +390,7 @@
   justify-content: space-between;
   gap: var(--space-sm);
   padding: var(--space-sm);
-  border: var(--border-width) solid var(--border-muted);
+  border: var(--divider);
 }
 
 .clean-health__detection-text {
@@ -475,6 +482,7 @@
 
 .clean-fix__count {
   margin: 0;
+  font-size: var(--text-body);
   font-weight: 700;
 }
 
@@ -487,6 +495,7 @@
 .clean-fix__hint,
 .clean-match__figure {
   color: var(--fg-muted);
+  font-size: var(--text-body);
 }
 
 .clean-match__figure {

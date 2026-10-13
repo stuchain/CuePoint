@@ -58,7 +58,7 @@
 }
 
 .cp-pixel-bars__bar--open:focus-visible {
-  outline: var(--focus-ring-width) solid var(--fg-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: calc(var(--focus-ring-width) * -1);
 }
 

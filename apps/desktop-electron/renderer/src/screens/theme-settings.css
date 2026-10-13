@@ -46,7 +46,7 @@
 .theme-settings__swatch {
   width: calc(20px * var(--scale));
   height: calc(20px * var(--scale));
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
 }
 
 .theme-settings__name {
@@ -96,7 +96,7 @@
   width: calc(44px * var(--scale));
   height: calc(32px * var(--scale));
   padding: 0;
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--control-border-width) solid var(--border-control);
   cursor: pointer;
   background: transparent;
 }

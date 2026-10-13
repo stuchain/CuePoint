@@ -90,6 +90,10 @@
   background: var(--bg-selected);
 }
 
+.first-steps-chip:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+}
+
 .first-steps-note__popover {
   position: absolute;
   top: 100%;

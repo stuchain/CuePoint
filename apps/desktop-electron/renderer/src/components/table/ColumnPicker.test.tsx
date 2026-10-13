@@ -81,7 +81,7 @@ describe("the list", () => {
 
   it("says which column is pinned", () => {
     show();
-    expect(within(rowFor("Title")).getByText("pinned")).toBeInTheDocument();
+    expect(within(rowFor("Title")).getByText("Pinned")).toBeInTheDocument();
   });
 
   it("renders nothing when closed", () => {

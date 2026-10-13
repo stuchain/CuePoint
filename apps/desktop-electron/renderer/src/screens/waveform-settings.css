@@ -62,7 +62,7 @@
 .cp-waveform-settings__canvas {
   height: calc(var(--row-height) * 2);
   max-width: 100%;
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
   background: var(--bg-panel);
 }
 
@@ -95,7 +95,7 @@
 .cp-waveform-settings__message {
   margin: 0;
   padding: var(--space-sm);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
   background: var(--bg-panel-alt);
   color: var(--fg-primary);
   font-size: var(--font-size-xs);

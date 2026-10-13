@@ -7396,3 +7396,25 @@ about 90 s, on every visit.
   moves a database file aside or restores one, the watch lets go of it (Windows locks open files).
 
 **Decided with**: Claude (C19 scope, "apply ALL") · **Date**: 2026-10-13
+
+## DEC-260 — Text Roles, One Divider, One Focus Ring, One Link Colour
+
+**Status**: Approved · **Related**: DEC-048, DEC-241, DEC-253, THEME-REVIEW T1 T2 T7 T13 T15 T16, N1 N2 N3 N7, N2-2
+
+**Context**: Body text was the medium size while most of the app set the small one, so loose lines and
+menus came out bigger than their neighbours. Lines between areas were drawn in four weights, focus
+rings in three colours, links in five, and nine labels were shouted in capitals.
+
+**Decision**:
+- Text roles: body and labels are `--text-body`/`--text-label` (the small size), headings
+  `--text-heading`. Empty-state headlines use the heading role, bold. Data (numbers, keys, times) uses
+  `.cp-data`: the data font with tabular figures; everything else stays on the pixel font (amends
+  DEC-048 to that one sentence).
+- Every line between areas is `--divider` (one hairline in `--border-muted`) outside the player
+  region, which keeps its 3 px frame (C16c). A guard test keeps `--border-width` out of other sheets.
+- Every focus outline is `--focus-ring-width` in `--focus-ring`; drop targets are not focus and keep
+  the accent. Every link is `--link`. No `text-transform: uppercase` anywhere. Guards hold all three.
+- Settings marks the section you are reading whether or not motion is on; motion only adds the slide.
+- Page padding steps down by the content area's width (a container query), not the window's.
+
+**Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13

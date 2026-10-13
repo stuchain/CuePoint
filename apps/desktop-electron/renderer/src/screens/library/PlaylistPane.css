@@ -10,7 +10,7 @@
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  border-right: var(--border-width) solid var(--border-outline);
+  border-right: var(--divider);
   background: var(--bg-panel);
 }
 
@@ -72,7 +72,7 @@
 }
 
 .cp-playlist-pane__row:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: calc(-1 * var(--focus-ring-width));
 }
 

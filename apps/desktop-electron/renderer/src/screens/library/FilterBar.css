@@ -6,7 +6,7 @@
   gap: var(--space-sm);
   padding: var(--space-sm);
   background: var(--bg-toolbar);
-  border-bottom: var(--border-width) solid var(--border-outline);
+  border-bottom: var(--divider);
 }
 
 .cp-filter-bar__row,

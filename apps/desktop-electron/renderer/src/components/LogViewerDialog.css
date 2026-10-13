@@ -58,9 +58,9 @@
   max-height: 420px;
   overflow: auto;
   padding: var(--space-sm);
-  border: 1px solid var(--border-muted);
+  border: var(--divider);
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-app);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12px;
   line-height: 1.4;

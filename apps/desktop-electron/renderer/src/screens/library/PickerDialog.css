@@ -16,7 +16,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: var(--space-xs) var(--space-sm);
-  border: var(--border-width) solid var(--border-muted);
+  border: var(--divider);
   background: var(--bg-input);
   color: var(--fg-primary);
   font-family: var(--font-data);
@@ -24,7 +24,7 @@
 }
 
 .cp-picker__filter:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 0;
 }
 
@@ -37,7 +37,7 @@
   padding: 0;
   overflow-y: auto;
   list-style: none;
-  border: var(--border-width) solid var(--border-muted);
+  border: var(--divider);
   background: var(--bg-panel-alt);
 }
 
@@ -116,6 +116,6 @@
 }
 
 .cp-picker__create:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--hairline);
 }

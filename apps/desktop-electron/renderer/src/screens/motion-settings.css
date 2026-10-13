@@ -74,10 +74,12 @@
   width: calc(var(--unit) * 3);
   height: calc(var(--unit) * 3);
   margin-top: var(--space-xs);
-  background: var(--accent-primary);
-  border: var(--border-width) solid var(--border-outline);
+  background: transparent;
+  border: var(--divider);
 }
 
+/* Outlined at rest. It fills only inside the play animation below, so with motion off or
+   reduced (no animation) it stays an outline, and it empties again when the play ends. */
 :root[data-motion-micro] .motion-settings__preview[data-kind="micro"][data-play],
 :root[data-motion-interaction] .motion-settings__preview[data-kind="interaction"][data-play],
 :root[data-motion-state] .motion-settings__preview[data-kind="state"][data-play],
@@ -91,7 +93,8 @@
   /* The move steps and the fade does not (DEC-135). */
   animation:
     motion-preview-move var(--motion-slow) steps(var(--motion-steps-long)) 1,
-    motion-preview-fade var(--motion-slow) var(--motion-fade) 1;
+    motion-preview-fade var(--motion-slow) var(--motion-fade) 1,
+    motion-preview-fill var(--motion-slow) steps(1) 1;
 }
 
 @keyframes motion-preview-move {
@@ -103,6 +106,13 @@
   }
   100% {
     transform: translateX(0);
+  }
+}
+
+@keyframes motion-preview-fill {
+  0%,
+  100% {
+    background: var(--accent-primary);
   }
 }
 

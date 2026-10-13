@@ -281,7 +281,7 @@
 .cp-track-yours__favorite:focus-visible,
 .cp-track-yours__tag-remove:focus-visible,
 .cp-track-yours__tag-add:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--hairline);
 }
 
@@ -351,7 +351,7 @@
 
 .cp-track-yours__notes:focus-visible,
 .cp-track-yours__tag-input:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 0;
 }
 
@@ -627,7 +627,7 @@
 }
 
 .cp-track-history__revert:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--hairline);
 }
 
@@ -692,7 +692,7 @@
 .cp-track-actions__button:focus-visible,
 .cp-track-section__toggle:focus-visible,
 .cp-track-values__edit:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--hairline);
 }
 

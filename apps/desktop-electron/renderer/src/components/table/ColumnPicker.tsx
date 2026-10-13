@@ -68,7 +68,7 @@ export function ColumnPicker<Row>({
                 <span>{column.header}</span>
                 {column.sticky && (
                   <span className="cp-column-picker__pinned" title="Pinned to the left">
-                    pinned
+                    Pinned
                   </span>
                 )}
               </label>

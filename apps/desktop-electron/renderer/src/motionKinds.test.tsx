@@ -531,9 +531,9 @@ describe("scroll: the Settings section links follow the scroll", () => {
       mount(<SettingsScreen />);
       const link = screen.getByRole("link", { name: "Motion" });
       if (setup !== "on") {
-        // Nothing is watched, so nothing follows.
-        expect(FakeObserver.last).toBeNull();
-        expect(link).not.toHaveAttribute("data-current");
+        // The current link is still marked (T15); it just does not slide.
+        scrollTo();
+        expect(link).toHaveAttribute("data-current");
         expect(motionOf(link, null, "scroll")).toEqual({ animation: null, transition: null });
         return;
       }

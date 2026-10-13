@@ -37,7 +37,7 @@
   overflow-wrap: anywhere;
   margin: 0;
   padding: var(--space-sm);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
   background: var(--bg-panel-alt);
   color: var(--accent-danger);
   font-size: var(--font-size-xs);
@@ -50,7 +50,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: var(--fg-primary);
+  color: var(--link);
   font: inherit;
   font-size: var(--font-size-xs);
   text-decoration: underline;
@@ -64,7 +64,7 @@
   margin: var(--space-sm) 0 0;
   padding: var(--space-md) 0 0;
   border: 0;
-  border-top: var(--border-width) solid var(--border-outline);
+  border-top: var(--divider);
   font-size: var(--font-size-sm);
 }
 

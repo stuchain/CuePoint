@@ -5,5 +5,5 @@
   line-height: 1.5;
   white-space: pre-wrap;
   background: var(--bg-toolbar);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
 }

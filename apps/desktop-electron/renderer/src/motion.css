@@ -290,7 +290,6 @@
 
 :root[data-motion-scroll] .settings-page__nav a[data-current] {
   transform: translate(var(--motion-step-px), 0);
-  color: var(--fg-primary);
 }
 
 /* A section heading settles as it comes into view, driven by the scroll itself. */

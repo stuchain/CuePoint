@@ -69,7 +69,7 @@
   overflow-wrap: anywhere;
   margin: 0;
   padding: var(--space-sm);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
   font-size: var(--font-size-xs);
   line-height: 1.5;
 }

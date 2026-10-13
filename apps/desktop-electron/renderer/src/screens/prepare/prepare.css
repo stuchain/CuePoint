@@ -151,7 +151,7 @@
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--accent-info);
+  color: var(--link);
   font: inherit;
   cursor: pointer;
   text-decoration: underline;
@@ -438,7 +438,7 @@ body.prepare-resizing {
 }
 
 .prepare-transition__half:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: calc(-1 * var(--hairline));
 }
 
@@ -653,7 +653,7 @@ body.prepare-resizing {
 }
 
 .prepare-row-buttons__button:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: calc(-1 * var(--hairline));
 }
 
@@ -902,7 +902,7 @@ body.prepare-resizing {
 .prepare-source__select:focus,
 .prepare-source__input:focus,
 .prepare-source__insert:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
 }
 
 .prepare-source__body {

@@ -102,7 +102,7 @@
 }
 
 .cp-queue__row:focus-visible {
-  outline: var(--border-width) solid var(--accent-primary);
+  outline: var(--border-width) solid var(--focus-ring);
   outline-offset: -2px;
 }
 

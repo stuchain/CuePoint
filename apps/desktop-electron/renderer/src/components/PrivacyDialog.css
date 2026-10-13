@@ -8,7 +8,7 @@
   line-height: 1.5;
   color: var(--fg-muted);
   background: var(--bg-toolbar);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
 }
 
 .privacy-dialog__actions {
@@ -30,7 +30,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: var(--fg-primary);
+  color: var(--link);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;

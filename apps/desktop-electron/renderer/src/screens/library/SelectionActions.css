@@ -11,7 +11,7 @@
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-sm);
   background: var(--bg-toolbar);
-  border-top: var(--border-width) solid var(--border-outline);
+  border-top: var(--divider);
 }
 
 .cp-selection-actions--idle {

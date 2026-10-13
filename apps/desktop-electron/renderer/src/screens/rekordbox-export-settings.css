@@ -56,7 +56,6 @@
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
   font-weight: 700;
-  text-transform: uppercase;
 }
 
 .cp-export-settings__list {
@@ -74,7 +73,7 @@
   grid-template-columns: minmax(8rem, auto) minmax(0, 1fr) minmax(0, 2fr);
   gap: var(--space-sm);
   padding-bottom: calc(2px * var(--scale));
-  border-bottom: var(--border-width) solid var(--border-muted);
+  border-bottom: var(--divider);
   font-family: var(--font-data);
 }
 

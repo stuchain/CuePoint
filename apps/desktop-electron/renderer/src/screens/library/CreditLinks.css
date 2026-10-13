@@ -10,7 +10,7 @@
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--accent-info);
+  color: var(--link);
   font: inherit;
   text-align: inherit;
   cursor: pointer;
@@ -21,6 +21,6 @@
 }
 
 .cp-credit-link:focus-visible {
-  outline: var(--border-width) solid var(--accent-info);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--hairline);
 }

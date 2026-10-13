@@ -19,7 +19,7 @@
   font: inherit;
   color: var(--fg-primary);
   background: var(--bg-toolbar);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
 }
 
 .report-problem-dialog__field textarea:disabled {
@@ -41,7 +41,7 @@
 
 .report-problem-dialog__off {
   padding: var(--space-sm);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
   background: var(--bg-panel-alt);
   color: var(--fg-primary);
 }

@@ -35,8 +35,6 @@
   padding: 0 var(--space-xs);
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .cp-activity__list {
@@ -44,7 +42,7 @@
   margin: 0;
   padding: 0;
   overflow-y: auto;
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
 }
 
 .cp-activity__row {
@@ -54,7 +52,7 @@
   gap: var(--space-sm);
   align-items: baseline;
   padding: var(--space-xs) var(--space-sm);
-  border-bottom: var(--border-width) solid var(--border-outline);
+  border-bottom: var(--divider);
   font-size: var(--font-size-sm);
 }
 
@@ -67,7 +65,7 @@
   margin: 0;
   padding: var(--space-xs) var(--space-sm);
   background: var(--bg-panel);
-  border-bottom: var(--border-width) solid var(--border-outline);
+  border-bottom: var(--divider);
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
   font-weight: 700;
@@ -91,7 +89,7 @@
 }
 
 .cp-activity__more > summary:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--hairline);
 }
 
@@ -111,7 +109,7 @@
 
 .cp-activity__type {
   padding: 0 var(--space-xs);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
   white-space: nowrap;
@@ -162,7 +160,7 @@
 }
 
 .cp-activity__action:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--hairline);
 }
 

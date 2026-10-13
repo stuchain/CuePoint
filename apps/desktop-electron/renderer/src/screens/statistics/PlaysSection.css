@@ -20,7 +20,7 @@
 
 .plays__title {
   margin: var(--space-sm) 0 0;
-  font-size: var(--font-size-md);
+  font-size: var(--text-heading);
 }
 
 .plays__list {
@@ -115,7 +115,7 @@
   align-items: center;
   justify-content: center;
   width: var(--hit-min);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-panel);
   color: var(--fg-primary);
   cursor: pointer;
@@ -142,7 +142,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: var(--accent-info);
+  color: var(--link);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
@@ -164,7 +164,7 @@
 .plays__row:focus-visible,
 .plays__preview:focus-visible,
 .plays__link:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-width);
 }
 

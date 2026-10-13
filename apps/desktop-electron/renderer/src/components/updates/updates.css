@@ -31,13 +31,13 @@
 .cp-release-notes code {
   padding: 0 var(--space-xs);
   background: var(--bg-app);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
   font-family: var(--font-mono, monospace);
   font-size: 0.9em;
 }
 
 .cp-release-notes a {
-  color: var(--accent-info);
+  color: var(--link);
 }
 
 .cp-release-notes__none,

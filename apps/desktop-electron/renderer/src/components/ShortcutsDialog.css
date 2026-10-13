@@ -7,7 +7,7 @@
 .shortcuts-dialog__table-wrap {
   max-height: 20rem;
   overflow: auto;
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
 }
 
 .shortcuts-dialog__table {
@@ -20,7 +20,7 @@
 .shortcuts-dialog__table td {
   padding: var(--space-xs) var(--space-sm);
   text-align: left;
-  border-bottom: var(--border-width) solid var(--border-outline);
+  border-bottom: var(--divider);
 }
 
 .shortcuts-dialog__table th {
@@ -31,7 +31,7 @@
 
 .shortcuts-dialog kbd {
   padding: 0 var(--space-xs);
-  border: var(--border-width) solid var(--border-outline);
+  border: var(--divider);
   background: var(--bg-panel);
   font-family: inherit;
 }

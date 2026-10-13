@@ -11,7 +11,7 @@
   gap: var(--space-xs);
   min-width: 0;
   padding-bottom: var(--space-sm);
-  border-bottom: var(--border-width) solid var(--border-muted);
+  border-bottom: var(--divider);
 }
 
 .rekordbox-export__part p {
@@ -23,7 +23,6 @@
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
   font-weight: 700;
-  text-transform: uppercase;
 }
 
 .rekordbox-export__destination {
@@ -81,7 +80,7 @@
   margin: 0;
   padding: var(--space-xs) var(--space-sm);
   overflow-y: auto;
-  border: var(--border-width) solid var(--border-muted);
+  border: var(--divider);
 }
 
 .rekordbox-export__choose legend {

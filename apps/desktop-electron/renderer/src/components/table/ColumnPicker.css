@@ -40,7 +40,6 @@
   flex-shrink: 0;
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
-  text-transform: uppercase;
 }
 
 .cp-column-picker__moves {

@@ -6,7 +6,7 @@
  * add one (Backups, update controls) without rewriting this.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
@@ -75,6 +75,41 @@ afterEach(() => {
   localStorage.clear();
   resetWaveformColourForTests();
   vi.restoreAllMocks();
+});
+
+describe("the current section (T15)", () => {
+  class FakeObserver {
+    static last: FakeObserver | null = null;
+    callback: IntersectionObserverCallback;
+    constructor(callback: IntersectionObserverCallback) {
+      this.callback = callback;
+      FakeObserver.last = this;
+    }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return [];
+    }
+  }
+
+  it("marks the section in view with motion off", () => {
+    vi.stubGlobal("IntersectionObserver", FakeObserver);
+    try {
+      renderSettings();
+      const section = document.getElementById("settings-motion")!;
+      act(() => {
+        FakeObserver.last!.callback(
+          [{ isIntersecting: true, target: section } as unknown as IntersectionObserverEntry],
+          FakeObserver.last as unknown as IntersectionObserver,
+        );
+      });
+      expect(screen.getByRole("link", { name: "Motion" })).toHaveAttribute("data-current");
+      expect(screen.getByRole("link", { name: "Appearance" })).not.toHaveAttribute("data-current");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 describe("the page", () => {

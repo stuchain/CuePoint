@@ -106,7 +106,7 @@
 }
 
 .cp-player-bar__button:focus-visible {
-  outline: var(--border-width) solid var(--accent-primary);
+  outline: var(--border-width) solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -233,7 +233,7 @@
 
 /* The focus ring goes around the waveform, since the input itself is not seen. */
 .cp-player-bar__wave--drawn:has(.cp-player-bar__slider:focus-visible) {
-  outline: var(--focus-ring-width) solid var(--accent-primary);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--hairline);
 }
 
@@ -328,7 +328,7 @@
 }
 
 .cp-player-bar__link:focus-visible {
-  outline: var(--border-width) solid var(--accent-primary);
+  outline: var(--border-width) solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -359,6 +359,6 @@
 }
 
 .cp-player-bar__keybtn:focus-visible {
-  outline: var(--border-width) solid var(--accent-primary);
+  outline: var(--border-width) solid var(--focus-ring);
   outline-offset: -2px;
 }

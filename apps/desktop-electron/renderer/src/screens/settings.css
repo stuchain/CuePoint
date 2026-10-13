@@ -38,8 +38,13 @@
   text-decoration: underline;
 }
 
+.settings-page__nav a[data-current] {
+  color: var(--fg-primary);
+  background: var(--selected-row-background);
+}
+
 .settings-page__nav a:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent-info);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
 }
 
 .settings-page__sections {
