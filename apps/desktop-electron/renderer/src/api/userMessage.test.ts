@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NEEDS_DESKTOP, OUTAGE_MESSAGE, OUTAGE_PARTWAY_MESSAGE, isOutage, userMessage } from "./userMessage";
+import { NEEDS_DESKTOP, OUTAGE_MESSAGE, OUTAGE_PARTWAY_MESSAGE, isEngineOutage, isOutage, userMessage } from "./userMessage";
 
 function withFields(message: string, fields: Record<string, unknown>): Error {
   return Object.assign(new Error(message), fields);
@@ -62,5 +62,14 @@ describe("userMessage", () => {
     };
     expect(userMessage(hostile)).toBe("Something went wrong.");
     expect(userMessage(hostile, "F")).toBe("F");
+  });
+
+  it("treats a player outage as an outage for reporting, but not as the background process", () => {
+    const player = withFields("The audio player is not running.", { code: "PLAYER_UNAVAILABLE" });
+    expect(isOutage(player)).toBe(true);
+    expect(isEngineOutage(player)).toBe(false);
+    expect(isEngineOutage(withFields("x", { code: "UNAVAILABLE" }))).toBe(true);
+    // It keeps its own words.
+    expect(userMessage(player)).toBe("The audio player is not running.");
   });
 });

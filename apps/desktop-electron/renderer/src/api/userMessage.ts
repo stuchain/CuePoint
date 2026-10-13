@@ -8,6 +8,7 @@
  */
 import { bridgeErrorFields } from "./bridgeError";
 import type { CuePointBridge } from "./cuepointBridge.types";
+import { noteOutage } from "./engineOnline";
 
 /** What the user reads when the background process cannot be reached. */
 export const OUTAGE_MESSAGE = "CuePoint lost touch with its background process. Nothing was changed.";
@@ -20,18 +21,34 @@ export const OUTAGE_PARTWAY_MESSAGE =
   "CuePoint lost touch with its background process partway through. Activity shows what was done.";
 
 /**
- * The engine or the player is not there: stopped, starting or restarting. Polled calls fail
- * this way every few seconds for as long as it lasts, so it is not a bug report; main reports
- * an outage once (REPORT-05). Main marks such an error `UNAVAILABLE` across the bridge.
- * A 5xx answer is never an outage by itself: the engine was there and failed.
+ * The engine is not there: stopped, starting or restarting. Polled calls fail this way every few
+ * seconds for as long as it lasts, so it is not a bug report; main reports an outage once
+ * (REPORT-05). Main marks such an error `UNAVAILABLE` across the bridge. A 5xx answer is never
+ * an outage by itself: the engine was there and failed.
  */
-export function isOutage(
+export function isEngineOutage(
   error: unknown,
   bridge?: Pick<CuePointBridge, "engineErrorFields">,
 ): boolean {
   if (bridgeErrorFields(error, bridge).code === "UNAVAILABLE") return true;
   if (!(error instanceof Error)) return false;
   return error.message.startsWith("Engine not running") || error.message === "fetch failed";
+}
+
+/** The audio player is not there. Main marks it `PLAYER_UNAVAILABLE`; the rest of CuePoint works. */
+export function isPlayerOutage(
+  error: unknown,
+  bridge?: Pick<CuePointBridge, "engineErrorFields">,
+): boolean {
+  return bridgeErrorFields(error, bridge).code === "PLAYER_UNAVAILABLE";
+}
+
+/** Either outage: neither is a bug, so neither is reported. */
+export function isOutage(
+  error: unknown,
+  bridge?: Pick<CuePointBridge, "engineErrorFields">,
+): boolean {
+  return isEngineOutage(error, bridge) || isPlayerOutage(error, bridge);
 }
 
 /** Words already chosen for the user; a later `userMessage` must not reword them. */
@@ -44,7 +61,11 @@ const OWN_WORDS: readonly string[] = [NEEDS_DESKTOP, OUTAGE_MESSAGE, OUTAGE_PART
 export function userMessage(cause: unknown, fallback?: string, options?: { partway?: boolean }): string {
   try {
     if (cause instanceof Error && OWN_WORDS.includes(cause.message)) return cause.message;
-    if (isOutage(cause)) return options?.partway ? OUTAGE_PARTWAY_MESSAGE : OUTAGE_MESSAGE;
+    if (isEngineOutage(cause)) {
+      // The one banner learns of it now rather than at the next poll.
+      noteOutage();
+      return options?.partway ? OUTAGE_PARTWAY_MESSAGE : OUTAGE_MESSAGE;
+    }
     if (cause instanceof Error) return cause.message;
     return fallback ?? String(cause);
   } catch {

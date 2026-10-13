@@ -12,7 +12,7 @@
  */
 import type { EngineJobSummary, JobState } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
-import { NEEDS_DESKTOP, isOutage, userMessage } from "../../api/userMessage";
+import { NEEDS_DESKTOP, isEngineOutage, userMessage } from "../../api/userMessage";
 
 /** How often to ask, when there is no subscription to listen to. */
 const POLL_INTERVAL_MS = 400;
@@ -98,7 +98,7 @@ export function followJob(jobId: string, pollMs = POLL_INTERVAL_MS): FollowHandl
       finish({
         state: "failed",
         error: {
-          ...(isOutage(error) ? { code: "UNAVAILABLE" } : {}),
+          ...(isEngineOutage(error) ? { code: "UNAVAILABLE" } : {}),
           message: userMessage(error, "Lost track of that task.", { partway: true }),
         },
       });

@@ -3422,6 +3422,12 @@ export interface CuePointBridge {
   /** The waveform analysis (WAVE-03). Absent in a browser tab, or in an older shell. */
   waveforms?: WaveformsBridge;
   restartEngine?: () => Promise<EngineStatus>;
+  /**
+   * Called each time main says the engine's status may have changed (an exit, a restart,
+   * healthy again); the page then re-reads `getEngineStatus()`. Returns an unsubscribe.
+   * Absent in a browser tab, or in an older shell.
+   */
+  onEngineStatusChanged?: (listener: () => void) => () => void;
   getJob: (jobId: string) => Promise<JobStatus>;
   getJobResults: (jobId: string) => Promise<JobResultsResponse>;
   /**

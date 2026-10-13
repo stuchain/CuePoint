@@ -18,6 +18,7 @@ import {
   findDestinationById,
   ShellHeader,
   homeDestination,
+  OfflineBanner,
   Sidebar,
   StatusStrip,
   TrackInspector,
@@ -27,6 +28,7 @@ import {
   retiredRedirects,
   useRememberDestination,
 } from "./components/shell";
+import { useEngineOffline } from "./api/engineOnline";
 import { PlayerSlot } from "./components/player/PlayerSlot";
 import { useRestorePlayerAudio } from "./components/player/playerAudioState";
 import { useRestorePlayerOrder } from "./components/player/playerOrderState";
@@ -110,6 +112,9 @@ function AppShell() {
   const [rekordboxOpen, setRekordboxOpen] = useState(false);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
   const [getHelpOpen, setGetHelpOpen] = useState(false);
+  // Goes up each time a click on the offline page is stopped; the banner pulses.
+  const [bannerPulse, setBannerPulse] = useState(0);
+  const offline = useEngineOffline();
 
   useEffect(() => {
     document.title = "CuePoint";
@@ -319,6 +324,9 @@ function AppShell() {
       <AppShellLayout
         pagePhase={pageAt.phase}
         header={<ShellHeader />}
+        banner={<OfflineBanner onGetHelp={() => setGetHelpOpen(true)} pulse={bannerPulse} />}
+        offline={offline}
+        onBlockedClick={() => setBannerPulse((n) => n + 1)}
         sidebar={<Sidebar />}
         inspector={
           <RightColumn>

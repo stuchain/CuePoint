@@ -258,7 +258,7 @@ describe("events from the global handlers", () => {
       fields: {
         "bpm too high": { status: 400, code: "INVALID_REQUEST", reportId: null },
         "main reported this": { status: null, code: null, reportId },
-        "player gone": { status: null, code: "UNAVAILABLE", reportId: null },
+        "player gone": { status: null, code: "PLAYER_UNAVAILABLE", reportId: null },
       },
     });
     expect(sdk.uncaught(new Error("bpm too high"))).toBeNull();
@@ -296,7 +296,7 @@ describe("what counts as the same error", () => {
 
 describe("an engine or player outage marked by main", () => {
   it("is not reported", async () => {
-    const { sdk } = await started({ fields: { "The audio player is not running.": { status: null, code: "UNAVAILABLE", reportId: null } } });
+    const { sdk } = await started({ fields: { "The audio player is not running.": { status: null, code: "PLAYER_UNAVAILABLE", reportId: null } } });
     expect(reportUnexpected(new Error("The audio player is not running."))).toBeNull();
     expect(sdk.exceptions).toEqual([]);
   });

@@ -7683,3 +7683,31 @@ their buttons and key line wrapped while the table had room to spare.
   files other pages still have to convert, which only shrinks.
 
 **Decided with**: User (R2-4, wish list round 2) · **Date**: 2026-10-13
+
+## DEC-274 — An Outage Is One Banner and One Sentence
+
+**Status**: Accepted · **Related**: DEC-028, DEC-155, DEC-126, REPORT-05, G7 R3-1 W6
+
+**Context**: When the background process stopped, each page failed on its own with Node's "fetch failed",
+the status strip stayed a green "Ready" until its 4 s poll noticed, and a quick automatic restart was
+never shown at all. The recovery button said "Restart library service".
+
+**Decision**:
+- Every failure the user reads goes through `userMessage()` (`renderer/src/api/userMessage.ts`). An
+  engine outage reads "CuePoint lost touch with its background process. Nothing was changed.", or
+  "…partway through. Activity shows what was done." once a job had started; anything else keeps the
+  engine's own words. A no-bridge window reads "This needs the CuePoint desktop app."
+- One store (`api/engineOnline.ts`) holds whether the engine is reachable. It is fed by the supervisor,
+  which now pushes `engine:statusChanged` on every change (exit, restart, healthy, gave up), by a 4 s poll
+  as a backstop, and by any request that fails as an outage. Only an engine outage flips it
+  (`UNAVAILABLE`, "fetch failed", "Engine not running"), never a 5xx. A player outage is
+  `PLAYER_UNAVAILABLE` and keeps its own words.
+- While offline, one banner sits above the page (not per panel) with **Start it again**, then
+  "Starting it again… (n of 3)", then "CuePoint couldn't start its background process. Quit and open
+  CuePoint again." with **Get help…**. The page is veiled and its buttons, links and menu items do
+  nothing but point to the banner; dialogs, the header, sidebar, player and strip keep working.
+- The strip says Ready / Starting up… (Getting ready… before the first-run guide is done) /
+  Starting again… (n of 3) / Stopped, in the danger color. Its restart button is gone: the banner owns it.
+  Amends DEC-028's recovery UI and DEC-155's "library service" wording.
+
+**Decided with**: User (R3-1, wish list round 2, "dim the page" ★) · **Date**: 2026-10-13

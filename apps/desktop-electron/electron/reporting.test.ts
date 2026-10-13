@@ -761,13 +761,15 @@ describe("the IPC wrapper", () => {
       Object.assign(new Error("The audio player is not running."), { name: "PlayerUnavailableError" }),
     ];
     for (const error of unavailable) {
+      // The player has a code of its own: its outage is not the background process's.
+      const code = error.name === "PlayerUnavailableError" ? "PLAYER_UNAVAILABLE" : "UNAVAILABLE";
       const handler = wrapIpcHandler("engine:listJobs", () => {
         throw error;
       });
       for (let i = 0; i < 10; i++) {
         const thrown = (await handler(event).catch((e: unknown) => e)) as Error;
         expect(thrown.message).toBe(
-          error.message + BRIDGE_ERROR_MARKER + JSON.stringify({ status: null, code: "UNAVAILABLE", reportId: null }),
+          error.message + BRIDGE_ERROR_MARKER + JSON.stringify({ status: null, code, reportId: null }),
         );
       }
     }

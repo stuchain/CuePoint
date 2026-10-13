@@ -78,6 +78,13 @@ describe("desktop contract", () => {
     expect(missing).toEqual([]);
   });
 
+  it("pushes engine status changes from main to the page", () => {
+    expect(supervisor).toContain("onStatusChanged");
+    expect(main).toContain('webContents.send("engine:statusChanged")');
+    expect(preload).toContain('ipcRenderer.on("engine:statusChanged"');
+    expect(bridgeTypes).toContain("onEngineStatusChanged");
+  });
+
   it("handles every channel the preload invokes", () => {
     const handled = new Set(handledChannels(main));
     const missing = invokedChannels(preload).filter((channel) => !handled.has(channel));

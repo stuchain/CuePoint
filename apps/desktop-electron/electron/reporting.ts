@@ -515,7 +515,9 @@ export function wrapIpcHandler<E, A extends unknown[], R>(
           reportId = reportEngineError(error);
         } else if (isUnavailable(error)) {
           ipcBreadcrumb(channel, "unavailable");
-          code = "UNAVAILABLE";
+          // The player's own code: a dead player is not a stopped background process, and the
+          // page only goes offline for the second.
+          code = error instanceof Error && error.name === "PlayerUnavailableError" ? "PLAYER_UNAVAILABLE" : "UNAVAILABLE";
         } else {
           ipcBreadcrumb(channel, "failed");
           reportId = reportIpcOnce(channel, error);

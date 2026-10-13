@@ -166,6 +166,11 @@ const engine: EngineSupervisor = new EngineSupervisor({
   build,
   // The engine's exits, restarts and give-ups, once per incident (REPORT-05).
   reporter: processReporter,
+  // The window re-reads the status at once on each change, rather than at its next poll: a
+  // killed engine can be back before that. No payload; the page asks `getEngineStatus()`.
+  onStatusChanged: (): void => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("engine:statusChanged");
+  },
   // The engine keeps the Beatport sign-in token in memory only: after every start, hand it over
   // again (C12). Not awaited, so the start is not held up by it.
   onStarted: (): void => {

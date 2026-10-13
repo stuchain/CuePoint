@@ -1,0 +1,50 @@
+/**
+ * The offline banner, one row above the page (not above the sidebar or Inspector).
+ *
+ * A plain notice: the toolbar surface with a danger edge, so it reads as a
+ * problem without being a filled block. Theme tokens only.
+ */
+.cp-offline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-toolbar);
+  border-bottom: var(--divider);
+  border-left: var(--tab-underline) solid var(--accent-danger);
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+}
+
+.cp-offline__text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-xs) var(--space-md);
+  min-width: 0;
+}
+
+.cp-offline__time {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A blocked click nudges the banner, in whole steps like the toast (DEC-135). */
+@keyframes cp-offline-pulse {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(calc(var(--motion-step-px) * 2));
+  }
+  75% {
+    transform: translateX(calc(var(--motion-step-px) * -2));
+  }
+}
+
+:root[data-motion-entrance] .cp-offline[data-pulse] {
+  animation: cp-offline-pulse var(--motion-slow) steps(var(--motion-steps-long));
+}

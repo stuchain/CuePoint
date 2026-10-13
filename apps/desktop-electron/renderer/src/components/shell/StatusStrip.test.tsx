@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { noteOutage, resetEngineOnlineForTests } from "../../api/engineOnline";
 import { StatusStrip } from "./StatusStrip";
 import { JOB_EXPLAINERS } from "./useActiveJob";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
@@ -44,6 +45,8 @@ function bridge(overrides: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+  // The first-run guide has been done, unless a test says otherwise (W6).
+  localStorage.setItem("cuepoint-onboarding-complete", "1");
   vi.useFakeTimers({ shouldAdvanceTime: true });
   sseHandler = null;
   unsubscribed = 0;
@@ -73,6 +76,8 @@ async function stream(): Promise<(event: unknown) => void> {
 }
 
 afterEach(() => {
+  resetEngineOnlineForTests();
+  localStorage.clear();
   vi.useRealTimers();
   delete (window as unknown as { cuepoint?: unknown }).cuepoint;
   vi.restoreAllMocks();
@@ -85,13 +90,14 @@ describe("engine state", () => {
     expect(screen.queryByText(/1\.0\.0/)).not.toBeInTheDocument();
   });
 
-  it("says the library service stopped, with the raw reason only in a title", async () => {
+  it("says Stopped in the danger colour, with the raw reason only in a title", async () => {
     getEngineStatus.mockResolvedValue({ connected: false, error: "Engine not running" });
 
     render(<StatusStrip />);
 
-    const text = await screen.findByText("CuePoint's library service stopped");
+    const text = await screen.findByText("Stopped");
     expect(text).toHaveAttribute("title", "Engine not running");
+    expect(text).toHaveClass("cp-status__engine--error");
     expect(screen.queryByText(/Engine not running/)).not.toBeInTheDocument();
   });
 
@@ -107,29 +113,40 @@ describe("engine state", () => {
 
     expect(await screen.findByText("Starting up…")).toBeInTheDocument();
     expect(screen.queryByText("Ready")).not.toBeInTheDocument();
-    expect(screen.queryByText(/library service stopped/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Stopped/)).not.toBeInTheDocument();
   });
 
-  it("does not offer Restart library service to an engine that is still starting", async () => {
-    // Restarting an engine that is merely slow to unpack sets it back to the
-    // beginning, which is the opposite of what the person wanted.
-    bridge({ restartEngine: vi.fn() });
+  it("says Getting ready… when the first-run guide was never done", async () => {
+    localStorage.removeItem("cuepoint-onboarding-complete");
     getEngineStatus.mockResolvedValue({ connected: false, starting: true, error: "Starting" });
 
     render(<StatusStrip />);
-    await screen.findByText("Starting up…");
 
-    expect(screen.queryByRole("button", { name: /restart library service/i })).not.toBeInTheDocument();
+    expect(await screen.findByText("Getting ready…")).toBeInTheDocument();
+    expect(screen.queryByText("Starting up…")).not.toBeInTheDocument();
   });
 
-  it("still offers Restart library service to an engine that is simply not there", async () => {
-    bridge({ restartEngine: vi.fn() });
-    getEngineStatus.mockResolvedValue({ connected: false, error: "Engine not running" });
-
+  it("says Stopped when a failed call noted an outage, before the poll notices", async () => {
     render(<StatusStrip />);
-    await screen.findByText(/library service stopped/);
+    await screen.findByText("Ready");
 
-    expect(screen.getByRole("button", { name: /restart library service/i })).toBeInTheDocument();
+    getEngineStatus.mockResolvedValue({ connected: false, error: "Engine not running" });
+    noteOutage();
+
+    expect(await screen.findByText("Stopped")).toBeInTheDocument();
+    expect(screen.queryByText("Ready")).not.toBeInTheDocument();
+  });
+
+  it("says Starting again… when it comes back after being up, as the banner does", async () => {
+    render(<StatusStrip />);
+    await screen.findByText("Ready");
+
+    // The person's own restart: starting, not reconnecting.
+    getEngineStatus.mockResolvedValue({ connected: false, starting: true, error: "Starting" });
+    await vi.advanceTimersByTimeAsync(4100);
+
+    expect(await screen.findByText("Starting again…")).toBeInTheDocument();
+    expect(screen.queryByText("Starting up…")).not.toBeInTheDocument();
   });
 
   it("goes from starting to connected without a remount", async () => {
@@ -153,13 +170,13 @@ describe("engine state", () => {
     getEngineStatus.mockResolvedValue({ connected: false, error: "Engine not running" });
     await vi.advanceTimersByTimeAsync(4100);
 
-    await waitFor(() => expect(screen.getByText(/library service stopped/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Stopped")).toBeInTheDocument());
   });
 
   it("notices the engine coming back without a remount", async () => {
     getEngineStatus.mockResolvedValue({ connected: false, error: "Engine not running" });
     render(<StatusStrip />);
-    await screen.findByText(/library service stopped/);
+    await screen.findByText("Stopped");
 
     getEngineStatus.mockResolvedValue({ connected: true, version: "1.0.0" });
     await vi.advanceTimersByTimeAsync(4100);
@@ -172,7 +189,7 @@ describe("engine state", () => {
 
     render(<StatusStrip />);
 
-    expect(await screen.findByText(/library service stopped/)).toBeInTheDocument();
+    expect(await screen.findByText("Stopped")).toBeInTheDocument();
   });
 
   it("says the state is unknown when there is no bridge at all", () => {
@@ -185,7 +202,7 @@ describe("engine state", () => {
 });
 
 describe("engine recovery (DEC-028)", () => {
-  it("says it is reconnecting rather than stopped while restarts are in flight", async () => {
+  it("says it is starting again rather than stopped while restarts are in flight", async () => {
     // The two mean different things to someone deciding whether to act.
     getEngineStatus.mockResolvedValue({
       connected: false,
@@ -197,9 +214,9 @@ describe("engine recovery (DEC-028)", () => {
     render(<StatusStrip />);
 
     expect(
-      await screen.findByText("Reconnecting… (attempt 2 of 3)"),
+      await screen.findByText("Starting again… (2 of 3)"),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/library service stopped/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Stopped/)).not.toBeInTheDocument();
   });
 
   it("shows how many attempts have been made", async () => {
@@ -211,63 +228,17 @@ describe("engine recovery (DEC-028)", () => {
 
     render(<StatusStrip />);
 
-    expect(await screen.findByText(/\(attempt 2 of 3\)/)).toBeInTheDocument();
+    expect(await screen.findByText(/\(2 of 3\)/)).toBeInTheDocument();
   });
 
-  it("offers no restart control while reconnecting", async () => {
-    getEngineStatus.mockResolvedValue({ connected: false, reconnecting: true });
+  it("has no restart button: the banner owns restarting", async () => {
     bridge({ restartEngine: vi.fn() });
+    getEngineStatus.mockResolvedValue({ connected: false, error: "Engine not running" });
 
     render(<StatusStrip />);
-    await screen.findByText(/Reconnecting/);
+    await screen.findByText("Stopped");
 
-    expect(screen.queryByRole("button", { name: /restart library service/i })).not.toBeInTheDocument();
-  });
-
-  it("offers the restart control once the attempts have given up", async () => {
-    getEngineStatus.mockResolvedValue({
-      connected: false,
-      reconnecting: false,
-      error: "Engine not running",
-    });
-    bridge({ restartEngine: vi.fn() });
-
-    render(<StatusStrip />);
-
-    expect(
-      await screen.findByRole("button", { name: /restart library service/i }),
-    ).toBeInTheDocument();
-  });
-
-  it("offers no restart control when the engine is healthy", async () => {
-    bridge({ restartEngine: vi.fn() });
-    render(<StatusStrip />);
-    await screen.findByText("Ready");
-
-    expect(screen.queryByRole("button", { name: /restart library service/i })).not.toBeInTheDocument();
-  });
-
-  it("restarts the engine when the control is pressed", async () => {
-    const restartEngine = vi.fn().mockResolvedValue({ connected: true });
-    getEngineStatus.mockResolvedValue({ connected: false, reconnecting: false });
-    bridge({ restartEngine });
-
-    render(<StatusStrip />);
-    const button = await screen.findByRole("button", { name: /restart library service/i });
-    button.click();
-
-    await waitFor(() => expect(restartEngine).toHaveBeenCalledTimes(1));
-  });
-
-  it("offers nothing when the bridge cannot restart", async () => {
-    // An older preload, or the renderer in a browser tab.
-    getEngineStatus.mockResolvedValue({ connected: false, reconnecting: false });
-    bridge({ restartEngine: undefined });
-
-    render(<StatusStrip />);
-    await screen.findByText(/library service stopped/);
-
-    expect(screen.queryByRole("button", { name: /restart library service/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /restart|start it again/i })).not.toBeInTheDocument();
   });
 });
 

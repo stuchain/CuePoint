@@ -142,4 +142,51 @@ test.describe("the engine's lifetime (EXPORT-07)", () => {
       }
     }
   });
+
+  test("killing the engine shows one banner, stops the page, and clears when it is back", async () => {
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const { engines } = await runningEngines(app);
+      const window = await app.firstWindow();
+      const banner = window.locator(".cp-offline");
+      await expect(banner).toHaveCount(0);
+
+      for (const pid of engines) {
+        try {
+          process.kill(pid, "SIGKILL");
+        } catch {
+          // Already gone.
+        }
+      }
+
+      // The supervisor restarts it by itself, so the wording can be either
+      // "stopped" or "starting it again"; what matters is that it is there.
+      await expect(banner).toBeVisible({ timeout: 5_000 });
+      await expect(window.getByRole("alert")).toContainText(/CuePoint (stopped|couldn't)|Starting it again/);
+      await expect(window.locator(".cp-status__engine")).toHaveText(/Stopped|Starting again/);
+      await expect(window.locator("main.app-main")).toHaveAttribute("data-offline", "");
+
+      // A press on the dimmed page never reaches it. Judged in one step, in the page, because
+      // the supervisor may have the engine back a moment later. (The banner's pulse is a unit test.)
+      const press = await window.evaluate(() => {
+        const main = document.querySelector("main.app-main");
+        const button = main?.querySelector("button");
+        if (!main || !button) return null;
+        const offline = main.hasAttribute("data-offline");
+        let reached = false;
+        button.addEventListener("click", () => (reached = true), { once: true });
+        button.click();
+        return { offline, reached };
+      });
+      if (press?.offline) expect(press.reached).toBe(false);
+
+      // Once it is back the banner and the dimming go.
+      await waitForEngine(window);
+      await expect(banner).toHaveCount(0, { timeout: 15_000 });
+      await expect(window.locator("main.app-main")).not.toHaveAttribute("data-offline", "");
+      await expect(window.locator(".cp-status__engine")).toHaveText("Ready");
+    } finally {
+      await app.close();
+    }
+  });
 });

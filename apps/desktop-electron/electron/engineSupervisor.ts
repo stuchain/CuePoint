@@ -217,6 +217,13 @@ interface EngineSupervisorOptions {
    * uses this to push the stored one again. Never awaited; a throw is swallowed.
    */
   onStarted?: () => void;
+  /**
+   * Called whenever the status `getStatus()` reports may have changed: an exit nobody asked
+   * for, entering or leaving a restart, healthy, giving up, and the person's restart starting
+   * and ending. Main pushes it to the window, which re-reads at once instead of at its next
+   * poll (a killed engine can be back before that). Never awaited; a throw is swallowed.
+   */
+  onStatusChanged?: () => void;
   /** Replaces `RESTART_BACKOFF_MS`; for tests. */
   restartBackoffMs?: readonly number[];
   /** Replaces `HEALTH_TIMEOUT_MS`; for tests. */
@@ -280,6 +287,15 @@ const STOPPED: EngineStatus = { connected: false, error: "Engine not running" };
 export class EngineSupervisor {
   constructor(private readonly options: EngineSupervisorOptions = {}) {
     this.incidents = new IncidentTracker("engine", options.reporter);
+  }
+
+  /** Tells `onStatusChanged` the status may have changed. Never throws. */
+  private changed(): void {
+    try {
+      this.options.onStatusChanged?.();
+    } catch {
+      /* what main does with a status change must not break the supervisor */
+    }
   }
 
   /** What the engine's exits and restarts add up to (`processWatch.ts`). */
@@ -415,6 +431,8 @@ export class EngineSupervisor {
   private async launch(): Promise<EngineStatus> {
     // `stop()` kills the current child; that exit is ours, not a crash.
     this.stopping = true;
+    this.healthy = false;
+    this.changed();
     await this.killChild();
     this.stopping = false;
     if (this.stopRequested) return STOPPED;
@@ -493,6 +511,7 @@ export class EngineSupervisor {
       this.child = null;
       this.healthy = false;
       if (this.stopping) return;
+      this.changed();
       // An exit during a restart is still one that was not asked for: it is one more exit in
       // the open incident, though the restart already running will do the restarting.
       this.incidents.exited({ code, signal, uptimeMs: Date.now() - this.spawnedAt });
@@ -507,6 +526,7 @@ export class EngineSupervisor {
       if (this.child !== child) return;
       this.child = null;
       this.healthy = false;
+      this.changed();
       this.incidents.startFailed(
         "spawn",
         "engine could not be started",
@@ -542,6 +562,7 @@ export class EngineSupervisor {
     } catch {
       /* what main does with a started engine must not fail the start */
     }
+    this.changed();
     return this.getStatus();
   }
 
@@ -555,6 +576,7 @@ export class EngineSupervisor {
     const generation = this.generation;
     if (this.restartAttempts >= MAX_RESTART_ATTEMPTS) {
       this.reconnecting = false;
+      this.changed();
       // Not silent any more: the incident's one event (REPORT-05).
       this.incidents.gaveUp(
         `the engine did not stay up after ${MAX_RESTART_ATTEMPTS} restarts`,
@@ -566,6 +588,7 @@ export class EngineSupervisor {
     const delay = backoff[this.restartAttempts] ?? backoff.at(-1) ?? 4000;
     this.restartAttempts += 1;
     this.reconnecting = true;
+    this.changed();
     this.incidents.restarting(this.restartAttempts, delay);
 
     await new Promise<void>((resolve) => {
@@ -582,6 +605,7 @@ export class EngineSupervisor {
     const status = await this.start();
     if (this.stopRequested || generation !== this.generation) return;
     this.reconnecting = false;
+    this.changed();
     if (status.connected) {
       // Healthy again: the next crash gets a full set of attempts of its own,
       // rather than inheriting the count from an unrelated failure.
@@ -604,7 +628,9 @@ export class EngineSupervisor {
     this.endBackoff();
     this.restartAttempts = 0;
     this.reconnecting = false;
-    return this.start();
+    const status = await this.start();
+    this.changed();
+    return status;
   }
 
   /** Ends the wait of an automatic restart that is in its backoff, if there is one. */
@@ -628,6 +654,7 @@ export class EngineSupervisor {
     this.reconnecting = false;
     this.incidents.abandon();
     await this.killChild();
+    this.changed();
   }
 
   /** Kill the child and wait for it (or two seconds). What `launch()` and `stop()` both need. */

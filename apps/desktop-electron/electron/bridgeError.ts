@@ -17,7 +17,7 @@ export const BRIDGE_ERROR_MARKER = "\u0000cuepoint-error:";
 export interface BridgeErrorExtra {
   /** The event id main reported the error under, so the page does not report it again. */
   reportId?: string | null;
-  /** `UNAVAILABLE` when the engine or the player is not there: an outage, not a bug. */
+  /** `UNAVAILABLE` when the engine is not there, `PLAYER_UNAVAILABLE` for the player: outages, not bugs. */
   code?: string;
 }
 

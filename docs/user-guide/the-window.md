@@ -161,16 +161,31 @@ the panel remembers which you folded. See [Track details](library.md#track-detai
 ## The status strip
 
 The strip along the bottom says **Ready** when CuePoint is working normally. While
-it starts it says **Starting up…**, and when its library service stops and comes
-back it says **Reconnecting… (attempt 2 of 3)**. The version number is in
-**Help > About CuePoint** and in Settings → About & updates.
+it starts it says **Starting up…**, or **Getting ready…** the first time you open
+CuePoint, before you have been through the guide. If CuePoint's background process
+stops and CuePoint is starting it again, it says **Starting again… (1 of 3)**. The
+version number is in **Help > About CuePoint** and in Settings → About & updates.
 
-If CuePoint's library service stops unexpectedly, CuePoint restarts it for you.
-After three failed attempts it stops trying, says **CuePoint's library service
-stopped** and offers a **Restart library service** button, rather than retrying
-forever and hiding a real fault. Hover over the message for the technical reason.
-Every start is listed in Activity, so a service that keeps stopping is visible
-rather than silently patched over.
+If the background process stops, CuePoint starts it again for you. After three
+failed attempts it stops trying and the strip says **Stopped** in red, rather than
+retrying forever and hiding a real fault. Hover over the word for the technical
+reason. Every start is listed in Activity, so a process that keeps stopping is
+visible rather than silently patched over.
+
+### When CuePoint stops in the background
+
+One banner appears above the page, not above the sidebar: **CuePoint stopped working
+in the background. Your library and files are safe.** Beside it is **Start it
+again**, and **Last loaded** is the time CuePoint last heard from its background process, so you know how old what you see on the page is. While it
+starts again the banner says **Starting it again… (1 of 3)**. If that does not
+work it says **CuePoint couldn't start its background process. Quit and open
+CuePoint again.** and offers **Get help…**.
+
+While the banner is up the page is dimmed and its buttons and links do nothing,
+so nothing fails one click at a time. Clicking one points you to the banner. You can
+still read the page, scroll, select text, use the sidebar and search, and open
+Help. The banner and the dimming go away by themselves as soon as CuePoint is
+running again.
 
 When nothing is running the strip shows nothing more. While something is running
 in the background — matching a playlist, for example — the strip names it and shows

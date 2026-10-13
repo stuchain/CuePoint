@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import "./AppShellLayout.css";
 
 interface AppShellLayoutProps {
@@ -12,11 +12,29 @@ interface AppShellLayoutProps {
   player?: ReactNode;
   /** Engine and job status strip. SHELL-07. */
   statusBar?: ReactNode;
+  /**
+   * One row directly above the page, between the header and the content, not
+   * spanning the sidebar or Inspector: the offline banner.
+   */
+  banner?: ReactNode;
+  /**
+   * The background process is not there: the page is dimmed and its controls
+   * stop answering clicks. Reading, scrolling and selecting text still work.
+   */
+  offline?: boolean;
+  /** A click on the offline page was stopped; the banner is told to draw the eye. */
+  onBlockedClick?: () => void;
   /** The routed page. */
   children: ReactNode;
   /** Alternates a/b each time the page changes; CSS names a different step-in for each (PAGES-12). */
   pagePhase?: "a" | "b";
 }
+
+/** What a click can press: a click inside one of these is stopped while offline. */
+const PRESSABLE = 'button, [role="menuitem"], [role="button"], a[href], input[type="checkbox"]';
+
+/** Dialogs rendered inside the page (the modal is not portaled) stay usable offline. */
+const DIALOGS = '[role="dialog"], [role="alertdialog"]';
 
 /**
  * The application frame: a grid of named regions that later Phase 2 steps fill.
@@ -39,6 +57,13 @@ interface AppShellLayoutProps {
  * component: the wrapper is the landmark, and a component that later ends up
  * somewhere else should not carry the shell's semantics with it.
  *
+ * The banner follows the same rule: no banner, no element, no height.
+ *
+ * Offline, a veil is laid over the page in the same grid cell (not opacity on the page: that
+ * would make it a stacking context and trap its dialogs under the banner), and a capture-phase listener on the content element stops presses
+ * before the page sees them. It sits on `main` only, so the header, sidebar,
+ * Inspector, player and status strip (all outside it) keep working.
+ *
  * The content element keeps its historical `app-main` class alongside the grid
  * class, because screen styling in `App.css` and `screens.css` is written
  * against `.app-main .screen`. Renaming it would be a much larger change than
@@ -50,14 +75,46 @@ export function AppShellLayout({
   inspector,
   player,
   statusBar,
+  banner,
+  offline,
+  onBlockedClick,
   children,
   pagePhase,
 }: AppShellLayoutProps) {
+  const content = useRef<HTMLElement | null>(null);
+  const blocked = useRef(onBlockedClick);
+  blocked.current = onBlockedClick;
+
+  useEffect(() => {
+    const element = content.current;
+    if (!offline || !element) return;
+    const stop = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || !target.closest(PRESSABLE)) return;
+      // A dialog opened from the page keeps working: it is how the person closes it.
+      if (target.closest(DIALOGS)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      blocked.current?.();
+    };
+    element.addEventListener("click", stop, true);
+    return () => element.removeEventListener("click", stop, true);
+  }, [offline]);
+
   return (
     <div className="app-shell">
       {header ? <div className="app-shell__header">{header}</div> : null}
       {sidebar ? <div className="app-shell__sidebar">{sidebar}</div> : null}
-      <main className="app-shell__content app-main" data-page-phase={pagePhase}>{children}</main>
+      {banner ? <div className="app-shell__banner">{banner}</div> : null}
+      <main
+        className="app-shell__content app-main"
+        data-page-phase={pagePhase}
+        data-offline={offline ? "" : undefined}
+        ref={content}
+      >
+        {children}
+      </main>
+      {offline ? <div className="app-shell__veil" aria-hidden="true" /> : null}
       {inspector ? <div className="app-shell__inspector">{inspector}</div> : null}
       {player ? <div className="app-shell__player">{player}</div> : null}
       {statusBar ? (

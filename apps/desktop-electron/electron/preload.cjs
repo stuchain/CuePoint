@@ -411,6 +411,12 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
     ipcRenderer.on("beatport:authChanged", handler);
     return () => ipcRenderer.removeListener("beatport:authChanged", handler);
   },
+  // A push, not a call: main says the engine's status may have changed and the page re-reads it.
+  onEngineStatusChanged: (listener) => {
+    const handler = () => listener();
+    ipcRenderer.on("engine:statusChanged", handler);
+    return () => ipcRenderer.removeListener("engine:statusChanged", handler);
+  },
   exportSupportBundle: (options) => ipcRenderer.invoke("support:exportBundle", options ?? {}),
   showItemInFolder: (filePath) => ipcRenderer.invoke("shell:showItemInFolder", filePath),
   openBeatportPage: (url) => ipcRenderer.invoke("shell:openBeatportPage", url),

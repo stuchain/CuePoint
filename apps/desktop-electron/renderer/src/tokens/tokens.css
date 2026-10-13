@@ -68,6 +68,8 @@
   --text-label: var(--font-size-xs);
   --text-heading: var(--font-size-sm);
   --focus-ring: var(--focus-ring-color);
+  /* How much of the app background veils a page that is shown but cannot be used: offline. */
+  --dim-veil: 45%;
 
   /* Spacing */
   --space-xs: calc(var(--unit) * 1);

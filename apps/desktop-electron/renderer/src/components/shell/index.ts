@@ -14,6 +14,7 @@ export {
 } from "./inspectorSlot";
 export { usePageActive } from "./pageActive";
 export { StatusStrip } from "./StatusStrip";
+export { OfflineBanner } from "./OfflineBanner";
 export {
   enabledDestinations,
   findDestinationById,

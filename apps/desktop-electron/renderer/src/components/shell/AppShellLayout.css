@@ -1,7 +1,7 @@
 /**
  * Application shell grid.
  *
- * Four rows, three columns. The sidebar and inspector columns and the header,
+ * Five rows, three columns. The sidebar and inspector columns and the header,
  * player and status rows all size to `auto`, so a region that is not
  * rendered contributes exactly zero pixels. There is deliberately no `gap`:
  * a gap is drawn around empty tracks too, which would give an absent region
@@ -16,11 +16,12 @@
   display: grid;
   grid-template-areas:
     "header  header    header"
+    "sidebar banner    inspector"
     "sidebar content   inspector"
     "player  player    player"
     "status  status    status";
   grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
@@ -44,8 +45,26 @@
   min-height: 0;
 }
 
+.app-shell__banner {
+  grid-area: banner;
+  min-width: 0;
+}
+
 .app-shell__content {
   grid-area: content;
+}
+
+/*
+ * Offline: a veil over the page, in the page's own grid cell. Not opacity on the page itself,
+ * which would make it a stacking context and put its dialogs (z-index 1000) under the banner;
+ * and a sibling rather than a ::after, so it stays put while the page scrolls. Pointer events
+ * pass through (reading and selecting still work); presses are stopped in the layout.
+ */
+.app-shell__veil {
+  grid-area: content;
+  z-index: 50;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--bg-app) var(--dim-veil), transparent);
 }
 
 .app-shell__inspector {

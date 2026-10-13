@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
+import { useEngineOnline } from "../../api/engineOnline";
 import { useLeaveGhost } from "../../tokens/useLeaveGhost";
+import { shouldShowOnboarding } from "../firstRunMemory";
 import { Hint } from "../Hint";
 import { PixelSpinner } from "../PixelSpinner";
 import { UpdateStatusItem } from "../updates/UpdateStatusItem";
@@ -153,30 +155,27 @@ export function StatusStrip() {
   const [activityOpen, setActivityOpen] = useState(false);
 
   const percent = jobPercent(job);
-  const connected = status?.connected === true;
+  const { offline } = useEngineOnline();
+  // A failed call can know before the poll does: offline overrides a stale "Ready".
+  const connected = status?.connected === true && !offline;
   const reconnecting = status?.reconnecting === true;
   // Starting is a third state, not a flavour of offline: it ends by itself.
   const starting = status?.starting === true;
-  // Offered only once the automatic attempts have given up (DEC-028): a button
-  // competing with a restart already in flight helps nobody — and an engine
-  // still unpacking itself is not one to restart, which is what "Restart
-  // engine" offered for the first ten seconds on a Mac.
-  const canRestart =
-    status !== null &&
-    !connected &&
-    !reconnecting &&
-    !starting &&
-    Boolean(window.cuepoint?.restartEngine);
-  const [restarting, setRestarting] = useState(false);
-
-  const restart = async () => {
-    setRestarting(true);
-    try {
-      await window.cuepoint?.restartEngine?.();
-    } finally {
-      setRestarting(false);
-    }
-  };
+  // Back after being up is "again", whoever started it; only a first launch is "up".
+  const startingAgain = reconnecting || (starting && offline);
+  // The banner above the page owns restarting; the strip only reports.
+  const engineText =
+    status === null
+      ? "Connecting…"
+      : connected
+        ? "Ready"
+        : startingAgain
+          ? `Starting again…${status.restartAttempts ? ` (${status.restartAttempts} of 3)` : ""}`
+          : starting
+            ? shouldShowOnboarding()
+              ? "Getting ready…"
+              : "Starting up…"
+            : "Stopped";
 
   /**
    * Stopping the work the strip is reporting (ORG-13).
@@ -242,43 +241,21 @@ export function StatusStrip() {
           }`}
           // The raw reason is for the hover and Diagnostics, never the strip's
           // text (DEC-155).
-          title={connected || reconnecting || starting ? undefined : status?.error}
+          title={engineText === "Stopped" ? status?.error : undefined}
         >
-          {status === null
-            ? "Connecting…"
-            : connected
-              ? "Ready"
-              : reconnecting
-                ? `Reconnecting…${
-                    status.restartAttempts ? ` (attempt ${status.restartAttempts} of 3)` : ""
-                  }`
-                : starting
-                  ? "Starting up…"
-                  : "CuePoint's library service stopped"}
+          {engineText}
         </span>
 
         {/*
           The player speaks only when it was in use and broke (PLAYER-03).
-          "Audio player unavailable" is a different sentence from "CuePoint's
-          library service stopped" and must not read as one: the service being
-          down stops everything, while a dead player leaves the whole library
-          usable.
+          "Audio player unavailable" is a different sentence from "Stopped" and
+          must not read as one: the background process being down stops
+          everything, while a dead player leaves the whole library usable.
         */}
         {playerMessage && (
           <span className="cp-status__player cp-status__engine--error">{playerMessage}</span>
         )}
         </span>
-
-        {canRestart && (
-          <button
-            type="button"
-            className="cp-status__restart"
-            onClick={() => void restart()}
-            disabled={restarting}
-          >
-            {restarting ? "Restarting…" : "Restart library service"}
-          </button>
-        )}
 
         {job ? (
           <span className="cp-status__job">
