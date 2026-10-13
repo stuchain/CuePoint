@@ -129,13 +129,20 @@ two never do. The buttons for the selected entries are on the selected row, not
 here. **Notes** holds notes for the whole Set:
 the venue, the set times, anything you want to remember; it reads **Notes (1)**
 once the Set has some. **View ▾** shows or hides the tempo and key lanes and the
-transition strip, and chooses the table's columns.
+transition strip, shows or hides the **Mix in** and **Mix out** times
+(**Show times** / **Hide times**), and chooses the table's columns.
 
-The Set's table has one row per entry: its number, when it **Starts at**, the
-**Mix in** and **Mix out** times you plan, how long it **Plays for**, the track,
-its BPM and key, the **Transition** into it, and its note. Hover a heading for
+The Set's table has one row per entry. It opens with its number, the track
+(**Title** and **Artist**), its **Key** and **BPM**, and **Fit**: a dot for how
+well the track mixes in from the one before. ● means key and tempo both fit, ◐
+means one of them is off, ○ means both are. Hover the dot for what is off; a
+warning you have marked OK counts as fit, and the first track has no dot, as
+nothing comes before it. Then come when it **Starts at** and how long it **Plays
+for**. The **Mix in** and **Mix out** times you plan, the **Transition** into it
+and its note are hidden until you want them: **View ▾ ▸ Show times** brings both
+times in at once, and **Columns…** shows or hides the others. Hover a heading for
 what it means. Each chapter has a heading row that states the chapter's facts
-under the same columns. Nothing sorts: the order is the Set. A chapter's heading
+under the same columns (under **Fit** it counts the chapter's open warnings). Nothing sorts: the order is the Set. A chapter's heading
 carries its own buttons: **Edit**, **↑**, **↓** (move the chapter) and **×**
 (delete it).
 
@@ -173,7 +180,7 @@ range.
 
 Each entry can carry a planned **mix in** time and **mix out** time: where in the
 track you plan to bring it in and take it out. Type them straight into the
-table's **Mix in** and **Mix out** cells, or under **In this Set** in Track
+table's **Mix in** and **Mix out** cells (choose **View ▾ ▸ Show times** first), or under **In this Set** in Track
 details, as `m:ss` or `h:mm:ss` — `0:30`, `4:30`, `1:02:00`.
 In the table, click the cell (or press Enter or F2 on the selected entry); Enter or
 Tab saves and moves to the next cell (Shift+Tab goes back), Esc drops what you
@@ -261,6 +268,11 @@ suggested for a gap never has a tempo warning there. Key only adds points, so a
 suggestion can still clash in key, and its reasons say so. A track already in
 the Set is marked: "Already in this Set once: inserting it plays it again".
 The same library gives the same list every time.
+
+Each side's cell is a short run of tokens in playing order: the key step
+(**+1**, **−1**, **same** or **rel.**), the tempo change (**+2 BPM**), and **G**,
+**L** or **A** for a shared genre, label or artist. Hover a cell for the full
+sentence. The **Fit** column is a five-block bar rather than a number.
 
 When nothing fits both sides, the panel says so: "Nothing fits between “Build”
 and “Peak Jump”", with each track's BPM, how far apart they are, that no tempo is

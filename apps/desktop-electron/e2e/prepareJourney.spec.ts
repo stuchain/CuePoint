@@ -272,6 +272,9 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
         await out.fill(outTime);
         await out.press("Enter");
       }
+      // R4-5: Mix in and Mix out are hidden until View ▸ Show times.
+      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("menuitem", { name: "Show times" }).click();
       // FLW-18: Warm One's times are typed in the table: click Mix in, Tab to Mix out, Enter.
       await row(win, "Warm One").getByRole("button", { name: /^Mix in for/ }).first().click();
       await win.getByRole("textbox", { name: /^Mix in for/ }).fill("0:30");

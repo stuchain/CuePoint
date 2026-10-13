@@ -128,3 +128,39 @@ export function isAcknowledgeable(warning: SetWarning): boolean {
     warning.kind === "tempo_unknown"
   );
 }
+
+/**
+ * How well a track mixes in from the one before, in two sides: key and tempo
+ * (R4-5). Only the open warnings count, so a "Mark OK" turns a side back to
+ * fit. A key clash is the key side; a tempo jump, and a BPM that is not known
+ * to compare, are the tempo side. Every other kind is about something else (a
+ * file, a time, a target) and has no say in whether two tracks mix.
+ *
+ * `open` is the warnings that made it not fit, for the cell's hover and its
+ * label. Pure: the same list always gives the same answer.
+ */
+export interface SetFit {
+  keyOff: boolean;
+  tempoOff: boolean;
+  /** "fit": both sides fine; "one": one side off; "both": key and tempo off. */
+  level: "fit" | "one" | "both";
+  open: SetWarning[];
+}
+
+export function fitOf(transition: readonly SetWarning[]): SetFit {
+  const open = transition.filter(
+    (warning) =>
+      !warning.acknowledged &&
+      (warning.kind === "key_clash" ||
+        warning.kind === "tempo_jump" ||
+        warning.kind === "tempo_unknown"),
+  );
+  const keyOff = open.some((warning) => warning.kind === "key_clash");
+  const tempoOff = open.some((warning) => warning.kind !== "key_clash");
+  return {
+    keyOff,
+    tempoOff,
+    level: keyOff && tempoOff ? "both" : keyOff || tempoOff ? "one" : "fit",
+    open,
+  };
+}

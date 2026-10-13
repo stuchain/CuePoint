@@ -777,7 +777,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(async () => (await order()).length, { timeout: 15_000 }).toBe(4);
     expect(await order()).not.toContain(first[0]);
     // At twice the size the Set pane has no room even for the glyphs: one Actions ▾ opens the entry's menu.
-    await win.evaluate(() => (localStorage.setItem("cuepoint-ui-lab-scale", "2"), localStorage.removeItem("cuepoint-prepare-set-layout")));
+    await win.evaluate(() => (localStorage.setItem("cuepoint-ui-lab-scale", "2"), localStorage.removeItem("cuepoint-prepare-set-layout-2")));
     await win.reload();
     await expect(setRow(win, "Build")).toBeVisible({ timeout: 30_000 });
     await pickEntry(win, (await order())[1]);
@@ -785,7 +785,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await use(win, entries.getByRole("button", { name: "Actions" }), "Actions");
     await expect(win.getByRole("menu").getByRole("menuitem", { name: "Remove from Set" })).toBeVisible();
     await win.keyboard.press("Escape");
-    await win.evaluate(() => (localStorage.removeItem("cuepoint-ui-lab-scale"), localStorage.removeItem("cuepoint-prepare-set-layout")));
+    await win.evaluate(() => (localStorage.removeItem("cuepoint-ui-lab-scale"), localStorage.removeItem("cuepoint-prepare-set-layout-2")));
     await win.reload();
   });
 
@@ -827,6 +827,9 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     const setId = await makeSet(win, "Times", ["Warm One", "Warm Two", "Build"]);
     await openSet(win, setId);
     await expect(setRow(win, "Build")).toBeVisible({ timeout: 30_000 });
+    // R4-5: the time columns are hidden until View ▸ Show times.
+    await win.getByRole("button", { name: "View ▾" }).click();
+    await win.getByRole("menuitem", { name: "Show times" }).click();
     // Select the entry with a click, then F2 starts the cell, Tab moves from In to Out, Enter saves.
     await pickEntry(win, "Warm Two");
     await win.keyboard.press("F2");
@@ -838,6 +841,9 @@ test.describe("FLW-1: every action in the table has a visible place that works f
       .poll(async () => (await readSet(win, setId)).entries.find((entry) => entry.track.title === "Warm Two"), { timeout: 15_000 })
       .toMatchObject({ in_seconds: 30, out_seconds: 270 });
     await expect(win.locator(".prepare-header__facts")).toContainText("4:00 planned", { timeout: 15_000 });
+    // Later tests start with the times hidden, as a new install does.
+    await win.evaluate(() => localStorage.removeItem("cuepoint-prepare-set-layout-2"));
+    await win.reload();
   });
 
   test("The selection bar on Similar tracks: always shown, disabled until a suggestion is selected", async () => {

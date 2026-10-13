@@ -710,6 +710,29 @@ body.prepare-resizing {
   color: var(--fg-muted);
 }
 
+/* The Fit column's dot (R4-5): colour and shape both say how the track mixes in. */
+.prepare-fit {
+  display: inline-block;
+  font-size: calc(10px * var(--scale));
+  line-height: 1;
+}
+
+.prepare-fit--fit {
+  color: var(--accent-success);
+}
+
+.prepare-fit--one {
+  color: var(--accent-warning);
+}
+
+.prepare-fit--both {
+  color: var(--accent-danger);
+}
+
+.prepare-fit-count {
+  color: var(--accent-warning);
+}
+
 /* ------------------------------------------------- "In this Set" (Inspector) */
 
 .prepare-entry-zone {

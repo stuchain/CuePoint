@@ -7465,4 +7465,23 @@ artwork during the preview, and nothing recorded a field the write left alone.
   track's current path does not hold it. WAV and formats CuePoint does not write are left out; artwork is not
   counted. `GET /clean/unsaved` and `GET /clean/playlists` (per-playlist match status) read it.
 
+## DEC-263 — The Set Table Leads With Key, BPM and Fit
+
+**Status**: Approved · **Related**: DEC-112, DEC-106, DEC-201, R4-5
+
+**Context**: The Set table opened on Mix in, Mix out and the times, and put BPM and Key after the
+artist, so the facts a DJ reads a running order by sat off to the right and the warnings were a
+sentence in a wide Transition column.
+
+**Decision** (amends DEC-112's column order):
+- Default columns: #, Title, Artist, Key, BPM, **Fit**, Starts at, Plays for. Mix in, Mix out,
+  Transition and Note are hidden by default and stay one choice away in Columns….
+- Fit is a dot per entry for the change into it, shape and colour together: ● fits, ◐ key or tempo
+  off, ○ both off. Only open (not accepted) key clashes and tempo jumps or unknown tempos count; the
+  sentences are its hint and accessible name. The Set's first entry has none; a chapter heading shows
+  its open warning count.
+- View ▸ Show times / Hide times shows or hides Mix in and Mix out together. They sit right after Fit,
+  before Starts at, so the selected row's buttons (stuck to the right edge) never cover them.
+- Saved Set layouts are reset once (a new storage key) so everyone sees the new order (★ answer 23).
+
 **Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13

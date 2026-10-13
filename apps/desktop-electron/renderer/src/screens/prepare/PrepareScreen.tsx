@@ -230,6 +230,18 @@ export function PrepareScreen({
     loadedRows,
   });
   const columns = useColumnLayout<PrepareRow>(PREPARE_TABLE_LAYOUT_KEY, PREPARE_COLUMNS);
+  // Mix in and Mix out go together (R4-5). If either shows, both hide; the two
+  // can be out of step after Columns…, so they are set, not each flipped.
+  const timesShown = columns.layout.some(
+    (entry) => (entry.id === "in" || entry.id === "out") && !entry.hidden,
+  );
+  const toggleTimes = () => {
+    for (const entry of columns.layout) {
+      if ((entry.id === "in" || entry.id === "out") && entry.hidden === !timesShown) {
+        columns.toggle(entry.id);
+      }
+    }
+  };
 
   // The selected entries as they are now: a removed one is not selected.
   const selected = useMemo(() => {
@@ -1409,6 +1421,11 @@ export function PrepareScreen({
               id: "transition",
               label: transitionOpen ? "Hide transition strip" : "Show transition strip",
               onSelect: toggleTransition,
+            },
+            {
+              id: "times",
+              label: timesShown ? "Hide times" : "Show times",
+              onSelect: toggleTimes,
             },
             { id: "columns", label: "Columns…", onSelect: () => setPicking(true) },
           ]}

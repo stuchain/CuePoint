@@ -14,6 +14,7 @@ import {
   describeFileCheck,
   describeSetNotice,
   describeSetWarning,
+  fitOf,
   isAcknowledgeable,
   type SetFileCheck,
   type SetNotice,
@@ -124,5 +125,65 @@ describe("the words", () => {
   it("names an unknown warning rather than saying nothing", () => {
     const future = { kind: "energy_drop", detail: "steep", compared: {}, acknowledged: false };
     expect(describeSetWarning(future as unknown as SetWarning)).toBe("Check: energy_drop");
+  });
+});
+
+describe("fitOf: whether a track mixes in from the one before", () => {
+  const warning = (kind: string, detail: string, acknowledged = false) =>
+    WARNINGS.find((w) => w.kind === kind && w.detail === detail && w.acknowledged === acknowledged) ??
+    ({ ...WARNINGS.find((w) => w.kind === kind && w.detail === detail)!, acknowledged } as SetWarning);
+  const key = (acknowledged = false) => warning("key_clash", "no_relation", acknowledged);
+  const jump = (acknowledged = false) => warning("tempo_jump", "faster", acknowledged);
+  const unknown = (acknowledged = false) => warning("tempo_unknown", "to", acknowledged);
+
+  it("fits when there is nothing to say", () => {
+    expect(fitOf([])).toEqual({ keyOff: false, tempoOff: false, level: "fit", open: [] });
+  });
+
+  it("is one side off for a key clash alone", () => {
+    const fit = fitOf([key()]);
+    expect(fit).toMatchObject({ keyOff: true, tempoOff: false, level: "one" });
+    expect(fit.open).toEqual([key()]);
+  });
+
+  it("is one side off for a tempo jump alone", () => {
+    expect(fitOf([jump()])).toMatchObject({ keyOff: false, tempoOff: true, level: "one" });
+  });
+
+  it("is one side off for an unknown tempo alone", () => {
+    expect(fitOf([unknown()])).toMatchObject({ keyOff: false, tempoOff: true, level: "one" });
+  });
+
+  it("is both off for a key clash with a tempo problem", () => {
+    const fit = fitOf([jump(), key()]);
+    expect(fit).toMatchObject({ keyOff: true, tempoOff: true, level: "both" });
+    expect(fit.open).toHaveLength(2);
+  });
+
+  it("is still one side off when two warnings are both about tempo", () => {
+    expect(fitOf([jump(), unknown()]).level).toBe("one");
+  });
+
+  it("counts an accepted warning as fit", () => {
+    expect(fitOf([key(true), jump(true)])).toEqual({
+      keyOff: false,
+      tempoOff: false,
+      level: "fit",
+      open: [],
+    });
+  });
+
+  it("leaves an accepted warning out of the open ones", () => {
+    const fit = fitOf([jump(), key(true)]);
+    expect(fit).toMatchObject({ keyOff: false, tempoOff: true, level: "one" });
+    expect(fit.open).toEqual([jump()]);
+  });
+
+  it("ignores warnings that are not about the change into the track", () => {
+    const others = WARNINGS.filter(
+      (w) => !["key_clash", "tempo_jump", "tempo_unknown"].includes(w.kind),
+    ).map((w) => ({ ...w, acknowledged: false }) as SetWarning);
+    expect(others.length).toBeGreaterThan(0);
+    expect(fitOf(others)).toEqual({ keyOff: false, tempoOff: false, level: "fit", open: [] });
   });
 });

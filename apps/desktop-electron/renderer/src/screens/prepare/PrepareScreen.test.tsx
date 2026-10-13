@@ -32,6 +32,7 @@ import { cleanMatchState } from "../clean/cleanLink";
 import { DOUBLE_CLICK_MS } from "./prepareEditingContext";
 import { PrepareScreen, SET_ENTRY_MIME, SET_GONE_LINE } from "./PrepareScreen";
 import { EDITS, FRIDAY, IDS, PLAIN, REFUSALS, TREE, answered, refused } from "./prepare.testFixture";
+import { PREPARE_TABLE_LAYOUT_KEY } from "./prepareColumns";
 import { NO_SETS, WHAT_A_SET_IS } from "./prepareFormat";
 import { LAST_SET_STORAGE_KEY, PREPARE_PATH, PREPARE_SET_ROUTE, preparePath } from "./prepareLink";
 
@@ -180,6 +181,44 @@ function rowAt(index: number): HTMLElement {
 
 function inspector() {
   return screen.getByRole("complementary", { name: "Inspector" });
+}
+
+/** Turns the Mix in and Mix out columns on: they are hidden until View ▸ Show times. */
+function showTimes() {
+  fireEvent.click(screen.getByRole("button", { name: "View ▾" }));
+  fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Show times" }));
+}
+
+/** The names of the columns the table draws, left to right. */
+function headers(): string[] {
+  return within(table())
+    .getAllByRole("columnheader")
+    .map((header) => header.textContent?.trim() ?? "");
+}
+
+/**
+ * A saved layout in the new default order with the four default-hidden columns
+ * (Mix in, Mix out, Transition, Note) shown, so a test sees the real order.
+ */
+function showTimesInStorage() {
+  const shown = (id: string, width: number) => ({ id, width, hidden: false });
+  localStorage.setItem(
+    PREPARE_TABLE_LAYOUT_KEY,
+    JSON.stringify([
+      shown("position", 48),
+      shown("title", 200),
+      shown("artist", 150),
+      shown("key", 60),
+      shown("bpm", 72),
+      shown("fit", 48),
+      shown("in", 60),
+      shown("out", 60),
+      shown("starts_at", 72),
+      shown("planned", 84),
+      shown("transition", 160),
+      shown("note", 180),
+    ]),
+  );
 }
 
 async function opened(name = "Friday") {
@@ -506,7 +545,7 @@ describe("the Set", () => {
       within(screen.getByRole("menu"))
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual(["Show tempo and key lanes", "Show transition strip", "Columns…"]);
+    ).toEqual(["Show tempo and key lanes", "Show transition strip", "Show times", "Columns…"]);
   });
 
   it("shows the Set's own notes and edits them in one write (PREP-12)", async () => {
@@ -553,6 +592,7 @@ describe("the Set", () => {
   });
 
   it("draws each chapter's heading as a row, with its time, target and range", async () => {
+    showTimesInStorage();
     renderAt(preparePath(IDS.friday));
     await opened();
     expect(rows()).toHaveLength(9);
@@ -573,6 +613,7 @@ describe("the Set", () => {
   });
 
   it("draws each entry's plan, repeat and transition", async () => {
+    showTimesInStorage();
     renderAt(preparePath(IDS.friday));
     await opened();
     const first = rowAt(1);
@@ -587,6 +628,7 @@ describe("the Set", () => {
   });
 
   it("draws one unnamed chapter as a plain list, and what a transition cannot compare", async () => {
+    showTimesInStorage();
     renderAt(preparePath(IDS.plain));
     await opened("Plain");
     expect(rows()).toHaveLength(2);
@@ -1201,6 +1243,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
   });
 
   it("are not drawn while a time on their row is being typed in, so they never cover its fields", async () => {
+    showTimesInStorage();
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.click(rowAt(2));
@@ -1400,6 +1443,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
   it("leave Delete to a field being typed in", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
+    showTimes();
     fireEvent.click(rowAt(1));
     fireEvent.click(within(rowAt(1)).getByRole("button", { name: /Mix in/ }));
     fireEvent.keyDown(await within(rowAt(1)).findByRole("textbox"), { key: "Delete" });
@@ -1454,6 +1498,8 @@ describe("the entry buttons (FLW-17, C15d)", () => {
 // ------------------------------------------------------------------ FLW-18
 
 describe("In and Out in the table (FLW-18)", () => {
+  // Mix in and Mix out are hidden by default (R4-5): a layout that shows them stands in for View ▸ Show times.
+  beforeEach(() => showTimesInStorage());
   const cell = (index: number, name: RegExp) => within(rowAt(index)).getByRole("button", { name });
   const editor = () => within(table()).getByRole("textbox");
 
@@ -1628,6 +1674,86 @@ describe("In and Out in the table (FLW-18)", () => {
 });
 
 // ------------------------------------------------------------------ FLW-19
+
+describe("the Set table's columns (R4-5)", () => {
+  it("leads with Key, BPM and Fit, and keeps the times and notes out of the way", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    expect(headers()).toEqual(["#", "Title", "Artist", "Key", "BPM", "Fit", "Starts at", "Plays for"]);
+  });
+
+  it("shows both time columns from View ▸ Show times, and hides both again", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    showTimes();
+    expect(headers()).toEqual(expect.arrayContaining(["Mix in", "Mix out"]));
+    fireEvent.click(screen.getByRole("button", { name: "View ▾" }));
+    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Hide times" }));
+    expect(headers()).not.toContain("Mix in");
+    expect(headers()).not.toContain("Mix out");
+    fireEvent.click(screen.getByRole("button", { name: "View ▾" }));
+    expect(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Show times" })).toBeInTheDocument();
+  });
+
+  it("hides both when only one is showing, rather than swapping them", async () => {
+    localStorage.setItem(PREPARE_TABLE_LAYOUT_KEY, JSON.stringify([{ id: "out", width: 60, hidden: false }]));
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    expect(headers()).toContain("Mix out");
+    expect(headers()).not.toContain("Mix in");
+    fireEvent.click(screen.getByRole("button", { name: "View ▾" }));
+    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Hide times" }));
+    expect(headers()).not.toContain("Mix out");
+  });
+
+  it("respects a layout saved under the new key", async () => {
+    localStorage.setItem(PREPARE_TABLE_LAYOUT_KEY, JSON.stringify([{ id: "note", width: 180, hidden: false }]));
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    expect(headers()).toContain("Note");
+  });
+
+  it("starts afresh for a layout saved under the old key", async () => {
+    localStorage.setItem(
+      "cuepoint-prepare-set-layout",
+      JSON.stringify([{ id: "in", width: 60, hidden: false }]),
+    );
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    expect(headers()).not.toContain("Mix in");
+    expect(PREPARE_TABLE_LAYOUT_KEY).toBe("cuepoint-prepare-set-layout-2");
+  });
+
+  it("draws a dot for how each track mixes in: ● fits, ◐ one side off, ○ both off", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    const dots = within(table()).getAllByRole("img", { name: /^Fits$|Tempo jumps|Keys clash|BPM to compare/ });
+    // Six entries; the first has no change into it, so it has no dot.
+    expect(dots.map((dot) => dot.className.replace("prepare-fit prepare-fit--", ""))).toEqual([
+      "fit",
+      "fit",
+      "one",
+      "both",
+      "fit",
+    ]);
+    expect(dots.map((dot) => dot.textContent)).toEqual(["●", "●", "◐", "○", "●"]);
+    // One side off: the tempo jump is open, the key clash was accepted.
+    expect(dots[2]).toHaveAccessibleName(expect.stringMatching(/^Tempo jumps/));
+    expect(dots[2]).not.toHaveAccessibleName(expect.stringMatching(/Keys clash/));
+    expect(dots[3]).toHaveAccessibleName(expect.stringMatching(/^Tempo jumps.*\. Keys clash/));
+    expect(dots[3]!.getAttribute("title")).toMatch(/\n/);
+    expect(dots[0]).toHaveAccessibleName("Fits");
+  });
+
+  it("counts a chapter's open warnings on its heading instead of a dot", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    const count = within(rowAt(0)).getByRole("img", { name: "2 open warnings in this chapter" });
+    expect(count).toHaveTextContent("2");
+    expect(count).toHaveAttribute("title", "2 open warnings in this chapter");
+    expect(within(rowAt(0)).queryByText(/[●◐○]/)).toBeNull();
+  });
+});
 
 describe("the key notice (FLW-19)", () => {
   const [, , id3, id4] = FRIDAY.entries.entries.map((entry) => entry.track_id);
