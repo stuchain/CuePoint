@@ -371,7 +371,8 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
       });
 
       await test.step("save the new values into the copied files from the save bar, and restore them", async () => {
-        const before = readFileSync(library.files[0]!);
+        // The bar saves what CuePoint changed: Tone Two (files[1]), corrected on Match above.
+        const before = readFileSync(library.files[1]!);
         // The save bar (C23) under Clean's tabs replaced the Library's "Save changes into the files…".
         await window.getByRole("link", { name: "Clean", exact: true }).click();
         const bar = window.getByRole("region", { name: "Save to files" }).filter({ visible: true });
@@ -379,15 +380,15 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         const dialog = window.getByRole("dialog", { name: /^Save \d[\d,]* tracks? to your files$/ });
         const save = dialog.getByRole("button", { name: /^Save to \d[\d,]* files?$/ });
         await expect(save).toBeEnabled({ timeout: 30_000 });
-        expect(readFileSync(library.files[0]!).equals(before)).toBe(true);
+        expect(readFileSync(library.files[1]!).equals(before)).toBe(true);
         await save.click();
         await expect(dialog.getByRole("region", { name: "Saved" })).toContainText(/Wrote \d[\d,]* files?/, {
           timeout: 30_000,
         });
-        expect(readFileSync(library.files[0]!).includes(Buffer.from("TKEY"))).toBe(true);
+        expect(readFileSync(library.files[1]!).includes(Buffer.from("TKEY"))).toBe(true);
         await dialog.getByRole("button", { name: "Restore these files" }).click();
         await expect(dialog).toContainText(/Restored \d[\d,]* files?/, { timeout: 30_000 });
-        expect(readFileSync(library.files[0]!).includes(Buffer.from("TKEY"))).toBe(false);
+        expect(readFileSync(library.files[1]!).includes(Buffer.from("TKEY"))).toBe(false);
         await dialog.getByRole("button", { name: "Done" }).click();
         await idle(window);
         // The refresh below is the Library's.
