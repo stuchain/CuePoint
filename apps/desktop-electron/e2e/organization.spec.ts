@@ -378,7 +378,8 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await window.locator("#rule").selectOption("is");
       // The suggestions are CuePoint's own list (a native one crashed macOS here): type a
       // part of the name, choose the genre from the list.
-      const value = window.getByLabel("Value");
+      // By role: the Field select's own label text now also matches "Value".
+      const value = window.getByRole("combobox", { name: "Value", exact: true });
       await value.pressSequentially("Hou");
       await window.getByRole("listbox", { name: "Suggestions" }).getByRole("option", { name: /^House/ }).click();
       await expect(value).toHaveValue("House");
@@ -707,7 +708,8 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await expect(confirm).toContainText("Favorite 50,000 tracks?");
       await expect(confirm).toContainText("Change 50,000 tracks?");
       await expect(confirm).toContainText(/undone from Activity/i);
-      await confirm.getByRole("button", { name: "Apply" }).click();
+      // The button names the change and its count (DEC-267).
+      await confirm.getByRole("button", { name: "Change 50,000 tracks" }).click();
 
       // It is a job, it says so from the shell, and it can be stopped there.
       const strip = window.locator(".cp-status");
@@ -756,7 +758,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       );
       await window.getByRole("button", { name: "Organize", exact: true }).click();
       await window.getByRole("menuitem", { name: "Favorite", exact: true }).click();
-      await window.getByRole("dialog").getByRole("button", { name: "Apply" }).click();
+      await window.getByRole("dialog").getByRole("button", { name: "Change 50,000 tracks" }).click();
 
       await expect.poll(favorited, { timeout: 180_000 }).toBe(50_000);
 
