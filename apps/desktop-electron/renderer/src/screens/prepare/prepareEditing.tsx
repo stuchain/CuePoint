@@ -140,26 +140,16 @@ const stopTableKeys = (event: KeyboardEvent) => {
   if (TABLE_KEYS.has(event.key)) event.stopPropagation();
 };
 
-/** A chapter heading's Edit, up, down and delete (FLW-17). */
+/**
+ * A chapter heading's one button, Edit… (FLW-17, amended). Moving and deleting the chapter are in
+ * its dialog and its right-click menu.
+ */
 export function ChapterButtons({ row }: { row: HeadingRow }) {
   const editing = useContext(PrepareEditingContext);
   if (!editing) return null;
   const { chapter } = row;
-  const { chapters } = editing;
-  const buttons = [
-    { label: "Edit", name: "Edit chapter", disabled: false, run: () => chapters.edit(chapter) },
-    { label: "↑", name: "Move chapter up", disabled: chapter.position <= 0, run: () => chapters.move(chapter, -1) },
-    {
-      label: "↓",
-      name: "Move chapter down",
-      disabled: chapter.position >= chapters.count - 1,
-      run: () => chapters.move(chapter, 1),
-    },
-    // A Set always has one chapter (DEC-103).
-    { label: "×", name: "Delete chapter", disabled: chapters.count <= 1, run: () => chapters.remove(chapter) },
-  ];
   return (
-    // Each is a Tab stop. Their keys stay theirs: Enter on one presses it, and does not reach the
+    // A Tab stop. Its keys stay its own: Enter on it presses it, and does not reach the
     // table, where Enter on a heading opens Edit.
     <span
       className="prepare-heading__buttons"
@@ -168,19 +158,16 @@ export function ChapterButtons({ row }: { row: HeadingRow }) {
       onMouseDown={quiet}
       onKeyDown={stopTableKeys}
     >
-      {buttons.map((button) => (
-        <Hint key={button.name} text={button.name} portal>
-          <button
-            type="button"
-            className="prepare-heading__button"
-            aria-label={button.name}
-            disabled={button.disabled}
-            onClick={button.run}
-          >
-            {button.label}
-          </button>
-        </Hint>
-      ))}
+      <Hint text="Edit chapter" portal>
+        <button
+          type="button"
+          className="prepare-heading__button"
+          aria-label="Edit chapter"
+          onClick={() => editing.chapters.edit(chapter)}
+        >
+          Edit…
+        </button>
+      </Hint>
     </span>
   );
 }

@@ -2,8 +2,11 @@
  * The Prepare page: DEC-104's Set Builder (PREP-10).
  *
  * One Set, with its chapters, planned times, notes and warnings, laid out side
- * by side with the source panel (DEC-112). A header names the Set and says how
- * long it is planned to run and what its checks found; the Set table below is a
+ * by side with the source panel (DEC-112). The shared `ScreenHeader` titles the
+ * page "Prepare" with the Set picker beside it (this amends DEC-112, where the
+ * picker was the title), has three buttons (Play Set, a Set menu and a View
+ * menu), and under them one line of facts: how long the Set is planned to run
+ * and what its checks found. The Set table below is a
  * `TrackTable` over its entries and its chapters' headings; the entry selected
  * is planned in the Inspector's "In this Set" zone. Beside the Set, the source
  * panel fills it from Suggestions and the library; above it, the lanes draw
@@ -21,7 +24,8 @@
  * - **Order, chapter and time without a menu** (FLW-17, FLW-18): the facts line
  *   carries Move up, Move down, Start a chapter here, Repeat after and Remove
  *   for the entries selected (and Alt+Up, Alt+Down and Delete on the table); a
- *   chapter's heading carries its own buttons; Mix in and Mix out are typed in
+ *   chapter's heading carries one button, Edit…, whose dialog moves and deletes the chapter
+ *   (this amends DEC-209 and DEC-249, where the heading had four); Mix in and Mix out are typed in
  *   the table, and a refused time is said on the facts line.
  * - **Nothing blocks** (DEC-017, DEC-106): a warning is drawn, never a reason
  *   a button is greyed.
@@ -35,9 +39,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { useNavigate, useParams } from "react-router-dom";
 
 import type {
-  CleanJobStarted,
   EntityKind,
-  FileCheckStarted,
   LibraryPlaylistNode,
   LibraryTrackRow,
   SetChapterPlan,
@@ -49,16 +51,17 @@ import type {
 import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
 import { Panel } from "../../components/Panel";
+import { PixelIcon } from "../../components/PixelIcon";
+import { Select } from "../../components/Select";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
 import { useToast } from "../../components/Toast";
+import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { settingsFocusState } from "../settingsLink";
 import { ColumnPicker, TrackTable, inMemorySource, useColumnLayout } from "../../components/table";
 import { useRowHeight } from "../../components/table/trackTableLayout";
 import { useScaleFactor } from "../../tokens/ScaleContext";
-import { trackCount } from "../clean/cleanFormat";
-import { cleanMatchState } from "../clean/cleanLink";
-import { useCleanJob } from "../clean/useCleanJob";
+import { cleanSectionState } from "../clean/cleanLink";
 import { entityPath, similarPath } from "../discover/discoverLinks";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { useBeatportSelection } from "../discover/useBeatportSelection";
@@ -134,7 +137,6 @@ import { useSetList } from "./useSetList";
 import { usePreparedSet, type Tone } from "./usePreparedSet";
 import "../screens.css";
 import "./prepare.css";
-import { NEEDS_DESKTOP } from "../../api/userMessage";
 import { useTrackPlayMarks } from "../../components/player/playedTracks";
 
 const trackIdOfRow = (row: PrepareRow) => (row.kind === "entry" ? row.entry.track.id : null);
@@ -344,27 +346,6 @@ export function PrepareScreen({
 
   const { edit, write } = prepared;
 
-  // "Files not checked — check now" starts the job Clean's "Check every file"
-  // starts, for the whole library, and reads the Set again when it ends so the
-  // fact below it is true (PRP-6).
-  const fileJobs = useCleanJob(push);
-  const { reload: reloadSet } = prepared;
-  const checkFiles = useCallback(() => {
-    const start = window.cuepoint?.startFileCheck;
-    if (!start) {
-      push(NEEDS_DESKTOP, "warning");
-      return;
-    }
-    void fileJobs.run<FileCheckStarted & CleanJobStarted>(
-      "check-all",
-      () => start({ selection: { query: {} } }),
-      {
-        started: (answer) => `Checking ${trackCount(answer.tracks)}.`,
-        succeeded: "Finished checking files.",
-        onEnded: reloadSet,
-      },
-    );
-  }, [fileJobs, push, reloadSet]);
   const [chapterEditing, setChapterEditing] = useState<SetChapterPlan | null>(null);
   const [chapterError, setChapterError] = useState<string | null>(null);
   // Counts refusals, so the same words coming back shake the dialog's line again.
@@ -786,12 +767,10 @@ export function PrepareScreen({
   // --- menus
 
   const [menu, setMenu] = useState<Menu | null>(null);
-  const [exportMenu, setExportMenu] = useState<{ x: number; y: number } | null>(null);
-  // The facts line holds two small buttons, the Set's notes and "View ▾": the
-  // lanes, the transition strip and the columns share the second's menu, so the
-  // line stays one line and the Set keeps its rows (DEC-112).
+  // The header holds two menus: "Set" (new, notes, set list, export) and "View" (the lanes, the
+  // transition strip, times and the columns), so the page keeps its rows (DEC-112).
+  const [headerSetMenu, setHeaderSetMenu] = useState<{ x: number; y: number } | null>(null);
   const [viewMenu, setViewMenu] = useState<{ x: number; y: number } | null>(null);
-  const [newMenu, setNewMenu] = useState<{ x: number; y: number } | null>(null);
 
   const openEntryMenu = useCallback(
     async (row: EntryRow, index: number, x: number, y: number) => {
@@ -876,16 +855,13 @@ export function PrepareScreen({
         titleMinWidth,
       },
       chapters: {
-        count: shown?.plan.chapters.length ?? 0,
         edit: (chapter) => {
           setChapterError(null);
           setChapterEditing(chapter);
         },
-        move: moveChapter,
-        remove: setChapterDeleting,
       },
     }),
-    [buttons, commitTime, focused, moveChapter, openEntryMenu, pressEntryButton, rows, shown, startTimeEdit, stopTimeEdit, timeEditing, timeWords, titleMinWidth],
+    [buttons, commitTime, focused, openEntryMenu, pressEntryButton, rows, startTimeEdit, stopTimeEdit, timeEditing, timeWords, titleMinWidth],
   );
 
   // The buttons are on the focused entry's row, and not while a time on that row is being typed in:
@@ -1117,17 +1093,13 @@ export function PrepareScreen({
     const types = Array.from(transfer.types ?? []);
     return types.includes(SET_ENTRY_MIME) || types.includes(TRACK_IDS_MIME);
   };
+  // The chapter the dialog is open on as the Set has it now: a move changes its position under the dialog.
+  const editingChapter = chapterEditing ? (plan.chapters.find((chapter) => chapter.id === chapterEditing.id) ?? null) : null;
   const firstChapter = [...plan.chapters].sort((a, b) => a.position - b.position)[0];
   // The transition the strip draws: the selected entry into the next one.
   const nextEntry = focused ? (entries[indexOfEntry(focused.entry.entry_id) + 1] ?? null) : null;
   const nextRow = nextEntry ? rows.find((row) => isEntryRow(row) && row.entry.entry_id === nextEntry.entry_id) : undefined;
   const stripWarnings = nextRow && isEntryRow(nextRow) ? nextRow.transition : [];
-  // The entries with no key, for "Match tracks…" (FLW-19): Clean's window opens on their tracks.
-  const keylessEntries = new Set(analysis.shape.entries.filter((point) => point.key === null).map((point) => point.entry_id));
-  const keylessTrackIds = [
-    ...new Set(entries.filter((entry) => keylessEntries.has(entry.entry_id)).map((entry) => entry.track_id)),
-  ];
-  const matchKeyless = () => navigate("/clean", { state: cleanMatchState(keylessTrackIds) });
   const facts = headerFacts(entries.length, plan.running_time, analysis);
 
   const table = (
@@ -1224,111 +1196,89 @@ export function PrepareScreen({
       className="screen prepare-screen"
       style={setFloor === null ? undefined : ({ "--prepare-set-floor": `${setFloor}px` } as CSSProperties)}
     >
-      <header className="prepare-header">
-        {/* The picker is the page's title: it names the Set open and opens
-            another, so the name is not drawn twice (DEC-112's height). */}
-        <h1 className="prepare-visually-hidden">{setName}</h1>
-        <div className="prepare-header__controls">
-          <label className="prepare-header__picker">
-            <span className="prepare-visually-hidden">Set</span>
-            <select
-              className="cp-select__control"
-              value={String(shown.setId)}
-              onChange={(event) => navigate(preparePath(Number(event.target.value)))}
+      <ScreenHeader
+        title="Prepare"
+        beside={
+          <Select
+            label="Set"
+            className="prepare-header__picker"
+            value={String(shown.setId)}
+            onChange={(event) => navigate(preparePath(Number(event.target.value)))}
+            options={pickerNodes.map((node) => ({
+              value: String(node.id),
+              label: `${"　".repeat(node.depth)}${node.name}`,
+              disabled: !isSet(node),
+            }))}
+          />
+        }
+        actions={
+          <>
+            <Button onClick={() => void playFrom(0)} disabled={entries.length === 0 || !player}>
+              Play Set
+            </Button>
+            <Button
+              variant="secondary"
+              aria-haspopup="menu"
+              aria-expanded={headerSetMenu !== null}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setHeaderSetMenu({ x: rect.left, y: rect.bottom });
+              }}
             >
-              {pickerNodes.map((node) => (
-                <option key={node.id} value={String(node.id)} disabled={!isSet(node)}>
-                  {`${"　".repeat(node.depth)}${node.name}`}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button
-            variant="secondary"
-            aria-haspopup="menu"
-            aria-expanded={newMenu !== null}
-            onClick={(event) => {
-              const rect = event.currentTarget.getBoundingClientRect();
-              setNewMenu({ x: rect.left, y: rect.bottom });
-            }}
-          >
-            New Set ▾
-          </Button>
-          <Button onClick={() => void playFrom(0)} disabled={entries.length === 0 || !player}>
-            Play Set
-          </Button>
-          <Button
-            variant="secondary"
-            aria-haspopup="menu"
-            aria-expanded={exportMenu !== null}
-            onClick={(event) => {
-              const rect = event.currentTarget.getBoundingClientRect();
-              setExportMenu({ x: rect.left, y: rect.bottom });
-            }}
-          >
-            Export ▾
-          </Button>
-        </div>
-        <p className="prepare-header__facts" role="status">
-          {timeWords && (
-            <span key={timeWords.n} className="prepare-header__refusal" title={timeWords.line}>
-              <span className="prepare-header__refusal-reason">{timeWords.reason}</span>
-              <span className="prepare-header__refusal-entry">{timeWords.entry}</span>
+              Set
+              <PixelIcon name="chevron-down" className="prepare-header__chevron" />
+            </Button>
+            <Button
+              variant="secondary"
+              aria-haspopup="menu"
+              aria-expanded={viewMenu !== null}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setViewMenu({ x: rect.left, y: rect.bottom });
+              }}
+            >
+              View
+              <PixelIcon name="chevron-down" className="prepare-header__chevron" />
+            </Button>
+          </>
+        }
+        summary={
+          <span className="prepare-header__facts" role="status">
+            {timeWords && (
+              <span key={timeWords.n} className="prepare-header__refusal" title={timeWords.line}>
+                <span className="prepare-header__refusal-reason">{timeWords.reason}</span>
+                <span className="prepare-header__refusal-entry">{timeWords.entry}</span>
+              </span>
+            )}
+            <span className="prepare-header__summary">
+              {facts
+                .filter((fact) => !fact.action)
+                .map((fact, index) => (
+                  <span key={fact.text} className={fact.strong ? "prepare-header__warnings" : undefined}>
+                    {index > 0 && <span aria-hidden="true"> · </span>}
+                    <span title={fact.title}>{fact.text}</span>
+                  </span>
+                ))}
             </span>
-          )}
-          <span className="prepare-header__summary">
             {facts
-              .filter((fact) => !fact.action)
-              .map((fact, index) => (
-                <span key={fact.text} className={fact.strong ? "prepare-header__warnings" : undefined}>
-                  {index > 0 && <span aria-hidden="true"> · </span>}
-                  <span title={fact.title}>{fact.text}</span>
+              .filter((fact) => fact.action)
+              .map((fact) => (
+                <span key={fact.action} className="prepare-header__action" title={fact.title}>
+                  {fact.text}
+                  <span aria-hidden="true"> · </span>
+                  <button
+                    type="button"
+                    className="cp-link prepare-header__link"
+                    title={fact.title}
+                    onClick={() => navigate("/clean", { state: cleanSectionState("missing") })}
+                  >
+                    {fact.actionText}
+                  </button>
                 </span>
               ))}
           </span>
-          {facts
-            .filter((fact) => fact.action)
-            .map((fact) => (
-              <span key={fact.action} className="prepare-header__action" title={fact.title}>
-                {fact.text}
-                <span aria-hidden="true"> · </span>
-                <button
-                  type="button"
-                  className="prepare-link prepare-link--inline"
-                  title={fact.title}
-                  disabled={fact.action === "check_files" && fileJobs.running !== null}
-                  onClick={fact.action === "check_files" ? checkFiles : matchKeyless}
-                >
-                  {fact.actionText}
-                </button>
-              </span>
-            ))}
-          <Button
-            variant="secondary"
-            className="prepare-header__button"
-            aria-haspopup="dialog"
-            title={notesLinkTitle(plan.notes)}
-            onClick={() => {
-              setNotesError(null);
-              setNotesOpen(true);
-            }}
-          >
-            {notesLinkLabel(plan.notes)}
-          </Button>
-          <Button
-            variant="secondary"
-            className="prepare-header__button"
-            aria-haspopup="menu"
-            aria-expanded={viewMenu !== null}
-            onClick={(event) => {
-              const rect = event.currentTarget.getBoundingClientRect();
-              setViewMenu({ x: rect.left, y: rect.bottom });
-            }}
-          >
-            View ▾
-          </Button>
-        </p>
-      </header>
+        }
+      />
 
       <PrepareLayout
         set={table}
@@ -1370,31 +1320,12 @@ export function PrepareScreen({
           }
         />
       )}
-      {exportMenu && (
+      {headerSetMenu && (
         <TrackContextMenu
-          x={exportMenu.x}
-          y={exportMenu.y}
-          label="Export"
-          onClose={() => setExportMenu(null)}
-          items={[
-            { id: "save", label: "Save set list…", onSelect: () => void setList.save(target) },
-            { id: "copy", label: "Copy set list", onSelect: () => void setList.copy(target) },
-            {
-              id: "rekordbox",
-              label: "Export to Rekordbox…",
-              onSelect: () => setExporting(true),
-              separatorBefore: true,
-            },
-          ]}
-        />
-      )}
-
-      {newMenu && (
-        <TrackContextMenu
-          x={newMenu.x}
-          y={newMenu.y}
-          label="New Set"
-          onClose={() => setNewMenu(null)}
+          x={headerSetMenu.x}
+          y={headerSetMenu.y}
+          label="Set"
+          onClose={() => setHeaderSetMenu(null)}
           items={[
             {
               id: "new",
@@ -1405,6 +1336,18 @@ export function PrepareScreen({
               },
             },
             { id: "new-from", label: "New Set from…", onSelect: () => void chooseSource() },
+            {
+              id: "notes",
+              label: `${notesLinkLabel(plan.notes)}…`,
+              title: notesLinkTitle(plan.notes),
+              onSelect: () => {
+                setNotesError(null);
+                setNotesOpen(true);
+              },
+            },
+            { id: "save", label: "Save set list…", onSelect: () => void setList.save(target), separatorBefore: true },
+            { id: "copy", label: "Copy set list", onSelect: () => void setList.copy(target) },
+            { id: "rekordbox", label: "Export to Rekordbox…", onSelect: () => setExporting(true) },
           ]}
         />
       )}
@@ -1444,11 +1387,20 @@ export function PrepareScreen({
         onClose={() => setNotesOpen(false)}
       />
       <ChapterDialog
-        chapter={chapterEditing}
+        chapter={editingChapter}
         error={chapterError}
         errorKey={chapterRefusals}
         onSave={(update) => void saveChapter(update)}
         onClose={() => setChapterEditing(null)}
+        canMoveUp={editingChapter !== null && editingChapter.position > 0}
+        canMoveDown={editingChapter !== null && editingChapter.position < plan.chapters.length - 1}
+        canDelete={plan.chapters.length > 1}
+        onMove={(delta) => editingChapter && moveChapter(editingChapter, delta)}
+        onDelete={() => {
+          if (!editingChapter) return;
+          setChapterDeleting(editingChapter);
+          setChapterEditing(null);
+        }}
       />
       <Modal
         open={chapterDeleting !== null}

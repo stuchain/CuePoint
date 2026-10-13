@@ -249,18 +249,18 @@ describe("the words", () => {
     ]);
   });
 
-  it("says once how many entries have no Beatport key, with Match tracks… beside it, and nothing when all do", () => {
+  it("says once how many entries have no Beatport key, as plain text, and nothing when all do", () => {
     const keyless = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 2 });
     const notice = keyless[keyless.length - 1]!;
     expect(notice.text).toBe("2 without key");
-    expect(notice.action).toBe("match_keyless");
-    expect(notice.actionText).toBe("Match tracks…");
-    expect(notice.title).toMatch(/2 entries have no Beatport key, so no key check applies/);
+    expect(notice.action).toBeUndefined();
+    expect(notice.actionText).toBeUndefined();
+    expect(notice.title).toMatch(/2 entries have no Beatport key, so no key check applies\.$/);
     const one = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 1 });
     expect(one[one.length - 1]?.text).toBe("1 without key");
     expect(one[one.length - 1]?.title).toMatch(/^1 entry has no Beatport key/);
     const all = headerFacts(6, FRIDAY.plan.running_time, { ...FRIDAY.analysis, without_key: 0 });
-    expect(all.some((fact) => fact.action === "match_keyless")).toBe(false);
+    expect(all.some((fact) => fact.text.endsWith("without key"))).toBe(false);
   });
 
   it("does not count a missing key among the warnings (DEC-201)", () => {
@@ -279,8 +279,8 @@ describe("the words", () => {
       title: "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range, 1 accepted",
       strong: true,
     });
-    // The files fact is the one that acts: it starts Clean's file check (PRP-6).
-    expect(facts[3]).toMatchObject({ action: "check_files", actionText: "Check now" });
+    // The files fact is the one that links: it opens Clean's Missing files.
+    expect(facts[3]).toMatchObject({ action: "open_missing", actionText: "Missing files ›" });
     expect(facts[3].title).toContain("never been checked");
     const partly = { ...FRIDAY.analysis.files, never_checked: false, checked: 3, unchecked: 2 };
     expect(headerFacts(1, FRIDAY.plan.running_time, { ...FRIDAY.analysis, files: partly })[3].text).toBe(

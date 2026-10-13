@@ -7994,3 +7994,23 @@ The First steps list under the Library ticked the same things from its own reads
   with the menu's own words.
 
 **Decided with**: Claude (G7 step 6) · **Date**: 2026-10-13
+
+## DEC-288 — Prepare's Header: One Title, Three Buttons, Plain Facts
+
+**Status**: Approved · **Related**: DEC-112, DEC-209, DEC-249, DEC-255, DEC-103, K10, K4
+
+**Context**: Prepare's header used the Set picker as a hidden title and carried New Set ▾, Play Set,
+Export ▾, Notes and View ▾, while its facts line ran a file check and a "Match tracks…" link: two jobs
+that belong to Clean. Chapter headings carried Edit, ↑, ↓ and × on every row.
+
+**Decision** (amends DEC-112's title and DEC-209/DEC-249 for chapter rows):
+- Prepare uses the shared page header (DEC-255): the title is "Prepare", the Set picker sits beside it,
+  and the actions are **Play Set**, **Set ▾** and **View ▾**.
+- Set ▾ holds New Set…, New Set from…, Notes…, then Save set list…, Copy set list and Export to
+  Rekordbox…. View ▾ holds the lanes, the transition strip, Show times and Columns….
+- The facts line only states facts. Unchecked files link to Clean's Missing files ("Missing files ›");
+  Prepare no longer runs the file check. "N without key" is plain text; matching lives in Clean (K4).
+- A chapter heading carries one "Edit…" button. Move up, Move down and Delete chapter… are in the
+  chapter dialog (the only chapter still cannot be deleted, DEC-103); the right-click menu is unchanged.
+
+**Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13

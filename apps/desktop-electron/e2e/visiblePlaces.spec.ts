@@ -331,11 +331,11 @@ const setTitles = async (win: Page, setId: number) => (await readSet(win, setId)
 
 const setTable = (win: Page) => win.getByRole("table", { name: "Set entries" });
 
-/** A Set row by its title; a chapter's heading carries its buttons in the same cell. */
+/** A Set row by its title; a chapter's heading carries its Edit… button in the same cell. */
 function setRow(win: Page, title: string, nth = 0) {
   return setTable(win)
     .locator(".track-table__row")
-    .filter({ has: win.locator('[data-column="title"]', { hasText: new RegExp(`^(⚠ )?${title}(Edit↑↓×)?$`) }) })
+    .filter({ has: win.locator('[data-column="title"]', { hasText: new RegExp(`^(⚠ )?${title}(Edit…)?$`) }) })
     .nth(nth);
 }
 
@@ -792,7 +792,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await win.reload();
   });
 
-  test("Edit, move and delete a chapter: the chapter heading's buttons", async () => {
+  test("Edit, move and delete a chapter: the heading's Edit… and the chapter dialog", async () => {
     const setId = await makeSet(win, "Chapter buttons", ["Warm One", "Warm Two", "Build", "Peak Jump"]);
     await win.evaluate(async (id) => {
       const sets = (window as never as Bridge).cuepoint.sets;
@@ -807,19 +807,21 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     const press = (heading: string, name: string) =>
       use(win, setRow(win, heading).getByRole("button", { name }), name);
 
-    await press("Peak", "Move chapter up");
-    await expect.poll(chapterNames, { timeout: 15_000 }).toEqual(["Peak", ""]);
-    await press("Peak", "Move chapter down");
-    await expect.poll(chapterNames, { timeout: 15_000 }).toEqual(["", "Peak"]);
-
+    // The heading carries Edit… alone; moving and deleting are in the chapter's dialog.
+    await expect(setRow(win, "Peak").getByRole("button")).toHaveCount(1);
     await press("Peak", "Edit chapter");
     const dialog = win.getByRole("dialog", { name: /^Chapter / });
+    await use(win, dialog.getByRole("button", { name: "Move up" }), "Move up");
+    await expect.poll(chapterNames, { timeout: 15_000 }).toEqual(["Peak", ""]);
+    await use(win, dialog.getByRole("button", { name: "Move down" }), "Move down");
+    await expect.poll(chapterNames, { timeout: 15_000 }).toEqual(["", "Peak"]);
     await dialog.getByRole("textbox", { name: "Name" }).fill("Climb");
     await reach(win, dialog.getByRole("button", { name: "Save" }), "Save");
     await win.keyboard.press("Enter");
     await expect.poll(chapterNames, { timeout: 15_000 }).toEqual(["", "Climb"]);
 
-    await press("Climb", "Delete chapter");
+    await press("Climb", "Edit chapter");
+    await use(win, win.getByRole("dialog", { name: /^Chapter / }).getByRole("button", { name: "Delete chapter…" }), "Delete chapter…");
     const confirm = win.getByRole("dialog", { name: /^Delete the chapter/ });
     await reach(win, confirm.getByRole("button", { name: "Delete chapter" }), "the confirm's Delete chapter");
     await win.keyboard.press("Enter");
@@ -831,7 +833,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await openSet(win, setId);
     await expect(setRow(win, "Build")).toBeVisible({ timeout: 30_000 });
     // R4-5: the time columns are hidden until View ▸ Show times.
-    await win.getByRole("button", { name: "View ▾" }).click();
+    await win.getByRole("button", { name: "View", exact: true }).click();
     await win.getByRole("menuitem", { name: "Show times" }).click();
     // Select the entry with a click, then F2 starts the cell, Tab moves from In to Out, Enter saves.
     await pickEntry(win, "Warm Two");
@@ -1033,7 +1035,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
 
     const setId = await makeSet(win, "Home set", ["Warm One", "Warm Two"]);
     await openSet(win, setId);
-    await use(win, win.getByRole("button", { name: "Export ▾" }), "Prepare's Export");
+    await use(win, win.getByRole("button", { name: "Set", exact: true }), "Prepare's Set menu");
     await choose(win, "Export to Rekordbox…");
     await expect(exporting).toBeVisible({ timeout: 15_000 });
     await win.keyboard.press("Escape");

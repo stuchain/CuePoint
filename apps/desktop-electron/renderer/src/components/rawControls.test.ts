@@ -18,7 +18,6 @@ export const RAW_SELECT_ALLOWLIST: readonly string[] = [
   "screens/library/RekordboxExportDialog.tsx",
   "screens/library/WriteTagsDialog.tsx",
   "screens/prepare/NewSetDialogs.tsx",
-  "screens/prepare/PrepareScreen.tsx",
   "screens/prepare/SetEntryZone.tsx",
   "screens/prepare/SourcePanel.tsx",
 ];

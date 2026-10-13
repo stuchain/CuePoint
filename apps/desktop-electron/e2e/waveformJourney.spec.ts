@@ -371,7 +371,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       });
       await window.getByRole("link", { name: "Prepare", exact: true }).click();
       await expect(window).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
-      await window.getByRole("button", { name: "View ▾" }).click();
+      await window.getByRole("button", { name: "View", exact: true }).click();
       await window.getByRole("menuitem", { name: "Show transition strip" }).click();
       const strip = window.getByRole("region", { name: "Transition" });
       await expect(strip).toContainText("Select an entry to see its transition");

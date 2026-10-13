@@ -47,53 +47,36 @@
 
 /* ------------------------------------------------------------------ header */
 
-/* Two short lines, whatever the width: the controls, then the facts. Every
-   pixel here is a row the Set does not show at the default size (DEC-112). */
-.prepare-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  min-width: 0;
-  padding: var(--space-xs) var(--space-sm);
-  border-bottom: var(--control-border-width) solid var(--border-muted);
-}
-
-.prepare-header__controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm);
-  min-width: 0;
-}
-
+/* The Set picker beside the title: its label is only for assistive tech, and it reads as a
+   control, a control tall (DEC-112). */
 .prepare-header__picker {
-  display: flex;
-  flex: 1 1 calc(80px * var(--scale));
-  min-width: 0;
+  min-width: calc(80px * var(--scale));
+  max-width: calc(320px * var(--scale));
 }
 
-/* The picker is the page's title, so it reads as one. */
 .prepare-header__picker .cp-select__control {
-  width: 100%;
   min-width: 0;
-  font-size: var(--font-size-md);
-  font-weight: 700;
+  text-overflow: ellipsis;
 }
 
-/* One line, whatever the width (DEC-112): the facts, with Notes and View. The facts give way
-   (ellipsis, the whole in their titles); what asks something of the person (a
-   refused time, Match tracks…, Check now) never does. The buttons for the selected
-   entries are not here: they sit on the focused row (DEC-249). */
+.prepare-header__picker .cp-select__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* The summary slot's one line (DEC-112): the facts give way (ellipsis, the whole in their
+   titles); what asks something of the person (a refused time, Missing files ›) never does. The
+   buttons for the selected entries are not here: they sit on the focused row (DEC-249). */
 .prepare-header__facts {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  align-items: baseline;
   column-gap: var(--space-xs);
-  row-gap: 0;
-  margin: 0;
-  container-type: inline-size;
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
+  min-width: 0;
 }
 
 .prepare-header__summary {
@@ -104,12 +87,8 @@
   white-space: nowrap;
 }
 
-.prepare-header__facts > .cp-btn,
 .prepare-header__action {
   flex: none;
-}
-
-.prepare-header__action {
   white-space: nowrap;
   color: var(--fg-primary);
 }
@@ -166,16 +145,18 @@
   cursor: progress;
 }
 
-/* Notes and View: real buttons, in the one control look (C11), a control tall (PRP-10, DEC-112). */
-.prepare-header__button.cp-btn {
-  min-width: 0;
-  min-height: var(--control-height);
-  margin-left: 0;
-  padding: 0 var(--space-sm);
-  border: var(--control-border-width) solid var(--border-control);
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-  line-height: 1;
+.prepare-header__chevron {
+  margin-left: var(--space-xs);
+}
+
+/* "Missing files ›": a link in the facts line, not a filled button. */
+.prepare-header__link {
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .prepare-visually-hidden {
@@ -853,8 +834,16 @@ body.prepare-resizing {
 
 .prepare-dialog__actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-sm);
+}
+
+.prepare-dialog__actions-start {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-right: auto;
 }
 
 /* -------------------------------------------------------- the source panel */

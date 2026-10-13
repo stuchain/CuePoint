@@ -138,8 +138,8 @@ function setTable(win: Page) {
 function row(win: Page, title: string, nth = 0) {
   return setTable(win)
     .locator(".track-table__row")
-    // A chapter's heading carries its buttons (FLW-17), which are part of its title cell's text.
-    .filter({ has: win.locator('[data-column="title"]', { hasText: new RegExp(`^(⚠ )?${title}(Edit↑↓×)?$`) }) })
+    // A chapter's heading carries its Edit… button (FLW-17), which is part of its title cell's text.
+    .filter({ has: win.locator('[data-column="title"]', { hasText: new RegExp(`^(⚠ )?${title}(Edit…)?$`) }) })
     .nth(nth);
 }
 
@@ -253,13 +253,16 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const plan2 = (await readSet(win, setId)).plan;
       expect(plan2.chapters.map((c: { name: string }) => c.name)).toEqual(["Warm-up", "", ""]);
       expect([plan2.chapters[0].target_seconds, plan2.chapters[0].bpm_min, plan2.chapters[0].bpm_max]).toEqual([480, 120, 127]);
-      // The Set's own notes, from the header's facts line.
-      await win.getByRole("button", { name: "Notes", exact: true }).click();
+      // The Set's own notes, from the header's Set menu.
+      await win.getByRole("button", { name: "Set", exact: true }).click();
+      await menu(win, "Notes…");
       const notes = win.getByRole("dialog", { name: "Notes for “Friday”" });
       await notes.getByLabel("Notes").fill("The Loft, 23:00 to 01:00");
       await notes.getByRole("button", { name: "Save" }).click();
       await expect(notes).toBeHidden({ timeout: 15_000 });
-      await expect(win.getByRole("button", { name: "Notes (1)" })).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
+      await win.getByRole("button", { name: "Set", exact: true }).click();
+      await expect(win.getByRole("menuitem", { name: "Notes (1)…", exact: true })).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
+      await win.keyboard.press("Escape");
       expect((await readSet(win, setId)).plan.notes).toBe("The Loft, 23:00 to 01:00");
 
       // --- 3. times, a reorder, and the running time and "Starts at" moving ------------
@@ -273,7 +276,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
         await out.press("Enter");
       }
       // R4-5: Mix in and Mix out are hidden until View ▸ Show times.
-      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("button", { name: "View", exact: true }).click();
       await win.getByRole("menuitem", { name: "Show times" }).click();
       // FLW-18: Warm One's times are typed in the table: click Mix in, Tab to Mix out, Enter.
       await row(win, "Warm One").getByRole("button", { name: /^Mix in for/ }).first().click();
@@ -380,7 +383,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       expect((await readSet(win, setId)).analysis.acknowledged).toBe(1);
       // FLW-19: the strip's caption reads the keys and tempos of the selected entry into the next,
       // and one warning on that transition ends it, with Accept beside it.
-      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("button", { name: "View", exact: true }).click();
       await win.getByRole("menuitem", { name: "Show transition strip" }).click();
       await at(win, row(win, "Build"));
       const caption = win.getByTestId("transition-caption");
@@ -390,7 +393,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await expect(caption.getByTestId("transition-warning")).toHaveCount(1);
       await expect(caption.getByText(/^\+\d+ more$/)).toHaveAttribute("title", /Keys clash.*\(accepted\)/);
       await expect(caption.getByTestId("transition-warning").getByRole("button", { name: "Accept" })).toBeVisible();
-      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("button", { name: "View", exact: true }).click();
       await win.getByRole("menuitem", { name: "Hide transition strip" }).click();
 
       // --- 5. played from the third entry, the repeat in the queue ------------------
@@ -419,14 +422,14 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       ] as const) {
         const file = path.join(lists, `Friday.${extension}`);
         await saveDialogAnswers(app, file);
-        await win.getByRole("button", { name: "Export ▾" }).click();
+        await win.getByRole("button", { name: "Set", exact: true }).click();
         await menu(win, "Save set list…");
         await expect(win.getByText(new RegExp(`^Saved “Friday” as ${form} set list`))).toBeVisible({ timeout: 15_000 });
         expect(existsSync(file)).toBe(true);
       }
       const m3u8 = readFileSync(path.join(lists, "Friday.m3u8"), "utf-8");
       expect(m3u8.split("\n").filter((line) => line.endsWith("1.mp3"))).toHaveLength(2);
-      await win.getByRole("button", { name: "Export ▾" }).click();
+      await win.getByRole("button", { name: "Set", exact: true }).click();
       await menu(win, "Copy set list");
       await expect(win.getByText("Copied the set list for “Friday”.")).toBeVisible({ timeout: 15_000 });
       const copied = await app.evaluate(({ clipboard }) => clipboard.readText());
@@ -440,7 +443,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const exported = path.join(workspace, "out", "CuePoint Export.xml");
       mkdirSync(path.dirname(exported));
       await saveDialogAnswers(app, exported);
-      await win.getByRole("button", { name: "Export ▾" }).click();
+      await win.getByRole("button", { name: "Set", exact: true }).click();
       await menu(win, "Export to Rekordbox…");
       const dialog = win.getByRole("dialog", { name: "Export to Rekordbox" });
       // The playlist ticks sit behind Details, which starts closed (DEC-247).
@@ -466,7 +469,9 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
       await expect(row(win, "Warm-up")).toBeVisible({ timeout: 30_000 });
       await expect(facts(win).getByTitle(/1 accepted/)).toBeVisible();
-      await expect(win.getByRole("button", { name: "Notes (1)" })).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
+      await win.getByRole("button", { name: "Set", exact: true }).click();
+      await expect(win.getByRole("menuitem", { name: "Notes (1)…", exact: true })).toHaveAttribute("title", "The Loft, 23:00 to 01:00");
+      await win.keyboard.press("Escape");
       expect(await readSet(win, setId)).toEqual(before);
 
       // --- 9. a refresh that deletes one of its tracks ---------------------------------

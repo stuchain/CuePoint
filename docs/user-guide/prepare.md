@@ -36,7 +36,7 @@ A Set holds at most 1,000 entries. A Collection holds larger lists.
 
 ### Making a Set
 
-- **New Set**, in the **New Set ▾** menu in Prepare's header (it works with a
+- **New Set…**, in the **Set** menu in Prepare's header (it works with a
   Set open) or **Set** in the **+ New** menu at the top of the Library's
   Collections section, makes an empty Set in the folder you choose.
 - **New Set from…** copies the tracks of something you already have into a new
@@ -47,7 +47,7 @@ A Set holds at most 1,000 entries. A Collection holds larger lists.
   - a **Rekordbox playlist**, in its order — refreshing from Rekordbox never
     changes the Set.
 
-  On the Prepare page, **New Set ▾ → New Set from…** asks what to copy first. In the
+  On the Prepare page, **Set → New Set from…** asks what to copy first. In the
   Library, right-click a Collection, a Smart Collection or a Rekordbox playlist
   and choose **New Set from…**.
 - **New Set from these…**, in the Library's right-click menu and the selection
@@ -114,21 +114,23 @@ running order with its repeats is the Prepare page's.
 
 ## The page
 
-The header's picker names the Set open. Beside it are **New Set ▾**, **Play
-Set** and **Export ▾**. Under them, one line says how many tracks the Set has, its planned
-running time (left out until you type a time), and how many warnings its
-checks found ("32 tracks · 19 warnings"; hover the time for how many entries
-have no time, and the warnings for what they are and how many you accepted), and
-— when it applies —
-"Files not checked" with **Check now**, which starts the same check as **Check
-every file** on the [Clean](clean.md) page, and "3 without key" with **Match
-tracks…**, which opens Clean's match window on those entries' tracks (hover for
-the whole sentence). A missing key is not a warning: those entries are simply not
-checked for key. The counts shorten to fit (hover them for the whole line); these
-two never do. The buttons for the selected entries are on the selected row, not
-here. **Notes** holds notes for the whole Set:
-the venue, the set times, anything you want to remember; it reads **Notes (1)**
-once the Set has some. **View ▾** shows or hides the tempo and key lanes and the
+The header is titled **Prepare**, with the Set picker beside the title naming the Set
+open. Its three buttons are **Play Set**, **Set** and **View**. Under them, one line
+says how many tracks the Set has, its planned running time (left out until you type
+a time), and how many warnings its checks found ("32 tracks · 19 warnings"; hover
+the time for how many entries have no time, and the warnings for what they are and
+how many you accepted), and — when it applies — "Files not checked" with
+**Missing files ›**, which opens the [Clean](clean.md) page's Missing files (Prepare
+no longer runs the file check itself; run **Check every file** there), and "3 without
+key" (hover for the whole sentence). A missing key is not a warning: those entries
+are simply not checked for key. The counts shorten to fit (hover them for the whole
+line); the link never does. The buttons for the selected entries are on the selected
+row, not here.
+
+**Set** holds **New Set…**, **New Set from…**, **Notes…** (notes for the whole Set:
+the venue, the set times, anything you want to remember; it reads **Notes (1)…**
+once the Set has some), and then **Save set list…**, **Copy set list** and
+**Export to Rekordbox…**. **View** shows or hides the tempo and key lanes and the
 transition strip, shows or hides the **Mix in** and **Mix out** times
 (**Show times** / **Hide times**), and chooses the table's columns.
 
@@ -139,12 +141,12 @@ means one of them is off, ○ means both are. Hover the dot for what is off; a
 warning you have marked OK counts as fit, and the first track has no dot, as
 nothing comes before it. Then come when it **Starts at** and how long it **Plays
 for**. The **Mix in** and **Mix out** times you plan, the **Transition** into it
-and its note are hidden until you want them: **View ▾ ▸ Show times** brings both
+and its note are hidden until you want them: **View ▸ Show times** brings both
 times in at once, and **Columns…** shows or hides the others. Hover a heading for
 what it means. Each chapter has a heading row that states the chapter's facts
 under the same columns (under **Fit** it counts the chapter's open warnings). Nothing sorts: the order is the Set. A chapter's heading
-carries its own buttons: **Edit**, **↑**, **↓** (move the chapter) and **×**
-(delete it).
+carries one button, **Edit…**; the chapter's dialog has **Move up**, **Move down**
+and **Delete chapter…**.
 
 Beside the Set is the panel you add tracks from. Drag the divider between them,
 or move it with the arrow keys; the width you choose is remembered.
@@ -162,11 +164,10 @@ the running order.
 - **Start a chapter here**, on the line under the header or on an entry's
   right-click menu, splits the Set there (the first entry, with several
   selected): that track begins a new chapter.
-- A chapter's heading row has **Edit** (or double-click the heading, or choose
-  **Rename, targets and notes…** on its right-click menu), **↑** and **↓**
-  to move the chapter — its entries move with it — and **×**
-  (**Delete chapter…**), which says which chapter its entries join
-  first. A Set always keeps one chapter, so the last cannot be deleted.
+- A chapter's heading row has **Edit…** (or double-click the heading, or choose
+  **Rename, targets and notes…** on its right-click menu). Its dialog has **Move up**
+  and **Move down**, which move the chapter — its entries move with it — and
+  **Delete chapter…**, which says which chapter its entries join first. A Set always keeps one chapter, so the last cannot be deleted.
 - A Set with a single unnamed chapter shows no heading at all: it is simply a
   list.
 
@@ -180,7 +181,7 @@ range.
 
 Each entry can carry a planned **mix in** time and **mix out** time: where in the
 track you plan to bring it in and take it out. Type them straight into the
-table's **Mix in** and **Mix out** cells (choose **View ▾ ▸ Show times** first), or under **In this Set** in Track
+table's **Mix in** and **Mix out** cells (choose **View ▸ Show times** first), or under **In this Set** in Track
 details, as `m:ss` or `h:mm:ss` — `0:30`, `4:30`, `1:02:00`.
 In the table, click the cell (or press Enter or F2 on the selected entry); Enter or
 Tab saves and moves to the next cell (Shift+Tab goes back), Esc drops what you
@@ -226,7 +227,7 @@ export a Set with every warning still open.
 The **Transition** column shows the warnings into each entry in a few words, and
 its tooltip gives each one in full. The header's count names every kind it
 counted. A Set whose files were never checked says so rather than claiming none
-are missing; choose **Check now** beside "Files not checked" in the header's line, or run
+are missing; choose **Missing files ›** beside "Files not checked" in the header's line, or run
 **Check every file** on the [Clean](clean.md) page.
 
 **Accepting a transition warning.** Select the entry, and in **In this Set**, or
@@ -295,7 +296,7 @@ Similar tracks and its artist's or label's page.
 
 ## The tempo and key lanes
 
-**View ▾ → Show tempo and key lanes** draws the Set's shape above its table:
+**View → Show tempo and key lanes** draws the Set's shape above its table:
 
 - **Tempo**: each entry's BPM as a mark, stepping from one to the next, so a
   jump is a step you can see.
@@ -311,7 +312,7 @@ in words; they add no fact of their own.
 
 ## The transition strip
 
-**View ▾ → Show transition strip** shows the entry you select beside the one
+**View → Show transition strip** shows the entry you select beside the one
 after it, so you can see how one track ends and the next begins:
 
 - **A row of titles**: each entry's track and its planned times, "In 0:16 ·
@@ -363,7 +364,7 @@ to queue** put entries in the queue without interrupting what is playing.
 
 ### Set lists
 
-**Export ▾ → Save set list…** writes the Set as a file, to the place you choose
+**Set → Save set list…** writes the Set as a file, to the place you choose
 in the save dialog. The file's extension chooses the form:
 
 - **Text** (`.txt`): the Set's name and running time, then each chapter as a
@@ -376,13 +377,13 @@ in the save dialog. The file's extension chooses the form:
 - **M3U8** (`.m3u8`): a playlist other players open, in running order with
   repeats, with each chapter as a comment line. It carries no times.
 
-**Export ▾ → Copy set list** puts the text form on the clipboard, for a message
+**Set → Copy set list** puts the text form on the clipboard, for a message
 or a post. A missing file is listed, and counted, never left out. Each save is
 recorded in **Activity**. The Library's right-click menu on a Set has both too.
 
 ### Rekordbox
 
-**Export ▾ → Export to Rekordbox…** opens the export with the Set ticked. The
+**Set → Export to Rekordbox…** opens the export with the Set ticked. The
 Set is written as **one playlist**, in its running order with its repeats, under
 the export's `CuePoint` folder at the folder path it has in CuePoint. Its
 chapters, times, notes and accepted warnings are not written: the playlist is

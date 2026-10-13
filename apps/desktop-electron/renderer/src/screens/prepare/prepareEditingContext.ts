@@ -48,12 +48,9 @@ export interface PrepareEditing {
     /** The least width the selected row's title keeps (about 5 characters), in px at the current scale: the buttons never take it (DEC-249). */
     titleMinWidth: number;
   };
-  /** The chapter buttons' actions, and how many chapters there are. */
+  /** The chapter heading's Edit… button's action. */
   chapters: {
-    count: number;
     edit: (chapter: SetChapterPlan) => void;
-    move: (chapter: SetChapterPlan, delta: -1 | 1) => void;
-    remove: (chapter: SetChapterPlan) => void;
   };
 }
 

@@ -245,7 +245,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       await expect.poll(async () => (await runningOrder(win, setId)).at(-1)?.title).toBe("Track 22");
 
       // --- the lanes: open, and a column selects its entry -----------------------
-      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("button", { name: "View", exact: true }).click();
       await win.getByRole("menuitem", { name: "Show tempo and key lanes" }).click();
       const lanes = win.getByRole("group", { name: "Tempo and key lanes" });
       await expect(lanes).toBeVisible();

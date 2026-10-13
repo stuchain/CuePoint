@@ -236,7 +236,7 @@ async function measure(win: Page, tableName: string): Promise<Measured> {
     const screenEl = [...document.querySelectorAll<HTMLElement>("main.app-main .screen")].find((el) => el.getClientRects().length > 0)!;
     const controls = [
       ...document.querySelectorAll<HTMLElement>(
-        ".prepare-header button, .prepare-header select, .prepare-source button, .prepare-source select, .prepare-source input",
+        ".prepare-screen .cp-screen-header button, .prepare-screen .cp-screen-header select, .prepare-source button, .prepare-source select, .prepare-source input",
       ),
     ];
     const offscreenControls = controls
@@ -385,7 +385,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       expect(source.whole, "the Suggestions the panel shows").toBeGreaterThanOrEqual(SOURCE_ROWS);
 
       // --- with the tempo and key lanes open (PREP-11) ------------------------
-      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("button", { name: "View", exact: true }).click();
       await win.getByRole("menuitem", { name: "Show tempo and key lanes" }).click();
       await expect(win.getByRole("group", { name: "Tempo and key lanes" })).toBeVisible();
       const lanes: Record<string, Measured> = {};
@@ -403,12 +403,12 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       for (const [state, m] of Object.entries(lanes)) {
         expect(m.whole, `whole rows, ${state}`).toBeGreaterThanOrEqual(WHOLE_ROWS_LANES);
       }
-      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("button", { name: "View", exact: true }).click();
       await win.getByRole("menuitem", { name: "Hide tempo and key lanes" }).click();
       await expect(win.getByRole("group", { name: "Tempo and key lanes" })).toHaveCount(0);
 
       // --- with the transition strip open (WAVE-07) ---------------------------
-      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("button", { name: "View", exact: true }).click();
       await win.getByRole("menuitem", { name: "Show transition strip" }).click();
       const strip = win.getByRole("region", { name: "Transition" });
       await expect(strip).toBeVisible();
@@ -441,7 +441,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       for (const [state, m] of Object.entries(transition)) {
         expect(m.whole, `whole rows, ${state}`).toBeGreaterThanOrEqual(WHOLE_ROWS_TRANSITION);
       }
-      await win.getByRole("button", { name: "View ▾" }).click();
+      await win.getByRole("button", { name: "View", exact: true }).click();
       await win.getByRole("menuitem", { name: "Hide transition strip" }).click();
       await expect(strip).toHaveCount(0);
 
@@ -505,7 +505,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         ["Show tempo and key lanes", "Hide tempo and key lanes", "lanes"],
         ["Show transition strip", "Hide transition strip", "transition"],
       ] as const) {
-        await win.getByRole("button", { name: "View ▾" }).click();
+        await win.getByRole("button", { name: "View", exact: true }).click();
         await win.getByRole("menuitem", { name: show }).click();
         await win.evaluate(() => {
           const screen = [...document.querySelectorAll<HTMLElement>("main.app-main .screen")].find((el) => el.getClientRects().length > 0)!;
@@ -518,7 +518,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         await win.evaluate(() => {
           [...document.querySelectorAll<HTMLElement>("main.app-main .screen")].find((el) => el.getClientRects().length > 0)!.scrollTop = 0;
         });
-        await win.getByRole("button", { name: "View ▾" }).click();
+        await win.getByRole("button", { name: "View", exact: true }).click();
         await win.getByRole("menuitem", { name: hide }).click();
       }
       console.log("WAVE-07 whole rows, crowded:", JSON.stringify(crowded));

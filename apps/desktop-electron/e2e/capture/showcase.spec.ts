@@ -487,7 +487,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         const table = window.getByRole("table", { name: "Set entries" });
         await expect(table).toBeVisible({ timeout: 30_000 });
         await expect(table.locator(".track-table__row").nth(3)).toBeVisible();
-        await window.getByRole("button", { name: "View ▾" }).click();
+        await window.getByRole("button", { name: "View", exact: true }).click();
         await window.getByRole("menuitem", { name: "Show transition strip" }).click();
         await expect(window.getByRole("region", { name: "Transition" })).toBeVisible();
         await table.locator('.track-table__row [data-column="title"]').nth(2).click();

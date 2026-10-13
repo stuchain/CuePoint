@@ -199,7 +199,11 @@ function rowIndexOf(entryId: number): number {
 }
 
 async function opened(name = "Build") {
-  await screen.findByRole("heading", { level: 1, name }, LOADED);
+  await screen.findByRole("heading", { level: 1, name: "Prepare" }, LOADED);
+  await waitFor(() => {
+    const picker = screen.getByLabelText("Set") as HTMLSelectElement;
+    expect(picker.selectedOptions[0]?.text.trim()).toBe(name);
+  }, LOADED);
 }
 
 function panel() {
@@ -899,7 +903,7 @@ describe("the Library tab", () => {
 
 describe("the lanes", () => {
   function openLanes() {
-    fireEvent.click(screen.getByRole("button", { name: "View ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
     fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Show tempo and key lanes" }));
   }
 
@@ -911,7 +915,7 @@ describe("the lanes", () => {
     const lanes = screen.getByRole("group", { name: "Tempo and key lanes" });
     expect(within(lanes).getByText("63–145")).toBeInTheDocument();
     expect(localStorage.getItem(LANES_STORAGE_KEY)).toBe("1");
-    fireEvent.click(screen.getByRole("button", { name: "View ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
     fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Hide tempo and key lanes" }));
     expect(screen.queryByRole("group", { name: "Tempo and key lanes" })).toBeNull();
     expect(localStorage.getItem(LANES_STORAGE_KEY)).toBe("0");
@@ -961,7 +965,7 @@ describe("the lanes", () => {
 
 describe("the transition strip (WAVE-07)", () => {
   function toggleStrip(label: "Show transition strip" | "Hide transition strip") {
-    fireEvent.click(screen.getByRole("button", { name: "View ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
     fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: label }));
   }
 

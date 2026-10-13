@@ -38,7 +38,6 @@ export const TYPED_SYMBOL_ALLOWLIST: readonly string[] = [
   "screens/library/QuickFilters.tsx",
   "screens/library/TrackDetailPanel.tsx",
   "screens/library/TrackYours.tsx",
-  "screens/prepare/PrepareScreen.tsx",
   "screens/prepare/entryActions.ts",
   "screens/prepare/prepareColumns.tsx",
   "screens/prepare/prepareEditing.tsx",

@@ -7,7 +7,7 @@
  * as a DJ writes a time, "45:00" or "1:30:00", and read by the engine (DEC-107);
  * a blank field clears it.
  */
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import type { SetChapterPlan, SetChapterUpdate } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
@@ -32,9 +32,29 @@ interface ChapterDialogProps {
   errorKey?: number;
   onSave: (update: SetChapterUpdate) => void;
   onClose: () => void;
+  /** Where the chapter stands in the Set (DEC-103): the first cannot go up, the last down. */
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  /** A Set always has one chapter, so the only one cannot be deleted. */
+  canDelete?: boolean;
+  onMove?: (delta: -1 | 1) => void;
+  /** Asks to delete the chapter; the page says where its entries go before it is done. */
+  onDelete?: () => void;
 }
 
-export function ChapterDialog({ chapter, busy = false, error = null, errorKey = 0, onSave, onClose }: ChapterDialogProps) {
+export function ChapterDialog({
+  chapter,
+  busy = false,
+  error = null,
+  errorKey = 0,
+  onSave,
+  onClose,
+  canMoveUp = false,
+  canMoveDown = false,
+  canDelete = false,
+  onMove,
+  onDelete,
+}: ChapterDialogProps) {
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
   const [bpmMin, setBpmMin] = useState("");
@@ -51,7 +71,24 @@ export function ChapterDialog({ chapter, busy = false, error = null, errorKey = 
     setBpmMax(chapter.bpm_max == null ? "" : String(chapter.bpm_max));
     setNotes(chapter.notes ?? "");
     setProblem(null);
-  }, [chapter]);
+    // Keyed on the chapter's id: a move changes the chapter under the dialog, and what was typed stays.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chapter?.id]);
+
+  // A move can leave the button just pressed with nowhere to go (the chapter is now first or last):
+  // focus goes to the other one, or to the name, rather than to a disabled button.
+  const moves = useRef<HTMLDivElement>(null);
+  const lastMove = useRef<number | null>(null);
+  useEffect(() => {
+    const buttons = Array.from(moves.current?.querySelectorAll("button") ?? []);
+    const at = lastMove.current;
+    if (at === null || (at === 0 ? canMoveUp : canMoveDown)) return;
+    const active = document.activeElement;
+    if (active !== buttons[at] && active !== document.body) return;
+    const other = buttons[1 - at];
+    if (other && !other.disabled) other.focus();
+    else document.getElementById(`${ids}-name`)?.focus();
+  }, [canMoveUp, canMoveDown, ids]);
 
   const submit = () => {
     if (!chapter) return;
@@ -134,6 +171,24 @@ export function ChapterDialog({ chapter, busy = false, error = null, errorKey = 
         )}
 
         <div className="prepare-dialog__actions">
+          {/* The chapter's place and its deletion, at the left; they act at once, apart from the form. */}
+          <div className="prepare-dialog__actions-start" ref={moves}
+            onFocus={(event) => {
+              const buttons = Array.from(moves.current?.querySelectorAll("button") ?? []);
+              const at = buttons.findIndex((button) => button.contains(event.target as Node));
+              lastMove.current = at === 0 || at === 1 ? at : null;
+            }}
+          >
+            <Button variant="secondary" disabled={!canMoveUp} onClick={() => onMove?.(-1)}>
+              Move up
+            </Button>
+            <Button variant="secondary" disabled={!canMoveDown} onClick={() => onMove?.(1)}>
+              Move down
+            </Button>
+            <Button variant="secondary" disabled={!canDelete} onClick={() => onDelete?.()}>
+              Delete chapter…
+            </Button>
+          </div>
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
