@@ -32,6 +32,7 @@ import type {
   EntityKind,
   EntityLink,
 } from "../../api/cuepointBridge.types";
+import { DISCOVER_OPTIONS, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
 import { useToast } from "../../components/Toast";
 import { formatCount, pluralize } from "../library/libraryFormat";
@@ -56,6 +57,9 @@ import { useDiscoverJob } from "./useDiscoverJob";
 import { refusalError } from "../../reporting/expected";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
+
+/** The options read, switched off until the push dialog is first asked for. */
+const NOT_WANTED = { ...DISCOVER_OPTIONS, available: () => false };
 
 /** One answer of the half, shaped as a window for `useBeatportWindow`. */
 interface HalfPage {
@@ -98,7 +102,15 @@ export function BeatportHalf({
   const [owned, setHiding] = useHideOwned();
   const [working, setWorking] = useState(false);
   const [pushing, setPushing] = useState<{ options: DiscoverOptions } | null>(null);
+  // The push dialog's defaults and limits come through the shared cache (C19d),
+  // read from the first time it is asked for and kept for the next time.
+  const [wantsOptions, setWantsOptions] = useState(false);
   const [readingOptions, setReadingOptions] = useState(false);
+  // The click has been looked at once its read could start; see `openPush`.
+  const [looked, setLooked] = useState(false);
+  const asked = useRef(false);
+  const optionsRead = useSharedRead(wantsOptions ? DISCOVER_OPTIONS : NOT_WANTED);
+  useReportReadError(optionsRead.error);
   const [pushNotice, setPushNotice] = useState<PushNotice | null>(null);
   // Set by "Read again": the next request asks Beatport however fresh the copy.
   const refreshNext = useRef(false);
@@ -232,24 +244,42 @@ export function BeatportHalf({
   };
 
   /** The push dialog needs the engine's default name and limits: read them now. */
-  const openPush = async () => {
-    const bridge = window.cuepoint?.getDiscoverOptions;
-    if (!bridge) {
+  const openPush = () => {
+    if (typeof window.cuepoint?.getDiscoverOptions !== "function") {
       notify(NO_ENGINE, "warning");
       return;
     }
+    // Whatever the cache holds from before may be a refusal, a failure or an answer from
+    // before a sign-in: the click looks at it only after the read has had its chance to
+    // start (the key is only live from this render on), asks again when it is not a good
+    // answer, and acts on the answer that read brings.
+    asked.current = false;
+    setWantsOptions(true);
     setReadingOptions(true);
-    try {
-      const answer = await bridge();
-      if (answer.refusal) notify(refusalText(answer.refusal), "warning");
-      else setPushing({ options: answer.value });
-    } catch (cause) {
-      reportUnexpected(cause);
-      notify(userMessage(cause), "warning");
-    } finally {
-      setReadingOptions(false);
-    }
+    setLooked(false);
   };
+  const optionsAnswer = optionsRead.value;
+  const optionsSettled = wantsOptions && !optionsRead.loading && !optionsRead.refreshing;
+  const optionsFailure = optionsRead.error;
+  const { refresh: refreshOptions } = optionsRead;
+  // One render after the click, so the cache's own read (a stale or old entry) is under way.
+  useEffect(() => {
+    if (readingOptions && wantsOptions && !looked) setLooked(true);
+  }, [readingOptions, wantsOptions, looked]);
+  useEffect(() => {
+    if (!readingOptions || !looked || !optionsSettled) return;
+    const good = optionsAnswer !== undefined && !optionsAnswer.refusal && optionsFailure === undefined;
+    if (!good && !asked.current) {
+      // A refusal, a failure or nothing: ask again and wait for that answer.
+      asked.current = true;
+      refreshOptions();
+      return;
+    }
+    setReadingOptions(false);
+    if (optionsFailure !== undefined) notify(userMessage(optionsFailure), "warning");
+    else if (optionsAnswer?.refusal) notify(refusalText(optionsAnswer.refusal), "warning");
+    else if (optionsAnswer) setPushing({ options: optionsAnswer.value });
+  }, [readingOptions, looked, optionsSettled, optionsAnswer, optionsFailure, refreshOptions, notify]);
 
   /** Every id the half shows, in its order, for a push of the whole list. */
   const everyId = async (options: DiscoverOptions): Promise<number[]> => {

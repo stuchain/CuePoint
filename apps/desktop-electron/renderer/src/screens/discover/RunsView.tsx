@@ -12,9 +12,10 @@
  * **Deleting a search lives on its row**, so the confirmation is here, beside
  * the list, and the search's own page has no delete of its own.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { DiscoverRun } from "../../api/cuepointBridge.types";
+import { discoveryRuns, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
 import { JOB_POLL_MS } from "../../components/shell/useActiveJob";
@@ -54,76 +55,98 @@ export function RunsView({
   onNewSearch,
   pollMs = JOB_POLL_MS,
 }: RunsViewProps) {
-  const [runs, setRuns] = useState<DiscoverRun[] | null>(null);
-  const [total, setTotal] = useState(0);
-  const [listError, setListError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
+  // The list is read through the shared cache (C19d): a page shown again has it
+  // at once, and it is read again when a search ends (the cache hears the job),
+  // when this page says so, and while one runs (the poll below).
+  const [limit, setLimit] = useState(RUNS_PAGE);
+  const read = useSharedRead(
+    discoveryRuns({ limit: Math.min(limit, tools.options.limits.max_runs), offset: 0 }),
+  );
+  const { refresh } = read;
+  useReportReadError(read.error);
+  const answer = read.value;
+  // The last list read, kept while another size is asked for ("Show older runs")
+  // or a read fails, so the list does not vanish under the pointer.
+  const lastList = useRef<{ runs: DiscoverRun[]; total: number } | null>(null);
+  // Made once per answer: a new object per render would make `runs` a new array each time.
+  const fromAnswer = useMemo(
+    () => (answer && !answer.refusal ? { runs: answer.value.runs, total: answer.value.total } : null),
+    [answer],
+  );
+  if (fromAnswer) lastList.current = fromAnswer;
+  const [removed, setRemoved] = useState<ReadonlySet<number>>(() => new Set());
+  const listed = lastList.current;
+  const runs = useMemo<DiscoverRun[] | null>(() => {
+    if (listed) return listed.runs.filter((run) => !removed.has(run.id));
+    return read.loading ? null : [];
+  }, [listed, read.loading, removed]);
+  const total = listed && runs ? listed.total - (listed.runs.length - runs.length) : 0;
+  const listError = read.unavailable
+    ? NO_ENGINE
+    : answer?.refusal
+      ? refusalText(answer.refusal)
+      : read.error !== undefined
+        ? userMessage(read.error)
+        : null;
+  const [selected, setSelected] = useState<number | null>(() => runs?.[0]?.id ?? null);
   const [deleting, setDeleting] = useState<DiscoverRun | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [detailVersion, setDetailVersion] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   // The job a start here began, until its run is in the list to open.
   const [awaiting, setAwaiting] = useState<string | null>(null);
-  const shown = useRef(RUNS_PAGE);
   const wasRunning = useRef<Set<number>>(new Set());
   const selectedRef = useRef(selected);
+  const clearAwaitingAfterRead = useRef(false);
   const [view, stacked] = useNarrow(SIDE_BY_SIDE_MIN_WIDTH);
   selectedRef.current = selected;
 
-  const load = useCallback(async () => {
-    const bridge = window.cuepoint?.listDiscoveryRuns;
-    if (!bridge) {
-      setListError(NO_ENGINE);
-      setRuns([]);
-      return;
-    }
-    try {
-      const answer = await bridge({ limit: Math.min(shown.current, tools.options.limits.max_runs), offset: 0 });
-      if (answer.refusal) {
-        setListError(refusalText(answer.refusal));
-        return;
-      }
-      const listed = answer.value.runs;
-      setRuns(listed);
-      setTotal(answer.value.total);
-      setListError(null);
-      // A search open beside the list that is running, or has just stopped, has
-      // new tracks and a new header.
-      const current = selectedRef.current;
-      const running = new Set(listed.filter((run) => run.running).map((run) => run.id));
-      if (current !== null && (running.has(current) || wasRunning.current.has(current))) {
-        setDetailVersion((value) => value + 1);
-      }
-      wasRunning.current = running;
-      // The newest search is chosen when none is.
-      setSelected((previous) => previous ?? listed[0]?.id ?? null);
-    } catch (cause) {
-      reportUnexpected(cause);
-      setListError(userMessage(cause));
-      setRuns((previous) => previous ?? []);
-    }
-  }, [tools.options.limits.max_runs]);
-
+  // Each new answer: a search open beside the list that is running, or has just
+  // stopped, has new tracks and a new header.
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!answer || answer.refusal) return;
+    const running = new Set(answer.value.runs.filter((run) => run.running).map((run) => run.id));
+    const current = selectedRef.current;
+    if (current !== null && (running.has(current) || wasRunning.current.has(current))) {
+      setDetailVersion((value) => value + 1);
+    }
+    wasRunning.current = running;
+  }, [answer]);
+
+  // The newest search is chosen when none is.
+  useEffect(() => {
+    if (runs && runs.length > 0) setSelected((previous) => previous ?? runs[0]?.id ?? null);
+  }, [runs]);
+
+  // Whatever a read answered (or failed with), "Show older runs" is no longer waiting. The
+  // render where the key moved to a size nobody has read yet (no answer, no failure) is
+  // not an answer: it keeps the wait, and a start's wait for its read.
+  useEffect(() => {
+    if (answer === undefined && read.error === undefined) return;
+    setLoadingMore(false);
+    if (clearAwaitingAfterRead.current) {
+      clearAwaitingAfterRead.current = false;
+      setAwaiting(null);
+    }
+  }, [answer, read.error]);
 
   // A search that ended: the list, and the search if it is open, again.
   useEffect(() => {
     if (runsVersion === 0) return;
     // A job that ended without making a run — refused as it began — leaves
-    // nothing to wait for.
-    void load().then(() => setAwaiting(null));
+    // nothing to wait for, once the list has been read.
+    clearAwaitingAfterRead.current = true;
+    refresh();
     setDetailVersion((value) => value + 1);
-  }, [load, runsVersion]);
+  }, [refresh, runsVersion]);
 
   const anyRunning = (runs ?? []).some((run) => run.running);
   const active = anyRunning || runningJobId !== null || awaiting !== null;
   useEffect(() => {
     if (!active) return;
-    const timer = window.setInterval(() => void load(), pollMs);
+    const timer = window.setInterval(refresh, pollMs);
     return () => window.clearInterval(timer);
-  }, [active, load, pollMs]);
+  }, [active, refresh, pollMs]);
 
   // The search a start began, opened as soon as the engine has made it.
   useEffect(() => {
@@ -139,21 +162,19 @@ export function RunsView({
     if (runningJobId) setAwaiting(runningJobId);
   }, [runningJobId]);
 
-  const showMore = async () => {
+  const showMore = () => {
     setLoadingMore(true);
-    shown.current += RUNS_PAGE;
-    await load();
-    setLoadingMore(false);
+    setLimit((value) => value + RUNS_PAGE);
   };
 
   // The newest search left opens in its place, once the list has been read again.
   const afterRemoval = useCallback(
-    (removed: number | null) => {
-      setRuns((previous) => (previous ?? []).filter((run) => run.id !== removed));
+    (gone: number | null) => {
+      if (gone !== null) setRemoved((previous) => new Set(previous).add(gone));
       setSelected(null);
-      void load();
+      refresh();
     },
-    [load],
+    [refresh],
   );
   const onGone = useCallback(() => {
     afterRemoval(selectedRef.current);
@@ -193,7 +214,7 @@ export function RunsView({
         {listError && (
           <div className="discover-note discover-note--warning" role="alert">
             <p>{listError}</p>
-            <Button variant="secondary" onClick={() => void load()}>
+            <Button variant="secondary" onClick={refresh}>
               Try again
             </Button>
           </div>
@@ -214,7 +235,7 @@ export function RunsView({
         {listError && (
           <div className="discover-note discover-note--warning" role="alert">
             <p>{listError}</p>
-            <Button variant="secondary" onClick={() => void load()}>
+            <Button variant="secondary" onClick={refresh}>
               Try again
             </Button>
           </div>
@@ -226,7 +247,7 @@ export function RunsView({
           selected={selected}
           onSelect={setSelected}
           onDelete={setDeleting}
-          onShowMore={() => void showMore()}
+          onShowMore={showMore}
           loadingMore={loadingMore}
         />
       </div>

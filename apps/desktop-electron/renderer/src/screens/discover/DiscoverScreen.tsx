@@ -29,6 +29,7 @@ import type {
   DiscoverRunRequest,
   DiscoveryRunResult,
 } from "../../api/cuepointBridge.types";
+import { DISCOVER_OPTIONS, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
 import { Panel } from "../../components/Panel";
 import { Tabs } from "../../components/Tabs";
@@ -83,9 +84,6 @@ interface PushNotice {
 export function DiscoverScreen() {
   const { push: toast } = useToast();
   const [section, setSection] = useState<DiscoverSection>(loadDiscoverSection);
-  const [options, setOptions] = useState<DiscoverOptions | null>(null);
-  const [optionsError, setOptionsError] = useState<string | null>(null);
-  const [optionsVersion, setOptionsVersion] = useState(0);
   // A refusal a start met, which is newer than what `options` said.
   const [refused, setRefused] = useState<{
     state: DiscoverBeatportState;
@@ -98,34 +96,33 @@ export function DiscoverScreen() {
   // Nothing here describes a track, so a selection elsewhere does not open the panel (K1).
   useInspectorSlot(INSPECTOR_EMPTY, { autoOpen: false });
 
+  // The options come through the shared cache (C19d): a page shown again has
+  // them at once, and they are read again when a lookup or a sign-in ends.
+  const optionsRead = useSharedRead(DISCOVER_OPTIONS);
+  useReportReadError(optionsRead.error);
+  const answer = optionsRead.value;
+  // A refusal does not take away the options already shown: the last good ones stay.
+  const lastOptions = useRef<DiscoverOptions | null>(null);
+  if (answer && !answer.refusal) lastOptions.current = answer.value;
+  const options = lastOptions.current;
+  const optionsError = optionsRead.unavailable
+    ? NO_ENGINE
+    : answer?.refusal
+      ? refusalText(answer.refusal)
+      : optionsRead.error !== undefined && !options
+        ? userMessage(optionsRead.error)
+        : null;
+  // A refusal a start met is older than an answer that arrives after it. Only a new answer
+  // says so: this page shown again (its effects run again) with the answer it already had
+  // does not.
+  const seenAnswer = useRef(answer);
   useEffect(() => {
-    const bridge = window.cuepoint?.getDiscoverOptions;
-    if (!bridge) {
-      setOptionsError(NO_ENGINE);
-      return;
-    }
-    let current = true;
-    void bridge()
-      .then((answer) => {
-        if (!current) return;
-        if (answer.refusal) {
-          setOptionsError(refusalText(answer.refusal));
-          return;
-        }
-        setOptions(answer.value);
-        setOptionsError(null);
-        setRefused(null);
-      })
-      .catch((cause: unknown) => {
-        reportUnexpected(cause);
-        if (current) setOptionsError(userMessage(cause));
-      });
-    return () => {
-      current = false;
-    };
-  }, [optionsVersion]);
+    if (seenAnswer.current === answer) return;
+    seenAnswer.current = answer;
+    if (answer && !answer.refusal) setRefused(null);
+  }, [answer]);
 
-  const reloadOptions = useCallback(() => setOptionsVersion((value) => value + 1), []);
+  const reloadOptions = optionsRead.refresh;
 
   const state: DiscoverBeatportState = refused?.state ?? options?.beatport.state ?? "ok";
   const notice = options
@@ -169,6 +166,8 @@ export function DiscoverScreen() {
     } else if (finished.state !== "succeeded") {
       toast(finished.error?.message ?? "The lookup did not finish.", "warning");
     }
+    // Kept beside the cache's own invalidation: the job store only sees a job that outlasts
+    // one of its polls (2 s), and a lookup shorter than that would leave the prompt standing.
     reloadOptions();
   });
 

@@ -13,6 +13,7 @@
  * - rows from Beatport are not library rows: double-click does nothing and the
  *   Inspector shows its empty state.
  */
+import { Activity } from "react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -26,6 +27,7 @@ import type {
   DiscoverRunTracksPage,
   WantlistPage,
 } from "../../api/cuepointBridge.types";
+import { invalidateReads } from "../../api/engineReads";
 import { ToastProvider } from "../../components";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { jobExplainer } from "../../components/shell/useActiveJob";
@@ -1373,5 +1375,75 @@ describe("the wantlist", () => {
         track_ids: WANTED.rows.map((row) => row.beatport_track_id),
       }),
     );
+  });
+});
+
+describe("a refusal a start met (C19d)", () => {
+  it("survives leaving the page and coming back, with no new read of the options", async () => {
+    install({
+      listDiscoveryRuns: vi.fn(async () => asAnswer(fixture.runs_empty)),
+      startDiscoveryRun: vi.fn(async () => asAnswer(fixture.refusal_no_token)),
+    });
+    const Page = ({ shown }: { shown: boolean }) => (
+      <ScaleProvider>
+        <ToastProvider>
+          <InspectorSlotProvider>
+            <MemoryRouter initialEntries={["/discover"]}>
+              <Activity mode={shown ? "visible" : "hidden"}>
+                <DiscoverScreen />
+              </Activity>
+            </MemoryRouter>
+          </InspectorSlotProvider>
+        </ToastProvider>
+      </ScaleProvider>
+    );
+    const view = render(<Page shown />);
+    await openNewSearch();
+    fireEvent.click(await screen.findByRole("checkbox", { name: "House" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start looking" }));
+    const headline = "Sign in to Beatport to search its charts and releases.";
+    expect(await screen.findByText(headline)).toBeInTheDocument();
+    const reads = bridge.getDiscoverOptions!.mock.calls.length;
+
+    view.rerender(<Page shown={false} />);
+    view.rerender(<Page shown />);
+    await act(async () => {});
+
+    expect(screen.getByText(headline)).toBeInTheDocument();
+    expect(bridge.getDiscoverOptions!.mock.calls.length).toBe(reads);
+  });
+});
+
+describe("revisiting the page (C19d)", () => {
+  it("revisit shows the old value immediately and refetches after an announce", async () => {
+    install();
+    const first = renderDiscover();
+    const list = await screen.findByRole("navigation", { name: "Past searches" }, LOADED);
+    expect(within(list).getAllByRole("button").length).toBeGreaterThan(1);
+    first.unmount();
+    const reads = () => ({
+      options: bridge.getDiscoverOptions.mock.calls.length,
+      runs: bridge.listDiscoveryRuns.mock.calls.length,
+    });
+    const before = reads();
+
+    renderDiscover();
+    // The first render: no "Opening Discover…", the tabs and the past searches are there.
+    expect(screen.queryByText("Opening Discover…")).toBeNull();
+    expect(screen.getByRole("tab", { name: "Results" })).toBeInTheDocument();
+    expect(screen.queryByText("Reading your searches…")).toBeNull();
+    expect(screen.getByRole("navigation", { name: "Past searches" })).toBeInTheDocument();
+    await act(async () => {});
+    expect(reads()).toEqual(before);
+
+    bridge.listDiscoveryRuns.mockResolvedValue(value({ ...RUNS, runs: RUNS.runs.filter((run) => run.id === 1), total: 1 }));
+    act(() => invalidateReads(["discover"]));
+    const failed = () =>
+      within(screen.getByRole("navigation", { name: "Past searches" }))
+        .getAllByRole("button")
+        .some((button) => button.textContent?.includes("Failed"));
+    expect(failed()).toBe(true);
+    await waitFor(() => expect(failed()).toBe(false));
+    await waitFor(() => expect(reads()).toEqual({ options: before.options + 1, runs: before.runs + 1 }));
   });
 });

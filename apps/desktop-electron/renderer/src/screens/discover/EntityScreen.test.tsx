@@ -13,7 +13,7 @@
  * - the Inspector describes a library row, and never a Beatport one.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
@@ -25,6 +25,8 @@ import type {
   LibraryTrackDetail,
   LibraryTrackRow,
 } from "../../api/cuepointBridge.types";
+import { invalidateReads } from "../../api/engineReads";
+import { DISCOVER_OPTIONS, useSharedRead } from "../../api/sharedReads";
 import { ToastProvider } from "../../components";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
@@ -581,6 +583,81 @@ describe("the Beatport half, in every state", () => {
         halfOf("half_label_ok").page!.rows[2].url,
       ),
     );
+  });
+
+  it("revisit shows the old value immediately and refetches after an announce", async () => {
+    renderAt(entityPath("label", "bp:40211"));
+    await beatportRows(/Beatport's releases/);
+    const open = () => {
+      const actions = screen.getByRole("toolbar", { name: /Beatport's releases by this label: actions/ });
+      fireEvent.click(within(actions).getByRole("button", { name: "Make a Beatport playlist…" }));
+    };
+    open();
+    const dialog = await screen.findByRole("dialog", {}, LOADED);
+    expect(mock("getDiscoverOptions")).toHaveBeenCalledTimes(1);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    // Asked for again: the dialog has the defaults at once, and nothing is read.
+    open();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(mock("getDiscoverOptions")).toHaveBeenCalledTimes(1);
+
+    act(() => invalidateReads(["discover"]));
+    await waitFor(() => expect(mock("getDiscoverOptions")).toHaveBeenCalledTimes(2));
+  });
+
+  it("does not act on a refusal cached from before a sign-in: the first click reads again", async () => {
+    const authChanged = new Set<() => void>();
+    const refused = discover.refusal_no_token as unknown as DiscoverAnswer<never>;
+    const getDiscoverOptions = vi
+      .fn()
+      .mockResolvedValueOnce(refused)
+      .mockResolvedValue(discover.options_ok);
+    install({
+      getDiscoverOptions,
+      onBeatportAuthChanged: vi.fn((listener: () => void) => {
+        authChanged.add(listener);
+        return () => void authChanged.delete(listener);
+      }),
+    });
+    // Something showed the options earlier (the refusal stayed in the cache) and was left.
+    const earlier = renderHook(() => useSharedRead(DISCOVER_OPTIONS));
+    await waitFor(() => expect(earlier.result.current.value?.refusal).not.toBeNull());
+    earlier.unmount();
+    // Then the person signed in to Beatport: the cached refusal is out of date.
+    act(() => authChanged.forEach((listener) => listener()));
+
+    renderAt(entityPath("label", "bp:40211"));
+    await beatportRows(/Beatport's releases/);
+    const actions = screen.getByRole("toolbar", { name: /Beatport's releases by this label: actions/ });
+    fireEvent.click(within(actions).getByRole("button", { name: "Make a Beatport playlist…" }));
+
+    // The dialog opens with the fresh answer, and the old refusal is never said.
+    expect(await screen.findByRole("dialog", {}, LOADED)).toBeInTheDocument();
+    expect(screen.queryByText("no token")).toBeNull();
+    expect(getDiscoverOptions).toHaveBeenCalledTimes(2);
+  });
+
+  it("reads again on the first click when the cached answer is a refusal that nothing marked stale", async () => {
+    const refused = discover.refusal_no_token as unknown as DiscoverAnswer<never>;
+    const getDiscoverOptions = vi
+      .fn()
+      .mockResolvedValueOnce(refused)
+      .mockResolvedValue(discover.options_ok);
+    install({ getDiscoverOptions });
+    const earlier = renderHook(() => useSharedRead(DISCOVER_OPTIONS));
+    await waitFor(() => expect(earlier.result.current.value?.refusal).not.toBeNull());
+    earlier.unmount();
+
+    renderAt(entityPath("label", "bp:40211"));
+    await beatportRows(/Beatport's releases/);
+    const actions = screen.getByRole("toolbar", { name: /Beatport's releases by this label: actions/ });
+    fireEvent.click(within(actions).getByRole("button", { name: "Make a Beatport playlist…" }));
+
+    expect(await screen.findByRole("dialog", {}, LOADED)).toBeInTheDocument();
+    expect(screen.queryByText("no token")).toBeNull();
+    expect(getDiscoverOptions).toHaveBeenCalledTimes(2);
   });
 
   it("makes a playlist of every track it shows, with the engine's default name, and says how it went", async () => {
