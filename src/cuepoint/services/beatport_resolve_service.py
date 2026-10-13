@@ -185,7 +185,7 @@ class BeatportResolveResult:
         unread = self.unreadable + self.failed
         if attempted and not self.resolved and not self.not_found:
             line = f"Couldn't look up artists and labels for {tracks}"
-            extras = []
+            extras: List[str] = []
         else:
             line = f"Looked up artists and labels for {tracks}: " + (
                 "none found on Beatport"

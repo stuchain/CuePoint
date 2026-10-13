@@ -254,7 +254,9 @@ class MatchRepository(IMatchRepository):
                 f"{_SELECT_CANDIDATE} WHERE id IN ({placeholders})", tuple(chunk)
             ):
                 candidate = MatchCandidate.from_row(row)
-                found[int(candidate.id)] = candidate
+                # A stored row always has its id.
+                if candidate.id is not None:
+                    found[candidate.id] = candidate
         return found
 
     def winner_of(self, attempt_id: int) -> Optional[MatchCandidate]:
