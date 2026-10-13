@@ -319,7 +319,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
       await test.step("see the corrected BPM and the match's key in the Library", async () => {
         await window.getByRole("link", { name: "Library", exact: true }).click();
         const row = libraryRow(window, "Tone Two");
-        await expect(row).toContainText("125.0", { timeout: 30_000 });
+        await expect(row).toContainText(/(^|\s)125(\s|$)/, { timeout: 30_000 });
         // The accepted match's key ("E Minor") is the key: Camelot 9A, not Rekordbox's 8A.
         await expect(row).toContainText("9A");
         await expect(
@@ -338,7 +338,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
           .click();
         const row = libraryRow(window, "Tone Two");
         await expect(row.getByRole("img")).toHaveCount(0, { timeout: 15_000 });
-        await expect(row).toContainText("124.0");
+        await expect(row).toContainText(/(^|\s)124(\s|$)/);
       });
 
       await test.step("check files, with one missing", async () => {

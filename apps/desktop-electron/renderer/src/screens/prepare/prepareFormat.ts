@@ -13,7 +13,7 @@ import type {
   SetRunningTime,
   SetWarning,
 } from "../../api/cuepointBridge.types";
-import { formatBpm } from "../discover/similarReasons";
+import { formatBpmRange } from "../../components/format/bpm";
 import { chapterName } from "./prepareRows";
 import { describeFileCheck, describeSetWarning } from "./setWarnings";
 import { formatTime } from "./setTime";
@@ -141,11 +141,7 @@ export function chapterTimeText(chapter: Pick<SetChapterPlan, "running_time" | "
 
 /** A chapter's BPM range: "120–123", "from 120", "to 123", or "" with none. */
 export function bpmRangeText(chapter: Pick<SetChapterPlan, "bpm_min" | "bpm_max">): string {
-  const { bpm_min: min, bpm_max: max } = chapter;
-  if (min != null && max != null) return `${formatBpm(min)}–${formatBpm(max)}`;
-  if (min != null) return `from ${formatBpm(min)}`;
-  if (max != null) return `to ${formatBpm(max)}`;
-  return "";
+  return formatBpmRange(chapter.bpm_min, chapter.bpm_max);
 }
 
 /** A warning in a few words, for a cell. */

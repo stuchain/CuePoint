@@ -9,6 +9,10 @@ describe("matchedLabel", () => {
     );
   });
 
+  it("writes a half the way a person does", () => {
+    expect(matchedLabel({ matched_on: "bpm", effective_key: null, effective_bpm: 127.05 })).toBe("127.1 BPM");
+  });
+
   it("names the tempo, as a person writes it", () => {
     expect(matchedLabel({ matched_on: "bpm", effective_key: null, effective_bpm: 123.60000000000001 })).toBe(
       "123.6 BPM",

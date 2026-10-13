@@ -13,6 +13,7 @@
  */
 
 import type { SimilarComponent, SimilarReason } from "../../api/cuepointBridge.types";
+import { formatBpm } from "../../components/format/bpm";
 
 // The wire's own types, declared once with the rest of Discover's shapes
 // (DISCOVER-09); re-exported so a caller of this module needs one import.
@@ -45,17 +46,17 @@ const COMPONENT_WORDS: Record<SimilarComponent, string> = {
   artist: "artist",
 };
 
-/** A BPM as a DJ reads it: "128", "127.5", never "128.00". */
-export function formatBpm(bpm: number): string {
-  return String(Number(bpm.toFixed(2)));
-}
-
 /** A reason as a sentence, e.g. "Mixes well (next key): 8A → 9A". */
 export function describeSimilarReason(reason: SimilarReason): string {
   switch (reason.component) {
     case "tempo": {
-      const from = formatBpm(reason.from);
-      const to = formatBpm(reason.to);
+      let from = formatBpm(reason.from);
+      let to = formatBpm(reason.to);
+      // Two tempos a hair apart would read as one; show them as they are.
+      if (from === to && reason.from !== reason.to) {
+        from = String(Number(reason.from.toFixed(2)));
+        to = String(Number(reason.to.toFixed(2)));
+      }
       switch (reason.detail) {
         case "same":
           return `Same tempo: ${from}`;

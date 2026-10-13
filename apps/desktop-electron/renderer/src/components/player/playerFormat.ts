@@ -4,6 +4,7 @@ import type {
   QueueItem,
   RepeatMode,
 } from "../../api/cuepointBridge.types";
+import { formatBpm } from "../format/bpm";
 
 /**
  * Formatting and selectors for the player bar (PLAYER-06).
@@ -35,11 +36,8 @@ export function formatTime(seconds: number | null | undefined): string {
   return `${minutes}:${paddedSeconds}`;
 }
 
-/** BPM with one decimal, the way Rekordbox writes it. Empty when unknown. */
-export function formatBpm(bpm: number | null | undefined): string {
-  if (bpm === null || bpm === undefined || !Number.isFinite(bpm) || bpm <= 0) return "";
-  return bpm.toFixed(1);
-}
+/** The shared BPM format, re-exported so the player's importers stay put. */
+export { formatBpm };
 
 /**
  * The line under the title: artist, then key and BPM when they are known.

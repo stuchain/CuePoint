@@ -110,6 +110,10 @@ describe("trackSubtitle", () => {
     ).toBe("Album · Label · 128 BPM · 6A");
   });
 
+  it("writes a tempo in the one BPM format", () => {
+    expect(trackSubtitle({ album: null, label: null, bpm: 127.98 })).toBe("128 BPM");
+  });
+
   it("omits missing parts without leaving separators behind", () => {
     expect(trackSubtitle({ album: null, label: "Label", bpm: null })).toBe(
       "Label",

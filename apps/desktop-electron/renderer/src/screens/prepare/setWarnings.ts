@@ -13,7 +13,7 @@
  */
 
 import type { SetFileCheck, SetNotice, SetWarning } from "../../api/cuepointBridge.types";
-import { formatBpm } from "../discover/similarReasons";
+import { formatBpm } from "../../components/format/bpm";
 import { formatTime } from "./setTime";
 
 // The wire's own types, declared with the rest of the bridge's shapes;

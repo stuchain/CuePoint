@@ -121,7 +121,7 @@ describe("the key in the app's notation", () => {
 describe("the two cards' rows", () => {
   it("mark what Correct would change, by the engine's answer first", () => {
     const rows = cardRows(track(), candidate());
-    expect(byId(rows, "bpm")).toMatchObject({ yours: "126.0", theirs: "128.0", status: "changes", tickable: true });
+    expect(byId(rows, "bpm")).toMatchObject({ yours: "126", theirs: "128", status: "changes", tickable: true });
     // Engine says the label is the same; the genre it could not compare, and the track has none.
     expect(byId(rows, "label")).toMatchObject({ status: "same", tickable: false });
     expect(byId(rows, "genre")).toMatchObject({ yours: null, theirs: "Melodic House & Techno", status: "changes" });
@@ -212,7 +212,7 @@ describe("a Table row", () => {
 
   it("reads before and after from the proposal", () => {
     const cells = proposalCells(track({ match_proposal: proposal }))!;
-    expect(cells.bpm).toEqual({ before: "126.0", after: "128.0", changes: true });
+    expect(cells.bpm).toEqual({ before: "126", after: "128", changes: true });
     expect(cells.label).toEqual({ before: "UNTAMED", after: "UNTAMED", changes: false });
     expect(cells.genre).toEqual({ before: null, after: "Melodic House & Techno", changes: true });
     expect(cells.year).toEqual({ before: null, after: "2024", changes: true });

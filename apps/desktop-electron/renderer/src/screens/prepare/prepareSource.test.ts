@@ -197,7 +197,7 @@ describe("what an answer says", () => {
     expect(rangeNote(SUGGESTIONS.end, peak)).toBe("Only tracks inside Peak's range, 140–150 BPM.");
     expect(rangeNote(SUGGESTIONS.both, peak)).toBeNull();
     expect(rangeNote({ bpm_range: { chapter_id: PEAK, min: 140, max: null } }, peak)).toMatch(/from 140 BPM/);
-    expect(rangeNote({ bpm_range: { chapter_id: PEAK, min: null, max: 150 } }, peak)).toMatch(/up to 150 BPM/);
+    expect(rangeNote({ bpm_range: { chapter_id: PEAK, min: null, max: 150 } }, peak)).toMatch(/to 150 BPM/);
   });
 
   it("says an empty list plainly, the range named when it narrowed", () => {

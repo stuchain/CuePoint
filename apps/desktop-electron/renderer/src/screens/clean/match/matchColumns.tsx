@@ -47,7 +47,7 @@ function TickCell({ row }: { row: LibraryTrackRow }) {
   );
 }
 
-/** "126.0 → 128.0" where Correct would change it, else the value. */
+/** "126 → 128" where Correct would change it, else the value. */
 export function valueCell(row: LibraryTrackRow, field: CardField): string {
   const cells = proposalCells(row);
   const cell = cells?.[field];

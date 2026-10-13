@@ -26,7 +26,8 @@ import type {
   SimilarReason,
 } from "../../api/cuepointBridge.types";
 import { WHOLE_LIBRARY, parseScope } from "../clean/cleanRules";
-import { KEY_WORDS, formatBpm } from "../discover/similarReasons";
+import { formatBpm, formatBpmRange } from "../../components/format/bpm";
+import { KEY_WORDS } from "../discover/similarReasons";
 import { chapterName, showsHeadings } from "./prepareRows";
 
 // ------------------------------------------------------------ the point
@@ -292,12 +293,7 @@ export function rangeNote(answer: Pick<SetSuggestions, "bpm_range">, chapter: Se
   if (!range) return null;
   const name = chapter ? chapterName(chapter) : "this chapter";
   const { min, max } = range;
-  const bounds =
-    min != null && max != null
-      ? `${formatBpm(min)}–${formatBpm(max)} BPM`
-      : min != null
-        ? `from ${formatBpm(min)} BPM`
-        : `up to ${formatBpm(max ?? 0)} BPM`;
+  const bounds = `${formatBpmRange(min, max)} BPM`;
   return `Only tracks inside ${name}'s range, ${bounds}.`;
 }
 

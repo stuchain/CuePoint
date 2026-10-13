@@ -19,7 +19,7 @@
  *   `loudnessWords.ts` says each number.
  */
 import type { SetEntry, SetShape, SetWarning } from "../../api/cuepointBridge.types";
-import { formatBpm } from "../discover/similarReasons";
+import { formatBpm } from "../../components/format/bpm";
 import { shortWarning } from "./prepareFormat";
 import { keyRelationWords } from "./prepareSource";
 import { formatTime } from "./setTime";

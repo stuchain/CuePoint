@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { LibrarySearchResponse } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
+import { formatBpm } from "../format/bpm";
 
 /** How long typing settles before a request goes out. */
 const SEARCH_DEBOUNCE_MS = 200;
@@ -119,7 +120,7 @@ export function trackSubtitle(track: {
   /** The resolved key (DEC-201), never Rekordbox's imported one. */
   effective_key?: string | null;
 }): string {
-  return [track.album, track.label, track.bpm ? `${track.bpm} BPM` : null, track.effective_key]
+  return [track.album, track.label, formatBpm(track.bpm) ? `${formatBpm(track.bpm)} BPM` : null, track.effective_key]
     .filter((part): part is string => Boolean(part))
     .join(" · ");
 }

@@ -14,7 +14,6 @@ import {
   KEY_WORDS,
   describeSimilarReason,
   describeUnused,
-  formatBpm,
   matchBand,
   matchWords,
   type SimilarComponent,
@@ -93,11 +92,11 @@ describe("the words", () => {
     expect(Object.values(KEY_WORDS).join(" ")).not.toMatch(/neighbo/i);
   });
 
-  it("writes a BPM without trailing zeros", () => {
-    expect(formatBpm(128)).toBe("128");
-    expect(formatBpm(127.5)).toBe("127.5");
-    expect(formatBpm(127.25)).toBe("127.25");
-    expect(formatBpm(127.999)).toBe("128");
+  it("shows two decimals when a pair would read the same", () => {
+    const tempo = (detail: "close" | "half" | "double", from: number, to: number) =>
+      describeSimilarReason({ component: "tempo", detail, from, to, points: 1 } as unknown as SimilarReason);
+    expect(tempo("close", 127.98, 128.02)).toBe("Close tempo: 127.98 → 128.02");
+    expect(tempo("close", 124, 126.5)).toBe("Close tempo: 124 → 126.5");
   });
 
   it("says something for a reason from a newer engine", () => {

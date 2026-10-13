@@ -291,7 +291,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await dialog.getByRole("button", { name: "Apply" }).click();
       await expect(window.getByText(/Set the BPM to 126 on 3 tracks/)).toBeVisible({ timeout: 15_000 });
       await window.getByRole("link", { name: "Library" }).click();
-      await expect(row(window, "Tone Two")).toContainText("126.0", { timeout: 15_000 });
+      await expect(row(window, "Tone Two")).toContainText(/(^|\s)126(\s|$)/, { timeout: 15_000 });
 
       // Reverted as one, from the batch's own entry.
       await window.keyboard.press("Control+Shift+A");
@@ -306,7 +306,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await expect(entry).toContainText("Reverted 3 changes.", { timeout: 15_000 });
       await window.keyboard.press("Escape");
       await expect(activity).toHaveCount(0);
-      await expect(row(window, "Tone Two")).toContainText("124.0", { timeout: 15_000 });
+      await expect(row(window, "Tone Two")).toContainText(/(^|\s)124(\s|$)/, { timeout: 15_000 });
       await expect(row(window, "Tone Two").getByRole("img")).toHaveCount(0);
 
       // The Clean columns, as the engine answers them.

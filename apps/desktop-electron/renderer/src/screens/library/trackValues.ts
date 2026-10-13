@@ -12,10 +12,8 @@ export function formatDuration(seconds: number | null): string {
   return `${minutes}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;
 }
 
-/** One decimal, because 128 and 128.5 are different tracks to mix. */
-export function formatBpm(bpm: number | null): string {
-  return bpm == null ? "" : bpm.toFixed(1);
-}
+/** The shared BPM format, re-exported so the table's importers stay put. */
+export { formatBpm } from "../../components/format/bpm";
 
 /**
  * The value a user sees for a field CuePoint can override (DEC-068).

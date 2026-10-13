@@ -142,8 +142,8 @@ describe("cuesSummary", () => {
 describe("beatGridLine", () => {
   const grid = { markers: 1, bpm: 128, min_bpm: 128, max_bpm: 128, variable: false };
 
-  it("gives a constant grid's tempo to two places", () => {
-    expect(beatGridLine(grid, true)).toBe("Beat grid · 128.00 BPM");
+  it("gives a constant grid's tempo in the one BPM format", () => {
+    expect(beatGridLine(grid, true)).toBe("Beat grid · 128 BPM");
   });
 
   it("calls a grid that changes tempo variable, with its range", () => {
@@ -152,7 +152,7 @@ describe("beatGridLine", () => {
         { markers: 3, bpm: 121, min_bpm: 121, max_bpm: 124, variable: true },
         true,
       ),
-    ).toBe("Beat grid · variable, 121.00–124.00 BPM");
+    ).toBe("Beat grid · variable, 121–124 BPM");
   });
 
   it("says there is none only when the marks have been read", () => {

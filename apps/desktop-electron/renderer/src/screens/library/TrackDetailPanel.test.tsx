@@ -36,6 +36,7 @@ import { SelectionActions } from "./SelectionActions";
 import { TRACK_DETAILS_SECTIONS_KEY } from "./DisclosureSection";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 import { copySummary, tracksAsText, writeClipboard } from "./trackClipboard";
+import { formatBpm } from "../../components/format/bpm";
 import { useTrackDetail } from "./useTrackDetail";
 import { HISTORY_LIMIT } from "./useTrackHistory";
 
@@ -627,18 +628,18 @@ describe("copying tracks", () => {
   const columns: TrackColumnDef<LibraryTrackRow>[] = [
     { id: "title", header: "Title", render: (t) => t.title },
     { id: "artist", header: "Artist", render: (t) => t.artist },
-    { id: "bpm", header: "BPM", render: (t) => (t.bpm == null ? "" : t.bpm.toFixed(1)) },
+    { id: "bpm", header: "BPM", render: (t) => (t.bpm == null ? "" : formatBpm(t.bpm)) },
   ];
 
   it("writes the visible columns, in the order they are shown", () => {
     const text = tracksAsText(columns, [TRACK]);
     expect(text.split("\n")[0]).toBe("Title\tArtist\tBPM");
-    expect(text.split("\n")[1]).toBe("Strobe\tdeadmau5\t128.0");
+    expect(text.split("\n")[1]).toBe("Strobe\tdeadmau5\t128");
   });
 
   it("writes what the table shows, not the raw field", () => {
     const text = tracksAsText(columns, [TRACK]);
-    expect(text).toContain("128.0");
+    expect(text).toContain("128");
   });
 
   it("falls back to the field when a column renders something else", () => {

@@ -32,6 +32,7 @@
 import { Fragment, useCallback, useState, type ReactNode } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
+import { formatBpm } from "../../components/format/bpm";
 import type {
   CollectionNode,
   EntityKind,
@@ -503,7 +504,7 @@ export function TrackDetailPanel({
           <Row label="Label" value={text(track.label)} />
           <Row label="Genre" value={text(track.genre)} />
           <Row label="Key (not used)" value={text(track.key)} />
-          <Row label="BPM" value={track.bpm == null ? "—" : track.bpm.toFixed(1)} />
+          <Row label="BPM" value={formatBpm(track.bpm) || "—"} />
           <Row label="Year" value={track.year == null ? "—" : String(track.year)} />
           <Row label="Length" value={duration(track.duration_seconds)} />
           {/* Stars, not a number: the parser converted Rekordbox's 0/51/…/255

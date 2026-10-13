@@ -215,7 +215,7 @@ describe("what it shows", () => {
     installBridge(snapshot());
     render(<PlayerBar />);
     expect(await screen.findByText("Strobe")).toBeInTheDocument();
-    expect(metaLine()).toHaveTextContent("deadmau5 · 8A · 128.0 BPM");
+    expect(metaLine()).toHaveTextContent("deadmau5 · 8A · 128 BPM");
   });
 
   it("shows elapsed and total time", async () => {
@@ -905,7 +905,7 @@ describe("the title and artist open things (BAR-4)", () => {
     render(<PlayerBar onOpenTrack={() => undefined} onOpenArtist={() => undefined} />);
     await screen.findByRole("button", { name: "Strobe" });
 
-    expect(metaLine()).toHaveTextContent("8A · 128.0 BPM");
+    expect(metaLine()).toHaveTextContent("8A · 128 BPM");
   });
 });
 
@@ -920,7 +920,7 @@ describe("the key opens the Camelot wheel (BAR-5, PAGES-10)", () => {
     const key = await screen.findByRole("button", { name: "Show 8A on the Camelot wheel" });
     expect(key).toHaveTextContent("8A");
     // The words around it are as they were.
-    expect(metaLine()).toHaveTextContent("deadmau5 · 8A · 128.0 BPM");
+    expect(metaLine()).toHaveTextContent("deadmau5 · 8A · 128 BPM");
 
     fireEvent.click(key);
     expect(getWheelState()).toEqual({ open: true, source: "player" });
@@ -948,7 +948,7 @@ describe("the key opens the Camelot wheel (BAR-5, PAGES-10)", () => {
     installBridge(snapshot({ items: [item({ artist: "8A", key: "8A" })] }));
     render(<PlayerBar />);
     const key = await screen.findByRole("button", { name: "Show 8A on the Camelot wheel" });
-    expect(metaLine()).toHaveTextContent("8A · 8A · 128.0 BPM");
+    expect(metaLine()).toHaveTextContent("8A · 8A · 128 BPM");
     expect(key.closest(".cp-hint")?.previousSibling?.textContent).toBe("8A · ");
   });
 });

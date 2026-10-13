@@ -85,7 +85,7 @@ afterEach(() => {
 describe("the cells", () => {
   it("show before → after where Correct would change a value, and the value where it would not", () => {
     const row = proposed(1);
-    expect(valueCell(row, "bpm")).toBe("126.0 → 128.0");
+    expect(valueCell(row, "bpm")).toBe("126 → 128");
     expect(valueCell(row, "genre")).toBe("Techno → Melodic House & Techno");
     expect(valueCell(row, "year")).toBe("— → 2024");
     expect(valueCell(row, "label")).toBe("Label One");
@@ -114,7 +114,7 @@ describe("the table", () => {
     renderTable();
     await screen.findByText("Track 1", undefined, LOADED);
     const row = rowOf("Track 1");
-    expect(within(row).getByText(/126\.0 → 128\.0/)).toBeInTheDocument();
+    expect(within(row).getByText(/126 → 128/)).toBeInTheDocument();
     expect(within(row).getByText(/Techno → Melodic House & Techno/)).toBeInTheDocument();
     expect(within(row).getAllByText("(Correct would change this)").length).toBeGreaterThan(0);
     expect(within(row).getByText("92%")).toBeInTheDocument();

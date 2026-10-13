@@ -13,6 +13,7 @@ import type {
   LibraryTrackRow,
   SimilarTracks,
 } from "../../api/cuepointBridge.types";
+import { formatBpm } from "../../components/format/bpm";
 import { formatCount, pluralize } from "../library/libraryFormat";
 import { beatportNotice } from "./beatportState";
 
@@ -117,7 +118,7 @@ export function freshnessLine(half: Pick<EntityBeatportHalf, "from_cache" | "fet
   return half.from_cache ? "Saved earlier from Beatport. Check Beatport again for the latest." : "Just read from Beatport.";
 }
 
-/** A seed's header facts: "128.0 BPM · 8A · House". */
+/** A seed's header facts: "128 BPM · 8A · House". */
 export function seedFacts(
   track: Pick<
     LibraryTrackRow,
@@ -127,7 +128,8 @@ export function seedFacts(
   const bpm = track.effective_bpm ?? track.bpm;
   const key = track.effective_key;
   const genre = track.effective_genre ?? track.genre;
-  return [bpm == null ? null : `${bpm.toFixed(1)} BPM`, key || null, genre || null]
+  const tempo = formatBpm(bpm);
+  return [tempo ? `${tempo} BPM` : null, key || null, genre || null]
     .filter((part): part is string => part !== null)
     .join(" · ");
 }

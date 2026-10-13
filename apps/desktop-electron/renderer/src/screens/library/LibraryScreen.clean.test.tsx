@@ -553,8 +553,8 @@ describe("the table", () => {
     renderScreen();
     await tableReady();
     const first = screen.getByText("Track 1").closest("[role=row]") as HTMLElement;
-    const typed = within(first).getByRole("img", { name: "BPM typed by you. Rekordbox has 128.0." });
-    expect(typed.closest(".library-cell__overridden")).toHaveTextContent("126.0");
+    const typed = within(first).getByRole("img", { name: "BPM typed by you. Rekordbox has 128." });
+    expect(typed.closest(".library-cell__overridden")).toHaveTextContent("126");
     const second = screen.getByText("Track 2").closest("[role=row]") as HTMLElement;
     expect(within(second).getByRole("img", { name: "Genre applied from Beatport. Rekordbox has Techno." })).toHaveTextContent("B");
     const third = screen.getByText("Track 3").closest("[role=row]") as HTMLElement;
@@ -570,7 +570,7 @@ describe("the table", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     const [header, row] = (writeText.mock.calls[0]![0] as string).split("\n");
     const bpm = header!.split("\t").indexOf("BPM");
-    expect(row!.split("\t")[bpm]).toBe("126.0");
+    expect(row!.split("\t")[bpm]).toBe("126");
     Reflect.deleteProperty(navigator, "clipboard");
   });
 

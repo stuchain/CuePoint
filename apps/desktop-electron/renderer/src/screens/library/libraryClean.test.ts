@@ -110,7 +110,7 @@ describe("overridden values", () => {
     const typed = row({ overridden: ["bpm"], effective_bpm: 126, override_sources: { bpm: "cuepoint" } });
     expect(overrideMark(typed, "bpm")).toEqual({
       source: "cuepoint",
-      title: "BPM typed by you. Rekordbox has 128.0.",
+      title: "BPM typed by you. Rekordbox has 128.",
     });
     const yours = row({
       overridden: ["key"],
@@ -165,7 +165,7 @@ describe("overridden values", () => {
     const old = row();
     delete old.effective_key;
     delete old.effective_bpm;
-    expect(effectiveText(old, "bpm")).toBe("128.0");
+    expect(effectiveText(old, "bpm")).toBe("128");
     expect(effectiveText(old, "key")).toBe("");
     expect(importedText(row({ year: null }), "year")).toBe("");
   });
@@ -297,7 +297,7 @@ describe("the Beatport zone's rows", () => {
     });
     const rows = beatportFieldRows(track, candidate());
     expect(rows.map((entry) => [entry.field, entry.imported, entry.beatport, entry.effective, entry.source])).toEqual([
-      ["bpm", "128.0", "128.0", "128.0", "rekordbox"],
+      ["bpm", "128", "128", "128", "rekordbox"],
       ["genre", "Progressive House", "Progressive House", "Techno", "cuepoint"],
       ["label", "mau5trap", "mau5trap", "mau5trap", "rekordbox"],
       ["year", "2009", "2010", "2009", "rekordbox"],

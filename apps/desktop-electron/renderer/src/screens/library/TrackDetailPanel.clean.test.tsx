@@ -264,7 +264,7 @@ describe("the Beatport zone", () => {
     await within(zone).findByText("Accepted by you");
     // The key is not one of the rows: an accepted match gives it (DEC-201).
     expect(field(zone, "key")).toBeNull();
-    expect(field(zone, "bpm")).toHaveTextContent("Using 126.0 (typed by you)");
+    expect(field(zone, "bpm")).toHaveTextContent("Using 126 (typed by you)");
     expect(field(zone, "year")).toHaveTextContent("Beatport 2010");
     expect(field(zone, "year")).toHaveTextContent("Using 2009 (from Rekordbox)");
   });
@@ -364,7 +364,7 @@ describe("your five values (DEC-205)", () => {
     const list = (await screen.findByRole("region", { name: "Your values" })) as HTMLElement;
     // BPM was typed by you. The key is Beatport's own, which is the track's key, not an edit.
     expect(within(list).getByText("typed by you")).toBeInTheDocument();
-    expect(within(list).getByText("126.0")).toBeInTheDocument();
+    expect(within(list).getByText("126")).toBeInTheDocument();
     expect(within(list).queryByText("applied from Beatport")).toBeNull();
   });
 
@@ -412,7 +412,7 @@ describe("your five values (DEC-205)", () => {
     await userEvent.type(within(dialog).getByLabelText("Genre value"), "Tech");
     rerender(<TrackDetailPanel detail={detailOf({ ...TRACK, effective_bpm: 130 })} />);
     expect(within(dialog).getByLabelText("Genre value")).toHaveValue("Tech");
-    expect(dialog).toHaveTextContent("Now: 130.0");
+    expect(dialog).toHaveTextContent("Now: 130");
   });
 
   it("are not offered by a build that cannot type them", async () => {

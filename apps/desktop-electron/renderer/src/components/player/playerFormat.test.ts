@@ -98,8 +98,8 @@ describe("times", () => {
 });
 
 describe("bpm", () => {
-  it("keeps one decimal, the way Rekordbox writes it", () => {
-    expect(formatBpm(128)).toBe("128.0");
+  it("writes a whole tempo whole and others to one decimal", () => {
+    expect(formatBpm(128)).toBe("128");
     expect(formatBpm(122.53)).toBe("122.5");
   });
 
@@ -112,14 +112,14 @@ describe("bpm", () => {
 
 describe("the line under the title", () => {
   it("joins artist, key and tempo", () => {
-    expect(formatTrackMeta(item())).toBe("deadmau5 · 8A · 128.0 BPM");
+    expect(formatTrackMeta(item())).toBe("deadmau5 · 8A · 128 BPM");
   });
 
   it("leaves no stranded separators when a value is missing", () => {
-    // A track with no key must not read "deadmau5 ·  · 128.0 BPM".
-    expect(formatTrackMeta(item({ key: null }))).toBe("deadmau5 · 128.0 BPM");
+    // A track with no key must not read "deadmau5 ·  · 128 BPM".
+    expect(formatTrackMeta(item({ key: null }))).toBe("deadmau5 · 128 BPM");
     expect(formatTrackMeta(item({ bpm: null }))).toBe("deadmau5 · 8A");
-    expect(formatTrackMeta(item({ artist: "" }))).toBe("8A · 128.0 BPM");
+    expect(formatTrackMeta(item({ artist: "" }))).toBe("8A · 128 BPM");
   });
 
   it("says nothing for a track with nothing to say", () => {

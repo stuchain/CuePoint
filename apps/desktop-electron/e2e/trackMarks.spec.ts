@@ -128,7 +128,7 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
         "H · 5:00.0 · H cue",
         "Memory · 6:00.2 · Fade-out · Fade out",
       ]);
-      await expect(marks).toContainText("Beat grid · 128.00 BPM");
+      await expect(marks).toContainText("Beat grid · 128 BPM");
       // Rekordbox's own colour beside the cue that has one.
       await expect(
         marks.locator('.cp-track-detail__cue-colour[data-colour="#28e214"]'),
@@ -139,7 +139,7 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
       await expect(marks.getByRole("textbox")).toHaveCount(0);
 
       marks = await inspect(window, "Variable Grid");
-      await expect(marks).toContainText("Beat grid · variable, 121.00–124.00 BPM");
+      await expect(marks).toContainText("Beat grid · variable, 121–124 BPM");
 
       // Refused marks are skipped, never shown under a guess.
       marks = await inspect(window, "Malformed Marks");

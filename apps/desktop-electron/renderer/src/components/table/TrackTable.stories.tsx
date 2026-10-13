@@ -8,6 +8,7 @@
  */
 import type { Meta, StoryObj } from "@storybook/react";
 
+import { formatBpm } from "../format/bpm";
 import { TrackTable } from "./TrackTable";
 import { inMemorySource, pendingSource, type TrackTableSource } from "./trackTableSource";
 import type { TrackColumnDef } from "./trackTableLayout";
@@ -33,7 +34,7 @@ const COLUMNS: TrackColumnDef<Track>[] = [
     minWidthPx: 60,
     defaultWidthPx: 70,
     align: "right",
-    render: (t) => (t.bpm == null ? "—" : t.bpm.toFixed(1)),
+    render: (t) => (formatBpm(t.bpm) || "—"),
   },
   { id: "key", header: "Key", sortKey: "key", minWidthPx: 60, defaultWidthPx: 70, render: (t) => t.key },
   {

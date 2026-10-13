@@ -137,7 +137,7 @@ describe("what applying copies", () => {
     // The key is not applied: an accepted match gives it (DEC-201).
     expect(APPLY_FIELDS).not.toContain("key");
     expect(APPLY_FIELDS.map((field) => applyValue(field, c))).toEqual([
-      "128.0",
+      "128",
       "Techno",
       null,
       "2020",

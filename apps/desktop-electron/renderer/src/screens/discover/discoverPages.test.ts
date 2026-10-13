@@ -220,10 +220,10 @@ describe("what a page says (DEC-095: it says which identity it is)", () => {
 
   it("describes a seed and what its suggestions were compared with", () => {
     const seed = { ...detail("detail_resolved").track, effective_key: "8A" };
-    expect(seedFacts(seed)).toBe("124.0 BPM · 8A · House");
-    expect(seedFacts({ ...seed, effective_bpm: 126 })).toBe("126.0 BPM · 8A · House");
+    expect(seedFacts(seed)).toBe("124 BPM · 8A · House");
+    expect(seedFacts({ ...seed, effective_bpm: 126 })).toBe("126 BPM · 8A · House");
     // Rekordbox's key is never the fallback (DEC-201).
-    expect(seedFacts({ ...seed, effective_key: null })).toBe("124.0 BPM · House");
+    expect(seedFacts({ ...seed, effective_key: null })).toBe("124 BPM · House");
     expect(seedFacts({ bpm: null, genre: null, effective_key: null })).toBe("");
     const similar = (pages.similar as { value: unknown }).value as SimilarTracks;
     expect(consideredLine(similar)).toBe(`Compared with ${similar.considered} tracks in your library.`);

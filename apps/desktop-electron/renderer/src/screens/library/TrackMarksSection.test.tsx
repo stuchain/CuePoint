@@ -107,7 +107,7 @@ describe("the cue points", () => {
 describe("the beat grid", () => {
   it("gives a constant grid's tempo", () => {
     render(<TrackMarksSection marks={MARKS} />);
-    expect(screen.getByText("Beat grid · 128.00 BPM")).toBeInTheDocument();
+    expect(screen.getByText("Beat grid · 128 BPM")).toBeInTheDocument();
   });
 
   it("calls a grid that changes tempo variable", () => {
@@ -119,7 +119,7 @@ describe("the beat grid", () => {
         }}
       />,
     );
-    expect(screen.getByText("Beat grid · variable, 121.00–124.00 BPM")).toHaveAttribute(
+    expect(screen.getByText("Beat grid · variable, 121–124 BPM")).toHaveAttribute(
       "title",
       "The tempo changes during the track",
     );

@@ -27,6 +27,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { formatBpm } from "../format/bpm";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { TrackTable } from "./TrackTable";
 import { inMemorySource, pendingSource, type TrackTableSource } from "./trackTableSource";
@@ -80,7 +81,7 @@ const COLUMNS: TrackColumnDef<Track>[] = [
     minWidthPx: 60,
     defaultWidthPx: 80,
     align: "right",
-    render: (t) => (t.bpm == null ? "" : t.bpm.toFixed(1)),
+    render: (t) => (t.bpm == null ? "" : formatBpm(t.bpm)),
   },
   // No sortKey: the column exists and cannot be ordered by.
   { id: "path", header: "File", render: () => "/music/x.mp3" },
@@ -199,7 +200,7 @@ describe("rows", () => {
     const row = renderedRows()[0]!;
     expect(within(row).getByText("Strobe")).toBeInTheDocument();
     expect(within(row).getByText("deadmau5")).toBeInTheDocument();
-    expect(within(row).getByText("128.0")).toBeInTheDocument();
+    expect(within(row).getByText("128")).toBeInTheDocument();
   });
 
   it("keys rows by identity, not by index", () => {

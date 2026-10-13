@@ -54,7 +54,7 @@ describe("the edited-value marker", () => {
       </div>,
     );
 
-    const marker = screen.getByRole("img", { name: "BPM typed by you. Rekordbox has 128.0." });
+    const marker = screen.getByRole("img", { name: "BPM typed by you. Rekordbox has 128." });
     expect(marker).toHaveAttribute("tabindex", "-1");
 
     await userEvent.tab();
@@ -78,7 +78,7 @@ describe("the edited-value marker", () => {
 
   it("says it on hover too, through the title", () => {
     render(<OverriddenValue row={typed} field="bpm" />);
-    expect(screen.getByRole("img")).toHaveAttribute("title", "BPM typed by you. Rekordbox has 128.0.");
+    expect(screen.getByRole("img")).toHaveAttribute("title", "BPM typed by you. Rekordbox has 128.");
   });
 
   it("says a value from Beatport came from Beatport", () => {

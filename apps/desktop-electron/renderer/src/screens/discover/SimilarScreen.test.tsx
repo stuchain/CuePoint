@@ -211,7 +211,7 @@ describe("the seed and its suggestions", () => {
     renderAt(similarPath(1));
     await listed();
     const header = screen.getByRole("heading", { level: 1 }).closest("header") as HTMLElement;
-    expect(within(header).getByText("124.0 BPM · 8A · House")).toBeInTheDocument();
+    expect(within(header).getByText("124 BPM · 8A · House")).toBeInTheDocument();
     expect(within(header).getByText(consideredLine(SIMILAR.value!))).toBeInTheDocument();
     fireEvent.click(within(header).getByRole("button", { name: "Mara Veil" }));
     expect(where()).toBe(entityPath("artist", "bp:301001"));

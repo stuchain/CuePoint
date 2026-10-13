@@ -14,6 +14,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "../../components/Button";
+import { formatBpm } from "../../components/format/bpm";
 import { TextField } from "../../components/TextField";
 import { reportUnexpected } from "../../reporting/reporting";
 import type { FilterRuleSet, LibraryQuickFacets } from "../../api/cuepointBridge.types";
@@ -352,7 +353,7 @@ function BpmRange({
             : "Tempos are not available."
           : low === null || high === null
             ? "No track here has a BPM."
-            : `This view runs from ${low} to ${high} BPM.`}
+            : `This view runs from ${formatBpm(low)} to ${formatBpm(high)} BPM.`}
       </p>
       <div className="cp-quick__ends">
         <TextField

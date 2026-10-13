@@ -119,7 +119,7 @@ describe("the two cards", () => {
       cell.textContent?.replace(/\s+/g, " ").trim(),
     );
     expect(changes).toEqual([
-      "126.0 → becomes 128.0",
+      "126 → becomes 128",
       "Label One → becomes Label Two",
       "empty → becomes 2020",
     ]);
@@ -175,7 +175,7 @@ describe("the two cards", () => {
     const ticks = screen.getByRole("group", { name: /When I say/ });
     const boxes = within(ticks).getAllByRole("checkbox");
     expect(boxes.map((box) => box.parentElement?.textContent)).toEqual([
-      "BPM 126.0 → 128.0",
+      "BPM 126 → 128",
       "Label Label One → Label Two",
       "Year empty → 2020",
     ]);

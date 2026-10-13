@@ -12,6 +12,7 @@ import type {
   TrackCueKind,
   TrackMarksSummary,
 } from "../../api/cuepointBridge.types";
+import { formatBpm, formatBpmRange } from "../../components/format/bpm";
 
 /** Rekordbox's hot cue slots, 0–7. */
 const HOT_CUE_LETTERS = "ABCDEFGH";
@@ -87,9 +88,9 @@ export const VARIABLE_GRID_HINT = "The tempo changes during the track";
 export const MARKS_NOT_READ =
   "Cue points and the beat grid are read from Rekordbox. They appear after you Check Rekordbox for changes.";
 
-/** The grid in one line: "Beat grid · 128.00 BPM", or a variable grid's range. */
+/** The grid in one line: "Beat grid · 128 BPM", or a variable grid's range. */
 export function beatGridLine(grid: TrackBeatGridSummary | null, read: boolean): string | null {
   if (grid == null) return read ? "No beat grid" : null;
-  if (!grid.variable) return `Beat grid · ${grid.bpm.toFixed(2)} BPM`;
-  return `Beat grid · variable, ${grid.min_bpm.toFixed(2)}–${grid.max_bpm.toFixed(2)} BPM`;
+  if (!grid.variable) return `Beat grid · ${formatBpm(grid.bpm)} BPM`;
+  return `Beat grid · variable, ${formatBpmRange(grid.min_bpm, grid.max_bpm)} BPM`;
 }

@@ -475,7 +475,7 @@ describe("the columns", () => {
     const row = HIDDEN.rows[0]!;
     const cell = (id: string) => RUN_COLUMNS.find((c) => c.id === id)!.render(row);
     expect(cell("position")).toBe("1");
-    expect(cell("bpm")).toBe("124.0");
+    expect(cell("bpm")).toBe("124");
     expect(cell("owned")).toBe("");
     expect(cell("on_wantlist")).toBe("");
     expect(RUN_COLUMNS.find((c) => c.id === "owned")!.header).toBe("In your library");

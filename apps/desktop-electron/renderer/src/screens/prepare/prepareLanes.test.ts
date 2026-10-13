@@ -71,6 +71,7 @@ describe("the tempo lane", () => {
     expect(rangeText(layout.tempo.range)).toBe("63–145");
     expect(rangeText(null)).toBe("No BPMs");
     expect(rangeText({ min: 124, max: 124 })).toBe("124 BPM");
+    expect(rangeText({ min: 127.98, max: 128.02 })).toBe("128 BPM");
   });
 
   it("draws a mark per known BPM, higher for faster, and a gap for none (DEC-111)", () => {
@@ -98,6 +99,12 @@ describe("the tempo lane", () => {
   it("puts a level transition on one row", () => {
     const level = layout.tempo.steps.filter((rect) => rect.x === layout.columnWidth - 1);
     expect(level).toEqual([{ x: layout.columnWidth - 1, y: layout.tempo.marks[0].y, width: 2, height: 1 }]);
+  });
+});
+
+describe("a missing tempo", () => {
+  it("is said as no BPM, for an unknown or zero tempo", () => {
+    expect(columnLabel(0, "Strobe", 0, "8A", { number: 8, letter: "A" })).toBe("1 · Strobe · no BPM · 8A");
   });
 });
 
