@@ -147,7 +147,36 @@ class TestParseCatalogTrack:
             key="Ebm",
             genre_id=5,
             genre_name="House",
+            sample_url="https://geo-samples.beatport.com/track/19000001.LOFI.mp3",
         )
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "",
+            "   ",
+            None,
+            7,
+            ["x"],
+            "http://geo-samples.beatport.com/a.mp3",
+            "https://evil.example.com/a.mp3",
+        ],
+    )
+    def test_a_sample_url_off_beatports_host_or_not_text_is_dropped(
+        self, value
+    ) -> None:
+        raw = dict(load("track.json"))
+        raw["sample_url"] = value
+        track = parse_catalog_track(raw)
+        assert track is not None
+        assert track.sample_url is None
+
+    def test_a_missing_sample_url_is_none(self) -> None:
+        raw = dict(load("track.json"))
+        raw.pop("sample_url", None)
+        track = parse_catalog_track(raw)
+        assert track is not None
+        assert track.sample_url is None
 
     def test_url_is_the_website_never_the_api(self) -> None:
         track = parse_catalog_track(load("track.json"))

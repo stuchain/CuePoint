@@ -173,7 +173,18 @@ def parse_catalog_track(obj: Any) -> Optional[CatalogTrack]:
         key=catalog_key(track.get("key")),
         genre_id=positive_id(genre.get("id")),
         genre_name=_optional_text(genre.get("name")),
+        sample_url=_sample_url(track.get("sample_url")),
     )
+
+
+def _sample_url(value: Any) -> Optional[str]:
+    """A track's preview URL when it is on Beatport's sample host, else None."""
+    from cuepoint.data.beatport import is_beatport_media_url
+
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip()
+    return text if is_beatport_media_url(text) else None
 
 
 def page_items(data: Any) -> Tuple[List[Dict[str, Any]], bool]:

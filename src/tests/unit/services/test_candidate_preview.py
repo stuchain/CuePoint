@@ -34,6 +34,7 @@ from cuepoint.services.candidate_preview import (
     PreviewAudio,
     PREVIEW_CACHE_SIZE,
     CandidatePreviewService,
+    CatalogPreviewService,
     fetch_preview,
     lookup_page_preview,
 )
@@ -419,3 +420,163 @@ class TestTheFixture:
         monkeypatch.setenv(beatport_fixture.ENV_VAR, str(path))
 
         assert fetch_preview("https://evil.example/t.mp3") is None
+
+
+# ------------------------------------------------------------ catalog tracks
+
+
+class Samples:
+    """The API's answer for a catalog track, counting every ask."""
+
+    def __init__(self) -> None:
+        self.names: dict[int, str] = {}
+        self.asked: list[int] = []
+        self.fail = False
+
+    def __call__(self, track_id: int) -> str:
+        self.asked.append(track_id)
+        if self.fail:
+            raise RuntimeError("no token")
+        return self.names.get(track_id, "")
+
+
+@pytest.fixture
+def samples() -> Samples:
+    return Samples()
+
+
+@pytest.fixture
+def catalog(samples, web, clock) -> CatalogPreviewService:
+    return CatalogPreviewService(
+        gate=FetchGate(monotonic=clock),
+        fetcher=web.fetch,
+        sample_lookup=samples,
+        page_lookup=web.lookup,
+    )
+
+
+@pytest.mark.unit
+class TestCatalogPreview:
+    def test_audio_comes_from_the_looked_up_sample(self, catalog, samples, web):
+        samples.names[7] = sample("seven")
+        web.audio[sample("seven")] = AUDIO
+
+        assert catalog.preview(7) == PreviewAudio(AUDIO)
+        assert web.fetched == [sample("seven")]
+
+    def test_no_sample_is_nothing_and_nothing_is_fetched(self, catalog, samples, web):
+        samples.names[7] = ""
+        assert catalog.preview(7) is None
+        assert web.fetched == []
+
+    def test_a_sample_off_beatports_host_is_never_fetched(self, catalog, samples, web):
+        samples.names[7] = "https://evil.example.com/a.mp3"
+        web.audio["https://evil.example.com/a.mp3"] = AUDIO
+        assert catalog.preview(7) is None
+        assert web.fetched == []
+
+    @pytest.mark.parametrize("bad", [0, -3, "x", 2**31, 10**13])
+    def test_an_invalid_id_is_a_lookup_error(self, catalog, samples, bad):
+        with pytest.raises(LookupError):
+            catalog.preview(bad)
+        assert samples.asked == []
+
+    def test_a_second_call_is_served_from_memory(self, catalog, samples, web):
+        samples.names[7] = sample("seven")
+        web.audio[sample("seven")] = AUDIO
+
+        catalog.preview(7)
+        catalog.preview(7)
+
+        assert web.fetched == [sample("seven")]
+        assert samples.asked == [7]
+
+    def test_only_the_last_eight_are_kept(self, catalog, samples, web):
+        for n in range(1, PREVIEW_CACHE_SIZE + 2):
+            samples.names[n] = sample(str(n))
+            web.audio[sample(str(n))] = AUDIO
+            catalog.preview(n)
+        catalog.preview(1)
+        assert web.fetched.count(sample("1")) == 2
+
+    def test_an_oversized_body_is_refused_by_the_real_fetcher(self):
+        big = response(chunks=(b"x" * (MAX_PREVIEW_BYTES + 1),))
+        service = CatalogPreviewService(sample_lookup=lambda _id: sample("big"))
+        with mock.patch("requests.get", return_value=big):
+            assert service.preview(9) is None
+
+    def test_an_api_failure_falls_back_to_the_public_page(self, catalog, samples, web):
+        samples.fail = True
+        web.pages["https://www.beatport.com/track/t/7"] = sample("seven")
+        web.audio[sample("seven")] = AUDIO
+
+        assert catalog.preview(7) == PreviewAudio(AUDIO)
+        assert web.looked_up == ["https://www.beatport.com/track/t/7"]
+
+    def test_an_api_failure_and_an_unreadable_page_is_nothing(
+        self, catalog, samples, web
+    ):
+        samples.fail = True
+        assert catalog.preview(7) is None
+        assert web.fetched == []
+
+    def test_a_no_sample_answer_from_the_api_is_final(self, catalog, samples):
+        samples.names[7] = ""
+        assert catalog.preview(7) is None
+        assert catalog.preview(7) is None
+        assert samples.asked == [7]
+
+    def test_a_failure_is_not_asked_again_until_the_window_passes(
+        self, catalog, samples, web, clock
+    ):
+        samples.fail = True
+        assert catalog.preview(7) is None
+        clock.now += RETRY_FAILED_AFTER_SECONDS - 1
+        assert catalog.preview(7) is None
+        assert samples.asked == [7]
+        assert len(web.looked_up) == 1
+
+        clock.now += 2
+        web.pages["https://www.beatport.com/track/t/7"] = sample("seven")
+        web.audio[sample("seven")] = AUDIO
+        assert catalog.preview(7) == PreviewAudio(AUDIO)
+        assert samples.asked == [7, 7]
+
+    def test_a_page_with_no_sample_is_tried_again_after_the_window(
+        self, catalog, samples, web, clock
+    ):
+        samples.fail = True
+        web.pages["https://www.beatport.com/track/t/7"] = ""
+        assert catalog.preview(7) is None
+        clock.now += RETRY_FAILED_AFTER_SECONDS + 1
+        assert catalog.preview(7) is None
+        assert len(web.looked_up) == 2
+
+    def test_the_api_is_asked_outside_the_gate(self, samples, web):
+        held: list[bool] = []
+
+        class Gate(FetchGate):
+            busy = False
+
+            def run(self, key, request):
+                self.busy = True
+                try:
+                    return super().run(key, request)
+                finally:
+                    self.busy = False
+
+        gate = Gate()
+
+        def lookup(track_id: int) -> str:
+            held.append(gate.busy)
+            return ""
+
+        service = CatalogPreviewService(
+            gate=gate, fetcher=web.fetch, sample_lookup=lookup, page_lookup=web.lookup
+        )
+        service.preview(7)
+        assert held == [False]
+
+    def test_a_non_positive_cache_size_is_refused(self):
+        with pytest.raises(ValueError):
+            CatalogPreviewService(limit=0)

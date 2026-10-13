@@ -7582,3 +7582,25 @@ been played, so a DJ auditioning a list lost their place.
 - Not on Clean's Match table or Discover's Beatport results: their rows are not library tracks.
 
 **Decided with**: User (R4-6) · **Date**: 2026-10-13
+
+
+
+## DEC-269 — Beatport Previews for Discover's Catalog Tracks
+
+**Status**: Approved · **Related**: R4-7, DEC-076, DEC-012, DEC-066
+
+**Context**: Discover's Results, Wantlist and artist and label pages list Beatport tracks you don't own, with no
+way to hear them. One at a time already plays a match candidate's sample through the engine.
+
+**Decision**:
+- DEC-076's guarded-media rule extends to catalog tracks. `GET /api/v1/discover/tracks/{id}/preview` answers a
+  Beatport track id with the sample's MP3 bytes, or 204 when it has none or Beatport cannot be reached; the renderer
+  never loads a remote URL.
+- The sample URL comes from the catalog API (`get_track`, short timeout, no retry, outside the shared fetch gate);
+  signed out or offline, the public track page is read instead through the gate. Only an API answer of "no sample"
+  is remembered; a page's is retried after the gate's back-off.
+- The download is the candidate preview's: HTTPS on Beatport's sample host only, no redirects, 8 MB cap, the one
+  `FetchGate` shared with artwork, the last 8 previews in memory, nothing on disk.
+- Ids are 1 to 12 digits and below 2^31; anything else is 404.
+
+**Decided with**: User (R4-7, "Beatport previews: Discover results, wantlist, artist/label pages") · **Date**: 2026-10-13

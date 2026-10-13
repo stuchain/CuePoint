@@ -158,6 +158,7 @@ JOB_CANCEL_ROUTE = re.compile(r"^/api/v1/jobs/([^/]+)/cancel$")
 ARTWORK_ROUTE = re.compile(r"^/api/v1/library/tracks/(\d+)/artwork$")
 CANDIDATE_ARTWORK_ROUTE = re.compile(r"^/api/v1/clean/candidates/(\d+)/artwork$")
 CANDIDATE_PREVIEW_ROUTE = re.compile(r"^/api/v1/clean/candidates/(\d+)/preview$")
+CATALOG_PREVIEW_ROUTE = re.compile(r"^/api/v1/discover/tracks/(\d{1,12})/preview$")
 
 
 def _resolve_job_repository() -> Optional[Any]:
@@ -573,6 +574,36 @@ def make_handler(
                 audio = shared_preview_service().preview(int(raw_candidate_id))
             except LookupError as exc:
                 self._send_json(404, error_payload("CANDIDATE_NOT_FOUND", str(exc)))
+                return
+            except Exception as exc:  # noqa: BLE001 — surface to API client
+                self._send_unexpected(exc, error_payload("PREVIEW_FAILED", str(exc)))
+                return
+            if audio is None:
+                self._send_no_content()
+                return
+            self._send_audio(audio.data, audio.content_type)
+
+        def _handle_catalog_preview(self, raw_track_id: str) -> None:
+            """A Beatport catalog track's audio preview as MP3 bytes.
+
+            204 when the track has none or Beatport cannot be reached; 404 for
+            an id that is not a Beatport track id.
+            """
+            if not self._authorized():
+                self._send_json(
+                    401, error_payload("UNAUTHORIZED", "Missing or invalid token")
+                )
+                return
+            from cuepoint.engine.jobs import _ensure_services
+            from cuepoint.services.candidate_preview import (
+                shared_catalog_preview_service,
+            )
+
+            try:
+                _ensure_services()
+                audio = shared_catalog_preview_service().preview(int(raw_track_id))
+            except LookupError as exc:
+                self._send_json(404, error_payload("TRACK_NOT_FOUND", str(exc)))
                 return
             except Exception as exc:  # noqa: BLE001 — surface to API client
                 self._send_unexpected(exc, error_payload("PREVIEW_FAILED", str(exc)))
@@ -1067,6 +1098,10 @@ def make_handler(
             candidate_preview = CANDIDATE_PREVIEW_ROUTE.match(path)
             if candidate_preview:
                 self._handle_candidate_preview(candidate_preview.group(1))
+                return
+            catalog_preview = CATALOG_PREVIEW_ROUTE.match(path)
+            if catalog_preview:
+                self._handle_catalog_preview(catalog_preview.group(1))
                 return
             if clean_handles_get(path):
                 # Before the track prefix below, for the organization routes'

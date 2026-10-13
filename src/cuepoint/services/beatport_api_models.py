@@ -34,7 +34,9 @@ class CatalogTrack:
     ``url`` is the www.beatport.com page, never the API URL. ``key`` is in
     classic notation, converted from Beatport's own spelling, because every
     other key in CuePoint is classic or Camelot. ``release_date`` is
-    ``YYYY-MM-DD``. Anything Beatport left out is None or empty, never guessed.
+    ``YYYY-MM-DD``. ``sample_url`` is the audio preview on Beatport's sample
+    host, kept only when it passes ``is_beatport_media_url``. Anything Beatport
+    left out is None or empty, never guessed.
     """
 
     id: int
@@ -52,6 +54,7 @@ class CatalogTrack:
     key: Optional[str]
     genre_id: Optional[int]
     genre_name: Optional[str]
+    sample_url: Optional[str] = None
 
 
 @dataclass(frozen=True)

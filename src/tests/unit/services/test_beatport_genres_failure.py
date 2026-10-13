@@ -220,3 +220,19 @@ class TestGenresReadTimeout:
             server.close()
         assert caught.value.error_code == "BEATPORT_API_TIMEOUT"
         assert 7 <= elapsed < 12
+
+
+class TestGetTrackOptions:
+    """A catalog track read can carry a short timeout and no timeout retry."""
+
+    def test_options_are_passed_to_the_client(self):
+        client = _client(return_value=None)
+        BeatportApi(client).get_track(5, timeout=8, retry_on_timeout=False)
+        client.get.assert_called_once_with(
+            "/catalog/tracks/5/", timeout=8, retry_on_timeout=False
+        )
+
+    def test_without_options_the_call_is_as_it_was(self):
+        client = _client(return_value=None)
+        BeatportApi(client).get_track(5)
+        client.get.assert_called_once_with("/catalog/tracks/5/")

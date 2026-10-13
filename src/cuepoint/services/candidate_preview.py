@@ -58,6 +58,9 @@ PREVIEW_FETCH_TIMEOUT = BEATPORT_FETCH_TIMEOUT
 #: Candidates whose page was read, remembered at once.
 _PAGE_MEMORY_LIMIT = 512
 
+#: Beatport track ids are 32-bit; a larger number is not one.
+_MAX_TRACK_ID = 2**31 - 1
+
 #: Preview requests in flight at once.
 PREVIEW_FETCH_WORKERS = 2
 
@@ -75,6 +78,10 @@ class PreviewAudio:
 
 #: Downloads a preview; returns it, or None when it could not.
 PreviewFetcher = Callable[[str], Optional[PreviewAudio]]
+
+#: Finds a Beatport catalog track's sample through the API: a URL, or "" for
+#: none (the API's answer is authoritative). It may raise (no token, offline).
+SampleLookup = Callable[[int], str]
 
 #: Reads a Beatport track page; returns the sample it names, "" for none, or
 #: None when the page could not be read.
@@ -232,8 +239,147 @@ class CandidatePreviewService:
         return looked
 
 
+def api_sample_lookup(track_id: int) -> str:
+    """The sample Beatport's API names for a catalog track: a URL or "" for none.
+
+    Resolves a :class:`~cuepoint.services.beatport_api.BeatportApi` from the
+    container (a factory: each call gets a new client, whose HTTP session is
+    left to be collected, as the client has no close). The read has a short
+    timeout and is not retried at one, and the API client's own request gate
+    bounds it, so it is made outside the artwork gate. A track Beatport does
+    not know has no sample. Errors (no token, offline) are raised for the
+    caller to fall back from.
+    """
+    from cuepoint.services.beatport_api import BeatportApi
+    from cuepoint.utils.di_container import get_container
+
+    track = (
+        get_container()
+        .resolve(BeatportApi)
+        .get_track(track_id, timeout=BEATPORT_FETCH_TIMEOUT, retry_on_timeout=False)
+    )
+    return "" if track is None else (track.sample_url or "")
+
+
+class CatalogPreviewService:
+    """Serves a Beatport catalog track's preview as bytes, remembering the last few.
+
+    The renderer asks by Beatport track id (Discover results, wantlist, artist
+    and label pages list tracks that are not in the library). The sample is
+    found through the API, falling back to the public track page when the API
+    cannot answer, then downloaded under the same guards as a candidate's.
+    """
+
+    def __init__(
+        self,
+        *,
+        gate: FetchGate | None = None,
+        fetcher: PreviewFetcher = fetch_preview,
+        sample_lookup: SampleLookup = api_sample_lookup,
+        page_lookup: PagePreviewLookup = lookup_page_preview,
+        limit: int = PREVIEW_CACHE_SIZE,
+    ) -> None:
+        """Store collaborators; tests replace the three that meet the network.
+
+        Raises:
+            ValueError: If ``limit`` is not positive.
+        """
+        if limit <= 0:
+            raise ValueError("A preview cache needs a positive size")
+        self._gate = (
+            gate if gate is not None else FetchGate(workers=PREVIEW_FETCH_WORKERS)
+        )
+        self._fetch = fetcher
+        self._lookup_sample = sample_lookup
+        self._lookup_page = page_lookup
+        self._limit = int(limit)
+        self._lock = threading.Lock()
+        self._previews: OrderedDict[int, PreviewAudio] = OrderedDict()
+        self._samples: OrderedDict[int, str] = OrderedDict()
+
+    def preview(self, beatport_track_id: int) -> PreviewAudio | None:
+        """A catalog track's preview audio, or None when it has none.
+
+        Raises:
+            LookupError: If the id is not a positive Beatport track id.
+        """
+        from cuepoint.data.beatport import is_beatport_media_url
+
+        try:
+            tid = int(beatport_track_id)
+        except (TypeError, ValueError):
+            tid = 0
+        if tid <= 0 or tid > _MAX_TRACK_ID:
+            raise LookupError("That is not a Beatport track id")
+        with self._lock:
+            kept = self._previews.get(tid)
+            if kept is not None:
+                self._previews.move_to_end(tid)
+                return kept
+        source = self._sample(tid)
+        if not source or not is_beatport_media_url(source):
+            return None
+        data = self._gate.run(f"preview:{source}", lambda: self._fetch(source))
+        if data is None:
+            return None
+        with self._lock:
+            self._previews[tid] = data
+            self._previews.move_to_end(tid)
+            while len(self._previews) > self._limit:
+                self._previews.popitem(last=False)
+        return data
+
+    def _sample(self, tid: int) -> str | None:
+        """The sample a track names, found once and held in memory.
+
+        The API is asked outside the gate (it has its own request gate, and a
+        slow answer must not hold one of the artwork slots). Its answer, even
+        "" for no sample, is final and kept. Only when it cannot answer is the
+        public page read, through the gate, which remembers a failure for a
+        while: inside that window neither is asked again. A page's "" is not
+        kept, so the page is tried again later.
+        """
+        key = f"catalog-sample:{tid}"
+        with self._lock:
+            if tid in self._samples:
+                return self._samples[tid]
+        if self._gate.recently_failed(key):
+            return None
+        try:
+            answered = self._lookup_sample(tid)
+        except Exception as exc:  # noqa: BLE001 — no token or offline: try the page
+            _logger.debug(
+                "[preview] API could not name track %s's sample: %s", tid, exc
+            )
+        else:
+            self._remember(tid, answered)
+            return answered
+        looked = self._gate.run(key, lambda: self._read_page(tid))
+        if looked:
+            self._remember(tid, looked)
+        return looked or None
+
+    def _remember(self, tid: int, sample: str) -> None:
+        with self._lock:
+            self._samples[tid] = sample
+            self._samples.move_to_end(tid)
+            while len(self._samples) > _PAGE_MEMORY_LIMIT:
+                self._samples.popitem(last=False)
+
+    def _read_page(self, tid: int) -> str | None:
+        """The public track page's sample; None (a failure) when it names none."""
+        from cuepoint.services.beatport_catalog import track_web_url
+
+        try:
+            return self._lookup_page(track_web_url(tid, None)) or None
+        except Exception as exc:  # noqa: BLE001 — offline is an empty state
+            _logger.debug("[preview] page for track %s unreadable: %s", tid, exc)
+            return None
+
+
 _shared_lock = threading.Lock()
 _shared: Optional[tuple[object, CandidatePreviewService]] = None
+_shared_catalog: Optional[tuple[object, CatalogPreviewService]] = None
 
 
 def shared_preview_service() -> CandidatePreviewService:
@@ -265,13 +411,37 @@ def shared_preview_service() -> CandidatePreviewService:
         return _shared[1]
 
 
+def shared_catalog_preview_service() -> CatalogPreviewService:
+    """The engine's one catalog preview service, on the artwork service's gate."""
+    global _shared_catalog
+    from cuepoint.utils.di_container import get_container
+
+    container = get_container()
+    with _shared_lock:
+        if _shared_catalog is None or _shared_catalog[0] is not container:
+            from cuepoint.services.interfaces import IArtworkService
+
+            _shared_catalog = (
+                container,
+                CatalogPreviewService(
+                    gate=getattr(container.resolve(IArtworkService), "gate", None),
+                    fetcher=fetch_preview,
+                    sample_lookup=api_sample_lookup,
+                    page_lookup=lookup_page_preview,
+                ),
+            )
+        return _shared_catalog[1]
+
+
 __all__ = (
     "MAX_PREVIEW_BYTES",
     "PREVIEW_CACHE_SIZE",
     "PREVIEW_FETCH_TIMEOUT",
     "CandidatePreviewService",
+    "CatalogPreviewService",
     "PreviewAudio",
     "fetch_preview",
     "lookup_page_preview",
+    "shared_catalog_preview_service",
     "shared_preview_service",
 )

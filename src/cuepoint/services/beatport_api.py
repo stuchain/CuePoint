@@ -458,12 +458,26 @@ class BeatportApi:
         """
         self._client.require_token()
 
-    def get_track(self, track_id: int) -> Optional[CatalogTrack]:
-        """One catalog track by id, or None when Beatport has no such track."""
+    def get_track(
+        self,
+        track_id: int,
+        timeout: Optional[float] = None,
+        retry_on_timeout: bool = True,
+    ) -> Optional[CatalogTrack]:
+        """One catalog track by id, or None when Beatport has no such track.
+
+        ``timeout`` and ``retry_on_timeout`` are passed to the client for this
+        read only; left alone, the read has the client's own budget.
+        """
         tid = positive_id(track_id)
         if tid is None:
             return None
-        return parse_catalog_track(self._client.get(f"/catalog/tracks/{tid}/"))
+        path = f"/catalog/tracks/{tid}/"
+        if timeout is None and retry_on_timeout:
+            return parse_catalog_track(self._client.get(path))
+        return parse_catalog_track(
+            self._client.get(path, timeout=timeout, retry_on_timeout=retry_on_timeout)
+        )
 
     def get_tracks(self, track_ids: Iterable[int]) -> List[CatalogTrack]:
         """Catalog tracks by id, in the order asked, leaving out any not found.

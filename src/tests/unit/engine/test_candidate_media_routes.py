@@ -439,3 +439,71 @@ class TestCandidatePreview:
 
         assert status == 500
         assert b"PREVIEW_FAILED" in body
+
+
+# ------------------------------------------------------- catalog track preview
+
+
+class TestCatalogPreviewRoute:
+    @pytest.fixture(autouse=True)
+    def _samples(self, monkeypatch):
+        self.names = {}
+        monkeypatch.setattr(
+            candidate_preview, "api_sample_lookup", lambda tid: self.names.get(tid, "")
+        )
+        monkeypatch.setattr(candidate_preview, "_shared_catalog", None)
+
+    def test_a_track_with_a_sample_is_mpeg(self, engine, web):
+        self.names[77] = SAMPLE.format("seven")
+        web.audio[SAMPLE.format("seven")] = PreviewAudio(AUDIO)
+
+        status, headers, body = get(engine, "/api/v1/discover/tracks/77/preview")
+
+        assert status == 200
+        assert headers["Content-Type"] == "audio/mpeg"
+        assert body == AUDIO
+
+    def test_no_sample_is_204(self, engine, web):
+        self.names[77] = ""
+        status, _, body = get(engine, "/api/v1/discover/tracks/77/preview")
+        assert (status, body) == (204, b"")
+
+    def test_an_api_failure_and_an_unreadable_page_is_204(
+        self, engine, web, monkeypatch
+    ):
+        def down(tid):
+            raise RuntimeError("no token")
+
+        monkeypatch.setattr(candidate_preview, "api_sample_lookup", down)
+        status, _, body = get(engine, "/api/v1/discover/tracks/77/preview")
+        assert (status, body) == (204, b"")
+
+    def test_a_very_long_id_is_not_a_route(self, engine, web):
+        status, _, _ = get(engine, "/api/v1/discover/tracks/" + "9" * 13 + "/preview")
+        assert status == 404
+
+    def test_an_id_beyond_32_bits_is_404(self, engine, web):
+        status, _, body = get(engine, "/api/v1/discover/tracks/99999999999/preview")
+        assert status == 404
+        assert b"TRACK_NOT_FOUND" in body
+
+    def test_it_needs_the_token(self, engine, web):
+        status, _, _ = get(engine, "/api/v1/discover/tracks/77/preview", token=None)
+        assert status == 401
+
+    def test_id_zero_is_404(self, engine, web):
+        status, _, body = get(engine, "/api/v1/discover/tracks/0/preview")
+        assert status == 404
+        assert b"TRACK_NOT_FOUND" in body
+
+    def test_a_failure_inside_is_500(self, engine, web, monkeypatch):
+        class Broken:
+            def preview(self, track_id):
+                raise RuntimeError("boom")
+
+        monkeypatch.setattr(
+            candidate_preview, "shared_catalog_preview_service", lambda: Broken()
+        )
+        status, _, body = get(engine, "/api/v1/discover/tracks/5/preview")
+        assert status == 500
+        assert b"PREVIEW_FAILED" in body
