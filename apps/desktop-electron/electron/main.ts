@@ -53,6 +53,9 @@ import type {
 import { resolvePlayerBinary } from "./playerLaunch";
 import { PlayerSupervisor } from "./playerSupervisor";
 import { quitAfter } from "./quitAfter";
+import { inFlight, callsBetween, setEngineCallSink } from "./engineCallTiming";
+import { createMainLog, type MainLog } from "./mainLog";
+import { createPageSwitchLog, type PageSwitchLog } from "./pageSwitchLog";
 import { locateBundle, prepareMacUpdate, startInstall } from "./macInstaller";
 import { fetchReleases } from "./releaseList";
 import { scrubText } from "./reportScrub";
@@ -578,6 +581,10 @@ function statisticsParams(raw: unknown): StatisticsPlaysParams | undefined {
 let appMenu: ReturnType<typeof installAppMenu> | null = null;
 
 function registerIpcHandlers(): void {
+  // A page was drawn (fire and forget); the page name and time are checked in `pageSwitchLog`.
+  ipcMain.on("app:pageSwitch", (_event, page: unknown, drawMs: unknown) => {
+    pageSwitchLog?.report(page, drawMs);
+  });
   // The renderer's sizes and the current one, for View → Size (FLW-20).
   handle("menu:setSizeState", (_event, state: unknown) => {
     appMenu?.setSizeState(state);
@@ -1319,6 +1326,27 @@ function registerIpcHandlers(): void {
   );
 }
 
+/**
+ * `main.log`, in the engine's logs folder so "Open logs folder" and the support bundle carry it.
+ * Started once the engine's start is in flight (its folder is asked of the engine, which waits
+ * for that start); until then, and for a few seconds after, lines are held.
+ */
+let mainLog: MainLog | null = null;
+let pageSwitchLog: PageSwitchLog | null = null;
+
+function startMainLog(): void {
+  if (mainLog !== null) return;
+  const log = createMainLog({
+    resolveDir: () => engine.getLogsDir().then((r) => r.logs_dir),
+    fallbackDir: app.getPath("logs"),
+  });
+  mainLog = log;
+  // Slow engine calls, by route, with no query and no id.
+  setEngineCallSink((message, fields) => log.warn("bridge", message, fields));
+  pageSwitchLog = createPageSwitchLog({ log, now: () => performance.now(), inFlight, callsBetween });
+  log.info("app", "started", { version: app.getVersion(), platform: process.platform, arch: process.arch });
+}
+
 async function createWindow(): Promise<void> {
   /**
    * The engine starts beside the window, not before it.
@@ -1349,6 +1377,8 @@ async function createWindow(): Promise<void> {
       reportOnce("engine.start", error, { tags: { "engine.phase": "start" } });
     },
   );
+
+  startMainLog();
 
   const size = { width: 1280, height: 800 };
   // An end-to-end run's window goes where it asks and is shown without focus

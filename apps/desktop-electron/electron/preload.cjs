@@ -452,6 +452,9 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
       };
     },
   },
+  // How long a page took to draw, by destination id (fire and forget): main logs it with how long
+  // the engine then took to settle.
+  reportPageSwitch: (page, drawMs) => ipcRenderer.send("app:pageSwitch", page, drawMs),
   errorReporting: {
     get: () => ipcRenderer.invoke("errorReporting:get"),
     set: (enabled) => ipcRenderer.invoke("errorReporting:set", enabled),

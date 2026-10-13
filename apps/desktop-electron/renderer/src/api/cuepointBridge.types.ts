@@ -3856,6 +3856,8 @@ export interface CuePointBridge {
   buildInfo?: () => Promise<AppBuildInfo>;
   /** The updater (DIST-06). Absent in a browser tab, or in an older shell. */
   updates?: UpdatesBridge;
+  /** How long a page took to draw, by destination id, for main's log. Absent in a browser tab. */
+  reportPageSwitch?: (page: string, drawMs: number) => void;
   errorReporting?: {
     get: () => Promise<ErrorReportingState>;
     set: (enabled: boolean) => Promise<ErrorReportingState>;

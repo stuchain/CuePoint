@@ -1,6 +1,10 @@
 /** Authenticated HTTP client for the loopback engine (main process only). */
 
 import { collectSseUntilTerminal } from "./sseClient.js";
+import { timedFetch } from "./engineCallTiming.js";
+
+// Every call in this module goes through the timer; the global `fetch` is shadowed here.
+const fetch = timedFetch;
 
 export interface EngineApiError {
   code: string;

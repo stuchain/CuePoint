@@ -2156,6 +2156,14 @@ describe("desktop contract", () => {
     });
   });
 
+  describe("page switch timing (C19a)", () => {
+    it("crosses the bridge as one fire-and-forget channel main listens on", () => {
+      expect(preload).toContain('ipcRenderer.send("app:pageSwitch", page, drawMs)');
+      expect(main).toContain('ipcMain.on("app:pageSwitch"');
+      expect(bridgeTypes).toContain("reportPageSwitch?:");
+    });
+  });
+
   describe("the build (REPORT-07)", () => {
     it("crosses the bridge as app:buildInfo, typed", () => {
       expect(invokedChannels(preload)).toContain("app:buildInfo");

@@ -7735,3 +7735,21 @@ search's details in a six-line block; an empty Wantlist drew a toolbar, a column
 - Discover uses the shared page header (ScreenHeader) with its tabs.
 
 **Decided with**: User (K6, K17, "apply ALL") · **Date**: 2026-10-13
+
+## DEC-276 — The Desktop Logs What Is Slow
+
+**Status**: Approved · **Related**: C19a, G1 B1, REPORT-06
+
+**Context**: Page switching felt slow on Stelios's Windows PC and could not be made slow here (C19). Main wrote no
+log of its own, so nothing on his PC could say which engine call or which page took the time.
+
+**Decision**:
+- Main writes `main.log` in the engine's logs folder, so the Log viewer's folder and the support bundle carry it.
+  It waits up to 30 s for the engine to name that folder, writes to Electron's own logs folder meanwhile, and moves
+  there when the engine answers later. 1 MB, three files kept.
+- An engine call that takes over 1 s is one `bridge` line: method, route with ids as `:id`, status, time, calls in
+  flight. Never the query, a header, a token, a path or a name. SSE streams and `/health` are left out.
+- Every page switch is one `page` line: the destination id, time to draw, time until the engine went quiet (150 ms
+  with nothing in flight, at most 15 s), how many calls and the slowest. WARN when drawing or settling takes over 1 s.
+
+**Decided with**: User (C19, "apply ALL"; diagnostic build first ★) · **Date**: 2026-10-13

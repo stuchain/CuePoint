@@ -80,7 +80,7 @@ import type { CleanTracks } from "./screens/clean/cleanTracks";
 import { MotionProvider } from "./tokens/MotionContext";
 import { ScaleProvider } from "./tokens/ScaleContext";
 import { ThemeProvider } from "./tokens/ThemeContext";
-import { E2eCrashProbe, ErrorBoundary, useNavigationBreadcrumbs } from "./reporting";
+import { E2eCrashProbe, ErrorBoundary, useNavigationBreadcrumbs, usePageTiming } from "./reporting";
 import { Phase14Note } from "./components/Phase14Note";
 import { WhatsNew } from "./components/updates/WhatsNew";
 import { phase14NoteDue, shouldShowOnboarding } from "./components/firstRunMemory";
@@ -147,6 +147,8 @@ function AppShell() {
   useRememberDestination();
   // A step for each destination opened, by its id (REPORT-06).
   useNavigationBreadcrumbs();
+  // How long each page takes to draw, for main.log.
+  usePageTiming();
 
   /**
    * Each destination's page sits in its own error boundary, so a page that throws shows
