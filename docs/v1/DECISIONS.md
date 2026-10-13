@@ -7179,3 +7179,40 @@ slow day left no trace of which route was slow.
 - Timing can never fail a request.
 
 **Decided with**: Claude (C19 scope, "apply ALL") · **Date**: 2026-10-13
+
+## DEC-253 — Theme Contrast Floors, and Fill, Status, Link and Focus Colours
+
+**Status**: Approved · **Related**: DEC-161, DEC-241, THEME-REVIEW T3 T5 T13 T16, R2-6, R2-7, R2-8, N6
+
+**Context**: The round 2 theme review found built-in themes whose surfaces could not be told apart
+(Retro 16's border 1.01:1 on its panel, Classic and Club neon alt panels near 1.1:1), white text on
+Neo dark's violet button at 4.06:1, greyed text under 3:1 in Classic and Muted, and a warning colour
+in Muted that was the accent's own amber. Focus rings borrowed the accent, which is under 3:1 on some
+surfaces. Custom themes derived their alt panel darker than the panel, the wrong way in a dark theme.
+
+**Decision**:
+- `tokens/themeContrast.test.ts` holds every built-in theme, and every custom theme through
+  `deriveThemeTokens`, to these floors: page → panel ≥ 1.05:1 and panel → alt panel ≥ 1.15:1, moving
+  away from the page; `--border-muted` ≥ 1.5:1, accent and success ≥ 3:1, `--fg-muted` ≥ 4.5:1,
+  `--fg-disabled` ≥ 3:1 on the panel; button text ≥ 4.5:1 on `--accent-fill` and `--danger-fill`;
+  `--fg-on-status` ≥ 4.5:1 on success, warning, info and danger; `--link` ≥ 4.5:1 on page and panel;
+  `--focus-ring-color` ≥ 3:1 on page, panel, alt panel and toolbar; warning ≥ 10° of hue from the accent.
+  A custom theme's own picks (its muted text, accent, page-to-panel step) are exempt, and a floor no
+  colour can reach falls to what black or white reaches.
+- New theme tokens: `--accent-fill`, `--danger-fill`, `--fg-on-status`, `--link`, `--focus-ring-color`,
+  `--color-scheme` (native controls follow it). `--accent-primary` is unchanged in every theme.
+- New structural tokens: `--divider` (one hairline line), `--text-body`/`--text-label`/`--text-heading`,
+  `--focus-ring`. Shared classes `.cp-link`, `.cp-data`, `.cp-status--action|problem|done`;
+  checkboxes and radios take the accent; fieldsets lose the browser frame.
+- Value fixes: Retro 16 panel `#22344d`, alt `#2d4563`, border `#5a7ba6`; Classic alt `#383838`,
+  border `#4a4a4a`, greyed `#7a7a7a`, muted `#909090`; Club neon alt `#24243a`, border `#3a3a58`;
+  Muted border `#4b5568`, greyed `#7d8593`, warning `#fde047`.
+- Custom themes: the alt panel steps away from the page; text on the button fill is whichever of black
+  or white reads better.
+
+**Rejected**: the review's 1.15:1 page → panel floor (Classic and Club neon are near-flat pages by
+design; `--divider` draws the edge); the accent as the focus ring; Muted warning `#eab308`.
+
+**Notes**: DEC-161 (whole pixels unchanged). R4-2's key colours are not in the theme files.
+
+**Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13

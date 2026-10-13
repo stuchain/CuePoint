@@ -62,6 +62,13 @@
     rgba(0, 0, 0, 0.45);
   --tab-underline: max(2px, round(down, calc(2px * var(--scale)), 1px));
 
+  /* One divider and the text roles (G6); the colours are theme tokens. */
+  --divider: var(--hairline) solid var(--border-muted);
+  --text-body: var(--font-size-xs);
+  --text-label: var(--font-size-xs);
+  --text-heading: var(--font-size-sm);
+  --focus-ring: var(--focus-ring-color);
+
   /* Spacing */
   --space-xs: calc(var(--unit) * 1);
   --space-sm: calc(var(--unit) * 1.5);
@@ -99,6 +106,9 @@
 
   /* Pixel icons: a multiple of the 12px grid, so cells stay whole pixels */
   --icon-size: calc(24px * var(--scale));
+
+  /* Native controls follow the theme (a custom light theme gets light ones); dark until one is set. */
+  color-scheme: var(--color-scheme, dark);
 }
 
 html,

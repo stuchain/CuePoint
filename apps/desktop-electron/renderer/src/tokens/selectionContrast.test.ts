@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import clubNeon from "./themes/clubNeon.css?raw";
-import mutedPro from "./themes/mutedPro.css?raw";
-import neoDark from "./themes/neoDark.css?raw";
-import qtEvolved from "./themes/qtEvolved.css?raw";
-import retro16 from "./themes/retro16.css?raw";
-import { NEO_DARK_EDITOR_COLORS, type CustomThemeColors } from "./customThemes";
+import { NEO_DARK_EDITOR_COLORS } from "./customThemes";
+import { CUSTOM_PALETTES, THEMES, themeTokens } from "./themeFixtures";
 import { contrastRatio, deriveThemeTokens } from "./themeDerivation";
 import { declarations, parseRules, stripComments } from "../test/cssRules";
 
@@ -14,16 +10,6 @@ import { declarations, parseRules, stripComments } from "../test/cssRules";
  * selected fill, its accent bar and a control's border stand out at 3:1, and the active
  * tab's underline too. Computed from the themes' own values, not a browser.
  */
-const THEMES: Record<string, string> = { clubNeon, mutedPro, neoDark, qtEvolved, retro16 };
-
-function themeTokens(css: string): Record<string, string> {
-  const found: Record<string, string> = {};
-  for (const match of css.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-fA-F]{3,8});/g)) {
-    found[match[1]!] = match[2]!;
-  }
-  return found;
-}
-
 /** `color-mix(in srgb, <top> <percent>%, <base>)` in sRGB. */
 function mix(top: string, base: string, percent: number): string {
   const channel = (hex: string, at: number) => parseInt(hex.slice(1 + at * 2, 3 + at * 2), 16);
@@ -37,31 +23,6 @@ function mix(top: string, base: string, percent: number): string {
 
 const TOKENS_CSS = (await import("./tokens.css?raw")).default;
 const SELECTED_MIX = Number(/--bg-selected:\s*color-mix\(in srgb,\s*var\(--accent-primary\)\s*(\d+)%/.exec(TOKENS_CSS)?.[1]);
-
-/**
- * Seeded custom palettes beyond the default, checked for the control border only (a custom
- * theme's accent is the user's choice, so its bar contrast is theirs): a light theme, mid-tones (the second is the one
- * the old two-step derivation left at 2.46:1) and a saturated accent. Every theme, built-in or
- * custom, sets --tab-underline-color: the accent, moved only as far as 3:1 on the toolbar needs,
- * so a custom theme never inherits a built-in theme's underline.
- */
-const palette = (bgApp: string, bgPanel: string, bgInput: string, fg: string, muted: string, accent: string): CustomThemeColors => ({
-  ...NEO_DARK_EDITOR_COLORS,
-  bgApp,
-  bgPanel,
-  bgInput,
-  fgPrimary: fg,
-  fgMuted: muted,
-  accentPrimary: accent,
-});
-const CUSTOM_PALETTES: [string, CustomThemeColors][] = [
-  ["custom light", palette("#f2f2f5", "#e4e4ea", "#ffffff", "#1a1a1f", "#5a5a66", "#2563eb")],
-  ["custom mid blue", palette("#4d72b5", "#5b7dbb", "#3f5f99", "#ffffff", "#dbe4f5", "#f59e0b")],
-  ["custom mid grey", palette("#808080", "#8c8c8c", "#707070", "#ffffff", "#e8e8e8", "#1d4ed8")],
-  ["custom mid green", palette("#4a7c59", "#5a8c69", "#3f6b4d", "#ffffff", "#e0f0e5", "#fbbf24")],
-  ["custom saturated", palette("#1a0033", "#2d0a55", "#12001f", "#ffffff", "#c9b6e6", "#ff00cc")],
-  ["custom near-black", palette("#000000", "#0a0a0a", "#050505", "#ffffff", "#b0b0b0", "#00e5ff")],
-];
 
 const CASES: [string, Record<string, string>][] = [
   ...Object.entries(THEMES).map(([name, css]) => [name, themeTokens(css)] as [string, Record<string, string>]),

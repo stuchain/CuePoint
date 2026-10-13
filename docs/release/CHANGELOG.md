@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - When CuePoint loses touch with its background process, an action that fails says so in one sentence ("CuePoint lost touch with its background process. Nothing was changed.", or "…partway through. Activity shows what was done." for work already started) instead of "fetch failed". A feature that only works in the desktop app says "This needs the CuePoint desktop app."
+- **Clearer themes.** Every built-in theme now keeps its panels, borders, greyed text, buttons and status colours readable against each other: Retro 16's panels and borders show again, Classic and Club neon's raised panels stand out, white on Neo dark's buttons is easier to read, and Muted's warnings are yellow, not the accent's amber. Custom themes follow the same rules (DEC-253).
 - Discover's banner says **Sign in to Beatport** (or **Sign in again**, also when Beatport refused the token) with the button beside it, where it said Open Settings. Settings → Beatport lost its "How do I get a token?" help.
 - The Camelot wheel (header and Keys page) is drawn as smooth wedges with even gaps.
 - **The key wheel's labels have room.** Key names sit clear of the wedge edges, with the track count a little smaller beneath them.

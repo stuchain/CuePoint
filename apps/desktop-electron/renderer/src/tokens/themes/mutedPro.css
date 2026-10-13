@@ -10,7 +10,7 @@
   --border-shadow: #111318;
   --border-outline: #000000;
   --border-light: #9ca3af;
-  --border-muted: #3d4656;
+  --border-muted: #4b5568;
   --border-control: #7b8190;
   --tab-underline-color: #f59e0b;
   --bevel-highlight: #6b7280;
@@ -18,8 +18,9 @@
 
   --fg-primary: #e8eaed;
   --fg-muted: #9ca3af;
-  --fg-disabled: #6b7280;
+  --fg-disabled: #7d8593;
   --fg-inverse: #1c1f26;
+  --fg-on-status: #000000;
 
   --accent-primary: #f59e0b;
   --accent-primary-hover: #fbbf24;
@@ -27,9 +28,16 @@
   --accent-secondary: #343d4f;
   --accent-secondary-hover: #3d4656;
   --accent-success: #10b981;
-  --accent-warning: #f59e0b;
+  --accent-warning: #fde047;
   --accent-danger: #ef4444;
   --accent-info: #38bdf8;
+
+  /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */
+  --accent-fill: #f59e0b;
+  --danger-fill: #b91c1c;
+  --link: #f59e0b;
+  --focus-ring-color: #f59e0b;
+  --color-scheme: dark;
 
   --overlay-header: rgba(0, 0, 0, 0.18);
   --overlay-backdrop: rgba(0, 0, 0, 0.7);

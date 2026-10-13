@@ -23,3 +23,48 @@ input,
 select {
   font: inherit;
 }
+
+:where(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--accent-primary);
+  width: var(--font-size-sm);
+  height: var(--font-size-sm);
+}
+
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+legend {
+  color: var(--fg-muted);
+  font-size: var(--text-label);
+}
+
+/* One link colour (T13). */
+.cp-link {
+  color: var(--link);
+}
+
+.cp-link:hover {
+  text-decoration: underline;
+}
+
+/* Dense data: the data face with figures that line up (DEC-048, T7). */
+.cp-data {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+/* What a status means, not which hue: something to do, something wrong, something done (T5). */
+.cp-status--action {
+  color: var(--accent-warning);
+}
+
+.cp-status--problem {
+  color: var(--accent-danger);
+}
+
+.cp-status--done {
+  color: var(--accent-success);
+}

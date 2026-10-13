@@ -21,6 +21,7 @@ const TOKEN_KEYS = [
   "fg-muted",
   "fg-disabled",
   "fg-inverse",
+  "fg-on-status",
   "accent-primary",
   "accent-primary-hover",
   "accent-primary-pressed",
@@ -30,6 +31,11 @@ const TOKEN_KEYS = [
   "accent-warning",
   "accent-danger",
   "accent-info",
+  "accent-fill",
+  "danger-fill",
+  "link",
+  "focus-ring-color",
+  "color-scheme",
   "overlay-header",
   "overlay-backdrop",
   "row-unmatched-bg",
@@ -138,6 +144,66 @@ export function controlBorder(panel: string, toolbar: string, min = 3): string {
   return worst("#ffffff") >= worst("#000000") ? "#ffffff" : "#000000";
 }
 
+/** The least contrast a panel edge (--border-muted) keeps on the panel. */
+const BORDER_MUTED_MIN_CONTRAST = 1.5;
+/** The least contrast the panel-alt surface keeps against the panel. */
+const PANEL_ALT_MIN_CONTRAST = 1.15;
+
+/** Black or white, whichever reads better on `bg`. */
+export function betterText(bg: string): string {
+  return contrastRatio("#000000", bg) >= contrastRatio("#ffffff", bg) ? "#000000" : "#ffffff";
+}
+
+/**
+ * `hex`, moved towards white or black until it stands at `min` against every one of
+ * `backgrounds`. A colour already there is kept. Otherwise it steps towards the end on its own
+ * side of the backgrounds (lighter if it is lighter than they are on average), so its hue and
+ * character survive a small nudge; only if that end cannot reach `min` does it go the other way.
+ * When neither end reaches `min` (a mid-grey page has no 4.5:1 colour) it returns the end with
+ * the better worst case.
+ */
+export function holdContrast(hex: string, backgrounds: string[], min: number): string {
+  const colour = normalizeHex(hex);
+  const worst = (c: string) => Math.min(...backgrounds.map((b) => contrastRatio(c, b)));
+  if (worst(colour) >= min) return colour;
+  const mean = backgrounds.reduce((sum, b) => sum + relativeLuminance(b), 0) / backgrounds.length;
+  const lighterSide = relativeLuminance(colour) > mean;
+  const ends = lighterSide ? ["#ffffff", "#000000"] : ["#000000", "#ffffff"];
+  const end = ends.find((e) => worst(e) >= min);
+  if (!end) return worst("#ffffff") >= worst("#000000") ? "#ffffff" : "#000000";
+  const towardsWhite = end === "#ffffff";
+  for (let step = 1; step <= 40; step += 1) {
+    const candidate = towardsWhite ? lighten(colour, step / 40) : darken(colour, step / 40);
+    if (worst(candidate) >= min) return candidate;
+  }
+  return end;
+}
+
+/**
+ * The panel-alt surface: the panel stepped away from the page until it stands PANEL_ALT_MIN_CONTRAST
+ * from the panel, lighter in a dark theme and darker in a light one. If that way runs out (a panel
+ * already at white or black), it steps the other way. That is the one exception to "alt is further
+ * from the page than the panel": a white panel on a grey page ends with an alt between the two.
+ */
+function stepAwayFrom(bgApp: string, bgPanel: string, min: number): string {
+  const lighter = relativeLuminance(bgPanel) >= relativeLuminance(bgApp);
+  const towards = (amount: number, up: boolean) => (up ? lighten(bgPanel, amount) : darken(bgPanel, amount));
+  for (const up of [lighter, !lighter]) {
+    for (let step = 1; step <= 40; step += 1) {
+      const candidate = towards(step / 40, up);
+      if (contrastRatio(candidate, bgPanel) >= min) return candidate;
+    }
+  }
+  return towards(1, lighter);
+}
+
+/** A colour of the same hue as `hex`, taken `amount` of the way to `towards`. */
+function blend(hex: string, towards: string, amount: number): string {
+  const a = hexToRgb(hex);
+  const b = hexToRgb(towards);
+  return rgbToHex(a.r + (b.r - a.r) * amount, a.g + (b.g - a.g) * amount, a.b + (b.b - a.b) * amount);
+}
+
 function rgba(hex: string, alpha: number): string {
   const { r, g, b } = hexToRgb(hex);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
@@ -175,13 +241,31 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
   const accentPrimary = normalizeHex(colors.accentPrimary);
 
   const bgToolbar = darken(bgApp, 0.05);
-  const bgPanelAlt = darken(bgPanel, 0.08);
+  const bgPanelAlt = stepAwayFrom(bgApp, bgPanel, PANEL_ALT_MIN_CONTRAST);
   const borderShadow = darken(bgApp, 0.2);
   const borderHighlight = lighten(bgPanel, 0.15);
   const borderLight = lighten(bgPanel, 0.22);
-  const borderMuted = darken(bgPanel, 0.12);
+  // The hairline divider: the old step below the panel, moved until it holds 1.5:1 on the panel.
+  const borderMuted = holdContrast(darken(bgPanel, 0.12), [bgPanel], BORDER_MUTED_MIN_CONTRAST);
   // A control's edge reads at 3:1 against the toolbar and the panel it sits on.
   const borderControl = controlBorder(bgPanel, bgToolbar);
+
+  // Text on the accent: black or white, whichever reads better, so a mid-tone accent keeps its colour.
+  const fgInverse = betterText(accentPrimary);
+  // Info is the accent a step lighter, and never under 3:1 on the panel where that can be held
+  // (it is still the focus outline until the sweep); where black text on it then falls short, the
+  // status text below turns white instead.
+  const accentInfo = holdContrast(lighten(accentPrimary, 0.05), [bgPanel], 3);
+  const accentSuccess = normalizeHex(colors.accentSuccess);
+  const accentWarning = normalizeHex(colors.accentWarning);
+  const accentDanger = normalizeHex(colors.accentDanger);
+  // Text on the four status colours: black while it reads at 4.5:1 on all of them, else whichever
+  // of black and white has the better worst case.
+  const statuses = [accentSuccess, accentWarning, accentInfo, accentDanger];
+  const worstOn = (text: string) => Math.min(...statuses.map((c) => contrastRatio(text, c)));
+  const fgOnStatus = worstOn("#000000") >= 4.5 || worstOn("#000000") >= worstOn("#ffffff") ? "#000000" : "#ffffff";
+  const link = holdContrast(accentPrimary, [bgApp, bgPanel], 4.5);
+  const focusRing = holdContrast(accentPrimary, [bgApp, bgPanel, bgPanelAlt, bgToolbar], 3);
 
   return {
     "bg-app": bgApp,
@@ -201,17 +285,25 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "bevel-shadow": borderShadow,
     "fg-primary": fgPrimary,
     "fg-muted": fgMuted,
-    "fg-disabled": fgMuted,
-    "fg-inverse": pickContrastText(accentPrimary),
+    // Greyed text: the muted colour dimmed towards the panel, then held at 3:1 on it.
+    "fg-disabled": holdContrast(blend(fgMuted, bgPanel, 0.4), [bgPanel], 3),
+    "fg-inverse": fgInverse,
+    "fg-on-status": fgOnStatus,
     "accent-primary": accentPrimary,
     "accent-primary-hover": lighten(accentPrimary, 0.12),
     "accent-primary-pressed": darken(accentPrimary, 0.12),
     "accent-secondary": bgPanelAlt,
     "accent-secondary-hover": lighten(bgPanelAlt, 0.08),
-    "accent-success": normalizeHex(colors.accentSuccess),
-    "accent-warning": normalizeHex(colors.accentWarning),
-    "accent-danger": normalizeHex(colors.accentDanger),
-    "accent-info": lighten(accentPrimary, 0.05),
+    "accent-success": accentSuccess,
+    "accent-warning": accentWarning,
+    "accent-danger": accentDanger,
+    "accent-info": accentInfo,
+    // Button fills: the accent and the danger colour, moved until the button's text reads at 4.5:1.
+    "accent-fill": holdContrast(accentPrimary, [fgInverse], 4.5),
+    "danger-fill": holdContrast(accentDanger, [fgPrimary], 4.5),
+    "link": link,
+    "focus-ring-color": focusRing,
+    "color-scheme": betterText(bgApp) === "#000000" ? "light" : "dark",
     "overlay-header": "rgba(0, 0, 0, 0.25)",
     "overlay-backdrop": "rgba(0, 0, 0, 0.72)",
     "row-unmatched-bg": darken(normalizeHex(colors.accentDanger), 0.35),

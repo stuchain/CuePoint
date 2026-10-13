@@ -2,7 +2,7 @@
 [data-theme="clubNeon"] {
   --bg-app: #0a0a0f;
   --bg-panel: #14141f;
-  --bg-panel-alt: #1a1a28;
+  --bg-panel-alt: #24243a;
   --bg-input: #0a0a0f;
   --bg-toolbar: #101018;
 
@@ -10,7 +10,7 @@
   --border-shadow: #050508;
   --border-outline: #000000;
   --border-light: #00e5ff;
-  --border-muted: #2a2a40;
+  --border-muted: #3a3a58;
   --border-control: #6a6a8a;
   --tab-underline-color: #e040fb;
   --bevel-highlight: #5a5a80;
@@ -20,16 +20,24 @@
   --fg-muted: #9090b0;
   --fg-disabled: #606080;
   --fg-inverse: #0a0a0f;
+  --fg-on-status: #000000;
 
   --accent-primary: #e040fb;
   --accent-primary-hover: #ea80fc;
   --accent-primary-pressed: #c2185b;
-  --accent-secondary: #1a1a28;
-  --accent-secondary-hover: #252538;
+  --accent-secondary: #24243a;
+  --accent-secondary-hover: #2e2e48;
   --accent-success: #00e676;
   --accent-warning: #ffea00;
   --accent-danger: #ff1744;
   --accent-info: #00e5ff;
+
+  /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */
+  --accent-fill: #e040fb;
+  --danger-fill: #c62828;
+  --link: #e040fb;
+  --focus-ring-color: #e040fb;
+  --color-scheme: dark;
 
   --overlay-header: rgba(0, 0, 0, 0.2);
   --overlay-backdrop: rgba(0, 0, 0, 0.78);

@@ -2,8 +2,8 @@
 :root,
 [data-theme="retro16"] {
   --bg-app: #1a1a2e;
-  --bg-panel: #3d5a80;
-  --bg-panel-alt: #2f4858;
+  --bg-panel: #22344d;
+  --bg-panel-alt: #2d4563;
   --bg-input: #1b263b;
   --bg-toolbar: #293241;
 
@@ -11,7 +11,7 @@
   --border-shadow: #0d1b2a;
   --border-outline: #000000;
   --border-light: #e0fbfc;
-  --border-muted: #415a77;
+  --border-muted: #5a7ba6;
   --border-control: #98c1d9;
   --tab-underline-color: #ee6c4d;
   --bevel-highlight: #98c1d9;
@@ -21,16 +21,24 @@
   --fg-muted: #98c1d9;
   --fg-disabled: #778da9;
   --fg-inverse: #0d1b2a;
+  --fg-on-status: #000000;
 
   --accent-primary: #ee6c4d;
   --accent-primary-hover: #f2846b;
   --accent-primary-pressed: #c8553d;
-  --accent-secondary: #3d5a80;
+  --accent-secondary: #2d4563;
   --accent-secondary-hover: #4d6a90;
   --accent-success: #4caf50;
   --accent-warning: #ffb703;
   --accent-danger: #e63946;
   --accent-info: #48cae4;
+
+  /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */
+  --accent-fill: #ee6c4d;
+  --danger-fill: #c62828;
+  --link: #f07b5f;
+  --focus-ring-color: #ee6c4d;
+  --color-scheme: dark;
 
   --overlay-header: rgba(0, 0, 0, 0.15);
   --overlay-backdrop: rgba(0, 0, 0, 0.65);
@@ -40,7 +48,7 @@
   --waveform-mid: #ffb703;
   --waveform-high: #e0fbfc;
   --waveform-mono: #98c1d9;
-  --waveform-played: rgba(61, 90, 128, 0.6);
+  --waveform-played: rgba(34, 52, 77, 0.6);
   --waveform-grid: rgba(224, 251, 252, 0.18);
   --waveform-memory-cue: #e0fbfc;
 }

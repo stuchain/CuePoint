@@ -2,7 +2,7 @@
 [data-theme="qtEvolved"] {
   --bg-app: #1e1e1e;
   --bg-panel: #252526;
-  --bg-panel-alt: #2d2d2d;
+  --bg-panel-alt: #383838;
   --bg-input: #1e1e1e;
   --bg-toolbar: #333333;
 
@@ -10,7 +10,7 @@
   --border-shadow: #141414;
   --border-outline: #000000;
   --border-light: #6a6a6a;
-  --border-muted: #3c3c3c;
+  --border-muted: #4a4a4a;
   --border-control: #7e7e7e;
   /* Accent #0078d4 is 2.79:1 on the toolbar; the active-tab underline needs 3:1. */
   --tab-underline-color: #3794ff;
@@ -18,9 +18,10 @@
   --bevel-shadow: #141414;
 
   --fg-primary: #ffffff;
-  --fg-muted: #888888;
-  --fg-disabled: #666666;
+  --fg-muted: #909090;
+  --fg-disabled: #7a7a7a;
   --fg-inverse: #ffffff;
+  --fg-on-status: #000000;
 
   --accent-primary: #0078d4;
   --accent-primary-hover: #106ebe;
@@ -31,6 +32,13 @@
   --accent-warning: #ff9800;
   --accent-danger: #f44336;
   --accent-info: #2196f3;
+
+  /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */
+  --accent-fill: #0078d4;
+  --danger-fill: #d32f2f;
+  --link: #3794ff;
+  --focus-ring-color: #3794ff;
+  --color-scheme: dark;
 
   --overlay-header: rgba(0, 0, 0, 0.2);
   --overlay-backdrop: rgba(0, 0, 0, 0.68);

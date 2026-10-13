@@ -20,6 +20,7 @@
   --fg-muted: #a1a1aa;
   --fg-disabled: #71717a;
   --fg-inverse: #fafafa;
+  --fg-on-status: #000000;
 
   --accent-primary: #8b5cf6;
   --accent-primary-hover: #a78bfa;
@@ -30,6 +31,13 @@
   --accent-warning: #eab308;
   --accent-danger: #ef4444;
   --accent-info: #6366f1;
+
+  /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */
+  --accent-fill: #7c3aed;
+  --danger-fill: #dc2626;
+  --link: #a78bfa;
+  --focus-ring-color: #a78bfa;
+  --color-scheme: dark;
 
   --overlay-header: rgba(0, 0, 0, 0.25);
   --overlay-backdrop: rgba(0, 0, 0, 0.72);
