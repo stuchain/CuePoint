@@ -23,6 +23,7 @@ import type {
   SetSuggestions,
   SetSuggestionsRequest,
   SimilarComponent,
+  SimilarReason,
 } from "../../api/cuepointBridge.types";
 import { WHOLE_LIBRARY, parseScope } from "../clean/cleanRules";
 import { KEY_WORDS, formatBpm } from "../discover/similarReasons";
@@ -305,6 +306,25 @@ export function emptyAnswerText(answer: Pick<SetSuggestions, "bpm_range">, pool:
   return answer.bpm_range
     ? `Nothing in ${pool} fits here inside the chapter's range.`
     : `Nothing in ${pool} fits here.`;
+}
+
+/**
+ * A side's reasons as they read in playing order (R4-8).
+ *
+ * The engine writes each reason from the neighbour to the candidate. On the
+ * side after the track before, that is the playing order. On the side before
+ * the track after, the candidate plays first, so a key and a tempo are turned
+ * round (and half becomes double): "8A → 9A", not "9A → 8A". Genre, label and
+ * artist have no direction and stay as they are.
+ */
+export function inPlayOrder(reasons: readonly SimilarReason[], side: SetSuggestionSideName): SimilarReason[] {
+  if (side === "before") return [...reasons];
+  return reasons.map((reason): SimilarReason => {
+    if (reason.component === "key") return { ...reason, from: reason.to, to: reason.from };
+    if (reason.component !== "tempo") return reason;
+    const detail = reason.detail === "half" ? "double" : reason.detail === "double" ? "half" : reason.detail;
+    return { ...reason, detail, from: reason.to, to: reason.from };
+  });
 }
 
 /** A suggestion's fit as the table says it: out of 100, whole (PRP-7). */

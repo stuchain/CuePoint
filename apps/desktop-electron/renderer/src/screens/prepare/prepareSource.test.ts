@@ -16,6 +16,7 @@ import {
   emptyAnswerText,
   gapKey,
   fitText,
+  inPlayOrder,
   insertLabel,
   insertedLine,
   insertionPoint,
@@ -294,5 +295,30 @@ describe("where a drop lands (PREP-11 on PREP-10's rows)", () => {
     expect(dropPlace(rows, bridge + 1, bridge)?.position).toBe(3);
     expect(dropMove(rows, moving, bridge + 1, bridge)).toEqual({ entry_id: OPEN_ONE, position: 2, chapter_id: OPEN });
     expect(dropPlace(rows, 99, 99)).toBeNull();
+  });
+});
+
+describe("reasons in playing order", () => {
+  const tempo = (detail: "close" | "half" | "double", from: number, to: number) =>
+    ({ component: "tempo", detail, points: 1, from, to }) as const;
+  const key = { component: "key", detail: "adjacent", points: 1, from: "9A", to: "8A" } as const;
+  const genre = { component: "genre", detail: "same", points: 1, name: "House" } as const;
+
+  it("leaves the side after the track before as the engine wrote it", () => {
+    const reasons = [tempo("close", 124, 125), key, genre];
+    expect(inPlayOrder(reasons, "before")).toEqual(reasons);
+  });
+
+  it("turns the side before the track after round: the candidate plays first", () => {
+    expect(inPlayOrder([tempo("close", 126, 125), key, genre], "after")).toEqual([
+      tempo("close", 125, 126),
+      { ...key, from: "8A", to: "9A" },
+      genre,
+    ]);
+  });
+
+  it("swaps half and double with the direction", () => {
+    expect(inPlayOrder([tempo("half", 124, 62)], "after")).toEqual([tempo("double", 62, 124)]);
+    expect(inPlayOrder([tempo("double", 124, 248)], "after")).toEqual([tempo("half", 248, 124)]);
   });
 });

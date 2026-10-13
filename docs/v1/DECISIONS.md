@@ -7418,3 +7418,24 @@ rings in three colours, links in five, and nine labels were shouted in capitals.
 - Page padding steps down by the content area's width (a container query), not the window's.
 
 **Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13
+
+## DEC-261 — Suggestions Say Their Fit in Short Tokens and a Bar
+
+**Status**: Approved · **Related**: DEC-096, DEC-105, DSC-10, R4-8
+
+**Context**: Prepare's Suggestions showed each side's reasons as a sentence in a 200 px column, cut
+off at the default window, and the fit as a number. A narrow panel cannot hold either sentence.
+
+**Decision**:
+- Each side's cell is a token run in playing order: the key step (`same`, `+1`, `−1`, `rel.`, or
+  `next` when a key cannot be read), the tempo change with its unit (`+2 BPM`, `±0 BPM`, `0.5×`, `2×`),
+  then `G`, `L`, `A` for a shared genre, label or artist. On the "Fits before" side the candidate plays
+  first, so its reasons are read candidate → next track, sentence arrows included.
+- The full sentence stays in the cell's hint and in copied text; nothing the engine said is dropped.
+- The Fit column draws a five-block bar (`FitBar`, 0–100 in steps of 20) with the number in its hint
+  and its accessible name. Similar Tracks takes the same tokens and bar in its own step (amends DEC-096
+  and DSC-10's band words there).
+- `screens/discover/reasonTokens.ts` is the one place reasons become tokens; a reason the engine adds
+  without a token fails its fixture test.
+
+**Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13

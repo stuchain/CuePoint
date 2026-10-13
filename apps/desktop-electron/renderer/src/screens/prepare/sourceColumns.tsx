@@ -9,19 +9,25 @@
  * key are the Library's own cells, effective values and override marks
  * included: a track reads the same in the panel as in the Set beside it.
  *
- * **Suggestions** add the fit, out of 100, and each side's reasons in words, through
- * `describeSimilarReason` (DEC-105 lists them per side, so a list that suits
- * one neighbour better says so), and mark a track already in the Set. The
- * engine's order is kept: nothing sorts it (DISCOVER-11's rule).
+ * **Suggestions** add the fit, out of 100, drawn as a bar, and each side's
+ * reasons as short tokens, "+1 · −2 · G" (R4-8; DEC-105 lists them per side,
+ * so a list that suits one neighbour better says so), and mark a track already
+ * in the Set. Both cells read in playing order: on "Fits before" the
+ * candidate plays first, so its key and tempo are turned round from the
+ * engine's neighbour-to-candidate (`inPlayOrder`). The sentence a token run stands for, from
+ * `describeSimilarReason`, is the cell's hint, and the copied text keeps it
+ * too. The engine's order is kept: nothing sorts it (DISCOVER-11's rule).
  *
  * **Library** rows sort by any column the engine sorts by, as the Library's
  * table does (LIBUI-01).
  */
-import type { LibraryTrackRow, SetSuggestion, SetSuggestionSide } from "../../api/cuepointBridge.types";
+import type { LibraryTrackRow, SetSuggestion, SetSuggestionSide, SetSuggestionSideName } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
+import { FitBar } from "../../components/charts/FitBar";
+import { reasonTokens, tokenRun } from "../discover/reasonTokens";
 import { reasonsText } from "../discover/similarColumns";
 import { LIBRARY_COLUMNS } from "../library/libraryColumns";
-import { fitText, inSetText } from "./prepareSource";
+import { fitText, inPlayOrder, inSetText } from "./prepareSource";
 
 /** A suggestion: its library row, and what the engine said about it. */
 export type SuggestionRow = LibraryTrackRow & { id: number; suggestion: SetSuggestion };
@@ -43,15 +49,18 @@ function unsorted<Row extends LibraryTrackRow>(column: TrackColumnDef<LibraryTra
   return rest as TrackColumnDef<Row>;
 }
 
-/** One side's reasons as its cell says them. */
-function sideText(side: SetSuggestionSide | null): string {
+/** One side's reasons as a sentence: the hint, the copied text and the title's tooltip. */
+function sideText(side: SetSuggestionSide | null, name: SetSuggestionSideName): string {
   if (!side) return "";
-  return side.reasons.length > 0 ? reasonsText(side.reasons) : "Nothing in common";
+  return side.reasons.length > 0 ? reasonsText(inPlayOrder(side.reasons, name)) : "Nothing in common";
 }
 
-function sideCell(side: SetSuggestionSide | null) {
-  const text = sideText(side);
-  return text ? <span title={`${text} (${side?.score ?? 0}/100)`}>{text}</span> : "";
+/** One side's reasons as the cell draws them: the token run, the sentence in its title. */
+function sideCell(side: SetSuggestionSide | null, name: SetSuggestionSideName) {
+  const text = sideText(side, name);
+  if (!side || !text) return "";
+  const run = tokenRun(reasonTokens(inPlayOrder(side.reasons, name))) || text;
+  return <span title={`${text} (${side.score}/100)`}>{run}</span>;
 }
 
 /**
@@ -62,8 +71,8 @@ function sideCell(side: SetSuggestionSide | null) {
 function suggestionSummary(row: SuggestionRow): string {
   const { before, after, score, in_set: inSet } = row.suggestion;
   const lines = [`${row.title} · fit ${fitText(score)}`];
-  if (before) lines.push(`Fits after the one before: ${sideText(before)}`);
-  if (after) lines.push(`Fits before the one after: ${sideText(after)}`);
+  if (before) lines.push(`Fits after the one before: ${sideText(before, "before")}`);
+  if (after) lines.push(`Fits before the one after: ${sideText(after, "after")}`);
   const again = inSetText(inSet);
   if (again) lines.push(again);
   return lines.join("\n");
@@ -95,19 +104,19 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
     id: SIDE_COLUMN.before,
     header: "Fits after",
     hint: "How well this track follows the one before the gap: tempo, key, genre, label and artist",
-    minWidthPx: 100,
-    defaultWidthPx: 200,
-    render: (row) => sideCell(row.suggestion.before),
-    text: (row) => sideText(row.suggestion.before),
+    minWidthPx: 70,
+    defaultWidthPx: 110,
+    render: (row) => sideCell(row.suggestion.before, "before"),
+    text: (row) => sideText(row.suggestion.before, "before"),
   },
   {
     id: SIDE_COLUMN.after,
     header: "Fits before",
     hint: "How well this track leads into the one after the gap: tempo, key, genre, label and artist",
-    minWidthPx: 100,
-    defaultWidthPx: 200,
-    render: (row) => sideCell(row.suggestion.after),
-    text: (row) => sideText(row.suggestion.after),
+    minWidthPx: 70,
+    defaultWidthPx: 110,
+    render: (row) => sideCell(row.suggestion.after, "after"),
+    text: (row) => sideText(row.suggestion.after, "after"),
   },
   {
     id: "score",
@@ -121,8 +130,10 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
         (side): side is SetSuggestionSide => side !== null,
       );
       const title =
-        sides.length === 2 ? `The mean of ${sides[0].score} and ${sides[1].score}` : undefined;
-      return <span title={title}>{fitText(row.suggestion.score)}</span>;
+        sides.length === 2
+          ? `${fitText(row.suggestion.score)}: the mean of ${sides[0].score} and ${sides[1].score}`
+          : fitText(row.suggestion.score);
+      return <FitBar score={row.suggestion.score} title={title} />;
     },
     text: (row) => fitText(row.suggestion.score),
   },

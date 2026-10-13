@@ -1,0 +1,21 @@
+/*
+ * FitBar (R4-8): five pixel blocks, theme tokens only. Sizes are a base size times the app's
+ * scale (`--scale`), as the rest of the chrome does, so a bar is the same height at every scale
+ * and a row never changes height for it.
+ */
+
+.cp-fit-bar {
+  display: inline-flex;
+  gap: calc(1px * var(--scale));
+  vertical-align: middle;
+}
+
+.cp-fit-bar__block {
+  width: calc(6px * var(--scale));
+  height: calc(10px * var(--scale));
+  background: var(--border-muted);
+}
+
+.cp-fit-bar__block--filled {
+  background: var(--accent-fill);
+}

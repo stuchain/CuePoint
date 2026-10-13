@@ -39,6 +39,8 @@ import { TRACK_IDS_MIME } from "../library/collectionDrag";
 import { TRACK_DETAIL } from "../library/librarySets.testFixture";
 import { toQueueItem } from "../library/useLibraryPlayback";
 import { PrepareScreen } from "./PrepareScreen";
+import { SUGGESTION_COLUMNS, suggestionRow } from "./sourceColumns";
+import { fitText } from "./prepareSource";
 import { answered, refused } from "./prepare.testFixture";
 import {
   BLANK,
@@ -366,9 +368,10 @@ describe("Suggestions", () => {
     const first = rows[0];
     const [best] = SUGGESTIONS.both.suggestions;
     // The fit is out of 100 and the column explains itself (PRP-7).
-    expect(within(first).getByText(`${Math.round(best.score)}/100`)).toHaveAttribute(
+    // ...and is drawn as a bar: five blocks, the number in its name, the mean in its title.
+    expect(within(first).getByRole("img", { name: `Fit ${Math.round(best.score)} out of 100` })).toHaveAttribute(
       "title",
-      `The mean of ${best.before!.score} and ${best.after!.score}`,
+      `${fitText(best.score)}: the mean of ${best.before!.score} and ${best.after!.score}`,
     );
     const header = (name: string) => within(screen.getByRole("table", { name: "Suggestions" })).getByText(name);
     expect(header("Fit")).toHaveAttribute("title", expect.stringContaining("out of 100"));
@@ -381,14 +384,36 @@ describe("Suggestions", () => {
       [
         "Bridge Deep · fit 70/100",
         "Fits after the one before: Close tempo: 124 → 125 · Same key: 8A · Same genre: House",
-        "Fits before the one after: Close tempo: 126 → 125 · Mixes well (next key): 9A → 8A · Same genre: House",
+        "Fits before the one after: Close tempo: 125 → 126 · Mixes well (next key): 8A → 9A · Same genre: House",
         "Already in this Set once: inserting it plays it again",
       ].join("\n"),
     );
     const previous = first.querySelector('[data-column="before"]')!;
     const next = first.querySelector('[data-column="after"]')!;
-    expect(previous.textContent).toMatch(/Same key: 8A/);
-    expect(next.textContent).toMatch(/Mixes well \(next key\): 9A → 8A/);
+    // Each side is a short run of tokens, with the sentence for its hint (R4-8).
+    expect(previous.textContent).toBe("same · +1 BPM · G");
+    expect(previous.querySelector("[title]")).toHaveAttribute(
+      "title",
+      expect.stringContaining("Close tempo: 124 → 125 · Same key: 8A · Same genre: House ("),
+    );
+    // The side before the track after reads in playing order: the candidate (125, 8A) plays first,
+    // then the next track (126, 9A), so the steps go up.
+    expect(next.textContent).toBe("+1 · +1 BPM · G");
+    expect(next.querySelector("[title]")).toHaveAttribute(
+      "title",
+      expect.stringContaining("Close tempo: 125 → 126 · Mixes well (next key): 8A → 9A"),
+    );
+  });
+
+  it("says a side with no reasons has nothing in common, and keeps its score in the title", () => {
+    const row = suggestionRow({
+      ...SUGGESTIONS.both.suggestions[0],
+      before: { score: 12, reasons: [] },
+    })!;
+    const cell = SUGGESTION_COLUMNS.find((column) => column.id === "before")!;
+    const { container } = render(<>{cell.render(row)}</>);
+    expect(container.textContent).toBe("Nothing in common");
+    expect(container.querySelector("[title]")).toHaveAttribute("title", "Nothing in common (12/100)");
   });
 
   it("marks a track already in the Set, and not one that is not", async () => {
