@@ -38,3 +38,18 @@
   text-align: center;
   pointer-events: none;
 }
+
+/*
+ * The strip sits in Hint's wrapper (C24), so its tip stands above the strip and
+ * never over the waveform. The wrapper is a flex item of the slot: full width.
+ */
+.cp-player-slot > .cp-hint:has(> .cp-detail-strip) {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+}
+
+.cp-player-slot > .cp-hint > .cp-detail-strip {
+  flex: 1 1 auto;
+  min-width: 0;
+}

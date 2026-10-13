@@ -1,13 +1,13 @@
 /**
  * The zoomed waveform above the player bar (T4): about 8 s either side of a
- * playhead that stays in the middle, scrolling with playback, a line on every
+ * playhead that stays in the middle (the wheel zooms it, 4 to 64 s), scrolling with playback, a line on every
  * beat and a stronger one on each bar.
  *
  * **What it draws.** The track's detail (75 columns a second) once the engine
  * has made it. Until then, the overview stretched over the same window, so
  * nothing jumps when the detail arrives; with neither, words. The beat grid is
  * Rekordbox's, from the track's marks: a track without one gets no lines and
- * says why in its title.
+ * says why in the tip above the strip.
  *
  * **How it draws.** The columns and lines are drawn once into offscreen tiles
  * of `TILE_UNITS` columns (`waveformDetailLayout.ts` decides every rectangle);
@@ -29,21 +29,24 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
+import { Hint } from "../Hint";
 import { reportUnexpected } from "../../reporting/reporting";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { selectDuration, selectPlaying, selectPosition } from "../player/playerFormat";
 import { usePlayerValue } from "../player/playerStore";
-import { DETAIL_SEEK_TITLE, NO_BEAT_GRID_TITLE, WAVEFORM_LOADING_WORDS, detailWords } from "./analysisWords";
+import { WAVEFORM_LOADING_WORDS, detailWords, zoomHint } from "./analysisWords";
 import { createPlayheadClock } from "./playheadClock";
 import { useWaveformDetail } from "./useWaveformDetail";
 import { useWaveform } from "./useWaveforms";
 import { useWaveformColour } from "./waveformColour";
+import { useWaveformDetailSpan } from "./waveformDetailSetting";
 import {
-  DETAIL_SPAN_MS,
   TILE_UNITS,
   detailView,
   layoutDetailTile,
   msAtColumn,
+  createWheelStepper,
+  nextSpan,
   type DetailSource,
   type DetailTile,
 } from "./waveformDetailLayout";
@@ -117,6 +120,7 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
   const ratio = useDevicePixelRatio();
   const theme = useThemeRevision();
   const [mode] = useWaveformColour();
+  const [spanMs, setSpanMs] = useWaveformDetailSpan();
   const motion = useMotionOn();
   const hidden = useHidden();
 
@@ -157,7 +161,7 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
   const width = Math.max(0, Math.round(box.width * ratio));
   const height = Math.max(0, Math.round(box.height * ratio));
   const rows = Math.floor(height / unit);
-  const msPerColumn = columns > 0 ? DETAIL_SPAN_MS / columns : 0;
+  const msPerColumn = columns > 0 ? spanMs / columns : 0;
 
   // Everything a tile's pixels depend on; a new one empties the tiles.
   const epoch = useMemo(
@@ -272,6 +276,34 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
     return () => cancelAnimationFrame(frame);
   }, [animate, playing]);
 
+  // The wheel zooms. A native listener, since React's `onWheel` is passive and
+  // could not stop the page scrolling under it.
+  const spanRef = useRef(spanMs);
+  spanRef.current = spanMs;
+  const setSpanRef = useRef(setSpanMs);
+  setSpanRef.current = setSpanMs;
+  const unwheel = useRef<(() => void) | null>(null);
+  // A callback ref, so the listener follows the element however it is mounted.
+  const strip = useCallback((element: HTMLDivElement | null) => {
+    unwheel.current?.();
+    unwheel.current = null;
+    if (!element) return;
+    const step = createWheelStepper();
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      // Sideways scrolling is not a zoom.
+      const steps = step(event.deltaY, event.deltaMode, performance.now());
+      if (steps === 0) return;
+      const span = nextSpan(spanRef.current, steps);
+      if (span !== spanRef.current) {
+        spanRef.current = span;
+        setSpanRef.current(span);
+      }
+    };
+    element.addEventListener("wheel", onWheel, { passive: false });
+    unwheel.current = () => element.removeEventListener("wheel", onWheel);
+  }, []);
+
   const seek = (event: MouseEvent<HTMLDivElement>) => {
     const element = canvas.current;
     const at = clock.current.positionMs(performance.now());
@@ -295,17 +327,20 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
         : (detailWords(detailEntry) ?? WAVEFORM_LOADING_WORDS);
 
   return (
-    <div
-      className="cp-detail-strip"
-      data-testid="waveform-detail-strip"
-      data-detail={detailEntry?.kind === "detail" ? detailEntry.detail.state : (detailEntry?.kind ?? "loading")}
-      data-source={detailReady ? "detail" : source ? "overview" : "none"}
-      data-grid={noGrid ? "none" : grid && grid.length > 0 ? "rekordbox" : undefined}
-      title={noGrid ? NO_BEAT_GRID_TITLE : DETAIL_SEEK_TITLE}
-      onClick={seek}
-    >
-      <canvas ref={canvas} className="cp-detail-strip__canvas" aria-hidden="true" data-mode={mode} />
-      {words ? <p className="cp-detail-strip__words">{words}</p> : null}
-    </div>
+    <Hint text={zoomHint(spanMs, noGrid)}>
+      <div
+        ref={strip}
+        className="cp-detail-strip"
+        data-span-ms={spanMs}
+        data-testid="waveform-detail-strip"
+        data-detail={detailEntry?.kind === "detail" ? detailEntry.detail.state : (detailEntry?.kind ?? "loading")}
+        data-source={detailReady ? "detail" : source ? "overview" : "none"}
+        data-grid={noGrid ? "none" : grid && grid.length > 0 ? "rekordbox" : undefined}
+        onClick={seek}
+      >
+        <canvas ref={canvas} className="cp-detail-strip__canvas" aria-hidden="true" data-mode={mode} />
+        {words ? <p className="cp-detail-strip__words">{words}</p> : null}
+      </div>
+    </Hint>
   );
 }

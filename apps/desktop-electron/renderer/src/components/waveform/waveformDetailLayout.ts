@@ -25,8 +25,73 @@
 import type { BeatGridMarker } from "../../api/cuepointBridge.types";
 import { BANDS, bandHeight, beatsPerBar, type PaintRect, type WaveformColourMode } from "./waveformLayout";
 
-/** The music one strip shows: 8 s either side of the playhead. */
+/** The music one strip shows by default: 8 s either side of the playhead. */
 export const DETAIL_SPAN_MS = 16_000;
+
+/** The spans the mouse wheel steps between, 4 s to 64 s (one notch is one stop). */
+export const DETAIL_SPANS_MS: readonly number[] = [4, 6, 8, 12, 16, 24, 32, 48, 64].map((s) => s * 1000);
+
+/**
+ * The span `steps` stops from `spanMs`, clamped to the first and last stop. A
+ * positive count zooms out (a longer span), a negative one in. A span that is
+ * not a stop counts from the nearest one.
+ */
+export function nextSpan(spanMs: number, steps: number): number {
+  const last = DETAIL_SPANS_MS.length - 1;
+  let at = 0;
+  DETAIL_SPANS_MS.forEach((stop, i) => {
+    if (Math.abs(stop - spanMs) < Math.abs(DETAIL_SPANS_MS[at]! - spanMs)) at = i;
+  });
+  return DETAIL_SPANS_MS[Math.max(0, Math.min(last, at + Math.trunc(steps)))]!;
+}
+
+/** Trackpad pixels that make one stop once a gesture is under way. */
+export const WHEEL_PIXELS_PER_STOP = 100;
+
+/** A pause this long between wheel events ends a gesture. */
+export const WHEEL_IDLE_MS = 180;
+
+/** After a stop, events this soon after it are momentum and are dropped. */
+export const WHEEL_SETTLE_MS = 120;
+
+/**
+ * Turns wheel events into stops of the span list. Wheel up (negative `deltaY`)
+ * gives negative stops, zooming in. A mouse notch is 33 px on Windows, about 53
+ * on Linux and a small accelerated delta on a Mac, so the first pixel event of
+ * a gesture is one whole stop whatever its size; later ones in the same gesture
+ * build up to `WHEEL_PIXELS_PER_STOP`, and the events just after a stop are
+ * dropped so a trackpad's momentum does not run to 4 s or 64 s. A line or page
+ * delta (`deltaMode` 1 or 2) is one stop an event. `now` is in ms.
+ */
+export function createWheelStepper(): (deltaY: number, deltaMode: number, now: number) => number {
+  let carry = 0;
+  let last = -Infinity;
+  let lockedUntil = -Infinity;
+  let direction = 0;
+  return (deltaY, deltaMode, now) => {
+    if (!Number.isFinite(deltaY) || deltaY === 0) return 0;
+    const sign = Math.sign(deltaY);
+    const fresh = now - last > WHEEL_IDLE_MS || sign !== direction;
+    last = now;
+    direction = sign;
+    if (deltaMode !== 0) return sign;
+    if (fresh) {
+      carry = 0;
+      lockedUntil = now + WHEEL_SETTLE_MS;
+      return sign;
+    }
+    if (now < lockedUntil) return 0;
+    carry += deltaY;
+    const steps = Math.trunc(carry / WHEEL_PIXELS_PER_STOP);
+    if (steps === 0) return 0;
+    carry -= steps * WHEEL_PIXELS_PER_STOP;
+    lockedUntil = now + WHEEL_SETTLE_MS;
+    return steps;
+  };
+}
+
+/** Beats closer than this many columns are left out, the bar lines kept. */
+export const BEAT_MIN_COLUMNS = 4;
 
 /** Columns in one offscreen tile. */
 export const TILE_UNITS = 512;
@@ -175,7 +240,19 @@ export function layoutDetailTile(input: DetailTileInput): DetailTile {
     const toMs = (base + columns) * msPerColumn;
     const barColumns = new Set<number>();
     const beatColumns = new Set<number>();
+    // Each line is thinned by the tempo of the marker whose run it belongs to,
+    // not by its neighbours in this tile, so tile edges cannot change the result.
+    const runs = input.grid
+      .filter((m) => Number.isFinite(m.start_ms) && m.bpm > 0)
+      .sort((x, y) => x.start_ms - y.start_ms);
+    const tooTight = (ms: number): boolean => {
+      let bpm = runs[0]?.bpm ?? 0;
+      for (const run of runs) if (run.start_ms <= ms + 1e-6) bpm = run.bpm;
+      return bpm > 0 && 60_000 / bpm < BEAT_MIN_COLUMNS * msPerColumn;
+    };
     for (const line of beats(input.grid, fromMs, toMs, input.durationMs)) {
+      // Too tight (64 s on a narrow strip): bar lines only, so the grid is never a solid fill.
+      if (!line.downbeat && tooTight(line.ms)) continue;
       const c = Math.floor(line.ms / msPerColumn) - base;
       if (c < 0 || c >= columns) continue;
       (line.downbeat ? barColumns : beatColumns).add(c);

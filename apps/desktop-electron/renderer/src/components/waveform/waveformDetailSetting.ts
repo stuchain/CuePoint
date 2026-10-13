@@ -11,6 +11,8 @@
  */
 import { useCallback, useSyncExternalStore } from "react";
 
+import { DETAIL_SPANS_MS, DETAIL_SPAN_MS } from "./waveformDetailLayout";
+
 export const WAVEFORM_DETAIL_STORAGE_KEY = "cuepoint-waveform-detail";
 
 /** What a window tall enough for the strip shows when nothing was chosen. */
@@ -115,4 +117,68 @@ export function useWaveformDetailSetting(): [boolean, (on: boolean) => void] {
   const on = useSyncExternalStore(subscribe, snapshot, snapshot);
   const set = useCallback((next: boolean) => saveWaveformDetail(next), []);
   return [on, set];
+}
+
+/** The span of music the zoomed strip shows, in ms, remembered like the setting above. */
+export const WAVEFORM_DETAIL_SPAN_STORAGE_KEY = "cuepoint-waveform-detail-span";
+
+/** What a stored span means; anything that is not one of the strip's stops is the default. */
+export function parseWaveformDetailSpan(raw: string | null): number {
+  const value = raw !== null && /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
+  return DETAIL_SPANS_MS.includes(value) ? value : DETAIL_SPAN_MS;
+}
+
+export function loadWaveformDetailSpan(): number {
+  try {
+    return parseWaveformDetailSpan(localStorage.getItem(WAVEFORM_DETAIL_SPAN_STORAGE_KEY));
+  } catch {
+    return DETAIL_SPAN_MS;
+  }
+}
+
+const spanListeners = new Set<() => void>();
+
+/** What this window chose, kept when storage refuses to remember it. */
+let currentSpan: number | null = null;
+
+function spanSnapshot(): number {
+  if (currentSpan === null) currentSpan = loadWaveformDetailSpan();
+  return currentSpan;
+}
+
+/** Zoom the strip everywhere, and remember it where storage allows. */
+export function saveWaveformDetailSpan(spanMs: number): void {
+  currentSpan = DETAIL_SPANS_MS.includes(spanMs) ? spanMs : DETAIL_SPAN_MS;
+  try {
+    localStorage.setItem(WAVEFORM_DETAIL_SPAN_STORAGE_KEY, String(currentSpan));
+  } catch {
+    // Not remembered across a restart; still applied for this session.
+  }
+  spanListeners.forEach((listener) => listener());
+}
+
+function subscribeSpan(listener: () => void): () => void {
+  spanListeners.add(listener);
+  const onStorage = (event: StorageEvent) => {
+    if (event.key !== WAVEFORM_DETAIL_SPAN_STORAGE_KEY) return;
+    currentSpan = parseWaveformDetailSpan(event.newValue);
+    listener();
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    spanListeners.delete(listener);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+/** Forget the span this window has read, so the next read is from storage (tests). */
+export function resetWaveformDetailSpanForTests(): void {
+  currentSpan = null;
+}
+
+/** The strip's span in ms, and a way to change it everywhere at once. */
+export function useWaveformDetailSpan(): [number, (spanMs: number) => void] {
+  const span = useSyncExternalStore(subscribeSpan, spanSnapshot, spanSnapshot);
+  const set = useCallback((next: number) => saveWaveformDetailSpan(next), []);
+  return [span, set];
 }

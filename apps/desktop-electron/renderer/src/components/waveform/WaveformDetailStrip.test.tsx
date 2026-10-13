@@ -12,10 +12,14 @@ import { PlayerSlot } from "../player/PlayerSlot";
 import { ToastProvider } from "../Toast";
 import { EMPTY_AUDIO_STATE } from "../player/playerFormat";
 import { resetPlayerStore } from "../player/playerStore";
-import { NO_BEAT_GRID_TITLE } from "./analysisWords";
+import { NO_BEAT_GRID_TITLE, zoomHint } from "./analysisWords";
 import { PAUSE_BLEND_MS } from "./playheadClock";
 import { forgetWaveforms } from "./waveformCache";
-import { resetWaveformDetailForTests, saveWaveformDetail } from "./waveformDetailSetting";
+import {
+  resetWaveformDetailForTests,
+  resetWaveformDetailSpanForTests,
+  saveWaveformDetail,
+} from "./waveformDetailSetting";
 
 /**
  * The zoomed strip above the player (T4): there when a library track plays and
@@ -150,6 +154,7 @@ beforeEach(() => {
   resetPlayerStore();
   forgetWaveforms();
   resetWaveformDetailForTests();
+  resetWaveformDetailSpanForTests();
   localStorage.clear();
   drawImages = 0;
   clears = 0;
@@ -207,7 +212,9 @@ describe("where the strip is", () => {
     render(<Slot />);
     const bar = await screen.findByRole("slider", { name: "Seek" });
     const found = await screen.findByTestId("waveform-detail-strip");
-    expect(found.nextElementSibling).toBe(bar.closest(".cp-player-bar"));
+    // The strip is in its Hint, which is the bar's sibling.
+    expect(found.parentElement?.classList.contains("cp-hint")).toBe(true);
+    expect(found.parentElement?.nextElementSibling).toBe(bar.closest(".cp-player-bar"));
     expect(found.querySelector("canvas")?.getAttribute("aria-hidden")).toBe("true");
   });
 
@@ -279,7 +286,7 @@ describe("the beat grid", () => {
   it("says where grids come from over a track without one", async () => {
     install({ grid: false });
     render(<Slot />);
-    await waitFor(() => expect(strip().getAttribute("title")).toBe(NO_BEAT_GRID_TITLE));
+    await waitFor(() => expect(strip().getAttribute("title")).toBe(zoomHint(16_000, true)));
     expect(NO_BEAT_GRID_TITLE).toBe("No beat grid: grids come from Rekordbox");
     expect(strip().getAttribute("data-grid")).toBe("none");
   });
@@ -288,7 +295,7 @@ describe("the beat grid", () => {
     install({ grid: true });
     render(<Slot />);
     await waitFor(() => expect(strip().getAttribute("data-grid")).toBe("rekordbox"));
-    expect(strip().getAttribute("title")).not.toBe(NO_BEAT_GRID_TITLE);
+    expect(strip().getAttribute("title")).toBe("Click to seek · Scroll to zoom · 16 s");
   });
 
   it("reads the marks without a picture", async () => {
@@ -349,6 +356,96 @@ describe("a click", () => {
     await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"));
     fireEvent.click(strip(), { clientX: 0 });
     expect(player.seek).toHaveBeenCalledWith(0);
+  });
+});
+
+describe("the wheel", () => {
+  /** A wheel event that can be cancelled, as the browser's is. */
+  let clock = 0;
+  beforeEach(() => {
+    clock = 0;
+    // Each event a gesture of its own unless a test says otherwise.
+    vi.spyOn(performance, "now").mockImplementation(() => clock);
+  });
+  function wheel(deltaY: number, init: WheelEventInit & { gap?: number } = {}): WheelEvent {
+    clock += init.gap ?? 1_000;
+    const event = new WheelEvent("wheel", { deltaY, bubbles: true, cancelable: true, ...init });
+    act(() => {
+      strip().dispatchEvent(event);
+    });
+    return event;
+  }
+  const span = () => strip().getAttribute("data-span-ms");
+
+  it("starts at 16 s, and a notch up zooms in a stop and down zooms out, the page staying put", async () => {
+    install({ initial: snapshot(item(), { playing: false, paused: true }) });
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"));
+    expect(span()).toBe("16000");
+    expect(wheel(-100).defaultPrevented).toBe(true);
+    expect(span()).toBe("12000");
+    wheel(100);
+    wheel(100);
+    expect(span()).toBe("24000");
+    expect(localStorage.getItem("cuepoint-waveform-detail-span")).toBe("24000");
+  });
+
+  it("stops at 4 s and 64 s, and treats a pinch as a wheel", async () => {
+    install({ initial: snapshot(item(), { playing: false, paused: true }) });
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"));
+    for (let i = 0; i < 10; i += 1) wheel(-100);
+    expect(span()).toBe("4000");
+    for (let i = 0; i < 12; i += 1) wheel(100, { ctrlKey: true });
+    expect(span()).toBe("64000");
+  });
+
+  it("builds trackpad pixels up and ignores sideways scrolling", async () => {
+    install({ initial: snapshot(item(), { playing: false, paused: true }) });
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"));
+    // A small first delta is a whole stop; the rest of the gesture builds up (after the settle).
+    wheel(40);
+    expect(span()).toBe("24000");
+    wheel(40, { gap: 150 });
+    wheel(40, { gap: 20 });
+    expect(span()).toBe("24000");
+    wheel(40, { gap: 20 });
+    expect(span()).toBe("32000");
+    wheel(0, { deltaX: 500 });
+    expect(span()).toBe("32000");
+  });
+
+  it("seeks at the new scale after zooming, the playhead staying in the middle", async () => {
+    const { player } = install({ initial: snapshot(item(), { playing: false, paused: true }) });
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"));
+    wheel(-100);
+    wheel(-100);
+    expect(span()).toBe("8000");
+    fireEvent.click(strip(), { clientX: 400 });
+    // 8 s over 300 columns, 50 columns after the middle one.
+    expect(player.seek.mock.calls[0]![0] as number).toBeCloseTo((30_000 + 50 * (8_000 / 300)) / 1000, 3);
+  });
+
+  it("keeps the tip above the strip, in words that follow the span, with no title of its own", async () => {
+    install({ initial: snapshot(item(), { playing: false, paused: true }) });
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"));
+    expect(strip().getAttribute("title")).toBe("Click to seek · Scroll to zoom · 16 s");
+    fireEvent.pointerEnter(strip().parentElement!);
+    // Hovered, Hint takes the title off so the browser's tip never doubles the themed one.
+    expect(strip().hasAttribute("title")).toBe(false);
+    wheel(100);
+    fireEvent.pointerLeave(strip().parentElement!);
+    expect(strip().getAttribute("title")).toBe(zoomHint(24_000, false));
+  });
+
+  it("remembers the span for the next strip", async () => {
+    localStorage.setItem("cuepoint-waveform-detail-span", "32000");
+    install({ initial: snapshot(item(), { playing: false, paused: true }) });
+    render(<Slot />);
+    await waitFor(() => expect(span()).toBe("32000"));
   });
 });
 

@@ -4,7 +4,8 @@
  * `bands.flac` with a Rekordbox TEMPO marker is imported (one track, no
  * copies), analysed, and played silently. The strip (`.cp-detail-strip`) shows
  * above the bar as its sibling, reaches `data-detail="ready"`, and its canvas
- * holds painted pixels. Settings > Waveforms' "Zoomed waveform above the
+ * holds painted pixels. The wheel over it changes its span (`data-span-ms`) and
+ * the hint's tip stands above it. Settings > Waveforms' "Zoomed waveform above the
  * player" removes it and brings it back.
  *
  * Skips where no `mpv` was fetched. Each launch gets its own
@@ -156,9 +157,10 @@ test.describe("The zoomed waveform above the player (T4)", () => {
         return {
           insideBar: bar.contains(stripEl),
           barInsideStrip: stripEl.contains(bar),
-          sameParent: stripEl.parentElement === bar.parentElement,
+          // The strip sits in its Hint's wrapper, which is the bar's sibling.
+          sameParent: stripEl.parentElement?.parentElement === bar.parentElement,
           before: Boolean(stripEl.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING),
-          next: stripEl.nextElementSibling === bar,
+          next: stripEl.parentElement?.nextElementSibling === bar,
         };
       });
       expect(placement).toEqual({
@@ -169,6 +171,20 @@ test.describe("The zoomed waveform above the player (T4)", () => {
         next: true,
       });
       await expect(window.locator(".cp-player-bar .cp-detail-strip")).toHaveCount(0);
+
+      // The wheel zooms, and the tip stands above the strip, never over it.
+      await expect(strip).toHaveAttribute("data-span-ms", "16000");
+      const box0 = (await strip.boundingBox())!;
+      await window.mouse.move(box0.x + box0.width / 2, box0.y + box0.height / 2);
+      await window.mouse.wheel(0, -100);
+      await expect(strip).toHaveAttribute("data-span-ms", "12000");
+      await window.mouse.wheel(0, 200);
+      await expect(strip).toHaveAttribute("data-span-ms", "24000");
+      const tip = window.getByRole("tooltip");
+      await expect(tip).toContainText("Scroll to zoom · 24 s", { timeout: 5_000 });
+      const stripBox = (await strip.boundingBox())!;
+      const tipBox = (await tip.boundingBox())!;
+      expect(tipBox.y + tipBox.height).toBeLessThanOrEqual(stripBox.y + 0.5);
 
       // Off in Settings > Waveforms: gone. On again: back.
       await window.getByRole("link", { name: "Settings" }).click();

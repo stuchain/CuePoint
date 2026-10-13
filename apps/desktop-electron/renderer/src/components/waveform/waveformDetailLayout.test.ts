@@ -2,12 +2,18 @@ import { describe, expect, it } from "vitest";
 
 import type { BeatGridMarker } from "../../api/cuepointBridge.types";
 import {
+  BEAT_MIN_COLUMNS,
+  WHEEL_IDLE_MS,
+  WHEEL_SETTLE_MS,
+  createWheelStepper,
+  DETAIL_SPANS_MS,
   DETAIL_SPAN_MS,
   beats,
   detailView,
   detailWindow,
   layoutDetailTile,
   msAtColumn,
+  nextSpan,
   snapOffset,
 } from "./waveformDetailLayout";
 
@@ -182,15 +188,40 @@ describe("layoutDetailTile", () => {
   });
 
   it("puts a line on every beat and a stronger one on each bar", () => {
-    const grid = [marker(0, 120)];
-    // 250 ms a column: a beat every 2 columns, a bar every 8.
-    const tile = layoutDetailTile({ ...base, columns: 16, grid });
-    expect(tile.bars.map((r) => r.x)).toEqual([0, 16]);
-    expect(tile.beats.map((r) => r.x)).toEqual([4, 8, 12, 20, 24, 28]);
+    const grid = [marker(0, 60)];
+    // 250 ms a column: a beat every 4 columns, a bar every 16.
+    const tile = layoutDetailTile({ ...base, columns: 32, grid });
+    expect(tile.bars.map((r) => r.x)).toEqual([0, 32]);
+    expect(tile.beats.map((r) => r.x)).toEqual([8, 16, 24, 40, 48, 56]);
     expect(tile.bars[0]).toEqual({ x: 0, y: 0, width: 2, height: 20, paint: "grid" });
-    expect(tile.beats[0]).toEqual({ x: 4, y: 0, width: 2, height: 20, paint: "grid" });
+    expect(tile.beats[0]).toEqual({ x: 8, y: 0, width: 2, height: 20, paint: "grid" });
     // The playhead's paint is the centre line's alone.
     expect([...tile.bars, ...tile.beats].some((r) => r.paint === "playhead")).toBe(false);
+  });
+
+  it("draws bar lines only when beats are fewer than 4 columns apart, by the marker's tempo", () => {
+    expect(BEAT_MIN_COLUMNS).toBe(4);
+    const grid = [marker(0, 60)];
+    // 1000 ms a beat: 4 columns at 250 ms keeps the beats, a little finer drops them.
+    expect(layoutDetailTile({ ...base, columns: 32, grid, msPerColumn: 250 }).beats.length).toBeGreaterThan(0);
+    const dense = layoutDetailTile({ ...base, columns: 32, grid, msPerColumn: 256 });
+    expect(dense.beats).toEqual([]);
+    expect(dense.bars.length).toBeGreaterThan(0);
+  });
+
+  it("thins each run by its own tempo, and the same whichever tile the lines fall in", () => {
+    // 60 bpm to 8 s, then 240 bpm (250 ms a beat: under 4 columns at 100 ms a column).
+    const grid = [marker(0, 60), marker(8_000, 240)];
+    const at = (index: number) =>
+      layoutDetailTile({ ...base, index, columns: 100, msPerColumn: 100, grid });
+    const first = at(0);
+    expect(first.beats.map((r) => r.x / 2)).toContain(10);
+    const second = at(1);
+    expect(second.beats).toEqual([]);
+    expect(second.bars.length).toBeGreaterThan(0);
+    // A tile boundary in the middle of the slow run does not thin it.
+    const split = layoutDetailTile({ ...base, index: 3, columns: 20, msPerColumn: 100, grid: [marker(0, 60)] });
+    expect(split.beats.length).toBeGreaterThan(0);
   });
 
   it("draws no lines without a grid", () => {
@@ -202,5 +233,85 @@ describe("layoutDetailTile", () => {
   it("is empty with nothing to draw", () => {
     expect(layoutDetailTile({ ...base, source: null }).bands).toEqual([]);
     expect(layoutDetailTile({ ...base, rows: 0 }).bands).toEqual([]);
+  });
+});
+
+describe("nextSpan", () => {
+  it("steps between the stops, 4 s to 64 s, the default being one of them", () => {
+    expect(DETAIL_SPANS_MS).toEqual([4, 6, 8, 12, 16, 24, 32, 48, 64].map((s) => s * 1000));
+    expect(DETAIL_SPANS_MS).toContain(DETAIL_SPAN_MS);
+    expect(nextSpan(16_000, 1)).toBe(24_000);
+    expect(nextSpan(16_000, -1)).toBe(12_000);
+    expect(nextSpan(16_000, 2)).toBe(32_000);
+  });
+
+  it("clamps at both ends", () => {
+    expect(nextSpan(4_000, -1)).toBe(4_000);
+    expect(nextSpan(64_000, 1)).toBe(64_000);
+    expect(nextSpan(16_000, 99)).toBe(64_000);
+    expect(nextSpan(16_000, -99)).toBe(4_000);
+  });
+
+  it("counts from the nearest stop when the span is not one", () => {
+    expect(nextSpan(15_000, 1)).toBe(24_000);
+    expect(nextSpan(16_000, 0)).toBe(16_000);
+  });
+});
+
+describe("createWheelStepper", () => {
+  it("is one stop a notch, up zooming in, whatever the notch's size", () => {
+    for (const notch of [100, 53, 33, 4]) {
+      const step = createWheelStepper();
+      expect(step(notch, 0, 1_000)).toBe(1);
+      expect(step(-notch, 0, 2_000)).toBe(-1);
+      // Each a new gesture after the pause, so the same again.
+      expect(step(-notch, 0, 3_000)).toBe(-1);
+    }
+  });
+
+  it("builds the rest of a gesture up to 100 px a stop, after the settle", () => {
+    const step = createWheelStepper();
+    expect(step(33, 0, 0)).toBe(1);
+    // Inside the settle: dropped, not built up.
+    expect(step(33, 0, WHEEL_SETTLE_MS - 20)).toBe(0);
+    let t = WHEEL_SETTLE_MS + 10;
+    const stops: number[] = [];
+    for (let i = 0; i < 7; i += 1) stops.push(step(33, 0, (t += 20)));
+    // 33, 66, 99, 132 is a stop; the three after it fall in the settle and are dropped.
+    expect(stops).toEqual([0, 0, 0, 1, 0, 0, 0]);
+  });
+
+  it("stops a trackpad's momentum from running through the stops", () => {
+    const step = createWheelStepper();
+    let total = 0;
+    // A 4 px stream every 16 ms for a second, tailing off: well under 100 px a stop.
+    for (let t = 0; t < 1_000; t += 16) total += step(4, 0, t);
+    expect(total).toBeGreaterThanOrEqual(1);
+    expect(total).toBeLessThanOrEqual(6);
+  });
+
+  it("starts afresh after an idle pause, dropping the carry", () => {
+    const step = createWheelStepper();
+    step(10, 0, 0);
+    step(40, 0, 200);
+    expect(step(40, 0, 200 + WHEEL_SETTLE_MS + 1)).toBe(0);
+    expect(step(5, 0, 200 + WHEEL_SETTLE_MS + 1 + WHEEL_IDLE_MS + 1)).toBe(1);
+  });
+
+  it("counts a change of direction as a new gesture", () => {
+    const step = createWheelStepper();
+    expect(step(10, 0, 0)).toBe(1);
+    expect(step(-10, 0, 10)).toBe(-1);
+  });
+
+  it("counts a line or page delta as one notch an event", () => {
+    const step = createWheelStepper();
+    expect(step(3, 1, 0)).toBe(1);
+    expect(step(3, 1, 10)).toBe(1);
+    expect(step(-1, 2, 20)).toBe(-1);
+  });
+
+  it("ignores no movement", () => {
+    expect(createWheelStepper()(0, 0, 0)).toBe(0);
   });
 });

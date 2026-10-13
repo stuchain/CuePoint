@@ -4,18 +4,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   WAVEFORM_DETAIL_DEFAULT,
   SHORT_WINDOW_QUERY,
+  WAVEFORM_DETAIL_SPAN_STORAGE_KEY,
   WAVEFORM_DETAIL_STORAGE_KEY,
   loadWaveformDetail,
+  loadWaveformDetailSpan,
   parseWaveformDetail,
+  parseWaveformDetailSpan,
   resetWaveformDetailForTests,
+  resetWaveformDetailSpanForTests,
   saveWaveformDetail,
+  saveWaveformDetailSpan,
   useWaveformDetailSetting,
+  useWaveformDetailSpan,
 } from "./waveformDetailSetting";
+import { DETAIL_SPAN_MS } from "./waveformDetailLayout";
 
 /** The zoomed waveform is on until switched off, remembered under one key (T4). */
 beforeEach(() => {
   localStorage.clear();
   resetWaveformDetailForTests();
+  resetWaveformDetailSpanForTests();
 });
 
 afterEach(() => {
@@ -23,6 +31,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   localStorage.clear();
   resetWaveformDetailForTests();
+  resetWaveformDetailSpanForTests();
 });
 
 describe("the zoomed waveform setting", () => {
@@ -186,6 +195,60 @@ describe("the short-window default", () => {
 
   it("treats a platform without matchMedia as tall", () => {
     expect(window.matchMedia).toBeUndefined();
+    expect(loadWaveformDetail()).toBe(true);
+  });
+});
+
+describe("the zoomed waveform span", () => {
+  it("is 16 s until chosen otherwise, under its own key", () => {
+    expect(WAVEFORM_DETAIL_SPAN_STORAGE_KEY).toBe("cuepoint-waveform-detail-span");
+    expect(loadWaveformDetailSpan()).toBe(16_000);
+  });
+
+  it("reads one of the stops, and anything else as the default", () => {
+    expect(parseWaveformDetailSpan("4000")).toBe(4_000);
+    expect(parseWaveformDetailSpan("64000")).toBe(64_000);
+    expect(parseWaveformDetailSpan("5000")).toBe(DETAIL_SPAN_MS);
+    expect(parseWaveformDetailSpan("16 s")).toBe(DETAIL_SPAN_MS);
+    expect(parseWaveformDetailSpan("")).toBe(DETAIL_SPAN_MS);
+    expect(parseWaveformDetailSpan(null)).toBe(DETAIL_SPAN_MS);
+  });
+
+  it("is remembered", () => {
+    saveWaveformDetailSpan(32_000);
+    expect(localStorage.getItem(WAVEFORM_DETAIL_SPAN_STORAGE_KEY)).toBe("32000");
+    resetWaveformDetailSpanForTests();
+    expect(loadWaveformDetailSpan()).toBe(32_000);
+  });
+
+  it("is still applied when storage refuses", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("full");
+    });
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    const { result } = renderHook(() => useWaveformDetailSpan());
+    expect(result.current[0]).toBe(16_000);
+    act(() => result.current[1](8_000));
+    expect(result.current[0]).toBe(8_000);
+  });
+
+  it("changes every view at once and follows another window", () => {
+    const a = renderHook(() => useWaveformDetailSpan());
+    const b = renderHook(() => useWaveformDetailSpan());
+    act(() => a.result.current[1](48_000));
+    expect(b.result.current[0]).toBe(48_000);
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent("storage", { key: WAVEFORM_DETAIL_SPAN_STORAGE_KEY, newValue: "6000" }),
+      );
+    });
+    expect(a.result.current[0]).toBe(6_000);
+  });
+
+  it("does not disturb the on/off setting", () => {
+    saveWaveformDetailSpan(4_000);
     expect(loadWaveformDetail()).toBe(true);
   });
 });

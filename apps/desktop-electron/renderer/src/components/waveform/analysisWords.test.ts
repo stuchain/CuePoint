@@ -10,6 +10,7 @@ import {
   DECODER_MISSING_WORDS,
   FAILURE_WORDS,
   analysisAction,
+  zoomHint,
   analysisWords,
   deleteDataWords,
   deletedWords,
@@ -331,5 +332,16 @@ describe("Track details' waveform words, as steps (INS-8)", () => {
   it("leaves every other state to the shared words", () => {
     expect(trackDetailsWaveformWords(entry("missing", false))).toBe("File missing");
     expect(trackDetailsWaveformWords(null)).toBeNull();
+  });
+});
+
+describe("the zoomed strip's tip (C24)", () => {
+  it("says what a click and the wheel do, and the span", () => {
+    expect(zoomHint(16_000, false)).toBe("Click to seek · Scroll to zoom · 16 s");
+    expect(zoomHint(4_000, false)).toBe("Click to seek · Scroll to zoom · 4 s");
+  });
+
+  it("says where grids come from when there is none", () => {
+    expect(zoomHint(64_000, true)).toBe("No beat grid: grids come from Rekordbox · Scroll to zoom · 64 s");
   });
 });

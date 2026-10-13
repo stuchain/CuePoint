@@ -209,8 +209,11 @@ export const DETAIL_READING_WORDS = "Reading detail…";
 /** The zoomed strip's title over a track with no Rekordbox beat grid (T4). */
 export const NO_BEAT_GRID_TITLE = "No beat grid: grids come from Rekordbox";
 
-/** The zoomed strip's title otherwise. */
-export const DETAIL_SEEK_TITLE = "Zoomed waveform. Click to seek";
+/** The tip above the zoomed strip: what a click and the wheel do, and the span shown (C24). */
+export function zoomHint(spanMs: number, noGrid: boolean): string {
+  const lead = noGrid ? `${NO_BEAT_GRID_TITLE} · Scroll to zoom` : "Click to seek · Scroll to zoom";
+  return `${lead} · ${Math.round(spanMs / 1000)} s`;
+}
 
 /**
  * Why the zoomed strip has no detail yet, in words (T4); null when it has one.
