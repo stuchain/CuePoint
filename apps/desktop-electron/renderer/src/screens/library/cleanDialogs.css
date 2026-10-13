@@ -38,7 +38,7 @@
 
 .clean-dialog__field {
   display: grid;
-  grid-template-columns: minmax(4rem, auto) minmax(0, 10rem) minmax(0, 1fr);
+  grid-template-columns: minmax(round(nearest, calc(42.67px * var(--scale)), 1px), auto) minmax(0, round(nearest, calc(106.67px * var(--scale)), 1px)) minmax(0, 1fr);
   gap: var(--space-xs) var(--space-sm);
   align-items: center;
 }
@@ -93,10 +93,10 @@
 /* Checkboxes side by side, so the dialog fits a 1x window with its buttons. */
 .clean-dialog__group--grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(7rem * var(--scale)), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(calc(112px * var(--scale)), 1fr));
   column-gap: var(--space-md);
   row-gap: 0;
-  flex: 1 1 20rem;
+  flex: 1 1 round(nearest, calc(213.33px * var(--scale)), 1px);
 }
 
 .clean-dialog__group--grid .clean-dialog__check:last-child,

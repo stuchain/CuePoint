@@ -196,8 +196,11 @@
 .library-screen__body {
   display: grid;
   /* 24%, not 22%: at 1.5× in the default window 22% left the tree's buttons and
-     its bar one to a line (PAGES-05C); the table keeps what its toolbar needs. */
-  grid-template-columns: clamp(140px, 24%, 16rem) minmax(0, 1fr);
+     its bar one to a line (PAGES-05C); the table keeps what its toolbar needs.
+     The bounds are in 1× pixels times the scale, so they grow with the text (R2-4);
+     96 and 176 draw 144 and 264 at the default 1.5× size, a little wider than
+     the old 140px and 16rem (256px). */
+  grid-template-columns: clamp(calc(96px * var(--scale)), 24%, calc(176px * var(--scale))) minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
 }

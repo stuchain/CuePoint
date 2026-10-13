@@ -131,3 +131,60 @@ describe("sizes at 1.5×", () => {
     expect(found).toEqual([]);
   });
 });
+
+/**
+ * A rem length is the browser's font size, not the app's scale, so it does not follow the text
+ * size (R2-4). Sizes are `calc(<n>px * var(--scale))`; `calc(<n>rem * var(--scale))` is still a
+ * rem length and counts. The files below belong to other threads: each entry is the number of rem
+ * lengths it still has, and may only shrink.
+ */
+const KNOWN_EXCEPTIONS: Record<string, number> = {
+  "components/PrivacyDialog.css": 1,
+  "components/ShortcutsDialog.css": 1,
+  "components/player/PlayerBar.css": 2,
+  "components/player/QueuePanel.css": 1,
+  "screens/rekordbox-export-settings.css": 2,
+};
+
+const REM = /(?<![\w-])-?\d*\.?\d+rem\b/g;
+
+function countRem(css: string): number {
+  return (css.replace(/\/\*[\s\S]*?\*\//g, "").match(REM) ?? []).length;
+}
+
+describe("rem lengths (R2-4)", () => {
+  it("counts a rem length, scaled or not, and ignores comments and names", () => {
+    const fixture = [
+      "/* 18rem of a pane */",
+      ".a { width: 5rem; }",
+      ".b { width: calc(7rem * var(--scale)); }",
+      ".c { width: calc(7px * var(--scale)); }",
+      ".cp-queue__remove { gap: 1.5rem; }",
+    ].join("\n");
+    expect(countRem(fixture)).toBe(3);
+  });
+
+  it("is absent from every stylesheet under screens and components, bar the known exceptions", () => {
+    const found: Record<string, number> = {};
+    for (const [file, css] of Object.entries(sheets)) {
+      const path = file.replace(/^\.\.\//, "");
+      if (!path.startsWith("screens/") && !path.startsWith("components/")) continue;
+      const count = countRem(css);
+      if (count > 0) found[path] = count;
+    }
+    const problems: string[] = [];
+    for (const [path, count] of Object.entries(found)) {
+      const allowed = KNOWN_EXCEPTIONS[path] ?? 0;
+      if (count > allowed) {
+        problems.push(`${path} has ${count} rem length(s), ${allowed} allowed: use calc(<n>px * var(--scale))`);
+      }
+    }
+    for (const [path, allowed] of Object.entries(KNOWN_EXCEPTIONS)) {
+      const count = found[path] ?? 0;
+      if (count < allowed) {
+        problems.push(`${path} now has ${count} rem length(s), ${allowed} listed: delete or lower its entry in KNOWN_EXCEPTIONS`);
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+});

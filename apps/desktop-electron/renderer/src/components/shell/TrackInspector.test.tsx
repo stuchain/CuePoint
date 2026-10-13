@@ -10,13 +10,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { ScaleProvider } from "../../tokens/ScaleContext";
 import { TrackInspector } from "./TrackInspector";
 import { setSelectedTrack } from "./selectedTrack";
-import {
-  INSPECTOR_DEFAULT_WIDTH,
-  INSPECTOR_MIN_WIDTH,
-  INSPECTOR_STORAGE_KEY,
-} from "./inspectorState";
+import { INSPECTOR_STORAGE_KEY } from "./inspectorState";
+
+// Outside a provider the scale is the default, 1.5×: 213 in 1× units draws as 320px.
+const DEFAULT_PX = 320;
+const MIN_PX = 221;
 
 const panel = () => screen.getByRole("complementary", { name: /track details/i });
 const hide = () => screen.getByRole("button", { name: /hide track details/i });
@@ -39,7 +40,7 @@ afterEach(() => {
 describe("TrackInspector", () => {
   it("renders at its default width", () => {
     render(<TrackInspector />);
-    expect(panel()).toHaveStyle({ width: `${INSPECTOR_DEFAULT_WIDTH}px` });
+    expect(panel()).toHaveStyle({ width: `${DEFAULT_PX}px` });
   });
 
   it("shows an empty state explaining what will appear here", () => {
@@ -140,7 +141,7 @@ describe("TrackInspector", () => {
     it("restores a hidden panel on a fresh mount", () => {
       localStorage.setItem(
         INSPECTOR_STORAGE_KEY,
-        JSON.stringify({ width: 320, visible: false }),
+        JSON.stringify({ width: 213, visible: false, unit: "1x" }),
       );
 
       render(<TrackInspector />);
@@ -186,10 +187,10 @@ describe("TrackInspector", () => {
       handle().focus();
 
       await user.keyboard("{ArrowLeft}");
-      expect(panel()).toHaveStyle({ width: `${INSPECTOR_DEFAULT_WIDTH + 16}px` });
+      expect(panel()).toHaveStyle({ width: `${DEFAULT_PX + 16}px` });
 
       await user.keyboard("{ArrowRight}");
-      expect(panel()).toHaveStyle({ width: `${INSPECTOR_DEFAULT_WIDTH}px` });
+      expect(panel()).toHaveStyle({ width: `${DEFAULT_PX}px` });
     });
 
     it("persists a width changed from the keyboard", async () => {
@@ -199,7 +200,8 @@ describe("TrackInspector", () => {
 
       await user.keyboard("{ArrowLeft}");
 
-      expect(stored().width).toBe(INSPECTOR_DEFAULT_WIDTH + 16);
+      expect(stored().width).toBe(224); // 336px at 1.5×, kept in 1× units
+      expect(stored().unit).toBe("1x");
     });
 
     it("will not narrow below the minimum", async () => {
@@ -209,7 +211,20 @@ describe("TrackInspector", () => {
 
       for (let i = 0; i < 40; i += 1) await user.keyboard("{ArrowRight}");
 
-      expect(panel()).toHaveStyle({ width: `${INSPECTOR_MIN_WIDTH}px` });
+      expect(panel()).toHaveStyle({ width: `${MIN_PX}px` });
+    });
+
+    it("stores a clamped width at the minimum edge", async () => {
+      const user = userEvent.setup();
+      render(<TrackInspector />);
+      handle().focus();
+
+      for (let i = 0; i < 40; i += 1) await user.keyboard("{ArrowRight}");
+
+      // 221px at 1.5x; the stored 1x width must not sink below 147.
+      expect(stored().width).toBeGreaterThanOrEqual(147);
+      await user.keyboard("{ArrowLeft}");
+      expect(panel()).toHaveStyle({ width: `${MIN_PX + 16}px` });
     });
 
     it("will not widen past half the window", async () => {
@@ -224,7 +239,7 @@ describe("TrackInspector", () => {
 
     it("reports its width to assistive technology", () => {
       render(<TrackInspector />);
-      expect(handle()).toHaveAttribute("aria-valuenow", String(INSPECTOR_DEFAULT_WIDTH));
+      expect(handle()).toHaveAttribute("aria-valuenow", String(DEFAULT_PX));
     });
   });
 
@@ -233,7 +248,7 @@ describe("TrackInspector", () => {
       // Sized on a wide monitor, reopened on a laptop.
       localStorage.setItem(
         INSPECTOR_STORAGE_KEY,
-        JSON.stringify({ width: 1200, visible: true }),
+        JSON.stringify({ width: 1200, visible: true, unit: "1x" }),
       );
 
       render(<TrackInspector />);
@@ -244,13 +259,50 @@ describe("TrackInspector", () => {
     it("keeps the stored width so it returns when there is room", () => {
       localStorage.setItem(
         INSPECTOR_STORAGE_KEY,
-        JSON.stringify({ width: 1200, visible: true }),
+        JSON.stringify({ width: 1200, visible: true, unit: "1x" }),
       );
 
       render(<TrackInspector />);
 
       // Rendered clamped, but the user's choice is not overwritten.
       expect(stored().width).toBe(1200);
+    });
+  });
+
+  describe("width follows the text size (R2-4)", () => {
+    const at = (scale: number) => {
+      localStorage.setItem("cuepoint-ui-lab-scale", String(scale));
+      return render(
+        <ScaleProvider>
+          <TrackInspector />
+        </ScaleProvider>,
+      );
+    };
+
+    afterEach(() => localStorage.removeItem("cuepoint-ui-lab-scale"));
+
+    it.each([
+      [1, 213],
+      [1.5, 320],
+      [2, 426],
+      [3, 639],
+    ])("draws the default at %s× as %spx", (scale, px) => {
+      at(scale);
+      expect(panel()).toHaveStyle({ width: `${px}px` });
+      expect(handle()).toHaveAttribute("aria-valuenow", String(px));
+    });
+
+    it("draws a legacy 320 as the default, 426px at 2x", () => {
+      localStorage.setItem(INSPECTOR_STORAGE_KEY, JSON.stringify({ width: 320, visible: true }));
+      at(2);
+      expect(panel()).toHaveStyle({ width: "426px" });
+    });
+
+    it("divides a legacy pixel width by the scale once", () => {
+      localStorage.setItem(INSPECTOR_STORAGE_KEY, JSON.stringify({ width: 400, visible: true }));
+      at(2);
+      expect(panel()).toHaveStyle({ width: "400px" });
+      expect(stored()).toEqual({ width: 200, visible: true, unit: "1x" });
     });
   });
 });

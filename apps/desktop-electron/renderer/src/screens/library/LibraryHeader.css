@@ -38,7 +38,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 18rem;
+  max-width: calc(192px * var(--scale));
 }
 
 .library-header__imported,

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  clampInspectorWidth,
+  inspectorWidthFromPx,
+  inspectorWidthPx,
   loadInspectorState,
   saveInspectorState,
   type InspectorState,
 } from "./inspectorState";
 import { useMotion } from "../../tokens/MotionContext";
+import { useScaleFactor } from "../../tokens/ScaleContext";
 import { leaveAsGhost } from "../../tokens/useLeaveGhost";
 import { useSelectedTrack } from "./selectedTrack";
 import { useShellCommand } from "./shellCommands";
@@ -36,7 +38,10 @@ interface TrackInspectorProps {
  * that Phase 7 retired.
  */
 export function TrackInspector({ children }: TrackInspectorProps) {
-  const [state, setState] = useState<InspectorState>(loadInspectorState);
+  // The width is kept in 1× units and drawn times the scale, so a bigger text size
+  // widens the panel with it (R2-4, DEC-273).
+  const scale = useScaleFactor();
+  const [state, setState] = useState<InspectorState>(() => loadInspectorState(scale));
   const [dragging, setDragging] = useState(false);
   // Hidden, the tab names the selected track so the panel can be found (INS-2).
   const selected = useSelectedTrack();
@@ -68,7 +73,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const width = clampInspectorWidth(state.width, windowWidth);
+  const width = inspectorWidthPx(state.width, scale, windowWidth);
 
   const toggle = useCallback(() => {
     toggled.current = true;
@@ -109,7 +114,14 @@ export function TrackInspector({ children }: TrackInspectorProps) {
       const onMove = (event: MouseEvent) => {
         setState((prev) => ({
           ...prev,
-          width: clampInspectorWidth(startWidth + (startX - event.clientX), window.innerWidth),
+          width: inspectorWidthFromPx(
+            inspectorWidthPx(
+              inspectorWidthFromPx(startWidth + (startX - event.clientX), scale),
+              scale,
+              window.innerWidth,
+            ),
+            scale,
+          ),
         }));
       };
       const onUp = () => {
@@ -123,17 +135,24 @@ export function TrackInspector({ children }: TrackInspectorProps) {
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [width],
+    [width, scale],
   );
 
   const nudge = useCallback(
     (delta: number) => {
       setState((prev) => ({
         ...prev,
-        width: clampInspectorWidth(clampInspectorWidth(prev.width, window.innerWidth) + delta, window.innerWidth),
+        width: inspectorWidthFromPx(
+          inspectorWidthPx(
+            inspectorWidthFromPx(inspectorWidthPx(prev.width, scale, window.innerWidth) + delta, scale),
+            scale,
+            window.innerWidth,
+          ),
+          scale,
+        ),
       }));
     },
-    [],
+    [scale],
   );
 
   if (!state.visible) {

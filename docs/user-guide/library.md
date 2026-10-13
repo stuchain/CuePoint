@@ -257,6 +257,8 @@ Then the sections, each folded or opened by clicking its heading:
 With several tracks selected, the panel shows the last one you clicked, and
 **Edit values for 4 tracks…** opens Clean's Fix values for all of them.
 
+Track details and the Collections list on the left grow and shrink with the text size
+(**Settings > Appearance** or **View > Size**), so a bigger size does not squeeze them.
 Ctrl+I hides Track details if you would rather have the width. Double-clicking a
 track plays it; see [The player](player.md).
 

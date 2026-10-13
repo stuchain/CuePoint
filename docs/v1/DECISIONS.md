@@ -7664,3 +7664,22 @@ Mixed In Key and most DJ tools colour keys round the wheel, and the app's own wh
 - A chip is a span with a class per key: no inline style and no hook per row, so long tables scroll as before (DEC-234).
 
 **Decided with**: User (R4-2, ★ Mixed In Key hues) · **Date**: 2026-10-13
+
+
+
+## DEC-273 — Side Panels Widen With the Text Size
+
+**Status**: Approved · **Related**: R2-4, DEC-018, DEC-161
+
+**Context**: Track details and the Collections pane kept the same pixel widths at every text size, so at 2× and 3×
+their buttons and key line wrapped while the table had room to spare.
+
+**Decision**:
+- Track details' width is stored in 1× units (amends DEC-018's unit): 213 by default and 147 at least, so 320 and
+  221 px at 1.5×, 426 at 2×. It is never more than half the window. A width stored in pixels is divided by the size
+  once on first load; the old default, 320, becomes the new default so it follows the size.
+- The Collections pane is between 96 and 176 px times the size, 24% of the page between.
+- No layout length in a screen or component stylesheet is a bare `rem`; a test holds the line, with a short list of
+  files other pages still have to convert, which only shrinks.
+
+**Decided with**: User (R2-4, wish list round 2) · **Date**: 2026-10-13

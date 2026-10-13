@@ -65,7 +65,7 @@
 
 .cp-track-detail__row {
   display: grid;
-  grid-template-columns: minmax(0, 5rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, round(nearest, calc(53.33px * var(--scale)), 1px)) minmax(0, 1fr);
   gap: var(--space-sm);
   align-items: baseline;
 }
@@ -149,7 +149,7 @@
 }
 
 .cp-track-waveform {
-  height: calc(var(--row-height) * 2);
+  height: round(nearest, calc(66.67px * var(--scale)), 1px);
   border: var(--hairline) solid var(--border-muted);
   background: var(--bg-panel);
   overflow: hidden;
@@ -472,7 +472,7 @@
 
 .cp-track-history__entry {
   display: grid;
-  grid-template-columns: minmax(0, 5rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, round(nearest, calc(53.33px * var(--scale)), 1px)) minmax(0, 1fr);
   gap: var(--space-xs);
   align-items: baseline;
   padding: calc(2px * var(--scale)) 0;
@@ -578,7 +578,7 @@
 
 .cp-track-beatport__field {
   display: grid;
-  grid-template-columns: minmax(0, 3.5rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, round(nearest, calc(37.33px * var(--scale)), 1px)) minmax(0, 1fr);
   gap: var(--space-xs);
   align-items: baseline;
 }
@@ -596,7 +596,7 @@
 
 .cp-track-beatport__layer {
   display: inline-block;
-  min-width: 4.5rem;
+  min-width: calc(48px * var(--scale));
   color: var(--fg-muted);
 }
 

@@ -34,7 +34,7 @@
 }
 
 .rekordbox-export__path {
-  flex: 1 1 16rem;
+  flex: 1 1 round(nearest, calc(170.67px * var(--scale)), 1px);
   min-width: 0;
   margin: 0;
   overflow: hidden;
@@ -76,7 +76,7 @@
 .rekordbox-export__choose {
   display: flex;
   flex-direction: column;
-  max-height: calc(10rem * var(--scale));
+  max-height: calc(160px * var(--scale));
   margin: 0;
   padding: var(--space-xs) var(--space-sm);
   overflow-y: auto;
@@ -139,7 +139,7 @@
 }
 
 .rekordbox-export__warning > span {
-  flex: 1 1 18rem;
+  flex: 1 1 calc(192px * var(--scale));
 }
 
 .rekordbox-export__warning--note {
