@@ -7,6 +7,9 @@
  * the rules about depth, sibling order and what a folder may hold, and the
  * copy in the renderer would be the one that is wrong.
  *
+ * The tree is read through the shared cache (C19d), so a page shown again has it
+ * at once; `reload` is that read's refresh, and every write ends in one.
+ *
  * A reload after a write is one query over a few hundred rows; ORG-08 measured
  * the tree with its counts as one statement, not two per node.
  *
@@ -36,6 +39,7 @@ import {
   type CollectionTreeNode,
   type CollectionsPaneState,
 } from "./collectionTree";
+import { COLLECTIONS, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
 
@@ -149,41 +153,24 @@ async function answerOf<T>(
 export function useCollectionTree(
   storageKey: string = COLLECTIONS_PANE_STORAGE_KEY,
 ): CollectionTreeController {
-  const [nodes, setNodes] = useState<CollectionNode[]>([]);
-  const [status, setStatus] = useState<CollectionTreeStatus>("loading");
-  const [error, setError] = useState<string | null>(null);
+  const read = useSharedRead(COLLECTIONS);
   const [state, setState] = useState<CollectionsPaneState>(() =>
     loadCollectionsState(storageKey),
   );
-  const [reloads, setReloads] = useState(0);
+
+  useReportReadError(read.error);
+  const nodes: CollectionNode[] = useMemo(() => read.value?.collections ?? [], [read.value]);
+  // A failure behind an old tree keeps the tree.
+  const status: CollectionTreeStatus = read.unavailable
+    ? "unavailable"
+    : read.value
+      ? "ready"
+      : read.error !== undefined
+        ? "error"
+        : "loading";
+  const error = !read.value && read.error !== undefined ? userMessage(read.error) : null;
 
   const tree = useMemo(() => buildCollectionTree(nodes), [nodes]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const bridge = window.cuepoint?.getCollections;
-    if (!bridge) {
-      setStatus("unavailable");
-      return;
-    }
-    setStatus((previous) => (previous === "ready" ? previous : "loading"));
-    void bridge()
-      .then((payload) => {
-        if (cancelled) return;
-        setNodes(payload.collections);
-        setStatus("ready");
-        setError(null);
-      })
-      .catch((cause: unknown) => {
-        reportUnexpected(cause);
-        if (cancelled) return;
-        setStatus("error");
-        setError(userMessage(cause));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reloads]);
 
   // A node someone deleted takes its expansion and its selection with it. The
   // selection falls back silently here, unlike the Rekordbox tree's: a user
@@ -219,7 +206,7 @@ export function useCollectionTree(
     [tree, state.expandedIds],
   );
 
-  const reload = useCallback(() => setReloads((n) => n + 1), []);
+  const reload = read.refresh;
 
   const select = useCallback(
     (node: CollectionNode | null) => {

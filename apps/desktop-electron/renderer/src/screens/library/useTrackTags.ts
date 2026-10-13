@@ -13,9 +13,10 @@
  * at once and comes back if the engine refuses; an addition waits for the tag
  * to exist, because a chip with no id behind it cannot be removed again.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Tag, TagUsage } from "../../api/cuepointBridge.types";
+import { TAGS, useSharedRead } from "../../api/sharedReads";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
 
@@ -52,9 +53,13 @@ export function useTrackTags({
   onSaved,
 }: TrackTagsOptions): TrackTagsEditor {
   const [shown, setShown] = useState<TrackTag[]>([...tags]);
-  const [vocabulary, setVocabulary] = useState<TagUsage[]>([]);
   const alive = useRef(true);
-  const [reloads, setReloads] = useState(0);
+  // The whole library's tags: a short list that does not depend on the selection,
+  // shared with the page that shows this panel and read again after this panel
+  // makes a tag that was not in it. A vocabulary that cannot be read leaves
+  // typing a name working exactly as it did, so a failure is not reported.
+  const { value: vocabularyAnswer, refresh: refreshVocabulary } = useSharedRead(TAGS);
+  const vocabulary: TagUsage[] = useMemo(() => vocabularyAnswer?.tags ?? [], [vocabularyAnswer]);
 
   useEffect(() => {
     setShown([...tags]);
@@ -66,26 +71,6 @@ export function useTrackTags({
       alive.current = false;
     };
   }, []);
-
-  // The vocabulary is the whole library's tags, which is a short list and does
-  // not depend on the selection — so it is read once, and again after this
-  // panel makes a tag that was not in it.
-  useEffect(() => {
-    const bridge = window.cuepoint?.getTags;
-    if (!bridge) return;
-    let cancelled = false;
-    void bridge()
-      .then((payload) => {
-        if (!cancelled && alive.current) setVocabulary(payload.tags);
-      })
-      .catch(() => {
-        // Suggestions are a convenience. A vocabulary that cannot be read
-        // leaves typing a name working exactly as it did.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reloads]);
 
   const add = useCallback(
     async (name: string) => {
@@ -111,7 +96,7 @@ export function useTrackTags({
       if (alive.current) setShown((current) => [...current, tag]);
       try {
         await assign({ tag_id: tag.id, track_ids: [trackId] });
-        if (alive.current) setReloads((n) => n + 1);
+        refreshVocabulary();
         onSaved?.();
       } catch (cause) {
         reportUnexpected(cause);
@@ -119,7 +104,7 @@ export function useTrackTags({
         onError(userMessage(cause));
       }
     },
-    [onError, onSaved, shown, trackId],
+    [onError, onSaved, refreshVocabulary, shown, trackId],
   );
 
   const remove = useCallback(

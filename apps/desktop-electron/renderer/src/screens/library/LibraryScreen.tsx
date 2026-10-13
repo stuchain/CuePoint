@@ -115,6 +115,13 @@ import { BatchConfirmDialog } from "./BatchConfirmDialog";
 import { useLibraryBatch } from "./useLibraryBatch";
 import { useLibraryClean } from "./useLibraryClean";
 import { useLibraryChanges } from "../../api/libraryChanges";
+import {
+  LIBRARY_SUMMARY,
+  TAGS,
+  useOnReadError,
+  useReportReadError,
+  useSharedRead,
+} from "../../api/sharedReads";
 import { revealTrack } from "../clean/revealTrack";
 import { forgetWaveforms } from "../../components/waveform/waveformCache";
 import { useCollectionTree } from "./useCollectionTree";
@@ -262,8 +269,10 @@ export function LibraryScreen({
 }: LibraryScreenProps) {
   const playMarks = useTrackPlayMarks(trackIdOf);
   const { push } = useToast();
-  const [summary, setSummary] = useState<LibrarySummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Read through the shared cache (C19d): a page shown again has its counts at once.
+  const summaryRead = useSharedRead(LIBRARY_SUMMARY);
+  const summary: LibrarySummary | null = summaryRead.value ?? null;
+  const loading = summaryRead.loading;
   const [busy, setBusy] = useState<Busy>(null);
   const [diff, setDiff] = useState<RefreshDiff | null>(null);
   const [lastApplied, setLastApplied] = useState<RefreshApplied | null>(null);
@@ -299,29 +308,11 @@ export function LibraryScreen({
     };
   }, []);
 
-  const loadSummary = useCallback(async () => {
-    const bridge = window.cuepoint;
-    if (!bridge?.getLibrarySummary) {
-      setSummary(null);
-      setLoading(false);
-      return;
-    }
-    try {
-      const payload = await bridge.getLibrarySummary();
-      if (mounted.current) setSummary(payload);
-    } catch (error) {
-      reportUnexpected(error);
-      if (mounted.current) {
-        push(userMessage(error, "Could not read the library"), "warning");
-      }
-    } finally {
-      if (mounted.current) setLoading(false);
-    }
-  }, [push]);
-
-  useEffect(() => {
-    void loadSummary();
-  }, [loadSummary]);
+  useReportReadError(summaryRead.error);
+  useOnReadError(summaryRead.error, (error) =>
+    push(userMessage(error, "Could not read the library"), "warning"),
+  );
+  const loadSummary = summaryRead.refresh;
 
   // ---------------------------------------------------------------- browsing
 
@@ -375,7 +366,8 @@ export function LibraryScreen({
   const [newSetFrom, setNewSetFrom] = useState<NewSetSource | null>(null);
   const [newSetBusy, setNewSetBusy] = useState(false);
   const [newSetError, setNewSetError] = useState<string | null>(null);
-  const [tags, setTags] = useState<TagUsage[]>([]);
+  const tagsRead = useSharedRead(TAGS);
+  const tags: TagUsage[] = useMemo(() => tagsRead.value?.tags ?? [], [tagsRead.value]);
   /**
    * The rules the bar is showing, which are not always the query's (ORG-12).
    *
@@ -571,7 +563,6 @@ export function LibraryScreen({
   useLibraryChanges(() => {
     window_.reload();
     detail.reload();
-    collections.reload();
   });
 
   /**
@@ -897,17 +888,8 @@ export function LibraryScreen({
     [barRules, collections, playlists, push, query.playlistId, scopedCollection],
   );
 
-  /** The library's tags, read when a picker needs them and again after a change. */
-  const loadTags = useCallback(async () => {
-    const bridge = window.cuepoint?.getTags;
-    if (!bridge) return;
-    try {
-      const payload = await bridge();
-      if (mounted.current) setTags(payload.tags);
-    } catch {
-      // Suggestions are a convenience; a name can still be typed.
-    }
-  }, []);
+  /** The library's tags, read again after a change. Suggestions are a convenience; a name can still be typed. */
+  const loadTags = tagsRead.refresh;
 
   const openPicker = useCallback(
     (kind: PickerKind, target: BatchTarget) => {
@@ -916,13 +898,6 @@ export function LibraryScreen({
     },
     [loadTags],
   );
-
-  // The vocabulary is read once at the start rather than only when a picker
-  // opens: a chip that says "Tag has Peak-time" needs the name behind the id
-  // the rule carries, and a Smart Collection can be opened before any picker.
-  useEffect(() => {
-    void loadTags();
-  }, [loadTags]);
 
   // ------------------------------------------------------- the tag vocabulary
 
@@ -939,7 +914,7 @@ export function LibraryScreen({
       setTagError(null);
       try {
         const said = await run();
-        await loadTags();
+        loadTags();
         window_.reload();
         collections.reload();
         detail.reload();
@@ -1609,7 +1584,7 @@ export function LibraryScreen({
     setLastApplied(null);
     const done = await run("importing", () => start({ xml_path: xmlPath }));
     if (!done) return;
-    await loadSummary();
+    loadSummary();
     // Everything downstream of the collection has to be asked again: the tree
     // was replaced row for row, and the rows behind the table are a different
     // library now. `setQuery` alone would not do it — the question after an
@@ -1694,7 +1669,7 @@ export function LibraryScreen({
         // The refresh succeeded; not being able to read its receipt is not a
         // failure worth reporting as one.
       }
-      await loadSummary();
+      loadSummary();
       // A refresh deletes tracks. Rows the table is still holding may name
       // some of them, so the window is asked again even though the query has
       // not moved.

@@ -3,8 +3,8 @@
  *
  * Two hooks over the two questions the filter bar asks the engine:
  *
- * `useFilterVocabulary` fetches the field list once — it changes only when
- * CuePoint itself changes — so the bar can offer exactly the fields and
+ * `useFilterVocabulary` reads the field list through the shared cache — it changes
+ * only when CuePoint itself changes — so the bar can offer exactly the fields and
  * operators the engine will accept, and no others.
  *
  * `useFacet` fetches one field's values on demand, scoped by everything in the
@@ -18,7 +18,7 @@
  * Collection has to offer the tags that Collection's tracks carry, because one
  * from elsewhere in the library empties the table the moment it is chosen.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   LibraryFacet,
@@ -26,6 +26,7 @@ import type {
   LibraryQuickFacets,
 } from "../../api/cuepointBridge.types";
 import type { LibraryQuery } from "./libraryQuery";
+import { LIBRARY_FILTER_FIELDS, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { reportUnexpected } from "../../reporting/reporting";
 import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
 
@@ -38,39 +39,16 @@ interface FilterVocabularyState {
 }
 
 export function useFilterVocabulary(): FilterVocabularyState {
-  const [state, setState] = useState<FilterVocabularyState>({
-    vocabulary: null,
-    status: "loading",
-    error: null,
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-    const bridge = window.cuepoint?.getLibraryFilterFields;
-    if (!bridge) {
-      setState({ vocabulary: null, status: "unavailable", error: null });
-      return;
-    }
-    void bridge()
-      .then((vocabulary) => {
-        if (cancelled) return;
-        setState({ vocabulary, status: "ready", error: null });
-      })
-      .catch((cause: unknown) => {
-        reportUnexpected(cause);
-        if (cancelled) return;
-        setState({
-          vocabulary: null,
-          status: "error",
-          error: userMessage(cause),
-        });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return state;
+  const read = useSharedRead(LIBRARY_FILTER_FIELDS);
+  useReportReadError(read.error);
+  const { value, unavailable, error } = read;
+  return useMemo<FilterVocabularyState>(() => {
+    if (unavailable) return { vocabulary: null, status: "unavailable", error: null };
+    // A failure behind an old answer keeps the answer.
+    if (value) return { vocabulary: value, status: "ready", error: null };
+    if (error !== undefined) return { vocabulary: null, status: "error", error: userMessage(error) };
+    return { vocabulary: null, status: "loading", error: null };
+  }, [value, unavailable, error]);
 }
 
 interface FacetState {

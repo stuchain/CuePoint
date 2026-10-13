@@ -25,6 +25,10 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 
 import { LibraryScreen } from "./LibraryScreen";
+import { announceLibraryChange } from "../../api/libraryChanges";
+import { useLibraryEmpty } from "../../components/shell/useLibraryPresence";
+import { reportUnexpected } from "../../reporting/reporting";
+import { MemoryRouter } from "react-router-dom";
 import { ToastProvider } from "../../components";
 import { InspectorSlotProvider, useInspectorContent } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
@@ -3729,5 +3733,79 @@ describe("the Key list's link to the Keys page (PAGES-16)", () => {
     await tableReady();
     await userEvent.click(within(document.querySelector(".cp-quick") as HTMLElement).getByRole("button", { name: "Key" }));
     expect(screen.queryByRole("button", { name: "See these on the Keys page" })).toBeNull();
+  });
+});
+
+vi.mock("../../reporting/reporting", async (original) => ({
+  ...(await original<typeof import("../../reporting/reporting")>()),
+  reportUnexpected: vi.fn(),
+}));
+
+function ShellPoll() {
+  useLibraryEmpty(10);
+  return null;
+}
+
+describe("the shell polling beside the page (C19d)", () => {
+  it("a failing summary under the shell poll is one toast and one report, with no loading flicker", async () => {
+    vi.mocked(reportUnexpected).mockClear();
+    bridge.getLibrarySummary.mockRejectedValue(new Error("engine starting"));
+    render(
+      <MemoryRouter>
+        <ScaleProvider>
+          <ToastProvider>
+            <ShellPoll />
+            <LibraryScreen />
+          </ToastProvider>
+        </ScaleProvider>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(reportUnexpected).toHaveBeenCalledTimes(1));
+    const polled = bridge.getLibrarySummary.mock.calls.length;
+    // Several shell polls go by; each fails privately and quietly.
+    await waitFor(() => expect(bridge.getLibrarySummary.mock.calls.length).toBeGreaterThanOrEqual(polled + 4));
+    expect(screen.queryByText("Reading your library…")).toBeNull();
+    expect(screen.getAllByText("engine starting")).toHaveLength(1);
+    expect(reportUnexpected).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("revisiting the page (C19d)", () => {
+  it("revisit shows the old value immediately and refetches after an announce", async () => {
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary());
+    const first = renderScreen();
+    expect(await screen.findByTestId("library-track-count")).toHaveTextContent("3,880");
+    await waitFor(() => expect(bridge.getTags).toHaveBeenCalled());
+    await waitFor(() => expect(bridge.getLibraryFilterFields).toHaveBeenCalled());
+    first.unmount();
+
+    const reads = () => ({
+      summary: bridge.getLibrarySummary.mock.calls.length,
+      playlists: bridge.getLibraryPlaylists.mock.calls.length,
+      collections: bridge.getCollections.mock.calls.length,
+      fields: bridge.getLibraryFilterFields.mock.calls.length,
+      tags: bridge.getTags.mock.calls.length,
+    });
+    const before = reads();
+
+    renderScreen();
+    // The first render: no "Reading your library…", the counts are already there.
+    expect(screen.queryByText("Reading your library…")).toBeNull();
+    expect(screen.getByTestId("library-track-count")).toHaveTextContent("3,880");
+    await tableReady();
+    expect(reads()).toEqual(before);
+
+    bridge.getLibrarySummary.mockResolvedValue(loadedSummary({ track_count: 4001 }));
+    announceLibraryChange();
+    await waitFor(() =>
+      expect(screen.getByTestId("library-track-count")).toHaveTextContent("4,001"),
+    );
+    expect(reads()).toEqual({
+      summary: before.summary + 1,
+      playlists: before.playlists + 1,
+      collections: before.collections + 1,
+      fields: before.fields + 1,
+      tags: before.tags + 1,
+    });
   });
 });

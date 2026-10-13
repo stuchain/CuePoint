@@ -5,12 +5,14 @@
  * selected, and hands the page a scope. Selection is by node; what the page
  * does with it — scoping the table, choosing the opening sort — is the page's.
  *
- * The tree is fetched once per mount rather than watched: it changes only when
- * an import or a refresh replaces it, and `reload` is what those call.
+ * The tree is read through the shared cache (C19d): a page shown again has it at
+ * once, and it is read again when the library announces a change or a job
+ * ends. `reload` is what an import or a refresh calls to read it now.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { LibraryPlaylistNode } from "../../api/cuepointBridge.types";
+import { LIBRARY_PLAYLISTS, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import {
   PLAYLIST_PANE_STORAGE_KEY,
   ancestorPaths,
@@ -24,7 +26,6 @@ import {
   type PlaylistTreeNode,
   type VisibleRow,
 } from "./playlistTree";
-import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
 
 type PlaylistTreeStatus = "loading" | "ready" | "error" | "unavailable";
@@ -53,40 +54,23 @@ export interface PlaylistTreeController {
 export function usePlaylistTree(
   storageKey: string = PLAYLIST_PANE_STORAGE_KEY,
 ): PlaylistTreeController {
-  const [nodes, setNodes] = useState<LibraryPlaylistNode[]>([]);
-  const [status, setStatus] = useState<PlaylistTreeStatus>("loading");
-  const [error, setError] = useState<string | null>(null);
+  const read = useSharedRead(LIBRARY_PLAYLISTS);
   const [state, setState] = useState<PaneState>(() => loadPaneState(storageKey));
   const [selectionFellBack, setSelectionFellBack] = useState(false);
-  const [reloads, setReloads] = useState(0);
+
+  useReportReadError(read.error);
+  const nodes: LibraryPlaylistNode[] = useMemo(() => read.value?.playlists ?? [], [read.value]);
+  // A failure behind an old tree keeps the tree.
+  const status: PlaylistTreeStatus = read.unavailable
+    ? "unavailable"
+    : read.value
+      ? "ready"
+      : read.error !== undefined
+        ? "error"
+        : "loading";
+  const error = !read.value && read.error !== undefined ? userMessage(read.error) : null;
 
   const tree = useMemo(() => buildTree(nodes), [nodes]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const bridge = window.cuepoint?.getLibraryPlaylists;
-    if (!bridge) {
-      setStatus("unavailable");
-      return;
-    }
-    setStatus("loading");
-    void bridge()
-      .then((payload) => {
-        if (cancelled) return;
-        setNodes(payload.playlists);
-        setStatus("ready");
-        setError(null);
-      })
-      .catch((cause: unknown) => {
-        reportUnexpected(cause);
-        if (cancelled) return;
-        setStatus("error");
-        setError(userMessage(cause));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reloads]);
 
   // What was remembered, checked against the collection as it is now. A
   // playlist a refresh removed falls back to All tracks and says so.
@@ -162,7 +146,7 @@ export function usePlaylistTree(
     [state.expandedPaths],
   );
 
-  const reload = useCallback(() => setReloads((n) => n + 1), []);
+  const reload = read.refresh;
 
   return {
     tree,
