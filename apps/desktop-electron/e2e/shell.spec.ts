@@ -565,8 +565,11 @@ ${tracks.join("\n")}
       await expect.poll(scale).toBe("1.5");
       await expect(window.getByLabel("Size of text and controls")).toHaveValue("1.5");
       await chooseMenuItem(app, "size-bigger");
-      await expect.poll(scale).toBe("2");
-      // 2 → 1.5 → 1.25 (Compact, R2-5) → 1.
+      // Bigger steps only to a size whose rows fit the screen (MIN_ROWS_HEIGHT, R2-5): 2× needs a
+      // screen 1,120 px tall, which a CI display may not have, so the step is read off the screen.
+      const bigger = await window.evaluate(() => (screen.availHeight / 2 >= 560 ? "2" : "1.5"));
+      await expect.poll(scale).toBe(bigger);
+      // 2 → 1.5 → 1.25 (Compact, R2-5) → 1, and from 1.5 the third press stays at 1.
       await chooseMenuItem(app, "size-smaller");
       await chooseMenuItem(app, "size-smaller");
       await chooseMenuItem(app, "size-smaller");
