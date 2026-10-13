@@ -8,6 +8,7 @@ import { waveformEntryWords } from "../waveform/analysisWords";
 import { useWaveform } from "../waveform/useWaveforms";
 import { useWaveformRequest } from "../waveform/useWaveformRequest";
 import { WaveformCanvas } from "../waveform/WaveformCanvas";
+import { useWaveformDetailSetting } from "../waveform/waveformDetailSetting";
 import { useWaveformBox } from "../waveform/waveformEnvironment";
 import {
   formatTime,
@@ -156,6 +157,7 @@ export function PlayerBar({
   const seekMax = duration && duration > 0 ? duration : 0;
 
   const trackId = item?.trackId ?? null;
+  const [detailOn, setDetailOn] = useWaveformDetailSetting();
   const wave = useWaveformBox<HTMLDivElement>();
   const waveform = useWaveform(trackId, wave.width);
   useWaveformRequest(trackId, waveform);
@@ -256,6 +258,11 @@ export function PlayerBar({
   const queueWords = queueOpen
     ? "Hide the queue"
     : `Show the queue (${queueLength} ${queueLength === 1 ? "track" : "tracks"})`;
+
+  // The strip needs a library track (`PlayerSlot`); the button still keeps the choice.
+  const detailWords = `${detailOn ? "Hide" : "Show"} the zoomed waveform`;
+  const detailHint =
+    item !== null && trackId === null ? `${detailWords} · only for tracks in your Library` : detailWords;
 
   return (
     <div className="cp-player-bar" role="region" aria-label="Player">
@@ -422,6 +429,17 @@ export function PlayerBar({
             </button>
           </Hint>
         )}
+        <Hint text={detailHint}>
+          <button
+            type="button"
+            className={`cp-player-bar__button${detailOn ? " cp-player-bar__button--on" : ""}`}
+            onClick={() => setDetailOn(!detailOn)}
+            aria-label={detailWords}
+            aria-pressed={detailOn}
+          >
+            <PixelIcon name="waveform" />
+          </button>
+        </Hint>
       </div>
 
       <div className="cp-player-bar__volume">

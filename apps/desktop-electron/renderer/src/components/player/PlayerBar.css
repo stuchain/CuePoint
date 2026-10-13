@@ -262,14 +262,14 @@
 
 .cp-player-bar__slider--volume {
   flex: 0 0 auto;
-  width: 6rem;
+  width: 5rem;
 }
 
 /* Narrow windows: the track text gives way first, then volume. The transport
    and the position never disappear — they are why the bar exists. */
 @media (max-width: 900px) {
   .cp-player-bar__slider--volume {
-    width: 4rem;
+    width: 3.5rem;
   }
 }
 

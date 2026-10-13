@@ -184,6 +184,99 @@ test.describe("The zoomed waveform above the player (T4)", () => {
       await expect(window.locator(".cp-detail-strip")).toHaveAttribute("data-detail", "ready", { timeout: 60_000 });
       await expect.poll(() => painted(window), { timeout: 15_000 }).toBeGreaterThan(0);
 
+      // The bar's own button does the same (C30): lit while the strip shows.
+      const barButton = window.getByRole("button", { name: "Hide the zoomed waveform" });
+      await expect(barButton).toHaveAttribute("aria-pressed", "true");
+      await barButton.click();
+      await expect(window.locator(".cp-detail-strip")).toHaveCount(0);
+      const showButton = window.getByRole("button", { name: "Show the zoomed waveform" });
+      await expect(showButton).toHaveAttribute("aria-pressed", "false");
+      await showButton.click();
+      await expect(window.locator(".cp-detail-strip")).toBeVisible({ timeout: 20_000 });
+      await expect(window.getByRole("button", { name: "Hide the zoomed waveform" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    } finally {
+      await app.close();
+    }
+  });
+
+  /** Import the fixture, wait for its waveform, and start it playing silently. */
+  async function importAndPlay(page: Page, xml: string, file: string): Promise<void> {
+    await page.evaluate((xmlPath) => window.cuepoint!.startLibraryImport!({ xml_path: xmlPath }), xml);
+    await expect
+      .poll(
+        async () => {
+          const status = (await page.evaluate(() => window.cuepoint!.waveforms!.analysis())).value!;
+          return `${status.present} ${status.analysed}`;
+        },
+        { timeout: 90_000 },
+      )
+      .toBe("1 1");
+    let trackId = 0;
+    for (let id = 1; id <= 5 && trackId === 0; id += 1) {
+      const answer = await page.evaluate(
+        (track) => window.cuepoint!.waveforms!.get({ track_ids: [track], width: 120 }),
+        id,
+      );
+      if (answer.value?.waveforms[0]?.state === "ready") trackId = id;
+    }
+    expect(trackId).toBeGreaterThan(0);
+    await page.evaluate(
+      async ({ file, trackId }) => {
+        const player = (window as never as { cuepoint: Record<string, any> }).cuepoint.player;
+        await player.setVolume(0);
+        await player.playQueue(
+          [{ trackId, filePath: file, title: "Bands", artist: "Fixture", durationSeconds: 6 }],
+          0,
+        );
+      },
+      { file, trackId },
+    );
+  }
+
+  test("a short window starts without the strip, and the bar button shows it (R2-2)", async () => {
+    test.setTimeout(180_000);
+    const { xml, file } = writeExport(workspace);
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const page = await ready(app);
+      // Fresh profile, nothing chosen; 660 of content is under the 700 px threshold.
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setContentSize(1280, 660));
+      await importAndPlay(page, xml, file);
+
+      // Playing, and still no strip; the bar's button offers it.
+      const showButton = page.getByRole("button", { name: "Show the zoomed waveform" });
+      await expect(showButton).toBeVisible({ timeout: 20_000 });
+      await expect(showButton).toHaveAttribute("aria-pressed", "false");
+      await expect(page.locator(".cp-detail-strip")).toHaveCount(0);
+
+      await showButton.click();
+      await expect(page.locator(".cp-detail-strip")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByRole("button", { name: "Hide the zoomed waveform" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("the default window keeps the strip on a fresh profile (R2-2)", async () => {
+    test.setTimeout(180_000);
+    const { xml, file } = writeExport(workspace);
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      // No resize: the default 1280x800 window is over the 700 px content threshold.
+      const page = await ready(app);
+      await importAndPlay(page, xml, file);
+
+      await expect(page.locator(".cp-detail-strip")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByRole("button", { name: "Hide the zoomed waveform" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
     } finally {
       await app.close();
     }

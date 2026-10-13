@@ -135,6 +135,22 @@ const queue = [
   "............",
 ];
 
+/** Waveform: vertical bars of varying height, the zoomed strip on the player bar (C30). */
+const waveform = [
+  "............",
+  ".......##...",
+  "...##..##...",
+  "...##..##.##",
+  "##.##..##.##",
+  "##.##..##.##",
+  "##.##..##.##",
+  "##.##..##.##",
+  "...##..##.##",
+  "...##..##...",
+  ".......##...",
+  "............",
+];
+
 /** Shuffle: two paths crossing, with tips on the right (PLAYER-07). */
 const shuffle = [
   "............",
@@ -669,6 +685,7 @@ export const PIXEL_ICONS = {
   repeat,
   "repeat-one": repeatOne,
   queue,
+  waveform,
   home,
   library,
   activity,

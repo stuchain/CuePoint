@@ -10,6 +10,7 @@ import { PLAYER_REPEAT_STORAGE_KEY, PLAYER_SHUFFLE_STORAGE_KEY } from "./playerO
 import { resetPlayerStore } from "./playerStore";
 import { closeWheel, getWheelState } from "../wheel/wheelStore";
 import { EMPTY_AUDIO_STATE } from "./playerFormat";
+import { WAVEFORM_DETAIL_STORAGE_KEY, resetWaveformDetailForTests } from "../waveform/waveformDetailSetting";
 
 /**
  * The player bar (PLAYER-06, DEC-052, DEC-053).
@@ -113,11 +114,13 @@ function installBridge(initial: PlayerSnapshot | null = null): Harness {
 
 beforeEach(() => {
   resetPlayerStore();
+  resetWaveformDetailForTests();
 });
 
 afterEach(() => {
   resetPlayerStore();
   localStorage.clear();
+  resetWaveformDetailForTests();
   vi.restoreAllMocks();
   delete (window as { cuepoint?: unknown }).cuepoint;
 });
@@ -638,6 +641,104 @@ describe("shuffle and repeat (PLAYER-07, DEC-052)", () => {
   });
 });
 
+describe("the waveform button (C30)", () => {
+  it("is lit while the strip shows, and one click hides it and remembers", async () => {
+    installBridge(snapshot());
+    const { container } = render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    const button = screen.getByRole("button", { name: "Hide the zoomed waveform" });
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    expect(button).toHaveClass("cp-player-bar__button--on");
+    expect(container.querySelector('[data-icon="waveform"]')).not.toBeNull();
+    // Beside shuffle and repeat, after them.
+    const order = container.querySelector(".cp-player-bar__order")!;
+    expect(order.lastElementChild?.contains(button)).toBe(true);
+
+    fireEvent.click(button);
+
+    expect(localStorage.getItem(WAVEFORM_DETAIL_STORAGE_KEY)).toBe("off");
+    const off = screen.getByRole("button", { name: "Show the zoomed waveform" });
+    expect(off).toHaveAttribute("aria-pressed", "false");
+    expect(off).not.toHaveClass("cp-player-bar__button--on");
+  });
+
+  it("shows it again with one click", async () => {
+    localStorage.setItem(WAVEFORM_DETAIL_STORAGE_KEY, "off");
+    installBridge(snapshot());
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    fireEvent.click(screen.getByRole("button", { name: "Show the zoomed waveform" }));
+
+    expect(localStorage.getItem(WAVEFORM_DETAIL_STORAGE_KEY)).toBe("on");
+    expect(screen.getByRole("button", { name: "Hide the zoomed waveform" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("adds no library note when nothing is playing", async () => {
+    installBridge(snapshot({ playback: { filePath: null }, items: [], currentId: null }));
+    render(<PlayerBar />);
+    await waitFor(() => expect(window.cuepoint?.player?.getState).toHaveBeenCalled());
+
+    expect(screen.getByRole("button", { name: "Hide the zoomed waveform" })).toHaveAttribute(
+      "title",
+      "Hide the zoomed waveform",
+    );
+  });
+
+  it("puts the library note on the Show wording too", async () => {
+    localStorage.setItem(WAVEFORM_DETAIL_STORAGE_KEY, "off");
+    installBridge(snapshot({ items: [item({ trackId: null })] }));
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    expect(screen.getByRole("button", { name: "Show the zoomed waveform" })).toHaveAttribute(
+      "title",
+      "Show the zoomed waveform · only for tracks in your Library",
+    );
+  });
+
+  it("says when the playing track is not in the Library, and still toggles", async () => {
+    installBridge(snapshot({ items: [item({ trackId: null })] }));
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+
+    const button = screen.getByRole("button", { name: "Hide the zoomed waveform" });
+    expect(button).toHaveAttribute("title", "Hide the zoomed waveform · only for tracks in your Library");
+    fireEvent.click(button);
+    expect(localStorage.getItem(WAVEFORM_DETAIL_STORAGE_KEY)).toBe("off");
+  });
+});
+
+describe("a short window starts without the strip (R2-2)", () => {
+  afterEach(() => {
+    Reflect.deleteProperty(window, "matchMedia");
+  });
+
+  it("shows no strip until the bar's button is clicked", async () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: () => ({ matches: true, addEventListener: () => undefined, removeEventListener: () => undefined }),
+    });
+    installBridge(snapshot());
+    const { container } = render(<Slot />);
+    await screen.findByText("Strobe");
+    expect(container.querySelector(".cp-detail-strip")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show the zoomed waveform" }));
+
+    expect(container.querySelector(".cp-detail-strip")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Hide the zoomed waveform" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+});
+
 describe("every control names itself (BAR-1)", () => {
   const titleOf = (name: string, role: "button" | "slider" = "button") =>
     screen.getByRole(role, { name }).getAttribute("title");
@@ -653,6 +754,7 @@ describe("every control names itself (BAR-1)", () => {
     expect(titleOf("Shuffle off")).toBe("Shuffle: off");
     expect(titleOf("Repeat off")).toBe("Repeat: off");
     expect(titleOf("Show the queue (3 tracks)")).toBe("Show the queue (3 tracks)");
+    expect(titleOf("Hide the zoomed waveform")).toBe("Hide the zoomed waveform");
     expect(titleOf("Mute")).toBe("Mute");
     expect(titleOf("Volume", "slider")).toBe("Volume (Ctrl+↑/↓)");
   });
