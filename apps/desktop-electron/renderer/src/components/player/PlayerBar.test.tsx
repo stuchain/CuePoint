@@ -312,9 +312,144 @@ describe("seeking", () => {
 
     fireEvent.change(slider, { target: { value: "400" } });
     fireEvent.pointerUp(slider);
-    harness.push(snapshot({ playback: { positionSeconds: 42 } }));
+    harness.push(snapshot({ playback: { positionSeconds: 400.2 } }));
 
-    await waitFor(() => expect((slider as HTMLInputElement).value).toBe("42"));
+    await waitFor(() => expect((slider as HTMLInputElement).value).toBe("400.2"));
+  });
+
+  it("keeps the clicked spot after release until the store reports it", async () => {
+    const harness = installBridge(snapshot({ playback: { positionSeconds: 10 } }));
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    const slider = screen.getByRole("slider", { name: "Seek" }) as HTMLInputElement;
+
+    fireEvent.change(slider, { target: { value: "120" } });
+    fireEvent.pointerUp(slider);
+    expect(slider.value).toBe("120");
+    harness.push(snapshot({ playback: { positionSeconds: 10.1 } }));
+    expect(slider.value).toBe("120");
+    harness.push(snapshot({ playback: { positionSeconds: 120.2 } }));
+    await waitFor(() => expect(slider.value).toBe("120.2"));
+    harness.push(snapshot({ playback: { positionSeconds: 130 } }));
+    await waitFor(() => expect(slider.value).toBe("130"));
+  });
+
+  it("lets go of the clicked spot after the fail-safe even if main never reports it", async () => {
+    vi.useFakeTimers();
+    try {
+      const harness = installBridge(snapshot({ playback: { positionSeconds: 10 } }));
+      render(<PlayerBar />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      const slider = screen.getByRole("slider", { name: "Seek" }) as HTMLInputElement;
+      fireEvent.change(slider, { target: { value: "120" } });
+      fireEvent.pointerUp(slider);
+      harness.push(snapshot({ playback: { positionSeconds: 10.1 } }));
+      expect(slider.value).toBe("120");
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1600);
+      });
+      expect(slider.value).toBe("10.1");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("commits one seek on pointercancel", async () => {
+    const harness = installBridge(snapshot());
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    const slider = screen.getByRole("slider", { name: "Seek" });
+
+    fireEvent.change(slider, { target: { value: "200" } });
+    fireEvent.pointerCancel(slider);
+
+    expect(harness.player.seek).toHaveBeenCalledTimes(1);
+    expect(harness.player.seek).toHaveBeenCalledWith(200);
+  });
+
+  it("takes any value, not half seconds", async () => {
+    installBridge(snapshot());
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    expect(screen.getByRole("slider", { name: "Seek" })).toHaveAttribute("step", "any");
+  });
+
+  it("drops the preview when the seek is rejected, well before the fail-safe", async () => {
+    vi.useFakeTimers();
+    try {
+      const harness = installBridge(snapshot({ playback: { positionSeconds: 10 } }));
+      let reject: (error: Error) => void = () => undefined;
+      harness.player.seek.mockReturnValue(new Promise((_, no) => (reject = no)));
+      render(<PlayerBar />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      const slider = screen.getByRole("slider", { name: "Seek" }) as HTMLInputElement;
+
+      fireEvent.change(slider, { target: { value: "120" } });
+      fireEvent.pointerUp(slider);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(100);
+      });
+      expect(slider.value).toBe("120");
+      await act(async () => {
+        reject(new Error("refused"));
+        await vi.advanceTimersByTimeAsync(100);
+      });
+      expect(slider.value).toBe("10");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not let an earlier commit's late rejection clear a later preview", async () => {
+    const harness = installBridge(snapshot({ playback: { positionSeconds: 10 } }));
+    let rejectFirst: (error: Error) => void = () => undefined;
+    harness.player.seek
+      .mockReturnValueOnce(new Promise((_, no) => (rejectFirst = no)))
+      .mockResolvedValue(undefined);
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    const slider = screen.getByRole("slider", { name: "Seek" }) as HTMLInputElement;
+
+    fireEvent.change(slider, { target: { value: "120" } });
+    fireEvent.pointerUp(slider);
+    fireEvent.change(slider, { target: { value: "130" } });
+    fireEvent.pointerUp(slider);
+    await act(async () => {
+      rejectFirst(new Error("refused"));
+    });
+    expect(slider.value).toBe("130");
+  });
+
+  it("steps Shift and Ctrl arrows by five seconds too, never by the browser's 1 %", async () => {
+    const harness = installBridge(snapshot({ playback: { positionSeconds: 30 } }));
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    const slider = screen.getByRole("slider", { name: "Seek" });
+
+    expect(fireEvent.keyDown(slider, { key: "ArrowRight", ctrlKey: true })).toBe(false);
+    fireEvent.keyUp(slider, { key: "ArrowRight", ctrlKey: true });
+    expect(harness.player.seek).toHaveBeenLastCalledWith(35);
+    expect(fireEvent.keyDown(slider, { key: "ArrowRight", shiftKey: true })).toBe(false);
+    fireEvent.keyUp(slider, { key: "ArrowRight", shiftKey: true });
+    expect(harness.player.seek).toHaveBeenLastCalledWith(40);
+  });
+
+  it("steps the arrow keys by five seconds", async () => {
+    const harness = installBridge(snapshot({ playback: { positionSeconds: 30 } }));
+    render(<PlayerBar />);
+    await screen.findByText("Strobe");
+    const slider = screen.getByRole("slider", { name: "Seek" });
+
+    fireEvent.keyDown(slider, { key: "ArrowRight" });
+    fireEvent.keyUp(slider, { key: "ArrowRight" });
+    expect(harness.player.seek).toHaveBeenLastCalledWith(35);
+    fireEvent.keyDown(slider, { key: "ArrowLeft" });
+    fireEvent.keyUp(slider, { key: "ArrowLeft" });
+    expect(harness.player.seek).toHaveBeenLastCalledWith(30);
   });
 
   it("is disabled for a track with no known duration", async () => {

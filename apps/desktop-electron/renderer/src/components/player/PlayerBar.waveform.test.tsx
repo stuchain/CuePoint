@@ -186,7 +186,7 @@ describe("the waveform as the seek control's picture", () => {
     expect(input).toHaveAttribute("type", "range");
     expect(input).toHaveAttribute("min", "0");
     expect(input).toHaveAttribute("max", "600");
-    expect(input).toHaveAttribute("step", "0.5");
+    expect(input).toHaveAttribute("step", "any");
     expect(input).toHaveAttribute("aria-valuetext", "0:30 of 10:00");
     expect(input).toBeEnabled();
     // The input lies over the picture, in the same holder; the picture says

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Badge } from "../Badge";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
@@ -58,6 +58,13 @@ import "./PlayerBar.css";
  */
 
 const bridge = () => window.cuepoint?.player;
+
+/** A pushed position this close to a committed seek counts as the seek having landed. */
+const SEEK_LANDED_S = 0.75;
+/** The longest a committed seek is shown before the pushed position takes over again. */
+const SEEK_PENDING_MS = 1500;
+/** Arrow-key step on the seek slider, in seconds (the range's own step is `any`). */
+const SEEK_KEY_STEP_S = 5;
 
 interface PlayerBarProps {
   /** Whether the queue panel is open, and how to change that (PLAYER-08). */
@@ -127,8 +134,25 @@ export function PlayerBar({
   // Only while dragging; null the rest of the time so the slider follows mpv.
   const [scrubSeconds, setScrubSeconds] = useState<number | null>(null);
   const scrubbing = useRef(false);
+  // Where the last commit sent the player, shown until main reports it (or fails to).
+  const [pendingSeconds, setPendingSeconds] = useState<number | null>(null);
+  const pendingSeq = useRef(0);
+  const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const shownPosition = scrubSeconds ?? position ?? 0;
+  const shownPosition = scrubSeconds ?? pendingSeconds ?? position ?? 0;
+
+  const clearPendingTimer = useCallback(() => {
+    if (pendingTimer.current !== null) clearTimeout(pendingTimer.current);
+    pendingTimer.current = null;
+  }, []);
+  useEffect(() => clearPendingTimer, [clearPendingTimer]);
+  useEffect(() => {
+    if (pendingSeconds === null) return;
+    if (position !== null && Math.abs(position - pendingSeconds) <= SEEK_LANDED_S) {
+      clearPendingTimer();
+      setPendingSeconds(null);
+    }
+  }, [position, pendingSeconds, clearPendingTimer]);
   const seekMax = duration && duration > 0 ? duration : 0;
 
   const trackId = item?.trackId ?? null;
@@ -179,8 +203,36 @@ export function PlayerBar({
     scrubbing.current = false;
     const target = scrubSeconds;
     setScrubSeconds(null);
-    if (target !== null) void bridge()?.seek(target);
-  }, [scrubSeconds]);
+    if (target === null) return;
+    // Keep the clicked spot on the bar until main reports it, so it does not
+    // flash back to the old position while the seek is on its way.
+    // Only the latest commit may drop its own preview, whatever an earlier one reports late.
+    const seq = (pendingSeq.current += 1);
+    const drop = () => {
+      if (pendingSeq.current === seq) setPendingSeconds(null);
+    };
+    setPendingSeconds(target);
+    clearPendingTimer();
+    pendingTimer.current = setTimeout(drop, SEEK_PENDING_MS);
+    Promise.resolve(bridge()?.seek(target)).catch(() => {
+      if (pendingSeq.current !== seq) return;
+      clearPendingTimer();
+      drop();
+    });
+  }, [scrubSeconds, clearPendingTimer]);
+
+  /** `step="any"` leaves a key press at 1 % of the range, so step in seconds instead. */
+  const onSeekKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    // Shift and Ctrl/Cmd would otherwise step the browser's 1 % of the track. The
+    // global Ctrl/Cmd+Arrow shortcuts already skip a focused input.
+    if (event.altKey) return;
+    let delta = 0;
+    if (event.key === "ArrowRight" || event.key === "ArrowUp") delta = SEEK_KEY_STEP_S;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowDown") delta = -SEEK_KEY_STEP_S;
+    if (delta === 0) return;
+    event.preventDefault();
+    onScrub(Math.max(0, Math.min(seekMax || 1, shownPosition + delta)));
+  };
 
   const mod = modifierName();
   const title = item?.title || "Nothing playing";
@@ -303,11 +355,13 @@ export function PlayerBar({
               className="cp-player-bar__slider"
               min={0}
               max={seekMax || 1}
-              step={0.5}
+              step="any"
               value={Math.min(shownPosition, seekMax || 1)}
               disabled={seekMax === 0}
               onChange={(event) => onScrub(Number(event.target.value))}
               onPointerUp={commitScrub}
+              onPointerCancel={commitScrub}
+              onKeyDown={onSeekKeyDown}
               onKeyUp={commitScrub}
               onBlur={commitScrub}
               aria-label="Seek"
