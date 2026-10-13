@@ -31,6 +31,7 @@ from cuepoint.models.filter_rule import (
     TYPE_TAG,
     Facet,
     FacetRange,
+    FacetSum,
     FacetValue,
     field_spec,
 )
@@ -49,6 +50,7 @@ from cuepoint.persistence.track_query import (
     build_count,
     build_review_rows,
     build_facet_range,
+    build_facet_sum,
     build_facet_value_count,
     build_facet_values,
     build_select,
@@ -719,6 +721,30 @@ class TrackRepository(ITrackRepository):
             field=spec.name,
             minimum=None if row["low"] is None else float(row["low"]),
             maximum=None if row["high"] is None else float(row["high"]),
+            missing=int(row["missing"] or 0),
+        )
+
+    def facet_sum(
+        self, query: Optional[BrowseQuery] = None, field: str = "duration_seconds"
+    ) -> FacetSum:
+        """Return the track count and the total of a numeric field in the view.
+
+        The view's own rules all apply, the field's included, so the total is
+        that of exactly the tracks shown. A track with no value adds nothing
+        and is counted in ``missing``.
+
+        Raises:
+            FilterRuleError: If the field cannot be filtered.
+            BrowseQueryError: If the field is not numeric.
+        """
+        spec = field_spec(field)
+        sql, params = build_facet_sum(self._checked(query), spec.name)
+        row = self._db.connect().execute(sql, params).fetchone()
+        if row is None:
+            return FacetSum()
+        return FacetSum(
+            total=int(row["total"] or 0),
+            sum=float(row["total_sum"] or 0),
             missing=int(row["missing"] or 0),
         )
 

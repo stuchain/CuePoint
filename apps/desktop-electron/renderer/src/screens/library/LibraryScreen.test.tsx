@@ -424,6 +424,9 @@ function install(overrides: Partial<Bridge> = {}) {
       genres: [{ value: "House", count: 3 }],
       genres_total: 1,
       genres_truncated: false,
+      total: 0,
+      total_seconds: 0,
+      duration_missing: 0,
     }),
     getLibraryTrack: vi.fn().mockResolvedValue(DETAIL),
     setTrackMetadata: vi.fn().mockResolvedValue({ metadata: DETAIL.metadata }),
@@ -3559,6 +3562,9 @@ describe("quick filters and saving (PAGES-05B)", () => {
         genres: [],
         genres_total: 0,
         genres_truncated: false,
+        total: 0,
+        total_seconds: 0,
+        duration_missing: 0,
       }),
     });
     renderScreen({ onOpenMatch });

@@ -68,6 +68,9 @@ const FACETS: LibraryQuickFacets = {
   ],
   genres_total: 40,
   genres_truncated: true,
+  total: 0,
+  total_seconds: 0,
+  duration_missing: 0,
 };
 
 const SOURCES: FilterSourceOption[] = [

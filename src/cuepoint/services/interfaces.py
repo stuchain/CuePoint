@@ -171,7 +171,7 @@ if TYPE_CHECKING:
     )
     from cuepoint.models.refresh_diff import RefreshDiff
     from cuepoint.models.library_track import IdentityMatch, LibraryTrack, QueueTrack
-    from cuepoint.models.filter_rule import Facet, FacetRange, RuleSet
+    from cuepoint.models.filter_rule import Facet, FacetRange, FacetSum, RuleSet
     from cuepoint.persistence.track_query import BrowseQuery
     from cuepoint.persistence.track_repository import BulkUpsertResult
     from cuepoint.services.library_import_service import (
@@ -1223,6 +1223,13 @@ class ITrackRepository(ABC):
         self, query: Optional["BrowseQuery"] = None, field: str = "bpm"
     ) -> "FacetRange":
         """Return the span of a numeric field in the current view."""
+        ...
+
+    @abstractmethod
+    def facet_sum(
+        self, query: Optional["BrowseQuery"] = None, field: str = "duration_seconds"
+    ) -> "FacetSum":
+        """Return the track count and the total of a numeric field in the view."""
         ...
 
     @abstractmethod

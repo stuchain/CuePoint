@@ -1467,6 +1467,34 @@ def build_facet_value_count(
     )
 
 
+def build_facet_sum(query: BrowseQuery, field: str) -> Tuple[str, Tuple[object, ...]]:
+    """Build the "how many tracks, and what does this field add up to" query.
+
+    What the Library header says about the view: "36 tracks, 3 h 52 min".
+    Unlike :func:`build_facet_range`, the query is used as it is, with the
+    field's own rules included: a range control must keep offering the values
+    its own filter excludes, but a total describes exactly the tracks shown, so
+    a length filter has to narrow it.
+
+    Raises:
+        BrowseQueryError: If the field is not numeric, since a text field has
+            no sum.
+    """
+    spec = field_spec(field)
+    if spec.type != TYPE_NUMBER:
+        raise BrowseQueryError(
+            f"{spec.label} is a {spec.type} field; a sum needs a number field"
+        )
+    parts = _predicate(query.validated(), joins=spec.joins)
+    column = _facet_column(spec)
+    return (
+        f"{parts.cte}SELECT count(*) AS total, sum({column}) AS total_sum, "
+        f"sum(CASE WHEN {column} IS NULL THEN 1 ELSE 0 END) AS missing "
+        f"FROM {_facet_table(parts.where)}{parts.join}{parts.where}",
+        parts.params,
+    )
+
+
 def build_facet_range(query: BrowseQuery, field: str) -> Tuple[str, Tuple[object, ...]]:
     """Build the "how low and how high does this field go" query.
 

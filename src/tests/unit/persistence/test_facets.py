@@ -283,6 +283,40 @@ class TestTruncation:
         assert len(many_labels.facet_values(field="label", limit=0).values) == 50
 
 
+class TestSums:
+    @pytest.fixture
+    def timed(self, repo) -> TrackRepository:
+        repo.add(_track("1", genre="House", duration_seconds=300))
+        repo.add(_track("2", genre="House", duration_seconds=200))
+        repo.add(_track("3", genre="Techno", duration_seconds=100))
+        repo.add(_track("4", genre="Techno"))  # no length
+        return repo
+
+    def test_it_totals_the_view_and_counts_the_gap(self, timed):
+        total = timed.facet_sum(field="duration_seconds")
+        assert (total.total, total.sum, total.missing) == (4, 600.0, 1)
+
+    def test_a_track_without_a_length_adds_nothing(self, timed):
+        query = BrowseQuery(rules=RuleSet(rules=(rule("genre", "is", "Techno"),)))
+        total = timed.facet_sum(query, "duration_seconds")
+        assert (total.total, total.sum, total.missing) == (2, 100.0, 1)
+
+    def test_the_views_own_filter_on_the_field_applies(self, timed):
+        query = BrowseQuery(
+            rules=RuleSet(rules=(rule("duration_seconds", "gte", 200),))
+        )
+        total = timed.facet_sum(query, "duration_seconds")
+        assert (total.total, total.sum, total.missing) == (2, 500.0, 0)
+
+    def test_an_empty_library_sums_to_nothing(self, repo):
+        total = repo.facet_sum(field="duration_seconds")
+        assert (total.total, total.sum, total.missing) == (0, 0.0, 0)
+
+    def test_a_text_field_is_refused(self, timed):
+        with pytest.raises(BrowseQueryError, match="needs a number"):
+            timed.facet_sum(field="genre")
+
+
 class TestRanges:
     def test_it_reports_both_ends_and_the_gap(self, seeded):
         span = seeded.facet_range(field="bpm")

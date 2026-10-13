@@ -707,6 +707,12 @@ export interface LibraryQuickFacets {
   genres: Array<{ value: string; count: number }>;
   genres_total: number;
   genres_truncated: boolean;
+  /** Tracks in the view, every rule applied. */
+  total: number;
+  /** The view's total length in whole seconds; a track with no length adds nothing. */
+  total_seconds: number;
+  /** Tracks in the view with no length. */
+  duration_missing: number;
 }
 
 export interface LibraryFilterField {

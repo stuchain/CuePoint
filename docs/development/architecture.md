@@ -122,7 +122,8 @@ Two properties hold this together:
 Related surfaces on the same path: `/api/v1/library/playlists` (the tree),
 `/api/v1/library/facets` (a field's values, for filter suggestions; and, as
 `POST` with the view as its body, the Key, BPM and Genre quick filters' lists:
-keys in Camelot order, `no_key`, the BPM range and the 30 most common genres),
+keys in Camelot order, `no_key`, the BPM range, the 30 most common genres, and
+the view's `total`, `total_seconds` and `duration_missing` with every rule applied),
 `/api/v1/library/filter-fields` (the filter vocabulary the UI builds its
 controls from), `/api/v1/library/keys/compatible?key=` (the keys that mix with a
 key, in any notation: DEC-096's rule, for the Camelot wheel) and

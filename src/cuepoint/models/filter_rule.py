@@ -1614,6 +1614,21 @@ class FacetRange:
         }
 
 
+@dataclass(frozen=True)
+class FacetSum:
+    """How many tracks a view holds and what a numeric field adds up to.
+
+    Attributes:
+        total: Tracks in the view, whether or not they have a value.
+        sum: The field's total over the view; a track with no value adds nothing.
+        missing: Tracks in the view with no value for the field.
+    """
+
+    total: int = 0
+    sum: float = 0.0
+    missing: int = 0
+
+
 #: How many values an operator takes. The renderer builds its controls from
 #: this rather than from a table of its own: a operator that takes two values
 #: and a control that offers one is a clause the engine will refuse, and the

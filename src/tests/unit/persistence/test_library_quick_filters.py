@@ -177,6 +177,40 @@ class TestQuickFacets:
         ]
         assert answer["no_key"] == 1
 
+    def test_it_totals_the_tracks_and_their_length(self, db, repo, library):
+        _add(repo, "1", duration_seconds=300)
+        _add(repo, "2", duration_seconds=200)
+        _add(repo, "3")  # no length: counted, adds nothing
+        _add(repo, "4", duration_seconds=100)
+        answer = library.quick_facets().to_dict()
+        assert answer["total"] == 4
+        assert answer["total_seconds"] == 600
+        assert answer["duration_missing"] == 1
+
+        playlists = PlaylistRepository(db)
+        playlists.replace_tree(
+            [
+                RekordboxPlaylist(
+                    name="short",
+                    kind=KIND_PLAYLIST,
+                    depth=0,
+                    position=0,
+                    rekordbox_path="short",
+                    track_refs=["2", "3"],
+                )
+            ]
+        )
+        pid = playlists.list_all()[0].id
+        inside = library.quick_facets(playlist_id=pid).to_dict()
+        assert inside["total"] == 2
+        assert inside["total_seconds"] == 200
+        assert inside["duration_missing"] == 1
+
+    def test_an_empty_view_totals_zero(self, library):
+        answer = library.quick_facets().to_dict()
+        assert (answer["total"], answer["total_seconds"]) == (0, 0)
+        assert answer["duration_missing"] == 0
+
     def test_genres_are_capped_and_say_so(self, library, tracks):
         answer = library.quick_facets(genre_limit=2).to_dict()
         assert len(answer["genres"]) == 2

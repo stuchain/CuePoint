@@ -62,6 +62,10 @@ class QuickFacets:
         genres_total: How many genres the view has, the "no genre" bucket
             counted as one when it exists.
         genres_truncated: True when ``genres`` is only the first of them.
+        total: Tracks in the view, with every rule applied.
+        total_seconds: The view's tracks' lengths added up, in seconds; a track
+            with no length adds nothing.
+        duration_missing: Tracks in the view with no length.
     """
 
     keys: tuple = ()
@@ -70,6 +74,9 @@ class QuickFacets:
     genres: tuple = ()
     genres_total: int = 0
     genres_truncated: bool = False
+    total: int = 0
+    total_seconds: float = 0.0
+    duration_missing: int = 0
 
     def to_dict(self) -> Dict[str, object]:
         """Serialize for the API."""
@@ -86,6 +93,9 @@ class QuickFacets:
             ],
             "genres_total": self.genres_total,
             "genres_truncated": self.genres_truncated,
+            "total": self.total,
+            "total_seconds": int(round(self.total_seconds)),
+            "duration_missing": self.duration_missing,
         }
 
 
@@ -480,7 +490,8 @@ class LibraryService(ILibraryService):
         DJ reads them: keys round the Camelot wheel, with the tracks that have
         none counted on their own. Each is computed without its own field's
         rules, as every facet is, so a chosen key leaves the other keys
-        choosable.
+        choosable. The view's track total and total length are the exception:
+        they describe exactly the tracks shown, every rule applied.
         """
         browse = self._browse_query(
             query, playlist_id, collection_id, rules, DEFAULT_SORT, "asc"
@@ -488,6 +499,7 @@ class LibraryService(ILibraryService):
         key = self._tracks.facet_values(browse, "key", limit=len(CAMELOT_ORDER))
         bpm = self._tracks.facet_range(browse, "bpm")
         genre = self._tracks.facet_values(browse, "genre", limit=genre_limit)
+        length = self._tracks.facet_sum(browse, "duration_seconds")
         rank = {code: index for index, code in enumerate(CAMELOT_ORDER)}
         keyed = sorted(
             ((value.value, value.count) for value in key.values if value.value),
@@ -502,6 +514,9 @@ class LibraryService(ILibraryService):
             ),
             genres_total=genre.total_values,
             genres_truncated=genre.truncated,
+            total=length.total,
+            total_seconds=length.sum,
+            duration_missing=length.missing,
         )
 
     def key_population(

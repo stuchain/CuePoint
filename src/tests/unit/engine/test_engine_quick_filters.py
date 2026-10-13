@@ -72,11 +72,11 @@ def engine(library_db):
     from cuepoint.utils.di_container import get_container
 
     repo = get_container().resolve(ITrackRepository)
-    for track_id, title, genre, bpm in (
-        ("1", "Strobe", "House", 128.0),
-        ("2", "Ghosts", "House", 124.0),
-        ("3", "Rej", "Techno", 122.5),
-        ("4", "Opus", None, None),
+    for track_id, title, genre, bpm, seconds in (
+        ("1", "Strobe", "House", 128.0, 300),
+        ("2", "Ghosts", "House", 124.0, 200),
+        ("3", "Rej", "Techno", 122.5, 100),
+        ("4", "Opus", None, None, None),
     ):
         repo.add(
             LibraryTrack(
@@ -86,6 +86,7 @@ def engine(library_db):
                 artist="Artist",
                 genre=genre,
                 bpm=bpm,
+                duration_seconds=seconds,
             )
         )
     database = get_container().resolve(IDatabaseService)
@@ -117,6 +118,43 @@ class TestQuickFacetsRoute:
         assert payload["bpm"] == {"min": 122.5, "max": 128.0, "missing": 1}
         assert [g["value"] for g in payload["genres"]] == ["House", "Techno"]
         assert payload["genres_truncated"] is False
+
+    def test_it_says_how_many_tracks_and_how_long(self, engine):
+        _, payload = _request(engine, "/api/v1/library/facets", {})
+        assert payload["total"] == 4
+        assert payload["total_seconds"] == 600
+        assert payload["duration_missing"] == 1
+
+    def test_the_totals_follow_the_filter_including_a_length_filter(self, engine):
+        house = {
+            "filters": {
+                "match": "all",
+                "rules": [{"field": "genre", "operator": "is", "value": "House"}],
+            }
+        }
+        _, payload = _request(engine, "/api/v1/library/facets", house)
+        assert (payload["total"], payload["total_seconds"]) == (2, 500)
+        assert payload["duration_missing"] == 0
+        long_only = {
+            "filters": {
+                "match": "all",
+                "rules": [
+                    {"field": "duration_seconds", "operator": "gte", "value": 250}
+                ],
+            }
+        }
+        _, payload = _request(engine, "/api/v1/library/facets", long_only)
+        assert (payload["total"], payload["total_seconds"]) == (1, 300)
+
+    def test_a_search_narrows_the_total(self, engine):
+        _, payload = _request(engine, "/api/v1/library/facets", {"q": "Strobe"})
+        assert (payload["total"], payload["total_seconds"]) == (1, 300)
+
+    def test_an_empty_view_totals_zero(self, engine):
+        _, payload = _request(engine, "/api/v1/library/facets", {"q": "zzzznothing"})
+        assert payload["total"] == 0
+        assert payload["total_seconds"] == 0
+        assert payload["duration_missing"] == 0
 
     def test_it_takes_the_browse_routes_filter_body(self, engine):
         body = {

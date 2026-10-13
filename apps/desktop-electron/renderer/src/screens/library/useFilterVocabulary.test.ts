@@ -20,6 +20,9 @@ const FACETS: LibraryQuickFacets = {
   genres: [],
   genres_total: 0,
   genres_truncated: false,
+  total: 0,
+  total_seconds: 0,
+  duration_missing: 0,
 };
 
 const QUERY = {
