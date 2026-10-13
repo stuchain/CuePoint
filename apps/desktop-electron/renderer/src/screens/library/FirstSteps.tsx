@@ -31,6 +31,10 @@ interface FirstStepsProps {
   onMatch: () => void;
   /** Open Settings at the Beatport token. */
   onAddToken: () => void;
+  /** Run the import (the header's button does the same); the first step offers it while not done. */
+  onImport?: () => void;
+  /** Open the Rekordbox export help; the first step offers it while not done, when given. */
+  onHowToExport?: () => void;
 }
 
 interface Step {
@@ -38,16 +42,27 @@ interface Step {
   label: string;
   hint: string;
   done: boolean;
-  action?: { label: string; onClick: () => void };
+  action?: StepAction;
+  /** A quieter second button beside the action. */
+  secondary?: StepAction;
+}
+
+interface StepAction {
+  label: string;
+  onClick: () => void;
+  /** The step's main button; the rest are secondary. */
+  primary?: boolean;
 }
 
 interface StepsHandlers {
   onMatch: () => void;
   onAddToken: () => void;
+  onImport?: () => void;
+  onHowToExport?: () => void;
 }
 
 /** The four steps, ticking from real state; the first time all are true, it remembers that. */
-function useFirstSteps(imported: boolean, { onMatch, onAddToken }: StepsHandlers) {
+function useFirstSteps(imported: boolean, { onMatch, onAddToken, onImport, onHowToExport }: StepsHandlers) {
   const { matchedCount, signedIn } = useFirstRunProgress();
   const matched = (matchedCount ?? 0) > 0;
   const playedNow = usePlayerValue(selectHasPlayed);
@@ -62,8 +77,10 @@ function useFirstSteps(imported: boolean, { onMatch, onAddToken }: StepsHandlers
     {
       id: "import",
       label: "Import your Rekordbox collection",
-      hint: "Export it from Rekordbox as XML, then use the button above.",
+      hint: "In Rekordbox choose File → Export Collection in xml format, then import that file. Nothing in Rekordbox is changed.",
       done: imported,
+      action: onImport ? { label: "Import…", onClick: onImport, primary: true } : undefined,
+      secondary: onHowToExport ? { label: "How do I export one?", onClick: onHowToExport } : undefined,
     },
     {
       id: "match",
@@ -107,10 +124,22 @@ function StepList({ steps }: { steps: Step[] }) {
             <span className="first-steps__state">{step.done ? " (done)" : " (not yet)"}</span>
             <span className="first-steps__hint">{step.hint}</span>
           </div>
-          {!step.done && step.action && (
-            <Button variant="secondary" onClick={step.action.onClick}>
-              {step.action.label}
-            </Button>
+          {!step.done && (step.action || step.secondary) && (
+            <div className="first-steps__actions">
+              {step.action && (
+                <Button
+                  variant={step.action.primary ? "primary" : "secondary"}
+                  onClick={step.action.onClick}
+                >
+                  {step.action.label}
+                </Button>
+              )}
+              {step.secondary && (
+                <Button variant="secondary" onClick={step.secondary.onClick}>
+                  {step.secondary.label}
+                </Button>
+              )}
+            </div>
           )}
         </li>
       ))}

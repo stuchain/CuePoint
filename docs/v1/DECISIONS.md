@@ -8110,3 +8110,22 @@ in playlists: which ones are matched, which wait for them, which are ready to sa
 - The green save bar (C23, DEC-262) is mounted under every Clean tab.
 
 **Decided with**: User (C22 ★ Playlists first sub-tab; K12, K13 "apply ALL") · **Date**: 2026-10-13
+
+
+
+## DEC-293 — The Empty Library Is First Steps Only; Library Numbers Use the Data Font
+
+**Status**: Approved · **Related**: K16, R4-3, DEC-048 (extended), LIB-2, RUN-3
+
+**Context**: Before an import the Library said the same thing twice: a "Nothing imported yet" panel with three steps,
+then the First steps checklist whose first step is the same import. The Library's track counts were set in the body
+font while the table's numbers used the data font, so the figures did not line up.
+
+**Decision**:
+- The empty Library shows the header and First steps only. The checklist's first step carries **Import…** and **How do
+  I export one?** while it is not done, with the hint "In Rekordbox choose File → Export Collection in xml format, then
+  import that file. Nothing in Rekordbox is changed."
+- The Library toolbar's count and the header's facts are set in the data font with tabular figures, like the table's
+  cells and the key chips. `tokens/dataFont.test.ts` lists the places that must use it; other pages add theirs there.
+
+**Decided with**: User (K16, R4-3 ★ answers in SCOPE.md) · **Date**: 2026-10-13

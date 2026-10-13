@@ -241,6 +241,11 @@ describe("the count (LIB-8)", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Showing 240 of 12,000 tracks");
   });
 
+  it("is set in the data font with tabular figures (R4-3)", () => {
+    renderBar({ selected: 0 });
+    expect(screen.getByRole("status")).toHaveClass("cp-data");
+  });
+
   it("goes back to the plain count when nothing is narrowed", () => {
     renderBar({ total: 12000, scopeTotal: 12000, selected: 0 });
     expect(screen.getByRole("status")).toHaveTextContent(/^12,000 tracks$/);

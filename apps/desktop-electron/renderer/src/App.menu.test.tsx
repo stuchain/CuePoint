@@ -260,7 +260,7 @@ describe("the Library's own actions", () => {
 
   it("import works again from the Library itself", async () => {
     render(<App />);
-    await screen.findByText(/Nothing imported yet/i);
+    await screen.findByText(/Export Collection in xml format/i);
     command("import");
     await waitFor(() => expect(bridge.openXmlFileDialog).toHaveBeenCalledTimes(1));
     command("import");

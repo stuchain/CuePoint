@@ -74,9 +74,16 @@ function install({ signedIn = false, played = false, health: h = health(10, 10) 
   };
 }
 
-function mount(props: { imported?: boolean } = {}) {
-  const handlers = { onMatch: vi.fn(), onAddToken: vi.fn() };
-  const view = render(<FirstSteps imported={props.imported ?? false} {...handlers} />);
+function mount(props: { imported?: boolean; withHelp?: boolean } = {}) {
+  const handlers = { onMatch: vi.fn(), onAddToken: vi.fn(), onImport: vi.fn(), onHowToExport: vi.fn() };
+  const { onHowToExport, ...rest } = handlers;
+  const view = render(
+    <FirstSteps
+      imported={props.imported ?? false}
+      {...rest}
+      onHowToExport={props.withHelp === false ? undefined : onHowToExport}
+    />,
+  );
   return { ...handlers, ...view };
 }
 
@@ -122,6 +129,35 @@ describe("the list", () => {
     expect(screen.getByText(/Discover uses it to find new music/)).toBeInTheDocument();
     expect(screen.getByText(/Double-click a track to play it/)).toBeInTheDocument();
     expect(screen.getByText(/Keys, genres and labels come from Beatport/)).toBeInTheDocument();
+  });
+});
+
+describe("the import step (K16)", () => {
+  it("carries Import… and How do I export one? while not done, and calls them", async () => {
+    install();
+    const { onImport, onHowToExport } = mount();
+    const first = item("Import your Rekordbox collection");
+    expect(first).toHaveTextContent(
+      "In Rekordbox choose File → Export Collection in xml format, then import that file. Nothing in Rekordbox is changed.",
+    );
+    await userEvent.click(within(first).getByRole("button", { name: "Import…" }));
+    expect(onImport).toHaveBeenCalledTimes(1);
+    await userEvent.click(within(first).getByRole("button", { name: "How do I export one?" }));
+    expect(onHowToExport).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves out How do I export one? when there is no help to open", () => {
+    install();
+    mount({ withHelp: false });
+    expect(screen.queryByRole("button", { name: "How do I export one?" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Import…" })).toBeInTheDocument();
+  });
+
+  it("hides both buttons once imported", () => {
+    install();
+    mount({ imported: true });
+    expect(screen.queryByRole("button", { name: "Import…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "How do I export one?" })).toBeNull();
   });
 });
 

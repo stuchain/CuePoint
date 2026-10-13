@@ -175,10 +175,12 @@ test.describe("The Library page (LIBRARY-11)", () => {
       // DEC-020's registry: enabling one flag is what put this here.
       await openLibrary(window);
 
-      await expect(window.getByText(/Nothing imported yet/i)).toBeVisible();
+      await expect(window.getByText(/Export Collection in xml format/i)).toBeVisible();
       await expect(
         window.getByRole("button", { name: /Import your Rekordbox collection/i }),
       ).toBeVisible();
+      await expect(window.getByRole("button", { name: "Import…", exact: true })).toBeVisible();
+      await expect(window.getByRole("button", { name: "How do I export one?" })).toBeVisible();
     } finally {
       await app.close();
     }

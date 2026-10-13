@@ -106,3 +106,12 @@
   background: var(--bg-panel);
   border: var(--control-border-width) solid var(--border-control);
 }
+
+/* A step with two buttons (Import… and How do I export one?). */
+.first-steps__actions {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}

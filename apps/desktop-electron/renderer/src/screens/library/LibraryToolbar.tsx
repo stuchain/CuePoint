@@ -239,7 +239,7 @@ export function LibraryToolbar({
             never a button wrapped (N2-1). */}
         <span className="library-toolbar__count-box">
           <span className="library-toolbar__count-reserve" aria-hidden data-reserve={countText} />
-          <span className="library-toolbar__count" role="status">
+          <span className="library-toolbar__count cp-data" role="status">
             {countText}
             {selected > 0 && (
               // Said for a screen reader, not drawn: the selected-count button shows it.

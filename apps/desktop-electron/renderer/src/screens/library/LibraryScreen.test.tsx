@@ -588,7 +588,7 @@ describe("the empty state", () => {
   it("says what to do rather than showing zeroes", async () => {
     renderScreen();
 
-    expect(await screen.findByText(/Nothing imported yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Export Collection in xml format/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Import your Rekordbox collection/i })).toBeInTheDocument();
     // Zeroes would read as "your library is empty", which is a different
     // problem from "you have not imported anything".
@@ -604,22 +604,32 @@ describe("the empty state", () => {
     expect(onOpen).toHaveBeenCalled();
   });
 
-  it("is a three-step guide, in words about Rekordbox (LIB-2)", async () => {
-    renderScreen();
+  it("has no separate guide panel: the first step carries the words and buttons (K16)", async () => {
+    const onOpen = vi.fn();
+    renderScreen({ onOpenRekordboxInstructions: onOpen });
 
-    const steps = await screen.findByRole("list", { name: "Getting started" });
-    const items = within(steps).getAllByRole("listitem");
-    expect(items.map((item) => item.textContent)).toEqual([
-      "In Rekordbox, choose File → Export Collection in xml format.",
-      "Click Import your Rekordbox collection… and pick that file.",
-      "CuePoint reads it; nothing in Rekordbox is changed. Later, Check Rekordbox for changes picks up what you changed there.",
-    ]);
-    expect(screen.queryByText("Your Rekordbox library, as CuePoint sees it.")).toBeNull();
-    // One import button on the page, and it is the header's.
+    await screen.findByText(/Export Collection in xml format/i);
+    expect(screen.queryByText("Nothing imported yet")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Getting started" })).toBeNull();
+    const steps = screen.getByRole("list", { name: "First steps" });
+    const first = within(steps).getAllByRole("listitem")[0];
+    expect(first).toHaveTextContent(
+      "In Rekordbox choose File → Export Collection in xml format, then import that file. Nothing in Rekordbox is changed.",
+    );
+    expect(within(first).getByRole("button", { name: "Import…" })).toBeInTheDocument();
+    expect(within(first).getByRole("button", { name: "How do I export one?" })).toBeInTheDocument();
+    // The header keeps its own import button.
     expect(screen.getAllByRole("button", { name: /Import your Rekordbox collection/ })).toHaveLength(1);
   });
 
-  it("shows the first-steps checklist under the guide, and its sign-in step goes to Settings (RUN-3)", async () => {
+  it("the first step's Import… runs the import", async () => {
+    renderScreen();
+    const steps = await screen.findByRole("list", { name: "First steps" });
+    await userEvent.click(within(steps).getByRole("button", { name: "Import…" }));
+    expect(bridge.openXmlFileDialog).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the first-steps checklist, and its sign-in step goes to Settings (RUN-3)", async () => {
     const onOpenToken = vi.fn();
     renderScreen({ onOpenToken });
 
@@ -631,7 +641,7 @@ describe("the empty state", () => {
 
   it("omits the instructions button when the shell has none to offer", async () => {
     renderScreen();
-    await screen.findByText(/Nothing imported yet/i);
+    await screen.findByText(/Export Collection in xml format/i);
 
     expect(screen.queryByRole("button", { name: /How do I export/i })).not.toBeInTheDocument();
   });
@@ -1207,7 +1217,7 @@ describe("without an engine", () => {
 
     // No summary to show, and no crash: the browser-lab render is a supported
     // way to work on this page.
-    expect(await screen.findByText(/Nothing imported yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Export Collection in xml format/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /Import your Rekordbox collection/i }));
     expect(await screen.findByText(/needs the CuePoint desktop app/i)).toBeInTheDocument();

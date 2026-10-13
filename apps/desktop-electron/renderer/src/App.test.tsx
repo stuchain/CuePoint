@@ -22,7 +22,7 @@ import { LAST_DESTINATION_STORAGE_KEY } from "./components/shell";
  * What home shows without an engine: the Library's import prompt. Home is the
  * Library since Tools retired (DEC-100).
  */
-const HOME = /Nothing imported yet/i;
+const HOME = /Export Collection in xml format/i;
 
 /**
  * Settings is the heaviest screen to mount; on a busy CI runner its first
@@ -52,7 +52,7 @@ function navLink(name: string): HTMLElement {
  * presence of a `.screen` element. */
 const ROUTES = [
   // Without `window.cuepoint` the Library page is its import prompt.
-  { link: "Library", marker: /Nothing imported yet/i },
+  { link: "Library", marker: /Export Collection in xml format/i },
   { link: "Clean", marker: /^Clean$/ },
   { link: "Discover", marker: /^Discover could not open$/ },
   { link: "Prepare", marker: /^Prepare$/ },
@@ -547,7 +547,7 @@ describe("App shell", () => {
       render(<App />);
 
       await waitFor(() => expect(window.location.hash).toBe("#/library"));
-      expect(await screen.findByText(/Nothing imported yet/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Export Collection in xml format/i)).toBeInTheDocument();
     });
 
     it("reopens on the Library for a stored collections id", async () => {

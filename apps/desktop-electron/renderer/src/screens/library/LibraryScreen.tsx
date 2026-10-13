@@ -19,8 +19,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  Button,
-  Panel,
   TrackContextMenu,
   type TrackContextMenuItem,
   useToast,
@@ -1893,8 +1891,8 @@ export function LibraryScreen({
     );
   }
 
-  // Nothing imported: the header's one button, and the guide for what it does (LIB-2).
-  // The checklist under it ticks from real state (RUN-3, PAGES-11).
+  // Nothing imported: the header's one button, and the checklist whose first step teaches it
+  // (LIB-2, K16); it ticks from real state (RUN-3, PAGES-11).
   if (!summary || summary.library_empty || summary.source === null) {
     return (
       <div className="screen screen--stack screen--scroll library-screen">
@@ -1906,35 +1904,12 @@ export function LibraryScreen({
           onImport={() => void handleImport()}
           onExport={() => openExport(NOTHING_TICKED)}
         />
-        <Panel title="Nothing imported yet">
-          <p className="library-screen__empty">
-            CuePoint works from a Rekordbox XML export. Import one and it will
-            remember where it came from, so checking for changes later takes one click.
-          </p>
-          <ol className="library-screen__steps" aria-label="Getting started">
-            <li>
-              In Rekordbox, choose <strong>File → Export Collection in xml format</strong>.
-            </li>
-            <li>
-              Click <strong>Import your Rekordbox collection…</strong> and pick that file.
-            </li>
-            <li>
-              CuePoint reads it; nothing in Rekordbox is changed. Later,{" "}
-              <strong>Check Rekordbox for changes</strong> picks up what you changed there.
-            </li>
-          </ol>
-          {onOpenRekordboxInstructions && (
-            <div className="library-screen__actions">
-              <Button variant="secondary" onClick={onOpenRekordboxInstructions}>
-                How do I export one?
-              </Button>
-            </div>
-          )}
-        </Panel>
         <FirstSteps
           imported={false}
           onMatch={() => onOpenMatch?.()}
           onAddToken={() => onOpenToken?.()}
+          onImport={() => void handleImport()}
+          onHowToExport={onOpenRekordboxInstructions}
         />
         <RefreshPreviewDialog
           open={diff !== null}
