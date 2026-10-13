@@ -182,7 +182,8 @@ async function titlesIn(window: Page, table: string): Promise<string[]> {
     .getByRole("table", { name: table })
     .locator('.track-table__row [data-column="title"]')
     .allInnerTexts()
-    .then((values) => values.map((value) => value.trim()).filter(Boolean));
+    // The playing row's title cell carries words for screen readers before the title (DEC-268).
+    .then((values) => values.map((value) => value.replace(/^Now playing:\s*/, "").trim()).filter(Boolean));
 }
 
 /** A row of a Beatport table, by what it shows. */
@@ -301,11 +302,13 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
       await expect
         .poll(() => titlesIn(window, "Similar tracks"), { timeout: 30_000 })
         .toEqual(["Low Tide", "Night Bus", "Signal"]);
-      // Each suggestion says why, in words.
-      await expect(row(window, "Similar tracks", "Low Tide")).toContainText(
-        "Mixes well (next key): 8A → 9A",
-      );
-      await expect(row(window, "Similar tracks", "Night Bus")).toContainText("Half the tempo: 124 → 62");
+      // Each suggestion says why, in words: short in its column, the sentence in the cell's title (DEC-277).
+      await expect(
+        row(window, "Similar tracks", "Low Tide").locator('[title="Mixes well (next key): 8A → 9A"]'),
+      ).toHaveCount(1);
+      await expect(
+        row(window, "Similar tracks", "Night Bus").locator('[title="Half the tempo: 124 → 62"]'),
+      ).toHaveCount(1);
       await expectOneLineBar(window, "Similar page");
 
       // --- queue a suggestion without interrupting (DEC-013) ---------------
