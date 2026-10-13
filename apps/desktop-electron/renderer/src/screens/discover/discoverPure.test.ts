@@ -4,6 +4,8 @@
  * and the sentences — each read over the engine's own answers where it has
  * one (`discoverPage.fixture.json`, produced by the Python suite).
  */
+import { render } from "@testing-library/react";
+import { Fragment, createElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type {
@@ -565,9 +567,17 @@ describe("Beatport's key as the Camelot code the wheel lights (DEC-201)", () => 
     },
   );
 
-  it("draws a row's key as Camelot, and the wheel is told the same code", () => {
+  it("draws a row's key as the Library's Camelot chip, and the wheel is told the same code", () => {
     const row = { ...HIDDEN.rows[0]!, key: "Am" };
-    expect(RUN_COLUMNS.find((c) => c.id === "key")!.render(row)).toBe("8A");
-    expect(RUN_COLUMNS.find((c) => c.id === "key")!.render({ ...row, key: null })).toBe("");
+    const column = RUN_COLUMNS.find((c) => c.id === "key")!;
+    const { container, unmount } = render(createElement(Fragment, null, column.render(row)));
+    const chip = container.querySelector(".key-chip");
+    expect(chip?.textContent).toBe("8A");
+    expect(chip?.classList.contains("key-chip--8A")).toBe(true);
+    unmount();
+    // No key is a dash (DEC-201); copied text stays the bare code, or nothing.
+    expect(render(createElement(Fragment, null, column.render({ ...row, key: null }))).container.textContent).toBe("—");
+    expect(column.text!(row)).toBe("8A");
+    expect(column.text!({ ...row, key: null })).toBe("");
   });
 });

@@ -18,6 +18,7 @@ import type {
   WantlistRow,
 } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
+import { KeyChip } from "../../components/wheel/KeyChip";
 import { formatBpm } from "../library/trackValues";
 import { ArtistLinks, LabelLink } from "./BeatportNameLinks";
 import { beatportRowKey } from "./beatportKey";
@@ -93,8 +94,10 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
       header: "Key",
       minWidthPx: 56,
       defaultWidthPx: 70,
-      // Camelot, as every key in the app is shown (DEC-201); Beatport's own.
-      render: (row) => beatportRowKey(row) ?? "",
+      // Camelot, as every key in the app is shown (DEC-201), as the Library's chip (R4-2,
+      // DEC-272); Beatport's own key.
+      render: (row) => <KeyChip value={row.key} />,
+      text: (row) => beatportRowKey(row) ?? "",
     },
     {
       id: "genre",
