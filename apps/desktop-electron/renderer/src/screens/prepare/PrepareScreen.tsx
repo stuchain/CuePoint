@@ -1134,6 +1134,7 @@ export function PrepareScreen({
           widths={columns.widths}
           onWidthsChange={columns.setWidths}
           onColumnMove={columns.move}
+          onColumns={() => setPicking(true)}
           selectedKeys={selection.keys}
           getRowKey={idOfRow}
           {...playMarks}
@@ -1374,7 +1375,6 @@ export function PrepareScreen({
               label: timesShown ? "Hide times" : "Show times",
               onSelect: toggleTimes,
             },
-            { id: "columns", label: "Columns…", onSelect: () => setPicking(true) },
           ]}
         />
       )}

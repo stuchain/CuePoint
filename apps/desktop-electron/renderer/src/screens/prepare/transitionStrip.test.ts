@@ -6,6 +6,7 @@ import {
   KEYS_CLASH,
   NO_BEATPORT_KEY,
   captionDetail,
+  captionKeys,
   captionSegments,
   mainWarning,
   halfTimesWords,
@@ -135,6 +136,18 @@ describe("the caption (FLW-19, C15d)", () => {
       transitions: SHAPE.transitions.map((t) => (t.from_entry_id === E1 ? { ...t, key_relation: "same" as const } : t)),
     };
     expect(captionFrom(E1, same).slice(0, 2)).toEqual(["8A → 9A", "same key"]);
+  });
+
+  it("writes library-notation keys as their Camelot codes, text and chips alike", () => {
+    const classic = {
+      ...SHAPE,
+      entries: SHAPE.entries.map((e) =>
+        e.entry_id === E1 ? { ...e, key: "Am" } : e.entry_id === E2 ? { ...e, key: "Em" } : e,
+      ),
+    };
+    expect(captionFrom(E1, classic)[0]).toBe("8A → 9A");
+    expect(captionKeys(transitionOf(FRIDAY_ENTRIES, E1)!, classic)).toEqual({ from: "8A", to: "9A" });
+    expect(captionKeys(transitionOf(FRIDAY_ENTRIES, E5)!, classic)).toBeNull();
   });
 
   it("keeps the full tempos for the title: the detail", () => {

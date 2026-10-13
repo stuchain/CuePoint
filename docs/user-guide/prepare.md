@@ -132,17 +132,18 @@ the venue, the set times, anything you want to remember; it reads **Notes (1)…
 once the Set has some), and then **Save set list…**, **Copy set list** and
 **Export to Rekordbox…**. **View** shows or hides the tempo and key lanes and the
 transition strip, shows or hides the **Mix in** and **Mix out** times
-(**Show times** / **Hide times**), and chooses the table's columns.
+(**Show times** / **Hide times**). The small **Columns…** button in the table's
+header corner chooses the table's columns.
 
 The Set's table has one row per entry. It opens with its number, the track
-(**Title** and **Artist**), its **Key** and **BPM**, and **Fit**: a dot for how
+(**Title** and **Artist**), its **Key** (a coloured chip, the colour of its place on the Camelot wheel) and **BPM**, and **Fit**: a dot for how
 well the track mixes in from the one before. ● means key and tempo both fit, ◐
 means one of them is off, ○ means both are. Hover the dot for what is off; a
 warning you have marked OK counts as fit, and the first track has no dot, as
 nothing comes before it. Then come when it **Starts at** and how long it **Plays
 for**. The **Mix in** and **Mix out** times you plan, the **Transition** into it
 and its note are hidden until you want them: **View ▸ Show times** brings both
-times in at once, and **Columns…** shows or hides the others. Hover a heading for
+times in at once, and **Columns…** in the header corner shows or hides the others. Hover a heading for
 what it means. Each chapter has a heading row that states the chapter's facts
 under the same columns (under **Fit** it counts the chapter's open warnings). Nothing sorts: the order is the Set. A chapter's heading
 carries one button, **Edit…**; the chapter's dialog has **Move up**, **Move down**
@@ -300,7 +301,7 @@ Similar tracks and its artist's or label's page.
 
 - **Tempo**: each entry's BPM as a mark, stepping from one to the next, so a
   jump is a step you can see.
-- **Key (Camelot)**: each entry's place on the Camelot wheel, where neighbors mix well, joined to the next by a line
+- **Key (Camelot)**: each entry's place on the Camelot wheel, where neighbors mix well, its mark in that key's colour, joined to the next by a line
   that says how the two keys relate — solid for the same key or one step, dashed
   for the relative key, dotted for a clash.
 
@@ -323,7 +324,7 @@ after it, so you can see how one track ends and the next begins:
   A track whose waveform has not been made yet says so in place, with how far
   the analysis has got ("Not made yet — 312 of 4,000"; hover for the whole
   sentence), and **See progress** under the words opens Settings at Waveforms.
-- **Between them**, a short caption: the keys, how they relate, and how far the
+- **Between them**, a short caption: the keys (as coloured chips), how they relate, and how far the
   tempo changes: "8A → 9A · next key up · +1.6% BPM". The key words are the ones
   Similar tracks uses ("same key", "next key up" or "down", "relative key", "keys
   clash", in the warning colour, even when the warning below says it too).

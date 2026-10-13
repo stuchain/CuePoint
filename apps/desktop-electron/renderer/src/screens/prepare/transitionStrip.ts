@@ -132,6 +132,14 @@ function shapeOf(transition: Transition, shape: SetShape | null) {
   return from && next ? { from, next } : null;
 }
 
+/** The two keys of a transition as Camelot codes ("8A"), or null when either side has none. */
+export function captionKeys(transition: Transition, shape: SetShape | null): { from: string; to: string } | null {
+  const pair = shapeOf(transition, shape);
+  if (!pair?.from.camelot || !pair.next.camelot) return null;
+  const code = (c: NonNullable<typeof pair.from.camelot>) => `${c.number}${c.letter}`;
+  return { from: code(pair.from.camelot), to: code(pair.next.camelot) };
+}
+
 /**
  * The caption's segments, joined with " · " when it is drawn (FLW-19, C15d): the
  * keys and how they relate ("8A → 4A · next key up", or "keys clash"), and the
@@ -145,11 +153,12 @@ export function captionSegments(transition: Transition, shape: SetShape | null):
   const pair = shapeOf(transition, shape);
   if (!pair || !shape) return segments;
   const { from, next } = pair;
-  if (from.camelot && next.camelot) {
+  const keys = captionKeys(transition, shape);
+  if (from.camelot && next.camelot && keys) {
     const link = shape.transitions.find(
       (step) => step.from_entry_id === from.entry_id && step.to_entry_id === next.entry_id,
     );
-    segments.push(`${from.key} → ${next.key}`);
+    segments.push(`${keys.from} → ${keys.to}`);
     // A clash is said here in the warning colour even when the warning beside the caption says it too:
     // the keys line reads whole, and the warning is the one to accept.
     segments.push(relationWords(link?.key_relation ?? null, from.camelot, next.camelot));

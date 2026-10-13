@@ -429,6 +429,8 @@ describe("the caption and its warning (FLW-19)", () => {
     expect(within(words).getByText("keys clash").closest(".prepare-transition__piece")).toHaveClass(
       "prepare-transition__piece--warning",
     );
+    // Each key is a chip; the relation words stay words.
+    expect([...words.querySelectorAll(".key-chip")].map((chip) => chip.textContent)).toEqual(["8A", "3B"]);
     // The whole tempos are the title's.
     expect(screen.getByTestId("transition-caption")).toHaveAttribute(
       "title",

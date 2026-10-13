@@ -366,6 +366,11 @@ describe("Suggestions", () => {
     return rowsOf("Suggestions");
   }
 
+  it("draws a suggestion's Key as a Camelot chip (R4-2)", async () => {
+    const rows = await between();
+    expect(rows[0].querySelector('[data-column="key"] .key-chip')).toHaveTextContent(/^\d{1,2}[AB]$/);
+  });
+
   it("lists what fits both sides, best first, with each side's reasons and the score", async () => {
     const rows = await between();
     expect(rows.map(titleOf)).toEqual(SUGGESTIONS.both.suggestions.map((s) => s.track.title));
@@ -946,6 +951,18 @@ describe("the lanes", () => {
     expect(codes).toEqual(["8A", "8A", "9A", "8A", "8B", "3B"]);
     expect(container.querySelectorAll('[data-lane="tempo"] rect').length).toBeGreaterThan(6);
     expect(container.querySelectorAll("[data-chapter]")).toHaveLength(1);
+  });
+
+  it("colour each key mark with its Camelot token, and leave the links to their own colours (R4-2)", async () => {
+    localStorage.setItem(LANES_STORAGE_KEY, "1");
+    const { container } = renderAt(preparePath(SOURCE_IDS.shape));
+    await opened("Shape");
+    const mark = container.querySelector('rect[data-code="8A"]') as SVGElement;
+    expect(mark.style.getPropertyValue("--lane-key")).toBe("var(--key-8A)");
+    expect((container.querySelector('rect[data-code="3B"]') as SVGElement).style.getPropertyValue("--lane-key")).toBe(
+      "var(--key-3B)",
+    );
+    expect((container.querySelector("[data-relation] rect") as SVGElement).style.getPropertyValue("--lane-key")).toBe("");
   });
 
   it("select an entry when its column is clicked, which moves the point", async () => {

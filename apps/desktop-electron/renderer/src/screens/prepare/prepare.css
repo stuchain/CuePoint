@@ -296,6 +296,15 @@ body.prepare-resizing {
   color: var(--accent-info);
 }
 
+/* A key's mark takes its Camelot colour (R4-2); "Colour keys" off turns it back into the lane's. */
+.prepare-lanes__key rect[data-code] {
+  fill: var(--lane-key, currentColor);
+}
+
+:root[data-key-colours="off"] .prepare-lanes__key rect[data-code] {
+  fill: currentColor;
+}
+
 .prepare-lanes__link--clash {
   color: var(--accent-danger);
 }

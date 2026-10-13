@@ -4,16 +4,18 @@
  * `prepareLanes.ts` lays the lanes out in whole pixels from the engine's own
  * shape; this draws them as rectangles in an inline SVG, as `PixelIcon` draws,
  * with `crispEdges` so a pixel stays a pixel at every scale. Colours are
- * `currentColor` and theme tokens, so all five themes read them.
+ * `currentColor` and theme tokens, so all five themes read them; a key's mark takes
+ * that key's Camelot colour (`--key-8A`, unless Colour keys is off), the links between them stay in the lane's.
  *
  * Clicking a column selects its entry, which moves the insertion point there.
  * Each column's title says what it draws. The table beside it says the same
  * in words, so the lanes are a picture of the running order, never the only
  * place a fact is.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import type { SetChapterPlan, SetShape } from "../../api/cuepointBridge.types";
+import { camelotOf } from "../../components/wheel/keyColour";
 import { useScale } from "../../tokens/ScaleContext";
 import { chapterName } from "./prepareRows";
 import { laneLayout, linkWords, rangeText, type KeyLinkStyle } from "./prepareLanes";
@@ -124,16 +126,21 @@ export function SetLanes({ shape, titles, chapters, selectedEntryId, onSelect }:
                 ))}
               </g>
             ))}
-            {layout.key.marks.map((mark) => (
-              <rect
-                key={`key-${mark.entryId}`}
-                x={mark.x}
-                y={mark.y}
-                width={mark.width}
-                height={mark.height}
-                data-code={mark.code}
-              />
-            ))}
+            {layout.key.marks.map((mark) => {
+              // A mark takes its key's colour (R4-2); a code the wheel cannot read keeps the lane's own.
+              const code = camelotOf(mark.code);
+              return (
+                <rect
+                  key={`key-${mark.entryId}`}
+                  x={mark.x}
+                  y={mark.y}
+                  width={mark.width}
+                  height={mark.height}
+                  data-code={mark.code}
+                  style={code ? ({ "--lane-key": `var(--key-${code})` } as CSSProperties) : undefined}
+                />
+              );
+            })}
           </g>
           {layout.columns.map((column) => (
             <rect

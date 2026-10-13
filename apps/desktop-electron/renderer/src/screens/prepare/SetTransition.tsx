@@ -16,7 +16,7 @@
  * first in the analysis while they wait for it, as the Inspector's is.
  *
  * **The caption** (FLW-19, C15d) sits between the halves over the strip's whole
- * height: the keys and how they relate and the tempo change, with the one main
+ * height: the keys, drawn as chips (R4-2), and how they relate and the tempo change, with the one main
  * warning on the transition at its end, Accept beside it and any others as
  * "+N more" in a title. The planned times are the halves' titles'; the whole
  * tempos and the loudness difference are the caption's title's. It takes the
@@ -36,6 +36,7 @@ import type {
   WaveformLoudness,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { KeyChip } from "../../components/wheel/KeyChip";
 import { useRowHeight } from "../../components/table/trackTableLayout";
 import {
   WAVEFORM_LOADING_WORDS,
@@ -56,6 +57,7 @@ import {
   KEYS_CLASH,
   NO_SELECTION_WORDS,
   captionDetail,
+  captionKeys,
   captionSegments,
   mainWarning,
   stripWarningWords,
@@ -199,6 +201,7 @@ export function SetTransition({
   const difference = loudnessDifference(loudnessOf(fromEntry), loudnessOf(toEntry));
   const { shown, others } = mainWarning(warnings);
   const segments = transition ? captionSegments(transition, shape) : [];
+  const keys = transition ? captionKeys(transition, shape) : null;
   // The whole tempos and the loudness difference are the caption's title's (C15d).
   const tempos = transition ? captionDetail(transition, shape) : null;
   const captionTitle = [tempos, loudnessUnitsTitle(difference)].filter(Boolean).join(". ");
@@ -231,7 +234,15 @@ export function SetTransition({
                   >
                     {index > 0 && <span aria-hidden="true">{" · "}</span>}
                     <span className="prepare-transition__segment" title={segment}>
-                      {segment}
+                      {keys && index === 0 ? (
+                        <>
+                          <KeyChip value={keys.from} />
+                          {" → "}
+                          <KeyChip value={keys.to} />
+                        </>
+                      ) : (
+                        segment
+                      )}
                     </span>
                   </span>
                 ))}

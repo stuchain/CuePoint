@@ -562,14 +562,14 @@ describe("the Set", () => {
     );
     // The page's title is Prepare; the picker beside it names the Set open.
     expect(screen.getByLabelText("Set")).toHaveValue(String(IDS.friday));
-    // The columns, the lanes and the transition strip share one link, so the
-    // line stays one line.
+    // The lanes, the transition strip and the times share one link, so the line stays one line;
+    // the columns are the Set table's corner button (R4-2).
     fireEvent.click(screen.getByRole("button", { name: "View" }));
     expect(
       within(screen.getByRole("menu"))
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual(["Show tempo and key lanes", "Show transition strip", "Show times", "Columns…"]);
+    ).toEqual(["Show tempo and key lanes", "Show transition strip", "Show times"]);
   });
 
   it("shows the Set's own notes and edits them in one write (PREP-12)", async () => {
@@ -1729,6 +1729,22 @@ describe("the Set table's columns (R4-5)", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     expect(headers()).toEqual(["#", "Title", "Artist", "Key", "BPM", "Fit", "Starts at", "Plays for"]);
+  });
+
+  it("opens the column picker from the button in the table's header corner, not from View", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(within(table()).getByRole("button", { name: "Columns…" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("checkbox", { name: "Mix in" })).not.toBeChecked();
+  });
+
+  it("draws the Key cell as a Camelot chip", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    const chip = rowAt(1).querySelector('[data-column="key"] .key-chip');
+    expect(chip).toHaveTextContent(/^\d{1,2}[AB]$/);
+    expect(chip).toHaveClass(`key-chip--${chip!.textContent}`);
   });
 
   it("shows both time columns from View ▸ Show times, and hides both again", async () => {
