@@ -7841,3 +7841,23 @@ selected, so Key and BPM were often off screen.
   only a toggle plays the opening motion.
 
 **Decided with**: User (K1, wish list round 2) · **Date**: 2026-10-13
+
+## DEC-281 — Errors Stay Until Closed; Toasts Sit Above the Player
+
+**Status**: Accepted · **Related**: DEC-154, DEC-267, REPORT-06, G7 R3-7
+
+**Context**: Every toast left after 4 s, so an error could go before it was read, none could be closed,
+and the stack sat on top of the player bar and status strip.
+
+**Decision**:
+- Error and warning toasts stay until closed; info and success go after 4 s (10 s with an action).
+  Every toast has a close button ("Close message"). Hover or focus inside a toast pauses its timer, and
+  it resumes with the time that was left.
+- The same words pushed again replace the toast showing them, and `push(…, { key })` replaces a toast
+  by key, so a refusal repeated by a held key is one toast. Toasts with an action are never merged.
+  At most five show; the oldest makes way, and the stack scrolls rather than leaving the window.
+- The stack sits above the player and the status strip: the shell measures both and sets
+  `--shell-bottom-inset` on the root, since the bar's height changes with the zoomed waveform.
+- The confirmation half of R3-7 (reversible acts and offers Undo) is DEC-267.
+
+**Decided with**: User (R3-7, wish list round 2) · **Date**: 2026-10-13

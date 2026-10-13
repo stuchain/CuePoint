@@ -7,8 +7,8 @@
  * wrapper carrying a class would quietly take up room that no test looking only
  * at "does it render" would catch.
  */
-import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import css from "./AppShellLayout.css?raw";
 import { parseRules, stripComments, declarations } from "../../test/cssRules";
@@ -272,5 +272,85 @@ describe("AppShellLayout", () => {
       expect(decls["pointer-events"]).toBe("none");
       expect(decls["background"]).toContain("color-mix");
     });
+  });
+});
+
+describe("the bottom inset the toast stack sits above", () => {
+  type Callback = (entries: { target: Element; contentRect: { height: number } }[]) => void;
+  const original = globalThis.ResizeObserver;
+  let observers: { callback: Callback; targets: Element[]; disconnected: boolean }[] = [];
+
+  function install() {
+    observers = [];
+    globalThis.ResizeObserver = class {
+      record: (typeof observers)[number];
+      constructor(callback: Callback) {
+        this.record = { callback, targets: [], disconnected: false };
+        observers.push(this.record);
+      }
+      observe(target: Element) {
+        this.record.targets.push(target);
+      }
+      unobserve() {}
+      disconnect() {
+        this.record.disconnected = true;
+      }
+    } as unknown as typeof ResizeObserver;
+  }
+
+  /** Sizes the wrappers report: jsdom has no layout, so offsetHeight is stubbed per element. */
+  function size(element: Element, height: number) {
+    Object.defineProperty(element, "offsetHeight", { configurable: true, value: height });
+  }
+  function fire() {
+    for (const o of observers) o.callback(o.targets.map((target) => ({ target, contentRect: { height: 0 } })));
+  }
+  const inset = () => document.documentElement.style.getPropertyValue("--shell-bottom-inset");
+
+  afterEach(() => {
+    globalThis.ResizeObserver = original;
+    document.documentElement.style.removeProperty("--shell-bottom-inset");
+  });
+
+  it("is the player and the status strip together, and is cleared on unmount", () => {
+    install();
+    const { container, unmount } = render(
+      <AppShellLayout player={<div />} statusBar={<div />}>
+        <p>Page</p>
+      </AppShellLayout>,
+    );
+    size(container.querySelector(".app-shell__player")!, 64);
+    size(container.querySelector(".app-shell__status")!, 24);
+    act(fire);
+    expect(inset()).toBe("88px");
+    size(container.querySelector(".app-shell__player")!, 100);
+    act(fire);
+    expect(inset()).toBe("124px");
+    unmount();
+    expect(inset()).toBe("");
+    expect(observers.every((o) => o.disconnected)).toBe(true);
+  });
+
+  it("is zero with no player or status strip", () => {
+    install();
+    render(
+      <AppShellLayout>
+        <p>Page</p>
+      </AppShellLayout>,
+    );
+    act(fire);
+    expect(inset()).toBe("0px");
+  });
+
+  it("does not fail where there is no ResizeObserver", () => {
+    // @ts-expect-error simulating an environment without it
+    delete globalThis.ResizeObserver;
+    expect(() =>
+      render(
+        <AppShellLayout player={<div />}>
+          <p>Page</p>
+        </AppShellLayout>,
+      ),
+    ).not.toThrow();
   });
 });

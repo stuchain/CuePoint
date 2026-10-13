@@ -82,6 +82,8 @@ export function AppShellLayout({
   pagePhase,
 }: AppShellLayoutProps) {
   const content = useRef<HTMLElement | null>(null);
+  const playerRegion = useRef<HTMLDivElement | null>(null);
+  const statusRegion = useRef<HTMLElement | null>(null);
   const blocked = useRef(onBlockedClick);
   blocked.current = onBlockedClick;
 
@@ -101,6 +103,29 @@ export function AppShellLayout({
     return () => element.removeEventListener("click", stop, true);
   }, [offline]);
 
+  // The toast stack is rendered outside the shell, so the room the player and status strip take
+  // goes on the root element, where it can lift the stack clear of them.
+  const hasPlayer = Boolean(player);
+  const hasStatus = Boolean(statusBar);
+  useEffect(() => {
+    const root = document.documentElement;
+    const regions = [playerRegion.current, statusRegion.current].filter((el): el is HTMLElement => el !== null);
+    const measure = () => {
+      const total = regions.reduce((sum, el) => sum + el.offsetHeight, 0);
+      root.style.setProperty("--shell-bottom-inset", `${total}px`);
+    };
+    measure();
+    let observer: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(measure);
+      for (const el of regions) observer.observe(el, { box: "border-box" });
+    }
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty("--shell-bottom-inset");
+    };
+  }, [hasPlayer, hasStatus]);
+
   return (
     <div className="app-shell">
       {header ? <div className="app-shell__header">{header}</div> : null}
@@ -116,9 +141,9 @@ export function AppShellLayout({
       </main>
       {offline ? <div className="app-shell__veil" aria-hidden="true" /> : null}
       {inspector ? <div className="app-shell__inspector">{inspector}</div> : null}
-      {player ? <div className="app-shell__player">{player}</div> : null}
+      {player ? <div className="app-shell__player" ref={playerRegion}>{player}</div> : null}
       {statusBar ? (
-        <footer className="app-shell__status">{statusBar}</footer>
+        <footer className="app-shell__status" ref={statusRegion}>{statusBar}</footer>
       ) : null}
     </div>
   );

@@ -281,6 +281,10 @@ appears on screen: search, sidebar, page, Track details, status strip. Dialogs
 take focus when they open, keep **Tab** inside themselves, close on **Escape**,
 and hand focus back to whatever opened them.
 
+## Messages
+
+Short messages (a save, a reset) appear in the bottom-right corner above the player and status strip. Ones that only tell you something went well or give you information go by themselves after a few seconds, longer if they offer a button such as **Undo**. Errors and warnings stay until you close them with the **×**. Hovering over a message, or moving keyboard focus into it, keeps it on screen until you move away.
+
 ## Settings
 
 **Settings** is one page in sections, with a list of links at the top (in a rail

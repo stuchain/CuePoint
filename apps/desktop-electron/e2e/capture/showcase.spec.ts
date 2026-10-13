@@ -254,6 +254,13 @@ async function openLibrary(window: Page) {
   await expect(window.getByRole("table", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
 }
 
+/** Closes every toast showing; info toasts would go by themselves, errors and warnings would not. */
+async function closeToasts(window: Page): Promise<void> {
+  for (const close of await window.locator(".cp-toast__close").all()) {
+    await close.click().catch(() => undefined);
+  }
+}
+
 test.describe("the website's pictures (SITE-04)", () => {
   test.describe.configure({ timeout: 900_000 });
 
@@ -516,6 +523,8 @@ test.describe("the website's pictures (SITE-04)", () => {
         // Beatport's rows have nothing to inspect: the panel away gives the search its width
         const hide = window.getByRole("button", { name: "Hide track details" });
         if (await hide.count()) await hide.click();
+        // Errors and warnings stay until closed (DEC-281): close any still showing.
+        await closeToasts(window);
         await expect(window.locator(".cp-toast")).toHaveCount(0, { timeout: 60_000 });
         await found.evaluate((el) => el.scrollIntoView({ block: "end" }));
         await expect(found.locator(".track-table__row").nth(2)).toBeInViewport();
@@ -538,6 +547,8 @@ test.describe("the website's pictures (SITE-04)", () => {
         await expect(window.getByText(`Matching ${live.trackIds.length} tracks on Beatport.`, { exact: true })).toBeVisible({ timeout: 30_000 });
         // the job's end, not the toast's: the toast goes on its own
         await idle(window);
+        // Errors and warnings stay until closed (DEC-281): close any still showing.
+        await closeToasts(window);
         await expect(window.locator(".cp-toast")).toHaveCount(0, { timeout: 60_000 });
         // the page opened afresh, so its counts hold what the match left for a yes or no
         await openLibrary(window);
@@ -557,6 +568,8 @@ test.describe("the website's pictures (SITE-04)", () => {
       });
 
       await test.step("clean-compare: One at a time, a track beside the best match Beatport found", async () => {
+        // Errors and warnings stay until closed (DEC-281): close any still showing.
+        await closeToasts(window);
         await expect(window.locator(".cp-toast")).toHaveCount(0, { timeout: 60_000 });
         await window.getByRole("tab", { name: "One at a time", exact: true }).click();
         const yours = window.getByRole("region", { name: "Your track" });
