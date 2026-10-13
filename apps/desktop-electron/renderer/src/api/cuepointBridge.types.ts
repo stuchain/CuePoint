@@ -1531,6 +1531,8 @@ export interface TagWriteOptions {
   comment_text?: string;
   /** Off by default: putting a picture into a file is something a person asks for. */
   embed_missing_artwork?: boolean;
+  /** Keep a value the file already holds; write only into empty fields. */
+  keep_existing?: boolean;
 }
 
 /** What a tag write would do, before it does anything. A write names `preview_id`. */
@@ -1559,6 +1561,63 @@ export interface TagWritePreview {
   computed_at: string;
   duration_seconds: number;
   summary_line: string;
+  /** Per field, the files a choice would fill and the files it would replace. */
+  field_choices: TagFieldChoices;
+}
+
+export interface FieldChoiceCounts {
+  /** Files holding a different value now. */
+  replace: number;
+  /** Files whose value is empty now. */
+  fill: number;
+}
+
+export interface TagFieldChoices {
+  /** The key, counted in each notation. */
+  key: Record<"normal" | "camelot" | "short", FieldChoiceCounts>;
+  year: FieldChoiceCounts;
+  bpm: FieldChoiceCounts;
+  label: FieldChoiceCounts;
+  genre: FieldChoiceCounts;
+  /** Only when the preview asked to write the comment. */
+  comment?: FieldChoiceCounts;
+  /** Only when the preview asked to embed missing artwork; fill only. */
+  artwork?: { fill: number };
+}
+
+/** What a kept preview would change for some options, counted without reading a file. */
+export interface TagCountOutcome {
+  files: number;
+  fields: Record<string, number>;
+}
+
+/** New values not yet in the files, per field. An upper bound. */
+export interface UnsavedValues {
+  tracks: number;
+  fields: Record<string, number>;
+}
+
+export interface CleanPlaylistCounts {
+  track_count: number;
+  not_matched: number;
+  waiting: number;
+  accepted: number;
+  rejected: number;
+  no_match: number;
+  unsaved: number;
+  /** The match job working on it, if one is. */
+  running: { job_id: string; done: number; total: number } | null;
+}
+
+export interface CleanPlaylistStatus extends CleanPlaylistCounts {
+  id: number;
+  name: string;
+  path: string;
+}
+
+export interface CleanPlaylists {
+  playlists: CleanPlaylistStatus[];
+  whole_library: CleanPlaylistCounts;
 }
 
 export interface TagPreviewOutcome {
@@ -3623,7 +3682,16 @@ export interface CuePointBridge {
     selection: BatchSelection;
     options?: TagWriteOptions;
   }) => Promise<TagPreviewOutcome>;
-  startTagWrite?: (params: { preview_id: string }) => Promise<TagWriteStarted>;
+  startTagWrite?: (params: {
+    preview_id: string;
+    options?: TagWriteOptions;
+  }) => Promise<TagWriteStarted>;
+  countTagPreview?: (params: {
+    preview_id: string;
+    options: TagWriteOptions;
+  }) => Promise<TagCountOutcome>;
+  getUnsavedValues?: (params?: { playlist_id?: number }) => Promise<UnsavedValues>;
+  getCleanPlaylists?: () => Promise<CleanPlaylists>;
   startTagRestore?: (params: {
     job_id?: string;
     track_id?: number;

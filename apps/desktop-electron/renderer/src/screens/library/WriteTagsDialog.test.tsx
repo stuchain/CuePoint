@@ -35,6 +35,17 @@ function preview(overrides: Partial<TagWritePreview> = {}): TagWritePreview {
     computed_at: "2026-09-16T10:00:00Z",
     duration_seconds: 0.1,
     summary_line: "",
+    field_choices: {
+      key: {
+        normal: { replace: 0, fill: 0 },
+        camelot: { replace: 0, fill: 0 },
+        short: { replace: 0, fill: 0 },
+      },
+      year: { replace: 0, fill: 0 },
+      bpm: { replace: 0, fill: 0 },
+      label: { replace: 0, fill: 0 },
+      genre: { replace: 0, fill: 0 },
+    },
     ...overrides,
   };
 }

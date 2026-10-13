@@ -1236,6 +1236,8 @@ export interface TagWriteOptions {
   write_comment?: boolean;
   comment_text?: string;
   embed_missing_artwork?: boolean;
+  /** Keep a value the file already holds; write only into empty fields. */
+  keep_existing?: boolean;
 }
 
 export interface TagWritePreview {
@@ -1256,6 +1258,63 @@ export interface TagWritePreview {
   computed_at: string;
   duration_seconds: number;
   summary_line: string;
+  /** Per field, the files a choice would fill and the files it would replace. */
+  field_choices: TagFieldChoices;
+}
+
+export interface FieldChoiceCounts {
+  /** Files holding a different value now. */
+  replace: number;
+  /** Files whose value is empty now. */
+  fill: number;
+}
+
+export interface TagFieldChoices {
+  /** The key, counted in each notation. */
+  key: Record<"normal" | "camelot" | "short", FieldChoiceCounts>;
+  year: FieldChoiceCounts;
+  bpm: FieldChoiceCounts;
+  label: FieldChoiceCounts;
+  genre: FieldChoiceCounts;
+  /** Only when the preview asked to write the comment. */
+  comment?: FieldChoiceCounts;
+  /** Only when the preview asked to embed missing artwork; fill only. */
+  artwork?: { fill: number };
+}
+
+/** What a kept preview would change for some options, counted without reading a file. */
+export interface TagCountOutcome {
+  files: number;
+  fields: Record<string, number>;
+}
+
+/** New values not yet in the files, per field. An upper bound. */
+export interface UnsavedValues {
+  tracks: number;
+  fields: Record<string, number>;
+}
+
+export interface CleanPlaylistCounts {
+  track_count: number;
+  not_matched: number;
+  waiting: number;
+  accepted: number;
+  rejected: number;
+  no_match: number;
+  unsaved: number;
+  /** The match job working on it, if one is. */
+  running: { job_id: string; done: number; total: number } | null;
+}
+
+export interface CleanPlaylistStatus extends CleanPlaylistCounts {
+  id: number;
+  name: string;
+  path: string;
+}
+
+export interface CleanPlaylists {
+  playlists: CleanPlaylistStatus[];
+  whole_library: CleanPlaylistCounts;
 }
 
 export interface TagPreviewOutcome {
@@ -3989,8 +4048,32 @@ export class EngineClient {
   }
 
   /** Write what a preview planned, once (DEC-070). */
-  async startTagWrite(params: { preview_id: string }): Promise<TagWriteStarted> {
+  async startTagWrite(params: {
+    preview_id: string;
+    options?: TagWriteOptions;
+  }): Promise<TagWriteStarted> {
     return this.postJson("/api/v1/clean/tags/write", params);
+  }
+
+  /** What writing some options from a kept preview would change; no file is read. */
+  async countTagPreview(params: {
+    preview_id: string;
+    options: TagWriteOptions;
+  }): Promise<TagCountOutcome> {
+    return this.postJson("/api/v1/clean/tags/preview/count", params);
+  }
+
+  /** Tracks with new values not in their files yet, for a playlist or the library. */
+  async getUnsavedValues(params?: { playlist_id?: number }): Promise<UnsavedValues> {
+    const query = new URLSearchParams();
+    if (params?.playlist_id != null) query.set("playlist_id", String(params.playlist_id));
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return this.getJson(`/api/v1/clean/unsaved${suffix}`);
+  }
+
+  /** Every playlist with what it needs next, and the whole library's counts. */
+  async getCleanPlaylists(): Promise<CleanPlaylists> {
+    return this.getJson("/api/v1/clean/playlists");
   }
 
   /** Restore what a write job, or every write to a track, replaced. */

@@ -752,6 +752,13 @@ function registerIpcHandlers(): void {
   handle("engine:startTagWrite", (_event, params) =>
     engine.startTagWrite(params),
   );
+  handle("engine:countTagPreview", (_event, params) =>
+    engine.countTagPreview(params),
+  );
+  handle("engine:getUnsavedValues", (_event, params) =>
+    engine.getUnsavedValues(params),
+  );
+  handle("engine:getCleanPlaylists", () => engine.getCleanPlaylists());
   handle("engine:startTagRestore", (_event, params) =>
     engine.startTagRestore(params),
   );

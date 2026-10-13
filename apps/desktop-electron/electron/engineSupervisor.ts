@@ -92,6 +92,9 @@ import {
   type TagRestoreStarted,
   type TagWriteRecord,
   type TagWriteStarted,
+  type TagCountOutcome,
+  type UnsavedValues,
+  type CleanPlaylists,
   type TrackFolder,
   type TrackMatches,
   type WaveformAnalysisStatus,
@@ -977,8 +980,26 @@ export class EngineSupervisor {
     return (await this.readyClient()).previewTagWrite(params);
   }
 
-  async startTagWrite(params: { preview_id: string }): Promise<TagWriteStarted> {
+  async startTagWrite(
+    params: Parameters<EngineClient["startTagWrite"]>[0],
+  ): Promise<TagWriteStarted> {
     return (await this.readyClient()).startTagWrite(params);
+  }
+
+  async countTagPreview(
+    params: Parameters<EngineClient["countTagPreview"]>[0],
+  ): Promise<TagCountOutcome> {
+    return (await this.readyClient()).countTagPreview(params);
+  }
+
+  async getUnsavedValues(
+    params?: Parameters<EngineClient["getUnsavedValues"]>[0],
+  ): Promise<UnsavedValues> {
+    return (await this.readyClient()).getUnsavedValues(params);
+  }
+
+  async getCleanPlaylists(): Promise<CleanPlaylists> {
+    return (await this.readyClient()).getCleanPlaylists();
   }
 
   async startTagRestore(

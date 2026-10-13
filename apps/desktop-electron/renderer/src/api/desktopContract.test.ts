@@ -807,7 +807,7 @@ describe("desktop contract", () => {
 
     it("writes tags by the id of a preview a person saw (DEC-070)", () => {
       expect(clientMethod("startTagWrite")).toContain("preview_id");
-      expect(bridgeTypes).toContain("startTagWrite?: (params: { preview_id: string })");
+      expect(bridgeTypes).toMatch(/startTagWrite\?: \(params: \{\s*preview_id: string;/);
     });
 
     it("declares the domain types the specification names", () => {
@@ -884,6 +884,78 @@ describe("desktop contract", () => {
         return [...body.matchAll(/^ {2}([a-z_]+)\??:/gm)].map((match) => match[1]!).sort();
       };
 
+      expect(fields(bridgeTypes).length).toBeGreaterThan(0);
+      expect(fields(bridgeTypes)).toEqual(fields(engineClient));
+    });
+  });
+
+  describe("saving to the files (G4-A step 3)", () => {
+    const clientMethod = (name: string) => {
+      const start = engineClient.indexOf(`async ${name}(`);
+      const next = engineClient.indexOf("\n  async ", start + 1);
+      return engineClient.slice(start, next === -1 ? undefined : next);
+    };
+    const added: Array<[string, string, "post" | "get"]> = [
+      ["countTagPreview", "/api/v1/clean/tags/preview/count", "post"],
+      ["getUnsavedValues", "/api/v1/clean/unsaved", "get"],
+      ["getCleanPlaylists", "/api/v1/clean/playlists", "get"],
+    ];
+
+    it.each(added)("carries %s through every layer", (method, route, verb) => {
+      expect(invokedChannels(preload)).toContain(`engine:${method}`);
+      expect(handledChannels(main)).toContain(`engine:${method}`);
+      expect(supervisorMethodsDeclared(supervisor)).toContain(method);
+      expect(engineClient).toContain(`async ${method}(`);
+      expect(bridgeTypes).toContain(`${method}?:`);
+      const body = clientMethod(method);
+      expect(body).toContain(route);
+      expect(body).toContain(verb === "post" ? "postJson" : "getJson");
+      expect(body).not.toContain(verb === "post" ? "getJson" : "postJson");
+    });
+
+    it("lets a write name the options it chooses from the preview", () => {
+      expect(clientMethod("startTagWrite")).toContain("options");
+      expect(bridgeTypes).toContain("startTagWrite?: (params: {");
+      expect(bridgeTypes).toMatch(/startTagWrite\?: \(params: \{\s*preview_id: string;\s*options\?: TagWriteOptions;/);
+    });
+
+    it("counts a kept preview by its id and options", () => {
+      expect(bridgeTypes).toMatch(/countTagPreview\?: \(params: \{\s*preview_id: string;\s*options: TagWriteOptions;/);
+    });
+
+    it("narrows unsaved values by playlist_id on the query string", () => {
+      const method = clientMethod("getUnsavedValues");
+      expect(method).toContain('query.set("playlist_id"');
+      expect(method).toContain("this.getJson(`/api/v1/clean/unsaved${suffix}`)");
+    });
+
+    it.each([bridgeTypes, engineClient])("types keep_existing and field_choices", (source) => {
+      const options = source.slice(
+        source.indexOf("export interface TagWriteOptions"),
+        source.indexOf("\n}", source.indexOf("export interface TagWriteOptions")),
+      );
+      expect(options).toContain("keep_existing?: boolean");
+      const preview = source.slice(
+        source.indexOf("export interface TagWritePreview"),
+        source.indexOf("\n}", source.indexOf("export interface TagWritePreview")),
+      );
+      expect(preview).toContain("field_choices: TagFieldChoices");
+    });
+
+    it.each([
+      "TagFieldChoices",
+      "FieldChoiceCounts",
+      "TagCountOutcome",
+      "UnsavedValues",
+      "CleanPlaylistStatus",
+      "CleanPlaylistCounts",
+      "CleanPlaylists",
+    ])("keeps the engine and the renderer agreeing about %s", (shape) => {
+      const fields = (source: string) => {
+        const start = source.indexOf(`export interface ${shape} `);
+        const body = source.slice(start, source.indexOf("\n}", start));
+        return [...body.matchAll(/^ {2}([a-z_]+)\??:/gm)].map((match) => match[1]!).sort();
+      };
       expect(fields(bridgeTypes).length).toBeGreaterThan(0);
       expect(fields(bridgeTypes)).toEqual(fields(engineClient));
     });

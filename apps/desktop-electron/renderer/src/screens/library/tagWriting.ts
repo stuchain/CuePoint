@@ -43,6 +43,7 @@ export const DEFAULT_TAG_OPTIONS: DialogTagOptions = {
   write_comment: false,
   comment_text: "ok",
   embed_missing_artwork: false,
+  keep_existing: false,
 };
 
 export const KEY_FORMATS: ReadonlyArray<{ value: DialogTagOptions["key_format"]; label: string }> = [

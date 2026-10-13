@@ -36,6 +36,17 @@ function preview(overrides: Partial<TagWritePreview> = {}): TagWritePreview {
     computed_at: "2026-09-16T10:00:00Z",
     duration_seconds: 0.2,
     summary_line: "",
+    field_choices: {
+      key: {
+        normal: { replace: 0, fill: 0 },
+        camelot: { replace: 0, fill: 0 },
+        short: { replace: 0, fill: 0 },
+      },
+      year: { replace: 0, fill: 0 },
+      bpm: { replace: 0, fill: 0 },
+      label: { replace: 0, fill: 0 },
+      genre: { replace: 0, fill: 0 },
+    },
     ...overrides,
   };
 }
@@ -52,6 +63,7 @@ describe("the options", () => {
       write_comment: false,
       comment_text: "ok",
       embed_missing_artwork: false,
+      keep_existing: false,
     });
     expect(optionsProblem(DEFAULT_TAG_OPTIONS)).toBeNull();
   });
