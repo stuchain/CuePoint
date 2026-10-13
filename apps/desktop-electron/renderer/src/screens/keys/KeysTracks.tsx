@@ -57,6 +57,7 @@ import { useLibraryClean } from "../library/useLibraryClean";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "../library/useLibraryPlayback";
 import { COPY_LIMIT, useTrackSelection } from "../library/useTrackSelection";
 import { useTrackWindow } from "../library/useTrackWindow";
+import { TAGS, useSharedRead } from "../../api/sharedReads";
 import { userMessage } from "../../api/userMessage";
 import { useTrackPlayMarks } from "../../components/player/playedTracks";
 
@@ -145,7 +146,12 @@ export function KeysTracks({
   const [choosingColumns, setChoosingColumns] = useState(false);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [picker, setPicker] = useState<{ kind: PickerKind; target: Target } | null>(null);
-  const [tags, setTags] = useState<TagUsage[]>([]);
+  // The tag vocabulary comes through the shared cache (C19d), read from the first time a tag
+  // picker opens; a picker opened later asks again, so it is never stale.
+  const [wantTags, setWantTags] = useState(false);
+  const tagsRead = useSharedRead(TAGS, wantTags);
+  const { refresh: refreshTags } = tagsRead;
+  const tags: TagUsage[] = useMemo(() => tagsRead.value?.tags ?? [], [tagsRead.value]);
 
   const query = useMemo<LibraryQuery>(
     () => ({ ...DEFAULT_LIBRARY_QUERY, filters: rules, sort: order.sort, dir: order.dir }),
@@ -196,21 +202,16 @@ export function KeysTracks({
 
   // ------------------------------------------------------------- the pickers
 
-  const loadTags = useCallback(async () => {
-    const bridge = window.cuepoint?.getTags;
-    if (!bridge) return;
-    try {
-      const payload = await bridge();
-      if (mounted.current) setTags(payload.tags);
-    } catch {
-      // Suggestions are a convenience; a name can still be typed.
-    }
-  }, []);
+  // Suggestions are a convenience; a name can still be typed if the read fails.
+  const loadTags = useCallback(() => {
+    if (wantTags) refreshTags();
+    else setWantTags(true);
+  }, [wantTags, refreshTags]);
 
   const openPicker = useCallback(
     (kind: PickerKind, target: Target) => {
       setPicker({ kind, target });
-      if (kind === "tag-add" || kind === "tag-remove") void loadTags();
+      if (kind === "tag-add" || kind === "tag-remove") loadTags();
     },
     [loadTags],
   );

@@ -28,7 +28,7 @@ import { CAMELOT_CODES, tracksWord } from "../../components/wheel/camelot";
 import { useCompatibleKeys } from "../../components/wheel/useWheelSubject";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
-import { reportUnexpected } from "../../reporting/reporting";
+import { LIBRARY_PLAYLISTS, LIBRARY_SUMMARY, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { cleanMatchState, cleanTrackState } from "../clean/cleanLink";
 import type { CleanTracks } from "../clean/cleanTracks";
 import { entityPath, similarPath } from "../discover/discoverLinks";
@@ -86,33 +86,19 @@ interface KeysScreenProps {
   onOpeningApplied?: () => void;
 }
 
-/** The Rekordbox playlists, read once: the tree the picker draws and the pruning checks. */
+/** The Rekordbox playlists, through the shared cache (C19d): the tree the picker draws and the pruning checks. */
 function usePlaylists(): { nodes: LibraryPlaylistNode[]; ready: boolean; settled: boolean } {
-  const [state, setState] = useState<{
-    nodes: LibraryPlaylistNode[];
-    ready: boolean;
-    settled: boolean;
-  }>({ nodes: [], ready: false, settled: false });
-  useEffect(() => {
-    const bridge = window.cuepoint?.getLibraryPlaylists;
-    if (!bridge) {
-      setState((now) => ({ ...now, settled: true }));
-      return;
-    }
-    let current = true;
-    bridge()
-      .then((payload) => {
-        if (current) setState({ nodes: payload.playlists, ready: true, settled: true });
-      })
-      .catch((cause: unknown) => {
-        reportUnexpected(cause);
-        if (current) setState((now) => ({ ...now, settled: true }));
-      });
-    return () => {
-      current = false;
-    };
-  }, []);
-  return state;
+  const read = useSharedRead(LIBRARY_PLAYLISTS);
+  useReportReadError(read.error);
+  const value = read.value;
+  return useMemo(
+    () => ({
+      nodes: value?.playlists ?? [],
+      ready: value !== undefined,
+      settled: value !== undefined || read.unavailable || read.error !== undefined,
+    }),
+    [value, read.unavailable, read.error],
+  );
 }
 
 export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProps) {
@@ -122,7 +108,6 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
   const [choice, setChoice] = useState<KeyChoice>(EMPTY_CHOICE);
   const [showMix, setShowMix] = useState(false);
   const [view, setView] = useState<KeysView>(loadView);
-  const [libraryEmpty, setLibraryEmpty] = useState(false);
   const [inspected, setInspected] = useState<{ id: number | null; count: number }>({
     id: null,
     count: 0,
@@ -208,19 +193,9 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
   const population = useKeysPopulation(requestSources(picked), reloadToken, pruned, dropGone);
   const data = population.data;
 
-  useEffect(() => {
-    const read = window.cuepoint?.getLibrarySummary;
-    if (!read) return;
-    let current = true;
-    read()
-      .then((summary) => {
-        if (current) setLibraryEmpty(Boolean(summary?.library_empty));
-      })
-      .catch((cause: unknown) => reportUnexpected(cause));
-    return () => {
-      current = false;
-    };
-  }, []);
+  const summaryRead = useSharedRead(LIBRARY_SUMMARY);
+  useReportReadError(summaryRead.error);
+  const libraryEmpty = Boolean(summaryRead.value?.library_empty);
 
   const keys = useMemo(() => data?.keys ?? [], [data]);
   const order = useMemo(() => keys.map((entry) => entry.code), [keys]);

@@ -8,7 +8,7 @@
  * writes every one of them as text.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { menuItem } from "../library/menuPick.test.util";
 import { MemoryRouter, useLocation } from "react-router-dom";
@@ -22,6 +22,7 @@ import type {
   LibraryTrackDetail,
   LibraryTrackRow,
 } from "../../api/cuepointBridge.types";
+import { announceLibraryChange } from "../../api/libraryChanges";
 import { ToastProvider } from "../../components";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
@@ -364,9 +365,9 @@ describe("the source picker", () => {
     expect(await within(countsList()).findByRole("button", { name: /^1B,/ })).toBeInTheDocument();
 
     fireEvent.click(within(panel).getByRole("checkbox", { name: "Whole library" }));
-    await waitFor(() =>
-      expect(mock("getKeysPopulation")).toHaveBeenLastCalledWith({ sources: [{ kind: "all" }] }),
-    );
+    // The whole library's counts were read on opening and are still in the shared cache (C19d),
+    // so going back to them shows them without asking again.
+    expect(await screen.findByText("1,500 tracks in the whole library")).toBeInTheDocument();
     expect(within(panel).getByRole("checkbox", { name: "Warm-up" })).not.toBeChecked();
   });
 
@@ -862,6 +863,67 @@ describe("the Beatport and More entries (K4)", () => {
     );
     // The key counts are read again, not only the table.
     await waitFor(() => expect(mock("getKeysPopulation").mock.calls.length).toBeGreaterThan(populations));
+  });
+});
+
+describe("revisiting the page (C19d)", () => {
+  it("revisit shows the old value immediately and refetches after an announce", async () => {
+    const first = renderKeys();
+    await opened();
+    first.unmount();
+
+    const reads = () => ({
+      summary: mock("getLibrarySummary").mock.calls.length,
+      playlists: mock("getLibraryPlaylists").mock.calls.length,
+      collections: mock("getCollections").mock.calls.length,
+      population: mock("getKeysPopulation").mock.calls.length,
+    });
+    const before = reads();
+
+    renderKeys();
+    // The first render: the counts are already there, no "Counting the keys…".
+    expect(screen.queryByText("Counting the keys…")).toBeNull();
+    expect(within(countsList()).getByRole("button", { name: /^8A,/ })).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(reads()).toEqual(before);
+
+    mock("getKeysPopulation").mockResolvedValue({ ...ALL, keys: [{ code: "4A", count: 7 }] });
+    act(() => announceLibraryChange());
+    expect(await within(countsList()).findByRole("button", { name: /^4A,/ }, LOADED)).toBeInTheDocument();
+    expect(reads()).toEqual({
+      summary: before.summary + 1,
+      playlists: before.playlists + 1,
+      collections: before.collections + 1,
+      population: before.population + 1,
+    });
+  });
+});
+
+describe("a failed read kept beside the old counts (C19d)", () => {
+  it("is reported once, however many times the page is shown again", async () => {
+    const broke = Object.assign(new Error("boom"), { status: 500, code: "INTERNAL" });
+    install({
+      getKeysPopulation: vi
+        .fn()
+        .mockResolvedValueOnce(ALL)
+        .mockRejectedValueOnce(broke)
+        // Shown again: the read on its way is slow, so the failure is still the cache's error.
+        .mockImplementation(() => new Promise(() => {})),
+    });
+    const first = renderKeys();
+    await opened();
+    act(() => announceLibraryChange());
+    await waitFor(() => expect(reportUnexpected).toHaveBeenCalledTimes(1));
+    first.unmount();
+
+    const again = renderKeys();
+    expect(within(countsList()).getByRole("button", { name: /^8A,/ })).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    again.unmount();
+    renderKeys();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(reportUnexpected).toHaveBeenCalledTimes(1);
   });
 });
 

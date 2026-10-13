@@ -11,10 +11,11 @@
  * fault) is handed to `onSourceGone`; when that drops it the sources change and the question is
  * asked again, with no report.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import type { KeySource, KeysPopulation } from "../../api/cuepointBridge.types";
 import { bridgeErrorFields } from "../../api/bridgeError";
+import { keysPopulation, useOnReadError, useSharedRead } from "../../api/sharedReads";
 import { reportUnexpected } from "../../reporting/reporting";
 
 type PopulationStatus = "loading" | "ready" | "error" | "unavailable";
@@ -25,51 +26,50 @@ interface KeysPopulationState {
   retry: () => void;
 }
 
+/**
+ * Read through the shared cache (C19d), one entry per set of sources: a page shown again
+ * has its counts at once and they are read again when the library announces a change.
+ * `reloadToken` is the page's own edit; a new one reads now.
+ */
 export function useKeysPopulation(
   sources: readonly KeySource[],
   reloadToken: number,
   ready: boolean,
   onSourceGone: (message: string) => boolean,
 ): KeysPopulationState {
-  const [state, setState] = useState<{ status: PopulationStatus; data: KeysPopulation | null }>({
-    status: "loading",
-    data: null,
-  });
-  const [attempt, setAttempt] = useState(0);
-  const retry = useCallback(() => setAttempt((count) => count + 1), []);
   const asked = JSON.stringify(sources);
+  const descriptor = useMemo(() => keysPopulation(JSON.parse(asked) as KeySource[]), [asked]);
+  const read = useSharedRead(descriptor, ready);
+  const { refresh } = read;
+
   const gone = useRef(onSourceGone);
   useEffect(() => {
     gone.current = onSourceGone;
   });
 
-  useEffect(() => {
-    const bridge = window.cuepoint?.getKeysPopulation;
-    if (!bridge) {
-      setState({ status: "unavailable", data: null });
-      return;
-    }
-    setState({ status: "loading", data: null });
-    if (!ready) return;
-    let current = true;
-    bridge({ sources: JSON.parse(asked) as KeySource[] })
-      .then((data) => {
-        if (current) setState({ status: "ready", data });
-      })
-      .catch((cause: unknown) => {
-        if (
-          bridgeErrorFields(cause).code === "SOURCE_NOT_FOUND" &&
-          gone.current(String((cause as { message?: unknown } | null)?.message ?? ""))
-        ) {
-          return;
-        }
-        reportUnexpected(cause);
-        if (current) setState({ status: "error", data: null });
-      });
-    return () => {
-      current = false;
-    };
-  }, [asked, attempt, reloadToken, ready]);
+  // A refusal about a source that is gone drops it (and the question is asked again, with no
+  // report); any other failure is reported. Each failure once: the cache keeps it beside the
+  // old counts, and the page shown again must not handle it again.
+  useOnReadError(read.error, (cause) => {
+    const vanished = bridgeErrorFields(cause).code === "SOURCE_NOT_FOUND";
+    if (vanished && gone.current(String((cause as { message?: unknown } | null)?.message ?? ""))) return;
+    reportUnexpected(cause);
+  });
 
-  return { ...state, retry };
+  const seen = useRef(reloadToken);
+  useEffect(() => {
+    if (seen.current === reloadToken) return;
+    seen.current = reloadToken;
+    refresh();
+  }, [reloadToken, refresh]);
+
+  const data = read.value ?? null;
+  const status: PopulationStatus = read.unavailable
+    ? "unavailable"
+    : data
+      ? "ready"
+      : read.error !== undefined && !read.loading
+        ? "error"
+        : "loading";
+  return { status, data, retry: refresh };
 }
