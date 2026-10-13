@@ -118,7 +118,23 @@ interface Verified {
   fromSession: boolean;
 }
 
-type Verdict = { kind: "ok"; verified: Verified } | { kind: "rejected" } | { kind: "error" };
+/**
+ * What checking a token came to. `rejected` is a definite no (401, an inactive token, a guest's)
+ * and is never asked about again. `inconclusive` (a 403, a 5xx, an answer that names no user) and
+ * `error` (no network, a timeout, an answer that is not JSON) leave the token open: it is asked
+ * again after a backoff. `reason` goes in the sign-in log, never a token.
+ */
+type Verdict =
+  | { kind: "ok"; verified: Verified }
+  | { kind: "rejected"; reason: string }
+  | { kind: "inconclusive"; reason: string }
+  | { kind: "error"; reason: string };
+
+/**
+ * How long to wait before asking Beatport again about a token it could not decide on: after the
+ * first failure, the second and the third; the last repeats.
+ */
+export const VERIFY_BACKOFF_MS: readonly number[] = [2_000, 5_000, 15_000, 30_000];
 
 /** After a failed renewal: how long to wait before the next try (the last one repeats). */
 export const RENEW_BACKOFF_MS: readonly number[] = [60_000, 5 * 60_000, 15 * 60_000];
@@ -485,7 +501,12 @@ export class BeatportAuth {
   private async accept(found: Verified, generation: number): Promise<void> {
     // Signed out, or a token pasted, while this was being checked: it is no longer wanted.
     if (generation !== this.generation) return;
-    this.options.store.save({ token: found.token, expires_at: found.expiresAt, source: "signin" });
+    try {
+      this.options.store.save({ token: found.token, expires_at: found.expiresAt, source: "signin" });
+    } catch {
+      // The store keeps the token in memory before it writes: the sign-in holds for this run.
+      this.options.breadcrumb?.("could not keep the token");
+    }
     this.options.onToken?.(found.token);
     this.expired = false;
     this.retry = 0;
@@ -565,8 +586,9 @@ export class BeatportAuth {
 
   /**
    * Watch a window for a token: the first candidate Beatport confirms as a user's wins. A token
-   * is tried once; one that could not be checked (a network error) is tried again when it next
-   * appears. Resolves null when the window closes first, or at `timeoutMs`.
+   * Beatport says no to (401, inactive, a guest's) is asked about once. One it could not decide on
+   * is asked again after a growing wait (`VERIFY_BACKOFF_MS`), however it reappears. Resolves null
+   * when the window closes first, or at `timeoutMs`.
    */
   private capture(
     surface: SignInSurface,
@@ -575,7 +597,10 @@ export class BeatportAuth {
     return new Promise((resolve) => {
       let done = false;
       let polling = false;
-      const tried = new Set<string>();
+      const tried = new Map<
+        string,
+        { latched: boolean; asking: boolean; attempts: number; nextAt: number; hint: string | null; timer: ReturnType<typeof setTimeout> | null }
+      >();
       let interval: ReturnType<typeof setInterval> | null = null;
       let timeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -584,15 +609,37 @@ export class BeatportAuth {
         done = true;
         if (interval) clearInterval(interval);
         if (timeout) clearTimeout(timeout);
+        for (const entry of tried.values()) if (entry.timer) clearTimeout(entry.timer);
         resolve(result);
       };
 
       const consider = async (token: string, expiryHint: string | null = null): Promise<void> => {
-        if (done || tried.has(token) || token === options.exclude) return;
-        tried.add(token);
-        const verdict = await this.verify(token, expiryHint);
-        if (verdict.kind === "ok") finish(verdict.verified);
-        else if (verdict.kind === "error") tried.delete(token);
+        if (done || token === options.exclude) return;
+        let entry = tried.get(token);
+        if (!entry) {
+          entry = { latched: false, asking: false, attempts: 0, nextAt: 0, hint: expiryHint, timer: null };
+          tried.set(token, entry);
+        }
+        if (expiryHint !== null) entry.hint = expiryHint;
+        if (entry.latched || entry.asking || this.now() < entry.nextAt) return;
+        entry.asking = true;
+        const verdict = await this.verify(token, entry.hint);
+        entry.asking = false;
+        if (done) return;
+        if (verdict.kind === "ok") {
+          finish(verdict.verified);
+        } else if (verdict.kind === "rejected") {
+          entry.latched = true;
+        } else {
+          const wait = VERIFY_BACKOFF_MS[Math.min(entry.attempts, VERIFY_BACKOFF_MS.length - 1)]!;
+          entry.attempts += 1;
+          entry.nextAt = this.now() + wait;
+          // Ask again when the wait is over even if the page sends nothing more.
+          entry.timer = setTimeout(() => {
+            entry!.timer = null;
+            void consider(token);
+          }, wait);
+        }
       };
 
       const poll = async (): Promise<void> => {
@@ -616,21 +663,37 @@ export class BeatportAuth {
     });
   }
 
-  /** Ask Beatport who the token belongs to. Only a live token with a user is accepted. */
+  /**
+   * Ask Beatport who the token belongs to. Only a live token with a user is accepted. A 401, an
+   * inactive token and a guest's are a definite no; a 403 (a firewall answers that too), another
+   * failing status, an answer that is not JSON or one that names no user cannot decide.
+   */
   private async verify(token: string, expiryHint: string | null): Promise<Verdict> {
-    let body: unknown;
+    let text: string;
     try {
       const response = await this.options.fetch(`${this.options.apiBase.replace(/\/+$/, "")}/auth/o/introspect/`, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
         signal: AbortSignal.timeout(INTROSPECT_TIMEOUT_MS),
       });
-      if (response.status === 401 || response.status === 403) return { kind: "rejected" };
-      if (!response.ok) return { kind: "error" };
-      body = await response.json();
-    } catch {
-      return { kind: "error" };
+      if (response.status === 401) return { kind: "rejected", reason: "http-401" };
+      if (!response.ok) {
+        return { kind: "inconclusive", reason: response.status >= 500 ? "http-5xx" : `http-${response.status}` };
+      }
+      text = await response.text();
+    } catch (error) {
+      const name = error instanceof Error ? error.name : "";
+      return { kind: "error", reason: name === "TimeoutError" || name === "AbortError" ? "timeout" : "network" };
     }
-    if (introspectVerdict(body) !== "user") return { kind: "rejected" };
+    let body: unknown;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      return { kind: "error", reason: "not-json" };
+    }
+    const verdict = introspectVerdict(body);
+    if (verdict === "anon") return { kind: "rejected", reason: "anon" };
+    if (verdict === "inactive") return { kind: "rejected", reason: "inactive" };
+    if (verdict === "unknown") return { kind: "inconclusive", reason: "no-user" };
     // The session JSON's end is the one that holds; the introspection of this site gives none.
     const expiresAt =
       expiryHint ??

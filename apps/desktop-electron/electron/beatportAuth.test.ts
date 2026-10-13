@@ -8,6 +8,7 @@ import {
   SITE_SIGNED_OUT_RETRY_MS,
   SAME_TOKEN_GRACE_MS,
   SESSION_POLL_MS,
+  VERIFY_BACKOFF_MS,
   type EnginePort,
   type SignInHost,
   type SignInSurface,
@@ -122,9 +123,15 @@ class FakeEngine implements EnginePort {
 interface Introspection {
   status?: number;
   body?: unknown;
+  /** A text body sent as it is (not JSON), with `contentType`: an HTML challenge page, say. */
+  raw?: string;
+  contentType?: string;
 }
 
-function setup(table: Record<string, Introspection> = {}) {
+/** What Beatport says about a token: one answer, or a function of how many times it was asked. */
+type Answer = Introspection | ((askedBefore: number) => Introspection);
+
+function setup(table: Record<string, Answer> = {}) {
   const host = new FakeHost();
   const store = new FakeStore();
   const engine = new FakeEngine();
@@ -134,8 +141,13 @@ function setup(table: Record<string, Introspection> = {}) {
   let env = false;
   const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
     const bearer = String((init?.headers as Record<string, string>).Authorization).replace("Bearer ", "");
+    const askedBefore = introspected.filter((asked) => asked === bearer).length;
     introspected.push(bearer);
-    const entry = table[bearer] ?? { status: 401 };
+    const answer = table[bearer] ?? { status: 401 };
+    const entry = typeof answer === "function" ? answer(askedBefore) : answer;
+    if (entry.raw !== undefined) {
+      return new Response(entry.raw, { status: entry.status ?? 200, headers: { "content-type": entry.contentType ?? "text/html" } });
+    }
     return new Response(JSON.stringify(entry.body ?? {}), { status: entry.status ?? 200 });
   });
   const auth = new BeatportAuth({
@@ -229,7 +241,7 @@ describe("signing in", () => {
 
   it("ignores a guest token and waits for the user's", async () => {
     const t = setup({
-      "guest-token-0000": { body: { active: true, scope: "guest" } },
+      "guest-token-0000": { body: { active: true, scope: "app:prostore user:anon" } },
       "user-token-1111": user(T0 + 10 * HOUR),
     });
     t.host.onOpen = (surface) => {
@@ -250,15 +262,94 @@ describe("signing in", () => {
     expect(t.introspected).toEqual(["guest-token-0000", "user-token-1111"]);
   });
 
-  it("checks each token once, however often the site repeats it", async () => {
-    const t = setup({ "guest-token-0000": { body: { active: true } } });
+  it("checks a token once per definite no, however often the site repeats it", async () => {
+    const t = setup({
+      "guest-token-0000": { body: { active: true, scope: "app:prostore user:anon", username: "x" } },
+      "dead-token-1111": { status: 401 },
+    });
     t.host.onOpen = (surface) => {
-      for (let i = 0; i < 5; i++) surface.sendBearer("guest-token-0000");
+      for (let i = 0; i < 5; i++) {
+        surface.sendBearer("guest-token-0000");
+        surface.sendBearer("dead-token-1111");
+      }
       surface.session = { access_token: "guest-token-0000" };
     };
     void t.auth.signIn();
     await vi.advanceTimersByTimeAsync(SESSION_POLL_MS * 3);
-    expect(t.introspected).toEqual(["guest-token-0000"]);
+    expect(t.introspected).toEqual(["guest-token-0000", "dead-token-1111"]);
+  });
+
+  it("regression: C20 asks once about a 401 token and about an inactive one, however often they repeat", async () => {
+    const t = setup({
+      "gone-token-0000": { status: 401 },
+      "off-token-1111": { body: { active: false, scope: "user:dj", username: "x" } },
+    });
+    t.host.onOpen = (surface) => {
+      surface.sendBearer("gone-token-0000");
+      surface.sendBearer("off-token-1111");
+    };
+    void t.auth.signIn();
+    for (let i = 0; i < 6; i++) {
+      t.host.opened[0]!.surface.sendBearer("gone-token-0000");
+      t.host.opened[0]!.surface.sendBearer("off-token-1111");
+      await vi.advanceTimersByTimeAsync(SESSION_POLL_MS);
+    }
+    expect(t.introspected).toEqual(["gone-token-0000", "off-token-1111"]);
+    expect(t.store.value).toBeNull();
+  });
+
+  it("regression: C20 signs in on a user token whose introspection has no `active`", async () => {
+    const t = setup({ "user-token-abcd": { body: { scope: "app:prostore user:dj", user_id: 7, exp: null } } });
+    t.host.onOpen = (surface) => surface.sendBearer("user-token-abcd");
+    const status = await t.auth.signIn();
+    expect(status.state).toBe("signed_in");
+    expect(t.host.opened[0]!.surface.closed).toBe(true);
+    expect(t.store.value?.source).toBe("signin");
+    expect(t.engine.session).toEqual(["user-token-abcd"]);
+  });
+
+  it("regression: C20 a 403 does not lose the token: it is asked again after the backoff", async () => {
+    const t = setup({
+      "user-token-abcd": (before) => (before === 0 ? { status: 403, raw: "<html>blocked</html>" } : user(T0 + 10 * HOUR)),
+    });
+    t.host.onOpen = (surface) => surface.sendBearer("user-token-abcd");
+    const run = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(VERIFY_BACKOFF_MS[0]! - 100);
+    expect(t.introspected).toEqual(["user-token-abcd"]);
+    expect(t.store.value).toBeNull();
+    await vi.advanceTimersByTimeAsync(200);
+    expect((await run).state).toBe("signed_in");
+    expect(t.introspected).toEqual(["user-token-abcd", "user-token-abcd"]);
+    expect(t.host.opened[0]!.surface.closed).toBe(true);
+  });
+
+  it("regression: C20 an HTML answer is not latched and is re-asked at 2, 5 then 15 s, not at every poll", async () => {
+    const t = setup({ "user-token-abcd": { raw: "<html>challenge</html>", contentType: "text/html" } });
+    t.host.onOpen = (surface) => {
+      surface.sendBearer("user-token-abcd");
+      surface.session = { access_token: "user-token-abcd" };
+    };
+    void t.auth.signIn();
+    const counts: number[] = [];
+    let elapsed = 0;
+    for (const mark of [1_900, 2_100, 6_900, 7_100, 21_900, 22_100, 51_900, 52_100]) {
+      await vi.advanceTimersByTimeAsync(mark - elapsed);
+      elapsed = mark;
+      counts.push(t.introspected.length);
+    }
+    // asked at 0 s, 2 s, 7 s (2+5), 22 s (2+5+15), 52 s (…+30)
+    expect(counts).toEqual([1, 2, 2, 3, 3, 4, 4, 5]);
+    expect(t.store.value).toBeNull();
+  });
+
+  it("backs off after a 5xx as it does after a 403", async () => {
+    const t = setup({ "user-token-abcd": { status: 503, raw: "unavailable", contentType: "text/plain" } });
+    t.host.onOpen = (surface) => surface.sendBearer("user-token-abcd");
+    void t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(1_900);
+    expect(t.introspected).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(t.introspected).toHaveLength(2);
   });
 
   it("asks again about a token it could not check", async () => {
@@ -300,6 +391,17 @@ describe("signing in", () => {
     const status = await t.auth.signIn();
     expect(status.state).toBe("env");
     expect(t.host.opened).toHaveLength(0);
+  });
+
+  it("signs in for this run when saving the token throws, and tells the engine", async () => {
+    const t = setup({ "user-token-abcd": user(T0 + HOUR) });
+    t.store.save = (stored: StoredBeatportToken) => {
+      t.store.value = stored;
+      throw new Error("encrypt failed");
+    };
+    t.host.onOpen = (surface) => surface.sendBearer("user-token-abcd");
+    expect((await t.auth.signIn()).state).toBe("signed_in");
+    expect(t.engine.session).toEqual(["user-token-abcd"]);
   });
 
   it("still reports signed in when the engine cannot be told", async () => {
