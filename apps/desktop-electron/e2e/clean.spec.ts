@@ -370,30 +370,27 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         ).toBeVisible({ timeout: 15_000 });
       });
 
-      await test.step("preview tags, write them into a copied file, and restore them", async () => {
+      await test.step("save the new values into the copied files from the save bar, and restore them", async () => {
         const before = readFileSync(library.files[0]!);
-        await libraryRow(window, "Tone One").getByText("Tone One").click({ button: "right" });
-        // The menu's groups are submenus (FLW-8): More ▸ holds it.
-        await window.getByRole("menu").getByRole("menuitem", { name: "More", exact: true }).click();
-        await window.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: "Save changes into the files…" }).click();
-        const dialog = window.getByRole("dialog", { name: "Save changes into the files" });
-        await dialog.getByRole("button", { name: "Preview" }).click();
-        await expect(dialog.getByRole("region", { name: "Preview" })).toContainText(
-          "Writing would change 1 file of 1. Nothing has been written yet.",
-          { timeout: 30_000 },
-        );
+        // The save bar (C23) under Clean's tabs replaced the Library's "Save changes into the files…".
+        await window.getByRole("link", { name: "Clean", exact: true }).click();
+        const bar = window.getByRole("region", { name: "Save to files" }).filter({ visible: true });
+        await bar.getByRole("button", { name: "Save to files…" }).click();
+        const dialog = window.getByRole("dialog", { name: /^Save \d[\d,]* tracks? to your files$/ });
+        const save = dialog.getByRole("button", { name: /^Save to \d[\d,]* files?$/ });
+        await expect(save).toBeEnabled({ timeout: 30_000 });
         expect(readFileSync(library.files[0]!).equals(before)).toBe(true);
-        await dialog.getByRole("button", { name: "Write 1 file" }).click();
-        await expect(dialog.getByRole("region", { name: "Written" })).toContainText("Wrote 1 file.", {
+        await save.click();
+        await expect(dialog.getByRole("region", { name: "Saved" })).toContainText(/Wrote \d[\d,]* files?/, {
           timeout: 30_000,
         });
         expect(readFileSync(library.files[0]!).includes(Buffer.from("TKEY"))).toBe(true);
         await dialog.getByRole("button", { name: "Restore these files" }).click();
-        await expect(dialog).toContainText("Restored 1 file.", { timeout: 30_000 });
+        await expect(dialog).toContainText(/Restored \d[\d,]* files?/, { timeout: 30_000 });
         expect(readFileSync(library.files[0]!).includes(Buffer.from("TKEY"))).toBe(false);
         await dialog.getByRole("button", { name: "Done" }).click();
         await idle(window);
-        // The dialog opened in place on the Library; the refresh below is the Library's too.
+        // The refresh below is the Library's.
         await window.getByRole("link", { name: "Library", exact: true }).click();
       });
 
