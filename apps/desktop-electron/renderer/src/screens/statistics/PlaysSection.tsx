@@ -329,6 +329,7 @@ export function PlaysSection({
                     type="button"
                     className="plays__preview"
                     aria-label={`Preview ${track.title} by ${track.artist}`}
+                    title="Play"
                     onClick={() => void preview(track)}
                   >
                     <PixelIcon name="play" />

@@ -405,7 +405,7 @@ describe("the Plays section (STATS-05)", () => {
       expect(navigated()).toEqual({ path: "/library", state: { cuepointLibraryTrack: 90 } });
     });
 
-    it("has a visible button that previews the track", async () => {
+    it("has a small unboxed play button in the row that previews the track", async () => {
       const playQueue = vi.fn().mockResolvedValue({ ok: true });
       const row = { id: 812, title: "Alpha", artist: "B", file_path: "/m/a.mp3" };
       install({
@@ -416,12 +416,29 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.click(within(region).getByRole("button", { name: "Preview Alpha by B" }));
+      const play = within(region).getByRole("button", { name: "Preview Alpha by B" });
+      expect(play).toHaveAttribute("title", "Play");
+      expect(play.closest("li")).toHaveClass("plays__item");
+      expect(play.querySelector(".cp-pixel-icon")).not.toBeNull();
+      expect(play).toHaveTextContent("");
+      await user.click(play);
 
       await waitFor(() => expect(playQueue).toHaveBeenCalledTimes(1));
       expect(mock("getLibraryTrack")).toHaveBeenCalledWith({ trackId: 812 });
       expect(playQueue.mock.calls[0]![0][0]).toMatchObject({ trackId: 812, filePath: "/m/a.mp3" });
       expect(navigated().path).toBe("/statistics");
+    });
+
+    it("does not play on a double-click of the row", async () => {
+      const playQueue = vi.fn().mockResolvedValue({ ok: true });
+      install({ player: { playQueue } });
+      const user = userEvent.setup();
+      renderPage();
+      const region = await section();
+
+      await user.dblClick(within(region).getByRole("button", { name: /^1\. Alpha by B/ }));
+
+      expect(playQueue).not.toHaveBeenCalled();
     });
 
     it("offers no preview where there is no player", async () => {

@@ -34,9 +34,20 @@
 
 .plays__item {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: var(--space-xs);
   min-width: 0;
+}
+
+/* The rows that carry a play button are one box; the stack lists keep their own look. */
+.plays__item:not(.plays__item--stack) {
+  padding-right: var(--space-sm);
+  border: var(--control-border-width) solid var(--border-control);
+  background: var(--bg-panel);
+}
+
+.plays__item:not(.plays__item--stack):hover {
+  background: var(--bg-panel-alt);
 }
 
 .plays__row {
@@ -48,8 +59,8 @@
   min-width: 0;
   min-height: var(--hit-min);
   padding: var(--space-xs) var(--space-sm);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-panel);
+  border: 0;
+  background: transparent;
   color: var(--fg-primary);
   font: inherit;
   text-align: left;
@@ -58,10 +69,6 @@
 
 .plays__item--stack .plays__row {
   grid-template-columns: 3ch minmax(0, 1fr) auto;
-}
-
-.plays__row:hover {
-  background: var(--bg-panel-alt);
 }
 
 .plays__rank,
@@ -109,25 +116,31 @@
   background: var(--accent-primary);
 }
 
+/* A play icon the size of the row's text, in the row and not boxed. */
 .plays__preview {
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: var(--hit-min);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-panel);
-  color: var(--fg-primary);
+  align-self: stretch;
+  /* The icon stays small and unboxed; the button around it is a full-size target. */
+  min-width: max(var(--hit-min), calc(24px * var(--scale, 1)));
+  min-height: calc(24px * var(--scale, 1));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: var(--font-size-md);
   cursor: pointer;
 }
 
 .plays__preview:hover {
-  background: var(--bg-panel-alt);
+  color: var(--fg-primary);
 }
 
 .plays__preview .cp-pixel-icon {
-  width: var(--icon-size);
-  height: var(--icon-size);
+  width: 1em;
+  height: 1em;
 }
 
 .plays__keep,
@@ -170,13 +183,13 @@
 
 /* A row whose rank moved steps once; the bar fades. Odd and even changes name different
    animations, so a second change restarts it. */
-:root[data-motion-state] .plays__item[data-changed="1"] .plays__row {
+:root[data-motion-state] .plays__item[data-changed="1"] {
   animation:
     cp-state-step-a var(--motion-base) steps(var(--motion-steps-short)),
     cp-state-fade-a var(--motion-base) var(--motion-fade);
 }
 
-:root[data-motion-state] .plays__item[data-changed="0"] .plays__row {
+:root[data-motion-state] .plays__item[data-changed="0"] {
   animation:
     cp-state-step-b var(--motion-base) steps(var(--motion-steps-short)),
     cp-state-fade-b var(--motion-base) var(--motion-fade);
