@@ -316,6 +316,10 @@ test.describe("The Camelot wheel (PAGES-10)", () => {
       await app.evaluate(({ BrowserWindow }) => {
         BrowserWindow.getAllWindows()[0]?.setSize(1280, 800);
       });
+      // The wheel opens from Track details' key line (K8), so the library needs a track to select.
+      await importCollection(window, writeExport(workspace));
+      await window.reload();
+      await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await window.locator('.track-table__row [data-column="title"]', { hasText: "Track 1" }).click();
       await window.getByRole("button", { name: "Camelot wheel" }).click();
       for (const scale of [1.5, 2, 3]) {

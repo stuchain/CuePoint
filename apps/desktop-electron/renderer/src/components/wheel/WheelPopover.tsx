@@ -64,7 +64,10 @@ export function WheelPopover({ source, anchor, leaving = false, presenceRef }: W
       // Under the opener, right edges level; with none known, the window's top right.
       const box = anchor?.isConnected ? anchor.getBoundingClientRect() : null;
       const left = Math.min((box ? box.right : window.innerWidth) - width, window.innerWidth - width - FIT_MARGIN);
-      root.style.top = `${box ? box.bottom : FIT_MARGIN}px`;
+      // Under the opener when half the window is free below it; otherwise (the player bar's key at
+      // the foot, or Track details' key line low or scrolled out at the largest size) from the top.
+      const below = box ? window.innerHeight - box.bottom : 0;
+      root.style.top = `${box && below >= window.innerHeight / 2 ? box.bottom : FIT_MARGIN}px`;
       root.style.left = `${Math.max(left, FIT_MARGIN)}px`;
       const room = window.innerHeight - root.getBoundingClientRect().top - FIT_MARGIN;
       root.style.maxHeight = `${Math.max(room, 0)}px`;

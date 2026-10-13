@@ -46,6 +46,9 @@ interface TrackInspectorProps {
  * DEC-024, because it would have built a panel against a match-result shape
  * that Phase 7 retired.
  */
+/** How long a selection waits before it opens Track details: the double-click window (K1). */
+export const INSPECTOR_AUTO_OPEN_DELAY_MS = 500;
+
 export function TrackInspector({ children }: TrackInspectorProps) {
   // The width is kept in 1× units and drawn times the scale, so a bigger text size
   // widens the panel with it (R2-4, DEC-273).
@@ -67,7 +70,22 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   });
   if (seen.selection !== selected) setSeen({ selection: selected, page });
   const selectionHere = selected !== null && seen.page === page;
-  const visible = inspectorVisible(state, page, selectionHere, autoOpen);
+  // A selection that would open the panel by itself waits out the double-click window, so the
+  // page does not reflow between the two clicks of a double-click on an unselected row. A
+  // cleared selection or a page change cancels the wait; folding is immediate.
+  const autoOpening = !state.choice[page] && selectionHere && autoOpen;
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!autoOpening) {
+      setArmed(false);
+      return;
+    }
+    const timer = setTimeout(() => setArmed(true), INSPECTOR_AUTO_OPEN_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [autoOpening]);
+  const visible = state.choice[page]
+    ? inspectorVisible(state, page, selectionHere, autoOpen)
+    : autoOpening && armed;
   const visibleRef = useRef(visible);
   visibleRef.current = visible;
   const panelRef = useRef<HTMLElement>(null);

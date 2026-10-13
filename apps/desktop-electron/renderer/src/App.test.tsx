@@ -707,7 +707,8 @@ describe("the Library page inside the shell (LIBUI-10)", () => {
     await userEvent.click(await screen.findByText("Contact"));
 
     // The Inspector is the shell's, and the page reached it.
-    const inspector = screen.getByRole("complementary", { name: /track details/i });
+    // A selection opens the panel after the double-click window (K1).
+    const inspector = await screen.findByRole("complementary", { name: /track details/i }, { timeout: 3000 });
     await waitFor(() => expect(within(inspector).getByText("Contact")).toBeInTheDocument());
   });
 
@@ -716,7 +717,8 @@ describe("the Library page inside the shell (LIBUI-10)", () => {
     await userEvent.click(navLink("Library"));
     await screen.findByRole("table", { name: "Library tracks" });
     await userEvent.click(await screen.findByText("Contact"));
-    const inspector = screen.getByRole("complementary", { name: /track details/i });
+    // A selection opens the panel after the double-click window (K1).
+    const inspector = await screen.findByRole("complementary", { name: /track details/i }, { timeout: 3000 });
     await waitFor(() => expect(within(inspector).getByText("Contact")).toBeInTheDocument());
 
     await userEvent.click(navLink("Settings"));

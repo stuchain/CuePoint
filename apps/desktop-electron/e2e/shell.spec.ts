@@ -566,6 +566,8 @@ ${tracks.join("\n")}
       await expect(window.getByLabel("Size of text and controls")).toHaveValue("1.5");
       await chooseMenuItem(app, "size-bigger");
       await expect.poll(scale).toBe("2");
+      // 2 → 1.5 → 1.25 (Compact, R2-5) → 1.
+      await chooseMenuItem(app, "size-smaller");
       await chooseMenuItem(app, "size-smaller");
       await chooseMenuItem(app, "size-smaller");
       await expect.poll(scale).toBe("1");

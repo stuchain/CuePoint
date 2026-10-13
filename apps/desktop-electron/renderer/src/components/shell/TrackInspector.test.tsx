@@ -6,7 +6,7 @@
  * showing, it can be operated without a mouse, and a width stored on a bigger
  * window cannot push the content area off-screen.
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render as rtlRender, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useLayoutEffect, type ReactElement } from "react";
@@ -16,7 +16,7 @@ import { ScaleProvider } from "../../tokens/ScaleContext";
 import { InspectorSlotProvider, useInspectorSlot } from "./inspectorSlot";
 import { PageActiveContext } from "./pageActive";
 import { useReportSelectedTrack } from "./useReportSelectedTrack";
-import { TrackInspector } from "./TrackInspector";
+import { INSPECTOR_AUTO_OPEN_DELAY_MS, TrackInspector } from "./TrackInspector";
 import { setSelectedTrack } from "./selectedTrack";
 import { INSPECTOR_STORAGE_KEY } from "./inspectorState";
 
@@ -33,11 +33,20 @@ const SELECTED = { id: 12, key: "8A", title: "Strobe" };
 
 /** Inside a router, on the Library unless a test says otherwise (K1 keys its choice by page). */
 function render(ui: ReactElement, path = "/library") {
-  return rtlRender(
+  const result = rtlRender(
     <MemoryRouter initialEntries={[path]}>
       <InspectorSlotProvider>{ui}</InspectorSlotProvider>
     </MemoryRouter>,
   );
+  settle();
+  return result;
+}
+
+/** A selection opens the panel only after the double-click window (K1): let it pass. */
+function settle() {
+  act(() => {
+    vi.advanceTimersByTime(INSPECTOR_AUTO_OPEN_DELAY_MS);
+  });
 }
 
 /** What the user chose before this mount, per page. */
@@ -47,6 +56,12 @@ function choose(choice: Record<string, "open" | "closed">, width = 213) {
 
 /** Opens the panel the way a user sees it open: a track is selected. */
 function select() {
+  selectNow();
+  settle();
+}
+
+/** The selection alone, before the double-click window has passed. */
+function selectNow() {
   act(() => setSelectedTrack(SELECTED));
 }
 
@@ -55,10 +70,13 @@ function stored() {
 }
 
 beforeEach(() => {
+  // Real time keeps flowing for user-event; only the open delay is stepped by hand.
+  vi.useFakeTimers({ shouldAdvanceTime: true });
   window.innerWidth = 1280;
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   setSelectedTrack(null);
   localStorage.clear();
 });
@@ -374,6 +392,40 @@ describe("TrackInspector follows the selection, page by page (K1, DEC-280)", () 
     expect(tab()).toBeInTheDocument();
   });
 
+  it("opens only after the double-click window, and folds at once", () => {
+    render(<TrackInspector />);
+    selectNow();
+    noPanel();
+    act(() => {
+      vi.advanceTimersByTime(INSPECTOR_AUTO_OPEN_DELAY_MS - 1);
+    });
+    noPanel();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(panel()).toBeInTheDocument();
+
+    act(() => setSelectedTrack(null));
+    noPanel();
+  });
+
+  it("never opens for a selection cleared within the double-click window", () => {
+    render(<TrackInspector />);
+    selectNow();
+    act(() => {
+      vi.advanceTimersByTime(INSPECTOR_AUTO_OPEN_DELAY_MS - 100);
+    });
+    act(() => setSelectedTrack(null));
+    settle();
+    noPanel();
+  });
+
+  it("opens at once for a manual toggle, without waiting", async () => {
+    render(<TrackInspector />);
+    await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(tab());
+    expect(panel()).toBeInTheDocument();
+  });
+
   it("stores nothing for an automatic open or fold", () => {
     render(<TrackInspector />);
     select();
@@ -395,6 +447,7 @@ describe("TrackInspector follows the selection, page by page (K1, DEC-280)", () 
 
     await user.click(screen.getByRole("button", { name: "to clean" }));
     act(() => setSelectedTrack({ id: 50, key: null, title: "On Clean" }));
+    settle();
     expect(panel()).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "to library" }));
@@ -516,6 +569,7 @@ describe("TrackInspector follows the selection, page by page (K1, DEC-280)", () 
           </InspectorSlotProvider>
         </MemoryRouter>,
       );
+      settle();
       expect(panel()).toBeInTheDocument();
     });
   });
@@ -613,6 +667,7 @@ describe("TrackInspector follows the selection, page by page (K1, DEC-280)", () 
       noPanel();
 
       act(() => setSelectedTrack({ id: 99, key: null, title: "Other" }));
+      settle();
       expect(panel()).toBeInTheDocument();
     });
   });

@@ -7,13 +7,13 @@
  * screen looks wrong when that happens.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, render as rtlRender, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
 import { ToastProvider } from "../Toast";
 import { Sidebar } from "./Sidebar";
-import { TrackInspector } from "./TrackInspector";
+import { INSPECTOR_AUTO_OPEN_DELAY_MS, TrackInspector } from "./TrackInspector";
 import { setSelectedTrack } from "./selectedTrack";
 import { StatusStrip } from "./StatusStrip";
 import { AppShellLayout } from "./AppShellLayout";
@@ -73,11 +73,26 @@ describe("sidebar keyboard", () => {
 
 describe("inspector focus", () => {
   // The panel opens with a selection (K1); these are about the open panel's controls.
-  beforeEach(() => setSelectedTrack({ id: 1, key: null }));
-  afterEach(() => setSelectedTrack(null));
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    setSelectedTrack({ id: 1, key: null });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    setSelectedTrack(null);
+  });
+
+  /** Renders, then lets the selection's double-click window pass so the panel is open. */
+  function render(ui: Parameters<typeof rtlRender>[0]) {
+    const result = rtlRender(ui);
+    act(() => {
+      vi.advanceTimersByTime(INSPECTOR_AUTO_OPEN_DELAY_MS);
+    });
+    return result;
+  }
 
   it("moves focus to the reveal control when hidden", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
       <MemoryRouter>
         <TrackInspector />
@@ -91,7 +106,7 @@ describe("inspector focus", () => {
   });
 
   it("moves focus to the hide control when shown again", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
       <MemoryRouter>
         <TrackInspector />
@@ -105,7 +120,7 @@ describe("inspector focus", () => {
   });
 
   it("keeps focus somewhere real when toggled by keyboard", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
       <MemoryRouter>
         <TrackInspector />
