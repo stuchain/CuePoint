@@ -7,6 +7,7 @@
  * read like the sentences themselves, not tests that go through a render.
  */
 import type {
+  LibraryQuickFacets,
   LibrarySourceInfo,
   RefreshDiff,
   RefreshApplied,
@@ -246,4 +247,44 @@ export function jobErrorMessage(error?: { code?: string; message?: string }): st
     default:
       return error?.message || "Something went wrong.";
   }
+}
+
+/**
+ * A total running time a person reads: "3 h 52 min", "52 min", "1 h", "45 s".
+ * Null where there is none (a scope whose tracks have no length), so the
+ * header leaves the part out rather than saying "0 s".
+ */
+export function formatLength(seconds: number): string | null {
+  if (!(seconds > 0)) return null;
+  if (seconds < 60) return `${Math.round(seconds)} s`;
+  const minutes = Math.round(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest} min`;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
+
+/** "122\u2013128 BPM", "124 BPM" for one value, null when no track has a BPM. */
+export function formatBpmRange(min: number | null, max: number | null): string | null {
+  if (min === null) return null;
+  const low = Math.round(min);
+  const high = Math.round(max ?? min);
+  return low === high ? `${low} BPM` : `${low}\u2013${high} BPM`;
+}
+
+/**
+ * What a scope holds, as the parts of the header's summary line (K9): tracks,
+ * running time, BPM range and number of keys, each left out where the scope has
+ * nothing to say. Before the facts arrive only the count the page already
+ * knows is shown, never numbers of the scope the user has just left.
+ */
+export function scopeFactsLine(facts: LibraryQuickFacets | null, fallbackCount: number): string[] {
+  if (!facts) return [pluralize(fallbackCount, "track")];
+  const parts = [pluralize(facts.total, "track")];
+  const length = formatLength(facts.total_seconds);
+  if (length) parts.push(length);
+  const bpm = formatBpmRange(facts.bpm.min, facts.bpm.max);
+  if (bpm) parts.push(bpm);
+  if (facts.keys.length > 0) parts.push(pluralize(facts.keys.length, "key"));
+  return parts;
 }

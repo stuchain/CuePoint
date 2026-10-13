@@ -120,6 +120,7 @@ import { useLibraryChanges } from "../../api/libraryChanges";
 import { revealTrack } from "../clean/revealTrack";
 import { forgetWaveforms } from "../../components/waveform/waveformCache";
 import { useCollectionTree } from "./useCollectionTree";
+import { useScopeFacts } from "./useScopeFacts";
 import { useScopeTotal } from "./useScopeTotal";
 import { followJob } from "./followJob";
 import { appliedLine, jobErrorMessage } from "./libraryFormat";
@@ -345,7 +346,8 @@ export function LibraryScreen({
   );
   const window_ = useTrackWindow(query);
   const selection = useTrackSelection(query, window_.total, window_.source.getRow);
-  const scopeTotal = useScopeTotal(query, window_.total, window_.identity.split("\u0000")[0] ?? "");
+  const libraryIdentity = window_.identity.split("\u0000")[0] ?? "";
+  const scopeTotal = useScopeTotal(query, window_.total, libraryIdentity);
   const playback = useLibraryPlayback({
     query,
     onMessage: (message) => push(message, "info"),
@@ -507,6 +509,40 @@ export function LibraryScreen({
    * row drag and no "Remove from" here, and a note says what the rows are.
    */
   const scopedSet = scopedCollection && isSet(scopedCollection) ? scopedCollection : null;
+
+  /**
+   * The scope the header describes (R4-4). While a Smart Collection is open it
+   * is that Collection even once a bar rule has changed the query (which then
+   * drops the Collection id), because the header describes the scope and not
+   * the rules being tried on it.
+   */
+  const headerScope = useMemo(
+    () =>
+      smart
+        ? { playlistId: null, collectionId: smart.id, scope: "smart" as const }
+        : { playlistId: query.playlistId, collectionId: query.collectionId, scope: query.scope },
+    [query.collectionId, query.playlistId, query.scope, smart],
+  );
+
+  /**
+   * What the header calls the scope: the playlist's, Collection's, Set's or
+   * Smart Collection's name, the group the left pane files it under, and the
+   * size the page already knows while the scope's facts are being read.
+   */
+  const scopeLabel = useMemo(() => {
+    if (headerScope.collectionId != null) {
+      const node = findCollection(collections.tree, headerScope.collectionId);
+      if (node) {
+        return { name: node.name, group: "Collections", count: node.track_count };
+      }
+      if (smart) return { name: smart.name, group: "Collections", count: null };
+    }
+    if (headerScope.playlistId != null && playlists.selected?.id === headerScope.playlistId) {
+      return { name: playlists.selected.name, group: "Playlists", count: playlists.selected.track_count };
+    }
+    return { name: "All tracks", group: null, count: null };
+  }, [collections.tree, headerScope.collectionId, headerScope.playlistId, playlists.selected, smart]);
+  const { facts: scopeFacts } = useScopeFacts(headerScope, libraryIdentity);
 
   const batch = useLibraryBatch({
     onMessage: (message, tone) => push(message, tone),
@@ -1911,6 +1947,15 @@ export function LibraryScreen({
     <div className="screen library-screen library-screen--browser">
       <LibraryHeader
         summary={summary}
+        scopeName={scopeLabel.name}
+        scopeGroup={scopeLabel.group}
+        facts={scopeFacts}
+        fallbackCount={
+          scopeLabel.count ??
+          (headerScope.playlistId == null && headerScope.collectionId == null
+            ? summary.track_count
+            : scopeTotal)
+        }
         busy={busy}
         busyLabel={busy ? BUSY_LABEL[busy] : null}
         onCheck={() => void handleCheck()}

@@ -188,14 +188,18 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function renderScreen(props: React.ComponentProps<typeof LibraryScreen> = {}) {
-  return render(
+function Page(props: React.ComponentProps<typeof LibraryScreen>) {
+  return (
     <ScaleProvider>
       <ToastProvider>
         <LibraryScreen {...props} />
       </ToastProvider>
-    </ScaleProvider>,
+    </ScaleProvider>
   );
+}
+
+function renderScreen(props: React.ComponentProps<typeof LibraryScreen> = {}) {
+  return render(<Page {...props} />);
 }
 
 async function ready() {
@@ -221,17 +225,17 @@ function collectionRow(name: string): HTMLElement {
 }
 
 describe("the Library header's entry (DEC-087)", () => {
-  it("imports from its own button, as the page always has", async () => {
-    const user = userEvent.setup();
-    renderScreen();
+  it("has no import button of its own; File \u2192 Import another file\u2026 still imports (K9)", async () => {
+    const view = renderScreen();
     await ready();
 
-    await user.click(screen.getByRole("button", { name: "Import another file…" }));
+    expect(screen.queryByRole("button", { name: "Import another file…" })).toBeNull();
+    view.rerender(<Page importWith="from-the-file-menu" />);
     await waitFor(() => expect(mock("openXmlFileDialog")).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("dialog", { name: "Export to Rekordbox" })).toBeNull();
   });
 
-  it("sits beside import and opens the export with nothing ticked", async () => {
+  it("sits beside Check and opens the export with nothing ticked", async () => {
     const user = userEvent.setup();
     renderScreen();
     await ready();
@@ -242,13 +246,9 @@ describe("the Library header's entry (DEC-087)", () => {
       .getAllByRole("button")
       .filter((button) => !button.classList.contains("first-steps-chip"))
       .map((button) => button.textContent);
-    // Three buttons, never a menu (FLW-11): where they do not fit, the visible labels
+    // Two buttons, never a menu (FLW-11, K9): where they do not fit, the visible labels
     // shorten and the full names stay (see LibraryHeader.tsx).
-    expect(actions).toEqual([
-      "Check Rekordbox for changes",
-      "Import another file…",
-      "Export to Rekordbox…",
-    ]);
+    expect(actions).toEqual(["Check Rekordbox for changes", "Export to Rekordbox…"]);
 
     await user.click(within(header).getByRole("button", { name: "Export to Rekordbox…" }));
     const dialog = await exportDialog();

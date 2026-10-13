@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import type {
+  LibraryQuickFacets,
   LibrarySourceInfo,
   RefreshApplied,
   RefreshDiff,
@@ -17,13 +18,16 @@ import {
   applyLabel,
   diffLines,
   fileName,
+  formatBpmRange,
   formatCount,
+  formatLength,
   formatWhen,
   jobErrorMessage,
   needsReferenceConfirmation,
   pluralize,
   referenceWarning,
   removalWarning,
+  scopeFactsLine,
   sourceState,
   sourceBadge,
   sourceStateMessage,
@@ -102,6 +106,78 @@ describe("counts", () => {
 
   it("takes an irregular plural", () => {
     expect(pluralize(3, "entry", "entries")).toBe("3 entries");
+  });
+});
+
+describe("formatLength", () => {
+  it.each([
+    [13920, "3 h 52 min"],
+    [3120, "52 min"],
+    [3600, "1 h"],
+    [7200, "2 h"],
+    [45, "45 s"],
+    [60, "1 min"],
+    [14380, "4 h"],
+  ])("writes %s seconds as %s", (seconds, text) => {
+    expect(formatLength(seconds)).toBe(text);
+  });
+
+  it("is omitted when there is no length", () => {
+    expect(formatLength(0)).toBeNull();
+    expect(formatLength(-3)).toBeNull();
+  });
+});
+
+describe("formatBpmRange", () => {
+  it("joins a range with an en dash", () => {
+    expect(formatBpmRange(122, 128)).toBe("122\u2013128 BPM");
+  });
+
+  it("says one value once", () => {
+    expect(formatBpmRange(124, 124)).toBe("124 BPM");
+    expect(formatBpmRange(123.6, 124.2)).toBe("124 BPM");
+    expect(formatBpmRange(124, null)).toBe("124 BPM");
+  });
+
+  it("is omitted when no track has a BPM", () => {
+    expect(formatBpmRange(null, null)).toBeNull();
+  });
+});
+
+describe("scopeFactsLine", () => {
+  const FACTS: LibraryQuickFacets = {
+    keys: Array.from({ length: 9 }, (_unused, i) => ({ value: `${i + 1}A`, count: 4 })),
+    no_key: 0,
+    bpm: { min: 122, max: 128, missing: 0 },
+    genres: [],
+    genres_total: 0,
+    genres_truncated: false,
+    total: 36,
+    total_seconds: 13920,
+    duration_missing: 0,
+  };
+
+  it("lists tracks, length, BPM and keys", () => {
+    expect(scopeFactsLine(FACTS, 0)).toEqual([
+      "36 tracks",
+      "3 h 52 min",
+      "122\u2013128 BPM",
+      "9 keys",
+    ]);
+  });
+
+  it("agrees with itself about one", () => {
+    const one = { ...FACTS, total: 1, keys: FACTS.keys.slice(0, 1), bpm: { min: 124, max: 124, missing: 0 } };
+    expect(scopeFactsLine(one, 0)).toEqual(["1 track", "3 h 52 min", "124 BPM", "1 key"]);
+  });
+
+  it("leaves out what the scope does not have", () => {
+    const bare = { ...FACTS, keys: [], total_seconds: 0, bpm: { min: null, max: null, missing: 36 } };
+    expect(scopeFactsLine(bare, 0)).toEqual(["36 tracks"]);
+  });
+
+  it("shows only the count it knows while the facts are loading", () => {
+    expect(scopeFactsLine(null, 3880)).toEqual([pluralize(3880, "track")]);
   });
 });
 

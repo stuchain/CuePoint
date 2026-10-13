@@ -9,15 +9,33 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter, useLocation } from "react-router-dom";
 
 import type { RekordboxExportHistory } from "../api/cuepointBridge.types";
 import fixture from "./library/rekordboxExport.fixture.json";
+import { libraryImportState, importOpening } from "./library/libraryLink";
 import { RekordboxExportSettingsPanel, SETTINGS_HISTORY_LIMIT } from "./RekordboxExportSettingsPanel";
 
 const HISTORY = fixture.history as unknown as RekordboxExportHistory;
 const EMPTY = fixture.history_empty as unknown as RekordboxExportHistory;
 
 let read: ReturnType<typeof vi.fn>;
+let arrived: { pathname: string; state: unknown; key: string } | null = null;
+
+function Where() {
+  const location = useLocation();
+  arrived = { pathname: location.pathname, state: location.state, key: location.key };
+  return null;
+}
+
+function renderPanel() {
+  return render(
+    <MemoryRouter initialEntries={["/settings"]}>
+      <RekordboxExportSettingsPanel />
+      <Where />
+    </MemoryRouter>,
+  );
+}
 
 beforeEach(() => {
   read = vi.fn().mockResolvedValue(HISTORY);
@@ -29,8 +47,19 @@ afterEach(() => {
 });
 
 describe("the Rekordbox export in Settings", () => {
+  it("offers Import another Rekordbox file\u2026, which opens the Library on its import", async () => {
+    renderPanel();
+    expect(
+      screen.getByText("Read a different Rekordbox XML export in place of the current one."),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Import another Rekordbox file\u2026" }));
+    expect(arrived?.pathname).toBe("/library");
+    expect(arrived?.state).toEqual(libraryImportState());
+    expect(importOpening({ state: arrived?.state, key: arrived?.key ?? "" })).not.toBeNull();
+  });
+
   it("says it remembers the last export, and where to export from under More about this", async () => {
-    render(<RekordboxExportSettingsPanel />);
+    renderPanel();
     expect(await screen.findByText("Remembers your last export.")).toBeInTheDocument();
     const where = screen.getByText(
       "To export, use “Export to Rekordbox…” in the Library or on a Collection's menu.",
@@ -41,13 +70,13 @@ describe("the Rekordbox export in Settings", () => {
   });
 
   it("calls the notation Keys written as", async () => {
-    render(<RekordboxExportSettingsPanel />);
+    renderPanel();
     expect(await screen.findByText("Keys written as")).toBeInTheDocument();
     expect(screen.queryByText("Key notation")).toBeNull();
   });
 
   it("shows the folder and notation the last written export used", async () => {
-    render(<RekordboxExportSettingsPanel />);
+    renderPanel();
 
     expect(await screen.findByTestId("export-remembered-folder")).toHaveTextContent(
       "C:\\Users\\dj\\Music\\Exports",
@@ -57,7 +86,7 @@ describe("the Rekordbox export in Settings", () => {
   });
 
   it("lists recent exports newest first, each by how it ended", async () => {
-    render(<RekordboxExportSettingsPanel />);
+    renderPanel();
 
     const list = await screen.findByRole("list");
     const items = within(list).getAllByRole("listitem");
@@ -71,7 +100,7 @@ describe("the Rekordbox export in Settings", () => {
 
   it("says where the first export will go when there has been none", async () => {
     read.mockResolvedValue(EMPTY);
-    render(<RekordboxExportSettingsPanel />);
+    renderPanel();
 
     expect(await screen.findByTestId("export-remembered-folder")).toHaveTextContent(
       "Nothing exported yet",
@@ -83,16 +112,19 @@ describe("the Rekordbox export in Settings", () => {
   });
 
   it("offers no way to start an export, and says where export lives (DEC-087)", async () => {
-    render(<RekordboxExportSettingsPanel />);
+    renderPanel();
     await screen.findByRole("list");
 
-    // The only button is "More about this"; nothing starts an export.
-    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["More about this"]);
+    // Nothing starts an export: the buttons are the import and "More about this".
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Import another Rekordbox file…",
+      "More about this",
+    ]);
     expect(screen.getByText(/To export, use “Export to Rekordbox…” in the Library/)).toBeInTheDocument();
   });
 
   it("offers editing neither value: both change by exporting", async () => {
-    render(<RekordboxExportSettingsPanel />);
+    renderPanel();
     await screen.findByRole("list");
 
     expect(screen.queryByRole("combobox")).toBeNull();
@@ -103,7 +135,7 @@ describe("the Rekordbox export in Settings", () => {
   it("says why it cannot read the history, and reads it again when asked", async () => {
     const user = userEvent.setup();
     read.mockRejectedValueOnce(new Error("The library is unavailable"));
-    render(<RekordboxExportSettingsPanel />);
+    renderPanel();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("The library is unavailable");
     await user.click(screen.getByRole("button", { name: "Try again" }));
@@ -113,7 +145,7 @@ describe("the Rekordbox export in Settings", () => {
 
   it("says the desktop app is needed without a bridge", () => {
     delete (window as unknown as { cuepoint?: unknown }).cuepoint;
-    render(<RekordboxExportSettingsPanel />);
+    renderPanel();
     expect(screen.getByText(/Open CuePoint as a desktop app/)).toBeInTheDocument();
   });
 });

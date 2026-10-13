@@ -8033,3 +8033,24 @@ Track details open the two columns a DJ reads first were off screen. Every curre
   half, Similar tracks).
 
 **Decided with**: User (K1, ★ move them once where the order is still the old default) · **Date**: 2026-10-13
+
+
+
+## DEC-290 — The Library Header Names the Playlist It Shows
+
+**Status**: Approved · **Related**: R4-4, K9, DEC-039, DEC-208 (amended), FLW-11
+
+**Context**: The Library's header described the whole collection (its file's full path, "N playlists") and carried three
+buttons, so it never said which playlist or Collection the table was showing or what that held.
+
+**Decision**:
+- The header sits on the shared ScreenHeader. Its title is the scope: "All tracks", or the playlist's, Collection's,
+  Set's or Smart Collection's name, with the group it is in above it; the `<h1>` stays "Library".
+- One line says what the scope holds: tracks, running time, BPM range and number of keys, read once per scope from the
+  engine's quick facets (search and bar rules do not change it). While they load only the count already known shows.
+- The source is one short line, the file's name and its state; the full path and when it was last read are in the
+  name's hint. The state sentence still shows whenever the state is not "in sync".
+- Two buttons (amends DEC-208's three): Check Rekordbox for changes, primary only when the file changed or went
+  missing, and Export to Rekordbox…. Import another Rekordbox file… moved to Settings ▸ Rekordbox and the File menu.
+
+**Decided with**: User (R4-4 ★ describe the playlist you're in, not the current search; K9) · **Date**: 2026-10-13

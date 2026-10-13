@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useId, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import type { RekordboxExportHistory } from "../api/cuepointBridge.types";
 import { Button, MoreAbout, Panel } from "../components";
 import { fileName } from "./library/libraryFormat";
+import { libraryImportState } from "./library/libraryLink";
 import {
   historyOutcome,
   historyWhen,
@@ -60,12 +62,24 @@ export function RekordboxExportSettingsPanel() {
     void load();
   }, [load]);
 
+  const navigate = useNavigate();
   const lineId = useId();
   const remembered = history?.remembered ?? null;
 
   return (
     <Panel title="Rekordbox export">
       <div className="cp-export-settings">
+        <p className="cp-export-settings__hint">
+          Read a different Rekordbox XML export in place of the current one.
+        </p>
+        <div>
+          <Button
+            variant="secondary"
+            onClick={() => navigate("/library", { state: libraryImportState() })}
+          >
+            Import another Rekordbox file…
+          </Button>
+        </div>
         <p id={lineId} className="cp-export-settings__hint">
           Remembers your last export.
         </p>

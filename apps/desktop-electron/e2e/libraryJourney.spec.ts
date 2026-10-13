@@ -170,12 +170,8 @@ test.describe("Phase 3 end to end (LIBRARY-12)", () => {
       await expect(window.getByRole("heading", { name: "Library", level: 1 })).toBeVisible();
 
       await expect(window.getByTestId("library-track-count")).toHaveText("6 tracks");
-      // Two playlists plus the ROOT folder they hang from.
-      await expect(window.getByText("3 playlists")).toBeVisible();
-      await expect(window.getByText("3 playlists")).toHaveAttribute(
-        "title",
-        "4 tracks across your playlists",
-      );
+      // The header names the scope it is on (K9, R4-4); the h1 stays "Library".
+      await expect(window.locator(".library-header .cp-screen-header__display:visible")).toHaveText("All tracks");
       await expect(window.getByText("In sync")).toBeVisible();
 
       // ---------------------------------------------------------------- 2

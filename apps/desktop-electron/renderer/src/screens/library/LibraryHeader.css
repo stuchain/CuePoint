@@ -1,49 +1,58 @@
-/* The library's counts, its source and its three actions (LIBUI-10, DEC-039, FLW-11). */
+/* The library's scope, source and two actions, on the shared header (LIBUI-10, DEC-039, FLW-11, K9). */
 
+/* ScreenHeader brings its own background and divider; this only anchors the measure copy. */
 .library-header {
   position: relative;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  padding: var(--space-sm);
-  background: var(--bg-panel);
-  border-bottom: var(--divider);
 }
 
-.library-header__counts {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-xs);
-  font-family: var(--font-data);
-  font-size: var(--font-size-xs);
-  font-variant-numeric: tabular-nums;
+/* Let the title keep its room: the source line shrinks (and ellipsizes) instead. */
+.library-header .cp-screen-header__beside {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
-.library-header__sep {
-  color: var(--fg-muted);
+/* The scope's name for a screen reader, ahead of the summary (the drawn title is aria-hidden). */
+.library-header__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
+/* The file's name and its state, one short line beside the title. */
 .library-header__source {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: var(--space-xs);
   min-width: 0;
   font-size: var(--font-size-xs);
 }
 
 .library-header__file {
-  font-family: var(--font-data);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: calc(192px * var(--scale));
 }
 
-.library-header__imported,
-.library-header__state {
+.library-header__sep {
   color: var(--fg-muted);
+  white-space: pre;
+}
+
+.library-header__notes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-sm);
+  font-size: var(--font-size-xs);
 }
 
 .library-header__state--attention {
@@ -53,16 +62,6 @@
 .library-header__applied {
   margin: 0;
   color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-}
-
-/* Three buttons stay on one line while they can; it is the labels that give way
-   (FLW-11). Only when even the short labels do not fit do the buttons wrap. */
-.library-header__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  margin-left: auto;
 }
 
 /* The full labels, laid out and never seen: what the header measures to decide
@@ -83,19 +82,5 @@
 
 .library-header__measure-label::after {
   content: attr(data-text);
-  white-space: nowrap;
-}
-
-/* The heading and, beside it, the First steps chip. */
-.library-header__heading {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.library-header__title {
-  margin: 0;
-  font-size: var(--font-size-md);
-  line-height: var(--space-lg);
   white-space: nowrap;
 }

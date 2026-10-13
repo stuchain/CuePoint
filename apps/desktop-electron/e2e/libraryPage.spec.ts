@@ -194,8 +194,12 @@ test.describe("The Library page (LIBRARY-11)", () => {
       await openLibrary(window);
 
       await expect(window.getByTestId("library-track-count")).toHaveText("6 tracks");
-      await expect(window.getByText(xmlPath)).toBeVisible();
-      await expect(window.getByText("In sync")).toBeVisible();
+      // The header shows the file's name; the whole path is in its hint.
+      const header = window.locator(".library-header");
+      const file = header.getByText(path.basename(xmlPath), { exact: true });
+      await expect(file).toBeVisible();
+      expect(await file.getAttribute("title")).toContain(xmlPath);
+      await expect(header.getByText("In sync")).toBeVisible();
     } finally {
       await app.close();
     }
@@ -211,12 +215,12 @@ test.describe("The Library page (LIBRARY-11)", () => {
 
       const chip = window.locator(".library-header").getByRole("button", { name: /^First steps/ });
       await expect(chip).toBeVisible();
-      const title = (await window.locator(".library-header h1").boundingBox())!;
+      const title = (await window.locator(".library-header .cp-screen-header__display:visible").boundingBox())!;
       const chipBox = (await chip.boundingBox())!;
       expect(chipBox.x, "chip sits to the right of the heading").toBeGreaterThan(title.x);
       expect(Math.abs(chipBox.y + chipBox.height / 2 - (title.y + title.height / 2))).toBeLessThan(title.height);
 
-      const names = ["Check Rekordbox for changes", "Import another file…", "Export to Rekordbox…"];
+      const names = ["Check Rekordbox for changes", "Export to Rekordbox…"];
       const tops: number[] = [];
       const shown: string[] = [];
       for (const name of names) {
@@ -231,7 +235,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
     }
   });
 
-  test("shows its whole rows with the three header buttons on one line", async () => {
+  test("shows its whole rows with the header buttons on one line", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
@@ -248,8 +252,8 @@ test.describe("The Library page (LIBRARY-11)", () => {
       const table = window.getByRole("table", { name: "Library tracks" });
       await expect(table.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
 
-      // Three buttons, never a menu, and on one line whatever their labels say.
-      const names = ["Check Rekordbox for changes", "Import another file…", "Export to Rekordbox…"];
+      // Two buttons, never a menu, and on one line whatever their labels say.
+      const names = ["Check Rekordbox for changes", "Export to Rekordbox…"];
       const tops: number[] = [];
       const shown: string[] = [];
       for (const name of names) {

@@ -424,8 +424,8 @@ function install(overrides: Partial<Bridge> = {}) {
       genres: [{ value: "House", count: 3 }],
       genres_total: 1,
       genres_truncated: false,
-      total: 0,
-      total_seconds: 0,
+      total: 3880,
+      total_seconds: 13920,
       duration_missing: 0,
     }),
     getLibraryTrack: vi.fn().mockResolvedValue(DETAIL),
@@ -512,16 +512,24 @@ function renderScreen(
     onOpenKeys?: (sources: Array<{ kind: "playlist" | "collection" | "set"; id: number }>) => void;
     openWith?: { rules: FilterRuleSet; token: string } | null;
     refreshWith?: string | null;
+    importWith?: string | null;
   } = {},
 ) {
-  return render(
+  const tree = (next: typeof props) => (
     <ScaleProvider>
       <ToastProvider>
-        <LibraryScreen {...props} />
+        <LibraryScreen {...next} />
       </ToastProvider>
-    </ScaleProvider>,
+    </ScaleProvider>
   );
+  const view = render(tree(props));
+  /** Ask the page to start an import, as File → Import another file… does (K9). */
+  rerenderWith = (next) => view.rerender(tree({ ...props, ...next }));
+  return view;
 }
+
+let rerenderWith: (props: { importWith?: string | null }) => void = () => undefined;
+let importAsks = 0;
 
 /** The table holding rows is what "the first window landed" looks like. */
 async function tableReady() {
@@ -643,9 +651,7 @@ describe("importing", () => {
       xml_path: "C:\\new\\collection.xml",
     });
     expect(await screen.findByTestId("library-track-count")).toHaveTextContent("3,880");
-    // Both the name and the full path say "collection.xml", deliberately: the
-    // name is what a user recognises, the path is what they check when a file
-    // has moved.
+    // The file's name is what a user recognises; the path is in its hint.
     expect(screen.getAllByText(/collection\.xml/).length).toBeGreaterThan(0);
   });
 
@@ -707,7 +713,11 @@ describe("the notice line (LIB-1, DEC-201)", () => {
   });
 
   async function importAnother() {
-    await userEvent.click(await screen.findByRole("button", { name: "Import another file…" }));
+    // The header has no Import button any more (K9): File → Import another file…
+    // reaches the page as an opening, which is what is asked here.
+    await screen.findByTestId("library-track-count");
+    importAsks += 1;
+    rerenderWith({ importWith: `ask-${importAsks}` });
     await waitFor(() => expect(bridge.startLibraryImport).toHaveBeenCalled());
   }
 
@@ -865,12 +875,40 @@ describe("an imported library", () => {
     renderScreen();
 
     expect(await screen.findByTestId("library-track-count")).toHaveTextContent("3,880");
-    expect(screen.getByText(/234 playlists/)).toBeInTheDocument();
-    expect(screen.getByText("234 playlists")).toHaveAttribute(
-      "title",
-      "13,870 tracks across your playlists",
+    expect(screen.queryByText(/234 playlists/)).toBeNull();
+    // The scope's own facts, not the search's (K9): length, BPM range and keys.
+    await waitFor(() =>
+      expect(screen.getByTestId("library-track-count").closest(".cp-screen-header__summary")).toHaveTextContent(
+        "3,880 tracks \u00b7 3 h 52 min \u00b7 120\u2013128 BPM \u00b7 2 keys",
+      ),
     );
-    expect(screen.getByText("C:\\Users\\dj\\Downloads\\collection.xml")).toBeInTheDocument();
+    // The file's name, with the whole path and when it was read in its hint.
+    const name = screen.getByText("collection.xml");
+    expect(name).toHaveAttribute(
+      "title",
+      expect.stringContaining("C:\\Users\\dj\\Downloads\\collection.xml"),
+    );
+    expect(screen.queryByText("C:\\Users\\dj\\Downloads\\collection.xml")).toBeNull();
+  });
+
+  it("names the scope in the header, and follows the playlist chosen in the pane (R4-4)", async () => {
+    const { container } = renderScreen();
+    await tableReady();
+
+    const display = () => container.querySelector(".cp-screen-header__display");
+    expect(display()).toHaveTextContent("All tracks");
+    expect(container.querySelector(".cp-screen-header__crumb")).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Library" })).toBeInTheDocument();
+
+    const tree = await screen.findByRole("tree", { name: "Playlists" });
+    await userEvent.click(within(tree).getByText("Friday"));
+    await waitFor(() => expect(display()).toHaveTextContent("Friday"));
+    expect(container.querySelector(".cp-screen-header__crumb")).toHaveTextContent("Playlists");
+    await waitFor(() =>
+      expect(bridge.getLibraryQuickFacets).toHaveBeenCalledWith(
+        expect.objectContaining({ q: "", filters: null, playlistId: expect.any(Number) }),
+      ),
+    );
   });
 
   it("says the export is unchanged when it is", async () => {
@@ -2907,6 +2945,22 @@ describe("the filter bar saves a Smart Collection (ORG-12)", () => {
 
     expect(await screen.findByText(/modified, not saved/)).toBeInTheDocument();
     expect(bridge.updateSmartCollection).not.toHaveBeenCalled();
+  });
+
+  it("keeps naming the Smart Collection in the header once a rule is added", async () => {
+    renderScreen();
+    await tableReady();
+    await openRecentTechno();
+    await addAFilter("House");
+    await waitFor(() => expect(lastBrowse().scope).toBeUndefined());
+
+    const header = document.querySelector<HTMLElement>(".library-header")!;
+    expect(header.querySelector(".cp-screen-header__display")).toHaveTextContent("Recent techno");
+    expect(header.querySelector(".cp-screen-header__crumb")).toHaveTextContent("Collections");
+    // The facts are the Collection's, asked by its id, not the whole library's.
+    expect(bridge.getLibraryQuickFacets).toHaveBeenLastCalledWith(
+      expect.objectContaining({ scope: "smart", collectionId: 13, q: "", filters: null }),
+    );
   });
 
   it("shows the modified rules in the table rather than the saved ones", async () => {

@@ -637,7 +637,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(() => existsSync(file), { timeout: 15_000 }).toBe(true);
   });
 
-  test("Import, Check Rekordbox for changes and Export to Rekordbox: the Library header", async () => {
+  test("Check Rekordbox for changes and Export to Rekordbox: the Library header", async () => {
     await openLibrary(win);
     const header = win.locator('[data-slot="library-header"]');
 
@@ -654,14 +654,17 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect(exporting).toBeVisible({ timeout: 15_000 });
     await win.keyboard.press("Escape");
     await expect(exporting).toBeHidden();
+  });
 
-    // Import another file…, answered with the same file (the file chooser is the system's).
+  test("Import another Rekordbox file…: Settings", async () => {
+    // The Library header no longer has an import button (K9); Settings does, and so does the File menu.
+    await win.getByRole("link", { name: "Settings" }).click();
     const xml = path.join(workspace, "collection.xml");
     await app.evaluate(({ dialog }, chosen) => {
       (dialog as unknown as { showOpenDialog: unknown }).showOpenDialog = async () => ({ canceled: false, filePaths: [chosen] });
     }, xml);
     const imports = await jobsOf(win, "library_import");
-    await use(win, header.getByRole("button", { name: "Import another file…" }), "Import another file…");
+    await use(win, win.getByRole("button", { name: "Import another Rekordbox file…" }), "Import another Rekordbox file…");
     await expect.poll(() => jobsOf(win, "library_import"), { timeout: 60_000 }).toBeGreaterThan(imports);
   });
 

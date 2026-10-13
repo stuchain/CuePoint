@@ -244,7 +244,7 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
 
       await test.step("open the export from the Library header, with nothing ticked", async () => {
         await openLibrary(window);
-        // The header's three buttons fit it, and leave the tracks room, at the
+        // The header's two buttons fit it, and leave the tracks room, at the
         // default window size (FLW-11); their labels shorten before they would
         // take a line each, which once left the table 20px tall.
         const body = await window.locator(".library-screen__body").boundingBox();
@@ -448,8 +448,10 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         await expect(panel.getByTestId("export-remembered-notation")).toHaveText("Camelot (8A, 12B)");
         await expect(panel.getByRole("list")).toContainText("CuePoint Export.xml");
         await expect(panel.getByRole("list")).toContainText("Techno.xml");
-        // Its only button is the "More about this" disclosure; nothing exports.
-        await expect(panel.getByRole("button")).toHaveCount(1);
+        // Nothing here starts an export: the buttons are the "More about this" disclosure and
+        // the import of another file (which reads a file, it does not write one).
+        await expect(panel.getByRole("button", { name: /export/i })).toHaveCount(0);
+        await expect(panel.getByRole("button", { name: "Import another Rekordbox file…" })).toBeVisible();
         await expect(panel.getByRole("button", { name: "More about this" })).toBeVisible();
       });
 
