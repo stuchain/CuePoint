@@ -20,6 +20,7 @@ import type {
   LibraryTrackRow,
   MatchCandidate,
 } from "../../../api/cuepointBridge.types";
+import { camelotOf as parseCamelot } from "../../../components/wheel/keyColour";
 import { effective, formatBpm, formatDuration } from "../../library/trackValues";
 
 /** A field a card names: the four Correct copies, and the key it may replace. */
@@ -57,15 +58,6 @@ export interface CardRow {
   tickable: boolean;
 }
 
-const MINOR: Record<string, string> = {
-  "G#": "1A", AB: "1A", "D#": "2A", EB: "2A", "A#": "3A", BB: "3A", F: "4A", C: "5A", G: "6A",
-  D: "7A", A: "8A", E: "9A", B: "10A", "F#": "11A", GB: "11A", "C#": "12A", DB: "12A",
-};
-const MAJOR: Record<string, string> = {
-  B: "1B", "F#": "2B", GB: "2B", "C#": "3B", DB: "3B", "G#": "4B", AB: "4B", "D#": "5B",
-  EB: "5B", "A#": "6B", BB: "6B", F: "7B", C: "8B", G: "9B", D: "10B", A: "11B", E: "12B",
-};
-
 /**
  * A key as Camelot, the way the app shows keys: "A Minor" is 8A. Anything that
  * is not a key this knows is returned as it came, so a value is never hidden
@@ -74,14 +66,7 @@ const MAJOR: Record<string, string> = {
 export function camelotOf(key: string | null | undefined): string | null {
   const text = (key ?? "").trim();
   if (text === "") return null;
-  if (/^(1[0-2]|[1-9])[AB]$/i.test(text)) return text.toUpperCase();
-  const parsed = /^([A-Ga-g])\s*([#♯bB♭]?)\s*(maj(?:or)?|min(?:or)?|m)?$/i.exec(text);
-  if (!parsed) return text;
-  const note = parsed[1]!.toUpperCase();
-  const mark = parsed[2] === "#" || parsed[2] === "♯" ? "#" : parsed[2] ? "B" : "";
-  const quality = (parsed[3] ?? "maj").toLowerCase();
-  const table = quality.startsWith("maj") ? MAJOR : MINOR;
-  return table[`${note}${mark}`] ?? text;
+  return parseCamelot(text) ?? text;
 }
 
 function text(value: string | number | null | undefined): string | null {

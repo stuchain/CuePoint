@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import { applyKeyColours } from './components/wheel/keyColourSetting.ts'
 import { ErrorBoundary } from './reporting/ErrorBoundary.tsx'
 import { ErrorScreen } from './reporting/ErrorScreen.tsx'
 import { reportUnexpected, setupRendererReporting } from './reporting/reporting.ts'
@@ -15,6 +16,7 @@ async function start() {
     setupRendererReporting(),
     new Promise<void>((resolve) => setTimeout(resolve, SETUP_WAIT_MS)),
   ])
+  applyKeyColours()
   const root = createRoot(document.getElementById('root')!)
   try {
     const { default: App } = await import('./App.tsx')

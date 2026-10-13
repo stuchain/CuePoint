@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 
 import type { LibraryTrackRow, OverrideField } from "../../api/cuepointBridge.types";
 import { Hint } from "../../components/Hint";
+import { KeyChip } from "../../components/wheel/KeyChip";
 import { waveformEntryWords, waveformStateWord } from "../../components/waveform/analysisWords";
 import { loudnessCell } from "../../components/waveform/loudnessWords";
 import { useWaveform } from "../../components/waveform/useWaveforms";
@@ -23,7 +24,8 @@ import { LOUDNESS_QUERY } from "./libraryLoudness";
 /** A value CuePoint may override, marked when it does. */
 export function OverriddenValue({ row, field }: { row: LibraryTrackRow; field: OverrideField }) {
   // A track with no Beatport key shows a dash, not a blank (DEC-201).
-  const value = effectiveText(row, field) || (field === "key" ? "—" : "");
+  const text = effectiveText(row, field);
+  const value = field === "key" ? <KeyChip value={text} /> : text;
   const mark = overrideMark(row, field);
   if (!mark) return <>{value}</>;
   // The marker is a letter or a dot, which means nothing until someone says so: its

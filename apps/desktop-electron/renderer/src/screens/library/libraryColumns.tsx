@@ -13,6 +13,7 @@
  */
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
+import { camelotOf } from "../../components/wheel/keyColour";
 import { fileStatusLabel } from "../clean/cleanFormat";
 import { matchCell } from "../clean/cleanColumns";
 import { starsFor } from "./filterText";
@@ -104,7 +105,10 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     minWidthPx: 56,
     defaultWidthPx: 70,
     render: (track) => <OverriddenValue row={track} field="key" />,
-    text: (track) => effectiveText(track, "key"),
+    text: (track) => {
+      const key = effectiveText(track, "key");
+      return camelotOf(key) ?? key;
+    },
   },
   {
     id: "bpm",

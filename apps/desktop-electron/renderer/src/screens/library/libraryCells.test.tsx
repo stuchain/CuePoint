@@ -101,6 +101,29 @@ describe("the Key cell", () => {
   it("is a dash when no Beatport key is known", () => {
     const { container } = render(<OverriddenValue row={row({ effective_key: null })} field="key" />);
     expect(container).toHaveTextContent("—");
+    expect(container.querySelector(".key-chip")).toBeNull();
+  });
+
+  it("draws a key as a chip named for the key, marked or not", () => {
+    const { container } = render(<OverriddenValue row={row({ effective_key: "8A", overridden: [] })} field="key" />);
+    const chip = container.querySelector(".key-chip--8A");
+    expect(chip).toHaveTextContent("8A");
+    expect(chip).toHaveAttribute("title", "A minor");
+  });
+
+  it("keeps the chip inside the marked cell too", () => {
+    const { container } = render(
+      <OverriddenValue
+        row={row({ effective_key: "9A", overridden: ["key"], override_sources: { key: "cuepoint" } })}
+        field="key"
+      />,
+    );
+    expect(container.querySelector(".library-cell__overridden .key-chip--9A")).toHaveTextContent("9A");
+  });
+
+  it("draws other fields as plain text", () => {
+    const { container } = render(<OverriddenValue row={row({ bpm: 128 })} field="bpm" />);
+    expect(container.querySelector(".key-chip")).toBeNull();
   });
 
   it("carries no marker for a key that came from Beatport", () => {

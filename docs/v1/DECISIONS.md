@@ -7642,3 +7642,25 @@ sizes, and on short windows the logo and collapse button scrolled away with the 
   top row.
 
 **Decided with**: User (C26, K7, R2-9, wish list round 2) · **Date**: 2026-10-13
+
+
+
+## DEC-272 — Keys Are Drawn in Camelot Colours
+
+**Status**: Approved · **Related**: R4-2, DEC-201, DEC-048, C2
+
+**Context**: A key was plain text in every table, so a DJ scanning for compatible keys had to read each code.
+Mixed In Key and most DJ tools colour keys round the wheel, and the app's own wheel already draws them as places.
+
+**Decision**:
+- A key is a small chip: the Camelot code always written ("8A", never "Am"), in its key's colour on a light tint of
+  that colour, with the key's name ("A minor") as its tooltip. No key is "—" (DEC-201); text that is no key is plain.
+- The colours follow the Mixed In Key convention: 12 hues round the wheel, the A ring deeper and the B ring lighter.
+  Each theme has its own 24 values in `tokens/keyColours.css` (the theme files are not touched), held at 4.5:1 on the
+  chip over the table and the panel and 3:1 over a selected row; a custom theme derives them the same way
+  (`tokens/keyColourDerive.ts`). The wheel keeps its own look (C2).
+- One parser reads a key's text as Camelot (`components/wheel/keyColour.ts`); Discover's and Clean's copies are gone.
+- A "Colour keys" setting (on by default) turns the chips back into plain text.
+- A chip is a span with a class per key: no inline style and no hook per row, so long tables scroll as before (DEC-234).
+
+**Decided with**: User (R4-2, ★ Mixed In Key hues) · **Date**: 2026-10-13

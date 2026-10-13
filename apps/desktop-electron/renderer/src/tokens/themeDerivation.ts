@@ -1,4 +1,6 @@
 import type { CustomThemeColors } from "./customThemes";
+import { keyTokens, mixHex } from "./keyColourDerive";
+import { KEY_TOKEN_KEYS } from "./keyTokenKeys";
 
 type ThemeTokenMap = Record<string, string>;
 
@@ -48,7 +50,10 @@ const TOKEN_KEYS = [
   "waveform-memory-cue",
 ] as const;
 
-export const DERIVED_THEME_TOKEN_KEYS = TOKEN_KEYS;
+export const DERIVED_THEME_TOKEN_KEYS: readonly string[] = [...TOKEN_KEYS, ...KEY_TOKEN_KEYS];
+
+/** How much accent the selected fill has: `--bg-selected` in tokens.css, mixed into `--bg-input`. */
+export const SELECTED_ACCENT_MIX = 18;
 
 function clamp(n: number, min = 0, max = 255): number {
   return Math.min(max, Math.max(min, n));
@@ -308,6 +313,12 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "overlay-backdrop": "rgba(0, 0, 0, 0.72)",
     "row-unmatched-bg": darken(normalizeHex(colors.accentDanger), 0.35),
     ...deriveWaveformTokens(colors),
+    // Key chips (R4-2): the 24 key colours, held on this theme's own backgrounds.
+    ...keyTokens({
+      panel: bgPanel,
+      input: bgInput,
+      selected: mixHex(accentPrimary, bgInput, SELECTED_ACCENT_MIX),
+    }),
   };
 }
 
