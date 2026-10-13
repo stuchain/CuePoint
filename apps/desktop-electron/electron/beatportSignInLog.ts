@@ -16,14 +16,23 @@ import * as path from "node:path";
 
 export const SIGNIN_LOG_FILE = "beatport-signin.log";
 const ROTATED_FILE = "beatport-signin.1.log";
+const ROTATING_FILE = "beatport-signin.rotating.log";
 /** The log is rotated once, to `beatport-signin.1.log`, when it would pass this size. */
 export const SIGNIN_LOG_MAX_BYTES = 256 * 1024;
 /** Lines kept while the engine has not yet said where the logs go. */
 const MAX_BUFFERED_LINES = 200;
-/** How long to wait for the engine's logs folder before using Electron's own. */
-const FOLDER_WAIT_MS = 5_000;
+/**
+ * How long to wait for the engine's logs folder before using Electron's own. A cold packaged
+ * engine can take ~10 s, and the renderer can reach the sign-in early, so the wait is generous.
+ */
+const FOLDER_WAIT_MS = 30_000;
 /** While the engine is not answering, ask again this often until the wait is over. */
 const FOLDER_RETRY_MS = 1_000;
+/** After a fallback, keep asking this often, at most `LATE_ASKS` times, to move to the engine's folder. */
+const LATE_RETRY_MS = 5_000;
+const LATE_ASKS = 24;
+/** A path keeps its first segments only. */
+const MAX_PATH_SEGMENTS = 3;
 const MAX_LINE_LENGTH = 200;
 
 /** The keys a line may carry. Anything else is dropped. */
@@ -38,7 +47,7 @@ const ALLOWED_KEYS = new Set([
 const FLAG_KEYS = new Set(["jwt", "token", "anon", "active", "username", "user_id", "exp", "expires", "introspect"]);
 const FLAG_VALUE = /^(yes|no|true|false|missing|null|number)$/;
 /** Any other value: plain words, digits and a few separators, at most 80 characters. */
-const PLAIN_VALUE = /^[\w:.\- /|=+]{0,80}$/;
+const PLAIN_VALUE = /^[\w:.\- /|=+*]{0,80}$/;
 /** Even a plain-looking value is refused when it looks like a token, a header or a query. */
 const SECRET_SHAPE = /eyJ|Bearer|code=|state=|access_?token/i;
 
@@ -67,12 +76,26 @@ export interface BeatportSignInLogOptions {
   folderWaitMs?: number;
 }
 
+/**
+ * A path with ids kept out: a segment that is all digits, or a long mix of letters and digits
+ * (an id, a token), becomes `*`; only the first three segments are kept, with `/*` after them
+ * when the path was longer.
+ */
+function safePath(pathname: string): string {
+  const segments = pathname.split("/").filter((segment) => segment !== "");
+  const kept = segments.slice(0, MAX_PATH_SEGMENTS).map((segment) => {
+    const looksLikeId = /^\d+$/.test(segment) || (segment.length > 24 && /[a-z]/i.test(segment) && /\d/.test(segment));
+    return looksLikeId ? "*" : segment;
+  });
+  return `/${kept.join("/")}${segments.length > MAX_PATH_SEGMENTS ? "/*" : ""}`;
+}
+
 /** A URL as `{ host, path }` with no query and no hash (the OAuth `code` and `state` live there). */
 export function hostAndPath(url: string | null | undefined): { host: string; path: string } {
   if (typeof url !== "string") return { host: "?", path: "?" };
   try {
     const parsed = new URL(url);
-    return { host: parsed.host, path: parsed.pathname };
+    return { host: parsed.host, path: safePath(parsed.pathname) };
   } catch {
     return { host: "?", path: "?" };
   }
@@ -147,6 +170,11 @@ export class BeatportSignInLog {
   private buffer: string[] = [];
   private chain: Promise<void> = Promise.resolve();
   private size: number | null = null;
+  /** The folder in use is Electron's, not the engine's. */
+  private onFallback = false;
+  private waitTimer: ReturnType<typeof setTimeout> | null = null;
+  private askTimer: ReturnType<typeof setTimeout> | null = null;
+  private closed = false;
 
   constructor(private readonly options: BeatportSignInLogOptions) {
     this.fs = options.fs ?? (nodeFs as unknown as SignInLogFs);
@@ -186,36 +214,81 @@ export class BeatportSignInLog {
     this.askForFolder();
   }
 
-  /** Ask the engine where the logs go, once; use Electron's folder if it is slow or fails. */
+  /**
+   * Ask the engine where the logs go, and keep the lines until it answers. If it is still silent
+   * after the wait, use Electron's folder; then keep asking (every few seconds, a bounded number
+   * of times) so later lines can go to the engine's folder after all.
+   */
   private askForFolder(): void {
     if (this.asked) return;
     this.asked = true;
-    let retry: ReturnType<typeof setTimeout> | null = null;
-    const timer = setTimeout(() => {
-      if (retry) clearTimeout(retry);
+    this.waitTimer = setTimeout(() => {
+      this.waitTimer = null;
+      if (this.dir !== null || this.closed) return;
+      this.onFallback = true;
       this.useFolder(this.options.fallbackDir(), true);
     }, this.options.folderWaitMs ?? FOLDER_WAIT_MS);
-    (timer as { unref?: () => void }).unref?.();
-    const ask = (): void => {
-      if (this.dir !== null) return;
-      const answered = (dir: string | null | undefined): void => {
-        if (this.dir !== null) return;
-        if (typeof dir === "string" && dir !== "") {
-          clearTimeout(timer);
-          this.useFolder(dir, false);
-        } else {
-          // The engine may still be starting: ask again until the wait is over.
-          retry = setTimeout(ask, FOLDER_RETRY_MS);
-          (retry as { unref?: () => void }).unref?.();
-        }
-      };
-      try {
-        this.options.getLogsDir().then(answered, () => answered(null));
-      } catch {
-        answered(null);
+    (this.waitTimer as { unref?: () => void }).unref?.();
+    this.ask(0);
+  }
+
+  private ask(lateAsks: number): void {
+    if (this.closed) return;
+    const answered = (dir: string | null | undefined): void => {
+      if (this.closed) return;
+      if (typeof dir === "string" && dir !== "") {
+        this.engineAnswered(dir);
+        return;
       }
+      // The engine may still be starting: ask again.
+      let next = lateAsks;
+      let delay = FOLDER_RETRY_MS;
+      if (this.dir !== null) {
+        if (lateAsks >= LATE_ASKS) return;
+        next = lateAsks + 1;
+        delay = LATE_RETRY_MS;
+      }
+      this.askTimer = setTimeout(() => this.ask(next), delay);
+      (this.askTimer as { unref?: () => void }).unref?.();
     };
-    ask();
+    try {
+      this.options.getLogsDir().then(answered, () => answered(null));
+    } catch {
+      answered(null);
+    }
+  }
+
+  private engineAnswered(dir: string): void {
+    if (this.dir === null) {
+      if (this.waitTimer) clearTimeout(this.waitTimer);
+      this.waitTimer = null;
+      this.useFolder(dir, false);
+    } else if (this.onFallback && dir !== this.dir) {
+      // A late answer: from now on the engine's folder, with a note of where the earlier lines are.
+      this.onFallback = false;
+      this.dir = dir;
+      this.size = null;
+      this.write([`${new Date(this.now()).toISOString()}  logs-folder  fallback=earlier`]);
+    }
+  }
+
+  /** Stop asking and write what is still buffered to Electron's folder. For quitting. */
+  close(): Promise<void> {
+    if (!this.closed) {
+      this.closed = true;
+      if (this.waitTimer) clearTimeout(this.waitTimer);
+      if (this.askTimer) clearTimeout(this.askTimer);
+      this.waitTimer = this.askTimer = null;
+      if (this.dir === null && this.buffer.length > 0) {
+        try {
+          this.onFallback = true;
+          this.useFolder(this.options.fallbackDir(), true);
+        } catch {
+          // Best effort.
+        }
+      }
+    }
+    return this.chain;
   }
 
   private useFolder(dir: string, fallback: boolean): void {
@@ -236,6 +309,28 @@ export class BeatportSignInLog {
     this.chain = this.chain.then(() => this.append(dir, lines)).catch(() => undefined);
   }
 
+  /**
+   * Rotate once: the live log becomes beatport-signin.1.log (Windows will not rename over a file).
+   * The live file moves aside first, so a failed move loses nothing: the old .1 is still there and
+   * the live file keeps growing. Only then is the old .1 removed.
+   */
+  private async rotate(dir: string, file: string): Promise<void> {
+    const rotated = path.join(dir, ROTATED_FILE);
+    const aside = path.join(dir, ROTATING_FILE);
+    try {
+      await this.fs.rm(aside, { force: true });
+      await this.fs.rename(file, aside);
+    } catch {
+      return;
+    }
+    try {
+      await this.fs.rm(rotated, { force: true });
+      await this.fs.rename(aside, rotated);
+    } catch {
+      // The rotated log stays under its temporary name; the next rotation clears it.
+    }
+  }
+
   private async append(dir: string, lines: string[]): Promise<void> {
     const file = path.join(dir, SIGNIN_LOG_FILE);
     await this.fs.mkdir(dir, { recursive: true });
@@ -250,10 +345,9 @@ export class BeatportSignInLog {
       const text = `${line}\n`;
       const bytes = Buffer.byteLength(text);
       if (this.size > 0 && this.size + bytes > this.maxBytes) {
-        // Rotate once: the old log becomes beatport-signin.1.log (Windows will not rename over a file).
-        const rotated = path.join(dir, ROTATED_FILE);
-        await this.fs.rm(rotated, { force: true });
-        await this.fs.rename(file, rotated);
+        await this.rotate(dir, file);
+        // Rotated or not, count from zero: a rotation that fails is tried again only after another
+        // full file's worth of lines, and the batch is never dropped for it.
         this.size = 0;
       }
       await this.fs.appendFile(file, text);

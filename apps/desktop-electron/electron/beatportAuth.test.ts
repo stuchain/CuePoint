@@ -795,6 +795,59 @@ describe("when the sign-in window closes", () => {
     expect((await run).state).toBe("signed_in");
   });
 
+  it("regression: C20 a definite no during the window is not overridden by the final read (anon, then 403 + user scope)", async () => {
+    const t = setup({
+      "user-token-abcd": (askedBefore) =>
+        askedBefore === 0 ? { body: { active: true, scope: "app:prostore user:anon", username: "x" } } : { status: 403, raw: "<html>no</html>" },
+    });
+    t.host.onOpen = (surface) => {
+      setTimeout(() => surface.sendBearer("user-token-abcd"), 50);
+      setTimeout(() => {
+        t.host.session = sessionJson("user-token-abcd", T0 + 10 * MIN);
+        surface.close();
+      }, 100);
+    };
+    const run = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(200);
+    expect((await run).state).toBe("signed_out");
+    expect(t.store.value).toBeNull();
+    expect(t.introspected).toEqual(["user-token-abcd"]);
+  });
+
+  it("regression: C20 a 401 during the window is not overridden by the final read either", async () => {
+    const t = setup({
+      "user-token-abcd": (askedBefore) => (askedBefore === 0 ? { status: 401 } : { status: 403, raw: "<html>no</html>" }),
+    });
+    t.host.onOpen = (surface) => {
+      setTimeout(() => surface.sendBearer("user-token-abcd"), 50);
+      setTimeout(() => {
+        t.host.session = sessionJson("user-token-abcd", T0 + 10 * MIN);
+        surface.close();
+      }, 100);
+    };
+    const run = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(200);
+    expect((await run).state).toBe("signed_out");
+    expect(t.store.value).toBeNull();
+  });
+
+  it("leaves no backoff timer behind once the window has closed", async () => {
+    // 403 forever: a backoff timer is waiting when the window closes, and it must be cleared.
+    const t = setup({ "user-token-abcd": { status: 403, raw: "<html>no</html>" } });
+    t.host.onOpen = (surface) => {
+      setTimeout(() => surface.sendBearer("user-token-abcd"), 10);
+    };
+    const run = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    const before = t.host.opened[0]!.surface;
+    before.close();
+    await vi.advanceTimersByTimeAsync(0);
+    await run;
+    // Closed: the capture's timers (poll, backoff) are all gone.
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("stays signed out, and keeps a waiting renewal, when the final read finds nothing", async () => {
     const t = setup();
     t.store.value = { token: "kept-token-1111", expires_at: new Date(T0 + 10 * MIN).toISOString(), source: "signin" };
@@ -939,6 +992,7 @@ describe("the sign-in log", () => {
     }
     expect(text).toContain("via=session-scope");
     expect(text).toContain("via=final-read");
+    expect(text).toMatch(/accepted  via=final-read source=session-scope n=\d+ /);
     expect(text).toContain("jwt=yes");
     expect(text).toContain("store=file");
     expect(text).toContain("engine=ok");
@@ -960,7 +1014,7 @@ describe("the sign-in log", () => {
     const text = await lines.text();
     expect(text).toContain("store=memory");
     expect(text).toContain("engine=failed");
-    expect(text).toMatch(/accepted  via=introspect expires_in_s=3600 /);
+    expect(text).toMatch(/accepted  via=introspect n=1 expires_in_s=3600 /);
   });
 
   it("logs a failing renewal with its backoff", async () => {
@@ -1728,7 +1782,7 @@ describe("the sign-in window's rules", () => {
 
     expect(log).toEqual([
       ["window", { mode: "visible" }],
-      ["nav", { kind: "window", host: "www.beatport.com", path: "/api/auth/callback/beatport" }],
+      ["nav", { kind: "window", host: "www.beatport.com", path: "/api/auth/callback/*" }],
       ["redirect", { kind: "window", host: "www.beatport.com", path: "/" }],
       ["load-failed", { kind: "window", code: -105, host: "www.beatport.com" }],
       ["refused", { kind: "window", host: "evil.example", path: "/steal" }],

@@ -122,6 +122,10 @@ interface Verified {
   fromSession: boolean;
   /** Which check accepted it: Beatport's introspection, or the session's own user scope. */
   via: "introspect" | "session-scope" | "final-read";
+  /** The introspect call that decided it, for the log. */
+  n?: number;
+  /** After a final read: which detector accepted it. */
+  source?: "introspect" | "session-scope";
 }
 
 /** The session JSON's own claim that its token is a person's (`sessionUserScope`). */
@@ -302,7 +306,7 @@ export class BeatportAuth {
     let found = captured.found;
     // The page may have finished in the last poll interval, or its header never reached us: when
     // the window is closed with nothing, look at the session once more before giving up.
-    if (!found && captured.why === "closed" && generation === this.generation) found = await this.finalCheck(generation);
+    if (!found && captured.why === "closed" && generation === this.generation) found = await this.finalCheck(generation, captured.latched);
     if (found && generation === this.generation) {
       await this.accept(await this.withSessionExpiry(found), generation);
     } else if (generation === this.generation) {
@@ -317,18 +321,25 @@ export class BeatportAuth {
    * checked like any other (the session's own scope decides when introspection cannot). A sign-out
    * or a pasted token while it runs wins: null.
    */
-  private async finalCheck(generation: number): Promise<Verified | null> {
+  private async finalCheck(generation: number, latched: ReadonlySet<string>): Promise<Verified | null> {
     const session = await this.readSession();
     if (generation !== this.generation) return null;
     if (session.kind !== "token") {
       this.note("final read", { outcome: session.kind === "ended" ? "ended" : "none" });
       return null;
     }
-    const verdict = this.withSessionRule(await this.verify(session.token, session.expiresAt), session.token, session.scope);
+    // A definite no (401, inactive, a guest's) given to this very token while the window was open
+    // is final: a later 403 or a user scope on the session must not turn it into a yes.
+    if (latched.has(session.token)) {
+      this.note("final read", { outcome: "rejected", why: "latched" });
+      return null;
+    }
+    const n = ++this.introspectCount;
+    const verdict = this.withSessionRule(await this.verify(session.token, session.expiresAt, n), session.token, session.scope, n);
     if (generation !== this.generation) return null;
     this.note("final read", { outcome: verdict.kind === "ok" ? "token" : verdict.kind });
     if (verdict.kind !== "ok") return null;
-    return { ...verdict.verified, via: "final-read" };
+    return { ...verdict.verified, via: "final-read", source: verdict.verified.via === "session-scope" ? "session-scope" : "introspect" };
   }
 
   /**
@@ -352,11 +363,11 @@ export class BeatportAuth {
    * definite no (`rejected`) is never overridden, and a token the session did not give is never
    * trusted on its scope. The end is the session's own.
    */
-  private withSessionRule(verdict: Verdict, token: string, scope: SessionScope | null): Verdict {
+  private withSessionRule(verdict: Verdict, token: string, scope: SessionScope | null, n?: number): Verdict {
     if ((verdict.kind !== "inconclusive" && verdict.kind !== "error") || !scope || scope.token !== token) return verdict;
     const expiresAt =
       scope.expiresAt ?? jwtExpiresAt(token) ?? new Date(this.now() + DEFAULT_TOKEN_TTL_MS).toISOString();
-    return { kind: "ok", verified: { token, expiresAt, fromSession: true, via: "session-scope" } };
+    return { kind: "ok", verified: { token, expiresAt, fromSession: true, via: "session-scope", n } };
   }
 
   /**
@@ -586,6 +597,8 @@ export class BeatportAuth {
     const end = expiryMs(found.expiresAt);
     this.note("accepted", {
       via: found.via,
+      source: found.source,
+      n: found.n,
       expires_in_s: end === null ? undefined : Math.round((end - this.now()) / 1000),
       store: stored,
       engine: this.lastPushOk ? "ok" : "failed",
@@ -671,7 +684,7 @@ export class BeatportAuth {
   private capture(
     surface: SignInSurface,
     options: { exclude: string | null; timeoutMs: number | null },
-  ): Promise<{ found: Verified | null; why: "found" | "closed" | "timeout" }> {
+  ): Promise<{ found: Verified | null; why: "found" | "closed" | "timeout"; latched: Set<string> }> {
     return new Promise((resolve) => {
       let done = false;
       let polling = false;
@@ -701,7 +714,7 @@ export class BeatportAuth {
         if (interval) clearInterval(interval);
         if (timeout) clearTimeout(timeout);
         for (const entry of tried.values()) if (entry.timer) clearTimeout(entry.timer);
-        resolve({ found, why });
+        resolve({ found, why, latched: new Set([...tried].filter(([, entry]) => entry.latched).map(([token]) => token)) });
       };
 
       const consider = async (token: string, expiryHint: string | null = null): Promise<void> => {
@@ -730,6 +743,7 @@ export class BeatportAuth {
           entry.nextAt = this.now() + wait;
           this.note("backoff", { n, attempts: entry.attempts, next_s: Math.round(wait / 1000) });
           // Ask again when the wait is over even if the page sends nothing more.
+          if (entry.timer) clearTimeout(entry.timer);
           entry.timer = setTimeout(() => {
             entry!.timer = null;
             void consider(token);
@@ -820,7 +834,7 @@ export class BeatportAuth {
       introspectExpiresAt(body, this.now()) ??
       jwtExpiresAt(token) ??
       new Date(this.now() + DEFAULT_TOKEN_TTL_MS).toISOString();
-    return settle({ kind: "ok", verified: { token, expiresAt, fromSession: expiryHint !== null, via: "introspect" } }, "user");
+    return settle({ kind: "ok", verified: { token, expiresAt, fromSession: expiryHint !== null, via: "introspect", n } }, "user");
   }
 }
 

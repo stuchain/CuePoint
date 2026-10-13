@@ -7238,14 +7238,21 @@ it decided.
   scope of its own.
 - **Closing the window.** When the person closes the sign-in window before a token was accepted,
   the session JSON is read once more with no window and judged by the same rules, so a sign-in that
-  finished in the last moment is kept. A sign-out or a pasted token meanwhile wins.
+  finished in the last moment is kept. A sign-out or a pasted token meanwhile wins. A token that
+  got a definite no while the window was open is never accepted by this last read, whatever the
+  session or a later 403 says.
 - **Windows are destroyed, not closed**, so a page's `beforeunload` cannot keep one open.
 - **The log.** `beatport-signin.log`, next to `cuepoint.log` (Windows
   `%LOCALAPPDATA%\CuePoint\Logs`, macOS `~/Library/Application Support/CuePoint/Logs`; the
-  Electron logs folder if the engine has not said where in 5 s), always on, one line per event, 256 KB
-  then rotated once to `beatport-signin.1.log`. It holds the app version and platform, page hosts
+  Electron logs folder, Windows `%APPDATA%\CuePoint\logs` and macOS `~/Library/Logs/CuePoint`, if
+  the engine has not said where in 30 s; lines are kept until then, and the engine is asked again
+  every 5 s afterwards, so later lines move to its folder with one line saying the earlier ones
+  went to the fallback folder), always on, one line per event, 256 KB then rotated once to
+  `beatport-signin.1.log` (a rotation that fails keeps appending to the live file and never drops
+  a line). A path keeps its first three segments, with ids shown as `*`. It holds the app version and platform, page hosts
   and paths (never query strings), HTTP statuses and content types, scopes, which keys a reply had,
-  each verdict and its reason, which detector accepted (`via=introspect|session-scope|final-read`),
+  each verdict and its reason, which detector accepted (`via=introspect|session-scope|final-read`, and after a final read
+  `source=introspect|session-scope`, with `n=` the introspect call that decided),
   whether the token was stored and handed to the engine, and renewals. It never holds a token or
   any part of one, a header, a cookie, a username, email or user id. Keys are allow-listed and
   values filtered, and a test runs every flow with marker tokens and checks no line holds them.

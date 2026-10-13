@@ -11,7 +11,7 @@ import {
 } from "./beatportSignInLog";
 
 /** An in-memory file system: path -> text. Directories are not modelled. */
-function fakeFs(options: { failAppend?: boolean } = {}) {
+function fakeFs(options: { failAppend?: boolean; failRename?: () => boolean } = {}) {
   const files = new Map<string, string>();
   const fs: SignInLogFs = {
     mkdir: async () => undefined,
@@ -25,6 +25,7 @@ function fakeFs(options: { failAppend?: boolean } = {}) {
       return { size: Buffer.byteLength(text) };
     },
     rename: async (from, to) => {
+      if (options.failRename?.()) throw new Error("EPERM");
       files.set(to, files.get(from) ?? "");
       files.delete(from);
     },
@@ -123,11 +124,41 @@ describe("BeatportSignInLog", () => {
   it("keeps only host and path of a URL", () => {
     expect(hostAndPath("https://www.beatport.com/api/auth/callback/beatport?code=SECRET&state=abc#frag")).toEqual({
       host: "www.beatport.com",
-      path: "/api/auth/callback/beatport",
+      path: "/api/auth/callback/*",
     });
     expect(hostAndPath("http://127.0.0.1:5555/authorize?client_id=x")).toEqual({ host: "127.0.0.1:5555", path: "/authorize" });
+    expect(hostAndPath("https://www.beatport.com/library/tracks/12345?x=1")).toEqual({ host: "www.beatport.com", path: "/library/tracks/*" });
+    expect(hostAndPath("https://www.beatport.com/")).toEqual({ host: "www.beatport.com", path: "/" });
     expect(hostAndPath("not a url")).toEqual({ host: "?", path: "?" });
     expect(hostAndPath(undefined)).toEqual({ host: "?", path: "?" });
+  });
+
+  it("hides id-like path segments and cuts a long path, and the result passes the value filter", async () => {
+    const id = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4";
+    const parsed = hostAndPath(`https://www.beatport.com/user/98765/${id}/deep/er`);
+    expect(parsed.path).toBe("/user/*/*/*");
+    expect(hostAndPath("https://x.example/a/b").path).toBe("/a/b");
+    // A long word with no digits is not an id.
+    expect(hostAndPath(`https://x.example/${"a".repeat(30)}`).path).toBe(`/${"a".repeat(30)}`);
+    const { log, files } = make();
+    log.log("nav", { host: parsed.host, path: parsed.path });
+    await settle(log);
+    expect(files.get(`/logs/${SIGNIN_LOG_FILE}`)).toContain("path=/user/*/*/*");
+  });
+
+  it("regression: C20 keeps appending to the live file, and loses nothing, when the rotation's rename fails", async () => {
+    let renames = 0;
+    const { fs, files } = fakeFs({ failRename: () => (renames += 1) <= 2 });
+    files.set("/logs/beatport-signin.1.log", "OLD-ROTATED\n");
+    const log = new BeatportSignInLog({ getLogsDir: async () => "/logs", fallbackDir: () => "/x", fs, now: () => NOW, maxBytes: 300 });
+    for (let i = 0; i < 12; i += 1) log.log("bearer seen", { n: i, len: 1234 });
+    await settle(log);
+    const current = files.get(`/logs/${SIGNIN_LOG_FILE}`)!;
+    // Every line is there, and the old rotated log was not destroyed by the failed rename.
+    for (let i = 0; i < 12; i += 1) expect(current).toContain(`n=${i} len=1234\n`);
+    expect(files.get("/logs/beatport-signin.1.log")).toContain("OLD-ROTATED");
+    // Rotation was not retried for every line: two failures, then it worked.
+    expect(renames).toBeLessThanOrEqual(4);
   });
 
   it("rotates once to beatport-signin.1.log when the size limit is reached", async () => {
@@ -162,10 +193,10 @@ describe("BeatportSignInLog", () => {
     expect(lines(files.get(`/engine-logs/${SIGNIN_LOG_FILE}`)).map((line) => line.split("  ")[1])).toEqual(["start", "window", "closed"]);
   });
 
-  it("falls back to the Electron logs folder after 5 s and says so in the first line", async () => {
+  it("falls back to the Electron logs folder after 30 s and says so in the first line", async () => {
     const { log, files } = make({ getLogsDir: () => new Promise<string>(() => undefined) });
     log.log("start", { app: "1.0.0" });
-    await vi.advanceTimersByTimeAsync(4_999);
+    await vi.advanceTimersByTimeAsync(29_999);
     await log.flush();
     expect(files.size).toBe(0);
     await vi.advanceTimersByTimeAsync(1);
@@ -175,7 +206,66 @@ describe("BeatportSignInLog", () => {
     expect(written[1]).toContain("  start  ");
   });
 
-  it("asks the engine again each second when it is not up yet, and falls back at 5 s", async () => {
+  it("regression: C20 a slow engine (12 s) still gets the lines, not the fallback folder", async () => {
+    let answer: (dir: string) => void = () => undefined;
+    const { log, files } = make({ getLogsDir: () => new Promise<string>((resolve) => (answer = resolve)) });
+    log.log("start", {});
+    await vi.advanceTimersByTimeAsync(12_000);
+    expect(files.size).toBe(0);
+    answer("/engine-logs");
+    await vi.advanceTimersByTimeAsync(0);
+    await log.flush();
+    expect(files.has(`/engine-logs/${SIGNIN_LOG_FILE}`)).toBe(true);
+    expect(files.has(`/electron-logs/${SIGNIN_LOG_FILE}`)).toBe(false);
+  });
+
+  it("regression: C20 after a fallback, switches to the engine's folder when it answers, with a note", async () => {
+    let up = false;
+    const { log, files } = make({
+      getLogsDir: async () => {
+        if (!up) throw new Error("engine starting");
+        return "/engine-logs";
+      },
+    });
+    log.log("start", {});
+    await vi.advanceTimersByTimeAsync(30_000);
+    await log.flush();
+    expect(files.has(`/electron-logs/${SIGNIN_LOG_FILE}`)).toBe(true);
+    log.log("during fallback", {});
+    up = true;
+    await vi.advanceTimersByTimeAsync(5_000);
+    log.log("after", {});
+    await log.flush();
+    const moved = lines(files.get(`/engine-logs/${SIGNIN_LOG_FILE}`));
+    expect(moved[0]).toContain("  logs-folder  fallback=earlier");
+    expect(moved[1]).toContain("  after");
+    expect(lines(files.get(`/electron-logs/${SIGNIN_LOG_FILE}`)).map((line) => line.split("  ")[1])).toEqual(["logs-folder", "start", "during fallback"]);
+  });
+
+  it("stops asking late after a bounded number of tries", async () => {
+    let calls = 0;
+    const { log } = make({
+      getLogsDir: async () => {
+        calls += 1;
+        throw new Error("down");
+      },
+    });
+    log.log("start", {});
+    await vi.advanceTimersByTimeAsync(30_000 + 24 * 5_000 + 60_000);
+    const settled = calls;
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(calls).toBe(settled);
+  });
+
+  it("close() writes what is still buffered to the fallback folder and stops the timers", async () => {
+    const { log, files } = make({ getLogsDir: () => new Promise<string>(() => undefined) });
+    log.log("start", {});
+    await log.close();
+    expect(lines(files.get(`/electron-logs/${SIGNIN_LOG_FILE}`))[1]).toContain("  start");
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("asks the engine again each second when it is not up yet, and falls back at 30 s", async () => {
     let calls = 0;
     const { log, files } = make({
       getLogsDir: async () => {
@@ -198,7 +288,7 @@ describe("BeatportSignInLog", () => {
       },
     });
     down.log.log("start", {});
-    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(30_000);
     await down.log.flush();
     expect(down.files.has(`/electron-logs/${SIGNIN_LOG_FILE}`)).toBe(true);
   });

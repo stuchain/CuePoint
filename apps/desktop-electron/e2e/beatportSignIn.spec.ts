@@ -457,6 +457,10 @@ test.describe("Beatport sign-in", () => {
     const app = await launch(userDataDir, cuepointHome, stand.origin);
     try {
       const window = await ready(app);
+      // Only the bytes this run appends to the sign-in log are read (earlier runs share the folder).
+      const { logs_dir: logsDir } = (await window.evaluate(() => window.cuepoint!.getLogsDir())) as { logs_dir: string };
+      const logFile = path.join(logsDir, "beatport-signin.log");
+      const before = existsSync(logFile) ? readFileSync(logFile).length : 0;
       const signInWindow = await openSignIn(app, window, stand.origin);
       await clickSignIn(signInWindow);
       await expect.poll(() => stand.callbacks, { timeout: 30_000 }).toBe(1);
@@ -464,6 +468,10 @@ test.describe("Beatport sign-in", () => {
       await expect.poll(() => app.windows().length, { timeout: 15_000 }).toBe(1);
       await expect(window.getByText(SIGNED_IN(MASKED))).toBeVisible({ timeout: 30_000 });
       expect((await window.evaluate(() => window.cuepoint!.getBeatportTokenStatus())).configured).toBe(true);
+      // The final read, not the window's own polling, is what decided.
+      const read = () => (existsSync(logFile) ? readFileSync(logFile).subarray(before).toString("utf8") : "");
+      await expect.poll(() => read().includes("accepted"), { timeout: 15_000 }).toBe(true);
+      expect(read()).toMatch(/accepted\s+via=final-read\b/);
     } finally {
       await app.close();
     }

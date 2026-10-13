@@ -182,6 +182,7 @@ const engine: EngineSupervisor = new EngineSupervisor({
  */
 let beatportSignIn: BeatportAuth | null = null;
 let beatportSignInSession: Electron.Session | null = null;
+let beatportSignInLog: BeatportSignInLog | null = null;
 
 function beatportAuth(): BeatportAuth {
   if (beatportSignIn) return beatportSignIn;
@@ -197,6 +198,7 @@ function beatportAuth(): BeatportAuth {
     getLogsDir: async () => (await engine.getLogsDir()).logs_dir,
     fallbackDir: () => app.getPath("logs"),
   });
+  beatportSignInLog = signInLog;
   const log = (event: string, fields?: Record<string, string | number | boolean | null | undefined>): void =>
     signInLog.log(event, fields);
   log("start", {
@@ -1505,6 +1507,11 @@ if (reportingOn) {
 quitAfter(app, async () => {
   markQuitting();
   beatportSignIn?.dispose();
+  // The sign-in log's last lines, best effort: never held up for more than a moment.
+  await Promise.race([
+    beatportSignInLog?.close().catch(() => undefined),
+    new Promise<void>((resolve) => setTimeout(resolve, 1_500).unref?.()),
+  ]);
   breadcrumb("app", "before-quit");
   const tasks: Array<Promise<unknown>> = [];
   if (privacyExitPrefs.clearCacheOnExit) tasks.push(engine.clearCuepointCache());
