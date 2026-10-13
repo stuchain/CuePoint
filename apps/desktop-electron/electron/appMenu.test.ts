@@ -108,7 +108,7 @@ describe("File", () => {
     const { items } = template("linux");
     const file = submenu(top(items, "File")).filter((item) => item.type !== "separator");
     const labels = file.map(labelOf);
-    expect(labels.slice(0, 2)).toEqual(["Import another file…", "Check for changes"]);
+    expect(labels.slice(0, 2)).toEqual(["Import a Rekordbox file…", "Check for changes"]);
     expect(file[0]!.accelerator).toBe("CmdOrCtrl+O");
     expect(labels.join("|")).not.toMatch(/export/i);
   });

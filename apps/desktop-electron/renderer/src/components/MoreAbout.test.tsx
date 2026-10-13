@@ -18,12 +18,12 @@ describe("MoreAbout", () => {
     expect(document.getElementById(id as string)).toContainElement(screen.getByText("The detail."));
   });
 
-  it("opens to Less and closes again", () => {
+  it("opens to Less about this and closes again", () => {
     render(<MoreAbout>The detail.</MoreAbout>);
     fireEvent.click(screen.getByRole("button", { name: "More about this" }));
-    expect(screen.getByRole("button", { name: "Less" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Less about this" })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("The detail.")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Less" }));
+    fireEvent.click(screen.getByRole("button", { name: "Less about this" }));
     expect(screen.getByText("The detail.")).not.toBeVisible();
   });
 
@@ -49,7 +49,7 @@ describe("MoreAbout", () => {
 
   it("can start open, for a link that must land inside it", () => {
     render(<MoreAbout defaultOpen>The detail.</MoreAbout>);
-    expect(screen.getByRole("button", { name: "Less" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Less about this" })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("The detail.")).toBeVisible();
   });
 });

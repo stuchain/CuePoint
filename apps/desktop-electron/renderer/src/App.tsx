@@ -420,6 +420,17 @@ function AppShell() {
         onShowExport={() => setRekordboxOpen(true)}
         onImport={() => navigate("/library", { state: libraryImportState() })}
         onMatch={() => openMatching()}
+        onSignIn={() => {
+          // The guide stays open and ticks through onBeatportAuthChanged; Settings reports a
+          // failed sign-in. Without the bridge, Settings is where to go instead.
+          const signIn = window.cuepoint?.beatportSignIn;
+          if (signIn) {
+            signIn().catch(() => {});
+            return;
+          }
+          setOnboardingOpen(false);
+          navigate("/settings", { state: settingsFocusState("beatport-token") });
+        }}
       />
       <Phase14Note
         open={noteOpen}

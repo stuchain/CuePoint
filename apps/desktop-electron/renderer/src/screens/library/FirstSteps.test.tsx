@@ -2,7 +2,7 @@
  * The first-steps checklist on the empty Library (RUN-3, LIB-2).
  *
  * Four things get a new user from nothing to a library that works: import it,
- * match the tracks, play one, add a Beatport token. Each ticks from what the
+ * match the tracks, play one, sign in to Beatport. Each ticks from what the
  * app knows, not from the user's say-so, and the list goes away once all four
  * are true.
  */
@@ -45,17 +45,23 @@ function playerState(played: boolean): PlayerSnapshot {
 }
 
 interface Setup {
-  token?: boolean;
+  signedIn?: boolean;
   played?: boolean;
   health?: LibraryHealth;
 }
 
 let pushPlayer: ((state: PlayerSnapshot) => void) | null;
 
-function install({ token = false, played = false, health: h = health(10, 10) }: Setup = {}) {
+function install({ signedIn = false, played = false, health: h = health(10, 10) }: Setup = {}) {
   pushPlayer = null;
   (window as unknown as { cuepoint?: unknown }).cuepoint = {
-    getBeatportTokenStatus: vi.fn().mockResolvedValue({ configured: token, masked: token ? "ab…yz" : null }),
+    getBeatportAuth: vi.fn().mockResolvedValue({
+      state: signedIn ? "signed_in" : "signed_out",
+      masked: null,
+      expires_at: null,
+      secure_storage: true,
+    }),
+    onBeatportAuthChanged: vi.fn(() => vi.fn()),
     getLibraryHealth: vi.fn().mockResolvedValue(h),
     player: {
       getState: vi.fn().mockResolvedValue(playerState(played)),
@@ -104,16 +110,16 @@ describe("the list", () => {
       "Import your Rekordbox collection",
       "Match your tracks",
       "Play a track",
-      "Add your Beatport token",
+      "Sign in to Beatport",
     ]);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Add your Beatport token…" })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Sign in to Beatport…" })).toBeEnabled());
     for (const li of steps) expect(li).toHaveAttribute("data-done", "false");
   });
 
   it("explains what each step is for, in the app's words", async () => {
     install();
     mount();
-    expect(screen.getByText(/Clean and Discover/)).toBeInTheDocument();
+    expect(screen.getByText(/Discover uses it to find new music/)).toBeInTheDocument();
     expect(screen.getByText(/Double-click a track to play it/)).toBeInTheDocument();
     expect(screen.getByText(/Keys, genres and labels come from Beatport/)).toBeInTheDocument();
   });
@@ -139,10 +145,10 @@ describe("ticking from real state", () => {
     expect(done("Match your tracks")).toBe("false");
   });
 
-  it("does not read the library's health before anything is imported", () => {
-    install();
+  it("leaves Match your tracks open on an empty library", async () => {
+    install({ health: health(0, 0) });
     mount({ imported: false });
-    expect(window.cuepoint!.getLibraryHealth).not.toHaveBeenCalled();
+    await waitFor(() => expect(window.cuepoint!.getLibraryHealth).toHaveBeenCalled());
     expect(done("Match your tracks")).toBe("false");
   });
 
@@ -154,44 +160,64 @@ describe("ticking from real state", () => {
     await waitFor(() => expect(done("Play a track")).toBe("true"));
   });
 
-  it("ticks Add your Beatport token when one is saved", async () => {
-    install({ token: true });
+  it("ticks Sign in to Beatport when signed in", async () => {
+    install({ signedIn: true });
     mount();
-    await waitFor(() => expect(done("Add your Beatport token")).toBe("true"));
+    await waitFor(() => expect(done("Sign in to Beatport")).toBe("true"));
   });
 
-  it("does not tick the token when the status cannot be read", async () => {
+  it("does not tick the sign-in when its state cannot be read", async () => {
     install();
-    (window.cuepoint as unknown as { getBeatportTokenStatus: unknown }).getBeatportTokenStatus = vi
+    (window.cuepoint as unknown as { getBeatportAuth: unknown }).getBeatportAuth = vi
       .fn()
       .mockRejectedValue(new Error("not ready"));
     mount();
-    await waitFor(() => expect(window.cuepoint!.getBeatportTokenStatus).toHaveBeenCalled());
-    expect(done("Add your Beatport token")).toBe("false");
+    await waitFor(() => expect(window.cuepoint!.getBeatportAuth).toHaveBeenCalled());
+    expect(done("Sign in to Beatport")).toBe("false");
+  });
+
+  it("ticks the sign-in when main announces it, and for a pasted or environment token", async () => {
+    install();
+    let announce: ((auth: { state: string }) => void) | undefined;
+    (window.cuepoint as unknown as { onBeatportAuthChanged: unknown }).onBeatportAuthChanged = vi.fn(
+      (listener: (auth: { state: string }) => void) => {
+        announce = listener;
+        return vi.fn();
+      },
+    );
+    mount();
+    await waitFor(() => expect(announce).toBeDefined());
+    expect(done("Sign in to Beatport")).toBe("false");
+    for (const state of ["pasted", "env"]) {
+      act(() => announce?.({ state: "signed_out" }));
+      await waitFor(() => expect(done("Sign in to Beatport")).toBe("false"));
+      act(() => announce?.({ state }));
+      await waitFor(() => expect(done("Sign in to Beatport")).toBe("true"));
+    }
   });
 });
 
 describe("hiding", () => {
   it("hides the whole list once all four are done", async () => {
-    install({ token: true, played: true, health: health(10, 2) });
+    install({ signedIn: true, played: true, health: health(10, 2) });
     const { container } = mount({ imported: true });
     await waitFor(() => expect(container).toBeEmptyDOMElement());
     expect(screen.queryByRole("list", { name: "First steps" })).toBeNull();
   });
 
   it("stays while any one is open", async () => {
-    install({ token: true, played: true, health: health(10, 10) });
+    install({ signedIn: true, played: true, health: health(10, 10) });
     mount({ imported: true });
-    await waitFor(() => expect(done("Add your Beatport token")).toBe("true"));
+    await waitFor(() => expect(done("Sign in to Beatport")).toBe("true"));
     expect(screen.getByRole("list", { name: "First steps" })).toBeInTheDocument();
   });
 });
 
 describe("the buttons", () => {
-  it("offers only the token's button before anything is imported", () => {
+  it("offers only the sign-in's button before anything is imported", () => {
     install();
     mount();
-    expect(screen.getByRole("button", { name: "Add your Beatport token…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in to Beatport…" })).toBeInTheDocument();
     // The Library's own header has the import button, and there is nothing to match yet.
     expect(screen.queryByRole("button", { name: "Import your Rekordbox collection…" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
@@ -205,17 +231,17 @@ describe("the buttons", () => {
   });
 
   it("takes a ticked step's button away", async () => {
-    install({ token: true });
+    install({ signedIn: true });
     mount();
-    await waitFor(() => expect(done("Add your Beatport token")).toBe("true"));
-    expect(screen.queryByRole("button", { name: "Add your Beatport token…" })).toBeNull();
+    await waitFor(() => expect(done("Sign in to Beatport")).toBe("true"));
+    expect(screen.queryByRole("button", { name: "Sign in to Beatport…" })).toBeNull();
   });
 
   it("each button calls what the page gave it", async () => {
     install({ health: health(10, 10) });
     const { onMatch, onAddToken } = mount({ imported: true });
     await userEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
-    await userEvent.click(screen.getByRole("button", { name: "Add your Beatport token…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sign in to Beatport…" }));
     expect(onMatch).toHaveBeenCalledTimes(1);
     expect(onAddToken).toHaveBeenCalledTimes(1);
   });
@@ -266,16 +292,15 @@ describe("after the import (RUN-3)", () => {
   });
 
   it("is hidden for good once all four are done, and after a remount", async () => {
-    install({ token: true, played: true, health: health(10, 2) });
+    install({ signedIn: true, played: true, health: health(10, 2) });
     const first = mount({ imported: true });
     await waitFor(() => expect(localStorage.getItem(DONE_KEY)).toBe("1"));
     first.unmount();
 
     // Nothing is true any more, and still nothing shows.
-    install({ token: false, played: false, health: health(10, 10) });
+    install({ signedIn: false, played: false, health: health(10, 10) });
     const { container } = mount({ imported: true });
     expect(container).toBeEmptyDOMElement();
-    expect(window.cuepoint!.getLibraryHealth).not.toHaveBeenCalled();
   });
 
   it("does not break when storage throws", async () => {
@@ -285,7 +310,7 @@ describe("after the import (RUN-3)", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("storage disabled");
     });
-    install({ token: true, played: true, health: health(10, 2) });
+    install({ signedIn: true, played: true, health: health(10, 2) });
     const { container } = mount({ imported: true });
     await waitFor(() => expect(container).toBeEmptyDOMElement());
     install({ health: health(10, 10) });
@@ -345,7 +370,7 @@ describe("the chip in the Library header", () => {
   });
 
   it("is gone once all four are done and after a remount", async () => {
-    install({ token: true, played: true, health: health(10, 2) });
+    install({ signedIn: true, played: true, health: health(10, 2) });
     const first = mountNote();
     // Waited on the stored mark, not the line's absence: the line is also absent before the
     // checks have loaded, so that wait could end at once, with nothing stored yet.

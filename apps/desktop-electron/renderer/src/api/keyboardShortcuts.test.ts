@@ -164,13 +164,13 @@ describe("only shortcuts that work (PAGES-03B)", () => {
   // Each shortcut is read against the code that answers it. A row whose handler is renamed
   // or removed fails here instead of staying in the dialog as a promise.
   const handlers: Array<[shortcut: string, context: string, source: string, pattern: RegExp]> = [
-    ["Ctrl+K", "Global", globalSearchSource, /key\.toLowerCase\(\) === "k"/],
-    ["Ctrl+I", "Global", inspectorSource, /key\.toLowerCase\(\) === "i"/],
-    ["Ctrl+B", "Global", sidebarSource, /key\.toLowerCase\(\) === "b"/],
-    ["Ctrl+Shift+A", "Global", statusStripSource, /shiftKey && event\.key\.toLowerCase\(\) === "a"/],
-    ["Ctrl+?", "Global", appSource, /key === "\?"/],
-    ["F1", "Global", appSource, /key === "F1"/],
-    ["Esc", "Global", modalSource, /key === "Escape"/],
+    ["Ctrl+K", "Everywhere", globalSearchSource, /key\.toLowerCase\(\) === "k"/],
+    ["Ctrl+I", "Everywhere", inspectorSource, /key\.toLowerCase\(\) === "i"/],
+    ["Ctrl+B", "Everywhere", sidebarSource, /key\.toLowerCase\(\) === "b"/],
+    ["Ctrl+Shift+A", "Everywhere", statusStripSource, /shiftKey && event\.key\.toLowerCase\(\) === "a"/],
+    ["Ctrl+?", "Everywhere", appSource, /key === "\?"/],
+    ["F1", "Everywhere", appSource, /key === "F1"/],
+    ["Esc", "Everywhere", modalSource, /key === "Escape"/],
     ["Ctrl+F", "Library", libraryScreenSource, /key\.toLowerCase\(\) === "f"/],
     ["Ctrl+A", "Library", libraryScreenSource, /key\.toLowerCase\(\) === "a"/],
     ["Enter", "Library", trackTableSource, /key === "Enter" && onRowActivate/],
@@ -233,5 +233,31 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     for (const [shown, accelerator] of Object.entries(accelerators)) {
       expect(appMenuSource, shown).toContain(`"${accelerator}"`);
     }
+  });
+
+  it("names each menu key with the menu item's own words (W1)", () => {
+    const menu: Array<[shortcut: string, accelerator: string, label: string]> = [
+      ["Ctrl+O", "CmdOrCtrl+O", "Import a Rekordbox file…"],
+      ["Ctrl+,", "CmdOrCtrl+,", "Settings…"],
+      ["Ctrl+=", "CmdOrCtrl+=", "Bigger"],
+      ["Ctrl+-", "CmdOrCtrl+-", "Smaller"],
+      ["Ctrl+0", "CmdOrCtrl+0", "Default size"],
+      ["Ctrl+I", "CmdOrCtrl+I", "Track details"],
+      ["Ctrl+B", "CmdOrCtrl+B", "Sidebar"],
+    ];
+    for (const [shortcut, accelerator, label] of menu) {
+      // The menu item says this label with this accelerator, on one line of appMenu.ts.
+      expect(appMenuSource, shortcut).toMatch(new RegExp(`"${label}"[^\\n]*accelerator: "${accelerator.replace("+", "\\+")}"`));
+      const row = KEYBOARD_SHORTCUTS.find((entry) => entry.shortcut === shortcut);
+      expect(row?.action, shortcut).toBe(label);
+    }
+    // Ctrl+? opens what Help calls "Keyboard shortcuts".
+    expect(appMenuSource).toContain('"Keyboard shortcuts"');
+    expect(KEYBOARD_SHORTCUTS.find((entry) => entry.shortcut === "Ctrl+?")?.action).toBe("Keyboard shortcuts");
+  });
+
+  it("calls the always-on context Everywhere, not Global (W2)", () => {
+    expect(KEYBOARD_SHORTCUTS.some((row) => row.context === "Global")).toBe(false);
+    expect(KEYBOARD_SHORTCUTS[0]!.context).toBe("Everywhere");
   });
 });

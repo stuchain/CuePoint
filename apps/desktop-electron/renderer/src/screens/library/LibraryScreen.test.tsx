@@ -611,13 +611,13 @@ describe("the empty state", () => {
     expect(screen.getAllByRole("button", { name: /Import your Rekordbox collection/ })).toHaveLength(1);
   });
 
-  it("shows the first-steps checklist under the guide, and its token step goes to Settings (RUN-3)", async () => {
+  it("shows the first-steps checklist under the guide, and its sign-in step goes to Settings (RUN-3)", async () => {
     const onOpenToken = vi.fn();
     renderScreen({ onOpenToken });
 
     const steps = await screen.findByRole("list", { name: "First steps" });
     expect(within(steps).getAllByRole("listitem")).toHaveLength(4);
-    await userEvent.click(within(steps).getByRole("button", { name: "Add your Beatport token…" }));
+    await userEvent.click(within(steps).getByRole("button", { name: "Sign in to Beatport…" }));
     expect(onOpenToken).toHaveBeenCalledTimes(1);
   });
 

@@ -155,8 +155,8 @@ const confirmButton = () =>
   within(dialog()).getByRole("button", { name: /^Export( |$)/ });
 const box = (name: string) => within(dialog()).getByRole("checkbox", { name: new RegExp(`^${name}`) });
 
-/** The Details toggle: closed on every open, and its button says "Less" once open. */
-const detailsButton = () => within(dialog()).getByRole("button", { name: /^(Details|Less)$/ });
+/** The Details toggle: closed on every open, and its button says "Less about this" once open. */
+const detailsButton = () => within(dialog()).getByRole("button", { name: /^(Details|Less about this)$/ });
 
 async function openDetails(user = userEvent.setup()) {
   if (detailsButton().getAttribute("aria-expanded") !== "true") await user.click(detailsButton());

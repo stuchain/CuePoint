@@ -33,7 +33,20 @@
   padding: 0 var(--space-xs);
   border: var(--divider);
   background: var(--bg-panel);
-  font-family: inherit;
+}
+
+/* The body font, not the pixel one, so the letter O and the digit 0 differ. */
+.shortcuts-dialog__key {
+  font-family: var(--font-data);
+}
+
+.shortcuts-dialog__group {
+  background: var(--bg-panel);
+}
+
+.shortcuts-dialog__group h3 {
+  margin: 0;
+  font-size: var(--font-size-xs);
 }
 
 .shortcuts-dialog__note {

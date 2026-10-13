@@ -144,7 +144,7 @@ export function buildMenuTemplate({
   template.push({
     label: "File",
     submenu: [
-      command("import", "Import another file…", { accelerator: "CmdOrCtrl+O" }),
+      command("import", "Import a Rekordbox file…", { accelerator: "CmdOrCtrl+O" }),
       command("check-rekordbox", "Check for changes"),
       ...(mac ? [] : ([{ type: "separator" }, { role: "quit" }] as MenuItemConstructorOptions[])),
     ],

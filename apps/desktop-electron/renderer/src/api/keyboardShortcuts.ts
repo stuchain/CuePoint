@@ -1,28 +1,29 @@
-interface KeyboardShortcutEntry {
+export interface KeyboardShortcutEntry {
   context: string;
   action: string;
   shortcut: string;
 }
 
 /**
- * The Shortcuts list (Help → Shortcuts): only keys that do something. Each row is read
+ * The Keyboard shortcuts list (Help → Keyboard shortcuts): only keys that do something. Each row is read
  * against the code that answers it by `keyboardShortcuts.test.ts`, so a handler that goes
  * takes its row with it. The menu's keys (Ctrl+O, Ctrl+,, Ctrl+=, Ctrl+-, Ctrl+0) are
- * answered by the native menu (`electron/appMenu.ts`). On a Mac, Cmd takes the place of Ctrl.
+ * answered by the native menu (`electron/appMenu.ts`), and a row for one of them
+ * uses the menu item's own words (`keyboardShortcuts.test.ts` compares them). On a Mac, Cmd takes the place of Ctrl.
  */
 export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
-  { context: "Global", action: "Import another file", shortcut: "Ctrl+O" },
-  { context: "Global", action: "Open Settings", shortcut: "Ctrl+," },
-  { context: "Global", action: "Make everything bigger", shortcut: "Ctrl+=" },
-  { context: "Global", action: "Make everything smaller", shortcut: "Ctrl+-" },
-  { context: "Global", action: "Back to the default size", shortcut: "Ctrl+0" },
-  { context: "Global", action: "Search library", shortcut: "Ctrl+K" },
-  { context: "Global", action: "Show or hide track details", shortcut: "Ctrl+I" },
-  { context: "Global", action: "Collapse or expand the sidebar", shortcut: "Ctrl+B" },
-  { context: "Global", action: "Open activity", shortcut: "Ctrl+Shift+A" },
-  { context: "Global", action: "Show keyboard shortcuts", shortcut: "Ctrl+?" },
-  { context: "Global", action: "Open this list", shortcut: "F1" },
-  { context: "Global", action: "Close a dialog, panel or search", shortcut: "Esc" },
+  { context: "Everywhere", action: "Import a Rekordbox file…", shortcut: "Ctrl+O" },
+  { context: "Everywhere", action: "Settings…", shortcut: "Ctrl+," },
+  { context: "Everywhere", action: "Bigger", shortcut: "Ctrl+=" },
+  { context: "Everywhere", action: "Smaller", shortcut: "Ctrl+-" },
+  { context: "Everywhere", action: "Default size", shortcut: "Ctrl+0" },
+  { context: "Everywhere", action: "Search library", shortcut: "Ctrl+K" },
+  { context: "Everywhere", action: "Track details", shortcut: "Ctrl+I" },
+  { context: "Everywhere", action: "Sidebar", shortcut: "Ctrl+B" },
+  { context: "Everywhere", action: "Open activity", shortcut: "Ctrl+Shift+A" },
+  { context: "Everywhere", action: "Keyboard shortcuts", shortcut: "Ctrl+?" },
+  { context: "Everywhere", action: "Open this list", shortcut: "F1" },
+  { context: "Everywhere", action: "Close a dialog, panel or search", shortcut: "Esc" },
   // The Library became a browser in Phase 4 (DEC-039), so it has a context of
   // its own.
   { context: "Library", action: "Focus search", shortcut: "Ctrl+F" },

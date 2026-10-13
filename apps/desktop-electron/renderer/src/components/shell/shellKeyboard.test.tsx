@@ -221,7 +221,7 @@ describe("the shortcuts registry", () => {
     // Esc is the one key that means "let go of whatever is on top" everywhere; the
     // Library's row says what it lets go of there (LIB-12), and a dialog still wins.
     const reusedGlobal = [...seen.entries()].filter(
-      ([shortcut, contexts]) => shortcut !== "Esc" && contexts.has("Global") && contexts.size > 1,
+      ([shortcut, contexts]) => shortcut !== "Esc" && contexts.has("Everywhere") && contexts.size > 1,
     );
     expect(reusedGlobal).toEqual([]);
 

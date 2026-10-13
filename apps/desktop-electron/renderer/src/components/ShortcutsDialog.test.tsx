@@ -27,6 +27,22 @@ describe("ShortcutsDialog", () => {
     render(<ShortcutsDialog open onClose={vi.fn()} />);
     await userEvent.type(screen.getByRole("textbox", { name: "Search" }), "volume");
     const rows = screen.getAllByRole("row");
-    expect(rows).toHaveLength(3);
+    // The header, the Player heading, and its two volume rows.
+    expect(rows).toHaveLength(4);
+    expect(screen.queryByRole("heading", { name: "Library" })).toBeNull();
+  });
+
+  it("groups rows under a heading per context, with no Context column", () => {
+    render(<ShortcutsDialog open onClose={vi.fn()} />);
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByRole("columnheader", { name: "Context" })).toBeNull();
+    const headings = within(dialog).getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(headings.slice(0, 3)).toEqual(["Everywhere", "Library", "Keys"]);
+    expect(headings).toContain("Player");
+  });
+
+  it("shows key caps in the body font, so Ctrl+O and Ctrl+0 differ", () => {
+    render(<ShortcutsDialog open onClose={vi.fn()} />);
+    expect(screen.getByText("Ctrl+O")).toHaveClass("shortcuts-dialog__key");
   });
 });

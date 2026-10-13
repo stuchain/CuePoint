@@ -12,7 +12,6 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useLibraryChanges } from "../../api/libraryChanges";
 import { Button } from "../../components";
 import {
   firstStepsDone,
@@ -20,6 +19,7 @@ import {
   markFirstStepsDone,
   markFirstStepsPlayed,
 } from "../../components/firstRunMemory";
+import { useFirstRunProgress } from "../../components/useFirstRunProgress";
 import { selectHasPlayed } from "../../components/player/playerFormat";
 import { usePlayerValue } from "../../components/player/playerStore";
 import "./FirstSteps.css";
@@ -31,73 +31,6 @@ interface FirstStepsProps {
   onMatch: () => void;
   /** Open Settings at the Beatport token. */
   onAddToken: () => void;
-}
-
-/**
- * True when at least one track has been looked up, from Library Health. Read again
- * when a match finishes (the library announces a change) and when the window comes
- * back to the front, so a match run in Clean ticks it without a reload.
- */
-function useAnyMatched(imported: boolean): boolean {
-  const [matched, setMatched] = useState(false);
-  const [reads, setReads] = useState(0);
-  const again = useCallback(() => setReads((n) => n + 1), []);
-
-  useLibraryChanges(again);
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === "visible") again();
-    };
-    window.addEventListener("focus", again);
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      window.removeEventListener("focus", again);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [again]);
-
-  useEffect(() => {
-    const read = window.cuepoint?.getLibraryHealth;
-    if (!imported || !read) {
-      setMatched(false);
-      return;
-    }
-    let cancelled = false;
-    read()
-      .then((health) => {
-        if (cancelled) return;
-        const notMatched = health.counts.find((count) => count.id === "not_matched")?.count;
-        setMatched(health.track_count > 0 && notMatched !== undefined && notMatched < health.track_count);
-      })
-      .catch(() => {
-        // Keep the last answer: a failed re-read must not untick a step.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [imported, reads]);
-  return matched;
-}
-
-/** True when a Beatport token is saved; false while unread or unreadable. */
-function useTokenSaved(): boolean {
-  const [saved, setSaved] = useState(false);
-  useEffect(() => {
-    const read = window.cuepoint?.getBeatportTokenStatus;
-    if (!read) return;
-    let cancelled = false;
-    read()
-      .then((status) => {
-        if (!cancelled) setSaved(status.configured);
-      })
-      .catch(() => {
-        if (!cancelled) setSaved(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return saved;
 }
 
 interface Step {
@@ -115,10 +48,10 @@ interface StepsHandlers {
 
 /** The four steps, ticking from real state; the first time all are true, it remembers that. */
 function useFirstSteps(imported: boolean, { onMatch, onAddToken }: StepsHandlers) {
-  const matched = useAnyMatched(imported);
+  const { matchedCount, signedIn } = useFirstRunProgress();
+  const matched = (matchedCount ?? 0) > 0;
   const playedNow = usePlayerValue(selectHasPlayed);
   const [playedBefore] = useState(firstStepsPlayed);
-  const tokenSaved = useTokenSaved();
   const played = playedNow || playedBefore;
 
   useEffect(() => {
@@ -147,10 +80,10 @@ function useFirstSteps(imported: boolean, { onMatch, onAddToken }: StepsHandlers
     },
     {
       id: "token",
-      label: "Add your Beatport token",
-      hint: "Clean and Discover use it to reach Beatport.",
-      done: tokenSaved,
-      action: { label: "Add your Beatport token…", onClick: onAddToken },
+      label: "Sign in to Beatport",
+      hint: "Discover uses it to find new music.",
+      done: signedIn,
+      action: { label: "Sign in to Beatport…", onClick: onAddToken },
     },
   ];
 

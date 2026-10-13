@@ -1,12 +1,12 @@
 /**
  * The first-run guide (RUN-1, RUN-2, DEC-132).
  *
- * Five screens, a Skip that is always there, and a stray click that cannot end
+ * Four screens, a Skip before the last, and a stray click that cannot end
  * it. The three defects the old tour had (reopening on the last screen, Escape
  * and the backdrop marking it done, storage that throws) are pinned here.
  */
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { OnboardingDialog } from "./OnboardingDialog";
@@ -20,6 +20,7 @@ interface Handlers {
   onShowExport: Handler;
   onImport: Handler;
   onMatch: Handler;
+  onSignIn: Handler;
 }
 
 function mount(props: { open?: boolean; covered?: boolean } = {}): Handlers & {
@@ -30,6 +31,7 @@ function mount(props: { open?: boolean; covered?: boolean } = {}): Handlers & {
     onShowExport: vi.fn<() => void>(),
     onImport: vi.fn<() => void>(),
     onMatch: vi.fn<() => void>(),
+    onSignIn: vi.fn<() => void>(),
   };
   const tree = (next: { open?: boolean; covered?: boolean }) => (
     <OnboardingDialog
@@ -50,108 +52,140 @@ async function goTo(step: number) {
   for (let i = 1; i < step; i += 1) await next();
 }
 
+interface Bridge {
+  trackCount?: number;
+  notMatched?: number;
+  auth?: "signed_in" | "signed_out" | "pasted" | "env";
+}
+
+/** The parts of the bridge the guide ticks from; none installed means nothing ticks. */
+function install({ trackCount = 0, notMatched = 0, auth = "signed_out" }: Bridge = {}) {
+  let announce: ((next: { state: string }) => void) | undefined;
+  (window as unknown as { cuepoint?: unknown }).cuepoint = {
+    getLibraryHealth: vi.fn().mockResolvedValue({
+      track_count: trackCount,
+      counts: [
+        { id: "not_matched", label: "Not matched", count: notMatched, rules: { match: "all", rules: [] } },
+      ],
+      detections: [],
+      unavailable_roots: [],
+    }),
+    getBeatportAuth: vi
+      .fn()
+      .mockResolvedValue({ state: auth, masked: null, expires_at: null, secure_storage: true }),
+    onBeatportAuthChanged: vi.fn((listener: (next: { state: string }) => void) => {
+      announce = listener;
+      return vi.fn();
+    }),
+  };
+  return { announce: (state: string) => act(() => announce?.({ state })) };
+}
+
 beforeEach(() => localStorage.clear());
 afterEach(() => {
   vi.restoreAllMocks();
   localStorage.clear();
+  delete (window as unknown as { cuepoint?: unknown }).cuepoint;
 });
 
-describe("the five screens", () => {
-  it("walks Welcome, Rekordbox, Import, Match, Find your way around", async () => {
+describe("the four screens", () => {
+  it("walks Welcome, Rekordbox file, Match, Sign in", async () => {
     mount();
     const titles: string[] = [];
-    for (let step = 1; step <= 5; step += 1) {
-      expect(screen.getByText(`Step ${step} of 5`)).toBeInTheDocument();
+    for (let step = 1; step <= 4; step += 1) {
+      expect(screen.getByRole("img", { name: `Step ${step} of 4` })).toBeInTheDocument();
       titles.push(heading().textContent ?? "");
-      if (step < 5) await next();
+      if (step < 4) await next();
     }
     expect(titles).toEqual([
       "Welcome to CuePoint",
-      "Get your collection out of Rekordbox",
-      "Import it",
-      "Match your tracks",
-      "Find your way around",
+      "Bring in your Rekordbox file",
+      "Match your tracks on Beatport",
+      "Sign in to Beatport (optional)",
     ]);
   });
 
-  it("promises that nothing changes in Rekordbox until the user exports", () => {
+  it("says in one line each what the screen is for", async () => {
     mount();
     expect(
-      screen.getByText(/Nothing changes in Rekordbox until you export/),
+      screen.getByText(
+        "Tidies your Rekordbox library, finds new music, plans sets. Rekordbox is never changed until you export.",
+      ),
     ).toBeInTheDocument();
+    await next();
+    expect(
+      screen.getByText("In Rekordbox: File → Export Collection in xml format. Then import that file."),
+    ).toBeInTheDocument();
+    await next();
+    expect(screen.getByText("Keys, genres and labels come from Beatport.")).toBeInTheDocument();
+    await next();
+    expect(screen.getByText("Discover uses it to find new music.")).toBeInTheDocument();
   });
 
-  it("says where Beatport's keys, genres and labels come from on the matching screen", async () => {
+  it("no longer tours the pages, the play tip or the background strip", async () => {
     mount();
     await goTo(4);
-    expect(
-      screen.getByText("Keys, genres and labels come from Beatport: match your tracks in Clean."),
-    ).toBeInTheDocument();
-  });
-
-  it("finds its way around: Keys, Prepare, how to play, the strip and Activity", async () => {
-    mount();
-    await goTo(5);
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText(/The keys in your playlists, Collections and Sets/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/Put tracks in the order you will play them/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/Double-click a track to play it/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/The strip at the bottom shows what CuePoint is doing/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/Activity lists everything it did/)).toBeInTheDocument();
+    expect(within(dialog).queryByRole("list", { name: "Pages" })).toBeNull();
+    expect(within(dialog).queryByText(/Double-click a track/)).toBeNull();
+    expect(within(dialog).queryByText(/The strip at the bottom/)).toBeNull();
   });
 
   it("draws a picture on every screen with pixel icons, not an image", async () => {
     mount();
-    for (let step = 1; step <= 5; step += 1) {
+    for (let step = 1; step <= 4; step += 1) {
       const picture = screen.getByRole("dialog").querySelector(".onboarding-dialog__picture");
       expect(picture, `screen ${step}`).not.toBeNull();
       expect(picture!.querySelectorAll("svg[data-icon]").length).toBeGreaterThan(0);
       expect(picture!.querySelector("img")).toBeNull();
-      if (step < 5) await next();
+      if (step < 4) await next();
     }
   });
 
-  it("lists Keys from the registry, right after Clean as the sidebar does (C26)", async () => {
+  it("sizes to its content: not the wide dialog", () => {
     mount();
-    await goTo(5);
-    const pages = screen.getByRole("list", { name: "Pages" });
-    const names = within(pages)
-      .getAllByRole("listitem")
-      .map((item) => item.querySelector("strong")?.textContent);
-    expect(names.indexOf("Keys")).toBeGreaterThan(names.indexOf("Clean"));
-    expect(names.indexOf("Keys")).toBeLessThan(names.indexOf("Discover"));
-    expect(names.filter((name) => name === "Keys")).toHaveLength(1);
+    expect(screen.getByRole("dialog").className).not.toMatch(/wide/);
   });
 
-  it("names Prepare once on the last screen, with the Set sentence as its text", async () => {
+  it("shows where it is as dots, named for a screen reader", async () => {
     mount();
-    await goTo(5);
-    const pages = screen.getByRole("list", { name: "Pages" });
-    const prepare = within(pages).getByText("Prepare").closest("li")!;
-    expect(prepare).toHaveTextContent(/Put tracks in the order you will play them/);
-    expect(within(screen.getByRole("dialog")).getAllByText(/Prepare/)).toHaveLength(1);
+    await next();
+    const dots = screen.getByRole("img", { name: "Step 2 of 4" });
+    expect(dots.querySelectorAll(".onboarding-dialog__dot")).toHaveLength(4);
+    expect(dots.querySelectorAll('[data-current="true"]')).toHaveLength(1);
+    expect(screen.queryByText(/Step \d of/)).toBeNull();
   });
 
-  it("keeps Back in the footer beside Next, in the same place on every screen", async () => {
+  it("keeps Skip, Back and Next in the same place before the last screen", async () => {
     mount();
-    for (let step = 1; step <= 5; step += 1) {
+    for (let step = 1; step <= 3; step += 1) {
       const footer = screen.getByRole("dialog").querySelector(".cp-modal__footer")!;
-      const names = [...footer.querySelectorAll("button")].map((b) => b.textContent);
-      expect(names).toEqual(["Skip", "Back", step < 5 ? "Next" : "Get started"]);
-      if (step < 5) await next();
+      expect([...footer.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
+        "Skip",
+        "Back",
+        "Next",
+      ]);
+      await next();
     }
   });
 
-  it("offers Skip on every screen and Back after the first", async () => {
+  it("offers Skip before the last screen and Back after the first", async () => {
     mount();
-    for (let step = 1; step <= 5; step += 1) {
+    for (let step = 1; step <= 3; step += 1) {
       expect(screen.getByRole("button", { name: "Skip" })).toBeInTheDocument();
       // Back keeps its place on the first screen so Next and Skip never move; it is off there.
       if (step === 1) expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
       else expect(screen.getByRole("button", { name: "Back" })).toBeEnabled();
-      if (step < 5) await next();
+      await next();
     }
-    expect(screen.getByRole("button", { name: "Get started" })).toBeInTheDocument();
+  });
+
+  it("ends on Done, with no Skip and no Next", async () => {
+    mount();
+    await goTo(4);
+    const footer = screen.getByRole("dialog").querySelector(".cp-modal__footer")!;
+    expect([...footer.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["Back", "Done"]);
+    expect(screen.queryByRole("button", { name: "Skip" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
   });
 
@@ -159,12 +193,82 @@ describe("the five screens", () => {
     mount();
     await goTo(3);
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(heading()).toHaveTextContent("Get your collection out of Rekordbox");
+    expect(heading()).toHaveTextContent("Bring in your Rekordbox file");
+  });
+});
+
+describe("ticking what is done", () => {
+  it("reads nothing while the guide is closed", async () => {
+    install({ trackCount: 5 });
+    mount({ open: false });
+    await act(async () => {});
+    expect(window.cuepoint!.getLibraryHealth).not.toHaveBeenCalled();
+    expect(window.cuepoint!.getBeatportAuth).not.toHaveBeenCalled();
+  });
+
+
+  it("says how many tracks are imported, once there are some", async () => {
+    install({ trackCount: 306 });
+    mount();
+    await next();
+    expect(await screen.findByText("✓ 306 tracks imported")).toBeInTheDocument();
+  });
+
+  it("says 1 track imported for one", async () => {
+    install({ trackCount: 1 });
+    mount();
+    await next();
+    expect(await screen.findByText("✓ 1 track imported")).toBeInTheDocument();
+  });
+
+  it("shows no done line on an empty library or without a bridge", async () => {
+    install({ trackCount: 0 });
+    mount();
+    await next();
+    await waitFor(() => expect(window.cuepoint!.getLibraryHealth).toHaveBeenCalled());
+    expect(screen.queryByText(/imported/)).toBeNull();
+  });
+
+  it("says how many are matched, once some are", async () => {
+    install({ trackCount: 300, notMatched: 64 });
+    mount();
+    await goTo(3);
+    expect(await screen.findByText("✓ 236 matched")).toBeInTheDocument();
+  });
+
+  it("shows no matched line while every track is still not matched", async () => {
+    install({ trackCount: 10, notMatched: 10 });
+    mount();
+    await goTo(3);
+    await waitFor(() => expect(window.cuepoint!.getLibraryHealth).toHaveBeenCalled());
+    expect(screen.queryByText(/matched$/)).toBeNull();
+  });
+
+  it("ticks the sign-in and takes its button away, for each way of being signed in", async () => {
+    for (const auth of ["signed_in", "pasted", "env"] as const) {
+      install({ auth });
+      mount();
+      await goTo(4);
+      expect(await screen.findByText("✓ Signed in")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Sign in to Beatport" })).toBeNull();
+      cleanup();
+    }
+  });
+
+  it("ticks the sign-in when main announces it while the guide is open", async () => {
+    const bridge = install();
+    mount();
+    await goTo(4);
+    await waitFor(() => expect(window.cuepoint!.getBeatportAuth).toHaveBeenCalled());
+    expect(screen.queryByText("✓ Signed in")).toBeNull();
+    bridge.announce("signed_in");
+    expect(await screen.findByText("✓ Signed in")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sign in to Beatport" })).toBeNull();
   });
 });
 
 describe("marking it done", () => {
-  it("Skip and Get started mark the guide done, and the update note as seen", async () => {
+  it("Skip and Done mark the guide done, and the update note as seen", async () => {
     const skipped = mount();
     await userEvent.click(screen.getByRole("button", { name: "Skip" }));
     expect(localStorage.getItem(DONE)).toBe("1");
@@ -173,8 +277,8 @@ describe("marking it done", () => {
 
     localStorage.clear();
     // Still mounted: Skip only asked to close.
-    await goTo(5);
-    await userEvent.click(screen.getByRole("button", { name: "Get started" }));
+    await goTo(4);
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(localStorage.getItem(DONE)).toBe("1");
   });
 
@@ -205,13 +309,13 @@ describe("marking it done", () => {
 describe("reopening", () => {
   it("starts at step 1 every time it opens, as Help → Getting started does", async () => {
     const view = mount();
-    await goTo(4);
-    expect(heading()).toHaveTextContent("Match your tracks");
+    await goTo(3);
+    expect(heading()).toHaveTextContent("Match your tracks on Beatport");
 
     view.rerender({ open: false });
     view.rerender({ open: true });
 
-    expect(screen.getByText("Step 1 of 5")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Step 1 of 4" })).toBeInTheDocument();
     expect(heading()).toHaveTextContent("Welcome to CuePoint");
   });
 
@@ -221,7 +325,7 @@ describe("reopening", () => {
     view.rerender({ open: true, covered: true });
     expect(screen.queryByRole("dialog")).toBeNull();
     view.rerender({ open: true, covered: false });
-    expect(screen.getByText("Step 2 of 5")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Step 2 of 4" })).toBeInTheDocument();
   });
 });
 
@@ -243,26 +347,26 @@ describe("storage that throws", () => {
 
   it("still finishes from the last screen", async () => {
     const { onComplete } = mount();
-    await goTo(5);
-    await userEvent.click(screen.getByRole("button", { name: "Get started" }));
+    await goTo(4);
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("the actions on its screens", () => {
-  it("Show me how opens the Rekordbox instructions and leaves the guide where it is", async () => {
+  it("How? opens the Rekordbox instructions and leaves the guide where it is", async () => {
     const { onShowExport, onComplete } = mount();
     await goTo(2);
-    await userEvent.click(screen.getByRole("button", { name: "Show me how" }));
+    await userEvent.click(screen.getByRole("button", { name: "How?" }));
     expect(onShowExport).toHaveBeenCalledTimes(1);
     expect(onComplete).not.toHaveBeenCalled();
     expect(localStorage.getItem(DONE)).toBeNull();
   });
 
-  it("Import your Rekordbox collection… closes the guide and asks for the import", async () => {
+  it("Import a Rekordbox file… closes the guide and asks for the import", async () => {
     const { onImport, onComplete } = mount();
-    await goTo(3);
-    await userEvent.click(screen.getByRole("button", { name: "Import your Rekordbox collection…" }));
+    await goTo(2);
+    await userEvent.click(screen.getByRole("button", { name: "Import a Rekordbox file…" }));
     expect(onImport).toHaveBeenCalledTimes(1);
     expect(onComplete).toHaveBeenCalledTimes(1);
     // They have seen what it had to say.
@@ -271,19 +375,29 @@ describe("the actions on its screens", () => {
 
   it("Match tracks… closes the guide and opens Clean's match window", async () => {
     const { onMatch, onComplete } = mount();
-    await goTo(4);
+    await goTo(3);
     await userEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
     expect(onMatch).toHaveBeenCalledTimes(1);
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(localStorage.getItem(DONE)).toBe("1");
   });
 
+  it("Sign in to Beatport asks for the sign-in and leaves the guide open", async () => {
+    const { onSignIn, onComplete } = mount();
+    await goTo(4);
+    await userEvent.click(screen.getByRole("button", { name: "Sign in to Beatport" }));
+    expect(onSignIn).toHaveBeenCalledTimes(1);
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(localStorage.getItem(DONE)).toBeNull();
+  });
+
   it("puts each action on its own screen only", async () => {
     mount();
-    expect(screen.queryByRole("button", { name: "Show me how" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "How?" })).toBeNull();
     await next();
-    expect(screen.queryByRole("button", { name: "Import your Rekordbox collection…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
     await next();
-    expect(screen.queryByRole("button", { name: "Show me how" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Import a Rekordbox file…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sign in to Beatport" })).toBeNull();
   });
 });

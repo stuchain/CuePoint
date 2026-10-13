@@ -119,7 +119,7 @@ the small Help menu CuePoint used to draw inside the window.
 
 - **CuePoint** (on a Mac only): **About CuePoint**, **Settings...** (**Cmd+,**) and
   **Quit**.
-- **File**: **Import another file...** (**Ctrl+O**) opens the Library and asks for a
+- **File**: **Import a Rekordbox file...** (**Ctrl+O**) opens the Library and asks for a
   Rekordbox XML file, as the Library's own button does; **Check Rekordbox for
   changes** starts the same check. Exporting is not here: it stays on the Library
   and on a Collection's or Set's own bar, because a menu item has no scope.
@@ -235,7 +235,7 @@ To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**
 
 | Shortcut | Does |
 | --- | --- |
-| **Ctrl+O** | Import another Rekordbox file |
+| **Ctrl+O** | Import a Rekordbox file |
 | **Ctrl+,** | Open Settings |
 | **Ctrl+=** / **Ctrl+-** / **Ctrl+0** | Bigger, smaller, the default size |
 | **Ctrl+K** | Search your library |

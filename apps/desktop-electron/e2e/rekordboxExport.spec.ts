@@ -164,7 +164,7 @@ async function previewed(dialog: ReturnType<typeof exportDialog>) {
 
 /** The tick list, the lists and the notation sit behind Details; it starts closed (DEC-247). */
 async function openDetails(dialog: ReturnType<typeof exportDialog>) {
-  const toggle = dialog.getByRole("button", { name: /^(Details|Less)$/ });
+  const toggle = dialog.getByRole("button", { name: /^(Details|Less about this)$/ });
   if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
 }
 

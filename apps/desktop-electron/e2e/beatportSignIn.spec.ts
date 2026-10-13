@@ -378,7 +378,7 @@ test.describe("Beatport sign-in", () => {
     try {
       const window = await ready(app);
       // The Library's first steps link to Settings at the token field (settingsFocusState).
-      await window.getByRole("button", { name: "Add your Beatport token…" }).click();
+      await window.getByRole("button", { name: "Sign in to Beatport…" }).click();
       await expect(window.locator("#settings-beatport-token")).toBeFocused({ timeout: 15_000 });
       await expect(window.locator("#settings-beatport-token")).toBeVisible();
     } finally {

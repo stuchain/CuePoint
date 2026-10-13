@@ -29,7 +29,7 @@ export function MoreAbout({ children, label = "More about this", describedBy, de
         aria-describedby={describedBy}
         onClick={() => setOpen((v) => !v)}
       >
-        {open ? "Less" : label}
+        {open ? "Less about this" : label}
       </Button>
       <div id={regionId} className="cp-more-about__body" hidden={!open}>
         {children}

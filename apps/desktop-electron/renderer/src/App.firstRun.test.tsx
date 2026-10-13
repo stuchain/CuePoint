@@ -44,6 +44,10 @@ beforeEach(() => {
       unavailable_roots: [],
     }),
     getBeatportTokenStatus: vi.fn().mockResolvedValue({ configured: false, masked: null }),
+    getBeatportAuth: vi
+      .fn()
+      .mockResolvedValue({ state: "signed_out", masked: null, expires_at: null, secure_storage: true }),
+    onBeatportAuthChanged: vi.fn(() => vi.fn()),
   };
   (window as unknown as { cuepoint?: unknown }).cuepoint = bridge;
 });
@@ -59,14 +63,14 @@ describe("a fresh install", () => {
   it("shows the guide, and not the update note", async () => {
     render(<App />);
     expect(guide()).toBeInTheDocument();
-    expect(screen.getByText("Step 1 of 5")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Step 1 of 4" })).toBeInTheDocument();
     expect(note()).toBeNull();
   });
 
-  it("Import your Rekordbox collection… reaches the Library's import", async () => {
+  it("Import a Rekordbox file… reaches the Library's import", async () => {
     render(<App />);
-    await toScreen(3);
-    await userEvent.click(within(guide()!).getByRole("button", { name: "Import your Rekordbox collection…" }));
+    await toScreen(2);
+    await userEvent.click(within(guide()!).getByRole("button", { name: "Import a Rekordbox file…" }));
     expect(guide()).toBeNull();
     await waitFor(() => expect(bridge.openXmlFileDialog).toHaveBeenCalledTimes(1));
     expect(window.location.hash).toBe("#/library");
@@ -74,21 +78,47 @@ describe("a fresh install", () => {
 
   it("Match tracks… opens Clean", async () => {
     render(<App />);
-    await toScreen(4);
+    await toScreen(3);
     await userEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
     expect(guide()).toBeNull();
     await waitFor(() => expect(window.location.hash).toBe("#/clean"));
   });
 
-  it("Show me how opens the Rekordbox instructions over the guide, which comes back where it was", async () => {
+  it("Sign in to Beatport starts the sign-in and leaves the guide open", async () => {
+    const signIn = vi.fn().mockResolvedValue({ state: "signed_in" });
+    bridge.beatportSignIn = signIn;
+    render(<App />);
+    await toScreen(4);
+    await userEvent.click(screen.getByRole("button", { name: "Sign in to Beatport" }));
+    expect(signIn).toHaveBeenCalledTimes(1);
+    expect(guide()).toBeInTheDocument();
+  });
+
+  it("Sign in to Beatport swallows a failed sign-in: Settings reports it", async () => {
+    bridge.beatportSignIn = vi.fn().mockRejectedValue(new Error("closed"));
+    render(<App />);
+    await toScreen(4);
+    await userEvent.click(screen.getByRole("button", { name: "Sign in to Beatport" }));
+    expect(guide()).toBeInTheDocument();
+  });
+
+  it("Sign in to Beatport opens Settings when the bridge cannot sign in", async () => {
+    render(<App />);
+    await toScreen(4);
+    await userEvent.click(screen.getByRole("button", { name: "Sign in to Beatport" }));
+    expect(guide()).toBeNull();
+    await waitFor(() => expect(window.location.hash).toBe("#/settings"));
+  });
+
+  it("How? opens the Rekordbox instructions over the guide, which comes back where it was", async () => {
     render(<App />);
     await toScreen(2);
-    await userEvent.click(screen.getByRole("button", { name: "Show me how" }));
+    await userEvent.click(screen.getByRole("button", { name: "How?" }));
     expect(await screen.findByRole("dialog", { name: "How to get your Rekordbox file" })).toBeInTheDocument();
     expect(guide()).toBeNull();
     await userEvent.keyboard("{Escape}");
     expect(await screen.findByRole("dialog", { name: "Getting started" })).toBeInTheDocument();
-    expect(screen.getByText("Step 2 of 5")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Step 2 of 4" })).toBeInTheDocument();
   });
 
   it("Escape closes it for now and it is back on the next start", async () => {
@@ -119,11 +149,11 @@ describe("Help → Getting started", () => {
     render(<App />);
     expect(guide()).toBeNull();
     act(() => send("getting-started"));
-    expect(await screen.findByText("Step 1 of 5")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Step 1 of 4" })).toBeInTheDocument();
     await toScreen(3);
     await userEvent.keyboard("{Escape}");
     act(() => send("getting-started"));
-    expect(await screen.findByText("Step 1 of 5")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Step 1 of 4" })).toBeInTheDocument();
   });
 });
 

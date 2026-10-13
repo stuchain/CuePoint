@@ -7975,3 +7975,22 @@ nothing most of the time.
 - The Library's key notes and Key filter lose their Match tracks… buttons; matching is Beatport ▸ Match tracks….
 
 **Decided with**: User (K2, K21, K4) · **Date**: 2026-10-13
+## DEC-287 — The First-Run Guide Has Four Steps And Ticks What Is Done
+
+**Status**: Approved · **Related**: RUN-1, RUN-2, RUN-3, DEC-132, R3-5, R3-15
+
+**Context**: The guide had five screens, the last a long tour of the pages, and it never said what was already done.
+The First steps list under the Library ticked the same things from its own reads.
+
+**Decision**: Amends the RUN-3 guide decision.
+- Four screens, one line and one button each: Welcome, Bring in your Rekordbox file, Match your tracks on Beatport,
+  Sign in to Beatport (optional). The page tour and the play tip leave the guide; the play tip moves with the
+  glossary sweep.
+- A step already done shows a check line ("✓ 306 tracks imported", "✓ 236 matched", "✓ Signed in") from
+  `useFirstRunProgress`, which the First steps list shares: track and matched counts from Library Health, sign-in from
+  `getBeatportAuth` / `onBeatportAuthChanged`. Sign in starts the sign-in and keeps the guide open.
+- The footer is Skip, Back, Next (Done on the last screen, with no Skip); the position is dots named "Step n of 4".
+- The Keyboard shortcuts list groups rows under their context ("Global" is now "Everywhere") and names menu keys
+  with the menu's own words.
+
+**Decided with**: Claude (G7 step 6) · **Date**: 2026-10-13

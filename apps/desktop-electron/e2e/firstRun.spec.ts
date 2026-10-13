@@ -77,16 +77,15 @@ test.describe("The first-run guide (PAGES-11)", () => {
 
       const guide = window.getByRole("dialog", { name: "Getting started" });
       await expect(guide).toBeVisible();
-      await expect(guide.getByText("Step 1 of 5")).toBeVisible();
+      await expect(guide.getByRole("img", { name: "Step 1 of 4" })).toBeVisible();
 
       // A stray click on the backdrop does not end it.
       await window.locator(".cp-modal__backdrop").click({ position: { x: 5, y: 5 } });
       await expect(guide).toBeVisible();
 
       await guide.getByRole("button", { name: "Next" }).click();
-      await guide.getByRole("button", { name: "Next" }).click();
-      await expect(guide.getByText("Step 3 of 5")).toBeVisible();
-      await guide.getByRole("button", { name: "Import your Rekordbox collection…" }).click();
+      await expect(guide.getByRole("img", { name: "Step 2 of 4" })).toBeVisible();
+      await guide.getByRole("button", { name: "Import a Rekordbox file…" }).click();
 
       await expect(guide).toBeHidden();
       await expect.poll(() => fileChoices(first)).toBe(1);

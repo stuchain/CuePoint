@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Modal, TextField } from "./index";
-import { filterShortcuts, KEYBOARD_SHORTCUTS } from "../api/keyboardShortcuts";
+import { filterShortcuts, KEYBOARD_SHORTCUTS, type KeyboardShortcutEntry } from "../api/keyboardShortcuts";
 import "./ShortcutsDialog.css";
 
 interface ShortcutsDialogProps {
@@ -11,7 +11,14 @@ interface ShortcutsDialogProps {
 export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
   const [query, setQuery] = useState("");
 
-  const rows = useMemo(() => filterShortcuts(KEYBOARD_SHORTCUTS, query), [query]);
+  // Grouped by context in list order; a context with no row left after filtering is not shown.
+  const groups = useMemo(() => {
+    const byContext = new Map<string, KeyboardShortcutEntry[]>();
+    for (const row of filterShortcuts(KEYBOARD_SHORTCUTS, query)) {
+      byContext.set(row.context, [...(byContext.get(row.context) ?? []), row]);
+    }
+    return [...byContext].map(([context, rows]) => ({ context, rows }));
+  }, [query]);
 
   return (
     <Modal open={open} title="Keyboard shortcuts" onClose={onClose} secondaryAction={{ label: "Close", onClick: onClose }}>
@@ -27,22 +34,27 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
           <table className="shortcuts-dialog__table">
             <thead>
               <tr>
-                <th>Context</th>
                 <th>Action</th>
                 <th>Shortcut</th>
               </tr>
             </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={`${row.context}-${row.action}`}>
-                  <td>{row.context}</td>
-                  <td>{row.action}</td>
-                  <td>
-                    <kbd>{row.shortcut}</kbd>
-                  </td>
+            {groups.map((group) => (
+              <tbody key={group.context}>
+                <tr>
+                  <th colSpan={2} scope="rowgroup" className="shortcuts-dialog__group">
+                    <h3>{group.context}</h3>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
+                {group.rows.map((row) => (
+                  <tr key={`${row.context}-${row.action}`}>
+                    <td>{row.action}</td>
+                    <td>
+                      <kbd className="shortcuts-dialog__key">{row.shortcut}</kbd>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            ))}
           </table>
         </div>
       </div>
