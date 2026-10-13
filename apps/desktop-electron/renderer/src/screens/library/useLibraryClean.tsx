@@ -4,7 +4,8 @@
  * What each entry does once chosen. Applying and editing go through ORG-11's
  * batch path — the same confirmation above the engine's threshold, the same
  * counts in the toast, the same revert — because they are batch operations.
- * Writing tags has a dialog of its own, since a preview must answer before anything is written.
+ * Saving to the files has a window of its own, which reads the files before it can
+ * save anything and announces its own library change.
  *
  * Clean's Fix values tab renders the dialogs (FLW-12); the Library's selection
  * bar opens Clean with the tracks rather than running them here (FLW-8). The file
@@ -18,13 +19,13 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { APPLY_FIELD_LABELS } from "../clean/comparison";
+import { SaveToFilesDialog } from "../../components/saveToFiles/SaveToFilesDialog";
 import { ApplyValuesDialog } from "./ApplyValuesDialog";
 import { EditValuesDialog } from "./EditValuesDialog";
 import type { CleanMenuHandlers } from "./libraryClean";
 import type { OverrideEdit } from "./libraryBatch";
 import { editTarget } from "./metadataEdits";
 import type { LibraryBatchController } from "./useLibraryBatch";
-import { WriteTagsDialog } from "./WriteTagsDialog";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
 
@@ -59,11 +60,6 @@ type Open = { kind: "apply" | "edit" | "write"; target: CleanTarget } | null;
 
 export function useLibraryClean({ batch, onChanged }: LibraryCleanOptions): LibraryClean {
   const [open, setOpen] = useState<Open>(null);
-
-  const ended = useCallback(() => {
-    onChanged();
-    announceLibraryChange();
-  }, [onChanged]);
 
   const handlersFor = useCallback(
     (target: CleanTarget): CleanMenuHandlers => {
@@ -156,12 +152,12 @@ export function useLibraryClean({ batch, onChanged }: LibraryCleanOptions): Libr
         onClose={close}
         onEdit={edit}
       />
-      <WriteTagsDialog
+      <SaveToFilesDialog
         open={open?.kind === "write"}
         selection={open?.target.selection ?? null}
         count={open?.target.count ?? 0}
         onClose={close}
-        onChanged={ended}
+        onChanged={onChanged}
       />
     </>
   );

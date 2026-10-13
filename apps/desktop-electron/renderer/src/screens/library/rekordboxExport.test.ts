@@ -53,7 +53,7 @@ import {
   trackCountLine,
   unknownTracksLine,
 } from "./rekordboxExport";
-import { KEY_FORMATS } from "./tagWriting";
+import { KEY_FORMATS } from "../../components/saveToFiles/tagWriting";
 
 function preview(name: keyof typeof fixture): RekordboxExportPreview {
   const answer = fixture[name] as unknown as RekordboxExportPreviewAnswer;

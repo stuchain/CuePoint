@@ -1,5 +1,5 @@
 /**
- * What the "Save changes into the files" dialog says, as pure functions (CLEAN-13, DEC-070).
+ * What the save window says after a write or a restore, and how a skip is named, as pure functions (CLEAN-13, DEC-070).
  *
  * Writing into a person's files is the one thing in Phase 7 that leaves the
  * database, so the dialog's words carry the design: what will be written, what
@@ -9,7 +9,6 @@
 import type {
   TagRestoreResult,
   TagWriteOptions,
-  TagWritePreview,
   TagWriteResult,
 } from "../../api/cuepointBridge.types";
 
@@ -23,45 +22,14 @@ export const TAG_FIELDS = [
   { toggle: "write_comment", field: "comment", label: "Comment" },
 ] as const;
 
-/** Every option the dialog sends, always all of them. */
+/** Every option a save sends, always all of them. */
 export type DialogTagOptions = Required<TagWriteOptions>;
-
-/**
- * What the dialog opens on.
- *
- * Sent in full, so what is written never depends on a default the dialog did
- * not show. The comment starts **off**: the engine's inherited default writes
- * "ok" over a file's comment, which is a person's to choose (DEC-070).
- */
-export const DEFAULT_TAG_OPTIONS: DialogTagOptions = {
-  key_format: "normal",
-  write_key: true,
-  write_bpm: false,
-  write_year: true,
-  write_genre: false,
-  write_label: true,
-  write_comment: false,
-  comment_text: "ok",
-  embed_missing_artwork: false,
-  keep_existing: false,
-};
 
 export const KEY_FORMATS: ReadonlyArray<{ value: DialogTagOptions["key_format"]; label: string }> = [
   { value: "normal", label: "As Rekordbox writes it (Am, C#)" },
   { value: "camelot", label: "Camelot (8A, 12B)" },
   { value: "short", label: "Short (Amin, Gmaj)" },
 ];
-
-/** Why the options cannot be previewed, or null when they can. */
-export function optionsProblem(options: DialogTagOptions): string | null {
-  const anything = TAG_FIELDS.some(({ toggle }) => options[toggle]) || options.embed_missing_artwork;
-  if (!anything) return "Choose at least one field to write, or artwork to add.";
-  if (options.write_comment && options.comment_text.trim() === "") {
-    return "Give the comment some text, or leave the comment out.";
-  }
-  if (options.comment_text.length > 255) return "A comment can be at most 255 characters.";
-  return null;
-}
 
 function count(number: number, noun: string): string {
   return `${number.toLocaleString()} ${noun}${number === 1 ? "" : "s"}`;
@@ -119,36 +87,6 @@ export function fieldSkipText(reason: string): string {
     default:
       return reason.replace(/_/g, " ");
   }
-}
-
-/** One line per skip reason, most files first. */
-export function skippedLines(skipped: Record<string, { count: number } | number>): string[] {
-  return Object.entries(skipped)
-    .map(([reason, value]) => [reason, typeof value === "number" ? value : value.count] as const)
-    .filter(([, number]) => number > 0)
-    .sort((a, b) => b[1] - a[1])
-    .map(([reason, number]) => `${count(number, "file")} skipped: ${fileSkipText(reason)}`);
-}
-
-/** What each field will be written into, as lines. */
-export function fieldLines(fields: Record<string, number>): string[] {
-  return Object.entries(fields)
-    .filter(([, number]) => number > 0)
-    .map(([field, number]) => `${fieldName(field)}: ${count(number, "file")}`);
-}
-
-/** The sentence over a preview: what a write would do, and that nothing happened yet. */
-export function previewHeadline(preview: TagWritePreview): string {
-  if (preview.cancelled) return "The preview was stopped before it read every file. Preview again.";
-  if (preview.files === 0) {
-    return `Nothing to write: none of the ${count(preview.total, "file")} would change.`;
-  }
-  return `Writing would change ${count(preview.files, "file")} of ${preview.total.toLocaleString()}. Nothing has been written yet.`;
-}
-
-/** Whether Write is offered: a preview answered, uncancelled, with files to change. */
-export function canWrite(preview: TagWritePreview | null): boolean {
-  return preview != null && !preview.cancelled && preview.files > 0;
 }
 
 /** What a finished write says. Failures are counted, never folded into "written". */

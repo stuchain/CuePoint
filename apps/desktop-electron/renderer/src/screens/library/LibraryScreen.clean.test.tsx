@@ -377,7 +377,7 @@ describe("what the entries do", () => {
   it.each([
     ["Beatport", "Use Beatport's values…", "Use Beatport's values"],
     ["More", "Edit values…", "Edit values"],
-    ["More", "Save changes into the files…", "Save changes into the files"],
+    ["More", "Save changes into the files…", "Save 2 tracks to your files"],
   ] as const)(
     "opens the dialog for %s ▸ %s here, not on Clean (K4)",
     async (group, entry, title) => {

@@ -31,7 +31,7 @@ _RENDERER = (
 )
 _LIBRARY_CLEAN = _RENDERER / "screens" / "library" / "libraryClean.ts"
 _ACTIVITY = _RENDERER / "components" / "shell" / "activityActions.ts"
-_TAG_WRITING = _RENDERER / "screens" / "library" / "tagWriting.ts"
+_TAG_WRITING = _RENDERER / "components" / "saveToFiles" / "tagWriting.ts"
 _FILTER_TEXT = _RENDERER / "screens" / "library" / "filterText.ts"
 
 

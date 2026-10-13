@@ -1,0 +1,183 @@
+/*
+ * The save window (G4 step 4, option S1): a tick list with a count per row, one Keep
+ * choice and a footer. Every value is a token.
+ */
+
+.save-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.save-dialog__rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.save-dialog__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: var(--control-height);
+  padding: var(--space-xs) 0;
+  border-bottom: var(--divider);
+  font-size: var(--text-body);
+}
+
+.save-dialog__row:last-child {
+  border-bottom: 0;
+}
+
+/* An unticked row is dimmed, and still says how many files it would change. */
+.save-dialog__row[data-ticked="false"] {
+  color: var(--fg-muted);
+}
+
+.save-dialog__tick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+}
+
+.save-dialog__tick input {
+  margin: 0;
+  accent-color: var(--accent-fill);
+}
+
+.save-dialog__tick input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+}
+
+/* The key style sits on the Key line; its label is for readers of the page, not for the eye. */
+.save-dialog__style .cp-select__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.save-dialog__count {
+  margin-left: auto;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.save-dialog__keep {
+  font-size: var(--text-body);
+}
+
+.save-dialog__back {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-body);
+  cursor: pointer;
+}
+
+.save-dialog__changes {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-body);
+}
+
+.save-dialog__changes th,
+.save-dialog__changes td {
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: var(--divider);
+  text-align: left;
+  vertical-align: top;
+}
+
+.save-dialog__changes th {
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+.save-dialog__changes s {
+  color: var(--fg-muted);
+}
+
+.save-dialog__field {
+  color: var(--fg-muted);
+}
+
+.save-dialog__note {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--text-body);
+  line-height: 1.5;
+}
+
+.save-dialog__headline {
+  margin: 0;
+  font-weight: 700;
+}
+
+.save-dialog__problem {
+  margin: 0;
+  color: var(--accent-danger);
+  font-size: var(--text-body);
+}
+
+.save-dialog__answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border: var(--divider);
+  background: var(--bg-panel-alt);
+}
+
+.save-dialog__lines {
+  margin: 0;
+  padding-left: var(--space-lg);
+  color: var(--fg-muted);
+  font-size: var(--text-body);
+}
+
+.save-dialog__restore {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* Stuck to the bottom of the dialog's body, across its full width, so a long list never scrolls the buttons away. */
+.save-dialog__footer {
+  position: sticky;
+  bottom: calc(-1 * var(--space-lg));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin: 0 calc(-1 * var(--space-lg)) calc(-1 * var(--space-lg));
+  padding: var(--space-md) var(--space-lg);
+  border-top: var(--divider);
+  background: var(--bg-panel);
+}
+
+.save-dialog__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+.save-dialog__reason {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--text-body);
+  text-align: right;
+}
+
+.save-dialog__reason:not(:empty) {
+  margin-top: var(--space-xs);
+}

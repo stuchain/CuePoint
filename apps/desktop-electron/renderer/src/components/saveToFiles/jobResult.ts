@@ -1,6 +1,6 @@
 import { cancelledError, jobFailureError } from "../../reporting/expected";
-import { followJob } from "./followJob";
-import { jobErrorMessage } from "./libraryFormat";
+import { followJob } from "../../screens/library/followJob";
+import { jobErrorMessage } from "../../screens/library/libraryFormat";
 import { NEEDS_DESKTOP } from "../../api/userMessage";
 
 /** The result a finished job answered, or a sentence saying why there is none. */

@@ -73,6 +73,10 @@ ROOT = Path(__file__).resolve().parent.parent
 #: scan cannot see belongs here; otherwise delete the file or wire it in. An
 #: entry whose file is gone or is now reached fails the guard, so this cannot rot.
 ALLOWLIST: dict[str, str] = {
+    "apps/desktop-electron/renderer/src/components/saveToFiles/SaveToFilesBar.css": "G4 save bar (DEC-262): built and tested here, mounted by G4 step 8; that step removes this entry",
+    "apps/desktop-electron/renderer/src/components/saveToFiles/SaveToFilesBar.tsx": "G4 save bar (DEC-262): built and tested here, mounted by G4 step 8; that step removes this entry",
+    "apps/desktop-electron/renderer/src/components/saveToFiles/saveBarWords.ts": "G4 save bar (DEC-262): built and tested here, mounted by G4 step 8; that step removes this entry",
+    "apps/desktop-electron/renderer/src/components/saveToFiles/useUnsavedValues.ts": "G4 save bar (DEC-262): built and tested here, mounted by G4 step 8; that step removes this entry",
 }
 
 SECTIONS = (

@@ -26,7 +26,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import type { CollectionTreeNode } from "./collectionTree";
 import { fileName, formatCount, formatWhen, pluralize } from "./libraryFormat";
-import { KEY_FORMATS } from "./tagWriting";
+import { KEY_FORMATS } from "../../components/saveToFiles/tagWriting";
 
 // ------------------------------------------------------------------ notation
 

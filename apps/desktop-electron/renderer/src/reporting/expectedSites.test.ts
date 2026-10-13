@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import beatportHalfSource from "../screens/discover/BeatportHalf.tsx?raw";
 import wantlistSource from "../screens/discover/WantlistView.tsx?raw";
 import { finishedResult } from "../components/shell/ActivityOffer";
-import { jobResult } from "../screens/library/jobResult";
+import { jobResult } from "../components/saveToFiles/jobResult";
 import { fakeFacade } from "./fakeFacade.testFixture";
 import { lastReportId, reportUnexpected, resetRendererReporting, setupRendererReporting } from "./reporting";
 
@@ -42,7 +42,7 @@ describe("a refusal the Discover pages throw while collecting ids", () => {
 });
 
 describe.each([
-  ["WriteTagsDialog", jobResult],
+  ["SaveToFilesDialog", jobResult],
   ["ActivityOffer", finishedResult],
 ])("a job %s waits for", (_name, wait) => {
   it("that fails on a cause the user owns is not reported", async () => {
