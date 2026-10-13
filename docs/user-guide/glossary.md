@@ -1,5 +1,29 @@
 # Glossary
 
+## Words CuePoint uses
+
+One word for each idea, everywhere in the app and in this guide. The "never
+say" column is what older screens said; a test keeps those words out of the app
+as they are replaced.
+
+| Idea | Say | Never say |
+| --- | --- | --- |
+| The `rekordbox.xml` you bring in | **Rekordbox file** | "Rekordbox export", "XML export", "your export", "Rekordbox collection" |
+| CuePoint writing a file for Rekordbox | **Export to Rekordbox** (the only meaning of "export") | "Export results", "Export support bundle" |
+| Bringing the Rekordbox file in | **Import** ("Import a Rekordbox file…") | "Import another file…" |
+| Writing values into the audio files | **Save to files** | "Write", "Writing tags", "Save changes into the files" |
+| Taking back a change | **Undo** | "Revert", "Restore", "Put back", "Go back to…" |
+| Agreeing with a Beatport match | **Correct** (the button), **confirmed** (the state) | "accepted", "Take", "Resolved" |
+| Agreeing a Prepare warning is fine | **Mark OK** | "Accept", "Undo accept" |
+| Getting Beatport access | **Sign in to Beatport** | "token", except in "Sign in with a pasted token" |
+| CuePoint's background process | not named: "CuePoint stopped working in the background" | "library service", "engine" (only Diagnostics and the log viewer keep it) |
+| A value that isn't there | **—** in tables and cards, **not set** in sentences | "empty", "none", "No value", "(not used)" |
+| Looking for text in a list | **Search** | "search" for a Discover run, which is a **dig** |
+| A failure CuePoint can't reach its background process for | "CuePoint lost touch with its background process. Nothing was changed." | "Fetch failed" |
+| Something only the desktop app can do | "This needs the CuePoint desktop app." | "needs the desktop app with CuePoint's library service running" |
+
+## Terms
+
 - **Rekordbox XML**: An export file from Rekordbox containing tracks and playlists.
 - **Key**: A track's musical key, shown in Camelot ("8A") with its name ("A
   minor") in Track details. It is the key you typed, or else the key of the

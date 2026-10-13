@@ -16,6 +16,7 @@ import { useLayoutEffect, useState } from "react";
 import type { OverrideField } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components";
 import { APPLY_FIELD_LABELS } from "../clean/comparison";
+import { NOT_SET } from "../../words";
 import { BATCH_JOB_THRESHOLD, BATCH_RECORDED_NOTE, type OverrideEdit } from "./libraryBatch";
 import {
   EDIT_FIELDS,
@@ -193,7 +194,7 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
                 />
                 {current && (
                   <p className="clean-dialog__hint">
-                    {`Now: ${current[field] || "none"}`}
+                    {`Now: ${current[field] || NOT_SET}`}
                   </p>
                 )}
                 {problem && (

@@ -23,7 +23,7 @@ describe("EditValuesDialog", () => {
     expect(screen.getByText("Now: 8A")).toBeInTheDocument();
     expect(screen.getByText("Now: 128")).toBeInTheDocument();
     // Genre, Label and Year have none.
-    expect(screen.getAllByText("Now: none")).toHaveLength(3);
+    expect(screen.getAllByText("Now: not set")).toHaveLength(3);
   });
 
   it("shows no current values for many tracks", () => {
