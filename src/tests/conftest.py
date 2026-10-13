@@ -423,3 +423,18 @@ def mock_requests_get(mock_beatport_response):
         mock_response.text = "<html>Mock HTML</html>"
         mock_get.return_value = mock_response
         yield mock_get
+
+
+@pytest.fixture(autouse=True)
+def _forget_beatport_genres_failure():
+    """Forget a cached Beatport genres failure between tests.
+
+    The cache is process-wide (a minute of "Beatport is down" is meant to
+    outlive one Discover request), and every test signs in with the same
+    token, so a failure one test provoked would be answered to the next.
+    """
+    from cuepoint.services.beatport_api import forget_genres_failure
+
+    forget_genres_failure()
+    yield
+    forget_genres_failure()

@@ -21,10 +21,13 @@ a path it lacks and 401 for one it has, before it checks a token:
 - Every path wants its trailing slash; without it Beatport answers 301.
 """
 
+import hashlib
 import logging
 import re
+import threading
+import time
 from datetime import date
-from typing import Any, Dict, Iterable, Iterator, List, Optional
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.services.beatport_api_models import (
@@ -34,7 +37,11 @@ from cuepoint.services.beatport_api_models import (
     CatalogTrack,
     Genre,
 )
-from cuepoint.services.beatport_api_client import BeatportApiClient
+from cuepoint.services.beatport_api_client import (
+    ERROR_UNAVAILABLE,
+    BeatportApiClient,
+    classify_beatport_error,
+)
 from cuepoint.services.beatport_catalog import (
     BEATPORT_WEB_BASE,
     catalog_text,
@@ -68,6 +75,85 @@ _CACHE_GENRES_TTL = 86400
 _CACHE_LABEL_SEARCH = "beatport_api:label_search"
 _CACHE_LABEL_SEARCH_TTL = 3600
 
+#: The genres read's own budget: a page visit asks for it every time, so a
+#: Beatport that does not answer must not hold the page for the client's
+#: 30 s, let alone a retry of it. Every other call keeps the client's own.
+GENRES_TIMEOUT_SECONDS = 8
+GENRES_RETRY_ON_TIMEOUT = False
+#: How long a failed genres read (``unavailable`` only) is answered again at
+#: once, without asking Beatport.
+GENRES_FAILURE_TTL_SECONDS = 60.0
+
+
+class GenresFailureCache:
+    """The last ``unavailable`` genres failure, kept for a minute.
+
+    Only a failure the person can do nothing about but wait is kept; a
+    signed-out read (``no_token``), a rejected token and a rate limit are
+    asked again every time. The failure belongs to one token: a different
+    token forgets it. Only a digest of the token is held, never the token.
+    """
+
+    def __init__(
+        self,
+        clock: Callable[[], float] = time.monotonic,
+        ttl: float = GENRES_FAILURE_TTL_SECONDS,
+    ):
+        self._clock = clock
+        self._ttl = ttl
+        self._lock = threading.Lock()
+        self._failure: Optional[Tuple[float, Exception]] = None
+        self._token_digest: Optional[str] = None
+
+    @staticmethod
+    def _digest(token: Any) -> str:
+        return hashlib.sha256(str(token or "").encode("utf-8")).hexdigest()
+
+    def recall(self, token: Any) -> Optional[Exception]:
+        """The failure still held for ``token``, or None."""
+        digest = self._digest(token)
+        with self._lock:
+            if digest != self._token_digest:
+                self._failure = None
+                self._token_digest = digest
+            if self._failure is None:
+                return None
+            at, error = self._failure
+            if self._clock() - at >= self._ttl:
+                self._failure = None
+                return None
+            return error
+
+    def remember(self, token: Any, error: Exception) -> None:
+        """Keep ``error`` if it is Beatport's own ``unavailable`` one.
+
+        Anything else (a parser bug, a refusal) is asked again next time.
+        """
+        if (
+            not isinstance(error, BeatportAPIError)
+            or classify_beatport_error(error) != ERROR_UNAVAILABLE
+        ):
+            return
+        with self._lock:
+            self._token_digest = self._digest(token)
+            self._failure = (self._clock(), error)
+
+    def clear(self) -> None:
+        with self._lock:
+            self._failure = None
+            self._token_digest = None
+
+
+_GENRES_FAILURE = GenresFailureCache()
+
+
+def forget_genres_failure() -> None:
+    """Forget a cached genres failure, so the next read asks Beatport again.
+
+    What a new Beatport sign-in calls; a changed token forgets it by itself.
+    """
+    _GENRES_FAILURE.clear()
+
 
 class BeatportApi:
     """The Beatport v4 catalog and playlists, over one authenticated client."""
@@ -76,9 +162,13 @@ class BeatportApi:
         self,
         client: BeatportApiClient,
         cache_service: Optional[Any] = None,
+        genres_failure: Optional[GenresFailureCache] = None,
     ):
         self._client = client
         self._cache = cache_service
+        self._genres_failure = (
+            genres_failure if genres_failure is not None else _GENRES_FAILURE
+        )
         # Whether ``catalog/tracks/?id=a,b,c`` answers exactly the tracks it
         # was asked for: None until a lookup has shown it, then True or False.
         self._batch_lookup: Optional[bool] = None
@@ -531,20 +621,41 @@ class BeatportApi:
         What a Discover run's genre picker offers (DISCOVER-09): every page,
         through the parser every catalog read uses, kept for a day. Raises as
         the client does, so a caller can say why there are none.
+
+        The read has its own short timeout and is not retried at one, and an
+        ``unavailable`` failure is answered again for a minute without asking
+        Beatport (a signed-out ``no_token`` never is).
         """
         if self._cache:
             cached = self._cache.get(_CACHE_CATALOG_GENRES)
             if isinstance(cached, list):
                 return list(cached)
+        token = getattr(self._client, "access_token", "")
+        failed = self._genres_failure.recall(token)
+        if failed is not None:
+            raise failed.with_traceback(None)
+        # Stand-ins for the client in tests take no such options.
+        options: Optional[Dict[str, Any]] = (
+            {
+                "timeout": GENRES_TIMEOUT_SECONDS,
+                "retry_on_timeout": GENRES_RETRY_ON_TIMEOUT,
+            }
+            if isinstance(self._client, BeatportApiClient)
+            else None
+        )
         genres: List[Genre] = []
         seen: set = set()
-        for item in self._paginate(
-            "/catalog/genres/", {"per_page": MAX_PER_PAGE}, max_pages
-        ):
-            genre = parse_catalog_genre(item)
-            if genre is not None and genre.id not in seen:
-                seen.add(genre.id)
-                genres.append(genre)
+        try:
+            for item in self._paginate(
+                "/catalog/genres/", {"per_page": MAX_PER_PAGE}, max_pages, options
+            ):
+                genre = parse_catalog_genre(item)
+                if genre is not None and genre.id not in seen:
+                    seen.add(genre.id)
+                    genres.append(genre)
+        except Exception as exc:  # noqa: BLE001 — remembered, then raised as is
+            self._genres_failure.remember(token, exc)
+            raise
         if self._cache and genres:
             self._cache.set(_CACHE_CATALOG_GENRES, genres, ttl=_CACHE_GENRES_TTL)
         return genres
@@ -615,17 +726,27 @@ class BeatportApi:
         return tracks
 
     def _paginate(
-        self, path: str, params: Dict[str, Any], max_pages: int
+        self,
+        path: str,
+        params: Dict[str, Any],
+        max_pages: int,
+        request_options: Optional[Dict[str, Any]] = None,
     ) -> Iterator[Dict[str, Any]]:
-        for page in self._paginate_pages(path, params, max_pages):
+        for page in self._paginate_pages(path, params, max_pages, request_options):
             yield from page
 
     def _paginate_pages(
-        self, path: str, params: Dict[str, Any], max_pages: int
+        self,
+        path: str,
+        params: Dict[str, Any],
+        max_pages: int,
+        request_options: Optional[Dict[str, Any]] = None,
     ) -> Iterator[List[Dict[str, Any]]]:
         """Each page of a v4 listing, until ``next`` is null or the cap is hit."""
         for number in range(1, max(0, max_pages) + 1):
-            data = self._client.get(path, params={**params, "page": number})
+            data = self._client.get(
+                path, params={**params, "page": number}, **(request_options or {})
+            )
             items, has_next = page_items(data)
             if items:
                 yield items

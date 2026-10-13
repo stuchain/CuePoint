@@ -7355,3 +7355,22 @@ while paused (R4-11) and too tall for short windows (R2-2).
 **Amends**: DEC-250 (fixed ~8 s either side; on by default everywhere; Settings the only switch).
 
 **Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13
+
+## DEC-258 — A Failed Beatport Genres Read Waits a Minute
+
+**Status**: Approved · **Related**: DEC-252, DISCOVER-09, C19, C20
+
+**Context**: C19: Discover asks Beatport for its genres on every visit. When Beatport did not answer,
+the read waited the client's 30 s, and a server error followed by timeouts could hold the page for
+about 90 s, on every visit.
+
+**Decision**:
+- The genres read has its own **8 s** timeout and is **not retried after a timeout**. Every other
+  Beatport call keeps the client's 30 s and its retries.
+- A genres failure that only waiting can fix (`unavailable`: no answer, a timeout, a server error) is
+  answered again at once for **60 s** without asking Beatport. Signed out (`no_token`), a refused
+  token and a rate limit are never kept.
+- A different token forgets the kept failure, and so does `forget_genres_failure()`, which a new
+  sign-in calls. Only a digest of the token is held to tell tokens apart.
+
+**Decided with**: Claude (C19 scope, "apply ALL") · **Date**: 2026-10-13

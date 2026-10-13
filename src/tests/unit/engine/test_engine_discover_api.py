@@ -52,7 +52,7 @@ from cuepoint.models.discovery_run import DiscoveryRun
 from cuepoint.models.filter_rule import FilterRuleError
 from cuepoint.models.library_track import LibraryTrack
 from cuepoint.services import database_service as database_service_module
-from cuepoint.services.beatport_api import BeatportApi
+from cuepoint.services.beatport_api import BeatportApi, forget_genres_failure
 from cuepoint.utils.di_container import get_container, reset_container
 from tests.fixtures.beatport_library import accept
 from tests.fixtures.beatport_world import BeatportWorld
@@ -445,6 +445,30 @@ class TestOptions:
         assert answer["beatport"]["state"] == state
         assert answer["beatport"]["message"]
         assert answer["genres"] == []
+
+    def test_an_unavailable_beatport_is_not_asked_again_for_a_minute(
+        self, engine, world, library
+    ):
+        world.failures.append(lambda route, params, n: 500)
+        first = ok(get(engine, api.OPTIONS_PATH))
+        asked = len(world.requests)
+        assert asked
+        again = ok(get(engine, api.OPTIONS_PATH))
+        assert len(world.requests) == asked
+        assert again["beatport"] == first["beatport"]
+        assert again["beatport"]["state"] == "unavailable"
+        # A new sign-in forgets it; Beatport is asked at once.
+        forget_genres_failure()
+        ok(get(engine, api.OPTIONS_PATH))
+        assert len(world.requests) > asked
+
+    def test_a_signed_out_read_is_asked_every_time(self, engine, library):
+        world = BeatportWorld(access_token="")
+        use_beatport(world)
+        for _ in range(2):
+            answer = ok(get(engine, api.OPTIONS_PATH))
+            assert answer["beatport"]["state"] == "no_token"
+        assert world.requests == []
 
     def test_every_genre_is_read_however_many_pages(self, engine, world, library):
         world.genres = [(i, f"Genre {i:03d}", f"genre-{i}") for i in range(1, 251)]

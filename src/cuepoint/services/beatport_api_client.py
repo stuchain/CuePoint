@@ -306,16 +306,48 @@ class BeatportApiClient:
             self._sleep(wait)
             return call()
 
-    def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    @staticmethod
+    def _retry_get(call: Callable[[], Any], retry_on_timeout: bool) -> Any:
+        """Retry ``call`` after a 5xx with backoff, giving up at a timeout if asked."""
+        timed_out: list = []
+
+        def attempt() -> Any:
+            try:
+                return call()
+            except requests.exceptions.Timeout as e:
+                if retry_on_timeout:
+                    raise
+                timed_out.append(e)
+                return None
+
+        result = run_with_retry(attempt, max_retries=2, base_delay=1.0)
+        if timed_out:
+            raise timed_out[0]
+        return result
+
+    def get(
+        self,
+        path: str,
+        params: Optional[Dict[str, Any]] = None,
+        timeout: Optional[float] = None,
+        retry_on_timeout: bool = True,
+    ) -> Any:
         """GET path with optional query params; return JSON.
 
         A 404 answers None. A 429 is retried once, honoring ``Retry-After``;
         a 5xx is retried with backoff. A 401 or 403 is raised at once.
+
+        ``timeout`` replaces the client's own for this call, and
+        ``retry_on_timeout=False`` stops the 5xx backoff retrying a request
+        that timed out; both default to the behaviour every other read has.
         """
         self._require_token()
 
         def _get() -> Any:
-            resp = self._request("GET", path, params=params)
+            if timeout is None:
+                resp = self._request("GET", path, params=params)
+            else:
+                resp = self._request("GET", path, params=params, timeout=timeout)
             if resp.status_code == 404:
                 return None
             resp.raise_for_status()
@@ -333,7 +365,7 @@ class BeatportApiClient:
             except BeatportAPIError as e:
                 status = getattr(e, "status_code", None) or 0
                 if status >= 500:
-                    return run_with_retry(_get, max_retries=2, base_delay=1.0)
+                    return self._retry_get(_get, retry_on_timeout)
                 raise
         except requests.exceptions.Timeout as e:
             raise BeatportAPIError(
