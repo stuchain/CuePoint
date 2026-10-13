@@ -69,6 +69,8 @@ function clampToViewport(x: number, y: number, width: number, height: number) {
  * Where a submenu goes, given the entry that opened it (ORG-13).
  *
  * Beside its parent, on whichever side has room, and never below the window.
+ * Without room below, its bottom meets the parent's bottom rather than sliding up
+ * over the main menu.
  * Both cases are real: the menu is clamped *against* the right edge when it was
  * opened near one, so a submenu that always opened rightwards opened off
  * screen; and a menu long enough to scroll has entries near the bottom whose
@@ -78,7 +80,9 @@ function clampToViewport(x: number, y: number, width: number, height: number) {
 function placeSubmenu(parent: DOMRect, width: number, height: number) {
   const room = window.innerWidth - parent.right - 4;
   const left = room >= width ? parent.right : Math.max(4, parent.left - width);
-  return { left, top: clampToViewport(left, parent.top, width, height).top };
+  const fitsBelow = parent.top + height <= window.innerHeight - 4;
+  const top = fitsBelow ? parent.top : Math.max(4, parent.bottom - height);
+  return { left, top: clampToViewport(left, top, width, height).top };
 }
 
 /** A list beside the entry that opened it; measured once it exists (ORG-13). */

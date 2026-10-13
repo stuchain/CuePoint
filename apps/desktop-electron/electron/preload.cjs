@@ -275,6 +275,7 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   getTrackFolder: (params) => ipcRenderer.invoke("engine:getTrackFolder", params),
   decideMatch: (params) => ipcRenderer.invoke("engine:decideMatch", params),
   applyMatch: (params) => ipcRenderer.invoke("engine:applyMatch", params),
+  previewApplyMatch: (params) => ipcRenderer.invoke("engine:previewApplyMatch", params),
   correctMatch: (params) => ipcRenderer.invoke("engine:correctMatch", params),
   correctMatches: (params) => ipcRenderer.invoke("engine:correctMatches", params),
   getMatchJobs: (params) => ipcRenderer.invoke("engine:getMatchJobs", params),

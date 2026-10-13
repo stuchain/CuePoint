@@ -643,6 +643,22 @@ def apply_match(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, An
     return _batch_answer(result, job)
 
 
+def preview_apply(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
+    """Count what applying would change, for the dialog's button. Reads only, no job."""
+    from cuepoint.services.match_apply import chosen_fields
+    from cuepoint.services.override_values import NOTATION_CLASSIC
+
+    # A selection only: the dialog counts the tracks it will apply to, never one track.
+    _only(data, ("fields", "selection"))
+    chosen = chosen_fields(_fields(data))
+    track_ids = _service("IBatchService").resolve(_selection(data))
+    # No key is applied (DEC-201), as in apply_match, so the notation is moot.
+    tracks, per_field = _service("IMatchApplyService").would_change(
+        track_ids, chosen, NOTATION_CLASSIC
+    )
+    return 200, {"tracks": tracks, "fields": per_field}
+
+
 def correct_match(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
     """Accept a candidate and copy the ticked fields as one act (C14, DEC-068).
 
@@ -1144,6 +1160,7 @@ _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], Any], Tuple[int, Dict[str, Any
     "/api/v1/clean/match/resume": resume_match,
     "/api/v1/clean/decide": decide,
     "/api/v1/clean/apply": apply_match,
+    "/api/v1/clean/apply-preview": preview_apply,
     "/api/v1/clean/correct": correct_match,
     "/api/v1/library/revert": revert_change,
     "/api/v1/library/revert/batch": revert_batch,

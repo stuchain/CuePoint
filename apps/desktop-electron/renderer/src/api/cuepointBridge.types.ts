@@ -3625,6 +3625,11 @@ export interface CuePointBridge {
     track_id?: number;
     selection?: BatchSelection;
   }) => Promise<ApplyOutcome>;
+  /** What applying would change, in tracks and per field, without applying it. */
+  previewApplyMatch?: (params: {
+    fields: OverrideField[];
+    selection: BatchSelection;
+  }) => Promise<{ tracks: number; fields: Partial<Record<OverrideField, number>> }>;
   /** Accept a candidate and copy the ticked fields as one act (C14). */
   correctMatch?: (params: {
     track_id: number;

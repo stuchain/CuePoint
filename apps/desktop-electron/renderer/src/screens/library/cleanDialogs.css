@@ -104,6 +104,25 @@
   grid-column: 1 / -1;
 }
 
+/* Use Beatport's values: ticks on roomier rows, each with its count on the right. */
+.clean-dialog__group--ticks {
+  gap: var(--space-sm);
+}
+
+.clean-dialog__tick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.clean-dialog__count {
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
 .clean-dialog__group legend {
   padding: 0 var(--space-xs);
   color: var(--fg-muted);

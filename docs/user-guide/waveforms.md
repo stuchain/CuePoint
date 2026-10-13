@@ -103,8 +103,8 @@ is measured first.
 ## What the colors mean
 
 **Settings → Waveforms → Colors** chooses one of two looks; the choice is
-remembered on this computer. **Reset to defaults** goes back to Three bands,
-after asking, with **Undo**.
+remembered on this computer. **Reset Waveforms** goes back to Three bands
+at once, and the message that follows has **Undo**.
 
 - **Three bands** draws the lows, the mids and the highs in colors of their
   own, layered as Rekordbox's three-band view is: the lows in blue, the mids in

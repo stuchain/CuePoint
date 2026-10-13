@@ -198,6 +198,35 @@ describe("the title", () => {
     expect(chapter).toContainElement(screen.getByLabelText("Chapter notes"));
   });
 
+  describe("a greyed main button's reason", () => {
+    const primary = (disabled: boolean) => ({
+      label: "Copy to 3 tracks",
+      onClick: () => {},
+      disabled,
+      disabledReason: "Tick at least one value.",
+    });
+
+    it("shows one line above the buttons, linked to the main button, while it is disabled", () => {
+      open({ primaryAction: primary(true) });
+      const reason = screen.getByText("Tick at least one value.");
+      const button = screen.getByRole("button", { name: "Copy to 3 tracks" });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAccessibleDescription("Tick at least one value.");
+      expect(reason.compareDocumentPosition(button.closest("footer")!)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      expect(css).toMatch(/\.cp-modal__reason\s*\{[^}]*color:\s*var\(--fg-muted\)/);
+    });
+
+    it("is not shown once the button is enabled", () => {
+      open({ primaryAction: primary(false) });
+      expect(screen.queryByText("Tick at least one value.")).toBeNull();
+      expect(screen.getByRole("button", { name: "Copy to 3 tracks" })).not.toHaveAttribute(
+        "aria-describedby",
+      );
+    });
+  });
+
   it("closes with an icon button named Close, not a typed cross (T10, N10)", () => {
     const { onClose } = open();
     const close = screen.getByRole("button", { name: "Close" });

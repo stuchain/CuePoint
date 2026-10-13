@@ -187,7 +187,6 @@ export function WaveformSettingsPanel() {
           <div className="cp-waveform-settings__reset">
             <ResetToDefaults
               section="Waveforms"
-              summary="This sets the colors to Three bands."
               onReset={resetColors}
             />
           </div>

@@ -158,7 +158,8 @@ describe("deleting one", () => {
     const { onDelete } = show();
     choose("Peak-time");
     fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    expect(screen.getByRole("alertdialog", { name: "Delete tag" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Delete tag" }));
     expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
   });
 
@@ -197,7 +198,8 @@ describe("merging two", () => {
     choose("Peak Time");
     fireEvent.change(screen.getByLabelText("Merge into"), { target: { value: "1" } });
     fireEvent.click(screen.getByRole("button", { name: "Merge…" }));
-    fireEvent.click(screen.getByRole("button", { name: "Merge" }));
+    expect(screen.getByRole("alertdialog", { name: "Merge tags" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Merge tags" }));
     expect(onMerge).toHaveBeenCalledWith(
       expect.objectContaining({ id: 2 }),
       expect.objectContaining({ id: 1 }),

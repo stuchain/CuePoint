@@ -7542,3 +7542,22 @@ all of them. It was an icon tall plus padding, about 50 px at 1.5x, for one line
 - Nothing inside the strip may be taller than a control, or the strip grows back.
 
 **Decided with**: User (R2-2) · **Date**: 2026-10-13
+## DEC-267 — Dialog Buttons Say What They Change; Reversible Actions Act and Offer Undo
+
+**Status**: Proposed · **Related**: SET-11, DEC-004, DEC-063, G7 R3-2 R3-7 R3-8 R3-15
+
+**Context**: Dialogs ended in "Apply", "Confirm" or "Reset", so the button did not say what it would
+do or to how many tracks, and a greyed button gave no reason. Resetting a settings section asked a
+question first even though Undo was already offered afterwards.
+
+**Decision**:
+- The main button says verb + what + how many: "Change 40 tracks", "Copy to 212 tracks", "Delete tag",
+  "Merge tags". A greyed main button has a one-line reason just above the footer
+  (`primaryAction.disabledReason`, shown only while disabled, linked by `aria-describedby`).
+- Reversible actions act at once and offer Undo; irreversible ones ask, with the verb on the button.
+  This extends SET-11: "Reset {section}" resets at once and pushes "{section} reset" with Undo, and
+  loses its question.
+- The Use Beatport's values count is the engine's own: `POST /api/v1/clean/apply-preview` counts what
+  apply would change per field and for the ticked fields together, reading only, as no job.
+
+**Decided with**: Claude (G7 step 7) · **Date**: 2026-10-13

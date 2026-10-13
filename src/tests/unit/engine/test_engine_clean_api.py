@@ -994,6 +994,80 @@ class TestApplying:
 
 
 @pytest.mark.unit
+class TestApplyPreview:
+    """The count the apply dialog's button shows; it asks, and writes nothing."""
+
+    def test_a_selection_counts_each_field(self, engine):
+        ids = [accepted_track("PreviewOne")]
+
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/apply-preview",
+                {"selection": ids_selection(*ids), "fields": ["genre", "bpm", "year"]},
+            )
+        )
+
+        # Beatport has no year for this candidate, so none would change.
+        assert payload == {"tracks": 1, "fields": {"genre": 1, "bpm": 1, "year": 0}}
+
+    def test_a_selection_counts_and_writes_nothing(self, engine):
+        ids = [accepted_track("PreviewA"), accepted_track("PreviewB")]
+        [undecided] = add_tracks(track("PreviewC"))
+
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/apply-preview",
+                {"selection": ids_selection(*ids, undecided), "fields": ["label"]},
+            )
+        )
+        assert payload == {"tracks": 2, "fields": {"label": 2}}
+
+        # Still nothing applied: the same apply afterwards changes both.
+        applied = ok(
+            post(
+                engine,
+                "/api/v1/clean/apply",
+                {"selection": ids_selection(*ids), "fields": ["label"]},
+            )
+        )
+        assert applied["applied"]["changed"] == 2
+
+    def test_a_value_you_already_have_is_not_counted(self, engine):
+        ids = [accepted_track("PreviewD")]
+        post(
+            engine,
+            "/api/v1/clean/apply",
+            {"selection": ids_selection(*ids), "fields": ["label"]},
+        )
+        payload = ok(
+            post(
+                engine,
+                "/api/v1/clean/apply-preview",
+                {"selection": ids_selection(*ids), "fields": ["label"]},
+            )
+        )
+        assert payload == {"tracks": 0, "fields": {"label": 0}}
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {"fields": ["genre"]},
+            {"fields": ["genre"], "track_id": 1},
+            {"fields": [], "selection": {"track_ids": [1]}},
+            {"fields": ["colour"], "selection": {"track_ids": [1]}},
+            {"fields": ["key"], "selection": {"track_ids": [1]}},
+            {"fields": ["genre"], "selection": {"track_ids": [1]}, "extra": True},
+        ],
+    )
+    def test_a_request_that_is_not_one(self, engine, body):
+        refused(
+            post(engine, "/api/v1/clean/apply-preview", body), 400, "INVALID_REQUEST"
+        )
+
+
+@pytest.mark.unit
 class TestHandEdits:
     def path(self, track_id: Any) -> str:
         return f"/api/v1/library/tracks/{track_id}/overrides"

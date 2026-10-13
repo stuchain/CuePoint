@@ -110,25 +110,17 @@ describe("the panel", () => {
   });
 });
 
-describe("Reset to defaults", () => {
-  it("asks first, resets on confirm, and Undo puts the switches back", async () => {
+describe("Reset Motion", () => {
+  it("resets at once, with no question, and Undo puts the switches back", async () => {
     renderPanel();
     await userEvent.click(screen.getByRole("button", { name: "Turn all off" }));
-    await userEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
-    // Asking changes nothing.
     expect(screen.getByRole("checkbox", { name: "Button presses" })).not.toBeChecked();
-    await userEvent.click(screen.getByRole("button", { name: "Reset" }));
+    await userEvent.click(screen.getByRole("button", { name: "Reset Motion" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getAllByRole("checkbox").every((b) => (b as HTMLInputElement).checked)).toBe(true);
     expect(localStorage.getItem(MOTION_STORAGE_KEY)).toBeNull();
+    expect(screen.getByText("Motion reset")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(screen.getAllByRole("checkbox").every((b) => !(b as HTMLInputElement).checked)).toBe(true);
-  });
-
-  it("changes nothing on Cancel", async () => {
-    renderPanel();
-    await userEvent.click(screen.getByRole("button", { name: "Turn all off" }));
-    await userEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
-    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.getByRole("checkbox", { name: "Button presses" })).not.toBeChecked();
   });
 });

@@ -1,7 +1,7 @@
 /**
  * Settings, one page in sections (PAGES-01, SET-1): the heading, the sections
  * in order by name, a link to each that scrolls it into view, Discover's deep
- * link to the token field, and "Reset to defaults" asking first and undoing.
+ * link to the token field, and "Reset {section}" acting at once and undoing.
  * Sections are checked by name and order, never by count, so a later phase can
  * add one (Backups, update controls) without rewriting this.
  */
@@ -261,30 +261,19 @@ describe("Motion and About & updates", () => {
   });
 });
 
-describe("Reset to defaults", () => {
+describe("Reset section", () => {
   const theme = () => within(region("Appearance")).getByRole("combobox", { name: "Active theme" });
   const size = () =>
     within(region("Appearance")).getByRole("combobox", { name: "Size of text and controls" });
 
-  it("asks first, then resets Appearance to Neo dark at the default size, and Undo restores it", async () => {
+  it("resets Appearance at once to Neo dark at the default size, and Undo restores it", async () => {
     renderSettings();
     await userEvent.selectOptions(theme(), "retro16");
     await userEvent.selectOptions(size(), "3");
 
-    await userEvent.click(within(region("Appearance")).getByRole("button", { name: "Reset to defaults" }));
-    // Asked, nothing changed yet; Cancel keeps it so.
-    const dialog = screen.getByRole("dialog", { name: "Reset Appearance to defaults?" });
-    expect(theme()).toHaveValue("retro16");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
-    expect(theme()).toHaveValue("retro16");
-    expect(size()).toHaveValue("3");
-
-    await userEvent.click(within(region("Appearance")).getByRole("button", { name: "Reset to defaults" }));
-    await userEvent.click(
-      within(screen.getByRole("dialog", { name: "Reset Appearance to defaults?" })).getByRole("button", {
-        name: "Reset",
-      }),
-    );
+    await userEvent.click(within(region("Appearance")).getByRole("button", { name: "Reset Appearance" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText("Appearance reset")).toBeInTheDocument();
     expect(theme()).toHaveValue("neoDark");
     expect(size()).toHaveValue(String(DEFAULT_SCALE));
 
@@ -293,19 +282,14 @@ describe("Reset to defaults", () => {
     expect(size()).toHaveValue("3");
   });
 
-  it("asks first, then resets the waveform colors to Three bands, and Undo restores them", async () => {
+  it("resets the waveform colors to Three bands at once, and Undo restores them", async () => {
     renderSettings();
     const waveforms = region("Waveforms");
     await userEvent.click(within(waveforms).getByRole("radio", { name: "One color" }));
     expect(within(waveforms).getByRole("radio", { name: "One color" })).toBeChecked();
 
-    await userEvent.click(within(waveforms).getByRole("button", { name: "Reset to defaults" }));
-    expect(within(waveforms).getByRole("radio", { name: "One color" })).toBeChecked();
-    await userEvent.click(
-      within(screen.getByRole("dialog", { name: "Reset Waveforms to defaults?" })).getByRole("button", {
-        name: "Reset",
-      }),
-    );
+    await userEvent.click(within(waveforms).getByRole("button", { name: "Reset Waveforms" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(within(waveforms).getByRole("radio", { name: "Three bands" })).toBeChecked();
 
     await userEvent.click(screen.getByRole("button", { name: "Undo" }));
@@ -315,7 +299,7 @@ describe("Reset to defaults", () => {
   it("is offered by Appearance, Motion and Waveforms only", () => {
     renderSettings();
     const holders = TITLES.filter(
-      (title) => within(region(title)).queryByRole("button", { name: "Reset to defaults" }) !== null,
+      (title) => within(region(title)).queryByRole("button", { name: `Reset ${title}` }) !== null,
     );
     expect(holders).toEqual(["Appearance", "Motion", "Waveforms"]);
   });

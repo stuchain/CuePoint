@@ -4,7 +4,7 @@
  */
 import { useLayoutEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { EditValuesDialog } from "./EditValuesDialog";
 import { BATCH_RECORDED_NOTE } from "./libraryBatch";
@@ -53,6 +53,55 @@ describe("EditValuesDialog", () => {
     const { rerender } = render(tree(false));
     rerender(tree(true));
     expect(screen.getByRole("textbox", { name: "BPM value" })).toHaveValue("126");
+  });
+
+  it("says what is kept and what is not touched", () => {
+    render(<EditValuesDialog open count={3} onClose={vi.fn()} onEdit={vi.fn()} />);
+    expect(
+      screen.getByText(
+        "Changes are kept in CuePoint and can be undone. Rekordbox\u2019s own values are not touched.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("names the tracks on the button and greys it, with the reason, until a value is set or cleared", () => {
+    render(<EditValuesDialog open count={3} onClose={vi.fn()} onEdit={vi.fn()} />);
+    const button = screen.getByRole("button", { name: "Change 3 tracks" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription("Set or clear at least one value.");
+
+    fireEvent.change(screen.getByRole("textbox", { name: "BPM value" }), {
+      target: { value: "126" },
+    });
+    expect(screen.getByRole("button", { name: "Change 3 tracks" })).toBeEnabled();
+    expect(screen.queryByText("Set or clear at least one value.")).toBeNull();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "BPM value" }), {
+      target: { value: "" },
+    });
+    expect(screen.getByRole("button", { name: "Change 3 tracks" })).toBeDisabled();
+  });
+
+  it("clearing a field counts as a change", () => {
+    render(<EditValuesDialog open count={1} onClose={vi.fn()} onEdit={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Change 1 track" })).toBeDisabled();
+    fireEvent.change(screen.getByRole("combobox", { name: "Genre" }), {
+      target: { value: "clear" },
+    });
+    expect(screen.getByRole("button", { name: "Change 1 track" })).toBeEnabled();
+  });
+
+  it("keeps the same label in the asking stage above the threshold", async () => {
+    const onEdit = vi.fn().mockResolvedValue(null);
+    render(<EditValuesDialog open count={4213} onClose={vi.fn()} onEdit={onEdit} />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Genre value" }), {
+      target: { value: "House" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Change 4,213 tracks" }));
+    expect(onEdit).not.toHaveBeenCalled();
+    expect(screen.getByText("Change 4,213 tracks?")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Change 4,213 tracks" }));
+    await waitFor(() => expect(onEdit).toHaveBeenCalledTimes(1));
   });
 
   it("asks with the shared text above the threshold", () => {

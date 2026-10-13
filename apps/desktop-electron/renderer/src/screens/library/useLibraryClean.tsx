@@ -122,6 +122,14 @@ export function useLibraryClean({ batch, onMessage, onChanged }: LibraryCleanOpt
     [batch, open],
   );
 
+  // The same selection the apply uses, so the count is the apply's. Left out when the build's
+  // engine cannot count; the dialog then says the selection's size.
+  const previewApply = useCallback(
+    (fields: OverrideField[]) =>
+      window.cuepoint!.previewApplyMatch!({ fields, selection: open!.target.selection }),
+    [open],
+  );
+
   const edit = useCallback(
     async (change: OverrideEdit): Promise<string | null> => {
       if (!open) return "Nothing to edit.";
@@ -159,6 +167,7 @@ export function useLibraryClean({ batch, onMessage, onChanged }: LibraryCleanOpt
         count={open?.target.count ?? 0}
         onClose={close}
         onApply={apply}
+        preview={open?.kind === "apply" && window.cuepoint?.previewApplyMatch ? previewApply : undefined}
       />
       <EditValuesDialog
         open={open?.kind === "edit"}

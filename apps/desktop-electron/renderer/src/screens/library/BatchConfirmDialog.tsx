@@ -17,13 +17,16 @@ interface BatchConfirmDialogProps {
 
 export function BatchConfirmDialog({ batch }: BatchConfirmDialogProps) {
   const pending = batch.pending;
+  // Verb + how many: copying Beatport's values says so; every other kind changes tracks.
+  const verb = pending?.action.kind === "apply_match" ? "Copy to" : "Change";
+  const many = pending ? `${pending.count.toLocaleString()} ${pending.count === 1 ? "track" : "tracks"}` : "tracks";
   return (
     <Modal
       open={pending !== null}
-      title={pending ? `Change ${pending.count.toLocaleString()} ${pending.count === 1 ? "track" : "tracks"}?` : "Change tracks?"}
+      title={pending ? `${verb} ${many}?` : "Change tracks?"}
       onClose={batch.cancel}
       primaryAction={{
-        label: "Apply",
+        label: `${verb} ${many}`,
         onClick: () => void batch.confirm(),
         loading: batch.busy,
       }}

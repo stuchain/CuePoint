@@ -258,7 +258,11 @@ export function TagManagerDialog({
       </div>
 
       {pending && (
-        <div className="cp-tag-manager__confirm" role="alertdialog" aria-label="Confirm">
+        <div
+          className="cp-tag-manager__confirm"
+          role="alertdialog"
+          aria-label={pending.kind === "delete" ? "Delete tag" : "Merge tags"}
+        >
           <p>
             {pending.kind === "delete"
               ? describeDelete(pending.tag)
@@ -269,7 +273,7 @@ export function TagManagerDialog({
               Cancel
             </Button>
             <Button variant="danger" onClick={confirm}>
-              {pending.kind === "delete" ? "Delete" : "Merge"}
+              {pending.kind === "delete" ? "Delete tag" : "Merge tags"}
             </Button>
           </div>
         </div>

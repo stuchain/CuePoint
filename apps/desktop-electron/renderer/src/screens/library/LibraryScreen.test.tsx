@@ -2402,7 +2402,7 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.click((await menuItem("Favorite")));
       await screen.findByText("Favorite 47,913 tracks?");
 
-      await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+      await userEvent.click(screen.getByRole("button", { name: "Change 47,913 tracks" }));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
     });
@@ -3246,7 +3246,7 @@ describe("the tag manager (ORG-12)", () => {
     await userEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
     await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
     // The bar under the tree has a Delete of its own; the question's is in the dialog.
-    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete" }));
+    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete tag" }));
 
     await waitFor(() => expect(bridge.deleteTag).toHaveBeenCalledWith({ id: 21 }));
     // The engine's count, not the one the confirmation warned about.

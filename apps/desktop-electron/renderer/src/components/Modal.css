@@ -61,6 +61,15 @@
   flex: none;
 }
 
+/* Why the main button is greyed: one muted line just above the footer. */
+.cp-modal__reason {
+  margin: 0;
+  padding: 0 var(--space-lg) var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  text-align: right;
+}
+
 .cp-modal__footer {
   display: flex;
   justify-content: flex-end;

@@ -13,7 +13,7 @@
  */
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TrackContextMenu, type TrackContextMenuItem } from "./TrackContextMenu";
 import css from "./TrackContextMenu.css?raw";
@@ -258,6 +258,39 @@ describe("the menu", () => {
       const top = parseFloat(screen.getByRole("menu", { name: "Rate" }).style.top);
       expect(top + 300).toBeLessThanOrEqual(window.innerHeight);
       vi.restoreAllMocks();
+    });
+
+    describe("at 1440x900 (W4)", () => {
+      const size = { width: window.innerWidth, height: window.innerHeight };
+      beforeEach(() => {
+        Object.assign(window, { innerWidth: 1440, innerHeight: 900 });
+      });
+      afterEach(() => {
+        Object.assign(window, { innerWidth: size.width, innerHeight: size.height });
+        vi.restoreAllMocks();
+      });
+
+      it("lines its bottom up with the entry's when there is not room below", async () => {
+        // Sliding it up to fit left it covering the main menu; its bottom edge
+        // meets the entry's bottom edge instead, so the entry stays in view.
+        laidOut(220, 850);
+        render(<TrackContextMenu x={20} y={850} items={withSubmenu} onClose={vi.fn()} />);
+
+        await userEvent.click(screen.getByRole("menuitem", { name: "Rate" }));
+
+        const top = parseFloat(screen.getByRole("menu", { name: "Rate" }).style.top);
+        expect(top).toBe(850 + 30 - 300);
+        expect(parseFloat(screen.getByRole("menu", { name: "Rate" }).style.left)).toBe(220);
+      });
+
+      it("still starts level with the entry when there is room below", async () => {
+        laidOut(220, 400);
+        render(<TrackContextMenu x={20} y={400} items={withSubmenu} onClose={vi.fn()} />);
+
+        await userEvent.click(screen.getByRole("menuitem", { name: "Rate" }));
+
+        expect(parseFloat(screen.getByRole("menu", { name: "Rate" }).style.top)).toBe(400);
+      });
     });
   });
 

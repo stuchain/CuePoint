@@ -30,7 +30,7 @@ shares one batch id, so "revert what that apply did" is one question (CLEAN-06).
 from __future__ import annotations
 
 import uuid
-from typing import Iterable, List, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from cuepoint.models.match_attempt import STATE_ACCEPTED, MatchCandidate
 from cuepoint.models.track_metadata import TrackMetadata
@@ -173,10 +173,8 @@ class MatchApplyService(IMatchApplyService):
         changed = False
         with self._db.transaction(join_existing=True):
             for name in fields:
-                value = candidate_value(candidate, name, notation)
+                value = self._new_value(candidate, name, before, notation)
                 if value is None:
-                    continue
-                if (getattr(before, name) if before is not None else None) == value:
                     continue
                 self._metadata.set_override(
                     track_id,
@@ -188,6 +186,65 @@ class MatchApplyService(IMatchApplyService):
                 )
                 changed = True
         return changed
+
+    def would_change(
+        self, track_ids: Sequence[int], fields: Sequence[str], notation: str
+    ) -> Tuple[int, Dict[str, int]]:
+        """Count what :meth:`apply_decided` would change, writing nothing.
+
+        The apply dialog's button says how many tracks it will change, so this asks
+        the same question apply asks, per track and per field.
+
+        Returns:
+            How many tracks would change in any of the fields, and for each field
+            how many tracks would change in it.
+
+        """
+        per_field = {name: 0 for name in fields}
+        # Three reads for the whole selection, not three per track: the ids came from a
+        # resolved selection, so each is a track that exists.
+        wanted = [int(track_id) for track_id in track_ids]
+        matches = self._matches.get_matches(wanted)
+        accepted = {
+            track_id: match.candidate_id
+            for track_id, match in matches.items()
+            if match.state == STATE_ACCEPTED and match.candidate_id is not None
+        }
+        candidates = self._matches.get_candidates(accepted.values())
+        current = self._metadata.get_many(accepted)
+        tracks = 0
+        for track_id, candidate_id in accepted.items():
+            candidate = candidates.get(candidate_id)
+            if candidate is None:
+                continue
+            before = current.get(track_id)
+            moved = [
+                name
+                for name in fields
+                if self._new_value(candidate, name, before, notation) is not None
+            ]
+            for name in moved:
+                per_field[name] += 1
+            tracks += 1 if moved else 0
+        return tracks, per_field
+
+    @staticmethod
+    def _new_value(
+        candidate: MatchCandidate,
+        name: str,
+        before: Optional[TrackMetadata],
+        notation: str,
+    ) -> Optional[Any]:
+        """The value apply would write for a field, or None to leave it as it is.
+
+        None when the candidate has no usable value, or the track already has it.
+        """
+        value = candidate_value(candidate, name, notation)
+        if value is None:
+            return None
+        if (getattr(before, name) if before is not None else None) == value:
+            return None
+        return value
 
     def _accepted_candidate(self, track_id: int) -> Optional[MatchCandidate]:
         match = self._matches.get_match(track_id)

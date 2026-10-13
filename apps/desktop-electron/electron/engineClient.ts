@@ -3969,6 +3969,14 @@ export class EngineClient {
     return this.postJson("/api/v1/clean/apply", params);
   }
 
+  /** What applying would change, per field, without applying it (G7 step 7). */
+  async previewApplyMatch(params: {
+    fields: Array<"key" | "bpm" | "genre" | "label" | "year">;
+    selection: BatchSelection;
+  }): Promise<{ tracks: number; fields: Partial<Record<string, number>> }> {
+    return this.postJson("/api/v1/clean/apply-preview", params);
+  }
+
   /** Hand-edit a track's key, BPM, genre, label or year; `null` clears (DEC-068). */
   async setTrackOverrides(params: {
     trackId: number;
@@ -4079,7 +4087,6 @@ export class EngineClient {
   /** Restore what a write job, or every write to a track, replaced. */
   async startTagRestore(params: {
     job_id?: string;
-    track_id?: number;
   }): Promise<TagRestoreStarted> {
     return this.postJson("/api/v1/clean/tags/restore", params);
   }

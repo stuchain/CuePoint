@@ -278,8 +278,8 @@ groups. **When you act**: **Button presses**, **Things you drag and drop** and
 views** and **Alerts and confirmations**. **While you wait or scroll**:
 **Loading** and **Scrolling**. Each switch has a line saying what moves, and a
 small square beside it that moves once when you turn the switch on. **Turn all
-on** and **Turn all off** set all ten at once, and **Reset to defaults** (which
-asks first, and offers **Undo**) turns them all back on.
+on** and **Turn all off** set all ten at once, and **Reset Motion** (which acts at
+once, and offers **Undo**) turns them all back on.
 
 The first line says whether your system's Reduce motion setting is on. While it
 is, nothing moves, whatever the switches say, and they work again as soon as you
@@ -336,7 +336,7 @@ at Medium otherwise (at Small if Compact would be too big too). If you chose a s
 before, or you updated from an earlier version, CuePoint keeps it, and opens at
 Medium if you never chose one.
 
-**Reset to defaults** sets Neo dark at the default size after asking, and the
+**Reset Appearance** sets Neo dark at the default size at once, and the
 message that follows has **Undo**. Your custom themes are kept.
 
 ## Privacy and error reports

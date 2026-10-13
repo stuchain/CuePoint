@@ -179,6 +179,17 @@ describe("queueing without interrupting (DEC-013)", () => {
     expect(onMessage).toHaveBeenCalledWith("1 track added to the queue");
     expect(player.playQueue).not.toHaveBeenCalled();
   });
+
+  it("says Add to queue added to the queue, not that it will play next (W5)", async () => {
+    install();
+    const { result, onMessage } = mount();
+
+    await act(() => result.current.addToQueue([row(3)]));
+
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage).toHaveBeenCalledWith("1 track added to the queue");
+    expect(onMessage.mock.calls[0]![0]).not.toMatch(/play next/);
+  });
 });
 
 describe("the queue item a row becomes", () => {

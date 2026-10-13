@@ -50,6 +50,7 @@ from cuepoint.services.match_apply import MatchApplyService
 from cuepoint.services.match_state import MatchStateService
 from cuepoint.services.metadata_service import MetadataService
 from cuepoint.services.migration_runner import MigrationRunner
+from cuepoint.services.override_values import NOTATION_CLASSIC
 from cuepoint.services.tag_service import TagService
 
 QUESTION = Track(title="A Title", artist="An Artist")
@@ -549,6 +550,76 @@ class TestBatchHandEdits:
             BatchOperation(OPERATION_SET_OVERRIDE, {"field": "year", "value": 2000}),
         )
         assert (result.changed, result.failed) == (1, 1)
+
+
+class TestWouldChange:
+    """The count behind the apply dialog's button: what apply would change, writing nothing."""
+
+    def test_an_accepted_match_with_a_differing_value_counts(
+        self, apply, matched, db, ids
+    ):
+        matched(ids["1"], bpm="126", genre="Techno")
+
+        tracks, per_field = apply.would_change(
+            [ids["1"]], ["bpm", "genre"], NOTATION_CLASSIC
+        )
+
+        assert (tracks, per_field) == (1, {"bpm": 1, "genre": 1})
+        assert count(db, "track_metadata") == 0
+
+    def test_a_value_you_already_have_does_not_count(
+        self, apply, matched, metadata, ids
+    ):
+        matched(ids["1"], bpm="126", genre="Techno")
+        metadata.set_override(ids["1"], "bpm", 126.0)
+
+        tracks, per_field = apply.would_change(
+            [ids["1"]], ["bpm", "genre"], NOTATION_CLASSIC
+        )
+
+        assert (tracks, per_field) == (1, {"bpm": 0, "genre": 1})
+
+    def test_no_accepted_match_and_a_missing_field_do_not_count(
+        self, apply, matched, ids
+    ):
+        matched(ids["1"], genre=None)
+        matched(ids["2"], score=80.0)  # needs review
+        # ids["3"] has no match at all
+
+        tracks, per_field = apply.would_change(
+            [ids["1"], ids["2"], ids["3"]], ["genre"], NOTATION_CLASSIC
+        )
+
+        assert (tracks, per_field) == (0, {"genre": 0})
+
+    def test_it_reads_in_bulk_not_per_track(self, apply, matched, db, ids):
+        for rid in ("1", "2", "4"):
+            matched(ids[rid])
+        statements: List[str] = []
+        connection = db.connect()
+        connection.set_trace_callback(statements.append)
+        try:
+            apply.would_change(list(ids.values()), ["bpm"], NOTATION_CLASSIC)
+        finally:
+            connection.set_trace_callback(None)
+        # Matches, candidates and metadata: one read each for the whole selection.
+        assert len(statements) <= 3
+
+    def test_it_agrees_with_what_a_batch_then_changes(
+        self, apply, batch, matched, metadata, ids
+    ):
+        matched(ids["1"], bpm="126")
+        matched(ids["2"], bpm="132")
+        metadata.set_override(ids["2"], "bpm", 132.0)
+        wanted = [ids["1"], ids["2"], ids["3"]]
+
+        tracks, _ = apply.would_change(wanted, ["bpm"], NOTATION_CLASSIC)
+        result = batch.apply_batch(
+            BatchSelection.of_ids(wanted),
+            BatchOperation(OPERATION_APPLY_MATCH, ["bpm"]),
+        )
+
+        assert tracks == result.changed == 1
 
 
 class TestBatchApply:

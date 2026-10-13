@@ -106,7 +106,6 @@ export function MotionSettingsPanel() {
         <div className="motion-settings__actions">
           <ResetToDefaults
             section="Motion"
-            summary="This turns every kind of motion back on. Motion still follows your system's Reduce motion setting."
             onReset={resetToDefaults}
           />
         </div>

@@ -213,9 +213,10 @@ through them. A search that was resumed is still one line. Type in the search bo
 Change many tracks at once. Pick the tracks, then use one of three buttons:
 
 - **Edit values…** sets or clears your key, BPM, genre, label and year on all of
-  them.
+  them. Its button says **Change 40 tracks**, and is greyed until you set or clear a value.
 - **Use Beatport's values…** copies the BPM, genre, label and year you choose from
-  each track's accepted match. The key is not on the list: an accepted match
+  each track's confirmed match. Each tick shows how many tracks it would change, and the
+  button says the total: **Copy to 212 tracks**. The key is not on the list: a confirmed match
   already gives a track its key (see [One at a time](#one-at-a-time) to replace a
   key of your own).
 - **Save changes into the files…** writes your values into the audio files. A

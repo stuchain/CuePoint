@@ -170,7 +170,7 @@ describe("the scope picker", () => {
     fireEvent.click(button("Edit values…"));
     fireEvent.change(await screen.findByLabelText("Genre value"), { target: { value: "House" } });
     const dialog = screen.getByRole("dialog", { name: "Edit values" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Change 3,880 tracks" }));
     // 3,880 tracks is a big batch: the editor asks with the number first (LIB-11).
     fireEvent.click(await within(dialog).findByRole("button", { name: "Change 3,880 tracks" }));
     await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
@@ -201,7 +201,7 @@ describe("tracks passed in by an opener", () => {
     fireEvent.click(button("Edit values…"));
     const dialog = await screen.findByRole("dialog", { name: "Edit values" });
     fireEvent.change(within(dialog).getByLabelText("Genre value"), { target: { value: "House" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Change 3 tracks" }));
     await waitFor(() =>
       expect(bridge.applyBatch).toHaveBeenCalledWith({
         selection: { track_ids: [4, 5, 6] },
@@ -216,7 +216,7 @@ describe("tracks passed in by an opener", () => {
     fireEvent.click(button("Edit values…"));
     const dialog = await screen.findByRole("dialog", { name: "Edit values" });
     fireEvent.change(within(dialog).getByLabelText("BPM value"), { target: { value: "128" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Change 1 track" }));
     await waitFor(() =>
       expect(bridge.setTrackOverrides).toHaveBeenCalledWith({ trackId: 9, bpm: 128 }),
     );
@@ -249,14 +249,26 @@ describe("Use Beatport's values", () => {
       expect(within(dialog).getByRole("checkbox", { name: field })).toBeInTheDocument();
     }
     expect(within(dialog).queryByRole("checkbox", { name: /key/i })).toBeNull();
-    expect(dialog).toHaveTextContent(/accepted match already gives/i);
+  });
+
+  it("counts what would change for the same selection, and puts the number on the button", async () => {
+    bridge.previewApplyMatch = vi.fn().mockResolvedValue({ tracks: 2, fields: { genre: 2 } });
+    open({ ids: [4, 5, 6] }, "beatport");
+    const dialog = await screen.findByRole("dialog", { name: "Use Beatport's values" });
+    expect(await within(dialog).findAllByText("\u00b7 2 tracks would change")).not.toHaveLength(0);
+    expect(bridge.previewApplyMatch).toHaveBeenCalledWith({
+      fields: ["bpm", "genre", "label", "year"],
+      selection: { track_ids: [4, 5, 6] },
+    });
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Genre" }));
+    expect(await within(dialog).findByRole("button", { name: "Copy to 2 tracks" })).toBeEnabled();
   });
 
   it("copies the fields ticked from each track's accepted match", async () => {
     open({ ids: [4, 5, 6] }, "beatport");
     const dialog = await screen.findByRole("dialog", { name: "Use Beatport's values" });
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "Genre" }));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Copy to 3 tracks" }));
     await waitFor(() =>
       expect(bridge.applyBatch).toHaveBeenCalledWith({
         selection: { track_ids: [4, 5, 6] },
@@ -293,16 +305,16 @@ describe("a big batch (LIB-11)", () => {
     open(BIG, "beatport");
     const dialog = await screen.findByRole("dialog", { name: "Use Beatport's values" });
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "Genre" }));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Copy to 4,213 tracks" }));
 
-    const ask = await screen.findByRole("dialog", { name: "Change 4,213 tracks?" });
+    const ask = await screen.findByRole("dialog", { name: "Copy to 4,213 tracks?" });
     expect(ask).toHaveTextContent("Apply Beatport's genre to 4,213 tracks?");
     expect(ask).toHaveTextContent("It runs in the background; you can keep working.");
     expect(ask).toHaveTextContent("Every change is recorded in each track's History");
     expect(ask).toHaveTextContent("Activity");
     expect(bridge.applyBatch).not.toHaveBeenCalled();
 
-    fireEvent.click(within(ask).getByRole("button", { name: "Apply" }));
+    fireEvent.click(within(ask).getByRole("button", { name: "Copy to 4,213 tracks" }));
     await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalledTimes(1));
   });
 
@@ -310,7 +322,7 @@ describe("a big batch (LIB-11)", () => {
     open(BIG, "edit");
     const dialog = await screen.findByRole("dialog", { name: "Edit values" });
     fireEvent.change(within(dialog).getByLabelText("Genre value"), { target: { value: "House" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Change 4,213 tracks" }));
 
     expect(await within(dialog).findByText("Change 4,213 tracks?")).toBeInTheDocument();
     expect(bridge.applyBatch).not.toHaveBeenCalled();
@@ -322,8 +334,8 @@ describe("a big batch (LIB-11)", () => {
     open(BIG, "beatport");
     const dialog = await screen.findByRole("dialog", { name: "Use Beatport's values" });
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "Genre" }));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
-    const ask = await screen.findByRole("dialog", { name: "Change 4,213 tracks?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Copy to 4,213 tracks" }));
+    const ask = await screen.findByRole("dialog", { name: "Copy to 4,213 tracks?" });
     fireEvent.click(within(ask).getByRole("button", { name: "Cancel" }));
     expect(bridge.applyBatch).not.toHaveBeenCalled();
   });
@@ -332,7 +344,7 @@ describe("a big batch (LIB-11)", () => {
     open({ ...BIG, count: 1000 }, "beatport");
     const dialog = await screen.findByRole("dialog", { name: "Use Beatport's values" });
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "Genre" }));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Copy to 1,000 tracks" }));
     await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
     expect(screen.queryByRole("dialog", { name: /^Change / })).toBeNull();
   });

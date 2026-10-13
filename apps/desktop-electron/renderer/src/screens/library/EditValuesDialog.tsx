@@ -40,7 +40,7 @@ interface EditValuesDialogProps {
   onEdit: (edit: OverrideEdit) => Promise<string | null>;
   /**
    * The track's values as they are now, for an edit of one track (Track
-   * details). A field with none reads "none". Left out, nothing is shown.
+   * details). A field with none reads "not set". Left out, nothing is shown.
    */
   current?: Partial<Record<OverrideField, string | null>>;
 }
@@ -81,10 +81,8 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
       setProblems({ [built.field]: built.reason });
       return;
     }
-    if (built.edits.length === 0) {
-      setGeneral("Choose at least one field to set or clear.");
-      return;
-    }
+    // The button is greyed with its reason while there is nothing to change.
+    if (built.edits.length === 0) return;
     if (count > BATCH_JOB_THRESHOLD && !asking) {
       setAsking(true);
       return;
@@ -120,6 +118,10 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
   };
 
   const many = `${count.toLocaleString()} ${count === 1 ? "track" : "tracks"}`;
+  // Nothing set and nothing cleared: the same data save() builds its edits from. A value
+  // that does not parse is left enabled, so pressing the button names the field.
+  const built = editsFromDraft(draft);
+  const nothingToChange = built.ok && built.edits.length === 0;
 
   return (
     <Modal
@@ -128,9 +130,11 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
       size="wide"
       onClose={onClose}
       primaryAction={{
-        label: asking ? `Change ${many}` : "Apply",
+        label: `Change ${many}`,
         onClick: () => void save(),
         loading: saving,
+        disabled: nothingToChange,
+        disabledReason: "Set or clear at least one value.",
       }}
       secondaryAction={
         asking
@@ -140,9 +144,8 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
     >
       <div className="clean-dialog">
         <p className="clean-dialog__lead">
-          Your values for {many}. They cover what Rekordbox sent without changing it, and
-          clearing one shows Rekordbox&rsquo;s again. Every change is recorded and can be
-          reverted.
+          Changes are kept in CuePoint and can be undone. Rekordbox&rsquo;s own values are not
+          touched.
         </p>
         {asking && (
           <div role="alert">

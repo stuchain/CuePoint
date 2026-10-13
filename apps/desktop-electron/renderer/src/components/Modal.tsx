@@ -18,6 +18,8 @@ interface ModalProps {
     onClick: () => void;
     loading?: boolean;
     disabled?: boolean;
+    /** One line saying why it is greyed; shown only while `disabled` is true. */
+    disabledReason?: string;
   };
   secondaryAction?: { label: string; onClick: () => void };
   /**
@@ -65,6 +67,7 @@ export function Modal({
   // first title in it: while one dialog plays its exit and the next opens, both read as
   // whichever of them comes first in the page.
   const titleId = useId();
+  const reasonId = useId();
   // Where focus was before the dialog opened, so it can be put back.
   const restoreTo = useRef<HTMLElement | null>(null);
 
@@ -124,6 +127,8 @@ export function Modal({
   const presence = usePresence<HTMLDivElement>(open);
   if (!presence.present) return null;
 
+  const reason = primaryAction?.disabled ? primaryAction.disabledReason : undefined;
+
   return (
     <div
       ref={presence.ref}
@@ -151,6 +156,11 @@ export function Modal({
           <Button variant="secondary" iconOnly icon="close" onClick={onClose} aria-label="Close" />
         </header>
         <div className="cp-modal__body">{children}</div>
+        {reason && (
+          <p id={reasonId} className="cp-modal__reason">
+            {reason}
+          </p>
+        )}
         {(primaryAction || secondaryAction || backAction) && (
           <footer className="cp-modal__footer">
             {secondaryAction && (
@@ -169,6 +179,7 @@ export function Modal({
                 onClick={primaryAction.onClick}
                 loading={primaryAction.loading}
                 disabled={primaryAction.disabled}
+                aria-describedby={reason ? reasonId : undefined}
               >
                 {primaryAction.label}
               </Button>

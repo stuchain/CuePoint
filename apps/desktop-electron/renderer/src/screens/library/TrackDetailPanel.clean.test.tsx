@@ -372,7 +372,7 @@ describe("your five values (DEC-205)", () => {
     const handlers = panel();
     const dialog = await editor();
     await userEvent.type(within(dialog).getByLabelText("BPM value"), "124.5");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Change 1 track" }));
     await waitFor(() => expect(bridge.setTrackOverrides).toHaveBeenCalledWith({ trackId: 12, bpm: 124.5 }));
     expect(bridge.setTrackOverrides).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(handlers.onTrackChanged).toHaveBeenCalled());
@@ -383,7 +383,7 @@ describe("your five values (DEC-205)", () => {
     const handlers = panel();
     const dialog = await editor();
     await userEvent.type(within(dialog).getByLabelText("BPM value"), "400");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Change 1 track" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("bpm must be between 20 and 300, not 400");
     expect(handlers.onTrackChanged).not.toHaveBeenCalled();
   });
@@ -392,7 +392,7 @@ describe("your five values (DEC-205)", () => {
     panel();
     const dialog = await editor();
     await userEvent.type(within(dialog).getByLabelText("Year value"), "soon");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Change 1 track" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Year is a number, not “soon”");
     expect(bridge.setTrackOverrides).not.toHaveBeenCalled();
   });

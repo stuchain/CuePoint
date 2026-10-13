@@ -910,6 +910,10 @@ export class EngineSupervisor {
     return (await this.readyClient()).applyMatch(params);
   }
 
+  async previewApplyMatch(params: Parameters<EngineClient["previewApplyMatch"]>[0]) {
+    return (await this.readyClient()).previewApplyMatch(params);
+  }
+
   async correctMatch(params: Parameters<EngineClient["correctMatch"]>[0]) {
     return (await this.readyClient()).correctMatch(params);
   }

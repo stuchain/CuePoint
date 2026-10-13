@@ -2039,6 +2039,17 @@ class IMatchRepository(ABC):
         """Return one candidate, or None."""
         ...
 
+    def get_candidates(
+        self, candidate_ids: Iterable[int]
+    ) -> Dict[int, "MatchCandidate"]:
+        """Return the candidates that exist, keyed by id. Repositories read in bulk."""
+        found: Dict[int, "MatchCandidate"] = {}
+        for candidate_id in candidate_ids:
+            candidate = self.get_candidate(candidate_id)
+            if candidate is not None:
+                found[int(candidate_id)] = candidate
+        return found
+
     @abstractmethod
     def winner_of(self, attempt_id: int) -> Optional["MatchCandidate"]:
         """Return the candidate an attempt chose, or None."""
@@ -2905,6 +2916,13 @@ class IMatchApplyService(ABC):
         self, track_id: int, fields: Sequence[str], batch_id: str, notation: str
     ) -> bool:
         """Batch form: apply what the accepted candidate has; True if changed."""
+        ...
+
+    @abstractmethod
+    def would_change(
+        self, track_ids: Sequence[int], fields: Sequence[str], notation: str
+    ) -> Tuple[int, Dict[str, int]]:
+        """Count the tracks, and per field, the batch form would change; writes nothing."""
         ...
 
 

@@ -244,6 +244,19 @@ class MatchRepository(IMatchRepository):
         )
         return None if row is None else MatchCandidate.from_row(row)
 
+    def get_candidates(self, candidate_ids: Iterable[int]) -> Dict[int, MatchCandidate]:
+        """Return the candidates that exist, keyed by id: one query per chunk."""
+        found: Dict[int, MatchCandidate] = {}
+        connection = self._db.connect()
+        for chunk in chunked(unique_ids(candidate_ids), CHUNK_SIZE):
+            placeholders = ", ".join("?" for _ in chunk)
+            for row in connection.execute(
+                f"{_SELECT_CANDIDATE} WHERE id IN ({placeholders})", tuple(chunk)
+            ):
+                candidate = MatchCandidate.from_row(row)
+                found[int(candidate.id)] = candidate
+        return found
+
     def winner_of(self, attempt_id: int) -> Optional[MatchCandidate]:
         """Return the candidate an attempt chose, or ``None`` when it chose none."""
         row = (

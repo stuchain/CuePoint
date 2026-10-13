@@ -719,6 +719,9 @@ function registerIpcHandlers(): void {
   handle("engine:applyMatch", (_event, params) =>
     engine.applyMatch(params),
   );
+  handle("engine:previewApplyMatch", (_event, params) =>
+    engine.previewApplyMatch(params),
+  );
   handle("engine:setTrackOverrides", (_event, params) =>
     engine.setTrackOverrides(params),
   );

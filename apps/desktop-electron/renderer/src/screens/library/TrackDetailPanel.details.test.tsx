@@ -326,7 +326,7 @@ describe("Edit values… (INS-4, DEC-205)", () => {
     expect(dialog).toHaveTextContent("1 track");
     expect(dialog).toHaveTextContent("Now: Progressive House");
     fireEvent.change(within(dialog).getByLabelText("BPM value"), { target: { value: "126" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Change 1 track" }));
     await waitFor(() =>
       expect(bridge.setTrackOverrides).toHaveBeenCalledWith({ trackId: 12, bpm: 126 }),
     );
@@ -338,7 +338,7 @@ describe("Edit values… (INS-4, DEC-205)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit values…" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit values" });
     fireEvent.change(within(dialog).getByLabelText("Genre value"), { target: { value: "House" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Apply" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Change 1 track" }));
     await waitFor(() => expect(onTrackChanged).toHaveBeenCalled());
   });
 

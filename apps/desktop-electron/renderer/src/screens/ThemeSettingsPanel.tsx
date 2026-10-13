@@ -207,7 +207,6 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
           </Button>
           <ResetToDefaults
             section="Appearance"
-            summary="This sets the theme to Neo dark and the size of text and controls to its default. Your custom themes are kept."
             onReset={resetToDefaults}
           />
         </div>
