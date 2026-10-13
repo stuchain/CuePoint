@@ -656,7 +656,9 @@ describe("a shell without the Sets bridge", () => {
     install();
     renderScreen();
     await ready();
-    expect(screen.queryByRole("button", { name: "New Set" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "+ New" }));
+    expect(labels(screen.getByRole("menu"))).toEqual(["Collection", "Folder"]);
+    await userEvent.keyboard("{Escape}");
     expect(labels(await rowMenu("Close"))).not.toContain("Add to Set…");
     expect(labels(screen.getByRole("menu"))).not.toContain("New Set from these…");
     await userEvent.keyboard("{Escape}");
@@ -674,6 +676,7 @@ describe("a shell without the Sets bridge", () => {
   it("still offers New Set where it can", async () => {
     renderScreen();
     await ready();
-    expect(screen.getByRole("button", { name: "New Set" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "+ New" }));
+    expect(labels(screen.getByRole("menu"))).toEqual(["Collection", "Set", "Folder"]);
   });
 });

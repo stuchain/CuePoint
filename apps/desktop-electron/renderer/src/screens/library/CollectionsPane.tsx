@@ -22,10 +22,12 @@
  * whose tag or Collection has been deleted; showing the rule that broke is
  * more useful than hiding it, so the row is drawn, marked, and still opens.
  *
- * **A row has a context menu** (EXPORT-07): what its trailing buttons do, and
- * "Export to Rekordbox…" (DEC-087), which opens the export with that node
- * ticked. The buttons stay, because a menu is not a thing a first-time user
- * finds; the menu is where an action with no button of its own can live.
+ * **A row carries no controls of its own** (K14). Rename, Delete, Duplicate
+ * and Freeze were icons that appeared on hover, which a keyboard or a touch
+ * screen never sees; each is on the bar under the tree while the row is
+ * selected (DEC-245), on the row's context menu (EXPORT-07) with "Export to
+ * Rekordbox…" (DEC-087), and Rename and Delete on F2 and Delete as well.
+ * Making something is one "+ New" menu over the tree rather than three buttons.
  *
  * **A Set is a node here too** (DEC-102, DEC-104). It is made beside a
  * Collection, filed in folders, takes dropped tracks and scopes the table —
@@ -37,7 +39,9 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
+import { PixelIcon } from "../../components/PixelIcon";
 import {
   TrackContextMenu,
   type TrackContextMenuItem,
@@ -204,6 +208,8 @@ export function CollectionsPane({
   const [menu, setMenu] = useState<{ node: CollectionTreeNode; x: number; y: number } | null>(
     null,
   );
+  /** Where the "+ New" menu hangs, under its button (K14). */
+  const [newMenu, setNewMenu] = useState<{ x: number; y: number } | null>(null);
   const say = useCallback(
     (message: string, tone: "info" | "warning") => {
       setNote(message);
@@ -458,6 +464,17 @@ export function CollectionsPane({
       reason: canDuplicate ? null : "Only a Smart Collection or a Set can be duplicated",
       run: () => void duplicate(node),
     });
+    // Only a saved question can be frozen, so the button is drawn for one and
+    // for nothing else rather than shown refused (K14: it was a row icon).
+    if (node.kind === "smart" && onFreezeSmart) {
+      buttons.push({
+        id: "freeze",
+        label: "Freeze to a Collection…",
+        short: "Freeze…",
+        reason: null,
+        run: () => setFreezing(node),
+      });
+    }
     buttons.push({
       id: "delete",
       label: "Delete",
@@ -540,43 +557,23 @@ export function CollectionsPane({
         </button>
       </div>
 
-      {/* The three ways to make something, said in words (FLW-10). Made inside the
+      {/* The three ways to make something, as one menu (FLW-10, K14). Made inside the
           selected folder when one is selected, straight into the new row's name. */}
       {!collapsed && (
         <div className="cp-collections__create" role="group" aria-label="Make something new">
-          {/* "New" once, over three short words: the pane is about 160px wide in
-              the default window, where three full names took a line each. The
-              buttons keep their full names for assistive technology. */}
-          <span className="cp-collections__create-word" aria-hidden>
-            New
-          </span>
-          <button
-            type="button"
-            className="cp-collections__make"
-            aria-label="New Collection"
-            onClick={() => void create("collection")}
+          <Button
+            variant="secondary"
+            size="sm"
+            aria-haspopup="menu"
+            aria-expanded={newMenu !== null}
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              setNewMenu({ x: rect.left, y: rect.bottom });
+            }}
           >
-            Collection
-          </button>
-          {/* Beside "New Collection", and made the same way (DEC-104). */}
-          {canMakeSets && (
-            <button
-              type="button"
-              className="cp-collections__make"
-              aria-label="New Set"
-              onClick={() => void create("set")}
-            >
-              Set
-            </button>
-          )}
-          <button
-            type="button"
-            className="cp-collections__make"
-            aria-label="New folder"
-            onClick={() => void create("folder")}
-          >
-            Folder
-          </button>
+            + New
+            <PixelIcon name="chevron-down" />
+          </Button>
         </div>
       )}
 
@@ -631,63 +628,6 @@ export function CollectionsPane({
               void askToDelete(node);
             }
           }}
-          actions={(row) => (
-            <span className="cp-collections__row-actions">
-              {row.kind === "smart" && onDuplicateSmart && (
-                <button
-                  type="button"
-                  className="cp-collections__action"
-                  aria-label={`Duplicate ${row.name}`}
-                  title="Duplicate — a second, separate saved filter"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    const node = nodeFor(row.key);
-                    if (node) void duplicate(node);
-                  }}
-                >
-                  ⧉
-                </button>
-              )}
-              {row.kind === "smart" && onFreezeSmart && (
-                <button
-                  type="button"
-                  className="cp-collections__action"
-                  aria-label={`Freeze ${row.name}`}
-                  title="Freeze — keep what it matches now, as a Collection"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    const node = nodeFor(row.key);
-                    if (node) setFreezing(node);
-                  }}
-                >
-                  ❄
-                </button>
-              )}
-              <button
-                type="button"
-                className="cp-collections__action"
-                aria-label={`Rename ${row.name}`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setRenamingId(Number(row.key));
-                }}
-              >
-                ✎
-              </button>
-              <button
-                type="button"
-                className="cp-collections__action"
-                aria-label={`Delete ${row.name}`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  const node = nodeFor(row.key);
-                  if (node) void askToDelete(node);
-                }}
-              >
-                ✕
-              </button>
-            </span>
-          )}
         >
           {status === "ready" && rows.length === 0 && (
             <p className="cp-collections__empty">No Collections yet</p>
@@ -709,8 +649,8 @@ export function CollectionsPane({
       )}
 
       {/* What can be done to the selected node, shown while a node is selected
-          (DEC-245). Freeze, "Copy set list" and "New Set from…" stay on the
-          right-click menu. */}
+          (DEC-245). "Copy set list" and "New Set from…" stay on the right-click
+          menu. */}
       {!collapsed && selected !== null && (
         <div
           ref={barKeys.ref}
@@ -736,6 +676,22 @@ export function CollectionsPane({
             </button>
           ))}
         </div>
+      )}
+
+      {newMenu && (
+        <TrackContextMenu
+          x={newMenu.x}
+          y={newMenu.y}
+          label="New"
+          onClose={() => setNewMenu(null)}
+          items={[
+            { id: "collection", label: "Collection", onSelect: () => void create("collection") },
+            ...(canMakeSets
+              ? [{ id: "set", label: "Set", onSelect: () => void create("set") }]
+              : []),
+            { id: "folder", label: "Folder", onSelect: () => void create("folder") },
+          ]}
+        />
       )}
 
       {menu && (

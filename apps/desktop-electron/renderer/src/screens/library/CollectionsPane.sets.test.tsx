@@ -3,7 +3,7 @@
  * engine sent (`librarySets.fixture.json`).
  *
  * - **Drawn as a Set**: Prepare's flag and its entry count, repeats counted.
- * - **Made as a node is**: "New Set" beside "New Collection", in the selected
+ * - **Made as a node is**: "Set" in the "+ New" menu beside Collection, in the selected
  *   folder, straight into its name — offered only where a Set can be made.
  * - **Its own menu**: "Open in Prepare" (once there is a Prepare), "Duplicate",
  *   the set list and the export; "New Set from…" on a Collection and a Smart
@@ -36,6 +36,11 @@ import {
 import { PlaylistPane } from "./PlaylistPane";
 import { NewSetFromDialog } from "./NewSetFromDialog";
 import { NO_SETS_BRIDGE, useCollectionTree } from "./useCollectionTree";
+
+async function chooseNew(item: "Collection" | "Set" | "Folder") {
+  await userEvent.click(screen.getByRole("button", { name: "+ New" }));
+  await userEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: item }));
+}
 
 function paneWith(overrides: Partial<React.ComponentProps<typeof CollectionsPane>> = {}) {
   const tree = buildCollectionTree(TREE);
@@ -127,7 +132,7 @@ describe("a Set in the tree", () => {
 describe("making a Set", () => {
   it("sits beside New Collection and goes straight into its name", async () => {
     const { onCreate } = paneWith();
-    await userEvent.click(screen.getByRole("button", { name: "New Set" }));
+    await chooseNew("Set");
     expect(onCreate).toHaveBeenCalledWith("set", "New Set", null);
     expect(await screen.findByRole("textbox")).toHaveValue("Friday");
   });
@@ -151,14 +156,15 @@ describe("making a Set", () => {
         canMakeSets
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: "New Set" }));
+    await chooseNew("Set");
     expect(onCreate).toHaveBeenCalledWith("set", "New Set", GIGS.id);
   });
 
-  it("is not offered by a shell that cannot make one", () => {
+  it("is not offered by a shell that cannot make one", async () => {
     paneWith({ canMakeSets: false });
-    expect(screen.queryByRole("button", { name: "New Set" })).toBeNull();
-    expect(screen.getByRole("button", { name: "New Collection" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "+ New" }));
+    const items = within(screen.getByRole("menu")).getAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual(["Collection", "Folder"]);
   });
 
   it("makes a Set in an empty tree from New Set over the tree", async () => {
@@ -180,7 +186,7 @@ describe("making a Set", () => {
       />,
     );
     expect(screen.getByText("No Collections yet")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "New Set" }));
+    await chooseNew("Set");
     expect(onCreate).toHaveBeenCalledWith("set", "New Set", null);
   });
 });

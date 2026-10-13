@@ -1,15 +1,15 @@
 /**
- * The tree's labelled buttons and the bar under it (FLW-10, PAGES-05C).
+ * The "+ New" menu and the bar under the tree (FLW-10, PAGES-05C, K14).
  *
- * "New Collection", "New Set" and "New folder" say their names over the tree.
+ * One "+ New" menu button over the tree makes a Collection, a Set or a Folder.
  * Under it, a bar for the selected node is shown while a node is selected (DEC-245):
  * Rename, Duplicate, Delete and Export to Rekordbox… on every node (folders too,
- * DEC-087), and for a Set also Open in Prepare and Save set list…. With nothing
- * selected there is no bar. Hover icons and the
- * right-click menu keep working; Freeze, "Copy set list" and "New Set from…"
- * stay on the right-click menu only.
+ * DEC-087), for a Smart Collection also Freeze…, and for a Set also Open in Prepare
+ * and Save set list…. With nothing selected there is no bar. Rows carry no icons of
+ * their own (K14); the right-click menu keeps working, and "Copy set list" and
+ * "New Set from…" stay on it only.
  */
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -57,31 +57,33 @@ function paneWith(
 
 const bar = () => screen.getByRole("toolbar", { name: "Selected Collection or Set" });
 
-describe("the labelled buttons over the tree", () => {
-  it("say New Collection, New Set and New folder: the word New once, then a short word each", () => {
+async function chooseNew(item: "Collection" | "Set" | "Folder") {
+  await userEvent.click(screen.getByRole("button", { name: "+ New" }));
+  await userEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: item }));
+}
+
+describe("the + New menu over the tree", () => {
+  it("is one button, '+ New', over the tree", () => {
     paneWith(null);
     const group = screen.getByRole("group", { name: "Make something new" });
-    expect(group).toHaveTextContent("New");
-    for (const [name, word] of [
-      ["New Collection", "Collection"],
-      ["New Set", "Set"],
-      ["New folder", "Folder"],
-    ] as const) {
-      // Visible text, not only an icon, under the button's full name.
-      expect(screen.getByRole("button", { name })).toHaveTextContent(word);
-    }
+    expect(within(group).getAllByRole("button")).toHaveLength(1);
+    expect(within(group).getByRole("button", { name: "+ New" })).toHaveAttribute(
+      "aria-haspopup",
+      "menu",
+    );
   });
 
-  it("make a node in the selected folder, as before", async () => {
+  it("makes a node in the selected folder, as before", async () => {
     const props = paneWith(GIGS);
-    await userEvent.click(screen.getByRole("button", { name: "New folder" }));
+    await chooseNew("Folder");
     expect(props.onCreate).toHaveBeenCalledWith("folder", "New folder", GIGS.id);
   });
 
-  it("leave New Set out where a Set cannot be made", () => {
+  it("leaves Set out of the menu where a Set cannot be made", async () => {
     paneWith(null, { canMakeSets: false });
-    expect(screen.queryByRole("button", { name: "New Set" })).toBeNull();
-    expect(screen.getByRole("button", { name: "New Collection" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "+ New" }));
+    const items = within(screen.getByRole("menu")).getAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual(["Collection", "Folder"]);
   });
 });
 
@@ -204,11 +206,32 @@ describe("the bar under the tree", () => {
   });
 });
 
+describe("Freeze lives on the bar for a Smart Collection (K14)", () => {
+  it("is drawn for a Smart Collection and asks before it freezes", async () => {
+    const props = paneWith(SMART);
+    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
+    expect(props.onFreezeSmart).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
+    expect(props.onFreezeSmart).toHaveBeenCalledWith(SMART.id);
+  });
+
+  it("is not drawn for a Collection, a Set or a folder", () => {
+    for (const node of [WARMUP, FRIDAY, GIGS]) {
+
+      paneWith(node);
+      expect(
+        within(bar()).queryByRole("button", { name: "Freeze to a Collection…" }),
+      ).toBeNull();
+      cleanup();
+    }
+  });
+});
+
 describe("what stays on the right-click menu only", () => {
-  it("keeps Freeze, Copy set list and New Set from… out of the bar", () => {
+  it("keeps Copy set list and New Set from… out of the bar", () => {
     paneWith(SMART);
     const names = within(bar()).getAllByRole("button").map((button) => button.textContent);
-    for (const left of ["Freeze", "Copy set list", "New Set from…"]) {
+    for (const left of ["Copy set list", "New Set from…"]) {
       expect(names.some((name) => name?.includes(left))).toBe(false);
     }
   });

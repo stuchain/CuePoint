@@ -37,7 +37,7 @@ A Set holds at most 1,000 entries. A Collection holds larger lists.
 ### Making a Set
 
 - **New Set**, in the **New Set ▾** menu in Prepare's header (it works with a
-  Set open) or the **New Set** button beside **New Collection** at the top of the Library's
+  Set open) or **Set** in the **+ New** menu at the top of the Library's
   Collections section, makes an empty Set in the folder you choose.
 - **New Set from…** copies the tracks of something you already have into a new
   Set, as its one chapter:

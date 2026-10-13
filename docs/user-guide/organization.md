@@ -19,9 +19,9 @@ A Collection is your own list of tracks: a set you are building, a shortlist,
 anything Rekordbox has no folder for. Folders hold Collections, and Collections
 hold tracks.
 
-- **Make one** with the buttons at the top of the Collections section, after the
-  word **New**: **Collection**, **Set** and **Folder**. A new Collection opens
-  ready for its name.
+- **Make one** with the **+ New** menu at the top of the Collections section:
+  **Collection**, **Set** or **Folder**. Whatever you make opens ready for its
+  name, inside the folder you have selected.
 - **Put tracks in it** by dragging a selection onto it, or by choosing **Add to
   Collection…** in the selection bar's **Organize ▸** or the right-click menu.
 - **Arrange it** by dragging rows inside it, or by selecting a row and pressing
@@ -29,13 +29,14 @@ hold tracks.
   alphabetically, and that order is saved.
 - **Move and file** Collections by dragging them between folders.
 - **Act on the one you selected** with the bar under the tree: **Rename**,
-  **Duplicate** (a Smart Collection or a Set), **Delete** and **Export…** (it
-  opens Export to Rekordbox, and its hover text says so), which every Collection, Smart Collection, Set and folder has. The
-  bar appears when you select one; with nothing selected it is not shown. The pencil, the ✕, F2 and Delete work too.
+  **Duplicate** (a Smart Collection or a Set), **Freeze…** (a Smart Collection),
+  **Delete** and **Export…** (it opens Export to Rekordbox, and its hover text
+  says so), which every Collection, Smart Collection, Set and folder has except
+  where noted. The bar appears when you select one; with nothing selected it is
+  not shown. Rows carry no buttons of their own. F2 and Delete work on a row too.
 - **Right-click** a Collection, Smart Collection or folder — or press the menu
-  key or Shift+F10 — for the same actions, plus the few that have no button:
-  **Freeze to a Collection…** on a Smart Collection, **New Set from…**, and
-  **Copy set list** on a Set.
+  key or Shift+F10 — for the same actions, plus the few that have no button on the bar:
+  **New Set from…**, and **Copy set list** on a Set.
 
 A delete says what it will remove before it removes it — "this folder and the
 three Collections in it" — and **no Collection operation ever deletes a track**.

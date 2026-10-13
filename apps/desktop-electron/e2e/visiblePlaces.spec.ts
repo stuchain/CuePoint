@@ -565,15 +565,18 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect(win.getByText("Made the Set “From the bar” with 2 entries.")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("New Collection, New Set and New folder: the labelled buttons over the tree", async () => {
+  test("New Collection, New Set and New folder: the + New menu over the tree", async () => {
     await openLibrary(win);
     const names = () =>
       win.evaluate(async () => (await (window as never as Bridge).cuepoint.getCollections()).collections.map((n: { name: string; kind: string }) => `${n.kind}:${n.name}`));
-    await use(win, win.getByRole("button", { name: "New Collection", exact: true }), "New Collection");
+    await use(win, win.getByRole("button", { name: "+ New", exact: true }), "+ New");
+    await choose(win, "Collection");
     await nameIt(win, "Opening crate");
-    await use(win, win.getByRole("button", { name: "New Set", exact: true }), "New Set");
+    await use(win, win.getByRole("button", { name: "+ New", exact: true }), "+ New");
+    await choose(win, "Set");
     await nameIt(win, "Opening set");
-    await use(win, win.getByRole("button", { name: "New folder", exact: true }), "New folder");
+    await use(win, win.getByRole("button", { name: "+ New", exact: true }), "+ New");
+    await choose(win, "Folder");
     await nameIt(win, "Opening folder");
     await expect.poll(names, { timeout: 15_000 }).toEqual(
       expect.arrayContaining(["collection:Opening crate", "set:Opening set", "folder:Opening folder"]),

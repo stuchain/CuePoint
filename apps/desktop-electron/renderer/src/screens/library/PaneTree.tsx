@@ -62,8 +62,6 @@ interface PaneTreeProps {
   renamingKey?: string | null;
   onRenameCommit?: (key: string, name: string) => void;
   onRenameCancel?: () => void;
-  /** Trailing controls for a row — the section decides what they are. */
-  actions?: (row: PaneTreeRow) => ReactNode;
   onRowKeyDown?: (key: string, event: KeyboardEvent<HTMLElement>) => void;
   /**
    * A row's context menu, asked for with the mouse or the keyboard — the menu
@@ -98,7 +96,6 @@ export function PaneTree({
   renamingKey = null,
   onRenameCommit,
   onRenameCancel,
-  actions,
   onRowKeyDown,
   onRowContextMenu,
   onDragStart,
@@ -285,8 +282,6 @@ export function PaneTree({
             {row.count != null && (
               <span className="cp-playlist-pane__count">{row.count.toLocaleString()}</span>
             )}
-
-            {actions?.(row)}
           </div>
         );
       })}

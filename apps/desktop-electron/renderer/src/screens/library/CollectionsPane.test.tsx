@@ -31,6 +31,7 @@ import {
   COLLECTIONS_PANE_STORAGE_KEY,
   buildCollectionTree,
   collectionRows,
+  findCollection,
 } from "./collectionTree";
 import { COLLECTION_NODE_MIME, TRACK_IDS_MIME } from "./collectionDrag";
 import { useCollectionTree } from "./useCollectionTree";
@@ -122,6 +123,21 @@ function rowFor(name: string): HTMLElement {
   return screen
     .getAllByRole("treeitem")
     .find((item) => within(item).queryByText(name) !== null)!;
+}
+
+/** Opens the "+ New" menu and picks one of its items (K14). */
+async function chooseNew(item: "Collection" | "Set" | "Folder") {
+  await userEvent.click(screen.getByRole("button", { name: "+ New" }));
+  await userEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: item }));
+}
+
+/** The bar under the tree, shown while a node is selected (DEC-245). */
+const bar = () => screen.getByRole("toolbar", { name: "Selected Collection or Set" });
+
+/** The pane with the Smart Collection selected, so its bar is drawn. */
+function paneOnSmart(overrides: Partial<React.ComponentProps<typeof CollectionsPane>> = {}) {
+  const selected = findCollection(buildCollectionTree(NODES), 5)!;
+  return paneWith(NODES, [1], { selected, ...overrides });
 }
 
 /** A drag carrying what the table drags (ORG-11's source, simulated here). */
@@ -229,11 +245,66 @@ describe("a broken Smart Collection (ORG-06)", () => {
   });
 });
 
+describe("the + New menu (K14)", () => {
+  const newButton = () => screen.getByRole("button", { name: "+ New" });
+  const items = () =>
+    within(screen.getByRole("menu")).getAllByRole("menuitem").map((item) => item.textContent);
+
+  it("is one menu button where three buttons stood", () => {
+    paneWith(NODES, [1], { canMakeSets: true });
+    expect(newButton()).toHaveAttribute("aria-haspopup", "menu");
+    expect(newButton()).toHaveAttribute("aria-expanded", "false");
+    for (const name of ["New Collection", "New Set", "New folder"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    }
+  });
+
+  it("opens with Collection, Set and Folder", async () => {
+    paneWith(NODES, [1], { canMakeSets: true });
+    await userEvent.click(newButton());
+    expect(newButton()).toHaveAttribute("aria-expanded", "true");
+    expect(items()).toEqual(["Collection", "Set", "Folder"]);
+  });
+
+  it("leaves Set out where a Set cannot be made", async () => {
+    paneWith(NODES, [1], { canMakeSets: false });
+    await userEvent.click(newButton());
+    expect(items()).toEqual(["Collection", "Folder"]);
+  });
+
+  it("makes each kind with the handler it always had, then closes", async () => {
+    const { onCreate } = paneWith(NODES, [1], { canMakeSets: true });
+    for (const [item, kind, name] of [
+      ["Collection", "collection", "New Collection"],
+      ["Set", "set", "New Set"],
+      ["Folder", "folder", "New folder"],
+    ] as const) {
+      await chooseNew(item);
+      expect(onCreate).toHaveBeenLastCalledWith(kind, name, null);
+      expect(screen.queryByRole("menu")).toBeNull();
+    }
+  });
+
+  it("closes on Escape and hands the focus back to the button", async () => {
+    paneWith(NODES, [1], { canMakeSets: true });
+    await userEvent.click(newButton());
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(newButton()).toHaveFocus();
+  });
+
+  it("is not drawn while the section is folded", () => {
+    paneWith(NODES, [1], { collapsed: true });
+    expect(screen.queryByRole("button", { name: "+ New" })).toBeNull();
+  });
+});
+
 describe("creating", () => {
   it("makes a Collection and puts the cursor in its name", async () => {
     const { onCreate } = paneWith();
 
-    await userEvent.click(screen.getByRole("button", { name: "New Collection" }));
+    await chooseNew("Collection");
 
     expect(onCreate).toHaveBeenCalledWith("collection", "New Collection", null);
     // Straight into the name: a row called "New Collection" the user has to
@@ -244,7 +315,7 @@ describe("creating", () => {
   it("makes a folder", async () => {
     const { onCreate } = paneWith();
 
-    await userEvent.click(screen.getByRole("button", { name: "New folder" }));
+    await chooseNew("Folder");
 
     expect(onCreate).toHaveBeenCalledWith("folder", "New folder", null);
   });
@@ -253,7 +324,7 @@ describe("creating", () => {
     const tree = buildCollectionTree(NODES);
     const { onCreate } = paneWith(NODES, [1], { selected: tree[0]! });
 
-    await userEvent.click(screen.getByRole("button", { name: "New Collection" }));
+    await chooseNew("Collection");
 
     expect(onCreate).toHaveBeenCalledWith("collection", "New Collection", 1);
   });
@@ -263,7 +334,7 @@ describe("creating", () => {
       onCreate: vi.fn(async () => ({ ok: false, error: "A name that long is refused" })),
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "New Collection" }));
+    await chooseNew("Collection");
 
     await waitFor(() =>
       expect(onNotify).toHaveBeenCalledWith("A name that long is refused", "warning"),
@@ -275,7 +346,7 @@ describe("renaming", () => {
   it("edits in place and commits on Enter", async () => {
     const { onRename } = paneWith();
 
-    await userEvent.click(screen.getByRole("button", { name: "Rename Warmups" }));
+    fireEvent.keyDown(rowFor("Warmups"), { key: "F2" });
     const field = screen.getByRole("textbox", { name: "Rename Warmups" });
     await userEvent.clear(field);
     await userEvent.type(field, "Openers{Enter}");
@@ -286,7 +357,7 @@ describe("renaming", () => {
   it("abandons on Escape", async () => {
     const { onRename } = paneWith();
 
-    await userEvent.click(screen.getByRole("button", { name: "Rename Warmups" }));
+    fireEvent.keyDown(rowFor("Warmups"), { key: "F2" });
     await userEvent.type(screen.getByRole("textbox", { name: "Rename Warmups" }), "x{Escape}");
 
     expect(onRename).not.toHaveBeenCalled();
@@ -297,7 +368,7 @@ describe("renaming", () => {
     // trip would redraw the tree for nothing.
     const { onRename } = paneWith();
 
-    await userEvent.click(screen.getByRole("button", { name: "Rename Warmups" }));
+    fireEvent.keyDown(rowFor("Warmups"), { key: "F2" });
     await userEvent.type(screen.getByRole("textbox", { name: "Rename Warmups" }), "{Enter}");
 
     expect(onRename).not.toHaveBeenCalled();
@@ -316,7 +387,7 @@ describe("renaming", () => {
       onRename: vi.fn(async () => ({ ok: false, error: "That name is already taken" })),
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Rename Warmups" }));
+    fireEvent.keyDown(rowFor("Warmups"), { key: "F2" });
     const field = screen.getByRole("textbox", { name: "Rename Warmups" });
     await userEvent.clear(field);
     await userEvent.type(field, "Peak{Enter}");
@@ -439,7 +510,7 @@ describe("deleting", () => {
   it("asks first, with the counts the engine gave it", async () => {
     const { onPreviewDelete, onDelete } = paneWith();
 
-    await userEvent.click(screen.getByRole("button", { name: "Delete Sets" }));
+    fireEvent.keyDown(rowFor("Sets"), { key: "Delete" });
 
     expect(onPreviewDelete).toHaveBeenCalledWith(1);
     expect(await screen.findByRole("dialog")).toHaveTextContent(
@@ -453,7 +524,7 @@ describe("deleting", () => {
     // in a document nobody reads.
     paneWith();
 
-    await userEvent.click(screen.getByRole("button", { name: "Delete Sets" }));
+    fireEvent.keyDown(rowFor("Sets"), { key: "Delete" });
 
     expect(await screen.findByRole("dialog")).toHaveTextContent(/No tracks are deleted/i);
   });
@@ -461,7 +532,7 @@ describe("deleting", () => {
   it("deletes when the question is answered", async () => {
     const { onDelete } = paneWith();
 
-    await userEvent.click(screen.getByRole("button", { name: "Delete Sets" }));
+    fireEvent.keyDown(rowFor("Sets"), { key: "Delete" });
     // The bar under the tree has a Delete of its own (FLW-10): the question's is
     // the one in the dialog.
     const dialog = await screen.findByRole("dialog", { name: "Delete Sets?" });
@@ -473,7 +544,7 @@ describe("deleting", () => {
   it("keeps it when the question is declined", async () => {
     const { onDelete } = paneWith();
 
-    await userEvent.click(screen.getByRole("button", { name: "Delete Sets" }));
+    fireEvent.keyDown(rowFor("Sets"), { key: "Delete" });
     await userEvent.click(await screen.findByRole("button", { name: "Keep it" }));
 
     expect(onDelete).not.toHaveBeenCalled();
@@ -484,7 +555,7 @@ describe("deleting", () => {
     // would be a worse answer than a question with less detail in it.
     paneWith(NODES, [1], { onPreviewDelete: vi.fn(async () => null) });
 
-    await userEvent.click(screen.getByRole("button", { name: "Delete Sets" }));
+    fireEvent.keyDown(rowFor("Sets"), { key: "Delete" });
 
     expect(await screen.findByRole("dialog")).toHaveTextContent(
       /removes it and everything filed inside it/i,
@@ -787,32 +858,49 @@ describe("at the size a real library reaches (ORG-09's DoD)", () => {
  * says what it is about to do first.
  */
 describe("a Smart Collection's own gestures", () => {
-  it("offers duplicate and freeze on a Smart Collection", () => {
-    paneWith();
+  it("offers duplicate and freeze on a Smart Collection, in the bar", () => {
+    paneOnSmart();
+    expect(within(bar()).getByRole("button", { name: "Duplicate" })).not.toHaveAttribute(
+      "aria-disabled",
+    );
     expect(
-      screen.getByRole("button", { name: "Duplicate Recent techno" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Freeze Recent techno" }),
+      within(bar()).getByRole("button", { name: "Freeze to a Collection…" }),
     ).toBeInTheDocument();
   });
 
-  it("offers neither on a folder or a plain Collection", () => {
+  it("draws no row icons: nothing on a row but its name and count (K14)", () => {
+    paneOnSmart();
+    const row = rowFor("Recent techno");
+    expect(within(row).queryAllByRole("button")).toEqual([]);
+    expect(document.querySelector(".cp-collections__row-actions")).toBeNull();
+    for (const name of ["Rename", "Delete", "Duplicate", "Freeze"]) {
+      expect(screen.queryByRole("button", { name: `${name} Recent techno` })).toBeNull();
+    }
+  });
+
+  it("offers no freeze on a folder or a plain Collection, and refuses a duplicate", () => {
     // The engine refuses both for anything that is not a saved question, so
     // offering them would be drawing a control that can only fail — the same
     // rule the drop targets follow.
-    paneWith();
-    for (const name of ["Sets", "Warmups", "Peak"]) {
-      expect(screen.queryByRole("button", { name: `Duplicate ${name}` })).toBeNull();
-      expect(screen.queryByRole("button", { name: `Freeze ${name}` })).toBeNull();
+    const tree = buildCollectionTree(NODES);
+    for (const id of [1, 2, 3]) {
+      const view = paneWith(NODES, [1], { selected: findCollection(tree, id)! });
+      expect(
+        within(bar()).queryByRole("button", { name: "Freeze to a Collection…" }),
+      ).toBeNull();
+      expect(within(bar()).getByRole("button", { name: "Duplicate" })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+      view.view.unmount();
     }
   });
 
   it("duplicates on one click, because a copy costs nothing", async () => {
     const onDuplicateSmart = vi.fn(async () => ({ ok: true }));
-    paneWith(NODES, [1], { onDuplicateSmart });
+    paneOnSmart({ onDuplicateSmart });
 
-    await userEvent.click(screen.getByRole("button", { name: "Duplicate Recent techno" }));
+    await userEvent.click(within(bar()).getByRole("button", { name: "Duplicate" }));
 
     expect(onDuplicateSmart).toHaveBeenCalledWith(5);
   });
@@ -821,9 +909,9 @@ describe("a Smart Collection's own gestures", () => {
     // The one thing a user could reasonably get wrong: that the two stay in
     // step. They do not, and that is the reason to duplicate.
     const onNotify = vi.fn();
-    paneWith(NODES, [1], { onDuplicateSmart: vi.fn(async () => ({ ok: true })), onNotify });
+    paneOnSmart({ onDuplicateSmart: vi.fn(async () => ({ ok: true })), onNotify });
 
-    await userEvent.click(screen.getByRole("button", { name: "Duplicate Recent techno" }));
+    await userEvent.click(within(bar()).getByRole("button", { name: "Duplicate" }));
 
     await waitFor(() =>
       expect(onNotify).toHaveBeenCalledWith(
@@ -835,12 +923,12 @@ describe("a Smart Collection's own gestures", () => {
 
   it("says what the engine said when a duplicate is refused", async () => {
     const onNotify = vi.fn();
-    paneWith(NODES, [1], {
+    paneOnSmart({
       onDuplicateSmart: vi.fn(async () => ({ ok: false, error: "That name is taken" })),
       onNotify,
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Duplicate Recent techno" }));
+    await userEvent.click(within(bar()).getByRole("button", { name: "Duplicate" }));
 
     await waitFor(() =>
       expect(onNotify).toHaveBeenCalledWith("That name is taken", "warning"),
@@ -849,18 +937,18 @@ describe("a Smart Collection's own gestures", () => {
 
   it("does not freeze on the click that asks for it", async () => {
     const onFreezeSmart = vi.fn(async () => ({ ok: true, frozen: 12 }));
-    paneWith(NODES, [1], { onFreezeSmart });
+    paneOnSmart({ onFreezeSmart });
 
-    await userEvent.click(screen.getByRole("button", { name: "Freeze Recent techno" }));
+    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
 
     expect(onFreezeSmart).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toHaveTextContent(/Freeze Recent techno\?/);
   });
 
   it("says the copy stops changing, which is the whole point", async () => {
-    paneWith(NODES, [1], { onFreezeSmart: vi.fn(async () => ({ ok: true })) });
+    paneOnSmart({ onFreezeSmart: vi.fn(async () => ({ ok: true })) });
 
-    await userEvent.click(screen.getByRole("button", { name: "Freeze Recent techno" }));
+    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
 
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent(/matches right now/);
@@ -872,9 +960,9 @@ describe("a Smart Collection's own gestures", () => {
 
   it("freezes once confirmed", async () => {
     const onFreezeSmart = vi.fn(async () => ({ ok: true, frozen: 412 }));
-    paneWith(NODES, [1], { onFreezeSmart });
+    paneOnSmart({ onFreezeSmart });
 
-    await userEvent.click(screen.getByRole("button", { name: "Freeze Recent techno" }));
+    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
     await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
 
     await waitFor(() => expect(onFreezeSmart).toHaveBeenCalledWith(5));
@@ -884,12 +972,12 @@ describe("a Smart Collection's own gestures", () => {
     // The row it makes shows a number too, and the two are computed by
     // different code; this one is what actually got written.
     const onNotify = vi.fn();
-    paneWith(NODES, [1], {
+    paneOnSmart({
       onFreezeSmart: vi.fn(async () => ({ ok: true, frozen: 412 })),
       onNotify,
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Freeze Recent techno" }));
+    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
     await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
 
     await waitFor(() =>
@@ -902,9 +990,9 @@ describe("a Smart Collection's own gestures", () => {
 
   it("does nothing when the answer is no", async () => {
     const onFreezeSmart = vi.fn(async () => ({ ok: true }));
-    paneWith(NODES, [1], { onFreezeSmart });
+    paneOnSmart({ onFreezeSmart });
 
-    await userEvent.click(screen.getByRole("button", { name: "Freeze Recent techno" }));
+    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(onFreezeSmart).not.toHaveBeenCalled();
@@ -915,7 +1003,7 @@ describe("a Smart Collection's own gestures", () => {
     // The case the engine names: a Smart Collection whose tag was deleted
     // cannot be frozen, because "no tracks" is not its answer.
     const onNotify = vi.fn();
-    paneWith(NODES, [1], {
+    paneOnSmart({
       onFreezeSmart: vi.fn(async () => ({
         ok: false,
         error: "Its rules cannot be run",
@@ -923,7 +1011,7 @@ describe("a Smart Collection's own gestures", () => {
       onNotify,
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "Freeze Recent techno" }));
+    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
     await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
 
     await waitFor(() =>
@@ -934,10 +1022,15 @@ describe("a Smart Collection's own gestures", () => {
   it("offers nothing at all to a build without the routes", () => {
     // Every method added after the bridge existed is optional: the renderer
     // runs in a browser tab, and an older shell exposes none of these.
-    paneWith(NODES, [1], { onDuplicateSmart: undefined, onFreezeSmart: undefined });
+    paneOnSmart({ onDuplicateSmart: undefined, onFreezeSmart: undefined });
 
-    expect(screen.queryByRole("button", { name: "Duplicate Recent techno" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Freeze Recent techno" })).toBeNull();
+    expect(
+      within(bar()).queryByRole("button", { name: "Freeze to a Collection…" }),
+    ).toBeNull();
+    expect(within(bar()).getByRole("button", { name: "Duplicate" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 });
 

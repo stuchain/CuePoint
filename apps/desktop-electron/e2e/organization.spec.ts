@@ -167,6 +167,17 @@ async function nameIt(window: Page, name: string) {
   await expect(field).toBeHidden();
 }
 
+/** Make a node from the "+ New" menu over the tree (K14). */
+async function chooseNew(window: Page, item: "Collection" | "Set" | "Folder") {
+  await window.getByRole("button", { name: "+ New", exact: true }).click();
+  await window.getByRole("menuitem", { name: item, exact: true }).click();
+}
+
+/** The bar under the tree, shown while a node is selected (DEC-245). */
+function treeBar(window: Page) {
+  return window.getByRole("toolbar", { name: "Selected Collection or Set" });
+}
+
 /** The Collections section's tree. */
 function collectionsTree(window: Page) {
   return window.getByRole("tree", { name: "Collections" });
@@ -250,9 +261,9 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       ).toBe("library");
 
       // ---------------------------------------------------------------- 2
-      await window.getByRole("button", { name: "New folder" }).click();
+      await chooseNew(window, "Folder");
       await nameIt(window, "Sets");
-      await window.getByRole("button", { name: "New Collection" }).click();
+      await chooseNew(window, "Collection");
       await nameIt(window, "Openers");
       await expect(collectionsTree(window).getByText("Sets")).toBeVisible();
       await expect(collectionsTree(window).getByText("Openers")).toBeVisible();
@@ -401,9 +412,8 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       });
 
       // ---------------------------------------------------------------- 8
-      // Selected a moment ago, so the row holds the focus that shows its
-      // controls; see the note on the duplicate below.
-      await window.getByRole("button", { name: "Freeze House only" }).click();
+      // Selected a moment ago, so the bar under the tree is showing its Freeze (K14).
+      await treeBar(window).getByRole("button", { name: "Freeze to a Collection…" }).click();
       const freeze = window.getByRole("dialog");
       await expect(freeze).toContainText(/matches right now/);
       await freeze.getByRole("button", { name: "Freeze it" }).click();
@@ -422,12 +432,10 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // A duplicate is the other half of the same sentence: a second saved
       // question that starts out identical and is never linked again.
       //
-      // The row is clicked first rather than hovered: its controls appear on
-      // hover *or* focus, and only focus survives a re-render — the freeze
-      // above took the focus with its dialog, and a hover that the toast lands
-      // on is a hover that ends mid-click.
+      // The row is selected again first: the freeze above took the focus with
+      // its dialog, and the bar under the tree acts on the selected row.
       await collectionsTree(window).getByText("House only", { exact: true }).click();
-      await window.getByRole("button", { name: "Duplicate House only" }).click();
+      await treeBar(window).getByRole("button", { name: "Duplicate", exact: true }).click();
       await expect(
         window.getByText(/separate from now on/i).first(),
       ).toBeVisible({ timeout: 30_000 });
