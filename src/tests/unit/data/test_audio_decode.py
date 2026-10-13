@@ -37,6 +37,7 @@ from typing import Dict, List, Optional
 import pytest
 
 from cuepoint.data import audio_decode as ad
+from tests.fixtures.stub_decoder import write_stub
 
 pytestmark = pytest.mark.unit
 
@@ -693,6 +694,27 @@ class TestSweep:
         assert ad.sweep_stale_workdirs(tmp_path / "none") == 0
 
 
+@posix_only
+class TestAdoptedChildren:
+    def test_an_adopted_child_ends_with_the_decoders_and_is_not_one(self):
+        import subprocess
+
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+        ad.adopt_child(child)
+        try:
+            assert ad.live_children() == 0
+            assert ad.terminate_children() == 0
+            assert ad.stopping()
+            assert child.wait(timeout=30) != 0
+        finally:
+            ad._STOPPING.clear()
+            ad.release_child(child)
+            if child.poll() is None:
+                child.kill()
+                child.wait()
+        assert child not in ad._ADOPTED
+
+
 class TestSpawnFlags:
     def test_windows_spawns_below_normal_with_no_window(self):
         assert ad._spawn_flags("win32") == 0x00004000 | 0x08000000
@@ -761,131 +783,11 @@ class TestEngineJob:
 # The child, played by a stub
 # ---------------------------------------------------------------------------
 
-_STUB = """
-import os, sys, time
-from array import array
-
-options = {}
-for argument in sys.argv[1:]:
-    if argument.startswith("--") and "=" in argument:
-        name, value = argument.split("=", 1)
-        options[name] = value
-mode = os.environ.get("STUB_MODE", "good")
-pid_file = os.environ.get("STUB_PID_FILE")
-if pid_file:
-    with open(pid_file, "w") as handle:
-        handle.write(str(os.getpid()))
-
-
-def log(*lines):
-    with open(options["--log-file"], "w") as handle:
-        for line in lines:
-            handle.write("[   0.010]" + line + "\\n")
-
-
-def output(frames):
-    values = array("f", [0.25, 0.04, 0.01, 0.0] * frames)
-    with open(options["--ao-pcm-file"], "wb") as handle:
-        handle.write(values.tobytes())
-
-
-if mode == "sleep":
-    time.sleep(60)
-elif mode == "stuck":
-    log("[i][cplayer]  (+) Audio --aid=1 (flac 2ch 44100Hz)", "[v][ao] stuck here")
-    time.sleep(60)
-elif mode == "nice":
-    time.sleep(0.5)
-    with open(os.environ["STUB_NICE_FILE"], "w") as handle:
-        handle.write(str(os.getpriority(os.PRIO_PROCESS, 0)))
-    log("[i][cplayer] " + os.environ["STUB_EXPECTED"])
-    output(3)
-elif mode == "good":
-    log("[i][cplayer] " + os.environ["STUB_EXPECTED"], "[i][cplayer] Exiting... (End of file)")
-    output(int(os.environ.get("STUB_FRAMES", "30")))
-elif mode == "cut-short":
-    # The decoder exited before its log was all on disk: the samples are whole,
-    # the log stops before the output it opened. STUB_CUT_TIMES runs do so.
-    count_file = os.environ["STUB_COUNT_FILE"]
-    runs = int(open(count_file).read()) if os.path.exists(count_file) else 0
-    with open(count_file, "w") as handle:
-        handle.write(str(runs + 1))
-    if runs < int(os.environ["STUB_CUT_TIMES"]):
-        log("[i][cplayer]  (+) Audio --aid=1 (flac 2ch 44100Hz)")
-    else:
-        log("[i][cplayer] " + os.environ["STUB_EXPECTED"], "[i][cplayer] Exiting... (End of file)")
-    output(30)
-elif mode == "summary-lost":
-    # A whole log, exit line included, but without the meter's summary, which
-    # a build that measures always writes: STUB_CUT_TIMES runs lose it.
-    count_file = os.environ["STUB_COUNT_FILE"]
-    runs = int(open(count_file).read()) if os.path.exists(count_file) else 0
-    with open(count_file, "w") as handle:
-        handle.write(str(runs + 1))
-    summary = [
-        "[v][ffmpeg] Parsed_ebur128_0: Summary:",
-        "[v][ffmpeg]   Integrated loudness:",
-        "[v][ffmpeg]     I:         -23.0 LUFS",
-        "[v][ffmpeg]   Sample peak:",
-        "[v][ffmpeg]     Peak:       -23.0 dBFS",
-    ]
-    if runs < int(os.environ["STUB_CUT_TIMES"]):
-        summary = []
-    log("[i][cplayer] " + os.environ["STUB_EXPECTED"], *summary, "[i][cplayer] Exiting... (End of file)")
-    output(30)
-elif mode == "hang-once":
-    # mpv's log deadlock (DEC-229): the first run stops for good part-way, with
-    # some output written and its log silent; a second run goes through.
-    count_file = os.environ["STUB_COUNT_FILE"]
-    runs = int(open(count_file).read()) if os.path.exists(count_file) else 0
-    with open(count_file, "w") as handle:
-        handle.write(str(runs + 1))
-    if runs < int(os.environ.get("STUB_HANG_TIMES", "1")):
-        log("[i][cplayer] " + os.environ["STUB_EXPECTED"], "[d][lavfi] stuck in mp_msg")
-        output(3)
-        time.sleep(60)
-    log("[i][cplayer] " + os.environ["STUB_EXPECTED"], "[i][cplayer] Exiting... (End of file)")
-    output(30)
-elif mode == "slow":
-    # Healthy but slow: quiet in one channel, never in both, for longer than
-    # the stall limit. STUB_SLOW_KIND says whether output or the log grows.
-    kind = os.environ["STUB_SLOW_KIND"]
-    seconds = float(os.environ["STUB_SLOW_SECONDS"])
-    lines = ["[i][cplayer] " + os.environ["STUB_EXPECTED"]]
-    log(*lines)
-    frame = array("f", [0.25, 0.04, 0.01, 0.0]).tobytes()
-    written = 0
-    with open(options["--ao-pcm-file"], "wb") as out:
-        started = time.monotonic()
-        while time.monotonic() - started < seconds:
-            if kind == "output":
-                out.write(frame)
-                out.flush()
-                written += 1
-            else:
-                lines.append("[v][ffmpeg] still decoding")
-                log(*lines)
-            # Fewer than 30 frames in all, however long it is slow for.
-            time.sleep(0.2)
-        out.write(frame * (30 - written) if written < 30 else b"")
-    log(*lines, "[i][cplayer] Exiting... (End of file)")
-elif mode == "wrong-format":
-    log("[i][cplayer] AO: [pcm] 44100Hz 4.0 4ch float")
-    output(30)
-elif mode == "no-log":
-    output(30)
-elif mode == "error":
-    log("[e][cplayer] Failed to recognize file format.")
-    sys.exit(2)
-"""
-
 
 @pytest.fixture
 def stub(tmp_path, monkeypatch) -> Path:
     """A decoder that does what ``STUB_MODE`` says."""
-    path = tmp_path / "stub-mpv"
-    path.write_text(f"#!{sys.executable}\n{_STUB}", encoding="utf-8")
-    path.chmod(0o755)
+    path = write_stub(tmp_path / "stub-mpv")
     monkeypatch.setenv("STUB_EXPECTED", ad.EXPECTED_OUTPUT)
     monkeypatch.setattr(ad, "_COMPLETE_SEEN", threading.Event())
     monkeypatch.setattr(ad, "_LOUDNESS_SEEN", threading.Event())

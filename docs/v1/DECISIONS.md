@@ -7907,3 +7907,27 @@ same question at once (the library summary was read twice on almost every page).
 - 200 answers are kept, least recently used dropped first, never one a page on screen is showing.
 
 **Decided with**: User (C19, "apply ALL") · **Date**: 2026-10-13
+
+## DEC-284 — Waveform Analysis Runs in a Worker Process
+
+**Status**: Approved · **Related**: DEC-116, DEC-122, DEC-123, DEC-221, DEC-250, C19 · **ADR**: ADR-013
+
+**Context**: C19: page switching felt slow on Stelios's Windows PC. The decoder already ran in a child
+`mpv` (DEC-123), but its supervision threads and the envelope parse, reduce and encode ran in the
+engine's process, sharing its GIL with every request the pages make.
+
+**Decision** (scope question 1, ★ worker process, "apply ALL" 10-13):
+- The analysis and the zoomed-waveform fill send each file to one long-lived worker process
+  (`cuepoint-engine --analysis-worker`), which decodes, reduces and encodes it and sends the result
+  back; the engine still writes the store. The bytes are identical, so nothing is analysed again.
+- The worker starts on the first file, serves every concurrent file, and exits after 120 s idle.
+- If it cannot start or dies, it is started once more; after a second failure the engine analyses
+  in-process for the rest of its life, with one warning. Analysis is never unavailable because of it.
+- It ends when the engine ends, however the engine ends, and its decoders end with it.
+
+**Rejected**: numpy in the engine (DEC-123; it would not move the decoder supervision); one worker per
+file (a Python start per file).
+
+**Amends**: DEC-123 (where the decode is supervised). **Notes**: DEC-250 (the detail fill uses the worker).
+
+**Decided with**: User (C19, wish list round 2) · **Date**: 2026-10-13

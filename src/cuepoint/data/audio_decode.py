@@ -707,6 +707,13 @@ _LIVE: Set["subprocess.Popen[bytes]"] = set()
 # Children `terminate_children` ended, so their decode reads as cancelled.
 _ENDED: Set["subprocess.Popen[bytes]"] = set()
 _LIVE_LOCK = threading.Lock()
+# Children that are not decoders but must end with the engine: the analysis
+# worker (C19g). Apart from `_LIVE` so `live_children` and the count
+# `terminate_children` returns keep meaning decoders.
+_ADOPTED: Set["subprocess.Popen[bytes]"] = set()
+# Set once `terminate_children` has ended an adopted child: the engine is
+# stopping, and nothing should start a worker again.
+_STOPPING = threading.Event()
 _SWEPT = threading.Event()
 # Set once this decoder has written a whole log: only then is a log without its
 # last line known to be cut short, rather than a build that never writes one.
@@ -722,15 +729,52 @@ def live_children() -> int:
         return len(_LIVE)
 
 
+def stopping() -> bool:
+    """Whether the engine has begun to stop (it ended an adopted child).
+
+    The analysis worker's client answers cancelled from then on, rather than
+    start another worker as the process exits.
+    """
+    return _STOPPING.is_set()
+
+
+def adopt_child(child: "subprocess.Popen[bytes]") -> None:
+    """Have :func:`terminate_children` end ``child`` too, though it is no decoder.
+
+    The analysis worker is the one such child (C19g): it runs the decoders, and
+    must end with the engine as they do. It is not counted as a decoder.
+    :func:`terminate_children` asks it to end (``SIGTERM``; ``TerminateProcess``
+    on Windows, where its job holds its decoders) rather than killing it, so it
+    gets to end its own decoders first.
+    """
+    with _LIVE_LOCK:
+        _ADOPTED.add(child)
+
+
+def release_child(child: "subprocess.Popen[bytes]") -> None:
+    """Forget an adopted child, once it has ended."""
+    with _LIVE_LOCK:
+        _ADOPTED.discard(child)
+
+
 def terminate_children() -> int:
     """Kill every decoder child still running, and say how many there were.
 
     Called as the engine stops, whether it was asked to or its app has gone, so
-    no decode outlives the engine that started it.
+    no decode outlives the engine that started it. Adopted children
+    (:func:`adopt_child`) end as well and are not counted.
     """
     with _LIVE_LOCK:
         children = list(_LIVE)
         _ENDED.update(children)
+        adopted = list(_ADOPTED)
+        if adopted:
+            _STOPPING.set()
+    for child in adopted:
+        try:
+            child.terminate()
+        except OSError:
+            pass
     for child in children:
         try:
             child.kill()
@@ -1379,6 +1423,7 @@ __all__ = [
     "Envelope",
     "FileGone",
     "Loudness",
+    "adopt_child",
     "decode_envelope",
     "decoder_arguments",
     "decoder_from_env",
@@ -1390,6 +1435,8 @@ __all__ = [
     "platform_transports",
     "read_decoder_log",
     "read_loudness",
+    "release_child",
+    "stopping",
     "sweep_stale_workdirs",
     "terminate_children",
 ]

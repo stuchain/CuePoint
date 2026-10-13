@@ -43,6 +43,7 @@ Suggested first commits:
 | ADR-010 | [010-waveform-store.md](010-waveform-store.md) | Waveforms live in `waveforms.db` beside the library, keyed by file path, outside backups and "Clear cache"; rebuilt, never migrated |
 | ADR-011 | [011-beatport-sign-in-window.md](011-beatport-sign-in-window.md) | Beatport sign-in runs in a second sandboxed window with its own partition, no preload and a host allow-list; the main window's one-window rule is otherwise unchanged |
 | ADR-012 | [012-waveform-detail.md](012-waveform-detail.md) | Zoomed-waveform detail is a separate 75-a-second `CPWD` stream, made on demand when a track plays and kept in a 256 MB least-recently-used table in `waveforms.db` |
+| ADR-013 | [013-analysis-worker-process.md](013-analysis-worker-process.md) | Waveform analysis (decoder supervision, parse, reduce, encode) runs in one long-lived worker process speaking JSON lines; the engine keeps the store writes and falls back to in-process |
 
 ## ADR quality bar (analytical)
 
