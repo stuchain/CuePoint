@@ -67,28 +67,17 @@ from cuepoint.core.waveform import (
     WaveformFormatError,
     decode,
     downsample,
-    encode,
-    reduce,
 )
 from cuepoint.core.waveform_detail import (
     DETAIL_FORMAT_VERSION,
     WaveformDetail,
     decode_detail,
-    encode_detail,
-    reduce_detail,
 )
 from cuepoint.data.audio_decode import (
     ANALYSIS_VERSION,
     LOUDNESS_VERSION,
     REASON_DECODER_MISSING,
-    REASON_NO_AUDIO,
-    DecodeCancelled,
-    DecodeFailed,
-    DecoderUnavailable,
-    Envelope,
-    FileGone,
     Loudness,
-    decode_envelope,
     decoder_from_env,
 )
 from cuepoint.models.file_status import FILE_PRESENT, CurrentFile
@@ -122,6 +111,15 @@ from cuepoint.models.waveform import (
 from cuepoint.persistence.id_chunks import unique_ids
 from cuepoint.persistence.waveform_store import WaveformStore, WaveformStoreError
 from cuepoint.services.interfaces import IFileStatusRepository, IWaveformService
+from cuepoint.services.waveform_computer import (
+    COMPUTED_CANCELLED,
+    COMPUTED_FAILED,
+    COMPUTED_FILE_GONE,
+    COMPUTED_UNAVAILABLE,
+    Decode,
+    InProcessComputer,
+    WaveformComputer,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -137,16 +135,6 @@ REASON_UNCHECKED = "unchecked"
 #: 7,000 tracks, least recently used first out (ADR-011).
 DETAIL_CAP_BYTES = 256 * 1024 * 1024
 
-#: Decodes one file: ``(source, decoder, cancel) -> Envelope``, raising WAVE-01's
-#: vocabulary. :func:`decode_envelope` in the engine; a stand-in in tests.
-Decode = Callable[[str, Path, Optional[Callable[[], bool]]], Envelope]
-
-
-def _decode_with_mpv(
-    source: str, decoder: Path, cancel: Optional[Callable[[], bool]]
-) -> Envelope:
-    return decode_envelope(source, decoder, cancel=cancel)
-
 
 class WaveformService(IWaveformService):
     """Analyses files into the waveform store and answers from it."""
@@ -157,7 +145,8 @@ class WaveformService(IWaveformService):
         store: WaveformStore,
         *,
         decoder: Callable[[], Optional[Path]] = decoder_from_env,
-        decode_file: Decode = _decode_with_mpv,
+        decode_file: Optional[Decode] = None,
+        computer: Optional[WaveformComputer] = None,
         stat: Callable[[str], os.stat_result] = os.stat,
         clock: Callable[[], str] = utc_now_iso,
         analysis_version: int = ANALYSIS_VERSION,
@@ -172,7 +161,9 @@ class WaveformService(IWaveformService):
             store: ``waveforms.db``.
             decoder: The decoder to use now, or ``None``. Asked at each use, so
                 an engine given none says so rather than failing each file.
-            decode_file: Decodes one file.
+            decode_file: Decodes one file, for the in-process computer; unused
+                when ``computer`` is given.
+            computer: Computes one file's waveform; by default in this process.
             stat: ``os.stat``; a stand-in in tests.
             clock: The time an analysis is stamped with.
             analysis_version: The version rows are stored and read at.
@@ -183,7 +174,13 @@ class WaveformService(IWaveformService):
         self._files = file_status_repository
         self._store = store
         self._decoder = decoder
-        self._decode = decode_file
+        if computer is None:
+            computer = (
+                InProcessComputer(decode_file)
+                if decode_file is not None
+                else InProcessComputer()
+            )
+        self._computer = computer
         self._stat = stat
         self._clock = clock
         self._version = int(analysis_version)
@@ -224,8 +221,8 @@ class WaveformService(IWaveformService):
         3. Unless ``force``, a stored row of this version with the same size
            and modified time, and nothing left to measure, already answers:
            :data:`OUTCOME_CURRENT`.
-        4. Decode, reduce, encode, and write the row, ready or failed, with its
-           loudness, in one transaction.
+        4. Have the computer decode, reduce and encode, and write the row,
+           ready or failed, with its loudness, in one transaction.
 
         With ``detail`` (T4, ADR-011) the zoomed waveform is made from the same
         decode: a current overview no longer answers on its own, the file is
@@ -285,29 +282,31 @@ class WaveformService(IWaveformService):
                 assert stored is not None
                 return AnalysisOutcome(track_id, OUTCOME_CURRENT, stored.reason)
 
-        try:
-            envelope = self._decode(path, decoder, cancel)
-        except FileGone:
+        computed = self._computer.compute(
+            path,
+            decoder,
+            overview=not overview_current,
+            detail=detail,
+            cancel=cancel,
+        )
+        if computed.outcome == COMPUTED_FILE_GONE:
             return AnalysisOutcome(track_id, OUTCOME_NOT_FOUND)
-        except DecodeCancelled:
+        if computed.outcome == COMPUTED_CANCELLED:
             return AnalysisOutcome(track_id, OUTCOME_CANCELLED)
-        except DecoderUnavailable:
+        if computed.outcome == COMPUTED_UNAVAILABLE:
             # The decoder cannot analyse anything, so no file is blamed.
             return AnalysisOutcome(
                 track_id, OUTCOME_UNAVAILABLE, REASON_DECODER_MISSING
             )
-        except DecodeFailed as failure:
+        if computed.outcome == COMPUTED_FAILED:
+            reason = computed.reason
+            assert reason is not None
             if not overview_current:
-                self._store.put(self._failed_row(path, size, mtime_ns, failure.reason))
-            return AnalysisOutcome(track_id, OUTCOME_FAILED, failure.reason)
+                self._store.put(self._failed_row(path, size, mtime_ns, reason))
+            return AnalysisOutcome(track_id, OUTCOME_FAILED, reason)
 
-        if envelope.frames == 0:
-            if not overview_current:
-                self._store.put(self._failed_row(path, size, mtime_ns, REASON_NO_AUDIO))
-            return AnalysisOutcome(track_id, OUTCOME_FAILED, REASON_NO_AUDIO)
-        bands = [envelope.full, envelope.low, envelope.mid, envelope.high]
         if not overview_current:
-            waveform = reduce(bands, envelope.duration_ms)
+            assert computed.overview is not None
             self._store.put(
                 StoredWaveform(
                     path=path,
@@ -316,12 +315,13 @@ class WaveformService(IWaveformService):
                     analysis_version=self._version,
                     state=STORED_READY,
                     analysed_at=self._clock(),
-                    duration_ms=waveform.duration_ms,
-                    data=encode(waveform),
-                    loudness=self._reading(envelope.loudness),
+                    duration_ms=computed.duration_ms,
+                    data=computed.overview,
+                    loudness=self._reading(computed.loudness),
                 )
             )
         if detail:
+            assert computed.detail is not None
             self._store.put_detail(
                 StoredDetail(
                     path=path,
@@ -330,12 +330,12 @@ class WaveformService(IWaveformService):
                     analysis_version=self._version,
                     detail_version=self._detail_version,
                     used_at=0,
-                    data=encode_detail(reduce_detail(bands, envelope.duration_ms)),
+                    data=computed.detail,
                 ),
                 self._detail_cap,
             )
         return AnalysisOutcome(
-            track_id, OUTCOME_READY, decode_errors=envelope.decode_errors
+            track_id, OUTCOME_READY, decode_errors=computed.decode_errors
         )
 
     def _has_detail(self, path: str, size: int, mtime_ns: int) -> bool:

@@ -84,6 +84,12 @@ from cuepoint.persistence.waveform_store import WaveformStore, WaveformStoreErro
 from cuepoint.services import waveform_service as module
 from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
+from cuepoint.services.waveform_computer import (
+    COMPUTED_CANCELLED,
+    COMPUTED_FAILED,
+    COMPUTED_READY,
+    Computed,
+)
 from cuepoint.services.waveform_service import STATE_BATCH, WaveformService
 
 NOW = "2026-09-30T12:00:00+00:00"
@@ -1296,3 +1302,109 @@ class TestDetail:
         assert len(answer.data) == 67_500 * 4
         assert answer.state.duration_ms == 900_000
         assert service.waveform(track, 120).state.state == STATE_READY
+
+
+class FakeComputer:
+    """Answers as told, and records what it was asked."""
+
+    def __init__(self, answer: Computed) -> None:
+        self.answer = answer
+        self.calls: List[dict] = []
+
+    def compute(self, path, decoder, *, overview, detail, cancel=None) -> Computed:
+        self.calls.append(
+            dict(path=path, overview=overview, detail=detail, cancel=cancel)
+        )
+        return self.answer
+
+
+@pytest.mark.unit
+class TestComputerSeam:
+    """The service writes what its computer returned and nothing else."""
+
+    def test_a_ready_result_is_written_as_returned(
+        self, make_service, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        path = str(music / "a.flac")
+        loudness = Loudness(-9.0, -0.5, None)
+        computer = FakeComputer(
+            Computed(
+                COMPUTED_READY,
+                overview=b"overview",
+                duration_ms=1_234,
+                loudness=loudness,
+                decode_errors=2,
+            )
+        )
+
+        outcome = make_service(computer=computer).analyse(track)
+
+        assert (outcome.outcome, outcome.decode_errors) == (OUTCOME_READY, 2)
+        assert computer.calls == [
+            dict(path=path, overview=True, detail=False, cancel=None)
+        ]
+        row = store.get(path, ANALYSIS_VERSION)
+        assert row is not None
+        assert (row.data, row.duration_ms) == (b"overview", 1_234)
+        assert row.loudness is not None
+        assert row.loudness.integrated_lufs == -9.0
+        assert row.loudness.loudness_version == LOUDNESS_VERSION
+
+    def test_a_current_overview_is_not_asked_for_again(
+        self, service, make_service, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        path = str(music / "a.flac")
+        service.analyse(track)
+        before = stored_rows(store)
+        computer = FakeComputer(Computed(COMPUTED_READY, detail=b"detail"))
+
+        outcome = make_service(computer=computer).analyse(track, detail=True)
+
+        assert outcome.outcome == OUTCOME_READY
+        assert computer.calls == [
+            dict(path=path, overview=False, detail=True, cancel=None)
+        ]
+        assert [tuple(r) for r in stored_rows(store)] == [tuple(r) for r in before]
+        stored = store.get_detail(path, ANALYSIS_VERSION, DETAIL_FORMAT_VERSION)
+        assert stored is not None and stored.data == b"detail"
+
+    def test_a_failed_result_stores_a_failed_row(
+        self, make_service, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        computer = FakeComputer(Computed(COMPUTED_FAILED, "undecodable"))
+
+        outcome = make_service(computer=computer).analyse(track)
+
+        assert (outcome.outcome, outcome.reason) == (OUTCOME_FAILED, "undecodable")
+        (row,) = stored_rows(store)
+        assert row["state"] == "failed" and row["reason"] == "undecodable"
+
+    def test_the_callers_cancel_reaches_the_computer(
+        self, make_service, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        computer = FakeComputer(Computed(COMPUTED_CANCELLED))
+
+        def cancel() -> bool:
+            return False
+
+        outcome = make_service(computer=computer).analyse(track, cancel=cancel)
+
+        assert outcome.outcome == OUTCOME_CANCELLED
+        assert computer.calls[0]["cancel"] is cancel
+
+    def test_a_failure_with_a_current_overview_writes_nothing(
+        self, service, make_service, store, tracks, db, files, music
+    ):
+        (track,) = present(tracks, db, files, music, ["a.flac"])
+        service.analyse(track)
+        before = stored_rows(store)
+        computer = FakeComputer(Computed(COMPUTED_FAILED, "undecodable"))
+
+        outcome = make_service(computer=computer).analyse(track, detail=True)
+
+        assert (outcome.outcome, outcome.reason) == (OUTCOME_FAILED, "undecodable")
+        assert [tuple(r) for r in stored_rows(store)] == [tuple(r) for r in before]
