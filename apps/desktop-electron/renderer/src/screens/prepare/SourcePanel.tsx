@@ -26,6 +26,7 @@ import type {
   SetRefusal,
   SetSuggestionSideName,
 } from "../../api/cuepointBridge.types";
+import { LIBRARY_PLAYLISTS, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
 import { Select } from "../../components/Select";
 import { PixelSpinner } from "../../components/PixelSpinner";
@@ -137,28 +138,16 @@ function PointLine({ words, title }: { words: PointWords; title: string }) {
   );
 }
 
+const NO_PLAYLISTS: LibraryPlaylistNode[] = [];
+
 export function SourcePanel(props: SourcePanelProps) {
   const selectId = useId();
   const { collections, chapters, point } = props;
   const [tab, setTab] = useState<SourceTab>(loadSourceTab);
   const [chosenPool, setChosenPool] = useState<PoolValue>(loadSourcePool);
-  const [playlists, setPlaylists] = useState<LibraryPlaylistNode[]>([]);
-
-  useEffect(() => {
-    const read = window.cuepoint?.getLibraryPlaylists;
-    if (!read) return;
-    let current = true;
-    read()
-      .then((tree) => {
-        if (current) setPlaylists(tree.playlists);
-      })
-      .catch(() => {
-        // The CuePoint pools and the library are still offered.
-      });
-    return () => {
-      current = false;
-    };
-  }, []);
+  // The Rekordbox playlists, from the shared cache; a failure leaves the
+  // CuePoint pools and the library on offer.
+  const playlists: LibraryPlaylistNode[] = useSharedRead(LIBRARY_PLAYLISTS).value?.playlists ?? NO_PLAYLISTS;
 
   const options = useMemo(() => scopeOptions(playlists, collections), [collections, playlists]);
   // A pool that has gone (or not been read yet) is the library, without

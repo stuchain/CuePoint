@@ -31,6 +31,7 @@ import type {
   LibraryTrackRow,
   SetSuggestionsRequest,
 } from "../../api/cuepointBridge.types";
+import { announceLibraryChange } from "../../api/libraryChanges";
 import { ToastProvider } from "../../components";
 import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
@@ -825,6 +826,31 @@ describe("the pool", () => {
       expect.arrayContaining(["The whole library", "CRATES", "Warmers", "Crate", "House", "Build (Set)", "Scratch (Set)"]),
     );
     expect(within(pool()).getByRole("option", { name: /Gigs/ })).toBeDisabled();
+  });
+
+  it("revisit shows the old value immediately and refetches after an announce", async () => {
+    const playlists = bridge.getLibraryPlaylists as ReturnType<typeof vi.fn>;
+    const first = renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    await waitFor(() => expect(within(pool()).getByRole("option", { name: /Warmers/ })).toBeInTheDocument());
+    first.unmount();
+    const before = playlists.mock.calls.length;
+
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    // The first showing of the panel already offers the playlists.
+    expect(within(pool()).getByRole("option", { name: /Warmers/ })).toBeInTheDocument();
+    await act(async () => {});
+    expect(playlists.mock.calls.length).toBe(before);
+
+    const added = { ...SOURCE_PLAYLISTS[1], id: 9001, name: "Fresh crate", path: "CRATES/Fresh crate" };
+    playlists.mockResolvedValue({
+      playlists: [...SOURCE_PLAYLISTS, added],
+      total: SOURCE_PLAYLISTS.length + 1,
+    });
+    act(() => announceLibraryChange());
+    await waitFor(() => expect(within(pool()).getByRole("option", { name: /Fresh crate/ })).toBeInTheDocument());
+    expect(playlists.mock.calls.length).toBe(before + 1);
   });
 
   it("sends a Collection, a Smart Collection or a playlist as the Library's own parameters, and remembers it", async () => {

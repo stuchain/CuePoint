@@ -48,6 +48,7 @@ import type {
   SetWarning,
   TrackCreditLinks,
 } from "../../api/cuepointBridge.types";
+import { LIBRARY_PLAYLISTS, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
 import { Panel } from "../../components/Panel";
@@ -141,6 +142,9 @@ import { useTrackPlayMarks } from "../../components/player/playedTracks";
 
 const trackIdOfRow = (row: PrepareRow) => (row.kind === "entry" ? row.entry.track.id : null);
 
+const NO_PLAYLISTS: LibraryPlaylistNode[] = [];
+/** The playlists read, switched off until the "copy from" dialog is first asked for. */
+const NOT_WANTED = { ...LIBRARY_PLAYLISTS, available: () => false };
 /** The page's own memory of the tree's folders, apart from the Library pane's. */
 const PREPARE_TREE_STORAGE_KEY = "cuepoint-prepare-tree";
 
@@ -924,7 +928,13 @@ export function PrepareScreen({
   const [createError, setCreateError] = useState<string | null>(null);
   const [createRefusals, setCreateRefusals] = useState(0);
   const [choosingSource, setChoosingSource] = useState(false);
-  const [playlists, setPlaylists] = useState<LibraryPlaylistNode[]>([]);
+  // The Rekordbox playlists the "copy from" dialog offers: read through the
+  // shared cache from the first time the dialog is asked for (not on every
+  // visit), and kept for the next one.
+  const [wantsPlaylists, setWantsPlaylists] = useState(false);
+  const playlistRead = useSharedRead(wantsPlaylists ? LIBRARY_PLAYLISTS : NOT_WANTED);
+  const playlists: LibraryPlaylistNode[] = playlistRead.value?.playlists ?? NO_PLAYLISTS;
+  const playlistsSettled = !playlistRead.loading;
   const [copying, setCopying] = useState<NewSetSource | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -945,17 +955,19 @@ export function PrepareScreen({
     [navigate, push, tree],
   );
 
-  const chooseSource = useCallback(async () => {
+  // The dialog opens once the playlists are there (or could not be read: the
+  // CuePoint sources are still offered without the Rekordbox ones).
+  const [asking, setAsking] = useState(false);
+  const chooseSource = useCallback(() => {
     setCreateError(null);
-    const read = window.cuepoint?.getLibraryPlaylists;
-    try {
-      setPlaylists(read ? (await read()).playlists : []);
-    } catch {
-      // The CuePoint sources are still offered without the Rekordbox ones.
-      setPlaylists([]);
-    }
-    setChoosingSource(true);
+    setWantsPlaylists(true);
+    setAsking(true);
   }, []);
+  useEffect(() => {
+    if (!asking || !wantsPlaylists || !playlistsSettled) return;
+    setAsking(false);
+    setChoosingSource(true);
+  }, [asking, wantsPlaylists, playlistsSettled]);
 
   const makeSetFrom = useCallback(
     async (name: string, parentId: number | null) => {
