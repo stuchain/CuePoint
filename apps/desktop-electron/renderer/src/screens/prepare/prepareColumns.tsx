@@ -22,6 +22,7 @@
  * buttons (FLW-17, FLW-18): both through `prepareEditing`'s context.
  */
 import type { TrackColumnDef } from "../../components/table";
+import { PixelIcon } from "../../components/PixelIcon";
 import { OverriddenValue } from "../library/libraryCells";
 import { effectiveText } from "../library/libraryClean";
 import { describeSetNotice, describeSetWarning, fitOf } from "./setWarnings";
@@ -55,7 +56,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
         <span title={repeat ? describeSetNotice(repeat) : undefined}>
           {repeat && (
             <span className="prepare-repeat" aria-label="Played again">
-              ↻{" "}
+              <PixelIcon name="repeat" className="cp-pixel-icon--text cp-pixel-icon--before" />
             </span>
           )}
           {row.entry.position + 1}

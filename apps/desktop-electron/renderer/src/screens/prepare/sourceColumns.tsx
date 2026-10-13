@@ -22,6 +22,7 @@
  * table does (LIBUI-01).
  */
 import type { LibraryTrackRow, SetSuggestion, SetSuggestionSide, SetSuggestionSideName } from "../../api/cuepointBridge.types";
+import { PixelIcon } from "../../components/PixelIcon";
 import type { TrackColumnDef } from "../../components/table";
 import { FitBar } from "../../components/charts/FitBar";
 import { reasonTokens, tokenRun } from "../discover/reasonTokens";
@@ -91,7 +92,7 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
         <span title={suggestionSummary(row)}>
           {inSet && (
             <span className="prepare-source__in-set" title={inSet} aria-label={inSet}>
-              ↻{" "}
+              <PixelIcon name="repeat" className="cp-pixel-icon--text cp-pixel-icon--before" />
             </span>
           )}
           {row.title}

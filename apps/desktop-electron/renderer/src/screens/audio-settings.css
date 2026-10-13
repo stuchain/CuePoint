@@ -19,27 +19,6 @@
   gap: var(--space-xs);
 }
 
-.cp-audio-settings__label {
-  font-size: var(--font-size-sm);
-  color: var(--fg-primary);
-}
-
-.cp-audio-settings__select {
-  min-height: var(--control-height);
-  max-width: 100%;
-  padding: 0 var(--space-sm);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-input);
-  color: var(--fg-primary);
-  font-family: var(--font-pixel);
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-}
-
-.cp-audio-settings__select:disabled {
-  color: var(--fg-disabled);
-}
-
 .cp-audio-settings__toggle {
   display: flex;
   align-items: center;

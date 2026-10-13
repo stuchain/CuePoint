@@ -507,11 +507,11 @@ describe("the toolbar row", () => {
     for (const name of ["Play", "Organize", "Beatport", "More"]) {
       expect(within(bar).getByRole("button", { name })).not.toHaveAttribute("aria-disabled");
     }
-    expect(within(bar).getByRole("button", { name: "Clear selection, 1 selected" })).toHaveTextContent("1 selected ×");
+    expect(within(bar).getByRole("button", { name: "Clear selection, 1 selected" })).toHaveTextContent("1 selected");
     expect(screen.getByRole("status", { name: "" })).toHaveTextContent(/^3 tracks, 1 track selected$/);
   });
 
-  it("clears the selection with the 2 selected × button", async () => {
+  it("clears the selection with the 2 selected button", async () => {
     renderScreen();
     await tableReady();
     await select("Track 1", "Track 2");

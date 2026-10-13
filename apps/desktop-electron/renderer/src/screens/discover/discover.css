@@ -688,3 +688,14 @@
 .discover-wantlist:focus {
   outline: none;
 }
+
+/* The shared header on a Discover page (Artist, Label, Similar): one divider, the inset of the
+   details block under it. */
+.discover-page > .cp-screen-header {
+  padding: var(--space-sm) var(--space-md) var(--space-xs);
+  border-bottom: 0;
+}
+
+.discover-page > .cp-screen-header + .discover-page__header {
+  padding-top: 0;
+}

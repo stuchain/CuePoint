@@ -9,3 +9,19 @@
   display: block;
   flex: none;
 }
+
+/* An icon standing where a typed symbol was (T10): half the icon cell, in the line of text. */
+.cp-pixel-icon--text {
+  display: inline-block;
+  width: calc(var(--icon-size) * 0.5);
+  height: calc(var(--icon-size) * 0.5);
+  vertical-align: middle;
+}
+
+.cp-pixel-icon--after {
+  margin-inline-start: var(--space-xs);
+}
+
+.cp-pixel-icon--before {
+  margin-inline-end: var(--space-xs);
+}

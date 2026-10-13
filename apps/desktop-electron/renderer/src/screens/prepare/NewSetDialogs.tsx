@@ -137,25 +137,19 @@ export function SetSourceDialog({ open, groups, onChoose, onClose }: SetSourceDi
             Rekordbox collection with playlists.
           </p>
         ) : (
-          <label className="cp-select" htmlFor={`${ids}-source`}>
-            <span className="cp-select__label">Copy the tracks of</span>
-            <select
-              id={`${ids}-source`}
-              className="cp-select__control"
-              value={chosen}
-              onChange={(event) => setChosen(event.target.value)}
-            >
-              {groups.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.sources.map((candidate) => (
-                    <option key={sourceKey(candidate)} value={sourceKey(candidate)}>
-                      {candidate.kind === "smart" ? `${candidate.name} (Smart)` : candidate.name}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
+          <Select
+            id={`${ids}-source`}
+            label="Copy the tracks of"
+            value={chosen}
+            onChange={(event) => setChosen(event.target.value)}
+            options={groups.flatMap((group) =>
+              group.sources.map((candidate) => ({
+                value: sourceKey(candidate),
+                label: candidate.kind === "smart" ? `${candidate.name} (Smart)` : candidate.name,
+                group: group.label,
+              })),
+            )}
+          />
         )}
         <div className="prepare-dialog__actions">
           <Button variant="secondary" onClick={onClose}>

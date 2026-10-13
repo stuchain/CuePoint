@@ -15,6 +15,7 @@
  * ordinary rule set, so **Open in Library** and **Save as Smart Collection…** carry exactly the
  * choice on.
  */
+import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -360,16 +361,19 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
   const wholeLibraryEmpty = data !== null && data.total === 0 && picked.length === 0;
 
   const header = (
-    <header className="keys-page__header">
-      <h1 className="screen__title">Keys</h1>
-      {data && !libraryEmpty && !wholeLibraryEmpty && (
-        <p className="keys-note" role="status">
-          {data.total === 0
-            ? "No tracks here"
-            : `${tracksWord(data.total)} in ${sourcesWords(picked)}`}
-        </p>
-      )}
-    </header>
+    <ScreenHeader
+      title="Keys"
+      inset
+      summary={
+        data && !libraryEmpty && !wholeLibraryEmpty ? (
+          <span role="status">
+            {data.total === 0
+              ? "No tracks here"
+              : `${tracksWord(data.total)} in ${sourcesWords(picked)}`}
+          </span>
+        ) : undefined
+      }
+    />
   );
 
   if (libraryEmpty) {

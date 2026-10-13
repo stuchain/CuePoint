@@ -36,6 +36,9 @@ import { PREPARE_TABLE_LAYOUT_KEY } from "./prepareColumns";
 import { NO_SETS, WHAT_A_SET_IS } from "./prepareFormat";
 import { LAST_SET_STORAGE_KEY, PREPARE_PATH, PREPARE_SET_ROUTE, preparePath } from "./prepareLink";
 
+/** What a button draws: the name of its icon, else its words. */
+const markOf = (b: HTMLElement): string | null => b.querySelector("[data-icon]")?.getAttribute("data-icon") ?? b.textContent;
+
 const LOADED = { timeout: 3000 };
 const [E1, E2, E3, E4, , E5] = IDS.friday_entries;
 
@@ -647,7 +650,8 @@ describe("the Set", () => {
     expect(first.querySelector('[data-column="in"]')).toHaveTextContent("0:30");
     expect(first.querySelector('[data-column="out"]')).toHaveTextContent("4:30");
     expect(first.querySelector('[data-column="planned"]')).toHaveTextContent("4:00");
-    expect(first.querySelector('[data-column="position"]')).toHaveTextContent("↻ 1");
+    expect(first.querySelector('[data-column="position"]')).toHaveTextContent("1");
+    expect(first.querySelector('[data-column="position"] [data-icon="repeat"]')).not.toBeNull();
     const peakTwo = rowAt(5);
     expect(peakTwo.querySelector('[data-column="transition"]')).toHaveTextContent("⚠ +9.4% tempo");
     expect(rowAt(4).querySelector('[data-column="note"]')).toHaveTextContent("Let the break run");
@@ -1084,9 +1088,9 @@ describe("the entry buttons (FLW-17, C15d)", () => {
 
     fireEvent.click(rowAt(2));
     const group = within(rowAt(2)).getByRole("group", { name: "Selected entries" });
-    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual([
-      "↑",
-      "↓",
+    expect(within(group).getAllByRole("button").map(markOf)).toEqual([
+      "arrow-up",
+      "arrow-down",
       "Chapter here",
       "Repeat after",
       "Remove",
@@ -1226,9 +1230,9 @@ describe("the entry buttons (FLW-17, C15d)", () => {
       renderAt(preparePath(IDS.friday));
       await opened();
       fireEvent.click(rowAt(2));
-      expect(within(within(rowAt(2)).getByRole("group", { name: "Selected entries" })).getAllByRole("button").map((b) => b.textContent)).toEqual([
-        "↑",
-        "↓",
+      expect(within(within(rowAt(2)).getByRole("group", { name: "Selected entries" })).getAllByRole("button").map(markOf)).toEqual([
+        "arrow-up",
+        "arrow-down",
         "Chapter here",
         "Repeat after",
         "Remove",
@@ -1241,8 +1245,8 @@ describe("the entry buttons (FLW-17, C15d)", () => {
       await opened();
       fireEvent.click(rowAt(2));
       expect(button("Start a chapter here").textContent).toBe("Chapter");
-      expect(button("Repeat after").textContent).toBe("↻");
-      expect(button("Remove").textContent).toBe("×");
+      expect(markOf(button("Repeat after"))).toBe("repeat");
+      expect(markOf(button("Remove"))).toBe("close");
     });
 
     it("draws one Actions button that opens the row's menu where not even the glyphs fit", async () => {

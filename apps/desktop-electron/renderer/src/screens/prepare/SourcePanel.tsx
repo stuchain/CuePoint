@@ -15,7 +15,7 @@
  * Every row inserts at the point, drags into the Set, and plays on a
  * double-click (`SourceTable`).
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import type {
   CollectionNode,
@@ -27,6 +27,7 @@ import type {
   SetSuggestionSideName,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Select } from "../../components/Select";
 import { PixelSpinner } from "../../components/PixelSpinner";
 import { Tabs } from "../../components/Tabs";
 import { inMemorySource, useColumnLayout } from "../../components/table";
@@ -137,6 +138,7 @@ function PointLine({ words, title }: { words: PointWords; title: string }) {
 }
 
 export function SourcePanel(props: SourcePanelProps) {
+  const selectId = useId();
   const { collections, chapters, point } = props;
   const [tab, setTab] = useState<SourceTab>(loadSourceTab);
   const [chosenPool, setChosenPool] = useState<PoolValue>(loadSourcePool);
@@ -203,19 +205,16 @@ export function SourcePanel(props: SourcePanelProps) {
       <PointLine words={words} title={pointTitle} />
       <Tabs tabs={TABS} activeId={tab} onChange={chooseTab} />
       <div className="prepare-source__controls">
-        <select
+        <Select
+          id={`${selectId}-from`}
+          label="From"
+          hideLabel
           className="prepare-source__select"
           value={pool}
           onChange={(event) => choosePool(event.target.value)}
-          aria-label="From"
           title="Where Suggestions and the search look: the library, a playlist, a Collection or a Set"
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value} disabled={option.disabled}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          options={options.map((option) => ({ value: option.value, label: option.label, disabled: option.disabled }))}
+        />
         <button
           type="button"
           className="prepare-source__insert"

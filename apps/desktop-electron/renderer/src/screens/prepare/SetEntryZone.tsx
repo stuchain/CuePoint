@@ -16,6 +16,7 @@ import { useEffect, useId, useState } from "react";
 
 import type { SetChapterPlan, SetWarning } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Select } from "../../components/Select";
 import { NOTES_MAX_LENGTH } from "../library/trackEdits";
 import { chapterName, type EntryRow } from "./prepareRows";
 import { timeCell } from "./prepareFormat";
@@ -148,21 +149,14 @@ export function SetEntryZone({
       </label>
 
       {chapters.length > 1 && (
-        <label className="prepare-entry-zone__field" htmlFor={`${ids}-chapter`}>
-          <span className="cp-field__label">Chapter</span>
-          <select
-            id={`${ids}-chapter`}
-            className="cp-select__control"
-            value={String(entry.chapter_id)}
-            onChange={(event) => onMoveToChapter(Number(event.target.value))}
-          >
-            {chapters.map((chapter) => (
-              <option key={chapter.id} value={String(chapter.id)}>
-                {chapterName(chapter)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          id={`${ids}-chapter`}
+          label="Chapter"
+          className="prepare-entry-zone__field"
+          value={String(entry.chapter_id)}
+          onChange={(event) => onMoveToChapter(Number(event.target.value))}
+          options={chapters.map((chapter) => ({ value: String(chapter.id), label: chapterName(chapter) }))}
+        />
       )}
 
       {found.some(isAcknowledgeable) && <p className="prepare-entry-zone__hint">{ACCEPT_HINT}</p>}

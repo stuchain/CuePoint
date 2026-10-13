@@ -16,6 +16,8 @@ export interface SelectOption {
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label: string;
+  /** The label stays the accessible name but is not drawn (a select that sits in a row of controls). */
+  hideLabel?: boolean;
   options: SelectOption[];
 }
 
@@ -33,7 +35,7 @@ function runsOf(options: SelectOption[]): Array<{ group?: string; options: Selec
   return runs;
 }
 
-export function Select({ label, options, id, className = "", ...rest }: SelectProps) {
+export function Select({ label, hideLabel = false, options, id, className = "", ...rest }: SelectProps) {
   const fieldId = id ?? label.toLowerCase().replace(/\s+/g, "-");
   const drawn = (opt: SelectOption) => (
     <option key={opt.value} value={opt.value} disabled={opt.disabled}>
@@ -42,7 +44,7 @@ export function Select({ label, options, id, className = "", ...rest }: SelectPr
   );
   return (
     <label className={`cp-select ${className}`.trim()} htmlFor={fieldId}>
-      <span className="cp-select__label">{label}</span>
+      <span className={hideLabel ? "cp-select__label cp-visually-hidden" : "cp-select__label"}>{label}</span>
       <span className="cp-select__field">
         <select id={fieldId} className="cp-select__control" {...rest}>
         {runsOf(options).map((run, index) =>

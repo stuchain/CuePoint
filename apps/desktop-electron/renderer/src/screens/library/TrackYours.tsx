@@ -236,7 +236,7 @@ export function TrackYours({
                 aria-label={`Remove tag ${tag.name}`}
                 onClick={() => void tagging.remove(tag.id)}
               >
-                ×
+                <PixelIcon name="close" className="cp-pixel-icon--text" />
               </button>
             </li>
           ))}

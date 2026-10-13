@@ -120,7 +120,7 @@ describe("after an import", () => {
     expect(screen.queryByRole("button", { name: /Import/ })).toBeNull();
     expect(screen.queryByText(/Collection file/)).toBeNull();
     expect(screen.queryByRole("menu")).toBeNull();
-    expect(screen.queryByRole("button", { name: /▾/ })).toBeNull();
+    expect(document.querySelector("button [data-icon='chevron-down']")).toBeNull();
   });
 
   it("does what each button says", () => {

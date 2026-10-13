@@ -197,7 +197,12 @@ describe("headers", () => {
 
   it("shows the direction it is sorted in", () => {
     renderTable({ sort: { key: "title", direction: "asc" }, onSortChange: vi.fn() });
-    expect(screen.getByRole("button", { name: "Title" })).toHaveTextContent("▲");
+    expect(screen.getByRole("button", { name: "Title" }).querySelector("[data-icon='arrow-up']")).not.toBeNull();
+  });
+
+  it("draws the down arrow when sorted descending", () => {
+    renderTable({ sort: { key: "title", direction: "desc" }, onSortChange: vi.fn() });
+    expect(screen.getByRole("button", { name: "Title" }).querySelector("[data-icon='arrow-down']")).not.toBeNull();
   });
 });
 

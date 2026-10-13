@@ -753,6 +753,7 @@ body.prepare-resizing {
   gap: var(--space-sm);
 }
 
+.cp-select.prepare-entry-zone__field,
 .prepare-entry-zone__field {
   display: flex;
   flex-direction: column;
@@ -899,7 +900,6 @@ body.prepare-resizing {
   flex: none;
 }
 
-.prepare-source__select,
 .prepare-source__input {
   flex: 1;
   width: 100%;
@@ -914,13 +914,12 @@ body.prepare-resizing {
   font-weight: var(--control-font-weight);
 }
 
-.prepare-source__select {
+.cp-select.prepare-source__select {
+  flex: 1;
   /* Wide enough to read "The whole library" before the Insert button takes the rest. */
   min-width: calc(112px * var(--scale));
-  cursor: pointer;
 }
 
-.prepare-source__select:focus,
 .prepare-source__input:focus,
 .prepare-source__insert:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);

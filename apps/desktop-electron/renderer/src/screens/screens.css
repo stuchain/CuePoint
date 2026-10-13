@@ -27,12 +27,6 @@
   padding-bottom: calc(var(--safe-bottom) + var(--space-xl));
 }
 
-.screen__title {
-  margin: 0;
-  font-size: var(--font-size-xl);
-  letter-spacing: 0.04em;
-}
-
 .screen__subtitle,
 .screen__muted {
   color: var(--fg-muted);

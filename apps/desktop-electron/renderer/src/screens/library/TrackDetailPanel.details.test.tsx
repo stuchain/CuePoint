@@ -164,7 +164,7 @@ describe("the order (INS-3)", () => {
     await screen.findByText(/Beatport · Accepted/);
     const names = screen
       .getAllByRole("heading", { level: 3 })
-      .map((heading) => (heading.textContent ?? "").replace(/^[▾▸]/, ""));
+      .map((heading) => (heading.textContent ?? ""));
     const order = ["Yours", "Details from Rekordbox", "Cue points", "Where it is", "Beatport", "History"];
     const at = order.map((name) => names.findIndex((text) => text.startsWith(name)));
     expect(at.every((index) => index >= 0)).toBe(true);
@@ -240,7 +240,7 @@ describe("folding and remembering (INS-3)", () => {
   it("calls an empty track's folded heading exactly Yours", () => {
     localStorage.clear();
     show();
-    expect(section("Yours").textContent?.replace(/^[▸▾]/, "")).toBe("Yours");
+    expect(section("Yours").textContent).toBe("Yours");
   });
 
   it("updates the folded summary after a rating or favorite in Yours", async () => {
@@ -506,7 +506,7 @@ describe("the buttons under the title (FLW-9, K5)", () => {
     const group = screen.getByRole("group", { name: "Actions for this track" });
     expect(Array.from(group.children).map((child) => child.textContent?.trim())).toEqual([
       "Play",
-      "Queue ▾",
+      "Queue",
       "Similar",
     ]);
     for (const child of Array.from(group.children)) expect(child.tagName).toBe("BUTTON");
@@ -520,7 +520,7 @@ describe("the buttons under the title (FLW-9, K5)", () => {
     expect(within(file).queryByRole("button")).toBeNull();
   });
 
-  it("opens a menu from Queue ▾ holding Play next and Add to queue", async () => {
+  it("opens a menu from Queue holding Play next and Add to queue", async () => {
     show();
     const button = screen.getByRole("button", { name: "Queue" });
     expect(button).toHaveAttribute("aria-haspopup", "menu");
@@ -544,7 +544,7 @@ describe("the buttons under the title (FLW-9, K5)", () => {
     expect(onMessage).toHaveBeenCalledWith("1 track added to the queue");
   });
 
-  it("closes the menu on Escape and returns focus to Queue ▾", async () => {
+  it("closes the menu on Escape and returns focus to Queue", async () => {
     show();
     const button = screen.getByRole("button", { name: "Queue" });
     button.focus();

@@ -26,15 +26,6 @@
   --wheel-cell: round(calc(3px * var(--scale)), 1px);
 }
 
-.keys-page__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-xs) var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  border-bottom: var(--divider);
-}
-
 /* Sources, wheel and counts share one row at the default size (1.5x in a 1,280-wide window with
    Track details open): the Sources column is narrow, and the wheel's size is the only one that
    is not given up. At the larger sizes the row wraps instead of scrolling sideways. */

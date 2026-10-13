@@ -169,7 +169,7 @@ const idOfRow = (row: PrepareRow) => rowKey(row);
  * A page still reading says so inside a panel, not as bare text (PRP-12). The
  * pixel loading motion (DEC-134) is PAGES-12's; this is where it will play.
  */
-function LoadingPanel({ title, words }: { title: string; words: string }) {
+function LoadingPanel({ title, words }: { title?: string; words: string }) {
   return (
     <Panel title={title}>
       <p className="prepare-note prepare-loading" role="status">
@@ -1012,7 +1012,8 @@ export function PrepareScreen({
   if (!bridge) {
     return (
       <div className="screen screen--stack screen--scroll prepare-screen--waiting">
-        <Panel title="Prepare">
+        <ScreenHeader title="Prepare" />
+        <Panel>
           <p className="prepare-note">{NO_SETS}</p>
         </Panel>
       </div>
@@ -1025,6 +1026,7 @@ export function PrepareScreen({
   if (param === undefined || (noSets && !shown)) {
     return (
       <div className="screen screen--stack screen--scroll prepare-screen--waiting">
+        <ScreenHeader title="Prepare" />
         {noSets ? (
           <Panel title="Prepare a Set">
             <p className="prepare-note">{WHAT_A_SET_IS}</p>
@@ -1043,14 +1045,14 @@ export function PrepareScreen({
             </div>
           </Panel>
         ) : tree.status === "error" ? (
-          <Panel title="Prepare">
+          <Panel>
             <p className="prepare-note">{tree.error}</p>
             <Button variant="secondary" onClick={tree.reload}>
               Try again
             </Button>
           </Panel>
         ) : (
-          <LoadingPanel title="Prepare" words="Reading your Sets…" />
+          <LoadingPanel words="Reading your Sets…" />
         )}
         {dialogs}
       </div>
@@ -1060,8 +1062,9 @@ export function PrepareScreen({
   if (!shown) {
     return (
       <div className="screen screen--stack screen--scroll prepare-screen--waiting">
+        <ScreenHeader title="Prepare" />
         {setId === null ? (
-          <Panel title="Prepare">
+          <Panel>
             <p className="prepare-note">This address names no Set.</p>
             <Button variant="secondary" onClick={() => navigate(PREPARE_PATH)}>
               Open your Sets
@@ -1075,7 +1078,7 @@ export function PrepareScreen({
             </Button>
           </Panel>
         ) : (
-          <LoadingPanel title="Prepare" words="Reading the Set…" />
+          <LoadingPanel words="Reading the Set…" />
         )}
       </div>
     );

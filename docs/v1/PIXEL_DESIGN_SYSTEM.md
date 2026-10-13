@@ -151,6 +151,18 @@ pipeline Aseprite → PNG") **was never implemented** — everything visual toda
 | `Tabs` | underline tabs (DEC-241): transparent tabs, active = `--fg-primary` weight 700 over an accent underline; strip has a hairline bottom border |
 | `ProgressBar`, `ToolbarIcon`, `AppMenuBar`, `EngineStatusBanner` | present, consistent with the system |
 
+## Page header, empty state and controls
+
+Every page uses the same few components; the guards below keep it that way.
+
+| Need | Use | Guard |
+|---|---|---|
+| A page title, its actions, tabs and one summary line | `components/shell/ScreenHeader` (one `<h1>` and one divider; `title`, `display`, `crumb`, `beside`, `summary`, `actions`, `tabs`, `status`) | `screens/screenHeaders.test.tsx`: each route shows one `.cp-screen-header` and one h1; nothing else draws an `<h1>` or `.screen__title` |
+| A page or panel with nothing to show | `components/EmptyState` (headline, description, one action) | `EmptyState.test.tsx` |
+| A dropdown | `components/Select` (`appearance: none`, a pixel chevron; `hideLabel` keeps the label as the accessible name only) | `components/rawControls.test.ts`: no `<select>` outside `Select.tsx`, no allowlist |
+| An arrow, chevron, cross, repeat or pencil mark | `PixelIcon` (`chevron-right`, `chevron-down`, `arrow-up`, `arrow-down`, `repeat`, `close`, `edit`); in a line of text `className="cp-pixel-icon--text"` (half the icon cell, plus `cp-pixel-icon--after` for a gap before it) | `components/typedSymbols.test.ts`: none of the typed marks in source, no allowlist; an arrow key named in a shortcut hint (`Alt+↑`) is a key name and is left alone |
+| A button that is only a mark | `<Button iconOnly icon="close" aria-label="Dismiss">` | `Button.test.tsx` (the label is required by the type) |
+
 ## What this means for the target design system work
 
 This is a genuinely mature, internally consistent token system — the "reuse, don't redesign" case

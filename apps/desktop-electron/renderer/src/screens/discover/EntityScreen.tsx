@@ -19,6 +19,7 @@
  * as Smart Collection** carry the same rules, which makes the page a way into
  * CuePoint's own organization too.
  */
+import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -254,14 +255,18 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
 
   return (
     <div className="screen screen--scroll discover-page">
-      <header className="discover-page__header">
-        <p className="discover-page__kind">
-          {kindTitle(kind)}
-          <Badge variant={shown.identity === "beatport" ? "info" : "default"}>
-            {identityLabel(shown)}
-          </Badge>
-        </p>
-        <h1 className="screen__title">{pageTitle(shown)}</h1>
+      <ScreenHeader
+        title={pageTitle(shown)}
+        crumb={
+          <p className="discover-page__kind">
+            {kindTitle(kind)}
+            <Badge variant={shown.identity === "beatport" ? "info" : "default"}>
+              {identityLabel(shown)}
+            </Badge>
+          </p>
+        }
+      />
+      <div className="discover-page__header">
         <MoreAbout>
           <p className="discover-note">{identityDetail(shown)}</p>
         </MoreAbout>
@@ -314,7 +319,7 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
             Save as Smart Collection…
           </Button>
         </div>
-      </header>
+      </div>
 
       <section className="discover-page__half" aria-labelledby="discover-page-library">
         <h2 id="discover-page-library" className="discover-section__title">

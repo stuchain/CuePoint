@@ -14,6 +14,7 @@
  * A link can ask for the Health section (`statisticsLink.ts`), because library health lives
  * here now: the page scrolls to it once its content is in, once per navigation.
  */
+import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -182,19 +183,22 @@ export function StatisticsScreen() {
   };
 
   const header = (
-    <header className="statistics-page__header">
-      <h1 className="screen__title">Statistics</h1>
-      {answered !== null && !libraryEmpty && (
-        <Select
-          label="Scope"
-          className="statistics-page__scope"
-          value={scope}
-          options={options}
-          disabled={!settled}
-          onChange={(event) => choose(event.target.value)}
-        />
-      )}
-    </header>
+    <ScreenHeader
+      title="Statistics"
+      inset
+      actions={
+        answered !== null && !libraryEmpty ? (
+          <Select
+            label="Scope"
+            className="statistics-page__scope"
+            value={scope}
+            options={options}
+            disabled={!settled}
+            onChange={(event) => choose(event.target.value)}
+          />
+        ) : undefined
+      }
+    />
   );
 
   if (libraryEmpty) {

@@ -13,6 +13,7 @@
  * and Play next and Add to queue append (DEC-013). Offline and without a
  * token: similarity is local.
  */
+import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -337,9 +338,8 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
 
   return (
     <div className="screen discover-page discover-page--similar">
-      <header className="discover-page__header">
-        <p className="discover-page__kind">Similar tracks</p>
-        <h1 className="screen__title">{seed.track.title}</h1>
+      <ScreenHeader title={seed.track.title} crumb={<p className="discover-page__kind">Similar tracks</p>} />
+      <div className="discover-page__header">
         <p className="discover-page__credit">
           {seed.credits && seed.credits.artists.length > 0 ? (
             <CreditLinks
@@ -369,7 +369,7 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
             {SIMILAR_INDEX_BUILDING}
           </p>
         )}
-      </header>
+      </div>
 
       <div className="discover-table discover-page__similar">
         <div className="discover-table__rows">

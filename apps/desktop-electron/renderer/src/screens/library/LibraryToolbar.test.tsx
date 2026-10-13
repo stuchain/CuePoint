@@ -1,6 +1,6 @@
 /**
  * The table's toolbar row (FLW-8, LIB-8): with nothing selected only the count and
- * Select all; with a selection the four group buttons and "3 selected ×" on the left.
+ * Select all; with a selection the four group buttons and "3 selected" on the left.
  * The row is the same height either way, so the table never moves when a selection is
  * made or let go (DEC-112).
  */
@@ -50,8 +50,8 @@ describe("the selection bar", () => {
     const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
     const names = within(bar)
       .getAllByRole("button")
-      .map((button) => (button.textContent ?? "").replace(" ▸", ""));
-    expect(names).toEqual([...NAMES, "3 selected ×"]);
+      .map((button) => (button.textContent ?? ""));
+    expect(names).toEqual([...NAMES, "3 selected"]);
   });
 
   it("marks every group as opening a menu", () => {
@@ -85,7 +85,7 @@ describe("the selection bar", () => {
     expect(screen.getByRole("button", { name: "Play" })).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("clears the selection from the 3 selected × button, moving focus to Select all first", async () => {
+  it("clears the selection from the 3 selected button, moving focus to Select all first", async () => {
     const { onClear } = renderBar();
     await userEvent.click(screen.getByRole("button", { name: CLEAR }));
     expect(onClear).toHaveBeenCalledTimes(1);

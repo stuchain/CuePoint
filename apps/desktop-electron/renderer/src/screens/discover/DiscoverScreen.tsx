@@ -275,7 +275,7 @@ export function DiscoverScreen() {
   if (!tools) {
     return (
       <div className="screen screen--stack screen--scroll discover-screen--waiting">
-        <ScreenHeader title="Discover" />
+        <ScreenHeader title="Discover" inset />
         {optionsError ? (
           <Panel title="Discover could not open">
             <p className="discover-note">{optionsError}</p>
@@ -299,6 +299,7 @@ export function DiscoverScreen() {
     <div className="screen discover-screen">
       <ScreenHeader
         title="Discover"
+        inset
         tabs={
           <Tabs
             tabs={DISCOVER_SECTIONS.map((entry) => ({ id: entry.id, label: entry.label }))}
@@ -359,9 +360,7 @@ export function DiscoverScreen() {
               Open the playlist
             </Button>
           )}
-          <Button variant="secondary" aria-label="Dismiss" onClick={() => setPushNotice(null)}>
-            ×
-          </Button>
+          <Button variant="secondary" iconOnly icon="close" aria-label="Dismiss" onClick={() => setPushNotice(null)} />
         </div>
       )}
 

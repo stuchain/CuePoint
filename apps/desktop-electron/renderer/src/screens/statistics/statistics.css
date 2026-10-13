@@ -15,22 +15,13 @@
   max-width: none;
 }
 
-.statistics-page__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-sm) var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  border-bottom: var(--divider);
-}
-
 .statistics-page__scope {
-  min-width: calc(220px * var(--scale));
+  min-width: min(calc(220px * var(--scale)), 50cqi);
   max-width: 100%;
 }
 
 .statistics-section {
+  scroll-margin-top: var(--screen-header-height, 0);
   display: flex;
   flex-direction: column;
   align-items: flex-start;

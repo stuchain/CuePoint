@@ -189,7 +189,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       const suggestions = win.getByRole("table", { name: "Suggestions" }).locator(".track-table__row");
       await expect(suggestions.first()).toBeVisible({ timeout: 30_000 });
       const first = suggestions.first();
-      const title = ((await first.locator('[data-column="title"]').textContent()) ?? "").replace("↻", "").trim();
+      const title = ((await first.locator('[data-column="title"]').textContent()) ?? "").trim();
       await clickRow(win, first);
       await win.getByRole("button", { name: "Insert here" }).click();
       await expect(win.getByText(`Inserted “${title}” into “Friday”.`)).toBeVisible({ timeout: 15_000 });

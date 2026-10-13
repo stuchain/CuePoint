@@ -234,7 +234,7 @@ describe("the seed and its suggestions", () => {
   it("says what the seed is and what it was compared with", async () => {
     renderAt(similarPath(1));
     await listed();
-    const header = screen.getByRole("heading", { level: 1 }).closest("header") as HTMLElement;
+    const header = document.querySelector(".discover-page__header") as HTMLElement;
     expect(within(header).getByText("124 BPM · 8A · House")).toBeInTheDocument();
     expect(within(header).getByText(consideredLine(SIMILAR.value!))).toBeInTheDocument();
     fireEvent.click(within(header).getByRole("button", { name: "Mara Veil" }));
@@ -332,7 +332,7 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
     const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
     // Play and More only: Organize is the Library's, Beatport is Clean's.
     const names = within(bar).getAllByRole("button").map((button) => button.textContent);
-    expect(names).toEqual(["Play ▸", "More ▸", "1 selected ×"]);
+    expect(names).toEqual(["Play", "More", "1 selected"]);
     expect(screen.queryByRole("button", { name: "Actions…" })).toBeNull();
     expect(within(bar).getByRole("button", { name: "Play" })).not.toHaveAttribute("aria-disabled");
   });

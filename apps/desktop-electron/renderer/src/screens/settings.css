@@ -13,7 +13,7 @@
 
 .settings-page__nav {
   position: sticky;
-  top: 0;
+  top: var(--screen-header-height, 0);
 }
 
 .settings-page__nav ul {
@@ -55,6 +55,10 @@
 }
 
 /* A link lands on the section; focus there is a landing, not a control. */
+.settings-page__section {
+  scroll-margin-top: var(--screen-header-height, 0);
+}
+
 .settings-page__section:focus {
   outline: none;
 }

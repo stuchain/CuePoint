@@ -220,7 +220,7 @@ async function suggestionRows(): Promise<HTMLElement[]> {
 }
 
 function titleOf(row: HTMLElement): string {
-  return row.querySelector('[data-column="title"]')?.textContent?.replace("↻", "").trim() ?? "";
+  return row.querySelector('[data-column="title"]')?.textContent?.trim() ?? "";
 }
 
 function lastRequest(): SetSuggestionsRequest {

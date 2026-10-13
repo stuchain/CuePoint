@@ -17,6 +17,7 @@
  * can reach. Both are asserted against the vocabulary rather than reviewed.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { PixelIcon } from "../../components/PixelIcon";
 
 import { Button } from "../../components/Button";
 import { Select } from "../../components/Select";
@@ -546,7 +547,7 @@ export function FilterBar({
                       aria-label={`Remove filter: ${text}`}
                       onClick={() => onFiltersChange(removeRule(filters, index))}
                     >
-                      ×
+                      <PixelIcon name="close" className="cp-pixel-icon--text" />
                     </button>
                   </li>
                 );

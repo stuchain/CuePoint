@@ -343,9 +343,7 @@ export function BeatportHalf({
           Open the playlist
         </Button>
       )}
-      <Button variant="secondary" aria-label="Dismiss" onClick={() => setPushNotice(null)}>
-        ×
-      </Button>
+      <Button variant="secondary" iconOnly icon="close" aria-label="Dismiss" onClick={() => setPushNotice(null)} />
     </div>
   );
 

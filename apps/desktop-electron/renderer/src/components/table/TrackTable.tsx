@@ -780,7 +780,7 @@ export function TrackTable<Row>({
                     )}
                     {active && (
                       <span className="track-table__sort" aria-hidden>
-                        {sort?.direction === "asc" ? " ▲" : " ▼"}
+                        <PixelIcon name={sort?.direction === "asc" ? "arrow-up" : "arrow-down"} className="cp-pixel-icon--text cp-pixel-icon--after" />
                       </span>
                     )}
                   </button>

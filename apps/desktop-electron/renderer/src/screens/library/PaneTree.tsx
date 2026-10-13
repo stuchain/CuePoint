@@ -257,7 +257,7 @@ export function PaneTree({
                   onExpand(row.key, !row.expanded);
                 }}
               >
-                {row.expanded ? "▾" : "▸"}
+                {row.expanded ? <PixelIcon name="chevron-down" className="cp-pixel-icon--text" /> : <PixelIcon name="chevron-right" className="cp-pixel-icon--text" />}
               </button>
             ) : (
               <span className="cp-playlist-pane__twisty" aria-hidden />

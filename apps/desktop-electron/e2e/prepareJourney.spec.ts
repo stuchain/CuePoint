@@ -367,7 +367,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await expect(panel.getByRole("status", { name: /^Inserting: between “Warm Two” and “Warm One”/ })).toBeVisible();
       const suggestion = win.getByRole("table", { name: "Suggestions" }).locator(".track-table__row").first();
       await expect(suggestion).toBeVisible({ timeout: 30_000 });
-      const suggested = ((await suggestion.locator('[data-column="title"]').textContent()) ?? "").replace("↻", "").trim();
+      const suggested = ((await suggestion.locator('[data-column="title"]').textContent()) ?? "").trim();
       await at(win, suggestion);
       await panel.getByRole("button", { name: "Insert here" }).click();
       await expect(win.getByText(`Inserted “${suggested}” into “Friday”.`)).toBeVisible({ timeout: 15_000 });

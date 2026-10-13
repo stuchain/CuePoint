@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { ScreenHeader } from "../components/shell/ScreenHeader";
 import { useLocation } from "react-router-dom";
 
 import { appVersion } from "../components/AboutDialog";
@@ -122,7 +123,7 @@ export function SettingsScreen({
 
   return (
     <div className="screen screen--stack screen--scroll settings-page">
-      <h1 className="screen__title">Settings</h1>
+      <ScreenHeader title="Settings" />
 
       <div className="settings-page__layout">
         <nav aria-label="Settings sections" className="settings-page__nav">

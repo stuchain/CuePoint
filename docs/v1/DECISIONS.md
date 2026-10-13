@@ -8129,3 +8129,24 @@ font while the table's numbers used the data font, so the figures did not line u
   cells and the key chips. `tokens/dataFont.test.ts` lists the places that must use it; other pages add theirs there.
 
 **Decided with**: User (K16, R4-3 ★ answers in SCOPE.md) · **Date**: 2026-10-13
+
+## DEC-294 — Every Page Uses the Shared Header and Controls, Held by Tests
+
+**Status**: Approved · **Related**: DEC-255, DEC-260, THEME-REVIEW T3 T4 T10
+
+**Context**: Round 2 moved most pages onto the shared header, dropdown and pixel icons while each page
+was rebuilt (DEC-255). Keys, Statistics, Settings, Discover's artist, label and similar pages, Prepare's
+waiting states, six dropdowns and seventeen files of typed arrows and crosses were still left over.
+
+**Decision**:
+- Every page draws its title through `ScreenHeader`; `screens/screenHeaders.test.tsx` renders each
+  page and expects one header and one h1. Discover's artist, label and similar pages keep the
+  artist, label or track as the h1 with the page kind above it. `.screen__title` is gone.
+- Every dropdown is `components/Select` (which can hide its label visually and greys when disabled);
+  no `<select>` elsewhere. Every arrow, chevron, cross, pencil and repeat mark is a pixel icon; typed
+  symbols remain only in keyboard hints such as "Alt+↑". The guards' allowlists are now empty.
+- A sticky page header publishes its height, so Settings' section list and scroll targets sit below it.
+
+**Notes**: DEC-255 (the shared header and controls), DEC-260 (the other guards).
+
+**Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13

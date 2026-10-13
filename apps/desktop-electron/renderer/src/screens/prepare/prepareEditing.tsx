@@ -19,9 +19,10 @@
  *   full names are kept. Not drawn while a time on that row is being typed in.
  */
 import { useContext, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { PixelIcon } from "../../components/PixelIcon";
 
 import { Hint } from "../../components/Hint";
-import { entryButtonDomId, type EntryButton } from "./entryActions";
+import { entryButtonDomId, type EntryButton, type EntryMark } from "./entryActions";
 import { useEntryButtonsForm } from "./entryButtonsRoom";
 import { DOUBLE_CLICK_MS, PrepareEditingContext, type PrepareEditing } from "./prepareEditingContext";
 import { timeCell } from "./prepareFormat";
@@ -140,6 +141,11 @@ const stopTableKeys = (event: KeyboardEvent) => {
   if (TABLE_KEYS.has(event.key)) event.stopPropagation();
 };
 
+/** A button's mark: its icon, drawn at the size of the line, or its words. */
+function drawMark(mark: EntryMark) {
+  return "icon" in mark ? <PixelIcon name={mark.icon} className="cp-pixel-icon--text" /> : mark.text;
+}
+
 /**
  * A chapter heading's one button, Edit… (FLW-17, amended). Moving and deleting the chapter are in
  * its dialog and its right-click menu.
@@ -228,14 +234,14 @@ export function EntryButtons({ row }: { row: EntryRow }) {
       <span className="prepare-row-buttons prepare-row-buttons--measure" aria-hidden="true" data-measure="words" ref={measure}>
         {buttons.map((button) => (
           <span key={button.id} className="prepare-row-buttons__button">
-            {button.short}
+            {drawMark(button.short)}
           </span>
         ))}
       </span>
       <span className="prepare-row-buttons prepare-row-buttons--measure" aria-hidden="true" data-measure="glyphs">
         {buttons.map((button) => (
           <span key={button.id} className="prepare-row-buttons__button">
-            {button.glyph}
+            {drawMark(button.glyph)}
           </span>
         ))}
       </span>
@@ -267,7 +273,7 @@ export function EntryButtons({ row }: { row: EntryRow }) {
                 openMenu(row, { x: box.left, y: box.bottom });
               }}
             >
-              Actions ▾
+              Actions<PixelIcon name="chevron-down" className="cp-pixel-icon--text cp-pixel-icon--after" />
             </button>
           </Hint>
         ) : (
@@ -282,7 +288,7 @@ export function EntryButtons({ row }: { row: EntryRow }) {
                 disabled={button.disabled}
                 onClick={onPress(button)}
               >
-                {form === "glyphs" ? button.glyph : button.short}
+                {drawMark(form === "glyphs" ? button.glyph : button.short)}
               </button>
             </Hint>
           ))

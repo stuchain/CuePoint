@@ -740,8 +740,10 @@
 }
 
 .cp-track-section__chevron {
+  display: inline-flex;
   flex: none;
-  width: 1ch;
+  align-items: center;
+  width: calc(var(--icon-size) * 0.5);
 }
 
 .cp-track-section__body[hidden] {

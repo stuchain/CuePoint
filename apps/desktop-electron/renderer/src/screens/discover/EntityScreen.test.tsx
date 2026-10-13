@@ -669,9 +669,9 @@ describe("the library half: library rows", () => {
     const library = screen.getByRole("region", { name: "Your tracks" });
     const bar = within(library).getByRole("toolbar", { name: "Selected tracks" });
     expect(within(bar).getAllByRole("button").map((button) => button.textContent)).toEqual([
-      "Play ▸",
-      "More ▸",
-      "1 selected ×",
+      "Play",
+      "More",
+      "1 selected",
     ]);
     fireEvent.click(within(bar).getByRole("button", { name: "Play" }));
     const menu = await screen.findByRole("menu", {}, LOADED);

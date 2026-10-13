@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import "./ScreenHeader.css";
 
 export interface ScreenHeaderProps {
@@ -22,6 +22,8 @@ export interface ScreenHeaderProps {
   tabs?: ReactNode;
   /** A Badge. */
   status?: ReactNode;
+  /** Pad the sides, for a page whose own box has no padding. */
+  inset?: boolean;
 }
 
 /**
@@ -38,14 +40,31 @@ export function ScreenHeader({
   actions,
   tabs,
   status,
+  inset = false,
 }: ScreenHeaderProps) {
+  const root = useRef<HTMLElement>(null);
+  // The header sticks, so what sticks or scrolls under it needs its height: the page gets it as
+  // `--screen-header-height`.
+  useLayoutEffect(() => {
+    const header = root.current;
+    const host = header?.parentElement;
+    if (!header || !host) return;
+    const measure = () => host.style.setProperty("--screen-header-height", `${header.offsetHeight}px`);
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(header);
+    return () => {
+      observer?.disconnect();
+      host.style.removeProperty("--screen-header-height");
+    };
+  }, []);
   const hasDisplay = display !== undefined && display !== null && display !== false && display !== "";
   return (
-    <header className="cp-screen-header">
+    <header ref={root} className={inset ? "cp-screen-header cp-screen-header--inset" : "cp-screen-header"}>
       {crumb && <div className="cp-screen-header__crumb">{crumb}</div>}
       <div className="cp-screen-header__main">
         <div className="cp-screen-header__title-row">
-          <h1 className={`cp-screen-header__title ${hasDisplay ? "cp-screen-header__title--hidden" : ""}`.trim()}>
+          <h1 className={`cp-screen-header__title ${hasDisplay ? "cp-screen-header__title--hidden cp-visually-hidden" : ""}`.trim()}>
             {title}
           </h1>
           {hasDisplay && (

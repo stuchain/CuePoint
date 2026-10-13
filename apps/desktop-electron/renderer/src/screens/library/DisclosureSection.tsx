@@ -10,6 +10,7 @@
  * long as the section does.
  */
 import { useCallback, useId, useState, type ReactNode } from "react";
+import { PixelIcon } from "../../components/PixelIcon";
 
 export const TRACK_DETAILS_SECTIONS_KEY = "cuepoint-ui-track-details-sections";
 
@@ -98,7 +99,7 @@ export function DisclosureSection({
           onClick={toggle}
         >
           <span aria-hidden className="cp-track-section__chevron">
-            {open ? "▾" : "▸"}
+            {open ? <PixelIcon name="chevron-down" className="cp-pixel-icon--text" /> : <PixelIcon name="chevron-right" className="cp-pixel-icon--text" />}
           </span>
           <span>{summary ? `${title} · ${summary}` : title}</span>
         </button>

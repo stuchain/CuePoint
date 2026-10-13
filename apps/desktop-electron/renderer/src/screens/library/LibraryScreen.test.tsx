@@ -816,7 +816,7 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     bridge.browseLibrary.mockImplementation(async (params: Record<string, unknown>) =>
       browseAnswer(params, params.filters ? [] : TRACKS),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    await userEvent.click(within(document.querySelector(".cp-quick") as HTMLElement).getByRole("button", { name: "Key" }));
     await userEvent.click(await screen.findByRole("checkbox", { name: /^8A/ }));
 
     const asked = await screen.findByRole("status", { name: "No Beatport keys yet" });
@@ -2749,7 +2749,7 @@ describe("rearranging a Collection (ORG-11)", () => {
     renderScreen();
     await tableReady();
     await openWarmups();
-    await userEvent.click(screen.getByRole("button", { name: /^BPM(?! ▾)/ }));
+    await userEvent.click(screen.getAllByRole("button", { name: /^BPM/ }).find((button) => button.closest(".track-table__header-cell"))!);
     await waitFor(() => expect(lastBrowse()).toMatchObject({ sort: "bpm" }));
 
     const dataTransfer = transfer();
@@ -2842,7 +2842,7 @@ describe("rearranging a Collection (ORG-11)", () => {
       renderScreen();
       await tableReady();
       await openWarmups();
-      await userEvent.click(screen.getByRole("button", { name: /^BPM(?! ▾)/ }));
+      await userEvent.click(screen.getAllByRole("button", { name: /^BPM/ }).find((button) => button.closest(".track-table__header-cell"))!);
       await waitFor(() => expect(lastBrowse()).toMatchObject({ sort: "bpm" }));
       await userEvent.click(screen.getByText("Track 2"));
       fireEvent.keyDown(table(), { key: "ArrowDown", altKey: true });
@@ -3561,7 +3561,7 @@ describe("quick filters and saving (PAGES-05B)", () => {
     await tableReady();
     await openFriday();
 
-    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    await userEvent.click(within(document.querySelector(".cp-quick") as HTMLElement).getByRole("button", { name: "Key" }));
     await waitFor(() =>
       expect(bridge.getLibraryQuickFacets).toHaveBeenCalledWith(
         expect.objectContaining({ playlistId: 10 }),
@@ -3584,7 +3584,7 @@ describe("quick filters and saving (PAGES-05B)", () => {
   it("asks again for the view when a pick changes it", async () => {
     renderScreen();
     await tableReady();
-    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    await userEvent.click(within(document.querySelector(".cp-quick") as HTMLElement).getByRole("button", { name: "Key" }));
     await userEvent.click(await screen.findByRole("checkbox", { name: /^8A/ }));
     await waitFor(() => expect(bridge.getLibraryQuickFacets.mock.calls.length).toBeGreaterThan(1));
     const last = bridge.getLibraryQuickFacets.mock.calls.at(-1)?.[0] as {
@@ -3652,7 +3652,7 @@ describe("the Key list's link to the Keys page (PAGES-16)", () => {
   });
 
   async function seeOnKeysPage() {
-    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    await userEvent.click(within(document.querySelector(".cp-quick") as HTMLElement).getByRole("button", { name: "Key" }));
     await userEvent.click(await screen.findByRole("button", { name: "See these on the Keys page" }));
   }
 
@@ -3720,14 +3720,14 @@ describe("the Key list's link to the Keys page (PAGES-16)", () => {
     const tree = await screen.findByRole("tree", { name: "Collections" });
     await userEvent.click(within(tree).getByText("Recent techno"));
     await waitFor(() => expect(lastBrowse()).toMatchObject({ scope: "smart" }));
-    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    await userEvent.click(within(document.querySelector(".cp-quick") as HTMLElement).getByRole("button", { name: "Key" }));
     expect(screen.queryByRole("button", { name: "See these on the Keys page" })).toBeNull();
   });
 
   it("offers no link where the page has nowhere to send it", async () => {
     renderScreen();
     await tableReady();
-    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    await userEvent.click(within(document.querySelector(".cp-quick") as HTMLElement).getByRole("button", { name: "Key" }));
     expect(screen.queryByRole("button", { name: "See these on the Keys page" })).toBeNull();
   });
 });

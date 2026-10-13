@@ -56,3 +56,14 @@
 .cp-select__control:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
 }
+
+.cp-select__control:disabled {
+  color: var(--fg-disabled);
+  background: var(--bg-panel);
+  border-color: var(--border-muted);
+  cursor: default;
+}
+
+.cp-select__field:has(> .cp-select__control:disabled) .cp-select__chevron {
+  color: var(--fg-disabled);
+}

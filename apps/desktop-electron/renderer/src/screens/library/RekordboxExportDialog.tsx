@@ -32,6 +32,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
 import { Button, Modal, MoreAbout } from "../../components";
+import { Select } from "../../components/Select";
 import type { CollectionTreeNode } from "./collectionTree";
 import { followJob, type FollowHandle } from "./followJob";
 import { fileName, jobErrorMessage } from "./libraryFormat";
@@ -605,21 +606,13 @@ export function RekordboxExportDialog({
 
                 {/* Last, the notation, with what choosing it costs (DEC-089). */}
                 <section className="rekordbox-export__part" aria-label="Key notation">
-                  <label className="clean-dialog__inline">
-                    Key notation
-                    <select
-                      className="clean-dialog__select"
-                      value={keyFormat}
-                      disabled={phase === "exporting"}
-                      onChange={(event) => setKeyFormat(event.target.value as RekordboxKeyFormat)}
-                    >
-                      {EXPORT_KEY_FORMATS.map((format) => (
-                        <option key={format.value} value={format.value}>
-                          {format.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <Select
+                    label="Key notation"
+                    value={keyFormat}
+                    disabled={phase === "exporting"}
+                    onChange={(event) => setKeyFormat(event.target.value as RekordboxKeyFormat)}
+                    options={EXPORT_KEY_FORMATS.map((format) => ({ value: format.value, label: format.label }))}
+                  />
                   {consequence && (
                     <p className="rekordbox-export__consequence" data-testid="export-key-consequence">
                       {consequence}

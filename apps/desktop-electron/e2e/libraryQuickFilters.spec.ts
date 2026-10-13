@@ -192,7 +192,7 @@ test.describe("Quick filters (PAGES-05B)", () => {
         }
       });
 
-      await window.getByRole("button", { name: "Key ▾" }).click();
+      await window.locator(".cp-quick").getByRole("button", { name: /^Key\b/ }).click();
       await window.getByRole("checkbox", { name: /^8A/ }).click();
       await window.keyboard.press("Escape");
 
@@ -266,12 +266,12 @@ test.describe("Quick filters (PAGES-05B)", () => {
         // header overlaps the row, so the controls are pressed without a mouse.
         const press = (target: ReturnType<Page["locator"]>) =>
           withPlaylist ? target.click() : target.dispatchEvent("click");
-        await press(window.getByRole("button", { name: "BPM ▾" }));
+        await press(window.locator(".cp-quick").getByRole("button", { name: /^BPM\b/ }));
         const bpm = window.getByRole("dialog", { name: "BPM" });
         await bpm.getByLabel("From").fill("121");
         await bpm.getByLabel("To").fill("128");
         await press(bpm.getByRole("button", { name: "Apply" }));
-        await press(window.getByRole("button", { name: "Genre ▾" }));
+        await press(window.locator(".cp-quick").getByRole("button", { name: /^Genre\b/ }));
         await press(window.getByRole("checkbox", { name: /^House/ }));
         await window.keyboard.press("Escape");
         await expect(

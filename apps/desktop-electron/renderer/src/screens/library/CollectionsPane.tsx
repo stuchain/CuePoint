@@ -552,7 +552,7 @@ export function CollectionsPane({
           aria-expanded={!collapsed}
           onClick={() => onToggleSection?.(!collapsed)}
         >
-          <span aria-hidden>{collapsed ? "▸" : "▾"}</span>
+          <span aria-hidden>{collapsed ? <PixelIcon name="chevron-right" className="cp-pixel-icon--text" /> : <PixelIcon name="chevron-down" className="cp-pixel-icon--text" />}</span>
           <span className="cp-playlist-pane__title">Collections</span>
         </button>
       </div>

@@ -342,7 +342,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
                 line.labels.push(
                   el.classList.contains("library-toolbar__clear")
                     ? "(selected)"
-                    : el.textContent!.trim().replace(/\s*▸$/, ""),
+                    : el.textContent!.trim(),
                 );
                 line.buttons += r.width;
               }

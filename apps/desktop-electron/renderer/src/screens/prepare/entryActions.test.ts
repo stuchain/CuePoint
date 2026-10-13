@@ -65,9 +65,21 @@ describe("the five buttons", () => {
       "Repeat after",
       "Remove",
     ]);
-    expect(list.map((button) => button.short)).toEqual(["↑", "↓", "Chapter here", "Repeat after", "Remove"]);
+    expect(list.map((button) => button.short)).toEqual([
+      { icon: "arrow-up" },
+      { icon: "arrow-down" },
+      { text: "Chapter here" },
+      { text: "Repeat after" },
+      { text: "Remove" },
+    ]);
     // A pane with no room for the words draws these instead (DEC-249).
-    expect(list.map((button) => button.glyph)).toEqual(["↑", "↓", "Chapter", "↻", "×"]);
+    expect(list.map((button) => button.glyph)).toEqual([
+      { icon: "arrow-up" },
+      { icon: "arrow-down" },
+      { text: "Chapter" },
+      { icon: "repeat" },
+      { icon: "close" },
+    ]);
   });
 
   it("are none while nothing is selected: the row they sit on is the selected one (DEC-249)", () => {

@@ -12,6 +12,7 @@
  * until then.
  */
 import { useEffect, useId, useRef, useState } from "react";
+import { PixelIcon } from "../../components/PixelIcon";
 
 import { Button } from "../../components/Button";
 import { formatBpm } from "../../components/format/bpm";
@@ -120,7 +121,7 @@ export function QuickFilters({
             >
               {LABELS[kind]}
               {count > 0 && <span className="cp-quick__count">{count}</span>}
-              <span> ▾</span>
+              <PixelIcon name="chevron-down" className="cp-pixel-icon--text cp-pixel-icon--after" />
             </button>
             {shown && (
               <div className="cp-quick__panel" role="dialog" aria-label={LABELS[kind]} id={panelId}>

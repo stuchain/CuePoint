@@ -165,8 +165,8 @@ describe("the quick filters (FLW-4)", () => {
     const names = screen
       .getAllByRole("button")
       .map((button) => button.textContent?.replace(/\s+/g, " ").trim())
-      .filter((text) => text && ["Key ▾", "BPM ▾", "Genre ▾", "Add filter"].includes(text));
-    expect(names).toEqual(["Key ▾", "BPM ▾", "Genre ▾", "Add filter"]);
+      .filter((text) => text && ["Key", "BPM", "Genre", "Add filter"].includes(text));
+    expect(names).toEqual(["Key", "BPM", "Genre", "Add filter"]);
   });
 
   it("are not drawn where nobody asked for them", () => {
@@ -179,20 +179,20 @@ describe("the quick filters (FLW-4)", () => {
         onQueryChange={() => {}}
       />,
     );
-    expect(screen.queryByRole("button", { name: "Key ▾" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Key" })).toBeNull();
   });
 
   it("asks the engine for the view when a dropdown opens", () => {
     const onRequest = vi.fn();
     render(<Harness onRequest={onRequest} />);
     expect(onRequest).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "Key" }));
     expect(onRequest).toHaveBeenCalledTimes(1);
   });
 
   it("lists the keys with their counts and No Beatport key as its own line", () => {
     render(<Harness />);
-    fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "Key" }));
     const list = within(screen.getByRole("dialog", { name: "Key" }));
     const lines = list.getAllByRole("checkbox").map((box) => box.closest("label")?.textContent);
     expect(lines).toEqual(["2A7", "8A12", "10A3", "No Beatport key: 5"]);
@@ -201,7 +201,7 @@ describe("the quick filters (FLW-4)", () => {
   it("turns a choice into a chip, and a second into one 'any of' chip", () => {
     const onChange = vi.fn();
     render(<Harness onChange={onChange} />);
-    fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "Key" }));
     fireEvent.click(screen.getByRole("checkbox", { name: /^8A/ }));
 
     expect(onChange).toHaveBeenLastCalledWith({
@@ -222,14 +222,14 @@ describe("the quick filters (FLW-4)", () => {
         initial={{ match: "all", rules: [{ field: "key", operator: "is", value: "8a" }] }}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Key 1 ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "Key 1" }));
     expect(screen.getByRole("checkbox", { name: /^8A/ })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /^2A/ })).not.toBeChecked();
   });
 
   it("makes 'No Beatport key' an ordinary 'is empty' chip", () => {
     render(<Harness />);
-    fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "Key" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "No Beatport key: 5" }));
     expect(screen.getByText("Key is empty")).toBeInTheDocument();
   });
@@ -254,7 +254,7 @@ describe("the quick filters (FLW-4)", () => {
   it("says keys come from matching when no track has one, with no button of its own", async () => {
     libraryKeys([{ value: null, count: 40 }]);
     render(<Harness quickFacets={{ ...FACETS, keys: [], no_key: 40 }} />);
-    fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "Key" }));
     const panel = within(screen.getByRole("dialog", { name: "Key" }));
     expect(
       await panel.findByText("No tracks have a Beatport key yet. Keys come from matching."),
@@ -269,7 +269,7 @@ describe("the quick filters (FLW-4)", () => {
     ]);
     const answer = (window as unknown as { cuepoint: { getLibraryFacet: unknown } }).cuepoint;
     render(<Harness quickFacets={{ ...FACETS, keys: [], no_key: 4 }} />);
-    fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "Key" }));
     const panel = within(screen.getByRole("dialog", { name: "Key" }));
     expect(await panel.findByText("No track here has a Beatport key.")).toBeInTheDocument();
     await waitFor(() => expect(answer.getLibraryFacet).toHaveBeenCalled());
@@ -280,7 +280,7 @@ describe("the quick filters (FLW-4)", () => {
   it("offers the view's BPM range as two boxes and Apply", () => {
     const onChange = vi.fn();
     render(<Harness onChange={onChange} />);
-    fireEvent.click(screen.getByRole("button", { name: "BPM ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "BPM" }));
     const panel = within(screen.getByRole("dialog", { name: "BPM" }));
     expect(panel.getByText("This view runs from 95 to 128 BPM.")).toBeInTheDocument();
     expect(panel.getByLabelText("From")).toHaveAttribute("placeholder", "95");
@@ -299,7 +299,7 @@ describe("the quick filters (FLW-4)", () => {
 
   it("will not apply a BPM that is not a number", () => {
     render(<Harness />);
-    fireEvent.click(screen.getByRole("button", { name: "BPM ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "BPM" }));
     const panel = within(screen.getByRole("dialog", { name: "BPM" }));
     fireEvent.change(panel.getByLabelText("From"), { target: { value: "fast" } });
     expect(panel.getByRole("button", { name: "Apply" })).toBeDisabled();
@@ -309,7 +309,7 @@ describe("the quick filters (FLW-4)", () => {
   it("lists the genres with counts and says when it is only the most common", () => {
     const onChange = vi.fn();
     render(<Harness onChange={onChange} />);
-    fireEvent.click(screen.getByRole("button", { name: "Genre ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "Genre" }));
     const panel = within(screen.getByRole("dialog", { name: "Genre" }));
     expect(panel.getByText(/The 2 most common of 40/)).toBeInTheDocument();
     fireEvent.click(panel.getByRole("checkbox", { name: /^Techno/ }));
@@ -328,8 +328,8 @@ describe("the quick filters (FLW-4)", () => {
         }}
       />,
     );
-    expect(screen.getByRole("button", { name: "Key 2 ▾" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Key 2 ▾" }));
+    expect(screen.getByRole("button", { name: "Key 2" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Key 2" }));
     expect(screen.getByRole("dialog", { name: "Key" })).toBeInTheDocument();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: "Key" })).toBeNull();
@@ -416,7 +416,7 @@ describe("the Key list's link to the Keys page (PAGES-16)", () => {
   it("offers 'See these on the Keys page' under the keys, and opens the page", () => {
     const onOpenKeys = vi.fn();
     render(<Harness onOpenKeys={onOpenKeys} />);
-    fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "Key" }));
     const panel = within(screen.getByRole("dialog", { name: "Key" }));
     fireEvent.click(panel.getByRole("button", { name: "See these on the Keys page" }));
     expect(onOpenKeys).toHaveBeenCalledTimes(1);
@@ -426,7 +426,7 @@ describe("the Key list's link to the Keys page (PAGES-16)", () => {
   it("leaves the in-place filter as it was: the ticks are still rules", () => {
     const onChange = vi.fn();
     render(<Harness onOpenKeys={() => {}} onChange={onChange} />);
-    fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "Key" }));
     fireEvent.click(screen.getByRole("checkbox", { name: /8A/ }));
     expect(onChange).toHaveBeenCalledWith({
       match: "all",
@@ -436,7 +436,7 @@ describe("the Key list's link to the Keys page (PAGES-16)", () => {
 
   it("is not drawn where the page has no Keys page to open", () => {
     render(<Harness />);
-    fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
+    fireEvent.click(screen.getByRole("button", { name: "Key" }));
     expect(screen.queryByRole("button", { name: "See these on the Keys page" })).toBeNull();
   });
 });

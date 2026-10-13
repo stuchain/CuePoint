@@ -23,6 +23,7 @@
  * right-click menu is built from.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { PixelIcon } from "../../components/PixelIcon";
 
 import { Button } from "../../components/Button";
 import type { TrackActionGroup, TrackActionGroupId } from "./trackActions";
@@ -180,7 +181,8 @@ export function LibraryToolbar({
           </Button>
         ))}
         <Button variant="secondary" className="library-toolbar__button" tabIndex={-1} disabled>
-          <span className="library-toolbar__ghost" data-text={`${widest} selected ×`} />
+          <span className="library-toolbar__ghost" data-text={`${widest} selected`} />
+          <PixelIcon name="close" className="cp-pixel-icon--text cp-pixel-icon--after" />
         </Button>
       </div>
       {/* Two lines with nothing selected: the first line is empty, and holds its height so the
@@ -211,7 +213,7 @@ export function LibraryToolbar({
               }}
             >
               {group.label}
-              <span className="library-toolbar__arrow" aria-hidden> ▸</span>
+              <span className="library-toolbar__arrow" aria-hidden />
             </Button>
           ))}
           <Button
@@ -224,10 +226,10 @@ export function LibraryToolbar({
           >
             {selected.toLocaleString()} selected
             {describedByQuery && selected > 1 && (
-              // Said, not drawn: the button stays as short as "3 selected ×".
+              // Said, not drawn: the button stays as short as "3 selected".
               <span className="library-toolbar__sr"> (everything matching)</span>
             )}
-            <span aria-hidden> ×</span>
+            <PixelIcon name="close" className="cp-pixel-icon--text cp-pixel-icon--after" />
           </Button>
         </div>
       )}

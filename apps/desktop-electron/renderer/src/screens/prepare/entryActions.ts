@@ -14,6 +14,7 @@
  * together, in the order that keeps them apart from each other; a block that
  * cannot move leaves the ones behind it where they are.
  */
+import type { PixelIconName } from "../../components/pixelIcons";
 import { canSplitAt, isEntryRow, type EntryMove, type PrepareRow } from "./prepareRows";
 
 export type EntryButtonId = "up" | "down" | "split" | "repeat" | "remove";
@@ -21,14 +22,17 @@ export type EntryButtonId = "up" | "down" | "split" | "repeat" | "remove";
 /** A button's id in the page: stable, so focus can return to it when its row is redrawn (only one row has them). */
 export const entryButtonDomId = (id: EntryButtonId): string => `prepare-entry-button-${id}`;
 
+/** What a button draws: a pixel icon, or short words. */
+export type EntryMark = { icon: PixelIconName } | { text: string };
+
 export interface EntryButton {
   id: EntryButtonId;
   /** The full name: the button's accessible name. */
   label: string;
-  /** What the row has room for: "↑" for Move up, "Chapter here" for Start a chapter here. */
-  short: string;
-  /** What stands for `short` when the row has no room for the words (DEC-249): "Chapter" for the longest, the arrows and symbols for the rest. */
-  glyph: string;
+  /** What the row has room for: the up arrow for Move up, "Chapter here" for Start a chapter here. */
+  short: EntryMark;
+  /** What stands for `short` when the row has no room for the words (DEC-249): "Chapter" for the longest, icons for the rest. */
+  glyph: EntryMark;
   disabled: boolean;
   /** Why it is disabled, said in its hint; null when it is not. */
   reason: string | null;
@@ -103,14 +107,20 @@ export function stepMoves(
   return moves;
 }
 
-const SHORT: Record<EntryButtonId, string> = {
-  up: "↑",
-  down: "↓",
-  split: "Chapter here",
-  repeat: "Repeat after",
-  remove: "Remove",
+const SHORT: Record<EntryButtonId, EntryMark> = {
+  up: { icon: "arrow-up" },
+  down: { icon: "arrow-down" },
+  split: { text: "Chapter here" },
+  repeat: { text: "Repeat after" },
+  remove: { text: "Remove" },
 };
-const GLYPHS: Record<EntryButtonId, string> = { up: "↑", down: "↓", split: "Chapter", repeat: "↻", remove: "×" };
+const GLYPHS: Record<EntryButtonId, EntryMark> = {
+  up: { icon: "arrow-up" },
+  down: { icon: "arrow-down" },
+  split: { text: "Chapter" },
+  repeat: { icon: "repeat" },
+  remove: { icon: "close" },
+};
 
 /** What a button does, to the entries it acts on: "Move 3 entries up", "Remove". */
 function doing(id: EntryButtonId, label: string, count: number): string {

@@ -194,7 +194,7 @@ export function CleanScreen({
   if (summary && (summary.library_empty || summary.source === null)) {
     return (
       <div className="screen screen--stack screen--scroll clean-screen--waiting">
-        <ScreenHeader title="Clean" />
+        <ScreenHeader title="Clean" inset />
         <EmptyState
           headline="No collection imported yet"
           description="Clean works on your library. Import a Rekordbox collection in the Library first."
@@ -232,6 +232,7 @@ export function CleanScreen({
       <div data-testid="clean-header">
         <ScreenHeader
           title="Clean"
+          inset
           tabs={
             <Tabs
               tabs={CLEAN_SECTIONS.map((entry) => {

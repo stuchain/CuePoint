@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 
 import type { AudioDevice } from "../api/cuepointBridge.types";
 import { MoreAbout, Panel } from "../components";
+import { Select } from "../components/Select";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { audioFellBack, selectAudio } from "../components/player/playerFormat";
 import {
@@ -106,27 +107,22 @@ export function AudioSettingsPanel() {
   return (
     <Panel title="Playback" badge={<SavedTick signal={saved} />}>
       <div className="cp-audio-settings">
-        <label className="cp-audio-settings__field">
-          <span className="cp-audio-settings__label">Output device</span>
-          <select
-            className="cp-audio-settings__select"
-            value={audio.device}
-            disabled={!available || busy}
-            onChange={(event) => void apply({ device: event.target.value })}
-          >
-            <option value={SYSTEM_DEFAULT_DEVICE}>System default</option>
-            {devices
+        <Select
+          label="Output device"
+          className="cp-audio-settings__field"
+          value={audio.device}
+          disabled={!available || busy}
+          onChange={(event) => void apply({ device: event.target.value })}
+          options={[
+            { value: SYSTEM_DEFAULT_DEVICE, label: "System default" },
+            ...devices
               .filter((device) => device.name !== SYSTEM_DEFAULT_DEVICE)
-              .map((device) => (
-                <option key={device.name} value={device.name}>
-                  {device.description}
-                </option>
-              ))}
-            {!known && audio.device !== SYSTEM_DEFAULT_DEVICE && (
-              <option value={audio.device}>{audio.device} (not connected)</option>
-            )}
-          </select>
-        </label>
+              .map((device) => ({ value: device.name, label: device.description })),
+            ...(!known && audio.device !== SYSTEM_DEFAULT_DEVICE
+              ? [{ value: audio.device, label: `${audio.device} (not connected)` }]
+              : []),
+          ]}
+        />
         <p id={outputsId} className="cp-audio-settings__hint">
           {loading
             ? "Reading the devices this machine has…"

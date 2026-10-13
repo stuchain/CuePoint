@@ -431,7 +431,7 @@ export function TrackDetailPanel({
                 setQueueMenu({ x: rect.left, y: rect.bottom });
               }}
             >
-              Queue<span aria-hidden> ▾</span>
+              Queue<PixelIcon name="chevron-down" className="cp-pixel-icon--text cp-pixel-icon--after" />
             </button>
           )}
           {track.id != null && (
@@ -586,7 +586,8 @@ export function TrackDetailPanel({
       <DisclosureSection id="where" title="Where it is" defaultOpen>
         {collections.length === 0 ? (
           <p className="cp-track-detail__none">
-            Not in any Collection yet. Select the track and choose Organize ▸ in the selection
+            Not in any Collection yet. Select the track and choose Organize{" "}
+            <PixelIcon name="chevron-right" className="cp-pixel-icon--text" /> in the selection
             bar, or drag it onto one.
           </p>
         ) : (

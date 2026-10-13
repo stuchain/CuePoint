@@ -15,6 +15,7 @@ import { useLayoutEffect, useState } from "react";
 
 import type { OverrideField } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components";
+import { Select } from "../../components/Select";
 import { APPLY_FIELD_LABELS } from "../clean/comparison";
 import { NOT_SET } from "../../words";
 import { BATCH_JOB_THRESHOLD, BATCH_RECORDED_NOTE, type OverrideEdit } from "./libraryBatch";
@@ -162,21 +163,14 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
             const problem = problems[field];
             return (
               <div key={field} className="clean-dialog__field">
-                <label className="clean-dialog__label" htmlFor={`edit-${field}-mode`}>
-                  {label}
-                </label>
-                <select
+                <Select
                   id={`edit-${field}-mode`}
+                  label={label}
                   className="clean-dialog__select"
                   value={entry.mode}
                   onChange={(event) => change(field, { mode: event.target.value as EditMode })}
-                >
-                  {MODES.map((mode) => (
-                    <option key={mode.value} value={mode.value}>
-                      {mode.label}
-                    </option>
-                  ))}
-                </select>
+                  options={MODES.map((mode) => ({ value: mode.value, label: mode.label }))}
+                />
                 <input
                   className="clean-dialog__input"
                   aria-label={`${label} value`}
