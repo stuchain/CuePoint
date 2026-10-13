@@ -6845,8 +6845,8 @@ a pasted token.
   `https://www.beatport.com/api/auth/signin/beatport?callbackUrl=https%3A%2F%2Fwww.beatport.com%2F`;
   right after a header capture CuePoint reads the session JSON once to learn the expiry (ten
   minutes is assumed if it cannot), and prefers the session JSON's token when both are seen. The
-  page also sends anonymous bearers (`user:anon`, or an empty scope that gets a 401); introspection
-  rejects them as before.
+  page also sends anonymous bearers (`user:anon`, or an empty scope that gets a 401); they are
+  refused (how a token is judged is in DEC-254).
 - **Migration, once.** On the first launch after the update, where secure storage exists, a token
   in the config key is moved to it as a pasted token, and the key's value is then blanked (the key
   stays). A crash between the steps leaves it in both places, and the next launch repeats the step.
@@ -7216,3 +7216,53 @@ design; `--divider` draws the edge); the accent as the focus ring; Muted warning
 **Notes**: DEC-161 (whole pixels unchanged). R4-2's key colours are not in the theme files.
 
 **Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13
+
+## DEC-254 — How the Beatport Sign-in Decides, and Its Log
+
+**Status**: Approved · **Amends**: DEC-242 · **Related**: ADR-011, C20
+
+**Decision**: The sign-in window accepts a token by these rules, and writes a token-free log of how
+it decided.
+- **Introspection.** A token is a user's when Beatport's introspection has a user (a username or a
+  user id) and either `active: true` or no `active` at all with a `user:<name>` scope that is not
+  `user:anon` (the real reply for a signed-in person is `scope: "app:prostore user:dj"`, `exp: null`,
+  and has never been seen with `active`). A **definite no** is a 401, `active: false`, or a
+  `user:anon` scope: that token is not asked about again while the window is open. Anything else (a
+  403, another error status, a reply that is not JSON, a network error or a reply with no user) is
+  **undecided**: the same token is asked again after 2, 5 and 15 s, then every 30 s.
+- **The session's own scope.** When introspection is undecided and the website's own
+  `/api/auth/session` JSON hands out that same token with a `user:<name>` scope (not anon, not
+  `anon: true`), it is accepted as a sign-in, with the session's `accessTokenExpires`, and renews
+  like any sign-in. Never over a definite no, and never for a token seen only in a header. A stale
+  `user:anon` `introspect` at the top of the session JSON counts only when the token record has no
+  scope of its own.
+- **Closing the window.** When the person closes the sign-in window before a token was accepted,
+  the session JSON is read once more with no window and judged by the same rules, so a sign-in that
+  finished in the last moment is kept. A sign-out or a pasted token meanwhile wins.
+- **Windows are destroyed, not closed**, so a page's `beforeunload` cannot keep one open.
+- **The log.** `beatport-signin.log`, next to `cuepoint.log` (Windows
+  `%LOCALAPPDATA%\CuePoint\Logs`, macOS `~/Library/Application Support/CuePoint/Logs`; the
+  Electron logs folder if the engine has not said where in 5 s), always on, one line per event, 256 KB
+  then rotated once to `beatport-signin.1.log`. It holds the app version and platform, page hosts
+  and paths (never query strings), HTTP statuses and content types, scopes, which keys a reply had,
+  each verdict and its reason, which detector accepted (`via=introspect|session-scope|final-read`),
+  whether the token was stored and handed to the engine, and renewals. It never holds a token or
+  any part of one, a header, a cookie, a username, email or user id. Keys are allow-listed and
+  values filtered, and a test runs every flow with marker tokens and checks no line holds them.
+
+**Reason**: On Stelios's Windows PC the sign-in never finished (C20) and nothing said why. Seven
+silent ways it could fail were found: the real user token rejected for lacking `active`, one 403 or
+odd reply dropping a token for good, a stale anonymous `introspect` hiding the session's token, an
+HTML challenge page retried every 2 s, a sign-in finished in the last 2 s lost on close, a page
+able to cancel the close, and no log.
+
+**Rejected**: introspection only (safer on paper, but could leave the same bug); a new line in
+Settings after a failed sign-in (wording is in the dialogs pass; the log covers diagnosis); a log
+off by default (it holds nothing secret, and the failure happens on the first try).
+
+**Implications**: Trusting the session's scope accepts a token Beatport's introspection did not
+vouch for; bounded to the session's own token and never over a definite no, and if Beatport then
+refuses it, Discover already offers **Sign in again**. The end-to-end stand-in now signs in like the
+real site (an anonymous bearer first, a Sign in click, a callback, introspection without `active`).
+
+**Decided with**: User · **Date**: 2026-10-13

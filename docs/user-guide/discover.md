@@ -164,6 +164,19 @@ window kept. Where the system has no secure key store (some Linux setups without
 a keyring), CuePoint cannot keep the sign-in safely, so you sign in again each
 time it starts; Settings says so.
 
+### If the sign-in window does not finish
+
+If you have signed in but the window stays open, wait a few seconds and close it:
+CuePoint checks once more when it closes, and Settings then says whether you are
+signed in. If you are not, CuePoint wrote what happened to `beatport-signin.log`:
+
+- Windows: `%LOCALAPPDATA%\CuePoint\Logs\beatport-signin.log`
+- macOS: `~/Library/Application Support/CuePoint/Logs/beatport-signin.log`
+
+**Help → Troubleshooting → Log viewer… → Open logs folder** opens that folder. The
+log has no password or token in it, so you can send it as it is when you report
+the problem.
+
 ### Pasting a token instead
 
 If the sign-in window does not work for you, **Settings → Beatport → Paste a

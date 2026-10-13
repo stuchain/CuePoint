@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **No Keychain question unless you sign in.** On a Mac, CuePoint now touches the Keychain only to keep or read a Beatport sign-in, so a launch without one never asks for it. Before, every launch asked, and where macOS needed you for that (no login keychain) the app froze until you answered.
 
 ### Fixed
+- **Beatport sign-in now finishes.** On some computers (seen on Windows) the sign-in window stayed open after you signed in and CuePoint never took the sign-in. CuePoint now accepts the token Beatport's own site holds for you, tries again when Beatport's check answers oddly instead of giving up, checks once more when you close the window, and closes the window even if the page asks it to stay. A new `beatport-signin.log` next to CuePoint's other logs says how each sign-in went; it holds no password or token (DEC-254).
 - **Dragging tracks into a Set.** Drop anywhere in the Set table, including the space below the last row and an empty Set's whole area: the Set is outlined and says where the tracks will go, a line shows the spot, and dragging several rows shows "3 tracks". Draggable rows have a grip (DEC-243).
 - The Play button showed Play while music played after you switched tracks during playback, or after a track ran on into the next one.
 - The key in the player bar's track line sat lower than the words around it.
