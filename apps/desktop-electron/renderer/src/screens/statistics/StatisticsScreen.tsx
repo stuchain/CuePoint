@@ -10,21 +10,27 @@
  * Every number is the engine's, for the scope picked: the whole library, a Rekordbox
  * playlist, or one of CuePoint's Collections or Sets. One read per section, so one failing
  * leaves the other two as they were, and every failure has its own **Try again**.
+ *
+ * A link can ask for the Health section (`statisticsLink.ts`), because library health lives
+ * here now: the page scrolls to it once its content is in, once per navigation.
  */
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useLibraryChanges } from "../../api/libraryChanges";
-import type { LibrarySummary } from "../../api/cuepointBridge.types";
+import type { CleanJobStarted, LibrarySummary } from "../../api/cuepointBridge.types";
+import { useToast } from "../../components";
 import { Button } from "../../components/Button";
 import { PixelSpinner } from "../../components/PixelSpinner";
 import { Select } from "../../components/Select";
+import { useCleanJob, type CleanMessageTone } from "../clean/useCleanJob";
 import { libraryImportState } from "../library/libraryLink";
 import { HealthSection } from "./HealthSection";
 import { KeySummary } from "./KeySummary";
 import { SpreadsSection } from "./SpreadsSection";
 import { PlaysSection } from "./PlaysSection";
 import { loadPlaysChoice } from "./playsChoice";
+import { statisticsFocus } from "./statisticsLink";
 import { noHistoryState, noLibraryState } from "./statisticsEmpty";
 import {
   effectiveScope,
@@ -129,6 +135,46 @@ export function StatisticsScreen() {
   const spreads = useStatisticsSpreads(reading, refresh);
   const health = useStatisticsHealth(reading, refresh);
 
+  // The cover-art read is run here, not in HealthSection: a scope change or a failed re-read
+  // swaps that section for a spinner, and a follower living in it would be dropped mid-scan
+  // (no toast, no re-read, the button free again while the job runs).
+  const { push } = useToast();
+  const message = useCallback((text: string, tone: CleanMessageTone) => push(text, tone), [push]);
+  const { running: jobRunning, run: runJob } = useCleanJob(message);
+  const retryHealth = health.retry;
+  // The same start Clean's Health tab made: every track, however the library is scoped here,
+  // because the read is of files and not of Collections.
+  const readCoverArt = useCallback(() => {
+    const begin = window.cuepoint?.startArtworkScan;
+    if (!begin) {
+      push("That needs the desktop app with CuePoint's library service running.", "warning");
+      return;
+    }
+    void runJob<CleanJobStarted>("artwork_scan", () => begin({ selection: { query: {} } }), {
+      succeeded: "Finished reading cover art.",
+      onEnded: retryHealth,
+    });
+  }, [runJob, push, retryHealth]);
+
+  // A link that is about health lands on the Health section, not the top of the page. Its
+  // content has to be there first or the section is a heading with a spinner under it; and
+  // once per navigation, so a read that comes round again does not scroll the person back.
+  const location = useLocation();
+  const asked = statisticsFocus(location);
+  // Plays and Your library sit above Health: while either is still loading, its spinner is
+  // shorter than its content and the scroll would land short of Health once they fill in.
+  const above = plays.status !== "loading" && spreads.status !== "loading";
+  const focusToken =
+    asked?.focus === "health" && health.status === "ready" && above ? asked.token : null;
+  const scrolledTo = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusToken || scrolledTo.current === focusToken) return;
+    scrolledTo.current = focusToken;
+    document
+      .querySelector('section[aria-labelledby="statistics-health"]')
+      ?.scrollIntoView?.({ block: "start" });
+  }, [focusToken]);
+
   const choose = (value: string) => {
     const form = rememberedForm(value, trees.playlists);
     setRemembered(form);
@@ -227,7 +273,13 @@ export function StatisticsScreen() {
         failed="Health could not be read."
         onRetry={health.retry}
       >
-        {health.data && <HealthSection health={health.data} />}
+        {health.data && (
+          <HealthSection
+            health={health.data}
+            coverArtRunning={jobRunning === "artwork_scan"}
+            onReadCoverArt={readCoverArt}
+          />
+        )}
       </Section>
     </div>
   );

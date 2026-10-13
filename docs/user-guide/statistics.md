@@ -121,9 +121,11 @@ import or a refresh finishes.
 
 ### Health
 
-**Health** counts how well kept the library is, in three groups. Every bar is
+**Health** counts how well kept the library is, in four groups. Every bar is
 a count of tracks, and a bar with a count above zero opens the Library on
-exactly those tracks, except in Waveforms, which is counted only.
+exactly those tracks, except in Waveforms, which is counted only, and in Duplicates, which
+opens [Clean](clean.md)'s Duplicates tab. Each group says in
+a line what it looks for and has one button to where it is dealt with.
 
 - **Files** is whether each track's file can be found: **Present**,
   **Missing** (the file is no longer where Rekordbox says), **Unreadable**
@@ -131,16 +133,24 @@ exactly those tracks, except in Waveforms, which is counted only.
   check has run for the track's current location yet). A track that was never
   checked is not counted as present. Under the bars it says "Last checked"
   with the date of the latest check, or "Files have not been checked yet".
-  **Check files** opens [Clean](clean.md) where the check is run.
+  **Fix in Clean ›** opens Clean's Missing files tab, where the check is run.
 - **Beatport** is where each track stands in matching, in the words Clean
   uses: **Accepted**, **Waiting for you** (a match is waiting for your
-  decision), **Rejected**, **No match** and **Not matched**. **Match** opens
-  Clean to review and match. Clean, Statistics and the Library's filter use
-  the same words for these states.
+  decision), **Rejected**, **No match** and **Not matched**. **Fix in
+  Clean ›** opens Clean's Match tab to review and match. Clean, Statistics and
+  the Library's filter use the same words for these states.
 - **Waveforms** is how far the waveform analysis has got: **Analyzed**,
   **Failed**, **Waiting** and **No file** (a track with no file to analyze).
-  **Analyze** opens Settings on Waveforms, where the analysis is started,
+  **Settings ›** opens Settings on Waveforms, where the analysis is started,
   paused or resumed (see [Waveforms](waveforms.md)).
-
-**All health checks** opens Clean's Health tab, which still has the longer list
-(duplicates, missing values and more) and stays where it was.
+- **Other** counts **Duplicates** (tracks in a group of likely duplicates you
+  have not dismissed), **Changed since you decided** (a newer Beatport match
+  disagrees with a choice you made) and **No artwork** (a file that was read
+  and holds no cover picture, with no Beatport image to fall back on). The
+  second and third open the Library on those tracks. The Duplicates bar counts
+  the scope you picked, but Clean's Duplicates tab shows every group in the
+  library, so the tab can list more than the bar counts. **Read cover art** reads
+  the pictures stored inside your audio files, for the whole library, and
+  tells you when it has finished. Under the bars it says "Cover art last
+  read" with the date, or "Cover art has not been read yet". That date is the
+  library's, whichever scope is picked.

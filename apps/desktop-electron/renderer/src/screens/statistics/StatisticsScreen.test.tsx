@@ -18,11 +18,23 @@ import type {
   StatisticsPlays,
   StatisticsSpreads,
 } from "../../api/cuepointBridge.types";
+import { ToastProvider } from "../../components";
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { reportUnexpected } from "../../reporting/reporting";
 import { StatisticsScreen } from "./StatisticsScreen";
+import { statisticsFocusState } from "./statisticsLink";
 import { STATISTICS_SCOPE_STORAGE_KEY } from "./statisticsScope";
 import { useLibraryJobsFinished } from "./useStatistics";
+
+let jobEnds: ((outcome: { state: string }) => void) | null = null;
+vi.mock("../library/followJob", () => ({
+  followJob: () => ({
+    finished: new Promise((resolve) => {
+      jobEnds = resolve;
+    }),
+    stop: () => {},
+  }),
+}));
 
 vi.mock("../../reporting/reporting", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../reporting/reporting")>()),
@@ -90,6 +102,8 @@ function health(total = 4000): StatisticsHealth {
     },
     analyzed: { analyzed: 10, failed: 0, waiting: 5, no_file: 12 },
     checked_at: "2026-10-08T12:00:00Z",
+    other: { duplicates: count(0), disputed: count(0), no_artwork: count(0) },
+    artwork_checked_at: null,
   };
 }
 
@@ -161,12 +175,14 @@ function Where() {
   );
 }
 
-function renderPage() {
+function renderPage(entry: string | { pathname: string; state: unknown } = "/statistics") {
   return render(
-    <MemoryRouter initialEntries={["/statistics"]}>
-      <StatisticsScreen />
-      <Where />
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter initialEntries={[entry]}>
+        <StatisticsScreen />
+        <Where />
+      </MemoryRouter>
+    </ToastProvider>,
   );
 }
 
@@ -608,5 +624,161 @@ describe("the Statistics page (STATS-04)", () => {
 
     const section = await screen.findByRole("region", { name: "Plays" });
     await waitFor(() => expect(section).toHaveTextContent(/desktop app/i));
+  });
+});
+
+describe("a link to the Health section (K3)", () => {
+  const scrolled = vi.fn();
+  const original = Element.prototype.scrollIntoView;
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    install();
+    scrolled.mockReset();
+    Element.prototype.scrollIntoView = function (this: Element, ...args: unknown[]) {
+      scrolled(this, ...args);
+    } as typeof Element.prototype.scrollIntoView;
+  });
+
+  afterEach(() => {
+    Element.prototype.scrollIntoView = original;
+    delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+    vi.clearAllMocks();
+  });
+
+  const healthSection = () => screen.getByRole("region", { name: "Health" });
+
+  it("scrolls Health into view once its content is there, when the state asks", async () => {
+    renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
+
+    await within(healthSection()).findByRole("heading", { level: 3, name: "Files" });
+    await waitFor(() => expect(scrolled).toHaveBeenCalledTimes(1));
+    expect(scrolled.mock.calls[0]![0]).toBe(healthSection());
+  });
+
+  it("does so for ?section=health too", async () => {
+    renderPage("/statistics?section=health");
+
+    await within(healthSection()).findByRole("heading", { level: 3, name: "Files" });
+    await waitFor(() => expect(scrolled).toHaveBeenCalledTimes(1));
+    expect(scrolled.mock.calls[0]![0]).toBe(healthSection());
+  });
+
+  it("does not scroll while Health is still being read", async () => {
+    install({ getStatisticsHealth: vi.fn(never) });
+    renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
+
+    await screen.findByRole("heading", { level: 2, name: "Plays" });
+    await within(healthSection()).findByRole("status");
+    expect(scrolled).not.toHaveBeenCalled();
+  });
+
+  it("scrolls once per navigation, not again when health is read again", async () => {
+    renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
+    await waitFor(() => expect(scrolled).toHaveBeenCalledTimes(1));
+
+    act(() => announceLibraryChange());
+    await waitFor(() => expect(mock("getStatisticsHealth")).toHaveBeenCalledTimes(2));
+    await within(healthSection()).findByRole("heading", { level: 3, name: "Files" });
+    expect(scrolled).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits for Plays and Your library too, which sit above Health", async () => {
+    let finishPlays: (value: StatisticsPlays) => void = () => {};
+    install({
+      getStatisticsPlays: vi.fn(
+        () => new Promise<StatisticsPlays>((resolve) => (finishPlays = resolve)),
+      ),
+    });
+    renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
+
+    await within(healthSection()).findByRole("heading", { level: 3, name: "Files" });
+    expect(scrolled).not.toHaveBeenCalled();
+
+    await act(async () => finishPlays(plays()));
+    await waitFor(() => expect(scrolled).toHaveBeenCalledTimes(1));
+    expect(scrolled.mock.calls[0]![0]).toBe(healthSection());
+  });
+
+  it("scrolls once Plays has failed, since a failure is as tall as it will get", async () => {
+    install({ getStatisticsPlays: vi.fn().mockRejectedValue(new Error("no")) });
+    renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
+
+    await waitFor(() => expect(scrolled).toHaveBeenCalledTimes(1));
+    expect(scrolled.mock.calls[0]![0]).toBe(healthSection());
+  });
+
+  it("does not scroll on an ordinary visit", async () => {
+    renderPage();
+
+    await within(healthSection()).findByRole("heading", { level: 3, name: "Files" });
+    expect(scrolled).not.toHaveBeenCalled();
+  });
+});
+
+describe("reading cover art from Health", () => {
+  const startArtworkScan = vi.fn();
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    jobEnds = null;
+    startArtworkScan.mockReset();
+    install({ startArtworkScan });
+  });
+
+  afterEach(() => {
+    delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+    vi.clearAllMocks();
+  });
+
+  const readButton = () => screen.getByRole("button", { name: "Read cover art" });
+
+  it("shows the button busy and disabled while the scan starts", async () => {
+    startArtworkScan.mockReturnValue(new Promise(() => {}));
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "Read cover art" }));
+
+    const busy = await screen.findByRole("button", { name: "…" });
+    expect(busy).toBeDisabled();
+    expect(busy).toHaveClass("cp-btn--loading");
+    expect(startArtworkScan).toHaveBeenCalledWith({ selection: { query: {} } });
+  });
+
+  it("reads health again and says it finished when the scan ends", async () => {
+    startArtworkScan.mockResolvedValue({ job_id: "j1", id: "j1", state: "queued" });
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "Read cover art" }));
+    await waitFor(() => expect(jobEnds).not.toBeNull());
+    expect(screen.getByRole("button", { name: "…" })).toBeDisabled();
+    const reads = mock("getStatisticsHealth").mock.calls.length;
+
+    await act(async () => jobEnds!({ state: "succeeded" }));
+
+    await waitFor(() => expect(mock("getStatisticsHealth")).toHaveBeenCalledTimes(reads + 1));
+    expect(await screen.findByText("Finished reading cover art.")).toBeInTheDocument();
+    expect(readButton()).toBeEnabled();
+  });
+
+  it("still reads health again and shows the toast when Health unmounts mid-scan", async () => {
+    startArtworkScan.mockResolvedValue({ job_id: "j1", id: "j1", state: "queued" });
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "Read cover art" }));
+    await waitFor(() => expect(jobEnds).not.toBeNull());
+
+    // The next health read never answers, so changing scope swaps Health for its spinner.
+    mock("getStatisticsHealth").mockImplementation(never);
+    const picker = screen.getByRole("combobox", { name: "Scope" });
+    await waitFor(() => expect(within(picker).getAllByRole("option").length).toBeGreaterThan(1));
+    await userEvent.selectOptions(picker, "playlist:2");
+    await within(screen.getByRole("region", { name: "Health" })).findByRole("status");
+    expect(screen.queryByRole("button", { name: "Read cover art" })).not.toBeInTheDocument();
+    const reads = mock("getStatisticsHealth").mock.calls.length;
+
+    mock("getStatisticsHealth").mockResolvedValue(health());
+    await act(async () => jobEnds!({ state: "succeeded" }));
+
+    await waitFor(() => expect(mock("getStatisticsHealth")).toHaveBeenCalledTimes(reads + 1));
+    expect(await screen.findByText("Finished reading cover art.")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Read cover art" })).toBeEnabled();
   });
 });

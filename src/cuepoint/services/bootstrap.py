@@ -616,6 +616,8 @@ def bootstrap_services() -> None:
             # STATS-03: loudness and what is analysed live in waveforms.db.
             waveform_store=container.resolve(WaveformStore),
             analysis_service=container.resolve(IWaveformAnalysisService),
+            # Health says when the cover art was last read.
+            activity_repository=container.resolve(IActivityRepository),
         )
 
     container.register_factory(IStatisticsService, create_statistics_service)

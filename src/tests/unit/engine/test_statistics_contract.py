@@ -201,7 +201,17 @@ SPREADS = {"scope", "total", *FIELDS}
 SPREAD = {"buckets", "unknown", "total"}
 BUCKET = {"label", "value", "count", "rules"}
 LINE = {"label", "count", "rules"}
-HEALTH = {"scope", "total", "files", "beatport", "analyzed", "checked_at"}
+HEALTH = {
+    "scope",
+    "total",
+    "files",
+    "beatport",
+    "analyzed",
+    "checked_at",
+    "other",
+    "artwork_checked_at",
+}
+OTHER_STATES = {"duplicates", "disputed", "no_artwork"}
 FILE_STATES = {"present", "missing", "unreadable", "not_checked"}
 MATCH_STATES = {"accepted", "needs_review", "rejected", "no_match", "not_matched"}
 ANALYZED = {"analyzed", "failed", "waiting", "no_file"}
@@ -224,7 +234,7 @@ def rule_sets(spreads, health):
                 yield part["rules"]
         if "no_file" in spread:
             assert spread["no_file"]["rules"] is None
-    for group in ("files", "beatport"):
+    for group in ("files", "beatport", "other"):
         for entry in health[group].values():
             yield entry["rules"]
 
@@ -266,7 +276,12 @@ def test_health_carries_exactly_the_documented_fields(spread_world):
         assert set(answer["files"]) == FILE_STATES
         assert set(answer["beatport"]) == MATCH_STATES
         assert set(answer["analyzed"]) == ANALYZED
-        for entry in [*answer["files"].values(), *answer["beatport"].values()]:
+        assert set(answer["other"]) == OTHER_STATES
+        for entry in [
+            *answer["files"].values(),
+            *answer["beatport"].values(),
+            *answer["other"].values(),
+        ]:
             assert set(entry) == COUNT
 
 
@@ -314,3 +329,4 @@ def test_the_client_declares_every_field_of_the_spreads_and_health(spread_world)
     assert _admits(_members("StatisticsLine")["rules"], None)
     assert _admits(_members("StatisticsBucket")["value"], None)
     assert _admits(_members("StatisticsHealth")["checked_at"], None)
+    assert _admits(_members("StatisticsHealth")["artwork_checked_at"], None)

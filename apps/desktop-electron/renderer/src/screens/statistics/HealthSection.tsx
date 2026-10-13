@@ -1,15 +1,22 @@
 /**
- * The Health section (STATS-07): three small bar charts, one per group, each with the link to
- * where it is fixed.
+ * The Health section (STATS-07, K3): four small bar charts, one per group, each with its purpose
+ * in a line and one button to where it is dealt with.
  *
- * Files (present, missing, unreadable, not checked) and Beatport (accepted, waiting for you,
- * rejected, no match, not matched) carry the engine's own rules, so a bar opens the
- * Library on exactly those tracks. Waveforms (analyzed, failed, waiting, no file) cannot be said
- * as a rule, so they are counted and open nothing. A visible button takes each group to where it
- * is fixed, and **All health checks** opens Clean's Health tab, which stays (DEC-163). Every
- * number is the engine's; the words are the ones Clean uses (`fileStatusLabel`, `matchStateLabel`), and the Beatport
- * states are named with the Library filter's words (Waiting for you, Accepted, Rejected, No match,
- * Not matched), so Clean, Statistics and the Library chips share one set (Stelios, 2026-10-09).
+ * Files (present, missing, unreadable, not checked), Beatport (accepted, waiting for you,
+ * rejected, no match, not matched) and Other (duplicates, changed since you decided, no
+ * artwork) carry the engine's own rules, so a bar opens the Library on exactly those tracks;
+ * Duplicates opens Clean's Duplicates tab instead, which is where a group is merged or dismissed.
+ * Waveforms (analyzed, failed, waiting, no file) cannot be said as a rule, so they are counted
+ * and open nothing. Every number is the engine's; the words are the ones Clean uses
+ * (`fileStatusLabel`, `matchStateLabel`), and the Beatport states are named with the Library
+ * filter's words (Waiting for you, Accepted, Rejected, No match, Not matched), so Clean,
+ * Statistics and the Library chips share one set (Stelios, 2026-10-09).
+ *
+ * Health lives here now, and Clean's Health tab is going away. Each group has exactly one button:
+ * Files and Beatport go to Clean's Missing files and Match tabs, Waveforms to Settings, and Other
+ * reads the cover art, the one check that had no home but that tab. The read itself is run by
+ * the page (`useCleanJob` in StatisticsScreen), not here, so it outlives this section when a
+ * scope change or a failed re-read swaps it for a spinner; this section only shows its state.
  */
 import { useNavigate } from "react-router-dom";
 
@@ -18,8 +25,9 @@ import type {
   StatisticsFileState,
   StatisticsHealth,
   StatisticsMatchState,
+  StatisticsOtherState,
 } from "../../api/cuepointBridge.types";
-import { Button } from "../../components/Button";
+import { Button } from "../../components";
 import { tracksText } from "../../components/charts/formatCount";
 import { PixelBars } from "../../components/charts/PixelBars";
 import { fileStatusLabel, matchStateLabel } from "../clean/cleanFormat";
@@ -27,10 +35,11 @@ import { cleanSectionState } from "../clean/cleanLink";
 import { libraryRulesState } from "../library/libraryLink";
 import { settingsFocusState } from "../settingsLink";
 
+/** A bar: what it is called, how many, and what clicking it does (nothing when null). */
 interface Item {
   label: string;
   count: number;
-  rules: FilterRuleSet | null;
+  open: (() => void) | null;
 }
 
 const FILE_STATES: readonly StatisticsFileState[] = [
@@ -55,48 +64,85 @@ const WAVEFORM_ITEMS = [
   ["no_file", "No file"],
 ] as const;
 
+/** Clean's own words for the Other group (`HEALTH_RULES` labels), by the engine's key. */
+const OTHER_ITEMS: readonly (readonly [StatisticsOtherState, string])[] = [
+  ["duplicates", "Duplicates"],
+  ["disputed", "Changed since you decided"],
+  ["no_artwork", "No artwork"],
+];
+
+/** What each group is for, in a line (from Clean Health's purposes, CLN-9). */
+const PURPOSES = {
+  files: "Looks for tracks whose file has moved or been deleted.",
+  beatport:
+    "How your tracks stand against Beatport: matched, waiting for you, or not matched yet.",
+  waveforms: "Draws each track's waveform so you can see its shape before you play it.",
+  other: "Duplicate tracks, matches Beatport changed after you decided, and the cover pictures stored inside your audio files.",
+} as const;
+
+/** The day an instant falls on, in American date words; the text itself if it is not a date. */
+function dayWords(iso: string): string {
+  const when = new Date(iso);
+  if (Number.isNaN(when.getTime())) return iso;
+  return when.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+}
+
 /** "Last checked September 3, 2026", or the plain fact that no check has run. */
 function checkedLine(checkedAt: string | null): string {
   if (!checkedAt) return "Files have not been checked yet";
-  const when = new Date(checkedAt);
-  if (Number.isNaN(when.getTime())) return `Last checked ${checkedAt}`;
-  const date = when.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-  return `Last checked ${date}`;
+  return `Last checked ${dayWords(checkedAt)}`;
+}
+
+/** "Cover art last read September 3, 2026", or the plain fact that it has not been. */
+function artworkLine(checkedAt: string | null): string {
+  if (!checkedAt) return "Cover art has not been read yet";
+  return `Cover art last read ${dayWords(checkedAt)}`;
 }
 
 interface GroupProps {
-  id: "files" | "beatport" | "waveforms";
+  id: "files" | "beatport" | "waveforms" | "other";
   title: string;
+  purpose: string;
   items: Item[];
-  /** Whether a bar can open the Library. */
-  opens: boolean;
-  onOpen: (rules: FilterRuleSet) => void;
   note?: string;
-  action: { label: string; onClick: () => void };
+  action: { label: string; onClick: () => void; disabled?: boolean; loading?: boolean };
 }
 
-function Group({ id, title, items, opens, onOpen, note, action }: GroupProps) {
+function Group({ id, title, purpose, items, note, action }: GroupProps) {
+  const opens = items.some((item) => item.open !== null);
   return (
     <div className="statistics-panel" data-panel={id}>
       <h3 className="statistics-panel__title">{title}</h3>
+      <p className="statistics-panel__purpose">{purpose}</p>
       <PixelBars<Item>
         title={title}
         buckets={items}
         orientation="horizontal"
         barName={(item) => `${item.label}, ${tracksText(item.count)}`}
-        onSelect={opens ? (item) => item.rules && onOpen(item.rules) : undefined}
-        isSelectable={(item) => item.rules !== null}
+        onSelect={opens ? (item) => item.open?.() : undefined}
+        isSelectable={(item) => item.open !== null}
         bucketLabel={title}
       />
       {note && <p className="statistics-note">{note}</p>}
-      <Button variant="secondary" onClick={action.onClick}>
+      <Button variant="secondary" onClick={action.onClick}
+        disabled={action.disabled}
+        loading={action.loading}
+      >
         {action.label}
       </Button>
     </div>
   );
 }
 
-export function HealthSection({ health }: { health: StatisticsHealth }) {
+interface HealthSectionProps {
+  health: StatisticsHealth;
+  /** True while the page's cover-art read is running. */
+  coverArtRunning: boolean;
+  /** Starts the cover-art read (the page owns it, so it survives this section unmounting). */
+  onReadCoverArt: () => void;
+}
+
+export function HealthSection({ health, coverArtRunning, onReadCoverArt }: HealthSectionProps) {
   const navigate = useNavigate();
   const openRules = (rules: FilterRuleSet) =>
     navigate("/library", { state: libraryRulesState(rules) });
@@ -104,63 +150,74 @@ export function HealthSection({ health }: { health: StatisticsHealth }) {
   const files: Item[] = FILE_STATES.map((key) => ({
     label: fileStatusLabel(key),
     count: health.files[key].count,
-    rules: health.files[key].rules,
+    open: () => openRules(health.files[key].rules),
   }));
   const beatport: Item[] = BEATPORT_STATES.map((key) => ({
     label: matchStateLabel(key),
     count: health.beatport[key].count,
-    rules: health.beatport[key].rules,
+    open: () => openRules(health.beatport[key].rules),
   }));
   const waveforms: Item[] = WAVEFORM_ITEMS.map(([key, label]) => ({
     label,
     count: health.analyzed[key],
-    rules: null,
+    open: null,
+  }));
+  const other: Item[] = OTHER_ITEMS.map(([key, label]) => ({
+    label,
+    count: health.other[key].count,
+    // Duplicates are dealt with in Clean's tab; the others are a list in the Library.
+    open:
+      key === "duplicates"
+        ? () => navigate("/clean", { state: cleanSectionState("duplicates") })
+        : () => openRules(health.other[key].rules),
   }));
 
   return (
-    <>
-      <div className="statistics-panels">
-        <Group
-          id="files"
-          title="Files"
-          items={files}
-          opens
-          onOpen={openRules}
-          note={checkedLine(health.checked_at)}
-          action={{
-            label: "Check files",
-            onClick: () => navigate("/clean", { state: cleanSectionState("health") }),
-          }}
-        />
-        <Group
-          id="beatport"
-          title="Beatport"
-          items={beatport}
-          opens
-          onOpen={openRules}
-          action={{
-            label: "Match",
-            onClick: () => navigate("/clean", { state: cleanSectionState("review") }),
-          }}
-        />
-        <Group
-          id="waveforms"
-          title="Waveforms"
-          items={waveforms}
-          opens={false}
-          onOpen={openRules}
-          action={{
-            label: "Analyze",
-            onClick: () => navigate("/settings", { state: settingsFocusState("waveforms") }),
-          }}
-        />
-      </div>
-      <Button
-        variant="secondary"
-        onClick={() => navigate("/clean", { state: cleanSectionState("health") })}
-      >
-        All health checks
-      </Button>
-    </>
+    <div className="statistics-panels">
+      <Group
+        id="files"
+        title="Files"
+        purpose={PURPOSES.files}
+        items={files}
+        note={checkedLine(health.checked_at)}
+        action={{
+          label: "Fix in Clean ›",
+          onClick: () => navigate("/clean", { state: cleanSectionState("missing") }),
+        }}
+      />
+      <Group
+        id="beatport"
+        title="Beatport"
+        purpose={PURPOSES.beatport}
+        items={beatport}
+        action={{
+          label: "Fix in Clean ›",
+          onClick: () => navigate("/clean", { state: cleanSectionState("review") }),
+        }}
+      />
+      <Group
+        id="waveforms"
+        title="Waveforms"
+        purpose={PURPOSES.waveforms}
+        items={waveforms}
+        action={{
+          label: "Settings ›",
+          onClick: () => navigate("/settings", { state: settingsFocusState("waveforms") }),
+        }}
+      />
+      <Group
+        id="other"
+        title="Other"
+        purpose={PURPOSES.other}
+        items={other}
+        note={artworkLine(health.artwork_checked_at)}
+        action={{
+          label: "Read cover art",
+          onClick: onReadCoverArt,
+          disabled: coverArtRunning,
+          loading: coverArtRunning,
+        }}
+      />
+    </div>
   );
 }

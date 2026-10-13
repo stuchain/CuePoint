@@ -42,6 +42,13 @@ the scope's rules plus its own, so it opens exactly the tracks it counted (the
 tests run every one through ``browse_count``). Where no rule can say it (a top-N
 remainder, a malformed date, a loudness) the rules are ``None`` and the number is
 the page's alone. The fields' buckets and their unknown lines sum to the scope.
+
+Health also carries ``other``: duplicates, matches changed since the user decided,
+and tracks with no artwork. Each is the scope's rules plus the matching
+:data:`~cuepoint.services.health_service.HEALTH_RULES` clause, so Clean and
+Statistics count one rule. They are not buckets of a total, so they do not sum to
+the scope. ``artwork_checked_at`` says when the cover-art scan last ran; that is
+the library's, not the scope's, because the scan reads files and not Collections.
 """
 
 from __future__ import annotations
@@ -70,7 +77,10 @@ from cuepoint.models.filter_rule import (
 )
 from cuepoint.persistence.statistics_repository import PlayedName, PlayedTrack
 from cuepoint.persistence.waveform_store import WaveformStore, WaveformStoreError
+from cuepoint.services.artwork_service import EVENT_ARTWORK_SCANNED
+from cuepoint.services.health_service import HEALTH_RULES
 from cuepoint.services.interfaces import (
+    IActivityRepository,
     ICollectionService,
     IPlaylistRepository,
     IStatisticsRepository,
@@ -79,6 +89,9 @@ from cuepoint.services.interfaces import (
 )
 
 _logger = logging.getLogger(__name__)
+
+#: Clean's Health rules by id, built once (``_other`` looks three of them up per read).
+_HEALTH_RULES_BY_ID = {rule.id: rule for rule in HEALTH_RULES}
 
 SCOPE_LIBRARY = "library"
 SCOPE_COLLECTION = "collection"
@@ -103,6 +116,9 @@ BEATPORT_STATES = (
     "no_match",
     "not_matched",
 )
+
+#: The Health rules the page's **Other** group counts, in the order it reads them.
+OTHER_HEALTH_IDS = ("duplicates", "disputed", "no_artwork")
 
 LABEL_OTHER = "Other"
 LABEL_NO_GENRE = "No genre"
@@ -349,6 +365,11 @@ class StatisticsHealth:
         analyzed: Analyzed, failed, waiting and no file, over the scope's tracks.
             Counts only: no rule can say "analyzed".
         checked_at: When the last file check of these tracks was made, or ``None``.
+        other: ``duplicates``, ``disputed`` and ``no_artwork`` over the scope, each
+            with the rules that open it. They are Clean's own Health rules, not
+            parts of the total.
+        artwork_checked_at: When the cover-art scan last ran, or ``None`` if it
+            never has. Library-wide: the scan is not run per scope.
     """
 
     scope: str
@@ -357,6 +378,8 @@ class StatisticsHealth:
     beatport: Dict[str, PlaysCount]
     analyzed: Dict[str, int]
     checked_at: Optional[str]
+    other: Dict[str, PlaysCount]
+    artwork_checked_at: Optional[str]
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize for the API. A public shape; extend rather than rename."""
@@ -367,6 +390,8 @@ class StatisticsHealth:
             "beatport": {name: row.to_dict() for name, row in self.beatport.items()},
             "analyzed": dict(self.analyzed),
             "checked_at": self.checked_at,
+            "other": {name: row.to_dict() for name, row in self.other.items()},
+            "artwork_checked_at": self.artwork_checked_at,
         }
 
 
@@ -387,6 +412,7 @@ class StatisticsService(IStatisticsService):
         *,
         waveform_store: Optional[WaveformStore] = None,
         analysis_service: Optional[IWaveformAnalysisService] = None,
+        activity_repository: Optional[IActivityRepository] = None,
         loudness_version: int = LOUDNESS_VERSION,
     ) -> None:
         self._repository = repository
@@ -396,6 +422,8 @@ class StatisticsService(IStatisticsService):
         # nothing is measured and nothing is analysed, which is true to say.
         self._store = waveform_store
         self._analysis = analysis_service
+        # Without activity nothing says when the cover art was last read.
+        self._activity = activity_repository
         self._loudness_version = int(loudness_version)
 
     def scope_rules(self, scope: PlaysScope) -> RuleSet:
@@ -684,6 +712,10 @@ class StatisticsService(IStatisticsService):
     def health(self, scope: Optional[PlaysScope] = None) -> StatisticsHealth:
         """The scope's tracks by file state, Beatport match and analysis.
 
+        ``other`` counts Clean's duplicate, changed-since-decided and no-artwork
+        rules over the scope, and ``artwork_checked_at`` is the library's last
+        cover-art scan, whatever the scope.
+
         Raises:
             ScopeNotFoundError: If the scope names a Collection or playlist that
                 is not there.
@@ -701,7 +733,28 @@ class StatisticsService(IStatisticsService):
                 beatport=self._states(rules, "match_state", BEATPORT_STATES, matches),
                 analyzed=self._analyzed(rules, total),
                 checked_at=self._repository.last_checked(rules),
+                other=self._other(rules),
+                artwork_checked_at=self._artwork_checked_at(),
             )
+
+    def _other(self, scope: RuleSet) -> Dict[str, PlaysCount]:
+        """Each of Clean's Health rules in :data:`OTHER_HEALTH_IDS`, over the scope."""
+        found: Dict[str, PlaysCount] = {}
+        for name in OTHER_HEALTH_IDS:
+            rules = self._with(scope, *_HEALTH_RULES_BY_ID[name].rules.rules)
+            found[name] = PlaysCount(self._repository.total(rules), rules)
+        return found
+
+    def _artwork_checked_at(self) -> Optional[str]:
+        """When the cover-art scan last ran, as Clean's Health reads it.
+
+        Any artwork scan counts, including one run after an import or stopped early, exactly as
+        Clean's Health counted it.
+        """
+        if self._activity is None:
+            return None
+        latest = self._activity.recent_events(limit=1, event_type=EVENT_ARTWORK_SCANNED)
+        return latest[0].created_at if latest else None
 
     def _states(
         self,

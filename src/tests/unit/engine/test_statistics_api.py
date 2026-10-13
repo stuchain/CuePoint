@@ -417,6 +417,8 @@ class TestSpreadsAndHealth:
             "beatport",
             "analyzed",
             "checked_at",
+            "other",
+            "artwork_checked_at",
         }
         assert payload["files"]["present"]["count"] == 5
         assert payload["analyzed"]["analyzed"] == 2

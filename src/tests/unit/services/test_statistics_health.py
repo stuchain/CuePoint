@@ -13,9 +13,12 @@ import pytest
 
 from cuepoint.models.file_status import FILE_PRESENT
 from cuepoint.models.filter_rule import MATCH_STATE_CHOICES, RuleSet
+from cuepoint.persistence.activity_repository import ActivityEvent, ActivityRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
 from cuepoint.persistence.statistics_repository import StatisticsRepository
 from cuepoint.persistence.waveform_store import WaveformStoreError
+from cuepoint.services.artwork_service import EVENT_ARTWORK_SCANNED
+from cuepoint.services.health_service import HEALTH_RULES
 from cuepoint.services.statistics_service import PlaysScope, StatisticsService
 from tests.unit.services.test_statistics_spreads import (
     NOW,
@@ -29,6 +32,7 @@ pytestmark = pytest.mark.unit
 FILE_STATES = ("present", "missing", "unreadable", "not_checked")
 MATCH_STATES = ("accepted", "needs_review", "rejected", "no_match", "not_matched")
 ANALYZED = ("analyzed", "failed", "waiting", "no_file")
+OTHER = ("duplicates", "disputed", "no_artwork")
 
 
 @pytest.fixture
@@ -57,14 +61,19 @@ def test_the_answer_has_exactly_the_documented_fields(world):
         "beatport",
         "analyzed",
         "checked_at",
+        "other",
+        "artwork_checked_at",
     }
     assert answer["scope"] == "library"
+    assert list(answer["other"]) == list(OTHER)
     assert list(answer["files"]) == list(FILE_STATES)
     assert list(answer["beatport"]) == list(MATCH_STATES)
     assert list(answer["analyzed"]) == list(ANALYZED)
     for entry in [*answer["files"].values(), *answer["beatport"].values()]:
         assert set(entry) == {"count", "rules"}
     assert all(isinstance(n, int) for n in answer["analyzed"].values())
+    for entry in answer["other"].values():
+        assert set(entry) == {"count", "rules"}
 
 
 def test_the_four_file_states_sum_to_the_scope(world):
@@ -316,3 +325,116 @@ def test_an_unreadable_store_reads_as_nothing_measured_and_the_sums_hold(world, 
         loudness["unknown"]["count"] + loudness["no_file"]["count"] == loudness["total"]
     )
     assert loudness["unknown"]["count"] == answer["files"]["present"]["count"]
+
+
+# ------------------------------------------------------------------- other
+
+
+def seed_other(world: SpreadWorld) -> None:
+    """Flag some tracks: a and g in one duplicate group, a and b disputed, c g h bare."""
+    with world.db.transaction() as conn:
+        group = conn.execute(
+            "INSERT INTO duplicate_groups (signal, group_key, computed_at)"
+            " VALUES ('path', 'k', ?)",
+            (NOW,),
+        ).lastrowid
+        for name in ("a", "g"):
+            conn.execute(
+                "INSERT INTO duplicate_members (group_id, track_id) VALUES (?, ?)",
+                (group, world.ids[name]),
+            )
+        for name in ("a", "b"):
+            attempt = conn.execute("SELECT max(id) FROM match_attempts").fetchone()[0]
+            conn.execute(
+                "UPDATE track_match SET newer_attempt_id = ? WHERE track_id = ?",
+                (attempt, world.ids[name]),
+            )
+        for name in ("c", "g", "h"):
+            conn.execute(
+                "INSERT INTO track_artwork (track_id, embedded, checked_path, checked_at)"
+                " VALUES (?, 'none', ?, ?)",
+                (world.ids[name], world.path(name), NOW),
+            )
+
+
+def with_activity(world: SpreadWorld) -> tuple:
+    """A statistics service that reads activity, and the repository to write to."""
+    activity = ActivityRepository(world.db)
+    service = StatisticsService(
+        StatisticsRepository(world.db),
+        world.collections,
+        PlaylistRepository(world.db),
+        waveform_store=world.store,
+        analysis_service=world.analysis,
+        activity_repository=activity,
+    )
+    return service, activity
+
+
+def test_other_counts_the_three_flagged_groups_in_the_documented_order(world):
+    seed_other(world)
+
+    answer = health(world)
+
+    assert list(answer["other"]) == ["duplicates", "disputed", "no_artwork"]
+    assert counts(answer["other"]) == {"duplicates": 2, "disputed": 2, "no_artwork": 3}
+
+
+def test_a_collection_scopes_the_other_counts(world):
+    seed_other(world)
+
+    # The Collection holds a, c, e and f: a is a duplicate and disputed, c bare.
+    assert counts(health(world, "collection")["other"]) == {
+        "duplicates": 1,
+        "disputed": 1,
+        "no_artwork": 1,
+    }
+
+
+def test_other_is_all_zero_when_nothing_is_flagged(world):
+    assert counts(health(world)["other"]) == {
+        "duplicates": 0,
+        "disputed": 0,
+        "no_artwork": 0,
+    }
+
+
+@pytest.mark.parametrize("kind", SCOPES)
+def test_each_other_entry_opens_exactly_what_it_counted_by_the_health_rule(world, kind):
+    seed_other(world)
+    scope = world.scope(kind)
+    answer = world.statistics.health(scope).to_dict()
+    scope_rules = world.statistics.scope_rules(scope)
+    shared = {rule.id: rule for rule in HEALTH_RULES}
+
+    for name in OTHER:
+        entry = answer["other"][name]
+        rules = RuleSet.from_dict(entry["rules"])
+        assert world.count(rules) == entry["count"], (kind, name)
+        # One rule shared with Clean: the scope's, then the health rule's own.
+        wanted = scope_rules.to_dict()["rules"] + shared[name].rules.to_dict()["rules"]
+        assert entry["rules"]["rules"] == wanted, (kind, name)
+
+
+def test_artwork_checked_at_is_null_without_activity(world):
+    assert health(world)["artwork_checked_at"] is None
+
+
+def test_artwork_checked_at_is_null_when_the_scan_never_ran(world):
+    service, activity = with_activity(world)
+    activity.add_event(ActivityEvent("files_checked", "Checked", created_at=NOW))
+
+    assert service.health().to_dict()["artwork_checked_at"] is None
+
+
+def test_artwork_checked_at_is_the_latest_scan_whatever_the_scope(world):
+    service, activity = with_activity(world)
+    for at in ("2026-10-03T08:00:00+00:00", "2026-10-07T09:30:00+00:00"):
+        activity.add_event(ActivityEvent(EVENT_ARTWORK_SCANNED, "Read", created_at=at))
+
+    assert service.health().to_dict()["artwork_checked_at"] == (
+        "2026-10-07T09:30:00+00:00"
+    )
+    # Library-wide: a Collection does not narrow it.
+    collection = service.health(world.scope("collection")).to_dict()
+    assert collection["artwork_checked_at"] == "2026-10-07T09:30:00+00:00"

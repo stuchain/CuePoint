@@ -436,14 +436,23 @@ test.describe("The Health section and the whole page (STATS-07)", () => {
         timeout: 30_000,
       });
       await expect(library.locator('[data-panel="genre"]')).toBeVisible({ timeout: 30_000 });
-      for (const group of ["Files", "Beatport", "Waveforms"]) {
+      for (const group of ["Files", "Beatport", "Waveforms", "Other"]) {
         await expect(health.getByRole("heading", { name: group, level: 3 })).toBeVisible({
           timeout: 30_000,
         });
       }
-      for (const name of ["Check files", "Match", "Analyze", "All health checks"]) {
-        await expect(health.getByRole("button", { name, exact: true })).toBeVisible();
+      // One button in each group.
+      for (const [panel, name] of [
+        ["files", "Fix in Clean ›"],
+        ["beatport", "Fix in Clean ›"],
+        ["waveforms", "Settings ›"],
+        ["other", "Read cover art"],
+      ] as const) {
+        await expect(
+          health.locator(`[data-panel="${panel}"]`).getByRole("button", { name, exact: true }),
+        ).toBeVisible();
       }
+      await expect(health.getByRole("button", { name: "All health checks" })).toHaveCount(0);
 
       const rows = window.locator(".track-table__row");
       const libraryHeading = window.getByRole("heading", { name: "Library", level: 1 });
@@ -485,7 +494,7 @@ test.describe("The Health section and the whole page (STATS-07)", () => {
     }
   });
 
-  test("opens Clean's Health tab from All health checks", async () => {
+  test("opens Clean's Missing files tab from Files' Fix in Clean", async () => {
     test.setTimeout(240_000);
     const app = await launch(userDataDir, cuepointHome);
     try {
@@ -493,9 +502,12 @@ test.describe("The Health section and the whole page (STATS-07)", () => {
       await importLibrary(window, writeExport(workspace));
       await window.getByRole("link", { name: "Statistics" }).click();
       const health = window.getByRole("region", { name: "Health" });
-      await health.getByRole("button", { name: "All health checks" }).click({ timeout: 30_000 });
+      await health
+        .locator('[data-panel="files"]')
+        .getByRole("button", { name: "Fix in Clean ›" })
+        .click({ timeout: 30_000 });
       await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
-      await expect(window.getByRole("tab", { name: /Health/ })).toHaveAttribute(
+      await expect(window.getByRole("tab", { name: /Missing files/ })).toHaveAttribute(
         "aria-selected",
         "true",
       );

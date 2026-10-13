@@ -1449,6 +1449,8 @@ export interface StatisticsAnalyzed {
   no_file: number;
 }
 
+export type StatisticsOtherState = "duplicates" | "disputed" | "no_artwork";
+
 export interface StatisticsHealth {
   scope: StatisticsScope;
   total: number;
@@ -1456,6 +1458,10 @@ export interface StatisticsHealth {
   beatport: Record<StatisticsMatchState, StatisticsCount>;
   analyzed: StatisticsAnalyzed;
   checked_at: string | null;
+  /** Clean's duplicate, changed-since-decided and no-artwork rules over the scope. */
+  other: Record<StatisticsOtherState, StatisticsCount>;
+  /** When the cover art was last read; the library's, not the scope's. */
+  artwork_checked_at: string | null;
 }
 
 export type ReviewExportFormat = "csv" | "json" | "excel";

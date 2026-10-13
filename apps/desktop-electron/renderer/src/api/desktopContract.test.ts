@@ -2033,6 +2033,24 @@ describe("desktop contract", () => {
     });
   });
 
+  describe("Statistics health's Other group (K3)", () => {
+    const declared = 'export type StatisticsOtherState = "duplicates" | "disputed" | "no_artwork";';
+
+    it("names the three states the same on both sides", () => {
+      expect(bridgeTypes).toContain(declared);
+      expect(engineClient).toContain(declared);
+    });
+
+    it("types the group and the cover-art date on the health answer", () => {
+      for (const source of [bridgeTypes, engineClient]) {
+        const start = source.indexOf("export interface StatisticsHealth ");
+        const body = source.slice(start, source.indexOf("\n}", start));
+        expect(body).toContain("other: Record<StatisticsOtherState, StatisticsCount>;");
+        expect(body).toContain("artwork_checked_at: string | null;");
+      }
+    });
+  });
+
   describe("the renderer's error reporter (REPORT-06)", () => {
     it("asks main whether reporting is set up, through the same get", () => {
       expect(main).toContain('handle("errorReporting:get", () => ({ enabled: errorReporting.enabled(), configured: reportingOn }))');

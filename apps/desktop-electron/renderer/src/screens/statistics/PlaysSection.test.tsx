@@ -12,6 +12,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
 import type { StatisticsPlays } from "../../api/cuepointBridge.types";
+import { ToastProvider } from "../../components";
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { reportUnexpected } from "../../reporting/reporting";
 import { PlaysSection } from "./PlaysSection";
@@ -129,6 +130,8 @@ function install(overrides: Record<string, unknown> = {}) {
       },
       analyzed: { analyzed: 0, failed: 0, waiting: 0, no_file: 0 },
       checked_at: null,
+      other: { duplicates: count(0), disputed: count(0), no_artwork: count(0) },
+      artwork_checked_at: null,
     }),
     ...overrides,
   };
@@ -137,10 +140,12 @@ function install(overrides: Record<string, unknown> = {}) {
 
 function renderPage() {
   return render(
-    <MemoryRouter initialEntries={["/statistics"]}>
-      <StatisticsScreen />
-      <Where />
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter initialEntries={["/statistics"]}>
+        <StatisticsScreen />
+        <Where />
+      </MemoryRouter>
+    </ToastProvider>,
   );
 }
 

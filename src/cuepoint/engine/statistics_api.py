@@ -22,7 +22,10 @@
   total. Loudness adds a ``no_file`` line and has no rules.
 - ``GET /api/v1/statistics/health?scope=`` (STATS-03): the scope's tracks by file
   state and Beatport match (each with its rules), by analysis (counts only), and
-  when the files were last checked. It takes the same ``scope``.
+  when the files were last checked. ``other`` adds Clean's duplicate, changed-
+  since-decided and no-artwork counts over the scope (with their rules), and
+  ``artwork_checked_at`` when the cover art was last read, which is the library's
+  and not the scope's. It takes the same ``scope``.
 
 Every handler validates and delegates: what is counted, and what each number opens,
 is ``services/statistics_service.py``'s. A query parameter the route does not take
