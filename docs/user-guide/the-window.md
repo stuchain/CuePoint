@@ -120,7 +120,8 @@ the small Help menu CuePoint used to draw inside the window.
 - **CuePoint** (on a Mac only): **About CuePoint**, **Settings...** (**Cmd+,**) and
   **Quit**.
 - **File**: **Import a Rekordbox file...** (**Ctrl+O**) opens the Library and asks for a
-  Rekordbox XML file, as the Library's own button does; **Check Rekordbox for
+  Rekordbox XML file (the same as **Import another Rekordbox file…** in Settings →
+  Rekordbox export); **Check Rekordbox for
   changes** starts the same check. Exporting is not here: it stays on the Library
   and on a Collection's or Set's own bar, because a menu item has no scope.
 - **Edit**: **Undo**, **Redo**, **Cut**, **Copy**, **Paste** and **Select all**, so
@@ -356,7 +357,7 @@ Here is where each kind shows:
 custom theme you made: **Create custom theme…** asks for nine colors, and the
 borders are made from them. **Delete** asks first. **Size of text and
 controls** is **Small (1×)**, **Compact (1.25×)**, **Medium (1.5×)** (the default),
-**Large (2×)** or **Extra large (3×)**. Table rows are as tall as the size says, so
+**Large (2×)** or **Extra large (3×)**. Table rows follow the size, so
 the text in them is never cut. A size that would leave too little room for the
 Library on your screen is greyed: in Settings the reason is written under the
 choice, and in View → Size the size is simply greyed. The size you are using is
@@ -366,7 +367,12 @@ at Medium otherwise (at Small if Compact would be too big too). If you chose a s
 before, or you updated from an earlier version, CuePoint keeps it, and opens at
 Medium if you never chose one.
 
-**Reset Appearance** sets Neo dark at the default size at once, and the
+**Tables** holds two more choices. **Row density** is **Compact** (the default) or
+**Roomy**: rows are as tall as the text size times the density, so a Compact
+Library shows many more tracks than before. **Color keys** (on) draws each key
+as a chip in its Camelot color; off, keys are plain text.
+
+**Reset Appearance** sets Neo dark at the default size, Compact rows and colored keys at once, and the
 message that follows has **Undo**. Your custom themes are kept.
 
 ## Privacy and error reports

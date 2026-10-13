@@ -20,7 +20,7 @@ CuePoint opens with a short guide of four steps: what CuePoint does; how to brin
 
 On a new install CuePoint also picks a size for your screen: Compact (1.25×) on a screen shorter than 860 pixels, Medium (1.5×) otherwise. Change it in **Settings > Appearance** or **View > Size**.
 
-The Library also shows **First steps**, a checklist that ticks itself: import your collection, match your tracks, play a track, and sign in to Beatport. Before you import it is listed on the page. After you import, it is a small **First steps 2/4** chip beside the Library heading; click it to see the list (with **Match tracks...**), and press **Esc** or click elsewhere to close it. Once all four are done it never shows again.
+The Library also shows **First steps**, a checklist that ticks itself: import your collection, match your tracks, play a track, and sign in to Beatport. Before you import it is the whole page below the header, and its first step has **Import…** and **How do I export one?**. After you import, it is a small **First steps 2/4** chip beside the Library heading; click it to see the list (with **Match tracks...**), and press **Esc** or click elsewhere to close it. Once all four are done it never shows again.
 
 If you updated from an earlier version, CuePoint shows one note the first time you start it, **What changed**. It says that CuePoint is now Medium size (1.5×) with **Change size** (only if you never chose a size), and that keys now come only from Beatport, with how many of your tracks have a key and **Match tracks...**. It does not appear again.
 

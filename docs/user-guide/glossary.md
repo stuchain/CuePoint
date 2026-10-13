@@ -49,11 +49,10 @@ as they are replaced.
   the key in the player bar; click a key to see every track in it in the Library. On the Keys page it also carries
   each key's track count; Ctrl+Click or Shift+Click chooses several keys.
 - **Selection bar**: The row of buttons above the Library table that act on the
-  selected tracks: Play, Organize, Explore, Beatport, Fix and More, then Clear
-  selection. A track's right-click menu holds the same six groups. On Discover's
-  artist and label pages and on Similar tracks the bar is shorter (Play and
-  Explore, and More on an artist's or label's tracks), and the right-click menu there
-  holds the same groups.
+  selected tracks. It shows the count and Select all; with a selection it shows Play,
+  Organize, Beatport and More, then "N selected ×". A track's right-click menu holds the same
+  four groups. On Discover's artist and label pages and on Similar tracks the bar is shorter
+  (Play and More), and the right-click menu there holds the same groups.
 - **Playlist**: A named collection of tracks inside the Rekordbox XML.
 - **Preflight**: In the command-line tool, validation checks that run before processing.
 - **Match**: A Beatport result associated with an input track.

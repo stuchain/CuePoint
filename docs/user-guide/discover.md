@@ -244,7 +244,7 @@ anywhere you meet a track:
 - **Track details.** A track's artist credit is shown as written, with each
   artist in it a link — "Mara Veil, Kiko" is two links — and its label is a
   link just below. The remixer credit is linked the same way.
-- **The right-click menu, and Explore ▸ in the selection bar**: **Artist page**
+- **The right-click menu, and More ▸ in the selection bar**: **Artist page**
   (a list to choose from when the track credits several artists) and **Label
   page**. With several tracks selected they open the first one's.
 - **A filter chip** that names one artist or label, such as "Credited artist
@@ -280,14 +280,13 @@ counts, newest first. These are your tracks, so they behave as they do in the
 Library: double-click one to play it with the rest of the table queued after
 it. Selecting a track shows it in Track details.
 
-Under the table is the Library's selection bar, always there and grayed out
-("Select tracks first") until you select some: **Play ▸** (Play, Play next, Add
-to queue), **Explore ▸** (Similar tracks, the artist and label pages; with
-several tracks selected they open the first one's), **More ▸** (Copy, Show in
-folder) and **Clear selection**, with the count, **Select all** and
-**Columns…** at its right. The right-click menu on a track (or on several) holds
-the same groups: Play, Play next and Add to queue first, then **Explore ▸** and
-**More ▸**. Organizing is the Library's, and matching and fixing values are
+Under the table is the Library's selection bar: with nothing selected only the
+count and **Select all**, with a selection **Play ▸** (Play, Play next, Add to
+queue), **More ▸** (Similar tracks, the artist and label pages, then Copy and
+Show in folder; with several tracks selected the pages open the first one's) and
+"N selected ×". **Columns…** is in the table's top right corner. The right-click
+menu on a track (or on several) holds the same groups: Play, Play next and Add
+to queue first, then **More ▸**. Organizing is the Library's, and matching and fixing values are
 Clean's, so those groups are not here.
 
 **Open in Library** opens the Library filtered to this page's tracks, so you
@@ -359,9 +358,9 @@ same track again is not a suggestion.
 
 Selecting a suggestion lights its key on the Camelot wheel when you open it.
 Suggestions are your own tracks: double-click one to play the list from there,
-and use the bar under the table (**Play ▸**, **Explore ▸**, always shown and grayed
-out until you select some) or the right-click menu, which holds the same two groups,
-to **Play next** or **Add to queue**. **Similar tracks** under Explore makes a suggestion
+and use the bar under the table (**Play ▸** and **More ▸**, shown once you select
+some) or the right-click menu, which holds the same two groups,
+to **Play next** or **Add to queue**. **Similar tracks** under More makes a suggestion
 the next track to compare with. **Open in Library** opens the Library on the track you are comparing with and its suggestions, or on the suggestions you selected and that track, so you can tag, rate or collect them there. The filter reads **Similar to “<track>”**; remove it with its **×** or **Clear all filters**. The Library shows them in its own sort order. A list of tracks cannot be saved as a Smart Collection: add them to a Collection instead. The
 Track details shows the track you are comparing with until you select a suggestion.
 

@@ -43,8 +43,8 @@ open in Rekordbox.
 
 ## Exporting
 
-1. On the **Library** page, click **Export to Rekordbox…** at the top (beside
-   **Import another file…**). Or right-click a Collection, Smart Collection, Set or folder in
+1. On the **Library** page, click **Export to Rekordbox…** in the header, beside
+   **Check Rekordbox for changes**. Or right-click a Collection, Smart Collection, Set or folder in
    the left pane and choose **Export to Rekordbox…** — it opens with that one
    already ticked. On the Prepare page, **Export ▾ → Export to Rekordbox…**
    opens it with the open Set ticked.

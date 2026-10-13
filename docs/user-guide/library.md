@@ -10,13 +10,15 @@ Open **Library** in the sidebar.
 
 ## Importing your Rekordbox collection
 
-Until something is imported, the Library says **Nothing imported yet** and shows
-the three steps below, with **Import your Rekordbox collection…** at the top and
-**How do I export one?** for the Rekordbox side.
+Until something is imported, the Library shows only its header and **First
+steps**, a short checklist. Its first step, **Import your Rekordbox
+collection**, has **Import…** and **How do I export one?** beside it, and the
+hint under it says: in Rekordbox choose File → Export Collection in xml format,
+then import that file; nothing in Rekordbox is changed. The steps are:
 
 1. In Rekordbox, use **File → Export Collection in xml format** and save the
    file somewhere you will find it again. Downloads is fine.
-2. In CuePoint, open **Library** and click **Import your Rekordbox collection…**.
+2. In CuePoint, open **Library** and click **Import…** in the first step.
 3. Pick the file. CuePoint reads it in the background — you can keep using the
    rest of the app, and the strip along the bottom shows how far it has got.
    Nothing in Rekordbox is changed.
@@ -24,21 +26,37 @@ the three steps below, with **Import your Rekordbox collection…** at the top a
 When it finishes, the page shows what CuePoint now holds and which file it came
 from. **It remembers that file**, so checking for changes later takes one click.
 
-The header then has three buttons, side by side: **Check Rekordbox for changes**,
-**Import another file…** (to switch to a different export) and **Export to
-Rekordbox…** — see [Exporting to Rekordbox](rekordbox-export.md). In a narrow
-window or at a large size they read **Check Rekordbox**, **Import…** and
-**Export…**; their full names are what a screen reader hears. The badge beside
-the file's path says **In sync**, **Changed in Rekordbox**, **File not found** or **Not checked yet**,
-and **last read** says when CuePoint last read the file.
+### The Library header
+
+The header says what the table below is showing. Its title is the playlist,
+Collection, Set or Smart Collection you opened, with the group it is in above
+it, or **All tracks**. Under the title, one line gives what that holds: the
+number of tracks, their running time, the BPM range and the number of keys,
+for example *306 tracks · 21h 4m · 120–134 BPM · 14 keys*. The search and the
+filters do not change that line; the toolbar above the table counts what they
+leave.
+
+Beside the title is the file the library came from, as its name and a badge:
+**In sync**, **Changed in Rekordbox**, **File not found** or **Not checked
+yet**. Point at the name for the full path and when CuePoint last read the
+file. Two buttons sit on the right: **Check Rekordbox for changes** (it turns
+primary when the file changed or went missing) and **Export to Rekordbox…** —
+see [Exporting to Rekordbox](rekordbox-export.md). In a narrow window or at a
+large size they read **Check Rekordbox** and **Export…**; their full names are
+what a screen reader hears.
+
+To switch to a different Rekordbox file, use **Import another Rekordbox
+file…** in **Settings → Rekordbox export**, or **File → Import a Rekordbox
+file…** (**Ctrl+O**).
 
 **After an import**, a note under the header says CuePoint is checking that your
 music files are where Rekordbox says, reading their cover art and drawing each
 track's waveform, and that you can browse and play while it works. A "Now:" line
 shows the step and how far it is, for example *Now: drawing waveforms, 1,204 of
 12,000*. Close it with **Dismiss**; it goes by itself when the work ends. When
-that work is done and no track has a Beatport key yet, the same line says so and
-offers **Match tracks…**, which opens the [match window](clean.md#matching) in Clean.
+that work is done and no track has a Beatport key yet, the same line says so.
+Matching is done in [Clean](clean.md#matching), or from **Beatport ▸ Match
+tracks…** on a selection.
 
 A 50,000-track collection takes about eleven seconds to import. See
 [Performance](performance.md#the-library) for the measured numbers.
@@ -75,8 +93,10 @@ Nothing here changes your music. The Library page reads.
   common genres). Each choice becomes a chip on the same row; choosing a second
   key makes one "any of" chip. The quick filters are on the Library table only.
   When no track has a Beatport key yet, the Key list says *No tracks have a
-  Beatport key yet. Keys come from matching.* and offers **Match tracks…**. If
-  a Key filter finds nothing, the line above the table says the same.
+  Beatport key yet. Keys come from matching.* If a Key filter finds nothing,
+  the line above the table says the same. Matching is in Clean, or **Beatport
+  ▸ Match tracks…** on a selection; the Library has no Match button of its own
+  beside the filters.
 - **Add a filter** for anything more specific — BPM between 124 and 130, genre
   is Techno, comment contains "promo". The fields are grouped (Track, Your notes
   and ratings, Rekordbox only, Beatport match, Files, Where it is). Filters
@@ -136,8 +156,13 @@ An empty table says why and offers the next step as a button:
 
 ### Choosing columns
 
-**Columns…**, at the right of the row above the table, opens the list. Nine are shown to start with — the ones a DJ reads —
-and fourteen more are there if you want them: remixer, year, plays, date added,
+**Columns…**, a small button in the table's top right corner, opens the list.
+Nine are shown to start with — the ones a DJ reads — in this order: Title,
+Artist, Key, BPM, Length, Genre, Label, Rating and Album. Key and BPM come
+third and fourth so they stay on screen with Track details open. If you had
+never rearranged the old order, CuePoint moved your saved layout to this one
+once, keeping your widths and what you had hidden; a layout you had arranged
+yourself was left alone. Fourteen more are there if you want them: remixer, year, plays, date added,
 color, bitrate, comment, the file path, four from
 [Clean](#clean-in-the-library) — **Match**, **Score**, **File status** and
 **Artwork** — **Waveform**, which draws each track's waveform, and
@@ -153,7 +178,12 @@ list repeats what the marks mean. A key is marked only when you typed it: a key
 from Beatport is the track's key, not an edit.
 
 **Key is Beatport's key.** A track's key is the one you typed, or else the key
-of its accepted Beatport match, shown in Camelot (8A). Rekordbox's key is never
+of its accepted Beatport match, shown in Camelot (8A) as a small colored chip.
+The colors follow the Camelot wheel, one hue for each number, deeper for A and
+lighter for B, as in Mixed In Key; point at a chip for the key's name ("A
+minor"). The same chips are in Keys, Discover, Clean and Prepare. **Settings →
+Appearance → Tables → Color keys** (on to start with) turns them back into
+plain text. Rekordbox's key is never
 used, so a track with no accepted match shows "—" in the Key column (point at
 the heading: *Keys come from Beatport matches*), and every
 key filter, count, check and export leaves it out. After a fresh import no track
@@ -165,6 +195,13 @@ There is one **Key** field, and it compares keys by what they mean, so 8A,
 "A minor" and "Am" are the same. The one that used to be called "CuePoint key"
 is **Your key**, and Rekordbox's own is **Key from Rekordbox (not used)**, in
 the Rekordbox only group.
+
+### Row height
+
+Table rows follow the text size, so more of them fit. **Settings → Appearance
+→ Tables → Row density** is **Compact** (the default) or **Roomy**, which gives
+each row about a third more air. It applies to every table, and **Reset
+Appearance** puts it back to Compact.
 
 ### Selecting tracks
 
@@ -180,33 +217,32 @@ With the table focused (click it or Tab to it), **Up** and **Down** select the p
 
 The track in the player is marked in the table: its title is in the accent colour, with a small speaker at the start of its row, and a screen reader hears "Now playing". Tracks already played since CuePoint started have their title in a muted colour; that is forgotten when you quit. The same marks show in the Keys, Discover and Prepare track tables.
 
-A toolbar sits directly above the table: one line when there is room, two at
-the default window size, with the six groups on the first and **Clear
-selection**, the count, **Select all** and **Columns…** on the second. If the
-count does not fit beside them it is cut short (ending in "…") rather than
-pushing a button onto a third line. On its left is the **selection bar**; on its right are
-the track count ("1,204 tracks · 3 selected", or "Showing 240 of 12,000 tracks"
-while a search or filter narrows the view), **Select all** and **Columns…**. The bar is always there, so the table never moves when you select
-something: with nothing selected its buttons are dimmed and say "Select tracks
-first". It has six groups, each a button that opens a list, and **Clear
-selection**:
+A toolbar sits directly above the table. With nothing selected it holds only
+the track count ("1,204 tracks", or "Showing 240 of 12,000 tracks" while a
+search or filter narrows the view) and **Select all**. Select something and
+four menus appear, with **N selected ×** (the × clears the selection) after
+them. The toolbar keeps the same height either way, so the table never moves
+when you select a row. If the count does not fit it is cut short (ending in
+"…") rather than pushing a button onto a second line. The count is in the same
+figures as the table.
 
-| Group | Holds |
+| Menu | Holds |
 | --- | --- |
 | **Play ▸** | **Play**, **Play next**, **Add to queue**, for the selected tracks in the order the table shows them |
-| **Organize ▸** | **Add to Collection…**, **Add to Set…**, **New Set from these…**, **Remove from "name"** (inside a Collection), **Add tag…**, **Remove tag…**, **Rate ▸**, **Favorite**, **Remove favorite**. See [Organizing your library](organization.md) |
-| **Explore ▸** | **Similar tracks**, **Artist page** and **Label page** (see [Discover](discover.md#artist-and-label-pages)). With several tracks selected they open the first one's |
+| **Organize ▸** | **Add to Collection…**, **Add to Set…**, **New Set from these…**, **Remove from "name"** (inside a Collection), **Add tag…**, **Remove tag…**, **Rate ▸**, **Favorite**, **Remove favorite**, **Copy**. See [Organizing your library](organization.md) |
 | **Beatport ▸** | **Match tracks…** and **Review these matches** open [Clean](clean.md) with the selected tracks; **Use Beatport's values…** opens its dialog right here |
-| **Fix ▸** | **Edit values…** opens its dialog right here for the selected tracks; saving into the files is the green bar at the bottom ([Saving values into your files](clean.md#saving-values-into-your-files)); **Check the files are still there** looks for them again |
-| **More ▸** | **Copy** and **Show in folder** |
+| **More ▸** | **Similar tracks**, **Artist page** and **Label page** (see [Discover](discover.md#artist-and-label-pages); with several tracks selected they open the first one's), **Edit values…** (its dialog opens right here), **Show in folder** |
 
-A track's right-click menu holds the same groups as submenus: **Play**, **Play
-next** and **Add to queue** on its first lines, then **Organize ▸**, **Explore ▸**,
-**Beatport ▸**, **Fix ▸** and **More ▸**. Use
-the Tab key once to reach the bar, then the arrow keys to move between its
-buttons.
+Saving values into the audio files is not in a menu: it is the green bar at
+the bottom of the page ([Saving values into your
+files](clean.md#saving-values-into-your-files)). Checking that the files are
+still there is on Clean ▸ Missing files.
 
-**Copy** puts the visible columns, in the order you have them, ready to paste
+A track's right-click menu holds the same four groups as submenus, with
+**Play**, **Play next** and **Add to queue** on its first lines. Use the Tab
+key once to reach the toolbar, then the arrow keys to move between its buttons.
+
+**Copy** (in Organize) puts the visible columns, in the order you have them, ready to paste
 into a spreadsheet; it is capped at 5,000 tracks and tells you when it hit the
 cap. **Show in folder** works for a single track; if its file is no longer where
 Rekordbox says it is, it opens the nearest folder that still exists, and says
@@ -225,7 +261,7 @@ there until you open it again (**Ctrl+I**, or the tab). From the top:
 - **Three buttons**: **Play**, **Queue ▾** (a small menu with **Play next** and
   **Add to queue**) and **Similar** (similar tracks). With several tracks selected,
   Play and the Queue menu act on all of them; **Similar** uses the first. To show a
-  track's file in its folder, use **Show in folder** in the row's More menu or
+  track's file in its folder, use **Show in folder** in the More menu or
   right-click menu. With several tracks selected, a line under the title reads
   "3 selected · Edit values…"; **Edit values…** edits all of them, while the fields
   below still change only the track shown.
@@ -496,8 +532,8 @@ inCrate kept a separate copy of its own, which nothing reads any more — see
 ## Clean in the Library
 
 Everything the [Clean](clean.md) page knows about a track is visible here too,
-and the Clean actions on a track are in the selection bar's **Beatport ▸** and
-**Fix ▸** and in its right-click menu. They open Clean with the tracks you
+and the Clean actions on a track are in the toolbar's **Beatport ▸** and
+**More ▸** and in its right-click menu. They open Clean with the tracks you
 selected; deciding a match (accept or reject) is done there, in Review.
 
 ### Columns and filters
@@ -521,9 +557,7 @@ filters: **Beatport match**, **Match decided by (you or CuePoint)**,
 | Match tracks… | Opens Clean's match window with the selected tracks, to look them up on Beatport. A decision you made is kept, and a newer match that disagrees marks the track *changed since you decided* |
 | Review these matches | Opens Clean's Review on the first selected track, where matches are accepted or rejected |
 | Use Beatport's values… | Opens a dialog here to copy the fields you choose from each track's accepted match into your values |
-| Edit values… | Opens a dialog here to set or clear your key, BPM, genre, label or year |
-| Check the files are still there | Looks for the files again. It runs in the background |
-| Save changes into the files… | Opens the save window; see [Writing tags to files](#writing-tags-to-files) |
+| Edit values… (in More) | Opens a dialog here to set or clear your key, BPM, genre, label or year |
 
 Accepting a match changes no value on its own. **Apply** is what copies
 Beatport's values, and they become your values — Rekordbox's stay underneath.
@@ -573,7 +607,7 @@ says so. A revert is itself a change, and can be reverted too.
 
 ## Writing tags to files
 
-**Save changes into the files…** puts your values into the audio files themselves, so
+**Save to files…**, on the green bar at the bottom of the Library and of Clean, puts your values into the audio files themselves, so
 Rekordbox and other software can read them. It is the one thing CuePoint does
 outside its own library, so it always goes in the same order:
 
@@ -598,7 +632,7 @@ Rekordbox's otherwise. A field a file already holds is not written again.
 | WAV files | CuePoint does not write tags into WAV files |
 | Other formats | CuePoint writes MP3, AIFF, FLAC and Ogg Vorbis only |
 | Missing or unreadable files | The last file check did not find them |
-| Files never checked | CuePoint writes only to a file it checked where it is now — run **Check the files are still there** first |
+| Files never checked | CuePoint writes only to a file it checked where it is now — run **Check every file** on Clean ▸ Missing files first |
 | Files that already hold these values | Nothing would change |
 | Files that changed since the preview | Neither the old nor the new value is what you confirmed; preview again |
 
