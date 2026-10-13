@@ -509,7 +509,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await titled(picked[0]).click();
       await titled(picked[1]).click({ modifiers: ["ControlOrMeta"] });
       await titled(picked[2]).click({ modifiers: ["ControlOrMeta"] });
-      await expect(win.locator(".library-toolbar__count")).toContainText("3 selected");
+      await expect(win.getByRole("button", { name: /^Clear selection, 3 selected/ })).toBeVisible();
       // The bar's Organize ▸ holds it (FLW-8).
       await win.getByRole("toolbar", { name: "Selected tracks" }).getByRole("button", { name: "Organize", exact: true }).click();
       await win.getByRole("menuitem", { name: "New Set from these…" }).click();

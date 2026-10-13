@@ -150,7 +150,6 @@ interface CleanMenuContext {
 export interface CleanMenuHandlers {
   onApply?: () => void;
   onEdit?: () => void;
-  onCheckFiles?: () => void;
   onWriteTags?: () => void;
 }
 
@@ -165,11 +164,10 @@ export interface BeatportMenuHandlers {
   onUseBeatport?: () => void;
 }
 
-/** What the Fix ▸ group does (FLW-8). */
+/** What Edit values… and Save changes into the files… do; More ▸ holds them (FLW-8). */
 export interface FixMenuHandlers {
   onEdit?: () => void;
   onWriteTags?: () => void;
-  onCheckFiles?: () => void;
 }
 
 /**
@@ -233,7 +231,7 @@ export function beatportMenuItems(
   return items;
 }
 
-/** The Fix ▸ entries of the one actions list. */
+/** The edit and save entries of the one actions list, drawn into More ▸. */
 export function fixMenuItems(
   context: CleanMenuContext,
   handlers: FixMenuHandlers,
@@ -248,13 +246,6 @@ export function fixMenuItems(
       id: "fix-write-tags",
       label: "Save changes into the files…",
       onSelect: handlers.onWriteTags,
-    });
-  }
-  if (handlers.onCheckFiles) {
-    items.push({
-      id: "fix-check",
-      label: "Check the files are still there",
-      onSelect: handlers.onCheckFiles,
     });
   }
   return items;

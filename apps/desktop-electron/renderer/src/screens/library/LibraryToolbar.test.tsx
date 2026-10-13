@@ -1,7 +1,8 @@
 /**
- * The table's toolbar row (FLW-8, LIB-8, LIB-10): the selection bar on the
- * left; the count and Columns… on the right. One row, always present, so the
- * table never moves when a selection is made or let go.
+ * The table's toolbar row (FLW-8, LIB-8): with nothing selected only the count and
+ * Select all; with a selection the four group buttons and "3 selected ×" on the left.
+ * The row is the same height either way, so the table never moves when a selection is
+ * made or let go (DEC-112).
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
@@ -23,7 +24,6 @@ function groups(reason: string | null = null): TrackActionGroup[] {
 function renderBar(props: Partial<React.ComponentProps<typeof LibraryToolbar>> = {}) {
   const onOpenGroup = vi.fn();
   const onClear = vi.fn();
-  const onColumns = vi.fn();
   const onSelectAll = vi.fn();
   render(
     <LibraryToolbar
@@ -35,23 +35,23 @@ function renderBar(props: Partial<React.ComponentProps<typeof LibraryToolbar>> =
       onOpenGroup={onOpenGroup}
       onClear={onClear}
       onSelectAll={onSelectAll}
-      onColumns={onColumns}
       {...props}
     />,
   );
-  return { onOpenGroup, onClear, onColumns, onSelectAll };
+  return { onOpenGroup, onClear, onSelectAll };
 }
 
-const NAMES = ["Play", "Organize", "Explore", "Beatport", "Fix", "More"];
+const NAMES = ["Play", "Organize", "Beatport", "More"];
+const CLEAR = "Clear selection, 3 selected";
 
 describe("the selection bar", () => {
-  it("is a toolbar of the six groups and Clear selection, in that order", () => {
+  it("is a toolbar of the four groups and the selected-count button, in that order", () => {
     renderBar();
     const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
     const names = within(bar)
       .getAllByRole("button")
       .map((button) => (button.textContent ?? "").replace(" ▸", ""));
-    expect(names).toEqual([...NAMES, "Clear selection"]);
+    expect(names).toEqual([...NAMES, "3 selected ×"]);
   });
 
   it("marks every group as opening a menu", () => {
@@ -59,31 +59,15 @@ describe("the selection bar", () => {
     for (const name of NAMES) {
       expect(screen.getByRole("button", { name })).toHaveAttribute("aria-haspopup", "menu");
     }
-    expect(screen.getByRole("button", { name: "Clear selection" })).not.toHaveAttribute(
-      "aria-haspopup",
-    );
+    expect(screen.getByRole("button", { name: CLEAR })).not.toHaveAttribute("aria-haspopup");
   });
 
-  it("is always there, disabled with the reason while nothing is selected", () => {
+  it("shows no group buttons and no clear button while nothing is selected", () => {
     renderBar({ groups: groups("Select tracks first"), selected: 0 });
-    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
-    for (const name of NAMES) {
-      const button = within(bar).getByRole("button", { name });
-      expect(button).toHaveAttribute("aria-disabled", "true");
-      expect(button).toHaveAttribute("title", "Select tracks first");
-    }
-    expect(within(bar).getByRole("button", { name: "Clear selection" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
-  });
-
-  it("does nothing when a disabled group is clicked", async () => {
-    const { onOpenGroup, onClear } = renderBar({ groups: groups("Select tracks first"), selected: 0 });
-    await userEvent.click(screen.getByRole("button", { name: "Play" }));
-    await userEvent.click(screen.getByRole("button", { name: "Clear selection" }));
-    expect(onOpenGroup).not.toHaveBeenCalled();
-    expect(onClear).not.toHaveBeenCalled();
+    expect(screen.queryByRole("toolbar")).toBeNull();
+    for (const name of NAMES) expect(screen.queryByRole("button", { name })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Clear selection/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Select all" })).toBeInTheDocument();
   });
 
   it("opens a group under its button", () => {
@@ -96,15 +80,63 @@ describe("the selection bar", () => {
   });
 
   it("says which group is open", () => {
-    renderBar({ openGroup: "fix" });
-    expect(screen.getByRole("button", { name: "Fix" })).toHaveAttribute("aria-expanded", "true");
+    renderBar({ openGroup: "more" });
+    expect(screen.getByRole("button", { name: "More" })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("button", { name: "Play" })).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("clears the selection", async () => {
+  it("clears the selection from the 3 selected × button, moving focus to Select all first", async () => {
     const { onClear } = renderBar();
-    await userEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+    await userEvent.click(screen.getByRole("button", { name: CLEAR }));
     expect(onClear).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Select all" })).toHaveFocus();
+  });
+
+  it("lands Tab on Play again when the bar comes back", async () => {
+    const props = {
+      groups: groups(),
+      total: 10,
+      describedByQuery: false,
+      openGroup: null,
+      onOpenGroup: vi.fn(),
+      onClear: vi.fn(),
+      onSelectAll: vi.fn(),
+    };
+    const { rerender } = render(<LibraryToolbar {...props} selected={3} />);
+    await userEvent.tab();
+    await userEvent.keyboard("{ArrowRight}{ArrowRight}");
+    rerender(<LibraryToolbar {...props} selected={0} />);
+    rerender(<LibraryToolbar {...props} selected={3} />);
+    expect(screen.getByRole("button", { name: "Play" }).tabIndex).toBe(0);
+  });
+
+  it("says in the clear button's name when the selection is everything matching", () => {
+    renderBar({ selected: 1204, describedByQuery: true });
+    expect(
+      screen.getByRole("button", { name: "Clear selection, 1,204 selected (everything matching)" }),
+    ).toBeInTheDocument();
+  });
+
+  it("is the same height with and without a selection (DEC-112)", () => {
+    const { unmount } = render(
+      <LibraryToolbar
+        groups={groups()}
+        total={10}
+        selected={0}
+        describedByQuery={false}
+        openGroup={null}
+        onOpenGroup={vi.fn()}
+        onClear={vi.fn()}
+        onSelectAll={vi.fn()}
+      />,
+    );
+    const none = document.querySelector<HTMLElement>(".library-toolbar")!.style.minHeight;
+    // One line of controls plus the row's padding and rule, border-box.
+    expect(none).toContain("var(--control-height)");
+    expect(none).toContain("var(--hairline)");
+    unmount();
+    renderBar();
+    expect(document.querySelector<HTMLElement>(".library-toolbar")!.style.minHeight).toBe(none);
   });
 });
 
@@ -131,14 +163,6 @@ describe("the bar's keyboard", () => {
     expect(buttons[buttons.length - 1]).toHaveFocus();
   });
 
-  it("moves through disabled buttons too, so the reason can be read", async () => {
-    renderBar({ groups: groups("Select tracks first"), selected: 0 });
-    await userEvent.tab();
-    expect(screen.getByRole("button", { name: "Play" })).toHaveFocus();
-    await userEvent.keyboard("{ArrowRight}");
-    expect(screen.getByRole("button", { name: "Organize" })).toHaveFocus();
-  });
-
   it("opens a group on Enter and on the Down arrow", async () => {
     const { onOpenGroup } = renderBar();
     await userEvent.tab();
@@ -149,10 +173,12 @@ describe("the bar's keyboard", () => {
   });
 });
 
-describe("the count and Columns…", () => {
-  it("reads the view's tracks and the selection together", () => {
+describe("the count and Select all", () => {
+  it("draws only the view's tracks, and tells a screen reader the selection too", () => {
     renderBar();
-    expect(screen.getByRole("status")).toHaveTextContent("1,204 tracks · 3 selected");
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(/^1,204 tracks, 3 tracks selected$/);
+    expect(status.querySelector(".library-toolbar__sr")).not.toBeNull();
   });
 
   it("says only the tracks when nothing is selected", () => {
@@ -162,23 +188,19 @@ describe("the count and Columns…", () => {
 
   it("is singular for one", () => {
     renderBar({ total: 1, selected: 1 });
-    expect(screen.getByRole("status")).toHaveTextContent("1 track · 1 selected");
-  });
-
-  it("says when the selection is everything matching", () => {
-    renderBar({ selected: 1204, describedByQuery: true });
-    expect(screen.getByRole("status")).toHaveTextContent("1,204 selected (everything matching)");
+    expect(screen.getByRole("status")).toHaveTextContent(/^1 track, 1 track selected$/);
   });
 
   it("keeps Select all beside the count, and offers it until everything is selected (LIB-8)", async () => {
     const { onSelectAll } = renderBar({ selected: 0 });
     await userEvent.click(screen.getByRole("button", { name: "Select all" }));
     expect(onSelectAll).toHaveBeenCalledTimes(1);
-    expect(
-      within(screen.getByRole("toolbar", { name: "Selected tracks" })).queryByRole("button", {
-        name: "Select all",
-      }),
-    ).toBeNull();
+  });
+
+  it("keeps Select all outside the bar, which is only for selected tracks", () => {
+    renderBar();
+    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
+    expect(within(bar).queryByRole("button", { name: "Select all" })).toBeNull();
   });
 
   it("does not offer Select all with nothing to select, or when all is selected", () => {
@@ -195,24 +217,16 @@ describe("the count and Columns…", () => {
     expect(onSelectAll).not.toHaveBeenCalled();
   });
 
-  it("holds the count's longest form, so a first selection does not lengthen the line (DEC-112)", () => {
+  it("holds the count's own form for the ellipsis to cut", () => {
     renderBar({ total: 1204, selected: 0 });
     const reserve = document.querySelector(".library-toolbar__count-reserve");
     expect(reserve).toHaveAttribute("aria-hidden");
-    expect(reserve).toHaveAttribute("data-reserve", "1,204 tracks · 1,204 selected");
-    expect(screen.getByRole("status")).toHaveTextContent(/^1,204 tracks$/);
+    expect(reserve).toHaveAttribute("data-reserve", "1,204 tracks");
   });
 
-  it("opens the column list", async () => {
-    const { onColumns } = renderBar();
-    await userEvent.click(screen.getByRole("button", { name: "Columns…" }));
-    expect(onColumns).toHaveBeenCalledTimes(1);
-  });
-
-  it("keeps Columns… outside the bar, which is only for selected tracks", () => {
+  it("has no Columns… button; the table's header corner has it", () => {
     renderBar();
-    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
-    expect(within(bar).queryByRole("button", { name: "Columns…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Columns…" })).toBeNull();
   });
 });
 
@@ -224,7 +238,7 @@ describe("the count (LIB-8)", () => {
 
   it("says Showing N of M while a search or filter narrows the view", () => {
     renderBar({ total: 240, scopeTotal: 12000, selected: 3 });
-    expect(screen.getByRole("status")).toHaveTextContent("Showing 240 of 12,000 tracks · 3 selected");
+    expect(screen.getByRole("status")).toHaveTextContent("Showing 240 of 12,000 tracks");
   });
 
   it("goes back to the plain count when nothing is narrowed", () => {
@@ -252,15 +266,54 @@ describe("the two lines (DEC-217, 2026-10-09)", () => {
     vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(room);
   }
 
-  it("take the six groups first, then Clear selection, the count, Select all and Columns…", () => {
-    // Ten controls (seven bar buttons, Select all, Columns…, the count's reserve).
-    measured(50, 400);
-    renderBar();
+  it("take the groups first, then the selected-count button, the count and Select all", () => {
+    // Seven measured controls (four groups, the selected-count button, the count's reserve,
+    // Select all), measured as they would be with a selection.
+    measured(50, 300);
+    renderBar({ selected: 0 });
     const row = document.querySelector(".library-toolbar")!;
     expect(row).toHaveClass("library-toolbar--two-lines");
-    // The second line's controls are ordered after the break, and only they are.
-    expect(screen.getByRole("button", { name: "Clear selection" })).toHaveClass("library-toolbar__clear");
     expect(row.querySelector(".library-toolbar__end")).not.toBeNull();
+  });
+
+  it("holds an empty first line with nothing selected on two lines, so the row does not move (DEC-112)", () => {
+    measured(50, 300);
+    const { unmount } = render(
+      <LibraryToolbar
+        groups={groups()}
+        total={10}
+        selected={0}
+        describedByQuery={false}
+        openGroup={null}
+        onOpenGroup={vi.fn()}
+        onClear={vi.fn()}
+        onSelectAll={vi.fn()}
+      />,
+    );
+    expect(document.querySelector(".library-toolbar__spacer")).toHaveAttribute("aria-hidden");
+    unmount();
+    renderBar();
+    expect(document.querySelector(".library-toolbar__spacer")).toBeNull();
+  });
+
+  it("measures the same with and without a selection, so selecting never flips the lines", () => {
+    measured(50, 300);
+    const { unmount } = render(
+      <LibraryToolbar
+        groups={groups()}
+        total={10}
+        selected={0}
+        describedByQuery={false}
+        openGroup={null}
+        onOpenGroup={vi.fn()}
+        onClear={vi.fn()}
+        onSelectAll={vi.fn()}
+      />,
+    );
+    const without = document.querySelector(".library-toolbar")!.className;
+    unmount();
+    renderBar();
+    expect(document.querySelector(".library-toolbar")!.className).toBe(without);
   });
 
   it("are one line when everything fits", () => {
@@ -275,38 +328,5 @@ describe("the two lines (DEC-217, 2026-10-09)", () => {
     const row = document.querySelector(".library-toolbar")!;
     expect(row).toHaveClass("library-toolbar--one-line");
     expect(row).not.toHaveClass("library-toolbar--two-lines");
-  });
-
-  it("do not change on a first selection: the count's reserve already holds its longest form", () => {
-    // What the row measures for the count is its reserve, and a selection leaves it as it was.
-    const { rerender } = render(
-      <LibraryToolbar
-        groups={groups("Select tracks first")}
-        total={1204}
-        selected={0}
-        describedByQuery={false}
-        openGroup={null}
-        onOpenGroup={vi.fn()}
-        onClear={vi.fn()}
-        onSelectAll={vi.fn()}
-        onColumns={vi.fn()}
-      />,
-    );
-    const before = document.querySelector<HTMLElement>(".library-toolbar__count-reserve")!.dataset.reserve;
-    rerender(
-      <LibraryToolbar
-        groups={groups()}
-        total={1204}
-        selected={1}
-        describedByQuery={false}
-        openGroup={null}
-        onOpenGroup={vi.fn()}
-        onClear={vi.fn()}
-        onSelectAll={vi.fn()}
-        onColumns={vi.fn()}
-      />,
-    );
-    expect(document.querySelector<HTMLElement>(".library-toolbar__count-reserve")!.dataset.reserve).toBe(before);
-    expect(before).toBe("1,204 tracks · 1,204 selected");
   });
 });

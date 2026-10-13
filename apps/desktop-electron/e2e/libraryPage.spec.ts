@@ -260,19 +260,29 @@ test.describe("The Library page (LIBRARY-11)", () => {
       }
       expect(new Set(tops.map(Math.round)).size, `button tops ${tops} (${shown})`).toBe(1);
       console.log("PAGES-05A header labels:", shown);
-      // The toolbar row above the table: the selection bar's six groups and Clear
-      // selection, then the count and Columns… (FLW-8).
-      const bar = window.getByRole("toolbar", { name: "Selected tracks" });
-      await expect(bar.getByRole("button")).toHaveCount(7);
-      await expect(bar.getByRole("button", { name: "Play", exact: true })).toHaveAttribute(
-        "aria-disabled",
-        "true",
-      );
-      await expect(window.getByRole("button", { name: "Columns…" })).toBeVisible();
+      // The toolbar row above the table: with nothing selected only the count and Select all
+      // (no group buttons, no clear button), and Columns… is the table header's corner (FLW-8).
+      await expect(window.getByRole("toolbar", { name: "Selected tracks" })).toHaveCount(0);
+      await expect(window.getByRole("button", { name: "Select all" })).toBeVisible();
+      await expect(
+        window.getByRole("table", { name: "Library tracks" }).getByRole("button", { name: "Columns…" }),
+      ).toBeVisible();
       // The notice line is not on the page while someone works in the table.
       await expect(window.getByRole("status", { name: "Getting your library ready" })).toHaveCount(0);
 
+      // The visible Library's toolbar row: pages stay alive when hidden, so a bare selector may
+      // find another page's.
+      const shape = () => window.evaluate(() => {
+        const bar = [...document.querySelectorAll<HTMLElement>(".library-toolbar")].find((el) => el.offsetParent)!;
+        const table = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
+        return {
+          bar: Math.round(bar.getBoundingClientRect().height * 10) / 10,
+          tableTop: Math.round(table.getBoundingClientRect().top * 10) / 10,
+        };
+      });
+
       const measure = () => window.evaluate(() => {
+        const visibleBar = [...document.querySelectorAll<HTMLElement>(".library-toolbar")].find((el) => el.offsetParent)!;
         const box = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
         const header = box.querySelector<HTMLElement>(".track-table__header")!;
         const rect = box.getBoundingClientRect();
@@ -297,31 +307,37 @@ test.describe("The Library page (LIBRARY-11)", () => {
           scale: getComputedStyle(document.documentElement).getPropertyValue("--scale").trim(),
           window: { width: window.innerWidth, height: window.innerHeight },
           headerHeight: document.querySelector(".library-header")!.getBoundingClientRect().height,
-          toolbarCount: Math.round(document.querySelector(".library-toolbar__count")!.getBoundingClientRect().width),
+          toolbarCount: Math.round(visibleBar.querySelector(".library-toolbar__count")!.getBoundingClientRect().width),
           toolbarLines: new Set(
-            [...document.querySelectorAll(".library-toolbar button")].map((el) =>
-              Math.round(el.getBoundingClientRect().top),
+            [...visibleBar.querySelectorAll("button:not(:disabled)")].map((el) =>
+              Math.round(el.getBoundingClientRect().top / 8),
             ),
           ).size,
           // Each line of the toolbar: what its buttons and the gaps between them take, the
           // count's reserved width (its longest form), and what the row has left over. The
           // count gives way before a button wraps, so a line's buttons alone must fit too.
           toolbarRows: (() => {
-            const row = document.querySelector<HTMLElement>(".library-toolbar")!;
+            const row = visibleBar;
             const style = getComputedStyle(row);
             const room = row.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
             const gap = parseFloat(style.columnGap);
             const lines = new Map<number, { labels: string[]; buttons: number; count: number; items: number }>();
-            for (const el of row.querySelectorAll<HTMLElement>(".library-toolbar__button, .library-toolbar__count-box")) {
+            for (const el of row.querySelectorAll<HTMLElement>(
+              ".library-toolbar__bar .library-toolbar__button, .library-toolbar__end .library-toolbar__button, .library-toolbar__count-box",
+            )) {
               const r = el.getBoundingClientRect();
-              const middle = Math.round(r.top + r.height / 2);
+              const middle = Math.round((r.top + r.height / 2) / 8);
               const line = lines.get(middle) ?? { labels: [], buttons: 0, count: 0, items: 0 };
               line.items += 1;
               if (el.classList.contains("library-toolbar__count-box")) {
                 line.labels.push("(count)");
                 line.count = el.querySelector(".library-toolbar__count-reserve")!.getBoundingClientRect().width;
               } else {
-                line.labels.push(el.textContent!.trim().replace(/\s*▸$/, ""));
+                line.labels.push(
+                  el.classList.contains("library-toolbar__clear")
+                    ? "(selected)"
+                    : el.textContent!.trim().replace(/\s*▸$/, ""),
+                );
                 line.buttons += r.width;
               }
               lines.set(middle, line);
@@ -353,7 +369,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
               ".library-screen__main",
               ".library-screen__body",
             ].map((selector) => {
-              const found = document.querySelector<HTMLElement>(selector);
+              const found = [...document.querySelectorAll<HTMLElement>(selector)].find((el) => el.offsetParent);
               return [selector, found ? Math.round(found.getBoundingClientRect().height) : null];
             }),
           ),
@@ -388,6 +404,17 @@ test.describe("The Library page (LIBRARY-11)", () => {
           });
           await window.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
         }
+        // Nothing selected, then everything: the row is as high and the table as low either way
+        // (DEC-112), at every window and scale visited. The second state is also the widest,
+        // which is what the measure below holds the toolbar to.
+        const chip = window.getByRole("button", { name: /^Clear selection, / });
+        if (await chip.count()) await chip.click();
+        await expect(window.getByRole("toolbar", { name: "Selected tracks" })).toHaveCount(0);
+        const before = await shape();
+        await window.getByRole("button", { name: "Select all" }).click();
+        await expect(window.getByRole("toolbar", { name: "Selected tracks" })).toBeVisible();
+        const after = await shape();
+        expect(after, "the toolbar's height and the table's top, with and without a selection").toEqual(before);
         const m = await measure();
         const label = `${m.window.width}x${m.window.height}${wideScrollbars ? " with 20px scrollbars" : ""}`;
         console.log(`PAGES-05C Library whole rows at ${label}:`, m.whole, JSON.stringify(m));
@@ -401,17 +428,25 @@ test.describe("The Library page (LIBRARY-11)", () => {
         expect(m.whole, `whole rows the Library shows at ${label}`).toBeGreaterThanOrEqual(
           inner ? WHOLE_ROWS_LIBRARY_WINDOWS_INNER : WHOLE_ROWS_LIBRARY,
         );
-        // The toolbar holds two lines at each: a third costs the table a row. The six groups
-        // take the first with 40px to spare even beside a 20px scrollbar, so a few pixels of
-        // a system's fonts or scrollbars cannot wrap it (DEC-217); the second line's buttons
-        // keep as much, and its count, at its longest form here, is not cut.
+        // The toolbar holds at most two lines at each: a third costs the table a row. With a
+        // selection (the whole library is selected for this measure) its four groups come
+        // first, then the selected-count button, the count and Select all, whether the row
+        // takes one line or two (on two, the groups are the first line and the rest the
+        // second, DEC-217); the line that holds the count keeps its longest form uncut.
         expect(m.toolbarLines, `toolbar lines at ${label}`).toBeLessThanOrEqual(2);
-        const [first, second] = m.toolbarRows.lines;
-        expect(first!.labels, `the first toolbar line at ${label}`).toBe("Play | Organize | Explore | Beatport | Fix | More");
-        expect(first!.spare, `the first toolbar line's spare at ${label}`).toBeGreaterThanOrEqual(40);
-        expect(second!.labels, `the second toolbar line at ${label}`).toBe("Clear selection | (count) | Select all | Columns…");
-        expect(second!.spareButtons, `the second toolbar line's spare at ${label}`).toBeGreaterThanOrEqual(40);
-        expect(second!.spare, `the second toolbar line holds the count's longest form at ${label}`).toBeGreaterThanOrEqual(0);
+        const lines = m.toolbarRows.lines;
+        expect(lines.map((line: { labels: string }) => line.labels).join(" | "), `the toolbar's controls at ${label}`).toBe(
+          "Play | Organize | Beatport | More | (selected) | (count) | Select all",
+        );
+        // As the six groups did before: on two lines the first (the four groups) keeps 40px to
+        // spare even beside a 20px scrollbar, and so do the second line's buttons, so a few
+        // pixels of a system's fonts or scrollbars cannot wrap either (DEC-217).
+        if (lines.length === 2) {
+          expect(lines[0]!.spare, `the first toolbar line's spare at ${label}`).toBeGreaterThanOrEqual(40);
+          expect(lines[1]!.spareButtons, `the second toolbar line's spare at ${label}`).toBeGreaterThanOrEqual(40);
+        }
+        const last = lines[lines.length - 1]!;
+        expect(last.spare, `the last toolbar line holds the count's longest form at ${label}`).toBeGreaterThanOrEqual(0);
         expect(m.toolbarRows.countCut, `the count is cut at ${label}`).toBe(false);
       }
     } finally {

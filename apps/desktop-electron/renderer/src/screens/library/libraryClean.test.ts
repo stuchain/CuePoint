@@ -265,14 +265,13 @@ describe("the Beatport ▸ entries of the operations list", () => {
   });
 });
 
-describe("the Fix ▸ entries of the operations list", () => {
-  const handlers = () => ({ onEdit: vi.fn(), onWriteTags: vi.fn(), onCheckFiles: vi.fn() });
+describe("the edit and save entries of the operations list", () => {
+  const handlers = () => ({ onEdit: vi.fn(), onWriteTags: vi.fn() });
 
-  it("offer editing, saving into the files and checking they are there", () => {
+  it("offer editing and saving into the files, and no file check (Clean's)", () => {
     expect(fixMenuItems({ count: 3 }, handlers()).map((item) => item.label)).toEqual([
       "Edit values…",
       "Save changes into the files…",
-      "Check the files are still there",
     ]);
   });
 

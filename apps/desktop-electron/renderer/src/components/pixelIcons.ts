@@ -690,6 +690,22 @@ const edit = [
   "............",
 ];
 
+// K21: the table header's Columns… button, three columns side by side.
+const columns = [
+  "............",
+  "............",
+  ".###.##.###.",
+  ".#.#.##.#.#.",
+  ".#.#.##.#.#.",
+  ".#.#.##.#.#.",
+  ".#.#.##.#.#.",
+  ".#.#.##.#.#.",
+  ".#.#.##.#.#.",
+  ".###.##.###.",
+  "............",
+  "............",
+];
+
 export const PIXEL_ICONS = {
   play,
   pause,
@@ -733,6 +749,7 @@ export const PIXEL_ICONS = {
   "arrow-up": arrowUp,
   "arrow-down": arrowDown,
   edit,
+  columns,
   close,
   logo,
   // HDR-4: the Camelot wheel button.

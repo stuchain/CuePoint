@@ -224,16 +224,16 @@ function labels(menu: HTMLElement): string[] {
 }
 
 describe("the operations list's Discover entries", () => {
-  it("offers Similar tracks and both pages for one track, in the Explore group after Organize", async () => {
+  it("offers Similar tracks and both pages for one track, at the top of the More group, after Organize", async () => {
     renderScreen();
     await tableReady();
     const menu = await openMenuOn("Track 1");
     const top = labels(menu);
-    // Explore is a parent after Organize, with Play's three entries first.
+    // More is a parent after Organize, with Play's three entries first.
     expect(top.slice(0, 3)).toEqual(["Play", "Play next", "Add to queue"]);
-    expect(top.indexOf("Organize")).toBeLessThan(top.indexOf("Explore"));
-    await userEvent.click(within(menu).getByRole("menuitem", { name: /^Explore/ }));
-    expect(labels(screen.getByRole("menu", { name: "Explore" }))).toEqual([
+    expect(top.indexOf("Organize")).toBeLessThan(top.indexOf("More"));
+    await userEvent.click(within(menu).getByRole("menuitem", { name: /^More/ }));
+    expect(labels(screen.getByRole("menu", { name: "More" })).slice(0, 3)).toEqual([
       "Similar tracks",
       "Artist page",
       "Label page",
@@ -268,13 +268,13 @@ describe("the operations list's Discover entries", () => {
     expect(hooks.onOpenEntity).toHaveBeenCalledWith("artist", "name:djeff");
   });
 
-  it("is the same list behind the bar's Explore ▸", async () => {
+  it("is the same list behind the bar's More ▸", async () => {
     const hooks = renderScreen();
     await tableReady();
     await userEvent.click(screen.getByText("Track 1"));
-    await userEvent.click(screen.getByRole("button", { name: "Explore" }));
+    await userEvent.click(screen.getByRole("button", { name: "More" }));
     const menu = await screen.findByRole("menu");
-    expect(labels(menu)).toEqual(["Similar tracks", "Artist page", "Label page"]);
+    expect(labels(menu).slice(0, 3)).toEqual(["Similar tracks", "Artist page", "Label page"]);
     await userEvent.click((await menuItem("Similar tracks")));
     expect(hooks.onOpenSimilar).toHaveBeenCalledWith(1);
   });
@@ -285,8 +285,8 @@ describe("the operations list's Discover entries", () => {
     const table = screen.getByRole("table", { name: "Library tracks" });
     fireEvent.click(within(table).getByText("Track 2"));
     fireEvent.click(within(table).getByText("Track 1"), { ctrlKey: true });
-    expect(await screen.findByText("2 selected")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Explore" }));
+    expect(await screen.findByRole("button", { name: "Clear selection, 2 selected" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "More" }));
     const menu = await screen.findByRole("menu");
     expect(labels(menu)).toContain("Similar tracks");
     await userEvent.click((await menuItem("Similar tracks")));

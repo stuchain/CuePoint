@@ -14,6 +14,8 @@
  */
 
 .track-table {
+  /* The track the Columns… button has after the last column (K21): the small icon button and its padding. */
+  --track-table-corner: calc(round(nearest, calc(var(--control-height) * 0.8), 1px) + 2 * var(--space-xs));
   position: relative;
   display: flex;
   flex-direction: column;
@@ -106,6 +108,23 @@
 .track-table__header-cell:not(:disabled):not([aria-disabled="true"]):hover {
   color: var(--fg-primary);
   background: color-mix(in srgb, var(--bg-panel) 30%, var(--bg-toolbar));
+}
+
+/* The Columns… button (K21): in a track of its own after the last column (the template adds
+   it when the caller gives onColumns; rows leave it empty), sticky so it stays in view when the
+   table scrolls sideways. It covers no column header. */
+.track-table__corner {
+  grid-column: -2 / -1;
+  grid-row: 1;
+  position: sticky;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 100%;
+  padding: 0 var(--space-xs);
+  background: var(--bg-toolbar);
 }
 
 .track-table__header-cell-wrap--dragging {

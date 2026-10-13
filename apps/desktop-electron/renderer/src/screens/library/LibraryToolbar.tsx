@@ -1,30 +1,31 @@
 /**
- * The row directly above the table (FLW-8, LIB-8, LIB-10).
+ * The row directly above the table (FLW-8, LIB-8).
  *
- * The selection bar on the left, always there: Play ▸, Organize ▸, Explore ▸,
- * Beatport ▸, Fix ▸, More ▸ and Clear selection. With nothing selected its
- * buttons are disabled and say "Select tracks first", so the bar never appears
- * or vanishes and the table under it never moves (DEC-209). On the right, the
- * count ("1,204 tracks · 3 selected", or "Showing 240 of 12,000 tracks" while a search or filter narrows the view), **Select all** and **Columns…**. They replace the
- * selection strip and the Columns row this page used to stack under the table.
+ * With nothing selected the left side is empty and the right shows the count
+ * ("1,204 tracks", or "Showing 240 of 12,000 tracks" while a search or filter narrows
+ * the view) and **Select all**. With a selection the left shows the four group
+ * buttons, Play ▸, Organize ▸, Beatport ▸ and More ▸, and a "3 selected ×" button whose
+ * × clears the selection. Columns… is the table header's corner button.
+ *
+ * Nothing moves when a selection is made or let go (DEC-112): the row has the height of
+ * one line of controls whether or not the buttons are there, and whether the row takes
+ * one line or two is measured from an invisible copy of the buttons as they would be
+ * WITH a selection, so selecting never flips one line to two.
  *
  * Where the row does not fit on one line it takes two, laid out on purpose: the
- * six groups on the first, Clear selection, the count, Select all and Columns…
- * on the second, the count giving way (cut short with an ellipsis) before a
- * button would start a third line (DEC-217, 2026-10-09). Whether one line
- * fits is measured, not guessed, so it holds in any font and at any scale.
+ * four groups on the first, the "3 selected ×" button, the count and Select all on the
+ * second (with nothing selected the first line is an empty spacer of the same height), the count giving way (cut short with an ellipsis) before a button would start
+ * a third line (DEC-217, 2026-10-09, N2-1). Whether one line fits is measured, not
+ * guessed, so it holds in any font and at any scale.
  *
  * The bar is a `role="toolbar"`: Tab reaches it once and the arrow keys move
- * between its buttons, disabled ones included (so a keyboard user can land on
- * a button and read why it is off; they are `aria-disabled`, not `disabled`).
- * What each group opens is `trackActions.ts`'s, the list the right-click menu
- * is built from.
+ * between its buttons. What each group opens is `trackActions.ts`'s, the list the
+ * right-click menu is built from.
  */
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { Button } from "../../components/Button";
 import type { TrackActionGroup, TrackActionGroupId } from "./trackActions";
-import { SELECT_TRACKS_FIRST } from "./trackActions";
 import { needsTwoLines } from "./toolbarLines";
 import { useToolbarKeys } from "./useToolbarKeys";
 import "./LibraryToolbar.css";
@@ -46,7 +47,6 @@ interface LibraryToolbarProps {
   onClear: () => void;
   /** Select everything the view matches (LIB-8 keeps Select all). */
   onSelectAll: () => void;
-  onColumns: () => void;
   /**
    * Keep the row to one line, the count giving way (cut short with an ellipsis)
    * before a button wraps: the narrower bars on Discover and Similar.
@@ -57,8 +57,12 @@ interface LibraryToolbarProps {
 /** Why Select all is disabled once every track is. */
 export const EVERYTHING_SELECTED = "Every track is selected";
 
-/** The widths the row lays out on one line: every button, and the count's reserve. */
-const MEASURED = ".library-toolbar__button, .library-toolbar__count-reserve";
+/**
+ * The widths the row lays out on one line: the invisible copy of the bar's buttons (as they
+ * are with a selection), the count's reserve and Select all.
+ */
+const MEASURED =
+  ".library-toolbar__measure .library-toolbar__button, .library-toolbar__count-reserve, .library-toolbar__select-all";
 
 /**
  * Whether the row takes its two deliberate lines, measured whenever the row or
@@ -104,11 +108,23 @@ export function LibraryToolbar({
   onOpenGroup,
   onClear,
   onSelectAll,
-  onColumns,
   oneLine = false,
 }: LibraryToolbarProps) {
   const keys = useToolbarKeys(groups.length + 1);
+  const none = selected === 0;
   const lines = useTwoLines(!oneLine);
+  const { reset: resetKeys } = keys;
+
+  // The bar comes back with Tab landing on its first button, not wherever the arrows left it.
+  useEffect(() => {
+    if (none) resetKeys();
+  }, [none, resetKeys]);
+
+  /** The × takes the bar away with focus inside it: focus goes to Select all first. */
+  const clear = () => {
+    lines.ref.current?.querySelector<HTMLElement>(".library-toolbar__select-all")?.focus();
+    onClear();
+  };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (keys.onKeyDown(event)) return;
@@ -121,11 +137,24 @@ export function LibraryToolbar({
     onOpenGroup(group.id, { x: rect.left, y: rect.bottom });
   };
 
-  const none = selected === 0;
+  const countText =
+    scopeTotal > total
+      ? `Showing ${total.toLocaleString()} of ${scopeTotal.toLocaleString()} tracks`
+      : `${total.toLocaleString()} ${total === 1 ? "track" : "tracks"}`;
+  const clearName = `Clear selection, ${selected.toLocaleString()} selected${
+    describedByQuery && selected > 1 ? " (everything matching)" : ""
+  }`;
+  /** The widest the selected-count button gets, for the invisible copy. */
+  const widest = Math.max(total, scopeTotal, selected).toLocaleString();
 
   return (
     <div
       ref={lines.ref}
+      // One line of controls, padding and rule included, with or without the buttons (DEC-112).
+      style={{
+        minHeight:
+          "calc(var(--control-height) + 2 * round(down, calc(var(--space-xs) / 2), 1px) + var(--hairline))",
+      }}
       className={
         oneLine
           ? "library-toolbar library-toolbar--one-line"
@@ -134,89 +163,97 @@ export function LibraryToolbar({
             : "library-toolbar"
       }
     >
-      <div
-        ref={keys.ref}
-        className="library-toolbar__bar"
-        role="toolbar"
-        aria-label="Selected tracks"
-        onKeyDown={onKeyDown}
-      >
-        {groups.map((group, index) => (
+      {/* The buttons as they are with a selection, drawn invisibly and out of the flow, so the
+          row's lines are measured the same whether or not they show. Their words are drawn from
+          attributes, so they are no text a reader or a query finds. */}
+      <div className="library-toolbar__measure" aria-hidden>
+        {groups.map((group) => (
           <Button
             key={group.id}
             variant="secondary"
             className="library-toolbar__button"
-            aria-haspopup="menu"
-            aria-expanded={openGroup === group.id}
-            aria-disabled={group.disabledReason ? true : undefined}
-            title={group.disabledReason ?? undefined}
-            {...keys.buttonProps(index)}
-            onClick={(event) => {
-              if (group.disabledReason) return;
-              const rect = event.currentTarget.getBoundingClientRect();
-              onOpenGroup(group.id, { x: rect.left, y: rect.bottom });
-            }}
+            tabIndex={-1}
+            disabled
           >
-            {group.label}
-            <span className="library-toolbar__arrow" aria-hidden> ▸</span>
+            <span className="library-toolbar__ghost" data-text={group.label} />
+            <span className="library-toolbar__arrow" />
           </Button>
         ))}
-        <Button
-          variant="secondary"
-          className="library-toolbar__button library-toolbar__clear"
-          aria-disabled={none ? true : undefined}
-          title={none ? SELECT_TRACKS_FIRST : undefined}
-          {...keys.buttonProps(groups.length)}
-          onClick={() => {
-            if (!none) onClear();
-          }}
-        >
-          Clear selection
+        <Button variant="secondary" className="library-toolbar__button" tabIndex={-1} disabled>
+          <span className="library-toolbar__ghost" data-text={`${widest} selected ×`} />
         </Button>
       </div>
+      {/* Two lines with nothing selected: the first line is empty, and holds its height so the
+          row is as high as it is with the buttons (DEC-112). */}
+      {none && !oneLine && lines.twoLines && <div className="library-toolbar__spacer" aria-hidden />}
+      {!none && (
+        <div
+          ref={keys.ref}
+          className="library-toolbar__bar"
+          role="toolbar"
+          aria-label="Selected tracks"
+          onKeyDown={onKeyDown}
+        >
+          {groups.map((group, index) => (
+            <Button
+              key={group.id}
+              variant="secondary"
+              className="library-toolbar__button"
+              aria-haspopup="menu"
+              aria-expanded={openGroup === group.id}
+              aria-disabled={group.disabledReason ? true : undefined}
+              title={group.disabledReason ?? undefined}
+              {...keys.buttonProps(index)}
+              onClick={(event) => {
+                if (group.disabledReason) return;
+                const rect = event.currentTarget.getBoundingClientRect();
+                onOpenGroup(group.id, { x: rect.left, y: rect.bottom });
+              }}
+            >
+              {group.label}
+              <span className="library-toolbar__arrow" aria-hidden> ▸</span>
+            </Button>
+          ))}
+          <Button
+            variant="secondary"
+            className="library-toolbar__button library-toolbar__clear"
+            aria-label={clearName}
+            title="Clear selection"
+            {...keys.buttonProps(groups.length)}
+            onClick={clear}
+          >
+            {selected.toLocaleString()} selected
+            {describedByQuery && selected > 1 && (
+              // Said, not drawn: the button stays as short as "3 selected ×".
+              <span className="library-toolbar__sr"> (everything matching)</span>
+            )}
+            <span aria-hidden> ×</span>
+          </Button>
+        </div>
+      )}
 
       <div className="library-toolbar__end">
-        {/* The count keeps the width of its longest form ("1,204 tracks · 1,204
-            selected"), held by an invisible copy in the same grid cell (drawn from an attribute, so
-            it is no text a reader or a query finds). Whether the row takes one line or two is
-            measured with that reserve, so a first selection never lengthens the line, wraps it,
-            and moves the rows under the pointer before a double-click's second click lands
-            (DEC-112); where its line is shorter, the count is cut, never a button wrapped. */}
+        {/* The count keeps the width of its own form, held by an invisible copy in the same grid
+            cell (drawn from an attribute, so it is no text a reader or a query finds), so the row
+            is measured with it and, where its line is shorter, the count is cut with an ellipsis,
+            never a button wrapped (N2-1). */}
         <span className="library-toolbar__count-box">
-          <span
-            className="library-toolbar__count-reserve"
-            aria-hidden
-            data-reserve={`${
-              scopeTotal > total
-                ? `Showing ${total.toLocaleString()} of ${scopeTotal.toLocaleString()} tracks`
-                : `${total.toLocaleString()} ${total === 1 ? "track" : "tracks"}`
-            } · ${Math.max(total, scopeTotal).toLocaleString()} selected${
-              describedByQuery ? " (everything matching)" : ""
-            }`}
-          />
-        <span className="library-toolbar__count" role="status">
-          <span>
-            {scopeTotal > total
-              ? `Showing ${total.toLocaleString()} of ${scopeTotal.toLocaleString()} tracks`
-              : `${total.toLocaleString()} ${total === 1 ? "track" : "tracks"}`}
-          </span>
-          {!none && (
-            <>
-              <span aria-hidden> · </span>
-              <span>
-                {selected.toLocaleString()} selected
-                {describedByQuery && selected > 1 ? " (everything matching)" : ""}
+          <span className="library-toolbar__count-reserve" aria-hidden data-reserve={countText} />
+          <span className="library-toolbar__count" role="status">
+            {countText}
+            {selected > 0 && (
+              // Said for a screen reader, not drawn: the selected-count button shows it.
+              <span className="library-toolbar__sr">
+                , {selected.toLocaleString()} {selected === 1 ? "track" : "tracks"} selected
               </span>
-            </>
-          )}
+            )}
+          </span>
         </span>
-        </span>
-        {/* Always there once there is anything to select, disabled when all is:
-            a button that vanished on the last selection would move Columns… */}
+        {/* Always there once there is anything to select, disabled when all is. */}
         {total > 0 && (
           <Button
             variant="secondary"
-            className="library-toolbar__button"
+            className="library-toolbar__button library-toolbar__select-all"
             aria-disabled={selected >= total ? true : undefined}
             title={selected >= total ? EVERYTHING_SELECTED : undefined}
             onClick={() => {
@@ -226,9 +263,6 @@ export function LibraryToolbar({
             Select all
           </Button>
         )}
-        <Button variant="secondary" className="library-toolbar__button" onClick={onColumns}>
-          Columns…
-        </Button>
       </div>
     </div>
   );

@@ -16,13 +16,12 @@ vi.mock("../../reporting/reporting", async (importOriginal) => ({
 function bar(itemsFor: () => Promise<{ id: string; label: string; onSelect: () => void }[]>) {
   return (
     <DiscoverSelectionBar
-      groups={["play", "explore"]}
+      groups={["play", "more"]}
       total={5}
       selected={1}
       itemsFor={itemsFor}
       onClear={vi.fn()}
       onSelectAll={vi.fn()}
-      onColumns={vi.fn()}
     />
   );
 }

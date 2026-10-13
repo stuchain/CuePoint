@@ -1,8 +1,11 @@
-/* The row above the table: the selection bar, then the count and Columns…
-   (FLW-8, LIB-8). One line where everything fits; otherwise two, laid out on
-   purpose (`--two-lines`, measured by the component): the six groups, then
-   Clear selection, the count, Select all and Columns… (DEC-112, DEC-217). */
+/* The row above the table: the selection bar (only with a selection), then the count and
+   Select all (FLW-8, LIB-8). One line where everything fits; otherwise two, laid out on
+   purpose (`--two-lines`, measured by the component): the four groups, then the
+   "3 selected ×" button, the count and Select all (DEC-112, DEC-217). Its min-height (set
+   inline) is one line of controls, so the buttons appearing never change the row. */
 .library-toolbar {
+  position: relative;
+  box-sizing: border-box;
   --library-toolbar-row-gap: round(down, calc(var(--space-xs) / 2), 1px);
 
   display: flex;
@@ -10,8 +13,8 @@
   align-items: center;
   /* Tight across the line, on purpose: at 1.5× in a 1,264 × 735 window (a Windows
      frame and menu bar inside 1,280 × 800) with Track details open the row has
-     535px, less the page's scrollbar when it shows one (17px on Windows). The six
-     groups take 470 of it with these 2px gaps and no side padding (the buttons
+     535px, less the page's scrollbar when it shows one (17px on Windows). The groups
+     take 470 of it with these 2px gaps and no side padding (the buttons
      line up with the table's edges instead), 40px or more to spare with a 20px
      scrollbar; at the old 4px gaps, 6px sides and a word space before each ▸
      they took 513 and the row went to three lines on Windows (a table row lost). */
@@ -35,13 +38,21 @@
   height: var(--library-toolbar-row-gap);
 }
 
+/* Nothing selected on two lines: the first line is empty but as high as the buttons, so the row
+   does not move when they appear (DEC-112). */
+.library-toolbar__spacer {
+  order: 0;
+  flex-basis: 100%;
+  height: var(--control-height);
+}
+
 .library-toolbar--two-lines .library-toolbar__clear,
 .library-toolbar--two-lines .library-toolbar__end > * {
   order: 2;
 }
 
 /* The bar and the end cluster add no boxes of their own: their controls wrap in
-   the row together, so the count and Columns… fill the last line of the buttons
+   the row together, so the count and Select all fill the last line of the buttons
    instead of starting a line each. (`display: contents` keeps the bar's toolbar
    role.) */
 .library-toolbar__bar,
@@ -49,9 +60,29 @@
   display: contents;
 }
 
+/* The bar's buttons as they are with a selection, drawn invisibly and out of the flow, for the
+   component to measure whether the row takes one line or two. Clipped to nothing, never
+   scrolled to, never reached. */
+.library-toolbar__measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  gap: inherit;
+  max-width: 100%;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.library-toolbar__measure > * {
+  flex: none;
+}
+
 /* The count takes what its line leaves, up to its reserved width, so it never
    starts a line of its own: past the reserve the auto margin takes the rest and
-   keeps Select all and Columns… at the right; short of it, the count is cut
+   keeps Select all at the right; short of it, the count is cut
    with an ellipsis rather than a button wrapping. */
 .library-toolbar__count-box {
   display: inline-grid;
@@ -96,7 +127,7 @@
   flex-wrap: nowrap;
 }
 
-/* Compact: ten controls share the row, and every line of it is a line the table
+/* Compact: up to seven controls share the row, and every line of it is a line the table
    loses (the Library's height is held, DEC-112). So the buttons are the compact
    control height every .cp-btn has, with the width floor dropped. */
 .library-toolbar .library-toolbar__button {
@@ -142,4 +173,18 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   color: var(--fg-muted);
+}
+
+/* The words of the invisible copy: drawn, not set, so no query or reader finds them. */
+.library-toolbar__ghost::before {
+  content: attr(data-text);
+}
+
+.library-toolbar__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

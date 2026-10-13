@@ -1,8 +1,7 @@
 /**
  * Everything that can be done to selected tracks, as one list (FLW-8, LIB-6).
  *
- * Six groups, Play, Organize, Explore, Beatport, Fix and More, each a list of
- * entries. The selection bar draws every group as a button that opens its
+ * Four groups, Play, Organize, Beatport and More, each a list of entries. The selection bar draws every group as a button that opens its
  * entries; the right-click menu draws the same groups as submenus (Play's
  * three entries on its first lines). Both read
  * `trackActionGroups`, so the two cannot drift: an entry added here is in
@@ -23,20 +22,18 @@ import {
 } from "./libraryClean";
 import { organizationMenuItems, type OrganizationMenuHandlers } from "./trackMenu";
 
-export type TrackActionGroupId = "play" | "organize" | "explore" | "beatport" | "fix" | "more";
+export type TrackActionGroupId = "play" | "organize" | "beatport" | "more";
 
 /** The groups and their names, in the order the bar and the menu show them. */
 export const ACTION_GROUPS: readonly { id: TrackActionGroupId; label: string }[] = [
   { id: "play", label: "Play" },
   { id: "organize", label: "Organize" },
-  { id: "explore", label: "Explore" },
   { id: "beatport", label: "Beatport" },
-  { id: "fix", label: "Fix" },
   { id: "more", label: "More" },
 ];
 
 /** What the bar says on a disabled group when nothing is selected. */
-export const SELECT_TRACKS_FIRST = "Select tracks first";
+const SELECT_TRACKS_FIRST = "Select tracks first";
 
 export interface TrackActionGroup {
   id: TrackActionGroupId;
@@ -51,7 +48,7 @@ export interface TrackActionContext {
   count: number;
   /** The Collection the table is showing, when it holds rows (see `trackMenu.ts`). */
   collection: { id: number; name: string } | null;
-  /** The first track's credits, for Explore; null while unknown. */
+  /** The first track's credits, for More's page entries; null while unknown. */
   credits: TrackCreditLinks | null;
   /** Whether exactly one track with a known file is acted on (Show in folder). */
   revealable: boolean;
@@ -61,12 +58,16 @@ export interface TrackActionHandlers {
   /** Absent where there is no player to talk to. */
   play?: { onPlay: () => void; onPlayNext: () => void; onAddToQueue: () => void };
   organization: OrganizationMenuHandlers;
-  /** Absent where no artist, label or Similar page can be opened. */
+  /** More's first entries; absent where no artist, label or Similar page can be opened. */
   explore?: {
     onSimilar: () => void;
     onOpenPage: (kind: EntityKind, ref: string) => void;
   };
   beatport?: BeatportMenuHandlers;
+  /**
+   * Edit values… and Save changes into the files… live in More for now: the save bar that
+   * replaces the second one is another thread's and has not landed.
+   */
   fix?: FixMenuHandlers;
   more: {
     onCopy: () => void;
@@ -96,24 +97,49 @@ export function playItems(
   ];
 }
 
+/** Copy, as it is worded for this many tracks. */
+function copyItem(count: number, onCopy: () => void): TrackContextMenuItem {
+  return { id: "copy", label: count > 1 ? `Copy ${tracks(count)}` : "Copy", onSelect: onCopy };
+}
+
+function revealItem(
+  context: TrackActionContext,
+  onReveal: (() => void) | null,
+): TrackContextMenuItem {
+  return {
+    id: "reveal",
+    label: "Show in folder",
+    // One track, one file: revealing five folders at once is not a thing
+    // anyone asked for, so it is offered as a button that means one.
+    disabled: !context.revealable || onReveal === null,
+    onSelect: () => onReveal?.(),
+  };
+}
+
+/**
+ * Copy and Show in folder, for the pages that have no Organize to hold Copy
+ * (Discover's library half): they put them after their explore entries.
+ */
 export function moreItems(
   context: TrackActionContext,
   handlers: TrackActionHandlers["more"],
 ): TrackContextMenuItem[] {
+  return [copyItem(context.count, handlers.onCopy), revealItem(context, handlers.onReveal)];
+}
+
+/**
+ * More's list: the explore entries (Similar tracks, Artist page, Label page), a divider,
+ * then the rest. The divider is the rest's first entry's `separatorBefore`, and is left off
+ * when there are no explore entries above it.
+ */
+export function moreWithExplore(
+  explore: readonly TrackContextMenuItem[],
+  rest: readonly TrackContextMenuItem[],
+): TrackContextMenuItem[] {
+  if (explore.length === 0) return withoutLeadingDivider([...rest]);
   return [
-    {
-      id: "copy",
-      label: context.count > 1 ? `Copy ${tracks(context.count)}` : "Copy",
-      onSelect: handlers.onCopy,
-    },
-    {
-      id: "reveal",
-      label: "Show in folder",
-      // One track, one file: revealing five folders at once is not a thing
-      // anyone asked for, so it is offered as a button that means one.
-      disabled: !context.revealable || handlers.onReveal === null,
-      onSelect: () => handlers.onReveal?.(),
-    },
+    ...explore,
+    ...rest.map((item, at) => (at === 0 ? { ...item, separatorBefore: true } : item)),
   ];
 }
 
@@ -122,29 +148,36 @@ function withoutLeadingDivider(items: TrackContextMenuItem[]): TrackContextMenuI
   return items.map((item, at) => (at === 0 ? { ...item, separatorBefore: false } : item));
 }
 
-/** The six groups for these tracks. Always all six, so the bar keeps its shape. */
+/** The four groups for these tracks. Always all four, so the bar keeps its shape. */
 export function trackActionGroups(
   context: TrackActionContext,
   handlers: TrackActionHandlers,
 ): TrackActionGroup[] {
   const { count } = context;
+  const explore =
+    handlers.explore && count > 0
+      ? // Page entries open the page for one track; with several, for the first.
+        discoverMenuItems(
+          { count: 1, credits: context.credits },
+          { onSimilar: handlers.explore.onSimilar, onOpenPage: handlers.explore.onOpenPage },
+        )
+      : [];
   const built: Record<TrackActionGroupId, TrackContextMenuItem[]> = {
     play: count > 0 && handlers.play ? playItems(count, handlers.play) : [],
-    organize: organizationMenuItems(
-      { count, collection: context.collection },
-      handlers.organization,
-    ),
-    // Explore opens the page for one track; with several, for the first.
-    explore:
-      handlers.explore && count > 0
-        ? discoverMenuItems(
-            { count: 1, credits: context.credits },
-            { onSimilar: handlers.explore.onSimilar, onOpenPage: handlers.explore.onOpenPage },
-          )
-        : [],
+    organize: [
+      ...organizationMenuItems({ count, collection: context.collection }, handlers.organization),
+      ...(count > 0
+        ? [{ ...copyItem(count, handlers.more.onCopy), separatorBefore: true }]
+        : []),
+    ],
     beatport: beatportMenuItems({ count }, handlers.beatport ?? {}),
-    fix: fixMenuItems({ count }, handlers.fix ?? {}),
-    more: count > 0 ? moreItems(context, handlers.more) : [],
+    more:
+      count > 0
+        ? moreWithExplore(explore, [
+            ...fixMenuItems({ count }, handlers.fix ?? {}),
+            revealItem(context, handlers.more.onReveal),
+          ])
+        : [],
   };
 
   return ACTION_GROUPS.map(({ id, label }) => {
@@ -160,9 +193,9 @@ export function trackActionGroups(
 }
 
 /**
- * The bar's buttons for a page that offers only some of the six groups (Discover's
- * library half and Similar tracks): the same labels, always all shown, disabled with
- * "Select tracks first" until something is selected (DEC-209). What each opens is the
+ * The bar's buttons for a page that offers only some of the four groups (Discover's
+ * library half and Similar tracks): the same labels, shown by the toolbar once something
+ * is selected (DEC-209); with nothing selected they carry "Select tracks first". What each opens is the
  * page's to build when it is pressed, from the same `playItems`, `moreItems` and
  * `discoverMenuItems` the Library's list is made of.
  */

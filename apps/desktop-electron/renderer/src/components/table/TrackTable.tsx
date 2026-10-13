@@ -32,6 +32,7 @@ import {
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
+import { Button } from "../Button";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
 import { PixelSpinner } from "../PixelSpinner";
@@ -246,6 +247,13 @@ export interface TrackTableProps<Row> {
    */
   rowEnd?: (row: Row, index: number) => ReactNode;
 
+  /**
+   * Opens the caller's column picker (K21). Given, the header draws a small icon-only
+   * "Columns…" button in its trailing corner, sticky to the right edge so it stays in view when
+   * the table scrolls sideways. It is no column: it sits outside the header's cells.
+   */
+  onColumns?: () => void;
+
   /** Shown instead of rows when the query matched nothing. */
   emptyState?: ReactNode;
 
@@ -298,6 +306,7 @@ export function TrackTable<Row>({
   onEmptyDrop,
   dropTag,
   dropLabel,
+  onColumns,
   dragActive = false,
   canDragRow,
   rowClassName,
@@ -598,8 +607,11 @@ export function TrackTable<Row>({
   };
 
   const style = {
-    ["--track-table-columns" as string]: template,
-    ["--track-table-min-width" as string]: `${minWidth}px`,
+    // The Columns… button has a track of its own after the last column, so it covers nothing.
+    ["--track-table-columns" as string]: onColumns ? `${template} var(--track-table-corner)` : template,
+    ["--track-table-min-width" as string]: onColumns
+      ? `calc(${minWidth}px + var(--track-table-corner))`
+      : `${minWidth}px`,
   } as CSSProperties;
 
   const empty = source.total === 0;
@@ -786,6 +798,20 @@ export function TrackTable<Row>({
               </div>
             );
           })}
+          {onColumns && (
+            <div className="track-table__corner" role="presentation">
+              <Hint text="Columns…">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  iconOnly
+                  icon="columns"
+                  aria-label="Columns…"
+                  onClick={onColumns}
+                />
+              </Hint>
+            </div>
+          )}
         </div>
 
         {empty ? (

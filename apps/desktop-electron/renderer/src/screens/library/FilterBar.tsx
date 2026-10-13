@@ -115,8 +115,6 @@ interface FilterBarProps {
   quickFacets?: LibraryQuickFacets | null;
   quickFacetsLoading?: boolean;
   onRequestQuickFacets?: () => void;
-  /** Open matching, for the Key list of a library nobody has matched. */
-  onMatchTracks?: () => void;
   /** Open the Keys page on this view's playlist or Collection (PAGES-16). */
   onOpenKeys?: () => void;
 
@@ -169,7 +167,6 @@ export function FilterBar({
   quickFacets = null,
   quickFacetsLoading = false,
   onRequestQuickFacets,
-  onMatchTracks,
   onOpenKeys,
   smart = null,
   onSaveSmart,
@@ -504,7 +501,6 @@ export function FilterBar({
             facets={quickFacets}
             loading={quickFacetsLoading}
             onOpen={onRequestQuickFacets}
-            onMatchTracks={onMatchTracks}
             onOpenKeys={onOpenKeys}
           />
         )}

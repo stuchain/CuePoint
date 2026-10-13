@@ -793,15 +793,19 @@ describe("choosing keys", () => {
     renderKeys();
     await opened();
     fireEvent.click(rowButton("8A"));
+    // The bar shows once a track is selected; before that the row holds only the count.
+    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    expect(screen.queryByRole("toolbar", { name: "Selected tracks" })).toBeNull();
+    fireEvent.click((await within(table).findByText("Track 3")).closest("[role=row]")!);
     const bar = await screen.findByRole("toolbar", { name: "Selected tracks" }, LOADED);
-    for (const name of ["Play", "Organize", "Explore", "Beatport", "Fix", "More"]) {
+    for (const name of ["Play", "Organize", "Beatport", "More"]) {
       expect(within(bar).getByRole("button", { name: new RegExp(`^${name}`) })).toBeInTheDocument();
     }
-    expect(within(bar).getByRole("button", { name: "Clear selection" })).toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: "Clear selection, 1 selected" })).toBeInTheDocument();
   });
 });
 
-describe("the Beatport and Fix entries (K4)", () => {
+describe("the Beatport and More entries (K4)", () => {
   it.each([
     ["Use Beatport's values…", "Use Beatport's values"],
     ["Edit values…", "Edit values"],

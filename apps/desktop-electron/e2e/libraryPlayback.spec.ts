@@ -88,9 +88,9 @@ async function currentTitle(win: Page): Promise<string | null> {
   });
 }
 
-/** The toolbar row's count. The Inspector says similar words, so this is scoped. */
+/** The toolbar row's selected-count button. The Inspector says similar words, so this is scoped. */
 function selectionStrip(win: Page) {
-  return win.locator(".library-toolbar__count");
+  return win.locator(".library-toolbar__clear:visible");
 }
 
 /** The titles the table is showing, top to bottom. */

@@ -34,7 +34,7 @@ function handlers() {
     },
     explore: { onSimilar: vi.fn(), onOpenPage: vi.fn() },
     beatport: { onMatch: vi.fn(), onReview: vi.fn(), onUseBeatport: vi.fn() },
-    fix: { onEdit: vi.fn(), onWriteTags: vi.fn(), onCheckFiles: vi.fn() },
+    fix: { onEdit: vi.fn(), onWriteTags: vi.fn() },
     more: { onCopy: vi.fn(), onReveal: vi.fn() },
   } satisfies TrackActionHandlers;
 }
@@ -70,13 +70,11 @@ function leaves(items: TrackContextMenuItem[]): TrackContextMenuItem[] {
 }
 
 describe("the groups", () => {
-  it("are Play, Organize, Explore, Beatport, Fix and More, in that order", () => {
+  it("are Play, Organize, Beatport and More, in that order", () => {
     expect(ACTION_GROUPS.map((group) => group.label)).toEqual([
       "Play",
       "Organize",
-      "Explore",
       "Beatport",
-      "Fix",
       "More",
     ]);
     const groups = trackActionGroups(IN_COLLECTION, handlers());
@@ -97,15 +95,29 @@ describe("the groups", () => {
       "Rate",
       "Favorite",
       "Remove favorite",
+      "Copy 3 tracks",
     ]);
-    expect(by.explore).toEqual(["Similar tracks", "Artist page", "Label page"]);
     expect(by.beatport).toEqual(["Match tracks…", "Review these matches", "Use Beatport's values…"]);
-    expect(by.fix).toEqual([
+    expect(by.more).toEqual([
+      "Similar tracks",
+      "Artist page",
+      "Label page",
       "Edit values…",
       "Save changes into the files…",
-      "Check the files are still there",
+      "Show in folder",
     ]);
-    expect(by.more).toEqual(["Copy 3 tracks", "Show in folder"]);
+  });
+
+  it("keeps a divider between More's explore entries and the rest", () => {
+    const more = trackActionGroups(IN_COLLECTION, handlers()).find((group) => group.id === "more")!;
+    expect(more.items.filter((item) => item.separatorBefore).map((item) => item.label)).toEqual([
+      "Edit values…",
+    ]);
+  });
+
+  it("offers no file check, which is Clean ▸ Missing files'", () => {
+    const all = trackActionGroups(IN_COLLECTION, handlers()).flatMap((group) => labels(group.items));
+    expect(all).not.toContain("Check the files are still there");
   });
 
   it("no longer offer Accept or Reject, which are Review's job", () => {
@@ -116,10 +128,10 @@ describe("the groups", () => {
   });
 
   it("keep the Explore entries for several tracks, which act on the first", () => {
-    const explore = trackActionGroups({ ...IN_COLLECTION, count: 5 }, handlers()).find(
-      (group) => group.id === "explore",
+    const more = trackActionGroups({ ...IN_COLLECTION, count: 5 }, handlers()).find(
+      (group) => group.id === "more",
     )!;
-    expect(labels(explore.items)).toEqual(["Similar tracks", "Artist page", "Label page"]);
+    expect(labels(more.items).slice(0, 3)).toEqual(["Similar tracks", "Artist page", "Label page"]);
   });
 
   it("leave out what this build cannot do", () => {
@@ -130,9 +142,9 @@ describe("the groups", () => {
     );
     const by = Object.fromEntries(groups.map((group) => [group.id, group.items]));
     expect(by.play).toEqual([]);
-    expect(by.explore).toEqual([]);
     expect(by.beatport).toEqual([]);
-    expect(by.fix).toEqual([]);
+    // Neither explore nor fix entries: More holds Show in folder alone, with no divider.
+    expect(by.more!.map((item) => item.id)).toEqual(["reveal"]);
     // Show in folder is shown and disabled for several tracks: one file, one folder.
     expect(by.more!.find((item) => item.id === "reveal")?.disabled).toBe(true);
   });
@@ -246,14 +258,12 @@ describe("every entry reaches its action", () => {
     pick("beatport-values");
     pick("fix-edit");
     pick("fix-write-tags");
-    pick("fix-check");
     for (const spy of [
       spies.beatport.onMatch,
       spies.beatport.onReview,
       spies.beatport.onUseBeatport,
       spies.fix.onEdit,
       spies.fix.onWriteTags,
-      spies.fix.onCheckFiles,
     ]) {
       expect(spy).toHaveBeenCalledTimes(1);
     }

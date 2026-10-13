@@ -4,24 +4,20 @@
  * What each entry does once chosen. Applying and editing go through ORG-11's
  * batch path — the same confirmation above the engine's threshold, the same
  * counts in the toast, the same revert — because they are batch operations.
- * Checking files is a job the status strip follows. Writing tags has a dialog
- * of its own, since a preview must answer before anything is written.
+ * Writing tags has a dialog of its own, since a preview must answer before anything is written.
  *
  * Clean's Fix values tab renders the dialogs (FLW-12); the Library's selection
- * bar opens Clean with the tracks rather than running them here (FLW-8), and
- * keeps only the file check, which has no dialog.
+ * bar opens Clean with the tracks rather than running them here (FLW-8). The file
+ * check is Clean's (Clean ▸ Missing files), not an entry here.
  */
 import { useCallback, useState, type ReactNode } from "react";
 
 import type {
   BatchSelection,
-  FileCheckStarted,
   OverrideField,
 } from "../../api/cuepointBridge.types";
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { APPLY_FIELD_LABELS } from "../clean/comparison";
-import { trackCount } from "../clean/cleanFormat";
-import { useCleanJob } from "../clean/useCleanJob";
 import { ApplyValuesDialog } from "./ApplyValuesDialog";
 import { EditValuesDialog } from "./EditValuesDialog";
 import type { CleanMenuHandlers } from "./libraryClean";
@@ -42,8 +38,7 @@ interface CleanTarget {
 
 interface LibraryCleanOptions {
   batch: LibraryBatchController;
-  onMessage: (message: string, tone: "info" | "success" | "warning") => void;
-  /** Called when a job this started has ended, or a single edit was saved. */
+  /** Called when an edit or an applied batch has changed tracks. */
   onChanged: () => void;
 }
 
@@ -62,8 +57,7 @@ export function fieldWords(fields: readonly OverrideField[]): string {
 
 type Open = { kind: "apply" | "edit" | "write"; target: CleanTarget } | null;
 
-export function useLibraryClean({ batch, onMessage, onChanged }: LibraryCleanOptions): LibraryClean {
-  const jobs = useCleanJob(onMessage);
+export function useLibraryClean({ batch, onChanged }: LibraryCleanOptions): LibraryClean {
   const [open, setOpen] = useState<Open>(null);
 
   const ended = useCallback(() => {
@@ -83,25 +77,12 @@ export function useLibraryClean({ batch, onMessage, onChanged }: LibraryCleanOpt
       if (bridge?.setTrackOverrides && (bridge.applyBatch || target.trackId != null)) {
         handlers.onEdit = () => setOpen({ kind: "edit", target });
       }
-      if (bridge?.startFileCheck) {
-        const start = bridge.startFileCheck;
-        handlers.onCheckFiles = () =>
-          void jobs.run<FileCheckStarted>(
-            "check",
-            () => start({ selection: target.selection }),
-            {
-              started: (answer) => `Checking the files of ${trackCount(answer.tracks)}.`,
-              succeeded: "File check finished.",
-              onEnded: ended,
-            },
-          );
-      }
       if (bridge?.previewTagWrite && bridge.startTagWrite) {
         handlers.onWriteTags = () => setOpen({ kind: "write", target });
       }
       return handlers;
     },
-    [ended, jobs],
+    [],
   );
 
   const close = useCallback(() => setOpen(null), []);

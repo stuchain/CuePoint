@@ -3,13 +3,14 @@
  * Library: an artist's or label's library half, and Similar tracks (FLW-8, DEC-209).
  *
  * It is the Library's `LibraryToolbar`, drawn from the same list of groups
- * (`trackActions.ts`), always shown and disabled with "Select tracks first" until
- * something is selected. It holds only the groups that make sense here: Play, Explore
- * and, where the page can copy and show a file, More. Organize is the Library's (tagging
- * and collecting from a page would be a second Library; Open in Library is one click
- * away), and Beatport and Fix are Clean's. Each page builds a group's entries when the
- * button is pressed, because what they act on may have to be gathered first, and the
- * page's right-click menu is made of the same builder (`libraryRowMenu.ts`).
+ * (`trackActions.ts`): with nothing selected it shows the count and Select all, with a
+ * selection the group buttons and "3 selected ×". It holds only the groups that make sense
+ * here: Play and More (the page entries and, where the page can copy and show a file, those
+ * too). Organize is the Library's (tagging and collecting from a page would be a second
+ * Library; Open in Library is one click away), and Beatport is Clean's. Each page builds a
+ * group's entries when the button is pressed, because what they act on may have to be
+ * gathered first, and the page's right-click menu is made of the same builder
+ * (`libraryRowMenu.ts`).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -28,7 +29,6 @@ interface DiscoverSelectionBarProps {
   itemsFor: (group: TrackActionGroupId) => Promise<TrackContextMenuItem[]>;
   onClear: () => void;
   onSelectAll: () => void;
-  onColumns: () => void;
 }
 
 export function DiscoverSelectionBar({
@@ -39,7 +39,6 @@ export function DiscoverSelectionBar({
   itemsFor,
   onClear,
   onSelectAll,
-  onColumns,
 }: DiscoverSelectionBarProps) {
   const [menu, setMenu] = useState<{
     x: number;
@@ -81,7 +80,6 @@ export function DiscoverSelectionBar({
         onOpenGroup={(id, anchor) => void open(id, anchor)}
         onClear={onClear}
         onSelectAll={onSelectAll}
-        onColumns={onColumns}
       />
       {menu && (
         <TrackContextMenu

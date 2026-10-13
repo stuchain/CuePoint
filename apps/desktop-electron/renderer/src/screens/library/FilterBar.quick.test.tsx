@@ -84,14 +84,12 @@ function Harness({
   quickFacets = FACETS,
   initial = null,
   onChange,
-  onMatchTracks,
   onOpenKeys,
   onRequest = () => {},
 }: {
   quickFacets?: LibraryQuickFacets | null;
   initial?: FilterRuleSet | null;
   onChange?: (next: FilterRuleSet | null) => void;
-  onMatchTracks?: () => void;
   onOpenKeys?: () => void;
   onRequest?: () => void;
 }) {
@@ -116,7 +114,6 @@ function Harness({
       }}
       quickFacets={quickFacets}
       onRequestQuickFacets={onRequest}
-      onMatchTracks={onMatchTracks}
       onOpenKeys={onOpenKeys}
     />
   );
@@ -254,23 +251,15 @@ describe("the quick filters (FLW-4)", () => {
     delete (window as unknown as { cuepoint?: unknown }).cuepoint;
   });
 
-  it("says keys come from matching when no track has one, with Match tracks…", async () => {
+  it("says keys come from matching when no track has one, with no button of its own", async () => {
     libraryKeys([{ value: null, count: 40 }]);
-    const onMatchTracks = vi.fn();
-    render(
-      <Harness
-        quickFacets={{ ...FACETS, keys: [], no_key: 40 }}
-        onMatchTracks={onMatchTracks}
-      />,
-    );
+    render(<Harness quickFacets={{ ...FACETS, keys: [], no_key: 40 }} />);
     fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
     const panel = within(screen.getByRole("dialog", { name: "Key" }));
     expect(
       await panel.findByText("No tracks have a Beatport key yet. Keys come from matching."),
     ).toBeInTheDocument();
-    fireEvent.click(panel.getByRole("button", { name: "Match tracks…" }));
-    expect(onMatchTracks).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole("dialog", { name: "Key" })).toBeNull();
+    expect(panel.queryByRole("button", { name: "Match tracks…" })).toBeNull();
   });
 
   it("says only this view has no key when the library has some", async () => {
@@ -279,9 +268,7 @@ describe("the quick filters (FLW-4)", () => {
       { value: null, count: 28 },
     ]);
     const answer = (window as unknown as { cuepoint: { getLibraryFacet: unknown } }).cuepoint;
-    render(
-      <Harness quickFacets={{ ...FACETS, keys: [], no_key: 4 }} onMatchTracks={vi.fn()} />,
-    );
+    render(<Harness quickFacets={{ ...FACETS, keys: [], no_key: 4 }} />);
     fireEvent.click(screen.getByRole("button", { name: "Key ▾" }));
     const panel = within(screen.getByRole("dialog", { name: "Key" }));
     expect(await panel.findByText("No track here has a Beatport key.")).toBeInTheDocument();

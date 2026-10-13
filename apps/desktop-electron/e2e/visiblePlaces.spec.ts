@@ -363,7 +363,7 @@ async function pick(win: Page, ...titles: string[]) {
   for (const [index, title] of titles.entries()) {
     await libraryRow(win, title).click({ modifiers: index === 0 ? [] : ["ControlOrMeta"] });
   }
-  await expect(win.locator(".library-toolbar__count")).toContainText(`${titles.length} selected`);
+  await expect(toolbar(win).getByRole("button", { name: new RegExp(`^Clear selection, ${titles.length} selected`) })).toBeVisible();
 }
 
 async function openLibrary(win: Page) {
@@ -372,8 +372,8 @@ async function openLibrary(win: Page) {
   await chooseNode(win, win.getByRole("treeitem", { name: /^All tracks/ }), "All tracks");
   await expect(libraryRow(win, "Warm One")).toBeVisible({ timeout: 30_000 });
   // Nothing selected, as every row starts.
-  const clear = toolbar(win).getByRole("button", { name: "Clear selection" });
-  if ((await clear.getAttribute("aria-disabled")) !== "true") await clear.click();
+  const clear = win.getByRole("button", { name: /^Clear selection/ });
+  if (await clear.count()) await clear.click();
 }
 
 test.describe("FLW-1: every action in the table has a visible place that works from the keyboard", () => {
@@ -489,7 +489,8 @@ test.describe("FLW-1: every action in the table has a visible place that works f
 
     await pick(win, "Build");
     const more = () => toolbar(win).getByRole("button", { name: "More", exact: true });
-    await use(win, more(), "the bar's More");
+    // Copy is Organize's now.
+    await use(win, toolbar(win).getByRole("button", { name: "Organize", exact: true }), "the bar's Organize");
     await choose(win, "Copy");
     await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText()), { timeout: 15_000 }).toContain("Build");
 
@@ -499,7 +500,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     expect((await shownFiles())[0]).toMatch(/3\.mp3$/);
   });
 
-  test("Similar tracks: Track details, and the selection bar's Explore", async () => {
+  test("Similar tracks: Track details, and the selection bar's More", async () => {
     await openLibrary(win);
     await pick(win, "Build");
     const details = win.getByRole("complementary", { name: "Track details" });
@@ -508,7 +509,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
 
     await openLibrary(win);
     await pick(win, "Close");
-    await use(win, toolbar(win).getByRole("button", { name: "Explore", exact: true }), "the bar's Explore");
+    await use(win, toolbar(win).getByRole("button", { name: "More", exact: true }), "the bar's More");
     await choose(win, "Similar tracks");
     await expect(win).toHaveURL(/#\/discover\/similar\/5$/, { timeout: 15_000 });
   });
@@ -660,7 +661,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(() => jobsOf(win, "library_import"), { timeout: 60_000 }).toBeGreaterThan(imports);
   });
 
-  test("Edit values, Use Beatport's values and Save changes into the files: the Library's Fix and Beatport menus", async () => {
+  test("Edit values, Use Beatport's values and Save changes into the files: the Library's More and Beatport menus", async () => {
     await openLibrary(win);
     const genres = () =>
       win.evaluate(async () => {
@@ -676,7 +677,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
 
     // Edit values…: opens on the Library, over the two tracks picked (K4).
     await pick(win, "Warm One", "Warm Two");
-    await use(win, toolbar(win).getByRole("button", { name: "Fix", exact: true }), "the bar's Fix");
+    await use(win, toolbar(win).getByRole("button", { name: "More", exact: true }), "the bar's More");
     await choose(win, "Edit values…");
     const editor = win.getByRole("dialog", { name: "Edit values" });
     await expect(editor).toBeVisible();
@@ -709,7 +710,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
 
     // Save changes into the files…: a preview reads the files without writing them.
     await pick(win, "Warm One", "Warm Two");
-    await use(win, toolbar(win).getByRole("button", { name: "Fix", exact: true }), "the bar's Fix");
+    await use(win, toolbar(win).getByRole("button", { name: "More", exact: true }), "the bar's More");
     await choose(win, "Save changes into the files…");
     const files = win.getByRole("dialog", { name: "Save changes into the files" });
     await expect(files).toContainText("2 tracks");
@@ -848,7 +849,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await win.reload();
   });
 
-  test("The selection bar on Similar tracks: always shown, disabled until a suggestion is selected", async () => {
+  test("The selection bar on Similar tracks: shown with a selected suggestion", async () => {
     test.skip(!hasPlayer, NO_PLAYER);
     const seed = await win.evaluate(async () => {
       const page = await (window as never as Bridge).cuepoint.browseLibrary({ limit: 50 });
@@ -857,15 +858,16 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await go(win, "#/library");
     await go(win, `#/discover/similar/${seed}`);
     const bar = win.getByRole("toolbar", { name: "Selected tracks" });
-    await expect(bar).toBeVisible({ timeout: 30_000 });
-    const play = bar.getByRole("button", { name: "Play", exact: true });
-    await expect(play).toHaveAttribute("aria-disabled", "true");
-    await expect(play).toHaveAttribute("title", "Select tracks first");
+    // Nothing selected: no group buttons, only the count and Select all.
+    await expect(win.getByRole("button", { name: "Select all" })).toBeVisible({ timeout: 30_000 });
+    await expect(bar).toHaveCount(0);
     await expect(win.getByRole("button", { name: "Actions…" })).toHaveCount(0);
 
     const rows = win.getByRole("table", { name: "Similar tracks" }).locator('[role="row"][data-index]');
     await expect(rows.first()).toBeVisible({ timeout: 30_000 });
     await rows.first().click();
+    await expect(bar).toBeVisible();
+    const play = bar.getByRole("button", { name: "Play", exact: true });
     await expect(play).not.toHaveAttribute("aria-disabled", "true");
     const length = (await queueState(win)).titles.length;
     await use(win, play, "the bar's Play");
@@ -997,10 +999,10 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await expect(win.getByRole("dialog", { name: "Edit values" })).toBeVisible({ timeout: 15_000 });
     await win.keyboard.press("Escape");
 
-    // And so does the selection bar's Fix.
+    // And so does the selection bar's More.
     await openLibrary(win);
     await pick(win, "Warm One", "Warm Two");
-    await use(win, toolbar(win).getByRole("button", { name: "Fix", exact: true }), "the bar's Fix");
+    await use(win, toolbar(win).getByRole("button", { name: "More", exact: true }), "the bar's More");
     await choose(win, "Edit values…");
     await expect(win).toHaveURL(/#\/library/);
     await expect(win.getByRole("dialog", { name: "Edit values" })).toBeVisible({ timeout: 15_000 });
@@ -1052,7 +1054,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     expect(labels.filter((label) => /export to rekordbox/i.test(label))).toEqual([]);
   });
 
-  test("Checking every file is Clean's; the Library's entry runs the same check", async () => {
+  test("Checking every file is Clean's, on its Missing files tab", async () => {
     const idle = () =>
       expect
         .poll(async () => win.evaluate(async () => (await (window as never as Bridge).cuepoint.listJobs({ state: "active", limit: 50 })).jobs.length as number), { timeout: 60_000 })
@@ -1065,14 +1067,6 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     const started = await checks();
     await use(win, win.getByRole("button", { name: /^Check (every file|again)$/ }), "Clean's check button");
     await expect.poll(checks, { timeout: 30_000 }).toBe(started + 1);
-    await idle();
-
-    // The link: the Library's Fix menu offers it too, and what it starts is the same kind of check.
-    await openLibrary(win);
-    await pick(win, "Warm One");
-    await use(win, toolbar(win).getByRole("button", { name: "Fix", exact: true }), "the bar's Fix");
-    await choose(win, "Check the files are still there");
-    await expect.poll(checks, { timeout: 30_000 }).toBe(started + 2);
     await idle();
   });
 
@@ -1095,12 +1089,17 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await go(win, "#/library");
     await go(win, `#/discover/similar/${seed}`);
     const bar = win.getByRole("toolbar", { name: "Selected tracks" });
-    await expect(bar).toBeVisible({ timeout: 30_000 });
+    // The bar shows once a suggestion is selected.
+    const rows = win.getByRole("table", { name: "Similar tracks" }).locator('[role="row"][data-index]');
+    await expect(rows.first()).toBeVisible({ timeout: 30_000 });
+    await rows.first().click();
+    await expect(bar).toBeVisible();
     await expect(bar.getByRole("button", { name: /^(Organize|Add to Collection)/ })).toHaveCount(0);
     await use(win, win.getByRole("button", { name: "Open in Library" }), "Similar tracks' Open in Library");
     await expect(win).toHaveURL(/#\/library$/, { timeout: 15_000 });
     await expect(libraryTable(win)).toBeVisible({ timeout: 30_000 });
-    // And the home has the group the link leads to.
+    // And the home has the group the link leads to (the bar shows with a selection).
+    await libraryRow(win, "Build").click();
     await expect(toolbar(win).getByRole("button", { name: "Organize", exact: true })).toBeVisible();
   });
 

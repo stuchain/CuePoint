@@ -15,15 +15,21 @@ function entries(group: TrackActionGroupId): TrackContextMenuItem[] {
   if (group === "play") {
     return playItems(2, { onPlay: vi.fn(), onPlayNext: vi.fn(), onAddToQueue: vi.fn() });
   }
-  if (group === "explore") return [item("similar", "Similar tracks"), item("artist-page", "Artist page")];
-  if (group === "more") return [item("copy", "Copy"), item("reveal", "Show in folder")];
+  if (group === "more") {
+    return [
+      item("similar", "Similar tracks"),
+      item("artist-page", "Artist page"),
+      item("copy", "Copy"),
+      item("reveal", "Show in folder"),
+    ];
+  }
   return [];
 }
 
 describe("the menu of a page's library rows", () => {
   for (const ids of [
-    ["play", "explore", "more"],
-    ["play", "explore"],
+    ["play", "more"],
+    ["play"],
   ] as const) {
     it(`has the bar's buttons (${ids.join(", ")}) as its groups, whatever the selection`, () => {
       for (const count of [1, 2, 900]) {
@@ -42,11 +48,11 @@ describe("the menu of a page's library rows", () => {
   }
 
   it("is empty for no tracks", () => {
-    expect(libraryRowMenu(["play", "explore"], 0, entries)).toEqual([]);
+    expect(libraryRowMenu(["play", "more"], 0, entries)).toEqual([]);
   });
 
   it("leaves out a group with nothing to offer, as the Library's menu does", () => {
-    const menu = libraryRowMenu(["play", "explore"], 1, (group) => (group === "explore" ? [] : entries(group)));
+    const menu = libraryRowMenu(["play", "more"], 1, (group) => (group === "more" ? [] : entries(group)));
     expect(labels(menu)).toEqual(labels(entries("play")));
   });
 });

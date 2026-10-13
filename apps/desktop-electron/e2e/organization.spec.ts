@@ -274,7 +274,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       const rows = table.getByRole("row").filter({ hasText: /Track/ });
       await rows.nth(0).click();
       await rows.nth(2).click({ modifiers: ["Shift"] });
-      await expect(window.locator(".library-toolbar__count")).toContainText("3 selected");
+      await expect(window.getByRole("button", { name: /^Clear selection, 3 selected/ })).toBeVisible();
 
       await dragRowsOnto(window, 0, "Openers");
       await expect(window.getByText(/Added 3 tracks to Openers/i).first()).toBeVisible({
@@ -695,9 +695,9 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
 
       // Everything matching, which is never a list of ids.
       await window.getByRole("button", { name: "Select all" }).click();
-      await expect(window.locator(".library-toolbar__count")).toContainText(
-        "50,000 selected (everything matching)",
-      );
+      await expect(
+        window.getByRole("button", { name: "Clear selection, 50,000 selected (everything matching)" }),
+      ).toBeVisible();
 
       await window.getByRole("button", { name: "Organize", exact: true }).click();
       await window.getByRole("menuitem", { name: "Favorite", exact: true }).click();
@@ -753,9 +753,9 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // the whole batch, and one batch id across the history it wrote. The
       // selection is still what it was — stopping the work does not un-choose
       // the tracks — so this picks up where the last one left off.
-      await expect(window.locator(".library-toolbar__count")).toContainText(
-        "(everything matching)",
-      );
+      await expect(
+        window.getByRole("button", { name: /^Clear selection, .* \(everything matching\)$/ }),
+      ).toBeVisible();
       await window.getByRole("button", { name: "Organize", exact: true }).click();
       await window.getByRole("menuitem", { name: "Favorite", exact: true }).click();
       await window.getByRole("dialog").getByRole("button", { name: "Change 50,000 tracks" }).click();

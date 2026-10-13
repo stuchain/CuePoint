@@ -125,7 +125,7 @@ import { followJob } from "./followJob";
 import { appliedLine, jobErrorMessage } from "./libraryFormat";
 import { DEFAULT_LIBRARY_QUERY, type LibraryQuery, queryKey } from "./libraryQuery";
 import { copySummary, gatherTracksAsText, writeClipboard } from "./trackClipboard";
-import { EMPTY_SELECTION, isSelected, onlySelectedId, selectAll, selectedRowIndex } from "./trackSelection";
+import { isSelected, onlySelectedId, selectedRowIndex } from "./trackSelection";
 import { useFacet, useFilterVocabulary, useQuickFacets } from "./useFilterVocabulary";
 import { keysSources, openSource, withSource } from "./savedScope";
 import { sourceKey } from "./filterText";
@@ -521,7 +521,6 @@ export function LibraryScreen({
 
   const clean = useLibraryClean({
     batch,
-    onMessage: (message, tone) => push(message, tone),
     onChanged: () => {
       window_.reload();
       detail.reload();
@@ -973,7 +972,7 @@ export function LibraryScreen({
   );
 
   /**
-   * Everything that can be done to the tracks a menu is about, as the six
+   * Everything that can be done to the tracks a menu is about, as the four
    * groups (FLW-8). The right-click menu shows them end to end and the bar
    * shows each as a button, so there is one list and they cannot drift.
    */
@@ -1051,10 +1050,9 @@ export function LibraryScreen({
           },
           fix: {
             // Editing opens in place (K4). Writing tags stays on its own dialog here
-            // until the save window replaces it.
+            // until the save bar replaces it. Both are drawn into More.
             onEdit: checking.onEdit,
             onWriteTags: checking.onWriteTags,
-            onCheckFiles: checking.onCheckFiles,
           },
           more: {
             // The menu's rows, not the selection's: right-clicking outside a
@@ -1112,7 +1110,7 @@ export function LibraryScreen({
     [query, selection.count, selection.selection, window_.total],
   );
 
-  /** The bar's six buttons, as they stand for this selection. */
+  /** The bar's four buttons, as they stand for this selection. */
   const barGroups = groupsFor({
     x: 0,
     y: 0,
@@ -1122,7 +1120,7 @@ export function LibraryScreen({
     kind: "selection",
     group: null,
     // Only whether there is a track: the menu is built when a group opens, with
-    // the real first track. 0 keeps Explore and Review from reading as absent.
+    // the real first track. 0 keeps More's pages and Review from reading as absent.
     first: selection.count > 0 ? 0 : null,
     credits: null,
   });
@@ -1135,12 +1133,12 @@ export function LibraryScreen({
   const openGroup = useCallback(
     async (id: TrackActionGroupId, anchor: { x: number; y: number }) => {
       const target = barTarget();
-      const needsFirst = id === "explore" || id === "beatport";
+      const needsFirst = id === "more" || id === "beatport";
       const rows = id === "play" ? await selection.gatherRows(QUEUE_ACTION_LIMIT) : [];
       const first = needsFirst
         ? (target.trackId ?? (await selection.gatherIds(1))[0] ?? null)
         : null;
-      const reading = id === "explore" ? discoverCredits(first) : null;
+      const reading = id === "more" ? discoverCredits(first) : null;
       const credits = reading ? await reading : null;
       if (!mounted.current) return;
       setMenu({
@@ -1947,17 +1945,7 @@ export function LibraryScreen({
                 keeps the row that grows. The ready note goes first and the key note
                 takes the line when it is done. */}
             {keyIsEmptyList && (
-              <LibraryNoKeyNote
-                count={window_.total}
-                onMatch={
-                  onOpenMatch
-                    ? () => {
-                        const described = batchSelection(selectAll(EMPTY_SELECTION), query).query;
-                        if (described) onOpenMatch({ query: described, count: window_.total });
-                      }
-                    : undefined
-                }
-              />
+              <LibraryNoKeyNote count={window_.total} />
             )}
             {!keyIsEmptyList && !keyFilterFoundNothing && isReadyNoteOpen(importedAt) && (
               <LibraryReadyNote armedAt={importedAt} onShownChange={setReadyShown} />
@@ -1970,7 +1958,6 @@ export function LibraryScreen({
               (importedAt !== null && (!isReadyNoteOpen(importedAt) || readyShown === false))) && (
               <LibraryKeyNote
                 trackCount={summary.track_count}
-                onMatch={onOpenMatch ? () => onOpenMatch() : undefined}
                 asked={keyFilterFoundNothing}
               />
             )}
@@ -1991,7 +1978,6 @@ export function LibraryScreen({
               quickFacets={quick.facets}
               quickFacetsLoading={quick.loading}
               onRequestQuickFacets={quick.load}
-              onMatchTracks={onOpenMatch ? () => onOpenMatch() : undefined}
               onOpenKeys={
                 // Not on a Smart Collection: its rules choose the tracks, and they are no place.
                 onOpenKeys && smart === null && scopedCollection?.kind !== "smart"
@@ -2036,9 +2022,10 @@ export function LibraryScreen({
             )}
           </div>
 
-          {/* One row directly above the table: the selection bar, the count and
-              Columns… (FLW-8, LIB-8, LIB-10). Always there, so the table never
-              moves when a selection is made or let go. */}
+          {/* One row directly above the table: the selection bar's buttons once
+              something is selected, the count and Select all (FLW-8, LIB-8). Its
+              height is the same either way, so the table never moves when a
+              selection is made or let go. Columns… is the table header's corner. */}
           <LibraryToolbar
             groups={barGroups}
             total={window_.total}
@@ -2049,7 +2036,6 @@ export function LibraryScreen({
             onOpenGroup={(id, anchor) => void openGroup(id, anchor)}
             onClear={selection.clear}
             onSelectAll={selection.selectAllMatching}
-            onColumns={() => setPickerOpen(true)}
           />
 
           <div className="library-screen__table">
@@ -2070,6 +2056,7 @@ export function LibraryScreen({
               selectedKeys={selectedKeys}
               getRowKey={(row) => row.id ?? -1}
               {...playMarks}
+              onColumns={() => setPickerOpen(true)}
               onSelect={selection.onRowClick}
               // DEC-046's seam, finally given DEC-012's meaning: the row plays
               // and the whole view — the query, not the loaded window — becomes

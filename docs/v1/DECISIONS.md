@@ -7949,3 +7949,29 @@ for a multiple selection, and an open list of Rekordbox's values, including a ke
 - "Details from Rekordbox" starts closed (a fold someone chose is remembered) and no longer lists "Key (not used)".
 
 **Decided with**: User (K5, wish list round 2) · **Date**: 2026-10-13
+
+
+
+## DEC-286 — Four Menus, Shown Only With a Selection; Columns in the Table's Corner
+
+**Status**: Approved · **Related**: K2, K21, K4, N2-1, FLW-8, DEC-209, DEC-112, DEC-217, DEC-245
+
+**Context**: The bar above the Library table held six menu buttons, Clear selection, the count, Select all and
+Columns… at all times, disabled until something was selected. It was the busiest row in the app and most of it did
+nothing most of the time.
+
+**Decision**:
+- The tracks' actions are four menus: **Play**, **Organize** (now with Copy), **Beatport** and **More** (Similar
+  tracks, Artist page, Label page, Edit values…, Save changes into the files…, Show in folder). Explore and Fix are
+  gone; the right-click menu follows the same four. "Check the files are still there" leaves the menus: Clean ▸
+  Missing files is its home. "Save changes into the files…" stays under More until the save bar replaces it.
+- With nothing selected the row shows only the count and Select all. With a selection it shows the four menus and
+  "N selected ×" (the × clears and focus moves to Select all). This amends DEC-209 ("always there, disabled") for the
+  Library, Keys and Discover bars.
+- The row keeps the same height either way, on one line and on DEC-217's two lines, so a first click never moves the
+  rows under a double-click (DEC-112).
+- Columns… is a small icon button in the table header's right corner, in its own track, on every table that offers
+  it (Library, Keys, Discover's Library half, Similar tracks).
+- The Library's key notes and Key filter lose their Match tracks… buttons; matching is Beatport ▸ Match tracks….
+
+**Decided with**: User (K2, K21, K4) · **Date**: 2026-10-13

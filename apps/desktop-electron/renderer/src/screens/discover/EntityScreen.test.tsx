@@ -633,7 +633,6 @@ describe("the library half: library rows", () => {
       "Play",
       "Play next",
       "Add to queue",
-      "Explore",
       "More",
     ]);
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Add to queue" }));
@@ -642,8 +641,8 @@ describe("the library half: library rows", () => {
 
     fireEvent.contextMenu(rowOf("Harbour Lights"), { clientX: 10, clientY: 10 });
     menu = await screen.findByRole("menu", {}, LOADED);
-    await userEvent.click(within(menu).getByRole("menuitem", { name: /Explore/ }));
-    await userEvent.click(within(screen.getByRole("menu", { name: "Explore" })).getByRole("menuitem", { name: /Artist page/ }));
+    await userEvent.click(within(menu).getByRole("menuitem", { name: /More/ }));
+    await userEvent.click(within(screen.getByRole("menu", { name: "More" })).getByRole("menuitem", { name: /Artist page/ }));
     await userEvent.click(
       within(screen.getByRole("menu", { name: "Artist page" })).getByRole("menuitem", {
         name: "Kiko",
@@ -658,8 +657,8 @@ describe("the library half: library rows", () => {
     await within(yourTracks()).findByText("Harbour Lights", {}, LOADED);
     fireEvent.contextMenu(rowOf("Harbour Lights"), { clientX: 10, clientY: 10 });
     const menu = await screen.findByRole("menu", {}, LOADED);
-    await userEvent.click(within(menu).getByRole("menuitem", { name: /Explore/ }));
-    fireEvent.click(within(screen.getByRole("menu", { name: "Explore" })).getByRole("menuitem", { name: "Similar tracks" }));
+    await userEvent.click(within(menu).getByRole("menuitem", { name: /More/ }));
+    fireEvent.click(within(screen.getByRole("menu", { name: "More" })).getByRole("menuitem", { name: "Similar tracks" }));
     expect(where()).toBe("/discover/similar/1");
   });
 
@@ -671,9 +670,8 @@ describe("the library half: library rows", () => {
     const bar = within(library).getByRole("toolbar", { name: "Selected tracks" });
     expect(within(bar).getAllByRole("button").map((button) => button.textContent)).toEqual([
       "Play ▸",
-      "Explore ▸",
       "More ▸",
-      "Clear selection",
+      "1 selected ×",
     ]);
     fireEvent.click(within(bar).getByRole("button", { name: "Play" }));
     const menu = await screen.findByRole("menu", {}, LOADED);
@@ -706,15 +704,15 @@ describe("the library half: library rows", () => {
       });
       const menu = await screen.findByRole("menu", {}, LOADED);
       const top = entriesOf(menu);
-      expect(top.slice(-2)).toEqual(["Explore", "More"]);
-      const inMenu: Record<string, string[]> = { Play: top.slice(0, -2) };
-      for (const group of ["Explore", "More"]) {
+      expect(top.slice(-1)).toEqual(["More"]);
+      const inMenu: Record<string, string[]> = { Play: top.slice(0, -1) };
+      for (const group of ["More"]) {
         await userEvent.click(within(menu).getByRole("menuitem", { name: new RegExp(`^${group}`) }));
         inMenu[group] = entriesOf(await screen.findByRole("menu", { name: group }));
       }
       closeMenus();
 
-      for (const group of ["Play", "Explore", "More"]) {
+      for (const group of ["Play", "More"]) {
         fireEvent.click(within(bar).getByRole("button", { name: group }));
         const opened_ = await screen.findByRole("menu", { name: group }, LOADED);
         expect(entriesOf(opened_)).toEqual(inMenu[group]);
@@ -730,12 +728,11 @@ describe("the library half: library rows", () => {
     fireEvent.click(within(yourTracks()).getByText("Low Tide"), { ctrlKey: true });
     fireEvent.contextMenu(rowOf("Low Tide"), { clientX: 10, clientY: 10 });
     const menu = await screen.findByRole("menu", {}, LOADED);
-    // Two tracks: the bar's groups too, Explore for the first of them.
+    // Two tracks: the bar's groups too, More's pages for the first of them.
     expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
       "Play 2 tracks",
       "Play next",
       "Add to queue",
-      "Explore",
       "More",
     ]);
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Play 2 tracks" }));

@@ -43,8 +43,6 @@ interface QuickFiltersProps {
   loading?: boolean;
   /** Ask the engine for the view's answer; called whenever a dropdown opens. */
   onOpen: () => void;
-  /** Open matching, for the Key list of a library nobody has matched. */
-  onMatchTracks?: () => void;
   /** Open the Keys page on this view's playlist or Collection (PAGES-16). */
   onOpenKeys?: () => void;
 }
@@ -73,7 +71,6 @@ export function QuickFilters({
   facets,
   loading = false,
   onOpen,
-  onMatchTracks,
   onOpenKeys,
 }: QuickFiltersProps) {
   const [open, setOpen] = useState<QuickKind | null>(null);
@@ -133,14 +130,6 @@ export function QuickFilters({
                     facets={facets}
                     loading={loading}
                     onFiltersChange={onFiltersChange}
-                    onMatchTracks={
-                      onMatchTracks
-                        ? () => {
-                            setOpen(null);
-                            onMatchTracks();
-                          }
-                        : undefined
-                    }
                     onOpenKeys={
                       onOpenKeys
                         ? () => {
@@ -210,7 +199,7 @@ function Choice({
  * has none inside a library that does is a different thing to say, and nothing
  * to match.
  */
-function NoKeys({ onMatchTracks }: { onMatchTracks?: () => void }) {
+function NoKeys() {
   const [none, setNone] = useState<boolean | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -236,11 +225,6 @@ function NoKeys({ onMatchTracks }: { onMatchTracks?: () => void }) {
   return (
     <div className="cp-quick__empty">
       <p className="cp-quick__note">No tracks have a Beatport key yet. Keys come from matching.</p>
-      {onMatchTracks && (
-        <Button variant="primary" onClick={onMatchTracks}>
-          Match tracks…
-        </Button>
-      )}
     </div>
   );
 }
@@ -250,14 +234,13 @@ function KeyList({
   facets,
   loading,
   onFiltersChange,
-  onMatchTracks,
   onOpenKeys,
-}: ListProps & { onMatchTracks?: () => void; onOpenKeys?: () => void }) {
+}: ListProps & { onOpenKeys?: () => void }) {
   if (!facets) {
     return <p className="cp-quick__note">{loading ? "Reading the keys…" : "Keys are not available."}</p>;
   }
   if (facets.keys.length === 0) {
-    return <NoKeys onMatchTracks={onMatchTracks} />;
+    return <NoKeys />;
   }
   const chosen = chosenValues(filters, KEY_FIELD);
   return (

@@ -753,8 +753,7 @@ describe("the notice line (LIB-1, DEC-201)", () => {
 
   it("says keys come from matching, once the import's work is done and no track has one", async () => {
     keyFacet([{ value: null, count: 3880 }]);
-    const onOpenMatch = vi.fn();
-    renderScreen({ onOpenMatch });
+    renderScreen({ onOpenMatch: vi.fn() });
     await tableReady();
 
     await importAnother();
@@ -762,8 +761,8 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     expect(
       await screen.findByText("No tracks have a Beatport key yet. Keys come from matching."),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
-    expect(onOpenMatch).toHaveBeenCalledTimes(1);
+    // Matching is the bar's Beatport ▸ Match tracks…, not a button on the note.
+    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
   });
 
   it("shows one notice at a time: the ready note first, the key note after", async () => {
@@ -803,16 +802,6 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     const asked = await screen.findByRole("status", { name: "No Beatport keys yet" });
     expect(within(asked).queryByRole("button", { name: "Dismiss this note" })).toBeNull();
     expect(screen.getAllByRole("status", { name: "No Beatport keys yet" })).toHaveLength(1);
-  });
-
-  it("does not offer Match tracks… where the shell cannot open it", async () => {
-    keyFacet([{ value: null, count: 3880 }]);
-    renderScreen();
-    await tableReady();
-    await importAnother();
-
-    await screen.findByText(/No tracks have a Beatport key yet/);
-    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
   });
 
   it("lists the first steps as a chip beside the heading once imported (RUN-3)", async () => {
@@ -2446,9 +2435,10 @@ describe("organizing a selection (ORG-11)", () => {
         "Rate",
         "Favorite",
         "Remove favorite",
+        "Copy",
       ]);
-      // Two dividers inside the group, none along its top.
-      expect(within(menu).getAllByRole("separator")).toHaveLength(2);
+      // Three dividers inside the group (Copy has one), none along its top.
+      expect(within(menu).getAllByRole("separator")).toHaveLength(3);
     });
 
     it("acts on the selection, not on a row", async () => {
@@ -3436,7 +3426,7 @@ describe("opened on a Health count's rules (CLEAN-12)", () => {
     expect(lastBrowse().scope).toBeUndefined();
   });
 
-  it("offers Match tracks… with those tracks on the notice line for Key is empty (FLW-14)", async () => {
+  it("says on the notice line how many tracks have no key, for Key is empty (FLW-14)", async () => {
     const NO_KEY: FilterRuleSet = { match: "all", rules: [{ field: "key", operator: "is_empty" }] };
     const onOpenMatch = vi.fn();
     renderScreen({ openWith: { rules: NO_KEY, token: "nav-1" }, onOpenMatch });
@@ -3444,12 +3434,7 @@ describe("opened on a Health count's rules (CLEAN-12)", () => {
     const note = await screen.findByRole("status", { name: "Tracks with no Beatport key" });
     expect(note).toHaveTextContent("3 tracks have no Beatport key.");
     expect(note).toHaveTextContent("Beatport's record has none");
-    await userEvent.click(within(note).getByRole("button", { name: "Match tracks…" }));
-    expect(onOpenMatch).toHaveBeenCalledTimes(1);
-    expect(onOpenMatch).toHaveBeenCalledWith({
-      query: expect.objectContaining({ filters: NO_KEY }),
-      count: 3,
-    });
+    expect(within(note).queryByRole("button", { name: "Match tracks…" })).toBeNull();
   });
 
   it("shows no such note for another rule", async () => {
@@ -3542,36 +3527,6 @@ describe("quick filters and saving (PAGES-05B)", () => {
       filters: { rules: unknown[] };
     };
     expect(last.filters.rules).toHaveLength(1);
-  });
-
-  it("opens Match tracks… from a Key list with no keys in it", async () => {
-    const onOpenMatch = vi.fn();
-    install({
-      getLibrarySummary: vi.fn().mockResolvedValue(loadedSummary()),
-      getLibraryFacet: vi.fn().mockResolvedValue({
-        field: "key",
-        values: [{ value: null, count: 3 }],
-        truncated: false,
-        total_values: 1,
-        range: null,
-      }),
-      getLibraryQuickFacets: vi.fn().mockResolvedValue({
-        keys: [],
-        no_key: 3,
-        bpm: { min: 120, max: 128, missing: 0 },
-        genres: [],
-        genres_total: 0,
-        genres_truncated: false,
-        total: 0,
-        total_seconds: 0,
-        duration_missing: 0,
-      }),
-    });
-    renderScreen({ onOpenMatch });
-    await tableReady();
-    await userEvent.click(screen.getByRole("button", { name: "Key ▾" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Match tracks…" }));
-    expect(onOpenMatch).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the open playlist when a Smart Collection is saved (FLW-7)", async () => {

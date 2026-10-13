@@ -28,7 +28,7 @@ import { revealTrack } from "../clean/revealTrack";
 import { LIBRARY_COLUMNS } from "../library/libraryColumns";
 import { creditsFor, discoverMenuItems } from "../library/libraryDiscover";
 import { DEFAULT_LIBRARY_QUERY, queryKey, type LibraryQuery } from "../library/libraryQuery";
-import { moreItems, playItems, type TrackActionGroupId } from "../library/trackActions";
+import { moreItems, moreWithExplore, playItems, type TrackActionGroupId } from "../library/trackActions";
 import { copySummary, gatherTracksAsText, writeClipboard } from "../library/trackClipboard";
 import { isSelected, onlySelectedId } from "../library/trackSelection";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "../library/useLibraryPlayback";
@@ -79,7 +79,7 @@ interface MenuState {
 type Target = Pick<MenuState, "rows" | "index" | "credits">;
 
 /** The groups the bar and the menu hold (FLW-8). */
-const GROUPS: readonly TrackActionGroupId[] = ["play", "explore", "more"];
+const GROUPS: readonly TrackActionGroupId[] = ["play", "more"];
 
 export function LibraryHalf({
   kind,
@@ -197,27 +197,28 @@ export function LibraryHalf({
           onAddToQueue: () => void playback.addToQueue(rows),
         });
       }
-      if (group === "explore") {
-        // Several tracks: the first, as in the Library.
-        return discoverMenuItems(
-          { count: 1, credits },
-          { onSimilar: () => onOpenSimilar(firstId), onOpenPage: onOpenEntity },
-        );
-      }
       if (group === "more") {
         const one = rows.length === 1;
-        return moreItems(
-          { count: rows.length, collection: null, credits: null, revealable: one && first.file_path !== "" },
-          {
-            onCopy: () => void copyRows(rows),
-            onReveal: one
-              ? () => {
-                  void revealTrack(firstId).then((outcome) => {
-                    if (outcome) push(outcome.message, outcome.tone);
-                  });
-                }
-              : null,
-          },
+        // The page entries first (several tracks: the first, as in the Library), a divider, then
+        // Copy and Show in folder.
+        return moreWithExplore(
+          discoverMenuItems(
+            { count: 1, credits },
+            { onSimilar: () => onOpenSimilar(firstId), onOpenPage: onOpenEntity },
+          ),
+          moreItems(
+            { count: rows.length, collection: null, credits: null, revealable: one && first.file_path !== "" },
+            {
+              onCopy: () => void copyRows(rows),
+              onReveal: one
+                ? () => {
+                    void revealTrack(firstId).then((outcome) => {
+                      if (outcome) push(outcome.message, outcome.tone);
+                    });
+                  }
+                : null,
+            },
+          ),
         );
       }
       return [];
@@ -235,7 +236,7 @@ export function LibraryHalf({
     async (group: TrackActionGroupId): Promise<TrackContextMenuItem[]> => {
       const { rows, index } = await selectedRows();
       const firstId = rows[0]?.id;
-      const credits = group === "explore" && firstId != null ? await creditsFor(firstId, heldDetail) : null;
+      const credits = group === "more" && firstId != null ? await creditsFor(firstId, heldDetail) : null;
       return groupItems(group, { rows, index, credits });
     },
     [groupItems, heldDetail, selectedRows],
@@ -275,6 +276,7 @@ export function LibraryHalf({
           selectedKeys={selectedKeys}
           getRowKey={(row) => row.id ?? -1}
           {...playMarks}
+          onColumns={() => setPicking(true)}
           onSelect={(row, index, event) => {
             onActivate();
             selection.onRowClick(row, index, event);
@@ -306,7 +308,6 @@ export function LibraryHalf({
             onActivate();
             selection.selectAllMatching();
           }}
-          onColumns={() => setPicking(true)}
         />
       </div>
 

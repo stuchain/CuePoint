@@ -272,7 +272,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
 
       await window.getByRole("button", { name: "Select all" }).click();
       // The bar's groups hold the entries the right-click menu does (FLW-8): Beatport ▸
-      // and Fix ▸ open Clean with the selection.
+      // opens Clean with the selection, and More ▸ holds Edit values… and the file writer.
       const bar = window.getByRole("toolbar", { name: "Selected tracks" });
       await bar.getByRole("button", { name: "Beatport", exact: true }).click();
       const beatport = window.getByRole("menu");
@@ -280,9 +280,9 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
         await expect(beatport.getByRole("menuitem", { name: entry, exact: true })).toBeVisible();
       }
       await window.keyboard.press("Escape");
-      await bar.getByRole("button", { name: "Fix", exact: true }).click();
+      await bar.getByRole("button", { name: "More", exact: true }).click();
       const menu = window.getByRole("menu");
-      for (const entry of ["Edit values…", "Save changes into the files…", "Check the files are still there"]) {
+      for (const entry of ["Edit values…", "Save changes into the files…", "Show in folder"]) {
         await expect(menu.getByRole("menuitem", { name: entry, exact: true })).toBeVisible();
       }
       await menu.getByRole("menuitem", { name: "Edit values…" }).click();
@@ -350,9 +350,9 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.reload();
       await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await row(window, "Tone One").getByText("Tone One").click({ button: "right" });
-      // The menu's groups are submenus (FLW-8): Fix ▸ holds it.
-      await window.getByRole("menu").getByRole("menuitem", { name: "Fix", exact: true }).click();
-      await window.getByRole("menu", { name: "Fix" }).getByRole("menuitem", { name: "Save changes into the files…" }).click();
+      // The menu's groups are submenus (FLW-8): More ▸ holds it.
+      await window.getByRole("menu").getByRole("menuitem", { name: "More", exact: true }).click();
+      await window.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: "Save changes into the files…" }).click();
 
       const dialog = window.getByRole("dialog", { name: "Save changes into the files" });
       // Nothing can be written before a preview has answered.

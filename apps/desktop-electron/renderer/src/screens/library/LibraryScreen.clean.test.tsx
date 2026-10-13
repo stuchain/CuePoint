@@ -3,13 +3,14 @@
  *
  * Over a faked bridge that has Clean's routes:
  *
- * - **One operations list** carries Play, Organize, Beatport, Fix and More,
+ * - **One operations list** carries Play, Organize, Beatport and More,
  *   in the row menu and the selection bar's buttons alike.
- * - **Each entry does what it says**: Beatport ▸ and Fix ▸ open Clean with the
+ * - **Each entry does what it says**: Beatport ▸ opens Clean with the
  *   selected tracks (the match window, Review) rather than running anything
  *   here; Beatport's values, Edit values and Save changes open their dialogs in
- *   place (K4); checking files is a job the status strip follows.
- * - **The toolbar row** is one row above the table: the bar, the count, Columns….
+ *   place (K4); More ▸ holds Edit values and Save changes.
+ * - **The toolbar row** is one row above the table: the bar (with a selection), the count,
+ *   Select all; Columns… is the table header's corner.
  * - **Overridden cells are marked** and name their source, and a copy reads the
  *   value shown.
  * - **The Clean columns** are hidden by default and offered in the picker.
@@ -31,7 +32,7 @@ import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/she
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { LIBRARY_COLUMNS } from "./libraryColumns";
 import { LibraryScreen } from "./LibraryScreen";
-import { menuItem } from "./menuPick.test.util";
+import { findMenuItem, menuItem } from "./menuPick.test.util";
 
 const SUMMARY: LibrarySummary = {
   track_count: 3,
@@ -269,13 +270,12 @@ const BETWEEN = [
   "Rate",
   "Favorite",
   "Remove favorite",
+  "Copy",
   "Match tracks…",
   "Review these matches",
   "Use Beatport's values…",
   "Edit values…",
   "Save changes into the files…",
-  "Check the files are still there",
-  "Copy",
   "Show in folder",
 ];
 
@@ -294,7 +294,7 @@ async function select(...texts: string[]) {
 }
 
 describe("the operations list", () => {
-  it("is the bar's groups as submenus: Play on top, then Organize, Beatport, Fix, More", async () => {
+  it("is the bar's groups as submenus: Play on top, then Organize, Beatport, More", async () => {
     renderScreen();
     await tableReady();
     const menu = await openMenuOn("Track 2");
@@ -304,12 +304,11 @@ describe("the operations list", () => {
       "Add to queue",
       "Organize",
       "Beatport",
-      "Fix",
       "More",
     ]);
     // Each parent opens exactly the entries the bar's button for it opens.
     const seen = BETWEEN.slice(0, 3);
-    for (const name of ["Organize", "Beatport", "Fix", "More"]) {
+    for (const name of ["Organize", "Beatport", "More"]) {
       await userEvent.click(within(menu).getByRole("menuitem", { name: new RegExp(`^${name}`) }));
       seen.push(...labelsOf(screen.getByRole("menu", { name })));
     }
@@ -321,7 +320,7 @@ describe("the operations list", () => {
     await tableReady();
     await userEvent.click(screen.getByText("Track 1"));
     const seen: string[] = [];
-    for (const name of ["Play", "Organize", "Beatport", "Fix", "More"]) {
+    for (const name of ["Play", "Organize", "Beatport", "More"]) {
       seen.push(...labelsOf(await openGroup(name)));
       await userEvent.keyboard("{Escape}");
     }
@@ -377,8 +376,8 @@ describe("what the entries do", () => {
 
   it.each([
     ["Beatport", "Use Beatport's values…", "Use Beatport's values"],
-    ["Fix", "Edit values…", "Edit values"],
-    ["Fix", "Save changes into the files…", "Save changes into the files"],
+    ["More", "Edit values…", "Edit values"],
+    ["More", "Save changes into the files…", "Save changes into the files"],
   ] as const)(
     "opens the dialog for %s ▸ %s here, not on Clean (K4)",
     async (group, entry, title) => {
@@ -398,7 +397,7 @@ describe("what the entries do", () => {
     renderScreen();
     await tableReady();
     await select("Track 1", "Track 3");
-    await userEvent.click(await menuItem("Edit values…", await openGroup("Fix")));
+    await userEvent.click(await menuItem("Edit values…", await openGroup("More")));
     const dialog = await screen.findByRole("dialog", { name: "Edit values" });
     fireEvent.change(within(dialog).getByRole("textbox", { name: "BPM value" }), { target: { value: "126" } });
     await userEvent.click(within(dialog).getByRole("button", { name: /^Change \d+ tracks?$/ }));
@@ -435,16 +434,11 @@ describe("what the entries do", () => {
     expect(OPEN_IN_CLEAN).not.toHaveBeenCalled();
   });
 
-  it("checks files as a job, and reads the table again when it ends", async () => {
+  it("no longer offers a file check: that is Clean's Missing files", async () => {
     renderScreen();
     await tableReady();
-    const before = mock("browseLibrary").mock.calls.length;
-    await userEvent.click(
-      (await menuItem("Check the files are still there", await openMenuOn("Track 3"))),
-    );
-    await waitFor(() => expect(mock("startFileCheck")).toHaveBeenCalledWith({ selection: { track_ids: [3] } }));
-    expect(await screen.findByText("File check finished.")).toBeInTheDocument();
-    await waitFor(() => expect(mock("browseLibrary").mock.calls.length).toBeGreaterThan(before));
+    expect(await findMenuItem("Check the files are still there", await openMenuOn("Track 3"))).toBeNull();
+    expect(mock("startFileCheck")).not.toHaveBeenCalled();
   });
 
   it("shows a moved file's nearest folder", async () => {
@@ -470,46 +464,51 @@ describe("what the entries do", () => {
     await select("Track 1", "Track 2");
     await openGroup("More");
     expect((await menuItem("Show in folder"))).toHaveAttribute("aria-disabled", "true");
+    await userEvent.keyboard("{Escape}");
+    // Copy is Organize's now.
+    await openGroup("Organize");
     expect((await menuItem("Copy 2 tracks"))).toBeInTheDocument();
   });
 });
 
 describe("the toolbar row", () => {
-  it("is one row directly above the table, with the selection bar, the count and Columns…", async () => {
+  it("is one row directly above the table, with the count and Select all; Columns… is the header's corner", async () => {
     renderScreen();
     await tableReady();
-    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
     const table = screen.getByRole("table", { name: "Library tracks" });
-    // Document order: the bar, then the table. Nothing else stacks between.
-    expect(bar.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const row = bar.closest(".library-toolbar")!;
-    expect(within(row as HTMLElement).getByRole("button", { name: "Columns…" })).toBeInTheDocument();
-    expect(within(row as HTMLElement).getByRole("status")).toHaveTextContent("3 tracks");
+    const row = document.querySelector<HTMLElement>(".library-toolbar")!;
+    // Document order: the row, then the table. Nothing else stacks between.
+    expect(row.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(row).queryByRole("button", { name: "Columns…" })).toBeNull();
+    expect(within(table).getByRole("button", { name: "Columns…" })).toBeInTheDocument();
+    expect(within(row).getByRole("status")).toHaveTextContent("3 tracks");
+    expect(within(row).getByRole("button", { name: "Select all" })).toBeInTheDocument();
     expect(row.nextElementSibling?.contains(table)).toBe(true);
   });
 
-  it("is there before anything is selected, disabled with the reason, and never moves", async () => {
+  it("shows no group buttons until something is selected, then four and the selected-count button", async () => {
     renderScreen();
     await tableReady();
-    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
-    for (const name of ["Play", "Organize", "Explore", "Beatport", "Fix", "More"]) {
-      const button = within(bar).getByRole("button", { name });
-      expect(button).toHaveAttribute("aria-disabled", "true");
-      expect(button).toHaveAttribute("title", "Select tracks first");
+    expect(screen.queryByRole("toolbar", { name: "Selected tracks" })).toBeNull();
+    for (const name of ["Play", "Organize", "Beatport", "More"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
     }
+    expect(screen.queryByRole("button", { name: /^Clear selection/ })).toBeNull();
     await userEvent.click(screen.getByText("Track 1"));
-    expect(screen.getByRole("toolbar", { name: "Selected tracks" })).toBe(bar);
-    expect(within(bar).getByRole("button", { name: "Play" })).not.toHaveAttribute("aria-disabled");
-    expect(screen.getByRole("status", { name: "" })).toHaveTextContent("3 tracks · 1 selected");
+    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
+    for (const name of ["Play", "Organize", "Beatport", "More"]) {
+      expect(within(bar).getByRole("button", { name })).not.toHaveAttribute("aria-disabled");
+    }
+    expect(within(bar).getByRole("button", { name: "Clear selection, 1 selected" })).toHaveTextContent("1 selected ×");
+    expect(screen.getByRole("status", { name: "" })).toHaveTextContent(/^3 tracks, 1 track selected$/);
   });
 
-  it("clears the selection with Clear selection", async () => {
+  it("clears the selection with the 2 selected × button", async () => {
     renderScreen();
     await tableReady();
     await select("Track 1", "Track 2");
-    await screen.findByText("2 selected");
-    await userEvent.click(screen.getByRole("button", { name: "Clear selection" }));
-    await waitFor(() => expect(screen.queryByText(/\d selected/)).toBeNull());
+    await userEvent.click(await screen.findByRole("button", { name: "Clear selection, 2 selected" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^Clear selection/ })).toBeNull());
   });
 
   it("plays the selected tracks in table order from Play ▸", async () => {

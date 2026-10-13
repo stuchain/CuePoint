@@ -5,7 +5,7 @@
  * own correction, and Rekordbox's is never used. A library nobody has matched
  * therefore has no keys at all, and a Key column of dashes with no word of
  * explanation reads as a broken import. This is the word, on the notice line,
- * with **Match tracks…** (Clean's matching) as the next step.
+ * (Matching is the bar's Beatport ▸ Match tracks… once tracks are selected.)
  *
  * It asks the engine, over the whole library, rather than guessing from the
  * rows on screen: a note that is wrong about the user's own library is worse
@@ -22,8 +22,6 @@ import "./LibraryNotice.css";
 interface LibraryKeyNoteProps {
   /** The library's tracks; a library with none has a bigger thing to say. */
   trackCount: number;
-  /** Open matching. Absent, the note says why and offers nothing it cannot do. */
-  onMatch?: () => void;
   /**
    * True when the user asked for a key and found none (FLW-4): a Key filter that
    * matches nothing. The note then answers that, so a dismissal made after an
@@ -32,7 +30,7 @@ interface LibraryKeyNoteProps {
   asked?: boolean;
 }
 
-export function LibraryKeyNote({ trackCount, onMatch, asked = false }: LibraryKeyNoteProps) {
+export function LibraryKeyNote({ trackCount, asked = false }: LibraryKeyNoteProps) {
   const [none, setNone] = useState(false);
   const [dismissed, setDismissed] = useState(wasKeyNoteDismissed);
 
@@ -65,18 +63,13 @@ export function LibraryKeyNote({ trackCount, onMatch, asked = false }: LibraryKe
       <p className="library-notice__line">
         No tracks have a Beatport key yet. Keys come from matching.
       </p>
-      <div className="library-notice__actions">
-        {onMatch && (
-          <Button variant="primary" onClick={onMatch}>
-            Match tracks…
-          </Button>
-        )}
-        {!asked && (
+      {!asked && (
+        <div className="library-notice__actions">
           <Button variant="secondary" onClick={dismiss} aria-label="Dismiss this note">
             Dismiss
           </Button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -311,7 +311,7 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
       "Play",
       "Play next",
       "Add to queue",
-      expect.stringMatching(/^Explore/),
+      expect.stringMatching(/^More/),
     ]);
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Play next" }));
     await waitFor(() => expect(player.playNext).toHaveBeenCalledWith([items()[1]]));
@@ -324,19 +324,16 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
     expect(player.playQueue).not.toHaveBeenCalled();
   });
 
-  it("shows the selection bar always, disabled until something is selected (DEC-209)", async () => {
+  it("shows the selection bar only with a selection: Play, More and the selected-count button (DEC-209)", async () => {
     renderAt(similarPath(1));
     await listed();
-    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
-    // Play and Explore only: Organize is the Library's, Beatport and Fix are Clean's.
-    const names = within(bar).getAllByRole("button").map((button) => button.textContent);
-    expect(names).toEqual(["Play ▸", "Explore ▸", "Clear selection"]);
-    for (const name of ["Play", "Explore"]) {
-      expect(within(bar).getByRole("button", { name })).toHaveAttribute("aria-disabled", "true");
-      expect(within(bar).getByRole("button", { name })).toHaveAttribute("title", "Select tracks first");
-    }
-    expect(screen.queryByRole("button", { name: "Actions…" })).toBeNull();
+    expect(screen.queryByRole("toolbar", { name: "Selected tracks" })).toBeNull();
     fireEvent.click(within(table()).getByText(TITLES[0]));
+    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
+    // Play and More only: Organize is the Library's, Beatport is Clean's.
+    const names = within(bar).getAllByRole("button").map((button) => button.textContent);
+    expect(names).toEqual(["Play ▸", "More ▸", "1 selected ×"]);
+    expect(screen.queryByRole("button", { name: "Actions…" })).toBeNull();
     expect(within(bar).getByRole("button", { name: "Play" })).not.toHaveAttribute("aria-disabled");
   });
 
@@ -359,8 +356,8 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
     const next = SIMILAR.value!.suggestions[0].track_id;
     fireEvent.contextMenu(rowOf(TITLES[0]), { clientX: 10, clientY: 10 });
     const menu = await screen.findByRole("menu", {}, LOADED);
-    await userEvent.click(within(menu).getByRole("menuitem", { name: /^Explore/ }));
-    fireEvent.click(within(await screen.findByRole("menu", { name: "Explore" })).getByRole("menuitem", { name: "Similar tracks" }));
+    await userEvent.click(within(menu).getByRole("menuitem", { name: /^More/ }));
+    fireEvent.click(within(await screen.findByRole("menu", { name: "More" })).getByRole("menuitem", { name: "Similar tracks" }));
     expect(where()).toBe(similarPath(next));
     await waitFor(() =>
       expect(mock("getSimilarTracks")).toHaveBeenLastCalledWith({
@@ -375,8 +372,8 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
     await listed();
     fireEvent.contextMenu(rowOf(TITLES[0]), { clientX: 10, clientY: 10 });
     const menu = await screen.findByRole("menu", {}, LOADED);
-    await userEvent.click(within(menu).getByRole("menuitem", { name: /^Explore/ }));
-    fireEvent.click(within(await screen.findByRole("menu", { name: "Explore" })).getByRole("menuitem", { name: "Label page" }));
+    await userEvent.click(within(menu).getByRole("menuitem", { name: /^More/ }));
+    fireEvent.click(within(await screen.findByRole("menu", { name: "More" })).getByRole("menuitem", { name: "Label page" }));
     const label = DETAILS[String(SIMILAR.value!.suggestions[0].track_id)].credits!.label!;
     expect(where()).toBe(entityPath("label", label.ref));
   });
@@ -389,7 +386,7 @@ describe("the selected track (DEC-157)", () => {
     fireEvent.click(within(table()).getByText(TITLES[1]));
     const track = DETAILS[String(SIMILAR.value!.suggestions[1].track_id)].track;
     expect(getSelectedTrack()).toEqual({ id: track.id, key: track.effective_key });
-    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection, 1 selected" }));
     expect(getSelectedTrack()).toBeNull();
   });
 
@@ -420,6 +417,7 @@ describe("the Inspector on Similar tracks", () => {
   it("shows the same groups in the right-click menu as in the bar, for one row and for several (FLW-8)", async () => {
     renderAt(similarPath(1));
     await listed();
+    fireEvent.click(within(table()).getByText(TITLES[1]));
     const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
     const barNames = within(bar).getAllByRole("button").map((button) => button.textContent!.replace(" ▸", ""));
     const entriesOf = (menu: HTMLElement) => within(menu).getAllByRole("menuitem").map((item) => item.textContent!);
@@ -432,7 +430,7 @@ describe("the Inspector on Similar tracks", () => {
       fireEvent.contextMenu(rowOf(TITLES[picked[0]]), { clientX: 10, clientY: 10 });
       const menu = await screen.findByRole("menu", {}, LOADED);
       const top = entriesOf(menu).map((name) => name.replace(/\s*▸$/, "").trim());
-      const groups = barNames.filter((name) => name !== "Play" && name !== "Clear selection");
+      const groups = barNames.filter((name) => name !== "Play" && !name.includes("selected"));
       expect(top.slice(-groups.length)).toEqual(groups);
       const inMenu: Record<string, string[]> = { Play: top.slice(0, top.length - groups.length) };
       for (const group of groups) {
@@ -443,7 +441,7 @@ describe("the Inspector on Similar tracks", () => {
 
       // Each bar button opens the same entries.
       for (const group of ["Play", ...groups]) {
-        fireEvent.click(within(bar).getByRole("button", { name: group }));
+        fireEvent.click(within(screen.getByRole("toolbar", { name: "Selected tracks" })).getByRole("button", { name: group }));
         const opened = await screen.findByRole("menu", { name: group }, LOADED);
         expect(entriesOf(opened)).toEqual(inMenu[group]);
         closeMenus();

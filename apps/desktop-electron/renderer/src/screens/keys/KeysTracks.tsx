@@ -177,7 +177,6 @@ export function KeysTracks({
   // the Library's hook, so the batch confirmation above is the one they use.
   const clean = useLibraryClean({
     batch,
-    onMessage: (message, tone) => push(message, tone),
     onChanged: () => {
       reload();
       onTracksChanged();
@@ -445,12 +444,12 @@ export function KeysTracks({
   const openGroup = useCallback(
     async (id: TrackActionGroupId, anchor: { x: number; y: number }) => {
       const target = barTarget();
-      const needsFirst = id === "explore" || id === "beatport";
+      const needsFirst = id === "more" || id === "beatport";
       const rows = id === "play" ? await selection.gatherRows(QUEUE_ACTION_LIMIT) : [];
       const first = needsFirst
         ? (target.trackId ?? (await selection.gatherIds(1))[0] ?? null)
         : null;
-      const credits = id === "explore" && first != null ? await creditsFor(first, heldDetail) : null;
+      const credits = id === "more" && first != null ? await creditsFor(first, heldDetail) : null;
       if (!mounted.current) return;
       setMenu({
         x: anchor.x,
@@ -536,7 +535,6 @@ export function KeysTracks({
         onOpenGroup={(id, anchor) => void openGroup(id, anchor)}
         onClear={selection.clear}
         onSelectAll={selection.selectAllMatching}
-        onColumns={() => setChoosingColumns(true)}
       />
 
       <div className="keys-tracks__rows">
@@ -551,6 +549,7 @@ export function KeysTracks({
           selectedKeys={selectedKeys}
           getRowKey={(row) => row.id ?? -1}
           {...playMarks}
+          onColumns={() => setChoosingColumns(true)}
           onSelect={(row, index, event) => selection.onRowClick(row, index, event)}
           onSelectAll={selection.selectAllMatching}
           // DEC-012: the row plays, and the whole of this table becomes the queue.

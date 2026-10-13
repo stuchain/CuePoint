@@ -14,6 +14,8 @@ export function useToolbarKeys(count: number) {
   /** The button Tab lands on; the arrows move it (a roving tabindex). */
   const [stop, setStop] = useState(0);
   const current = Math.max(0, Math.min(stop, count - 1));
+  /** Back to the first button, for a bar that was taken away and comes back. */
+  const reset = useCallback(() => setStop(0), []);
 
   const focusButton = useCallback((index: number) => {
     setStop(index);
@@ -38,6 +40,7 @@ export function useToolbarKeys(count: number) {
 
   return {
     ref,
+    reset,
     /** The button that currently holds the Tab stop. */
     current,
     onKeyDown,

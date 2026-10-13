@@ -223,7 +223,8 @@ async function measure(win: Page, tableName: string): Promise<Measured> {
       const r = row.getBoundingClientRect();
       if (r.top >= visibleTop - 0.5 && r.bottom <= visibleBottom + 0.5) whole += 1;
       else if (!partial && r.top < visibleBottom - 4 && r.bottom > visibleBottom) {
-        const title = row.querySelector('[data-column="title"]')?.textContent?.trim() ?? "";
+        // The playing row's title cell also says "Now playing:" to a screen reader (R4-6).
+        const title = (row.querySelector('[data-column="title"]')?.textContent?.trim() ?? "").replace(/^Now playing:\s*/, "");
         partial = {
           index: Number(row.dataset.index),
           title,

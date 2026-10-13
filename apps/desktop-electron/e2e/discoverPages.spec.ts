@@ -198,20 +198,25 @@ function queueRow(window: Page, title: string) {
 
 /**
  * The selection bar of a Discover page holds one line (its `oneLine` mode): its buttons share a
- * top, none runs past the row, and the count is the part that gives way.
+ * top, none runs past the row, and the count is the part that gives way. They are measured as they
+ * are with a selection, through the row's invisible copy of them.
  */
 async function expectOneLineBar(window: Page, page: string) {
   const m = await window.evaluate(() => {
     const bar = [...document.querySelectorAll<HTMLElement>(".library-toolbar")].find((el) => el.offsetParent)!;
     const box = bar.getBoundingClientRect();
-    const buttons = [...bar.querySelectorAll<HTMLElement>(".library-toolbar__button")].map((el) =>
+    // The buttons as they are with a selection: the bar's own, or the row's invisible copy of them
+    // while nothing is selected (the row measures that copy), so the check holds either way.
+    const buttons = [...bar.querySelectorAll<HTMLElement>(".library-toolbar__measure .library-toolbar__button")].map((el) =>
       el.getBoundingClientRect(),
     );
+    // Select all is always drawn, at the row's right end: it must not run past the row either.
+    const selectAll = bar.querySelector<HTMLElement>(".library-toolbar__select-all")?.getBoundingClientRect();
     const count = bar.querySelector<HTMLElement>(".library-toolbar__count")!;
     return {
       oneLine: bar.classList.contains("library-toolbar--one-line"),
       tops: new Set(buttons.map((r) => Math.round(r.top))).size,
-      past: Math.round(Math.max(...buttons.map((r) => r.right)) - box.right),
+      past: Math.round(Math.max(...buttons.map((r) => r.right), selectAll?.right ?? 0) - box.right),
       room: Math.round(bar.clientWidth),
       countCut: count.scrollWidth > count.clientWidth,
     };
@@ -292,8 +297,8 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
 
       // --- Similar tracks for one of her tracks ----------------------------
       await row(window, "Your tracks", "Harbour Lights").click({ button: "right" });
-      await window.getByRole("menu").getByRole("menuitem", { name: /^Explore/ }).click();
-      await window.getByRole("menu", { name: "Explore" }).getByRole("menuitem", { name: "Similar tracks" }).click();
+      await window.getByRole("menu").getByRole("menuitem", { name: /^More/ }).click();
+      await window.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: "Similar tracks" }).click();
       await expect(window).toHaveURL(/#\/discover\/similar\/\d+$/);
       await expect(window.getByRole("heading", { name: "Harbour Lights", level: 1 })).toBeVisible({
         timeout: 30_000,
@@ -479,8 +484,8 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
 
       await test.step("open Similar tracks, and queue a suggestion", async () => {
         await row(window, "Your tracks", "Signal").click({ button: "right" });
-        await window.getByRole("menu").getByRole("menuitem", { name: /^Explore/ }).click();
-        await window.getByRole("menu", { name: "Explore" }).getByRole("menuitem", { name: "Similar tracks" }).click();
+        await window.getByRole("menu").getByRole("menuitem", { name: /^More/ }).click();
+        await window.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: "Similar tracks" }).click();
         await expect(window).toHaveURL(/#\/discover\/similar\/\d+$/);
         await expect(window.getByRole("heading", { name: "Signal", level: 1 })).toBeVisible({
           timeout: 30_000,

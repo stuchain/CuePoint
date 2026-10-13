@@ -56,8 +56,8 @@ import "./discover.css";
 import { userMessage } from "../../api/userMessage";
 import { useTrackPlayMarks } from "../../components/player/playedTracks";
 
-/** The groups the bar and the menu hold (FLW-8): no More, the suggestions are not files to copy. */
-const GROUPS: readonly TrackActionGroupId[] = ["play", "explore"];
+/** The groups the bar and the menu hold (FLW-8): More holds only the page entries; the suggestions are not files to copy or show. */
+const GROUPS: readonly TrackActionGroupId[] = ["play", "more"];
 
 /** How many suggestions the view asks for: the engine's own default. */
 export const SIMILAR_LIMIT = 50;
@@ -268,7 +268,7 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
           onAddToQueue: () => void append(chosen, "end"),
         });
       }
-      if (group === "explore") {
+      if (group === "more") {
         // Several suggestions: the first, as in the Library.
         return discoverMenuItems(
           { count: 1, credits },
@@ -296,7 +296,7 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
       const chosen = selection.rows;
       const first = chosen[0];
       if (!first) return [];
-      const credits = group === "explore" ? await creditsFor(first.id, detail.detail) : null;
+      const credits = group === "more" ? await creditsFor(first.id, detail.detail) : null;
       return groupItems(group, chosen, chosen.length === 1 ? rows.indexOf(first) : -1, credits);
     },
     [detail.detail, groupItems, rows, selection.rows],
@@ -375,6 +375,7 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
             selectedKeys={selection.keys}
             getRowKey={idOf}
             {...playMarks}
+            onColumns={() => setPicking(true)}
             onSelect={selection.onRowClick}
             onSelectAll={selection.selectAll}
             onRowActivate={(_row, index) => void playFrom(index)}
@@ -399,7 +400,6 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
             itemsFor={itemsFor}
             onClear={selection.clear}
             onSelectAll={selection.selectAll}
-            onColumns={() => setPicking(true)}
           />
         </div>
       </div>

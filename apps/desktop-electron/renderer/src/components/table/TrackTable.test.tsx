@@ -1173,3 +1173,48 @@ describe("the playing and played rows (R4-6)", () => {
     expect(screen.queryByText("Now playing:")).toBeNull();
   });
 });
+
+describe("the columns button in the header's corner (K21)", () => {
+  it("is drawn only when the caller gives a way to open the columns", () => {
+    const { unmount } = renderTable();
+    expect(screen.queryByRole("button", { name: "Columns…" })).toBeNull();
+    unmount();
+
+    renderTable({ onColumns: vi.fn() });
+    expect(screen.getByRole("button", { name: "Columns…" })).toBeInTheDocument();
+  });
+
+  it("calls onColumns when pressed", async () => {
+    const onColumns = vi.fn();
+    renderTable({ onColumns });
+    await userEvent.click(screen.getByRole("button", { name: "Columns…" }));
+    expect(onColumns).toHaveBeenCalledTimes(1);
+  });
+
+  it("has a track of its own after the last column, and widens the table by it", () => {
+    renderTable({ onColumns: vi.fn() });
+    const table = screen.getByTestId("track-table");
+    expect(table.style.getPropertyValue("--track-table-columns")).toBe(
+      "200px 120px 80px 120px var(--track-table-corner)",
+    );
+    expect(table.style.getPropertyValue("--track-table-min-width")).toContain("var(--track-table-corner)");
+  });
+
+  it("leaves the tracks alone when there is no Columns… button", () => {
+    renderTable();
+    expect(screen.getByTestId("track-table").style.getPropertyValue("--track-table-columns")).toBe(
+      "200px 120px 80px 120px",
+    );
+  });
+
+  it("is no column header, and the table's columns are still the caller's", () => {
+    renderTable({ onColumns: vi.fn() });
+    const headers = screen.getAllByRole("columnheader");
+    expect(headers).toHaveLength(COLUMNS.length);
+    const button = screen.getByRole("button", { name: "Columns…" });
+    expect(headers.some((header) => header.contains(button))).toBe(false);
+    // It sits in the header row, outside any cell of the ARIA table.
+    expect(button.closest(".track-table__header")).not.toBeNull();
+    expect(button.closest("[role='presentation']")).not.toBeNull();
+  });
+});
