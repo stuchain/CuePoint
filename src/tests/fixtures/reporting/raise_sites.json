@@ -3560,5 +3560,10 @@
     "holds": "a Python type name, and the name of a protocol field",
     "verdict": "exempt",
     "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/track_query.py::build_facet_sum::{spec.label} is a {spec.type} field; a sum needs a number field": {
+    "holds": "a field's label and type from our own field registry",
+    "verdict": "exempt",
+    "reason": "our own constants"
   }
 }

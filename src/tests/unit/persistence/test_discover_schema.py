@@ -1316,12 +1316,18 @@ class TestTheCatalogFollowsDiscover01:
     #: credit lists are rows of ``beatport_track_artists`` instead.
     RENAMED = {"id": "beatport_track_id"}
     AS_CREDITS = {"artists": ROLE_ARTIST, "remixers": ROLE_REMIXER}
+    #: Fields read live and never stored: the preview's sample URL is fetched
+    #: when a preview is played (DEC-269).
+    NOT_KEPT = {"sample_url"}
 
     def test_every_parsed_field_has_a_home(self, db):
         columns = set(columns_of(db, "beatport_tracks"))
         for field in dataclasses.fields(CatalogTrack):
             if field.name in self.AS_CREDITS:
                 assert self.AS_CREDITS[field.name] in CREDIT_ROLES
+                continue
+            if field.name in self.NOT_KEPT:
+                assert field.name not in columns, field.name
                 continue
             assert self.RENAMED.get(field.name, field.name) in columns, field.name
 

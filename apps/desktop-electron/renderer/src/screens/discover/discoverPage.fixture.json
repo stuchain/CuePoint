@@ -539,7 +539,7 @@
   "playlist_refused": {
     "added": 0,
     "cancelled": false,
-    "error": "Beatport accepted the token but won't allow making playlists with it.",
+    "error": "Beatport let CuePoint in but won't allow making playlists.",
     "error_class": "forbidden",
     "failed": 0,
     "failed_track_ids": [],
