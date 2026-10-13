@@ -27,7 +27,6 @@ import { TrackContextMenu, type TrackContextMenuItem } from "../../components/Tr
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { reportUnexpected } from "../../reporting/reporting";
 import type { CleanTracks } from "../clean/cleanTracks";
-import type { FixAction } from "../clean/cleanLink";
 import { revealTrack } from "../clean/revealTrack";
 import { BatchConfirmDialog } from "../library/BatchConfirmDialog";
 import { batchSelection, type BatchAction } from "../library/libraryBatch";
@@ -54,6 +53,7 @@ import {
 } from "../library/trackActions";
 import { isSelected, onlySelectedId, selectedRowIndex } from "../library/trackSelection";
 import { useLibraryBatch } from "../library/useLibraryBatch";
+import { useLibraryClean } from "../library/useLibraryClean";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "../library/useLibraryPlayback";
 import { COPY_LIMIT, useTrackSelection } from "../library/useTrackSelection";
 import { useTrackWindow } from "../library/useTrackWindow";
@@ -105,7 +105,11 @@ interface KeysTracksProps {
   onOpenSimilar: (trackId: number) => void;
   onOpenInClean: (trackId: number) => void;
   onOpenMatch: (tracks: CleanTracks) => void;
-  onOpenFix: (tracks: CleanTracks, action: FixAction) => void;
+  /**
+   * Called after a change made here (a batch, an edit, a file check) so the page can read
+   * again what depends on it: the key counts and the Inspector's detail.
+   */
+  onTracksChanged: () => void;
 }
 
 export function KeysTracks({
@@ -119,7 +123,7 @@ export function KeysTracks({
   onOpenSimilar,
   onOpenInClean,
   onOpenMatch,
-  onOpenFix,
+  onTracksChanged,
 }: KeysTracksProps) {
   const { push } = useToast();
   const mounted = useRef(true);
@@ -161,6 +165,18 @@ export function KeysTracks({
     onApplied: () => {
       reload();
       onCollectionsChanged();
+      onTracksChanged();
+    },
+  });
+
+  // Beatport's values, Edit values and Save changes open their dialogs here (K4), through
+  // the Library's hook, so the batch confirmation above is the one they use.
+  const clean = useLibraryClean({
+    batch,
+    onMessage: (message, tone) => push(message, tone),
+    onChanged: () => {
+      reload();
+      onTracksChanged();
     },
   });
 
@@ -317,6 +333,7 @@ export function KeysTracks({
   const groupsFor = useCallback(
     (state: MenuState): TrackActionGroup[] => {
       const { target, rows, index, first, credits, kind } = state;
+      const editing = clean.handlersFor(target);
       const path = kind === "row" ? (rows.length === 1 ? rows[0]!.file_path : null) : revealPath;
       const revealId =
         kind === "row" ? rows[0]?.id : onlySelectedId(selection.selection, window_.total);
@@ -362,12 +379,11 @@ export function KeysTracks({
           beatport: {
             onMatch: () => void openInCleanWith(target, onOpenMatch),
             onReview: first != null ? () => onOpenInClean(first) : undefined,
-            onUseBeatport: () =>
-              void openInCleanWith(target, (tracks) => onOpenFix(tracks, "beatport")),
+            onUseBeatport: editing.onApply,
           },
           fix: {
-            onEdit: () => void openInCleanWith(target, (tracks) => onOpenFix(tracks, "edit")),
-            onWriteTags: () => void openInCleanWith(target, (tracks) => onOpenFix(tracks, "save")),
+            onEdit: editing.onEdit,
+            onWriteTags: editing.onWriteTags,
           },
           more: {
             onCopy: () =>
@@ -386,9 +402,9 @@ export function KeysTracks({
       );
     },
     [
+      clean,
       copyRows,
       onOpenEntity,
-      onOpenFix,
       onOpenInClean,
       onOpenMatch,
       onOpenSimilar,
@@ -583,6 +599,7 @@ export function KeysTracks({
       />
 
       <BatchConfirmDialog batch={batch} />
+      {clean.dialogs}
 
       <ColumnPicker
         open={choosingColumns}

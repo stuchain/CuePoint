@@ -6,9 +6,9 @@
  * - **One operations list** carries Play, Organize, Beatport, Fix and More,
  *   in the row menu and the selection bar's buttons alike.
  * - **Each entry does what it says**: Beatport ▸ and Fix ▸ open Clean with the
- *   selected tracks (the match window, Review, or Fix values with an action)
- *   rather than running anything here; checking files is a job the status strip
- *   follows.
+ *   selected tracks (the match window, Review) rather than running anything
+ *   here; Beatport's values, Edit values and Save changes open their dialogs in
+ *   place (K4); checking files is a job the status strip follows.
  * - **The toolbar row** is one row above the table: the bar, the count, Columns….
  * - **Overridden cells are marked** and name their source, and a copy reads the
  *   value shown.
@@ -27,6 +27,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { ToastProvider } from "../../components";
+import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { LIBRARY_COLUMNS } from "./libraryColumns";
 import { LibraryScreen } from "./LibraryScreen";
@@ -234,7 +235,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const OPEN_FIX = vi.fn();
 const OPEN_MATCH = vi.fn();
 const OPEN_IN_CLEAN = vi.fn();
 
@@ -242,7 +242,7 @@ function renderScreen() {
   return render(
     <ScaleProvider>
       <ToastProvider>
-        <LibraryScreen onOpenFix={OPEN_FIX} onOpenMatch={OPEN_MATCH} onOpenInClean={OPEN_IN_CLEAN} />
+        <LibraryScreen onOpenMatch={OPEN_MATCH} onOpenInClean={OPEN_IN_CLEAN} />
       </ToastProvider>
     </ScaleProvider>,
   );
@@ -341,7 +341,6 @@ describe("the operations list", () => {
 
 describe("what the entries do", () => {
   beforeEach(() => {
-    OPEN_FIX.mockClear();
     OPEN_MATCH.mockClear();
     OPEN_IN_CLEAN.mockClear();
   });
@@ -377,25 +376,63 @@ describe("what the entries do", () => {
   });
 
   it.each([
-    ["Beatport", "Use Beatport's values…", "beatport"],
-    ["Fix", "Edit values…", "edit"],
-    ["Fix", "Save changes into the files…", "save"],
-  ] as const)("opens Fix values from %s ▸ %s with the selection and the action", async (group, entry, action) => {
+    ["Beatport", "Use Beatport's values…", "Use Beatport's values"],
+    ["Fix", "Edit values…", "Edit values"],
+    ["Fix", "Save changes into the files…", "Save changes into the files"],
+  ] as const)(
+    "opens the dialog for %s ▸ %s here, not on Clean (K4)",
+    async (group, entry, title) => {
+      renderScreen();
+      await tableReady();
+      await select("Track 1", "Track 2");
+      await userEvent.click(await menuItem(entry, await openGroup(group)));
+      expect(await screen.findByRole("dialog", { name: title })).toBeInTheDocument();
+      // Nothing is sent to Clean, and nothing is changed until the dialog is answered.
+      expect(OPEN_MATCH).not.toHaveBeenCalled();
+      expect(OPEN_IN_CLEAN).not.toHaveBeenCalled();
+      expect(mock("applyBatch")).not.toHaveBeenCalled();
+    },
+  );
+
+  it("applies the edit to exactly the selected tracks", async () => {
     renderScreen();
     await tableReady();
-    await select("Track 1", "Track 2");
-    await userEvent.click((await menuItem(entry, await openGroup(group))));
-    expect(OPEN_FIX).toHaveBeenCalledWith({ ids: expect.arrayContaining([1, 2]) }, action);
-    // Nothing is edited or written here: Clean owns the dialogs.
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(mock("applyBatch")).not.toHaveBeenCalled();
+    await select("Track 1", "Track 3");
+    await userEvent.click(await menuItem("Edit values…", await openGroup("Fix")));
+    const dialog = await screen.findByRole("dialog", { name: "Edit values" });
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "BPM value" }), { target: { value: "126" } });
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Change \d+ tracks?$/ }));
+    await waitFor(() => expect(mock("applyBatch")).toHaveBeenCalledTimes(1));
+    const call = mock("applyBatch").mock.calls[0]![0];
+    expect([...call.selection.track_ids].sort()).toEqual([1, 3]);
+    expect(call.operation.kind).toBe("set_override");
   });
 
-  it("opens from the right-click menu too", async () => {
+  it("opens Edit values from the right-click menu too, on the one row", async () => {
     renderScreen();
     await tableReady();
-    await userEvent.click((await menuItem("Edit values…", await openMenuOn("Track 3"))));
-    expect(OPEN_FIX).toHaveBeenCalledWith({ ids: [3] }, "edit");
+    await userEvent.click(await menuItem("Edit values…", await openMenuOn("Track 3")));
+    expect(await screen.findByRole("dialog", { name: "Edit values" })).toBeInTheDocument();
+  });
+
+  it("opens Edit values for the whole selection from Track details", async () => {
+    render(
+      <ScaleProvider>
+        <ToastProvider>
+          <InspectorSlotProvider>
+            <LibraryScreen onOpenMatch={OPEN_MATCH} onOpenInClean={OPEN_IN_CLEAN} />
+            <aside aria-label="Inspector">
+              <InspectorSlotOutlet />
+            </aside>
+          </InspectorSlotProvider>
+        </ToastProvider>
+      </ScaleProvider>,
+    );
+    await tableReady();
+    await select("Track 1", "Track 2");
+    await userEvent.click(await screen.findByRole("button", { name: "Edit values for 2 tracks…" }));
+    expect(await screen.findByRole("dialog", { name: "Edit values" })).toBeInTheDocument();
+    expect(OPEN_IN_CLEAN).not.toHaveBeenCalled();
   });
 
   it("checks files as a job, and reads the table again when it ends", async () => {

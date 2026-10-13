@@ -4,8 +4,8 @@
  * The component tests drive the page against a faked bridge. This drives it
  * against a real engine, through a real preload, over a real library, for the
  * things only that can show: the page is reachable from the sidebar, reads
- * what the engine really sends, fills the content region, and a Health count
- * opens the Library on exactly the tracks it counts.
+ * what the engine really sends, fills the content region, and has three tabs
+ * (Match, Missing files, Duplicates; Health and Fix values left it, K3).
  *
  * CLEAN-14's `clean.spec.ts` is the phase's full journey, matching included;
  * nothing here matches, so Beatport is never reached.
@@ -121,14 +121,20 @@ test.describe("The Clean page (CLEAN-12)", () => {
       const window = await ready(app);
       await window.getByRole("link", { name: "Clean" }).click();
       await expect(window.getByText("No collection imported yet")).toBeVisible();
-      await window.getByRole("button", { name: "Go to the Library" }).click();
+      // The button goes to the Library and asks it to import; the file chooser is the system's,
+      // so it is answered with a cancel.
+      await app.evaluate(({ dialog }) => {
+        (dialog as unknown as { showOpenDialog: unknown }).showOpenDialog = async () => ({ canceled: true, filePaths: [] });
+      });
+      await window.getByRole("button", { name: "Import your Rekordbox collection…" }).click();
       await expect(window.getByRole("heading", { name: "Library", level: 1 })).toBeVisible();
+      await expect(window).toHaveURL(/#\/library/);
     } finally {
       await app.close();
     }
   });
 
-  test("shows the queue, the missing file, and Health, from the real engine", async () => {
+  test("shows the queue and the missing file, from the real engine", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
@@ -152,45 +158,21 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await expect(missing.getByText("Gone")).toBeVisible();
       await expect(missing.getByText("Present One")).toHaveCount(0);
 
-      await window.getByRole("tab", { name: "Health" }).click();
-      await expect(window.getByRole("list", { name: "Checks" }).getByText("Files on disk")).toBeVisible();
-      // A count opens the tab that fixes it (FLW-14)...
-      await window
-        .getByRole("button", { name: "1 Missing or unreadable files: open Missing files" })
-        .click();
-      await expect(window.getByRole("tab", { name: /^Missing files/, selected: true })).toBeVisible();
-      await expect(window.getByRole("table", { name: "Missing files" }).getByText("Gone")).toBeVisible();
-
-      // ...and one without a tab opens the Library on the same rule as its count.
-      await window.getByRole("tab", { name: "Health" }).click();
-      await window
-        .getByRole("button", { name: /Not matched: open in the Library$/ })
-        .click();
-      const library = window.getByRole("table", { name: "Library tracks" });
-      await expect(library.getByText("Present One")).toBeVisible();
+      // The tab says how many files are missing, and the one check button is "Check again".
+      await expect(window.getByRole("tab", { name: "Missing files (1)" })).toBeVisible();
+      await expect(window.getByRole("button", { name: "Check again" })).toBeVisible();
+      await expect(window.getByRole("tab", { name: "Health" })).toHaveCount(0);
     } finally {
       await app.close();
     }
   });
 
-  test("fixes values from the Fix values tab and opens the match window, from the real engine", async () => {
+  test("opens the match window from the header, from the real engine", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
       await importAndCheck(window, writeExport(workspace));
       await window.getByRole("link", { name: "Clean" }).click();
-
-      await window.getByRole("tab", { name: "Fix values" }).click();
-      await expect(
-        window.getByText("Choose tracks: pick playlists here, or select tracks in the Library and use Fix ▸."),
-      ).toBeVisible({ timeout: 30_000 });
-      await expect(window.getByRole("button", { name: "Edit values…" })).toBeDisabled();
-      await window.getByRole("radio", { name: "The whole library" }).click();
-      await expect(window.getByRole("status").filter({ hasText: "3 tracks" })).toBeVisible();
-      await window.getByRole("button", { name: "Edit values…" }).click();
-      const editor = window.getByRole("dialog", { name: "Edit values" });
-      await expect(editor).toBeVisible();
-      await editor.getByRole("button", { name: "Cancel" }).click();
 
       await window.getByRole("button", { name: "Match tracks…" }).click();
       const matching = window.getByRole("dialog", { name: "Match tracks" });
@@ -259,9 +241,9 @@ test.describe("The Clean page (CLEAN-12)", () => {
           await window.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--scale").trim()),
         ).toBe(String(scale));
 
-        // The page has five tabs and no line of introduction above their body (C15b).
-        const tabNames = ["Match", "Fix values", "Missing files", "Duplicates", "Health"];
-        await expect(window.getByRole("tab").filter({ hasText: /^(Match|Fix values|Missing files|Duplicates|Health)/ })).toHaveCount(5);
+        // The page has three tabs and no line of introduction above their body (C15b, K3).
+        const tabNames = ["Match", "Missing files", "Duplicates"];
+        await expect(window.getByRole("tab").filter({ hasText: /^(Match|Missing files|Duplicates)/ })).toHaveCount(3);
         for (const tab of tabNames) {
           await window.getByRole("tab", { name: new RegExp(`^${tab}`) }).click();
           await expect(window.locator(".clean-screen__lede"), `${tab} has no intro at ${scale}x`).toHaveCount(0);
@@ -270,18 +252,18 @@ test.describe("The Clean page (CLEAN-12)", () => {
         }
         await window.getByRole("tab", { name: /^Match/ }).click();
 
-        // The match window keeps its title and Start matching on screen, also
+        // The match window keeps its title and its Match button on screen, also
         // with the places list open.
         await window.getByRole("button", { name: "Match tracks…" }).click();
         const matching = window.getByRole("dialog", { name: "Match tracks" });
         await expect(matching).toBeVisible();
         const title = matching.getByRole("heading", { name: "Match tracks" });
-        const start = matching.getByRole("button", { name: "Start matching" });
+        const start = matching.getByRole("button", { name: /^Match / });
         expect(await inViewport(title), `title in view at ${scale}x`).toBe(true);
-        expect(await inViewport(start), `Start matching in view at ${scale}x`).toBe(true);
+        expect(await inViewport(start), `Match button in view at ${scale}x`).toBe(true);
         await matching.getByRole("radio", { name: /^Tracks in chosen playlists/ }).click();
         expect(await inViewport(title), `title in view with places at ${scale}x`).toBe(true);
-        expect(await inViewport(start), `Start matching in view with places at ${scale}x`).toBe(true);
+        expect(await inViewport(start), `Match button in view with places at ${scale}x`).toBe(true);
         if (shots) await window.screenshot({ path: path.join(shots, `match-places-${scale}.png`) });
         await matching.getByRole("button", { name: "Cancel" }).click();
       }

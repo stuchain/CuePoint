@@ -298,6 +298,24 @@ describe("App shell", () => {
     });
   });
 
+  /** K3: Clean lost its Health and Fix values tabs; their old addresses go where they went. */
+  describe("the removed Clean tabs", () => {
+    it.each([
+      ["#/clean?section=health", "#/statistics"],
+      ["#/clean?section=fix", "#/library"],
+    ])("send %s to %s", async (from, to) => {
+      render(<App />);
+      await screen.findByText(HOME);
+
+      act(() => {
+        window.location.hash = from;
+      });
+
+      await waitFor(() => expect(window.location.hash).toBe(to));
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+  });
+
   /**
    * DEC-071: inKey and Results are gone from Tools, and their paths land on
    * Clean rather than on home, so a bookmark still arrives where matching is.

@@ -7,7 +7,7 @@
  * up again), and a run is started with exactly the selection that was shown.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import type { LibraryHealth, LibrarySearchResponse } from "../../api/cuepointBridge.types";
 import { MatchWindow } from "./MatchWindow";
@@ -104,7 +104,7 @@ describe("which tracks", () => {
     expect(again).not.toBeChecked();
     expect(dialog).toHaveTextContent("CuePoint will search Beatport for 1,204 tracks.");
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
     expect(onStart).toHaveBeenCalledWith({ query: { filters: NOT_YET } }, false, "Not looked up yet");
   });
 
@@ -121,14 +121,14 @@ describe("which tracks", () => {
 
     fireEvent.click(again);
     expect(dialog).toHaveTextContent("CuePoint will search Beatport for 3,880 tracks.");
-    fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
     expect(onStart).toHaveBeenCalledWith({ query: {} }, true, "Whole library");
   });
 
   it("takes the chosen playlists, Collections and Sets, and counts what is not looked up in them", async () => {
     const { dialog, onStart } = show();
     fireEvent.click(within(dialog).getByRole("radio", { name: /^Tracks in chosen playlists/ }));
-    expect(within(dialog).getByRole("button", { name: "Start matching" })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: /^Match / })).toBeDisabled();
 
     fireEvent.click(await within(dialog).findByRole("checkbox", { name: "Friday" }));
     await waitFor(() => expect(dialog).toHaveTextContent("only the 9 not looked up yet"));
@@ -136,7 +136,7 @@ describe("which tracks", () => {
 
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "Look up tracks that already have a match again" }));
     await waitFor(() => expect(dialog).toHaveTextContent("CuePoint will search Beatport for 40 tracks."));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
     expect(onStart).toHaveBeenCalledWith(
       {
         query: {
@@ -156,11 +156,11 @@ describe("which tracks", () => {
     const { dialog, onStart } = show();
     fireEvent.click(within(dialog).getByRole("radio", { name: /^Tracks in chosen playlists/ }));
     fireEvent.click(await within(dialog).findByRole("checkbox", { name: "Saturday" }));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
     expect(onStart).toHaveBeenLastCalledWith(expect.anything(), false, 'Set "Saturday"');
 
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "Friday" }));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
     expect(onStart).toHaveBeenLastCalledWith(expect.anything(), false, "2 chosen places");
   });
 });
@@ -173,7 +173,7 @@ describe("tracks passed in arrive chosen", () => {
     expect(chosen).toBeChecked();
     expect(within(dialog).getByRole("radio", { name: /^Tracks not looked up yet/ })).not.toBeChecked();
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
     expect(onStart).toHaveBeenCalledWith({ track_ids: [4, 5, 6] }, false, "3 chosen tracks");
   });
 
@@ -190,7 +190,7 @@ describe("tracks passed in arrive chosen", () => {
     // A track with no key may have been looked up already: say how many have not.
     await waitFor(() => expect(dialog).toHaveTextContent("only the 25 not looked up yet"));
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
     expect(onStart).toHaveBeenCalledWith(
       { query: { filters: { match: "all", rules: [{ field: "key", operator: "is_empty" }] } } },
       false,
@@ -209,6 +209,72 @@ describe("tracks passed in arrive chosen", () => {
     expect(dialog).toHaveTextContent(
       "CuePoint will search Beatport for those of the 3 tracks that have not been looked up yet.",
     );
+  });
+});
+
+describe("the button says what it will do (R3-2)", () => {
+  it("names the tracks it will search for", () => {
+    const { dialog } = show();
+    expect(within(dialog).getByRole("button", { name: "Match 1,204 tracks" })).toBeEnabled();
+
+    fireEvent.click(within(dialog).getByRole("radio", { name: /^All tracks/ }));
+    expect(within(dialog).getByRole("button", { name: "Match 1,204 tracks" })).toBeEnabled();
+  });
+
+  it("says 'again' when it looks up tracks that already have a match", () => {
+    const { dialog } = show();
+    fireEvent.click(within(dialog).getByRole("radio", { name: /^All tracks/ }));
+    fireEvent.click(
+      within(dialog).getByRole("checkbox", { name: "Look up tracks that already have a match again" }),
+    );
+    expect(within(dialog).getByRole("button", { name: "Match 3,880 tracks again" })).toBeEnabled();
+  });
+
+  it("does not promise a count for handed-in tracks when some may be skipped", () => {
+    const { dialog } = show({ ids: [4, 5, 6] });
+    expect(within(dialog).getByRole("button", { name: "Match the 3 chosen" })).toBeEnabled();
+    cleanup();
+    const one = show({ ids: [4] });
+    expect(within(one.dialog).getByRole("button", { name: "Match the chosen track" })).toBeEnabled();
+  });
+
+  it("is singular for one track", () => {
+    const one = {
+      ...HEALTH,
+      counts: HEALTH.counts.map((entry) => (entry.id === "not_matched" ? { ...entry, count: 1 } : entry)),
+    };
+    render(<MatchWindow open tracks={null} health={one} onStart={() => {}} onClose={() => {}} />);
+    expect(screen.getByRole("button", { name: "Match 1 track" })).toBeEnabled();
+  });
+
+  it("says why it is greyed when no place is chosen", () => {
+    const { dialog } = show();
+    fireEvent.click(within(dialog).getByRole("radio", { name: /^Tracks in chosen playlists/ }));
+    expect(within(dialog).getByRole("button", { name: "Match tracks" })).toBeDisabled();
+    expect(within(dialog).getByText("Choose which tracks.")).toHaveClass("cp-modal__reason");
+  });
+
+  it("says why it is greyed when everything chosen is already matched", () => {
+    const none = {
+      ...HEALTH,
+      counts: HEALTH.counts.map((entry) => (entry.id === "not_matched" ? { ...entry, count: 0 } : entry)),
+    };
+    render(<MatchWindow open tracks={null} health={none} onStart={() => {}} onClose={() => {}} />);
+    expect(screen.getByRole("button", { name: "Match tracks" })).toBeDisabled();
+    expect(document.querySelector(".cp-modal__reason")).toHaveTextContent(
+      "Every track has been looked up; choose other tracks.",
+    );
+
+    // With all tracks chosen, the way out is the checkbox, and the reason says so.
+    fireEvent.click(screen.getByRole("radio", { name: /^All tracks/ }));
+    expect(document.querySelector(".cp-modal__reason")).toHaveTextContent(
+      "All of these are already matched; tick “Look up tracks that already have a match again”.",
+    );
+  });
+
+  it("shows no reason while the button works", () => {
+    show();
+    expect(document.querySelector(".cp-modal__reason")).toBeNull();
   });
 });
 
@@ -232,7 +298,7 @@ describe("the window", () => {
       counts: HEALTH.counts.map((entry) => (entry.id === "not_matched" ? { ...entry, count: 0 } : entry)),
     };
     render(<MatchWindow open tracks={null} health={empty} onStart={onStart} onClose={() => {}} />);
-    expect(screen.getByRole("button", { name: "Start matching" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Match / })).toBeDisabled();
     expect(screen.getByRole("dialog")).toHaveTextContent("Every track has been looked up.");
   });
 });

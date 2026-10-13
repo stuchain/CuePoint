@@ -296,7 +296,7 @@ describe("groupedDestinations", () => {
       expect(hints).toEqual({
         library: "Your Rekordbox tracks",
         keys: "The keys in your playlists, Collections and Sets",
-        clean: "Fix values with Beatport",
+        clean: "Match on Beatport, find missing files and duplicates",
         discover: "Find new music",
         prepare: "Plan a set",
         statistics: "See what you play most and how your library is made up",

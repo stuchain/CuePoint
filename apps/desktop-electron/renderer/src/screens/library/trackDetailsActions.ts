@@ -6,8 +6,7 @@
  * (`queuedMessage`), because Play next and Add to queue never interrupt and
  * would otherwise look like nothing happened.
  */
-import type { BatchSelection, LibraryTrackRow } from "../../api/cuepointBridge.types";
-import type { CleanTracks } from "../clean/cleanTracks";
+import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 import { queuedMessage, toQueueItem } from "./useLibraryPlayback";
 
 export type QueueAction = "play" | "next" | "end";
@@ -40,16 +39,4 @@ export async function runQueueAction(
   }
   await player.addToQueue?.(items);
   return { message: queuedMessage(rows.length, "end"), failed: false };
-}
-
-/**
- * The selection as Clean's Fix values takes it (INS-11): ids as ids, a
- * described selection as its question with the count it had. A described one
- * with exceptions has no such spelling, so Track details does not offer to
- * edit it rather than edit more tracks than are selected.
- */
-export function cleanTracksOf(selection: BatchSelection, count: number): CleanTracks | null {
-  if (selection.track_ids) return selection.track_ids.length > 0 ? { ids: [...selection.track_ids] } : null;
-  if (selection.query && !selection.exclude_track_ids?.length) return { query: selection.query, count };
-  return null;
 }

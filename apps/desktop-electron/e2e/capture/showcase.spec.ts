@@ -533,7 +533,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         await matchWindow.getByRole("checkbox", { name: showcase.livePlaylist }).check();
         const live = showcase.playlists.find((p) => p.name === showcase.livePlaylist)!;
         await expect(matchWindow).toContainText(`CuePoint will search Beatport for ${live.trackIds.length} tracks.`);
-        await matchWindow.getByRole("button", { name: "Start matching" }).click();
+        await matchWindow.getByRole("button", { name: /^Match \d/ }).click();
         await expect(window.getByText(`Matching ${live.trackIds.length} tracks on Beatport.`, { exact: true })).toBeVisible({ timeout: 30_000 });
         // the job's end, not the toast's: the toast goes on its own
         await idle(window);

@@ -285,7 +285,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
         await expect(menu.getByRole("menuitem", { name: entry, exact: true })).toBeVisible();
       }
       await menu.getByRole("menuitem", { name: "Edit values…" }).click();
-      // Clean's Fix values opens with the three tracks chosen, and the editor at once.
+      // The editor opens at once, in place on the Library, over the three tracks chosen (K4).
       const dialog = window.getByRole("dialog", { name: "Edit values" });
       await dialog.getByRole("textbox", { name: "BPM value" }).fill("126");
       await dialog.getByRole("button", { name: "Apply" }).click();
@@ -414,7 +414,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await expect(genre).toContainText("Rekordbox House");
       await expect(genre).toContainText("Beatport Melodic House & Techno");
       await expect(genre).toContainText("Using House (from Rekordbox)");
-      // Applying Beatport's values is Match's and Fix values' job, not this panel's.
+      // Applying Beatport's values is Match's and the Library's Beatport menu's job, not this panel's.
       await expect(zone.getByRole("button", { name: /^Apply/ })).toHaveCount(0);
 
       await window.evaluate(async () => {

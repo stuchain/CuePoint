@@ -17,13 +17,11 @@ afterEach(() => {
 });
 
 describe("the Clean page's parts", () => {
-  it("are the CLN-3 names, in order", () => {
+  it("are the three of K3, in order", () => {
     expect(CLEAN_SECTIONS.map((section) => section.label)).toEqual([
       "Match",
-      "Fix values",
       "Missing files",
       "Duplicates",
-      "Health",
     ]);
   });
 
@@ -42,6 +40,11 @@ describe("the Clean page's parts", () => {
     expect(loadCleanSection()).toBe("review");
   });
 
+  it.each(["fix", "health"])("open on Match when %s, a part K3 removed, was stored", (old) => {
+    localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, old);
+    expect(loadCleanSection()).toBe("review");
+  });
+
   it("work when storage cannot be used", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("denied");
@@ -50,7 +53,7 @@ describe("the Clean page's parts", () => {
       throw new Error("denied");
     });
     expect(loadCleanSection()).toBe("review");
-    expect(() => saveCleanSection("health")).not.toThrow();
+    expect(() => saveCleanSection("missing")).not.toThrow();
   });
 });
 

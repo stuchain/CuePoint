@@ -90,7 +90,7 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
   // A page of its own, not a part of the Library's tree (DEC-200): it sits after the Library, at
   // the top level.
   { id: "keys", label: "Keys", hint: "The keys in your playlists, Collections and Sets", path: "/keys", group: "workspace", icon: "keys", needsLibrary: true, enabled: true },
-  { id: "clean", label: "Clean", hint: "Fix values with Beatport", path: "/clean", group: "workspace", icon: "clean", needsLibrary: true, enabled: true },
+  { id: "clean", label: "Clean", hint: "Match on Beatport, find missing files and duplicates", path: "/clean", group: "workspace", icon: "clean", needsLibrary: true, enabled: true },
   { id: "discover", label: "Discover", hint: "Find new music", path: "/discover", group: "workspace", icon: "discover", needsLibrary: true, enabled: true, nested: true },
   { id: "prepare", label: "Prepare", hint: "Plan a set", path: "/prepare", group: "workspace", icon: "prepare", needsLibrary: true, enabled: true, nested: true },
   // Statistics follows Prepare (DEC-138, STATS-04): its own page, no nested routes.

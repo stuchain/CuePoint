@@ -661,12 +661,8 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(() => jobsOf(win, "library_import"), { timeout: 60_000 }).toBeGreaterThan(imports);
   });
 
-  test("Edit values, Use Beatport's values and Save changes into the files: Clean's Fix values", async () => {
-    await go(win, "#/clean");
-    await use(win, win.getByRole("tab", { name: /^Fix values/ }), "the Fix values tab");
-    await use(win, win.getByRole("radio", { name: "The whole library" }), "The whole library", "Space");
-    await expect(win.getByRole("status").filter({ hasText: "7 tracks" })).toBeVisible({ timeout: 30_000 });
-    const fix = win.getByRole("tabpanel", { name: "Fix values" });
+  test("Edit values, Use Beatport's values and Save changes into the files: the Library's Fix and Beatport menus", async () => {
+    await openLibrary(win);
     const genres = () =>
       win.evaluate(async () => {
         const page = await (window as never as Bridge).cuepoint.browseLibrary({ limit: 50 });
@@ -676,30 +672,33 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     const titlesWithGenre = (genre: string) =>
       win.evaluate(async (wanted) => {
         const page = await (window as never as Bridge).cuepoint.browseLibrary({ limit: 50 });
-        return page.tracks.filter((track: { effective_genre: string }) => track.effective_genre === wanted).map((track: { title: string }) => track.title) as string[];
+        return page.tracks.filter((track: { effective_genre: string }) => track.effective_genre === wanted).map((track: { title: string }) => track.title).sort() as string[];
       }, genre);
 
-    // Edit values…
-    await use(win, fix.getByRole("button", { name: "Edit values…" }), "Edit values…");
+    // Edit values…: opens on the Library, over the two tracks picked (K4).
+    await pick(win, "Warm One", "Warm Two");
+    await use(win, toolbar(win).getByRole("button", { name: "Fix", exact: true }), "the bar's Fix");
+    await choose(win, "Edit values…");
     const editor = win.getByRole("dialog", { name: "Edit values" });
     await expect(editor).toBeVisible();
+    await expect(win).toHaveURL(/#\/library/);
     await editor.getByRole("textbox", { name: "Genre value" }).fill("Deep House");
     await reach(win, editor.getByRole("button", { name: "Apply" }), "Apply");
     await win.keyboard.press("Enter");
     await expect(editor).toBeHidden({ timeout: 30_000 });
-    await expect.poll(genres, { timeout: 30_000 }).toEqual(["Deep House"]);
+    await expect.poll(() => titlesWithGenre("Deep House"), { timeout: 30_000 }).toEqual(["Warm One", "Warm Two"]);
 
     // Use Beatport's values…: with Beatport's genre accepted for one track, applying it
-    // changes that track's genre and leaves the rest (the match is seeded, as the matcher would).
+    // changes that track's genre and leaves the other (the match is seeded, as the matcher would).
     seedAcceptedMatch(cuepointHome, "Warm One", { genre: "Tech House" });
     await win.reload();
     await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
-    await use(win, win.getByRole("tab", { name: /^Fix values/ }), "the Fix values tab");
-    await use(win, win.getByRole("radio", { name: "The whole library" }), "The whole library", "Space");
-    await expect(win.getByRole("status").filter({ hasText: "7 tracks" })).toBeVisible({ timeout: 30_000 });
-    await use(win, fix.getByRole("button", { name: "Use Beatport's values…" }), "Use Beatport's values…");
+    await openLibrary(win);
+    await pick(win, "Warm One", "Warm Two");
+    await use(win, toolbar(win).getByRole("button", { name: "Beatport", exact: true }), "the bar's Beatport");
+    await choose(win, "Use Beatport's values…");
     const beatport = win.getByRole("dialog", { name: "Use Beatport's values" });
-    await expect(beatport).toContainText("7 tracks");
+    await expect(beatport).toContainText("2 tracks");
     await use(win, beatport.getByRole("checkbox", { name: "Genre" }), "Genre", "Space");
     await reach(win, beatport.getByRole("button", { name: "Apply" }), "Apply");
     await win.keyboard.press("Enter");
@@ -708,22 +707,24 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     expect(await titlesWithGenre("Tech House")).toEqual(["Warm One"]);
 
     // Save changes into the files…: a preview reads the files without writing them.
-    await use(win, fix.getByRole("button", { name: "Save changes into the files…" }), "Save changes into the files…");
+    await pick(win, "Warm One", "Warm Two");
+    await use(win, toolbar(win).getByRole("button", { name: "Fix", exact: true }), "the bar's Fix");
+    await choose(win, "Save changes into the files…");
     const files = win.getByRole("dialog", { name: "Save changes into the files" });
-    await expect(files).toContainText("7 tracks");
+    await expect(files).toContainText("2 tracks");
     await reach(win, files.getByRole("button", { name: "Preview" }), "Preview");
     await win.keyboard.press("Enter");
     await expect(files.getByRole("button", { name: /^Write/ })).toBeVisible({ timeout: 60_000 });
     await win.keyboard.press("Escape");
   });
 
-  test("Start matching: Clean's header", async () => {
+  test("Match N tracks: Clean's header", async () => {
     await go(win, "#/clean");
     const before = await jobsOf(win, "clean_match");
     await use(win, win.getByRole("button", { name: "Match tracks…" }), "Match tracks…");
     const matching = win.getByRole("dialog", { name: "Match tracks" });
     await expect(matching).toBeVisible();
-    await use(win, matching.getByRole("button", { name: "Start matching" }), "Start matching");
+    await use(win, matching.getByRole("button", { name: /^Match / }), "Match N tracks");
     await expect(matching).toBeHidden({ timeout: 30_000 });
     await expect.poll(() => jobsOf(win, "clean_match"), { timeout: 30_000 }).toBeGreaterThan(before);
     // Nothing here reaches Beatport for real: stop what started, and wait until it has stopped,
@@ -975,7 +976,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await win.keyboard.press("Escape");
   });
 
-  test("Editing many tracks is Clean's Fix values; Track details edits one and links there for several", async () => {
+  test("Editing many tracks opens in place on the Library; Track details edits one and offers the same for several", async () => {
     // One track: the editor is Track details'.
     await openLibrary(win);
     await pick(win, "Build");
@@ -986,11 +987,10 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await expect(win.getByRole("dialog", { name: "Edit values" })).toBeVisible({ timeout: 15_000 });
     await win.keyboard.press("Escape");
 
-    // Several: Track details links to Fix values.
+    // Several: Track details opens the same editor, in place (K4).
     await pick(win, "Warm One", "Warm Two");
-    await use(win, details.getByRole("link", { name: "Edit values for 2 tracks…" }).or(details.getByRole("button", { name: "Edit values for 2 tracks…" })).first(), "Track details' Edit values for 2 tracks…");
-    await expect(win).toHaveURL(/#\/clean/, { timeout: 15_000 });
-    await expect(win.getByRole("tab", { name: /^Fix values/ })).toHaveAttribute("aria-selected", "true");
+    await use(win, details.getByRole("button", { name: "Edit values for 2 tracks…" }), "Track details' Edit values for 2 tracks…");
+    await expect(win).toHaveURL(/#\/library/);
     await expect(win.getByRole("dialog", { name: "Edit values" })).toBeVisible({ timeout: 15_000 });
     await win.keyboard.press("Escape");
 
@@ -999,7 +999,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await pick(win, "Warm One", "Warm Two");
     await use(win, toolbar(win).getByRole("button", { name: "Fix", exact: true }), "the bar's Fix");
     await choose(win, "Edit values…");
-    await expect(win).toHaveURL(/#\/clean/, { timeout: 15_000 });
+    await expect(win).toHaveURL(/#\/library/);
     await expect(win.getByRole("dialog", { name: "Edit values" })).toBeVisible({ timeout: 15_000 });
     await win.keyboard.press("Escape");
   });
@@ -1060,7 +1060,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await go(win, "#/clean");
     await use(win, win.getByRole("tab", { name: /^Missing files/ }), "the Missing files tab");
     const started = await checks();
-    await use(win, win.getByRole("button", { name: "Check every file" }).first(), "Clean's Check every file");
+    await use(win, win.getByRole("button", { name: /^Check (every file|again)$/ }), "Clean's check button");
     await expect.poll(checks, { timeout: 30_000 }).toBe(started + 1);
     await idle();
 

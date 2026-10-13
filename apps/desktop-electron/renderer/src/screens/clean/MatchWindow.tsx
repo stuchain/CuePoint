@@ -148,6 +148,27 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
     sentence = "CuePoint will search Beatport for the tracks you chose.";
   }
 
+  // R3-2: the button says what it will do, with the count the sentence states (the
+  // chosen tracks' own count when only that is known), and a greyed one says why.
+  // When only the chosen count is known, fewer may be searched, so the button says "the
+  // chosen" rather than a number it cannot promise.
+  let primaryLabel: string;
+  if (searched) {
+    primaryLabel = `Match ${trackCount(searched)}${lookedUpAgain ? " again" : ""}`;
+  } else if (searched === null && total) {
+    primaryLabel = total === 1 ? "Match the chosen track" : `Match the ${total.toLocaleString()} chosen`;
+  } else {
+    primaryLabel = "Match tracks";
+  }
+  let reason: string | null = null;
+  if (nothingChosen) {
+    reason = "Choose which tracks.";
+  } else if (nothingToDo) {
+    if (lookedUpAgain) reason = "There are no tracks here to match.";
+    else if (which === "not_yet") reason = "Every track has been looked up; choose other tracks.";
+    else reason = "All of these are already matched; tick “Look up tracks that already have a match again”.";
+  }
+
   const start = () => {
     const chosen = selection();
     if (!chosen) return;
@@ -165,9 +186,10 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
       size="wide"
       onClose={onClose}
       primaryAction={{
-        label: "Start matching",
+        label: primaryLabel,
         onClick: start,
         disabled: nothingChosen || nothingToDo,
+        disabledReason: reason ?? undefined,
       }}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
     >

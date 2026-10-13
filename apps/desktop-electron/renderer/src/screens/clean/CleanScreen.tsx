@@ -1,14 +1,15 @@
 /**
  * The Clean page (CLEAN-12, DEC-072).
  *
- * Five parts behind tabs — Match, Fix values, Missing files, Duplicates and
- * Health — over one read of Library Health they all share. The part last used
- * is where the page reopens (`cleanSections.ts`). The tab names and the buttons
- * say what each part is for, so no part opens with a paragraph (C15b); the tabs
- * say where work waits (CLN-3). The header holds the page's one action:
- * **Match tracks…**, which opens the one window where many tracks are matched
- * (FLW-13). Match is the Match area (`match/MatchArea.tsx`): One at a time,
- * Table and Past searches.
+ * Three parts behind tabs — Match, Missing files and Duplicates — over one
+ * read of Library Health they all share (K3: Fix values moved to the Library's
+ * own menus and Health to Statistics). The part last used is where the page
+ * reopens (`cleanSections.ts`). The tab names and the buttons say what each
+ * part is for, so no part opens with a paragraph (C15b); the tabs say where
+ * work waits (CLN-3). The header is the shared `ScreenHeader`; its one action,
+ * **Match tracks…**, shows on the Match tab only (K4: one home per action) and
+ * opens the one window where many tracks are matched (FLW-13). Match is the
+ * Match area (`match/MatchArea.tsx`): One at a time, Table and Past searches.
  *
  * Every table here is the Library's `TrackTable` over the Library's windowed
  * browse with a rule set, and every action goes through a route CLEAN-11 built.
@@ -20,21 +21,16 @@ import { useNavigate } from "react-router-dom";
 
 import type { EntityKind, LibrarySummary } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
-import { Panel } from "../../components/Panel";
+import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
+import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { Tabs } from "../../components/Tabs";
 import { DuplicatesView } from "./DuplicatesView";
-import { HealthView } from "./HealthView";
-import { FixValues } from "./FixValues";
 import { MatchWindow } from "./MatchWindow";
 import { MissingFilesView } from "./MissingFilesView";
 import { MatchArea } from "./match/MatchArea";
-import type {
-  CleanFixOpening,
-  CleanMatchOpening,
-  CleanOpening,
-  CleanSectionOpening,
-} from "./cleanLink";
+import type { CleanMatchOpening, CleanOpening, CleanSectionOpening } from "./cleanLink";
 import type { CleanTracks } from "./cleanTracks";
+import { libraryImportState } from "../library/libraryLink";
 import { entityPath } from "../discover/discoverLinks";
 import {
   CLEAN_SECTIONS,
@@ -65,18 +61,12 @@ interface CleanScreenProps {
    * the first-run guide and Prepare open the match window with them chosen.
    */
   matchWith?: CleanMatchOpening | null;
-  /**
-   * Tracks to fix (FLW-12): the Library's Beatport ▸ and Fix ▸ and Track details
-   * open Fix values with them chosen, and may start an action.
-   */
-  fixWith?: CleanFixOpening | null;
 }
 
 export function CleanScreen({
   openWith = null,
   openSection = null,
   matchWith = null,
-  fixWith = null,
 }: CleanScreenProps = {}) {
   const navigate = useNavigate();
   // The Inspector's artist and label links (DISCOVER-11).
@@ -85,7 +75,7 @@ export function CleanScreen({
     [navigate],
   );
   const [section, setSection] = useState<CleanSection>(() =>
-    fixWith ? "fix" : openWith ? "review" : (openSection?.section ?? loadCleanSection()),
+    openWith ? "review" : (openSection?.section ?? loadCleanSection()),
   );
   const opened = useRef<string | null>(null);
   const [focus, setFocus] = useState<CleanOpening | null>(null);
@@ -118,17 +108,6 @@ export function CleanScreen({
     openMatch(matchWith.tracks);
   }, [matchWith, openMatch]);
 
-  // Fix values opened with tracks chosen. A link is not a choice, so the part
-  // last used is not changed. It is spent once the user moves to another part,
-  // so coming back does not start its action again.
-  const [fixOpening, setFixOpening] = useState<CleanFixOpening | null>(fixWith);
-  useEffect(() => {
-    if (!fixWith || opened.current === fixWith.token) return;
-    opened.current = fixWith.token;
-    setSection("fix");
-    setFixOpening(fixWith);
-  }, [fixWith]);
-
   const cleanHealth = useCleanHealth();
   const { reload: reloadHealth } = cleanHealth;
   const match = useCleanMatch(reloadHealth);
@@ -158,7 +137,6 @@ export function CleanScreen({
       const next = CLEAN_SECTIONS.find((entry) => entry.id === id)?.id;
       if (!next) return;
       setSection(next);
-      setFixOpening(null);
       saveCleanSection(next);
       // Counts change with every edit made anywhere, the Library included.
       reloadHealth();
@@ -177,18 +155,12 @@ export function CleanScreen({
   if (summary && (summary.library_empty || summary.source === null)) {
     return (
       <div className="screen screen--stack screen--scroll clean-screen--waiting">
-        <header className="clean-screen__intro">
-          <h1 className="screen__title">Clean</h1>
-          <p className="screen__subtitle">
-            Match your library on Beatport, review what needs a look, and find what needs fixing.
-          </p>
-        </header>
-        <Panel title="No collection imported yet">
-          <p className="clean-empty__hint">
-            Clean works on your library. Import a Rekordbox collection in the Library first.
-          </p>
-          <Button onClick={() => navigate("/library")}>Go to the Library</Button>
-        </Panel>
+        <ScreenHeader title="Clean" />
+        <EmptyState
+          headline="No collection imported yet"
+          description="Clean works on your library. Import a Rekordbox collection in the Library first."
+          action={{ label: IMPORT_COLLECTION_LABEL, onClick: () => navigate("/library", { state: libraryImportState() }) }}
+        />
       </div>
     );
   }
@@ -198,29 +170,38 @@ export function CleanScreen({
 
   return (
     <div className="screen clean-screen">
-      <header className="clean-screen__header" data-testid="clean-header">
-        <h1 className="screen__title">Clean</h1>
-        <Tabs
-          tabs={CLEAN_SECTIONS.map((entry) => {
-            const waiting = counts[entry.id];
-            return {
-              id: entry.id,
-              label: waiting === undefined ? entry.label : `${entry.label} (${waiting.toLocaleString()})`,
-            };
-          })}
-          activeId={section}
-          onChange={choose}
+      <div data-testid="clean-header">
+        <ScreenHeader
+          title="Clean"
+          tabs={
+            <Tabs
+              tabs={CLEAN_SECTIONS.map((entry) => {
+                const waiting = counts[entry.id];
+                return {
+                  id: entry.id,
+                  label:
+                    waiting === undefined
+                      ? entry.label
+                      : `${entry.label} (${waiting.toLocaleString()})`,
+                };
+              })}
+              activeId={section}
+              onChange={choose}
+            />
+          }
+          actions={
+            section === "review" ? (
+              <Button
+                variant="secondary"
+                disabled={match.matching}
+                onClick={() => openMatch(reviewTarget)}
+              >
+                Match tracks…
+              </Button>
+            ) : undefined
+          }
         />
-        <div className="clean-screen__actions">
-          <Button
-            variant="secondary"
-            disabled={match.matching}
-            onClick={() => openMatch(section === "review" ? reviewTarget : null)}
-          >
-            Match tracks…
-          </Button>
-        </div>
-      </header>
+      </div>
       {match.note && (
         <div className="clean-note" role="region" aria-label="Matching">
           <p className="clean-note__text">{match.note}</p>
@@ -238,13 +219,6 @@ export function CleanScreen({
             onMatchTargetChange={setReviewTarget}
           />
         )}
-        {section === "fix" && (
-          <FixValues
-            opening={fixOpening}
-            libraryCount={cleanHealth.health?.track_count ?? null}
-            onChanged={reloadHealth}
-          />
-        )}
         {section === "missing" && (
           <MissingFilesView
             health={cleanHealth.health}
@@ -254,15 +228,6 @@ export function CleanScreen({
         )}
         {section === "duplicates" && (
           <DuplicatesView health={cleanHealth.health} onHealthChanged={reloadHealth} />
-        )}
-        {section === "health" && (
-          <HealthView
-            health={cleanHealth.health}
-            error={cleanHealth.error}
-            loading={cleanHealth.loading}
-            onHealthChanged={reloadHealth}
-            onOpenSection={choose}
-          />
         )}
       </div>
       <MatchWindow

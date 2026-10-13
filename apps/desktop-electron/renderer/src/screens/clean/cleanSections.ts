@@ -1,16 +1,19 @@
 /**
- * The Clean page's five parts, and which one it opens on (CLEAN-12, DEC-072).
+ * The Clean page's three parts, and which one it opens on (CLEAN-12, DEC-072, K3).
  *
  * Tabs rather than sections, the choice DEC-072 left to the specification:
- * each part is a table or a list a person works through, and four of them
- * stacked would put three screens of scrolling between a reviewer and the
- * queue. The part last used is remembered with the existing `localStorage`
- * pattern, so the page reopens where the work was.
+ * each part is a table or a list a person works through, and stacking them
+ * would put screens of scrolling between a reviewer and the queue. Round 2
+ * (K3) took the page from five parts to three: Fix values went to the Library,
+ * where its actions open in place, and Health went to Statistics. The part
+ * last used is remembered with the existing `localStorage` pattern, so the
+ * page reopens where the work was; a stored `fix` or `health` from before is
+ * read as Match.
  */
 
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
 
-export type CleanSection = "review" | "fix" | "missing" | "duplicates" | "health";
+export type CleanSection = "review" | "missing" | "duplicates";
 
 /**
  * The one list of the page's tabs (CLN-3, FLW-12): the screen and the counts
@@ -19,10 +22,8 @@ export type CleanSection = "review" | "fix" | "missing" | "duplicates" | "health
  */
 export const CLEAN_SECTIONS: ReadonlyArray<{ id: CleanSection; label: string }> = [
   { id: "review", label: "Match" },
-  { id: "fix", label: "Fix values" },
   { id: "missing", label: "Missing files" },
   { id: "duplicates", label: "Duplicates" },
-  { id: "health", label: "Health" },
 ];
 
 export const CLEAN_SECTION_STORAGE_KEY = "cuepoint-clean-section";
@@ -35,7 +36,8 @@ function isSection(value: string | null): value is CleanSection {
 
 /**
  * The part to open on. Anything stored that is not a part — a renamed id, a
- * hand-edited value, storage that cannot be read — opens on Review.
+ * hand-edited value, storage that cannot be read — opens on Review, and so do
+ * the two parts K3 removed (`fix`, `health`), which no longer exist here.
  */
 export function loadCleanSection(): CleanSection {
   try {

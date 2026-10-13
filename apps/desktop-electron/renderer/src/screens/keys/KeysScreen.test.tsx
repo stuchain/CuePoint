@@ -10,6 +10,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { menuItem } from "../library/menuPick.test.util";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
 import type {
@@ -665,6 +666,64 @@ describe("choosing keys", () => {
       expect(within(bar).getByRole("button", { name: new RegExp(`^${name}`) })).toBeInTheDocument();
     }
     expect(within(bar).getByRole("button", { name: "Clear selection" })).toBeInTheDocument();
+  });
+});
+
+describe("the Beatport and Fix entries (K4)", () => {
+  it.each([
+    ["Use Beatport's values…", "Use Beatport's values"],
+    ["Edit values…", "Edit values"],
+  ])("open %s in place, not on Clean", async (entry, title) => {
+    install({
+      applyBatch: vi.fn(),
+      applyMatch: vi.fn(),
+      setTrackOverrides: vi.fn().mockResolvedValue({}),
+    });
+    renderKeys();
+    await opened();
+    fireEvent.click(rowButton("8A"));
+    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    const row = (await within(table).findByText("Track 3")).closest("[role=row]")!;
+    fireEvent.contextMenu(row, { clientX: 100, clientY: 100 });
+    await userEvent.click(await menuItem(entry, await screen.findByRole("menu")));
+    expect(await screen.findByRole("dialog", { name: title })).toBeInTheDocument();
+    expect(where()).toHaveTextContent("/keys");
+  });
+
+  it("applies an edit to the tracks picked, and reads the counts again", async () => {
+    install({
+      applyBatch: vi.fn().mockResolvedValue({
+        applied: {
+          batch_id: "b1",
+          operation: "set_override",
+          target: "BPM",
+          total: 1,
+          changed: 1,
+          unchanged: 0,
+          failed: 0,
+          cancelled: false,
+        },
+      }),
+      applyMatch: vi.fn(),
+      setTrackOverrides: vi.fn().mockResolvedValue({}),
+    });
+    renderKeys();
+    await opened();
+    fireEvent.click(rowButton("8A"));
+    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    const row = (await within(table).findByText("Track 3")).closest("[role=row]")!;
+    const populations = mock("getKeysPopulation").mock.calls.length;
+    fireEvent.contextMenu(row, { clientX: 100, clientY: 100 });
+    await userEvent.click(await menuItem("Edit values…", await screen.findByRole("menu")));
+    const dialog = await screen.findByRole("dialog", { name: "Edit values" });
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "BPM value" }), { target: { value: "126" } });
+    await userEvent.click(within(dialog).getByRole("button", { name: /^Change \d+ tracks?$/ }));
+    // One row was right-clicked, so exactly that track is edited (one track: a direct edit).
+    await waitFor(() =>
+      expect(mock("setTrackOverrides")).toHaveBeenCalledWith(expect.objectContaining({ trackId: 3 })),
+    );
+    // The key counts are read again, not only the table.
+    await waitFor(() => expect(mock("getKeysPopulation").mock.calls.length).toBeGreaterThan(populations));
   });
 });
 

@@ -27,33 +27,6 @@
   gap: var(--space-lg);
 }
 
-.clean-screen__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm) var(--space-lg);
-  padding: var(--space-sm) var(--space-md);
-  border-bottom: var(--divider);
-}
-
-/* The tabs take the rest of the title's row: the queue needs the height more
-   than a sentence under the title does. */
-.clean-screen__header > .cp-tabs {
-  flex: 1;
-  min-width: min(100%, calc(320px * var(--scale)));
-}
-
-.clean-screen__actions {
-  display: flex;
-  gap: var(--space-sm);
-}
-
-.clean-screen__intro {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
 .clean-screen__body {
   display: flex;
   flex-direction: column;
@@ -194,8 +167,7 @@
 
 /* ------------------------------------------------------------ duplicates */
 
-.clean-duplicates,
-.clean-health {
+.clean-duplicates {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -303,114 +275,6 @@
   gap: var(--space-sm);
 }
 
-/* ---------------------------------------------------------------- health */
-
-.clean-health {
-  gap: var(--space-md);
-  padding-bottom: var(--space-lg);
-}
-
-.clean-health__intro,
-.clean-health__heading {
-  margin: 0;
-  padding: 0 var(--space-md);
-}
-
-.clean-health__intro {
-  padding-top: var(--space-md);
-  color: var(--fg-muted);
-}
-
-.clean-health__heading {
-  font-size: var(--font-size-md);
-}
-
-.clean-health__counts {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(180px * var(--scale)), 1fr));
-  gap: var(--space-sm);
-  margin: 0;
-  padding: 0 var(--space-md);
-  list-style: none;
-}
-
-.clean-health__count {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-xs);
-  width: 100%;
-  min-height: calc(56px * var(--scale));
-  padding: var(--space-sm);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-panel);
-  color: var(--fg-primary);
-  font-family: inherit;
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-  text-align: left;
-  cursor: pointer;
-}
-
-.clean-health__count:hover,
-.clean-health__count:focus-visible {
-  background: var(--bg-selected);
-}
-
-.clean-health__count:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-}
-
-.clean-health__count[data-zero="true"] {
-  color: var(--fg-muted);
-}
-
-.clean-health__number {
-  font-family: var(--font-pixel);
-  font-size: var(--font-size-lg);
-}
-
-.clean-health__label {
-  font-size: var(--font-size-xs);
-}
-
-.clean-health__detections {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  margin: 0;
-  padding: 0 var(--space-md);
-  list-style: none;
-}
-
-.clean-health__detection {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  padding: var(--space-sm);
-  border: var(--divider);
-}
-
-.clean-health__detection-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.clean-health__detection-label {
-  font-weight: 700;
-}
-
-.clean-health__detection-when,
-.clean-health__detection-purpose,
-.clean-health__detection-summary {
-  font-size: var(--font-size-xs);
-  color: var(--fg-muted);
-}
-
 .clean-note__steps {
   margin: 0;
   padding-left: var(--space-lg);
@@ -453,45 +317,6 @@
   cursor: pointer;
 }
 
-.clean-fix {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--space-md);
-  min-height: 0;
-  padding: var(--space-md);
-  overflow-y: auto;
-}
-
-.clean-fix__choice {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin: 0;
-  padding: 0;
-  border: 0;
-  max-width: 60ch;
-}
-
-.clean-fix__choice label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  cursor: pointer;
-}
-
-.clean-fix__count {
-  margin: 0;
-  font-size: var(--text-body);
-  font-weight: 700;
-}
-
-.clean-fix__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-}
-
 .clean-fix__hint,
 .clean-match__figure {
   color: var(--fg-muted);
@@ -522,9 +347,3 @@
   color: var(--fg-muted);
 }
 
-.clean-health__count-hint {
-  margin: var(--space-xs) 0 0;
-  max-width: 40ch;
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-}

@@ -4,7 +4,7 @@
  * The specification's tests, against the real page over a faked bridge:
  * - the Match tab opens on One at a time, and the header's Match tracks… starts
  *   a match under a name (the Match area's own tests are in `match/`);
- * - each Health link produces the rules the engine returned;
+ * - the page has three tabs, and the header holds Match tracks… on Match only (K3, K4);
  * - the duplicates view has no delete affordance;
  * - empty states render from recorded engine responses.
  *
@@ -26,6 +26,8 @@ import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selec
 import { libraryRefreshState } from "../library/libraryLink";
 import { InspectorSlotOutlet, InspectorSlotProvider } from "../../components/shell";
 import { ScaleProvider } from "../../tokens/ScaleContext";
+import { IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
+import { importOpening } from "../library/libraryLink";
 import { CleanScreen } from "./CleanScreen";
 import fixture from "./cleanEmpty.fixture.json";
 import { CLEAN_SECTION_STORAGE_KEY } from "./cleanSections";
@@ -40,8 +42,6 @@ import {
 } from "../../test/matchFixtures";
 import { MATCH_TAB_STORAGE_KEY } from "./match/MatchArea";
 import {
-  cleanFixOpening,
-  cleanFixState,
   cleanMatchOpening,
   cleanMatchState,
   cleanOpening,
@@ -285,7 +285,7 @@ async function startMatching(choice: RegExp | string = /^All tracks/) {
   fireEvent.click(
     within(dialog).getByRole("checkbox", { name: "Look up tracks that already have a match again" }),
   );
-  fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
 }
 
 beforeAll(() => {
@@ -322,15 +322,13 @@ afterEach(() => {
 });
 
 describe("the page", () => {
-  it("opens on Match with the five parts as tabs", async () => {
+  it("opens on Match with the three parts as tabs (K3)", async () => {
     renderClean();
     const tabs = await screen.findAllByRole("tab");
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       "Match",
-      "Fix values",
       "Missing files",
       "Duplicates",
-      "Health",
       // The Match area's own sub-tabs.
       "One at a time",
       "Table",
@@ -356,10 +354,8 @@ describe("the page", () => {
     await waitFor(() =>
       expect(tabs.map((tab) => tab.textContent)).toEqual([
         "Match (42)",
-        "Fix values",
         "Missing files (3)",
         "Duplicates",
-        "Health",
         "One at a time",
         "Table",
         "Past searches",
@@ -379,21 +375,43 @@ describe("the page", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Duplicates" }));
     await screen.findByRole("list", { name: "Possible duplicate groups" });
     expect(screen.queryByText(/Possible duplicates are grouped by what they share/)).toBeNull();
-
-    fireEvent.click(screen.getByRole("tab", { name: "Health" }));
-    await screen.findByRole("tabpanel", { name: "Health" });
-    expect(screen.queryByText(/Each number opens the list that fixes it/)).toBeNull();
   });
 
   it("remembers the part last used", async () => {
-    renderClean("health");
-    expect(await screen.findByRole("tab", { name: "Health" })).toHaveAttribute(
+    renderClean("missing");
+    expect(await screen.findByRole("tab", { name: "Missing files" })).toHaveAttribute(
       "aria-selected",
       "true",
     );
     fireEvent.click(screen.getByRole("tab", { name: "Duplicates" }));
     expect(localStorage.getItem(CLEAN_SECTION_STORAGE_KEY)).toBe("duplicates");
     expect(await screen.findByRole("list", { name: "Possible duplicate groups" })).toBeVisible();
+  });
+
+  it.each(["fix", "health"])("opens on Match when %s, a part K3 removed, was stored", async (old) => {
+    renderClean(old);
+    expect(await screen.findByRole("tab", { name: "Match" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("puts Match tracks… in the header on the Match tab only (K4)", async () => {
+    renderClean();
+    const header = await screen.findByTestId("clean-header");
+    expect(within(header).getByRole("heading", { level: 1, name: "Clean" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "Match tracks…" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Missing files" }));
+    await screen.findByText("Track 9");
+    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Duplicates" }));
+    await screen.findByRole("list", { name: "Possible duplicate groups" });
+    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Match" }));
+    expect(await screen.findByRole("button", { name: "Match tracks…" })).toBeInTheDocument();
   });
 
   it("asks for an import before there is a library", async () => {
@@ -404,9 +422,16 @@ describe("the page", () => {
       library_empty: true,
       source: null,
     });
-    renderClean();
-    fireEvent.click(await screen.findByRole("button", { name: "Go to the Library" }));
-    expect(await screen.findByTestId("location")).toHaveTextContent('"/library"');
+    const { container } = renderClean();
+    // The shared empty state, with the one label for filling an empty Library.
+    await screen.findByText("No collection imported yet");
+    expect(container.querySelector(".cp-empty-state")).not.toBeNull();
+    expect(screen.queryByRole("tab")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: IMPORT_COLLECTION_LABEL }));
+    // To the Library, asking it to start an import.
+    const where = JSON.parse((await screen.findByTestId("location")).textContent ?? "{}");
+    expect(where.pathname).toBe("/library");
+    expect(importOpening({ state: where.state, key: "k" })).toBe("k");
   });
 });
 
@@ -474,7 +499,7 @@ describe("the Match tab", () => {
     fireEvent.click(
       within(dialog).getByRole("checkbox", { name: "Look up tracks that already have a match again" }),
     );
-    fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
     await waitFor(() =>
       expect(bridge.startCleanMatch).toHaveBeenCalledWith(
         expect.objectContaining({ rematch: true, label: "Whole library" }),
@@ -557,7 +582,7 @@ describe("the Match tab", () => {
     const dialog = await screen.findByRole("dialog", { name: "Match tracks" });
     expect(within(dialog).getByRole("radio", { name: /^Tracks not looked up yet/ })).toBeChecked();
     expect(bridge.startCleanMatch).not.toHaveBeenCalled();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
     await waitFor(() =>
       expect(bridge.startCleanMatch).toHaveBeenCalledWith({
         selection: {
@@ -590,7 +615,7 @@ describe("the Match tab", () => {
     await waitFor(() =>
       expect(within(dialog).getByRole("radio", { name: /^The 1 track you chose/ })).toBeChecked(),
     );
-    fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
     await waitFor(() =>
       expect(bridge.startCleanMatch).toHaveBeenCalledWith(
         expect.objectContaining({ selection: { track_ids: [1] }, label: "1 chosen track" }),
@@ -736,22 +761,13 @@ describe("missing files", () => {
     expect(bridge.showItemInFolder).not.toHaveBeenCalled();
   });
 
-  it("checks what is shown again, and reads the table again after", async () => {
+  it("checks every file again, and reads the table again after (K4)", async () => {
     renderClean("missing");
     await screen.findByText("Track 9");
     const before = bridge.browseLibrary!.mock.calls.length;
-    fireEvent.click(screen.getByRole("button", { name: "Check these again" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check again" }));
     await waitFor(() =>
-      expect(bridge.startFileCheck).toHaveBeenCalledWith({
-        selection: {
-          query: {
-            q: undefined,
-            playlist_id: null,
-            collection_id: null,
-            filters: fixture.rules.missing_files,
-          },
-        },
-      }),
+      expect(bridge.startFileCheck).toHaveBeenCalledWith({ selection: { query: {} } }),
     );
     expect(await screen.findByText("Checking 1 track.")).toBeInTheDocument();
     await waitFor(() => expect(bridge.browseLibrary!.mock.calls.length).toBeGreaterThan(before));
@@ -764,8 +780,7 @@ describe("missing files", () => {
     );
     renderClean("missing");
     expect(await screen.findByText("Files have not been checked yet.")).toBeInTheDocument();
-    const table = screen.getByRole("table", { name: "Missing files" });
-    fireEvent.click(within(table).getByRole("button", { name: "Check every file" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check every file" }));
     await waitFor(() =>
       expect(bridge.startFileCheck).toHaveBeenCalledWith({ selection: { query: {} } }),
     );
@@ -830,6 +845,28 @@ describe("duplicates", () => {
     );
   });
 
+  it.each([
+    ["tag", "Tag these tracks…", /Peak-time/, "Tag 1,001 tracks", /^Tag 1,001 tracks “Peak-time”\?$/],
+  ])(
+    "asks a big %s batch in words that carry the verb and the count (R3-2)",
+    async (_name, open, option, button, title) => {
+      const many = Array.from({ length: 1001 }, (_, index) => index + 1);
+      bridge.getDuplicateGroups!.mockResolvedValue({
+        groups: [{ ...GROUP, track_ids: many }],
+        total: 1,
+        limit: 50,
+        offset: 0,
+      });
+      renderClean("duplicates");
+      fireEvent.click(await screen.findByRole("button", { name: open }));
+      fireEvent.click(await screen.findByRole("option", { name: option }));
+      const dialog = await screen.findByRole("dialog", { name: title });
+      expect(within(dialog).getByRole("button", { name: button })).toBeInTheDocument();
+      expect(within(dialog).queryByRole("button", { name: "Apply" })).toBeNull();
+      expect(bridge.applyBatch).not.toHaveBeenCalled();
+    },
+  );
+
   it("shows a member's file", async () => {
     bridge.getTrackFolder!.mockResolvedValue({
       track_id: 8,
@@ -859,94 +896,6 @@ describe("duplicates", () => {
     bridge.getDuplicateGroups!.mockResolvedValue(fixture.scanned.duplicates);
     renderClean("duplicates");
     expect(await screen.findByText("No possible duplicates.")).toBeInTheDocument();
-  });
-});
-
-describe("Health", () => {
-  it("opens the Library on exactly the rules each count came with", async () => {
-    bridge.getLibraryHealth!.mockResolvedValue(UNTOUCHED);
-    renderClean("health");
-    const count = UNTOUCHED.counts.find((entry) => entry.id === "not_matched")!;
-    fireEvent.click(
-      await screen.findByRole("button", { name: "3 Not matched: open in the Library" }),
-    );
-    const location = JSON.parse((await screen.findByTestId("location")).textContent ?? "{}");
-    expect(location).toEqual({
-      pathname: "/library",
-      state: { cuepointLibraryRules: count.rules },
-    });
-  });
-
-  it.each([
-    ["missing_files", "Missing files"],
-    ["duplicates", "Duplicates"],
-    ["needs_review", "Match"],
-  ])("opens %s on its own tab, not the Library (FLW-14)", async (id, tab) => {
-    bridge.getLibraryHealth!.mockResolvedValue(UNTOUCHED);
-    renderClean("health");
-    const count = UNTOUCHED.counts.find((entry) => entry.id === id)!;
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: new RegExp(`^${count.count.toLocaleString()} ${count.label}:`),
-      }),
-    );
-    expect(await screen.findByRole("tab", { name: new RegExp(`^${tab}`), selected: true })).toBeInTheDocument();
-    expect(screen.queryByTestId("location")).toBeNull();
-  });
-
-  it.each(
-    UNTOUCHED.counts
-      .filter((count) => !["missing_files", "duplicates", "needs_review"].includes(count.id))
-      .map((count) => [count.id, count] as const),
-  )(
-    "links %s to its own rules",
-    async (_id, count) => {
-      bridge.getLibraryHealth!.mockResolvedValue(UNTOUCHED);
-      renderClean("health");
-      fireEvent.click(
-        await screen.findByRole("button", {
-          name: `${count.count.toLocaleString()} ${count.label}: open in the Library`,
-        }),
-      );
-      const location = JSON.parse((await screen.findByTestId("location")).textContent ?? "{}");
-      expect(location.state.cuepointLibraryRules).toEqual(count.rules);
-    },
-  );
-
-  it("says each check never ran, and runs one", async () => {
-    bridge.getLibraryHealth!.mockResolvedValue(UNTOUCHED);
-    renderClean("health");
-    const checks = await screen.findByRole("list", { name: "Checks" });
-    // Files, duplicates, artwork and the waveform analysis (WAVE-03).
-    expect(within(checks).getAllByText("Not done yet")).toHaveLength(4);
-
-    const before = bridge.getLibraryHealth!.mock.calls.length;
-    fireEvent.click(within(checks).getByRole("button", { name: "Read cover art" }));
-    await waitFor(() =>
-      expect(bridge.startArtworkScan).toHaveBeenCalledWith({ selection: { query: {} } }),
-    );
-    expect(await screen.findByText("Finished reading cover art.")).toBeInTheDocument();
-    expect(bridge.getLibraryHealth!.mock.calls.length).toBeGreaterThan(before);
-  });
-
-  it("says when a check last ran and what it found", async () => {
-    bridge.getLibraryHealth!.mockResolvedValue({
-      ...MATCHED,
-      detections: MATCHED.detections.map((run) =>
-        run.id === "files" ? { ...run, last_run_at: "2026-09-15T10:00:00Z" } : run,
-      ),
-    });
-    renderClean("health");
-    const checks = await screen.findByRole("list", { name: "Checks" });
-    // The duplicates run is recorded too; the files run is the one given a time.
-    expect(within(checks).getAllByText(/^Last run /)).toHaveLength(2);
-    expect(within(checks).getByText("Checked 3 files: none missing")).toBeInTheDocument();
-  });
-
-  it("says why it cannot count", async () => {
-    bridge.getLibraryHealth!.mockRejectedValue(new Error("The library is unavailable"));
-    renderClean("health");
-    expect(await screen.findByRole("alert")).toHaveTextContent("The library is unavailable");
   });
 });
 
@@ -980,7 +929,7 @@ describe("opening one track from the Library (CLEAN-13)", () => {
       matchesFor(trackId, stateFor(trackId, { state: "accepted", decided_by: "user" })),
     );
     // Whatever part was last used, and whatever sub-tab, a link to a track opens One at a time.
-    localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, "health");
+    localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, "missing");
     localStorage.setItem(MATCH_TAB_STORAGE_KEY, "past");
     renderOpened(2);
 
@@ -1023,15 +972,10 @@ describe("opening one track from the Library (CLEAN-13)", () => {
   });
 });
 
-describe("the match window and Fix values, opened from elsewhere (FLW-12, FLW-13)", () => {
+describe("the match window, opened from elsewhere (FLW-13)", () => {
   function Opened() {
     const location = useLocation();
-    return (
-      <CleanScreen
-        matchWith={cleanMatchOpening(location)}
-        fixWith={cleanFixOpening(location)}
-      />
-    );
+    return <CleanScreen matchWith={cleanMatchOpening(location)} />;
   }
 
   function renderOpened(state: unknown) {
@@ -1052,7 +996,7 @@ describe("the match window and Fix values, opened from elsewhere (FLW-12, FLW-13
     renderOpened(cleanMatchState([1, 2]));
     const dialog = await screen.findByRole("dialog", { name: "Match tracks" });
     expect(within(dialog).getByRole("radio", { name: /^The 2 tracks you chose/ })).toBeChecked();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Start matching" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
     await waitFor(() =>
       expect(bridge.startCleanMatch).toHaveBeenCalledWith({
         selection: { track_ids: [1, 2] },
@@ -1069,31 +1013,11 @@ describe("the match window and Fix values, opened from elsewhere (FLW-12, FLW-13
     expect(within(dialog).getByRole("radio", { name: /^Tracks not looked up yet/ })).toBeChecked();
   });
 
-  it("opens Fix values with the tracks chosen, and the action asked for", async () => {
-    localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, "health");
-    renderOpened(cleanFixState([1, 2, 3], "edit"));
-    expect(await screen.findByRole("tab", { name: "Fix values", selected: true })).toBeInTheDocument();
-    expect(await screen.findByRole("dialog", { name: "Edit values" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "The 3 tracks you chose" })).toBeChecked();
-    // A link is not a choice: the part last used stays the one remembered.
-    expect(localStorage.getItem(CLEAN_SECTION_STORAGE_KEY)).toBe("health");
-  });
-
   it("opens Match tracks… from the header without tracks", async () => {
     renderClean();
     await screen.findByText("Track 1");
     fireEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
     expect(await screen.findByRole("dialog", { name: "Match tracks" })).toBeInTheDocument();
-  });
-
-  it("says on the Fix values tab how to choose tracks, with no paragraph before it (C15b)", async () => {
-    renderClean("fix");
-    expect(screen.queryByText(/Change many tracks at once/)).toBeNull();
-    expect(
-      await screen.findByText(
-        "Choose tracks: pick playlists here, or select tracks in the Library and use Fix ▸.",
-      ),
-    ).toBeInTheDocument();
   });
 });
 
@@ -1120,16 +1044,19 @@ describe("opening a part from somewhere else (EXPORT-07)", () => {
   }
 
   it("opens Missing files, whatever part was used last, and does not remember it", async () => {
-    localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, "health");
+    localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, "duplicates");
     renderOpened();
 
     expect(await screen.findByRole("tab", { name: "Missing files", selected: true })).toBeInTheDocument();
     expect(await screen.findByText(/right-click the track/)).toBeInTheDocument();
-    expect(localStorage.getItem(CLEAN_SECTION_STORAGE_KEY)).toBe("health");
+    expect(localStorage.getItem(CLEAN_SECTION_STORAGE_KEY)).toBe("duplicates");
   });
 
   it("ignores a location that carries no part, or one that is not a part", () => {
     expect(cleanSectionOpening({ state: { cuepointCleanSection: "exports" }, key: "k" })).toBeNull();
+    // The two parts K3 removed are not parts here; `cleanRedirect` sends them elsewhere.
+    expect(cleanSectionOpening({ state: { cuepointCleanSection: "health" }, key: "k" })).toBeNull();
+    expect(cleanSectionOpening({ state: { cuepointCleanSection: "fix" }, key: "k" })).toBeNull();
     expect(cleanSectionOpening({ state: { cuepointCleanSection: 2 }, key: "k" })).toBeNull();
     expect(cleanSectionOpening({ state: null, key: "k" })).toBeNull();
     expect(cleanSectionOpening({ state: cleanTrackState(4), key: "k" })).toBeNull();

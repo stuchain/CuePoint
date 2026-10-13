@@ -6,8 +6,8 @@
  * matched, one track is accepted automatically and one waits for review; the
  * review chooses the second candidate from the keyboard, applies its key and
  * BPM, and the Library shows the applied values with their source until the
- * apply is reverted. A file check finds the missing file, Health counts it and
- * opens the Library on it, tags are previewed, written into a copy of a real
+ * apply is reverted. A file check finds the missing file, the Missing files tab counts it and
+ * shows it, tags are previewed, written into a copy of a real
  * MP3 and restored, a refresh that would remove the reviewed track names it
  * before anything is removed, and the retired inKey address lands on Clean.
  *
@@ -210,7 +210,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         await matchWindow.getByRole("radio", { name: /^Tracks in chosen playlists/ }).click();
         await matchWindow.getByRole("checkbox", { name: "Journey" }).check();
         await expect(matchWindow).toContainText("CuePoint will search Beatport for 3 tracks.");
-        await matchWindow.getByRole("button", { name: "Start matching" }).click();
+        await matchWindow.getByRole("button", { name: "Match 3 tracks" }).click();
         await expect(window.getByText("Matching 3 tracks on Beatport.", { exact: true })).toBeVisible({ timeout: 30_000 });
         await expect(window.getByText("Matching finished.")).toBeVisible({ timeout: 90_000 });
         await idle(window);
@@ -344,21 +344,17 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
       await test.step("check files, with one missing", async () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
         await window.getByRole("tab", { name: "Missing files" }).click();
-        await window.getByRole("button", { name: "Check every file" }).first().click();
+        await window.getByRole("button", { name: /^Check (every file|again)$/ }).click();
         await idle(window);
         const missing = window.getByRole("table", { name: "Missing files" });
         await expect(missing.getByText("Gone")).toBeVisible({ timeout: 15_000 });
         await expect(missing.getByText("Tone One")).toHaveCount(0);
       });
 
-      await test.step("see Health's counts and follow one to the tab that fixes it", async () => {
-        await window.getByRole("tab", { name: "Health" }).click();
-        await expect(
-          window.getByRole("button", { name: "1 Waiting for you: open Match" }),
-        ).toHaveCount(0);
-        await window
-          .getByRole("button", { name: "1 Missing or unreadable files: open Missing files" })
-          .click();
+      await test.step("see the missing-file count on its tab (Health moved to Statistics)", async () => {
+        await expect(window.getByRole("tab", { name: "Missing files (1)" })).toBeVisible({ timeout: 15_000 });
+        await expect(window.getByRole("tab", { name: /^Health/ })).toHaveCount(0);
+        await expect(window.getByRole("tab", { name: /^Fix values/ })).toHaveCount(0);
         const table = window.getByRole("table", { name: "Missing files" });
         await expect(table.getByText("Gone")).toBeVisible({ timeout: 15_000 });
         await expect(table.getByText("Tone One")).toHaveCount(0);
@@ -391,7 +387,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         expect(readFileSync(library.files[0]!).includes(Buffer.from("TKEY"))).toBe(false);
         await dialog.getByRole("button", { name: "Done" }).click();
         await idle(window);
-        // Fix values is on Clean: back to the Library for the refresh below.
+        // The dialog opened in place on the Library; the refresh below is the Library's too.
         await window.getByRole("link", { name: "Library", exact: true }).click();
       });
 

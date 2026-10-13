@@ -15,7 +15,7 @@ import type {
   LibraryTrackRow,
   TrackMatches,
 } from "../../api/cuepointBridge.types";
-import { cleanFixOpening, cleanMatchOpening } from "../clean/cleanLink";
+import { cleanMatchOpening } from "../clean/cleanLink";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 
 const TRACK: LibraryTrackRow = {
@@ -406,17 +406,27 @@ describe("Edit values… (INS-4, DEC-205)", () => {
     expect(button).toHaveAttribute("title", expect.stringContaining("one track"));
   });
 
-  it("offers Edit values for 4 tracks… for a multi-selection, in Clean's Fix values", () => {
-    show({ selectionCount: 4, selectedTracks: { ids: [12, 13, 14, 15] } });
+  it("offers Edit values for 4 tracks… for a multi-selection, in place (K4)", () => {
+    const onEditValues = vi.fn();
+    show({ selectionCount: 4, onEditValues });
     fireEvent.click(screen.getByRole("button", { name: "Edit values for 4 tracks…" }));
-    expect(where().path).toBe("/clean");
-    const opening = cleanFixOpening({ state: where().state, key: "k" });
-    expect(opening?.tracks).toEqual({ ids: [12, 13, 14, 15] });
-    expect(opening?.action).toBe("edit");
+    expect(onEditValues).toHaveBeenCalledTimes(1);
+    // The panel itself goes nowhere: the host opens the dialog.
+    expect(where().path).not.toBe("/clean");
+  });
+
+  it("does not offer Edit values when the host cannot edit a selection", () => {
+    show({ selectionCount: 4 });
+    expect(screen.queryByRole("button", { name: /^Edit values for/ })).toBeNull();
+  });
+
+  it("does not offer Edit values for a single track", () => {
+    show({ selectionCount: 1, onEditValues: vi.fn() });
+    expect(screen.queryByRole("button", { name: /^Edit values for/ })).toBeNull();
   });
 
   it("says edits here still change this one track", () => {
-    show({ selectionCount: 4, selectedTracks: { ids: [12, 13, 14, 15] } });
+    show({ selectionCount: 4, onEditValues: vi.fn() });
     expect(screen.getByRole("status")).toHaveTextContent(/4 tracks selected/);
     expect(screen.queryByRole("button", { name: /Change all/ })).toBeNull();
   });

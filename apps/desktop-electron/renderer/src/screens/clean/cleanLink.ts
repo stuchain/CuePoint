@@ -9,6 +9,7 @@
 import { ruleSetFrom } from "../library/libraryLink";
 import { isIds, type CleanTracks, type SelectionQuery } from "./cleanTracks";
 import { CLEAN_SECTIONS, type CleanSection } from "./cleanSections";
+import { statisticsFocusState } from "../statistics/statisticsLink";
 
 const STATE_KEY = "cuepointCleanTrack";
 const SECTION_KEY = "cuepointCleanSection";
@@ -68,15 +69,32 @@ export function cleanSectionOpening(location: {
   return section === null ? null : { section, token: location.key };
 }
 
+/**
+ * Where an old Clean link goes now (K3).
+ *
+ * Fix values and Health left the Clean page: Health lives on Statistics and Fix
+ * values' actions open in place on the Library. A link made before that, by this
+ * app or a hand-typed address, still lands somewhere that makes sense: `health`
+ * opens Statistics on its Health section, `fix` opens the Library. The part is
+ * read from the raw location state or from `?section=`, since the typed
+ * `CleanSection` can no longer name either.
+ */
+export function cleanRedirect(location: {
+  state: unknown;
+  search?: string;
+}): { to: string; state?: unknown } | null {
+  const state = location.state;
+  const carried =
+    state && typeof state === "object" ? (state as Record<string, unknown>)[SECTION_KEY] : null;
+  const asked = carried ?? new URLSearchParams(location.search ?? "").get("section");
+  if (asked === "health") return { to: "/statistics", state: statisticsFocusState("health") };
+  if (asked === "fix") return { to: "/library" };
+  return null;
+}
+
 // ---------------------------------------------------------------- tracks
 
-const FIX_KEY = "cuepointCleanFix";
 const MATCH_KEY = "cuepointCleanMatch";
-
-/** What Fix values can be asked to start with: edit, copy Beatport's, or save into files. */
-export type FixAction = "edit" | "beatport" | "save";
-
-const FIX_ACTIONS: readonly FixAction[] = ["edit", "beatport", "save"];
 
 function asTracks(tracks: readonly number[] | CleanTracks): CleanTracks {
   return Array.isArray(tracks) ? { ids: [...(tracks as readonly number[])] } : (tracks as CleanTracks);
@@ -133,39 +151,6 @@ function tracksFrom(value: unknown): CleanTracks | null {
     return query && isCount(given.count) ? { query, count: given.count } : null;
   }
   return null;
-}
-
-/**
- * The location state that opens Clean's Fix values with these tracks chosen
- * (FLW-12): the Library's Beatport ▸ and Fix ▸, Track details and Health. An
- * action starts that dialog at once.
- */
-export function cleanFixState(
-  tracks: readonly number[] | CleanTracks,
-  action?: FixAction,
-): Record<string, unknown> {
-  return { [FIX_KEY]: { tracks: asTracks(tracks), action: action ?? null } };
-}
-
-/** What Fix values is asked to open with, and the navigation that asked. */
-export interface CleanFixOpening {
-  tracks: CleanTracks;
-  action: FixAction | null;
-  token: string;
-}
-
-export function cleanFixOpening(location: { state: unknown; key: string }): CleanFixOpening | null {
-  const state = location.state;
-  if (!state || typeof state !== "object") return null;
-  const carried = (state as Record<string, unknown>)[FIX_KEY];
-  if (!carried || typeof carried !== "object") return null;
-  const { tracks: given, action } = carried as Record<string, unknown>;
-  const tracks = tracksFrom(given);
-  if (!tracks) return null;
-  if (action !== null && action !== undefined && !FIX_ACTIONS.includes(action as FixAction)) {
-    return null;
-  }
-  return { tracks, action: (action as FixAction | null | undefined) ?? null, token: location.key };
 }
 
 /**

@@ -4,7 +4,9 @@
  * A `TrackTable` over the Library's browse, scoped to files the last check
  * found missing or unreadable at the path each track has now. Where each was
  * expected is a column; "show in folder" opens the nearest folder that still
- * exists; "check again" runs CLEAN-07's check over what is shown.
+ * exists. One check button at a time (K4): "Check every file" until files have
+ * been checked, then "Check again", which reads "Check 12 again" and checks
+ * those rows when some are selected, and checks every file when none are.
  *
  * **Nothing here fixes a file.** Relocation is Rekordbox's (DEC-073), and the
  * page gives the fix in three steps (CLN-8) rather than offering a control that
@@ -33,7 +35,7 @@ import { TrackDetailPanel } from "../library/TrackDetailPanel";
 import { batchSelection } from "../library/libraryBatch";
 import { queryKey, type SortDirection } from "../library/libraryQuery";
 import { copySummary, gatherTracksAsText, writeClipboard } from "../library/trackClipboard";
-import { EMPTY_SELECTION, onlySelectedId, selectAll } from "../library/trackSelection";
+import { onlySelectedId } from "../library/trackSelection";
 import { useTrackDetail } from "../library/useTrackDetail";
 import { useTrackSelection } from "../library/useTrackSelection";
 import { useTrackWindow } from "../library/useTrackWindow";
@@ -174,20 +176,14 @@ export function MissingFilesView({
   const running = jobs.running !== null;
   const empty = missingEmptyState(health, window_.error);
   const roots = health?.unavailable_roots ?? [];
+  // Files never checked is the engine's own answer (`cleanEmpty.ts`): until then
+  // the one check button is "Check every file" (K4).
+  const neverChecked = empty.offer === "check_files";
 
   const emptyState = (
     <div className="clean-empty">
       <p className="clean-empty__headline">{empty.headline}</p>
       {empty.hint && <p className="clean-empty__hint">{empty.hint}</p>}
-      {empty.offer === "check_files" && (
-        <Button
-          variant="secondary"
-          disabled={running}
-          onClick={() => check("check-all", WHOLE_LIBRARY_SELECTION)}
-        >
-          Check every file
-        </Button>
-      )}
     </div>
   );
 
@@ -219,29 +215,30 @@ export function MissingFilesView({
 
       <div className="clean-toolbar" role="toolbar" aria-label="Missing files">
         <span className="clean-toolbar__spacer" />
-        <Button
-          variant="secondary"
-          disabled={window_.total === 0 || running}
-          loading={jobs.running === "check-shown"}
-          onClick={() =>
-            check(
-              "check-shown",
-              selection.count > 0
-                ? batchSelection(selection.selection, query)
-                : batchSelection(selectAll(EMPTY_SELECTION), query),
-            )
-          }
-        >
-          {selection.count > 0 ? "Check selected again" : "Check these again"}
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={running}
-          loading={jobs.running === "check-all"}
-          onClick={() => check("check-all", WHOLE_LIBRARY_SELECTION)}
-        >
-          Check every file
-        </Button>
+        {neverChecked ? (
+          <Button
+            variant="secondary"
+            disabled={running}
+            loading={jobs.running === "check-all"}
+            onClick={() => check("check-all", WHOLE_LIBRARY_SELECTION)}
+          >
+            Check every file
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            disabled={running}
+            loading={jobs.running === "check-again"}
+            onClick={() =>
+              check(
+                "check-again",
+                selection.count > 0 ? batchSelection(selection.selection, query) : WHOLE_LIBRARY_SELECTION,
+              )
+            }
+          >
+            {selection.count > 0 ? `Check ${selection.count.toLocaleString()} again` : "Check again"}
+          </Button>
+        )}
       </div>
 
       <div className="clean-missing__table">

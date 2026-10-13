@@ -105,11 +105,11 @@ function analysis(window: Page) {
 }
 
 async function healthRow(window: Page) {
-  await window.getByRole("link", { name: "Clean" }).click();
-  await window.getByRole("tab", { name: "Health" }).click();
-  return window.getByRole("list", { name: "Checks" }).getByRole("listitem").filter({
-    hasText: "Waveform drawing",
-  });
+  // The analysis state and its Resume / Analyze button live in Settings' Waveforms panel.
+  await window.getByRole("link", { name: "Settings" }).click();
+  const state = window.locator(".cp-waveform-settings__state");
+  await state.scrollIntoViewIfNeeded();
+  return state;
 }
 
 test.describe("The waveform analysis (WAVE-03)", () => {

@@ -1,0 +1,159 @@
+/**
+ * Missing files' check button (K4): one button at a time.
+ *
+ * Never checked, the one button is "Check every file". Once checked, it is
+ * "Check again", which reads "Check 12 again" and checks those rows when some
+ * are selected, and checks every file otherwise. No second check button, and
+ * none inside the empty state.
+ */
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+
+import type { LibraryHealth, LibrarySearchResponse } from "../../api/cuepointBridge.types";
+import { ToastProvider } from "../../components";
+import { ScaleProvider } from "../../tokens/ScaleContext";
+import { browseAnswer, track } from "../../test/matchFixtures";
+import fixture from "./cleanEmpty.fixture.json";
+import { MissingFilesView } from "./MissingFilesView";
+
+type Fn = ReturnType<typeof vi.fn>;
+
+const UNTOUCHED = fixture.untouched.health as LibraryHealth;
+const MATCHED = fixture.matched.health as LibraryHealth;
+/** Health after a check has run, so the view is not in its first-run state. */
+const CHECKED: LibraryHealth = {
+  ...MATCHED,
+  detections: MATCHED.detections.map((run) =>
+    run.id === "files" ? { ...run, last_run_at: "2026-09-15T10:00:00Z" } : run,
+  ),
+};
+
+const MISSING = Array.from({ length: 12 }, (_, index) =>
+  track(index + 1, { file_status: "missing", file_path: `E:\\gone\\${index + 1}.mp3` }),
+);
+
+let bridge: Record<string, Fn>;
+
+function install(rows = MISSING) {
+  bridge = {
+    browseLibrary: vi.fn(async (params: Record<string, unknown>) => browseAnswer(params, rows)),
+    getLibraryTrack: vi.fn(async ({ trackId }: { trackId: number }) => ({
+      track: rows.find((row) => row.id === trackId) ?? track(trackId),
+      playlists: [],
+      playlist_count: 0,
+      metadata: null,
+      tags: [],
+      collections: [],
+    })),
+    getTrackHistory: vi.fn().mockResolvedValue({ track_id: 1, changes: [], limit: 50 }),
+    getTrackFolder: vi.fn().mockResolvedValue({
+      track_id: 1,
+      file_path: "E:\\gone\\1.mp3",
+      file_exists: false,
+      folder: null,
+    }),
+    startFileCheck: vi.fn().mockResolvedValue({
+      job_id: "job-check",
+      id: "job-check",
+      state: "queued",
+      tracks: 12,
+    }),
+    getJob: vi.fn().mockResolvedValue({ id: "job-check", state: "succeeded" }),
+    getJobResults: vi.fn().mockResolvedValue({ id: "job-check", state: "succeeded" }),
+  };
+  (window as unknown as { cuepoint?: unknown }).cuepoint = bridge;
+}
+
+function renderView(health: LibraryHealth) {
+  return render(
+    <ScaleProvider>
+      <ToastProvider>
+        <MemoryRouter>
+          <MissingFilesView health={health} onHealthChanged={() => {}} />
+        </MemoryRouter>
+      </ToastProvider>
+    </ScaleProvider>,
+  );
+}
+
+/** Every button in the view whose name mentions checking. */
+function checkButtons(): string[] {
+  return screen
+    .queryAllByRole("button")
+    .map((button) => button.textContent ?? "")
+    .filter((name) => /^Check (every|again|\d)/.test(name) || /again$/.test(name));
+}
+
+beforeAll(() => {
+  globalThis.ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  Object.defineProperty(HTMLElement.prototype, "offsetWidth", { configurable: true, get: () => 1200 });
+  Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, get: () => 600 });
+  Element.prototype.scrollTo ??= function scrollTo() {};
+});
+
+afterAll(() => {
+  Reflect.deleteProperty(HTMLElement.prototype, "offsetWidth");
+  Reflect.deleteProperty(HTMLElement.prototype, "offsetHeight");
+});
+
+beforeEach(() => {
+  localStorage.clear();
+  install();
+});
+
+afterEach(() => {
+  delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+  vi.restoreAllMocks();
+});
+
+describe("the check button (K4)", () => {
+  it("is the one 'Check every file' when files were never checked", async () => {
+    install([]);
+    bridge.browseLibrary!.mockResolvedValue(fixture.untouched.missing_files as LibrarySearchResponse);
+    renderView(UNTOUCHED);
+    await screen.findByText("Files have not been checked yet.");
+
+    expect(checkButtons()).toEqual(["Check every file"]);
+    fireEvent.click(screen.getByRole("button", { name: "Check every file" }));
+    await waitFor(() =>
+      expect(bridge.startFileCheck).toHaveBeenCalledWith({ selection: { query: {} } }),
+    );
+  });
+
+  it("is the one 'Check again' once files were checked, and checks every file", async () => {
+    renderView(CHECKED);
+    await screen.findByText("Track 1");
+
+    expect(checkButtons()).toEqual(["Check again"]);
+    fireEvent.click(screen.getByRole("button", { name: "Check again" }));
+    await waitFor(() =>
+      expect(bridge.startFileCheck).toHaveBeenCalledWith({ selection: { query: {} } }),
+    );
+  });
+
+  it("reads 'Check 12 again' with 12 rows selected, and checks those rows", async () => {
+    renderView(CHECKED);
+    fireEvent.click(await screen.findByText("Track 1"));
+    fireEvent.click(screen.getByText("Track 12"), { shiftKey: true });
+
+    const button = await screen.findByRole("button", { name: "Check 12 again" });
+    expect(checkButtons()).toEqual(["Check 12 again"]);
+    fireEvent.click(button);
+    await waitFor(() => expect(bridge.startFileCheck).toHaveBeenCalledTimes(1));
+    const selection = bridge.startFileCheck!.mock.calls[0]![0].selection;
+    expect(selection).toEqual({ track_ids: MISSING.map((row) => row.id) });
+  });
+
+  it("has no check button in the empty state of a checked library", async () => {
+    install([]);
+    bridge.browseLibrary!.mockResolvedValue(fixture.checked.missing_files as LibrarySearchResponse);
+    renderView(CHECKED);
+    await screen.findByText("No missing files.");
+    expect(checkButtons()).toEqual(["Check again"]);
+  });
+});

@@ -31,7 +31,7 @@ import {
 } from "../library/collectionTree";
 import { formatDuration } from "../library/trackValues";
 import { batchConsequence } from "../library/libraryBatch";
-import { useLibraryBatch } from "../library/useLibraryBatch";
+import { useLibraryBatch, type BatchRun } from "../library/useLibraryBatch";
 import { duplicatesEmptyState } from "./cleanEmpty";
 import { fileStatusLabel, signalExplanation, signalLabel, trackCount } from "./cleanFormat";
 import { revealTrack } from "./revealTrack";
@@ -115,6 +115,27 @@ function GroupCard({ group, busy, onAnswer, onTag, onCollect, onReveal }: GroupC
 interface DuplicatesViewProps {
   health: LibraryHealth | null;
   onHealthChanged: () => void;
+}
+
+/**
+ * The big-batch confirmation's words (R3-2): the title says what is about to happen and the
+ * button repeats it with the count, so the one click is not a bare "Apply". Duplicates only
+ * tags tracks or adds them to a Collection; anything else keeps the general question.
+ */
+function confirmWordsFor(pending: BatchRun | null): { title: string; button: string } {
+  if (!pending) return { title: "Change tracks?", button: "Apply" };
+  const tracks = `${pending.count.toLocaleString()} ${pending.count === 1 ? "track" : "tracks"}`;
+  switch (pending.action.kind) {
+    case "add_tag":
+      return { title: `Tag ${tracks} “${pending.action.target}”?`, button: `Tag ${tracks}` };
+    case "add_to_collection":
+      return {
+        title: `Add ${tracks} to “${pending.action.target}”?`,
+        button: `Add ${tracks} to Collection`,
+      };
+    default:
+      return { title: `Change ${tracks}?`, button: `Change ${tracks}` };
+  }
 }
 
 export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps) {
@@ -299,6 +320,8 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
     [batch, picker, push],
   );
 
+  const confirmWords = confirmWordsFor(batch.pending);
+
   const scan = useCallback(() => {
     const bridge = window.cuepoint?.startDuplicateScan;
     if (!bridge) {
@@ -402,9 +425,13 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
 
       <Modal
         open={batch.pending !== null}
-        title="That is a lot of tracks"
+        title={confirmWords.title}
         onClose={batch.cancel}
-        primaryAction={{ label: "Apply", onClick: () => void batch.confirm(), loading: batch.busy }}
+        primaryAction={{
+          label: confirmWords.button,
+          onClick: () => void batch.confirm(),
+          loading: batch.busy,
+        }}
         secondaryAction={{ label: "Cancel", onClick: batch.cancel }}
       >
         <p>{batch.question}</p>

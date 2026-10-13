@@ -28,7 +28,6 @@ export const TYPED_SYMBOL_ALLOWLIST: readonly string[] = [
   "components/player/PlayerBar.tsx",
   "components/player/QueuePanel.tsx",
   "components/table/TrackTable.tsx",
-  "screens/clean/FixValues.tsx",
   "screens/discover/BeatportHalf.tsx",
   "screens/discover/DiscoverScreen.tsx",
   "screens/library/CollectionsPane.tsx",

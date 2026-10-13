@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
 interface RouteButtonProps {
   /** Where to go; a function when the place is found out on the click, or null for nowhere. */
   to: string | (() => Promise<string | null>);
-  /** The location state the page opens with (`cleanMatchState`, `cleanFixState`). */
+  /** The location state the page opens with (`cleanMatchState`). */
   state?: unknown;
   className?: string;
   children: ReactNode;

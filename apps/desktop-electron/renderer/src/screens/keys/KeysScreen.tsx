@@ -26,7 +26,7 @@ import { useCompatibleKeys } from "../../components/wheel/useWheelSubject";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { reportUnexpected } from "../../reporting/reporting";
-import { cleanFixState, cleanMatchState, cleanTrackState, type FixAction } from "../clean/cleanLink";
+import { cleanMatchState, cleanTrackState } from "../clean/cleanLink";
 import type { CleanTracks } from "../clean/cleanTracks";
 import { entityPath, similarPath } from "../discover/discoverLinks";
 import { flattenCollections, holdsTracks } from "../library/collectionTree";
@@ -343,11 +343,6 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
     (tracks?: CleanTracks) => navigate("/clean", { state: cleanMatchState(tracks) }),
     [navigate],
   );
-  const openFix = useCallback(
-    (tracks: CleanTracks, action: FixAction) =>
-      navigate("/clean", { state: cleanFixState(tracks, action) }),
-    [navigate],
-  );
 
   // ---------------------------------------------------------------- drawing
 
@@ -523,7 +518,10 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
                 onOpenSimilar={openSimilar}
                 onOpenInClean={openInClean}
                 onOpenMatch={openMatch}
-                onOpenFix={openFix}
+                onTracksChanged={() => {
+                  setReloadToken((value) => value + 1);
+                  detail.reload();
+                }}
               />
             </>
           ) : (

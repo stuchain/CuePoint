@@ -55,7 +55,6 @@ import { RefreshPreviewDialog } from "./RefreshPreviewDialog";
 import { RekordboxExportDialog } from "./RekordboxExportDialog";
 import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
 import { LibraryToolbar } from "./LibraryToolbar";
-import { cleanTracksOf } from "./trackDetailsActions";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "./useLibraryPlayback";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 import { defaultSortForScope, findByPath, type PlaylistTreeNode } from "./playlistTree";
@@ -102,7 +101,6 @@ import { LibraryEmptyState } from "./LibraryEmptyState";
 import { LibraryKeyNote } from "./LibraryKeyNote";
 import { LibraryNoKeyNote } from "./LibraryNoKeyNote";
 import type { CleanTracks } from "../clean/cleanTracks";
-import type { FixAction } from "../clean/cleanLink";
 import { LibraryReadyNote } from "./LibraryReadyNote";
 import { isReadyNoteOpen, readImportedAt, rememberImport } from "./libraryNoticeMemory";
 import type { LibraryOpening, TrackOpening } from "./libraryLink";
@@ -225,13 +223,6 @@ export interface LibraryScreenProps {
    */
   onOpenKeys?: (sources: Array<{ kind: "playlist" | "collection" | "set"; id: number }>) => void;
   /**
-   * Clean's Fix values with these tracks chosen (FLW-12): the selection bar's
-   * Beatport ▸ and Fix ▸, and the right-click menu's. An action starts that
-   * dialog at once. A prop so routing stays in `App.tsx`; absent, those entries are left
-   * out.
-   */
-  onOpenFix?: (tracks: CleanTracks, action: FixAction) => void;
-  /**
    * Open an artist's or a label's page (DISCOVER-11): from the Inspector's
    * credits, a filter chip and the operations list. A prop so routing stays in
    * `App.tsx`. Absent, none of them is offered.
@@ -260,7 +251,6 @@ export function LibraryScreen({
   onOpenMissingFiles,
   onOpenMatch,
   onOpenKeys,
-  onOpenFix,
   onOpenEntity,
   onOpenSimilar,
   onOpenInPrepare,
@@ -660,7 +650,13 @@ export function LibraryScreen({
       error={detail.error}
       selectionCount={selection.count}
       gatherSelectedRows={(limit) => selection.gatherRows(limit ?? QUEUE_ACTION_LIMIT)}
-      selectedTracks={cleanTracksOf(batchSelection(selection.selection, query), selection.count)}
+      // Edit values for the whole selection opens in place (K4), as the Fix ▸ menu does.
+      onEditValues={
+        // Offered only where editing is (a build whose engine has the override routes).
+        clean.handlersFor({ selection: { track_ids: [] }, count: 0 }).onEdit
+          ? () => clean.handlersFor(barTarget()).onEdit?.()
+          : undefined
+      }
       onSelectPlaylist={(playlist) => scopeTo(playlist)}
       // The detail read names a Collection by id, kind and name; the node with
       // its rules and its counts lives in the tree, so it is looked up rather
@@ -1046,17 +1042,14 @@ export function LibraryScreen({
               ? () => void openInClean(target, (tracks) => onOpenMatch(tracks))
               : undefined,
             onReview: onOpenInClean && first != null ? () => onOpenInClean(first) : undefined,
-            onUseBeatport: onOpenFix
-              ? () => void openInClean(target, (tracks) => onOpenFix(tracks, "beatport"))
-              : undefined,
+            // Applying Beatport's values opens its dialog here (K4), not on Clean.
+            onUseBeatport: checking.onApply,
           },
           fix: {
-            onEdit: onOpenFix
-              ? () => void openInClean(target, (tracks) => onOpenFix(tracks, "edit"))
-              : undefined,
-            onWriteTags: onOpenFix
-              ? () => void openInClean(target, (tracks) => onOpenFix(tracks, "save"))
-              : undefined,
+            // Editing opens in place (K4). Writing tags stays on its own dialog here
+            // until the save window replaces it.
+            onEdit: checking.onEdit,
+            onWriteTags: checking.onWriteTags,
             onCheckFiles: checking.onCheckFiles,
           },
           more: {
@@ -1079,7 +1072,6 @@ export function LibraryScreen({
       copyRows,
       handleCopy,
       onOpenEntity,
-      onOpenFix,
       onOpenInClean,
       onOpenMatch,
       onOpenSimilar,
@@ -2170,6 +2162,7 @@ export function LibraryScreen({
           />
 
           <BatchConfirmDialog batch={batch} />
+          {clean.dialogs}
         </div>
       </div>
 

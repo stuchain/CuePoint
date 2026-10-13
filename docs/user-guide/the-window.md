@@ -24,7 +24,7 @@ also reopens on the page you were last using.
 The sidebar lists the pages available to you, with the CuePoint logo and name at
 its top (click them to go home, to the Library). Each page has a one-line hint
 under its name, and the same line is its tooltip when the sidebar is collapsed:
-**Library** "Your Rekordbox tracks", **Keys** "The keys in your playlists, Collections and Sets", **Clean** "Fix values with Beatport", **Discover** "Find new music",
+**Library** "Your Rekordbox tracks", **Keys** "The keys in your playlists, Collections and Sets", **Clean** "Match on Beatport, find missing files and duplicates", **Discover** "Find new music",
 **Prepare** "Plan a set", **Statistics** "See what you play most and how your library is made up" and **Settings** "Look, sound, accounts". Your Collections
 are not a page of their own: they are the tree in the Library's left pane. **Keys**
 follows **Library** (see [Keys](keys.md)). **Settings** is pinned to the bottom, under a thin line.

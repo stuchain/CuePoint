@@ -66,15 +66,13 @@ import {
   similarPath,
 } from "./screens/discover/discoverLinks";
 import {
-  cleanFixOpening,
-  cleanFixState,
   cleanMatchOpening,
   cleanMatchState,
   cleanOpening,
+  cleanRedirect,
   cleanSectionOpening,
   cleanSectionState,
   cleanTrackState,
-  type FixAction,
 } from "./screens/clean/cleanLink";
 import type { CleanTracks } from "./screens/clean/cleanTracks";
 import { MotionProvider } from "./tokens/MotionContext";
@@ -207,13 +205,6 @@ function AppShell() {
     (tracks?: CleanTracks) => navigate("/clean", { state: cleanMatchState(tracks) }),
     [navigate],
   );
-  // The Library's Beatport ▸ and Fix ▸ (FLW-8) open Fix values with the
-  // selected tracks chosen, and may start an action at once (FLW-12).
-  const openFix = useCallback(
-    (tracks: CleanTracks, action: FixAction) =>
-      navigate("/clean", { state: cleanFixState(tracks, action) }),
-    [navigate],
-  );
   const closeNote = useCallback(() => setNoteOpen(false), []);
   const prepareScreen = (
     <PrepareScreen
@@ -253,7 +244,6 @@ function AppShell() {
             onOpenInClean={openInClean}
             onOpenMissingFiles={openMissingFiles}
             onOpenMatch={openMatching}
-            onOpenFix={openFix}
             onOpenToken={() => navigate("/settings", { state: settingsFocusState("beatport-token") })}
             onOpenEntity={openEntity}
             onOpenSimilar={openSimilar}
@@ -261,17 +251,20 @@ function AppShell() {
             onOpenKeys={openKeys}
           />
         );
-      case "clean":
+      case "clean": {
         // The Inspector's link opens one track's review (CLEAN-13).
         // The Rekordbox export's missing-file count opens Missing files (EXPORT-07).
+        // A link to the Health or Fix values tab K3 removed goes where they went.
+        const moved = cleanRedirect(location);
+        if (moved) return <Navigate to={moved.to} state={moved.state} replace />;
         return (
           <CleanScreen
             openWith={cleanOpening(location)}
             openSection={cleanSectionOpening(location)}
             matchWith={cleanMatchOpening(location)}
-            fixWith={cleanFixOpening(location)}
           />
         );
+      }
       // PAGES-16 (DEC-200): the keys of chosen playlists, Collections and Sets. The Library's Key
       // list opens it with the open playlist or Collection ticked.
       case "keys":

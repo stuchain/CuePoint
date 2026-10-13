@@ -350,7 +350,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         const matchWindow = window.getByRole("dialog", { name: "Match tracks" });
         await matchWindow.getByRole("radio", { name: /^Tracks in chosen playlists/ }).click();
         await matchWindow.getByRole("checkbox", { name: "To match" }).check();
-        await matchWindow.getByRole("button", { name: "Start matching" }).click();
+        await matchWindow.getByRole("button", { name: /^Match \d/ }).click();
         await expect(window.getByText("Matching finished.")).toBeVisible({ timeout: 90_000 });
         await idle(window);
         await window.getByRole("combobox", { name: "Show" }).selectOption("accepted");

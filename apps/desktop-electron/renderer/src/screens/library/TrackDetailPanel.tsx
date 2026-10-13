@@ -42,10 +42,8 @@ import type {
   TrackFieldChange,
 } from "../../api/cuepointBridge.types";
 import { announceLibraryChange } from "../../api/libraryChanges";
-import { cleanFixState } from "../clean/cleanLink";
 import { matchStateLabel } from "../clean/cleanFormat";
 import { useTrackMatches } from "../clean/useTrackMatches";
-import type { CleanTracks } from "../clean/cleanTracks";
 import { similarPath } from "../discover/discoverLinks";
 import { CreditLinks } from "./CreditLinks";
 import { DisclosureSection } from "./DisclosureSection";
@@ -112,10 +110,12 @@ interface TrackDetailPanelProps {
    */
   gatherSelectedRows?: (limit?: number) => Promise<LibraryTrackRow[]>;
   /**
-   * The selection as Clean takes it, for **Edit values for 4 tracks…** (INS-11).
-   * Absent, the button is not offered.
+   * Opens the edit dialog for the whole selection, for **Edit values for 4
+   * tracks…** (INS-11, K4): in place on the page that hosts the panel, not on
+   * Clean. Absent, the button is not offered, which is the case on every page that
+   * cannot edit a selection.
    */
-  selectedTracks?: CleanTracks | null;
+  onEditValues?: () => void;
   /**
    * A page's own zone, drawn above "Yours": the Prepare page's "In this Set"
    * (PREP-10), which is about the entry rather than the track. Absent on
@@ -219,7 +219,7 @@ export function TrackDetailPanel({
   onMessage,
   onOpenEntity,
   gatherSelectedRows,
-  selectedTracks,
+  onEditValues,
   leadZone,
 }: TrackDetailPanelProps) {
   // Bumped by every accepted write, which is what makes the History section
@@ -378,14 +378,10 @@ export function TrackDetailPanel({
             one
           </p>
         )}
-        {selectionCount > 1 && selectedTracks && (
-          <RouteButton
-            to="/clean"
-            state={cleanFixState(selectedTracks, "edit")}
-            className="cp-track-detail__reveal"
-          >
+        {selectionCount > 1 && onEditValues && (
+          <button type="button" className="cp-track-detail__reveal" onClick={onEditValues}>
             {`Edit values for ${selectionCount.toLocaleString()} tracks…`}
-          </RouteButton>
+          </button>
         )}
         {/* One row of short names (DEC-246); the aria-labels and titles keep the
             full ones, so assistive technology hears what it always did. */}

@@ -1,62 +1,48 @@
 /**
- * The openers that put tracks in Clean's Fix values tab and match window (PAGES-07B).
+ * The openers that put tracks in Clean's match window (PAGES-07B), and the redirects for
+ * the two tabs K3 removed.
  *
  * Tracks travel in the router's location state and are checked on arrival: a
  * location can be pushed by any code in the renderer.
  */
 import { describe, expect, it } from "vitest";
 
-import {
-  cleanFixOpening,
-  cleanFixState,
-  cleanMatchOpening,
-  cleanMatchState,
-} from "./cleanLink";
+import * as links from "./cleanLink";
+import { cleanMatchOpening, cleanMatchState, cleanRedirect } from "./cleanLink";
+import { statisticsFocus } from "../statistics/statisticsLink";
 
 const at = (state: unknown) => ({ state, key: "k1" });
 
-describe("cleanFixState / cleanFixOpening", () => {
-  it("carries track ids, and the action to start", () => {
-    expect(cleanFixOpening(at(cleanFixState([4, 5, 6], "edit")))).toEqual({
-      tracks: { ids: [4, 5, 6] },
-      action: "edit",
-      token: "k1",
-    });
+describe("cleanRedirect (K3)", () => {
+  it("sends the old Health address to Statistics, on its Health section", () => {
+    const to = cleanRedirect({ state: { cuepointCleanSection: "health" } });
+    expect(to?.to).toBe("/statistics");
+    expect(statisticsFocus({ state: to?.state })?.focus).toBe("health");
   });
 
-  it("opens with no action when none is named", () => {
-    expect(cleanFixOpening(at(cleanFixState([4])))).toEqual({
-      tracks: { ids: [4] },
-      action: null,
-      token: "k1",
-    });
+  it("does the same for ?section=health", () => {
+    const to = cleanRedirect({ state: null, search: "?section=health" });
+    expect(to?.to).toBe("/statistics");
+    expect(statisticsFocus({ state: to?.state })?.focus).toBe("health");
   });
 
-  it("carries a described selection and the count it has", () => {
-    const query = { filters: { match: "all" as const, rules: [{ field: "key", operator: "is_empty" }] } };
-    expect(cleanFixOpening(at(cleanFixState({ query, count: 12 }, "beatport")))).toEqual({
-      tracks: { query, count: 12 },
-      action: "beatport",
-      token: "k1",
-    });
+  it("sends the old Fix values address to the Library", () => {
+    expect(cleanRedirect({ state: { cuepointCleanSection: "fix" } })).toEqual({ to: "/library" });
+    expect(cleanRedirect({ state: undefined, search: "?section=fix" })).toEqual({ to: "/library" });
   });
 
   it.each([
-    ["nothing", null],
-    ["a location with no state", {}],
-    ["no tracks", cleanFixState([])],
-    ["ids that are not ids", { cuepointCleanFix: { tracks: { ids: [1, "2", -3] } } }],
-    ["an action that is not one", { cuepointCleanFix: { tracks: { ids: [1] }, action: "delete" } }],
-    ["a rule that is not well formed", {
-      cuepointCleanFix: { tracks: { query: { filters: { match: "all", rules: [{ field: 3 }] } }, count: 2 } },
-    }],
-  ])("ignores %s", (_name, state) => {
-    expect(cleanFixOpening(at(state))).toBeNull();
+    ["a part Clean still has", { cuepointCleanSection: "missing" }, ""],
+    ["no state", null, ""],
+    ["a search for a part Clean still has", null, "?section=duplicates"],
+    ["an address with no section", { other: true }, "?x=1"],
+  ])("leaves %s alone", (_name, state, search) => {
+    expect(cleanRedirect({ state, search })).toBeNull();
   });
 
-  it("does not take a count that is not a count", () => {
-    const state = { cuepointCleanFix: { tracks: { query: {}, count: -1 } } };
-    expect(cleanFixOpening(at(state))).toBeNull();
+  it("no longer builds Fix values openers", () => {
+    expect(links).not.toHaveProperty("cleanFixState");
+    expect(links).not.toHaveProperty("cleanFixOpening");
   });
 });
 
