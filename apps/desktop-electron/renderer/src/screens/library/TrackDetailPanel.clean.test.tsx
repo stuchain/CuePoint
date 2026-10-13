@@ -314,10 +314,9 @@ describe("the imported record", () => {
     await screen.findByRole("region", { name: "Beatport" });
     const imported = document.querySelector(".cp-track-detail__fields") as HTMLElement;
     expect(within(imported).queryByRole("textbox")).toBeNull();
-    // Rekordbox's values stay Rekordbox's, whatever CuePoint's layer says,
-    // and its key is marked as not used (DEC-201).
-    const key = within(imported).getByText("Key (not used)").closest(".cp-track-detail__row") as HTMLElement;
-    expect(key).toHaveTextContent("8A");
+    // Rekordbox's values stay Rekordbox's, whatever CuePoint's layer says;
+    // its unused key has no row here (DEC-201, K5).
+    expect(within(imported).queryByText("Key (not used)")).toBeNull();
   });
 
   it("says the track's own key with its name, or that it has none", async () => {

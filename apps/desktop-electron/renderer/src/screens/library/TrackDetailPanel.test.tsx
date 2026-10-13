@@ -340,15 +340,6 @@ describe("where the track sits in the collection", () => {
       expect.objectContaining({ id: 2, name: "warmup" }),
     );
   });
-
-  it("shows the file when asked", () => {
-    const onReveal = vi.fn();
-    render(<TrackDetailPanel detail={DETAIL} onReveal={onReveal} />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Show in folder" }));
-
-    expect(onReveal).toHaveBeenCalledWith("/music/strobe.mp3");
-  });
 });
 
 describe("the Collections holding it (ORG-09, ORG-10)", () => {
@@ -529,15 +520,17 @@ describe("with several tracks selected", () => {
   it("shows the last one clicked, and how many there are", () => {
     render(<TrackDetailPanel detail={DETAIL} selectionCount={7} />);
     expect(screen.getByRole("heading", { name: "Strobe" })).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("7 tracks selected");
+    expect(screen.getByRole("status")).toHaveTextContent("7 selected");
   });
 
-  it("says the edits apply to the one shown, rather than letting it be found out", () => {
+  it("keeps the edits-change-one-track meaning in the Edit values… title (DEC-045, K5)", () => {
     // DEC-045: editing all of them is ORG-11's toolbar. A rating control that
     // looks like it covers a selection of twelve thousand and covers one is
     // the worst version of this panel.
-    render(<TrackDetailPanel detail={DETAIL} selectionCount={7} />);
-    expect(screen.getByRole("status")).toHaveTextContent("edits here change this one");
+    render(<TrackDetailPanel detail={DETAIL} selectionCount={7} onEditValues={vi.fn()} />);
+    expect(
+      screen.getByRole("button", { name: "Edit values for 7 tracks…" }),
+    ).toHaveAttribute("title", "Edit values for 7 tracks — the fields below change only this one");
   });
 
   it("offers one editor, for the one track it is showing", () => {

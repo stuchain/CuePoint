@@ -30,7 +30,6 @@ const ALLOWED: Readonly<Record<string, string>> = {
   "components/player/playerFormat.ts": "the queue item's key, which the engine resolved",
   "screens/discover/beatportKey.ts": "a Beatport track's own key, read as Camelot",
   "screens/library/PaneTree.tsx": "a tree row's key, not a track's",
-  "screens/library/TrackDetailPanel.tsx": "Rekordbox's value, labeled 'Key (not used)'",
   "screens/library/libraryClean.ts": "importedText, the value the mark's tooltip says is not used",
 };
 

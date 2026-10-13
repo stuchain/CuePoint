@@ -666,22 +666,22 @@
  * disclosure. Every size is a token, so the panel scales with the app.
  */
 
-/* One row of five short names (DEC-246). The buttons are the Library
-   toolbar's compact control height (DEC-217), not --hit-min, and share the
-   row's width. */
+/* One row of three buttons (K5, was five short names in DEC-246), sized to their
+   content. They are the Library toolbar's compact control height (DEC-217), not
+   --hit-min, and share the row's width. */
 .cp-track-actions {
   display: flex;
   gap: var(--space-xs);
   margin-top: var(--space-xs);
 }
 
+/* Three short words (K5): the buttons size to their content and never wrap or cut,
+   so Play, Queue ▾ and Similar show whole at a 320 px panel and at 1.5x. */
 .cp-track-actions__button {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 1 0 auto;
+  min-width: min-content;
   min-height: var(--control-height);
-  padding: 0 round(down, calc(var(--space-xs) / 2), 1px);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 0 var(--space-xs);
   white-space: nowrap;
   border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);

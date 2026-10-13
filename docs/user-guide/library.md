@@ -222,10 +222,13 @@ there until you open it again (**Ctrl+I**, or the tab). From the top:
 - **The track's artwork**, or *No artwork* when it has none, its title, and its
   artists and label. Each artist in the credit, and the label, is a link to
   their page (see [Discover](discover.md#artist-and-label-pages)).
-- **One row of buttons**: **Play**, **Play next**, **Queue** (add to queue),
-  **Similar** (similar tracks) and **Folder** (show in folder). With several
-  tracks selected, the first three act on all of them; **Similar** uses the
-  first, and **Folder** the one shown.
+- **Three buttons**: **Play**, **Queue ▾** (a small menu with **Play next** and
+  **Add to queue**) and **Similar** (similar tracks). With several tracks selected,
+  Play and the Queue menu act on all of them; **Similar** uses the first. To show a
+  track's file in its folder, use **Show in folder** in the row's More menu or
+  right-click menu. With several tracks selected, a line under the title reads
+  "3 selected · Edit values…"; **Edit values…** edits all of them, while the fields
+  below still change only the track shown.
 - **Key**, with where it came from: "8A · A minor · Beatport", "8A · A minor ·
   yours", or "No Beatport key" with **Match on Beatport**, which matches this one
   track in Clean's match window.
@@ -241,9 +244,10 @@ Then the sections, each folded or opened by clicking its heading:
   [Your own values](#your-own-values). It starts folded, with a short summary
   beside its name, and stays as you leave it.
 - **Details from Rekordbox** — everything the import captured: remixer, album,
-  label, genre, key (marked "not used"), BPM, year, length, rating, plays, color,
+  label, genre, BPM, year, length, rating, plays, color,
   comment, bitrate, when it was added and where the file is. **This part is
-  read-only.** It is what Rekordbox sent, and a refresh replaces it.
+  read-only.** It is what Rekordbox sent, and a refresh replaces it. It starts
+  folded, and stays as you leave it.
 - **Cue points**, also from Rekordbox and also read-only: every hot cue, memory
   cue, loop, fade and load point, one line each in the order the track plays
   them, and the beat grid's tempo. See

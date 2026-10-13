@@ -451,15 +451,18 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     expect(queue.titles[queue.at + 1]).toBe("Close");
     length += 1;
 
-    // Track details has the same three as buttons.
+    // Track details has Play, and the other two under Queue ▾ (K5).
     const details = win.getByRole("complementary", { name: "Track details" });
+    const queueButton = () => details.getByRole("button", { name: "Queue", exact: true });
     await pick(win, "Warm Two");
-    await use(win, details.getByRole("button", { name: "Add to queue", exact: true }), "Track details' Add to queue");
+    await use(win, queueButton(), "Track details' Queue");
+    await choose(win, "Add to queue");
     await expect.poll(async () => (await queueState(win)).titles.length, { timeout: 15_000 }).toBe(length + 1);
     expect((await queueState(win)).titles.at(-1)).toBe("Warm Two");
     length += 1;
     await pick(win, "Bridge Spare");
-    await use(win, details.getByRole("button", { name: "Play next", exact: true }), "Track details' Play next");
+    await use(win, queueButton(), "Track details' Queue");
+    await choose(win, "Play next");
     await expect.poll(async () => (await queueState(win)).titles.length, { timeout: 15_000 }).toBe(length + 1);
     queue = await queueState(win);
     expect(queue.titles[queue.at + 1]).toBe("Bridge Spare");
@@ -475,7 +478,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     });
   });
 
-  test("Copy and Show in folder: the selection bar's More, and Show in folder in Track details", async () => {
+  test("Copy and Show in folder: the selection bar's More (Track details has no Folder button, K5)", async () => {
     await openLibrary(win);
     await app.evaluate(({ shell }) => {
       const shown: string[] = [];
@@ -494,13 +497,6 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await choose(win, "Show in folder");
     await expect.poll(shownFiles, { timeout: 15_000 }).toHaveLength(1);
     expect((await shownFiles())[0]).toMatch(/3\.mp3$/);
-
-    // Show in folder is in Track details too.
-    await pick(win, "Close");
-    const details = win.getByRole("complementary", { name: "Track details" });
-    await use(win, details.getByRole("button", { name: "Show in folder", exact: true }), "Track details' Show in folder");
-    await expect.poll(shownFiles, { timeout: 15_000 }).toHaveLength(2);
-    expect((await shownFiles())[1]).toMatch(/5\.mp3$/);
   });
 
   test("Similar tracks: Track details, and the selection bar's Explore", async () => {

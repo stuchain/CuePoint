@@ -1801,10 +1801,10 @@ describe("the Inspector (LIBUI-10, DEC-024, DEC-047)", () => {
     const imported = inspector.querySelector(".cp-track-detail__fields") as HTMLElement;
     expect(within(imported).queryByRole("textbox")).toBeNull();
     expect(within(imported).queryByRole("spinbutton")).toBeNull();
-    // Nothing in the record is pressable: Show in folder moved under the
-    // title (FLW-9), where it is the one of its name.
+    // Nothing in the record is pressable, and Track details has no Show in
+    // folder button any more (K5): it is in the row's menus.
     expect(within(imported).queryAllByRole("button")).toHaveLength(0);
-    expect(within(inspector).getAllByRole("button", { name: "Show in folder" })).toHaveLength(1);
+    expect(within(inspector).queryByRole("button", { name: "Show in folder" })).toBeNull();
   });
 
   it("opens a Collection the track is in, from the Inspector (ORG-10)", async () => {

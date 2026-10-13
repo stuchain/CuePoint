@@ -803,7 +803,7 @@ describe("an entry's menu", () => {
     fireEvent.click(rowAt(2), { ctrlKey: true });
     // A heading is never selected.
     fireEvent.click(rowAt(3), { ctrlKey: true });
-    expect(await within(inspector()).findByText(/2 tracks selected/, {}, LOADED)).toBeInTheDocument();
+    expect(await within(inspector()).findByText(/2 selected/, {}, LOADED)).toBeInTheDocument();
     fireEvent.contextMenu(rowAt(2));
     fireEvent.click(await menuItem("Remove 2 entries from Set"));
     await waitFor(() =>

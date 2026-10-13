@@ -32,6 +32,7 @@
 import { Fragment, useCallback, useState, type ReactNode } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
+import { TrackContextMenu } from "../../components/TrackContextMenu";
 import { WheelButton } from "../../components/wheel";
 import { formatBpm } from "../../components/format/bpm";
 import type {
@@ -86,7 +87,7 @@ interface TrackDetailPanelProps {
    * a Collection does, through `onSelectCollection`.
    */
   onOpenInPrepare?: (set: TrackCollectionRef) => void;
-  /** Show the file in the OS file manager. */
+  /** Unused since K5 took Folder off the row; pages still pass it. */
   onReveal?: (filePath: string) => void;
   /** Where a refused edit goes. Without it the zone still works and stays quiet. */
   onError?: (message: string) => void;
@@ -214,7 +215,6 @@ export function TrackDetailPanel({
   onSelectPlaylist,
   onSelectCollection,
   onOpenInPrepare,
-  onReveal,
   onError,
   onTrackChanged,
   onOpenInClean,
@@ -239,6 +239,8 @@ export function TrackDetailPanel({
   const writes = useTrackWrites(trackId, written);
   const matches = useTrackMatches(trackId, written);
   const [acting, setActing] = useState<QueueAction | null>(null);
+  // Where the Queue ▾ menu is open, under its button (K5).
+  const [queueMenu, setQueueMenu] = useState<{ x: number; y: number } | null>(null);
   const [reverting, setReverting] = useState<number | null>(null);
   const [restoring, setRestoring] = useState(false);
   const onSaved = useCallback(() => setWritten((n) => n + 1), []);
@@ -374,40 +376,49 @@ export function TrackDetailPanel({
         {selectionCount > 1 && (
           // DEC-045: the panel shows the last-clicked track and says how many
           // there are; the buttons under it act on all of them, and the
-          // fields below change this one.
-          <p className="cp-track-detail__selection" role="status">
-            {selectionCount.toLocaleString()} tracks selected — edits here change this
-            one
+          // fields below change this one. K5 says it on one line, the second
+          // half in the link's title rather than a paragraph.
+          <p className="cp-track-detail__selection">
+            <span role="status">{selectionCount.toLocaleString()} selected</span>
+            {onEditValues && (
+              <>
+                {" · "}
+                <button
+                  type="button"
+                  className="cp-track-detail__reveal"
+                  aria-label={`Edit values for ${selectionCount.toLocaleString()} tracks…`}
+                  title={`Edit values for ${selectionCount.toLocaleString()} tracks — the fields below change only this one`}
+                  onClick={onEditValues}
+                >
+                  Edit values…
+                </button>
+              </>
+            )}
           </p>
         )}
-        {selectionCount > 1 && onEditValues && (
-          <button type="button" className="cp-track-detail__reveal" onClick={onEditValues}>
-            {`Edit values for ${selectionCount.toLocaleString()} tracks…`}
-          </button>
-        )}
-        {/* One row of short names (DEC-246); the aria-labels and titles keep the
-            full ones, so assistive technology hears what it always did. */}
+        {/* Three buttons (K5, DEC-285, amending DEC-246): Play, Queue ▾ with
+            the two that never interrupt, and Similar. The aria-labels and titles
+            keep the full names. Show in folder lives in the row's menus. */}
         <div className="cp-track-actions" role="group" aria-label="Actions for this track">
           {queue.play && (
             <button type="button" className="cp-track-actions__button" disabled={acting !== null} onClick={() => void act("play")}>
               Play
             </button>
           )}
-          {queue.next && (
-            <button type="button" className="cp-track-actions__button" disabled={acting !== null} onClick={() => void act("next")}>
-              Play next
-            </button>
-          )}
-          {queue.end && (
+          {(queue.next || queue.end) && (
             <button
               type="button"
               className="cp-track-actions__button"
-              aria-label="Add to queue"
-              title="Add to queue"
+              aria-label="Queue"
+              aria-haspopup="menu"
+              aria-expanded={queueMenu !== null}
               disabled={acting !== null}
-              onClick={() => void act("end")}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setQueueMenu({ x: rect.left, y: rect.bottom });
+              }}
             >
-              Queue
+              Queue<span aria-hidden> ▾</span>
             </button>
           )}
           {track.id != null && (
@@ -420,19 +431,23 @@ export function TrackDetailPanel({
               Similar
             </RouteButton>
           )}
-          {onReveal && track.file_path && (
-            <button
-              type="button"
-              className="cp-track-actions__button"
-              aria-label="Show in folder"
-              disabled={selectionCount > 1}
-              title={selectionCount > 1 ? "Select one track to show its file in the folder" : "Show in folder"}
-              onClick={() => onReveal(track.file_path)}
-            >
-              Folder
-            </button>
-          )}
         </div>
+        {queueMenu && (
+          <TrackContextMenu
+            x={queueMenu.x}
+            y={queueMenu.y}
+            label="Queue"
+            onClose={() => setQueueMenu(null)}
+            items={[
+              ...(queue.next
+                ? [{ id: "next", label: "Play next", onSelect: () => void act("next") }]
+                : []),
+              ...(queue.end
+                ? [{ id: "end", label: "Add to queue", onSelect: () => void act("end") }]
+                : []),
+            ]}
+          />
+        )}
         {/* The Camelot wheel's button sits beside the key it is about (K8, DEC-282). */}
         <div className="cp-track-detail__keyrow">
           <dl className="cp-track-detail__keyline" data-testid="track-key">
@@ -493,13 +508,13 @@ export function TrackDetailPanel({
             }
             track={editable ? { ...track, id: track.id } : undefined}
             // Only an accepted match's key is what clearing the edit gives back (DEC-201).
-            beatportKey={matchState === "accepted" ? (matches.matches?.candidate?.key ?? null) : null}
+            beatportKey={matchState === "accepted" ? (matches.matches?.candidate?.key || null) : null}
             onValueSaved={onChanged}
           />
         </DisclosureSection>
       )}
 
-      <DisclosureSection id="details" title="Details from Rekordbox" defaultOpen>
+      <DisclosureSection id="details" title="Details from Rekordbox" defaultOpen={false}>
         <dl className="cp-track-detail__fields">
           <Row
             label="Remixer"
@@ -508,7 +523,6 @@ export function TrackDetailPanel({
           <Row label="Album" value={text(track.album)} />
           <Row label="Label" value={text(track.label)} />
           <Row label="Genre" value={text(track.genre)} />
-          <Row label="Key (not used)" value={text(track.key)} />
           <Row label="BPM" value={formatBpm(track.bpm) || "—"} />
           <Row label="Year" value={track.year == null ? "—" : String(track.year)} />
           <Row label="Length" value={duration(track.duration_seconds)} />

@@ -171,11 +171,11 @@ describe("the order (INS-3)", () => {
     expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
-  it("opens the header and Details, and folds Yours, Beatport and History", async () => {
+  it("opens the header, and folds Yours, Details, Beatport and History (K5)", async () => {
     localStorage.clear();
     show();
     expect(section("Yours")).toHaveAttribute("aria-expanded", "false");
-    expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "true");
+    expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "false");
     expect(section("Beatport")).toHaveAttribute("aria-expanded", "false");
     expect(section("History")).toHaveAttribute("aria-expanded", "false");
     await screen.findByText(/Beatport · Accepted/);
@@ -197,13 +197,15 @@ describe("the order (INS-3)", () => {
 });
 
 describe("folding and remembering (INS-3)", () => {
-  it("folds a section and brings it back", () => {
+  it("opens a section and folds it again", () => {
     show();
-    fireEvent.click(section("Details from Rekordbox"));
     expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText("Bitrate")).not.toBeVisible();
     fireEvent.click(section("Details from Rekordbox"));
+    expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Bitrate")).toBeVisible();
+    fireEvent.click(section("Details from Rekordbox"));
+    expect(screen.queryByText("Bitrate")).not.toBeVisible();
   });
 
   it("Yours starts folded and remembers being opened", () => {
@@ -266,7 +268,7 @@ describe("folding and remembering (INS-3)", () => {
     fireEvent.click(section("Beatport"));
     first.unmount();
     show();
-    expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "false");
+    expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "true");
     expect(section("Beatport")).toHaveAttribute("aria-expanded", "true");
   });
 
@@ -399,35 +401,35 @@ describe("Edit values… (INS-4, DEC-205)", () => {
     },
   );
 
-  it("disables Show in folder, with a hint, when several tracks are selected", () => {
-    show({ selectionCount: 3 });
-    const button = screen.getByRole("button", { name: "Show in folder" });
-    expect(button).toBeDisabled();
-    expect(button).toHaveAttribute("title", expect.stringContaining("one track"));
-  });
-
-  it("offers Edit values for 4 tracks… for a multi-selection, in place (K4)", () => {
+  it("reads \"4 selected · Edit values…\" on one line, the link calling onEditValues (K5)", () => {
     const onEditValues = vi.fn();
     show({ selectionCount: 4, onEditValues });
-    fireEvent.click(screen.getByRole("button", { name: "Edit values for 4 tracks…" }));
+    expect(screen.getByRole("status")).toHaveTextContent("4 selected");
+    const link = screen.getByRole("button", { name: "Edit values for 4 tracks…" });
+    expect(link).toHaveAttribute("title", "Edit values for 4 tracks — the fields below change only this one");
+    expect(link).toHaveTextContent("Edit values…");
+    expect(link.parentElement).toContainElement(screen.getByRole("status"));
+    fireEvent.click(link);
     expect(onEditValues).toHaveBeenCalledTimes(1);
     // The panel itself goes nowhere: the host opens the dialog.
     expect(where().path).not.toBe("/clean");
   });
 
-  it("does not offer Edit values when the host cannot edit a selection", () => {
+  it("reads just \"4 selected\" when the host cannot edit a selection", () => {
     show({ selectionCount: 4 });
-    expect(screen.queryByRole("button", { name: /^Edit values for/ })).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent(/^4 selected$/);
+    expect(screen.queryByRole("button", { name: "Edit values for 4 tracks…" })).toBeNull();
   });
 
-  it("does not offer Edit values for a single track", () => {
+  it("does not offer the selection line for a single track", () => {
     show({ selectionCount: 1, onEditValues: vi.fn() });
-    expect(screen.queryByRole("button", { name: /^Edit values for/ })).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Edit values for \d/ })).toBeNull();
   });
 
   it("says edits here still change this one track", () => {
     show({ selectionCount: 4, onEditValues: vi.fn() });
-    expect(screen.getByRole("status")).toHaveTextContent(/4 tracks selected/);
+    expect(screen.getByRole("status")).toHaveTextContent(/4 selected/);
     expect(screen.queryByRole("button", { name: /Change all/ })).toBeNull();
   });
 });
@@ -457,11 +459,12 @@ describe("the key with its source (FLW-9, DEC-201)", () => {
     expect(cleanMatchOpening({ state: where().state, key: "k" })?.tracks).toEqual({ ids: [12] });
   });
 
-  it("puts Rekordbox's key under Details from Rekordbox, marked not used", () => {
+  it("leaves Rekordbox's unused key out of Details from Rekordbox (K5)", () => {
     show();
+    fireEvent.click(section("Details from Rekordbox"));
     const details = screen.getByRole("region", { name: "Details from Rekordbox" });
-    expect(within(details).getByText("Key (not used)")).toBeInTheDocument();
-    expect(within(details).getByText("8A")).toBeInTheDocument();
+    expect(within(details).queryByText("Key (not used)")).toBeNull();
+    expect(within(details).queryByText("Key")).toBeNull();
   });
 });
 
@@ -492,37 +495,39 @@ describe("an unmatched track (INS-5)", () => {
   });
 });
 
-describe("the buttons under the title (FLW-9)", () => {
-  const labels = ["Play", "Play next", "Add to queue", "Similar tracks", "Show in folder"];
-  const shown = ["Play", "Play next", "Queue", "Similar", "Folder"];
+describe("the buttons under the title (FLW-9, K5)", () => {
+  const queueMenu = async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Queue" }));
+    return screen.findByRole("menu", { name: "Queue" });
+  };
 
-  it("offers the five", () => {
-    show();
-    for (const name of labels) {
-      expect(screen.getByRole("button", { name })).toBeInTheDocument();
-    }
-  });
-
-  it("draws them on one row, with short names", () => {
+  it("offers three: Play, Queue and Similar, and no Folder", () => {
     show();
     const group = screen.getByRole("group", { name: "Actions for this track" });
-    expect(group.children).toHaveLength(5);
+    expect(Array.from(group.children).map((child) => child.textContent?.trim())).toEqual([
+      "Play",
+      "Queue ▾",
+      "Similar",
+    ]);
     for (const child of Array.from(group.children)) expect(child.tagName).toBe("BUTTON");
-    expect(Array.from(group.children).map((child) => child.textContent)).toEqual(shown);
+    expect(screen.queryByRole("button", { name: "Show in folder" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Play next" })).toBeNull();
   });
 
-  it("has one Show in folder, not one in the File row too", () => {
+  it("has no Show in folder button in the File row either", () => {
     show();
-    expect(screen.getAllByRole("button", { name: "Show in folder" })).toHaveLength(1);
     const file = screen.getByText("File").closest(".cp-track-detail__row") as HTMLElement;
     expect(within(file).queryByRole("button")).toBeNull();
   });
 
-  it("shows the file in its folder", () => {
-    const onReveal = vi.fn();
-    show({ onReveal });
-    fireEvent.click(screen.getByRole("button", { name: "Show in folder" }));
-    expect(onReveal).toHaveBeenCalledWith("/music/strobe.mp3");
+  it("opens a menu from Queue ▾ holding Play next and Add to queue", async () => {
+    show();
+    const button = screen.getByRole("button", { name: "Queue" });
+    expect(button).toHaveAttribute("aria-haspopup", "menu");
+    const menu = await queueMenu();
+    expect(
+      within(menu).getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["Play next", "Add to queue"]);
   });
 
   it("plays, queues next and adds to the queue", async () => {
@@ -531,18 +536,46 @@ describe("the buttons under the title (FLW-9)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Play" }));
     await waitFor(() => expect(player.playQueue).toHaveBeenCalledTimes(1));
     expect(player.playQueue.mock.calls[0][0]).toMatchObject([{ trackId: 12, title: "Strobe" }]);
-    fireEvent.click(screen.getByRole("button", { name: "Play next" }));
+    fireEvent.click(within(await queueMenu()).getByRole("menuitem", { name: "Play next" }));
     await waitFor(() => expect(player.playNext).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByRole("button", { name: "Add to queue" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Queue" })).toBeEnabled());
+    fireEvent.click(within(await queueMenu()).getByRole("menuitem", { name: "Add to queue" }));
     await waitFor(() => expect(player.addToQueue).toHaveBeenCalledTimes(1));
     expect(onMessage).toHaveBeenCalledWith("1 track added to the queue");
+  });
+
+  it("closes the menu on Escape and returns focus to Queue ▾", async () => {
+    show();
+    const button = screen.getByRole("button", { name: "Queue" });
+    button.focus();
+    const menu = await queueMenu();
+    fireEvent.keyDown(menu, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("menu", { name: "Queue" })).toBeNull());
+    expect(button).toHaveFocus();
+  });
+
+  it("still opens a menu with the one item when only one of next/end is available", async () => {
+    delete (player as Record<string, unknown>).playNext;
+    show();
+    const menu = await queueMenu();
+    expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      "Add to queue",
+    ]);
+  });
+
+  it("has no Queue button when neither is available", () => {
+    delete (player as Record<string, unknown>).playNext;
+    delete (player as Record<string, unknown>).addToQueue;
+    show();
+    expect(screen.queryByRole("button", { name: "Queue" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument();
   });
 
   it("acts on every selected track, except Similar tracks, which uses the first", async () => {
     const rows = [TRACK, { ...TRACK, id: 13, title: "Ghosts" }, { ...TRACK, id: 14, title: "Raise" }];
     const gather = vi.fn().mockResolvedValue(rows);
     show({ selectionCount: 3, gatherSelectedRows: gather });
-    fireEvent.click(screen.getByRole("button", { name: "Add to queue" }));
+    fireEvent.click(within(await queueMenu()).getByRole("menuitem", { name: "Add to queue" }));
     await waitFor(() => expect(player.addToQueue).toHaveBeenCalledTimes(1));
     expect(player.addToQueue.mock.calls[0][0]).toHaveLength(3);
     fireEvent.click(screen.getByRole("button", { name: "Similar tracks" }));

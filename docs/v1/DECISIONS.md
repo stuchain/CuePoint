@@ -7931,3 +7931,21 @@ file (a Python start per file).
 **Amends**: DEC-123 (where the decode is supervised). **Notes**: DEC-250 (the detail fill uses the worker).
 
 **Decided with**: User (C19, wish list round 2) · **Date**: 2026-10-13
+
+
+
+## DEC-285 — Track Details Has Three Buttons
+
+**Status**: Approved · **Related**: K5, DEC-246, DEC-045, FLW-9
+
+**Context**: Track details led with five short buttons (Play, Play next, Queue, Similar, Folder), a two-part note
+for a multiple selection, and an open list of Rekordbox's values, including a key the app never uses.
+
+**Decision** (amends DEC-246):
+- Three buttons: **Play**, **Queue ▾** (Play next, Add to queue) and **Similar**. Show in folder lives in the row's
+  More menu and right-click menu.
+- With several tracks selected, one line: "3 selected · Edit values…"; the buttons act on all of them, the fields
+  below on the track shown (DEC-045).
+- "Details from Rekordbox" starts closed (a fold someone chose is remembered) and no longer lists "Key (not used)".
+
+**Decided with**: User (K5, wish list round 2) · **Date**: 2026-10-13
