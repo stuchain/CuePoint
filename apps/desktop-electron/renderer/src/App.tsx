@@ -15,9 +15,9 @@ import {
   applyLaunchDestination,
   AppShellLayout,
   enabledDestinations,
-  ShellHeader,
   homeDestination,
   OfflineBanner,
+  SearchDialogHost,
   Sidebar,
   StatusStrip,
   TrackInspector,
@@ -29,6 +29,7 @@ import {
   useRememberDestination,
 } from "./components/shell";
 import { useEngineOffline } from "./api/engineOnline";
+import { WheelPopoverHost } from "./components/wheel";
 import { PlayerSlot } from "./components/player/PlayerSlot";
 import { useRestorePlayerAudio } from "./components/player/playerAudioState";
 import { useRestorePlayerOrder } from "./components/player/playerOrderState";
@@ -348,7 +349,6 @@ function AppShell() {
     <>
       <AppShellLayout
         pagePhase={pageAt.phase}
-        header={<ShellHeader />}
         banner={<OfflineBanner onGetHelp={() => setGetHelpOpen(true)} pulse={bannerPulse} />}
         offline={offline}
         onBlockedClick={() => setBannerPulse((n) => n + 1)}
@@ -394,6 +394,9 @@ function AppShell() {
           }
         />
       </AppShellLayout>
+      {/* The two popups the shell owns, mounted once (K8): search's dialog and the wheel's popover. */}
+      <SearchDialogHost />
+      <WheelPopoverHost />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />

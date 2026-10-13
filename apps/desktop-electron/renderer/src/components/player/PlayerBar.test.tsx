@@ -923,7 +923,7 @@ describe("the key opens the Camelot wheel (BAR-5, PAGES-10)", () => {
     expect(metaLine()).toHaveTextContent("deadmau5 · 8A · 128 BPM");
 
     fireEvent.click(key);
-    expect(getWheelState()).toEqual({ open: true, source: "player" });
+    expect(getWheelState()).toMatchObject({ open: true, source: "player" });
     fireEvent.click(key);
     expect(getWheelState().open).toBe(false);
   });

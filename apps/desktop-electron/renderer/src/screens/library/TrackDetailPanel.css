@@ -63,6 +63,19 @@
   margin: 0;
 }
 
+/* The key line and the wheel's button beside it (K8). */
+.cp-track-detail__keyrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.cp-track-detail__keyrow > .cp-track-detail__keyline {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .cp-track-detail__row {
   display: grid;
   grid-template-columns: minmax(0, round(nearest, calc(53.33px * var(--scale)), 1px)) minmax(0, 1fr);

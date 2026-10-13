@@ -186,6 +186,23 @@
   padding: var(--space-xs);
 }
 
+/* The Search button wears the entries' look; a button needs its own face reset (K8). */
+.cp-sidebar__search {
+  width: 100%;
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.cp-sidebar__shortcut {
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
 .cp-sidebar__link:hover {
   color: var(--fg-primary);
   background: var(--bg-panel);

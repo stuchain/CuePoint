@@ -13,6 +13,7 @@ import { vi } from "vitest";
 import css from "./AppShellLayout.css?raw";
 import { parseRules, stripComments, declarations } from "../../test/cssRules";
 
+import shellCss from "./AppShellLayout.css?raw";
 import { AppShellLayout } from "./AppShellLayout";
 
 describe("AppShellLayout", () => {
@@ -39,7 +40,6 @@ describe("AppShellLayout", () => {
   it("renders every supplied region", () => {
     render(
       <AppShellLayout
-        header={<div data-testid="header" />}
         sidebar={<div data-testid="sidebar" />}
         inspector={<div data-testid="inspector" />}
         player={<div data-testid="player" />}
@@ -49,13 +49,12 @@ describe("AppShellLayout", () => {
       </AppShellLayout>,
     );
 
-    for (const region of ["header", "sidebar", "inspector", "player", "status"]) {
+    for (const region of ["sidebar", "inspector", "player", "status"]) {
       expect(screen.getByTestId(region)).toBeInTheDocument();
     }
   });
 
   it.each([
-    ["header", ".app-shell__header"],
     ["sidebar", ".app-shell__sidebar"],
     ["inspector", ".app-shell__inspector"],
     ["player", ".app-shell__player"],
@@ -72,10 +71,9 @@ describe("AppShellLayout", () => {
 
   it("declares no landmark of its own beyond main", () => {
     // The in-window menu bar (and its banner) is gone with the one native menu bar,
-    // and the `search` landmark moved onto the search field's own container
-    // (HDR-1, PAGES-03B): the header row wraps the wheel's button as well.
+    // and the header band went with it (K8): `search` is the dialog's own form.
     const { container } = render(
-      <AppShellLayout header={<div>Header</div>}>
+      <AppShellLayout>
         <p>Routed page</p>
       </AppShellLayout>,
     );
@@ -86,6 +84,17 @@ describe("AppShellLayout", () => {
     expect(screen.queryByRole("banner")).not.toBeInTheDocument();
     expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
     expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
+  });
+
+  it("has no header band: no header region, row or area (K8)", () => {
+    const { container } = render(
+      <AppShellLayout sidebar={<div />}>
+        <p>Routed page</p>
+      </AppShellLayout>,
+    );
+    expect(container.querySelector(".app-shell__header")).toBeNull();
+    expect(container.querySelector(".app-shell > :first-child")).toHaveClass("app-shell__sidebar");
+    expect(shellCss).not.toMatch(/app-shell__header|"header /);
   });
 
   it("has no menu bar region any more", () => {
@@ -160,7 +169,6 @@ describe("AppShellLayout", () => {
           onBlockedClick={onBlockedClick}
           banner={<button onClick={onPageClick}>Banner button</button>}
           sidebar={<button onClick={onPageClick}>Sidebar button</button>}
-          header={<input aria-label="Search" />}
           statusBar={<button onClick={onPageClick}>Strip button</button>}
         >
           <button onClick={onPageClick}>Page button</button>
@@ -196,13 +204,12 @@ describe("AppShellLayout", () => {
       expect(onBlockedClick).not.toHaveBeenCalled();
     });
 
-    it("does not touch the banner, sidebar, header or status strip", () => {
+    it("does not touch the banner, sidebar or status strip", () => {
       const { onBlockedClick, onPageClick } = offlineShell();
 
       fireEvent.click(screen.getByRole("button", { name: "Banner button" }));
       fireEvent.click(screen.getByRole("button", { name: "Sidebar button" }));
       fireEvent.click(screen.getByRole("button", { name: "Strip button" }));
-      fireEvent.click(screen.getByRole("textbox", { name: "Search" }));
 
       expect(onPageClick).toHaveBeenCalledTimes(3);
       expect(onBlockedClick).not.toHaveBeenCalled();

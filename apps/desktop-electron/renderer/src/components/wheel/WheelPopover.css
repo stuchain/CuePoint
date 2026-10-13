@@ -1,11 +1,9 @@
 /*
- * The wheel's popover, positioned the way search's results are: absolute under its
- * button, so opening it never moves the page (HDR-4).
+ * The wheel's popover: fixed under its button (the component sets top and left), so opening
+ * it never moves the page and no scrolling ancestor clips it (HDR-4, K8).
  */
 .cp-wheel-pop {
-  position: absolute;
-  top: 100%;
-  right: 0;
+  position: fixed;
   z-index: 940;
   box-sizing: border-box;
   /* The wheel's 48 cells, then the padding and the border around them. */
@@ -15,7 +13,7 @@
   background: var(--bg-panel);
   border: var(--control-border-width) solid var(--border-control);
   /*
-   * Never taller than the window below the header: at the largest size the wheel
+   * Never taller than the window below the button: at the largest size the wheel
    * and its caption are taller than a laptop screen, so the popover scrolls (the
    * component sets the exact cap). The scrollbar is hidden because it would take
    * width from the wheel and break its whole-pixel cells; the wheel, the caption and

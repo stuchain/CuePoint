@@ -127,7 +127,7 @@ so and nothing is made.
 
 Beatport tracks are not tracks in your library: they have no file, so a
 double-click does nothing. Selecting one lights its
-key on the Camelot wheel in the header, and Track details says there is nothing
+key on the Camelot wheel when you open it, and Track details says there is nothing
 to inspect.
 
 **Previews.** The ▶ button at the left of each Beatport row plays the track's
@@ -357,7 +357,7 @@ Camelot, so a track that has not been matched has no key to compare. Other copie
 of the same track (the ones Clean groups as duplicates) are left out, because the
 same track again is not a suggestion.
 
-Selecting a suggestion lights its key on the Camelot wheel in the header.
+Selecting a suggestion lights its key on the Camelot wheel when you open it.
 Suggestions are your own tracks: double-click one to play the list from there,
 and use the bar under the table (**Play ▸**, **Explore ▸**, always shown and grayed
 out until you select some) or the right-click menu, which holds the same two groups,

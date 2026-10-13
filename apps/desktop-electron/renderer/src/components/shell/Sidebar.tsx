@@ -9,7 +9,7 @@ import {
   type NavDestination,
 } from "./navRegistry";
 import { modifierName } from "./platformKeys";
-import { useShellCommand } from "./shellCommands";
+import { emitShellCommand, useShellCommand } from "./shellCommands";
 import { loadSidebarCollapsed, saveSidebarCollapsed } from "./sidebarState";
 import { useLibraryEmpty } from "./useLibraryPresence";
 import "./Sidebar.css";
@@ -84,8 +84,41 @@ function Brand({ collapsed }: { collapsed: boolean }) {
   );
 }
 
+/**
+ * The Search button (K8, DEC-282): opens the search dialog, which Ctrl+K opens too. Expanded it
+ * reads "Search" with its shortcut muted beside it; the collapsed rail shows the icon alone, named
+ * "Search library", with the tip saying the key.
+ */
+function SearchButton({ collapsed, onOpen }: { collapsed: boolean; onOpen: () => void }) {
+  const keys = `${modifierName()}+K`;
+  return (
+    <Hint text={collapsed ? `Search (${keys})` : undefined} portal>
+      <button
+        type="button"
+        className="cp-sidebar__link cp-sidebar__search"
+        aria-label={collapsed ? "Search library" : undefined}
+        aria-haspopup="dialog"
+        onClick={onOpen}
+      >
+        <span className="cp-sidebar__icon" aria-hidden>
+          <PixelIcon name="search" />
+        </span>
+        {!collapsed && (
+          <>
+            <span className="cp-sidebar__label">Search</span>
+            <span className="cp-sidebar__shortcut" aria-hidden>
+              {keys}
+            </span>
+          </>
+        )}
+      </button>
+    </Hint>
+  );
+}
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(loadSidebarCollapsed);
+  const openSearch = useCallback(() => emitShellCommand("open-search"), []);
   const toggleRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -173,6 +206,9 @@ export function Sidebar() {
           </span>
         </button>
       </div>
+
+      {/* Between the top row and the list: opens the search dialog, which App mounts (K8). */}
+      <SearchButton collapsed={collapsed} onOpen={openSearch} />
 
       {/* The destinations alone scroll; the pinned group stays at the foot. */}
       <div className="cp-sidebar__list">

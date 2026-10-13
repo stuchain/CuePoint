@@ -1,7 +1,6 @@
 export { AppShellLayout } from "./AppShellLayout";
 export { Sidebar } from "./Sidebar";
-export { GlobalSearch } from "./GlobalSearch";
-export { ShellHeader } from "./ShellHeader";
+export { SearchDialogHost } from "./GlobalSearch";
 export { TrackInspector } from "./TrackInspector";
 export { RightColumn } from "./RightColumn";
 // LIBUI-10: a page hands its Inspector content up to the shell, which owns the

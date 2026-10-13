@@ -63,6 +63,15 @@ async function dismissOnboarding(window: Page): Promise<void> {
   await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
 }
 
+/** Opens the search dialog from the sidebar's Search button (K8). */
+async function openSearch(window: Page) {
+  await window
+    .getByRole("navigation", { name: /main navigation/i })
+    .getByRole("button", { name: /^Search/ })
+    .click();
+  await expect(window.getByRole("dialog", { name: "Search" })).toBeVisible();
+}
+
 test.describe("Application shell navigation", () => {
   let userDataDir: string;
 
@@ -147,6 +156,7 @@ test.describe("Application shell navigation", () => {
       // would test the wrong thing.
       await waitForEngine(window);
 
+      await openSearch(window);
       await window.getByRole("combobox", { name: /search library/i }).fill("deadmau5");
 
       // Deliberately data-independent: this machine's library may hold anything
@@ -281,7 +291,8 @@ test.describe("Application shell navigation", () => {
         );
       }
       expect(reached).not.toContain("BODY");
-      expect(reached.join("|")).toMatch(/Search library/);
+      // The sidebar's Search button (K8); the field itself lives in the dialog it opens.
+      expect(reached.some((name) => /^Search/.test(name))).toBe(true);
       expect(reached.join("|")).toMatch(/sidebar/);
       expect(reached.join("|")).toMatch(/track details/i);
       expect(reached.join("|")).toMatch(/Activity/);
@@ -305,6 +316,8 @@ test.describe("Application shell navigation", () => {
 
       await window.keyboard.press("Control+k");
       await expect(window.getByRole("combobox", { name: /search library/i })).toBeFocused();
+      await window.keyboard.press("Escape");
+      await expect(window.getByRole("dialog", { name: "Search" })).toHaveCount(0);
 
       await window.keyboard.press("Control+Shift+a");
       const dialog = window.getByRole("dialog", { name: /activity/i });
@@ -448,6 +461,7 @@ ${tracks.join("\n")}
       await importLibrary(window, userDataDir);
       await window.getByRole("link", { name: "Settings", exact: true }).click();
 
+      await openSearch(window);
       const search = window.getByRole("combobox", { name: /search library/i });
       await search.fill("moonlight 07");
       await expect(window.getByRole("listbox", { name: /search results/i })).toBeVisible({ timeout: 15_000 });
@@ -466,14 +480,14 @@ ${tracks.join("\n")}
       await expect(window.getByRole("complementary", { name: /track details/i })).toContainText("Moonlight 07", {
         timeout: 30_000,
       });
-      // The panel closed on the way out.
+      // The dialog closed on the way out.
       await expect(window.getByRole("listbox")).toHaveCount(0);
     } finally {
       await app.close();
     }
   });
 
-  test("the panel closes when you click elsewhere (HDR-2)", async () => {
+  test("the search dialog closes on Escape and focus returns to the sidebar button (K8)", async () => {
     const app = await launch(userDataDir);
     try {
       const window = await app.firstWindow({ timeout: 60_000 });
@@ -481,11 +495,14 @@ ${tracks.join("\n")}
       await waitForEngine(window);
       await importLibrary(window, userDataDir);
 
+      await openSearch(window);
       await window.getByRole("combobox", { name: /search library/i }).fill("moonlight");
       await expect(window.getByRole("listbox")).toBeVisible({ timeout: 15_000 });
-      // The status strip is below the panel, which covers the top of the page.
-      await window.locator(".app-shell__status").click({ position: { x: 4, y: 4 } });
-      await expect(window.getByRole("listbox")).toHaveCount(0);
+      await window.keyboard.press("Escape");
+      await expect(window.getByRole("dialog", { name: "Search" })).toHaveCount(0);
+      await expect(
+        window.getByRole("navigation", { name: /main navigation/i }).getByRole("button", { name: /^Search/ }),
+      ).toBeFocused();
     } finally {
       await app.close();
     }

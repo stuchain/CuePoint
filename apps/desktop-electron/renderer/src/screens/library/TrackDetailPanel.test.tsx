@@ -134,6 +134,16 @@ describe("what the panel shows", () => {
     }
   });
 
+  it("puts the Camelot wheel's button on the key line, beside the key (K8)", () => {
+    render(<TrackDetailPanel detail={DETAIL} />);
+    const keyline = screen.getByTestId("track-key");
+    const button = screen.getByRole("button", { name: "Camelot wheel" });
+    expect(within(keyline).getByText("Key")).toBeInTheDocument();
+    expect(keyline.parentElement).toContainElement(button);
+    expect(keyline).not.toContainElement(button);
+    expect(button).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("shows a rating as stars", () => {
     // The parser converted Rekordbox's 0/51/…/255 at import, so what is
     // stored is already a star count.

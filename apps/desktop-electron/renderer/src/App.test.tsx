@@ -12,7 +12,7 @@
  * development.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import App from "./App";
@@ -90,12 +90,19 @@ describe("App shell", () => {
     expect(screen.queryByRole("button", { name: "Help" })).not.toBeInTheDocument();
   });
 
-  it("puts the search and the wheel's empty slot in the header", () => {
+  it("has no header band; search is the sidebar's button (K8)", () => {
     const { container } = render(<App />);
 
-    const header = container.querySelector(".app-shell__header");
-    expect(header?.querySelector("[role='search'] input")).not.toBeNull();
-    expect(header?.querySelector("[data-slot='wheel']")).not.toBeNull();
+    expect(container.querySelector(".app-shell__header, .cp-shell-header")).toBeNull();
+    expect(container.querySelector("[role='search']")).toBeNull();
+    expect(screen.getByRole("button", { name: /^Search/ })).toBeInTheDocument();
+  });
+
+  it("opens the search dialog on Ctrl+K from the one host App mounts, outside the sidebar (K8)", async () => {
+    render(<App />);
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const dialog = await screen.findByRole("dialog", { name: "Search" });
+    expect(screen.getByRole("navigation", { name: /main navigation/i })).not.toContainElement(dialog);
   });
 
   it("renders exactly one main region", () => {

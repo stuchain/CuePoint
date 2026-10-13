@@ -1,5 +1,5 @@
 /* The field and its suggestion list. The list is absolutely positioned under the
-   field, so opening it never moves what is around it (as GlobalSearch's panel). */
+   field, so opening it never moves what is around it. */
 .cp-suggest {
   position: relative;
   display: flex;

@@ -608,6 +608,22 @@ const wheel = [
   "....####....",
 ];
 
+/** A magnifier, for the sidebar's Search button (K8): a ring and its handle running down to the right. */
+const search = [
+  "............",
+  "..#####.....",
+  ".##...##....",
+  ".#.....#....",
+  ".#.....#....",
+  ".#.....#....",
+  ".##...##....",
+  "..#####.....",
+  "......###...",
+  ".......###..",
+  "........###.",
+  "............",
+];
+
 /** A key, for the Keys page (PAGES-16): a ring head and a toothed shaft. */
 const keys = [
   "............",
@@ -719,8 +735,10 @@ export const PIXEL_ICONS = {
   edit,
   close,
   logo,
-  // HDR-4: the header's Camelot wheel button.
+  // HDR-4: the Camelot wheel button.
   wheel,
+  // K8: the sidebar's Search button.
+  search,
 } as const satisfies Record<string, readonly string[]>;
 
 export type PixelIconName = keyof typeof PIXEL_ICONS;

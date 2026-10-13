@@ -12,6 +12,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
+import { ToastProvider } from "../Toast";
 import { Sidebar } from "./Sidebar";
 import { EMPTY_LIBRARY_LINE, NAV_DESTINATIONS } from "./navRegistry";
 import { HINT_HOVER_DELAY_MS } from "../Hint";
@@ -19,9 +20,11 @@ import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "./sidebarState";
 
 function renderSidebar(initialPath = "/") {
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <Sidebar />
-    </MemoryRouter>,
+    <ToastProvider>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Sidebar />
+      </MemoryRouter>
+    </ToastProvider>,
   );
 }
 
@@ -256,6 +259,43 @@ describe("Sidebar", () => {
 
       expect(toggle()).toHaveAttribute("title", "Expand sidebar (Ctrl+B)");
       expect(toggle().querySelector("svg[data-icon='chevron-right']")).not.toBeNull();
+    });
+  });
+
+  describe("the Search button (K8)", () => {
+    it("sits between the top row and the list, reading Search with its shortcut", () => {
+      renderSidebar();
+      const button = within(nav()).getByRole("button", { name: /^Search/ });
+      expect(button).toHaveTextContent("Search");
+      expect(button).toHaveTextContent("Ctrl+K");
+      const top = nav().querySelector(".cp-sidebar__top")!;
+      const list = nav().querySelector(".cp-sidebar__list")!;
+      expect(top.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(button.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(top).not.toContainElement(button);
+      expect(list).not.toContainElement(button);
+    });
+
+    it("is an icon alone in the collapsed rail, named Search library, tipped with the key", async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+      await user.click(toggle());
+
+      const button = within(nav()).getByRole("button", { name: "Search library" });
+      expect(button).not.toHaveTextContent("Search");
+      expect(button.querySelector("svg[data-icon='search']")).not.toBeNull();
+      button.focus();
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search (Ctrl+K)");
+    });
+
+    it("asks the shell to open the search dialog, which App mounts", async () => {
+      const user = userEvent.setup();
+      const heard = vi.fn();
+      window.addEventListener("cuepoint:shell-command", heard);
+      renderSidebar();
+      await user.click(within(nav()).getByRole("button", { name: /^Search/ }));
+      window.removeEventListener("cuepoint:shell-command", heard);
+      expect((heard.mock.calls[0]![0] as CustomEvent).detail).toBe("open-search");
     });
   });
 

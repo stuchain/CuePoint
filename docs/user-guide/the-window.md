@@ -8,11 +8,9 @@ page you are on changes; everything around it does not.
 | Region | Where | What it does |
 | --- | --- | --- |
 | Menu bar | Top | CuePoint's one menu bar: File, Edit, View and Help (see [The menu bar](#the-menu-bar)) |
-| Search | Top of the window | Searches your library — see [Searching](#searching) |
-| Camelot wheel | Top of the window, beside search | Shows which keys mix with a track — see [The Camelot wheel](#the-camelot-wheel) |
-| Sidebar | Left | The CuePoint logo, then the pages; collapses to an icon rail |
+| Sidebar | Left | The CuePoint logo, a **Search** button (see [Searching](#searching)), then the pages; collapses to an icon rail |
 | Page | Middle | Whatever you are working on |
-| Track details | Right | Details for a selected track; opens with a selection, can be resized or closed |
+| Track details | Right | Details for a selected track, with the Camelot wheel's button beside its key (see [The Camelot wheel](#the-camelot-wheel)); opens with a selection, can be resized or closed |
 | Status strip | Bottom | Whether CuePoint is ready, what is running in the background, and the Activity panel |
 
 The window remembers how you leave it. Collapse the navigation, resize or close
@@ -57,15 +55,17 @@ still announce the full label.
 
 ## Searching
 
-Press **Ctrl+K**, or click the search field, and type at least two characters; one
-letter shows "Keep typing: at least 2 letters". Search looks at track titles,
-artists, albums and labels.
+Press **Ctrl+K** (**Cmd+K** on a Mac) from anywhere, or click **Search** in the sidebar
+(an icon alone when the sidebar is collapsed), and a search window opens with the
+cursor in its field. Type at least two characters; one letter shows "Keep typing: at
+least 2 letters". Search looks at track titles, artists, albums and labels. The field
+starts empty each time.
 
 The results are a list you can use from the keyboard: **Up** and **Down** move
 through them, **Enter** (or a click) opens the Library on that track, selected, with
 its details in Track details, and **Shift+Enter** plays it. Each row also has a
-small play button. The results close when you click anywhere else, tab away or press
-**Esc**; clicking in the field brings them back.
+small play button. **Enter** or a click closes the window and opens the track. **Esc**
+closes it without doing anything, and puts you back where you were.
 
 If you have not imported a Rekordbox collection yet, search says so rather than
 reporting that nothing matched — those are different problems. Import one from
@@ -78,7 +78,7 @@ you.** They are deliberately different keys, because they do different things.
 
 ## The Camelot wheel
 
-The button beside the search field opens a wheel of the 24 keys, drawn as two rings of
+The button beside the key in Track details opens a wheel of the 24 keys, drawn as two rings of
 wedges: the minor keys (A) in the inner ring and the major keys (B) in the outer one,
 12 at the top like a clock. It lights the key of the track you have selected, or, with
 nothing selected, the track that is playing, and the keys that mix with it: one step
@@ -94,8 +94,6 @@ not used. So the wheel says what is missing:
 - A selected track with no Beatport key lights nothing and says "This track has no
   Beatport key yet", with **Match on Beatport**, which opens Clean. It does this even
   while a track with a key plays: the track you selected wins.
-- If no track in your library has a key yet, it says "No track in your library has a
-  Beatport key yet." with **Match tracks…**.
 
 **Click a key** to open the whole Library on every track in that key, in any
 notation: the click replaces the search, the filters, the quick-filter chips and the
@@ -103,13 +101,16 @@ playlist or Collection you had open, with one filter, "Key is 9A". Each key's to
 says so ("9A: show every 9A track in the Library"). The Library's **Key** list can then
 add the other keys that were lit.
 
-From the keyboard, **Tab** to the wheel button and press **Enter**; inside, the
+The button is in Track details, so it needs a selected track; with none selected, play
+one and use the player bar's key below. From the keyboard, **Tab** to the wheel button
+and press **Enter**; inside, the
 **Left** and **Right** arrows move round the ring, **Up** and **Down** switch rings,
 and **Enter** filters. **Esc**, a click outside or the button again closes it. Each
 key is a button named for what it is, for example "8A, A minor, compatible".
 
 The key in the [player bar](player.md#the-player-bar)'s track line opens the same
-wheel for the playing track, whatever is selected, captioned "Playing: …".
+wheel for the playing track, whatever is selected, captioned "Playing: …", even when Track
+details has nothing to show.
 
 ## The menu bar
 
@@ -332,11 +333,11 @@ Here is where each kind shows:
   tab steps into place, and a section of Track details steps open when you open it.
   The Camelot wheel's lit keys step as they light, and on the Keys page a key's
   count steps when it changes, on the wheel and in the list.
-- **Opening and closing panels and dialogs**: dialogs, menus, the search results,
+- **Opening and closing panels and dialogs**: dialogs (search included), menus,
   the **+N more** list, toasts and the Track details panel step in and fade out,
   and the Camelot wheel steps in and fades out. A closing dialog or menu takes no clicks while it
   fades: whatever is behind it takes them at once.
-- **Changing page**: the new page steps in; the sidebar, header, player and
+- **Changing page**: the new page steps in; the sidebar, player and
   status strip stay still. It never waits for the page's data.
 - **Moving between views**: a search result glides into its row in the Library
   when you open it. That is the only one: a table row you pick does not move, so a

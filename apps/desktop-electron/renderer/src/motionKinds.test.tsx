@@ -26,6 +26,7 @@ import { inMemorySource, pendingSource } from "./components/table/trackTableSour
 import type { TrackColumnDef } from "./components/table/trackTableLayout";
 import { CamelotWheel } from "./components/wheel/CamelotWheel";
 import { WheelButton } from "./components/wheel/WheelButton";
+import { WheelPopoverHost } from "./components/wheel/WheelPopoverHost";
 import { closeWheel } from "./components/wheel/wheelStore";
 import { KeysCountsList } from "./screens/keys/KeysCountsList";
 import { SetNotesDialog } from "./screens/prepare/SetNotesDialog";
@@ -415,7 +416,7 @@ perKind(
   "the shell does not move",
   () => ({
     ui: (
-      <AppShellLayout pagePhase="b" header={<p>header</p>} sidebar={<p>sidebar</p>} statusBar={<p>status</p>}>
+      <AppShellLayout pagePhase="b" sidebar={<p>sidebar</p>} statusBar={<p>status</p>}>
         <div className="screen">page</div>
       </AppShellLayout>
     ),
@@ -887,7 +888,7 @@ describe("exit: a closing dialog is held only as a still, inert copy", () => {
         ? ({ ...style, animationName: "cp-fade-out" } as unknown as CSSStyleDeclaration)
         : style;
     });
-    mount(<WheelButton />);
+    mount(<><WheelButton /><WheelPopoverHost /></>);
     await userEvent.click(screen.getByRole("button", { name: "Camelot wheel" }));
     expect(document.querySelector(".cp-wheel-pop")).not.toHaveAttribute("data-leaving");
     await act(async () => {
@@ -906,7 +907,7 @@ describe("exit: a closing dialog is held only as a still, inert copy", () => {
 
   it("closes the wheel popover at once with the kind off", async () => {
     configure("entrance", "off");
-    mount(<WheelButton />);
+    mount(<><WheelButton /><WheelPopoverHost /></>);
     await userEvent.click(screen.getByRole("button", { name: "Camelot wheel" }));
     expect(document.querySelector(".cp-wheel-pop")).not.toBeNull();
     await act(async () => {

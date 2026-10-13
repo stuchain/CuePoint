@@ -2,8 +2,6 @@ import { useEffect, useRef, type ReactNode } from "react";
 import "./AppShellLayout.css";
 
 interface AppShellLayoutProps {
-  /** Shell header: the search, and PAGES-10's wheel button. */
-  header?: ReactNode;
   /** Primary navigation. The sidebar moves in here in SHELL-02. */
   sidebar?: ReactNode;
   /** Track Inspector, docked right. SHELL-05. */
@@ -47,11 +45,10 @@ const DIALOGS = '[role="dialog"], [role="alertdialog"]';
  * conditionals are load-bearing, not tidiness.
  *
  * Landmarks (SHELL-10). `main` here and `contentinfo` on the status strip;
- * `search` is the search field's own container (PAGES-03B: the header row also
- * holds the Camelot wheel's button, which is not part of the search), and
  * `navigation` and `complementary` come from the sidebar and Inspector, which
- * own those elements. There is no `banner`: the in-window menu bar is gone, the
- * one menu bar being the native one. Nothing declares a landmark twice.
+ * own those elements, and `search` is the search dialog's own form, present only
+ * while it is open (K8, DEC-282). There is no `banner` landmark: the header band is gone
+ * with the in-window menu bar (the offline banner row is not one). Nothing declares a landmark twice.
  *
  * The status role lives on the region wrapper rather than inside the
  * component: the wrapper is the landmark, and a component that later ends up
@@ -61,7 +58,7 @@ const DIALOGS = '[role="dialog"], [role="alertdialog"]';
  *
  * Offline, a veil is laid over the page in the same grid cell (not opacity on the page: that
  * would make it a stacking context and trap its dialogs under the banner), and a capture-phase listener on the content element stops presses
- * before the page sees them. It sits on `main` only, so the header, sidebar,
+ * before the page sees them. It sits on `main` only, so the sidebar,
  * Inspector, player and status strip (all outside it) keep working.
  *
  * The content element keeps its historical `app-main` class alongside the grid
@@ -70,7 +67,6 @@ const DIALOGS = '[role="dialog"], [role="alertdialog"]';
  * this step.
  */
 export function AppShellLayout({
-  header,
   sidebar,
   inspector,
   player,
@@ -128,7 +124,6 @@ export function AppShellLayout({
 
   return (
     <div className="app-shell">
-      {header ? <div className="app-shell__header">{header}</div> : null}
       {sidebar ? <div className="app-shell__sidebar">{sidebar}</div> : null}
       {banner ? <div className="app-shell__banner">{banner}</div> : null}
       <main

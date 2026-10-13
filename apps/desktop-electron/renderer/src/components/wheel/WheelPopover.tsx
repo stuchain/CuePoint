@@ -6,13 +6,15 @@ import { CamelotWheel } from "./CamelotWheel";
 import { parseCode } from "./camelot";
 import { keyRulesState, openMatching } from "./wheelLink";
 import { closeWheel, type WheelSource } from "./wheelStore";
-import { useCompatibleKeys, useLibraryHasNoKeys, useWheelSubject } from "./useWheelSubject";
+import { useCompatibleKeys, useWheelSubject } from "./useWheelSubject";
 import "./WheelPopover.css";
 
 interface WheelPopoverProps {
   source: WheelSource;
   /** Closed and playing its exit (PAGES-12): inert, taking no clicks. */
   leaving?: boolean;
+  /** The opener it hangs under, or null when none is known: the popover is fixed, placed from this. */
+  anchor: HTMLElement | null;
   /** The presence ref, on the element that carries the exit. */
   presenceRef?: RefObject<HTMLDivElement | null>;
 }
@@ -26,19 +28,19 @@ function startingCode(key: string | null): string {
 }
 
 /**
- * The Camelot wheel as a popover under the header button (PAGES-10, DEC-133).
+ * The Camelot wheel as a popover under its button (PAGES-10, DEC-133, K8).
  *
- * Absolutely positioned like search's results, so the page below never reflows. It
+ * Fixed to the window and placed from the button, so the page below never reflows and the
+ * scrolling Track details panel the button sits in cannot clip it. It
  * lights the track's key and the keys the engine says mix with it, says in words
  * what it is lit for, and a click on a key opens the whole Library on that key
  * (DEC-160).
  */
-export function WheelPopover({ source, leaving = false, presenceRef }: WheelPopoverProps) {
+export function WheelPopover({ source, anchor, leaving = false, presenceRef }: WheelPopoverProps) {
   const navigate = useNavigate();
   const subject = useWheelSubject(source);
   const subjectKey = subject ? subject.key : null;
   const lit = useCompatibleKeys(subjectKey);
-  const libraryEmpty = useLibraryHasNoKeys(subject === null);
   const [focusCode, setFocusCode] = useState(() => startingCode(subjectKey));
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -52,18 +54,30 @@ export function WheelPopover({ source, leaving = false, presenceRef }: WheelPopo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fit the window: the room from the popover's top to the window's bottom edge.
+  // Place it under the button, right edges level and kept inside the window, then fit the
+  // window: the room from the popover's top to the window's bottom edge.
   useLayoutEffect(() => {
     const fit = () => {
       const root = rootRef.current;
       if (!root) return;
+      const width = root.offsetWidth;
+      // Under the opener, right edges level; with none known, the window's top right.
+      const box = anchor?.isConnected ? anchor.getBoundingClientRect() : null;
+      const left = Math.min((box ? box.right : window.innerWidth) - width, window.innerWidth - width - FIT_MARGIN);
+      root.style.top = `${box ? box.bottom : FIT_MARGIN}px`;
+      root.style.left = `${Math.max(left, FIT_MARGIN)}px`;
       const room = window.innerHeight - root.getBoundingClientRect().top - FIT_MARGIN;
       root.style.maxHeight = `${Math.max(room, 0)}px`;
     };
     fit();
+    // Scrolling anything (Track details, the page) moves the opener under it: follow it.
     window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
-  }, []);
+    window.addEventListener("scroll", fit, true);
+    return () => {
+      window.removeEventListener("resize", fit);
+      window.removeEventListener("scroll", fit, true);
+    };
+  }, [anchor]);
 
   const pick = useCallback(
     (code: string) => {
@@ -87,10 +101,7 @@ export function WheelPopover({ source, leaving = false, presenceRef }: WheelPopo
   let caption: string;
   let action: { label: string; run: () => void } | null = null;
   if (subject === null) {
-    caption = libraryEmpty
-      ? "No track in your library has a Beatport key yet."
-      : "Select or play a track to light its key.";
-    if (libraryEmpty) action = { label: "Match tracks…", run: () => match() };
+    caption = "Select or play a track to light its key.";
   } else if (subject.key === null) {
     caption = "This track has no Beatport key yet";
     action = { label: "Match on Beatport", run: () => match(subject.id) };

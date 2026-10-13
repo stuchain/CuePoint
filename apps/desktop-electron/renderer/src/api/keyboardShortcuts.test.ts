@@ -4,6 +4,7 @@ import { MATCH_KEYS } from "../screens/clean/match/matchKeyboard";
 import oneAtATimeSource from "../screens/clean/match/OneAtATime.tsx?raw";
 import matchKeyboardSource from "../screens/clean/match/matchKeyboard.ts?raw";
 import appSource from "../App.tsx?raw";
+import modalSource from "../components/Modal.tsx?raw";
 import globalSearchSource from "../components/shell/GlobalSearch.tsx?raw";
 import inspectorSource from "../components/shell/TrackInspector.tsx?raw";
 import sidebarSource from "../components/shell/Sidebar.tsx?raw";
@@ -169,7 +170,7 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     ["Ctrl+Shift+A", "Global", statusStripSource, /shiftKey && event\.key\.toLowerCase\(\) === "a"/],
     ["Ctrl+?", "Global", appSource, /key === "\?"/],
     ["F1", "Global", appSource, /key === "F1"/],
-    ["Esc", "Global", globalSearchSource, /key === "Escape"/],
+    ["Esc", "Global", modalSource, /key === "Escape"/],
     ["Ctrl+F", "Library", libraryScreenSource, /key\.toLowerCase\(\) === "f"/],
     ["Ctrl+A", "Library", libraryScreenSource, /key\.toLowerCase\(\) === "a"/],
     ["Enter", "Library", trackTableSource, /key === "Enter" && onRowActivate/],

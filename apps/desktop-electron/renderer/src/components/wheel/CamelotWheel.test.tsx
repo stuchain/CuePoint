@@ -21,7 +21,8 @@ import { declarations, parseRules, stripComments } from "../../test/cssRules";
 import { CamelotWheel } from "./CamelotWheel";
 import wheelCss from "./CamelotWheel.css?raw";
 import { WheelButton } from "./WheelButton";
-import { closeWheel, openWheel } from "./wheelStore";
+import { WheelPopoverHost } from "./WheelPopoverHost";
+import { closeWheel, openWheel, toggleWheel } from "./wheelStore";
 
 function wheelFor(code: string): CompatibleKeys {
   const number = Number(code.slice(0, -1));
@@ -134,6 +135,7 @@ function mount() {
       <Routes>
         <Route path="*" element={<WheelButton />} />
       </Routes>
+      <WheelPopoverHost />
     </MemoryRouter>,
   );
 }
@@ -167,7 +169,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("the header button", () => {
+describe("the Track details button (K8)", () => {
   it("opens a dialog of 24 keys, each a button named with its place", async () => {
     install();
     mount();
@@ -177,6 +179,51 @@ describe("the header button", () => {
     expect(button).toHaveAttribute("aria-expanded", "true");
     expect(dialog().querySelectorAll("button[data-key]")).toHaveLength(24);
     expect(segment("8A")).toHaveAccessibleName("8A, A minor");
+  });
+
+  it("draws the popover in the body, fixed, so a scrolling panel cannot clip it", async () => {
+    install();
+    const { container } = mount();
+    await openFromHeader();
+    expect(container.contains(dialog())).toBe(false);
+    expect(dialog().parentElement).toBe(document.body);
+    expect(dialog().style.top).not.toBe("");
+    expect(dialog().style.left).not.toBe("");
+  });
+
+  it("opens from the player bar's key with no Track details button mounted, under that key", async () => {
+    install({ playing: item({ title: "Strobe", key: "8A" }) });
+    render(
+      <MemoryRouter>
+        <button type="button" data-wheel-opener="" onClick={() => toggleWheel("player")}>
+          player key
+        </button>
+        <WheelPopoverHost />
+      </MemoryRouter>,
+    );
+    const opener = screen.getByRole("button", { name: "player key" });
+    opener.getBoundingClientRect = () => ({ left: 0, top: 10, right: 300, bottom: 40, width: 300, height: 30, x: 0, y: 10, toJSON() {} });
+
+    await userEvent.click(opener);
+
+    expect(await screen.findByRole("dialog", { name: "Camelot wheel" })).toBeInTheDocument();
+    expect(dialog().style.top).toBe("40px");
+    expect(within(dialog()).getByText("Playing: Strobe · 8A")).toBeInTheDocument();
+  });
+
+  it("follows its opener when something scrolls", async () => {
+    install();
+    mount();
+    const button = screen.getByRole("button", { name: "Camelot wheel" });
+    let bottom = 40;
+    button.getBoundingClientRect = () => ({ left: 0, top: 10, right: 300, bottom, width: 300, height: 30, x: 0, y: 10, toJSON() {} });
+    await openFromHeader();
+    expect(dialog().style.top).toBe("40px");
+
+    bottom = 12;
+    fireEvent.scroll(document.body);
+
+    expect(dialog().style.top).toBe("12px");
   });
 
   it("closes with Escape, an outside click and the button, and gives focus back", async () => {
@@ -292,17 +339,6 @@ describe("which track it lights", () => {
     ).toBeInTheDocument();
     expect(litCodes()).toEqual([]);
     expect(screen.queryByRole("button", { name: "Match on Beatport" })).toBeNull();
-  });
-
-  it("says so, with Match tracks…, when no track in the library has a key", async () => {
-    install({ hasKeys: false });
-    mount();
-    await openFromHeader();
-    expect(
-      await within(dialog()).findByText("No track in your library has a Beatport key yet."),
-    ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
-    expect(cleanMatchOpening(lastLocation!)).toMatchObject({ tracks: null });
   });
 
   it("keeps the keys clickable when there is no track", async () => {

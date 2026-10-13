@@ -3,11 +3,11 @@ import { useEffect } from "react";
 /**
  * Commands the menu sends to a part of the shell that owns its own state (FLW-20).
  *
- * The sidebar and the Inspector each keep their open/closed state to themselves, and
+ * The search dialog (K8) is opened this way by the sidebar's button. The sidebar and the Inspector each keep their open/closed state to themselves, and
  * `App.tsx` answering "toggle-sidebar" must not reach into either. It says the command
  * here and whichever part listens does the toggling, the way its own shortcut does.
  */
-type ShellCommand = "toggle-sidebar" | "toggle-inspector";
+type ShellCommand = "toggle-sidebar" | "toggle-inspector" | "open-search";
 
 const EVENT = "cuepoint:shell-command";
 

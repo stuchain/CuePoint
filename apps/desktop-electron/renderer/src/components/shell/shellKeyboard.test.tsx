@@ -17,7 +17,6 @@ import { TrackInspector } from "./TrackInspector";
 import { setSelectedTrack } from "./selectedTrack";
 import { StatusStrip } from "./StatusStrip";
 import { AppShellLayout } from "./AppShellLayout";
-import { ShellHeader } from "./ShellHeader";
 import { KEYBOARD_SHORTCUTS } from "../../api/keyboardShortcuts";
 
 afterEach(() => {
@@ -163,20 +162,19 @@ describe("status strip keyboard", () => {
 });
 
 describe("landmarks", () => {
-  it("marks the search field as search and the status strip as contentinfo", () => {
-    // The landmark is the search field's own container, not the header row (PAGES-03B).
+  it("marks the status strip as contentinfo and has no search landmark until the dialog opens", () => {
+    // The `search` landmark is the dialog's own form (K8), so a closed dialog adds none.
     const { container } = render(
       <ToastProvider>
         <MemoryRouter>
-          <AppShellLayout header={<ShellHeader />} statusBar={<p>status</p>}>
+          <AppShellLayout statusBar={<p>status</p>}>
             <p>page</p>
           </AppShellLayout>
         </MemoryRouter>
       </ToastProvider>,
     );
 
-    expect(container.querySelectorAll('[role="search"]')).toHaveLength(1);
-    expect(container.querySelector(".app-shell__header")).not.toHaveAttribute("role");
+    expect(container.querySelectorAll('[role="search"]')).toHaveLength(0);
     expect(container.querySelector("footer")).not.toBeNull();
     expect(container.querySelectorAll("main")).toHaveLength(1);
   });

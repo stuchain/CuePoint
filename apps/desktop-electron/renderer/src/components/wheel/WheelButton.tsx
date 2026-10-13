@@ -1,44 +1,16 @@
-import { useEffect, useRef } from "react";
-
-import { usePresence } from "../../tokens/usePresence";
 import { PixelIcon } from "../PixelIcon";
-import { WheelPopover } from "./WheelPopover";
-import { closeWheel, toggleWheel, useWheelState } from "./wheelStore";
+import { toggleWheel, useWheelState } from "./wheelStore";
 import "./WheelButton.css";
 
 /**
- * The Camelot wheel's button, in the header beside search (HDR-4, DEC-133), and the
- * popover it opens. The player bar's key opens the same popover (BAR-5).
- *
- * Escape, a press outside and the button itself close it. A press on either opener
- * is not "outside": the opener's own click decides.
+ * The Camelot wheel's button, on Track details' key line (K8, DEC-282; it sat in the
+ * header beside search under HDR-4, DEC-133). It is only a button: the popover it opens is
+ * the one `WheelPopoverHost` mounts, which the player bar's key opens too (BAR-5).
  */
 export function WheelButton() {
-  const { open, source } = useWheelState();
-  const rootRef = useRef<HTMLDivElement>(null);
-  // Closing plays an exit while the popover is kept as an inert copy (PAGES-12).
-  const pop = usePresence<HTMLDivElement>(open);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Element | null;
-      if (rootRef.current?.contains(target) || target?.closest?.("[data-wheel-opener]")) return;
-      closeWheel({ restoreFocus: false });
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeWheel();
-    };
-    document.addEventListener("pointerdown", onPointerDown, true);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown, true);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
+  const { open } = useWheelState();
   return (
-    <div ref={rootRef} className="cp-wheel-button">
+    <div className="cp-wheel-button">
       <button
         type="button"
         className="cp-wheel-button__button"
@@ -47,11 +19,10 @@ export function WheelButton() {
         aria-haspopup="dialog"
         aria-expanded={open}
         title="Camelot wheel: see which keys mix with a track"
-        onClick={() => toggleWheel("header")}
+        onClick={() => toggleWheel("details")}
       >
         <PixelIcon name="wheel" />
       </button>
-      {pop.present && <WheelPopover source={source} leaving={pop.leaving} presenceRef={pop.ref} />}
     </div>
   );
 }

@@ -38,6 +38,11 @@ interface ModalProps {
    * the backdrop then does nothing. Escape and the close button still call `onClose`.
    */
   closeOnBackdrop?: boolean;
+  /**
+   * False when closing hands focus to something else (search opening a track): the dialog then
+   * does not put it back on the opener first. Escape and the close button leave it true.
+   */
+  restoreFocus?: boolean;
 }
 
 const FOCUSABLE =
@@ -61,6 +66,7 @@ export function Modal({
   backAction,
   size = "default",
   closeOnBackdrop = true,
+  restoreFocus = true,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   // Each dialog's own title id. A shared one named every dialog on the page after the
@@ -70,6 +76,9 @@ export function Modal({
   const reasonId = useId();
   // Where focus was before the dialog opened, so it can be put back.
   const restoreTo = useRef<HTMLElement | null>(null);
+  // Read when the dialog closes, not when it opened.
+  const restoreFocusRef = useRef(restoreFocus);
+  restoreFocusRef.current = restoreFocus;
 
   // Layout effects, not passive ones: the dialog is on screen from this commit, and
   // a passive effect runs after the paint, so an Escape pressed as it appeared (or
@@ -87,7 +96,7 @@ export function Modal({
       // Only restore if the old element is still there: the dialog may have
       // been what removed it.
       const target = restoreTo.current;
-      if (target && document.contains(target)) target.focus();
+      if (restoreFocusRef.current && target && document.contains(target)) target.focus();
     };
   }, [open]);
 

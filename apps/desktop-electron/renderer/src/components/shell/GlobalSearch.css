@@ -1,15 +1,14 @@
 /**
- * Global search, in the shell header.
- *
- * The results panel is absolutely positioned so opening it never reflows the
- * page underneath — a header control that pushes the whole app down as you type
- * is worse than one that overlays it.
+ * Global search, in its dialog (K8). The results sit under the field inside the dialog's body,
+ * which scrolls; the field is its own container so a narrow dialog drops to one column.
  */
 .cp-global-search {
-  position: relative;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--space-sm);
   width: 100%;
+  container-type: inline-size;
+  container-name: search;
 }
 
 .cp-global-search__field {
@@ -48,10 +47,6 @@
 }
 
 .cp-global-search__panel {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 940;
   width: 100%;
   max-height: 60vh;
   overflow-y: auto;
@@ -171,8 +166,8 @@
   white-space: nowrap;
 }
 
-/* One column when the header is too narrow for three. */
-@container header (max-width: 700px) {
+/* One column when the dialog is too narrow for three. */
+@container search (max-width: 700px) {
   .cp-global-search__option {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -1,5 +1,5 @@
 /**
- * Global search (SHELL-04, DEC-023).
+ * Global search (SHELL-04, DEC-023), in its dialog opened from the sidebar (K8, DEC-282).
  *
  * The distinction these tests exist to protect is "no library yet" versus "no
  * matches". DEC-023 accepted that search returns nothing until the Library
@@ -13,7 +13,9 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
 import { ToastProvider } from "../Toast";
-import { GlobalSearch } from "./GlobalSearch";
+import { SearchDialogHost } from "./GlobalSearch";
+import { Sidebar } from "./Sidebar";
+import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "./sidebarState";
 import { trackFromLocationState } from "../../screens/library/libraryLink";
 import type {
   LibrarySearchResponse,
@@ -79,7 +81,8 @@ function mount() {
   return render(
     <ToastProvider>
       <MemoryRouter initialEntries={["/clean"]}>
-        <GlobalSearch />
+        <Sidebar />
+        <SearchDialogHost />
         <Where />
         <button type="button">elsewhere</button>
       </MemoryRouter>
@@ -88,22 +91,34 @@ function mount() {
 }
 
 const input = () => screen.getByRole("combobox", { name: /search library/i });
+const searchButton = () => screen.getByRole("button", { name: /^search/i });
 
 async function type(text: string) {
   const user = userEvent.setup();
   mount();
-  await user.type(screen.getByRole("combobox", { name: /search library/i }), text);
+  await user.click(searchButton());
+  await user.type(await screen.findByRole("combobox", { name: /search library/i }), text);
   return user;
 }
 
 describe("GlobalSearch", () => {
-  it("renders a labelled search field", () => {
+  it("has no search field until the dialog is opened from the sidebar button", async () => {
+    const user = userEvent.setup();
     mount();
+    expect(screen.queryByRole("combobox", { name: /search library/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(searchButton());
+
+    expect(await screen.findByRole("dialog", { name: "Search" })).toBeInTheDocument();
     expect(input()).toBeInTheDocument();
+    expect(input()).toHaveFocus();
   });
 
   it("does not query the engine for an empty field", async () => {
+    const user = userEvent.setup();
     mount();
+    await user.click(searchButton());
     await new Promise((resolve) => setTimeout(resolve, 300));
     expect(searchLibrary).not.toHaveBeenCalled();
   });
@@ -210,24 +225,112 @@ describe("GlobalSearch", () => {
     expect(alert).not.toHaveTextContent(/offline/);
   });
 
-  it("focuses the field on Ctrl+K", async () => {
+  it("opens the dialog on Ctrl+K, with the field focused", async () => {
     const user = userEvent.setup();
     mount();
-    expect(input()).not.toHaveFocus();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     await user.keyboard("{Control>}k{/Control}");
 
+    expect(await screen.findByRole("dialog", { name: "Search" })).toBeInTheDocument();
     expect(input()).toHaveFocus();
   });
 
-  it("closes the results panel on Escape", async () => {
-    searchLibrary.mockResolvedValue(response({ total: 1, tracks: [TRACK] }));
-    const user = await type("strobe");
-    await screen.findByText("Strobe");
+  it("opens on Ctrl+K from inside a table, whatever has focus", async () => {
+    const user = userEvent.setup();
+    mount();
+    const cell = document.createElement("div");
+    cell.tabIndex = 0;
+    cell.setAttribute("role", "grid");
+    document.body.appendChild(cell);
+    cell.focus();
+
+    await user.keyboard("{Control>}k{/Control}");
+
+    expect(await screen.findByRole("combobox", { name: /search library/i })).toBeInTheDocument();
+    cell.remove();
+  });
+
+  it("opens on Ctrl+K with the sidebar collapsed, from the icon-only button", async () => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, "1");
+    const user = userEvent.setup();
+    mount();
+    await user.keyboard("{Control>}k{/Control}");
+    expect(await screen.findByRole("combobox", { name: /search library/i })).toBeInTheDocument();
+    localStorage.clear();
+  });
+
+  it("closes on Escape and gives focus back to the sidebar button", async () => {
+    const user = userEvent.setup();
+    mount();
+    await user.click(searchButton());
+    await screen.findByRole("combobox", { name: /search library/i });
 
     await user.keyboard("{Escape}");
 
-    expect(screen.queryByText("Strobe")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(searchButton()).toHaveFocus();
+  });
+
+  it("keeps the dialog out of the sidebar's nav", async () => {
+    const user = userEvent.setup();
+    mount();
+    await user.click(searchButton());
+    const dialog = await screen.findByRole("dialog", { name: "Search" });
+    expect(screen.getByRole("navigation", { name: /main navigation/i })).not.toContainElement(dialog);
+  });
+
+  it("does not take focus from the field when a row's play button is pressed", async () => {
+    searchLibrary.mockResolvedValue(response({ total: 1, tracks: [TRACK] }));
+    await type("strobe");
+    await screen.findByRole("listbox");
+    const play = screen.getByLabelText("Play Strobe");
+    expect(fireEvent.mouseDown(play)).toBe(false); // default prevented: focus stays in the field
+    expect(input()).toHaveFocus();
+  });
+
+  it("puts focus on the Library's selected row after Enter, not back on the opener", async () => {
+    searchLibrary.mockResolvedValue(response({ total: 1, tracks: [TRACK] }));
+    const user = await type("strobe");
+    await screen.findByRole("listbox");
+    // The Library draws its table a moment after the page changes.
+    setTimeout(() => {
+      const table = document.createElement("div");
+      table.tabIndex = 0;
+      table.setAttribute("data-testid", "table");
+      table.innerHTML = '<div class="track-table__row track-table__row--selected"></div>';
+      document.body.appendChild(table);
+    }, 150);
+
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(screen.getByTestId("table")).toHaveFocus(), { timeout: 2000 });
+    expect(searchButton()).not.toHaveFocus();
+    screen.getByTestId("table").remove();
+  });
+
+  it("starts empty each time it opens", async () => {
+    const user = await type("strobe");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    await user.click(searchButton());
+
+    expect(await screen.findByRole("combobox", { name: /search library/i })).toHaveValue("");
+  });
+
+  it("does nothing on Ctrl+K while another modal dialog is open", async () => {
+    const user = userEvent.setup();
+    mount();
+    render(
+      <div role="dialog" aria-modal="true" aria-label="Something else">
+        <button type="button">inside</button>
+      </div>,
+    );
+
+    await user.keyboard("{Control>}k{/Control}");
+
+    expect(screen.queryByRole("combobox", { name: /search library/i })).not.toBeInTheDocument();
   });
 
   describe("the results as a listbox (HDR-1)", () => {
@@ -278,7 +381,8 @@ describe("GlobalSearch", () => {
       await user.keyboard("{ArrowDown}{Enter}");
 
       expect(screen.getByTestId("where")).toHaveTextContent("/library|2");
-      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      // The dialog closes, then the page changes.
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
       expect(playQueue).not.toHaveBeenCalled();
     });
 
@@ -323,20 +427,6 @@ describe("GlobalSearch", () => {
       }
     });
 
-    it("only reopens a closed panel on ArrowDown, without stepping", async () => {
-      const user = await type("strobe");
-      await screen.findByRole("listbox");
-      await user.keyboard("{Escape}");
-      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-
-      await user.keyboard("{ArrowDown}");
-      await screen.findByRole("listbox");
-      expect(active()).toBe(options()[0]!.id);
-
-      await user.keyboard("{ArrowDown}");
-      expect(active()).toBe(options()[1]!.id);
-    });
-
     it("says why when the player refuses the track", async () => {
       playQueue.mockResolvedValue({ ok: false, code: "missing", error: "That file is missing." });
       const user = await type("strobe");
@@ -354,45 +444,6 @@ describe("GlobalSearch", () => {
     });
   });
 
-  describe("closing the panel (HDR-2)", () => {
-    beforeEach(() => {
-      searchLibrary.mockResolvedValue(response({ total: 1, tracks: [TRACK] }));
-    });
-
-    it("closes on a pointer press outside the search", async () => {
-      await type("strobe");
-      await screen.findByRole("listbox");
-
-      fireEvent.pointerDown(screen.getByRole("button", { name: "elsewhere" }));
-
-      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    });
-
-    it("stays open on a press inside the panel", async () => {
-      await type("strobe");
-      const list = await screen.findByRole("listbox");
-      fireEvent.pointerDown(list);
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
-    });
-
-    it("closes when focus leaves the search", async () => {
-      const user = await type("strobe");
-      await screen.findByRole("listbox");
-      await user.tab();
-      expect(screen.getByRole("button", { name: "elsewhere" })).toHaveFocus();
-      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    });
-
-    it("opens again when the field is focused", async () => {
-      const user = await type("strobe");
-      await screen.findByRole("listbox");
-      fireEvent.pointerDown(screen.getByRole("button", { name: "elsewhere" }));
-      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-      await user.click(input());
-      expect(await screen.findByRole("listbox")).toBeInTheDocument();
-    });
-  });
-
   describe("words and landmark (HDR-3, HDR-7)", () => {
     it("tells a one-letter query to keep typing, without asking the library", async () => {
       await type("s");
@@ -402,21 +453,21 @@ describe("GlobalSearch", () => {
     });
 
     it("says nothing for an empty field", async () => {
+      const user = userEvent.setup();
       mount();
-      await userEvent.click(input());
+      await user.click(searchButton());
+      await screen.findByRole("combobox", { name: /search library/i });
       expect(screen.queryByText(/Keep typing/)).not.toBeInTheDocument();
     });
 
-    it("keeps the shortcut in the placeholder", () => {
-      mount();
-      expect(input()).toHaveAttribute("placeholder", "Search library…  Ctrl+K");
-    });
-
-    it("carries the search landmark on its own container", () => {
+    it("carries the search landmark on the dialog's form", async () => {
+      const user = userEvent.setup();
       const { container } = mount();
+      await user.click(searchButton());
+      await screen.findByRole("combobox", { name: /search library/i });
       const landmark = screen.getByRole("search");
       expect(landmark).toContainElement(input());
-      expect(landmark).toHaveClass("cp-global-search");
+      expect(screen.getByRole("dialog")).toContainElement(landmark);
       expect(container.querySelectorAll("[role='search']")).toHaveLength(1);
     });
   });

@@ -61,4 +61,4 @@ Smart Collection, whose filters, not a place, decide its tracks.
 ## See also
 
 - [Your library](library.md): importing, browsing and Track details.
-- [The CuePoint window](the-window.md): the Camelot wheel in the header.
+- [The CuePoint window](the-window.md): the Camelot wheel in Track details.

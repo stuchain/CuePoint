@@ -32,6 +32,7 @@
 import { Fragment, useCallback, useState, type ReactNode } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
+import { WheelButton } from "../../components/wheel";
 import { formatBpm } from "../../components/format/bpm";
 import type {
   CollectionNode,
@@ -432,19 +433,23 @@ export function TrackDetailPanel({
             </button>
           )}
         </div>
-        <dl className="cp-track-detail__keyline" data-testid="track-key">
-          <Row
-            label="Key"
-            value={
-              key ?? (
-                <span className="cp-track-detail__file">
-                  <span>No Beatport key</span>
-                  {keyMatchOffered && track.id != null && <MatchOnBeatport trackId={track.id} />}
-                </span>
-              )
-            }
-          />
-        </dl>
+        {/* The Camelot wheel's button sits beside the key it is about (K8, DEC-282). */}
+        <div className="cp-track-detail__keyrow">
+          <dl className="cp-track-detail__keyline" data-testid="track-key">
+            <Row
+              label="Key"
+              value={
+                key ?? (
+                  <span className="cp-track-detail__file">
+                    <span>No Beatport key</span>
+                    {keyMatchOffered && track.id != null && <MatchOnBeatport trackId={track.id} />}
+                  </span>
+                )
+              }
+            />
+          </dl>
+          <WheelButton />
+        </div>
       </header>
 
       {/* The whole track, its marks on it (WAVE-06): under the header, the

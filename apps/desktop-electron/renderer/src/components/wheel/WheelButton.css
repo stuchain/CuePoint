@@ -1,4 +1,4 @@
-/* Positions the wheel's popover; the button itself matches the search field's height. */
+/* Positions the wheel's popover; the button is a control's height, for Track details' key line (K8). */
 .cp-wheel-button {
   position: relative;
   display: flex;

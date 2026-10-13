@@ -1,7 +1,7 @@
 /**
  * Application shell grid.
  *
- * Five rows, three columns. The sidebar and inspector columns and the header,
+ * Four rows, three columns (no header band, K8). The sidebar and inspector columns and the banner,
  * player and status rows all size to `auto`, so a region that is not
  * rendered contributes exactly zero pixels. There is deliberately no `gap`:
  * a gap is drawn around empty tracks too, which would give an absent region
@@ -15,29 +15,16 @@
 .app-shell {
   display: grid;
   grid-template-areas:
-    "header  header    header"
     "sidebar banner    inspector"
     "sidebar content   inspector"
     "player  player    player"
     "status  status    status";
   grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
   width: 100%;
-}
-
-/*
- * A query container of its own: the header sits outside the content region, so
- * `@container content` does not reach it, and its width tracks the whole shell
- * rather than the page area.
- */
-.app-shell__header {
-  grid-area: header;
-  min-width: 0;
-  container-type: inline-size;
-  container-name: header;
 }
 
 .app-shell__sidebar {

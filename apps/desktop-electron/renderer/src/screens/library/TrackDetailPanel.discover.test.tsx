@@ -25,6 +25,13 @@ afterEach(() => {
   delete (window as unknown as { cuepoint?: unknown }).cuepoint;
 });
 
+/** The header's credit links: its buttons, less the Camelot wheel's on the key line (K8). */
+function creditButtons() {
+  return within(header())
+    .queryAllByRole("button")
+    .filter((button) => button.getAttribute("aria-label") !== "Camelot wheel");
+}
+
 function header() {
   return screen.getByRole("heading", { level: 2 }).closest("header") as HTMLElement;
 }
@@ -94,7 +101,7 @@ describe("the Inspector's credits as links", () => {
   it("is text from an engine that sends no credits", () => {
     const { credits: _none, ...older } = RESOLVED;
     render(<TrackDetailPanel detail={older} onOpenEntity={vi.fn()} />);
-    expect(within(header()).queryByRole("button")).toBeNull();
+    expect(creditButtons()).toHaveLength(0);
     expect(header()).toHaveTextContent("Mara Veil, Kiko");
   });
 
@@ -105,7 +112,7 @@ describe("the Inspector's credits as links", () => {
       credits: { artists: [], remixers: [], label: null },
     };
     render(<TrackDetailPanel detail={bare} onOpenEntity={vi.fn()} />);
-    expect(within(header()).queryByRole("button")).toBeNull();
+    expect(creditButtons()).toHaveLength(0);
     expect(header().querySelector("p.cp-track-detail__label")).toBeNull();
   });
 });

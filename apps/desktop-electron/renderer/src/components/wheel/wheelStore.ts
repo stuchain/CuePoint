@@ -3,19 +3,34 @@ import { useSyncExternalStore } from "react";
 /**
  * Whether the Camelot wheel is open, and which button opened it (PAGES-10).
  *
- * Two buttons open the one wheel: the header's, which lights the selected track
- * (else the playing one, DEC-157), and the player bar's key, which lights the
- * playing one (BAR-5). The popover lives in the header, so the player bar reaches
- * it through this store rather than through props across the shell.
+ * Two buttons open the one wheel: Track details' key line button (K8, DEC-282, which
+ * moved it from the header), which lights the selected track (else the playing one,
+ * DEC-157), and the player bar's key, which lights the playing one (BAR-5). The popover
+ * lives with the details button, so the player bar reaches it through this store rather
+ * than through props across the shell.
  */
-export type WheelSource = "header" | "player";
+export type WheelSource = "details" | "player";
 
 export interface WheelState {
   open: boolean;
   source: WheelSource;
+  /** The opener the popover hangs under, kept while it plays its exit; null when none is known. */
+  anchor: HTMLElement | null;
 }
 
-let state: WheelState = { open: false, source: "header" };
+let state: WheelState = { open: false, source: "details", anchor: null };
+/** The opener last pressed with the pointer: a click does not focus a button everywhere. */
+let pressed: HTMLElement | null = null;
+if (typeof document !== "undefined") {
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      const hit = (event.target as Element | null)?.closest?.("[data-wheel-opener]");
+      pressed = hit instanceof HTMLElement ? hit : null;
+    },
+    true,
+  );
+}
 /** What had focus when it opened, so closing can give focus back. */
 let opener: HTMLElement | null = null;
 const listeners = new Set<() => void>();
@@ -32,14 +47,17 @@ export function getWheelState(): WheelState {
 export function openWheel(source: WheelSource): void {
   const active = document.activeElement;
   opener = active instanceof HTMLElement && active !== document.body ? active : null;
-  publish({ open: true, source });
+  // The popover hangs under whichever opener was used: the pressed one, else the focused one.
+  const anchor = (pressed?.isConnected ? pressed : null) ?? opener?.closest<HTMLElement>("[data-wheel-opener]") ?? null;
+  pressed = null;
+  publish({ open: true, source, anchor });
 }
 
 export function closeWheel(options: { restoreFocus?: boolean } = {}): void {
   if (!state.open) return;
   const target = options.restoreFocus === false ? null : opener;
   opener = null;
-  publish({ open: false, source: state.source });
+  publish({ ...state, open: false });
   if (target?.isConnected) target.focus();
 }
 

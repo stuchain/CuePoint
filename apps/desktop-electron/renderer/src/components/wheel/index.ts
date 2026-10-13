@@ -2,3 +2,4 @@ export { CamelotWheel } from "./CamelotWheel";
 export { WheelButton } from "./WheelButton";
 export { toggleWheel } from "./wheelStore";
 export { KeyChip } from "./KeyChip";
+export { WheelPopoverHost } from "./WheelPopoverHost";

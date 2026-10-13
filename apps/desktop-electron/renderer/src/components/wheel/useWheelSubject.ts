@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 
 import type { CompatibleKeys } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
-import { libraryHasNoKeys } from "../../screens/library/libraryKeys";
 import { playingKey, sameItem, selectCurrentItem } from "../player/playerFormat";
 import { usePlayerValue } from "../player/playerStore";
 import { useSelectedTrack } from "../shell/selectedTrack";
@@ -18,7 +17,7 @@ export interface WheelSubject {
 }
 
 /**
- * Which track the wheel is about (DEC-157): from the header, the selected one else
+ * Which track the wheel is about (DEC-157): from Track details, the selected one else
  * the playing one; from the player bar's key, the playing one. A selected track
  * with no key still wins: the wheel says so rather than showing another track's.
  */
@@ -27,7 +26,7 @@ export function useWheelSubject(source: WheelSource): WheelSubject | null {
   const playing = usePlayerValue(selectCurrentItem, sameItem);
   const [looked, setLooked] = useState<{ id: number; title: string } | null>(null);
 
-  const picked = source === "header" ? selected : null;
+  const picked = source === "details" ? selected : null;
   const needsTitle =
     picked !== null && !picked.title && typeof picked.id === "number" ? picked.id : null;
 
@@ -99,23 +98,3 @@ export function useCompatibleKeys(key: string | null): ReadonlyMap<string, "same
 }
 
 const EMPTY: ReadonlyMap<string, "same" | "adjacent" | "relative"> = new Map();
-
-/** Whether no track in the library has a key (DEC-201), asked only while `ask` is true. */
-export function useLibraryHasNoKeys(ask: boolean): boolean {
-  const [none, setNone] = useState(false);
-  useEffect(() => {
-    if (!ask) return;
-    let cancelled = false;
-    libraryHasNoKeys()
-      .then((answer) => {
-        if (!cancelled) setNone(answer === true);
-      })
-      .catch((error: unknown) => {
-        reportUnexpected(error);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [ask]);
-  return ask && none;
-}

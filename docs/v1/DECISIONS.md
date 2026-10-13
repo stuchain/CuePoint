@@ -7861,3 +7861,27 @@ and the stack sat on top of the player bar and status strip.
 - The confirmation half of R3-7 (reversible acts and offers Undo) is DEC-267.
 
 **Decided with**: User (R3-7, wish list round 2) · **Date**: 2026-10-13
+
+
+
+
+
+## DEC-282 — Search Opens From the Sidebar; the Wheel Sits on Track Details
+
+**Status**: Approved · **Related**: K8, DEC-023, DEC-133, HDR-1, HDR-4
+
+**Context**: A 52 px band across the top of the window held only the library search and the Camelot wheel's button,
+on every page, taking a table row from every short window.
+
+**Decision** (amends DEC-133 and DEC-023's placement; the search's engine contract is unchanged):
+- The band is gone. A **Search** button heads the sidebar (icon only when the rail is closed), and Ctrl+K (⌘K) opens
+  the same search from anywhere, in a dialog: type, move with the arrows, Enter opens the track in the Library,
+  Shift+Enter plays it. Esc closes it and returns focus; opening a track moves focus to its row. Ctrl+K does nothing
+  while another dialog is open.
+- The Camelot wheel's button sits beside the key on Track details' key line and opens the wheel for the selection.
+  The player bar's key still opens it for the playing track, and the Keys page keeps its own wheel. One popover,
+  placed under whichever button opened it, follows scrolling.
+- With nothing selected and nothing playing, the wheel is reached from the Keys page only, so the wheel's
+  "nothing to show" captions are gone.
+
+**Decided with**: User (K8, wish list round 2) · **Date**: 2026-10-13

@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { Modal } from "../Modal";
+import { useShellCommand } from "./shellCommands";
 import { PixelIcon } from "../PixelIcon";
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -8,7 +10,6 @@ import { libraryTrackState } from "../../screens/library/libraryLink";
 import { matchedLabel } from "../../screens/library/searchMatch";
 import { toQueueItem } from "../../screens/library/useLibraryPlayback";
 import { sharedTransition } from "../../tokens/sharedTransition";
-import { usePresence } from "../../tokens/usePresence";
 import { queryShown } from "./pageActive";
 import {
   MIN_QUERY_LENGTH,
@@ -23,7 +24,8 @@ const LISTBOX_ID = "cp-global-search-results";
 const optionId = (index: number) => `cp-global-search-option-${index}`;
 
 /**
- * Global library search (DEC-023).
+ * Global library search (DEC-023), in a dialog opened from the sidebar (K8, DEC-282; amends
+ * DEC-133 and DEC-023: the header band is gone).
  *
  * Backed by a real engine query over the Phase 1 `tracks` table from the start,
  * rather than a client-side filter over whatever is on screen. It legitimately
@@ -35,41 +37,18 @@ const optionId = (index: number) => `cp-global-search-option-${index}`;
  * in-table search, and one key meaning two things depending on focus is worse
  * than two keys meaning one thing each.
  */
-export function GlobalSearch() {
+function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void }) {
   const navigate = useNavigate();
   const { push } = useToast();
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const rootRef = useRef<HTMLDivElement>(null);
   const { ref, focus } = useSearchInputRef();
   const { status, response, error } = useLibrarySearch(query);
 
   const tracks: LibraryTrackRow[] = status === "results" && response ? response.tracks : [];
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        focus();
-        setOpen(true);
-      }
-      if (event.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [focus]);
-
-  // A press anywhere outside the search closes the panel (HDR-2); focus leaving it does
-  // too, below. Listened to only while it is open.
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener("pointerdown", onPointerDown, true);
-    return () => document.removeEventListener("pointerdown", onPointerDown, true);
-  }, [open]);
+  // After the dialog has taken focus for itself (a layout effect in Modal): the field is where typing starts.
+  useEffect(() => focus(), [focus]);
 
   // A new answer starts on its first result.
   useEffect(() => setActive(0), [response]);
@@ -78,14 +57,10 @@ export function GlobalSearch() {
     document.getElementById(optionId(active))?.scrollIntoView?.({ block: "nearest" });
   }, [active]);
 
-  const onChange = useCallback((value: string) => {
-    setQuery(value);
-    setOpen(true);
-  }, []);
-
   // HDR-1: Enter or a click opens the Library on the track, selected.
-  // The row clicked moves into the Library's row for the track when Moving between views is on
-  // (PAGES-12); with it off, or from the keyboard, the page just changes.
+  // The dialog closes first, then the page changes. The row clicked moves into the Library's row
+  // for the track when Moving between views is on (PAGES-12); with it off, or from the keyboard,
+  // the page just changes.
   const openTrack = useCallback(
     (track: LibraryTrackRow | undefined, from?: Element | null) => {
       if (!track || track.id == null) return;
@@ -94,13 +69,14 @@ export function GlobalSearch() {
         "cp-shared-result",
         from ?? null,
         () => {
-          setOpen(false);
+          onDone({ navigated: true });
           navigate("/library", { state: libraryTrackState(id) });
+          focusSelectedRow();
         },
         () => queryShown(".track-table__row--selected"),
       );
     },
-    [navigate],
+    [navigate, onDone],
   );
 
   // Shift+Enter and the row's ▶ play it, through the player the Library plays with.
@@ -118,14 +94,9 @@ export function GlobalSearch() {
     if (tracks.length === 0) return;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      // With the panel closed the arrow only brings it back; the next one moves.
-      if (!open) {
-        setOpen(true);
-        return;
-      }
       const step = event.key === "ArrowDown" ? 1 : -1;
       setActive((current) => Math.min(tracks.length - 1, Math.max(0, current + step)));
-    } else if (event.key === "Enter" && open) {
+    } else if (event.key === "Enter") {
       event.preventDefault();
       if (event.shiftKey) playTrack(tracks[active]);
       else openTrack(tracks[active]);
@@ -134,13 +105,11 @@ export function GlobalSearch() {
 
   const trimmed = query.trim();
   const tooShort = trimmed.length > 0 && trimmed.length < MIN_QUERY_LENGTH;
-  const showPanel = open && (status !== "idle" || tooShort);
+  const showPanel = status !== "idle" || tooShort;
   const showList = showPanel && tracks.length > 0;
-  const panel = usePresence<HTMLDivElement>(showPanel);
   // Each new answer pulses once (feedback, DEC-154): the list is a new element for each.
   const [answer, setAnswer] = useState({ response, n: 0 });
   if (answer.response !== response) setAnswer({ response, n: answer.n + 1 });
-  // Pulsed once per answer, not again when the panel is closed and reopened on the same one.
   const [pulsed, setPulsed] = useState(0);
   useEffect(() => {
     if (!showList) return;
@@ -149,32 +118,19 @@ export function GlobalSearch() {
   }, [showList, answer.n]);
 
   return (
-    <div
-      ref={rootRef}
-      className="cp-global-search"
-      role="search"
-      onBlur={(event) => {
-        // Focus left for a control outside (HDR-2). Focus that left for nothing, a press
-        // on the bare page, is the pointer listener's.
-        const next = event.relatedTarget as Node | null;
-        if (next && !rootRef.current?.contains(next)) setOpen(false);
-      }}
-    >
+    <div className="cp-global-search" role="search">
       <label className="cp-global-search__field">
         <span className="cp-global-search__label">Search library</span>
         <input
           ref={ref}
           type="search"
           className="cp-global-search__input"
-          placeholder="Search library…  Ctrl+K"
+          placeholder="Search library…"
           value={query}
-          onChange={(event) => onChange(event.target.value)}
-          onFocus={() => setOpen(true)}
-          // Pressing in a field that already has focus brings the results back (HDR-2).
-          onClick={() => setOpen(true)}
+          onChange={(event) => setQuery(event.target.value)}
           onKeyDown={onKeyDown}
           aria-label="Search library"
-          // The panel is a listbox of results, so the input owns the
+          // The results are a listbox, so the input owns the
           // expanded/collapsed state for anyone not looking at the screen.
           role="combobox"
           aria-expanded={showPanel}
@@ -185,14 +141,10 @@ export function GlobalSearch() {
         />
       </label>
 
-      {panel.present && (
+      {showPanel && (
         <div
-          ref={panel.ref}
           className="cp-global-search__panel"
-          data-leaving={panel.leaving ? "" : undefined}
-          inert={panel.leaving}
-          // A press inside the panel must not take focus from the field, or the panel
-          // would close under the click that was meant for a row.
+          // A press inside the panel (a row's ▶) must not take focus from the field.
           onMouseDown={(event) => event.preventDefault()}
         >
           {tooShort && (
@@ -287,5 +239,68 @@ export function GlobalSearch() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * After a result opens the Library, focus goes to the selected row's table once the page has
+ * drawn it (Esc, by contrast, gives focus back to the opener). Gives up after a few seconds.
+ */
+function focusSelectedRow(): void {
+  let tries = 0;
+  const look = window.setInterval(() => {
+    const row = queryShown(".track-table__row--selected");
+    const target = row?.closest<HTMLElement>("[tabindex]");
+    if (target) {
+      target.focus({ preventScroll: true });
+      window.clearInterval(look);
+    } else if (++tries > 40) {
+      window.clearInterval(look);
+    }
+  }, 100);
+}
+
+/** Whether some other modal dialog is open: Ctrl+K must not stack a second one on it. */
+function otherDialogOpen(): boolean {
+  return queryShown('[role="dialog"][aria-modal="true"]') !== null;
+}
+
+/**
+ * The search dialog and the one window listener that opens it (K8): Ctrl+K from anywhere, a
+ * table included, even with the sidebar collapsed. App mounts it once, outside the sidebar's
+ * `nav`; the sidebar's Search button opens it with the "open-search" shell command. The dialog's
+ * Esc and focus return are Modal's.
+ */
+export function SearchDialogHost() {
+  const [open, setOpen] = useState(false);
+  // An opened result moves focus itself, so the dialog must not first return it to the opener.
+  const [navigated, setNavigated] = useState(false);
+
+  const show = useCallback(() => {
+    setNavigated(false);
+    setOpen(true);
+  }, []);
+  useShellCommand("open-search", show);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        if (!open && !otherDialogOpen()) show();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, show]);
+
+  const close = useCallback((how?: { navigated: true }) => {
+    if (how?.navigated) setNavigated(true);
+    setOpen(false);
+  }, []);
+
+  return (
+    <Modal open={open} title="Search" onClose={() => close()} size="wide" restoreFocus={!navigated}>
+      <SearchBody onDone={close} />
+    </Modal>
   );
 }

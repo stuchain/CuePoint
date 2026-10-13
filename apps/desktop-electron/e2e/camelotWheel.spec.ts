@@ -224,7 +224,7 @@ test.describe("The Camelot wheel (PAGES-10)", () => {
       await expect(search).toHaveValue("Track");
       await expect.poll(() => visibleTitles(window), { timeout: 30_000 }).toEqual(["Track 1", "Track 4"]);
 
-      // Select the 8A track, open the wheel from the header.
+      // Select the 8A track, open the wheel from Track details' key line (K8).
       await window.locator('.track-table__row [data-column="title"]', { hasText: "Track 1" }).click();
       await window.getByRole("button", { name: "Camelot wheel" }).click();
       const wheel = window.getByRole("dialog", { name: "Camelot wheel" });
@@ -250,7 +250,7 @@ test.describe("The Camelot wheel (PAGES-10)", () => {
     }
   });
 
-  test("says what is missing: no track, then a track with no Beatport key", async () => {
+  test("says what is missing: a selected track with no Beatport key", async () => {
     test.setTimeout(240_000);
     const app = await launch(userDataDir, cuepointHome);
     try {
@@ -259,28 +259,21 @@ test.describe("The Camelot wheel (PAGES-10)", () => {
       await window.reload();
       await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
 
-      // Nothing matched yet: no track in the library has a key.
+      // The button is on Track details' key line (K8), so a track is always selected when the
+      // wheel opens from it. Nothing matched yet: a selected track with no key says why, and
+      // offers the match.
+      await window.locator('.track-table__row [data-column="title"]', { hasText: "Track 4" }).click();
       await window.getByRole("button", { name: "Camelot wheel" }).click();
       const wheel = window.getByRole("dialog", { name: "Camelot wheel" });
-      await expect(wheel).toContainText("No track in your library has a Beatport key yet.", {
-        timeout: 15_000,
-      });
-      await wheel.getByRole("button", { name: "Match tracks…" }).click();
+      await expect(wheel).toContainText("This track has no Beatport key yet", { timeout: 15_000 });
+      await expect(window.locator("[data-lit]")).toHaveCount(0);
+      await wheel.getByRole("button", { name: "Match on Beatport" }).click();
       await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
       // It opens Clean's match window (PAGES-07B); close it before leaving the page.
       const matchWindow = window.getByRole("dialog", { name: "Match tracks" });
       await expect(matchWindow).toBeVisible();
       await window.keyboard.press("Escape");
       await expect(matchWindow).toHaveCount(0);
-
-      // A selected track with no key lights nothing and says why.
-      await window.getByRole("link", { name: "Library" }).click();
-      await window.locator('.track-table__row [data-column="title"]', { hasText: "Track 4" }).click();
-      await window.getByRole("button", { name: "Camelot wheel" }).click();
-      await expect(window.getByRole("dialog", { name: "Camelot wheel" })).toContainText(
-        "This track has no Beatport key yet",
-      );
-      await expect(window.locator("[data-lit]")).toHaveCount(0);
     } finally {
       await app.close();
     }
@@ -300,6 +293,9 @@ test.describe("The Camelot wheel (PAGES-10)", () => {
         await window.cuepoint!.player!.pause();
       }, path.join(AUDIO, "tone.flac"));
       const key = window.getByRole("button", { name: "Show 9A on the Camelot wheel" });
+      // Nothing is selected, so Track details has no wheel button; the shell's one popover host
+      // still opens under the player bar's key (K8).
+      await expect(window.getByRole("button", { name: "Camelot wheel", exact: true })).toHaveCount(0);
       await key.click();
       const wheel = window.getByRole("dialog", { name: "Camelot wheel" });
       await expect(wheel).toContainText("Playing: Tone One · 9A", { timeout: 15_000 });
@@ -320,6 +316,7 @@ test.describe("The Camelot wheel (PAGES-10)", () => {
       await app.evaluate(({ BrowserWindow }) => {
         BrowserWindow.getAllWindows()[0]?.setSize(1280, 800);
       });
+      await window.locator('.track-table__row [data-column="title"]', { hasText: "Track 1" }).click();
       await window.getByRole("button", { name: "Camelot wheel" }).click();
       for (const scale of [1.5, 2, 3]) {
         const report = await window.evaluate((s) => {
