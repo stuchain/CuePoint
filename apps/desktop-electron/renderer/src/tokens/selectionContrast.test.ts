@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { NEO_DARK_EDITOR_COLORS } from "./customThemes";
-import { CUSTOM_PALETTES, THEMES, themeTokens } from "./themeFixtures";
+import { CUSTOM_PALETTES, THEMES, themeTokens } from "../test/themeFixtures";
 import { contrastRatio, deriveThemeTokens } from "./themeDerivation";
 import { declarations, parseRules, stripComments } from "../test/cssRules";
 

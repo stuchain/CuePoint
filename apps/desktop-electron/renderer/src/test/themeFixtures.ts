@@ -1,9 +1,9 @@
-import clubNeon from "./themes/clubNeon.css?raw";
-import mutedPro from "./themes/mutedPro.css?raw";
-import neoDark from "./themes/neoDark.css?raw";
-import qtEvolved from "./themes/qtEvolved.css?raw";
-import retro16 from "./themes/retro16.css?raw";
-import { NEO_DARK_EDITOR_COLORS, type CustomThemeColors } from "./customThemes";
+import clubNeon from "../tokens/themes/clubNeon.css?raw";
+import mutedPro from "../tokens/themes/mutedPro.css?raw";
+import neoDark from "../tokens/themes/neoDark.css?raw";
+import qtEvolved from "../tokens/themes/qtEvolved.css?raw";
+import retro16 from "../tokens/themes/retro16.css?raw";
+import { NEO_DARK_EDITOR_COLORS, type CustomThemeColors } from "../tokens/customThemes";
 
 /** The five built-in themes' CSS, and the seeded custom palettes, shared by the contrast tests. */
 export const THEMES: Record<string, string> = { clubNeon, mutedPro, neoDark, qtEvolved, retro16 };
