@@ -467,3 +467,129 @@ class TestWhatItLoads:
 
         with pytest.raises(AttributeError):
             engine.no_such_thing  # noqa: B018
+
+
+class TestHelloIdentity:
+    """The hello says who the worker is, and the engine still accepts it (C19g)."""
+
+    def test_the_line_carries_the_pid_and_home_and_still_matches(self, monkeypatch):
+        monkeypatch.delattr(sys, "_MEIPASS", raising=False)
+        obj = wire.loads(wire.hello_line())
+        assert obj["pid"] == os.getpid()
+        assert obj["home"] is None
+        assert wire.hello_matches(obj)
+
+    def test_a_frozen_build_says_where_it_is_unpacked(self, monkeypatch):
+        monkeypatch.setattr(sys, "_MEIPASS", "/tmp/_MEIx", raising=False)
+        obj = wire.loads(wire.hello_line())
+        assert obj["home"] == "/tmp/_MEIx"
+        assert wire.hello_matches(obj)
+
+    def test_a_hello_without_the_identity_still_matches(self):
+        assert wire.hello_matches(wire.hello())
+
+    def test_another_builds_versions_still_do_not(self):
+        obj = wire.loads(wire.hello_line())
+        obj["analysis_version"] += 1
+        assert not wire.hello_matches(obj)
+
+    def test_the_client_keeps_the_hello_it_accepted_and_its_start_time(
+        self, stub, song
+    ):
+        from cuepoint.services.analysis_worker_client import (
+            WorkerComputer,
+            worker_environment,
+        )
+
+        client = WorkerComputer(env=worker_environment(), hello_timeout=PATIENCE)
+        assert client.last_hello is None
+        assert client.last_start_seconds is None
+        try:
+            computed = client.compute(str(song), stub, overview=True, detail=False)
+            hello = client.last_hello
+        finally:
+            client.close()
+        assert computed.outcome == COMPUTED_READY
+        assert hello is not None and wire.hello_matches(hello)
+        assert hello["pid"] != os.getpid()
+        assert hello["home"] is None
+        assert client.last_start_seconds is not None
+        assert 0 < client.last_start_seconds < PATIENCE
+        assert client.fallbacks == 0
+
+
+class TestSelftest:
+    """``--analysis-selftest DECODER FILE``: the release check's engine half."""
+
+    def _run(self, *args: str, extra: Optional[Dict[str, str]] = None):
+        return subprocess.run(
+            [sys.executable, "-m", "cuepoint.engine", "--analysis-selftest", *args],
+            capture_output=True,
+            env={**os.environ, "PYTHONPATH": str(_SRC), **(extra or {})},
+            timeout=PATIENCE,
+            check=False,
+        )
+
+    def test_from_source_it_prints_one_ready_line_from_a_worker(self, stub, song):
+        import hashlib
+        import json
+
+        result = self._run(str(stub), str(song))
+        assert result.returncode == 0, result.stderr
+        lines = result.stdout.decode().splitlines()
+        assert len(lines) == 1
+        said = json.loads(lines[0])
+        assert said["outcome"] == "ready"
+        assert said["frozen"] is False
+        assert said["worker"] is True
+        assert said["home"] is None and said["worker_home"] is None
+        assert said["worker_pid"] not in (None, os.getpid())
+        assert said["start_seconds"] > 0
+        assert said["decode_errors"] == 0
+        # The same bytes as the in-process computer makes.
+        expected = InProcessComputer().compute(
+            str(song), stub, overview=True, detail=True
+        )
+        assert expected.overview and expected.detail
+        assert said["overview_sha256"] == hashlib.sha256(expected.overview).hexdigest()
+        assert said["detail_sha256"] == hashlib.sha256(expected.detail).hexdigest()
+        assert said["duration_ms"] == expected.duration_ms
+        assert said["loudness"] == {
+            "integrated_lufs": expected.loudness.integrated_lufs,
+            "peak_dbfs": expected.loudness.peak_dbfs,
+            "reason": expected.loudness.reason,
+        }
+
+    def test_a_file_that_does_not_analyse_is_exit_one_with_the_reason(
+        self, stub, tmp_path
+    ):
+        import json
+
+        result = self._run(str(stub), str(tmp_path / "missing.flac"))
+        assert result.returncode == 1
+        said = json.loads(result.stdout.decode().splitlines()[-1])
+        assert said["outcome"] != "ready"
+        assert said["overview_sha256"] is None
+
+    def test_a_worker_that_cannot_start_is_a_fall_back_and_exit_one(
+        self, stub, song, monkeypatch
+    ):
+        """Not a silent pass: the line says ``worker: false``."""
+        import json
+
+        from cuepoint.services import analysis_worker_client as client
+
+        monkeypatch.setattr(
+            client, "worker_command", lambda: [sys.executable, "-c", "raise SystemExit"]
+        )
+        out = io.StringIO()
+        monkeypatch.setattr(sys, "stdout", out)
+        assert analysis_worker.selftest(str(stub), str(song)) == 1
+        said = json.loads(out.getvalue().splitlines()[-1])
+        assert said["worker"] is False
+        assert said["worker_pid"] is None
+
+    def test_the_wrong_arguments_say_how_to_call_it(self):
+        result = self._run("only-one")
+        assert result.returncode == 2
+        assert b"--analysis-selftest DECODER FILE" in result.stderr

@@ -48,6 +48,8 @@ Usage::
     python scripts/fetch_player_sidecar.py --verify-only   # re-check an install
     python scripts/fetch_player_sidecar.py --check-formats # decode the fixtures
     python scripts/fetch_player_sidecar.py --check-analysis # the waveform pipeline
+    python scripts/fetch_player_sidecar.py --check-analysis-worker [auto|source|PATH]
+                                                            # the engine's analysis worker (C19g)
     python scripts/fetch_player_sidecar.py --print-path    # where the binary is
     python scripts/fetch_player_sidecar.py --update-manifest
     python scripts/fetch_player_sidecar.py --download-archives DIR  # for the mirror
@@ -1219,6 +1221,216 @@ def check_analysis(
     return checked
 
 
+#: How long the engine's self-test gets: a packaged engine unpacks itself first.
+WORKER_CHECK_TIMEOUT_SECONDS = 180
+
+
+def resolve_engine(spec: str, resources: Optional[Path] = None) -> Any:
+    """The engine a worker check runs: a sidecar's path, or a ``python -m`` command.
+
+    ``auto`` is the sidecar ``build_engine_sidecar.py`` leaves for this
+    platform (``resources`` is its folder, for tests); a missing one is an
+    error, never a skip, because the check exists to run the packaged engine.
+    ``source`` runs ``python -m cuepoint.engine`` from this tree. Anything
+    else is the path to an engine.
+
+    Raises:
+        SmokeTestError: If the engine is not there.
+    """
+    if spec == "source":
+        return [sys.executable, "-m", "cuepoint.engine"]
+    if spec != "auto":
+        path = Path(spec)
+        if not path.is_file():
+            raise SmokeTestError(f"No engine at {path}")
+        return path
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import build_engine_sidecar as build
+    finally:
+        sys.path.pop(0)
+    key = build.platform_dir()
+    if key is None:
+        raise SmokeTestError(f"No engine sidecar is built for {sys.platform}")
+    name = "cuepoint-engine.exe" if sys.platform == "win32" else "cuepoint-engine"
+    sidecar = (resources if resources is not None else build.RESOURCES_ROOT) / key
+    sidecar = sidecar / name
+    if not sidecar.is_file():
+        raise SmokeTestError(
+            f"No engine sidecar at {sidecar}; build it with "
+            "scripts/build_engine_sidecar.py"
+        )
+    return sidecar
+
+
+def _compute_in_process(binary: Path, fixture: Path) -> Any:
+    """What the engine's own process makes of ``fixture``: the worker's reference."""
+    src = str(PROJECT_ROOT / "src")
+    if src not in sys.path:
+        sys.path.insert(0, src)
+    from cuepoint.services.waveform_computer import InProcessComputer
+
+    return InProcessComputer().compute(
+        str(fixture.resolve()), binary, overview=True, detail=True
+    )
+
+
+def _sha256_or_none(data: Optional[bytes]) -> Optional[str]:
+    return None if data is None else hashlib.sha256(data).hexdigest()
+
+
+def _selftest_line(stdout: str) -> Dict[str, Any]:
+    for line in reversed(stdout.splitlines()):
+        if line.strip():
+            try:
+                parsed = json.loads(line)
+            except ValueError:
+                break
+            if isinstance(parsed, dict):
+                return parsed
+            break
+    raise SmokeTestError(
+        f"The engine's self-test did not print its JSON line; it printed: {stdout[-300:]!r}"
+    )
+
+
+def check_analysis_worker(
+    binary: Path,
+    engine: Any,
+    fixture_dir: Path = FIXTURE_DIR,
+    *,
+    quiet: bool = False,
+) -> List[str]:
+    """Run the engine's self-test and hold its worker to the in-process bytes (C19g).
+
+    ``<engine> --analysis-selftest <binary> bands.flac`` makes the engine's
+    own worker client (what the app uses) compute the fixture. The check then
+    computes it in this process from the source and requires of the engine's
+    line:
+
+    - the outcome is ready, and ``worker`` is true: a client that fell back to
+      the engine's own process proves nothing about the worker;
+    - the overview and the detail hash alike, and the duration, loudness and
+      decode errors are equal: the worker makes the in-process bytes;
+    - when ``frozen``, ``worker_home`` is the engine's own ``home``: a
+      PyInstaller one-file child reuses its parent's unpacked folder (no second
+      unpack of the engine). A sidecar, not a command, must say it is frozen.
+
+    The engine runs with ``CUEPOINT_HOME`` in a temporary folder: a stale
+    sidecar from before ``--analysis-selftest`` would start the whole engine,
+    and must not do so against the real library.
+
+    Args:
+        binary: The decoder (mpv).
+        engine: The engine's sidecar path, or its command as a list (source).
+
+    Raises:
+        SmokeTestError: On the first thing the line does not satisfy.
+    """
+    fixture = fixture_dir / ANALYSIS_FIXTURE
+    if not fixture.exists():
+        raise SmokeTestError(f"Missing analysis fixture: {fixture}")
+    command = [str(engine)] if isinstance(engine, Path) else [str(a) for a in engine]
+    env = dict(os.environ)
+    if not isinstance(engine, Path):
+        # From source: the package is beside this script.
+        src = str(PROJECT_ROOT / "src")
+        env["PYTHONPATH"] = src + (
+            os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else ""
+        )
+    command += ["--analysis-selftest", str(binary), str(fixture)]
+    home_dir = tempfile.mkdtemp(prefix="cuepoint-worker-check-")
+    env["CUEPOINT_HOME"] = home_dir
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=WORKER_CHECK_TIMEOUT_SECONDS,
+            env=env,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise SmokeTestError(
+            f"The engine's self-test did not end in {WORKER_CHECK_TIMEOUT_SECONDS} s"
+        ) from exc
+    except OSError as exc:
+        raise SmokeTestError(f"Could not run the engine {command[0]}: {exc}") from exc
+    finally:
+        shutil.rmtree(home_dir, ignore_errors=True)
+
+    try:
+        said = _selftest_line(completed.stdout)
+    except SmokeTestError as exc:
+        raise SmokeTestError(
+            f"{exc} (exit {completed.returncode}); its stderr ended: "
+            f"{completed.stderr[-300:]!r}"
+        ) from None
+    where = "frozen" if said.get("frozen") else "source"
+    if said.get("outcome") != "ready" or said.get("worker") is not True:
+        why = (
+            "the client fell back to the engine's own process, so no worker ran"
+            if said.get("worker") is not True
+            else f"the analysis ended {said.get('outcome')} ({said.get('reason')})"
+        )
+        raise SmokeTestError(
+            f"The analysis worker ({where}) failed: {why}. "
+            f"stderr ended: {completed.stderr[-300:]!r}"
+        )
+    if completed.returncode != 0:
+        raise SmokeTestError(
+            f"The engine's self-test exited with code {completed.returncode} "
+            f"after a ready line; stderr ended: {completed.stderr[-300:]!r}"
+        )
+
+    expected = _compute_in_process(binary, fixture)
+    loudness = expected.loudness
+    reference = {
+        "overview": _sha256_or_none(expected.overview),
+        "detail": _sha256_or_none(expected.detail),
+        "duration": expected.duration_ms,
+        "loudness": {
+            "integrated_lufs": loudness.integrated_lufs,
+            "peak_dbfs": loudness.peak_dbfs,
+            "reason": loudness.reason,
+        },
+        "decode errors": expected.decode_errors,
+    }
+    got = {
+        "overview": said.get("overview_sha256"),
+        "detail": said.get("detail_sha256"),
+        "duration": said.get("duration_ms"),
+        "loudness": said.get("loudness"),
+        "decode errors": said.get("decode_errors"),
+    }
+    for name, value in reference.items():
+        if got[name] != value:
+            raise SmokeTestError(
+                f"The worker's {name} differs from the in-process one ({where}): "
+                f"{got[name]!r} against {value!r}"
+            )
+    if isinstance(engine, Path) and not said.get("frozen"):
+        raise SmokeTestError(
+            f"{engine} is not a packaged engine: its self-test says it runs from source"
+        )
+    if said.get("frozen"):
+        home, worker_home = said.get("home"), said.get("worker_home")
+        if not home or worker_home != home:
+            raise SmokeTestError(
+                "The packaged worker did not reuse its parent's unpacked folder: "
+                f"the engine is in {home!r}, the worker in {worker_home!r}, so the"
+                " worker unpacked the engine again"
+            )
+    seconds = said.get("start_seconds")
+    started = f"{seconds:.2f} s" if isinstance(seconds, (int, float)) else "?"
+    line = f"analysis worker ({where}): started in {started}, same bytes as in-process"
+    if not quiet:
+        print(f"  {line}")
+    return [line]
+
+
 # ---------------------------------------------------------------------------
 # Install
 # ---------------------------------------------------------------------------
@@ -1572,6 +1784,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run the waveform analysis pipeline on the fixtures (WAVE-01)",
     )
     parser.add_argument(
+        "--check-analysis-worker",
+        nargs="?",
+        const="auto",
+        default=None,
+        metavar="ENGINE",
+        help="Start the engine's analysis worker and hold it to the in-process "
+        "bytes (C19g). ENGINE: 'auto' (default) the built sidecar, 'source' "
+        "python -m cuepoint.engine, or a path",
+    )
+    parser.add_argument(
         "--mpv",
         type=Path,
         help="Check this mpv instead of the bundled one (formats and analysis only)",
@@ -1640,6 +1862,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 check_formats(args.mpv, quiet=args.quiet)
             if args.check_analysis:
                 check_analysis(args.mpv, quiet=args.quiet)
+            if args.check_analysis_worker:
+                check_analysis_worker(
+                    args.mpv,
+                    resolve_engine(args.check_analysis_worker),
+                    quiet=args.quiet,
+                )
             return 0
 
         manifest = load_manifest(args.manifest)
@@ -1707,6 +1935,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     print("  (analysis check skipped: not the host platform)")
                 else:
                     check_analysis(binary, quiet=args.quiet)
+            if args.check_analysis_worker:
+                if not is_host:
+                    print("  (analysis worker check skipped: not the host platform)")
+                else:
+                    check_analysis_worker(
+                        binary,
+                        resolve_engine(args.check_analysis_worker),
+                        quiet=args.quiet,
+                    )
         return 0
 
     except PlayerSidecarError as exc:

@@ -92,14 +92,26 @@ def test_a_small_run_end_to_end(tmp_path):
         pytest.skip("no mpv: run `python scripts/fetch_player_sidecar.py`")
     # The bench sets these for its own process. A test must hand them back, or
     # every later test on this worker skips Beatport and uses this home.
-    names = ("CUEPOINT_HOME", "CUEPOINT_SKIP_BEATPORT", "CUEPOINT_DECODER_PATH")
+    names = (
+        "CUEPOINT_HOME",
+        "CUEPOINT_SKIP_BEATPORT",
+        "CUEPOINT_DECODER_PATH",
+        "CUEPOINT_ANALYSIS_WORKER",
+    )
     saved = {name: os.environ.get(name) for name in names}
     try:
         result = bench.run(
-            mpv, tmp_path, tracks=12, long_tracks=2, library=300, play=False
+            mpv,
+            tmp_path,
+            tracks=12,
+            long_tracks=2,
+            library=300,
+            play=False,
+            worker="both",
         )
     finally:
         bench._close_databases()
+        bench._end_worker()
         for name, value in saved.items():
             if value is None:
                 os.environ.pop(name, None)
@@ -110,3 +122,73 @@ def test_a_small_run_end_to_end(tmp_path):
     assert result["six_minute"]["analysed"] == 2
     assert result["responsiveness"]["idle_p95_ms"] is not None
     assert result["extrapolated"]["hours"] is not None
+    assert set(result["modes"]) == {"in", "out"}
+    for mode in result["modes"].values():
+        assert mode["six_minute"]["analysed"] == 2
+    # The files of the worker's mode went to a worker, none to the engine.
+    assert result["modes"]["out"]["worker"]["pid"] is not None
+    assert result["modes"]["out"]["worker"]["fallbacks"] == 0
+    assert result["modes"]["in"]["worker"] is None
+
+
+def _both(**overrides):
+    def mode(ratio, rate):
+        return {
+            "six_minute": {
+                "state": "succeeded",
+                "analysed": 2,
+                "tracks": 2,
+                "files_per_hour": rate,
+            },
+            "responsiveness": {
+                "ratio": ratio,
+                "idle_p95_ms": 10.0,
+                "running_p95_ms": 10.0 * (ratio or 1),
+            },
+            "playback": None,
+            "worker": None,
+        }
+
+    modes = {"in": mode(1.4, 9_000), "out": mode(1.1, 8_000)}
+    modes["out"]["worker"] = {"pid": 77, "fallbacks": 0}
+    modes.update(overrides)
+    return {
+        "fixture_copies": {"state": "succeeded", "analysed": 5, "tracks": 5},
+        "modes": modes,
+    }
+
+
+def test_the_worker_option_names_the_modes_measured():
+    assert bench.WORKER_MODES == {
+        "in": ("in",),
+        "out": ("out",),
+        "both": ("in", "out"),
+    }
+    with pytest.raises(SystemExit):
+        bench.main(["--worker", "sideways"])
+
+
+def test_each_mode_is_held_to_the_budget_on_its_own():
+    assert bench.over_budget(_both()) == []
+    slow = _both()
+    slow["modes"]["out"]["responsiveness"]["ratio"] = 1.6
+    problems = bench.over_budget(slow)
+    assert len(problems) == 1 and "in a worker" in problems[0]
+    slow = _both()
+    slow["modes"]["in"]["responsiveness"]["ratio"] = 1.6
+    assert "in the engine" in bench.over_budget(slow)[0]
+
+
+def test_a_worker_run_that_fell_back_or_never_started_misses():
+    result = _both()
+    result["modes"]["out"]["worker"] = {"pid": 77, "fallbacks": 3}
+    assert any("not the worker" in p for p in bench.over_budget(result))
+    result["modes"]["out"]["worker"] = {"pid": None, "fallbacks": 0}
+    assert any("no worker process ran" in p for p in bench.over_budget(result))
+
+
+def test_the_modes_print_side_by_side():
+    lines = bench.side_by_side(_both()["modes"])
+    assert "in the engine" in lines[0] and "in a worker" in lines[0]
+    assert any("search p95 analysing" in line for line in lines)
+    assert any("9,000" in line and "8,000" in line for line in lines)

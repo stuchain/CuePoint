@@ -18,7 +18,9 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 import math
+import subprocess
 import sys
 import tarfile
 import urllib.error
@@ -50,6 +52,19 @@ def _load_script_module():
 
 
 fps = _load_script_module()
+
+
+def _load_sibling(name: str):
+    """Import another script of ``scripts/`` by name."""
+    spec = importlib.util.spec_from_file_location(
+        name, _REPO_ROOT / "scripts" / f"{name}.py"
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
 
 pytestmark = pytest.mark.unit
 
@@ -1247,3 +1262,259 @@ class TestAnalysisCheck:
         monkeypatch.setattr(fps, "load_manifest", refuse)
         assert fps.main(["--mpv", str(binary), "--check-analysis"]) == 0
         assert checked == [("analysis", binary)]
+
+
+class TestAnalysisWorkerCheck:
+    """The frozen engine's worker, held to the in-process bytes (C19g).
+
+    The engine is a Python program that prints a prepared line, so what is
+    tested is what the check requires of the line, not the engine.
+    """
+
+    @staticmethod
+    def _computed():
+        from cuepoint.data.audio_decode import Loudness
+        from cuepoint.services.waveform_computer import Computed
+
+        return Computed(
+            "ready",
+            None,
+            b"overview",
+            1234,
+            Loudness(-14.0, -1.5, None),
+            b"detail",
+            0,
+        )
+
+    @staticmethod
+    def _sha(data: bytes) -> str:
+        return hashlib.sha256(data).hexdigest()
+
+    def _line(self, **overrides):
+        line = {
+            "outcome": "ready",
+            "reason": None,
+            "overview_sha256": self._sha(b"overview"),
+            "detail_sha256": self._sha(b"detail"),
+            "duration_ms": 1234,
+            "loudness": {
+                "integrated_lufs": -14.0,
+                "peak_dbfs": -1.5,
+                "reason": None,
+            },
+            "decode_errors": 0,
+            "worker": True,
+            "frozen": False,
+            "home": None,
+            "worker_home": None,
+            "worker_pid": 4242,
+            "start_seconds": 0.42,
+        }
+        line.update(overrides)
+        return line
+
+    def _engine(self, tmp_path, line=None, *, text=None, code=0):
+        program = tmp_path / "engine.py"
+        said = text if text is not None else json.dumps(line)
+        program.write_text(
+            "import sys\nsys.stdout.write(%r + '\\n')\nsys.exit(%d)\n" % (said, code),
+            encoding="utf-8",
+        )
+        return [sys.executable, str(program)]
+
+    @pytest.fixture(autouse=True)
+    def in_process(self, monkeypatch):
+        monkeypatch.setattr(
+            fps, "_compute_in_process", lambda binary, fixture: self._computed()
+        )
+
+    def _check(self, tmp_path, engine):
+        return fps.check_analysis_worker(
+            tmp_path / "mpv", engine, fps.FIXTURE_DIR, quiet=True
+        )
+
+    def test_the_same_bytes_from_a_source_worker_pass(self, tmp_path):
+        lines = self._check(tmp_path, self._engine(tmp_path, self._line()))
+        assert lines == [
+            "analysis worker (source): started in 0.42 s, same bytes as in-process"
+        ]
+
+    def test_a_frozen_worker_in_its_parents_folder_passes(self, tmp_path):
+        engine = self._engine(
+            tmp_path,
+            self._line(frozen=True, home="/tmp/_MEI1", worker_home="/tmp/_MEI1"),
+        )
+        assert "analysis worker (frozen)" in self._check(tmp_path, engine)[0]
+
+    def test_it_runs_the_engine_with_the_flag_the_decoder_and_the_fixture(
+        self, tmp_path, monkeypatch
+    ):
+        seen = {}
+        real = subprocess.run
+
+        def run(command, **kwargs):
+            seen["command"] = command
+            seen["timeout"] = kwargs.get("timeout")
+            return real(command, **kwargs)
+
+        monkeypatch.setattr(fps.subprocess, "run", run)
+        self._check(tmp_path, self._engine(tmp_path, self._line()))
+        assert seen["command"][-3:] == [
+            "--analysis-selftest",
+            str(tmp_path / "mpv"),
+            str(fps.FIXTURE_DIR / fps.ANALYSIS_FIXTURE),
+        ]
+        assert seen["timeout"] == 180
+
+    @pytest.mark.parametrize(
+        "overrides, message",
+        [
+            ({"overview_sha256": "0" * 64}, "overview"),
+            ({"detail_sha256": "0" * 64}, "detail"),
+            ({"detail_sha256": None}, "detail"),
+            ({"duration_ms": 1235}, "duration"),
+            (
+                {
+                    "loudness": {
+                        "integrated_lufs": -13.0,
+                        "peak_dbfs": -1.5,
+                        "reason": None,
+                    }
+                },
+                "loudness",
+            ),
+            ({"decode_errors": 2}, "decode errors"),
+            ({"worker": False}, "fell back"),
+            ({"outcome": "failed", "reason": "no_audio"}, "failed"),
+            (
+                {"frozen": True, "home": "/tmp/_MEI1", "worker_home": "/tmp/_MEI2"},
+                "unpacked",
+            ),
+            ({"frozen": True, "home": None, "worker_home": None}, "unpacked"),
+            ({"frozen": True, "home": "/tmp/_MEI1", "worker_home": None}, "unpacked"),
+        ],
+    )
+    def test_anything_less_than_the_same_bytes_in_a_worker_raises(
+        self, tmp_path, overrides, message
+    ):
+        engine = self._engine(tmp_path, self._line(**overrides))
+        with pytest.raises(fps.SmokeTestError, match=message):
+            self._check(tmp_path, engine)
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="a shebang script")
+    def test_a_sidecar_that_says_it_runs_from_source_raises(self, tmp_path):
+        sidecar = tmp_path / "cuepoint-engine"
+        sidecar.write_text(
+            f"#!{sys.executable}\nimport sys\n"
+            f"sys.stdout.write({json.dumps(self._line())!r} + '\\n')\n",
+            encoding="utf-8",
+        )
+        sidecar.chmod(0o755)
+        with pytest.raises(fps.SmokeTestError, match="not a packaged engine"):
+            self._check(tmp_path, sidecar)
+
+    def test_the_engine_runs_in_a_throwaway_home(self, tmp_path):
+        said = tmp_path / "home.txt"
+        program = tmp_path / "engine.py"
+        program.write_text(
+            "import os, sys\n"
+            f"open({str(said)!r}, 'w').write(os.environ['CUEPOINT_HOME'])\n"
+            f"sys.stdout.write({json.dumps(self._line())!r} + '\\n')\n",
+            encoding="utf-8",
+        )
+        self._check(tmp_path, [sys.executable, str(program)])
+        home = said.read_text(encoding="utf-8")
+        assert home and home != os.environ.get("CUEPOINT_HOME")
+        assert not os.path.exists(home)
+
+    def test_a_non_zero_exit_raises(self, tmp_path):
+        engine = self._engine(tmp_path, self._line(), code=1)
+        with pytest.raises(fps.SmokeTestError, match="exit"):
+            self._check(tmp_path, engine)
+
+    @pytest.mark.parametrize("text", ["", "not json", "[1, 2]", "{"])
+    def test_output_that_is_not_the_line_raises(self, tmp_path, text):
+        with pytest.raises(fps.SmokeTestError, match="line"):
+            self._check(tmp_path, self._engine(tmp_path, text=text))
+
+    def test_an_engine_that_cannot_be_run_raises(self, tmp_path):
+        with pytest.raises(fps.SmokeTestError, match="run"):
+            self._check(tmp_path, tmp_path / "no-engine")
+
+    def test_a_missing_fixture_raises(self, tmp_path):
+        with pytest.raises(fps.SmokeTestError, match="fixture"):
+            fps.check_analysis_worker(
+                tmp_path / "mpv", self._engine(tmp_path, self._line()), tmp_path
+            )
+
+    def test_auto_is_the_built_sidecar_for_this_platform(self, tmp_path):
+        build = _load_sibling("build_engine_sidecar")
+        name = "cuepoint-engine.exe" if sys.platform == "win32" else "cuepoint-engine"
+        sidecar = tmp_path / build.platform_dir() / name
+        sidecar.parent.mkdir()
+        sidecar.write_bytes(b"x")
+        assert fps.resolve_engine("auto", tmp_path) == sidecar
+        # Without a folder named, it looks where the build puts it.
+        folder = build.RESOURCES_ROOT / build.platform_dir()
+        try:
+            found = fps.resolve_engine("auto")
+        except fps.SmokeTestError as error:
+            assert str(folder) in str(error)
+        else:
+            assert found.parent == folder
+
+    def test_a_missing_sidecar_is_an_error_not_a_skip(self, tmp_path):
+        with pytest.raises(fps.SmokeTestError, match="build_engine_sidecar"):
+            fps.resolve_engine("auto", tmp_path)
+
+    def test_source_is_python_dash_m_the_engine(self):
+        assert fps.resolve_engine("source") == [
+            sys.executable,
+            "-m",
+            "cuepoint.engine",
+        ]
+
+    def test_any_other_value_is_a_path_to_an_engine(self, tmp_path):
+        engine = tmp_path / "engine"
+        engine.write_bytes(b"x")
+        assert fps.resolve_engine(str(engine)) == engine
+        with pytest.raises(fps.SmokeTestError, match="No engine"):
+            fps.resolve_engine(str(tmp_path / "nope"))
+
+    def test_the_flag_defaults_to_auto(self):
+        parse = fps.build_parser().parse_args
+        assert parse(["--check-analysis-worker"]).check_analysis_worker == "auto"
+        assert parse(["--check-analysis-worker", "source"]).check_analysis_worker == (
+            "source"
+        )
+        assert parse([]).check_analysis_worker is None
+
+    def test_a_named_mpv_runs_the_check_on_it(self, tmp_path, monkeypatch):
+        binary = tmp_path / "mpv"
+        binary.write_bytes(b"x")
+        checked = []
+        monkeypatch.setattr(fps, "resolve_engine", lambda spec, *_a: ["engine", spec])
+        monkeypatch.setattr(
+            fps,
+            "check_analysis_worker",
+            lambda b, e, *a, **k: checked.append((b, e)),
+        )
+        monkeypatch.setattr(fps, "load_manifest", lambda *_a: pytest.fail("manifest"))
+        code = fps.main(["--mpv", str(binary), "--check-analysis-worker", "source"])
+        assert code == 0
+        assert checked == [(binary, ["engine", "source"])]
+
+    def test_without_a_pinned_binary_it_is_a_notice_like_the_other_checks(
+        self, monkeypatch, capsys
+    ):
+        manifest = fps.load_manifest()
+        target = manifest.targets["linux-x64"]
+        assert not target.supported
+        monkeypatch.setattr(fps, "host_target_key", lambda *a, **k: "linux-x64")
+        monkeypatch.setattr(
+            fps,
+            "check_analysis_worker",
+            lambda *a, **k: pytest.fail("there is no binary to check with"),
+        )
+        assert fps.main(["--check-analysis-worker", "auto"]) == 0
+        assert "NOTICE" in capsys.readouterr().out

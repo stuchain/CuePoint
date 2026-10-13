@@ -26,6 +26,14 @@ is. Nothing is a stand-in but the audio.
   read for underruns; the budget is none. Silent tracks, so nothing is heard.
   It needs an audio device, so it is not run by default.
 
+**In the engine or in a worker process** (``--worker {in,out,both}``, C19g). The
+engine analyses in a worker process (the app's default); ``in`` measures the old
+way, in the engine's own process, ``out`` the worker, and ``both`` (the default)
+runs the responsiveness and six-minute measurements for each, one after the
+other, and prints them side by side. The fixture-copy throughput is measured
+once, in the first mode. Each mode analyses its own copies of the long track,
+so neither finds the other's work done. The budget applies to each mode.
+
 The workers are the job's own default for this machine. Nothing touches
 ``~/.cuepoint``: the library, ``CUEPOINT_HOME`` and the audio are temporary, and
 nothing reaches the network.
@@ -34,6 +42,7 @@ Usage::
 
     python scripts/bench_waveform_analysis.py                    # the bundled mpv
     python scripts/bench_waveform_analysis.py --play             # and playback
+    python scripts/bench_waveform_analysis.py --worker in        # no worker process
     python scripts/bench_waveform_analysis.py --mpv /usr/bin/mpv --json out.json
 
 Exit status 1 when a budget is missed or a file the run should have analysed
@@ -81,6 +90,9 @@ RESPONSIVENESS_BUDGET = 1.5
 #: the second run analyses.
 PLAY_SECONDS = 6
 TOKEN = "bench-waveform-analysis"
+#: ``--worker`` -> the modes measured, in order: ``in`` the engine's process, ``out`` a worker.
+WORKER_MODES = {"in": ("in",), "out": ("out",), "both": ("in", "out")}
+MODE_LABELS = {"in": "in the engine", "out": "in a worker"}
 UNDERRUN_MARKERS = ("underrun detected", "restarting audio after underrun")
 
 
@@ -278,6 +290,91 @@ def _decoder_version(mpv: Path) -> str:
     )
 
 
+def _use_worker(mode: str) -> None:
+    """Have the waveform service built from now on analyse as ``mode`` says."""
+    from cuepoint.services.analysis_worker_client import WORKER_ENV
+
+    os.environ[WORKER_ENV] = "1" if mode == "out" else "0"
+
+
+def _measure_mode(
+    mode: str,
+    *,
+    mpv: Path,
+    workspace: Path,
+    music: Path,
+    store: Any,
+    base: str,
+    long_source: Path,
+    long_tracks: int,
+    library: int,
+    play: bool,
+) -> Dict[str, Any]:
+    """The six-minute rate and the engine's responsiveness, analysing as ``mode``."""
+    from cuepoint.services.analysis_worker_client import shared_computer
+
+    _use_worker(mode)
+    long_copies = []
+    for index in range(long_tracks):
+        dest = music / f"six-{mode}-{index:03d}.flac"
+        _link_or_copy(long_source, dest)
+        long_copies.append(dest)
+    _add_tracks(long_copies, f"six-{mode}")
+
+    for index in range(20):  # warm the page cache and the connection path
+        _search_ms(base, library, index)
+    idle_samples = [_search_ms(base, library, i) for i in range(SEARCH_REQUESTS)]
+    player: Dict[str, Any] = {}
+
+    def during(job: Any) -> Dict[str, Any]:
+        playing = None
+        if play:
+
+            def play_queue() -> None:
+                player.update(_play(mpv, workspace))
+                player["ended_while_analysing"] = job.state.value == "running"
+
+            playing = threading.Thread(target=play_queue, daemon=True)
+            playing.start()
+        searched = _searches_while(base, library, job)
+        if playing is not None:
+            playing.join()
+        return searched
+
+    six = _run_job(store, "bench", during=during)
+    idle_samples += [_search_ms(base, library, i) for i in range(SEARCH_REQUESTS)]
+    idle = _p95(idle_samples)
+
+    rate = six["files_per_hour"]
+    searched = six.pop("during") or {}
+    worker: Dict[str, Any] = {}
+    if mode == "out":
+        # Proof the files went to a worker: it said hello, and no file was
+        # analysed in the engine instead.
+        client = shared_computer()
+        hello = client.last_hello or {}
+        worker = {"pid": hello.get("pid"), "fallbacks": client.fallbacks}
+    return {
+        "mode": mode,
+        "six_minute": {"tracks": long_tracks, **six},
+        "extrapolated": {
+            "tracks": EXTRAPOLATE_TO,
+            "hours": round(EXTRAPOLATE_TO / rate, 1) if rate else None,
+        },
+        "responsiveness": {
+            "library": library,
+            "idle_p95_ms": idle,
+            "running_p95_ms": searched.get("p95_ms"),
+            "running_samples": searched.get("samples", 0),
+            "ratio": round(searched["p95_ms"] / idle, 2)
+            if idle and searched.get("p95_ms")
+            else None,
+        },
+        "playback": player or None,
+        "worker": worker or None,
+    }
+
+
 def run(
     mpv: Path,
     workspace: Path,
@@ -286,7 +383,14 @@ def run(
     long_tracks: int,
     library: int,
     play: bool,
+    worker: str = "both",
 ) -> Dict[str, Any]:
+    """Measure; ``worker`` is ``in``, ``out`` or ``both`` (see :data:`WORKER_MODES`).
+
+    The result carries each mode under ``modes``, and the last mode measured,
+    the engine's own configuration when both are, at the top level.
+    """
+    modes = WORKER_MODES[worker]
     os.environ["CUEPOINT_HOME"] = str(workspace / "home")
     os.environ["CUEPOINT_SKIP_BEATPORT"] = "1"
     os.environ["CUEPOINT_DECODER_PATH"] = str(mpv)
@@ -330,77 +434,45 @@ def run(
         EngineConfig(host="127.0.0.1", port=port, token=TOKEN), store=store
     )
     base = f"http://127.0.0.1:{port}"
+    measured: Dict[str, Dict[str, Any]] = {}
     try:
+        _use_worker(modes[0])
         throughput = _run_job(store, "bench")
+        throughput.pop("during", None)
+        throughput["mode"] = modes[0]
 
         long_source = _write_long(mpv, workspace)
-        long_copies = []
-        for index in range(long_tracks):
-            dest = music / f"six-{index:03d}.flac"
-            _link_or_copy(long_source, dest)
-            long_copies.append(dest)
-        _add_tracks(long_copies, "six")
-
-        for index in range(20):  # warm the page cache and the connection path
-            _search_ms(base, library, index)
-        idle_samples = [_search_ms(base, library, i) for i in range(SEARCH_REQUESTS)]
-        player: Dict[str, Any] = {}
-
-        def during(job: Any) -> Dict[str, Any]:
-            playing = None
-            if play:
-
-                def play_queue() -> None:
-                    player.update(_play(mpv, workspace))
-                    player["ended_while_analysing"] = job.state.value == "running"
-
-                playing = threading.Thread(target=play_queue, daemon=True)
-                playing.start()
-            searched = _searches_while(base, library, job)
-            if playing is not None:
-                playing.join()
-            return searched
-
-        six = _run_job(store, "bench", during=during)
-        idle_samples += [_search_ms(base, library, i) for i in range(SEARCH_REQUESTS)]
-        idle = _p95(idle_samples)
+        for mode in modes:
+            measured[mode] = _measure_mode(
+                mode,
+                mpv=mpv,
+                workspace=workspace,
+                music=music,
+                store=store,
+                base=base,
+                long_source=long_source,
+                long_tracks=long_tracks,
+                library=library,
+                play=play,
+            )
     finally:
         httpd.shutdown()
 
-    rate = six["files_per_hour"]
-    searched = six.pop("during") or {}
-    throughput.pop("during", None)
+    last = measured[modes[-1]]
     return {
         "platform": f"{platform.system()} {platform.machine()}, {os.cpu_count()} cores",
         "decoder": _decoder_version(mpv),
         "workers": default_workers(),
         "fixture_copies": {"tracks": tracks, **throughput},
-        "six_minute": {"tracks": long_tracks, **six},
-        "extrapolated": {
-            "tracks": EXTRAPOLATE_TO,
-            "hours": round(EXTRAPOLATE_TO / rate, 1) if rate else None,
-        },
-        "responsiveness": {
-            "library": library,
-            "idle_p95_ms": idle,
-            "running_p95_ms": searched.get("p95_ms"),
-            "running_samples": searched.get("samples", 0),
-            "ratio": round(searched["p95_ms"] / idle, 2)
-            if idle and searched.get("p95_ms")
-            else None,
-        },
-        "playback": player or None,
+        "six_minute": last["six_minute"],
+        "extrapolated": last["extrapolated"],
+        "responsiveness": last["responsiveness"],
+        "playback": last["playback"],
+        "modes": measured,
     }
 
 
-def report(result: Dict[str, Any]) -> None:
-    print(f"{result['platform']} — {result['decoder']}; {result['workers']} worker(s)")
-    copies = result["fixture_copies"]
-    print(
-        f"{copies['tracks']:,} fixture copies: {copies['analysed']:,} analysed, "
-        f"{copies['failed']} failed, {copies['not_found']} not found, in "
-        f"{copies['wall_s']} s ({copies['files_per_hour']:,} an hour)"
-    )
+def _report_mode(result: Dict[str, Any]) -> None:
     six = result["six_minute"]
     print(
         f"{six['tracks']} six-minute tracks: {six['wall_s']} s "
@@ -422,21 +494,94 @@ def report(result: Dict[str, Any]) -> None:
         )
 
 
+def side_by_side(modes: Dict[str, Dict[str, Any]]) -> List[str]:
+    """The modes' search latency and six-minute rate as a table, one column each."""
+    names = list(modes)
+    rows = [
+        ("", [MODE_LABELS[n] for n in names]),
+        (
+            "search p95 idle (ms)",
+            [modes[n]["responsiveness"]["idle_p95_ms"] for n in names],
+        ),
+        (
+            "search p95 analysing (ms)",
+            [modes[n]["responsiveness"]["running_p95_ms"] for n in names],
+        ),
+        ("analysing / idle", [modes[n]["responsiveness"]["ratio"] for n in names]),
+        (
+            "six-minute files / hour",
+            [f"{modes[n]['six_minute']['files_per_hour']:,}" for n in names],
+        ),
+    ]
+    return [
+        f"{label:<28}" + "".join(f"{str(cell):>16}" for cell in cells)
+        for label, cells in rows
+    ]
+
+
+def report(result: Dict[str, Any]) -> None:
+    print(f"{result['platform']} — {result['decoder']}; {result['workers']} worker(s)")
+    copies = result["fixture_copies"]
+    print(
+        f"{copies['tracks']:,} fixture copies ({MODE_LABELS.get(copies.get('mode'), '?')}): "
+        f"{copies['analysed']:,} analysed, "
+        f"{copies['failed']} failed, {copies['not_found']} not found, in "
+        f"{copies['wall_s']} s ({copies['files_per_hour']:,} an hour)"
+    )
+    modes = result.get("modes") or {}
+    if len(modes) < 2:
+        _report_mode(result)
+        return
+    for name, part in modes.items():
+        print(f"-- {MODE_LABELS[name]}")
+        _report_mode(part)
+        if part.get("worker"):
+            print(
+                f"   worker pid {part['worker']['pid']}, "
+                f"{part['worker']['fallbacks']} files analysed in the engine instead"
+            )
+    print("-- side by side")
+    for line in side_by_side(modes):
+        print(line)
+
+
 def over_budget(result: Dict[str, Any]) -> List[str]:
+    """What missed the budget; the modes of a ``both`` run are each held to it."""
     problems = []
-    for name in ("fixture_copies", "six_minute"):
-        part = result[name]
-        if part["state"] != "succeeded":
-            problems.append(f"the {name} run ended {part['state']}")
-        if part["analysed"] != part["tracks"]:
-            problems.append(f"{part['analysed']} of {part['tracks']} {name} analysed")
-    ratio = result["responsiveness"]["ratio"]
-    if ratio is not None and ratio > RESPONSIVENESS_BUDGET:
-        problems.append(f"search p95 is {ratio}x idle while analysing")
-    if result["playback"] and result["playback"]["underruns"]:
-        problems.append(f"{result['playback']['underruns']} playback underruns")
-    if result["playback"] and result["playback"].get("ended_while_analysing") is False:
-        problems.append("the queue outlasted the analysis; raise --long to cover it")
+    copies = result["fixture_copies"]
+    if copies["state"] != "succeeded":
+        problems.append(f"the fixture_copies run ended {copies['state']}")
+    if copies["analysed"] != copies["tracks"]:
+        problems.append(
+            f"{copies['analysed']} of {copies['tracks']} fixture_copies analysed"
+        )
+    modes = result.get("modes") or {None: result}
+    for name, part in modes.items():
+        where = f" ({MODE_LABELS[name]})" if name else ""
+        six = part["six_minute"]
+        if six["state"] != "succeeded":
+            problems.append(f"the six_minute run{where} ended {six['state']}")
+        if six["analysed"] != six["tracks"]:
+            problems.append(
+                f"{six['analysed']} of {six['tracks']} six_minute{where} analysed"
+            )
+        ratio = part["responsiveness"]["ratio"]
+        if ratio is not None and ratio > RESPONSIVENESS_BUDGET:
+            problems.append(f"search p95{where} is {ratio}x idle while analysing")
+        playback = part["playback"]
+        if playback and playback["underruns"]:
+            problems.append(f"{playback['underruns']} playback underruns{where}")
+        if playback and playback.get("ended_while_analysing") is False:
+            problems.append(
+                f"the queue{where} outlasted the analysis; raise --long to cover it"
+            )
+        worker = part.get("worker")
+        if name == "out" and worker is not None and worker["fallbacks"]:
+            problems.append(
+                f"{worker['fallbacks']} files were analysed in the engine, not the worker"
+            )
+        if name == "out" and worker is not None and worker["pid"] is None:
+            problems.append("no worker process ran")
     return problems
 
 
@@ -453,6 +598,14 @@ def _close_databases() -> None:
     except Exception:  # noqa: BLE001 — nothing was opened
         pass
     reset_container()
+
+
+def _end_worker() -> None:
+    """End the worker the run started, and hand back the environment it set."""
+    os.environ.pop("CUEPOINT_ANALYSIS_WORKER", None)
+    from cuepoint.services.analysis_worker_client import shared_computer
+
+    shared_computer().close()
 
 
 def _resolve(named: Optional[str]) -> Path:
@@ -474,6 +627,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--tracks", type=int, default=DEFAULT_TRACKS)
     parser.add_argument("--long", type=int, default=DEFAULT_LONG, dest="long_tracks")
     parser.add_argument("--library", type=int, default=DEFAULT_LIBRARY)
+    parser.add_argument(
+        "--worker",
+        choices=sorted(WORKER_MODES),
+        default="both",
+        help="Analyse in the engine's process (in), in a worker process (out), "
+        "or measure both side by side (default)",
+    )
     parser.add_argument(
         "--play", action="store_true", help="Also play a queue on the audio device"
     )
@@ -497,9 +657,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                 long_tracks=args.long_tracks,
                 library=args.library,
                 play=args.play,
+                worker=args.worker,
             )
         finally:
             _close_databases()
+            _end_worker()
     report(result)
     if args.json:
         args.json.write_text(json.dumps(result, indent=2), encoding="utf-8")

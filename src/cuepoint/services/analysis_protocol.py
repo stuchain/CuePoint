@@ -13,10 +13,13 @@ without a process.
 
 The lines
 ---------
-- The child's first line is its hello: :func:`hello`. The engine refuses a
-  child whose versions are not its own: a worker from another build, left
-  behind by an update, would otherwise write rows the engine's store reads as
-  another version.
+- The child's first line is its hello: :func:`hello_line`. The engine refuses a
+  child whose versions (:func:`hello`) are not its own: a worker from another
+  build, left behind by an update, would otherwise write rows the engine's
+  store reads as another version. The line also says who the child is, its
+  ``pid`` and its ``home`` (where a frozen build is unpacked, ``null`` from
+  source), which decide nothing: the release check reads them to prove that a
+  packaged worker reuses its parent's unpacked folder.
 - ``{"id", "path", "decoder", "overview", "detail"}``: analyse a file
   (:func:`request_line`). Many may be in flight at once; the id pairs a
   request with its answer.
@@ -43,6 +46,8 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+import os
+import sys
 from pathlib import Path
 from typing import Any, Dict, NamedTuple, Optional, Sequence, Union
 
@@ -78,9 +83,18 @@ def hello() -> Dict[str, int]:
     }
 
 
+#: What a hello says about its sender; it is not part of what must match.
+HELLO_IDENTITY = ("pid", "home")
+
+
 def hello_matches(obj: object) -> bool:
-    """Whether ``obj`` is the hello of a worker built like this engine."""
-    return isinstance(obj, dict) and obj == hello()
+    """Whether ``obj`` is the hello of a worker built like this engine.
+
+    The sender's identity (:data:`HELLO_IDENTITY`) is ignored.
+    """
+    if not isinstance(obj, dict):
+        return False
+    return {k: v for k, v in obj.items() if k not in HELLO_IDENTITY} == hello()
 
 
 def _line(obj: Dict[str, Any]) -> bytes:
@@ -91,8 +105,15 @@ def _line(obj: Dict[str, Any]) -> bytes:
 
 
 def hello_line() -> bytes:
-    """:func:`hello` as a line."""
-    return _line(dict(hello()))
+    """:func:`hello` and who says it, as a line."""
+    return _line(
+        {
+            **hello(),
+            "pid": os.getpid(),
+            # Where a frozen build is unpacked; None from source.
+            "home": getattr(sys, "_MEIPASS", None),
+        }
+    )
 
 
 def request_line(
@@ -299,6 +320,7 @@ def _decode(obj: Dict[str, Any], name: str) -> Optional[bytes]:
 
 
 __all__: Sequence[str] = (
+    "HELLO_IDENTITY",
     "PROTOCOL_VERSION",
     "Request",
     "cancel_line",

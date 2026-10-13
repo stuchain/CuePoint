@@ -159,6 +159,7 @@ class _Child:
         self.pending: Dict[int, _Waiter] = {}
         self.hello = threading.Event()
         self.hello_ok = False
+        self.hello_line: Dict[str, object] = {}
         self.dead = False
         self.failed = False
         self.closing = False
@@ -208,6 +209,24 @@ class WorkerComputer:
         self._timer: Optional[threading.Timer] = None
         self._failures = 0
         self._fallbacks = 0
+        self._last_hello: Optional[Dict[str, object]] = None
+        self._last_start_seconds: Optional[float] = None
+
+    @property
+    def last_hello(self) -> Optional[Dict[str, object]]:
+        """The last hello a worker said that was accepted, or ``None`` before one.
+
+        Besides the versions it holds the worker's ``pid`` and ``home``, where a
+        packaged build is unpacked (the release check, C19g).
+        """
+        with self._lock:
+            return dict(self._last_hello) if self._last_hello is not None else None
+
+    @property
+    def last_start_seconds(self) -> Optional[float]:
+        """Seconds from spawning the last accepted worker to its hello."""
+        with self._lock:
+            return self._last_start_seconds
 
     @property
     def fallbacks(self) -> int:
@@ -370,6 +389,7 @@ class WorkerComputer:
         """Start a child and wait for its hello. Called with the lock held."""
         command = self._command if self._command is not None else worker_command()
         env = self._env if self._env is not None else worker_environment()
+        spawned = time.monotonic()
         try:
             process = subprocess.Popen(
                 command,
@@ -407,6 +427,8 @@ class WorkerComputer:
             self._fail(child, "no usable hello (a worker of another build, or none)")
             raise _ChildFailed()
         self._child = child
+        self._last_hello = dict(child.hello_line)
+        self._last_start_seconds = time.monotonic() - spawned
         return child
 
     def _read(self, child: _Child) -> None:
@@ -429,6 +451,7 @@ class WorkerComputer:
                 if first:
                     first = False
                     child.hello_ok = wire.hello_matches(obj)
+                    child.hello_line = obj
                     child.hello.set()
                     if not child.hello_ok:
                         break

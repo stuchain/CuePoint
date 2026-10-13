@@ -38,6 +38,8 @@ bootloader, lowers the right process; the decoders lower themselves further.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import os
 import signal
@@ -49,7 +51,11 @@ from typing import BinaryIO, Dict, List, Optional, Sequence
 
 from cuepoint.data import audio_decode
 from cuepoint.services import analysis_protocol as wire
-from cuepoint.services.waveform_computer import InProcessComputer, WaveformComputer
+from cuepoint.services.waveform_computer import (
+    COMPUTED_READY,
+    InProcessComputer,
+    WaveformComputer,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -231,4 +237,60 @@ def _finish(
         thread.join(max(0.0, deadline - time.monotonic()))
 
 
-__all__ = ("JOIN_SECONDS", "main")
+def _sha256(data: Optional[bytes]) -> Optional[str]:
+    return None if data is None else hashlib.sha256(data).hexdigest()
+
+
+def selftest(decoder: str, file: str) -> int:
+    """Analyse ``file`` through a real worker and print what came of it (C19g).
+
+    The release check of the packaged engine (``fetch_player_sidecar.py
+    --check-analysis-worker``) runs ``<engine> --analysis-selftest DECODER
+    FILE``: this makes the engine's own client with its default command (the
+    frozen sidecar runs itself with ``--analysis-worker``), computes the
+    overview and the detail, ends the worker and prints one JSON line. It never
+    falls back silently: a client that analysed in this process says
+    ``"worker": false``.
+
+    Returns:
+        0 when the file came out ready from a worker, 1 otherwise.
+    """
+    from cuepoint.services.analysis_worker_client import WorkerComputer
+
+    computer = WorkerComputer()
+    try:
+        computed = computer.compute(
+            str(Path(file).resolve()), Path(decoder), overview=True, detail=True
+        )
+        hello = computer.last_hello
+        fell_back = computer.fallbacks > 0
+        started = computer.last_start_seconds
+    finally:
+        computer.close()
+    used_worker = hello is not None and not fell_back
+    loudness = computed.loudness
+    said = {
+        "outcome": computed.outcome,
+        "reason": computed.reason,
+        "overview_sha256": _sha256(computed.overview),
+        "detail_sha256": _sha256(computed.detail),
+        "duration_ms": computed.duration_ms,
+        "loudness": {
+            "integrated_lufs": loudness.integrated_lufs,
+            "peak_dbfs": loudness.peak_dbfs,
+            "reason": loudness.reason,
+        },
+        "decode_errors": computed.decode_errors,
+        "worker": used_worker,
+        "frozen": bool(getattr(sys, "frozen", False)),
+        "home": getattr(sys, "_MEIPASS", None),
+        "worker_home": hello.get("home") if hello is not None else None,
+        "worker_pid": hello.get("pid") if hello is not None else None,
+        "start_seconds": round(started, 3) if started is not None else None,
+    }
+    sys.stdout.write(json.dumps(said) + "\n")
+    sys.stdout.flush()
+    return 0 if computed.outcome == COMPUTED_READY and used_worker else 1
+
+
+__all__ = ("JOIN_SECONDS", "main", "selftest")

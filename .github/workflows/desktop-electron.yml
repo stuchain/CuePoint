@@ -165,6 +165,13 @@ jobs:
       - name: Player sidecar waveform analysis check
         run: python scripts/fetch_player_sidecar.py --check-analysis
 
+      # C19g (DEC to come): the packaged engine (built above) starts its
+      # analysis worker, the worker reuses the engine's unpacked folder (no
+      # second unpack), and the bytes match the in-process computer's. Like the
+      # checks above it ends with a notice where no mpv is pinned (Linux).
+      - name: Frozen engine analysis worker check
+        run: python scripts/fetch_player_sidecar.py --check-analysis-worker auto
+
       - name: Bundled component licences
         run: python scripts/check_bundled_licenses.py
 
