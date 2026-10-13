@@ -429,10 +429,6 @@
   font-size: var(--font-size-sm);
 }
 
-.discover-table__spacer {
-  flex: 1;
-}
-
 .discover-empty {
   display: flex;
   flex-direction: column;

@@ -76,8 +76,8 @@ search, old ones included. If Discover shows you a track you know you have,
 match that track in Clean.
 
 Sort by title, artists, release date, or the order the search found them, by
-clicking a column's header. **Columns…** chooses which columns to show, and the
-table remembers its layout.
+clicking a column's header. The **Columns…** icon in the table header's right
+corner chooses which columns to show, and the table remembers its layout.
 
 **Delete this search…**, on the search's row in the list, removes a search and
 its list of tracks after asking. Tracks you added to the wantlist from it stay

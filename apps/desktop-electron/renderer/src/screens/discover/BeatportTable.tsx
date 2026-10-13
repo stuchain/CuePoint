@@ -141,6 +141,7 @@ export function BeatportTable<Row>({
           emptyState={emptyState}
           resetKey={resetKey}
           ariaLabel={label}
+          onColumns={() => setPicking(true)}
         />
       </div>
 
@@ -169,10 +170,6 @@ export function BeatportTable<Row>({
             Clear
           </Button>
         )}
-        <span className="discover-table__spacer" />
-        <Button variant="secondary" onClick={() => setPicking(true)}>
-          Columns…
-        </Button>
       </div>
 
       {menu && (

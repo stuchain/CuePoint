@@ -211,7 +211,7 @@ function buttonsOf(bar: HTMLElement): string[] {
   return within(bar)
     .getAllByRole("button")
     .map((button) => button.textContent ?? "")
-    .filter((label) => label !== "Columns…" && label !== "Clear");
+    .filter((label) => label !== "Clear");
 }
 
 beforeAll(() => {
@@ -659,6 +659,15 @@ describe("Results", () => {
     const bar = actionsBar("Tracks this search found");
     const names = ["Add to wantlist", "Make a Beatport playlist…", "Open on Beatport"];
     expect(buttonsOf(bar)).toEqual(names);
+    // Columns… is the table header's corner icon (K21), not a word in the actions bar.
+    expect(within(bar).queryByRole("button", { name: "Columns…" })).toBeNull();
+    fireEvent.click(
+      screen.getByRole("table", { name: "Tracks this search found" }).querySelector<HTMLElement>(
+        '[aria-label="Columns…"]',
+      )!,
+    );
+    expect(await screen.findByRole("dialog", { name: /columns/i })).toBeInTheDocument();
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     const button = (name: string) => within(bar).getByRole("button", { name });
     expect(button("Add to wantlist")).toBeDisabled();
     expect(button("Add to wantlist")).toHaveAttribute("title", "Select tracks in the table first.");
