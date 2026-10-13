@@ -577,7 +577,8 @@ export function LibraryScreen({
       // table is showing.
       collections.select(null);
       const dropped = smart !== null;
-      leaveSmart();
+      // Only a Smart Collection's rules leave: the bar must keep showing any rule the query keeps.
+      if (dropped) leaveSmart();
       setQuery((previous) => ({
         ...previous,
         playlistId: node?.id ?? null,
@@ -631,7 +632,8 @@ export function LibraryScreen({
       // brought with it leave with it; rules the user built by hand stay,
       // which is the same rule `scopeTo` follows for a playlist.
       const dropped = smart !== null;
-      leaveSmart();
+      // Only a Smart Collection's rules leave: the bar must keep showing any rule the query keeps.
+      if (dropped) leaveSmart();
       setQuery((previous) => ({
         ...previous,
         playlistId: null,

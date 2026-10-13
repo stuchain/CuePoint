@@ -370,6 +370,10 @@ async function openLibrary(win: Page) {
   await go(win, "#/library");
   // The page keeps the Collection or Set that was open last; the rows below are the whole library's.
   await chooseNode(win, win.getByRole("treeitem", { name: /^All tracks/ }), "All tracks");
+  // Rules a link opened the page on stay in the bar across a scope change (and a reload keeps
+  // the link's history entry): take them out, one chip at a time.
+  const chips = win.locator("main.app-main .screen:visible").getByRole("button", { name: /^Remove filter: / });
+  while (await chips.count()) await chips.first().click();
   await expect(libraryRow(win, "Warm One")).toBeVisible({ timeout: 30_000 });
   // Nothing selected, as every row starts.
   const clear = win.getByRole("button", { name: /^Clear selection/ });

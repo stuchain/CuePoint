@@ -319,7 +319,9 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       await expect(bar.locator("canvas")).toBeVisible({ timeout: 20_000 });
       const box = (await bar.boundingBox())!;
       const columns = Number(await bar.locator("canvas").getAttribute("data-columns"));
-      await window.mouse.click(box.x + (box.width * 4) / BANDS_SECONDS, box.y + box.height / 2);
+      // The bar spans the file as the player measures it (bands.flac is 6.06 s, not BANDS_SECONDS).
+      const length = Number(await bar.getByRole("slider", { name: "Seek" }).getAttribute("max"));
+      await window.mouse.click(box.x + (box.width * 4) / length, box.y + box.height / 2);
       await expect
         .poll(async () => Math.abs(((await playerPosition(window)) ?? -1) - 4) <= BANDS_SECONDS / columns, {
           timeout: 10_000,

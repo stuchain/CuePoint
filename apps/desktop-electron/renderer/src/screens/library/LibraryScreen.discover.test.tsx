@@ -363,6 +363,24 @@ describe("filter chips and the Inspector", () => {
     await waitFor(() => expect(screen.queryByRole("list", { name: "Active filters" })).toBeNull());
   });
 
+  it("keeps the chip of rules it was opened on when All tracks is chosen", async () => {
+    // Regression: choosing a scope dropped the chip and kept the rule, so the
+    // table showed "2 of 7 tracks" with nothing in the bar saying why.
+    const label = "Similar to “Build” (2 tracks)";
+    renderScreen({
+      openWith: {
+        rules: { match: "all", rules: [{ field: "track", operator: "any_of", value: [1, 2] }] },
+        token: "nav-4",
+        names: { "rule:track:[1,2]": label },
+      },
+    });
+    await tableReady();
+    expect(await within(await screen.findByRole("list", { name: "Active filters" })).findByText(label)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("treeitem", { name: /^All tracks/ }));
+    const chips = await screen.findByRole("list", { name: "Active filters" });
+    expect(within(chips).getByText(label)).toBeInTheDocument();
+  });
+
   it("links the Inspector's credits to their pages", async () => {
     const hooks = renderScreen();
     await tableReady();
