@@ -7604,3 +7604,20 @@ way to hear them. One at a time already plays a match candidate's sample through
 - Ids are 1 to 12 digits and below 2^31; anything else is 404.
 
 **Decided with**: User (R4-7, "Beatport previews: Discover results, wantlist, artist/label pages") · **Date**: 2026-10-13
+
+
+
+## DEC-270 — One BPM Format
+
+**Status**: Approved · **Related**: R4-9
+
+**Context**: The same track read 128.0 in the Library, 128 in Discover and Prepare, and 128.00 on the beat-grid line.
+
+**Decision**:
+- Every BPM shown is rounded to one decimal and written whole when whole: 128, 127.5, 127.98 → 128. One shared
+  `formatBpm` / `formatBpmRange` (`renderer/src/components/format/bpm.ts`) writes it; callers add the unit.
+- A range whose two ends read the same is written once; a similar-track tempo pair that would read the same keeps
+  two decimals, so "close" never reads as "128 → 128".
+- Edit fields, exports, set list files and the CLI keep the exact value.
+
+**Decided with**: User (R4-9, wish list round 2) · **Date**: 2026-10-13
