@@ -7,7 +7,7 @@
  */
 import type { ElectronApplication } from "@playwright/test";
 
-/** Choose the menu item with this id (`import`, `report-problem`, `size:2`, ...). */
+/** Choose the menu item with this id (`import`, `get-help`, `size:2`, ...). */
 export async function chooseMenuItem(app: ElectronApplication, id: string): Promise<void> {
   const found = await app.evaluate(({ Menu }, itemId) => {
     const item = Menu.getApplicationMenu()?.getMenuItemById(itemId);

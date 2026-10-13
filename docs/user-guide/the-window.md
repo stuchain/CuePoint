@@ -126,13 +126,13 @@ the small Help menu CuePoint used to draw inside the window.
   (**Ctrl+0**), **Track details**, **Sidebar**, and, on Windows and Linux,
   **Settings...** (**Ctrl+,**). These keys change the Size setting, the same one as
   Settings → Appearance; they never zoom the page.
-- **Help**: **Getting started**, **Shortcuts**, **Report a problem...**, **Privacy**
-  (opens Settings → Privacy), then **Troubleshooting** (**Diagnostics...**, **Log
-  viewer...**, **Export support bundle...** and **How to export from Rekordbox...**),
-  and on Windows and Linux **About CuePoint**.
+- **Help**: **Getting started**, **Keyboard shortcuts**, **Get help...**, **How to get
+  your Rekordbox file...**, **Privacy** (opens Settings → Privacy), and on Windows
+  and Linux **About CuePoint**. **Get help...** holds the note, the help file and, under
+  **Details for support**, **Diagnostics...** and **Log viewer...**.
 
 A development build of CuePoint adds a **Developer** menu with reload and the
-developer tools; a released build has neither.
+developer tools (and **Diagnostics...** and **Log viewer...**); a released build has none.
 
 ## Track details
 

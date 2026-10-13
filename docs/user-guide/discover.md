@@ -176,7 +176,7 @@ signed in. If you are not, CuePoint wrote what happened to `beatport-signin.log`
 If CuePoint's background engine was slow to start, the first lines may be in
 `%APPDATA%\CuePoint\logs` (Windows) or `~/Library/Logs/CuePoint` (macOS) instead.
 
-**Help → Troubleshooting → Log viewer… → Open logs folder** opens that folder. The
+**Help → Get help… → Open log folder** opens that folder. The
 log has no password or token in it, so you can send it as it is when you report
 the problem.
 

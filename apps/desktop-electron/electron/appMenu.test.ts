@@ -104,11 +104,11 @@ describe("the menus on each platform", () => {
 });
 
 describe("File", () => {
-  it("imports another file (Ctrl+O) and checks Rekordbox for changes, and does not export (DEC-087)", () => {
+  it("imports another file (Ctrl+O) and checks for changes, and does not export (DEC-087)", () => {
     const { items } = template("linux");
     const file = submenu(top(items, "File")).filter((item) => item.type !== "separator");
     const labels = file.map(labelOf);
-    expect(labels.slice(0, 2)).toEqual(["Import another file…", "Check Rekordbox for changes"]);
+    expect(labels.slice(0, 2)).toEqual(["Import another file…", "Check for changes"]);
     expect(file[0]!.accelerator).toBe("CmdOrCtrl+O");
     expect(labels.join("|")).not.toMatch(/export/i);
   });
@@ -247,24 +247,18 @@ describe("View: size, panels, Settings", () => {
 });
 
 describe("Help", () => {
-  it("lists Getting started, Shortcuts, Report a problem and Privacy, then a Troubleshooting group", () => {
+  it("lists Getting started, Keyboard shortcuts, Get help, the Rekordbox file and Privacy, with no Troubleshooting", () => {
     const { items } = template("linux");
     const help = submenu(top(items, "Help"));
     expect(help.filter((item) => item.type !== "separator").map(labelOf)).toEqual([
       "Getting started",
-      "Shortcuts",
-      "Report a problem…",
+      "Keyboard shortcuts",
+      "Get help…",
+      "How to get your Rekordbox file…",
       "Privacy",
-      "Troubleshooting",
       "About CuePoint",
     ]);
-    const group = help.find((item) => item.label === "Troubleshooting")!;
-    expect(submenu(group).map(labelOf)).toEqual([
-      "Diagnostics…",
-      "Log viewer…",
-      "Export support bundle…",
-      "How to export from Rekordbox…",
-    ]);
+    expect(walk(items).some((item) => /troubleshooting/i.test(item.label ?? ""))).toBe(false);
   });
 
   it("sends each Help command's fixed id", () => {
@@ -272,12 +266,9 @@ describe("Help", () => {
     const ids = [
       "getting-started",
       "shortcuts",
-      "report-problem",
-      "privacy",
-      "diagnostics",
-      "log-viewer",
-      "support-bundle",
+      "get-help",
       "rekordbox-help",
+      "privacy",
       "about",
     ];
     for (const id of ids) click(byId(items, id));
@@ -305,7 +296,18 @@ describe("builds: packaged, and development", () => {
   it("adds a Developer menu with reload and the tools in a development build", () => {
     const { items } = template("linux", { packaged: false });
     const developer = submenu(top(items, "Developer"));
-    expect(developer.map((item) => item.role)).toEqual(["reload", "forceReload", "toggleDevTools"]);
+    expect(developer.slice(0, 3).map((item) => item.role)).toEqual(["reload", "forceReload", "toggleDevTools"]);
+  });
+
+  it("adds Diagnostics and Log viewer to Developer after a separator, and only when unpackaged", () => {
+    const dev = template("linux", { packaged: false });
+    const items = submenu(top(dev.items, "Developer"));
+    expect(items.slice(3).map(labelOf)).toEqual(["separator", "Diagnostics…", "Log viewer…"]);
+    const packaged = walk(template("linux", { packaged: true }).items);
+    expect(packaged.some((item) => item.id === "diagnostics" || item.id === "log-viewer")).toBe(false);
+    click(byId(dev.items, "diagnostics"));
+    click(byId(dev.items, "log-viewer"));
+    expect(dev.sent).toEqual(["diagnostics", "log-viewer"]);
   });
 
   it("still has no zoom role in development: Ctrl+= is the Size setting's", () => {
@@ -322,6 +324,7 @@ describe("the command ids", () => {
       "getting-started",
       "shortcuts",
       "privacy",
+      "get-help",
       "report-problem",
       "diagnostics",
       "log-viewer",
@@ -341,11 +344,17 @@ describe("the command ids", () => {
   it("are all sent by some item on some platform", () => {
     const sent = new Set<string>();
     for (const platform of ["darwin", "win32", "linux"] as const) {
-      for (const item of walk(template(platform).items)) {
+      // Diagnostics and Log viewer are in the Developer menu, which only a development build has.
+      for (const item of walk(template(platform, { packaged: false }).items)) {
         if (item.id) sent.add(item.id);
       }
     }
-    for (const id of MENU_COMMAND_IDS) expect(sent.has(id), id).toBe(true);
+    // Report a problem and the support bundle have no item now; their ids stay one release (DEC-265).
+    const KEPT_FOR_ONE_RELEASE = ["report-problem", "support-bundle"];
+    for (const id of MENU_COMMAND_IDS) {
+      if (!KEPT_FOR_ONE_RELEASE.includes(id)) expect(sent.has(id), id).toBe(true);
+    }
+    for (const id of KEPT_FOR_ONE_RELEASE) expect(sent.has(id), id).toBe(false);
   });
 });
 

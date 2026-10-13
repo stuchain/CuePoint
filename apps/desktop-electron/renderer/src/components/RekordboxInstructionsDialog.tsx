@@ -18,7 +18,7 @@ export function RekordboxInstructionsDialog({ open, onClose }: RekordboxInstruct
   return (
     <Modal
       open={open}
-      title="Export XML from Rekordbox"
+      title="How to get your Rekordbox file"
       onClose={onClose}
       secondaryAction={{ label: "Close", onClick: onClose }}
     >

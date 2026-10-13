@@ -60,7 +60,7 @@ See [Prepare](prepare.md) for each step in full.
 ## Troubleshooting Workflow
 
 1. Check [Troubleshooting Guide](troubleshooting.md)
-2. Generate support bundle (Help > Troubleshooting > Export support bundle...)
-3. Check logs (Help > Troubleshooting > Log viewer...)
-4. Report issue with support bundle attached
+2. Save a help file (Help > Get help... > Save a help file...)
+3. Check logs (Help > Get help... > Open log folder)
+4. Report issue with the help file attached
 

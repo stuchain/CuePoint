@@ -34,7 +34,7 @@ export function DiagnosticsDialog({ open, onClose }: DiagnosticsDialogProps) {
       onClose={onClose}
       secondaryAction={{ label: "Close", onClick: onClose }}
     >
-      <pre className="diagnostics-dialog__output">{lines.join("\n")}</pre>
+      <div className="diagnostics-dialog__output">{lines.join("\n")}</div>
     </Modal>
   );
 }

@@ -7,8 +7,8 @@
  * here, not left to the callers: only allow-listed keys are written, and a value that does not
  * look like plain words becomes `?`. Always on, because it holds nothing secret.
  *
- * It sits next to `cuepoint.log` (the engine says where) so Help, Troubleshooting, Log viewer, Open
- * logs folder shows it and the diagnostics bundle picks it up. A write that fails is dropped: the
+ * It sits next to `cuepoint.log` (the engine says where) so Help, Get help, Details for support,
+ * Log viewer, Open logs folder shows it and the diagnostics bundle picks it up. A write that fails is dropped: the
  * log never breaks a sign-in.
  */
 import * as nodeFs from "node:fs/promises";

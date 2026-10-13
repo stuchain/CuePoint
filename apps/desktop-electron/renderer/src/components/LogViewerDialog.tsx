@@ -105,6 +105,9 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
     downloadTextFile(filename, logText);
   }, [logText, search]);
 
+  // An empty log and a filter that matches nothing are different news.
+  const emptyText = search || level !== "All" ? "No lines match" : "Nothing logged yet";
+
   const selectOptions = useMemo(
     () =>
       LEVEL_OPTIONS.map((v) => ({
@@ -117,7 +120,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
   return (
     <Modal
       open={open}
-      title="Log Viewer"
+      title="Log viewer"
       onClose={onClose}
       secondaryAction={{ label: "Close", onClick: onClose }}
     >
@@ -165,7 +168,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
 
         {error ? <p className="log-viewer-dialog__error">{error}</p> : null}
 
-        <pre className="log-viewer-dialog__output">{logText}</pre>
+        <pre className="log-viewer-dialog__output">{logText === "" && !error && !loading ? emptyText : logText}</pre>
       </div>
     </Modal>
   );

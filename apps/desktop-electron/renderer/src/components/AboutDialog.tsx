@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Modal } from "./index";
-import { hasEngineBridge, type AppBuildInfo } from "../api/cuepointBridge.types";
+import type { AppBuildInfo } from "../api/cuepointBridge.types";
 
 export const DESKTOP_ENGINE_VERSION = "1.0.0-test.3";
 
@@ -15,20 +15,11 @@ interface AboutDialogProps {
 }
 
 export function AboutDialog({ open, onClose }: AboutDialogProps) {
-  const [engineVersion, setEngineVersion] = useState<string | null>(null);
-  const [engineConnected, setEngineConnected] = useState(false);
   const [build, setBuild] = useState<AppBuildInfo | null>(null);
 
   useEffect(() => {
     if (!open) return;
     let live = true;
-    if (hasEngineBridge()) {
-      void window.cuepoint?.getEngineStatus().then((status) => {
-        if (!live) return;
-        setEngineConnected(status.connected);
-        setEngineVersion(status.version ?? null);
-      });
-    }
     // The app's own version and build come from Electron main (REPORT-07); an older main has none.
     void window.cuepoint
       ?.buildInfo?.()
@@ -36,7 +27,7 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
         if (live) setBuild(info);
       })
       .catch(() => {
-        // About still shows the engine's line.
+        // About still shows the version.
       });
     return () => {
       live = false;
@@ -54,12 +45,6 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
           <li data-testid="about-build">
             Build: {build ? (build.dist ?? "not recorded") : "unknown"}
             {build?.environment === "development" ? " (development)" : ""}
-          </li>
-          <li>
-            Library service:{" "}
-            {engineConnected
-              ? `connected${engineVersion ? ` (${engineVersion})` : ""}`
-              : "not connected"}
           </li>
         </ul>
       </div>

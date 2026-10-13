@@ -54,15 +54,15 @@ Before each major release, the full suite runs on every supported OS. New OS ver
 
 ## Support Diagnostics
 
-When reporting issues, include a **support bundle** for faster resolution:
+When reporting issues, include a **help file** for faster resolution:
 
-1. **Help > Troubleshooting > Export support bundle...** – Creates a ZIP with:
+1. **Help > Get help... > Save a help file...** – Creates a ZIP with:
    - `diagnostics.json` – App version, OS, config summary
    - `logs/` – Application logs
    - `crashes/` – Crash logs (if any)
    - `config.yaml` – Sanitized configuration
 
-2. **CLI**: `python main.py --export-support-bundle` writes the same bundle. Run ID and log path are printed at start and end. Use `--debug` for extra detail when reproducing.
+2. **CLI**: `python main.py --export-support-bundle` writes the same help file. Run ID and log path are printed at start and end. Use `--debug` for extra detail when reproducing.
 
 ## Log Locations
 

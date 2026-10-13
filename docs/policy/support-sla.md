@@ -35,11 +35,11 @@ Support is provided on a best-effort basis. Responses are typically provided dur
 
 When you report an issue, please include:
 
-1. **A support bundle**: in the app, choose **Help > Export support bundle...** (from the CLI, run `python main.py --export-support-bundle`). It is required for crashes and complex issues. The bundle holds diagnostics (app version, OS, a config summary), your logs and any crash logs. Paths in the logs are redacted.
+1. **A help file**: in the app, choose **Help > Get help... > Save a help file...** (from the CLI, run `python main.py --export-support-bundle`). It is required for crashes and complex issues. The file holds diagnostics (app version, OS, a config summary), your logs and any crash logs. Your home folder and tokens are redacted; file names in the logs are not.
 2. **Steps to reproduce**, and what you expected against what happened.
 3. **Your environment**: OS version, app version and Rekordbox version.
 
-Support bundles that users send are kept for 30 days, then deleted.
+Help files that users send are kept for 30 days, then deleted.
 
 ## Triage
 
@@ -56,7 +56,7 @@ Maintainers triage new issues like this.
    | Performance | Slow runs, high memory | Timeouts, stalls, out of memory |
    | UI | Layout, responsiveness, accessibility | A button that is not visible |
 
-4. **Support bundle.** If there is none on a crash or a complex issue, ask for one (see the template below).
+4. **Help file.** If there is none on a crash or a complex issue, ask for one (see the template below).
 5. **Owner.** Assign a maintainer or support lead for P0 and P1. P2 can stay unassigned until the backlog is groomed.
 6. **Reproduce.** Use the run ID and diagnostics. Check the logs for ERROR and CRITICAL entries, and the config in the bundle for anything odd.
 7. **Resolve or escalate.**
@@ -69,7 +69,7 @@ Maintainers triage new issues like this.
 - [ ] Issue labelled
 - [ ] Severity assigned
 - [ ] Owner assigned (P0 and P1)
-- [ ] Support bundle requested (crash or complex issue)
+- [ ] Help file requested (crash or complex issue)
 - [ ] Run ID captured, if there is one
 - [ ] Logs reviewed
 - [ ] Fix verified
@@ -91,21 +91,21 @@ Thanks for the report:
 ```text
 Thanks for reporting this issue. We have given it [P0/P1/P2] priority.
 
-For faster resolution, please attach a support bundle if you have not already:
-in the app, choose Help > Export support bundle...
+For faster resolution, please attach a help file if you have not already:
+in the app, choose Help > Get help... > Save a help file...
 
 We will update this issue as we investigate.
 ```
 
-Request a support bundle:
+Request a help file:
 
 ```text
-To help us diagnose this, could you attach a support bundle?
+To help us diagnose this, could you attach a help file?
 
-1. In the app, choose Help > Export support bundle...
+1. In the app, choose Help > Get help... > Save a help file...
 2. Or run: python main.py --export-support-bundle
 
-The bundle contains diagnostics and logs with user paths redacted.
+The file contains diagnostics and logs with your home folder and tokens redacted.
 ```
 
 Resolution summary:

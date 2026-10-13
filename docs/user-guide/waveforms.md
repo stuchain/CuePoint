@@ -188,7 +188,7 @@ Waveforms are kept in `waveforms.db`, beside your library in CuePoint's folder
   waveform again by its file.
 - **"Clear cache" leaves it alone**, and so does clearing the cache on exit:
   making it again takes hours.
-- **It is not in the support bundle.**
+- **It is not in the help file** (**Help > Get help...**).
 - **Zoomed waveforms are kept for recently played tracks only**, up to
   256 MB (about 35 KB a track): the oldest are dropped first, and a dropped one
   is made again the next time its track plays.

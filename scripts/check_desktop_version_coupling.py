@@ -40,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cuepoint import version as engine_version  # noqa: E402
 from validate_version import validate_scheme  # noqa: E402
 
-#: The version About and Report a problem show before the engine has answered.
+#: The version About and Get help show before the engine has answered.
 _ABOUT_VERSION_RE = re.compile(r'export const DESKTOP_ENGINE_VERSION\s*=\s*"([^"]*)"')
 _PREFIX_RE = re.compile(r'export const RELEASE_PREFIX\s*=\s*"([^"]*)"\s*;')
 #: How main builds the release: the prefix and the version its `computeBuildInfo` was given.

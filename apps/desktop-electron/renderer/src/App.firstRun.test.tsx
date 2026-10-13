@@ -84,7 +84,7 @@ describe("a fresh install", () => {
     render(<App />);
     await toScreen(2);
     await userEvent.click(screen.getByRole("button", { name: "Show me how" }));
-    expect(await screen.findByRole("dialog", { name: "Export XML from Rekordbox" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "How to get your Rekordbox file" })).toBeInTheDocument();
     expect(guide()).toBeNull();
     await userEvent.keyboard("{Escape}");
     expect(await screen.findByRole("dialog", { name: "Getting started" })).toBeInTheDocument();

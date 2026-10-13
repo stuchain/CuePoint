@@ -26,7 +26,7 @@ If you updated from an earlier version, CuePoint shows one note the first time y
 
 ### 1. Export your collection from Rekordbox
 
-In Rekordbox, choose **File > Export Collection in xml format** and save the file somewhere easy to find. **Help > Troubleshooting > How to export from Rekordbox...** shows the same steps.
+In Rekordbox, choose **File > Export Collection in xml format** and save the file somewhere easy to find. **Help > How to get your Rekordbox file...** shows the same steps.
 
 ### 2. Import it
 

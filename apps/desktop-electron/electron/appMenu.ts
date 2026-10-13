@@ -23,6 +23,7 @@ export const MENU_COMMAND_IDS = [
   "getting-started",
   "shortcuts",
   "privacy",
+  "get-help",
   "report-problem",
   "diagnostics",
   "log-viewer",
@@ -144,7 +145,7 @@ export function buildMenuTemplate({
     label: "File",
     submenu: [
       command("import", "Import another file…", { accelerator: "CmdOrCtrl+O" }),
-      command("check-rekordbox", "Check Rekordbox for changes"),
+      command("check-rekordbox", "Check for changes"),
       ...(mac ? [] : ([{ type: "separator" }, { role: "quit" }] as MenuItemConstructorOptions[])),
     ],
   });
@@ -197,28 +198,26 @@ export function buildMenuTemplate({
     label: "Help",
     submenu: [
       command("getting-started", "Getting started"),
-      command("shortcuts", "Shortcuts"),
-      command("report-problem", "Report a problem…"),
+      command("shortcuts", "Keyboard shortcuts"),
+      command("get-help", "Get help…"),
+      command("rekordbox-help", "How to get your Rekordbox file…"),
       command("privacy", "Privacy"),
-      { type: "separator" },
-      {
-        label: "Troubleshooting",
-        submenu: [
-          command("diagnostics", "Diagnostics…"),
-          command("log-viewer", "Log viewer…"),
-          command("support-bundle", "Export support bundle…"),
-          command("rekordbox-help", "How to export from Rekordbox…"),
-        ],
-      },
       ...(mac ? [] : ([{ type: "separator" }, about] as MenuItemConstructorOptions[])),
     ],
   });
 
-  // Reload and the developer tools are for building CuePoint, not for using it.
+  // Reload, the developer tools, Diagnostics and the log are for building CuePoint, not for using it.
   if (!packaged) {
     template.push({
       label: "Developer",
-      submenu: [{ role: "reload" }, { role: "forceReload" }, { role: "toggleDevTools" }],
+      submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        command("diagnostics", "Diagnostics…"),
+        command("log-viewer", "Log viewer…"),
+      ],
     });
   }
 

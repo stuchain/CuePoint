@@ -24,7 +24,7 @@ describe("AboutDialog", () => {
 
     await waitFor(() => expect(screen.getByTestId("about-build")).toHaveTextContent("Build: abc1234"));
     expect(screen.getByTestId("about-version")).toHaveTextContent("Version: 2.0.0");
-    expect(screen.getByText(/connected \(2\.0\.0\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/library service/i)).toBeNull();
   });
 
   it("says a build that recorded no commit has none, and that a source run is development", async () => {
@@ -38,8 +38,7 @@ describe("AboutDialog", () => {
     installBridge(null);
     render(<AboutDialog open onClose={() => {}} />);
 
-    await waitFor(() => expect(screen.getByText(/connected \(2\.0\.0\)/)).toBeInTheDocument());
-    expect(screen.getByTestId("about-build")).toHaveTextContent("Build: unknown");
+    await waitFor(() => expect(screen.getByTestId("about-build")).toHaveTextContent("Build: unknown"));
   });
 
   it("shows the build even when the engine bridge is not there", async () => {
@@ -47,6 +46,6 @@ describe("AboutDialog", () => {
     render(<AboutDialog open onClose={() => {}} />);
 
     await waitFor(() => expect(screen.getByTestId("about-build")).toHaveTextContent("Build: abc1234"));
-    expect(screen.getByText(/not connected/)).toBeInTheDocument();
+    expect(screen.queryByText(/library service/i)).toBeNull();
   });
 });

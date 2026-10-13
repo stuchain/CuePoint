@@ -162,21 +162,21 @@ test.describe("the renderer reports (REPORT-06)", () => {
     }
   });
 
-  test("Report a problem sends the note as written, with the version", async () => {
+  test("Get help sends the note as written, with the version", async () => {
     const app = await launch(userDataDir, fake.dsn);
     try {
       const window = await app.firstWindow({ timeout: 60_000 });
       await waitForEngine(window);
       await ready(window);
 
-      await chooseMenuItem(app, "report-problem");
+      await chooseMenuItem(app, "get-help");
       // The menu's command reaches the page after `chooseMenuItem` returns. Until the dialog is
       // up, a page-wide "textbox" is the Library's search field, so an unscoped lookup typed the
       // note there.
-      const dialog = window.getByRole("dialog", { name: "Report a problem" });
+      const dialog = window.getByRole("dialog", { name: "Get help" });
       const note = "I dragged a track onto /Users/me/Music/Secret Song.mp3 and it froze";
       await dialog.getByRole("textbox").fill(note);
-      await dialog.getByRole("button", { name: "Send" }).click();
+      await dialog.getByRole("button", { name: "Send note" }).click();
       await expect(window.getByText(/your note was sent/i)).toBeVisible();
 
       await expect.poll(() => itemsOf(fake.bodies, "feedback").length, { timeout: 15_000 }).toBe(1);
@@ -188,7 +188,7 @@ test.describe("the renderer reports (REPORT-06)", () => {
     }
   });
 
-  test("with reports off, Report a problem says so and nothing is sent", async () => {
+  test("with reports off, Get help says so and nothing is sent", async () => {
     writeFileSync(path.join(userDataDir, "main-settings.json"), JSON.stringify({ errorReporting: false }));
     const app = await launch(userDataDir, fake.dsn);
     try {
@@ -197,10 +197,10 @@ test.describe("the renderer reports (REPORT-06)", () => {
       await ready(window);
 
       await crashPage(window);
-      await chooseMenuItem(app, "report-problem");
+      await chooseMenuItem(app, "get-help");
       // The dialog says why it cannot send, and has nothing to send with.
-      await expect(window.getByText(/Error reports are off in Settings/)).toBeVisible();
-      await expect(window.getByRole("button", { name: "Send" })).toBeDisabled();
+      await expect(window.getByText(/Sending is off in Settings/)).toBeVisible();
+      await expect(window.getByRole("button", { name: "Send note" })).toHaveCount(0);
       // The error screen has no id: nothing was reported.
       await expect(window.getByTestId("error-screen-report-id")).toHaveCount(0);
       await new Promise((resolve) => setTimeout(resolve, 1500));

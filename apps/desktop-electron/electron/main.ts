@@ -950,7 +950,7 @@ function registerIpcHandlers(): void {
       const win = BrowserWindow.getFocusedWindow();
       const pick = await showOpenDialogFor(win, {
         properties: ["openDirectory", "createDirectory"],
-        title: "Choose folder for support bundle",
+        title: "Choose a folder for the help file",
       });
       if (pick.canceled || pick.filePaths.length === 0) {
         return { canceled: true as const };

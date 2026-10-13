@@ -7505,3 +7505,25 @@ open, and the empty left part of that row was a dark block.
 - Whether it is open is session only and starts closed (DEC-014).
 
 **Decided with**: User (★ Q6, R2-1) · **Date**: 2026-10-13
+---
+
+## DEC-265 — Help Has One Get Help Dialog
+
+**Status**: Approved · **Related**: DEC-204, DEC-152, R3-4, R3-15
+
+**Decision**: Help → **Get help…** replaces **Report a problem…** and the Troubleshooting submenu (amends DEC-204).
+The Help menu is Getting started, Keyboard shortcuts, Get help…, How to get your Rekordbox file…, Privacy (and About
+on Windows and Linux). Get help merges the note (Report a problem's logic, unchanged) with the help file (the old
+support bundle: **Save a help file…**, **Open log folder**), and **Details for support** opens Diagnostics and the
+log viewer, which a development build also has under Developer. A dialog's title is its menu label without the "…".
+
+**Reason**: Three items answered one question ("something is not working"). The user chose "only what's true
+today" for the help file's promise (★ in G7-words-dialogs.md R3-4).
+
+**Implications**:
+- The command ids `report-problem` and `support-bundle` stay for one release, are not in the menu, and open Get help.
+- The help file promise says only what holds: `support_bundle.py` redacts the home folder and tokens, not file names
+  in the log, so the dialog says "your sign-in and your user folder name are left out".
+- Reporting off or unavailable: no note box and no Send note; the help file still works.
+
+**Decided with**: User · **Date**: 2026-10-13

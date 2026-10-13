@@ -7,6 +7,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import App from "./App";
 
@@ -96,17 +97,44 @@ describe("pages and dialogs", () => {
 
   it.each([
     ["getting-started", "Getting started"],
-    ["shortcuts", "Keyboard Shortcuts"],
-    ["report-problem", "Report a problem"],
+    ["shortcuts", "Keyboard shortcuts"],
+    ["get-help", "Get help"],
+    ["report-problem", "Get help"],
+    ["support-bundle", "Get help"],
     ["diagnostics", "Diagnostics"],
-    ["log-viewer", "Log Viewer"],
-    ["support-bundle", "Export Support Bundle"],
-    ["rekordbox-help", "Export XML from Rekordbox"],
+    ["log-viewer", "Log viewer"],
+    ["rekordbox-help", "How to get your Rekordbox file"],
     ["about", "About CuePoint"],
   ])("opens a dialog for %s", async (id, title) => {
     render(<App />);
     command(id);
     expect(await screen.findByRole("dialog", { name: new RegExp(title, "i") })).toBeInTheDocument();
+  });
+
+  it("shows a dialog titled with the Help label minus its ellipsis for every Help item that opens one", async () => {
+    // Labels are the ones electron/appMenu.ts gives its Help items.
+    const help: Array<[string, string]> = [
+      ["shortcuts", "Keyboard shortcuts"],
+      ["get-help", "Get help…"],
+      ["rekordbox-help", "How to get your Rekordbox file…"],
+      ["about", "About CuePoint"],
+    ];
+    for (const [id, label] of help) {
+      const view = render(<App />);
+      command(id);
+      expect(await screen.findByRole("dialog", { name: label.replace("…", "") })).toBeInTheDocument();
+      view.unmount();
+    }
+  });
+
+  it("closes Get help and opens Diagnostics or the log viewer from its support details", async () => {
+    render(<App />);
+    command("get-help");
+    await screen.findByRole("dialog", { name: "Get help" });
+    await userEvent.click(screen.getByRole("button", { name: "Details for support" }));
+    await userEvent.click(screen.getByRole("button", { name: "Diagnostics…" }));
+    expect(await screen.findByRole("dialog", { name: "Diagnostics" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Get help" })).not.toBeInTheDocument();
   });
 
   it("ignores an id it does not know", () => {

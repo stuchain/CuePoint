@@ -14,7 +14,7 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
   const rows = useMemo(() => filterShortcuts(KEYBOARD_SHORTCUTS, query), [query]);
 
   return (
-    <Modal open={open} title="Keyboard Shortcuts" onClose={onClose} secondaryAction={{ label: "Close", onClick: onClose }}>
+    <Modal open={open} title="Keyboard shortcuts" onClose={onClose} secondaryAction={{ label: "Close", onClick: onClose }}>
       <div className="shortcuts-dialog">
         <TextField
           label="Search"

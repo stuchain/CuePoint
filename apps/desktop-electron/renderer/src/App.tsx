@@ -7,9 +7,8 @@ import {
   OnboardingDialog,
   PrivacyDialog,
   RekordboxInstructionsDialog,
-  ReportProblemDialog,
+  GetHelpDialog,
   ShortcutsDialog,
-  SupportBundleDialog,
   ToastProvider,
 } from "./components";
 import {
@@ -102,7 +101,6 @@ function AppShell() {
   }
   // What the current page has put in the Inspector (LIBUI-10). The panel lives
   // here rather than in the page so it survives navigation (SHELL-05).
-  const [supportOpen, setSupportOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -113,7 +111,7 @@ function AppShell() {
   const [noteOpen, setNoteOpen] = useState(() => !shouldShowOnboarding() && phase14NoteDue());
   const [rekordboxOpen, setRekordboxOpen] = useState(false);
   const [logViewerOpen, setLogViewerOpen] = useState(false);
-  const [reportProblemOpen, setReportProblemOpen] = useState(false);
+  const [getHelpOpen, setGetHelpOpen] = useState(false);
 
   useEffect(() => {
     document.title = "CuePoint";
@@ -309,10 +307,12 @@ function AppShell() {
     shortcuts: () => setShortcutsOpen(true),
     // The choices live in Settings → Privacy; the dialog only explains them.
     privacy: () => navigate("/settings", { state: settingsFocusState("privacy") }),
-    "report-problem": () => setReportProblemOpen(true),
+    "get-help": () => setGetHelpOpen(true),
+    // The two ids the old items sent stay for one release (DEC-265); both open Get help.
+    "report-problem": () => setGetHelpOpen(true),
     diagnostics: () => setDiagnosticsOpen(true),
     "log-viewer": () => setLogViewerOpen(true),
-    "support-bundle": () => setSupportOpen(true),
+    "support-bundle": () => setGetHelpOpen(true),
     "rekordbox-help": () => setRekordboxOpen(true),
     about: () => setAboutOpen(true),
     import: () => navigate("/library", { state: libraryImportState() }),
@@ -391,11 +391,21 @@ function AppShell() {
           <Route path="*" element={<Navigate to={homeDestination().path} replace />} />
         </Routes>
       </AppShellLayout>
-      <SupportBundleDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
-      <ReportProblemDialog open={reportProblemOpen} onClose={() => setReportProblemOpen(false)} />
+      <GetHelpDialog
+        open={getHelpOpen}
+        onClose={() => setGetHelpOpen(false)}
+        onOpenDiagnostics={() => {
+          setGetHelpOpen(false);
+          setDiagnosticsOpen(true);
+        }}
+        onOpenLogViewer={() => {
+          setGetHelpOpen(false);
+          setLogViewerOpen(true);
+        }}
+      />
       <DiagnosticsDialog open={diagnosticsOpen} onClose={() => setDiagnosticsOpen(false)} />
       <OnboardingDialog
         open={onboardingOpen}

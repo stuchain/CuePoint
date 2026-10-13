@@ -195,29 +195,29 @@ If a command-line run is interrupted:
 
 The **Help** menu has the tools you need to find out what went wrong and to report it.
 
-- **Diagnostics...** shows whether CuePoint's library service is connected, its version and the session ID.
-- **Log Viewer...** shows the application log. Filter by **Level**, **Search** the text, turn on **Auto-refresh**, or use **Refresh**, **Clear logs**, **Export...** (saves what you see to a text file) and **Open logs folder**.
-- **Export support bundle...** (then **Generate Bundle**) saves a ZIP with diagnostics, logs and your configuration with sensitive values removed, and shows it in your file manager. From the CLI, run `python main.py --export-support-bundle`; it prints the path of the bundle.
-- **Report a problem...** sends a note you write, with the app's version and the id of the last error report, when you press **Send**. It is disabled while error reports are off.
+- **Get help...** is the one place to go. It sends a note you write (with the app's version and the id of the last error report) when you press **Send note**, and **Save a help file...** saves your settings and CuePoint's log as one file you can attach to an email or a GitHub issue; your sign-in and your user folder name are left out. **Open log folder** is there too. When sending is off, the dialog says so and the help file still works.
+- Under **Details for support** in Get help, **Diagnostics...** shows whether CuePoint's library service is connected, its version and the session ID.
+- **Log viewer...** (also under **Details for support**) shows the application log. Filter by **Level**, **Search** the text, turn on **Auto-refresh**, or use **Refresh**, **Clear logs**, **Export...** (saves what you see to a text file) and **Open logs folder**.
+- From the CLI, `python main.py --export-support-bundle` writes the same help file and prints its path.
 - **Privacy...** shows whether error reports are on, sets whether the cache and logs are cleared when you quit, and clears them now. See the [Privacy Notice](../policy/privacy-notice.md).
 
 ### The app reports errors on its own
 
 Released builds send an error report to Sentry (EU region) when CuePoint hits an unexpected error, unless you turned **Settings → Privacy → Send error reports** off. A report carries no file, folder, track, artist, label or playlist names, notes, tags or tokens; the [Privacy Notice](../policy/privacy-notice.md) lists what it does carry.
 
-- **Finding a report's id.** When a screen fails, the error screen shows **Report** and a short id (eight characters) with **Reload**. **Help → Report a problem...** shows the last report's id. Quote it in a [GitHub issue](https://github.com/stuchain/CuePoint/issues/new?template=bug_report.yml) so the report can be found.
-- **Sending a note.** **Help → Report a problem...** sends what you write, exactly as you write it, so leave out anything you do not want read.
-- **No id.** With error reports off nothing is sent and there is no id; the log and support bundle below still work.
+- **Finding a report's id.** When a screen fails, the error screen shows **Report** and a short id (eight characters) with **Reload**. **Help → Get help...** shows the last report's id. Quote it in a [GitHub issue](https://github.com/stuchain/CuePoint/issues/new?template=bug_report.yml) so the report can be found.
+- **Sending a note.** **Help → Get help...** sends what you write, exactly as you write it, so leave out anything you do not want read.
+- **No id.** With error reports off nothing is sent and there is no id; the log and the help file below still work.
 
-If something goes wrong, the log and the support bundle are the first things to look at. The CLI prints a run ID and the log path at the start and end of a run.
+If something goes wrong, the log and the help file are the first things to look at. The CLI prints a run ID and the log path at the start and end of a run.
 
 ## Getting More Help
 
 If these solutions don't help:
 
-1. Generate a support bundle (**Help > Troubleshooting > Export support bundle...**)
-2. Check the logs (**Help > Troubleshooting > Log viewer...**, then **Open logs folder**)
-3. [Report Issue](https://github.com/stuchain/CuePoint/issues/new?template=bug_report.yml) on GitHub and attach the bundle
+1. Save a help file (**Help > Get help... > Save a help file...**)
+2. Check the logs (**Help > Get help... > Open log folder**)
+3. [Report Issue](https://github.com/stuchain/CuePoint/issues/new?template=bug_report.yml) on GitHub and attach the help file
 4. Ask in [Discussions](https://github.com/stuchain/CuePoint/discussions)
 
 How quickly to expect an answer is in the [Support SLA](../policy/support-sla.md).

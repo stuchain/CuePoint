@@ -16,6 +16,8 @@ export const MENU_COMMAND_IDS = [
   "getting-started",
   "shortcuts",
   "privacy",
+  "get-help",
+  // Kept for one release (DEC-265); not in the menu, and both open Get help.
   "report-problem",
   "diagnostics",
   "log-viewer",

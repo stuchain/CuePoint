@@ -1,0 +1,87 @@
+.get-help-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  font-size: var(--text-body);
+}
+
+.get-help-dialog__lead {
+  margin: 0;
+  color: var(--fg-primary);
+}
+
+.get-help-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  color: var(--fg-primary);
+}
+
+.get-help-dialog__field textarea {
+  width: 100%;
+  padding: var(--space-sm);
+  resize: vertical;
+  font: inherit;
+  color: var(--fg-primary);
+  background: var(--bg-toolbar);
+  border: var(--divider);
+}
+
+.get-help-dialog__field textarea:disabled {
+  color: var(--fg-disabled);
+}
+
+.get-help-dialog__note,
+.get-help-dialog__off,
+.get-help-dialog__done,
+.get-help-dialog__error {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.get-help-dialog__note {
+  color: var(--fg-muted);
+}
+
+.get-help-dialog__off {
+  padding: var(--space-sm);
+  border: var(--divider);
+  background: var(--bg-panel-alt);
+  color: var(--fg-primary);
+}
+
+.get-help-dialog__error {
+  color: var(--accent-danger);
+}
+
+.get-help-dialog__facts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.get-help-dialog__file {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: var(--divider);
+}
+
+.get-help-dialog__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.get-help-dialog__link {
+  padding: 0;
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
