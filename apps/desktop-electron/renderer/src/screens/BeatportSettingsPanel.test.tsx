@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { invalidateReads } from "../api/engineReads";
+import { resetEngineReadsForTests } from "../api/engineReads";
 import type { BeatportAuth } from "../api/cuepointBridge.types";
 import { BEATPORT_TOKEN_STATUS, useSharedRead } from "../api/sharedReads";
 import { useBeatportToken } from "../hooks/useBeatportToken";
@@ -20,12 +20,14 @@ const SIGNED_OUT: BeatportAuth = { state: "signed_out", masked: null, expires_at
 type Fn = ReturnType<typeof vi.fn>;
 
 let auth: BeatportAuth;
-let listener: ((next: BeatportAuth) => void) | null;
+// Everyone who subscribed (the panel, the shared cache): main announces to all of them.
+const subscribers = new Set<(next: BeatportAuth) => void>();
+const listener = (next: BeatportAuth) => subscribers.forEach((fn) => fn(next));
 let bridge: Record<string, Fn>;
 
 function install(initial: BeatportAuth, overrides: Record<string, Fn> = {}) {
   auth = initial;
-  listener = null;
+  subscribers.clear();
   bridge = {
     // What makes the engine reachable at all.
     getJob: vi.fn(),
@@ -47,9 +49,9 @@ function install(initial: BeatportAuth, overrides: Record<string, Fn> = {}) {
       return auth;
     }),
     onBeatportAuthChanged: vi.fn((next: (value: BeatportAuth) => void) => {
-      listener = next;
+      subscribers.add(next);
       return () => {
-        listener = null;
+        subscribers.delete(next);
       };
     }),
     testBeatportToken: vi.fn(async () => ({ ok: true, message: "ok" })),
@@ -273,7 +275,7 @@ describe("signed in", () => {
     install({ state: "signed_in", masked: "••••abcd", expires_at: null, secure_storage: true });
     renderPanel();
     await screen.findByText("Signed in to Beatport · ••••abcd · renews by itself");
-    await act(async () => listener?.({ state: "expired", masked: null, expires_at: null, secure_storage: true }));
+    await act(async () => listener({ state: "expired", masked: null, expires_at: null, secure_storage: true }));
     expect(await screen.findByText("Beatport sign-in ended")).toBeInTheDocument();
   });
 
@@ -281,9 +283,12 @@ describe("signed in", () => {
     install(SIGNED_OUT);
     const view = renderPanel();
     await screen.findByText("Sign in to let Discover search Beatport.");
-    expect(listener).not.toBeNull();
+    // The panel's own, and the shared cache's.
+    expect(subscribers.size).toBe(2);
     view.unmount();
-    expect(listener).toBeNull();
+    expect(subscribers.size).toBe(1);
+    resetEngineReadsForTests();
+    expect(subscribers.size).toBe(0);
   });
 
   it("asks the engine for the token status again after a change", async () => {
@@ -291,7 +296,7 @@ describe("signed in", () => {
     renderPanel();
     await screen.findByText("Sign in to let Discover search Beatport.");
     const before = bridge.getBeatportTokenStatus.mock.calls.length;
-    await act(async () => listener?.({ state: "signed_in", masked: "••••abcd", expires_at: null, secure_storage: true }));
+    await act(async () => listener({ state: "signed_in", masked: "••••abcd", expires_at: null, secure_storage: true }));
     await waitFor(() => expect(bridge.getBeatportTokenStatus.mock.calls.length).toBeGreaterThan(before));
   });
 });
@@ -397,7 +402,7 @@ describe("revisiting Settings (C19d)", () => {
     expect(bridge.getBeatportTokenStatus.mock.calls.length).toBe(before);
 
     bridge.getBeatportTokenStatus.mockResolvedValue({ configured: true, masked: "••••cfg2", source: "config" });
-    act(() => invalidateReads(["settings"]));
+    act(() => listener({ state: "signed_in", masked: "••••cfg2", expires_at: null, secure_storage: true }));
     await waitFor(() => expect(again.result.current.status.masked).toBe("••••cfg2"));
   });
 

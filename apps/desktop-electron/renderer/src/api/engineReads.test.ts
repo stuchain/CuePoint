@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { subscribeActiveJobs } from "./jobsStore";
 import { announceLibraryChange } from "./libraryChanges";
 import { invalidateReads, resetEngineReadsForTests, useEngineRead } from "./engineReads";
+import { BEATPORT_TOKEN_STATUS, DISCOVER_OPTIONS, useSharedRead } from "./sharedReads";
 
 interface Deferred<T> {
   promise: Promise<T>;
@@ -35,12 +36,23 @@ const library = { domains: ["library" as const] };
 
 // The change sources are driven through the real job store: its poll is what
 // reports an ending job or a moved counter, so a fake bridge is the honest input.
-const world = { jobs: [] as Array<{ id: string; type: string }>, revisions: { library: 1, waveforms: 1 } };
+const world = {
+  jobs: [] as Array<{ id: string; type: string }>,
+  revisions: { library: 1, waveforms: 1 },
+  authListener: null as (() => void) | null,
+};
 
 function installBridge(): void {
   world.jobs = [];
   world.revisions = { library: 1, waveforms: 1 };
+  world.authListener = null;
   (window as unknown as { cuepoint?: unknown }).cuepoint = {
+    onBeatportAuthChanged: (listener: () => void) => {
+      world.authListener = listener;
+      return () => {
+        world.authListener = null;
+      };
+    },
     listJobs: async () => ({
       jobs: world.jobs.map((j) => ({ ...j, state: "running", created_at: "", updated_at: "" })),
       active_count: world.jobs.length,
@@ -239,16 +251,32 @@ describe("useEngineRead", () => {
     expect(result.current.value).toBeUndefined();
   });
 
-  it("lets the newer read win when an older one answers last", async () => {
+  it("refresh() during a read waits for it, lands its answer, then reads once more", async () => {
     const { read, calls } = reader<string>();
     const { result } = renderHook(() => useEngineRead("k", read, library));
     act(() => result.current.refresh());
+    act(() => result.current.refresh());
+    // No overlapping read: the running one is not superseded.
+    expect(read).toHaveBeenCalledTimes(1);
+
+    await act(async () => calls[0].resolve("first"));
+    // The running read's answer lands, and exactly one more follows.
+    expect(result.current.value).toBe("first");
     expect(read).toHaveBeenCalledTimes(2);
+    expect(result.current.refreshing).toBe(true);
 
     await act(async () => calls[1].resolve("newer"));
-    await act(async () => calls[0].resolve("older"));
     expect(result.current.value).toBe("newer");
     expect(result.current.refreshing).toBe(false);
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets a steady refresh() land a slow read (a poll shorter than the read)", async () => {
+    const { read, calls } = reader<string>();
+    const { result } = renderHook(() => useEngineRead("k", read, library));
+    for (let i = 0; i < 5; i++) act(() => result.current.refresh());
+    await act(async () => calls[0].resolve("slow"));
+    expect(result.current.value).toBe("slow");
   });
 
   it("refresh() forces a read of a fresh entry", async () => {
@@ -380,5 +408,41 @@ describe("useEngineRead refresh()", () => {
     expect(second.read).toHaveBeenCalledTimes(1);
     act(() => invalidateReads(["waveforms"]));
     expect(second.read).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("useEngineRead and a Beatport sign-in change", () => {
+  it("marks settings stale, so the options and the token status read again", async () => {
+    const options = reader<string>();
+    const token = reader<string>();
+    const lib = reader<string>();
+    const bridge = (window as unknown as { cuepoint: Record<string, unknown> }).cuepoint;
+    bridge.getDiscoverOptions = options.read;
+    bridge.getBeatportTokenStatus = token.read;
+    renderHook(() => {
+      useSharedRead(DISCOVER_OPTIONS);
+      useSharedRead(BEATPORT_TOKEN_STATUS);
+      useEngineRead("library/x", lib.read, library);
+    });
+    await act(async () => {
+      options.calls[0].resolve("o0");
+      token.calls[0].resolve("t0");
+      lib.calls[0].resolve("l0");
+    });
+    expect(world.authListener).not.toBeNull();
+
+    act(() => world.authListener?.());
+    expect(options.read).toHaveBeenCalledTimes(2);
+    expect(token.read).toHaveBeenCalledTimes(2);
+    // Not a library change.
+    expect(lib.read).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops listening when the module is reset", () => {
+    const { read } = reader<string>();
+    renderHook(() => useEngineRead("k", read, library));
+    expect(world.authListener).not.toBeNull();
+    resetEngineReadsForTests();
+    expect(world.authListener).toBeNull();
   });
 });

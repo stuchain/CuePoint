@@ -59,7 +59,7 @@ export interface EngineRead<T> {
   refreshing: boolean;
   /** The last read's failure; cleared by the next success. The value, if any, is kept. */
   error: unknown;
-  /** Reads now, even if the answer is fresh. */
+  /** Reads now, even if the answer is fresh; behind a read already running, one more follows it. */
   refresh: () => void;
 }
 
@@ -238,6 +238,9 @@ function wire(): void {
     onRevisionsChanged((domains) => invalidateReads(domains)),
     onJobFinished((job) => invalidateReads(JOB_TYPE_DOMAINS[job.type] ?? ["library"])),
   ];
+  // A sign-in or sign-out changes the token status and the options that report it.
+  const offAuth = window.cuepoint?.onBeatportAuthChanged?.(() => invalidateReads(["settings"]));
+  if (offAuth) unwire.push(offAuth);
 }
 
 /**
@@ -294,7 +297,10 @@ export function useEngineRead<T>(
     entry.read = latest.current.read;
     entry.domains = latest.current.domains;
     entry.maxAgeMs = latest.current.maxAgeMs;
-    void start(entry);
+    // A running read is let answer (a caller refreshing faster than the engine
+    // answers would otherwise never see one land); one more follows it.
+    if (entry.inFlight) entry.again = true;
+    else void start(entry);
   }, [key]);
 
   return {
