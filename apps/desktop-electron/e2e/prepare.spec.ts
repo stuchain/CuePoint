@@ -232,7 +232,7 @@ async function measure(win: Page, tableName: string): Promise<Measured> {
         };
       }
     }
-    const screenEl = document.querySelector<HTMLElement>("main.app-main .screen")!;
+    const screenEl = [...document.querySelectorAll<HTMLElement>("main.app-main .screen")].find((el) => el.getClientRects().length > 0)!;
     const controls = [
       ...document.querySelectorAll<HTMLElement>(
         ".prepare-header button, .prepare-header select, .prepare-source button, .prepare-source select, .prepare-source input",
@@ -347,7 +347,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         1280, 800,
       ]);
       await win.reload();
-      await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await win.getByRole("link", { name: "Prepare", exact: true }).click();
       await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
       const table = win.getByRole("table", { name: "Set entries" });
@@ -507,7 +507,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         await win.getByRole("button", { name: "View ▾" }).click();
         await win.getByRole("menuitem", { name: show }).click();
         await win.evaluate(() => {
-          const screen = document.querySelector<HTMLElement>("main.app-main .screen")!;
+          const screen = [...document.querySelectorAll<HTMLElement>("main.app-main .screen")].find((el) => el.getClientRects().length > 0)!;
           screen.scrollTop = screen.scrollHeight;
         });
         const m = await measure(win, "Set entries");
@@ -515,7 +515,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         expect(m.overflowX, `nothing spills sideways, player and ${name}`).toBeLessThanOrEqual(0);
         expect(m.whole, `whole rows under the ${name}, with the player`).toBeGreaterThanOrEqual(ROWS_KEPT);
         await win.evaluate(() => {
-          document.querySelector<HTMLElement>("main.app-main .screen")!.scrollTop = 0;
+          [...document.querySelectorAll<HTMLElement>("main.app-main .screen")].find((el) => el.getClientRects().length > 0)!.scrollTop = 0;
         });
         await win.getByRole("button", { name: "View ▾" }).click();
         await win.getByRole("menuitem", { name: hide }).click();

@@ -107,7 +107,7 @@ test.describe("Engine startup", () => {
     app = await launch(userDataDir, home);
     try {
       const window = await app.firstWindow({ timeout: 60_000 });
-      await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await window.getByRole("link", { name: "Library" }).click();
 
       await expect(window.locator(".track-table__row").first()).toBeVisible({ timeout: 90_000 });

@@ -213,7 +213,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
         await c.insertTrackInCollection({ collection_id: crate, track_id: ids["Warm One"], position: 5 });
       });
       await win.reload();
-      await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await win.evaluate(async () => {
         const player = (window as never as Bridge).cuepoint.player;
         await player.setVolume(0);
@@ -494,7 +494,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const started = await win.evaluate((file) => (window as never as Bridge).cuepoint.startLibraryImport({ xml_path: file }), xml);
       await finished(win, started.job_id);
       await win.reload();
-      await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
 
       await win.getByRole("link", { name: "Library", exact: true }).click();
       const table = win.getByRole("table", { name: "Library tracks" });

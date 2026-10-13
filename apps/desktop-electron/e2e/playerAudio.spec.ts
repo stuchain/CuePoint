@@ -56,7 +56,7 @@ async function ready(app: ElectronApplication): Promise<Page> {
   });
   await win.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
   await win.reload();
-  await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   return win;
 }
 

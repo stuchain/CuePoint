@@ -97,7 +97,7 @@ async function ready(app: ElectronApplication): Promise<Page> {
   });
   await window.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
   await window.reload();
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   await waitForEngine(window);
   return window;
 }
@@ -123,7 +123,7 @@ async function importCollection(window: Page, xmlPath: string) {
   // library when it loads: an import made behind its back, through the bridge,
   // is seen on the next load — as it would be after a relaunch.
   await window.reload();
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
 }
 
 
@@ -304,11 +304,11 @@ test.describe("Quick filters (PAGES-05B)", () => {
       for (const scale of [2, 3]) {
         await window.evaluate((value) => localStorage.setItem("cuepoint-ui-lab-scale", String(value)), scale);
         await window.reload();
-        await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+        await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
         await openLibrary(window);
         await narrow(false);
         const spill = await window.evaluate(() => {
-          const screen = document.querySelector<HTMLElement>("main.app-main .screen")!;
+          const screen = [...document.querySelectorAll<HTMLElement>("main.app-main .screen")].find((el) => el.getClientRects().length > 0)!;
           return Math.max(
             document.documentElement.scrollWidth - document.documentElement.clientWidth,
             screen.scrollWidth - screen.clientWidth,

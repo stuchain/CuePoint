@@ -112,7 +112,7 @@ async function ready(app: ElectronApplication): Promise<Page> {
   });
   await window.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
   await window.reload();
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   await waitForEngine(window);
   return window;
 }
@@ -147,7 +147,7 @@ async function importLibrary(window: Page, xml: string) {
   // library when it loads: an import made behind its back, through the bridge,
   // is seen on the next load — as it would be after a relaunch.
   await window.reload();
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
 }
 
 /** Wait until no job is running. */
@@ -468,7 +468,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         });
         await expect(window.getByText("Your tracks by this name")).toBeVisible();
         await expect.poll(() => titlesIn(window, "Your tracks")).toEqual(["Night Bus", "Signal"]);
-        await expect(window.getByText("No match")).toBeVisible({ timeout: 30_000 });
+        await expect(window.getByLabel("On Beatport").getByText("No match")).toBeVisible({ timeout: 30_000 });
         await row(window, "Your tracks", "Signal").dblclick();
         await expect.poll(() => currentTitle(window), { timeout: 30_000 }).toBe("Signal");
         expect(await queueTitles(window)).toEqual(["Night Bus", "Signal"]);

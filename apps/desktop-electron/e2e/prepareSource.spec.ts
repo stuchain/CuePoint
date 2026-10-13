@@ -175,7 +175,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       });
 
       await win.reload();
-      await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await win.getByRole("link", { name: "Prepare", exact: true }).click();
       await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
       await expect(win.getByRole("table", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
@@ -286,7 +286,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       });
 
       await win.reload();
-      await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await win.getByRole("link", { name: "Prepare", exact: true }).click();
       await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
       const setTable = win.getByRole("table", { name: "Set entries" });

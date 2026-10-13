@@ -84,7 +84,7 @@ async function ready(app: ElectronApplication): Promise<Page> {
   const window = await app.firstWindow({ timeout: 60_000 });
   await window.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
   await window.reload();
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   await waitForEngine(window);
   return window;
 }
@@ -112,7 +112,7 @@ async function importCollection(window: Page, xmlPath: string) {
   // library when it loads: an import made behind its back, through the bridge,
   // is seen on the next load — as it would be after a relaunch.
   await window.reload();
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
 }
 
 /**
@@ -429,7 +429,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
       // raced that first read, and passed only when the rewrite won.
       writeExport(workspace, [0, 1, 2, 3, 4, 5, 6]);
       await window.reload();
-      await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await openLibrary(window);
 
       await expect(window.getByText("Changed in Rekordbox")).toBeVisible();

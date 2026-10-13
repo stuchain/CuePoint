@@ -51,7 +51,7 @@ test.describe("Electron desktop smoke (TC-UI-001)", () => {
       // The navigation renders outside <Routes>, so asserting it alone passed
       // even while no route matched and the content area was empty. Assert the
       // screen too.
-      await expect(window.locator("main.app-main .screen")).toBeVisible({ timeout: 15_000 });
+      await expect(window.locator("main.app-main .screen:visible")).toBeVisible({ timeout: 15_000 });
       // The font loaded. Where it came from is the request check below (and fonts.test.ts).
       const loaded = await window.evaluate(async () => {
         await document.fonts.ready;

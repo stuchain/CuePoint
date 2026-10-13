@@ -80,7 +80,7 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
       localStorage.setItem("cuepoint-phase14-note-seen", "1");
     });
     await win.reload();
-    await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+    await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
 
     const started = await win.evaluate(
       (file) => (window as never as Bridge).cuepoint.startLibraryImport({ xml_path: file }),
@@ -112,7 +112,7 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
       await c.player.setRepeat("one");
     });
     await win.reload();
-    await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+    await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
 
     await win.getByRole("link", { name: "Keys" }).click();
     await expect(win.getByRole("heading", { name: "Keys", level: 1 })).toBeVisible();
@@ -180,10 +180,10 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
     expect(counts.track).toBe(counts.expectedTrack);
     // Two playlists give a few keys, which fit; only colours and overflow-y are checked unless it overflows.
     if (counts.overflows) expect(counts.barWidth).toBeCloseTo(counts.expectedWidth, 0);
-    const rows = win.locator(".track-table__row");
+    const rows = win.locator("main.app-main .screen:visible .track-table__row");
     await expect(rows).toHaveCount(3, { timeout: 30_000 });
     const titles = await win
-      .locator('.track-table__row [data-column="title"]')
+      .locator('main.app-main .screen:visible .track-table__row [data-column="title"]')
       .allInnerTexts();
     expect(titles.map((t) => t.trim()).sort()).toEqual(["Track 1", "Track 2", "Track 4"]);
 

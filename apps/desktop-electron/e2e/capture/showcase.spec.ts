@@ -200,7 +200,7 @@ async function ready(app: ElectronApplication): Promise<Page> {
     localStorage.setItem("cuepoint-phase14-note-seen", "1");
   });
   await window.reload();
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   await waitForEngine(window);
   return window;
 }
@@ -340,7 +340,7 @@ test.describe("the website's pictures (SITE-04)", () => {
       });
 
       await window.reload();
-      await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await waitForEngine(window);
 
       await test.step("one track playing, paused a third of the way in", async () => {

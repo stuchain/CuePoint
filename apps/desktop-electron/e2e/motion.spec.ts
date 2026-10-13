@@ -39,7 +39,7 @@ async function openSettings(window: Page, motion?: Record<string, boolean>): Pro
     if (stored) localStorage.setItem("cuepoint-motion", JSON.stringify(stored));
   }, motion);
   await window.reload();
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   await window
     .getByRole("navigation", { name: /main navigation/i })
     .getByRole("link", { name: "Settings" })
@@ -138,7 +138,7 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
       localStorage.removeItem("cuepoint-motion");
     });
     await window.reload();
-    await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+    await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   }
 
   test("a click on a closing dialog's backdrop lands on what is behind it at once", async () => {
@@ -278,10 +278,10 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
       await ready(window);
       await window.evaluate(() => localStorage.setItem("cuepoint-motion", JSON.stringify({ page: false })));
       await window.reload();
-      await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await window.getByRole("navigation", { name: /main navigation/i }).getByRole("link", { name: "Settings" }).click();
       await expect(window.locator("main.app-main h1")).toHaveText("Settings");
-      const animation = await window.locator("main.app-main > .screen").evaluate((el) => getComputedStyle(el).animationName);
+      const animation = await window.locator("main.app-main > .screen:visible").evaluate((el) => getComputedStyle(el).animationName);
       expect(animation).toBe("none");
     } finally {
       await app.close();

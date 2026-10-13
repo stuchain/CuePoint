@@ -36,7 +36,7 @@ function launch(userDataDir: string, cuepointHome: string): Promise<ElectronAppl
 
 async function firstWindow(app: ElectronApplication): Promise<Page> {
   const window = await app.firstWindow({ timeout: 60_000 });
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   await waitForEngine(window);
   return window;
 }

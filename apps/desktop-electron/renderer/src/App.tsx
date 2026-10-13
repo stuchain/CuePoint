@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { HashRouter, Navigate, Route, useLocation, useNavigate, type Location } from "react-router-dom";
 import {
   AboutDialog,
   DiagnosticsDialog,
@@ -15,7 +15,6 @@ import {
   applyLaunchDestination,
   AppShellLayout,
   enabledDestinations,
-  findDestinationById,
   ShellHeader,
   homeDestination,
   OfflineBanner,
@@ -25,6 +24,7 @@ import {
   RightColumn,
   InspectorSlotProvider,
   InspectorSlotOutlet,
+  KeptPages,
   retiredRedirects,
   useRememberDestination,
 } from "./components/shell";
@@ -80,13 +80,20 @@ import type { CleanTracks } from "./screens/clean/cleanTracks";
 import { MotionProvider } from "./tokens/MotionContext";
 import { ScaleProvider } from "./tokens/ScaleContext";
 import { ThemeProvider } from "./tokens/ThemeContext";
-import { E2eCrashProbe, ErrorBoundary, useNavigationBreadcrumbs, usePageTiming } from "./reporting";
+import { useNavigationBreadcrumbs, usePageTiming } from "./reporting";
 import { Phase14Note } from "./components/Phase14Note";
 import { WhatsNew } from "./components/updates/WhatsNew";
 import { phase14NoteDue, shouldShowOnboarding } from "./components/firstRunMemory";
 import "./App.css";
 // After every component stylesheet, so a rule here wins a tie with one (PAGES-12).
 import "./motion.css";
+
+/** The paths a destination's slot owns: its own, and the pages under Discover and Prepare. */
+function slotPaths(id: string, path: string): string[] {
+  if (id === "discover") return [path, ARTIST_PAGE_ROUTE, LABEL_PAGE_ROUTE, SIMILAR_ROUTE];
+  if (id === "prepare") return [path, PREPARE_SET_ROUTE];
+  return [path];
+}
 
 function AppShell() {
   const location = useLocation();
@@ -125,11 +132,6 @@ function AppShell() {
   }, []);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-    document.querySelector(".app-main")?.scrollTo(0, 0);
-  }, [location.pathname]);
-
-  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "F1") {
         event.preventDefault();
@@ -149,18 +151,6 @@ function AppShell() {
   useNavigationBreadcrumbs();
   // How long each page takes to draw, for main.log.
   usePageTiming();
-
-  /**
-   * Each destination's page sits in its own error boundary, so a page that throws shows
-   * the error screen in the content area and the sidebar and player bar keep working. It
-   * clears when the user opens another page (REPORT-06).
-   */
-  const guarded = (page: ReactNode) => (
-    <ErrorBoundary scope="page" resetKey={location.pathname}>
-      {page}
-      <E2eCrashProbe />
-    </ErrorBoundary>
-  );
 
   // DISCOVER-11: the pages every track leads to, and Similar tracks.
   const openEntity = useCallback(
@@ -213,7 +203,7 @@ function AppShell() {
     [navigate],
   );
   const closeNote = useCallback(() => setNoteOpen(false), []);
-  const prepareScreen = (
+  const prepareScreen = () => (
     <PrepareScreen
       onOpenInClean={openInClean}
       onOpenMissingFiles={openMissingFiles}
@@ -235,17 +225,17 @@ function AppShell() {
    * need callbacks that open dialogs owned by this component; putting elements
    * in the registry would drag that state into what is meant to stay data.
    */
-  const screenFor = (id: string) => {
+  const screenFor = (id: string, slotLocation: Location) => {
     switch (id) {
       case "library":
         // A Health count opens the Library on its rules (CLEAN-12, DEC-075);
         // they arrive in the location's state and are handed over as a prop.
         return (
           <LibraryScreen
-            openWith={libraryOpening(location)}
-            refreshWith={refreshOpening(location)}
-            trackWith={trackOpening(location)}
-            importWith={importOpening(location)}
+            openWith={libraryOpening(slotLocation)}
+            refreshWith={refreshOpening(slotLocation)}
+            trackWith={trackOpening(slotLocation)}
+            importWith={importOpening(slotLocation)}
             onOpeningApplied={clearOpening}
             onOpenRekordboxInstructions={() => setRekordboxOpen(true)}
             onOpenInClean={openInClean}
@@ -262,27 +252,27 @@ function AppShell() {
         // The Inspector's link opens one track's review (CLEAN-13).
         // The Rekordbox export's missing-file count opens Missing files (EXPORT-07).
         // A link to the Health or Fix values tab K3 removed goes where they went.
-        const moved = cleanRedirect(location);
+        const moved = cleanRedirect(slotLocation);
         if (moved) return <Navigate to={moved.to} state={moved.state} replace />;
         return (
           <CleanScreen
-            openWith={cleanOpening(location)}
-            openSection={cleanSectionOpening(location)}
-            matchWith={cleanMatchOpening(location)}
+            openWith={cleanOpening(slotLocation)}
+            openSection={cleanSectionOpening(slotLocation)}
+            matchWith={cleanMatchOpening(slotLocation)}
           />
         );
       }
       // PAGES-16 (DEC-200): the keys of chosen playlists, Collections and Sets. The Library's Key
       // list opens it with the open playlist or Collection ticked.
       case "keys":
-        return <KeysScreen openWith={keysOpening(location)} onOpeningApplied={clearOpening} />;
+        return <KeysScreen openWith={keysOpening(slotLocation)} onOpeningApplied={clearOpening} />;
       // DISCOVER-10. inCrate retired into it in DISCOVER-12 (DEC-100).
       case "discover":
         return <DiscoverScreen />;
       // PREP-10 (DEC-104). `/prepare` reopens the last Set; each Set is a page
       // of the destination, as Discover's Artist pages are (DEC-094).
       case "prepare":
-        return prepareScreen;
+        return prepareScreen();
       // STATS-04 (DEC-138): what is played most and how the library is made up.
       case "statistics":
         return <StatisticsScreen />;
@@ -321,6 +311,39 @@ function AppShell() {
     "toggle-sidebar": () => emitShellCommand("toggle-sidebar"),
   });
 
+  // Every destination the user has opened stays alive behind the current one (KeptPages), so
+  // each is a slot: its own page and the pages under it, drawn from the slot's own location.
+  const slots = enabledDestinations().map((destination) => ({
+    id: destination.id,
+    paths: slotPaths(destination.id, destination.path),
+    routes: (slotLocation: Location) => (
+      <>
+        <Route path={destination.path} element={screenFor(destination.id, slotLocation)} />
+        {/*
+          Artist and Label pages and Similar tracks are routes under
+          Discover, not destinations of their own (DEC-094): the sidebar
+          keeps Discover lit on them, and the app reopens on Discover.
+        */}
+        {destination.id === "discover" && (
+          <>
+            <Route
+              path={ARTIST_PAGE_ROUTE}
+              element={<EntityScreen kind="artist" onOpenInClean={openInClean} />}
+            />
+            <Route
+              path={LABEL_PAGE_ROUTE}
+              element={<EntityScreen kind="label" onOpenInClean={openInClean} />}
+            />
+            <Route path={SIMILAR_ROUTE} element={<SimilarScreen onOpenInClean={openInClean} />} />
+          </>
+        )}
+        {destination.id === "prepare" && (
+          <Route path={PREPARE_SET_ROUTE} element={prepareScreen()} />
+        )}
+      </>
+    ),
+  }));
+
   return (
     <>
       <AppShellLayout
@@ -340,59 +363,36 @@ function AppShell() {
         player={<PlayerSlot onOpenTrack={openPlayingTrack} onOpenArtist={openPlayingArtist} />}
         statusBar={<StatusStrip />}
       >
-        <Routes>
-          {enabledDestinations().map((destination) => (
-            <Route
-              key={destination.id}
-              path={destination.path}
-              element={guarded(screenFor(destination.id))}
-            />
-          ))}
-          {/*
-            Artist and Label pages and Similar tracks are routes under
-            Discover, not destinations of their own (DEC-094): the sidebar
-            keeps Discover lit on them, and the app reopens on Discover.
-          */}
-          {findDestinationById("discover")?.enabled && (
+        <KeptPages
+          slots={slots}
+          unowned={
             <>
-              <Route
-                path={ARTIST_PAGE_ROUTE}
-                element={guarded(<EntityScreen kind="artist" onOpenInClean={openInClean} />)}
-              />
-              <Route
-                path={LABEL_PAGE_ROUTE}
-                element={guarded(<EntityScreen kind="label" onOpenInClean={openInClean} />)}
-              />
-              <Route path={SIMILAR_ROUTE} element={guarded(<SimilarScreen onOpenInClean={openInClean} />)} />
+              {/*
+                A retired page's path lands on the page that replaced it (DEC-071,
+                DEC-100), so a bookmark or an old link still arrives somewhere
+                real: `/match` and `/results` on Clean, `/incrate` on Discover, and
+                `/` — Tools' landing page — on the Library.
+              */}
+              {retiredRedirects().map((redirect) => (
+                <Route
+                  key={redirect.id}
+                  path={redirect.from}
+                  element={<Navigate to={redirect.to} replace />}
+                />
+              ))}
+              {/*
+                A path that matches no destination goes home rather than showing
+                nothing. This is the belt to the registry's braces: DEC-027's
+                fallback keeps a stale stored destination from landing here, and
+                this keeps any other unmatched path — a stray link, a future typo —
+                from showing an empty content area. It redirects rather than
+                rendering home in place, so the address, the sidebar and launch
+                memory all agree on where the user is.
+              */}
+              <Route path="*" element={<Navigate to={homeDestination().path} replace />} />
             </>
-          )}
-          {findDestinationById("prepare")?.enabled && (
-            <Route path={PREPARE_SET_ROUTE} element={guarded(prepareScreen)} />
-          )}
-          {/*
-            A retired page's path lands on the page that replaced it (DEC-071,
-            DEC-100), so a bookmark or an old link still arrives somewhere
-            real: `/match` and `/results` on Clean, `/incrate` on Discover, and
-            `/` — Tools' landing page — on the Library.
-          */}
-          {retiredRedirects().map((redirect) => (
-            <Route
-              key={redirect.id}
-              path={redirect.from}
-              element={<Navigate to={redirect.to} replace />}
-            />
-          ))}
-          {/*
-            A path that matches no destination goes home rather than showing
-            nothing. This is the belt to the registry's braces: DEC-027's
-            fallback keeps a stale stored destination from landing here, and
-            this keeps any other unmatched path — a stray link, a future typo —
-            from showing an empty content area. It redirects rather than
-            rendering home in place, so the address, the sidebar and launch
-            memory all agree on where the user is.
-          */}
-          <Route path="*" element={<Navigate to={homeDestination().path} replace />} />
-        </Routes>
+          }
+        />
       </AppShellLayout>
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />

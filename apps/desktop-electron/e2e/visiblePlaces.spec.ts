@@ -243,7 +243,7 @@ async function go(win: Page, route: string) {
   await win.evaluate((hash) => {
     location.hash = hash;
   }, route);
-  await win.locator("main.app-main .screen").first().waitFor({ timeout: 30_000 });
+  await win.locator("main.app-main .screen:visible").first().waitFor({ timeout: 30_000 });
 }
 
 /** The queue as titles, and where the playing one sits in it. */
@@ -271,7 +271,7 @@ async function jobsOf(win: Page, type: string): Promise<number> {
 async function viaBridge<T>(win: Page, work: () => Promise<T>): Promise<T> {
   const done = await win.evaluate(work);
   await win.reload();
-  await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   return done;
 }
 
@@ -409,7 +409,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
       await c.player.setVolume(0);
     });
     await win.reload();
-    await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+    await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   });
 
   test.afterAll(async () => {
@@ -695,7 +695,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     // changes that track's genre and leaves the other (the match is seeded, as the matcher would).
     seedAcceptedMatch(cuepointHome, "Warm One", { genre: "Tech House" });
     await win.reload();
-    await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+    await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
     await openLibrary(win);
     await pick(win, "Warm One", "Warm Two");
     await use(win, toolbar(win).getByRole("button", { name: "Beatport", exact: true }), "the bar's Beatport");
@@ -954,7 +954,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
       }
     });
     await win.reload();
-    await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+    await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   });
 
   test.afterAll(async () => {
@@ -1024,7 +1024,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     });
     expect(made).toBeGreaterThan(0);
     await win.reload();
-    await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+    await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
     await chooseNode(win, treeNode(win, "Home crate"), "the Home crate node");
     await use(win, treeBar(win).getByRole("button", { name: "Export to Rekordbox…" }), "the tree's Export to Rekordbox…");
     await expect(exporting).toBeVisible({ timeout: 15_000 });
@@ -1109,7 +1109,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
   test("Sets are Prepare's; the Library's tree links to it", async () => {
     const setId = await makeSet(win, "Linked set", ["Warm One", "Warm Two"]);
     await win.reload();
-    await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+    await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
     await openLibrary(win);
     await chooseNode(win, treeNode(win, "Linked set"), "the Linked set node");
     await use(win, treeBar(win).getByRole("button", { name: "Open in Prepare", exact: true }), "Open in Prepare");

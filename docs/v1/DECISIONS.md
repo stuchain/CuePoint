@@ -7795,3 +7795,24 @@ them, so a Library showed four whole rows at the default window and size.
   scroll check (DEC-234) still records no long task at 1× and 1.5×.
 
 **Decided with**: User (R4-1, ★ Compact for everyone) · **Date**: 2026-10-13
+
+## DEC-279 — Visited Pages Stay Alive
+
+**Status**: Approved · **Related**: C19e, G1 B3, SHELL-05, REPORT-06, PAGES-12
+
+**Context**: Leaving a page unmounted it, so every visit rebuilt the page and read everything again, and coming
+back lost its scroll, selection and filters (C19).
+
+**Decision**:
+- Every destination stays alive once opened (all seven, round 2 answer 3), hidden behind the page on screen with
+  React's Activity. Discover's Artist, Label and Similar pages share Discover's place; Prepare keeps its last Set.
+- Hiding a page stops its work: Activity cleans up its effects, so its polls, streams, listeners, Inspector content
+  and selected track stop or clear, and start again when it is shown. `usePageActive()` says which page is on
+  screen for anything an effect cannot.
+- Each page reads its own last location, so an opening sent to it applies once and a hidden page keeps its params.
+- Scroll is kept per page and put back on return; a first visit and an opening from another page start at the top.
+- A page that threw gets a fresh try each time it is shown again or left; a hidden page that throws never blanks
+  the one on screen.
+- Something left open in a hidden page (a menu, a popover) does not count as open: `queryShown` skips it.
+
+**Decided with**: User (C19, "apply ALL"; all seven ★) · **Date**: 2026-10-13

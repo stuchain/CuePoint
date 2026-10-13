@@ -104,7 +104,7 @@ async function finished(win: Page, jobId: string) {
 async function openAt(win: Page, scale: number) {
   await win.evaluate(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, String(scale)]);
   await win.reload();
-  await win.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   await expect
     .poll(() => win.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--scale").trim()))
     .toBe(String(scale));
@@ -198,7 +198,7 @@ test.describe("the sizes (PAGES-14)", () => {
               await expect(win.getByLabel("Size of text and controls")).toBeVisible({ timeout: 30_000 });
             }
             const spill = await win.evaluate(() => {
-              const screen = document.querySelector<HTMLElement>("main.app-main .screen")!;
+              const screen = [...document.querySelectorAll<HTMLElement>("main.app-main .screen")].find((el) => el.getClientRects().length > 0)!;
               return Math.max(
                 document.documentElement.scrollWidth - document.documentElement.clientWidth,
                 screen.scrollWidth - screen.clientWidth,
@@ -255,7 +255,7 @@ test.describe("the sizes (PAGES-14)", () => {
       for (const inner of [null, WINDOWS_INNER]) {
         if (inner) await setInnerSize(app, win, inner);
         const spill = await win.evaluate(() => {
-          const screen = document.querySelector<HTMLElement>("main.app-main .screen")!;
+          const screen = [...document.querySelectorAll<HTMLElement>("main.app-main .screen")].find((el) => el.getClientRects().length > 0)!;
           return {
             box: `${window.innerWidth}x${window.innerHeight}`,
             sideways: Math.max(

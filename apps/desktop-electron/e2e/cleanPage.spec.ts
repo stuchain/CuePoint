@@ -68,7 +68,7 @@ async function ready(app: ElectronApplication): Promise<Page> {
   const window = await app.firstWindow({ timeout: 60_000 });
   await window.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
   await window.reload();
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   await waitForEngine(window);
   return window;
 }
@@ -235,7 +235,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       for (const scale of [1.5, 2]) {
         await window.evaluate((value) => localStorage.setItem("cuepoint-ui-lab-scale", String(value)), scale);
         await window.reload();
-        await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+        await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
         await expect(window.getByRole("tab", { name: /^Match/ })).toBeVisible({ timeout: 30_000 });
         expect(
           await window.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--scale").trim()),

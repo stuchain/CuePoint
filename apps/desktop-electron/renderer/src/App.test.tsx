@@ -31,6 +31,14 @@ const HOME = /Nothing imported yet/i;
  */
 const LOADED = { timeout: 3000 };
 
+/**
+ * What is on screen among `nodes`. A page the user has left stays mounted but hidden
+ * (KeptPages), so "the Library is not showing" cannot be read from the page's text being absent.
+ */
+function onScreen(nodes: HTMLElement[]): HTMLElement[] {
+  return nodes.filter((node) => !node.closest("[style*='display: none']"));
+}
+
 /** Several screens also link to Settings, so navigation is driven from the nav. */
 function navLink(name: string): HTMLElement {
   return within(screen.getByRole("navigation", { name: /main navigation/i })).getByRole(
@@ -342,7 +350,7 @@ describe("App shell", () => {
       await waitFor(() => expect(window.location.hash).toBe("#/clean"));
       const main = container.querySelector("main.app-main") as HTMLElement;
       expect(await within(main).findByText(/^Clean$/)).toBeInTheDocument();
-      expect(within(main).queryByText(HOME)).toBeNull();
+      expect(onScreen(within(main).queryAllByText(HOME))).toEqual([]);
       expect(consoleError).not.toHaveBeenCalled();
     });
 
@@ -443,7 +451,7 @@ describe("App shell", () => {
 
       const main = container.querySelector("main.app-main") as HTMLElement;
       expect(await within(main).findByText(marker)).toBeInTheDocument();
-      expect(within(main).queryByText(HOME)).toBeNull();
+      expect(onScreen(within(main).queryAllByText(HOME))).toEqual([]);
       expect(navLink("Discover")).toHaveAttribute("aria-current", "page");
       await waitFor(() =>
         expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("discover"),

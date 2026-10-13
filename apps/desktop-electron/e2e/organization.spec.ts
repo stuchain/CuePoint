@@ -128,7 +128,7 @@ async function ready(app: ElectronApplication): Promise<Page> {
   const window = await app.firstWindow({ timeout: 60_000 });
   await window.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
   await window.reload();
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   await waitForEngine(window);
   return window;
 }
@@ -155,7 +155,7 @@ async function importCollection(window: Page, xmlPath: string) {
   // library when it loads: an import made behind its back, through the bridge,
   // is seen on the next load — as it would be after a relaunch.
   await window.reload();
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
 }
 
 /** Rename the row that is waiting for a name, which a create leaves open. */
@@ -252,7 +252,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // One page, not two: the Collections tree is a section of the Library
       // page's left pane (DEC-062).
       await expect(collectionsTree(window)).toBeVisible({ timeout: 30_000 });
-      await expect(window.locator("main.app-main .screen")).toHaveCount(1);
+      await expect(window.locator("main.app-main .screen:visible")).toHaveCount(1);
       // And DEC-027 remembers the Library as where the user was.
       expect(
         await window.evaluate(() =>
@@ -313,7 +313,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
         entryIds[2]!,
       );
       await window.reload();
-      await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await collectionsTree(window).getByText("Openers").click();
       await expect(table).toBeVisible({ timeout: 30_000 });
       await expect
@@ -504,7 +504,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       );
 
       await window.reload();
-      await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await window.getByRole("link", { name: "Library" }).click();
       await expect(window.getByText("Changed in Rekordbox")).toBeVisible({ timeout: 30_000 });
 
@@ -616,7 +616,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
         );
       }
       await window.reload();
-      await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+      await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await window.getByRole("link", { name: "Library" }).click();
       await expect(collectionsTree(window).getByRole("treeitem")).toHaveCount(6, { timeout: 30_000 });
       await collectionsTree(window).getByText("Openers").click();

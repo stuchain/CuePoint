@@ -54,8 +54,9 @@ describe("a page that throws", () => {
 
     const nav = screen.getByRole("navigation", { name: /main navigation/i });
     await userEvent.click(within(nav).getByRole("link", { name: "Library" }));
-    expect(screen.queryByTestId("error-screen")).toBeNull();
-    expect(screen.getByText(/Nothing imported yet/i)).toBeInTheDocument();
+    // Settings is kept behind the Library, still showing its error until it is opened again.
+    expect(screen.getByTestId("error-screen")).not.toBeVisible();
+    expect(screen.getByText(/Nothing imported yet/i)).toBeVisible();
     expect(screen.getByTestId("player-bar-probe")).toBeInTheDocument();
   });
 });

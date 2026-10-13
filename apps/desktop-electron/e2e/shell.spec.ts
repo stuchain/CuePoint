@@ -60,7 +60,7 @@ function launch(userDataDir: string): Promise<ElectronApplication> {
 async function dismissOnboarding(window: Page): Promise<void> {
   await window.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
   await window.reload();
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
 }
 
 test.describe("Application shell navigation", () => {
@@ -80,7 +80,7 @@ test.describe("Application shell navigation", () => {
       const window = await app.firstWindow({ timeout: 60_000 });
       // Attachment, not visibility: on a first run the onboarding dialog covers
       // the screen, and what failed before was that no screen existed at all.
-      await expect(window.locator("main.app-main .screen")).toBeAttached({ timeout: 30_000 });
+      await expect(window.locator("main.app-main .screen:visible")).toBeAttached({ timeout: 30_000 });
       // With nothing remembered, home is the Library (DEC-100), not Tools'
       // landing page.
       await expect(
@@ -353,7 +353,7 @@ test.describe("Application shell navigation", () => {
       const first = await launch(userDataDir);
       try {
         const window = await first.firstWindow({ timeout: 60_000 });
-        await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+        await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
         await window.evaluate((id) => {
           ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1"));
           localStorage.setItem("cuepoint-ui-shell-last-destination", id);
@@ -368,7 +368,7 @@ test.describe("Application shell navigation", () => {
         await expect
           .poll(() => new URL(window.url()).hash, { timeout: 30_000 })
           .toBe(hash);
-        await expect(window.locator("main.app-main .screen")).toBeAttached();
+        await expect(window.locator("main.app-main .screen:visible")).toBeAttached();
       } finally {
         await second.close();
       }

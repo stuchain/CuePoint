@@ -66,7 +66,7 @@ async function ready(app: ElectronApplication): Promise<Page> {
     ),
   );
   await window.reload();
-  await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
+  await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
   await waitForEngine(window);
   return window;
 }
@@ -257,7 +257,7 @@ test.describe("The Your library section (STATS-06)", () => {
         "2 tracks in 1 playlist",
         { timeout: 30_000 },
       );
-      await expect(window.getByText("No Beatport key: 1")).toBeVisible();
+      await expect(window.getByRole("button", { name: "No Beatport key: 1" })).toBeVisible();
       await expect(window.locator(".keys-page__wheel strong")).toHaveText("1");
     } finally {
       await app.close();
