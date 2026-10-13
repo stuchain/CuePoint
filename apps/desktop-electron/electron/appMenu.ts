@@ -41,6 +41,8 @@ export const MENU_COMMAND_IDS = [
 export interface SizeOption {
   value: number;
   label: string;
+  /** Too big for the screen (R2-5): shown greyed, and not clickable. */
+  disabled?: boolean;
 }
 
 export interface SizeState {
@@ -66,10 +68,18 @@ export function parseSizeState(value: unknown): SizeState | null {
   for (const option of options) {
     if (kept.length >= MAX_SIZE_OPTIONS) break;
     if (!option || typeof option !== "object") continue;
-    const { value: size, label } = option as { value?: unknown; label?: unknown };
+    const {
+      value: size,
+      label,
+      disabled,
+    } = option as { value?: unknown; label?: unknown; disabled?: unknown };
     if (typeof size !== "number" || !Number.isFinite(size)) continue;
     if (typeof label !== "string" || label.trim() === "") continue;
-    kept.push({ value: size, label: label.slice(0, MAX_LABEL_LENGTH) });
+    kept.push({
+      value: size,
+      label: label.slice(0, MAX_LABEL_LENGTH),
+      ...(disabled === true ? { disabled: true } : {}),
+    });
   }
   if (kept.length === 0 && options.length > 0) return null;
   return { options: kept, current };
@@ -108,6 +118,7 @@ export function buildMenuTemplate({
     label: option.label,
     type: "radio" as const,
     checked: option.value === size.current,
+    enabled: !option.disabled,
     click: () => send(`size:${option.value}`),
   }));
 
@@ -252,7 +263,9 @@ export function installAppMenu({ Menu: menus, getWindow, platform, packaged }: I
         next.options.length === size.options.length &&
         next.options.every(
           (option, at) =>
-            option.value === size.options[at]!.value && option.label === size.options[at]!.label,
+            option.value === size.options[at]!.value &&
+            option.label === size.options[at]!.label &&
+            (option.disabled ?? false) === (size.options[at]!.disabled ?? false),
         );
       if (same) return;
       size = next;

@@ -78,7 +78,7 @@ function launch(userDataDir: string, dsn: string | null): Promise<ElectronApplic
 
 async function ready(window: Page): Promise<void> {
   // Dismissing onboarding through storage keeps the dialog's backdrop out of the way.
-  await window.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
+  await window.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
   await window.reload();
   await window.locator("main.app-main .screen").waitFor({ timeout: 30_000 });
 }

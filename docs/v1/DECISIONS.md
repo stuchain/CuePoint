@@ -7300,3 +7300,29 @@ were typed characters (×, ▸), and the app had no small button or sub-tab look
 **Rejected**: G6 moving all seven pages at the end (a second pass over pages others just rebuilt).
 
 **Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13
+
+## DEC-256 — A Compact Size, and a First Size That Fits the Screen
+
+**Status**: Approved · **Related**: DEC-161, DEC-207, R2-5
+
+**Context**: The smallest comfortable size was 1.5×, which on a laptop screen 768–860 px tall leaves
+only a few rows in the Library; 1× is too small to read for long. Every size was offered on every
+screen, even ones that left no room for the table.
+
+**Decision**:
+- A fifth size, **Compact (1.25×)**, between Small and Medium. Bigger and Smaller step through it.
+- Every length stays whole pixels at 1.25× (DEC-161): `--space-sm`, `--border-width`, `--bevel-size`,
+  `--focus-ring-width` and the shadow offsets are rounded at their definitions; icons stay at 24 px
+  (2 px cells) at 1.25×. Values at the other four sizes are unchanged.
+- A fresh install opens at the size suggested for the screen: Compact when the screen is under 860 px
+  tall, else Medium, stepping down while that size would be too big. Only when no size is stored and
+  the first-run guide is not finished; anyone updating keeps their size (★ Q1).
+- A size is greyed in Settings (with the reason) and in View → Size when the screen's height divided
+  by it is under 560 px. The current size is never greyed; Bigger and Smaller skip greyed sizes.
+
+**Rejected**: giving the screen-based size to everyone who never picked one (their app would change
+size after an update); a live row count (it would flip while a window is resized).
+
+**Amends**: DEC-161 (five sizes). **Notes**: DEC-207 (the update note's size line is unchanged).
+
+**Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13

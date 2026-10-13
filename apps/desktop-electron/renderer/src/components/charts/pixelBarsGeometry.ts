@@ -74,7 +74,7 @@ export interface BarsLayoutInput {
   width: number;
   /** Vertical only: the chart's height in pixels. Horizontal charts are as tall as their rows. */
   height: number;
-  /** The app's scale: 1, 1.5, 2 or 3. */
+  /** The app's scale: 1, 1.25, 1.5, 2 or 3. */
   scale: number;
 }
 

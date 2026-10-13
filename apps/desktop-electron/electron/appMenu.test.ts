@@ -19,6 +19,7 @@ import {
 const SIZES: SizeState = {
   options: [
     { value: 1, label: "Small (1×)" },
+    { value: 1.25, label: "Compact (1.25×)" },
     { value: 1.5, label: "Medium (1.5×) — default" },
     { value: 2, label: "Large (2×)" },
     { value: 3, label: "Extra large (3×)" },
@@ -140,8 +141,8 @@ describe("View: size, panels, Settings", () => {
     const radios = submenu(size);
     expect(radios.map(labelOf)).toEqual(SIZES.options.map((option) => option.label));
     expect(radios.every((item) => item.type === "radio")).toBe(true);
-    expect(radios.map((item) => item.checked)).toEqual([false, true, false, false]);
-    expect(radios.map((item) => item.id)).toEqual(["size:1", "size:1.5", "size:2", "size:3"]);
+    expect(radios.map((item) => item.checked)).toEqual([false, false, true, false, false]);
+    expect(radios.map((item) => item.id)).toEqual(["size:1", "size:1.25", "size:1.5", "size:2", "size:3"]);
   });
 
   it("ticks another size when the current one changes, and follows added options", () => {
@@ -152,8 +153,41 @@ describe("View: size, panels, Settings", () => {
     const { items } = template("linux", { size: next });
     const size = submenu(top(items, "View")).find((item) => item.label === "Size")!;
     const radios = submenu(size);
-    expect(radios).toHaveLength(5);
+    expect(radios).toHaveLength(6);
     expect(radios.filter((item) => item.checked).map((item) => item.id)).toEqual(["size:2"]);
+  });
+
+  it("greys a size that is too big for the screen, and leaves the others enabled", () => {
+    const size: SizeState = {
+      options: [
+        { value: 1, label: "Small (1×)" },
+        { value: 2, label: "Large (2×)", disabled: true },
+      ],
+      current: 1,
+    };
+    const { items } = template("linux", { size });
+    const radios = submenu(submenu(top(items, "View")).find((item) => item.label === "Size")!);
+    expect(radios.map((item) => item.enabled)).toEqual([true, false]);
+  });
+
+  it("parses a disabled flag, and drops anything but true", () => {
+    expect(
+      parseSizeState({
+        current: 1,
+        options: [
+          { value: 1, label: "a", disabled: false },
+          { value: 2, label: "b", disabled: true },
+          { value: 3, label: "c", disabled: "yes" },
+        ],
+      }),
+    ).toEqual({
+      current: 1,
+      options: [
+        { value: 1, label: "a" },
+        { value: 2, label: "b", disabled: true },
+        { value: 3, label: "c" },
+      ],
+    });
   });
 
   it("sends size:<value> for a picked size", () => {

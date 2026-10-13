@@ -1,10 +1,11 @@
 /**
- * The four sizes in the running app (PAGES-14, DEC-161).
+ * The five sizes in the running app (PAGES-14, DEC-161).
  *
- * A fresh profile opens at 1.5×. At 1.5× no border width or shadow length on the
- * Library or Settings is fractional (the pixel style stays sharp). In the
- * default 1,280 × 800 window nothing scrolls sideways at any of the four sizes,
- * and the Library's table rows are the size's `--row-height` (33, 50, 66 and 99
+ * A fresh profile opens at the size its screen suggests (1.25× under 860 px of height,
+ * else 1.5×; Small where even 1.25× is too big). At 1.25× and 1.5× no border width or
+ * shadow length on the Library or Settings is fractional (the pixel style stays sharp).
+ * In the default 1,280 × 800 window nothing scrolls sideways at any of the five sizes,
+ * and the Library's table rows are the size's `--row-height` (33, 41, 50, 66 and 99
  * pixels), the header's height too, with no cell's text cut.
  *
  * Sizes are applied the way someone applies them: the stored value, then a reload.
@@ -26,6 +27,7 @@ const TONE = path.join(REPO_ROOT, "src", "tests", "fixtures", "audio", "tone.mp3
 
 const SIZES = [
   { scale: 1, row: 33 },
+  { scale: 1.25, row: 41 },
   { scale: 1.5, row: 50 },
   { scale: 2, row: 66 },
   { scale: 3, row: 99 },
@@ -140,21 +142,22 @@ test.describe("the sizes (PAGES-14)", () => {
     for (const dir of [userDataDir, cuepointHome, workspace]) rmSync(dir, { recursive: true, force: true });
   });
 
-  test("opens at 1.5×, lands on whole pixels, fits at every size, and sizes the rows", async () => {
+  test("opens at its screen's size, lands on whole pixels, fits at every size, and sizes the rows", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const win = await app.firstWindow({ timeout: 60_000 });
       await waitForEngine(win);
 
-      // --- a fresh profile opens at 1.5× --------------------------------------
+      // --- a fresh profile opens at the size its screen suggests (R2-5) --------
       await win.waitForSelector(".app-shell", { timeout: 30_000 });
-      expect(await win.evaluate((key) => localStorage.getItem(key), STORAGE_KEY), "nothing chosen yet").toBeNull();
+      const suggested = await win.evaluate(() => (screen.availHeight < 860 ? "1.25" : "1.5"));
+      expect(await win.evaluate((key) => localStorage.getItem(key), STORAGE_KEY), "the suggested size is stored").toBe(suggested);
       expect(
         await win.evaluate(() => ({
           attribute: document.documentElement.dataset.scale,
           scale: getComputedStyle(document.documentElement).getPropertyValue("--scale").trim(),
         })),
-      ).toEqual({ attribute: "1.5", scale: "1.5" });
+      ).toEqual({ attribute: suggested, scale: suggested });
 
       await win.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
       const started = await win.evaluate(
@@ -166,15 +169,17 @@ test.describe("the sizes (PAGES-14)", () => {
         1280, 800,
       ]);
 
-      // --- no fractional border or shadow at 1.5×, on the Library and Settings -
-      await openAt(win, 1.5);
-      await win.getByRole("link", { name: "Library", exact: true }).click();
-      await expect(win.getByRole("table", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
-      await expect(win.locator(".library-screen .track-table__row").first()).toBeVisible({ timeout: 30_000 });
-      expect(await fractionalEdges(win), "Library: borders and shadows at 1.5×").toEqual([]);
-      await win.getByRole("link", { name: "Settings" }).click();
-      await expect(win.getByLabel("Size of text and controls")).toBeVisible({ timeout: 30_000 });
-      expect(await fractionalEdges(win), "Settings: borders and shadows at 1.5×").toEqual([]);
+      // --- no fractional border or shadow at 1.25× and 1.5×, on the Library and Settings
+      for (const edgeScale of [1.25, 1.5]) {
+        await openAt(win, edgeScale);
+        await win.getByRole("link", { name: "Library", exact: true }).click();
+        await expect(win.getByRole("table", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
+        await expect(win.locator(".library-screen .track-table__row").first()).toBeVisible({ timeout: 30_000 });
+        expect(await fractionalEdges(win), `Library: borders and shadows at ${edgeScale}×`).toEqual([]);
+        await win.getByRole("link", { name: "Settings" }).click();
+        await expect(win.getByLabel("Size of text and controls")).toBeVisible({ timeout: 30_000 });
+        expect(await fractionalEdges(win), `Settings: borders and shadows at ${edgeScale}×`).toEqual([]);
+      }
 
       // --- every size: nothing sideways, rows as tall as the size says --------
       // In the window as it opens, then in the page a Windows window leaves (1,264 × 735).

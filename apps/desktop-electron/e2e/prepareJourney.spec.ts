@@ -186,7 +186,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
     try {
       let win = await app.firstWindow({ timeout: 60_000 });
       await waitForEngine(win);
-      await win.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
+      await win.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
 
       // --- the library and a Collection with a repeat, through the bridge ------
       const xml = writeLibrary(workspace);
@@ -486,7 +486,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
     try {
       const win = await app.firstWindow({ timeout: 60_000 });
       await waitForEngine(win);
-      await win.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
+      await win.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
       const xml = writeLibrary(workspace);
       const started = await win.evaluate((file) => (window as never as Bridge).cuepoint.startLibraryImport({ xml_path: file }), xml);
       await finished(win, started.job_id);

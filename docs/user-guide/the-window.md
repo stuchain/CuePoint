@@ -121,8 +121,8 @@ the small Help menu CuePoint used to draw inside the window.
   and on a Collection's or Set's own bar, because a menu item has no scope.
 - **Edit**: **Undo**, **Redo**, **Cut**, **Copy**, **Paste** and **Select all**, so
   copying and pasting work in every text field, including the Beatport token.
-- **View**: **Size** (Small, Medium, Large and Extra large, with the one in use
-  ticked), **Bigger** (**Ctrl+=**), **Smaller** (**Ctrl+-**), **Default size**
+- **View**: **Size** (Small, Compact, Medium, Large and Extra large, with the one in use
+  ticked; a size too big for your screen is greyed), **Bigger** (**Ctrl+=**), **Smaller** (**Ctrl+-**), **Default size**
   (**Ctrl+0**), **Track details**, **Sidebar**, and, on Windows and Linux,
   **Settings...** (**Ctrl+,**). These keys change the Size setting, the same one as
   Settings → Appearance; they never zoom the page.
@@ -321,10 +321,16 @@ Here is where each kind shows:
 **Neo dark**, **Retro 16-bit**, **Classic**, **Club neon** or **Muted**, or a
 custom theme you made: **Create custom theme…** asks for nine colors, and the
 borders are made from them. **Delete** asks first. **Size of text and
-controls** is **Small (1×)**, **Medium (1.5×)** (the default), **Large (2×)** or
-**Extra large (3×)**. Table rows are as tall as the size says, so the text in
-them is never cut. If you chose a size before, CuePoint keeps it; if you never
-did, it opens at Medium.
+controls** is **Small (1×)**, **Compact (1.25×)**, **Medium (1.5×)** (the default),
+**Large (2×)** or **Extra large (3×)**. Table rows are as tall as the size says, so
+the text in them is never cut. A size that would leave too little room for the
+Library on your screen is greyed: in Settings the reason is written under the
+choice, and in View → Size the size is simply greyed. The size you are using is
+never greyed. The size that suits your screen is marked "suggested for this
+screen". A new install opens at Compact on a screen shorter than 860 pixels and
+at Medium otherwise (at Small if Compact would be too big too). If you chose a size
+before, or you updated from an earlier version, CuePoint keeps it, and opens at
+Medium if you never chose one.
 
 **Reset to defaults** sets Neo dark at the default size after asking, and the
 message that follows has **Undo**. Your custom themes are kept.

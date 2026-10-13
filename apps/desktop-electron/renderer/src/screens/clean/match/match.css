@@ -228,7 +228,7 @@
 .match-card__rows {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-xs) / 2);
+  gap: round(down, calc(var(--space-xs) / 2), 1px);
   width: 100%;
   margin: 0 0 var(--space-xs);
 }

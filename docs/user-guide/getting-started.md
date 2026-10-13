@@ -18,6 +18,8 @@ This is the only time you need to do that. After the first install, CuePoint fin
 
 CuePoint opens with a short guide of five screens: what CuePoint does, how to get your collection out of Rekordbox (**Show me how**), how to import it (**Import your Rekordbox collection...** closes the guide and starts the import), how to match your tracks on Beatport (**Match tracks...** opens Clean's match window), and where everything is. Clicking outside the guide does not close it. **Skip** ends it, and **Esc** or the close button closes it for now and shows it again at the next start. Open it again, always from its first screen, with **Help > Getting started**.
 
+On a new install CuePoint also picks a size for your screen: Compact (1.25×) on a screen shorter than 860 pixels, Medium (1.5×) otherwise. Change it in **Settings > Appearance** or **View > Size**.
+
 The Library also shows **First steps**, a checklist that ticks itself: import your collection, match your tracks, play a track, and add your Beatport token. Before you import it is listed on the page. After you import, it is a small **First steps 2/4** chip beside the Library heading; click it to see the list (with **Match tracks...**), and press **Esc** or click elsewhere to close it. Once all four are done it never shows again.
 
 If you updated from an earlier version, CuePoint shows one note the first time you start it, **What changed**. It says that CuePoint is now Medium size (1.5×) with **Change size** (only if you never chose a size), and that keys now come only from Beatport, with how many of your tracks have a key and **Match tracks...**. It does not appear again.

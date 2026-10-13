@@ -9,15 +9,27 @@ import { MENU_COMMAND_IDS, sizeAfterCommand } from "./menuCommands";
 
 describe("sizeAfterCommand", () => {
   it("steps to the next larger size, and stops at the largest", () => {
-    expect(sizeAfterCommand("size-bigger", 1)).toBe(1.5);
+    expect(sizeAfterCommand("size-bigger", 1)).toBe(1.25);
+    expect(sizeAfterCommand("size-bigger", 1.25)).toBe(1.5);
     expect(sizeAfterCommand("size-bigger", 1.5)).toBe(2);
     expect(sizeAfterCommand("size-bigger", 2)).toBe(3);
     expect(sizeAfterCommand("size-bigger", 3)).toBe(3);
   });
 
+  it("skips a size too big for the screen when stepping up, and stays at the end", () => {
+    // 700 / 1.5 = 466 < 560, and 700 / 1.25 = 560 is just enough.
+    expect(sizeAfterCommand("size-bigger", 1, 700)).toBe(1.25);
+    expect(sizeAfterCommand("size-bigger", 1.25, 700)).toBe(1.25);
+    // 1000 / 2 = 500 is too big, 1000 / 1.5 is not.
+    expect(sizeAfterCommand("size-bigger", 1.5, 1000)).toBe(1.5);
+    expect(sizeAfterCommand("size-bigger", 1.25, 1000)).toBe(1.5);
+    expect(sizeAfterCommand("size-bigger", 1.5, 1200)).toBe(2);
+  });
+
   it("steps to the next smaller size, and stops at the smallest", () => {
     expect(sizeAfterCommand("size-smaller", 3)).toBe(2);
-    expect(sizeAfterCommand("size-smaller", 1.5)).toBe(1);
+    expect(sizeAfterCommand("size-smaller", 1.5)).toBe(1.25);
+    expect(sizeAfterCommand("size-smaller", 1.25)).toBe(1);
     expect(sizeAfterCommand("size-smaller", 1)).toBe(1);
   });
 
@@ -32,7 +44,7 @@ describe("sizeAfterCommand", () => {
     }
   });
 
-  it.each(["size:7", "size:", "size:abc", "size:1.25", "settings", "", "size-huge"])(
+  it.each(["size:7", "size:", "size:abc", "size:1.75", "settings", "", "size-huge"])(
     "answers null to %j: no size changes",
     (command) => {
       expect(sizeAfterCommand(command, 1.5)).toBeNull();

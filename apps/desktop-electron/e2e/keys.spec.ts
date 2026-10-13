@@ -76,7 +76,7 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
       BrowserWindow.getAllWindows()[0]?.setSize(1440, 900);
     });
     await win.evaluate(() => {
-      localStorage.setItem("cuepoint-onboarding-complete", "1");
+      (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale"));
       localStorage.setItem("cuepoint-phase14-note-seen", "1");
     });
     await win.reload();

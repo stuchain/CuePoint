@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { barsLayout, type BarsLayout, type PixelBucket } from "./pixelBarsGeometry";
 
-const SCALES = [1, 1.5, 2, 3] as const;
+const SCALES = [1, 1.25, 1.5, 2, 3] as const;
 
 const NAMED: PixelBucket[] = [
   { label: "Techno", count: 400 },

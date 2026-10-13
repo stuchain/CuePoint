@@ -476,7 +476,7 @@
   gap: var(--space-xs);
   align-items: baseline;
   padding: calc(2px * var(--scale)) 0;
-  border-left: calc(2px * var(--scale)) solid transparent;
+  border-left: round(down, calc(2px * var(--scale)), 1px) solid transparent;
   padding-left: var(--space-xs);
   font-size: var(--font-size-xs);
 }
@@ -637,7 +637,7 @@
   gap: var(--space-xs);
   margin-top: var(--space-sm);
   padding: var(--space-xs);
-  border-left: calc(2px * var(--scale)) solid var(--accent-info);
+  border-left: round(down, calc(2px * var(--scale)), 1px) solid var(--accent-info);
 }
 
 .cp-track-history__writes--unfinished {
@@ -666,7 +666,7 @@
   flex: 1 1 auto;
   min-width: 0;
   min-height: var(--control-height);
-  padding: 0 calc(var(--space-xs) / 2);
+  padding: 0 round(down, calc(var(--space-xs) / 2), 1px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

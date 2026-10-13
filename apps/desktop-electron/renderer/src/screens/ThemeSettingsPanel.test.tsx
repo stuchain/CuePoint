@@ -90,6 +90,7 @@ describe("size of text and controls", () => {
     const options = within(size()).getAllByRole("option");
     expect(options.map((o) => (o as HTMLOptionElement).value)).toEqual(SCALE_OPTIONS.map(String));
     expect(options.map((o) => o.textContent)).toEqual(SCALE_OPTIONS.map(scaleOptionLabel));
+    expect(scaleOptionLabel(1.25)).toBe("Compact (1.25×)");
   });
 
   it("words the sizes, marking the default", () => {
@@ -109,16 +110,47 @@ describe("size of text and controls", () => {
     expect(screen.queryByText(/snap to whole pixels/)).toBeNull();
   });
 
-  it("offers four sizes in order, with 1.5 selected by default", () => {
+  it("offers five sizes in order, with 1.5 selected by default", () => {
     renderPanel();
     const options = within(size()).getAllByRole("option") as HTMLOptionElement[];
     expect(options.map((o) => o.textContent)).toEqual([
       "Small (1×)",
+      "Compact (1.25×)",
       "Medium (1.5×) — default",
       "Large (2×)",
       "Extra large (3×)",
     ]);
     expect(size()).toHaveValue("1.5");
+  });
+
+  describe("on a screen too short for the big sizes (R2-5)", () => {
+    afterEach(() => {
+      Object.defineProperty(window.screen, "availHeight", { value: 0, configurable: true });
+    });
+
+    it("greys the sizes that are too big, gives the reason, and marks the suggested one", () => {
+      Object.defineProperty(window.screen, "availHeight", { value: 768, configurable: true });
+      renderPanel();
+      const option = (name: RegExp) => within(size()).getByRole("option", { name }) as HTMLOptionElement;
+      // 768 / 1.5 = 512 < 560, 768 / 1.25 = 614.
+      expect(option(/^Small/).disabled).toBe(false);
+      expect(option(/^Compact/).disabled).toBe(false);
+      expect(option(/^Compact/).textContent).toContain("suggested for this screen");
+      expect(option(/^Medium/).disabled).toBe(true);
+      expect(option(/^Large/).disabled).toBe(true);
+      expect(option(/^Extra large/).disabled).toBe(true);
+      expect(screen.getByText(/Medium, Large and Extra large are too big for this screen/)).toBeInTheDocument();
+    });
+
+    it("never greys the size in use", () => {
+      Object.defineProperty(window.screen, "availHeight", { value: 768, configurable: true });
+      localStorage.setItem("cuepoint-ui-lab-scale", "2");
+      renderPanel();
+      const option = (name: RegExp) => within(size()).getByRole("option", { name }) as HTMLOptionElement;
+      expect(size()).toHaveValue("2");
+      expect(option(/^Large/).disabled).toBe(false);
+      expect(option(/^Extra large/).disabled).toBe(true);
+    });
   });
 
   it("sets --scale and data-scale to 1.5 when 1.5 is chosen", async () => {

@@ -331,7 +331,7 @@
 .discover-scope {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-xs) / 2);
+  gap: round(down, calc(var(--space-xs) / 2), 1px);
   max-height: calc(200px * var(--scale));
   margin: 0;
   padding: 0;

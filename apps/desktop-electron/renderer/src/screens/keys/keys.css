@@ -221,7 +221,7 @@
 
 .keys-counts__row:focus-visible {
   outline: var(--border-width) solid var(--fg-primary);
-  outline-offset: calc(-2px * var(--scale));
+  outline-offset: round(up, calc(-2px * var(--scale)), 1px);
 }
 
 .keys-counts__code {

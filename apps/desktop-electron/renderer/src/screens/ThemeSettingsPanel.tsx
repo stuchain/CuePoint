@@ -8,7 +8,7 @@ import {
   type CustomThemeColors,
 } from "../tokens/customThemes";
 import { useScale } from "../tokens/ScaleContext";
-import { DEFAULT_SCALE, scaleOptionLabel, type ScaleFactor } from "../tokens/scale";
+import { DEFAULT_SCALE, scaleChoices, scaleName, screenAvailHeight, type ScaleFactor } from "../tokens/scale";
 import { DEFAULT_THEME, isCustomThemeId, type ThemeId } from "../tokens/theme";
 import { useTheme } from "../tokens/ThemeContext";
 import { ResetToDefaults } from "./ResetToDefaults";
@@ -51,6 +51,15 @@ function ColorField({
 
 /** The size control's id: what the update note's Change size focuses (DEC-207). */
 export const SIZE_FIELD_ID = "settings-ui-size";
+const SIZE_HINT_ID = "settings-ui-size-hint";
+
+/** "Large is too big" / "Large and Extra large are too big" / "Large, Huge and Extra large are too big". */
+function tooBigNames(values: number[]): string {
+  const names = values.map((value) => scaleName(value));
+  const list =
+    names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names[0]!;
+  return `${list} ${names.length > 1 ? "are" : "is"} too big`;
+}
 
 export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?: string | null } = {}) {
   const {
@@ -63,7 +72,9 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
     previewCustomColors,
     endPreview,
   } = useTheme();
-  const { scale, setScale, scaleOptions } = useScale();
+  const { scale, setScale } = useScale();
+  const sizes = scaleChoices(scale, screenAvailHeight());
+  const tooBig = sizes.filter((size) => size.disabled);
   const [saved, markSaved] = useSavedSignal();
   // A link that asks for the size control gets it scrolled into view and focused, once.
   const focusedFor = useRef<string | null>(null);
@@ -176,11 +187,19 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
             setScale(Number(e.target.value) as ScaleFactor);
             markSaved();
           }}
-          options={scaleOptions.map((option) => ({
-            value: String(option),
-            label: scaleOptionLabel(option),
+          aria-describedby={tooBig.length > 0 ? SIZE_HINT_ID : undefined}
+          options={sizes.map((option) => ({
+            value: String(option.value),
+            label: option.label,
+            disabled: option.disabled,
           }))}
         />
+        {tooBig.length > 0 ? (
+          <p id={SIZE_HINT_ID} className="theme-settings__hint">
+            {tooBigNames(tooBig.map((size) => size.value))} for this screen: not enough rows would
+            fit in the Library.
+          </p>
+        ) : null}
 
         <div className="theme-settings__actions">
           <Button variant="primary" onClick={openCreate}>

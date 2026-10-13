@@ -394,7 +394,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     win = await app.firstWindow({ timeout: 60_000 });
     await waitForEngine(win);
     await win.evaluate(() => {
-      localStorage.setItem("cuepoint-onboarding-complete", "1");
+      (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale"));
       localStorage.setItem("cuepoint-phase14-note-seen", "1");
       localStorage.setItem("cuepoint-first-steps-done", "1");
     });
@@ -929,7 +929,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     win = await app.firstWindow({ timeout: 60_000 });
     await waitForEngine(win);
     await win.evaluate(() => {
-      localStorage.setItem("cuepoint-onboarding-complete", "1");
+      (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale"));
       localStorage.setItem("cuepoint-phase14-note-seen", "1");
       localStorage.setItem("cuepoint-first-steps-done", "1");
     });

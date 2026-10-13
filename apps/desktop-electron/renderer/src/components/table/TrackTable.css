@@ -302,11 +302,11 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
  * what a drop onto a Collection means and not what this does.
  */
 .track-table__row--drop-before {
-  box-shadow: inset 0 calc(2px * var(--scale)) 0 0 var(--accent-primary);
+  box-shadow: inset 0 round(down, calc(2px * var(--scale)), 1px) 0 0 var(--accent-primary);
 }
 
 .track-table__row--drop-after {
-  box-shadow: inset 0 calc(-2px * var(--scale)) 0 0 var(--accent-primary);
+  box-shadow: inset 0 round(up, calc(-2px * var(--scale)), 1px) 0 0 var(--accent-primary);
 }
 
 /* An insertion line at the end of a chapter's heading says whose start it is. */
@@ -348,7 +348,7 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
   align-items: center;
   justify-content: center;
   padding: var(--space-lg);
-  border: calc(2px * var(--scale)) dashed var(--accent-primary);
+  border: round(down, calc(2px * var(--scale)), 1px) dashed var(--accent-primary);
   color: var(--accent-primary);
   font-family: var(--font-pixel);
   font-size: var(--font-size-sm);

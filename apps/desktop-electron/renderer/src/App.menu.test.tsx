@@ -167,6 +167,7 @@ describe("size", () => {
     expect(first.current).toBe(1.5);
     expect(first.options).toEqual([
       { value: 1, label: "Small (1×)" },
+      { value: 1.25, label: "Compact (1.25×)" },
       { value: 1.5, label: "Medium (1.5×) — default" },
       { value: 2, label: "Large (2×)" },
       { value: 3, label: "Extra large (3×)" },
@@ -178,6 +179,7 @@ describe("size", () => {
     command("size-bigger");
     await waitFor(() => expect(scale()).toBe("2"));
     expect(lastReported().current).toBe(2);
+    command("size-smaller");
     command("size-smaller");
     command("size-smaller");
     await waitFor(() => expect(scale()).toBe("1"));
@@ -194,8 +196,8 @@ describe("size", () => {
       send("size-smaller");
       send("size-smaller");
     });
-    await waitFor(() => expect(scale()).toBe("1"));
-    expect(lastReported().current).toBe(1);
+    await waitFor(() => expect(scale()).toBe("1.25"));
+    expect(lastReported().current).toBe(1.25);
   });
 
   it("sets a size by value and returns to the default", async () => {

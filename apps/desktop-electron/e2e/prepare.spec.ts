@@ -302,7 +302,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
     try {
       const win = await app.firstWindow({ timeout: 60_000 });
       await waitForEngine(win);
-      await win.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
+      await win.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
       // PAGES-12: every kind of motion is on (no stored overrides, the system not asking for less),
       // so a double-click to play and a shift-click range are proved with the motion in place.
       await win.emulateMedia({ reducedMotion: "no-preference" });

@@ -120,7 +120,7 @@ describe("the grid of scale pixels", () => {
     });
   });
 
-  it.each([1, 1.5, 2, 3])("heights snap to whole scale pixels at scale %f", (scale) => {
+  it.each([1, 1.25, 1.5, 2, 3])("heights snap to whole scale pixels at scale %f", (scale) => {
     const data = picture(Array.from({ length: 50 }, (_, i) => [i * 5, i * 5, i * 3, i]));
     for (const ratio of [1, 2, 1.25]) {
       const layout = layoutWaveform(input({ data, scale, devicePixelRatio: ratio, cssHeight: 47 }));
@@ -149,7 +149,7 @@ describe("the grid of scale pixels", () => {
     // 1.5 device pixels per CSS pixel at scale 2: a unit of 3, so 100 columns.
     expect(requestWidth(200, 2, 1.5)).toBe(112);
     for (const css of [48, 120, 333, 999, 2_400]) {
-      for (const scale of [1, 1.5, 2, 3]) {
+      for (const scale of [1, 1.25, 1.5, 2, 3]) {
         for (const ratio of [1, 1.25, 2]) {
           const width = requestWidth(css, scale, ratio);
           expect(width % 16).toBe(0);

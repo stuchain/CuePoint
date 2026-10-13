@@ -30,7 +30,7 @@ function findFractionalSizes(css: string): number[] {
   return lines;
 }
 
-const SIZES = [1, 1.5, 2, 3];
+const SIZES = [1, 1.25, 1.5, 2, 3];
 
 /** Evaluate a `calc()` body built from `--unit`, the spacing tokens and `--scale`; null when it holds anything else (vw, %, em). */
 function valueAt(body: string, scale: number): number | null {
@@ -92,15 +92,15 @@ describe("spacing tokens times or over a number", () => {
       ".a { padding: calc(var(--space-xs) / 4); }",
       ".b { padding: round(down, calc(var(--space-xs) / 4), 1px); }",
       ".c { gap: calc(var(--space-xs) * 2 / 3); }",
-      ".d { gap: calc(var(--unit) * 1.5); }",
-      ".e { gap: calc(var(--space-xs) / 2); }",
+      ".d { gap: calc(var(--unit) * 2); }",
+      ".e { gap: calc(var(--space-xs) * 2); }",
       ".f { width: calc(var(--unit) * 70); }",
       ".g { width: min(calc(var(--unit) * 120), calc(100vw - var(--space-lg))); }",
     ].join("\n");
     expect(findFractionalSpacing(fixture)).toEqual([1, 3]);
   });
 
-  it("is whole in every stylesheet at 1×, 1.5×, 2× and 3×", () => {
+  it("is whole in every stylesheet at 1×, 1.25×, 1.5×, 2× and 3×", () => {
     const found = Object.entries(sheets).flatMap(([file, css]) =>
       findFractionalSpacing(css).map((line) => `${file}:${line}`),
     );

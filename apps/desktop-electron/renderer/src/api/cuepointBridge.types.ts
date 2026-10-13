@@ -328,8 +328,8 @@ export interface AppBuildInfo {
 }
 
 export interface MenuSizeState {
-  /** The sizes View → Size offers, in order, each with its words (`scaleOptionLabel`). */
-  options: ReadonlyArray<{ value: number; label: string }>;
+  /** The sizes View → Size offers, in order, each with its words (`scaleChoices`); `disabled` greys a size too big for the screen (R2-5). */
+  options: ReadonlyArray<{ value: number; label: string; disabled?: boolean }>;
   /** The size in use now, one of `options`. */
   current: number;
 }

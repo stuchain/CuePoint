@@ -11,7 +11,8 @@ import {
   DEFAULT_SCALE,
   SCALE_OPTIONS,
   initScale,
-  scaleOptionLabel,
+  scaleChoices,
+  screenAvailHeight,
   setStoredScale,
   type ScaleFactor,
 } from "./scale";
@@ -34,9 +35,15 @@ export function ScaleProvider({ children }: { children: ReactNode }) {
 
   // View → Size in the native menu shows these options with the current one ticked (FLW-20),
   // so main is told whenever the size changes, and once at start.
+  // The greyed state is computed on a scale change only: the rule reads the screen, not the window.
   useEffect(() => {
     const told = window.cuepoint?.menu?.setSizeState({
-      options: SCALE_OPTIONS.map((value) => ({ value, label: scaleOptionLabel(value) })),
+      options: scaleChoices(scale, screenAvailHeight()).map(({ value, label, disabled }) => ({
+        value,
+        label,
+        // Optional, so only a size that is too big for the screen carries it.
+        ...(disabled ? { disabled: true } : {}),
+      })),
       current: scale,
     });
     void Promise.resolve(told).catch(() => undefined);

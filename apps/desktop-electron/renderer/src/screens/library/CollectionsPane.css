@@ -71,8 +71,8 @@
 .cp-collections__create {
   display: flex;
   flex-wrap: wrap;
-  gap: calc(var(--space-xs) / 2) var(--space-xs);
-  padding: calc(var(--space-xs) / 2) var(--space-xs);
+  gap: round(down, calc(var(--space-xs) / 2), 1px) var(--space-xs);
+  padding: round(down, calc(var(--space-xs) / 2), 1px) var(--space-xs);
 }
 
 /* The section's heading is a line, not a band, unlike the Playlists heading's
@@ -80,7 +80,7 @@
    menu bar inside 1,280 × 800) the sixth node needs the height back, and matching
    it gives up 2 × (var(--space-sm) - var(--space-xs) / 2) = 12px at 1.5×. */
 .cp-collections .cp-playlist-pane__head {
-  padding-block: calc(var(--space-xs) / 2);
+  padding-block: round(down, calc(var(--space-xs) / 2), 1px);
 }
 
 .cp-collections__create {
@@ -135,11 +135,11 @@
 .cp-collections__bar {
   display: flex;
   flex-wrap: wrap;
-  gap: calc(var(--space-xs) / 2);
+  gap: round(down, calc(var(--space-xs) / 2), 1px);
   /* Side padding is a quarter step, in whole pixels (1px at 1.5×, where 1.5px
      would blur): Rename and Duplicate share a line in the ~156px a 1,264-wide
      Windows window leaves the pane, with a few px over (the bar gains 1px). */
-  padding: calc(var(--space-xs) / 2) round(down, calc(var(--space-xs) / 4), 1px);
+  padding: round(down, calc(var(--space-xs) / 2), 1px) round(down, calc(var(--space-xs) / 4), 1px);
   border-top: var(--hairline) solid var(--border-muted);
 }
 
@@ -214,7 +214,7 @@
    ~156px inside its scrollbar, and a font a little wider than the one measured
    here (Windows, macOS) pushed the pane 1px sideways (organization e2e). */
 .cp-collections .cp-playlist-pane__row {
-  gap: calc(var(--space-xs) / 2);
+  gap: round(down, calc(var(--space-xs) / 2), 1px);
   padding: 0 var(--space-xs);
 }
 

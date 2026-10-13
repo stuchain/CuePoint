@@ -35,7 +35,7 @@ function launch(userDataDir: string): Promise<ElectronApplication> {
 /** Dismisses onboarding, optionally stores motion switches, and opens Settings. */
 async function openSettings(window: Page, motion?: Record<string, boolean>): Promise<void> {
   await window.evaluate((stored) => {
-    (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1"));
+    ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1"));
     if (stored) localStorage.setItem("cuepoint-motion", JSON.stringify(stored));
   }, motion);
   await window.reload();
@@ -131,7 +131,7 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
   async function ready(window: Page): Promise<void> {
     await window.emulateMedia({ reducedMotion: "no-preference" });
     await window.evaluate(() => {
-      localStorage.setItem("cuepoint-onboarding-complete", "1");
+      (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale"));
       localStorage.setItem("cuepoint-phase14-note-seen", "1");
       localStorage.removeItem("cuepoint-motion");
     });

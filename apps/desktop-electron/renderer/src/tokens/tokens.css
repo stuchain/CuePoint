@@ -17,15 +17,15 @@
   --motion-fade: linear;
 
   /* Pixel-art chrome (structural) */
-  --border-width: calc(2px * var(--scale));
+  --border-width: round(down, calc(2px * var(--scale)), 1px);
   /* Borders are drawn at a whole pixel and Chromium floors them, so the 1px line
-     rounds down too: 1, 1, 2 and 3 at 1x, 1.5x, 2x and 3x. A border and a
+     rounds down too: 1, 1, 1, 2 and 3 at 1x, 1.25x, 1.5x, 2x and 3x. A border and a
      shadow of this token then agree (DEC-161). */
   --hairline: max(1px, round(down, calc(1px * var(--scale)), 1px));
   --border-width-heavy: round(down, calc(3px * var(--scale)), 1px);
-  --bevel-size: calc(2px * var(--scale));
+  --bevel-size: round(down, calc(2px * var(--scale)), 1px);
   --bevel-size-sm: var(--hairline);
-  --focus-ring-width: calc(2px * var(--scale));
+  --focus-ring-width: round(down, calc(2px * var(--scale)), 1px);
   --radius-sm: 0;
 
   --shadow-bevel: inset var(--bevel-size) var(--bevel-size) 0 var(--bevel-highlight),
@@ -37,9 +37,9 @@
   --shadow-bevel-pressed: inset calc(-1 * var(--bevel-size-sm)) calc(-1 * var(--bevel-size-sm)) 0
       var(--bevel-highlight),
     inset var(--bevel-size-sm) var(--bevel-size-sm) 0 var(--bevel-shadow);
-  --shadow-panel: calc(4px * var(--scale)) calc(4px * var(--scale)) 0 var(--border-shadow);
-  --shadow-modal: calc(8px * var(--scale)) calc(8px * var(--scale)) 0 var(--border-shadow);
-  --shadow-badge: calc(2px * var(--scale)) calc(2px * var(--scale)) 0 var(--border-shadow);
+  --shadow-panel: round(down, calc(4px * var(--scale)), 1px) round(down, calc(4px * var(--scale)), 1px) 0 var(--border-shadow);
+  --shadow-modal: round(down, calc(8px * var(--scale)), 1px) round(down, calc(8px * var(--scale)), 1px) 0 var(--border-shadow);
+  --shadow-badge: round(down, calc(2px * var(--scale)), 1px) round(down, calc(2px * var(--scale)), 1px) 0 var(--border-shadow);
   --shadow-inset-deep: inset var(--bevel-size) var(--bevel-size) 0 rgba(0, 0, 0, 0.35);
 
   /*
@@ -71,7 +71,7 @@
 
   /* Spacing */
   --space-xs: calc(var(--unit) * 1);
-  --space-sm: calc(var(--unit) * 1.5);
+  --space-sm: round(nearest, calc(var(--unit) * 1.5), 1px);
   --space-md: calc(var(--unit) * 2);
   --space-lg: calc(var(--unit) * 3);
   --space-xl: calc(var(--unit) * 4);
@@ -105,7 +105,7 @@
   --hit-min: calc(44px * var(--scale));
 
   /* Pixel icons: a multiple of the 12px grid, so cells stay whole pixels */
-  --icon-size: calc(24px * var(--scale));
+  --icon-size: round(down, calc(24px * var(--scale)), 12px);
 
   /* Native controls follow the theme (a custom light theme gets light ones); dark until one is set. */
   color-scheme: var(--color-scheme, dark);

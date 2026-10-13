@@ -14,16 +14,23 @@ properties — no styled-components, no Tailwind, no CSS modules.
 
 `--scale` is the root CSS custom property (default `1.5`); nearly every size token
 (`--space-*`, `--font-size-*`, `--border-width*`, `--bevel-size*`, `--hit-min`, `--shadow-*`) is
-`calc(<base-px> * var(--scale))`. `SCALE_OPTIONS = [1, 1.5, 2, 3]` and `DEFAULT_SCALE = 1.5`
-(DEC-161); the stored value is read with `Number` and anything not on the list reads as the default,
+`calc(<base-px> * var(--scale))`. `SCALE_OPTIONS = [1, 1.25, 1.5, 2, 3]` and `DEFAULT_SCALE = 1.5`
+(DEC-161; Compact 1.25 added by R2-5). A fresh install (nothing stored, first-run guide not finished) opens at
+`suggestedScale(screen.availHeight)`: 1.25 under 860 px, else 1.5, stepping down to the largest size that is not too big for the screen; an updater keeps 1.5. A size is disabled when
+`screen.availHeight / scale < MIN_ROWS_HEIGHT` (560), never the current one; the stored value is read with `Number` and anything not on the list reads as the default,
 so a stored 1, 2 or 3 is kept. Applied via `document.documentElement.dataset.scale` + a `style.setProperty`, deliberately not
 `transform: scale()` (keeps borders crisp). Persisted to `localStorage` key
 `cuepoint-ui-lab-scale`. Controls live in Settings → Appearance only (moved off the top-right
 chrome per `docs/ui-overhaul/decisions.md`).
 
-**Whole pixels at 1.5×.** An even base is whole at 1.5×; an odd one is not. `tokens.css` therefore
-has one hairline token, `--hairline: max(1px, round(down, calc(1px * var(--scale)), 1px))`: 1, 1, 2
-and 3 pixels at the four sizes. Every 1px line (borders, the small bevel, outline offsets) uses it.
+**Whole pixels at 1.25×.** At 1.25 the tokens that would be 7.5 or 2.5 px are rounded in the stylesheet:
+`--space-sm` rounds to nearest (8 px), `--border-width`, `--bevel-size`, `--focus-ring-width` and the shadow
+offsets round down, and `--icon-size` is `round(down, calc(24px * var(--scale)), 12px)`, so icons stay 24 px
+(crisp 2 px cells). The values at 1, 1.5, 2 and 3 are unchanged.
+
+**Whole pixels at 1.5×.** An even base is whole at 1.5×; an odd one is not (1.25× is covered above). `tokens.css` therefore
+has one hairline token, `--hairline: max(1px, round(down, calc(1px * var(--scale)), 1px))`: 1, 1, 1, 2
+and 3 pixels at 1×, 1.25×, 1.5×, 2× and 3×. Every 1px line (borders, the small bevel, outline offsets) uses it.
 It rounds **down** because Chromium floors a border width: a 1.5px border is drawn 1px, and a shadow
 of the same token must agree with it, not blur across two device pixels. The other odd sizes round to
 a whole pixel in the stylesheet (`--border-width-heavy`, `--row-height`, the badge's padding). A

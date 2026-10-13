@@ -172,7 +172,7 @@ describe("the drawing", () => {
   });
 
   it("is whole pixels at every scale and width", () => {
-    for (const scale of [1, 1.5, 2, 3]) {
+    for (const scale of [1, 1.25, 1.5, 2, 3]) {
       for (const width of [0, 13, 333, 700, 1999]) {
         const layout = laneLayout(shape, titles, width, scale);
         const rects = [

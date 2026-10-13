@@ -3,7 +3,7 @@
    purpose (`--two-lines`, measured by the component): the six groups, then
    Clear selection, the count, Select all and Columns… (DEC-112, DEC-217). */
 .library-toolbar {
-  --library-toolbar-row-gap: calc(var(--space-xs) / 2);
+  --library-toolbar-row-gap: round(down, calc(var(--space-xs) / 2), 1px);
 
   display: flex;
   flex-wrap: wrap;
@@ -16,7 +16,7 @@
      scrollbar; at the old 4px gaps, 6px sides and a word space before each ▸
      they took 513 and the row went to three lines on Windows (a table row lost). */
   gap: var(--library-toolbar-row-gap) round(down, calc(var(--space-xs) / 3), 1px);
-  padding: calc(var(--space-xs) / 2) 0;
+  padding: round(down, calc(var(--space-xs) / 2), 1px) 0;
   background: var(--bg-toolbar);
   border-top: var(--hairline) solid var(--border-muted);
 }

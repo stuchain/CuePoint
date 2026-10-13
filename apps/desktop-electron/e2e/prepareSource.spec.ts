@@ -150,7 +150,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
     try {
       const win = await app.firstWindow({ timeout: 60_000 });
       await waitForEngine(win);
-      await win.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
+      await win.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
 
       const started = await win.evaluate(
         (xml) => (window as never as Bridge).cuepoint.startLibraryImport({ xml_path: xml }),
@@ -274,7 +274,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
     try {
       const win = await app.firstWindow({ timeout: 60_000 });
       await waitForEngine(win);
-      await win.evaluate(() => (localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
+      await win.evaluate(() => ((localStorage.setItem("cuepoint-onboarding-complete", "1"), localStorage.getItem("cuepoint-ui-lab-scale") === "1.25" && localStorage.removeItem("cuepoint-ui-lab-scale")), localStorage.setItem("cuepoint-phase14-note-seen", "1")));
       const started = await win.evaluate(
         (xml) => (window as never as Bridge).cuepoint.startLibraryImport({ xml_path: xml }),
         writeLibrary(workspace),
