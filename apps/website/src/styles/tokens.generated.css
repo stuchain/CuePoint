@@ -42,7 +42,7 @@
   --text-heading: var(--font-size-sm);
   --focus-ring: var(--focus-ring-color);
   --space-xs: 0.3125rem;
-  --space-sm: 0.4688rem;
+  --space-sm: 0.5rem;
   --space-md: 0.625rem;
   --space-lg: 0.9375rem;
   --space-xl: 1.25rem;
@@ -54,13 +54,9 @@
   --font-size-lg: 1.4063rem;
   --font-size-xl: 1.875rem;
   --hit-min: 3.4375rem;
-  --icon-size: 1.875rem;
+  --icon-size: 1.5rem;
   --content-max-width: min(1200px, 100%);
   --content-narrow-width: min(480px, 100%);
-  --safe-top: var(--screen-padding);
-  --safe-right: var(--screen-padding);
-  --safe-bottom: var(--screen-padding);
-  --safe-left: var(--screen-padding);
   --screen-padding: var(--space-xl);
   --results-min-rows: 10;
   --row-height: 2.5625rem;
