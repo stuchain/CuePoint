@@ -87,8 +87,8 @@ export interface JobFailure {
 export function jobFailureError(message: string, failure: JobFailure | undefined): Error {
   const code = typeof failure?.code === "string" ? failure.code : null;
   const reportId = failure?.report_id ?? failure?.reportId ?? null;
-  // No engine to ask (a browser tab, or the bridge missing): an outage, not a bug.
-  if (code === "NO_BRIDGE") return withFields(message, { status: null, code: "UNAVAILABLE", reportId: null });
+  // No engine to ask (a browser tab, or the bridge missing) or it was lost: an outage, not a bug.
+  if (code === "NO_BRIDGE" || code === "UNAVAILABLE") return withFields(message, { status: null, code: "UNAVAILABLE", reportId: null });
   if (code !== null && EXPECTED_JOB_ERROR_CODES.includes(code)) return withFields(message, { status: 400, code, reportId: null });
   return withFields(message, { status: 500, code, reportId: typeof reportId === "string" ? reportId : null });
 }

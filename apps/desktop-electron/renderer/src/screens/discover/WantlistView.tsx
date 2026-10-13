@@ -39,6 +39,7 @@ import { useBeatportSelection } from "./useBeatportSelection";
 import { useBeatportWindow } from "./useBeatportWindow";
 import { refusalError } from "../../reporting/expected";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 interface WantlistViewProps {
   tools: DiscoverTools;
@@ -130,7 +131,7 @@ export function WantlistView({ tools }: WantlistViewProps) {
       reload();
     } catch (cause) {
       reportUnexpected(cause);
-      notify(cause instanceof Error ? cause.message : String(cause), "warning");
+      notify(userMessage(cause), "warning");
     } finally {
       setWorking(false);
     }

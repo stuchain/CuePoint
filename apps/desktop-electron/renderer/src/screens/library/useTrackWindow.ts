@@ -36,6 +36,7 @@ import {
   type LibraryQuery,
 } from "./libraryQuery";
 import { reportUnexpected } from "../../reporting/reporting";
+import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
 
 /** Rows per request. The engine clamps at 500; this is a window, not a dump. */
 export const PAGE_SIZE = 100;
@@ -195,7 +196,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
       const bridge = window.cuepoint?.browseLibrary;
       if (!bridge) {
         setStatus("error");
-        setError("CuePoint's library service is not available in this window");
+        setError(NEEDS_DESKTOP);
         return false;
       }
 
@@ -264,7 +265,7 @@ export function useTrackWindow(query: LibraryQuery): TrackWindow {
             }
             if (askedFor !== queryRef.current) return;
             setStatus("error");
-            setError(cause instanceof Error ? cause.message : String(cause));
+            setError(userMessage(cause));
           });
       }
       return true;

@@ -369,7 +369,7 @@ describe("a page's identity (DEC-095)", () => {
   it("says Discover needs the engine when the bridge has no pages", async () => {
     install({ getEntityPage: undefined });
     renderAt(entityPath("artist", "bp:301001"));
-    expect(await screen.findByText(/needs the desktop app/, {}, LOADED)).toBeInTheDocument();
+    expect(await screen.findByText(/needs the CuePoint desktop app/, {}, LOADED)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 });

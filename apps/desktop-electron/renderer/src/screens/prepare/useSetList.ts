@@ -26,6 +26,7 @@ import {
   setListSavedLine,
 } from "./setList";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 /** The Set a set list is of: its id, and the name the file is named after. */
 interface SetListTarget {
@@ -45,10 +46,6 @@ interface SetListActions {
   available: boolean;
   save: (target: SetListTarget) => Promise<void>;
   copy: (target: SetListTarget) => Promise<void>;
-}
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }
 
 export function useSetList({ onMessage, onGone }: SetListOptions): SetListActions {
@@ -91,7 +88,7 @@ export function useSetList({ onMessage, onGone }: SetListOptions): SetListAction
         }
       } catch (cause) {
         reportUnexpected(cause);
-        onMessage(messageOf(cause), "warning");
+        onMessage(userMessage(cause), "warning");
       }
     },
     [onMessage, refused],
@@ -117,7 +114,7 @@ export function useSetList({ onMessage, onGone }: SetListOptions): SetListAction
         );
       } catch (cause) {
         reportUnexpected(cause);
-        onMessage(messageOf(cause), "warning");
+        onMessage(userMessage(cause), "warning");
       }
     },
     [onMessage, refused],

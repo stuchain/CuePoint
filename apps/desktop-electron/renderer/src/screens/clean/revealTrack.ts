@@ -1,4 +1,5 @@
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 /**
  * "Show in folder" for a track whose file may not be there (CLEAN-07, CLEAN-12).
  *
@@ -41,6 +42,6 @@ export async function revealTrack(trackId: number): Promise<RevealOutcome | null
     };
   } catch (cause) {
     reportUnexpected(cause);
-    return { tone: "warning", message: cause instanceof Error ? cause.message : String(cause) };
+    return { tone: "warning", message: userMessage(cause) };
   }
 }

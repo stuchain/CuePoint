@@ -65,6 +65,7 @@ import {
 import { reportUnexpected } from "../../reporting/reporting";
 import "./cleanDialogs.css";
 import "./rekordboxExport.css";
+import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
 
 export interface RekordboxExportDialogProps {
   open: boolean;
@@ -95,10 +96,6 @@ interface Answer {
   key: string;
   preview: RekordboxExportPreview | null;
   refusal: RekordboxExportRefusal | null;
-}
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }
 
 /** The tree flattened for ticking, each row with its depth. */
@@ -223,7 +220,7 @@ export function RekordboxExportDialog({
           reportUnexpected(cause);
           if (!current || !alive.current) return;
           setAnswer(null);
-          setProblem(messageOf(cause));
+          setProblem(userMessage(cause));
         })
         .finally(() => {
           if (current && alive.current) setPreviewing(false);
@@ -274,7 +271,7 @@ export function RekordboxExportDialog({
       setStartRefusal(null);
     } catch (cause) {
       reportUnexpected(cause);
-      if (alive.current) setProblem(messageOf(cause));
+      if (alive.current) setProblem(userMessage(cause));
     }
   };
 
@@ -327,7 +324,7 @@ export function RekordboxExportDialog({
     } catch (cause) {
       reportUnexpected(cause);
       if (!alive.current) return;
-      setProblem(messageOf(cause));
+      setProblem(userMessage(cause));
       setPhase("choosing");
     } finally {
       if (alive.current) setJobId(null);
@@ -396,9 +393,7 @@ export function RekordboxExportDialog({
     >
       <div className="clean-dialog rekordbox-export">
         {!bridge && (
-          <p className="clean-dialog__problem" role="alert">
-            Exporting needs the desktop app with CuePoint's library service running.
-          </p>
+          <p className="clean-dialog__problem" role="alert">{NEEDS_DESKTOP}</p>
         )}
 
         {phase === "done" ? (

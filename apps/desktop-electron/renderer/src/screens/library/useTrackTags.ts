@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Tag, TagUsage } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 /** A tag as one track's record carries it — no usage count, that is the vocabulary's. */
 export type TrackTag = Pick<Tag, "id" | "name" | "category" | "colour">;
@@ -36,10 +37,6 @@ interface TrackTagsOptions {
   tags: readonly TrackTag[];
   onError: (message: string) => void;
   onSaved?: () => void;
-}
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }
 
 /** True when the track already carries this name, ignoring case as the index does. */
@@ -107,7 +104,7 @@ export function useTrackTags({
         tag = (await create({ name: wanted })).tag;
       } catch (cause) {
         reportUnexpected(cause);
-        onError(messageOf(cause));
+        onError(userMessage(cause));
         return;
       }
       // Now it has an id, so the chip can be drawn and removed again.
@@ -119,7 +116,7 @@ export function useTrackTags({
       } catch (cause) {
         reportUnexpected(cause);
         if (alive.current) setShown((current) => current.filter((t) => t.id !== tag.id));
-        onError(messageOf(cause));
+        onError(userMessage(cause));
       }
     },
     [onError, onSaved, shown, trackId],
@@ -141,7 +138,7 @@ export function useTrackTags({
       } catch (cause) {
         reportUnexpected(cause);
         if (alive.current) setShown(before);
-        onError(messageOf(cause));
+        onError(userMessage(cause));
       }
     },
     [onError, onSaved, shown, trackId],

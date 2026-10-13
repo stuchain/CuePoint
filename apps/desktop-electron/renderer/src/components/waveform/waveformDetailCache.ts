@@ -19,6 +19,7 @@
  */
 import type { WaveformAnswer, WaveformDetail, WaveformsBridge } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 /** Details kept at once: the current, the next and the previous, and one more. */
 export const DETAIL_LIMIT = 4;
@@ -145,7 +146,7 @@ export class WaveformDetailCache {
       answer = await bridge.detail({ track_id: trackId });
     } catch (cause) {
       reportUnexpected(cause);
-      if (alive()) this.fail(trackId, cause instanceof Error ? cause.message : String(cause));
+      if (alive()) this.fail(trackId, userMessage(cause));
       return;
     }
     if (!alive()) return;
@@ -179,7 +180,7 @@ export class WaveformDetailCache {
         }
       } catch (cause) {
         reportUnexpected(cause);
-        if (alive()) this.fail(trackId, cause instanceof Error ? cause.message : String(cause));
+        if (alive()) this.fail(trackId, userMessage(cause));
         return;
       }
     }

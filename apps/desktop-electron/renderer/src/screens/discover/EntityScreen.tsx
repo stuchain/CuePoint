@@ -63,6 +63,7 @@ import { useReportSelectedTrack } from "../../components/shell/useReportSelected
 import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./discover.css";
+import { userMessage } from "../../api/userMessage";
 
 /** Which half holds the page's selection; the other lets go of its own. */
 type Focus = "library" | "beatport";
@@ -141,7 +142,7 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
       })
       .catch((cause: unknown) => {
         reportUnexpected(cause);
-        if (current) setProblem(cause instanceof Error ? cause.message : String(cause));
+        if (current) setProblem(userMessage(cause));
       });
     return () => {
       current = false;

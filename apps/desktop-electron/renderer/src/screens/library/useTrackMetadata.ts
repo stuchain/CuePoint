@@ -29,6 +29,7 @@ import {
   type NotesState,
 } from "./trackEdits";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 /** What one write asks the engine to change. */
 interface MetadataPatch {
@@ -84,10 +85,6 @@ function rolledBack(
   }
   if ("favorite" in patch) return { ...current, favorite: confirmed.favorite };
   return { ...current, notes: confirmed.notes };
-}
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }
 
 export function useTrackMetadata({
@@ -160,7 +157,7 @@ export function useTrackMetadata({
           setShown((current) => rolledBack(current, confirmed.current, patch));
           if ("notes" in patch) setNotes(confirmed.current.notes ?? "");
         }
-        onError(messageOf(cause));
+        onError(userMessage(cause));
         throw cause;
       }
     },

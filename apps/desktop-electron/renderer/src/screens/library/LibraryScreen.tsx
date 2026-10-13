@@ -138,6 +138,7 @@ import { useTrackWindow } from "./useTrackWindow";
 import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./library.css";
+import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
 
 /** What the page is doing, when it is doing something. */
 type Busy = null | "importing" | "checking" | "applying";
@@ -316,7 +317,7 @@ export function LibraryScreen({
     } catch (error) {
       reportUnexpected(error);
       if (mounted.current) {
-        push(error instanceof Error ? error.message : "Could not read the library", "warning");
+        push(userMessage(error, "Could not read the library"), "warning");
       }
     } finally {
       if (mounted.current) setLoading(false);
@@ -905,7 +906,7 @@ export function LibraryScreen({
         push(said, "success");
       } catch (error) {
         reportUnexpected(error);
-        setTagError(error instanceof Error ? error.message : "That change did not go through.");
+        setTagError(userMessage(error, "That change did not go through."));
       }
     },
     [collections, detail, loadTags, push, window_],
@@ -1240,7 +1241,7 @@ export function LibraryScreen({
       } catch (error) {
         reportUnexpected(error);
         push(
-          error instanceof Error ? error.message : "Could not move that track.",
+          userMessage(error, "Could not move that track."),
           "warning",
         );
         return false;
@@ -1483,7 +1484,7 @@ export function LibraryScreen({
         runAction({ kind: "add_tag", value: tag.id, target: tag.name }, current.target);
       } catch (error) {
         reportUnexpected(error);
-        push(error instanceof Error ? error.message : "Could not make that tag.", "warning");
+        push(userMessage(error, "Could not make that tag."), "warning");
       }
     },
     [loadTags, picker, push, runAction],
@@ -1532,7 +1533,7 @@ export function LibraryScreen({
       } catch (error) {
         reportUnexpected(error);
         if (mounted.current) setBusy(null);
-        push(error instanceof Error ? error.message : "CuePoint could not do that", "warning");
+        push(userMessage(error, "CuePoint could not do that"), "warning");
         return null;
       }
 
@@ -1565,7 +1566,7 @@ export function LibraryScreen({
   const handleImport = useCallback(async () => {
     const start = window.cuepoint?.startLibraryImport;
     if (!start) {
-      push("Importing needs the desktop app with CuePoint's library service running.", "warning");
+      push(NEEDS_DESKTOP, "warning");
       return;
     }
     const xmlPath = await pickFile();
@@ -1591,7 +1592,7 @@ export function LibraryScreen({
     const start = window.cuepoint?.startLibraryRefreshPreview;
     const results = window.cuepoint?.getJobResults;
     if (!start || !results) {
-      push("Refreshing needs the desktop app with CuePoint's library service running.", "warning");
+      push(NEEDS_DESKTOP, "warning");
       return;
     }
 
@@ -1609,7 +1610,7 @@ export function LibraryScreen({
       if (mounted.current) setDiff(previewed);
     } catch (error) {
       reportUnexpected(error);
-      push(error instanceof Error ? error.message : "Could not read the preview", "warning");
+      push(userMessage(error, "Could not read the preview"), "warning");
     }
   }, [push, run]);
 
@@ -1682,7 +1683,7 @@ export function LibraryScreen({
   const openExport = useCallback(
     (ids: readonly number[]) => {
       if (!rekordboxExportBridge()) {
-        push("Exporting to Rekordbox needs the desktop app with CuePoint's library service running.", "warning");
+        push(NEEDS_DESKTOP, "warning");
         return;
       }
       setExporting({ ids });

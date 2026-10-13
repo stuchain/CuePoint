@@ -17,6 +17,7 @@ import { useToast } from "../../components";
 import { useActiveJob } from "../../components/shell/useActiveJob";
 import { clampLabel, matchRunningNote, matchStartedLine } from "./cleanFormat";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
+import { NEEDS_DESKTOP } from "../../api/userMessage";
 
 export interface CleanMatch {
   /** A match is running now, started here or elsewhere. */
@@ -81,7 +82,7 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
     (key: string, selection: BatchSelection, again: boolean, label?: string) => {
       const bridge = window.cuepoint?.startCleanMatch;
       if (!bridge) {
-        push("Matching needs the desktop app with CuePoint's library service running.", "warning");
+        push(NEEDS_DESKTOP, "warning");
         return;
       }
       follow(key, () => bridge({ selection, rematch: again, ...(label ? { label: clampLabel(label) } : {}) }));

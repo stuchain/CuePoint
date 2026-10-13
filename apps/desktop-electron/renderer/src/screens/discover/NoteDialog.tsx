@@ -11,6 +11,7 @@ import type { DiscoverRefusal } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components/Modal";
 import { refusalText } from "./discoverFormat";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 interface NoteDialogProps {
   open: boolean;
@@ -44,7 +45,7 @@ export function NoteDialog({ open, track, note, maxLength, onSave, onClose }: No
       if (refused) setRefusal(refusalText(refused));
     } catch (cause) {
       reportUnexpected(cause);
-      setRefusal(cause instanceof Error ? cause.message : String(cause));
+      setRefusal(userMessage(cause));
     } finally {
       setSaving(false);
     }

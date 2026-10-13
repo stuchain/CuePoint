@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { LibraryTrackDetail } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
+import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
 
 interface TrackDetailState {
   detail: LibraryTrackDetail | null;
@@ -43,7 +44,7 @@ export function useTrackDetail(trackId: number | null): TrackDetailState {
       setState({
         detail: null,
         loading: false,
-        error: "CuePoint's library service is not available in this window",
+        error: NEEDS_DESKTOP,
       });
       return;
     }
@@ -63,7 +64,7 @@ export function useTrackDetail(trackId: number | null): TrackDetailState {
         setState({
           detail: null,
           loading: false,
-          error: cause instanceof Error ? cause.message : String(cause),
+          error: userMessage(cause),
         });
       });
 

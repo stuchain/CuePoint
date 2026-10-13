@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 
+import { OUTAGE_PARTWAY_MESSAGE } from "../api/userMessage";
+import { followJob } from "../screens/library/followJob";
+import { jobErrorMessage } from "../screens/library/libraryFormat";
 import { fakeFacade } from "./fakeFacade.testFixture";
 import { EXPECTED_JOB_ERROR_CODES, cancelledError, jobFailureError, refusalError } from "./expected";
 import { lastReportId, reportUnexpected, resetRendererReporting, setupRendererReporting } from "./reporting";
@@ -20,6 +23,33 @@ describe("a refusal the page throws as an error", () => {
     const sdk = await started();
     expect(reportUnexpected(refusalError("Beatport is busy.", "DISCOVER_BUSY"))).toBeNull();
     expect(sdk.exceptions).toEqual([]);
+  });
+});
+
+describe("a job lost to an outage", () => {
+  it("is not reported when the code is UNAVAILABLE", async () => {
+    const sdk = await started();
+    expect(reportUnexpected(jobFailureError("lost", { code: "UNAVAILABLE", message: "lost" }))).toBeNull();
+    expect(sdk.exceptions).toEqual([]);
+  });
+
+  it("is not reported when following the job failed with 'fetch failed'", async () => {
+    const sdk = await started();
+    (window as unknown as { cuepoint?: unknown }).cuepoint = {
+      getJob: async () => {
+        throw new Error("fetch failed");
+      },
+    };
+    try {
+      const finished = await followJob("job-1").finished;
+      expect(finished.state).toBe("failed");
+      const error = jobFailureError(jobErrorMessage(finished.error), finished.error);
+      expect(error.message).toBe(OUTAGE_PARTWAY_MESSAGE);
+      expect(reportUnexpected(error)).toBeNull();
+      expect(sdk.exceptions).toEqual([]);
+    } finally {
+      delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+    }
   });
 });
 

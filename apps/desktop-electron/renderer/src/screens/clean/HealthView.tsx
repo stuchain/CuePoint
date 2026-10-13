@@ -32,6 +32,7 @@ import { libraryRulesState } from "../library/libraryLink";
 import { formatWhen, trackCount } from "./cleanFormat";
 import { CLEAN_SECTIONS, type CleanSection } from "./cleanSections";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
+import { NEEDS_DESKTOP } from "../../api/userMessage";
 
 /** What running each detection is called, by the job that runs it. */
 const RUN_LABELS: Record<string, string> = {
@@ -130,7 +131,7 @@ export function HealthView({
         start = () => begin({ selection: { query: {} } });
       }
       if (!start) {
-        push("That needs the desktop app with CuePoint's library service running.", "warning");
+        push(NEEDS_DESKTOP, "warning");
         return;
       }
       void jobs.run(detection.job_type, start, {

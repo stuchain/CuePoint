@@ -17,6 +17,7 @@ import { formatBpm } from "../discover/similarReasons";
 import { chapterName } from "./prepareRows";
 import { describeFileCheck, describeSetWarning } from "./setWarnings";
 import { formatTime } from "./setTime";
+import { NEEDS_DESKTOP } from "../../api/userMessage";
 
 function counted(count: number, one: string, many: string): string {
   return `${count.toLocaleString()} ${count === 1 ? one : many}`;
@@ -224,7 +225,7 @@ export function notesLinkTitle(notes: string | null): string {
 export const WHAT_A_SET_IS = "A Set is a running order of tracks.";
 
 /** Said in a shell without the Sets bridge: a browser tab, an older shell. */
-export const NO_SETS = "Prepare needs the desktop app with CuePoint's library service running.";
+export const NO_SETS = NEEDS_DESKTOP;
 
 /** An empty Set's table. */
 export const EMPTY_SET =

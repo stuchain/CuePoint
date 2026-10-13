@@ -747,6 +747,6 @@ describe("reading one track", () => {
 
     const { result } = renderHook(() => useTrackDetail(12));
 
-    await waitFor(() => expect(result.current.error).toMatch(/not available/i));
+    await waitFor(() => expect(result.current.error).toMatch(/needs the CuePoint desktop app/i));
   });
 });

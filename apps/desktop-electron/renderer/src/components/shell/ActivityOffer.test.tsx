@@ -12,6 +12,7 @@ import userEvent from "@testing-library/user-event";
 
 import type { ActivityEvent, ActivityFeed, TagWriteRecord } from "../../api/cuepointBridge.types";
 import { LIBRARY_CHANGED_EVENT } from "../../api/libraryChanges";
+import { OUTAGE_MESSAGE, OUTAGE_PARTWAY_MESSAGE } from "../../api/userMessage";
 import { ActivityPanel } from "./ActivityPanel";
 import { MEMBERSHIP_REVERT_REASON } from "./activityActions";
 
@@ -246,6 +247,37 @@ describe("a tag write's entry", () => {
       { job_id: "w-2" },
     ]);
     expect(await within(entry).findByText("Restored 4 files.")).toBeInTheDocument();
+  });
+
+  it("says what was done when the background process is lost after a restore started", async () => {
+    bridge.startTagRestore
+      .mockResolvedValueOnce({ job_id: "r-1" })
+      .mockRejectedValueOnce(new Error("fetch failed"));
+    events = [
+      event(
+        1,
+        "clean.tags.interrupted",
+        { job_id: "r-9", job_type: "tag_restore", write_job_ids: ["w-1", "w-2"] },
+        "Restoring tags stopped",
+      ),
+    ];
+    render(<ActivityPanel open onClose={() => undefined} />);
+    const entry = await row("Restoring tags stopped");
+    await within(entry).findByText(/can be put back/);
+    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
+    expect(await within(entry).findByText(OUTAGE_PARTWAY_MESSAGE)).toBeInTheDocument();
+  });
+
+  it("says nothing was changed when the background process is lost before any restore started", async () => {
+    bridge.startTagRestore.mockRejectedValueOnce(new Error("fetch failed"));
+    events = [event(1, "clean.tags.written", { job_id: "w-1" }, "Wrote tags")];
+    render(<ActivityPanel open onClose={() => undefined} />);
+    const entry = await row("Wrote tags");
+    await within(entry).findByText(/can be put back/);
+    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
+    await userEvent.click(within(entry).getByRole("button", { name: "Restore" }));
+    expect(await within(entry).findByText(OUTAGE_MESSAGE)).toBeInTheDocument();
   });
 
   it("offers no Restore once everything is back", async () => {

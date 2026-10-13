@@ -78,6 +78,7 @@ import type { MatchStatus } from "./StatusLine";
 import { useMatchJobs } from "./useMatchJobs";
 import { useMatchTicks } from "./useMatchTicks";
 import "./match.css";
+import { NEEDS_DESKTOP, userMessage } from "../../../api/userMessage";
 
 export type MatchTab = "one" | "table" | "past";
 
@@ -112,10 +113,6 @@ interface PendingMove {
   /** The question the list was answering when the decision was made. */
   from: string;
   trackId: number | null;
-}
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }
 
 interface MatchAreaProps {
@@ -330,7 +327,7 @@ export function MatchArea({
       if (trackId == null) return;
       const bridge = window.cuepoint?.correctMatch;
       if (!bridge) {
-        push("Correcting a match needs the desktop app with CuePoint's library service running.", "warning");
+        push(NEEDS_DESKTOP, "warning");
         return;
       }
       const title = row?.title ?? "this track";
@@ -360,7 +357,7 @@ export function MatchArea({
       } catch (cause) {
         reportUnexpected(cause);
         if (alive.current) setBusy(false);
-        push(messageOf(cause), "warning");
+        push(userMessage(cause), "warning");
       }
     },
     [afterChange, counted, push, row],
@@ -371,7 +368,7 @@ export function MatchArea({
     if (trackId == null) return;
     const bridge = window.cuepoint?.decideMatch;
     if (!bridge) {
-      push("Deciding a match needs the desktop app with CuePoint's library service running.", "warning");
+      push(NEEDS_DESKTOP, "warning");
       return;
     }
     const title = row?.title ?? "this track";
@@ -387,7 +384,7 @@ export function MatchArea({
     } catch (cause) {
       reportUnexpected(cause);
       if (alive.current) setBusy(false);
-      push(messageOf(cause), "warning");
+      push(userMessage(cause), "warning");
     }
   }, [afterChange, counted, push, row]);
 
@@ -396,7 +393,7 @@ export function MatchArea({
     if (!batchId) return;
     const bridge = window.cuepoint?.revertBatch;
     if (!bridge) {
-      push("Undoing needs the desktop app with CuePoint's library service running.", "warning");
+      push(NEEDS_DESKTOP, "warning");
       return;
     }
     const { undoText, tracks = 0 } = status;
@@ -431,7 +428,7 @@ export function MatchArea({
     } catch (cause) {
       reportUnexpected(cause);
       if (alive.current) setBusy(false);
-      push(messageOf(cause), "warning");
+      push(userMessage(cause), "warning");
     }
   }, [detail, list, onHealthChanged, push, status]);
 
@@ -439,7 +436,7 @@ export function MatchArea({
     if (selection.count === 0) return;
     const bridge = window.cuepoint?.correctMatches;
     if (!bridge) {
-      push("Correcting matches needs the desktop app with CuePoint's library service running.", "warning");
+      push(NEEDS_DESKTOP, "warning");
       return;
     }
     const fields = CARD_FIELDS.filter(
@@ -495,7 +492,7 @@ export function MatchArea({
     } catch (cause) {
       reportUnexpected(cause);
       if (alive.current) setBusy(false);
-      push(messageOf(cause), "warning");
+      push(userMessage(cause), "warning");
     }
   }, [counted, detail, list, onHealthChanged, push, query, selection, ticks]);
 

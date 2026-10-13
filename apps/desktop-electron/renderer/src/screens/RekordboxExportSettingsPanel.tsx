@@ -11,6 +11,7 @@ import {
 } from "./library/rekordboxExport";
 import { reportUnexpected } from "../reporting/reporting";
 import "./rekordbox-export-settings.css";
+import { userMessage } from "../api/userMessage";
 
 /** How many past exports Settings lists. */
 export const SETTINGS_HISTORY_LIMIT = 10;
@@ -49,7 +50,7 @@ export function RekordboxExportSettingsPanel() {
       setError(null);
     } catch (problem) {
       reportUnexpected(problem);
-      setError(problem instanceof Error ? problem.message : "Could not read the export history.");
+      setError(userMessage(problem, "Could not read the export history."));
     } finally {
       setLoading(false);
     }

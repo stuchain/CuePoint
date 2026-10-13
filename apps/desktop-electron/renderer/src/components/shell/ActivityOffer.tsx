@@ -37,10 +37,7 @@ import {
 } from "./activityActions";
 import { jobFailureError } from "../../reporting/expected";
 import { reportUnexpected } from "../../reporting/reporting";
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
-}
+import { userMessage } from "../../api/userMessage";
 
 /** A job's answer, once it has ended. */
 export async function finishedResult<T>(jobId: string): Promise<T | null> {
@@ -133,7 +130,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
         onDone();
       } catch (cause) {
         reportUnexpected(cause);
-        setSaid(messageOf(cause));
+        setSaid(userMessage(cause));
       } finally {
         setBusy(false);
       }
@@ -147,8 +144,10 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
       if (!start) return;
       setBusy(true);
       setAsking(false);
+      let begun = false;
       try {
         const outcome = await start({ batch_id: batchId });
+        begun = true;
         let result: BatchRevertResult | null = outcome.reverted ?? null;
         const jobId = outcome.job_id ?? outcome.id;
         if (!result && jobId) result = await finishedResult<BatchRevertResult>(jobId);
@@ -158,7 +157,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
         onDone();
       } catch (cause) {
         reportUnexpected(cause);
-        setSaid(messageOf(cause));
+        setSaid(userMessage(cause, undefined, { partway: begun }));
       } finally {
         setBusy(false);
       }
@@ -173,11 +172,13 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
       setBusy(true);
       setAsking(false);
       const results: TagRestoreResult[] = [];
+      let begun = false;
       try {
         // One at a time: restores hold the files, and the engine refuses a
         // second beside the first.
         for (const jobId of ids) {
           const started = await start({ job_id: jobId });
+          begun = true;
           const result = await finishedResult<TagRestoreResult>(started.job_id);
           if (result) results.push(result);
         }
@@ -185,7 +186,7 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
         setRecord((previous) => (previous ? { restorable: 0, unconfirmed: 0 } : previous));
       } catch (cause) {
         reportUnexpected(cause);
-        setSaid(messageOf(cause));
+        setSaid(userMessage(cause, undefined, { partway: begun }));
       } finally {
         setBusy(false);
         announceLibraryChange();

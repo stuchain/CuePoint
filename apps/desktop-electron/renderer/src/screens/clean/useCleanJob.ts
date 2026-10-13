@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { followJob, type FinishedJob } from "../library/followJob";
 import { jobErrorMessage } from "../library/libraryFormat";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 export type CleanMessageTone = "info" | "success" | "warning";
 
@@ -36,10 +37,6 @@ interface CleanJobs {
     start: () => Promise<Answer>,
     options?: CleanJobOptions<Answer>,
   ) => Promise<boolean>;
-}
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }
 
 export function useCleanJob(
@@ -71,7 +68,7 @@ export function useCleanJob(
       } catch (cause) {
         reportUnexpected(cause);
         if (alive.current) setRunning(null);
-        onMessage(messageOf(cause), "warning");
+        onMessage(userMessage(cause), "warning");
         return false;
       }
 

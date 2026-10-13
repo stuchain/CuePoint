@@ -29,6 +29,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { useLibraryChanges } from "../../api/libraryChanges";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 interface PreparedSet {
   setId: number;
@@ -81,10 +82,6 @@ interface PreparedSetController {
   write: <T>(run: () => Promise<T>) => Promise<T | null>;
 }
 
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
-}
-
 type Read =
   | { kind: "read"; set: PreparedSet }
   | { kind: "refused"; refusal: SetRefusal }
@@ -110,7 +107,7 @@ async function readSet(sets: SetsBridge, setId: number): Promise<Read> {
     };
   } catch (cause) {
     reportUnexpected(cause);
-    return { kind: "failed", message: messageOf(cause) };
+    return { kind: "failed", message: userMessage(cause) };
   }
 }
 
@@ -221,7 +218,7 @@ export function usePreparedSet({
         return answer.value;
       } catch (cause) {
         reportUnexpected(cause);
-        onMessage(messageOf(cause), "warning");
+        onMessage(userMessage(cause), "warning");
         return null;
       }
     },
@@ -236,7 +233,7 @@ export function usePreparedSet({
         return value;
       } catch (cause) {
         reportUnexpected(cause);
-        onMessage(messageOf(cause), "warning");
+        onMessage(userMessage(cause), "warning");
         // An entry another window removed is refused as a failure here; the
         // re-read shows what is there now.
         reload();

@@ -57,6 +57,7 @@ import { useLibraryBatch } from "../library/useLibraryBatch";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "../library/useLibraryPlayback";
 import { COPY_LIMIT, useTrackSelection } from "../library/useTrackSelection";
 import { useTrackWindow } from "../library/useTrackWindow";
+import { userMessage } from "../../api/userMessage";
 
 /** The keys table keeps a layout of its own, apart from the Library's. */
 const KEYS_TABLE_LAYOUT_KEY = "cuepoint-keys-table-layout";
@@ -255,7 +256,7 @@ export function KeysTracks({
         runAction({ kind: "add_tag", value: tag.id, target: tag.name }, current.target);
       } catch (error) {
         reportUnexpected(error);
-        push(error instanceof Error ? error.message : "Could not make that tag.", "warning");
+        push(userMessage(error, "Could not make that tag."), "warning");
       }
     },
     [loadTags, picker, push, runAction],

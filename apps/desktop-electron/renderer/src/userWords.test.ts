@@ -32,7 +32,7 @@ const ALLOWED: { file: RegExp; reason: string }[] = [
     reason: "Diagnostics and the log viewer are developer surfaces and keep the word (DEC-155)",
   },
   {
-    file: /\.\/reporting\/reporting\.ts$/,
+    file: /\.\/api\/userMessage\.ts$/,
     reason: "matches the main process's own error text to tell an outage from a bug; never shown",
   },
 ];
@@ -154,5 +154,32 @@ describe("user-visible words", () => {
     expect(
       scan("x.ts", 'import x from "engine thing"; console.warn("engine is slow");'),
     ).toEqual([]);
+  });
+});
+
+describe("one user message for every failure", () => {
+  const files = Object.entries(SOURCES);
+  const MESSAGE_OF = /(function|const|let)\s+messageOf\b/;
+  const INLINE = /instanceof Error\s*\?\s*\w+\.message/;
+
+  /** Files that may keep the inline form, with the reason. */
+  const KEPT: { file: RegExp; reason: string }[] = [
+    { file: /^\.\/api\/userMessage\.ts$/, reason: "the one function" },
+    { file: /^\.\/reporting\//, reason: "reporting reads the raw error text" },
+    { file: /^\.\/api\/bridgeError\.ts$/, reason: "reads the error's own fields" },
+  ];
+
+  it("defines messageOf nowhere but api/userMessage.ts", () => {
+    const found = files
+      .filter(([file, source]) => file !== "./api/userMessage.ts" && MESSAGE_OF.test(source))
+      .map(([file]) => file);
+    expect(found).toEqual([]);
+  });
+
+  it("never turns a caught error into text by hand", () => {
+    const found = files
+      .filter(([file, source]) => !KEPT.some((k) => k.file.test(file)) && INLINE.test(source))
+      .map(([file]) => file);
+    expect(found).toEqual([]);
   });
 });

@@ -7,6 +7,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { OUTAGE_PARTWAY_MESSAGE } from "../../api/userMessage";
 import { followJob, isTerminal } from "./followJob";
 
 interface Bridge {
@@ -61,6 +62,16 @@ describe("followJob", () => {
 
     expect(outcome.state).toBe("failed");
     expect(outcome.error?.code).toBe("LIBRARY_NOT_IMPORTED");
+  });
+
+  it("says the background process was lost partway, and marks it unavailable", async () => {
+    install({ getJob: vi.fn().mockRejectedValue(new Error("fetch failed")) });
+
+    const outcome = await followJob("job-1").finished;
+
+    expect(outcome.state).toBe("failed");
+    expect(outcome.error?.code).toBe("UNAVAILABLE");
+    expect(outcome.error?.message).toBe(OUTAGE_PARTWAY_MESSAGE);
   });
 
   it("keeps polling until the job stops", async () => {

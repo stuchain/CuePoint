@@ -908,7 +908,7 @@ describe("without the desktop app", () => {
     delete (window as unknown as { cuepoint?: unknown }).cuepoint;
     renderDialog({ initialIds: [7] });
     expect(
-      within(dialog()).getByText("Exporting needs the desktop app with CuePoint's library service running."),
+      within(dialog()).getByText("This needs the CuePoint desktop app."),
     ).toBeInTheDocument();
     expect(confirmButton()).toBeDisabled();
     expect(within(dialog()).getByRole("button", { name: "Choose…" })).toBeDisabled();

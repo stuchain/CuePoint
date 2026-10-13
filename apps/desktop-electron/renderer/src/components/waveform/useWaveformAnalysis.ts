@@ -26,6 +26,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { forgetWaveforms } from "./waveformCache";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 /** How often the analysis is read while a view shows it. */
 const ANALYSIS_POLL_MS = 2000;
@@ -48,10 +49,6 @@ interface WaveformAnalysis {
 }
 
 type Call = () => Promise<WaveformAnswer<WaveformAnalysisStatus>>;
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
-}
 
 export function useWaveformAnalysis(pollMs: number = ANALYSIS_POLL_MS): WaveformAnalysis {
   const bridge = window.cuepoint?.waveforms;
@@ -92,7 +89,7 @@ export function useWaveformAnalysis(pollMs: number = ANALYSIS_POLL_MS): Waveform
         })
         .catch((cause: unknown) => {
           reportUnexpected(cause);
-          if (!cancelled) setError(messageOf(cause));
+          if (!cancelled) setError(userMessage(cause));
         });
     };
     poll();
@@ -111,7 +108,7 @@ export function useWaveformAnalysis(pollMs: number = ANALYSIS_POLL_MS): Waveform
         return take(await call());
       } catch (cause) {
         reportUnexpected(cause);
-        if (alive.current) setError(messageOf(cause));
+        if (alive.current) setError(userMessage(cause));
         return null;
       } finally {
         if (alive.current) setBusy(false);
@@ -135,7 +132,7 @@ export function useWaveformAnalysis(pollMs: number = ANALYSIS_POLL_MS): Waveform
       return { value: answer.value.deleted, refusal: null };
     } catch (cause) {
       reportUnexpected(cause);
-      if (alive.current) setError(messageOf(cause));
+      if (alive.current) setError(userMessage(cause));
       return null;
     } finally {
       if (alive.current) setBusy(false);

@@ -27,6 +27,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import type { LibraryQuery } from "./libraryQuery";
 import { reportUnexpected } from "../../reporting/reporting";
+import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
 
 type VocabularyStatus = "loading" | "ready" | "error" | "unavailable";
 
@@ -61,7 +62,7 @@ export function useFilterVocabulary(): FilterVocabularyState {
         setState({
           vocabulary: null,
           status: "error",
-          error: cause instanceof Error ? cause.message : String(cause),
+          error: userMessage(cause),
         });
       });
     return () => {
@@ -90,7 +91,7 @@ export function useFacet(query: LibraryQuery): FacetState {
     (field: string) => {
       const bridge = window.cuepoint?.getLibraryFacet;
       if (!bridge) {
-        setError("CuePoint's library service is not available in this window");
+        setError(NEEDS_DESKTOP);
         return;
       }
       setLoading(true);
@@ -112,7 +113,7 @@ export function useFacet(query: LibraryQuery): FacetState {
         .catch((cause: unknown) => {
           reportUnexpected(cause);
           setLoading(false);
-          setError(cause instanceof Error ? cause.message : String(cause));
+          setError(userMessage(cause));
         });
     },
     [query.q, query.playlistId, query.filters, query.scope, query.collectionId],

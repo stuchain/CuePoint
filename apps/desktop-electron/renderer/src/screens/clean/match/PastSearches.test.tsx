@@ -171,7 +171,7 @@ describe("the list", () => {
     delete bridge.getMatchJobs;
     renderPast();
     expect(
-      await screen.findByText(/Past searches need the desktop app with CuePoint's library service running\./),
+      await screen.findByText("This needs the CuePoint desktop app."),
     ).toBeInTheDocument();
   });
 

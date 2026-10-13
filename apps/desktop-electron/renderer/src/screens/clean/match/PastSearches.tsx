@@ -16,6 +16,7 @@ import { Button } from "../../../components/Button";
 import { TextField } from "../../../components/TextField";
 import { canResume, resultParts, statusOf, whatLine, whenLabel, type StatusTone } from "./pastSearchWords";
 import { useMatchJobs } from "./useMatchJobs";
+import { NEEDS_DESKTOP } from "../../../api/userMessage";
 
 const STATUS_VARIANTS: Record<StatusTone, BadgeVariant> = {
   done: "success",
@@ -74,7 +75,7 @@ export function PastSearches({
         </p>
       )}
       {!jobs.available && (
-        <p className="match-past__empty">Past searches need the desktop app with CuePoint's library service running.</p>
+        <p className="match-past__empty">{NEEDS_DESKTOP}</p>
       )}
       {jobs.available && !jobs.error && jobs.runs.length === 0 && !jobs.loading && (
         <p className="match-past__empty">

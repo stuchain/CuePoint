@@ -43,6 +43,7 @@ import { trackCount } from "./cleanFormat";
 import { MISSING_FILES_RULES, WHOLE_LIBRARY, cleanQuery } from "./cleanRules";
 import { revealTrack } from "./revealTrack";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
+import { NEEDS_DESKTOP } from "../../api/userMessage";
 
 /** Every track in the library, as a selection. */
 const WHOLE_LIBRARY_SELECTION: BatchSelection = { query: {} };
@@ -97,7 +98,7 @@ export function MissingFilesView({
     (key: string, target: BatchSelection) => {
       const bridge = window.cuepoint?.startFileCheck;
       if (!bridge) {
-        push("Checking files needs the desktop app with CuePoint's library service running.", "warning");
+        push(NEEDS_DESKTOP, "warning");
         return;
       }
       void jobs.run<FileCheckStarted & CleanJobStarted>(

@@ -22,6 +22,7 @@ import type {
   SetSuggestionsRequest,
 } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 /** How long a gap must stay chosen before it is asked about. */
 export const SUGGESTION_DELAY_MS = 150;
@@ -43,10 +44,6 @@ interface SetSuggestionsOptions {
   onStale: (refusal: SetRefusal) => void;
   /** The Set is gone: the page leaves. */
   onGone: (refusal: SetRefusal) => void;
-}
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }
 
 export function useSetSuggestions({
@@ -103,7 +100,7 @@ export function useSetSuggestions({
           reportUnexpected(cause);
           if (!current) return;
           setLoading(false);
-          setProblem(messageOf(cause));
+          setProblem(userMessage(cause));
         });
     }, SUGGESTION_DELAY_MS);
     return () => {

@@ -17,6 +17,7 @@ import type { OverrideEdit } from "./libraryBatch";
 import { effectiveText, overrideSourceText } from "./libraryClean";
 import { EDIT_FIELDS } from "./metadataEdits";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 interface TrackEditedValuesProps {
   track: LibraryTrackRow & { id: number };
@@ -25,10 +26,6 @@ interface TrackEditedValuesProps {
   /** After the engine accepted a change. */
   onSaved: () => void;
   onError: (message: string) => void;
-}
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }
 
 function fieldWord(field: OverrideField): string {
@@ -61,7 +58,7 @@ export function TrackEditedValues({ track, beatportKey, onSaved, onError }: Trac
       await bridge({ trackId: track.id, [edit.field]: edit.value });
     } catch (cause) {
       reportUnexpected(cause);
-      return messageOf(cause);
+      return userMessage(cause);
     }
     onSaved();
     return null;

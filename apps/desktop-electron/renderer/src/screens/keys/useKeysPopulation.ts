@@ -59,7 +59,7 @@ export function useKeysPopulation(
       .catch((cause: unknown) => {
         if (
           bridgeErrorFields(cause).code === "SOURCE_NOT_FOUND" &&
-          gone.current(cause instanceof Error ? cause.message : "")
+          gone.current(String((cause as { message?: unknown } | null)?.message ?? ""))
         ) {
           return;
         }

@@ -31,6 +31,7 @@ import {
   type BatchAction,
 } from "./libraryBatch";
 import { reportUnexpected } from "../../reporting/reporting";
+import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
 
 /** One batch, ready to run: what to do, to which tracks, and how many. */
 export interface BatchRun {
@@ -73,10 +74,6 @@ interface LibraryBatchOptions {
   onApplied: () => void;
 }
 
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
-}
-
 export function useLibraryBatch({
   onMessage,
   onApplied,
@@ -102,7 +99,7 @@ export function useLibraryBatch({
     ): Promise<boolean> => {
       const bridge = window.cuepoint?.applyBatch;
       if (!bridge) {
-        onMessage("Editing tracks needs the desktop app with CuePoint's library service running.", "warning");
+        onMessage(NEEDS_DESKTOP, "warning");
         return false;
       }
 
@@ -116,8 +113,8 @@ export function useLibraryBatch({
       } catch (cause) {
         reportUnexpected(cause);
         if (alive.current) setBusy(false);
-        if (onRefused) onRefused(messageOf(cause));
-        else onMessage(messageOf(cause), "warning");
+        if (onRefused) onRefused(userMessage(cause));
+        else onMessage(userMessage(cause), "warning");
         return false;
       }
 

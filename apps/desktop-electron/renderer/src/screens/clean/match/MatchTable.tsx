@@ -33,6 +33,7 @@ import { revealTrack } from "../revealTrack";
 import { CARD_FIELDS, CARD_FIELD_LABELS, proposalCells, type CardField } from "./matchCard";
 import { MATCH_COLUMNS, MATCH_TABLE_LAYOUT_KEY, TickContext } from "./matchColumns";
 import { StatusLine, type MatchStatus } from "./StatusLine";
+import { NEEDS_DESKTOP, userMessage } from "../../../api/userMessage";
 
 /** A tick toggles its row like a Ctrl-click, leaving the others as they are. */
 const TICK_CLICK = { shiftKey: false, ctrlKey: true, metaKey: false };
@@ -42,10 +43,6 @@ const EXPORT_FORMATS: Array<{ value: ReviewExportFormat; label: string }> = [
   { value: "excel", label: "Excel" },
   { value: "json", label: "JSON" },
 ];
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
-}
 
 interface MatchTableProps {
   list: ReturnType<typeof useTrackWindow>;
@@ -167,7 +164,7 @@ export function MatchTable({
     const save = window.cuepoint?.saveExportFileDialog;
     const write = window.cuepoint?.exportReviewList;
     if (!save || !write) {
-      push("Exporting needs the desktop app with CuePoint's library service running.", "warning");
+      push(NEEDS_DESKTOP, "warning");
       return;
     }
     const extension = exportFormat === "excel" ? "xlsx" : exportFormat;
@@ -187,7 +184,7 @@ export function MatchTable({
       push(exportedLine(written.count, written.file_path), "success");
     } catch (cause) {
       reportUnexpected(cause);
-      push(messageOf(cause), "warning");
+      push(userMessage(cause), "warning");
     } finally {
       setExporting(false);
     }

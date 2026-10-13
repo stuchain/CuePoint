@@ -34,6 +34,7 @@ import {
   type ScopeMode,
 } from "./newRun";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 interface NewRunPanelProps {
   options: DiscoverOptions;
@@ -144,7 +145,7 @@ export function NewRunPanel({
       if (refused) setRefusal(refusalText(refused));
     } catch (cause) {
       reportUnexpected(cause);
-      setRefusal(cause instanceof Error ? cause.message : String(cause));
+      setRefusal(userMessage(cause));
     } finally {
       setStarting(false);
     }

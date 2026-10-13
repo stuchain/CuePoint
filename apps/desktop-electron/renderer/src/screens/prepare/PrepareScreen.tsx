@@ -134,6 +134,7 @@ import { useSetList } from "./useSetList";
 import { usePreparedSet, type Tone } from "./usePreparedSet";
 import "../screens.css";
 import "./prepare.css";
+import { NEEDS_DESKTOP } from "../../api/userMessage";
 
 /** The page's own memory of the tree's folders, apart from the Library pane's. */
 const PREPARE_TREE_STORAGE_KEY = "cuepoint-prepare-tree";
@@ -335,7 +336,7 @@ export function PrepareScreen({
   const checkFiles = useCallback(() => {
     const start = window.cuepoint?.startFileCheck;
     if (!start) {
-      push("Checking files needs the desktop app with CuePoint's library service running.", "warning");
+      push(NEEDS_DESKTOP, "warning");
       return;
     }
     void fileJobs.run<FileCheckStarted & CleanJobStarted>(

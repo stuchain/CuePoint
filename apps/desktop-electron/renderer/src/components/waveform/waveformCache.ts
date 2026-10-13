@@ -40,6 +40,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
 import { waveformDetailCache } from "./waveformDetailCache";
+import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
 
 /** Ids per request: the engine's own limit. */
 export const BATCH_SIZE = 200;
@@ -116,7 +117,7 @@ export async function readEntries(
     let message: string | null = null;
     try {
       const answer = bridge ? await bridge.get(askFor(batch, query)) : null;
-      if (!answer) message = "CuePoint's library service is not available";
+      if (!answer) message = NEEDS_DESKTOP;
       else if (answer.refusal) message = answer.refusal.message;
       else {
         for (const track of answer.value.waveforms) {
@@ -126,7 +127,7 @@ export async function readEntries(
       }
     } catch (cause) {
       reportUnexpected(cause);
-      message = cause instanceof Error ? cause.message : String(cause);
+      message = userMessage(cause);
     }
     if (message !== null) {
       for (const trackId of batch) answers.set(trackId, { kind: "error", message });
@@ -288,7 +289,7 @@ export class WaveformCache {
       answer = await get(askFor(trackIds, query));
     } catch (cause) {
       reportUnexpected(cause);
-      this.settleFailed(keys, generation, cause instanceof Error ? cause.message : String(cause));
+      this.settleFailed(keys, generation, userMessage(cause));
       return;
     }
     if (generation !== this.generation) return;

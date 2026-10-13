@@ -12,6 +12,7 @@ import type {
   DiscoverRefusal,
 } from "../../api/cuepointBridge.types";
 import type { ToastVariant } from "../../components/Toast";
+import { NEEDS_DESKTOP } from "../../api/userMessage";
 
 export interface DiscoverTools {
   options: DiscoverOptions;
@@ -23,4 +24,4 @@ export interface DiscoverTools {
 }
 
 /** The message for a bridge this build does not have. */
-export const NO_ENGINE = "Discover needs the desktop app with CuePoint's library service running.";
+export const NO_ENGINE = NEEDS_DESKTOP;

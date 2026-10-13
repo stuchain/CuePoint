@@ -12,6 +12,7 @@
  */
 import type { EngineJobSummary, JobState } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
+import { NEEDS_DESKTOP, isOutage, userMessage } from "../../api/userMessage";
 
 /** How often to ask, when there is no subscription to listen to. */
 const POLL_INTERVAL_MS = 400;
@@ -83,7 +84,7 @@ export function followJob(jobId: string, pollMs = POLL_INTERVAL_MS): FollowHandl
   if (!bridge?.getJob) {
     finish({
       state: "failed",
-      error: { code: "NO_BRIDGE", message: "CuePoint's library service is not connected." },
+      error: { code: "NO_BRIDGE", message: NEEDS_DESKTOP },
     });
     return { finished, stop: () => finish({ state: "cancelled" }) };
   }
@@ -93,10 +94,12 @@ export function followJob(jobId: string, pollMs = POLL_INTERVAL_MS): FollowHandl
       consider(await bridge.getJob!(jobId));
     } catch (error) {
       reportUnexpected(error);
+      // The job had started, so an outage here may have left some of it done.
       finish({
         state: "failed",
         error: {
-          message: error instanceof Error ? error.message : "Lost track of that task.",
+          ...(isOutage(error) ? { code: "UNAVAILABLE" } : {}),
+          message: userMessage(error, "Lost track of that task.", { partway: true }),
         },
       });
     }

@@ -12,6 +12,7 @@ import {
 import { usePlayerValue } from "../components/player/playerStore";
 import { reportUnexpected } from "../reporting/reporting";
 import "./audio-settings.css";
+import { userMessage } from "../api/userMessage";
 
 /**
  * Where the audio actually comes out (PLAYER-11, DEC-055).
@@ -60,7 +61,7 @@ export function AudioSettingsPanel() {
     } catch (problem) {
       reportUnexpected(problem);
       setDevices([]);
-      setError(problem instanceof Error ? problem.message : "Could not read the audio devices.");
+      setError(userMessage(problem, "Could not read the audio devices."));
     } finally {
       setLoading(false);
     }

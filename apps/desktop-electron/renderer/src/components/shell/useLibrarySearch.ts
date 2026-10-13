@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LibrarySearchResponse } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 /** How long typing settles before a request goes out. */
 const SEARCH_DEBOUNCE_MS = 200;
@@ -90,7 +91,7 @@ export function useLibrarySearch(query: string): LibrarySearchState {
           setState({
             status: "error",
             response: null,
-            error: cause instanceof Error ? cause.message : String(cause),
+            error: userMessage(cause),
           });
         });
     }, SEARCH_DEBOUNCE_MS);

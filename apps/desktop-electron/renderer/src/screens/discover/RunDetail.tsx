@@ -48,6 +48,7 @@ import { useHideOwned } from "./useHideOwned";
 import { beatportSelectedId, useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { jobExplainer } from "../../components/shell/useActiveJob";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 interface RunDetailProps {
   runId: number;
@@ -115,7 +116,7 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
       })
       .catch((cause: unknown) => {
         reportUnexpected(cause);
-        if (current) setHeaderError(cause instanceof Error ? cause.message : String(cause));
+        if (current) setHeaderError(userMessage(cause));
       });
     return () => {
       current = false;
@@ -205,7 +206,7 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
       reload();
     } catch (cause) {
       reportUnexpected(cause);
-      notify(cause instanceof Error ? cause.message : String(cause), "warning");
+      notify(userMessage(cause), "warning");
     } finally {
       setWorking(false);
     }

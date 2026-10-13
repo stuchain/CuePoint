@@ -25,6 +25,7 @@ import type { DiscoverAnswer, DiscoverRefusal } from "../../api/cuepointBridge.t
 import type { TrackTableSource, TrackTableStatus } from "../../components/table";
 import { PAGE_SIZE, pagesForRange, pagesToEvict } from "../library/useTrackWindow";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 /** What every Beatport window answers: rows, how many in all, and itself. */
 interface BeatportPageShape<Row> {
@@ -68,10 +69,6 @@ interface BeatportWindow<Row, Page> {
 
 function pageOf(index: number): number {
   return Math.floor(index / PAGE_SIZE);
-}
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }
 
 export function useBeatportWindow<Row, Page extends BeatportPageShape<Row>>({
@@ -193,7 +190,7 @@ export function useBeatportWindow<Row, Page extends BeatportPageShape<Row>>({
           })
           .catch((cause: unknown) => {
             reportUnexpected(cause);
-            fail(messageOf(cause), null);
+            fail(userMessage(cause), null);
           });
       }
       return true;

@@ -55,6 +55,7 @@ import { useBeatportWindow } from "./useBeatportWindow";
 import { useDiscoverJob } from "./useDiscoverJob";
 import { refusalError } from "../../reporting/expected";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 /** One answer of the half, shaped as a window for `useBeatportWindow`. */
 interface HalfPage {
@@ -224,7 +225,7 @@ export function BeatportHalf({
       reload();
     } catch (cause) {
       reportUnexpected(cause);
-      notify(cause instanceof Error ? cause.message : String(cause), "warning");
+      notify(userMessage(cause), "warning");
     } finally {
       setWorking(false);
     }
@@ -244,7 +245,7 @@ export function BeatportHalf({
       else setPushing({ options: answer.value });
     } catch (cause) {
       reportUnexpected(cause);
-      notify(cause instanceof Error ? cause.message : String(cause), "warning");
+      notify(userMessage(cause), "warning");
     } finally {
       setReadingOptions(false);
     }
@@ -302,7 +303,7 @@ export function BeatportHalf({
       notify(refusalText(refusal), "warning");
     } catch (cause) {
       reportUnexpected(cause);
-      notify(cause instanceof Error ? cause.message : String(cause), "warning");
+      notify(userMessage(cause), "warning");
     }
   };
 

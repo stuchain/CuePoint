@@ -4,6 +4,7 @@ import { settingsFocusState } from "../screens/settingsLink";
 import { Button, Modal, useToast } from "./index";
 import { reportUnexpected } from "../reporting/reporting";
 import "./PrivacyDialog.css";
+import { userMessage } from "../api/userMessage";
 
 const PRIVACY_TEXT = `CuePoint respects your privacy.
 
@@ -63,7 +64,7 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
       push("Cache cleared.", "success");
     } catch (e) {
       reportUnexpected(e);
-      push(e instanceof Error ? e.message : "Failed to clear cache.", "warning");
+      push(userMessage(e, "Failed to clear cache."), "warning");
     } finally {
       setClearing(false);
     }
@@ -79,7 +80,7 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
       push("Logs cleared.", "success");
     } catch (e) {
       reportUnexpected(e);
-      push(e instanceof Error ? e.message : "Failed to clear logs.", "warning");
+      push(userMessage(e, "Failed to clear logs."), "warning");
     } finally {
       setClearing(false);
     }

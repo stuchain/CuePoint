@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 
 import type { TrackFieldChange } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 /**
  * How much history the panel asks for.
@@ -70,7 +71,7 @@ export function useTrackHistory(trackId: number | null, version = 0): TrackHisto
         setState({
           changes: [],
           loading: false,
-          error: cause instanceof Error ? cause.message : String(cause),
+          error: userMessage(cause),
           unavailable: false,
         });
       });

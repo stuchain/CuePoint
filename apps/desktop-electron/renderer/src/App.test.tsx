@@ -46,8 +46,8 @@ const ROUTES = [
   // Without `window.cuepoint` the Library page is its import prompt.
   { link: "Library", marker: /Nothing imported yet/i },
   { link: "Clean", marker: /^Clean$/ },
-  { link: "Discover", marker: /Discover needs the desktop app/i },
-  { link: "Prepare", marker: /Prepare needs the desktop app/i },
+  { link: "Discover", marker: /^Discover could not open$/ },
+  { link: "Prepare", marker: /^Prepare$/ },
   { link: "Settings", marker: /^Settings$/ },
 ];
 
@@ -275,7 +275,7 @@ describe("App shell", () => {
 
       await user.click(navLink("Discover"));
 
-      expect(await screen.findByText(/Discover needs the desktop app/i)).toBeInTheDocument();
+      expect(await screen.findByText(/^Discover could not open$/)).toBeInTheDocument();
     });
 
     it("remembers the destination it navigated to", async () => {
@@ -283,7 +283,7 @@ describe("App shell", () => {
       render(<App />);
 
       await user.click(navLink("Discover"));
-      await screen.findByText(/Discover needs the desktop app/i);
+      await screen.findByText(/^Discover could not open$/);
 
       expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("discover");
     });
@@ -357,7 +357,7 @@ describe("App shell", () => {
     });
 
     it.each([
-      ["#/incrate", "#/discover", /Discover needs the desktop app/i],
+      ["#/incrate", "#/discover", /^Discover could not open$/],
       ["#/", "#/library", HOME],
       ["#/not-a-page", "#/library", HOME],
     ])("sends %s to %s", async (hash, target, marker) => {
@@ -379,7 +379,7 @@ describe("App shell", () => {
     });
 
     it.each([
-      ["incrate", "#/discover", /Discover needs the desktop app/i],
+      ["incrate", "#/discover", /^Discover could not open$/],
       ["tools", "#/library", HOME],
     ])("reopens a remembered %s on %s", async (stored, target, marker) => {
       localStorage.setItem(LAST_DESTINATION_STORAGE_KEY, stored);
@@ -466,7 +466,7 @@ describe("App shell", () => {
       });
 
       const main = container.querySelector("main.app-main") as HTMLElement;
-      expect(await within(main).findByText(/Prepare needs the desktop app/i)).toBeInTheDocument();
+      expect(await within(main).findByText(/^Prepare$/)).toBeInTheDocument();
       expect(navLink("Prepare")).toHaveAttribute("aria-current", "page");
       await waitFor(() =>
         expect(localStorage.getItem(LAST_DESTINATION_STORAGE_KEY)).toBe("prepare"),

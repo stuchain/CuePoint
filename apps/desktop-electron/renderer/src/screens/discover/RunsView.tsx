@@ -24,6 +24,7 @@ import { useNarrow } from "./useNarrow";
 import { refusalText } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 /** Runs asked for at a time; "Show older runs" asks for this many more. */
 const RUNS_PAGE = 50;
@@ -98,7 +99,7 @@ export function RunsView({
       setSelected((previous) => previous ?? listed[0]?.id ?? null);
     } catch (cause) {
       reportUnexpected(cause);
-      setListError(cause instanceof Error ? cause.message : String(cause));
+      setListError(userMessage(cause));
       setRuns((previous) => previous ?? []);
     }
   }, [tools.options.limits.max_runs]);
@@ -173,7 +174,7 @@ export function RunsView({
       }
     } catch (cause) {
       reportUnexpected(cause);
-      tools.notify(cause instanceof Error ? cause.message : String(cause), "warning");
+      tools.notify(userMessage(cause), "warning");
     } finally {
       setDeletePending(false);
       setDeleting(null);

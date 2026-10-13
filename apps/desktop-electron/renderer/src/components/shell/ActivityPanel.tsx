@@ -12,6 +12,7 @@ import {
 import { ActivityOffer } from "./ActivityOffer";
 import { reportUnexpected } from "../../reporting/reporting";
 import "./ActivityPanel.css";
+import { userMessage } from "../../api/userMessage";
 
 interface ActivityPanelProps {
   open: boolean;
@@ -56,7 +57,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
       })
       .catch((cause: unknown) => {
         reportUnexpected(cause);
-        setError(cause instanceof Error ? cause.message : String(cause));
+        setError(userMessage(cause));
         setStatus("error");
       });
   }, []);

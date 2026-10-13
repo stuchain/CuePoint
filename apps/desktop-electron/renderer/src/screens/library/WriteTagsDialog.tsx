@@ -38,6 +38,7 @@ import {
 } from "./tagWriting";
 import { reportUnexpected } from "../../reporting/reporting";
 import "./cleanDialogs.css";
+import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
 
 interface WriteTagsDialogProps {
   open: boolean;
@@ -56,10 +57,6 @@ type Phase =
   | "written"
   | "restoring"
   | "restored";
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
-}
 
 export function WriteTagsDialog({ open, selection, count, onClose, onChanged }: WriteTagsDialogProps) {
   const [options, setOptions] = useState<DialogTagOptions>(DEFAULT_TAG_OPTIONS);
@@ -105,7 +102,7 @@ export function WriteTagsDialog({ open, selection, count, onClose, onChanged }: 
   const runPreview = async () => {
     const bridge = window.cuepoint?.previewTagWrite;
     if (!bridge || !selection) {
-      setProblem("Writing tags needs the desktop app with CuePoint's library service running.");
+      setProblem(NEEDS_DESKTOP);
       return;
     }
     const invalid = optionsProblem(options);
@@ -134,7 +131,7 @@ export function WriteTagsDialog({ open, selection, count, onClose, onChanged }: 
       reportUnexpected(cause);
       if (!alive.current) return;
       setJobId(null);
-      setProblem(messageOf(cause));
+      setProblem(userMessage(cause));
       setPhase("choosing");
     }
   };
@@ -156,7 +153,7 @@ export function WriteTagsDialog({ open, selection, count, onClose, onChanged }: 
     } catch (cause) {
       reportUnexpected(cause);
       if (!alive.current) return;
-      setProblem(messageOf(cause));
+      setProblem(userMessage(cause));
       // A write that started and then failed may have written files, so it is
       // offered for restoring. One refused before it started wrote nothing,
       // and its preview is gone: the engine writes a preview once.
@@ -187,7 +184,7 @@ export function WriteTagsDialog({ open, selection, count, onClose, onChanged }: 
     } catch (cause) {
       reportUnexpected(cause);
       if (!alive.current) return;
-      setProblem(messageOf(cause));
+      setProblem(userMessage(cause));
       setPhase("written");
     } finally {
       if (alive.current) setJobId(null);

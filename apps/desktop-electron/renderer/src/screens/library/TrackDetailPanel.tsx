@@ -65,6 +65,7 @@ import { useTrackHistory } from "./useTrackHistory";
 import { useTrackWrites } from "./useTrackWrites";
 import { reportUnexpected } from "../../reporting/reporting";
 import "./TrackDetailPanel.css";
+import { userMessage } from "../../api/userMessage";
 
 /** A Collection as the track-detail read names it — enough to show and to open. */
 type TrackCollectionRef = Pick<CollectionNode, "id" | "name" | "kind">;
@@ -260,7 +261,7 @@ export function TrackDetailPanel({
       } catch (cause) {
         reportUnexpected(cause);
         // A stale revert is refused with both values named (CLEAN-06).
-        report(cause instanceof Error ? cause.message : String(cause));
+        report(userMessage(cause));
       } finally {
         setReverting(null);
       }
@@ -279,7 +280,7 @@ export function TrackDetailPanel({
       else onMessage?.("Put the file back as it was.");
     } catch (cause) {
       reportUnexpected(cause);
-      report(cause instanceof Error ? cause.message : String(cause));
+      report(userMessage(cause));
     } finally {
       setRestoring(false);
       onChanged();
@@ -299,7 +300,7 @@ export function TrackDetailPanel({
       else if (outcome) onMessage?.(outcome.message);
     } catch (cause) {
       reportUnexpected(cause);
-      report(cause instanceof Error ? cause.message : String(cause));
+      report(userMessage(cause));
     } finally {
       setActing(null);
     }

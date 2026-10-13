@@ -1180,7 +1180,7 @@ describe("without an engine", () => {
     expect(await screen.findByText(/Nothing imported yet/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /Import your Rekordbox collection/i }));
-    expect(await screen.findByText(/needs the desktop app/i)).toBeInTheDocument();
+    expect(await screen.findByText(/needs the CuePoint desktop app/i)).toBeInTheDocument();
   });
 });
 

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clean's Match area.** The Review matches tab is now **Match**, with three views of one list: **One at a time** (your track beside the best Beatport match, with the other results, a likelihood, and **Play Beatport preview** and **Play your file**), **Table** (each value as before → after, with **Take ticked values** for many tracks) and **Past searches** (every search you ran, with Open, Resume and Match again). **From** limits the list to one search. Press A to Correct, R for Not this track, N to skip, B to hear the preview and Y to play your file (DEC-251).
 
 ### Changed
+- When CuePoint loses touch with its background process, an action that fails says so in one sentence ("CuePoint lost touch with its background process. Nothing was changed.", or "…partway through. Activity shows what was done." for work already started) instead of "fetch failed". A feature that only works in the desktop app says "This needs the CuePoint desktop app."
 - Discover's banner says **Sign in to Beatport** (or **Sign in again**, also when Beatport refused the token) with the button beside it, where it said Open Settings. Settings → Beatport lost its "How do I get a token?" help.
 - The Camelot wheel (header and Keys page) is drawn as smooth wedges with even gaps.
 - **The key wheel's labels have room.** Key names sit clear of the wedge edges, with the track count a little smaller beneath them.

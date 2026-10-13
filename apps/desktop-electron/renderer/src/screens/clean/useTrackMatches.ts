@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MatchCandidate, TrackMatches } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
+import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
 
 export interface TrackMatchesState {
   matches: TrackMatches | null;
@@ -26,10 +27,6 @@ export interface TrackMatchesState {
   unavailable: boolean;
   chooseAttempt: (attemptId: number) => void;
   reload: () => void;
-}
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }
 
 /**
@@ -53,7 +50,7 @@ export function useTrackMatches(trackId: number | null, version = 0): TrackMatch
       setMatches(null);
       setAttemptId(null);
       setCandidates([]);
-      setError(trackId == null ? null : "CuePoint's library service is not available in this window");
+      setError(trackId == null ? null : NEEDS_DESKTOP);
       setLoading(false);
       return;
     }
@@ -80,7 +77,7 @@ export function useTrackMatches(trackId: number | null, version = 0): TrackMatch
       })
       .catch((cause: unknown) => {
         reportUnexpected(cause);
-        if (!cancelled) setError(messageOf(cause));
+        if (!cancelled) setError(userMessage(cause));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -103,7 +100,7 @@ export function useTrackMatches(trackId: number | null, version = 0): TrackMatch
       })
       .catch((cause: unknown) => {
         reportUnexpected(cause);
-        if (!cancelled) setError(messageOf(cause));
+        if (!cancelled) setError(userMessage(cause));
       });
     return () => {
       cancelled = true;

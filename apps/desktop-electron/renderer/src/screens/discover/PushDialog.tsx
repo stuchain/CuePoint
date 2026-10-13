@@ -18,6 +18,7 @@ import { Modal } from "../../components/Modal";
 import { TextField } from "../../components/TextField";
 import { refusalText } from "./discoverFormat";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 interface PushDialogProps {
   open: boolean;
@@ -61,7 +62,7 @@ export function PushDialog({
       if (refused) setRefusal(refusalText(refused));
     } catch (cause) {
       reportUnexpected(cause);
-      setRefusal(cause instanceof Error ? cause.message : String(cause));
+      setRefusal(userMessage(cause));
     } finally {
       setPushing(false);
     }

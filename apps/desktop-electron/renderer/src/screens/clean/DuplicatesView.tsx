@@ -37,13 +37,10 @@ import { fileStatusLabel, signalExplanation, signalLabel, trackCount } from "./c
 import { revealTrack } from "./revealTrack";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
 import { reportUnexpected } from "../../reporting/reporting";
+import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
 
 /** Groups read at a time: a screenful or two, never a whole library's worth. */
 const DUPLICATE_PAGE = 50;
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
-}
 
 interface GroupCardProps {
   group: ListedDuplicateGroup;
@@ -147,7 +144,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
     const bridge = window.cuepoint?.getDuplicateGroups;
     if (!bridge) {
       setLoading(false);
-      setError("CuePoint's library service is not available in this window");
+      setError(NEEDS_DESKTOP);
       return;
     }
     let cancelled = false;
@@ -161,7 +158,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
       })
       .catch((cause: unknown) => {
         reportUnexpected(cause);
-        if (!cancelled) setError(messageOf(cause));
+        if (!cancelled) setError(userMessage(cause));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -184,7 +181,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
       setTotal(payload.total);
     } catch (cause) {
       reportUnexpected(cause);
-      push(messageOf(cause), "warning");
+      push(userMessage(cause), "warning");
     }
   }, [groups.length, includeDismissed, push]);
 
@@ -217,7 +214,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
         onHealthChanged();
       } catch (cause) {
         reportUnexpected(cause);
-        push(messageOf(cause), "warning");
+        push(userMessage(cause), "warning");
       } finally {
         setActing(null);
       }
@@ -296,7 +293,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
         });
       } catch (cause) {
         reportUnexpected(cause);
-        push(messageOf(cause), "warning");
+        push(userMessage(cause), "warning");
       }
     },
     [batch, picker, push],
@@ -305,7 +302,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
   const scan = useCallback(() => {
     const bridge = window.cuepoint?.startDuplicateScan;
     if (!bridge) {
-      push("Finding duplicates needs the desktop app with CuePoint's library service running.", "warning");
+      push(NEEDS_DESKTOP, "warning");
       return;
     }
     void jobs.run<CleanJobStarted>("scan", () => bridge({}), {

@@ -4,6 +4,7 @@ import { Modal } from "./Modal";
 import { Select } from "./Select";
 import { reportUnexpected } from "../reporting/reporting";
 import "./LogViewerDialog.css";
+import { userMessage } from "../api/userMessage";
 
 const LEVEL_OPTIONS = ["All", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] as const;
 
@@ -52,7 +53,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
       setLogText(result.cuepoint_log ?? "");
     } catch (e) {
       reportUnexpected(e);
-      setError(e instanceof Error ? e.message : "Failed to load logs.");
+      setError(userMessage(e, "Failed to load logs."));
       setLogText("");
     } finally {
       setLoading(false);
@@ -82,7 +83,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
       await refresh();
     } catch (e) {
       reportUnexpected(e);
-      setError(e instanceof Error ? e.message : "Failed to clear logs.");
+      setError(userMessage(e, "Failed to clear logs."));
     } finally {
       setLoading(false);
     }
@@ -95,7 +96,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
       await window.cuepoint.showItemInFolder(result.logs_dir);
     } catch (e) {
       reportUnexpected(e);
-      setError(e instanceof Error ? e.message : "Failed to open logs folder.");
+      setError(userMessage(e, "Failed to open logs folder."));
     }
   }, []);
 

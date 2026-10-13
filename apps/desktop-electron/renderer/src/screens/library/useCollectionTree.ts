@@ -37,6 +37,7 @@ import {
   type CollectionsPaneState,
 } from "./collectionTree";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 type CollectionTreeStatus = "loading" | "ready" | "error" | "unavailable";
 
@@ -119,10 +120,6 @@ export type CreatableKind = "folder" | "collection" | "set";
 /** Said when the shell has no `sets` namespace: a browser tab, an older shell. */
 export const NO_SETS_BRIDGE = "This build cannot make Sets.";
 
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
-}
-
 /**
  * A Set's answer as a write's result (PREP-08, DISCOVER-09).
  *
@@ -145,7 +142,7 @@ async function answerOf<T>(
     return read(answer.value);
   } catch (cause) {
     reportUnexpected(cause);
-    return { ok: false, error: messageOf(cause) };
+    return { ok: false, error: userMessage(cause) };
   }
 }
 
@@ -181,7 +178,7 @@ export function useCollectionTree(
         reportUnexpected(cause);
         if (cancelled) return;
         setStatus("error");
-        setError(messageOf(cause));
+        setError(userMessage(cause));
       });
     return () => {
       cancelled = true;
@@ -267,7 +264,7 @@ export function useCollectionTree(
         return read(payload);
       } catch (cause) {
         reportUnexpected(cause);
-        return { ok: false, error: messageOf(cause) };
+        return { ok: false, error: userMessage(cause) };
       }
     },
     [reload],
@@ -378,7 +375,7 @@ export function useCollectionTree(
         return { ok: true, added: payload.added, skipped: payload.skipped };
       } catch (cause) {
         reportUnexpected(cause);
-        return { ok: false, error: messageOf(cause) };
+        return { ok: false, error: userMessage(cause) };
       }
     },
     [reload],

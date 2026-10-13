@@ -234,7 +234,7 @@ describe("when it cannot run at all", () => {
     });
 
     expect(onMessage).toHaveBeenCalledWith(
-      expect.stringContaining("needs the desktop app"),
+      expect.stringContaining("needs the CuePoint desktop app"),
       "warning",
     );
     expect(onApplied).not.toHaveBeenCalled();

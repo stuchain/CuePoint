@@ -4,6 +4,7 @@ import { MoreAbout, Panel } from "../components";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { reportUnexpected, setReportingChoice } from "../reporting/reporting";
 import "./error-reporting-settings.css";
+import { userMessage } from "../api/userMessage";
 
 /** The switch's id: what Help → Privacy's "Change in Settings" focuses. */
 export const ERROR_REPORTING_FIELD_ID = "settings-error-reporting";
@@ -50,7 +51,7 @@ export function ErrorReportingSettingsPanel({
       })
       .catch((reason: unknown) => {
         reportUnexpected(reason);
-        if (live) setError(reason instanceof Error ? reason.message : "Could not read the setting.");
+        if (live) setError(userMessage(reason, "Could not read the setting."));
       })
       .finally(() => {
         if (live) setLoading(false);
@@ -86,7 +87,7 @@ export function ErrorReportingSettingsPanel({
     } catch (reason) {
       reportUnexpected(reason);
       setEnabled(before);
-      setError(reason instanceof Error ? reason.message : "Could not change the setting.");
+      setError(userMessage(reason, "Could not change the setting."));
     } finally {
       setBusy(false);
     }

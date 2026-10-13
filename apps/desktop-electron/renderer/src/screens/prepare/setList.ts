@@ -11,6 +11,7 @@
  * are the part a test can pin and a component test can only glimpse.
  */
 import type { SetListFormat, SetListSaved, SetRefusal } from "../../api/cuepointBridge.types";
+import { NEEDS_DESKTOP } from "../../api/userMessage";
 
 /** Each form, as the sentence names it: "as a CSV set list". */
 const FORM_WORDS: Record<SetListFormat, string> = {
@@ -44,7 +45,7 @@ export function setListCopiedLine(setName: string): string {
 export const CLIPBOARD_REFUSED = "Could not copy to the clipboard.";
 
 /** Said when the shell has no `sets` namespace: a browser tab, an older shell. */
-export const NO_SET_LISTS = "Set lists need the desktop app with CuePoint's library service running.";
+export const NO_SET_LISTS = NEEDS_DESKTOP;
 
 /**
  * Whether a refused save should reopen the dialog (PREP-08).

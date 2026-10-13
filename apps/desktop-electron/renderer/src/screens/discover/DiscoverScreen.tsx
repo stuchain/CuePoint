@@ -61,6 +61,7 @@ import { useDiscoverJob } from "./useDiscoverJob";
 import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./discover.css";
+import { userMessage } from "../../api/userMessage";
 
 /**
  * What the Inspector says on this page. One element for the page's life, so
@@ -116,7 +117,7 @@ export function DiscoverScreen() {
       })
       .catch((cause: unknown) => {
         reportUnexpected(cause);
-        if (current) setOptionsError(cause instanceof Error ? cause.message : String(cause));
+        if (current) setOptionsError(userMessage(cause));
       });
     return () => {
       current = false;
@@ -238,7 +239,7 @@ export function DiscoverScreen() {
       toast(refusalText(refusal), "warning");
     } catch (cause) {
       reportUnexpected(cause);
-      toast(cause instanceof Error ? cause.message : String(cause), "warning");
+      toast(userMessage(cause), "warning");
     }
   };
 

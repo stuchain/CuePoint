@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import type { MatchRun } from "../../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../../reporting/reporting";
+import { userMessage } from "../../../api/userMessage";
 
 export const MATCH_JOBS_LIMIT = 20;
 
@@ -50,7 +51,7 @@ export function useMatchJobs(query = "", version = 0): MatchJobsState {
       })
       .catch((cause: unknown) => {
         reportUnexpected(cause);
-        if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
+        if (!cancelled) setError(userMessage(cause));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

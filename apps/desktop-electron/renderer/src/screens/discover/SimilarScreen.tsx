@@ -53,6 +53,7 @@ import { useReportSelectedTrack } from "../../components/shell/useReportSelected
 import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./discover.css";
+import { userMessage } from "../../api/userMessage";
 
 /** The groups the bar and the menu hold (FLW-8): no More, the suggestions are not files to copy. */
 const GROUPS: readonly TrackActionGroupId[] = ["play", "explore"];
@@ -138,7 +139,7 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
       })
       .catch((cause: unknown) => {
         reportUnexpected(cause);
-        if (current) setProblem(cause instanceof Error ? cause.message : String(cause));
+        if (current) setProblem(userMessage(cause));
       });
     return () => {
       current = false;

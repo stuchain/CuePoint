@@ -30,6 +30,7 @@ import { editTarget } from "./metadataEdits";
 import type { LibraryBatchController } from "./useLibraryBatch";
 import { WriteTagsDialog } from "./WriteTagsDialog";
 import { reportUnexpected } from "../../reporting/reporting";
+import { userMessage } from "../../api/userMessage";
 
 /** The tracks an operation applies to (DEC-045). */
 interface CleanTarget {
@@ -57,10 +58,6 @@ export function fieldWords(fields: readonly OverrideField[]): string {
   const words = fields.map((field) => (field === "bpm" ? "BPM" : APPLY_FIELD_LABELS[field].toLowerCase()));
   if (words.length <= 1) return words.join("");
   return `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
-}
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
 }
 
 type Open = { kind: "apply" | "edit" | "write"; target: CleanTarget } | null;
@@ -135,7 +132,7 @@ export function useLibraryClean({ batch, onMessage, onChanged }: LibraryCleanOpt
           await single({ trackId: target.trackId, [change.field]: change.value });
         } catch (cause) {
           reportUnexpected(cause);
-          return messageOf(cause);
+          return userMessage(cause);
         }
         onChanged();
         announceLibraryChange();

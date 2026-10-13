@@ -11,6 +11,7 @@
  * Every function here is safe to call when reporting is not set up, and never throws.
  */
 import { bridgeErrorFields, isEngineRefusal } from "../api/bridgeError";
+import { isOutage } from "../api/userMessage";
 import type { CuePointBridge } from "../api/cuepointBridge.types";
 import {
   electronRendererFacade,
@@ -111,17 +112,6 @@ export interface UnexpectedContext {
   /** React's component stack, from an error boundary. */
   componentStack?: string;
   tags?: Record<string, string>;
-}
-
-/**
- * The engine or the player is not there: stopped, starting or restarting. Polled calls fail
- * this way every few seconds for as long as it lasts, so it is not a bug report; main reports
- * an outage once (REPORT-05). Main marks such an error `UNAVAILABLE` across the bridge.
- */
-function isOutage(error: unknown, bridge: ReportingBridge): boolean {
-  if (bridgeErrorFields(error, bridge).code === "UNAVAILABLE") return true;
-  if (!(error instanceof Error)) return false;
-  return error.message.startsWith("Engine not running") || error.message === "fetch failed";
 }
 
 /** A string that says which error this is, whatever was thrown: its name, text and top frame. */

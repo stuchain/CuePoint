@@ -542,7 +542,7 @@ describe("when the engine fails", () => {
     const { result } = renderHook(() => useTrackWindow(query()));
 
     await waitFor(() => expect(result.current.status).toBe("error"));
-    expect(result.current.error).toMatch(/library service is not available/i);
+    expect(result.current.error).toMatch(/needs the CuePoint desktop app/i);
   });
 });
 
