@@ -190,6 +190,8 @@ test.describe("Application shell navigation", () => {
       // Nothing is selected, so it starts folded (K1): open it from its tab.
       await window.getByRole("button", { name: /show track details/i }).click({ timeout: 15_000 });
       await expect(panel).toBeVisible({ timeout: 15_000 });
+      // Opening it from the tab slides it in (the entrance motion): measure once it has landed.
+      await panel.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
       const before = (await panel.boundingBox())!.width;
 
       // Drag the handle 120px left. Only a real pointer proves this works: the
