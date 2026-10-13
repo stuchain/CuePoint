@@ -136,6 +136,7 @@ from cuepoint.engine.waveforms_api import (
     status_for as waveforms_status,
 )
 from cuepoint.engine.beatport_resolve_jobs import resolve_after_matches
+from cuepoint.engine import request_timing
 from cuepoint.engine.jobs import JobStore, JobTypeBusyError
 from cuepoint.reporting.engine_reporting import (
     breadcrumb,
@@ -378,6 +379,9 @@ def make_handler(
         #: Whether this request's status line has gone out; reset per request.
         _response_started: bool = False
 
+        #: The status code sent for this request, 0 until one is; reset per request.
+        _status: int = 0
+
         def _send_unexpected(self, exc: BaseException, payload: dict) -> None:
             """Answer a failure that is ours: report it, then send the 500 envelope.
 
@@ -418,7 +422,16 @@ def make_handler(
             was started, answered ``500 INTERNAL_ERROR`` with the ``report_id`` rather than a
             dropped connection. A client that went away (a closed connection) is not reported.
             """
-            with request_scope(self.headers):
+            with (
+                request_scope(self.headers),
+                request_timing.track(
+                    # The path routing sees (no query, no ``;params``), so a
+                    # stream such as ``.../events;x`` is left untimed too.
+                    route_template(urlparse(self.path).path),
+                    self.command,
+                    lambda: self._status,
+                ),
+            ):
                 try:
                     route()
                 except ConnectionError:
@@ -586,6 +599,7 @@ def make_handler(
         def handle_one_request(self) -> None:
             self._body = None
             self._response_started = False
+            self._status = 0
             self._length_declared = False
             super().handle_one_request()
 
@@ -637,6 +651,7 @@ def make_handler(
         def send_response(self, code: int, message: Optional[str] = None) -> None:
             self._discard_unread_body()
             self._response_started = True
+            self._status = code
             # A step before any later error: the method, the route's template and the status,
             # never the query or the body (REPORT-03).
             # ``send_error`` can run before the request line was parsed (a too long line, a bad

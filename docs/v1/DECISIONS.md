@@ -7159,3 +7159,23 @@ queue and change the Audio-settings device's meaning).
 DEC-065 (runs are labelled and listed), DEC-066 (new candidates carry `preview_url`).
 
 **Decided with**: User · **Date**: 2026-10-12
+
+## DEC-252 — The Engine Names Its Slow Requests
+
+**Status**: Approved · **Related**: DEC-127, REPORT-03, C19
+
+**Context**: C19: Stelios sees long waits switching pages on his PC, and none could be reproduced on
+Linux (no switch over 1 s at 50,000 tracks). Nothing recorded how long an engine request took, so a
+slow day left no trace of which route was slow.
+
+**Decision**:
+- Every `/api/v1/*` request slower than **500 ms** is logged at WARNING in `cuepoint.log`:
+  `[engine] slow request GET /api/v1/clean/health 200 812 ms (3 in flight)`.
+- Requests over **100 ms** are counted per route and logged at DEBUG.
+- Only the method, the route **template**, the status, the time and the number of requests running
+  are written: never a query value, an id, a path or a token.
+- Job event streams (`/jobs/{id}/events`) and `/health` are not timed; a stream stays open for the
+  whole job.
+- Timing can never fail a request.
+
+**Decided with**: Claude (C19 scope, "apply ALL") · **Date**: 2026-10-13
