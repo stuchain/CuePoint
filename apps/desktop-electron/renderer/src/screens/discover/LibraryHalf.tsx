@@ -25,7 +25,7 @@ import { TrackContextMenu, type TrackContextMenuItem } from "../../components/Tr
 import { useToast } from "../../components/Toast";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { revealTrack } from "../clean/revealTrack";
-import { LIBRARY_COLUMNS } from "../library/libraryColumns";
+import { LIBRARY_COLUMNS, LIBRARY_PREVIOUS_DEFAULT_ORDER } from "../library/libraryColumns";
 import { creditsFor, discoverMenuItems } from "../library/libraryDiscover";
 import { DEFAULT_LIBRARY_QUERY, queryKey, type LibraryQuery } from "../library/libraryQuery";
 import { moreItems, moreWithExplore, playItems, type TrackActionGroupId } from "../library/trackActions";
@@ -102,7 +102,9 @@ export function LibraryHalf({
     () => ({ ...DEFAULT_LIBRARY_QUERY, filters: rules, sort: order.sort, dir: order.dir }),
     [order.dir, order.sort, rules],
   );
-  const columns = useColumnLayout<LibraryTrackRow>(PAGE_LIBRARY_LAYOUT_KEY, LIBRARY_COLUMNS);
+  const columns = useColumnLayout<LibraryTrackRow>(PAGE_LIBRARY_LAYOUT_KEY, LIBRARY_COLUMNS, {
+    previousDefaultOrder: LIBRARY_PREVIOUS_DEFAULT_ORDER,
+  });
   const window_ = useTrackWindow(query);
   const selection = useTrackSelection(query, window_.total, window_.source.getRow);
   const playback = useLibraryPlayback({ query, onMessage: (message) => push(message, "info") });

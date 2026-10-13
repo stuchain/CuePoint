@@ -26,7 +26,7 @@ import type { TrackColumnDef } from "../../components/table";
 import { FitBar } from "../../components/charts/FitBar";
 import { effectiveText } from "../library/libraryClean";
 import { OverriddenValue } from "../library/libraryCells";
-import { LIBRARY_COLUMNS } from "../library/libraryColumns";
+import { LIBRARY_COLUMNS, LIBRARY_PREVIOUS_DEFAULT_ORDER } from "../library/libraryColumns";
 import { reasonTokens, tempoDeltaText } from "./reasonTokens";
 import { describeSimilarReason, matchWords } from "./similarReasons";
 
@@ -159,4 +159,20 @@ export const SIMILAR_COLUMNS: readonly TrackColumnDef<SimilarRow>[] = [
     text: (row) => `${matchWords(row.suggestion.score).band} (${Math.round(row.suggestion.score)}/100)`,
   },
   ...REST.filter((column) => column.id !== "key").map(unsorted),
+];
+
+/**
+ * The order these columns had before the Library's reorder (DEC-NEW-K1): the
+ * Library's own columns follow the Fit column, so they moved with it. Layouts
+ * saved in it are moved once, as the Library's are.
+ */
+export const SIMILAR_PREVIOUS_DEFAULT_ORDER: readonly string[] = [
+  "title",
+  "key",
+  "bpm_delta",
+  "genre_shared",
+  "label_shared",
+  "artist_shared",
+  "score",
+  ...LIBRARY_PREVIOUS_DEFAULT_ORDER.filter((id) => id !== "title" && id !== "key"),
 ];

@@ -7,7 +7,11 @@ import { render, screen } from "@testing-library/react";
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 
 import { defaultLayout, reconcileLayout } from "../../components/table/columnLayout";
-import { LIBRARY_COLUMNS } from "./libraryColumns";
+import {
+  DEFAULT_VISIBLE_COLUMNS,
+  LIBRARY_COLUMNS,
+  LIBRARY_PREVIOUS_DEFAULT_ORDER,
+} from "./libraryColumns";
 
 describe("the Key column", () => {
   const key = LIBRARY_COLUMNS.find((column) => column.id === "key")!;
@@ -59,5 +63,62 @@ describe("Rating shown by default (LIB-10)", () => {
     expect(reconciled.find((entry) => entry.id === "rating")?.hidden).toBe(true);
     // Reloading the saved layout again, as every start does, changes nothing.
     expect(reconcileLayout(reconciled, LIBRARY_COLUMNS, 1)).toEqual(reconciled);
+  });
+});
+
+describe("the default column order (DEC-NEW-K1)", () => {
+  it("opens on Title, Artist, Key, BPM, Length, Genre, Label, Rating, Album", () => {
+    const layout = defaultLayout(LIBRARY_COLUMNS, 1).filter((entry) => !entry.hidden);
+    const headers = layout.map((entry) => LIBRARY_COLUMNS.find((c) => c.id === entry.id)!.header);
+    expect(headers).toEqual([
+      "Title",
+      "Artist",
+      "Key",
+      "BPM",
+      "Length",
+      "Genre",
+      "Label",
+      "Rating",
+      "Album",
+    ]);
+    expect(DEFAULT_VISIBLE_COLUMNS).toEqual(layout.map((entry) => entry.id));
+  });
+
+  it("keeps the previous order for the one-time move, with the same columns", () => {
+    expect(LIBRARY_PREVIOUS_DEFAULT_ORDER).toEqual([
+      "title",
+      "artist",
+      "remixer",
+      "album",
+      "label",
+      "genre",
+      "key",
+      "bpm",
+      "duration_seconds",
+      "rating",
+      "year",
+      "play_count",
+      "date_added",
+      "colour",
+      "bitrate",
+      "comment",
+      "file_path",
+      "match_state",
+      "match_score",
+      "file_status",
+      "artwork",
+      "waveform",
+      "loudness",
+    ]);
+    expect([...LIBRARY_PREVIOUS_DEFAULT_ORDER].sort()).toEqual(
+      LIBRARY_COLUMNS.map((column) => column.id).sort(),
+    );
+  });
+
+  it("moves a layout saved in the previous order, and keeps its widths", () => {
+    const saved = LIBRARY_PREVIOUS_DEFAULT_ORDER.map((id) => ({ id, width: 123, hidden: id === "label" }));
+    const moved = reconcileLayout(saved, LIBRARY_COLUMNS, 1, LIBRARY_PREVIOUS_DEFAULT_ORDER);
+    expect(moved.map((entry) => entry.id)).toEqual(LIBRARY_COLUMNS.map((column) => column.id));
+    expect(moved.find((entry) => entry.id === "label")?.hidden).toBe(true);
   });
 });

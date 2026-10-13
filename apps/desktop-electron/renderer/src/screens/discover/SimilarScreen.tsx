@@ -46,7 +46,12 @@ import { NO_ENGINE } from "./discoverTools";
 import { consideredLine, seedFacts, SIMILAR_INDEX_BUILDING } from "./entityFormat";
 import { DiscoverSelectionBar } from "./DiscoverSelectionBar";
 import { libraryRowMenu } from "./libraryRowMenu";
-import { SIMILAR_COLUMNS, SIMILAR_TABLE_LAYOUT_KEY, type SimilarRow } from "./similarColumns";
+import {
+  SIMILAR_COLUMNS,
+  SIMILAR_PREVIOUS_DEFAULT_ORDER,
+  SIMILAR_TABLE_LAYOUT_KEY,
+  type SimilarRow,
+} from "./similarColumns";
 import { describeUnused } from "./similarReasons";
 import { useBeatportSelection } from "./useBeatportSelection";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
@@ -172,7 +177,9 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
         : null,
     [rows, selection.rows, shown],
   );
-  const columns = useColumnLayout<SimilarRow>(SIMILAR_TABLE_LAYOUT_KEY, SIMILAR_COLUMNS);
+  const columns = useColumnLayout<SimilarRow>(SIMILAR_TABLE_LAYOUT_KEY, SIMILAR_COLUMNS, {
+    previousDefaultOrder: SIMILAR_PREVIOUS_DEFAULT_ORDER,
+  });
 
   const openEntity = useCallback(
     (kind: EntityKind, ref: string) => navigate(entityPath(kind, ref)),

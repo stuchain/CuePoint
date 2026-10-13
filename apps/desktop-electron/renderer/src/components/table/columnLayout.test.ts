@@ -356,3 +356,76 @@ describe("storage", () => {
     ]);
   });
 });
+
+describe("moving a layout still on the previous default order (DEC-NEW-K1)", () => {
+  // The registry now reads title, artist, bpm, key; it used to read this.
+  const PREVIOUS = ["title", "key", "artist", "bpm"];
+  const entry = (id: string, width: number, hidden = false) => ({ id, width, hidden });
+  const OLD = [entry("title", 250), entry("key", 91, true), entry("artist", 140), entry("bpm", 77)];
+
+  it("re-sorts an unchanged old order into the registry order, keeping widths and hidden flags", () => {
+    const layout = reconcileLayout(OLD, COLUMNS, 1, PREVIOUS);
+    expect(ids(layout)).toEqual(["title", "artist", "bpm", "key"]);
+    expect(layout.find((e) => e.id === "key")).toMatchObject({ width: 91, hidden: true });
+    expect(layout.find((e) => e.id === "artist")!.width).toBe(140);
+    expect(layout.find((e) => e.id === "bpm")!.width).toBe(77);
+  });
+
+  it("leaves a layout the person reordered alone", () => {
+    const moved = [OLD[0]!, OLD[2]!, OLD[1]!, OLD[3]!];
+    expect(ids(reconcileLayout(moved, COLUMNS, 1, PREVIOUS))).toEqual(["title", "artist", "key", "bpm"]);
+  });
+
+  it("still recognises the old order when a column was added since it was saved", () => {
+    // Saved before `artist` existed: its absence does not hide the old order.
+    const withoutArtist = OLD.filter((e) => e.id !== "artist");
+    expect(ids(reconcileLayout(withoutArtist, COLUMNS, 1, PREVIOUS))).toEqual([
+      "title",
+      "bpm",
+      "key",
+      "artist",
+    ]);
+  });
+
+  it("does not move a stored order the old default never had", () => {
+    const withoutArtist = OLD.filter((e) => e.id !== "artist");
+    const swapped = [withoutArtist[0]!, withoutArtist[2]!, withoutArtist[1]!];
+    expect(ids(reconcileLayout(swapped, COLUMNS, 1, PREVIOUS))).toEqual(["title", "bpm", "key", "artist"]);
+    // A stored id the previous order does not know rejects the match.
+    const withoutBpm = PREVIOUS.filter((id) => id !== "bpm");
+    expect(ids(reconcileLayout(OLD, COLUMNS, 1, withoutBpm))).toEqual(["title", "key", "artist", "bpm"]);
+  });
+
+  it("recognises the old order when a column it listed has been removed", () => {
+    const previousWithRetired = ["title", "key", "retired", "artist", "bpm"];
+    const extra = [...OLD, entry("retired", 90)];
+    expect(ids(reconcileLayout(extra, COLUMNS, 1, previousWithRetired))).toEqual([
+      "title",
+      "artist",
+      "bpm",
+      "key",
+    ]);
+  });
+
+  it("changes nothing without a previous order", () => {
+    expect(ids(reconcileLayout(OLD, COLUMNS, 1))).toEqual(["title", "key", "artist", "bpm"]);
+  });
+
+  it("is a no-op the second time, because the saved order is now the default", () => {
+    const once = reconcileLayout(OLD, COLUMNS, 1, PREVIOUS);
+    expect(reconcileLayout(once, COLUMNS, 1, PREVIOUS)).toEqual(once);
+  });
+
+  it("applies when loading, and a first run still gets the registry order", () => {
+    expect(ids(loadColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, COLUMNS, 1, PREVIOUS))).toEqual([
+      "title",
+      "artist",
+      "bpm",
+      "key",
+    ]);
+    saveColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, OLD);
+    const loaded = loadColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, COLUMNS, 1, PREVIOUS);
+    expect(ids(loaded)).toEqual(["title", "artist", "bpm", "key"]);
+    expect(loaded.find((e) => e.id === "key")).toMatchObject({ width: 91, hidden: true });
+  });
+});

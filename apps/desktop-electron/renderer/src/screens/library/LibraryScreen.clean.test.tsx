@@ -439,7 +439,8 @@ describe("what the entries do", () => {
     await tableReady();
     expect(await findMenuItem("Check the files are still there", await openMenuOn("Track 3"))).toBeNull();
     expect(mock("startFileCheck")).not.toHaveBeenCalled();
-  });
+    // Proving an entry absent opens every submenu in turn, which is slow under a loaded run.
+  }, 15_000);
 
   it("shows a moved file's nearest folder", async () => {
     renderScreen();

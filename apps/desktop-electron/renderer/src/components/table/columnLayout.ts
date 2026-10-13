@@ -64,11 +64,21 @@ function isEntry(value: unknown): value is Partial<ColumnLayoutEntry> {
  * later release turns up. Sticky columns are then floated to the front,
  * because a pinned column that sorted behind a scrolling one would be pinned
  * over the top of it.
+ *
+ * `previousDefaultOrder` is the registry's order before a reorder (DEC-NEW-K1).
+ * A stored layout whose ids, once those no longer in `columns` are dropped,
+ * are in exactly that order was never rearranged by the person, so it is
+ * re-sorted into the registry's order, each entry keeping its width and
+ * hidden flag. Any other order is left as stored. The moved layout is saved
+ * and is then the registry order, so this never fires a second time. (A
+ * person who later drags the columns back into exactly the old order has them
+ * moved once more on the next launch.)
  */
 export function reconcileLayout<Row>(
   stored: unknown,
   columns: readonly TrackColumnDef<Row>[],
   scale: number,
+  previousDefaultOrder?: readonly string[],
 ): ColumnLayout {
   const byId = new Map(columns.map((column) => [column.id, column]));
   const seen = new Set<string>();
@@ -86,6 +96,20 @@ export function reconcileLayout<Row>(
           ? Math.max(columnMinWidth(column, scale), Math.round(raw.width))
           : columnDefaultWidth(column, scale);
       layout.push({ id: raw.id, width, hidden: raw.hidden === true });
+    }
+  }
+
+  if (previousDefaultOrder && layout.length > 0) {
+    // Only the ids the stored layout has: one saved before a later column
+    // was added still reads as the old order. A stored id the previous order
+    // does not know fails the length check below.
+    const storedIds = new Set(layout.map((entry) => entry.id));
+    const previous = previousDefaultOrder.filter((id) => storedIds.has(id));
+    const sameOrder =
+      layout.length === previous.length && layout.every((entry, i) => entry.id === previous[i]);
+    if (sameOrder) {
+      const position = new Map(columns.map((column, i) => [column.id, i]));
+      layout.sort((a, b) => position.get(a.id)! - position.get(b.id)!);
     }
   }
 
@@ -238,11 +262,12 @@ export function loadColumnLayout<Row>(
   storageKey: string,
   columns: readonly TrackColumnDef<Row>[],
   scale: number,
+  previousDefaultOrder?: readonly string[],
 ): ColumnLayout {
   try {
     const raw = localStorage.getItem(storageKey);
     if (!raw) return defaultLayout(columns, scale);
-    return reconcileLayout(JSON.parse(raw), columns, scale);
+    return reconcileLayout(JSON.parse(raw), columns, scale, previousDefaultOrder);
   } catch {
     return defaultLayout(columns, scale);
   }

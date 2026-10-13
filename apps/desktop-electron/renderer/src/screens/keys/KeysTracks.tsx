@@ -31,7 +31,7 @@ import { revealTrack } from "../clean/revealTrack";
 import { BatchConfirmDialog } from "../library/BatchConfirmDialog";
 import { batchSelection, type BatchAction } from "../library/libraryBatch";
 import { cleanCapLine, cleanTracksFor } from "../library/libraryClean";
-import { LIBRARY_COLUMNS } from "../library/libraryColumns";
+import { LIBRARY_COLUMNS, LIBRARY_PREVIOUS_DEFAULT_ORDER } from "../library/libraryColumns";
 import { creditsFor } from "../library/libraryDiscover";
 import { DEFAULT_LIBRARY_QUERY, queryKey, type LibraryQuery } from "../library/libraryQuery";
 import { LibraryToolbar } from "../library/LibraryToolbar";
@@ -151,7 +151,9 @@ export function KeysTracks({
     () => ({ ...DEFAULT_LIBRARY_QUERY, filters: rules, sort: order.sort, dir: order.dir }),
     [order.dir, order.sort, rules],
   );
-  const columns = useColumnLayout<LibraryTrackRow>(KEYS_TABLE_LAYOUT_KEY, LIBRARY_COLUMNS);
+  const columns = useColumnLayout<LibraryTrackRow>(KEYS_TABLE_LAYOUT_KEY, LIBRARY_COLUMNS, {
+    previousDefaultOrder: LIBRARY_PREVIOUS_DEFAULT_ORDER,
+  });
   const window_ = useTrackWindow(query);
   const selection = useTrackSelection(query, window_.total, window_.source.getRow);
   const playback = useLibraryPlayback({ query, onMessage: (message) => push(message, "info") });

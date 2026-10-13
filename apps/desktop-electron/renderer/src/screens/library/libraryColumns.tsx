@@ -71,32 +71,6 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     render: (track) => track.remixer ?? "",
   },
   {
-    id: "album",
-    header: "Album",
-    sortKey: "album",
-    minWidthPx: 100,
-    defaultWidthPx: 170,
-    render: (track) => track.album ?? "",
-  },
-  {
-    id: "label",
-    header: "Label",
-    sortKey: "label",
-    minWidthPx: 90,
-    defaultWidthPx: 140,
-    render: (track) => <OverriddenValue row={track} field="label" />,
-    text: (track) => effectiveText(track, "label"),
-  },
-  {
-    id: "genre",
-    header: "Genre",
-    sortKey: "genre",
-    minWidthPx: 90,
-    defaultWidthPx: 130,
-    render: (track) => <OverriddenValue row={track} field="genre" />,
-    text: (track) => effectiveText(track, "genre"),
-  },
-  {
     id: "key",
     header: "Key",
     // An empty cell is a dash; this is why (DEC-201).
@@ -130,12 +104,38 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     render: (track) => formatDuration(track.duration_seconds),
   },
   {
+    id: "genre",
+    header: "Genre",
+    sortKey: "genre",
+    minWidthPx: 90,
+    defaultWidthPx: 130,
+    render: (track) => <OverriddenValue row={track} field="genre" />,
+    text: (track) => effectiveText(track, "genre"),
+  },
+  {
+    id: "label",
+    header: "Label",
+    sortKey: "label",
+    minWidthPx: 90,
+    defaultWidthPx: 140,
+    render: (track) => <OverriddenValue row={track} field="label" />,
+    text: (track) => effectiveText(track, "label"),
+  },
+  {
     id: "rating",
     header: "Rating",
     sortKey: "rating",
     minWidthPx: 70,
     defaultWidthPx: 92,
     render: (track) => formatRating(track.rating),
+  },
+  {
+    id: "album",
+    header: "Album",
+    sortKey: "album",
+    minWidthPx: 100,
+    defaultWidthPx: 170,
+    render: (track) => track.album ?? "",
   },
   {
     id: "year",
@@ -266,6 +266,43 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     text: () => "",
     gatherText: gatherLoudnessText,
   },
+];
+
+/**
+ * The column order before the K1 reorder (DEC-NEW-K1), every id as it was
+ * declared, hidden ones included.
+ *
+ * Every current user already has a saved layout, so a new default order alone
+ * would reach nobody. A saved layout whose order still equals this one has
+ * never been rearranged, and `reconcileLayout` moves it to the order above
+ * once, keeping widths and hidden flags; a layout the person reordered is
+ * left alone. Once moved, the saved order is the new default and never
+ * matches this again.
+ */
+export const LIBRARY_PREVIOUS_DEFAULT_ORDER: readonly string[] = [
+  "title",
+  "artist",
+  "remixer",
+  "album",
+  "label",
+  "genre",
+  "key",
+  "bpm",
+  "duration_seconds",
+  "rating",
+  "year",
+  "play_count",
+  "date_added",
+  "colour",
+  "bitrate",
+  "comment",
+  "file_path",
+  "match_state",
+  "match_score",
+  "file_status",
+  "artwork",
+  "waveform",
+  "loudness",
 ];
 
 /**

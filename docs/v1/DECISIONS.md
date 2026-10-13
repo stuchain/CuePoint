@@ -8014,3 +8014,22 @@ that belong to Clean. Chapter headings carried Edit, ↑, ↓ and × on every ro
   chapter dialog (the only chapter still cannot be deleted, DEC-103); the right-click menu is unchanged.
 
 **Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13
+
+
+
+## DEC-289 — Key and BPM Come Third and Fourth in the Library
+
+**Status**: Approved · **Related**: K1, DEC-042, LIBUI-06
+
+**Context**: The Library opened on Title, Artist, Album, Label, Genre, Key, BPM, Length, Rating, so at 1440 px wide with
+Track details open the two columns a DJ reads first were off screen. Every current user already has a saved layout
+(the table saves on first view), so a new default alone would reach nobody.
+
+**Decision**:
+- The default order is Title, Artist, Key, BPM, Length, Genre, Label, Rating, Album, then the hidden columns as before.
+- A saved layout still in the old default order (after dropping columns that no longer exist, and allowing for columns
+  added since) is moved to the new order once, keeping each column's width and whether it is shown. A layout someone
+  reordered is left alone. The same holds for the tables built from the Library's columns (Keys, Discover's Library
+  half, Similar tracks).
+
+**Decided with**: User (K1, ★ move them once where the order is still the old default) · **Date**: 2026-10-13

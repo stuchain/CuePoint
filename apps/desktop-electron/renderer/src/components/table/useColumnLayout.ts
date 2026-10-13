@@ -41,10 +41,11 @@ interface ColumnLayoutController<Row> {
 export function useColumnLayout<Row>(
   storageKey: string,
   columns: readonly TrackColumnDef<Row>[],
+  options?: { previousDefaultOrder?: readonly string[] },
 ): ColumnLayoutController<Row> {
   const { scale } = useScale();
   const [layout, setLayout] = useState<ColumnLayout>(() =>
-    loadColumnLayout(storageKey, columns, scale),
+    loadColumnLayout(storageKey, columns, scale, options?.previousDefaultOrder),
   );
 
   // The columns can change (a later release adds one) and so can the scale

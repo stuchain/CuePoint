@@ -49,7 +49,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { FilterBar, type FilterCollectionOption, type FilterSourceOption } from "./FilterBar";
 import { LibraryHeader } from "./LibraryHeader";
-import { LIBRARY_COLUMNS } from "./libraryColumns";
+import { LIBRARY_COLUMNS, LIBRARY_PREVIOUS_DEFAULT_ORDER } from "./libraryColumns";
 import { LibraryPane } from "./LibraryPane";
 import { RefreshPreviewDialog } from "./RefreshPreviewDialog";
 import { RekordboxExportDialog } from "./RekordboxExportDialog";
@@ -341,6 +341,7 @@ export function LibraryScreen({
   const columns = useColumnLayout<LibraryTrackRow>(
     LIBRARY_TABLE_LAYOUT_KEY,
     LIBRARY_COLUMNS,
+    { previousDefaultOrder: LIBRARY_PREVIOUS_DEFAULT_ORDER },
   );
   const window_ = useTrackWindow(query);
   const selection = useTrackSelection(query, window_.total, window_.source.getRow);
@@ -668,7 +669,6 @@ export function LibraryScreen({
         scopeToCollection(findCollection(collections.tree, collection.id))
       }
       onOpenInPrepare={onOpenInPrepare ? (set) => onOpenInPrepare(set.id) : undefined}
-      onReveal={(path) => reveal(detail.detail?.track.id, path)}
       onError={(message) => push(message, "warning")}
       onTrackChanged={() => {
         window_.reload();

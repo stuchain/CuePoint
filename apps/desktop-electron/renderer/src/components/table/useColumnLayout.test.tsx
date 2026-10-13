@@ -235,3 +235,27 @@ describe("what it refuses", () => {
     expect(result.current.layout[0]!.id).toBe("title");
   });
 });
+
+describe("moving a layout saved in the previous default order (DEC-NEW-K1)", () => {
+  const PREVIOUS = ["title", "bpm", "artist"];
+
+  it("moves it once, keeps widths, and saves the new order", () => {
+    localStorage.setItem(
+      LIBRARY_TABLE_LAYOUT_KEY,
+      JSON.stringify([
+        { id: "title", width: 210, hidden: false },
+        { id: "bpm", width: 95, hidden: false },
+        { id: "artist", width: 150, hidden: true },
+      ]),
+    );
+    const { result } = renderHook(
+      () => useColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, COLUMNS, { previousDefaultOrder: PREVIOUS }),
+      { wrapper },
+    );
+    expect(result.current.layout.map((entry) => entry.id)).toEqual(["title", "artist", "bpm"]);
+    expect(result.current.layout[1]).toMatchObject({ width: 150, hidden: true });
+    expect(result.current.layout[2]).toMatchObject({ width: 95 });
+    const saved = JSON.parse(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)!);
+    expect(saved.map((entry: { id: string }) => entry.id)).toEqual(["title", "artist", "bpm"]);
+  });
+});
