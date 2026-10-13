@@ -145,7 +145,7 @@
           "job_type": "file_check",
           "label": "Files on disk",
           "last_run_at": "<recorded>",
-          "last_summary": "Checked 3 files: 3 present, 0 missing"
+          "last_summary": "Checked 3 files: none missing"
         },
         {
           "id": "duplicates",
@@ -358,7 +358,7 @@
           "job_type": "file_check",
           "label": "Files on disk",
           "last_run_at": "<recorded>",
-          "last_summary": "Checked 3 files: 3 present, 0 missing"
+          "last_summary": "Checked 3 files: none missing"
         },
         {
           "id": "duplicates",
@@ -596,7 +596,7 @@
           "job_type": "file_check",
           "label": "Files on disk",
           "last_run_at": "<recorded>",
-          "last_summary": "Checked 3 files: 3 present, 0 missing"
+          "last_summary": "Checked 3 files: none missing"
         },
         {
           "id": "duplicates",

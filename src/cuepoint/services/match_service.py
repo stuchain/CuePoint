@@ -286,17 +286,25 @@ class MatchJobResult:
 
 def describe(result: MatchJobResult) -> str:
     """Say where a match job stands, for the status strip and the activity feed."""
-    parts = [f"{result.completed} of {_tracks(result.planned)}"]
-    if result.states_known:
-        parts += [f"{result.accepted} accepted", f"{result.needs_review} need review"]
+    if result.completed == result.planned:
+        head = f"Matched {_tracks(result.planned)} on Beatport"
     else:
-        parts += [f"{result.matched} found", f"{result.no_match} not found"]
-    parts.append(f"{result.errors} error" + ("" if result.errors == 1 else "s"))
-    if result.skipped:
-        parts.append(f"{result.skipped} skipped")
-    if result.unstored:
-        parts.append(f"{result.unstored} not saved")
-    sentence = "Beatport match: " + ", ".join(parts)
+        head = f"Matched {result.completed} of {_tracks(result.planned)} on Beatport"
+    if result.states_known:
+        counts = [
+            (result.accepted, "confirmed"),
+            (result.needs_review, "waiting for you"),
+            (result.no_match, "not found"),
+        ]
+    else:
+        counts = [(result.matched, "found"), (result.no_match, "not found")]
+    counts += [
+        (result.errors, f"error{'' if result.errors == 1 else 's'}"),
+        (result.skipped, "skipped"),
+        (result.unstored, "not saved"),
+    ]
+    parts = [f"{n} {word}" for n, word in counts if n]
+    sentence = head + (": " + ", ".join(parts) if parts else "")
     if result.excluded:
         sentence += f" ({result.excluded} already matched, left out)"
 

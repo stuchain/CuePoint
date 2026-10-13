@@ -112,7 +112,7 @@ export function formatEventType(type: string): string {
  * The detail keys worth a line of their own, and what each is called (STR-7).
  *
  * Counts, names and files: what a person would say about the event. Everything
- * else (ports, ids, paths, triggers, timings) is behind the row's Details.
+ * else (ports, ids, paths, triggers, timings) stays in the log.
  */
 const DETAIL_LABELS: Record<string, string> = {
   tracks: "Tracks",
@@ -137,25 +137,34 @@ const DETAIL_LABELS: Record<string, string> = {
   file_name: "File",
 };
 
-/** A one-line rendering of an event's meaningful detail, or "" when there is none. */
-export function formatEventDetail(detail: Record<string, unknown> | undefined): string {
+/**
+ * A one-line rendering of an event's meaningful detail, or "" when there is none.
+ *
+ * Skipped: zero, any boolean (true/false is never plain words), and a number the
+ * summary already says ("Imported 120 tracks" needs no "Tracks: 120").
+ */
+export function formatEventDetail(
+  detail: Record<string, unknown> | undefined,
+  summary = "",
+): string {
   if (!detail) return "";
   const shown: string[] = [];
   for (const [key, value] of Object.entries(detail)) {
     const label = Object.hasOwn(DETAIL_LABELS, key) ? DETAIL_LABELS[key] : undefined;
-    if (!label || value === null || value === "") continue;
+    if (!label || value === null || value === "" || typeof value === "boolean") continue;
+    if (typeof value === "number" && (value === 0 || summaryHasNumber(summary, value))) continue;
     const text = formatDetailValue(value);
     if (text) shown.push(`${label}: ${text}`);
   }
   return shown.join(" · ");
 }
 
-/** Everything `formatEventDetail` left out, as raw "key: value" lines for the Details disclosure. */
-export function formatEventExtras(detail: Record<string, unknown> | undefined): string[] {
-  if (!detail) return [];
-  return Object.entries(detail)
-    .filter(([key, value]) => !Object.hasOwn(DETAIL_LABELS, key) && value !== null && value !== "")
-    .map(([key, value]) => `${key}: ${formatDetailValue(value, true)}`);
+/** Whether the summary already prints this number, grouped ("1,200") or plain ("1200"). */
+function summaryHasNumber(summary: string, value: number): boolean {
+  const forms = [value.toLocaleString("en-US"), String(value)];
+  // Not a digit run inside a version ("v1.0.0") or a word, and "3," is 3, not "3,5".
+  const printed = summary.match(/(?<![\d.\w])(?:\d{1,3}(?:,\d{3})+|\d+)(?![\d.,]\d)(?!\w)/g);
+  return (printed ?? []).some((text) => forms.includes(text));
 }
 
 /** "1 field", not "1 fields" — visible in the panel on any single-key detail. */
@@ -163,9 +172,9 @@ function count(n: number, noun: string): string {
   return `${n} ${noun}${n === 1 ? "" : "s"}`;
 }
 
-function formatDetailValue(value: unknown, raw = false): string {
-  if (typeof value === "number") return raw ? String(value) : value.toLocaleString("en-US");
-  if (typeof value === "string" || typeof value === "boolean") return String(value);
+function formatDetailValue(value: unknown): string {
+  if (typeof value === "number") return value.toLocaleString("en-US");
+  if (typeof value === "string") return value;
   if (Array.isArray(value)) return count(value.length, "item");
   // Objects would otherwise stringify to "[object Object]", which tells the
   // reader nothing at all.

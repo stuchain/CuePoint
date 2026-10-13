@@ -940,7 +940,7 @@ describe("Health", () => {
     const checks = await screen.findByRole("list", { name: "Checks" });
     // The duplicates run is recorded too; the files run is the one given a time.
     expect(within(checks).getAllByText(/^Last run /)).toHaveLength(2);
-    expect(within(checks).getByText("Checked 3 files: 3 present, 0 missing")).toBeInTheDocument();
+    expect(within(checks).getByText("Checked 3 files: none missing")).toBeInTheDocument();
   });
 
   it("says why it cannot count", async () => {

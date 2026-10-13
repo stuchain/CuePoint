@@ -374,7 +374,7 @@ class FileCheckResult:
 
     def summary_line(self) -> str:
         """The activity feed's sentence for the whole check."""
-        found = [f"{self.present:,} present", f"{self.missing:,} missing"]
+        found = [f"{self.missing:,} missing" if self.missing else "none missing"]
         if self.unreadable:
             found.append(f"{self.unreadable:,} unreadable")
         if self.cancelled:

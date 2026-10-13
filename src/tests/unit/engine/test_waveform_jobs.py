@@ -937,7 +937,7 @@ class TestDeletingTheData:
         )
 
         assert result.summary_line() == (
-            "Analysed 3 waveforms. Stopped to delete the waveform data."
+            "Analyzed 3 waveforms. Stopped to delete the waveform data."
         )
 
 

@@ -223,7 +223,8 @@ class TestResolvingAThousandTracks:
         assert event["type"] == EVENT_BEATPORT_RESOLVED
         assert (
             event["summary"]
-            == "Resolved 117 of 120 Beatport tracks (3 not on Beatport)"
+            == "Looked up artists and labels for 120 tracks: 117 found on Beatport"
+            " (3 not on Beatport)"
         )
         assert event["detail"] == {
             "outcome": "succeeded",
@@ -245,7 +246,7 @@ class TestResolvingAThousandTracks:
         result = service(catalog, beatport, activity, clock).resolve()
         assert beatport.requests == []
         assert (result.owned, result.batches, result.outcome) == (0, 0, "succeeded")
-        assert events(db)[0]["summary"] == "No accepted matches to resolve on Beatport"
+        assert events(db)[0]["summary"] == "No confirmed matches to look up on Beatport"
 
 
 # ---------------------------------------------------------------- the age
@@ -261,7 +262,7 @@ class TestRowsYoungerThanTheAgeAreReused:
         assert len(beatport.requests) == 3
         assert (result.owned, result.to_read, result.up_to_date) == (300, 0, 300)
         assert events(db)[-1]["summary"] == (
-            "Beatport identities are up to date: 300 owned tracks already read"
+            "Artists and labels are up to date: 300 tracks already looked up"
         )
 
     def test_rows_older_than_the_age_are_read_again(self, db, catalog, clock):
@@ -333,7 +334,8 @@ class TestCancelling:
         )
         assert (
             events(db)[0]["summary"]
-            == "Resolved 300 of 1,000 Beatport tracks; cancelled"
+            == "Looked up artists and labels for 300 of 1,000 tracks:"
+            " 300 found on Beatport; cancelled"
         )
 
     def test_the_next_resolve_finishes_the_job(self, db, catalog, clock):
@@ -370,7 +372,7 @@ class TestFailures:
         )
         assert result.outcome == "failed"
         assert events(db)[0]["summary"] == (
-            "Resolved 0 of 1,000 Beatport tracks (300 not read);"
+            "Couldn't look up artists and labels for 300 of 1,000 tracks;"
             " stopped because Beatport could not be reached"
         )
 
@@ -482,7 +484,10 @@ class TestWhatBeatportAnswers:
             catalog, _Reader([catalog_track(first), bad]), clock=clock
         ).resolve()
         assert (result.resolved, result.unreadable, result.not_found) == (1, 1, 0)
-        assert result.summary_line() == "Resolved 1 of 2 Beatport tracks (1 unreadable)"
+        assert result.summary_line() == (
+            "Looked up artists and labels for 2 tracks: 1 found on Beatport"
+            " (1 could not be read)"
+        )
 
     def test_without_batching_it_is_one_request_per_track_and_still_right(
         self, db, catalog, clock
@@ -523,15 +528,19 @@ class TestTheResult:
         [
             (
                 BeatportResolveResult(owned=0, to_read=0),
-                "No accepted matches to resolve on Beatport",
+                "No confirmed matches to look up on Beatport",
             ),
             (
                 BeatportResolveResult(owned=1, to_read=0),
-                "Beatport identities are up to date: 1 owned track already read",
+                "Artists and labels are up to date: 1 track already looked up",
             ),
             (
                 BeatportResolveResult(owned=5, to_read=1, resolved=1),
-                "Resolved 1 of 1 Beatport track",
+                "Looked up artists and labels for 1 track: 1 found on Beatport",
+            ),
+            (
+                BeatportResolveResult(owned=5, to_read=2, not_found=2),
+                "Looked up artists and labels for 2 tracks: none found on Beatport",
             ),
             (
                 BeatportResolveResult(
@@ -542,8 +551,28 @@ class TestTheResult:
                     failed=998,
                     error_class="unavailable",
                 ),
-                "Resolved 3,000 of 4,000 Beatport tracks (2 not on Beatport, 998 not"
-                " read); stopped because Beatport could not be reached",
+                "Looked up artists and labels for 4,000 tracks: 3,000 found on Beatport"
+                " (2 not on Beatport, 998 could not be read);"
+                " stopped because Beatport could not be reached",
+            ),
+            (
+                BeatportResolveResult(
+                    owned=5000,
+                    to_read=4000,
+                    resolved=100,
+                    cancelled=True,
+                ),
+                "Looked up artists and labels for 100 of 4,000 tracks:"
+                " 100 found on Beatport; cancelled",
+            ),
+            (
+                BeatportResolveResult(owned=5, to_read=4, not_found=1, cancelled=True),
+                "Looked up artists and labels for 1 of 4 tracks:"
+                " none found on Beatport; cancelled",
+            ),
+            (
+                BeatportResolveResult(owned=5, to_read=2, unreadable=2),
+                "Couldn't look up artists and labels for 2 tracks",
             ),
         ],
     )

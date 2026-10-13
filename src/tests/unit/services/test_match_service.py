@@ -837,7 +837,7 @@ class TestOneTransactionPerTrack:
             True,
         )
         assert len(matches.get_matches(ids[:6])) == 6
-        assert "3 accepted, 3 need review" in describe(result)
+        assert "3 confirmed, 3 waiting for you" in describe(result)
 
     def test_a_rule_that_fails_takes_the_attempt_and_the_done_flag_with_it(
         self, container, ids
@@ -930,25 +930,46 @@ def result(**fields) -> MatchJobResult:
 class TestWording:
     def test_before_states_exist_it_says_found_and_not_found(self):
         assert describe(result(matched=15, no_match=4, errors=1)) == (
-            "Beatport match: 20 of 50 tracks, 15 found, 4 not found, 1 error"
+            "Matched 20 of 50 tracks on Beatport: 15 found, 4 not found, 1 error"
             " (10 already matched, left out)"
         )
 
-    def test_with_a_state_rule_it_says_accepted_and_need_review(self):
+    def test_with_a_state_rule_it_says_confirmed_and_waiting_for_you(self):
         text = describe(
             result(states_known=True, accepted=12, needs_review=6, errors=2)
         )
         assert text.startswith(
-            "Beatport match: 20 of 50 tracks, 12 accepted, 6 need review, 2 errors"
+            "Matched 20 of 50 tracks on Beatport: 12 confirmed, 6 waiting for you, 2 errors"
         )
 
     def test_skips_and_unsaved_results_are_named(self):
         text = describe(result(excluded=0, skipped=2, unstored=1))
-        assert text.endswith("0 errors, 2 skipped, 1 not saved")
+        assert text.endswith("2 skipped, 1 not saved")
 
     def test_a_cancel_still_finishing_says_so(self):
         text = describe(result(cancelled=True, in_progress=3))
         assert text.endswith("cancelled, 30 left to resume (finishing 3 in progress)")
+
+    def test_a_finished_job_says_how_many_it_matched_with_zero_parts_dropped(self):
+        text = describe(
+            result(
+                planned=38,
+                completed=38,
+                excluded=0,
+                states_known=True,
+                accepted=17,
+                needs_review=21,
+            )
+        )
+        assert text == (
+            "Matched 38 tracks on Beatport: 17 confirmed, 21 waiting for you"
+        )
+
+    def test_nothing_found_is_not_hidden_by_dropping_zeros(self):
+        text = describe(
+            result(planned=3, completed=3, excluded=0, states_known=True, no_match=3)
+        )
+        assert text == "Matched 3 tracks on Beatport: 3 not found"
 
     def test_no_percentage_and_no_time_estimate(self):
         text = describe(result())

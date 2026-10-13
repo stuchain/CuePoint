@@ -77,29 +77,6 @@
   padding: 0;
 }
 
-/* The raw keys behind a row (STR-7). */
-.cp-activity__more {
-  margin-top: var(--space-xs);
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-}
-
-.cp-activity__more > summary {
-  cursor: pointer;
-}
-
-.cp-activity__more > summary:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--hairline);
-}
-
-.cp-activity__extras {
-  list-style: none;
-  margin: var(--space-xs) 0 0;
-  padding: 0;
-  font-family: var(--font-mono, monospace);
-}
-
 .cp-activity__time {
   color: var(--fg-muted);
   font-size: var(--font-size-xs);

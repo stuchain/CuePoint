@@ -736,8 +736,7 @@ class TestTheFeed:
         make(db, files, activity, world=world).check(ids, trigger=TRIGGER_IMPORT)
         [event] = events(db, EVENT_FILES_CHECKED)
         assert event["summary"] == (
-            "Checked 3 files: 1 present, 1 missing, 1 unreadable."
-            " 1 track has no file location"
+            "Checked 3 files: 1 missing, 1 unreadable. 1 track has no file location"
         )
         import json
 
@@ -811,17 +810,17 @@ class TestTheResult:
     def test_the_sentences(self):
         assert (
             FileCheckResult("request", 3, present=2, missing=1).summary_line()
-            == "Checked 3 files: 2 present, 1 missing"
+            == "Checked 3 files: 1 missing"
         )
         assert FileCheckResult(
             "refresh", 4, present=1, no_path=2, vanished=1
         ).summary_line() == (
-            "Checked 1 file: 1 present, 0 missing. 2 tracks have no file location."
+            "Checked 1 file: none missing. 2 tracks have no file location."
             " 1 track left the library during the check"
         )
         assert (
             FileCheckResult("request", 10, present=3, cancelled=True).summary_line()
-            == "Stopped after 3 of 10 tracks, having checked 3 files: 3 present, 0 missing"
+            == "Stopped after 3 of 10 tracks, having checked 3 files: none missing"
         )
 
     @pytest.mark.parametrize(
@@ -871,7 +870,7 @@ class TestTheResult:
                 }
             ],
             "duration_seconds": 1.235,
-            "summary_line": "Checked 3 files: 1 present, 2 missing",
+            "summary_line": "Checked 3 files: 2 missing",
         }
 
 

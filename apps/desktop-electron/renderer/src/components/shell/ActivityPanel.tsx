@@ -3,12 +3,12 @@ import { Modal } from "../Modal";
 import type { ActivityFeed } from "../../api/cuepointBridge.types";
 import {
   formatEventDetail,
-  formatEventExtras,
   formatEventTime,
   formatEventType,
   groupByDay,
   sortNewestFirst,
 } from "./activityFormat";
+import { pluralize } from "../../screens/library/libraryFormat";
 import { ActivityOffer } from "./ActivityOffer";
 import { reportUnexpected } from "../../reporting/reporting";
 import "./ActivityPanel.css";
@@ -109,8 +109,8 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
           <>
             <p className="cp-activity__summary">
               {events.length === feed?.total
-                ? `${feed?.total} ${feed?.total === 1 ? "event" : "events"}`
-                : `Showing ${events.length} of ${feed?.total}`}
+                ? pluralize(feed?.total ?? 0, "event")
+                : `Showing ${events.length} of ${feed?.total.toLocaleString("en-US")}`}
             </p>
             <div className="cp-activity__list">
               {groupByDay(events).map((group) => (
@@ -118,8 +118,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
                   <h3 className="cp-activity__day-heading">{group.heading}</h3>
                   <ul className="cp-activity__rows">
                     {group.events.map((event) => {
-                      const detail = formatEventDetail(event.detail);
-                      const extras = formatEventExtras(event.detail);
+                      const detail = formatEventDetail(event.detail, event.summary);
                       const word = formatEventType(event.type);
                       return (
                         <li
@@ -133,16 +132,6 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
                           <span className="cp-activity__summary-text">
                             {event.summary}
                             {detail && <span className="cp-activity__detail"> {detail}</span>}
-                            {extras.length > 0 && (
-                              <details className="cp-activity__more">
-                                <summary>Details</summary>
-                                <ul className="cp-activity__extras">
-                                  {extras.map((line) => (
-                                    <li key={line}>{line}</li>
-                                  ))}
-                                </ul>
-                              </details>
-                            )}
                             <ActivityOffer event={event} onDone={() => load(true)} />
                           </span>
                         </li>

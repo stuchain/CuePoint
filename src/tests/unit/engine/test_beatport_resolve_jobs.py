@@ -188,7 +188,9 @@ class TestAResolveJob:
         rows = db.connect().execute(
             "SELECT summary FROM activity_events WHERE type = 'discover.beatport.resolved'"
         )
-        assert [r[0] for r in rows] == ["Resolved 250 of 250 Beatport tracks"]
+        assert [r[0] for r in rows] == [
+            "Looked up artists and labels for 250 tracks: 250 found on Beatport"
+        ]
 
     def test_the_token_is_read_when_the_job_starts(self, store, owned):
         """A client built per job: a token entered after the last job is used."""

@@ -171,23 +171,34 @@ class BeatportResolveResult:
     def summary_line(self) -> str:
         """The activity feed's sentence."""
         if self.owned == 0:
-            return "No accepted matches to resolve on Beatport"
+            return "No confirmed matches to look up on Beatport"
         if self.to_read == 0:
             return (
-                "Beatport identities are up to date: "
-                f"{_count(self.owned, 'owned track', 'owned tracks')} already read"
+                "Artists and labels are up to date: "
+                f"{_count(self.owned, 'track', 'tracks')} already looked up"
             )
-        line = (
-            f"Resolved {self.resolved:,} of "
-            f"{_count(self.to_read, 'Beatport track', 'Beatport tracks')}"
-        )
-        extras = []
-        if self.not_found:
-            extras.append(f"{self.not_found:,} not on Beatport")
-        if self.unreadable:
-            extras.append(f"{self.unreadable:,} unreadable")
-        if self.failed:
-            extras.append(f"{self.failed:,} not read")
+        # A stopped run did not get to every track, so it says how far it got.
+        attempted = self.resolved + self.not_found + self.unreadable + self.failed
+        tracks = _count(self.to_read, "track", "tracks")
+        if attempted < self.to_read:
+            tracks = f"{attempted:,} of {tracks}"
+        unread = self.unreadable + self.failed
+        if attempted and not self.resolved and not self.not_found:
+            line = f"Couldn't look up artists and labels for {tracks}"
+            extras = []
+        else:
+            line = f"Looked up artists and labels for {tracks}: " + (
+                "none found on Beatport"
+                if self.not_found and not self.resolved
+                else f"{self.resolved:,} found on Beatport"
+            )
+            extras = []
+            # "none found" already says every track was missing, so only a mixed
+            # result gains from a count of those not on Beatport.
+            if self.not_found and self.resolved:
+                extras.append(f"{self.not_found:,} not on Beatport")
+            if unread:
+                extras.append(f"{unread:,} could not be read")
         if extras:
             line += " (" + ", ".join(extras) + ")"
         if self.error_class is not None:

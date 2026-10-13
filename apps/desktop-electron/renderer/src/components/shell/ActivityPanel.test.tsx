@@ -70,13 +70,15 @@ describe("ActivityPanel", () => {
   });
 
   it("lists events with their summary, type and detail", async () => {
-    getRecentActivity.mockResolvedValue(feed({ events: [event()], total: 1 }));
+    getRecentActivity.mockResolvedValue(
+      feed({ events: [event({ detail: { tracks: 120, playlists: 4 } })], total: 1 }),
+    );
 
     render(<ActivityPanel open onClose={() => {}} />);
 
     expect(await screen.findByText("Imported 120 tracks")).toBeInTheDocument();
     expect(screen.getByText("Import")).toBeInTheDocument();
-    expect(screen.getByText(/Tracks: 120/)).toBeInTheDocument();
+    expect(screen.getByText(/Playlists: 4/)).toBeInTheDocument();
   });
 
   it("shows newest first even if the engine returned them out of order", async () => {
@@ -103,6 +105,14 @@ describe("ActivityPanel", () => {
     render(<ActivityPanel open onClose={() => {}} />);
 
     expect(await screen.findByText("1 event")).toBeInTheDocument();
+  });
+
+  it("writes the count in sentence case", async () => {
+    getRecentActivity.mockResolvedValue(
+      feed({ events: [event({ id: 1 }), event({ id: 2 })], total: 2 }),
+    );
+    render(<ActivityPanel open onClose={() => {}} />);
+    expect(await screen.findByText("2 events")).toBeInTheDocument();
   });
 
   it("says how many of the total are shown when paged", async () => {
@@ -194,15 +204,14 @@ describe("ActivityPanel", () => {
     expect(screen.queryAllByText(/[A-Z][a-z]{2} \d{1,2}\s+\d{1,2}:\d{2}/)).toHaveLength(0);
   });
 
-  it("keeps raw keys behind a Details disclosure (STR-7)", async () => {
-    const user = userEvent.setup();
+  it("never prints raw key: value lines (R3-6)", async () => {
     getRecentActivity.mockResolvedValue(
       feed({
         events: [
           event({
             type: "engine.started",
             summary: "CuePoint started (v1.0.0)",
-            detail: { version: "1.0.0", port: 51234 },
+            detail: { version: "1.0.0", port: 51234, ready: true },
           }),
         ],
         total: 1,
@@ -213,16 +222,16 @@ describe("ActivityPanel", () => {
 
     await screen.findByText("CuePoint started (v1.0.0)");
     expect(screen.getByText("App started")).toBeInTheDocument();
-    expect(screen.getByText(/port: 51234/)).not.toBeVisible();
-    await user.click(screen.getByText("Details"));
-    expect(screen.getByText(/port: 51234/)).toBeVisible();
+    expect(screen.queryByText(/port/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ready|true/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Details")).not.toBeInTheDocument();
   });
 
-  it("offers no Details when there is nothing behind it", async () => {
+  it("does not repeat a count the summary already says", async () => {
     getRecentActivity.mockResolvedValue(feed({ events: [event()], total: 1 }));
     render(<ActivityPanel open onClose={() => {}} />);
     await screen.findByText("Imported 120 tracks");
-    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tracks: 120/)).not.toBeInTheDocument();
   });
 
   it("shows no type badge for a type it has no word for", async () => {

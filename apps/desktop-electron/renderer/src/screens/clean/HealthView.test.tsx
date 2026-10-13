@@ -59,7 +59,7 @@ const HEALTH: LibraryHealth = {
       label: "Waveform drawing",
       job_type: "waveform_analysis",
       last_run_at: "2026-10-03T10:00:00Z",
-      last_summary: "Analysed 2 waveforms; 1 file could not be read. Finished.",
+      last_summary: "Analyzed 2 waveforms; 1 file could not be read. Finished.",
     },
   ],
   unavailable_roots: [],
@@ -117,7 +117,7 @@ describe("the waveform analysis on the Health view", () => {
       await within(row).findByText("All 3 analyzed · 1 could not be read"),
     ).toBeInTheDocument();
     expect(
-      within(row).getByText("Analysed 2 waveforms; 1 file could not be read. Finished."),
+      within(row).getByText("Analyzed 2 waveforms; 1 file could not be read. Finished."),
     ).toBeInTheDocument();
   });
 

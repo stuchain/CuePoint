@@ -11,7 +11,6 @@ import {
   RECORDED_EVENT_TYPES,
   formatDayHeading,
   formatEventDetail,
-  formatEventExtras,
   formatEventTime,
   formatEventType,
   groupByDay,
@@ -172,23 +171,40 @@ describe("formatEventDetail (STR-7)", () => {
     expect(formatEventDetail({ tracks: [1] })).toBe("Tracks: 1 item");
   });
 
-  it("skips nulls and empty strings, and keeps false and zero", () => {
+  it("skips nulls and empty strings", () => {
     expect(formatEventDetail({ tracks: 1, file: null, playlist: "" })).toBe("Tracks: 1");
-    expect(formatEventDetail({ failed: 0 })).toBe("Failed: 0");
-  });
-});
-
-describe("formatEventExtras (STR-7)", () => {
-  it("lists the keys the one-line detail left out, as raw key: value", () => {
-    expect(formatEventExtras({ tracks: 5, port: 51234, before: { bpm: 128, key: "6A" } })).toEqual([
-      "port: 51234",
-      "before: 2 fields",
-    ]);
   });
 
-  it("is empty when everything was shown or nothing is there", () => {
-    expect(formatEventExtras({ tracks: 5 })).toEqual([]);
-    expect(formatEventExtras(undefined)).toEqual([]);
+  it("skips zero, which says nothing happened", () => {
+    expect(formatEventDetail({ failed: 0, skipped: 0, tracks: 4 })).toBe("Tracks: 4");
+    expect(formatEventDetail({ failed: 0 })).toBe("");
+  });
+
+  it("never prints a boolean", () => {
+    expect(formatEventDetail({ written: true, restored: false, file: "a.db" })).toBe("File: a.db");
+  });
+
+  it("skips a number the summary already says, grouped or plain", () => {
+    expect(formatEventDetail({ tracks: 120 }, "Imported 120 tracks")).toBe("");
+    expect(formatEventDetail({ tracks: 1200 }, "Imported 1,200 tracks")).toBe("");
+    expect(formatEventDetail({ tracks: 1200 }, "Imported 1200 tracks")).toBe("");
+  });
+
+  it("reads a number followed by a comma or a full stop", () => {
+    expect(formatEventDetail({ removed: 3 }, "Removed 3, kept 5")).toBe("");
+    expect(formatEventDetail({ tracks: 1200 }, "Imported 1,200, then stopped")).toBe("");
+    expect(formatEventDetail({ tracks: 5 }, "Imported 5.")).toBe("");
+  });
+
+  it("does not read numbers out of a version string", () => {
+    expect(formatEventDetail({ tracks: 1 }, "CuePoint started (v1.0.0)")).toBe("Tracks: 1");
+    expect(formatEventDetail({ tracks: 0 }, "")).toBe("");
+  });
+
+  it("keeps a number the summary does not say, or only contains", () => {
+    expect(formatEventDetail({ tracks: 12 }, "Imported 120 tracks")).toBe("Tracks: 12");
+    expect(formatEventDetail({ tracks: 120, failed: 3 }, "Imported 120 tracks")).toBe("Failed: 3");
+    expect(formatEventDetail({ tracks: 5 }, "Imported 1,205 tracks")).toBe("Tracks: 5");
   });
 });
 

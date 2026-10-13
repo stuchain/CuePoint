@@ -357,7 +357,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       const feed = await window.evaluate(() =>
         window.cuepoint!.getRecentActivity!({ type: "waveforms.analysed", limit: 1 }),
       );
-      expect(feed.events[0]!.summary).toMatch(/^Analysed 1 waveform\b/);
+      expect(feed.events[0]!.summary).toMatch(/^Analyzed 1 waveform\b/);
 
       // --- 8. a Set's transition in Prepare ----------------------------------
       const setId = await window.evaluate(async () => {

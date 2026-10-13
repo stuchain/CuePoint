@@ -271,7 +271,7 @@ class TestStarting:
         assert job.result["completed"] == job.result["matched"] == 10
         assert job.progress.completed_tracks == job.progress.total_tracks == 10
         assert job.progress.eta_seconds is None
-        assert job.progress.status_message.startswith("Beatport match: 10 of 10 tracks")
+        assert job.progress.status_message.startswith("Matched 10 tracks on Beatport")
         assert attempt_tracks(container) == Counter(ids[:10])
 
     def test_a_query_selection_is_resolved_once_at_the_start(

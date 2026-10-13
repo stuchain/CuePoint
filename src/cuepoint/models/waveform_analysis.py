@@ -244,13 +244,13 @@ class AnalysisRunResult:
     def summary_line(self) -> str:
         """One sentence for Activity: what it did, and how it ended."""
         if self.analysed or self.failed:
-            line = f"Analysed {_plural(self.analysed, 'waveform', 'waveforms')}"
+            line = f"Analyzed {_plural(self.analysed, 'waveform', 'waveforms')}"
             if self.failed:
                 line += f"; {_plural(self.failed, 'file', 'files')} could not be read"
         elif self.whole_library and self.stopped is None:
-            line = "Every waveform is up to date"
+            line = "All waveforms are up to date"
         else:
-            line = "No waveforms analysed"
+            line = "No waveforms analyzed"
         if self.not_found:
             line += (
                 f"; {_plural(self.not_found, 'file was', 'files were')}"
