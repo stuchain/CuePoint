@@ -121,6 +121,8 @@ import { revealTrack } from "../clean/revealTrack";
 import { forgetWaveforms } from "../../components/waveform/waveformCache";
 import { useCollectionTree } from "./useCollectionTree";
 import { useScopeFacts } from "./useScopeFacts";
+import { useSaveToFiles } from "../../components/saveToFiles/useSaveToFiles";
+import { usePageActive } from "../../components/shell/pageActive";
 import { useScopeTotal } from "./useScopeTotal";
 import { followJob } from "./followJob";
 import { appliedLine, jobErrorMessage } from "./libraryFormat";
@@ -543,6 +545,9 @@ export function LibraryScreen({
     return { name: "All tracks", group: null, count: null };
   }, [collections.tree, headerScope.collectionId, headerScope.playlistId, playlists.selected, smart]);
   const { facts: scopeFacts } = useScopeFacts(headerScope, libraryIdentity);
+
+  // The save bar counts the whole library and opens its own window (C23).
+  const save = useSaveToFiles({ active: usePageActive() });
 
   const batch = useLibraryBatch({
     onMessage: (message, tone) => push(message, tone),
@@ -1087,10 +1092,9 @@ export function LibraryScreen({
             onUseBeatport: checking.onApply,
           },
           fix: {
-            // Editing opens in place (K4). Writing tags stays on its own dialog here
-            // until the save bar replaces it. Both are drawn into More.
+            // Editing opens in place (K4), drawn into More. Saving into the files is
+            // the save bar's at the bottom of the page (C23).
             onEdit: checking.onEdit,
-            onWriteTags: checking.onWriteTags,
           },
           more: {
             // The menu's rows, not the selection's: right-clicking outside a
@@ -2205,6 +2209,8 @@ export function LibraryScreen({
         </div>
       </div>
 
+      {save.bar}
+
       <ColumnPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
@@ -2225,6 +2231,8 @@ export function LibraryScreen({
       />
 
       {exportDialog}
+
+      {save.dialog}
 
       <SaveSmartDialog
         open={saveOpen}

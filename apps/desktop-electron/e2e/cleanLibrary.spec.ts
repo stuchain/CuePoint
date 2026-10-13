@@ -272,7 +272,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
 
       await window.getByRole("button", { name: "Select all" }).click();
       // The bar's groups hold the entries the right-click menu does (FLW-8): Beatport ▸
-      // opens Clean with the selection, and More ▸ holds Edit values… and the file writer.
+      // opens Clean with the selection, and More ▸ holds Edit values…; the file writer is the save bar's.
       const bar = window.getByRole("toolbar", { name: "Selected tracks" });
       await bar.getByRole("button", { name: "Beatport", exact: true }).click();
       const beatport = window.getByRole("menu");
@@ -282,9 +282,11 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.keyboard.press("Escape");
       await bar.getByRole("button", { name: "More", exact: true }).click();
       const menu = window.getByRole("menu");
-      for (const entry of ["Edit values…", "Save changes into the files…", "Show in folder"]) {
+      for (const entry of ["Edit values…", "Show in folder"]) {
         await expect(menu.getByRole("menuitem", { name: entry, exact: true })).toBeVisible();
       }
+      // Saving into the files is the save bar's (C23), not More's.
+      await expect(menu.getByRole("menuitem", { name: "Save changes into the files…" })).toHaveCount(0);
       await menu.getByRole("menuitem", { name: "Edit values…" }).click();
       // The editor opens at once, in place on the Library, over the three tracks chosen (K4).
       const dialog = window.getByRole("dialog", { name: "Edit values" });
@@ -342,30 +344,26 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await importAndCheck(window, xml);
       const before = readFileSync(files[0]!);
       await window.getByRole("link", { name: "Library" }).click();
-      // Only a resolved key is written (PAGES-15): give Tone One one of its own.
+      // Only a resolved key is written (PAGES-15): give Tone One one of its own, unlike the file's (the bar counts only values the files lack).
       await window.evaluate(async () => {
         const found = await window.cuepoint!.browseLibrary!({ q: "Tone One", limit: 1 });
-        await window.cuepoint!.setTrackOverrides!({ trackId: found.tracks[0]!.id!, key: "8A" });
+        await window.cuepoint!.setTrackOverrides!({ trackId: found.tracks[0]!.id!, key: "5A" });
       });
       await window.reload();
       await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
-      await row(window, "Tone One").getByText("Tone One").click({ button: "right" });
-      // The menu's groups are submenus (FLW-8): More ▸ holds it.
-      await window.getByRole("menu").getByRole("menuitem", { name: "More", exact: true }).click();
-      await window.getByRole("menu", { name: "More" }).getByRole("menuitem", { name: "Save changes into the files…" }).click();
+      // The Library's save bar counts Tone One's value and opens the save window (C23).
+      const bar = window.locator("main.app-main .screen:visible").getByRole("region", { name: "Save to files" });
+      await expect(bar).toBeVisible({ timeout: 30_000 });
+      await bar.getByRole("button", { name: "Save to files…" }).click();
 
-      const dialog = window.getByRole("dialog", { name: "Save changes into the files" });
-      // Nothing can be written before a preview has answered.
-      await expect(dialog.getByRole("button", { name: /^Write/ })).toHaveCount(0);
-      await dialog.getByRole("button", { name: "Preview" }).click();
-      const preview = dialog.getByRole("region", { name: "Preview" });
-      await expect(preview).toContainText("Writing would change 1 file of 1. Nothing has been written yet.", {
-        timeout: 30_000,
-      });
+      const dialog = window.getByRole("dialog", { name: "Save 1 track to your files" });
+      // The files are read first, and nothing is written until Save is pressed.
+      const save = dialog.getByRole("button", { name: "Save to 1 file" });
+      await expect(save).toBeEnabled({ timeout: 30_000 });
       expect(readFileSync(files[0]!).equals(before)).toBe(true);
 
-      await dialog.getByRole("button", { name: "Write 1 file" }).click();
-      const written = dialog.getByRole("region", { name: "Written" });
+      await save.click();
+      const written = dialog.getByRole("region", { name: "Saved" });
       await expect(written).toContainText("Wrote 1 file.", { timeout: 30_000 });
       await expect(written).toContainText("Reload Tag");
       expect(readFileSync(files[0]!).includes(Buffer.from("TKEY"))).toBe(true);

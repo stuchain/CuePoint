@@ -173,7 +173,8 @@
  */
 .library-screen--browser {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  /* Header, the pane and table, and the save bar, which draws nothing when nothing is unsaved (C23). */
+  grid-template-rows: auto minmax(0, 1fr) auto;
   flex: 1;
   min-height: 0;
   overflow: hidden;

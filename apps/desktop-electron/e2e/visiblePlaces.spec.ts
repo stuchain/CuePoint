@@ -668,7 +668,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(() => jobsOf(win, "library_import"), { timeout: 60_000 }).toBeGreaterThan(imports);
   });
 
-  test("Edit values, Use Beatport's values and Save changes into the files: the Library's More and Beatport menus", async () => {
+  test("Edit values, Use Beatport's values and the save bar: the Library's More and Beatport menus", async () => {
     await openLibrary(win);
     const genres = () =>
       win.evaluate(async () => {
@@ -715,16 +715,21 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(genres, { timeout: 30_000 }).toEqual(expect.arrayContaining(["Tech House", "Deep House"]));
     expect(await titlesWithGenre("Tech House")).toEqual(["Warm One"]);
 
-    // Save changes into the files…: a preview reads the files without writing them.
+    // Saving into the files is the save bar's, not More's: More no longer offers it.
     await pick(win, "Warm One", "Warm Two");
     await use(win, toolbar(win).getByRole("button", { name: "More", exact: true }), "the bar's More");
-    await choose(win, "Save changes into the files…");
-    const files = win.getByRole("dialog", { name: "Save changes into the files" });
-    await expect(files).toContainText("2 tracks");
-    await reach(win, files.getByRole("button", { name: "Preview" }), "Preview");
-    await win.keyboard.press("Enter");
-    await expect(files.getByRole("button", { name: /^Write/ })).toBeVisible({ timeout: 60_000 });
+    await expect(win.getByRole("menuitem", { name: "Edit values…" })).toBeVisible();
+    await expect(win.getByRole("menuitem", { name: "Save changes into the files…" })).toHaveCount(0);
     await win.keyboard.press("Escape");
+
+    // The Library's own save bar counts the values made above and opens the save window.
+    const saveBar = win.locator("main.app-main .screen:visible").getByRole("region", { name: "Save to files" });
+    await expect(saveBar).toBeVisible({ timeout: 30_000 });
+    await use(win, saveBar.getByRole("button", { name: "Save to files…" }), "the bar's Save to files…");
+    const files = win.getByRole("dialog", { name: /^Save \d+ tracks? to your files$/ });
+    await expect(files).toBeVisible();
+    await win.keyboard.press("Escape");
+    await expect(files).toBeHidden();
   });
 
   test("Match N tracks: Clean's header", async () => {

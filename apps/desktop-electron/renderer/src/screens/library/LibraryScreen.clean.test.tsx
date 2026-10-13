@@ -7,8 +7,8 @@
  *   in the row menu and the selection bar's buttons alike.
  * - **Each entry does what it says**: Beatport ▸ opens Clean with the
  *   selected tracks (the match window, Review) rather than running anything
- *   here; Beatport's values, Edit values and Save changes open their dialogs in
- *   place (K4); More ▸ holds Edit values and Save changes.
+ *   here; Beatport's values and Edit values open their dialogs in
+ *   place (K4); More ▸ holds Edit values, and saving into the files is the save bar's (C23).
  * - **The toolbar row** is one row above the table: the bar (with a selection), the count,
  *   Select all; Columns… is the table header's corner.
  * - **Overridden cells are marked** and name their source, and a copy reads the
@@ -275,7 +275,6 @@ const BETWEEN = [
   "Review these matches",
   "Use Beatport's values…",
   "Edit values…",
-  "Save changes into the files…",
   "Show in folder",
 ];
 
@@ -377,7 +376,6 @@ describe("what the entries do", () => {
   it.each([
     ["Beatport", "Use Beatport's values…", "Use Beatport's values"],
     ["More", "Edit values…", "Edit values"],
-    ["More", "Save changes into the files…", "Save 2 tracks to your files"],
   ] as const)(
     "opens the dialog for %s ▸ %s here, not on Clean (K4)",
     async (group, entry, title) => {
@@ -392,6 +390,15 @@ describe("what the entries do", () => {
       expect(mock("applyBatch")).not.toHaveBeenCalled();
     },
   );
+
+  it("no longer offers Save changes into the files in More: the save bar does that", async () => {
+    renderScreen();
+    await tableReady();
+    await select("Track 1", "Track 2");
+    const more = await openGroup("More");
+    expect(within(more).queryByRole("menuitem", { name: "Save changes into the files…" })).toBeNull();
+    expect(within(more).getByRole("menuitem", { name: "Edit values…" })).toBeInTheDocument();
+  });
 
   it("applies the edit to exactly the selected tracks", async () => {
     renderScreen();
@@ -616,5 +623,27 @@ describe("the table", () => {
     const before = mock("browseLibrary").mock.calls.length;
     announceLibraryChange();
     await waitFor(() => expect(mock("browseLibrary").mock.calls.length).toBeGreaterThan(before));
+  });
+});
+
+describe("the save bar on the Library (C23)", () => {
+  it("draws nothing when every value is in the files", async () => {
+    bridge.getUnsavedValues = vi.fn().mockResolvedValue({ tracks: 0, fields: {} });
+    renderScreen();
+    await tableReady();
+    await waitFor(() => expect(mock("getUnsavedValues")).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Save to files" })).toBeNull());
+  });
+
+  it("shows the bar for the unsaved tracks and opens the save window on all of them", async () => {
+    bridge.getUnsavedValues = vi.fn().mockResolvedValue({ tracks: 2, fields: {} });
+    bridge.previewTagWrite = vi.fn(() => new Promise(() => {}));
+    renderScreen();
+    await tableReady();
+    const bar = await screen.findByRole("region", { name: "Save to files" });
+    await userEvent.click(within(bar).getByRole("button", { name: "Save to files…" }));
+    expect(await screen.findByRole("dialog", { name: "Save 2 tracks to your files" })).toBeInTheDocument();
+    expect(OPEN_MATCH).not.toHaveBeenCalled();
+    expect(mock("applyBatch")).not.toHaveBeenCalled();
   });
 });

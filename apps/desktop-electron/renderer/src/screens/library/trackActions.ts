@@ -64,10 +64,7 @@ export interface TrackActionHandlers {
     onOpenPage: (kind: EntityKind, ref: string) => void;
   };
   beatport?: BeatportMenuHandlers;
-  /**
-   * Edit values… and Save changes into the files… live in More for now: the save bar that
-   * replaces the second one is another thread's and has not landed.
-   */
+  /** Edit values… lives in More; saving into the files is the save bar's (C23). */
   fix?: FixMenuHandlers;
   more: {
     onCopy: () => void;
