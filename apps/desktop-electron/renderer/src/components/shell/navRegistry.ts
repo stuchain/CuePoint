@@ -40,8 +40,8 @@ interface NavDestinationBase {
   id: string;
   label: string;
   /**
-   * One line on what the page is for (NAV-1): shown muted under the label when the
-   * sidebar is open, and in the title in both states.
+   * One line on what the page is for (NAV-1): the sidebar's tooltip, with the label in
+   * front of it when the rail is collapsed (K7). Never a second line in the entry.
    */
   hint: string;
   path: string;
@@ -78,8 +78,11 @@ export type NavDestination = NavDestinationBase &
  */
 export const HOME_DESTINATION_ID = "library";
 
-/** The hint a dimmed entry shows in place of its own (NAV-5). */
-export const EMPTY_LIBRARY_HINT = "Import your Rekordbox collection first";
+/**
+ * The one muted line the sidebar shows above the dimmed entries before the first import
+ * (NAV-5, K7): they keep their own hint in the tooltip, so the reason is said once.
+ */
+export const EMPTY_LIBRARY_LINE = "Import your library to use these";
 
 export const NAV_DESTINATIONS: readonly NavDestination[] = [
   // Not built yet (DEC-020). Each is enabled by the phase that builds it.
@@ -87,10 +90,10 @@ export const NAV_DESTINATIONS: readonly NavDestination[] = [
   // Prepare by PREP-10 (DEC-104), its Sets pages under it (`/prepare/:setId`).
   // The Library is home (DEC-100).
   { id: "library", label: "Library", hint: "Your Rekordbox tracks", path: "/library", group: "workspace", icon: "library", enabled: true },
-  // A page of its own, not a part of the Library's tree (DEC-200): it sits after the Library, at
-  // the top level.
-  { id: "keys", label: "Keys", hint: "The keys in your playlists, Collections and Sets", path: "/keys", group: "workspace", icon: "keys", needsLibrary: true, enabled: true },
   { id: "clean", label: "Clean", hint: "Match on Beatport, find missing files and duplicates", path: "/clean", group: "workspace", icon: "clean", needsLibrary: true, enabled: true },
+  // A page of its own, not a part of the Library's tree (DEC-200): it follows Clean, at the top
+  // level (C26, DEC-271).
+  { id: "keys", label: "Keys", hint: "The keys in your playlists, Collections and Sets", path: "/keys", group: "workspace", icon: "keys", needsLibrary: true, enabled: true },
   { id: "discover", label: "Discover", hint: "Find new music", path: "/discover", group: "workspace", icon: "discover", needsLibrary: true, enabled: true, nested: true },
   { id: "prepare", label: "Prepare", hint: "Plan a set", path: "/prepare", group: "workspace", icon: "prepare", needsLibrary: true, enabled: true, nested: true },
   // Statistics follows Prepare (DEC-138, STATS-04): its own page, no nested routes.

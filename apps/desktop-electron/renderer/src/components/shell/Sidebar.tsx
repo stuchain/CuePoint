@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
+import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
 import {
-  EMPTY_LIBRARY_HINT,
+  EMPTY_LIBRARY_LINE,
   groupedDestinations,
   homeDestination,
   type NavDestination,
@@ -24,47 +25,45 @@ import "./Sidebar.css";
  * distinguishing the current page for a screen-reader user, since the labels
  * are gone.
  *
- * Each entry says what it is for (NAV-1): the hint sits muted under the label when the
- * rail is open and is in the title in both states. Before the first import the pages
- * that have nothing to show are dimmed, still clickable, and say why (NAV-5).
+ * Each entry is one line, the label (K7). What it is for (NAV-1) is its tooltip, with the
+ * label in front of it when the rail is collapsed. Before the first import the pages that
+ * have nothing to show are dimmed, still clickable, under one shared line saying why (NAV-5).
  */
-function DestinationLink({ destination, collapsed, dimmed }: {
+function DestinationLink({ destination, collapsed, dimmed, reasonId }: {
   destination: NavDestination;
   collapsed: boolean;
   dimmed: boolean;
+  /** The shared empty-library line a dimmed entry is described by (NAV-5), when it is shown. */
+  reasonId?: string;
 }) {
-  const hint = dimmed ? EMPTY_LIBRARY_HINT : destination.hint;
+  const { hint } = destination;
   return (
-    <NavLink
-      to={destination.path}
-      className={({ isActive }) =>
-        `cp-sidebar__link ${isActive ? "cp-sidebar__link--active" : ""} ${
-          dimmed ? "cp-sidebar__link--dimmed" : ""
-        }`
-          .replace(/\s+/g, " ")
-          .trim()
-      }
-      // The accessible name has to survive collapsing: with labels hidden the
-      // link would otherwise announce as its glyph, or as nothing at all.
-      aria-label={destination.label}
-      // Collapsed, the title also carries the label the rail has no room for.
-      title={collapsed ? `${destination.label}: ${hint}` : hint}
-      data-dimmed={dimmed ? "true" : undefined}
-    >
-      <span className="cp-sidebar__icon" aria-hidden>
-        {destination.icon ? (
-          <PixelIcon name={destination.icon} />
-        ) : (
-          <span className="cp-sidebar__glyph">{destination.glyph}</span>
-        )}
-      </span>
-      {!collapsed && (
-        <span className="cp-sidebar__text">
-          <span className="cp-sidebar__label">{destination.label}</span>
-          <span className="cp-sidebar__hint">{hint}</span>
+    <Hint text={collapsed ? `${destination.label}: ${hint}` : hint} portal>
+      <NavLink
+        to={destination.path}
+        className={({ isActive }) =>
+          `cp-sidebar__link ${isActive ? "cp-sidebar__link--active" : ""} ${
+            dimmed ? "cp-sidebar__link--dimmed" : ""
+          }`
+            .replace(/\s+/g, " ")
+            .trim()
+        }
+        // The accessible name has to survive collapsing: with labels hidden the
+        // link would otherwise announce as its glyph, or as nothing at all.
+        aria-label={destination.label}
+        aria-describedby={dimmed ? reasonId : undefined}
+        data-dimmed={dimmed ? "true" : undefined}
+      >
+        <span className="cp-sidebar__icon" aria-hidden>
+          {destination.icon ? (
+            <PixelIcon name={destination.icon} />
+          ) : (
+            <span className="cp-sidebar__glyph">{destination.glyph}</span>
+          )}
         </span>
-      )}
-    </NavLink>
+        {!collapsed && <span className="cp-sidebar__label">{destination.label}</span>}
+      </NavLink>
+    </Hint>
   );
 }
 
@@ -117,46 +116,69 @@ export function Sidebar() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [toggle]);
 
+  const emptyLineId = useId();
+  const groups = groupedDestinations();
+  const pinned = groups.length > 1 ? groups[groups.length - 1] : undefined;
+  const scrolling = pinned ? groups.slice(0, -1) : groups;
+  // The first dimmed entry, so the shared line sits just above the run of them (NAV-5, K7).
+  const firstDimmed = libraryEmpty
+    ? scrolling.flatMap((entry) => entry.destinations).find((d) => d.needsLibrary)?.id
+    : undefined;
+
+  const renderGroup = (entry: (typeof groups)[number]) => (
+    <div
+      className={`cp-sidebar__group${entry === pinned ? " cp-sidebar__group--pinned" : ""}`}
+      key={entry.group}
+    >
+      {entry.label && !collapsed ? (
+        <p className="cp-sidebar__group-label">{entry.label}</p>
+      ) : null}
+      {entry.destinations.map((destination) => (
+        <Fragment key={destination.id}>
+          {destination.id === firstDimmed && !collapsed ? (
+            <p className="cp-sidebar__empty-line" id={emptyLineId}>{EMPTY_LIBRARY_LINE}</p>
+          ) : null}
+          <DestinationLink
+            destination={destination}
+            collapsed={collapsed}
+            dimmed={libraryEmpty && Boolean(destination.needsLibrary)}
+            reasonId={collapsed ? undefined : emptyLineId}
+          />
+        </Fragment>
+      ))}
+    </div>
+  );
+
   return (
     <nav
       className={`cp-sidebar ${collapsed ? "cp-sidebar--collapsed" : ""}`.trim()}
       aria-label="Main navigation"
       data-collapsed={collapsed ? "true" : "false"}
     >
-      <Brand collapsed={collapsed} />
+      {/* Fixed above the list, so the logo never scrolls out of the window (R2-9). */}
+      <div className="cp-sidebar__top">
+        <Brand collapsed={collapsed} />
 
-      <button
-        ref={toggleRef}
-        type="button"
-        className="cp-sidebar__toggle"
-        onClick={toggle}
-        aria-expanded={!collapsed}
-        aria-label={`${collapsed ? "Expand" : "Collapse"} sidebar`}
-        title={`${collapsed ? "Expand" : "Collapse"} sidebar (${modifierName()}+B)`}
-      >
-        <span aria-hidden className="cp-sidebar__icon">
-          <PixelIcon name={collapsed ? "chevron-right" : "chevron-left"} />
-        </span>
-      </button>
-
-      {groupedDestinations().map((entry, at, all) => (
-        <div
-          className={`cp-sidebar__group${at === all.length - 1 && all.length > 1 ? " cp-sidebar__group--pinned" : ""}`}
-          key={entry.group}
+        <button
+          ref={toggleRef}
+          type="button"
+          className="cp-sidebar__toggle"
+          onClick={toggle}
+          aria-expanded={!collapsed}
+          aria-label={`${collapsed ? "Expand" : "Collapse"} sidebar`}
+          title={`${collapsed ? "Expand" : "Collapse"} sidebar (${modifierName()}+B)`}
         >
-          {entry.label && !collapsed ? (
-            <p className="cp-sidebar__group-label">{entry.label}</p>
-          ) : null}
-          {entry.destinations.map((destination) => (
-            <DestinationLink
-              key={destination.id}
-              destination={destination}
-              collapsed={collapsed}
-              dimmed={libraryEmpty && Boolean(destination.needsLibrary)}
-            />
-          ))}
-        </div>
-      ))}
+          <span aria-hidden className="cp-sidebar__icon">
+            <PixelIcon name={collapsed ? "chevron-right" : "chevron-left"} />
+          </span>
+        </button>
+      </div>
+
+      {/* The destinations alone scroll; the pinned group stays at the foot. */}
+      <div className="cp-sidebar__list">
+        {scrolling.map((entry) => renderGroup(entry))}
+      </div>
+      {pinned ? renderGroup(pinned) : null}
     </nav>
   );
 }

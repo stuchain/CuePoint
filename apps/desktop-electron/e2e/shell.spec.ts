@@ -115,6 +115,29 @@ test.describe("Application shell navigation", () => {
     }
   });
 
+  test("the logo stays on screen on every page at 1280x720 (R2-9)", async () => {
+    const app = await launch(userDataDir);
+    try {
+      const window = await app.firstWindow({ timeout: 60_000 });
+      await app.evaluate(({ BrowserWindow }) => {
+        BrowserWindow.getAllWindows()[0]?.setContentSize(1280, 720);
+      });
+      await dismissOnboarding(window);
+
+      const nav = window.getByRole("navigation", { name: /main navigation/i });
+      for (const label of ["Library", "Clean", "Keys", "Discover", "Prepare", "Statistics", "Settings"]) {
+        await nav.getByRole("link", { name: label, exact: true }).click();
+        const box = await nav.getByRole("link", { name: "CuePoint", exact: true }).boundingBox();
+        expect(box, label).not.toBeNull();
+        expect(box!.y, label).toBeGreaterThanOrEqual(0);
+        const settings = await nav.getByRole("link", { name: "Settings", exact: true }).boundingBox();
+        expect(settings!.y + settings!.height, label).toBeLessThanOrEqual(720);
+      }
+    } finally {
+      await app.close();
+    }
+  });
+
   test("global search reaches the engine and comes back (SHELL-04)", async () => {
     const app = await launch(userDataDir);
     try {

@@ -111,15 +111,15 @@ describe("the five screens", () => {
     }
   });
 
-  it("lists Keys from the registry, between Library and Clean as the sidebar does", async () => {
+  it("lists Keys from the registry, right after Clean as the sidebar does (C26)", async () => {
     mount();
     await goTo(5);
     const pages = screen.getByRole("list", { name: "Pages" });
     const names = within(pages)
       .getAllByRole("listitem")
       .map((item) => item.querySelector("strong")?.textContent);
-    expect(names.indexOf("Keys")).toBeGreaterThan(names.indexOf("Library"));
-    expect(names.indexOf("Keys")).toBeLessThan(names.indexOf("Clean"));
+    expect(names.indexOf("Keys")).toBeGreaterThan(names.indexOf("Clean"));
+    expect(names.indexOf("Keys")).toBeLessThan(names.indexOf("Discover"));
     expect(names.filter((name) => name === "Keys")).toHaveLength(1);
   });
 

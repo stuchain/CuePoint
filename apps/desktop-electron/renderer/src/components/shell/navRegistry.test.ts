@@ -15,7 +15,7 @@ import {
   findDestinationByPath,
   groupedDestinations,
   homeDestination,
-  EMPTY_LIBRARY_HINT,
+  EMPTY_LIBRARY_LINE,
   HOME_DESTINATION_ID,
   NAV_DESTINATIONS,
   NAV_GROUPS,
@@ -129,7 +129,7 @@ describe("navRegistry", () => {
   it("renders exactly what has been built", () => {
     // Tools and inCrate retired in DISCOVER-12 (DEC-100).
     const enabled = enabledDestinations().map((d) => d.id);
-    expect(enabled).toEqual(["library", "keys", "clean", "discover", "prepare", "statistics", "settings"]);
+    expect(enabled).toEqual(["library", "clean", "keys", "discover", "prepare", "statistics", "settings"]);
   });
 
   describe("Collections left the sidebar (DEC-244)", () => {
@@ -313,11 +313,11 @@ describe("groupedDestinations", () => {
 
     it("names the pages that need a library before the first import (NAV-5)", () => {
       const needing = NAV_DESTINATIONS.filter((d) => d.needsLibrary).map((d) => d.id);
-      expect(needing).toEqual(["keys", "clean", "discover", "prepare", "statistics"]);
-      expect(EMPTY_LIBRARY_HINT).toBe("Import your Rekordbox collection first");
+      expect(needing).toEqual(["clean", "keys", "discover", "prepare", "statistics"]);
+      expect(EMPTY_LIBRARY_LINE).toBe("Import your library to use these");
     });
 
-    it("declares Keys at the top level, after Library (PAGES-16, DEC-200)", () => {
+    it("declares Keys at the top level, after Clean (PAGES-16, C26, DEC-271)", () => {
       const keys = findDestinationById("keys")!;
       expect(keys).toMatchObject({
         label: "Keys",
@@ -328,7 +328,7 @@ describe("groupedDestinations", () => {
         needsLibrary: true,
       });
       const ids = NAV_DESTINATIONS.map((d) => d.id);
-      expect(ids.indexOf("keys")).toBe(ids.indexOf("library") + 1);
+      expect(ids.indexOf("keys")).toBe(ids.indexOf("clean") + 1);
     });
 
     it("keeps Settings last, in its own group, for the pinned bottom (NAV-6)", () => {

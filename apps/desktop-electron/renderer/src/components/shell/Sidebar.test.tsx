@@ -6,13 +6,15 @@
  * accessible name still *looks* right — and it is the state DEC-022 chose over
  * a drag handle, so it has to be worth having.
  */
+import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
 import { Sidebar } from "./Sidebar";
-import { NAV_DESTINATIONS } from "./navRegistry";
+import { EMPTY_LIBRARY_LINE, NAV_DESTINATIONS } from "./navRegistry";
+import { HINT_HOVER_DELAY_MS } from "../Hint";
 import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "./sidebarState";
 
 function renderSidebar(initialPath = "/") {
@@ -91,7 +93,7 @@ describe("Sidebar", () => {
     expect(within(nav()).queryByText("Tools")).not.toBeInTheDocument();
     expect(within(nav()).queryByRole("link", { name: "inCrate" })).not.toBeInTheDocument();
     const links = destinationNames();
-    expect(links).toEqual(["Library", "Keys", "Clean", "Discover", "Prepare", "Statistics", "Settings"]);
+    expect(links).toEqual(["Library", "Clean", "Keys", "Discover", "Prepare", "Statistics", "Settings"]);
   });
 
   it("marks the active destination with aria-current", () => {
@@ -196,29 +198,51 @@ describe("Sidebar", () => {
     });
   });
 
-  describe("hints, titles and the toggle (NAV-1, NAV-2)", () => {
-    it("shows each destination's hint under its label when expanded", () => {
+  describe("one line per entry, hints in the tooltip (NAV-1, K7)", () => {
+    it("shows only the label in an entry, never a second line", () => {
       renderSidebar();
       const library = within(nav()).getByRole("link", { name: "Library" });
-      expect(within(library).getByText("Your Rekordbox tracks")).toBeInTheDocument();
-      const settings = within(nav()).getByRole("link", { name: "Settings" });
-      expect(within(settings).getByText("Look, sound, accounts")).toBeInTheDocument();
+      expect(within(library).getByText("Library")).toBeInTheDocument();
+      expect(within(library).queryByText("Your Rekordbox tracks")).not.toBeInTheDocument();
+      expect(nav().querySelector(".cp-sidebar__hint")).toBeNull();
+      expect(within(nav()).queryByText("Look, sound, accounts")).not.toBeInTheDocument();
     });
 
-    it("puts the hint in the title in both states", async () => {
+    it("shows the hint in a tooltip on keyboard focus, and on hover after a rest", async () => {
       const user = userEvent.setup();
       renderSidebar();
-      expect(within(nav()).getByRole("link", { name: "Discover" })).toHaveAttribute(
-        "title",
-        expect.stringContaining("Find new music"),
-      );
+      const discover = within(nav()).getByRole("link", { name: "Discover" });
+      await user.tab();
+      await user.tab();
+      discover.focus();
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Find new music");
+      expect(discover).toHaveAttribute("aria-describedby", screen.getByRole("tooltip").id);
+      expect(discover).toHaveAttribute("aria-label", "Discover");
+      discover.blur();
+      await waitFor(() => expect(screen.queryByRole("tooltip")).not.toBeInTheDocument());
 
+      vi.useFakeTimers();
+      try {
+        const settings = within(nav()).getByRole("link", { name: "Settings" });
+        fireEvent.pointerEnter(settings.parentElement!);
+        act(() => {
+          vi.advanceTimersByTime(HINT_HOVER_DELAY_MS + 10);
+        });
+        expect(screen.getByRole("tooltip")).toHaveTextContent("Look, sound, accounts");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("prefixes the label in the tooltip when collapsed", async () => {
+      const user = userEvent.setup();
+      renderSidebar();
       await user.click(toggle());
 
       const collapsed = within(nav()).getByRole("link", { name: "Discover" });
-      expect(collapsed).toHaveAttribute("title", expect.stringContaining("Discover"));
-      expect(collapsed).toHaveAttribute("title", expect.stringContaining("Find new music"));
       expect(within(collapsed).queryByText("Find new music")).not.toBeInTheDocument();
+      collapsed.focus();
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Discover: Find new music");
     });
 
     it("titles the toggle with its shortcut and draws a chevron, not a text glyph", async () => {
@@ -232,6 +256,38 @@ describe("Sidebar", () => {
 
       expect(toggle()).toHaveAttribute("title", "Expand sidebar (Ctrl+B)");
       expect(toggle().querySelector("svg[data-icon='chevron-right']")).not.toBeNull();
+    });
+  });
+
+  describe("the fixed top row and the scrolling list (R2-9)", () => {
+    it("holds the brand and the toggle in one top row", () => {
+      renderSidebar();
+      const top = nav().querySelector<HTMLElement>(".cp-sidebar__top")!;
+      expect(top).not.toBeNull();
+      expect(within(top).getByRole("link", { name: "CuePoint" })).toBeInTheDocument();
+      expect(within(top).getByRole("button", { name: /Collapse sidebar/i })).toBeInTheDocument();
+      expect(top.querySelector(".cp-sidebar__list")).toBeNull();
+    });
+
+    it("keeps the top row outside the list when collapsed too", async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+      await user.click(toggle());
+      const top = nav().querySelector<HTMLElement>(".cp-sidebar__top")!;
+      expect(within(top).getByRole("link", { name: "CuePoint" })).toBeInTheDocument();
+      expect(within(top).getByRole("button", { name: /Expand sidebar/i })).toBeInTheDocument();
+    });
+
+    it("scrolls the destinations alone and keeps Settings outside the scroll", () => {
+      renderSidebar();
+      const list = nav().querySelector<HTMLElement>(".cp-sidebar__list")!;
+      expect(list).not.toBeNull();
+      for (const name of ["Library", "Clean", "Keys", "Discover", "Prepare", "Statistics"]) {
+        expect(within(list).getByRole("link", { name })).toBeInTheDocument();
+      }
+      expect(within(list).queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
+      expect(within(nav()).getByRole("link", { name: "Settings" })).toBeInTheDocument();
+      expect(list.closest(".cp-sidebar__top")).toBeNull();
     });
   });
 
@@ -268,20 +324,21 @@ describe("Sidebar", () => {
     });
   });
 
-  describe("Keys, a page of its own after the Library (PAGES-16, DEC-200)", () => {
-    it("comes after Library, at the top level", () => {
+  describe("Keys, a page of its own after Clean (PAGES-16, DEC-200, C26)", () => {
+    it("comes after Clean, at the top level", () => {
       renderSidebar();
       const keys = within(nav()).getByRole("link", { name: "Keys" });
       expect(keys).toHaveAttribute("href", "/keys");
       const order = destinationNames();
-      expect(order.indexOf("Keys")).toBe(order.indexOf("Library") + 1);
+      expect(order.indexOf("Keys")).toBe(order.indexOf("Clean") + 1);
     });
 
-    it("says what it is for, under its name and in its title", () => {
+    it("says what it is for in its tooltip, not under its name", async () => {
       renderSidebar();
       const keys = within(nav()).getByRole("link", { name: "Keys" });
-      expect(within(keys).getByText("The keys in your playlists, Collections and Sets")).toBeInTheDocument();
-      expect(keys).toHaveAttribute("title", "The keys in your playlists, Collections and Sets");
+      expect(within(keys).queryByText("The keys in your playlists, Collections and Sets")).not.toBeInTheDocument();
+      keys.focus();
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("The keys in your playlists, Collections and Sets");
     });
 
     it("draws a pixel icon, and is lit on its page", () => {
@@ -295,7 +352,7 @@ describe("Sidebar", () => {
   describe("before the first import (NAV-5)", () => {
     const dimmed = ["Keys", "Clean", "Discover", "Prepare", "Statistics"];
 
-    it("dims Keys, Clean, Discover, Prepare and Statistics, still clickable, with the reason", async () => {
+    it("dims the pages with nothing to show, still clickable, under one shared line", async () => {
       libraryIs(true);
       renderSidebar();
 
@@ -306,25 +363,57 @@ describe("Sidebar", () => {
         const link = within(nav()).getByRole("link", { name: label });
         expect(link).toHaveAttribute("data-dimmed", "true");
         expect(link).toHaveAttribute("href");
-        expect(within(link).getByText("Import your Rekordbox collection first")).toBeInTheDocument();
-        expect(link).toHaveAttribute("title", expect.stringContaining("Import your Rekordbox collection first"));
+        expect(within(link).queryByText(/Import your/)).not.toBeInTheDocument();
       }
       for (const label of ["Library", "Settings"]) {
         expect(within(nav()).getByRole("link", { name: label })).not.toHaveAttribute("data-dimmed");
       }
+      // One line for the lot, above the dimmed entries and below Library.
+      const line = within(nav()).getAllByText(EMPTY_LIBRARY_LINE);
+      expect(line).toHaveLength(1);
+      expect(line[0]!.compareDocumentPosition(within(nav()).getByRole("link", { name: "Clean" }))).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      expect(line[0]!.compareDocumentPosition(within(nav()).getByRole("link", { name: "Library" }))).toBe(
+        Node.DOCUMENT_POSITION_PRECEDING,
+      );
     });
 
-    it("shows the reason in the title when collapsed", async () => {
+    it("points each dimmed entry at the shared line, merged with the tooltip's description", async () => {
+      libraryIs(true);
+      renderSidebar();
+      await waitFor(() =>
+        expect(within(nav()).getByRole("link", { name: "Prepare" })).toHaveAttribute("data-dimmed", "true"),
+      );
+      const line = within(nav()).getByText(EMPTY_LIBRARY_LINE);
+      for (const label of dimmed) {
+        expect(within(nav()).getByRole("link", { name: label })).toHaveAttribute("aria-describedby", line.id);
+      }
+      expect(within(nav()).getByRole("link", { name: "Library" })).not.toHaveAttribute("aria-describedby");
+      const prepare = within(nav()).getByRole("link", { name: "Prepare" });
+      prepare.focus();
+      const tip = await screen.findByRole("tooltip");
+      expect(prepare.getAttribute("aria-describedby")!.split(" ")).toEqual([line.id, tip.id]);
+    });
+
+    it("tooltips a dimmed entry with its own hint", async () => {
+      libraryIs(true);
+      renderSidebar();
+      await waitFor(() =>
+        expect(within(nav()).getByRole("link", { name: "Prepare" })).toHaveAttribute("data-dimmed", "true"),
+      );
+      within(nav()).getByRole("link", { name: "Prepare" }).focus();
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Plan a set");
+    });
+
+    it("drops the shared line when collapsed", async () => {
       libraryIs(true);
       localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, "1");
       renderSidebar();
       await waitFor(() =>
         expect(within(nav()).getByRole("link", { name: "Prepare" })).toHaveAttribute("data-dimmed", "true"),
       );
-      expect(within(nav()).getByRole("link", { name: "Prepare" })).toHaveAttribute(
-        "title",
-        expect.stringContaining("Import your Rekordbox collection first"),
-      );
+      expect(within(nav()).queryByText(EMPTY_LIBRARY_LINE)).not.toBeInTheDocument();
     });
 
     it("dims nothing once the library has tracks", async () => {
@@ -335,6 +424,7 @@ describe("Sidebar", () => {
       for (const label of dimmed) {
         expect(within(nav()).getByRole("link", { name: label })).not.toHaveAttribute("data-dimmed");
       }
+      expect(within(nav()).queryByText(EMPTY_LIBRARY_LINE)).not.toBeInTheDocument();
     });
 
     it("dims nothing when the library cannot be read at all", async () => {

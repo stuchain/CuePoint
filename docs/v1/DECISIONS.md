@@ -7621,3 +7621,24 @@ way to hear them. One at a time already plays a match candidate's sample through
 - Edit fields, exports, set list files and the CLI keep the exact value.
 
 **Decided with**: User (R4-9, wish list round 2) · **Date**: 2026-10-13
+
+
+
+## DEC-271 — Sidebar Order and One-Line Entries
+
+**Status**: Approved · **Related**: C26, K7, R2-9, DEC-200, NAV-1, NAV-5
+
+**Context**: The sidebar listed Keys before Clean, each entry carried a muted second line that was cut off at most
+sizes, and on short windows the logo and collapse button scrolled away with the list.
+
+**Decision**:
+- The order is Library, Clean, Keys, Discover, Prepare, Statistics, then Settings pinned at the foot. Keys stays a
+  top-level page of its own (DEC-200 keeps everything but its place).
+- Each entry is one line, its label. What the page is for (NAV-1) moves into the entry's hover and focus hint.
+- Before the first import, one shared line, "Import your library to use these", sits above the dimmed entries and is
+  read with each of them (NAV-5), in place of a hint on every entry.
+- The logo and the collapse button sit in a fixed top row and Settings at the foot; only the list between scrolls.
+- The open rail is 132 px at 1×, a whole multiple of the scale unit, wide enough for the bold "Statistics" and the
+  top row.
+
+**Decided with**: User (C26, K7, R2-9, wish list round 2) · **Date**: 2026-10-13

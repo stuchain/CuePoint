@@ -12,15 +12,15 @@
 .cp-sidebar {
   --cp-sidebar-pad: var(--space-sm);
   /*
-   * Wide enough for the longest label the registry declares — "Collections" —
-   * plus its icon, gap and padding, so entries read as words rather than
-   * ellipses. It scales with the interface, but is capped as a share of the
-   * window: at 3x an uncapped 480px rail would take 38% of a 1280px window.
+   * Wide enough for the longest label the registry declares — "Statistics" in bold, 5.68em of
+   * Pixelify Sans — plus its icon, gap and padding, and for the top row (logo, "CuePoint" in
+   * bold, toggle): the link row needs about 124px at 1x and the top row about 131px (the toggle is 34px: icon, padding, border), so 132, a whole multiple of 4 (K7). It scales with the interface,
+   * but is capped as a share of the window: at 3x an uncapped rail would take too much of it.
    *
    * `vw` is right here, unlike inside the content region: the sidebar is a
    * child of the shell grid, so the window really is what it divides up.
    */
-  --cp-sidebar-width: min(calc(160px * var(--scale)), 34vw);
+  --cp-sidebar-width: min(calc(132px * var(--scale)), 34vw);
 
   display: flex;
   flex-direction: column;
@@ -28,7 +28,8 @@
   width: var(--cp-sidebar-width);
   height: 100%;
   min-height: 0;
-  overflow-y: auto;
+  /* The nav itself never scrolls: the list below does, the top row and Settings stay put (R2-9). */
+  overflow: hidden;
   padding: var(--cp-sidebar-pad);
   background: var(--bg-toolbar);
   border-right: var(--divider);
@@ -40,23 +41,43 @@
 }
 
 /*
- * The brand tops the rail (HDR-6): the logo and the name, the logo alone when the rail is
+ * The fixed top row (R2-9): the brand at the left, the toggle at the right. Collapsed, the
+ * logo stacks above the toggle, both centred. Outside the scrolling list either way.
+ */
+.cp-sidebar__top {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.cp-sidebar--collapsed .cp-sidebar__top {
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+/*
+ * The brand heads the rail (HDR-6): the logo and the name, the logo alone when the rail is
  * closed. It is a link home, not a destination, so it never takes the active look.
  */
 .cp-sidebar__brand {
   display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
   min-height: var(--hit-min);
-  padding: var(--space-xs) var(--space-sm);
+  padding: var(--space-xs) 0;
   color: var(--fg-primary);
-  font-size: var(--font-size-md, var(--font-size-sm));
+  font-size: var(--font-size-sm);
   font-weight: 700;
-  letter-spacing: 0.04em;
   text-decoration: none;
 }
 
 .cp-sidebar--collapsed .cp-sidebar__brand {
+  flex: none;
   justify-content: center;
   padding: var(--space-xs);
 }
@@ -77,13 +98,12 @@
 }
 
 .cp-sidebar__toggle {
-  align-self: flex-end;
+  flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: var(--icon-size);
   min-height: var(--icon-size);
-  margin-bottom: var(--space-xs);
   padding: 0 var(--space-xs);
   background: var(--bg-panel);
   border: var(--control-border-width) solid var(--border-control);
@@ -92,13 +112,19 @@
   cursor: pointer;
 }
 
-.cp-sidebar--collapsed .cp-sidebar__toggle {
-  align-self: center;
-}
-
 .cp-sidebar__toggle:hover {
   color: var(--fg-primary);
   background: var(--bg-app);
+}
+
+/* The workspace destinations: the one part of the rail that scrolls (R2-9). */
+.cp-sidebar__list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .cp-sidebar__group {
@@ -116,12 +142,11 @@
 }
 
 /*
- * Settings is pinned to the bottom of the rail under a thin divider (NAV-6): the group
- * after the workspace takes the free space above it, so it sits at the foot however tall
- * the window is.
+ * Settings is pinned to the bottom of the rail under a thin divider (NAV-6): it sits outside
+ * the scrolling list, below it, so it stays at the foot however tall the window is.
  */
 .cp-sidebar__group--pinned {
-  margin-top: auto;
+  flex: none;
   padding-top: var(--space-xs);
   border-top: var(--divider);
 }
@@ -133,7 +158,14 @@
   font-size: var(--font-size-xs);
 }
 
+/* The Hint wrapper takes the entry's full width (K7). */
+.cp-sidebar .cp-hint {
+  display: flex;
+}
+
 .cp-sidebar__link {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -186,27 +218,19 @@
   line-height: 1;
 }
 
-.cp-sidebar__text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
 .cp-sidebar__label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* What the page is for (NAV-1): muted, smaller, never the loud part of the entry. */
-.cp-sidebar__hint {
+/* The one shared line above the dimmed entries (NAV-5, K7): muted, small, never an entry. */
+.cp-sidebar__empty-line {
+  margin: 0;
+  padding: var(--space-xs) var(--space-sm) 0;
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
-  font-weight: 400;
   line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Pages with nothing to show before the first import (NAV-5): quieter, still clickable. */

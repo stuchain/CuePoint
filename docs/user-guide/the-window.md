@@ -21,17 +21,20 @@ also reopens on the page you were last using.
 
 ## Navigating
 
-The sidebar lists the pages available to you, with the CuePoint logo and name at
-its top (click them to go home, to the Library). Each page has a one-line hint
-under its name, and the same line is its tooltip when the sidebar is collapsed:
-**Library** "Your Rekordbox tracks", **Keys** "The keys in your playlists, Collections and Sets", **Clean** "Match on Beatport, find missing files and duplicates", **Discover** "Find new music",
+The sidebar lists the pages available to you, with the CuePoint logo and name and the
+collapse button in a row that stays at its top (click the logo or name to go home, to
+the Library). Each page is one line, its name. Rest the pointer on it, or Tab to it, for
+a tooltip saying what it is for, and when the sidebar is collapsed the tooltip leads with the name:
+**Library** "Your Rekordbox tracks", **Clean** "Match on Beatport, find missing files and duplicates",
+**Keys** "The keys in your playlists, Collections and Sets", **Discover** "Find new music",
 **Prepare** "Plan a set", **Statistics** "See what you play most and how your library is made up" and **Settings** "Look, sound, accounts". Your Collections
 are not a page of their own: they are the tree in the Library's left pane. **Keys**
-follows **Library** (see [Keys](keys.md)). **Settings** is pinned to the bottom, under a thin line.
+follows **Clean** (see [Keys](keys.md)). When the window is too short for every page, only the
+list of pages scrolls; the logo stays put. **Settings** is pinned to the bottom, under a thin line.
 
-Until you import a Rekordbox collection, **Keys**, **Clean**, **Discover**,
-**Prepare** and **Statistics** are dimmed and their hint reads "Import your Rekordbox collection
-first". They still open: they just have nothing to show yet. They light up on their
+Until you import a Rekordbox collection, **Clean**, **Keys**, **Discover**,
+**Prepare** and **Statistics** are dimmed, with one line above them reading "Import your
+library to use these". They still open: they just have nothing to show yet. They light up on their
 own after the first import.
 
 **Library** is where your Rekordbox collection lives — see
