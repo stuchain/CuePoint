@@ -135,13 +135,13 @@ class Decodes:
 def decodes(tmp_path, monkeypatch) -> Decodes:
     """The decoder the engine is given: a real one, or a stand-in; each decode recorded."""
     from cuepoint.data import audio_decode
-    from cuepoint.services import waveform_service
+    from cuepoint.services import waveform_computer
 
     real = _real_mpv()
     record = Decodes(real=real is not None)
     if real is not None:
         monkeypatch.setenv(audio_decode.DECODER_PATH_ENV, str(real))
-        decode: Callable[..., audio_decode.Envelope] = waveform_service.decode_envelope
+        decode: Callable[..., audio_decode.Envelope] = audio_decode.decode_envelope
     else:
         stand_in = tmp_path / "decoder"
         stand_in.write_bytes(b"")
@@ -154,7 +154,8 @@ def decodes(tmp_path, monkeypatch) -> Decodes:
         record.add(source)
         return decode(source, decoder, cancel=cancel)
 
-    monkeypatch.setattr(waveform_service, "decode_envelope", recorded)
+    # The engine decodes through the waveform computer (62f93693).
+    monkeypatch.setattr(waveform_computer, "decode_envelope", recorded)
     return record
 
 
