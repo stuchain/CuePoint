@@ -70,6 +70,9 @@
   font-size: var(--font-size-sm);
 }
 
+/* One column below about 467px at 1× (700px at the default 1.5×). The rail grows with the scale,
+   and a container query cannot read --scale, so the larger sizes name their own width: at 3× in a
+   1280 window the rail took 480px of a 763px page and the sections overflowed it. */
 @container content (max-width: 700px) {
   .settings-page__layout {
     grid-template-columns: minmax(0, 1fr);
@@ -80,6 +83,36 @@
   }
 
   .settings-page__nav ul {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+@container content (max-width: 934px) {
+  :root[data-scale="2"] .settings-page__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :root[data-scale="2"] .settings-page__nav {
+    position: static;
+  }
+
+  :root[data-scale="2"] .settings-page__nav ul {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+@container content (max-width: 1400px) {
+  :root[data-scale="3"] .settings-page__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :root[data-scale="3"] .settings-page__nav {
+    position: static;
+  }
+
+  :root[data-scale="3"] .settings-page__nav ul {
     flex-direction: row;
     flex-wrap: wrap;
   }
