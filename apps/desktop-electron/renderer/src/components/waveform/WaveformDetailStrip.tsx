@@ -19,9 +19,10 @@
  * **When it draws.** The player reports a position four times a second; a
  * `requestAnimationFrame` loop extrapolates between snapshots
  * (`playheadClock.ts`), and runs only while a track plays, the document is
- * visible and motion is on. Paused or hidden, no frame is scheduled; under
- * reduced motion (`data-motion-scroll` absent from the root) it redraws only on a
- * snapshot.
+ * visible and motion is on. After a pause it keeps going only until the glide
+ * to the stop has faded (`PAUSE_BLEND_MS` at most), then stops; hidden, no frame
+ * is scheduled. Under reduced motion (`data-motion-scroll` absent from the root)
+ * there is no glide and it redraws only on a snapshot, at the true position.
  *
  * `aria-hidden`: the bar's slider stays the control, as in the Inspector. A
  * click seeks to the time under it through the player bridge.
@@ -234,9 +235,18 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
     draw();
   }, [draw, theme]);
 
+  // Without motion no frame follows a snapshot, so there is no glide: draw the truth.
+  const motionRef = useRef(motion);
+  motionRef.current = motion;
+
+  // A glide after a snapshot is still fading: a paused strip draws on until it ends.
+  const [gliding, setGliding] = useState(false);
+
   // A snapshot from the player: anchor the clock, and draw where it says.
   useLayoutEffect(() => {
-    clock.current.snapshot(position, playing, performance.now());
+    const now = performance.now();
+    clock.current.snapshot(position, playing, now, motionRef.current);
+    setGliding(!playing && clock.current.settling(now));
     if (!document.hidden) drawRef.current();
   }, [position, playing]);
 
@@ -246,17 +256,21 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
   }, [hidden]);
 
   // Between snapshots, only while a frame can be seen and is wanted.
-  const animate = playing && !hidden && motion;
+  const animate = (playing || gliding) && !hidden && motion;
   useEffect(() => {
     if (!animate) return undefined;
     let frame = 0;
     const tick = () => {
       drawRef.current();
+      if (!playing && !clock.current.settling(performance.now())) {
+        setGliding(false);
+        return;
+      }
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [animate]);
+  }, [animate, playing]);
 
   const seek = (event: MouseEvent<HTMLDivElement>) => {
     const element = canvas.current;

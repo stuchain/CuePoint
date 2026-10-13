@@ -13,6 +13,7 @@ import { ToastProvider } from "../Toast";
 import { EMPTY_AUDIO_STATE } from "../player/playerFormat";
 import { resetPlayerStore } from "../player/playerStore";
 import { NO_BEAT_GRID_TITLE } from "./analysisWords";
+import { PAUSE_BLEND_MS } from "./playheadClock";
 import { forgetWaveforms } from "./waveformCache";
 import { resetWaveformDetailForTests, saveWaveformDetail } from "./waveformDetailSetting";
 
@@ -376,7 +377,8 @@ describe("frames", () => {
     expect(window.requestAnimationFrame).not.toHaveBeenCalled();
   });
 
-  it("runs one a frame while playing, and stops when the player pauses", async () => {
+  it("runs one a frame while playing, and stops when the player pauses on the drawn spot", async () => {
+    vi.spyOn(performance, "now").mockReturnValue(1_000);
     const { push } = install();
     render(<Slot />);
     await waitFor(() => expect(window.requestAnimationFrame).toHaveBeenCalled());
@@ -390,6 +392,41 @@ describe("frames", () => {
     const scheduled = (window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length;
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect((window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length).toBe(scheduled);
+  });
+
+  it("keeps drawing for the glide after a pause, then stops", async () => {
+    const now = vi.spyOn(performance, "now").mockReturnValue(1_000);
+    const { push } = install();
+    render(<Slot />);
+    await waitFor(() => expect(window.requestAnimationFrame).toHaveBeenCalled());
+    const scheduled = () => (window.requestAnimationFrame as ReturnType<typeof vi.fn>).mock.calls.length;
+    now.mockReturnValue(1_250);
+    const beforePause = scheduled();
+    // Drawn 30.25 s; the player stopped at 30.15 s.
+    await push(snapshot(item(), { playing: false, paused: true, positionSeconds: 30.15 }));
+    const afterPause = scheduled();
+    expect(afterPause).toBeGreaterThan(beforePause);
+    act(() => frames.pop()!(0));
+    expect(scheduled()).toBeGreaterThan(afterPause);
+    now.mockReturnValue(1_250 + PAUSE_BLEND_MS + 1);
+    act(() => frames.pop()!(0));
+    const settled = scheduled();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(scheduled()).toBe(settled);
+  });
+
+  it("under reduced motion draws the true stop at once, so a click lands on it", async () => {
+    document.documentElement.removeAttribute("data-motion-scroll");
+    const now = vi.spyOn(performance, "now").mockReturnValue(1_000);
+    const { push, player } = install();
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"));
+    now.mockReturnValue(1_200);
+    await push(snapshot(item(), { playing: false, paused: true, positionSeconds: 30.1 }));
+    now.mockReturnValue(1_250);
+    fireEvent.click(strip(), { clientX: 300 });
+    expect(player.seek.mock.calls[0]![0] as number).toBeCloseTo(30.1, 3);
+    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
   });
 
   it("schedules none while the document is hidden", async () => {
