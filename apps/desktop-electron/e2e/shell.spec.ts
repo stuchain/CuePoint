@@ -177,6 +177,8 @@ test.describe("Application shell navigation", () => {
       await dismissOnboarding(window);
 
       const panel = window.getByRole("complementary", { name: /track details/i });
+      // Nothing is selected, so it starts folded (K1): open it from its tab.
+      await window.getByRole("button", { name: /show track details/i }).click({ timeout: 15_000 });
       await expect(panel).toBeVisible({ timeout: 15_000 });
       const before = (await panel.boundingBox())!.width;
 
@@ -291,11 +293,15 @@ test.describe("Application shell navigation", () => {
       ).toHaveAttribute("data-collapsed", "true");
       await window.keyboard.press("Control+b");
 
+      // Folded with nothing selected (K1): Ctrl+I opens it, and again folds it.
+      await window.keyboard.press("Control+i");
+      await expect(
+        window.getByRole("button", { name: /hide track details/i }),
+      ).toBeVisible();
       await window.keyboard.press("Control+i");
       await expect(
         window.getByRole("button", { name: /show track details/i }),
       ).toBeVisible();
-      await window.keyboard.press("Control+i");
 
       await window.keyboard.press("Control+k");
       await expect(window.getByRole("combobox", { name: /search library/i })).toBeFocused();

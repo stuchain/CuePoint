@@ -12,11 +12,11 @@ page you are on changes; everything around it does not.
 | Camelot wheel | Top of the window, beside search | Shows which keys mix with a track — see [The Camelot wheel](#the-camelot-wheel) |
 | Sidebar | Left | The CuePoint logo, then the pages; collapses to an icon rail |
 | Page | Middle | Whatever you are working on |
-| Track details | Right | Details for a selected track; can be resized or hidden |
+| Track details | Right | Details for a selected track; opens with a selection, can be resized or closed |
 | Status strip | Bottom | Whether CuePoint is ready, what is running in the background, and the Activity panel |
 
-The window remembers how you leave it. Collapse the navigation, resize or hide
-Track details, and it will look the same the next time you open CuePoint. It
+The window remembers how you leave it. Collapse the navigation, resize or close
+Track details on a page, and it will look the same the next time you open CuePoint. It
 also reopens on the page you were last using.
 
 ## Navigating
@@ -139,15 +139,19 @@ developer tools (and **Diagnostics...** and **Log viewer...**); a released build
 
 ## Track details
 
-The panel on the right shows details for whatever track you have selected. Drag
-its left edge to resize it, or use the arrow keys once the edge has focus. Hide
-it with the **›** button or **Ctrl+I**. Hidden, it becomes a tab down the right
-edge that reads **Track details** and the title of the selected track; one click
-brings it back.
+The panel on the right shows details for whatever track you have selected. It opens
+when you select a track and folds away when nothing is selected. Drag its left
+edge to resize it, or use the arrow keys once the edge has focus. Close it with
+the **›** button or **Ctrl+I**, or open it with the tab or **Ctrl+I** even with
+nothing selected; the page then keeps your choice until you change it, and other
+pages are not affected. Folded, it becomes a tab down the right edge that reads
+**Details**, the title of the selected track, then **‹**; one click opens it.
+Discover's search page never opens it by itself, and its Artist, Label and Similar
+tracks pages share one open or closed choice with it.
 
 While the [queue](player.md#the-queue) is open it takes the whole right-hand column;
 **Ctrl+I** (or **View → Track details**) then closes the queue and Track details
-comes back.
+comes back folded, unless a track is selected, in which case it opens.
 
 If you sized it on a large monitor and later open CuePoint on a smaller screen,
 it shrinks to fit rather than pushing the page off-screen — and returns to your

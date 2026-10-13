@@ -714,8 +714,13 @@ describe("the Library page inside the shell (LIBUI-10)", () => {
 
     await userEvent.click(navLink("Settings"));
 
-    // The Inspector survives navigation (DEC-018); what it was describing does
-    // not, because that track belongs to a page the user has left.
-    await waitFor(() => expect(within(inspector).queryByText("Contact")).toBeNull());
+    // What the Inspector was describing does not survive navigation, because that track
+    // belongs to a page the user has left; with the selection gone the panel folds (K1).
+    await waitFor(() =>
+      expect(screen.queryByRole("complementary", { name: /track details/i })).toBeNull(),
+    );
+    // The Library itself is kept alive, hidden (C19e), so its row can still be in the
+    // document; the panel describing it is not.
+    expect(inspector).not.toBeInTheDocument();
   });
 });

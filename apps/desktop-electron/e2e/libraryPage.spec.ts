@@ -360,7 +360,10 @@ test.describe("The Library page (LIBRARY-11)", () => {
         };
       });
       expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.getSize()[0])).toBe(1280);
-      // Track details is open, as it opens: it is what leaves the row its width.
+      // Track details is open, as it opens: it is what leaves the row its width. Nothing is
+      // selected yet, so it is opened from its tab (K1).
+      const showDetails = window.getByRole("button", { name: /show track details/i });
+      if (await showDetails.isVisible()) await showDetails.click();
       await expect(window.getByRole("complementary", { name: "Track details" })).toBeVisible();
       // As it opens, then at the page a Windows window leaves (frame and menu bar): 1,264 × 735,
       // then there again with Windows' scrollbars, and wider ones (20px, against Windows' 17

@@ -201,6 +201,9 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
         .poll(async () => (await visibleTitles(window))[0], { timeout: 30_000 })
         .toBe("Track 40");
 
+      // --- Track details folds until a track is selected (K1) -----------
+      await expect(window.locator(".cp-inspector--hidden").first()).toBeVisible();
+
       // --- scrollbar ----------------------------------------------------
       // The themed bar (tokens/scrollbars.css) only applies while nothing sets the standard
       // scrollbar-color/-width, which Chromium prefers over the ::-webkit-scrollbar rules.

@@ -215,7 +215,9 @@ Mara Veil", offers **Open page**.
 
 ### Track details
 
-Selecting one track fills Track details. From the top:
+Selecting one track opens Track details, and clearing the selection folds it to a
+**Details** tab on the right edge. Closing it yourself on the Library keeps it closed
+there until you open it again (**Ctrl+I**, or the tab). From the top:
 
 - **The track's artwork**, or *No artwork* when it has none, its title, and its
   artists and label. Each artist in the credit, and the label, is a link to

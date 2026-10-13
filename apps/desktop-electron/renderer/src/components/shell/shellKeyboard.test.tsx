@@ -14,6 +14,7 @@ import { MemoryRouter } from "react-router-dom";
 import { ToastProvider } from "../Toast";
 import { Sidebar } from "./Sidebar";
 import { TrackInspector } from "./TrackInspector";
+import { setSelectedTrack } from "./selectedTrack";
 import { StatusStrip } from "./StatusStrip";
 import { AppShellLayout } from "./AppShellLayout";
 import { ShellHeader } from "./ShellHeader";
@@ -72,9 +73,17 @@ describe("sidebar keyboard", () => {
 });
 
 describe("inspector focus", () => {
+  // The panel opens with a selection (K1); these are about the open panel's controls.
+  beforeEach(() => setSelectedTrack({ id: 1, key: null }));
+  afterEach(() => setSelectedTrack(null));
+
   it("moves focus to the reveal control when hidden", async () => {
     const user = userEvent.setup();
-    render(<TrackInspector />);
+    render(
+      <MemoryRouter>
+        <TrackInspector />
+      </MemoryRouter>,
+    );
 
     await user.click(screen.getByRole("button", { name: /hide track details/i }));
 
@@ -84,7 +93,11 @@ describe("inspector focus", () => {
 
   it("moves focus to the hide control when shown again", async () => {
     const user = userEvent.setup();
-    render(<TrackInspector />);
+    render(
+      <MemoryRouter>
+        <TrackInspector />
+      </MemoryRouter>,
+    );
     await user.click(screen.getByRole("button", { name: /hide track details/i }));
 
     await user.click(screen.getByRole("button", { name: /show track details/i }));
@@ -94,7 +107,11 @@ describe("inspector focus", () => {
 
   it("keeps focus somewhere real when toggled by keyboard", async () => {
     const user = userEvent.setup();
-    render(<TrackInspector />);
+    render(
+      <MemoryRouter>
+        <TrackInspector />
+      </MemoryRouter>,
+    );
 
     await user.keyboard("{Control>}i{/Control}");
 
@@ -105,10 +122,10 @@ describe("inspector focus", () => {
   it("does not steal focus on first render", () => {
     // An app that grabs focus on launch is worse than one that never moves it.
     render(
-      <>
+      <MemoryRouter>
         <button type="button">elsewhere</button>
         <TrackInspector />
-      </>,
+      </MemoryRouter>,
     );
 
     expect(screen.getByRole("button", { name: /hide track details/i })).not.toHaveFocus();

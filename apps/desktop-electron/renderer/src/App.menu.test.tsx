@@ -171,13 +171,14 @@ describe("panels", () => {
 
   it("toggles Track details", async () => {
     render(<App />);
-    expect(screen.getByRole("complementary", { name: /track details/i })).toBeInTheDocument();
+    // With nothing selected the panel is folded to its tab (K1), so the first toggle opens it.
+    expect(screen.queryByRole("complementary", { name: /track details/i })).not.toBeInTheDocument();
+    command("toggle-inspector");
+    expect(await screen.findByRole("complementary", { name: /track details/i })).toBeInTheDocument();
     command("toggle-inspector");
     await waitFor(() =>
       expect(screen.queryByRole("complementary", { name: /track details/i })).not.toBeInTheDocument(),
     );
-    command("toggle-inspector");
-    expect(await screen.findByRole("complementary", { name: /track details/i })).toBeInTheDocument();
   });
 });
 

@@ -21,10 +21,13 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState, type ReactNode } from "react";
 
+import { PageActiveContext } from "./pageActive";
+
 import {
   InspectorSlotOutlet,
   InspectorSlotProvider,
   useClearInspector,
+  useInspectorAutoOpen,
   useInspectorContent,
   useInspectorSlot,
 } from "./inspectorSlot";
@@ -258,4 +261,86 @@ describe("the Inspector slot", () => {
     expect(pageRenders - pageSettled).toBeLessThan(4);
   });
 
+  describe("whether the page lets the panel open by itself (K1)", () => {
+    function AutoOpen() {
+      return <output aria-label="auto-open">{String(useInspectorAutoOpen())}</output>;
+    }
+    function Filler({ autoOpen }: { autoOpen?: boolean }) {
+      useInspectorSlot(<p>content</p>, autoOpen === undefined ? undefined : { autoOpen });
+      return null;
+    }
+    const flag = () => screen.getByLabelText("auto-open").textContent;
+
+    it("allows it by default, with or without a page filling the slot", () => {
+      render(
+        <InspectorSlotProvider>
+          <AutoOpen />
+        </InspectorSlotProvider>,
+      );
+      expect(flag()).toBe("true");
+    });
+
+    it("allows it when the page fills the slot without saying", () => {
+      render(
+        <InspectorSlotProvider>
+          <Filler />
+          <AutoOpen />
+        </InspectorSlotProvider>,
+      );
+      expect(flag()).toBe("true");
+    });
+
+    it("reports a page that turned it off, keeps its content, and allows it again when the page goes", () => {
+      const view = render(
+        <InspectorSlotProvider>
+          <Filler autoOpen={false} />
+          <AutoOpen />
+          <Inspector />
+        </InspectorSlotProvider>,
+      );
+      expect(flag()).toBe("false");
+      expect(screen.getByRole("region", { name: "Inspector" })).toHaveTextContent("content");
+
+      view.rerender(
+        <InspectorSlotProvider>
+          <AutoOpen />
+          <Inspector />
+        </InspectorSlotProvider>,
+      );
+      expect(flag()).toBe("true");
+    });
+  });
+
+  describe("a hidden kept page (C19e)", () => {
+    it("does not fill the slot or hold it", () => {
+      render(
+        <InspectorSlotProvider>
+          <PageActiveContext.Provider value={false}>
+            <Page label="Hidden" />
+          </PageActiveContext.Provider>
+          <Inspector />
+        </InspectorSlotProvider>,
+      );
+      expect(screen.getByRole("region", { name: "Inspector" })).not.toHaveTextContent("Hidden");
+    });
+
+    it("hands the slot back when its page is hidden, and takes it again when shown", () => {
+      const tree = (active: boolean) => (
+        <InspectorSlotProvider>
+          <PageActiveContext.Provider value={active}>
+            <Page label="Library" />
+          </PageActiveContext.Provider>
+          <Inspector />
+        </InspectorSlotProvider>
+      );
+      const view = render(tree(true));
+      expect(screen.getByRole("region", { name: "Inspector" })).toHaveTextContent("Library");
+
+      view.rerender(tree(false));
+      expect(screen.getByRole("region", { name: "Inspector" })).not.toHaveTextContent("Library");
+
+      view.rerender(tree(true));
+      expect(screen.getByRole("region", { name: "Inspector" })).toHaveTextContent("Library");
+    });
+  });
 });

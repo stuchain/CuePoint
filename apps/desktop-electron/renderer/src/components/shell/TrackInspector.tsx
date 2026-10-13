@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import {
+  inspectorVisible,
   inspectorWidthFromPx,
   inspectorWidthPx,
   loadInspectorState,
   saveInspectorState,
+  withInspectorChoice,
   type InspectorState,
 } from "./inspectorState";
+import { useInspectorAutoOpen } from "./inspectorSlot";
+import { findOwningDestination } from "./navRegistry";
 import { useMotion } from "../../tokens/MotionContext";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { leaveAsGhost } from "../../tokens/useLeaveGhost";
-import { useSelectedTrack } from "./selectedTrack";
+import { useSelectedTrack, type SelectedTrack } from "./selectedTrack";
 import { useShellCommand } from "./shellCommands";
 import "./TrackInspector.css";
 
@@ -29,8 +34,12 @@ interface TrackInspectorProps {
  * The Track details container (DEC-018, DEC-024).
  *
  * Persists across navigation — it lives in the shell, not in any screen, so
- * moving between destinations never unmounts it. Width and visibility are
- * remembered.
+ * moving between destinations never unmounts it. Width is remembered, and so is whether the
+ * user opened or closed it, page by page.
+ *
+ * Whether it shows is the page's stored choice, else whether a track is selected there on
+ * a page that lets a selection open it (K1, DEC-280, amending DEC-018 and DEC-024).
+ * Hidden, it stays as the slim "Details" tab.
  *
  * It holds no track data of its own: each page puts its content in the slot
  * (LIBUI-10). Wiring it to the old Results screen's selection was rejected in
@@ -46,11 +55,27 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   // Hidden, the tab names the selected track so the panel can be found (INS-2).
   const selected = useSelectedTrack();
   const selectedTitle = selected?.title?.trim() || null;
+  // The page is the destination the location belongs to (K1); Discover's sub-pages share it.
+  const page = findOwningDestination(useLocation().pathname)?.id ?? "other";
+  const autoOpen = useInspectorAutoOpen();
+  // Which page a selection was first seen on. On a page change the new page still reads the
+  // old page's selection (and its slot) for a commit, until that page's cleanup runs; a
+  // selection only opens the panel on the page it came from, so the panel never flashes open.
+  const [seen, setSeen] = useState<{ selection: SelectedTrack | null; page: string }>({
+    selection: selected,
+    page,
+  });
+  if (seen.selection !== selected) setSeen({ selection: selected, page });
+  const selectionHere = selected !== null && seen.page === page;
+  const visible = inspectorVisible(state, page, selectionHere, autoOpen);
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
   const panelRef = useRef<HTMLElement>(null);
   const hideRef = useRef<HTMLButtonElement>(null);
   const revealRef = useRef<HTMLButtonElement>(null);
-  // Only move focus when the user toggled, never on the initial render: an app
-  // that steals focus on launch is worse than one that never moves it.
+  // Only move focus when the user toggled, never on the initial render nor when the
+  // selection opens or folds the panel by itself: an app that steals focus on launch is
+  // worse than one that never moves it.
   const toggled = useRef(false);
   // Showing and hiding the panel move (Opening and closing panels and dialogs): it enters on
   // a toggle, never on launch, and leaves as a still copy that fades.
@@ -80,17 +105,23 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     const panel = panelRef.current;
     if (panel && moves) leaveAsGhost(panel);
     setEntering(!panel);
-    setState((prev) => ({ ...prev, visible: !prev.visible }));
-  }, [moves]);
+    setState((prev) => withInspectorChoice(prev, page, !visibleRef.current));
+  }, [moves, page]);
 
   // The control the user pressed disappears when the panel toggles, and focus
   // would land on <body> — a keyboard user would be back at the top of the tab
   // order with no idea where they are. Move it to the control that replaced it.
   useEffect(() => {
     if (!toggled.current) return;
-    const next = state.visible ? hideRef.current : revealRef.current;
+    toggled.current = false;
+    const next = visible ? hideRef.current : revealRef.current;
     next?.focus();
-  }, [state.visible]);
+  }, [visible]);
+
+  // Only a toggle plays the entrance: a panel the selection opens just appears (K1).
+  useEffect(() => {
+    if (!visible) setEntering(false);
+  }, [visible]);
 
   // View → Track details in the menu.
   useShellCommand("toggle-inspector", toggle);
@@ -155,7 +186,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     [scale],
   );
 
-  if (!state.visible) {
+  if (!visible) {
     return (
       <div className="cp-inspector cp-inspector--hidden">
         <button
@@ -167,7 +198,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
           aria-label={selectedTitle ? `Show track details: ${selectedTitle}` : "Show track details"}
           title="Show track details (Ctrl+I)"
         >
-          <span className="cp-inspector__reveal-name">Track details</span>
+          <span className="cp-inspector__reveal-name">Details</span>
           {selectedTitle && <span className="cp-inspector__reveal-title">{selectedTitle}</span>}
           <span aria-hidden className="cp-inspector__reveal-chevron">‹</span>
         </button>

@@ -95,7 +95,8 @@ export function DiscoverScreen() {
   const [runsVersion, setRunsVersion] = useState(0);
   const [pushNotice, setPushNotice] = useState<PushNotice | null>(null);
 
-  useInspectorSlot(INSPECTOR_EMPTY);
+  // Nothing here describes a track, so a selection elsewhere does not open the panel (K1).
+  useInspectorSlot(INSPECTOR_EMPTY, { autoOpen: false });
 
   useEffect(() => {
     const bridge = window.cuepoint?.getDiscoverOptions;

@@ -28,19 +28,26 @@ import {
   type ReactNode,
 } from "react";
 
+import { usePageActive } from "./pageActive";
+
 interface InspectorSlotStore {
   get: () => ReactNode;
-  set: (content: ReactNode) => void;
+  /** Whether the page that filled the slot lets a selection open the panel (K1). */
+  getAutoOpen: () => boolean;
+  set: (content: ReactNode, autoOpen?: boolean) => void;
   subscribe: (listener: () => void) => () => void;
 }
 
 function createStore(): InspectorSlotStore {
   let content: ReactNode = null;
+  let autoOpen = true;
   const listeners = new Set<() => void>();
   return {
     get: () => content,
-    set: (next) => {
+    getAutoOpen: () => autoOpen,
+    set: (next, allowAutoOpen = true) => {
       content = next;
+      autoOpen = allowAutoOpen;
       // No "has it changed" check: `useSyncExternalStore` compares snapshots
       // itself and bails out, and the Inspector is the only subscriber. One
       // was written here and removed — nothing could observe it.
@@ -70,6 +77,7 @@ export function InspectorSlotProvider({ children }: { children: ReactNode }) {
 const NOTHING = {
   subscribe: () => () => {},
   get: (): ReactNode => null,
+  getAutoOpen: () => true,
 };
 
 /**
@@ -87,6 +95,16 @@ export function useInspectorContent(): ReactNode {
 }
 
 /**
+ * Whether the page in the slot lets a selected track open the panel by itself (K1,
+ * DEC-280). True with nothing in the slot. Like the content, read it from inside the
+ * Inspector, never from an ancestor of the page.
+ */
+export function useInspectorAutoOpen(): boolean {
+  const store = useContext(InspectorSlotContext) ?? NOTHING;
+  return useSyncExternalStore(store.subscribe, store.getAutoOpen, store.getAutoOpen);
+}
+
+/**
  * Renders whatever the current page put in the slot.
  *
  * A component rather than a hook call in the shell, so the re-render a change
@@ -99,27 +117,35 @@ export function InspectorSlotOutlet({ fallback = null }: { fallback?: ReactNode 
 }
 
 /**
- * Put content in the Inspector for as long as this component is mounted.
+ * Put content in the Inspector for as long as this component is mounted and its page is
+ * the one on screen.
+ *
+ * `autoOpen: false` keeps the content but stops a selected track opening the panel on
+ * this page (K1): Discover's search page shows no track details of its own.
  *
  * Outside a provider it does nothing, which is what a page rendered on its own
- * in a test should do rather than throw.
+ * in a test should do rather than throw. A hidden kept page (C19e) neither sets nor
+ * holds the slot; React's Activity clears its effects on hide, and the page-active gate
+ * says the same where Activity is not there to do it.
  */
-export function useInspectorSlot(content: ReactNode): void {
+export function useInspectorSlot(content: ReactNode, options: { autoOpen?: boolean } = {}): void {
   const store = useContext(InspectorSlotContext);
+  const active = usePageActive();
+  const autoOpen = options.autoOpen ?? true;
 
   useEffect(() => {
-    store?.set(content);
-  }, [store, content]);
+    if (active) store?.set(content, autoOpen);
+  }, [store, content, autoOpen, active]);
 
   // Clearing belongs to unmounting, not to every change: a cleanup on the
   // content itself would blank the Inspector for a frame each time the page
   // re-rendered.
   useEffect(() => {
-    if (!store) return;
+    if (!store || !active) return;
     // Leaving the page takes its content with it, so the Inspector never
     // describes a track from a screen the user has left.
     return () => store.set(null);
-  }, [store]);
+  }, [store, active]);
 }
 
 /** For a page that wants to clear the slot itself. */

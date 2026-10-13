@@ -7816,3 +7816,28 @@ back lost its scroll, selection and filters (C19).
 - Something left open in a hidden page (a menu, a popover) does not count as open: `queryShown` skips it.
 
 **Decided with**: User (C19, "apply ALL"; all seven ★) · **Date**: 2026-10-13
+
+
+
+
+
+## DEC-280 — Track Details Opens With a Selection
+
+**Status**: Approved · **Related**: K1, DEC-018, DEC-024, C19e
+
+**Context**: Track details was open on every page from launch, taking about 380 px from the table even with nothing
+selected, so Key and BPM were often off screen.
+
+**Decision** (amends DEC-018 and DEC-024: visibility is per page and follows the selection):
+- With no choice made on a page, Track details opens when a track is selected there and folds to a slim
+  "Details ‹" tab when the selection clears.
+- Opening or closing it by hand (the tab, its hide button, Ctrl+I, View ▸ Track details) is remembered for that page
+  only and wins over the selection. Discover's Artist, Label and Similar pages share Discover's choice.
+- A page can say its slot never opens on its own (`useInspectorSlot(content, { autoOpen: false })`); Discover's search
+  page does.
+- A selection only opens the panel on the page it was made on, and a hidden kept page (C19e) neither fills the slot
+  nor reports a selection.
+- Someone who had hidden the panel keeps it hidden on every page. Focus moves only when the person toggles it, and
+  only a toggle plays the opening motion.
+
+**Decided with**: User (K1, wish list round 2) · **Date**: 2026-10-13

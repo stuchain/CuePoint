@@ -6,14 +6,20 @@
  * Camelot code, or null when it has none. The selection going away, or the page
  * going, clears it, so the wheel never lights a track that is no longer chosen.
  *
+ * A hidden kept page (C19e) reports nothing, so its selection cannot open the Inspector on
+ * the page that is showing (K1).
+ *
  * `enabled` is for a page with two tables, only one of which holds the
  * selection at a time: the one that does not holds back.
  */
 import { useEffect } from "react";
 
+import { usePageActive } from "./pageActive";
 import { setSelectedTrack, type SelectedTrack } from "./selectedTrack";
 
-export function useReportSelectedTrack(track: SelectedTrack | null, enabled = true): void {
+export function useReportSelectedTrack(track: SelectedTrack | null, enabledHere = true): void {
+  const active = usePageActive();
+  const enabled = enabledHere && active;
   const { id = null, key: camelot = null, title = null } = track ?? {};
   useEffect(() => {
     if (!enabled) return;
