@@ -1,7 +1,7 @@
 /**
  * The counts as a list (PAGES-16): the accessible reading of the wheel's numbers.
  *
- * Every key the sources hold, in Camelot order, each with a bar and its count written out,
+ * Every key the sources hold, in Camelot order, each as the Library's key chip with a bar and its count written out,
  * then "No Beatport key: N" on its own line. A row is a button that chooses its key (Ctrl or
  * Command adds one, Shift takes a run); the keys that mix with the one asked about say so
  * in words, so the light is never color alone.
@@ -11,6 +11,7 @@ import { useMemo } from "react";
 import type { KeyPopulationEntry } from "../../api/cuepointBridge.types";
 import { countedName, keyName } from "../../components/wheel/camelot";
 import type { PickModifiers } from "../../components/wheel/CamelotWheel";
+import { KeyChip } from "../../components/wheel";
 import { changedMark, useCountChanges } from "../../components/wheel/useCountChanges";
 import { barPercent } from "./keysCounts";
 
@@ -60,7 +61,9 @@ export function KeysCountsList({
                   })
                 }
               >
-                <span className="keys-counts__code">{entry.code}</span>
+                <span className="keys-counts__code">
+                  <KeyChip value={entry.code} />
+                </span>
                 <span className="keys-counts__name">{keyName(entry.code)}</span>
                 {relation && relation !== "same" && mixKey && (
                   <span className="keys-counts__mix">mixes with {mixKey}</span>

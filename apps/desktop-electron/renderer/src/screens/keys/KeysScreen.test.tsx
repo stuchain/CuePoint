@@ -588,6 +588,14 @@ describe("the Wheel | List switch (K15)", () => {
     expect(screen.getByRole("tabpanel", { name: "List" })).toContainElement(countsList());
   });
 
+  it("writes each key in the list as the Library's key chip", async () => {
+    renderKeys();
+    await opened();
+    const chip = rowButton("8A").querySelector(".key-chip");
+    expect(chip).toHaveClass("key-chip--8A");
+    expect(chip).toHaveTextContent("8A");
+  });
+
   it("keeps the key chosen when the view changes", async () => {
     renderKeys();
     await opened();
