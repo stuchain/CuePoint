@@ -96,7 +96,7 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
       defaultWidthPx: 70,
       // Camelot, as every key in the app is shown (DEC-201), as the Library's chip (R4-2,
       // DEC-272); Beatport's own key.
-      render: (row) => <KeyChip value={row.key} />,
+      render: (row) => <KeyChip value={beatportRowKey(row)} />,
       text: (row) => beatportRowKey(row) ?? "",
     },
     {
