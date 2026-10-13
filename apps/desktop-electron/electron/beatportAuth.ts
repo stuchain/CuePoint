@@ -118,7 +118,7 @@ interface Verified {
   /** Whether the end came from the website's session JSON, which is the one that carries it. */
   fromSession: boolean;
   /** Which check accepted it: Beatport's introspection, or the session's own user scope. */
-  via: "introspect" | "session-scope";
+  via: "introspect" | "session-scope" | "final-read";
 }
 
 /** The session JSON's own claim that its token is a person's (`sessionUserScope`). */
@@ -280,8 +280,12 @@ export class BeatportAuth {
   private async runSignIn(): Promise<BeatportAuthStatus> {
     const generation = this.generation;
     const surface = this.track(this.options.host.open({ visible: true }));
-    const found = await this.capture(surface, { exclude: null, timeoutMs: null });
+    const captured = await this.capture(surface, { exclude: null, timeoutMs: null });
     this.release(surface);
+    let found = captured.found;
+    // The page may have finished in the last poll interval, or its header never reached us: when
+    // the window is closed with nothing, look at the session once more before giving up.
+    if (!found && captured.why === "closed" && generation === this.generation) found = await this.finalCheck(generation);
     if (found && generation === this.generation) {
       await this.accept(await this.withSessionExpiry(found), generation);
     } else if (generation === this.generation) {
@@ -289,6 +293,19 @@ export class BeatportAuth {
       this.ensureScheduled();
     }
     return this.status();
+  }
+
+  /**
+   * One last windowless session read and check after the sign-in window closed. A user's token is
+   * checked like any other (the session's own scope decides when introspection cannot). A sign-out
+   * or a pasted token while it runs wins: null.
+   */
+  private async finalCheck(generation: number): Promise<Verified | null> {
+    const session = await this.readSession();
+    if (generation !== this.generation || session.kind !== "token") return null;
+    const verdict = this.withSessionRule(await this.verify(session.token, session.expiresAt), session.token, session.scope);
+    if (generation !== this.generation || verdict.kind !== "ok") return null;
+    return { ...verdict.verified, via: "final-read" };
   }
 
   /**
@@ -386,7 +403,7 @@ export class BeatportAuth {
       this.fallbackTried = true;
       // The site's home page, not the NextAuth sign-in page: loading that would only ask to sign in.
       const surface = this.track(this.options.host.open({ visible: false }));
-      const found = await this.capture(surface, {
+      const { found } = await this.capture(surface, {
         exclude: stored.token,
         timeoutMs: this.options.refreshWaitMs ?? REFRESH_WAIT_MS,
       });
@@ -606,13 +623,13 @@ export class BeatportAuth {
   /**
    * Watch a window for a token: the first candidate Beatport confirms as a user's wins. A token
    * Beatport says no to (401, inactive, a guest's) is asked about once. One it could not decide on
-   * is asked again after a growing wait (`VERIFY_BACKOFF_MS`), however it reappears. Resolves null
-   * when the window closes first, or at `timeoutMs`.
+   * is asked again after a growing wait (`VERIFY_BACKOFF_MS`), however it reappears. Resolves with
+   * no token when the window closes first (`why: "closed"`), or at `timeoutMs` (`why: "timeout"`).
    */
   private capture(
     surface: SignInSurface,
     options: { exclude: string | null; timeoutMs: number | null },
-  ): Promise<Verified | null> {
+  ): Promise<{ found: Verified | null; why: "found" | "closed" | "timeout" }> {
     return new Promise((resolve) => {
       let done = false;
       let polling = false;
@@ -634,13 +651,13 @@ export class BeatportAuth {
       let interval: ReturnType<typeof setInterval> | null = null;
       let timeout: ReturnType<typeof setTimeout> | null = null;
 
-      const finish = (result: Verified | null): void => {
+      const finish = (found: Verified | null, why: "found" | "closed" | "timeout"): void => {
         if (done) return;
         done = true;
         if (interval) clearInterval(interval);
         if (timeout) clearTimeout(timeout);
         for (const entry of tried.values()) if (entry.timer) clearTimeout(entry.timer);
-        resolve(result);
+        resolve({ found, why });
       };
 
       const consider = async (token: string, expiryHint: string | null = null): Promise<void> => {
@@ -657,7 +674,7 @@ export class BeatportAuth {
         entry.asking = false;
         if (done) return;
         if (verdict.kind === "ok") {
-          finish(verdict.verified);
+          finish(verdict.verified, "found");
         } else if (verdict.kind === "rejected") {
           entry.latched = true;
         } else {
@@ -697,9 +714,9 @@ export class BeatportAuth {
       };
 
       surface.onBearer((token) => void consider(token));
-      surface.onClosed(() => finish(null));
+      surface.onClosed(() => finish(null, "closed"));
       interval = setInterval(() => void poll(), this.options.pollMs ?? SESSION_POLL_MS);
-      if (options.timeoutMs !== null) timeout = setTimeout(() => finish(null), options.timeoutMs);
+      if (options.timeoutMs !== null) timeout = setTimeout(() => finish(null, "timeout"), options.timeoutMs);
       void poll();
     });
   }
@@ -806,7 +823,7 @@ export class ElectronSignInHost implements SignInHost {
     const closePopups = (): void => {
       for (const popup of [...popups]) {
         popups.delete(popup);
-        if (!popup.isDestroyed()) popup.close();
+        if (!popup.isDestroyed()) popup.destroy();
       }
     };
 
@@ -832,7 +849,8 @@ export class ElectronSignInHost implements SignInHost {
       fetchSessionJson: () => this.fetchSessionJson(),
       close: () => {
         closePopups();
-        if (!win.isDestroyed()) win.close();
+        // `close()` can be cancelled by the page (beforeunload) and would leave the window up.
+        if (!win.isDestroyed()) win.destroy();
       },
     };
   }

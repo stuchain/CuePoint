@@ -760,6 +760,97 @@ describe("the session's own user scope, when introspection cannot decide", () =>
   });
 });
 
+describe("when the sign-in window closes", () => {
+  it("regression: C20 reads the session once more and signs in when the page finished just before the close", async () => {
+    const t = setup({ "user-token-abcd": user(T0 + 10 * MIN) });
+    t.host.onOpen = (surface) => {
+      // The page signs in 100 ms in; the person (or the app) closes the window before the next poll.
+      setTimeout(() => {
+        t.host.session = sessionJson("user-token-abcd", T0 + 10 * MIN);
+        surface.close();
+      }, 100);
+    };
+    const run = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(200);
+    const status = await run;
+    expect(status.state).toBe("signed_in");
+    expect(t.store.value?.token).toBe("user-token-abcd");
+    expect(t.store.value?.source).toBe("signin");
+    expect(t.engine.session).toEqual(["user-token-abcd"]);
+  });
+
+  it("regression: C20 the final read takes the session's scope when introspection cannot decide", async () => {
+    const t = setup({ "user-token-abcd": { status: 403, raw: "<html>no</html>" } });
+    t.host.onOpen = (surface) => {
+      setTimeout(() => {
+        t.host.session = sessionJson("user-token-abcd", T0 + 10 * MIN);
+        surface.close();
+      }, 100);
+    };
+    const run = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(200);
+    expect((await run).state).toBe("signed_in");
+  });
+
+  it("stays signed out, and keeps a waiting renewal, when the final read finds nothing", async () => {
+    const t = setup();
+    t.store.value = { token: "kept-token-1111", expires_at: new Date(T0 + 10 * MIN).toISOString(), source: "signin" };
+    t.host.session = {};
+    t.host.onOpen = (surface) => queueMicrotask(() => surface.close());
+    const status = await t.auth.signIn();
+    expect(t.host.sessionReads).toBe(1);
+    expect(t.store.saves).toBe(0);
+    expect(status.state).toBe("signed_in");
+    // The stored token's renewal is still on the calendar.
+    t.host.session = sessionJson("kept-token-1111", T0 + 22 * MIN);
+    await vi.advanceTimersByTimeAsync(10 * MIN);
+    expect(t.host.sessionReads).toBeGreaterThan(1);
+  });
+
+  it("is signed out after a close with an empty session", async () => {
+    const t = setup();
+    t.host.session = {};
+    t.host.onOpen = (surface) => queueMicrotask(() => surface.close());
+    expect((await t.auth.signIn()).state).toBe("signed_out");
+    expect(t.store.value).toBeNull();
+  });
+
+  it("does not take a guest token the session still holds at the close", async () => {
+    const t = setup({ "anon-token-0000": { body: { active: true, scope: "app:prostore user:anon", username: "x" } } });
+    t.host.session = sessionJson("anon-token-0000", T0 + 10 * MIN, { anon: true, scope: "app:prostore user:anon" });
+    t.host.onOpen = (surface) => queueMicrotask(() => surface.close());
+    expect((await t.auth.signIn()).state).toBe("signed_out");
+    expect(t.store.value).toBeNull();
+  });
+
+  it("stores nothing when a sign-out comes during the final read", async () => {
+    const t = setup({ "user-token-abcd": user(T0 + 10 * MIN) });
+    let release: (value: unknown) => void = () => undefined;
+    t.host.fetchSessionJson = () => new Promise((resolve) => (release = resolve));
+    t.host.onOpen = (surface) => queueMicrotask(() => surface.close());
+    const run = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(10);
+    const out = t.auth.signOut();
+    release(sessionJson("user-token-abcd", T0 + 10 * MIN));
+    await out;
+    const status = await run;
+    expect(status.state).toBe("signed_out");
+    expect(t.store.value).toBeNull();
+    expect(t.engine.session.at(-1)).toBeNull();
+  });
+
+  it("does not do a final read when the window was closed by a sign-out", async () => {
+    const t = setup();
+    t.host.session = {};
+    t.host.onOpen = () => undefined;
+    const run = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(10);
+    await t.auth.signOut();
+    await run;
+    expect(t.host.sessionReads).toBe(0);
+  });
+});
+
 describe("renewing", () => {
   async function signedIn() {
     const t = setup({
@@ -998,7 +1089,8 @@ describe("renewing", () => {
     expect((await t.auth.signIn()).state).toBe("signed_in");
     t.host.session = sessionJson("second-token-bbbb", T0 + 22 * MIN);
     await vi.advanceTimersByTimeAsync(RENEW_BACKOFF_MS[0]! + 1000);
-    expect(t.host.sessionReads).toBe(1);
+    // The final read at the close, then the renewal's own.
+    expect(t.host.sessionReads).toBe(2);
     expect(t.store.value?.token).toBe("second-token-bbbb");
   });
 
@@ -1270,7 +1362,11 @@ describe("the sign-in window's rules", () => {
       isDestroyed() {
         return false;
       }
+      /** A page can cancel `close()` (beforeunload), so nothing here may rely on it. */
       close() {
+        throw new Error("close() can be cancelled by the page: use destroy()");
+      }
+      destroy() {
         for (const listener of this.closedListeners) listener();
       }
       async loadURL(url: string) {
@@ -1466,14 +1562,28 @@ describe("the sign-in window's rules", () => {
     const child = fakePopup();
     (fake.FakeWindow.last.webContents.handlers.get("did-create-window") as unknown as (c: unknown) => void)(child);
     surface.close();
-    expect(child.close).toHaveBeenCalled();
+    expect(child.destroy).toHaveBeenCalled();
+    expect(child.close).not.toHaveBeenCalled();
+  });
+
+  it("regression: C20 closes the sign-in window with destroy(), which a page cannot cancel", async () => {
+    const { h, fake } = await host(true);
+    const closed = vi.fn();
+    const surface = h.open({ visible: true });
+    surface.onClosed(closed);
+    expect(() => surface.close()).not.toThrow();
+    expect(closed).toHaveBeenCalledOnce();
+    expect(fake.FakeWindow.last).toBeDefined();
   });
 });
 
 function fakePopup() {
   const handlers = new Map<string, Handler>();
   return {
-    close: vi.fn(),
+    close: vi.fn(() => {
+      throw new Error("close() can be cancelled by the page: use destroy()");
+    }),
+    destroy: vi.fn(),
     isDestroyed: () => false,
     on: vi.fn(),
     webContents: {
