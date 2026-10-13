@@ -96,19 +96,11 @@ export function maskToken(token: string | null | undefined): string {
   return `••••${value.slice(-4)}`;
 }
 
-/**
- * Whether Beatport's introspection names a live token that belongs to a person. A guest token
- * (the site's own, before anyone signs in) is active but has no user, and would only get
- * "forbidden" from playlist work (DEC-099).
- */
-export function isUserToken(introspection: unknown): boolean {
-  if (!introspection || typeof introspection !== "object" || Array.isArray(introspection)) return false;
-  const record = introspection as Record<string, unknown>;
-  if (record.active !== true) return false;
-  // The site's anonymous session is `user:anon`, and it can carry a username and a user id too.
-  if (typeof record.scope === "string" && record.scope.split(/\s+/).some((entry) => entry.startsWith("user:anon"))) {
-    return false;
-  }
+/** What Beatport's introspection says about a token (C20). */
+export type IntrospectVerdict = "user" | "anon" | "inactive" | "unknown";
+
+/** Whether the introspection record names a person: a username, or a user id in any of its shapes. */
+function namesAUser(record: Record<string, unknown>): boolean {
   const username = record.username;
   if (typeof username === "string" && username.trim() !== "") return true;
   const userId = record.user_id;
@@ -119,6 +111,32 @@ export function isUserToken(introspection: unknown): boolean {
     return typeof id === "number" && Number.isFinite(id);
   }
   return false;
+}
+
+/** The scope's `user:<x>` entries that are not the site's anonymous one. */
+function hasUserScope(scope: unknown): boolean {
+  return (
+    typeof scope === "string" &&
+    scope.split(/\s+/).some((entry) => entry.startsWith("user:") && entry.length > "user:".length && !entry.startsWith("user:anon"))
+  );
+}
+
+/**
+ * What Beatport's introspection says about a token. A guest token (the site's own, before anyone
+ * signs in) is `anon`: it can carry a username and a user id too, and would only get "forbidden"
+ * from playlist work (DEC-099). `inactive` and `anon` are a definite no. `user` needs a person
+ * (a username or user id) and either `active: true` or, when Beatport leaves `active` out, a
+ * `user:<name>` scope. Anything else is `unknown`: the check could not decide.
+ */
+export function introspectVerdict(introspection: unknown): IntrospectVerdict {
+  if (!introspection || typeof introspection !== "object" || Array.isArray(introspection)) return "unknown";
+  const record = introspection as Record<string, unknown>;
+  if (record.active === false) return "inactive";
+  if (hasAnonScope(record.scope)) return "anon";
+  if (!namesAUser(record)) return "unknown";
+  if (record.active === true) return "user";
+  if (record.active === undefined && hasUserScope(record.scope)) return "user";
+  return "unknown";
 }
 
 /** Used when nothing says how long a token lasts, so a renewal probe still happens. */
@@ -196,8 +214,15 @@ export function tokenFromSessionJson(json: unknown, now: number = Date.now()): S
     for (const [key, value] of Object.entries(record)) {
       if (TOKEN_KEY.test(key) && typeof value === "string" && value.trim() !== "") {
         if (record.anon === true || hasAnonScope(record.scope)) return null;
+        // The top-level `introspect` can stay a guest's after signing in, so it counts only when the
+        // token record names no scope of its own.
         const introspect = top?.introspect;
-        if (introspect && typeof introspect === "object" && hasAnonScope((introspect as Record<string, unknown>).scope)) {
+        if (
+          record.scope === undefined &&
+          introspect &&
+          typeof introspect === "object" &&
+          hasAnonScope((introspect as Record<string, unknown>).scope)
+        ) {
           return null;
         }
         return { token: value.trim(), expiresAt: sessionExpiry(record, now), sessionExpiresAt: isoOf(top?.expires) };
@@ -205,6 +230,22 @@ export function tokenFromSessionJson(json: unknown, now: number = Date.now()): S
     }
   }
   return null;
+}
+
+/**
+ * The session's own say that its token belongs to a person: `token.anon` is not true, `token.scope`
+ * has a `user:<name>` entry that is not `user:anon`, and the access token is a non-empty string.
+ * The second detector for when introspection cannot decide (C20); never used over a definite no.
+ */
+export function sessionUserScope(json: unknown, now: number = Date.now()): { token: string; expiresAt: string | null } | null {
+  if (!json || typeof json !== "object" || Array.isArray(json)) return null;
+  const record = (json as Record<string, unknown>).token;
+  if (!record || typeof record !== "object" || Array.isArray(record)) return null;
+  const token = record as Record<string, unknown>;
+  if (token.anon === true || !hasUserScope(token.scope)) return null;
+  const access = token.accessToken;
+  if (typeof access !== "string" || access.trim() === "") return null;
+  return { token: access.trim(), expiresAt: sessionExpiry(token, now) };
 }
 
 function isoOf(value: unknown): string | null {

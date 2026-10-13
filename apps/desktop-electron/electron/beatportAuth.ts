@@ -31,9 +31,9 @@ import {
   bearerFrom,
   expiryMs,
   introspectExpiresAt,
+  introspectVerdict,
   isAllowedSignInUrl,
   isSignedOutSession,
-  isUserToken,
   jwtExpiresAt,
   rebaseSessionExpiry,
   refreshDelay,
@@ -630,7 +630,7 @@ export class BeatportAuth {
     } catch {
       return { kind: "error" };
     }
-    if (!isUserToken(body)) return { kind: "rejected" };
+    if (introspectVerdict(body) !== "user") return { kind: "rejected" };
     // The session JSON's end is the one that holds; the introspection of this site gives none.
     const expiresAt =
       expiryHint ??

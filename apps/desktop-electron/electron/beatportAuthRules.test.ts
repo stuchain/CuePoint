@@ -8,7 +8,8 @@ import {
   bearerFrom,
   introspectExpiresAt,
   isAllowedSignInUrl,
-  isUserToken,
+  introspectVerdict,
+  sessionUserScope,
   jwtExpiresAt,
   maskToken,
   refreshDelay,
@@ -124,45 +125,87 @@ describe("maskToken", () => {
   });
 });
 
-describe("isUserToken", () => {
-  it("accepts an active token with a username or a user id", () => {
-    expect(isUserToken({ active: true, username: "anna", exp: 1 })).toBe(true);
-    expect(isUserToken({ active: true, user_id: 42 })).toBe(true);
-    expect(isUserToken({ active: true, user_id: "42" })).toBe(true);
+describe("introspectVerdict", () => {
+  it("says user for an active token with a username or a user id", () => {
+    expect(introspectVerdict({ active: true, username: "anna", exp: 1 })).toBe("user");
+    expect(introspectVerdict({ active: true, user_id: 42 })).toBe("user");
+    expect(introspectVerdict({ active: true, user_id: "42" })).toBe("user");
   });
 
-  it("rejects a guest token: active, but nobody's", () => {
-    expect(isUserToken({ active: true, scope: "guest", client_id: "x" })).toBe(false);
-    expect(isUserToken({ active: true, username: "", user_id: null })).toBe(false);
+  it("regression: C20 a user token whose introspection has no `active` is still a user", () => {
+    expect(introspectVerdict({ scope: "app:prostore user:dj", user_id: 123, username: "dj", exp: null })).toBe("user");
+    expect(introspectVerdict({ scope: "app:prostore user:dj", user_id: { id: 5 } })).toBe("user");
   });
 
-  it("rejects an inactive token, however it names a user", () => {
-    expect(isUserToken({ active: false, username: "anna" })).toBe(false);
-    expect(isUserToken({ active: "true", username: "anna" })).toBe(false);
+  it("says unknown for a guest token: active, but nobody's", () => {
+    expect(introspectVerdict({ active: true, scope: "guest", client_id: "x" })).toBe("unknown");
+    expect(introspectVerdict({ active: true, username: "", user_id: null })).toBe("unknown");
   });
 
-  it("rejects the site's anonymous session, whatever else it carries", () => {
+  it("says inactive for an inactive token, however it names a user", () => {
+    expect(introspectVerdict({ active: false, username: "anna" })).toBe("inactive");
+    expect(introspectVerdict({ active: false, scope: "user:dj", username: "x" })).toBe("inactive");
+  });
+
+  it("does not take a non-boolean active for a yes", () => {
+    expect(introspectVerdict({ active: "true", username: "anna" })).toBe("unknown");
+  });
+
+  it("says anon for the site's anonymous session, whatever else it carries", () => {
     expect(
-      isUserToken({
+      introspectVerdict({
         active: true,
         scope: "app:prostore user:anon",
         user_id: { id: 5, name: "x" },
         username: "x",
         exp: null,
       }),
-    ).toBe(false);
-    expect(isUserToken({ active: true, scope: "user:anon", username: "x" })).toBe(false);
-    expect(isUserToken({ active: true, scope: "user:anonymous", user_id: 3 })).toBe(false);
+    ).toBe("anon");
+    expect(introspectVerdict({ active: true, scope: "user:anon", username: "x" })).toBe("anon");
+    expect(introspectVerdict({ active: true, scope: "user:anonymous", user_id: 3 })).toBe("anon");
+    expect(introspectVerdict({ scope: "app:prostore user:anon", username: "x" })).toBe("anon");
+  });
+
+  it("needs a user scope and an id when `active` is missing", () => {
+    expect(introspectVerdict({ active: true })).toBe("unknown");
+    expect(introspectVerdict({ scope: "user:dj" })).toBe("unknown");
+    expect(introspectVerdict({ username: "anna", user_id: 3 })).toBe("unknown");
+    expect(introspectVerdict({ scope: "app:prostore", username: "anna" })).toBe("unknown");
   });
 
   it("accepts an object user_id with a numeric id, and a real scope", () => {
-    expect(isUserToken({ active: true, scope: "app:prostore user:dj", user_id: { id: 5 } })).toBe(true);
-    expect(isUserToken({ active: true, user_id: { id: "x" } })).toBe(false);
-    expect(isUserToken({ active: true, user_id: {} })).toBe(false);
+    expect(introspectVerdict({ active: true, scope: "app:prostore user:dj", user_id: { id: 5 } })).toBe("user");
+    expect(introspectVerdict({ active: true, user_id: { id: "x" } })).toBe("unknown");
+    expect(introspectVerdict({ active: true, user_id: {} })).toBe("unknown");
   });
 
-  it.each([null, undefined, "x", 3, [], [{ active: true, username: "a" }]])("rejects %s", (value) => {
-    expect(isUserToken(value)).toBe(false);
+  it.each([null, undefined, "x", "<html>", 3, [], [{ active: true, username: "a" }]])("says unknown for %s", (value) => {
+    expect(introspectVerdict(value)).toBe("unknown");
+  });
+});
+
+describe("sessionUserScope", () => {
+  const session = (token: Record<string, unknown> | undefined) => ({ expires: "2026-11-11T12:00:00.000Z", token });
+
+  it("gives the token and its end when the scope names a user", () => {
+    const ms = Date.parse("2026-10-12T10:12:00Z");
+    expect(
+      sessionUserScope(session({ accessToken: "t1", scope: "app:prostore user:dj", anon: false, accessTokenExpires: ms })),
+    ).toEqual({ token: "t1", expiresAt: "2026-10-12T10:12:00.000Z" });
+    expect(sessionUserScope(session({ accessToken: "t1", scope: "user:dj" }))).toEqual({ token: "t1", expiresAt: null });
+  });
+
+  it("is null for an anonymous token, an empty scope, no scope or no token", () => {
+    expect(sessionUserScope(session({ accessToken: "t1", scope: "app:prostore user:dj", anon: true }))).toBeNull();
+    expect(sessionUserScope(session({ accessToken: "t1", scope: "app:prostore user:anon" }))).toBeNull();
+    expect(sessionUserScope(session({ accessToken: "t1", scope: "" }))).toBeNull();
+    expect(sessionUserScope(session({ accessToken: "t1" }))).toBeNull();
+    expect(sessionUserScope(session({ accessToken: "", scope: "user:dj" }))).toBeNull();
+    expect(sessionUserScope(session({ scope: "user:dj" }))).toBeNull();
+    expect(sessionUserScope(session(undefined))).toBeNull();
+    expect(sessionUserScope({})).toBeNull();
+    expect(sessionUserScope(null)).toBeNull();
+    expect(sessionUserScope([])).toBeNull();
   });
 });
 
@@ -223,7 +266,17 @@ describe("tokenFromSessionJson", () => {
   it("refuses the anonymous token", () => {
     expect(tokenFromSessionJson(measured({ anon: true }))).toBeNull();
     expect(tokenFromSessionJson(measured({ scope: "app:prostore user:anon" }))).toBeNull();
-    expect(tokenFromSessionJson({ ...measured({}), introspect: { scope: "app:prostore user:anon" } })).toBeNull();
+  });
+
+  it("regression: C20 a stale anonymous top-level introspect does not hide a token whose own scope is a user's", () => {
+    const json = { ...measured({ scope: "app:prostore user:dj" }), introspect: { scope: "app:prostore user:anon" } };
+    expect(tokenFromSessionJson(json)?.token).toBe("user-token");
+  });
+
+  it("still refuses an anonymous top-level introspect when the token has no scope of its own", () => {
+    const base = measured({});
+    const { scope: _scope, ...token } = base.token;
+    expect(tokenFromSessionJson({ ...base, token, introspect: { scope: "app:prostore user:anon" } })).toBeNull();
   });
 
   it("reads accessTokenExpires, access_token_expires and a relative expires_in", () => {
