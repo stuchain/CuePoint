@@ -122,10 +122,13 @@ export interface SharedReadState<T> extends EngineRead<T> {
   unavailable: boolean;
 }
 
-/** Reads a descriptor through the shared cache; an absent bridge method reads nothing. */
-export function useSharedRead<T>(descriptor: SharedRead<T>): SharedReadState<T> {
+/**
+ * Reads a descriptor through the shared cache; an absent bridge method reads nothing.
+ * `enabled` false reads (and shows) nothing either, for a read that waits for something.
+ */
+export function useSharedRead<T>(descriptor: SharedRead<T>, enabled = true): SharedReadState<T> {
   const unavailable = !descriptor.available();
-  const state = useEngineRead<T>(unavailable ? null : descriptor.key, descriptor.read, {
+  const state = useEngineRead<T>(unavailable || !enabled ? null : descriptor.key, descriptor.read, {
     domains: descriptor.domains,
   });
   return { ...state, unavailable };

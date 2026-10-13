@@ -22,6 +22,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { Badge } from "../../components/Badge";
 import { Button, Modal, useToast } from "../../components";
+import { COLLECTIONS, TAGS, useSharedRead } from "../../api/sharedReads";
 import { PickerDialog, type PickerItem } from "../library/PickerDialog";
 import {
   buildCollectionTree,
@@ -158,8 +159,18 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
     kind: "tag" | "collection";
     group: ListedDuplicateGroup;
   } | null>(null);
-  const [tags, setTags] = useState<TagUsage[]>([]);
-  const [collections, setCollections] = useState<CollectionNode[]>([]);
+  // The picker's tags and Collections come from the shared cache (C19d), read from the
+  // first time a picker opens; a picker opened later asks again, so it is never stale.
+  const [pickerRead, setPickerRead] = useState({ tag: false, collection: false });
+  const tagsRead = useSharedRead(TAGS, pickerRead.tag);
+  const collectionsRead = useSharedRead(COLLECTIONS, pickerRead.collection);
+  const { refresh: refreshTags } = tagsRead;
+  const { refresh: refreshCollections } = collectionsRead;
+  const tags: TagUsage[] = useMemo(() => tagsRead.value?.tags ?? [], [tagsRead.value]);
+  const collections: CollectionNode[] = useMemo(
+    () => collectionsRead.value?.collections ?? [],
+    [collectionsRead.value],
+  );
 
   useEffect(() => {
     const bridge = window.cuepoint?.getDuplicateGroups;
@@ -243,20 +254,16 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
     [includeDismissed, onHealthChanged, push],
   );
 
-  const openPicker = useCallback(async (kind: "tag" | "collection", group: ListedDuplicateGroup) => {
-    setPicker({ kind, group });
-    try {
-      if (kind === "tag") {
-        const payload = await window.cuepoint?.getTags?.();
-        if (payload) setTags(payload.tags);
-      } else {
-        const payload = await window.cuepoint?.getCollections?.();
-        if (payload) setCollections(payload.collections);
-      }
-    } catch {
-      // The picker says there is nothing to choose; a tag can still be typed.
-    }
-  }, []);
+  const openPicker = useCallback(
+    (kind: "tag" | "collection", group: ListedDuplicateGroup) => {
+      setPicker({ kind, group });
+      // If the read fails the picker says there is nothing to choose; a tag can still be typed.
+      if (!pickerRead[kind]) setPickerRead((current) => ({ ...current, [kind]: true }));
+      else if (kind === "tag") refreshTags();
+      else refreshCollections();
+    },
+    [pickerRead, refreshCollections, refreshTags],
+  );
 
   const pickerItems = useMemo((): PickerItem[] => {
     if (!picker) return [];

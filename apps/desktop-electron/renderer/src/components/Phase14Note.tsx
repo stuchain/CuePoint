@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import { LIBRARY_HEALTH, useSharedRead } from "../api/sharedReads";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 import { markPhase14NoteSeen } from "./firstRunMemory";
@@ -29,32 +31,19 @@ type KeyCount = { tracks: number; withKey: number | null } | "unread";
 export function Phase14Note({ open, onClose, onChangeSize, onMatch }: Phase14NoteProps) {
   // Read once, before anything on this screen could change the stored size.
   const [sizeLine] = useState(() => !hasStoredScale());
-  const [keys, setKeys] = useState<KeyCount | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    const read = window.cuepoint?.getLibraryHealth;
-    if (!read) {
-      setKeys("unread");
-      return;
+  // Library Health comes through the shared cache (C19d), read only while the note is open.
+  const health = useSharedRead(LIBRARY_HEALTH, open);
+  const keys = useMemo<KeyCount | null>(() => {
+    if (health.value) {
+      const missing = health.value.counts.find((count) => count.id === "missing_key")?.count;
+      return {
+        tracks: health.value.track_count,
+        withKey: missing === undefined ? null : Math.max(0, health.value.track_count - missing),
+      };
     }
-    read()
-      .then((health) => {
-        if (cancelled) return;
-        const missing = health.counts.find((count) => count.id === "missing_key")?.count;
-        setKeys({
-          tracks: health.track_count,
-          withKey: missing === undefined ? null : Math.max(0, health.track_count - missing),
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setKeys("unread");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
+    if (health.unavailable || health.error !== undefined) return "unread";
+    return null;
+  }, [health.value, health.unavailable, health.error]);
 
   // With no tracks there are no keys to lose; unread, the sentence still says what changed.
   // The key line waits for Health; the size line does not, so the note appears at once.

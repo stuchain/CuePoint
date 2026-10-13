@@ -25,6 +25,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { CleanPlaylistStatus, EntityKind, LibrarySummary } from "../../api/cuepointBridge.types";
+import { LIBRARY_SUMMARY, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
 import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
@@ -150,26 +151,12 @@ export function CleanScreen({
     },
     [openSave, playlists.data],
   );
-  const [summary, setSummary] = useState<LibrarySummary | null | undefined>(undefined);
-
-  useEffect(() => {
-    const bridge = window.cuepoint?.getLibrarySummary;
-    if (!bridge) {
-      setSummary(null);
-      return;
-    }
-    let cancelled = false;
-    bridge()
-      .then((payload) => {
-        if (!cancelled) setSummary(payload);
-      })
-      .catch(() => {
-        if (!cancelled) setSummary(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Read through the shared cache (C19d): a page shown again does not wait on it.
+  // A summary that cannot be read counts as none, and the page goes on (as it always has).
+  const summaryRead = useSharedRead(LIBRARY_SUMMARY);
+  const summary: LibrarySummary | null | undefined = summaryRead.unavailable
+    ? null
+    : (summaryRead.value ?? (summaryRead.error !== undefined ? null : undefined));
 
   const choose = useCallback(
     (id: string) => {

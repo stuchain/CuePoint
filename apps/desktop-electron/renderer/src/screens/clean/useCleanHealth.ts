@@ -6,10 +6,10 @@
  * the drives a check found disconnected. Read again after anything the page
  * starts finishes, because every job here can change a count.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useMemo } from "react";
 
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
-import { reportUnexpected } from "../../reporting/reporting";
+import { LIBRARY_HEALTH, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
 
 interface CleanHealth {
@@ -19,40 +19,21 @@ interface CleanHealth {
   reload: () => void;
 }
 
+/**
+ * Read through the shared cache (C19d): the page shown again has its counts at
+ * once, and Health is read again when the library announces a change or a job ends.
+ * A failure behind counts already shown keeps them.
+ */
 export function useCleanHealth(): CleanHealth {
-  const [health, setHealth] = useState<LibraryHealth | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [reloads, setReloads] = useState(0);
+  const read = useSharedRead(LIBRARY_HEALTH);
+  useReportReadError(read.error);
 
-  useEffect(() => {
-    const bridge = window.cuepoint?.getLibraryHealth;
-    if (!bridge) {
-      setLoading(false);
-      setError(NEEDS_DESKTOP);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    bridge()
-      .then((payload) => {
-        if (cancelled) return;
-        setHealth(payload);
-        setError(null);
-      })
-      .catch((cause: unknown) => {
-        reportUnexpected(cause);
-        if (!cancelled) setError(userMessage(cause));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reloads]);
-
-  const reload = useCallback(() => setReloads((value) => value + 1), []);
-
-  return { health, error, loading, reload };
+  const health = read.value ?? null;
+  const error = read.unavailable
+    ? NEEDS_DESKTOP
+    : !read.value && read.error !== undefined
+      ? userMessage(read.error)
+      : null;
+  const loading = !read.unavailable && read.loading;
+  return useMemo(() => ({ health, error, loading, reload: read.refresh }), [health, error, loading, read.refresh]);
 }

@@ -22,6 +22,7 @@ import type {
   LibraryTrackRow,
   ListedDuplicateGroup,
 } from "../../api/cuepointBridge.types";
+import { announceLibraryChange } from "../../api/libraryChanges";
 import { ToastProvider } from "../../components";
 import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
 import { libraryRefreshState } from "../library/libraryLink";
@@ -1360,5 +1361,42 @@ describe("the Inspector's links to the pages (DISCOVER-11)", () => {
     fireEvent.click(await within(inspector).findByRole("button", { name: "Artist 1" }));
     const probe = await screen.findByTestId("location");
     expect(JSON.parse(probe.textContent ?? "{}").pathname).toBe("/discover/artist/name%3Aartist%201");
+  });
+});
+
+describe("revisiting the page (C19d)", () => {
+  it("revisit shows the old value immediately and refetches after an announce", async () => {
+    const first = renderClean(undefined, "playlists");
+    await screen.findByText("Peak time");
+    await waitFor(() => expect(bridge.getLibraryHealth!).toHaveBeenCalled());
+    first.unmount();
+
+    const reads = () => ({
+      summary: bridge.getLibrarySummary!.mock.calls.length,
+      health: bridge.getLibraryHealth!.mock.calls.length,
+      playlists: bridge.getCleanPlaylists!.mock.calls.length,
+    });
+    const before = reads();
+
+    renderClean(undefined, "playlists");
+    // The first render: no "Reading your library…", the rows are already there.
+    expect(screen.queryByText("Reading your library…")).toBeNull();
+    expect(screen.getByText("Peak time")).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(reads()).toEqual(before);
+
+    bridge.getCleanPlaylists!.mockResolvedValue({
+      ...PLAYLISTS,
+      playlists: [{ id: 10, name: "Peak hour", path: "Techno", ...COUNTS }],
+    });
+    act(() => announceLibraryChange());
+    expect(await screen.findByText("Peak hour")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(reads()).toEqual({
+        summary: before.summary + 1,
+        health: before.health + 1,
+        playlists: before.playlists + 1,
+      }),
+    );
   });
 });

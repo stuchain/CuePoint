@@ -1,8 +1,8 @@
 /**
  * The Playlists view's data (C22, G4 §2.2): one read of `getCleanPlaylists`.
  *
- * Read on mount and whenever something announces a library change
- * (`useLibraryChanges`: a decision, an undo, a write). While a match runs the
+ * Read through the shared cache (C19d), which reads again whenever something announces a
+ * library change (a decision, an undo, a write) or a job ends. While a match runs the
  * rows say "Matching x of y", so the next read follows two seconds after the
  * last one settled, and one more when the match ends so the rows move to
  * "waiting" or "ready to save". A build without the route says so (`NEEDS_DESKTOP`).
@@ -14,9 +14,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { CleanPlaylistCounts, CleanPlaylists, CleanPlaylistStatus } from "../../../api/cuepointBridge.types";
-import { useLibraryChanges } from "../../../api/libraryChanges";
+import { CLEAN_PLAYLISTS, useReportReadError, useSharedRead } from "../../../api/sharedReads";
 import { NEEDS_DESKTOP, userMessage } from "../../../api/userMessage";
-import { reportUnexpected } from "../../../reporting/reporting";
 import { WHOLE_LIBRARY } from "../cleanRules";
 
 /** How often the rows are read again while a match runs. */
@@ -35,57 +34,31 @@ export interface CleanPlaylistsState {
  * it is shown again.
  */
 export function useCleanPlaylists(matching: boolean, active = true): CleanPlaylistsState {
-  const [data, setData] = useState<CleanPlaylists | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const alive = useRef(true);
-  const newest = useRef(0);
-  const inFlight = useRef<Promise<void> | null>(null);
-
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-    };
-  }, []);
-
-  // One read. A read is never cancelled: an answer that a newer read has overtaken is dropped.
-  const reload = useCallback((): Promise<void> => {
-    const bridge = window.cuepoint?.getCleanPlaylists;
-    if (!bridge) {
-      setLoading(false);
-      setError(NEEDS_DESKTOP);
-      return Promise.resolve();
-    }
-    const mine = ++newest.current;
-    const read = bridge()
-      .then((payload) => {
-        if (!alive.current || mine !== newest.current) return;
-        setData(payload);
-        setError(null);
-      })
-      .catch((cause: unknown) => {
-        reportUnexpected(cause);
-        if (alive.current && mine === newest.current) setError(userMessage(cause));
-      })
-      .finally(() => {
-        if (alive.current && mine === newest.current) setLoading(false);
-      })
-      .finally(() => {
-        if (inFlight.current === read) inFlight.current = null;
+  // Read through the shared cache (C19d): a page shown again has its rows at once, and the
+  // cache reads again when the library announces a change or a job ends. Nothing is read
+  // while the page is off Match or hidden; the last rows stay in hand meanwhile.
+  // The read now running, so the poll below waits for it rather than overtaking it
+  // (an overtaken read's answer is dropped).
+  const pending = useRef<Promise<void> | null>(null);
+  const tracked = useCallback(() => {
+    const answer = CLEAN_PLAYLISTS.read();
+    const settled: Promise<void> = answer
+      .then(
+        () => undefined,
+        () => undefined,
+      )
+      .then(() => {
+        if (pending.current === settled) pending.current = null;
       });
-    inFlight.current = read;
-    return read;
+    pending.current = settled;
+    return answer;
   }, []);
-
-  // On mount, and again each time the page is shown.
-  useEffect(() => {
-    if (active) void reload();
-  }, [active, reload]);
-
-  useLibraryChanges(() => {
-    if (active) void reload();
-  });
+  const read = useSharedRead({ ...CLEAN_PLAYLISTS, read: tracked }, active);
+  const { refresh } = read;
+  useReportReadError(read.error);
+  const last = useRef<CleanPlaylists | null>(null);
+  if (read.value) last.current = read.value;
+  const data = read.value ?? last.current;
 
   // While a match runs: the next read is scheduled when the last has settled.
   useEffect(() => {
@@ -94,8 +67,8 @@ export function useCleanPlaylists(matching: boolean, active = true): CleanPlayli
     let timer: number | undefined;
     const next = () => {
       timer = window.setTimeout(() => {
-        // A read already on its way is waited for, not overtaken: its answer would be dropped.
-        void (inFlight.current ?? reload()).then(() => {
+        if (!pending.current) refresh();
+        void (pending.current ?? Promise.resolve()).then(() => {
           if (!stopped) next();
         });
       }, PLAYLISTS_POLL_MS);
@@ -105,19 +78,19 @@ export function useCleanPlaylists(matching: boolean, active = true): CleanPlayli
       stopped = true;
       window.clearTimeout(timer);
     };
-  }, [matching, active, reload]);
+  }, [matching, active, refresh]);
 
   // Once when the match ends, so the rows move to waiting or ready to save.
   const wasMatching = useRef(matching);
   useEffect(() => {
-    if (wasMatching.current && !matching && active) void reload();
+    if (wasMatching.current && !matching && active) refresh();
     wasMatching.current = matching;
-  }, [matching, active, reload]);
+  }, [matching, active, refresh]);
 
-  const reloadNow = useCallback(() => {
-    void reload();
-  }, [reload]);
-  return { data, error, loading, reload: reloadNow };
+  const unavailable = read.unavailable;
+  const error = unavailable ? NEEDS_DESKTOP : !data && read.error !== undefined ? userMessage(read.error) : null;
+  const loading = !unavailable && data === null && error === null;
+  return { data, error, loading, reload: refresh };
 }
 
 /** A playlist's tick key. */

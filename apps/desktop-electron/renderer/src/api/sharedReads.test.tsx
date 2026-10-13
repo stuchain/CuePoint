@@ -4,6 +4,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { invalidateReads } from "./engineReads";
 import {
   COLLECTIONS,
+  LIBRARY_HEALTH,
   LIBRARY_PLAYLISTS,
   LIBRARY_SUMMARY,
   statisticsPlays,
@@ -40,6 +41,20 @@ describe("useSharedRead", () => {
     expect(result.current.unavailable).toBe(true);
     expect(result.current.value).toBeUndefined();
     expect(result.current.loading).toBe(false);
+  });
+
+  it("reads nothing while not enabled, and reads once enabled", async () => {
+    const getLibraryHealth = vi.fn().mockResolvedValue({ track_count: 1 });
+    install({ getLibraryHealth });
+    const { result, rerender } = renderHook(({ on }) => useSharedRead(LIBRARY_HEALTH, on), {
+      initialProps: { on: false },
+    });
+    expect(getLibraryHealth).not.toHaveBeenCalled();
+    expect(result.current.unavailable).toBe(false);
+    expect(result.current.loading).toBe(false);
+    rerender({ on: true });
+    await waitFor(() => expect(result.current.value).toEqual({ track_count: 1 }));
+    expect(getLibraryHealth).toHaveBeenCalledTimes(1);
   });
 
   it("no bridge at all is unavailable too", () => {
