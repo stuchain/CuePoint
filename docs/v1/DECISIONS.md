@@ -7527,3 +7527,18 @@ today" for the help file's promise (★ in G7-words-dialogs.md R3-4).
 - Reporting off or unavailable: no note box and no Send note; the help file still works.
 
 **Decided with**: User · **Date**: 2026-10-13
+
+
+## DEC-266 — A Slimmer Status Strip
+
+**Status**: Approved · **Related**: R2-2, DEC-257
+
+**Context**: The status strip spans the full width beneath every other region, so its height is taken from
+all of them. It was an icon tall plus padding, about 50 px at 1.5x, for one line of small text.
+
+**Decision**:
+- The strip is one control tall (`--control-height`) with no vertical padding, and its buttons (Activity,
+  Cancel, "+N more", and the update item's button) are the same height. The hairline top rule stays.
+- Nothing inside the strip may be taller than a control, or the strip grows back.
+
+**Decided with**: User (R2-2) · **Date**: 2026-10-13

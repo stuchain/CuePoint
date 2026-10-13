@@ -3,14 +3,16 @@
  *
  * It spans the full width beneath the sidebar, content and inspector, so its
  * height is the one thing every other region gives up. It stays a single line
- * for that reason: no wrapping, ellipsis on anything long.
+ * for that reason: no wrapping, ellipsis on anything long. It is one control
+ * tall (`--control-height`) with no vertical padding, and nothing inside it may
+ * be taller (R2-2, DEC-266).
  */
 .cp-status {
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  min-height: var(--icon-size);
-  padding: var(--space-xs) var(--space-sm);
+  min-height: var(--control-height);
+  padding: 0 var(--space-sm);
   background: var(--bg-toolbar);
   border-top: var(--divider);
   font-size: var(--font-size-xs);
@@ -80,7 +82,7 @@
 .cp-status__activity {
   flex: none;
   margin-left: auto;
-  min-height: var(--icon-size);
+  min-height: var(--control-height);
   padding: 0 var(--space-sm);
   background: var(--bg-panel);
   border: var(--control-border-width) solid var(--border-control);
@@ -105,7 +107,7 @@
    one must not find the other. */
 .cp-status__cancel {
   flex: none;
-  min-height: var(--icon-size);
+  min-height: var(--control-height);
   padding: 0 var(--space-sm);
   background: var(--bg-panel);
   border: var(--control-border-width) solid var(--border-control);
@@ -132,7 +134,7 @@
 /* A button since STR-5: it opens the list of everything running. */
 .cp-status__more {
   flex: none;
-  min-height: var(--icon-size);
+  min-height: var(--control-height);
   padding: 0 var(--space-xs);
   background: transparent;
   border: var(--control-border-width) solid var(--border-control);

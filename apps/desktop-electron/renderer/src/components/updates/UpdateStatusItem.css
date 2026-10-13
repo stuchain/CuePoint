@@ -16,7 +16,7 @@
 
 .cp-update-item__button {
   flex: none;
-  min-height: var(--icon-size);
+  min-height: var(--control-height);
   padding: 0 var(--space-xs);
   background: transparent;
   border: var(--control-border-width) solid var(--border-control);
