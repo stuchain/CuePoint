@@ -38,7 +38,7 @@ let bridge: Record<string, Fn>;
 let world: MatchWorld;
 
 function stubMatch(): CleanMatch {
-  return { matching: false, running: null, note: null, ended: 0, started: 0, start: vi.fn(), resume: vi.fn() };
+  return { matching: false, running: null, note: null, progress: null, ended: 0, started: 0, start: vi.fn(), resume: vi.fn() };
 }
 
 function renderTable(overrides: Partial<Props> = {}) {
@@ -48,6 +48,9 @@ function renderTable(overrides: Partial<Props> = {}) {
     onHealthChanged: vi.fn(),
     match: stubMatch(),
     onMatchTracks: vi.fn(),
+    playlists: { data: null, error: null, loading: false, reload: vi.fn() },
+    ticked: new Set<string>(),
+    onTick: vi.fn(),
     ...overrides,
   };
   const view = render(
@@ -314,16 +317,6 @@ describe("the table", () => {
     });
     expect(bridge.correctMatch).not.toHaveBeenCalled();
     expect(bridge.decideMatch).not.toHaveBeenCalled();
-  });
-
-  it("tells the header which rows are ticked, for Match tracks…", async () => {
-    const onMatchTargetChange = vi.fn();
-    renderTable({ onMatchTargetChange });
-    await screen.findByText("Track 1", undefined, LOADED);
-    expect(onMatchTargetChange).toHaveBeenLastCalledWith(null);
-
-    fireEvent.click(within(rowOf("Track 2")).getByRole("checkbox", { name: "Take Track 2" }));
-    await waitFor(() => expect(onMatchTargetChange).toHaveBeenLastCalledWith({ ids: [2] }));
   });
 
   it("saves the review list as a file, saying what it holds", async () => {

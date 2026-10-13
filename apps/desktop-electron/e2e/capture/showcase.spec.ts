@@ -534,16 +534,10 @@ test.describe("the website's pictures (SITE-04)", () => {
       await test.step("clean: the Match table after a playlist is matched", async () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
         await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
-        await window.getByRole("tab", { name: "Table", exact: true }).click();
-        const queue = window.getByRole("table", { name: "Match table" });
-        await expect(window.getByRole("button", { name: "Match tracks…" })).toBeVisible({ timeout: 30_000 });
-        await window.getByRole("button", { name: "Match tracks…" }).click();
-        const matchWindow = window.getByRole("dialog", { name: "Match tracks" });
-        await matchWindow.getByRole("radio", { name: /^Tracks in chosen playlists/ }).click();
-        await matchWindow.getByRole("checkbox", { name: showcase.livePlaylist }).check();
+        // Match opens on Playlists (C22): tick the live playlist and match it.
         const live = showcase.playlists.find((p) => p.name === showcase.livePlaylist)!;
-        await expect(matchWindow).toContainText(`CuePoint will search Beatport for ${live.trackIds.length} tracks.`);
-        await matchWindow.getByRole("button", { name: /^Match \d/ }).click();
+        await window.getByRole("checkbox", { name: `Match ${showcase.livePlaylist}` }).check({ timeout: 30_000 });
+        await window.getByRole("button", { name: "Match 1 playlist on Beatport" }).click();
         await expect(window.getByText(`Matching ${live.trackIds.length} tracks on Beatport.`, { exact: true })).toBeVisible({ timeout: 30_000 });
         // the job's end, not the toast's: the toast goes on its own
         await idle(window);
@@ -555,6 +549,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
         await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
         await window.getByRole("tab", { name: "Table", exact: true }).click();
+        const queue = window.getByRole("table", { name: "Match table" });
         await window.getByRole("combobox", { name: "Show" }).selectOption("needs_review");
         // the queue's rows have nothing to inspect yet: the panel away gives the table its tempo and genre columns
         const hide = window.getByRole("button", { name: "Hide track details" });

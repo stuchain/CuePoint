@@ -6,10 +6,15 @@
  * own menus and Health to Statistics). The part last used is where the page
  * reopens (`cleanSections.ts`). The tab names and the buttons say what each
  * part is for, so no part opens with a paragraph (C15b); the tabs say where
- * work waits (CLN-3). The header is the shared `ScreenHeader`; its one action,
- * **Match tracks…**, shows on the Match tab only (K4: one home per action) and
- * opens the one window where many tracks are matched (FLW-13). Match is the
- * Match area (`match/MatchArea.tsx`): One at a time, Table and Past searches.
+ * work waits (CLN-3). The header is the shared `ScreenHeader`; its one action
+ * lives on the Match tab only (K4: one home per action). Match is the
+ * Match area (`match/MatchArea.tsx`): Playlists, One at a time, Table and Past
+ * searches.
+ *
+ * Match opens on Playlists (C22). Its one action, **Match N playlists on
+ * Beatport**, shows on that sub-tab only and starts one run over the ticked
+ * playlists; the match window stays for tracks handed in from other pages
+ * (`matchWith`).
  *
  * Every table here is the Library's `TrackTable` over the Library's windowed
  * browse with a rule set, and every action goes through a route CLEAN-11 built.
@@ -27,7 +32,10 @@ import { Tabs } from "../../components/Tabs";
 import { DuplicatesView } from "./DuplicatesView";
 import { MatchWindow } from "./MatchWindow";
 import { MissingFilesView } from "./MissingFilesView";
-import { MatchArea } from "./match/MatchArea";
+import { MatchArea, loadMatchTab, type MatchTab } from "./match/MatchArea";
+import { usePageActive } from "../../components/shell/pageActive";
+import { useCleanPlaylists, usePlaylistTicks } from "./match/useCleanPlaylists";
+import { matchPlaylistsAction, matchPlaylistsLabel, matchPlaylistsSelection } from "./match/matchPlaylists";
 import type { CleanMatchOpening, CleanOpening, CleanSectionOpening } from "./cleanLink";
 import type { CleanTracks } from "./cleanTracks";
 import { libraryImportState } from "../library/libraryLink";
@@ -96,8 +104,6 @@ export function CleanScreen({
   // The match window: its tracks, and whether it is open (FLW-13).
   const [matchTracks, setMatchTracks] = useState<CleanTracks | null>(null);
   const [matchOpen, setMatchOpen] = useState(false);
-  // What the Match table has ticked: the header's Match tracks… opens on it.
-  const [reviewTarget, setReviewTarget] = useState<CleanTracks | null>(null);
   const openMatch = useCallback((tracks: CleanTracks | null = null) => {
     setMatchTracks(tracks);
     setMatchOpen(true);
@@ -111,6 +117,11 @@ export function CleanScreen({
   const cleanHealth = useCleanHealth();
   const { reload: reloadHealth } = cleanHealth;
   const match = useCleanMatch(reloadHealth);
+  // The Playlists view's rows and ticks live here: the header's button reads them (C22).
+  const pageActive = usePageActive();
+  const playlists = useCleanPlaylists(match.matching, section === "review" && pageActive);
+  const playlistTicks = usePlaylistTicks(playlists.data);
+  const [matchTab, setMatchTab] = useState<MatchTab>(loadMatchTab);
   const [summary, setSummary] = useState<LibrarySummary | null | undefined>(undefined);
 
   useEffect(() => {
@@ -165,6 +176,26 @@ export function CleanScreen({
     );
   }
 
+  const ticked = playlistTicks.rows;
+  const matchPlaylists = matchPlaylistsAction(ticked);
+  const startPlaylists = () => {
+    if (ticked.length === 0 || match.matching) return;
+    // The ticks are spent only once the match has started; a refusal keeps them.
+    void match
+      .start(
+        matchPlaylists.again ? "rematch-many" : "match-many",
+        matchPlaylistsSelection(ticked),
+        matchPlaylists.again,
+        matchPlaylistsLabel(ticked),
+      )
+      .then((started) => {
+        if (!started) return;
+        playlistTicks.clear();
+        playlists.reload();
+      });
+  };
+  const needsTick = ticked.length === 0;
+
   const label = CLEAN_SECTIONS.find((entry) => entry.id === section)?.label ?? "";
   const counts = sectionCounts(cleanHealth.health);
 
@@ -190,14 +221,22 @@ export function CleanScreen({
             />
           }
           actions={
-            section === "review" ? (
-              <Button
-                variant="secondary"
-                disabled={match.matching}
-                onClick={() => openMatch(reviewTarget)}
-              >
-                Match tracks…
-              </Button>
+            section === "review" && matchTab === "playlists" ? (
+              <div className="clean-header-action">
+                {needsTick && !match.matching && (
+                  <span id="clean-match-reason" className="clean-hint-line">
+                    Tick one or more playlists.
+                  </span>
+                )}
+                <Button
+                  variant="primary"
+                  disabled={needsTick || match.matching}
+                  aria-describedby={needsTick && !match.matching ? "clean-match-reason" : undefined}
+                  onClick={startPlaylists}
+                >
+                  {matchPlaylists.label}
+                </Button>
+              </div>
             ) : undefined
           }
         />
@@ -205,6 +244,14 @@ export function CleanScreen({
       {match.note && (
         <div className="clean-note" role="region" aria-label="Matching">
           <p className="clean-note__text">{match.note}</p>
+          {match.progress && (
+            <progress
+              className="clean-progress"
+              aria-label="Matching progress"
+              value={match.progress.done}
+              max={match.progress.total}
+            />
+          )}
         </div>
       )}
       <div className="clean-screen__body" role="tabpanel" aria-label={label}>
@@ -216,7 +263,10 @@ export function CleanScreen({
             onOpenEntity={openEntity}
             match={match}
             onMatchTracks={(tracks) => openMatch(tracks ?? null)}
-            onMatchTargetChange={setReviewTarget}
+            playlists={playlists}
+            ticked={playlistTicks.ticked}
+            onTick={playlistTicks.onTick}
+            onTabChange={setMatchTab}
           />
         )}
         {section === "missing" && (

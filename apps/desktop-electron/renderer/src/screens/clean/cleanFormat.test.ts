@@ -116,18 +116,19 @@ describe("sentences about what was done", () => {
     expect(matchStartedLine({ planned: 2, excluded: 1 })).toMatch(/1 already matched or decided is/);
   });
 
-  it("explains a running match on the page, in the job's own words", () => {
-    // CLN-7: the started line, where progress is, and the shared explainer.
-    const note = matchRunningNote({ planned: 1200, excluded: 3 });
-    expect(note).toMatch(/^Matching 1,200 tracks on Beatport\. 3 already matched or decided are left out\./);
-    expect(note).toMatch(/bar at the bottom shows progress/);
-    expect(note).toMatch(/list updates when it finishes/);
-    expect(note).toMatch(/You can keep working/);
-    expect(note).not.toMatch(/engine|job/i);
+  it("says a running match in one line: its name and how far it is (C22)", () => {
+    expect(matchRunningNote("hj", { done: 108, total: 180 })).toBe("Matching hj · 108 of 180");
+    expect(matchRunningNote("Whole library", { done: 1200, total: 18000 })).toBe(
+      "Matching Whole library · 1,200 of 18,000",
+    );
+    // No name when the page was left and came back.
+    expect(matchRunningNote(null, { done: 3, total: 9 })).toBe("Matching · 3 of 9");
   });
 
-  it("still explains a running match when the count is gone (back on the page)", () => {
-    expect(matchRunningNote()).toMatch(/^A match is running on Beatport\. The bar at the bottom/);
+  it("is short while the count is not known, and has no explainer sentence", () => {
+    expect(matchRunningNote()).toBe("Matching…");
+    expect(matchRunningNote("hj", { done: 0, total: 0 })).toBe("Matching hj…");
+    expect(matchRunningNote("hj", null)).not.toMatch(/bar at the bottom|keep working/);
   });
 
   it("says what was corrected, refused and undone, and what changed nothing", () => {

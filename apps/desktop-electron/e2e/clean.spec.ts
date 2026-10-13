@@ -201,19 +201,23 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
 
       await test.step("match a playlist", async () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
-        await expect(window.getByText("Match your library on Beatport")).toBeVisible({ timeout: 30_000 });
-        await matchView(window, "Table");
-        await window.getByRole("combobox", { name: "Show" }).selectOption("not_matched");
-        await expect(queueRow(window, "Tone Two")).toBeVisible({ timeout: 15_000 });
-        await window.getByRole("button", { name: "Match tracks…" }).click();
-        const matchWindow = window.getByRole("dialog", { name: "Match tracks" });
-        await matchWindow.getByRole("radio", { name: /^Tracks in chosen playlists/ }).click();
-        await matchWindow.getByRole("checkbox", { name: "Journey" }).check();
-        await expect(matchWindow).toContainText("CuePoint will search Beatport for 3 tracks.");
-        await matchWindow.getByRole("button", { name: "Match 3 tracks" }).click();
+        // Match opens on Playlists (C22): the playlist says it is not matched, is ticked, and is matched.
+        await expect(window.getByRole("tab", { name: "Playlists", exact: true })).toHaveAttribute(
+          "aria-selected",
+          "true",
+          { timeout: 30_000 },
+        );
+        const journey = window.getByRole("row").filter({ hasText: "Journey" });
+        await expect(journey).toContainText("Not matched", { timeout: 15_000 });
+        await window.getByRole("checkbox", { name: "Match Journey" }).check();
+        await window.getByRole("button", { name: "Match 1 playlist on Beatport" }).click();
         await expect(window.getByText("Matching 3 tracks on Beatport.", { exact: true })).toBeVisible({ timeout: 30_000 });
         await expect(window.getByText("Matching finished.")).toBeVisible({ timeout: 90_000 });
         await idle(window);
+        // The list the rest of the journey reads is the Table's.
+        await matchView(window, "Table");
+        await window.getByRole("combobox", { name: "Show" }).selectOption("needs_review");
+        await expect(queueRow(window, "Tone Two")).toBeVisible({ timeout: 15_000 });
       });
 
       await test.step("see what was accepted and what needs review", async () => {

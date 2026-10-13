@@ -12,7 +12,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { MemoryRouter } from "react-router-dom";
 import type { ComponentProps } from "react";
 
-import type { LibraryHealth } from "../../../api/cuepointBridge.types";
+import type { CleanPlaylists, LibraryHealth } from "../../../api/cuepointBridge.types";
 import { ToastProvider } from "../../../components";
 import { ScaleProvider } from "../../../tokens/ScaleContext";
 import {
@@ -44,6 +44,7 @@ function stubMatch(overrides: Partial<CleanMatch> = {}): CleanMatch {
     matching: false,
     running: null,
     note: null,
+    progress: null,
     ended: 0,
     started: 0,
     start: vi.fn(),
@@ -64,12 +65,36 @@ function element(props: Props) {
   );
 }
 
+const COUNTS = {
+  track_count: 40,
+  not_matched: 0,
+  waiting: 0,
+  accepted: 40,
+  rejected: 0,
+  no_match: 0,
+  unsaved: 0,
+  running: null,
+};
+
+const PLAYLISTS: CleanPlaylists = {
+  whole_library: { ...COUNTS, track_count: 100, waiting: 18 },
+  playlists: [
+    { id: 7, name: "Peak time", path: "Techno", ...COUNTS, waiting: 18 },
+    { id: 8, name: "Closing", path: "", ...COUNTS, unsaved: 5 },
+  ],
+};
+
+/** The other sub-tabs' tests open on One at a time: Playlists is the default (C22). */
 function renderArea(overrides: Partial<Props> = {}) {
+  if (localStorage.getItem(MATCH_TAB_STORAGE_KEY) === null) localStorage.setItem(MATCH_TAB_STORAGE_KEY, "one");
   const props: Props = {
     health: MATCHED,
     onHealthChanged: vi.fn(),
     match: stubMatch(),
     onMatchTracks: vi.fn(),
+    playlists: { data: null, error: null, loading: false, reload: vi.fn() },
+    ticked: new Set<string>(),
+    onTick: vi.fn(),
     ...overrides,
   };
   const view = render(element(props));
@@ -108,12 +133,15 @@ afterEach(() => {
 });
 
 describe("the sub-tabs", () => {
-  it("are One at a time, Table and Past searches, opening on the first", async () => {
-    renderArea();
+  it("are Playlists, One at a time, Table and Past searches, opening on Playlists (C22)", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea({ playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() } });
     const tabs = await screen.findAllByRole("tab");
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["One at a time", "Table", "Past searches"]);
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Playlists", "One at a time", "Table", "Past searches"]);
     expect(tabs[0]).toHaveAttribute("aria-selected", "true");
-    expect(await screen.findByRole("region", { name: "One at a time" })).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: /Your playlists/ })).toBeInTheDocument();
+    // The Show and From toolbar belongs to the list, not to the playlists.
+    expect(screen.queryByLabelText("Show")).toBeNull();
   });
 
   it("remember the one last used", async () => {
@@ -127,13 +155,86 @@ describe("the sub-tabs", () => {
     expect(await screen.findByRole("tab", { name: "Table" })).toHaveAttribute("aria-selected", "true");
   });
 
-  it("fall back to One at a time when what was remembered is not a tab", async () => {
+  it("still read a stored One at a time, and fall back to Playlists when what was remembered is not a tab", async () => {
     localStorage.setItem(MATCH_TAB_STORAGE_KEY, "nonsense");
+    const { unmount } = renderArea();
+    expect(await screen.findByRole("tab", { name: "Playlists" })).toHaveAttribute("aria-selected", "true");
+    unmount();
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "one");
     renderArea();
-    expect(await screen.findByRole("tab", { name: "One at a time" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    expect(await screen.findByRole("tab", { name: "One at a time" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("say which one is open, so the page can show its header action only on Playlists", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    const onTabChange = vi.fn();
+    renderArea({ onTabChange });
+    await waitFor(() => expect(onTabChange).toHaveBeenLastCalledWith("playlists"));
+    fireEvent.click(await screen.findByRole("tab", { name: "Table" }));
+    expect(onTabChange).toHaveBeenLastCalledWith("table");
+  });
+});
+
+describe("Review N on a playlist (C22)", () => {
+  it("opens One at a time on that playlist's waiting tracks, From naming it", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea({ playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() } });
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 for Peak time" }));
+
+    expect(await screen.findByRole("tab", { name: "One at a time" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByLabelText("Show")).toHaveValue("needs_review");
+    expect(screen.getByLabelText("From")).toHaveValue("playlist:7");
+    expect(screen.getByRole("option", { name: "This playlist: Peak time" })).toBeInTheDocument();
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ playlistId: 7 }));
+    expect(lastBrowse().filters).toEqual(fixture.rules.needs_review);
+
+    // Another From drops the playlist, and its option.
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "" } });
+    await waitFor(() => expect(lastBrowse().playlistId).toBeNull());
+    expect(screen.queryByRole("option", { name: /This playlist/ })).toBeNull();
+  });
+
+  it("looks at the decisions a newer match disagrees with when a playlist's waiting tracks are all of those", async () => {
+    // Track 1 is a decision a newer match disagrees with; nothing is waiting as a new match.
+    world.tracks = [
+      proposed(1, { match_state: "accepted", match_disputed: true }),
+      proposed(2, { match_state: "accepted", match_disputed: false }),
+      proposed(3, { match_state: "accepted", match_disputed: false }),
+    ];
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea({
+      playlists: {
+        data: { ...PLAYLISTS, playlists: [{ id: 9, name: "Old decisions", path: "", ...COUNTS, waiting: 1 }] },
+        error: null,
+        loading: false,
+        reload: vi.fn(),
+      },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Review 1 for Old decisions" }));
+    await waitFor(() => expect(screen.getByLabelText("Show")).toHaveValue("disputed"), LOADED);
+    expect(screen.getByLabelText("From")).toHaveValue("playlist:9");
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ playlistId: 9 }));
+    expect(lastBrowse().filters).toEqual({
+      match: "all",
+      rules: [{ field: "match_disputed", operator: "is", value: true }],
+    });
+    await onTrack(1);
+  });
+
+  it("stays on Waiting for you when the playlist has tracks waiting as new matches", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea({ playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() } });
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 for Peak time" }));
+    await onTrack(1);
+    expect(screen.getByLabelText("Show")).toHaveValue("needs_review");
+  });
+
+  it("opens on the whole library's waiting tracks for the Whole library row", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea({ playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() } });
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 for Whole library" }));
+    expect(await screen.findByLabelText("From")).toHaveValue("");
+    await waitFor(() => expect(lastBrowse().playlistId).toBeNull());
   });
 });
 

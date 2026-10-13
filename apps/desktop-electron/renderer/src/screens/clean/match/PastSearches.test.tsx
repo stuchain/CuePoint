@@ -40,6 +40,7 @@ function stubMatch(overrides: Partial<CleanMatch> = {}): CleanMatch {
     matching: false,
     running: null,
     note: null,
+    progress: null,
     ended: 0,
     started: 0,
     start: vi.fn(),
@@ -67,6 +68,9 @@ function renderPast(overrides: Partial<Props> = {}) {
     onHealthChanged: vi.fn(),
     match: stubMatch(),
     onMatchTracks: vi.fn(),
+    playlists: { data: null, error: null, loading: false, reload: vi.fn() },
+    ticked: new Set<string>(),
+    onTick: vi.fn(),
     ...overrides,
   };
   const view = render(element(props));

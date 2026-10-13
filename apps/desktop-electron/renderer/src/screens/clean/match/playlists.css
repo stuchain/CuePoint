@@ -1,0 +1,93 @@
+/* The Playlists view (C22): where Match opens. */
+
+.playlists {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-height: 0;
+  padding: var(--space-md);
+  overflow-y: auto;
+}
+
+.playlists__bar {
+  max-width: calc(320px * var(--scale));
+}
+
+.playlists__scroll {
+  overflow-x: auto;
+}
+
+.playlists__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--control-font-size);
+}
+
+.playlists__table th,
+.playlists__table td {
+  padding: var(--space-sm);
+  border-bottom: var(--control-border-width) solid var(--border-muted);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.playlists__table th {
+  color: var(--fg-muted);
+  font-weight: var(--control-font-weight);
+}
+
+.playlists__table tr[data-ticked="true"] td {
+  background: var(--selected-row-background);
+}
+
+.playlists__tick {
+  width: calc(32px * var(--scale));
+}
+
+.playlists__tick input {
+  margin: 0;
+}
+
+.playlists__number {
+  text-align: right;
+}
+
+.playlists__path,
+.playlists__next,
+.playlists__empty {
+  color: var(--fg-muted);
+}
+
+.playlists__empty {
+  margin: 0;
+}
+
+.playlists__problem {
+  margin: 0;
+  color: var(--accent-danger);
+}
+
+.playlists__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--hairline) solid currentColor;
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+/* The one green button here: the values are ready to go into the files. */
+.playlists__save {
+  border-color: var(--accent-success);
+  background: var(--accent-success);
+  color: var(--fg-on-status);
+}
+
+/* A running row: the chip, and under it how far the run is. */
+.playlists__table td .clean-progress {
+  display: block;
+  margin-top: var(--space-xs);
+  max-width: calc(120px * var(--scale));
+}

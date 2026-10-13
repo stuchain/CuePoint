@@ -723,11 +723,11 @@ test.describe("FLW-1: every action in the table has a visible place that works f
   test("Match N tracks: Clean's header", async () => {
     await go(win, "#/clean");
     const before = await jobsOf(win, "clean_match");
-    await use(win, win.getByRole("button", { name: "Match tracks…" }), "Match tracks…");
-    const matching = win.getByRole("dialog", { name: "Match tracks" });
-    await expect(matching).toBeVisible();
-    await use(win, matching.getByRole("button", { name: /^Match / }), "Match N tracks");
-    await expect(matching).toBeHidden({ timeout: 30_000 });
+    await win.getByRole("tab", { name: "Playlists", exact: true }).click();
+    // Match opens on Playlists (C22): tick the whole library, then press the header button; no window opens.
+    await win.getByRole("checkbox", { name: "Match Whole library" }).check();
+    await use(win, win.getByRole("button", { name: "Match the whole library on Beatport" }), "Match the whole library");
+    await expect(win.getByRole("dialog", { name: "Match tracks" })).toHaveCount(0);
     await expect.poll(() => jobsOf(win, "clean_match"), { timeout: 30_000 }).toBeGreaterThan(before);
     // Nothing here reaches Beatport for real: stop what started, and wait until it has stopped,
     // so the next test does not share the engine with a match still winding down.
@@ -967,9 +967,8 @@ test.describe("FLW-2: each function has one home, and the other places link to i
   test("Matching many tracks is Clean's window; the Library's Beatport menu opens it", async () => {
     // The home: Clean's header.
     await go(win, "#/clean");
-    await use(win, win.getByRole("button", { name: "Match tracks…" }), "Clean's Match tracks…");
-    await expect(win.getByRole("dialog", { name: "Match tracks" })).toBeVisible();
-    await win.keyboard.press("Escape");
+    await win.getByRole("tab", { name: "Playlists", exact: true }).click();
+    await expect(win.getByRole("button", { name: /^Match (playlists|\d+ playlists?|the whole library) / })).toBeVisible();
 
     // The link: the Library's selection bar.
     await openLibrary(win);

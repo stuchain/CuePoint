@@ -2,9 +2,9 @@
  * The Clean page (CLEAN-12).
  *
  * The specification's tests, against the real page over a faked bridge:
- * - the Match tab opens on One at a time, and the header's Match tracks… starts
- *   a match under a name (the Match area's own tests are in `match/`);
- * - the page has three tabs, and the header holds Match tracks… on Match only (K3, K4);
+ * - the Match tab opens on Playlists, and the header's Match N playlists on
+ *   Beatport starts a match under a name (C22; the Match area's own tests are in `match/`);
+ * - the page has three tabs, and the header holds that button on Match ▸ Playlists only (K3, K4);
  * - the duplicates view has no delete affordance;
  * - empty states render from recorded engine responses.
  *
@@ -16,6 +16,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
 import type {
+  CleanPlaylists,
   LibraryHealth,
   LibrarySearchResponse,
   LibraryTrackRow,
@@ -64,6 +65,29 @@ const GROUP: ListedDuplicateGroup = {
   track_ids: [7, 8],
   dismissed: false,
   members: MEMBERS,
+};
+
+const COUNTS = {
+  track_count: 10,
+  not_matched: 10,
+  waiting: 0,
+  accepted: 0,
+  rejected: 0,
+  no_match: 0,
+  unsaved: 0,
+  running: null,
+};
+
+/** Five playlists: one already matched (Closing), the rest not, for the label and rematch cases. */
+const PLAYLISTS: CleanPlaylists = {
+  whole_library: { ...COUNTS, track_count: 50 },
+  playlists: [
+    { id: 10, name: "Peak time", path: "Techno", ...COUNTS },
+    { id: 11, name: "Closing", path: "", ...COUNTS, not_matched: 0, accepted: 10 },
+    { id: 12, name: "Warmup", path: "", ...COUNTS },
+    { id: 13, name: "hj", path: "", ...COUNTS },
+    { id: 14, name: "all", path: "", ...COUNTS, not_matched: 0, waiting: 4 },
+  ],
 };
 
 type Fn = ReturnType<typeof vi.fn>;
@@ -132,6 +156,7 @@ function install(overrides: Record<string, Fn> = {}) {
     getTrackHistory: vi.fn().mockResolvedValue({ track_id: 1, changes: [], limit: 50 }),
     getTrackMatches: vi.fn(async ({ trackId }: { trackId: number }) => matchesFor(trackId)),
     getMatchJobs: vi.fn().mockResolvedValue({ jobs: [], total: 0 }),
+    getCleanPlaylists: vi.fn().mockResolvedValue(PLAYLISTS),
     correctMatch: vi.fn().mockResolvedValue({
       match: stateFor(1),
       track: track(1),
@@ -255,8 +280,10 @@ function LocationProbe() {
   );
 }
 
-function renderClean(section?: string) {
+/** `tab` is the Match sub-tab to open on: the tests of the lists open on One at a time; Playlists is the default (C22). */
+function renderClean(section?: string, tab: string | null = "one") {
   if (section) localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, section);
+  if (tab && localStorage.getItem(MATCH_TAB_STORAGE_KEY) === null) localStorage.setItem(MATCH_TAB_STORAGE_KEY, tab);
   return render(
     <ScaleProvider>
       <ToastProvider>
@@ -276,16 +303,10 @@ function lastBrowse(): Record<string, unknown> {
   return calls[calls.length - 1]![0] as Record<string, unknown>;
 }
 
-/** The header's Match tracks… opens the match window (CLN-10, FLW-13); this answers it. */
-async function startMatching(choice: RegExp | string = /^All tracks/) {
-  fireEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
-  const dialog = await screen.findByRole("dialog", { name: "Match tracks" });
-  fireEvent.click(within(dialog).getByRole("radio", { name: choice }));
-  // These libraries have been looked up already, so there is only something to do when told to look up again.
-  fireEvent.click(
-    within(dialog).getByRole("checkbox", { name: "Look up tracks that already have a match again" }),
-  );
-  fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
+/** Tick these playlists (or the whole library) and press the header's button (C22). */
+async function startMatching(names: string[] = ["Whole library"]) {
+  for (const name of names) fireEvent.click(await screen.findByRole("checkbox", { name: `Match ${name}` }));
+  fireEvent.click(screen.getByRole("button", { name: /^Match (the whole library|\d+ playlists?|playlists) (on Beatport|again)$/ }));
 }
 
 beforeAll(() => {
@@ -322,20 +343,23 @@ afterEach(() => {
 });
 
 describe("the page", () => {
-  it("opens on Match with the three parts as tabs (K3)", async () => {
-    renderClean();
+  it("opens on Match with the three parts as tabs, on Playlists (K3, C22)", async () => {
+    renderClean(undefined, null);
     const tabs = await screen.findAllByRole("tab");
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       "Match",
       "Missing files",
       "Duplicates",
       // The Match area's own sub-tabs.
+      "Playlists",
       "One at a time",
       "Table",
       "Past searches",
     ]);
     expect(screen.getByRole("tab", { name: "Match" })).toHaveAttribute("aria-selected", "true");
-    expect(await screen.findByRole("region", { name: "One at a time" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Playlists" })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("table", { name: /Your playlists/ })).toBeInTheDocument();
+    expect(await screen.findByText("Peak time")).toBeInTheDocument();
   });
 
   it("shows where work waits on the tabs, and nothing for a check never run (CLN-3)", async () => {
@@ -356,6 +380,7 @@ describe("the page", () => {
         "Match (42)",
         "Missing files (3)",
         "Duplicates",
+        "Playlists",
         "One at a time",
         "Table",
         "Past searches",
@@ -396,22 +421,30 @@ describe("the page", () => {
     );
   });
 
-  it("puts Match tracks… in the header on the Match tab only (K4)", async () => {
-    renderClean();
+  it("puts Match N playlists in the header on Match ▸ Playlists only (K4, C22)", async () => {
+    renderClean(undefined, "playlists");
     const header = await screen.findByTestId("clean-header");
     expect(within(header).getByRole("heading", { level: 1, name: "Clean" })).toBeInTheDocument();
-    expect(within(header).getByRole("button", { name: "Match tracks…" })).toBeInTheDocument();
+    const button = /^Match (the whole library|\d+ playlists?|playlists) (on Beatport|again)$/;
+    expect(within(header).getByRole("button", { name: button })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
+
+    for (const other of ["One at a time", "Table", "Past searches"]) {
+      fireEvent.click(screen.getByRole("tab", { name: other }));
+      expect(screen.queryByRole("button", { name: button })).toBeNull();
+    }
 
     fireEvent.click(screen.getByRole("tab", { name: "Missing files" }));
     await screen.findByText("Track 9");
-    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: button })).toBeNull();
 
     fireEvent.click(screen.getByRole("tab", { name: "Duplicates" }));
     await screen.findByRole("list", { name: "Possible duplicate groups" });
-    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: button })).toBeNull();
 
     fireEvent.click(screen.getByRole("tab", { name: "Match" }));
-    expect(await screen.findByRole("button", { name: "Match tracks…" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("tab", { name: "Playlists" }));
+    expect(await screen.findByRole("button", { name: button })).toBeInTheDocument();
   });
 
   it("asks for an import before there is a library", async () => {
@@ -456,14 +489,13 @@ describe("the Match tab", () => {
   });
 
   it("matches the chosen tracks as a job, names the run, and says what it left out", async () => {
-    renderClean();
-    await screen.findByText("1 of 3");
+    renderClean(undefined, "playlists");
     await startMatching();
 
     await waitFor(() =>
       expect(bridge.startCleanMatch).toHaveBeenCalledWith({
         selection: { query: {} },
-        rematch: true,
+        rematch: false,
         label: "Whole library",
       }),
     );
@@ -475,39 +507,18 @@ describe("the Match tab", () => {
     await screen.findByText("Matching finished.");
   });
 
-  it("reads Health and the list again once a match ends", async () => {
-    renderClean();
-    await screen.findByText("1 of 3");
+  it("reads Health and the playlists again once a match ends", async () => {
+    renderClean(undefined, "playlists");
+    await screen.findByText("Peak time");
     const health = bridge.getLibraryHealth!.mock.calls.length;
-    const browses = bridge.browseLibrary!.mock.calls.length;
+    const playlists = bridge.getCleanPlaylists!.mock.calls.length;
     await startMatching();
     await screen.findByText("Matching finished.");
     await waitFor(() => expect(bridge.getLibraryHealth!.mock.calls.length).toBeGreaterThan(health));
-    await waitFor(() => expect(bridge.browseLibrary!.mock.calls.length).toBeGreaterThan(browses));
+    await waitFor(() => expect(bridge.getCleanPlaylists!.mock.calls.length).toBeGreaterThan(playlists));
   });
 
-  it("looks tracks up again only when the checkbox in the match window says so (CLN-10)", async () => {
-    renderClean();
-    await screen.findByText("1 of 3");
-    // The Match area carries no Match all / Match selection: the header does.
-    expect(screen.queryByRole("button", { name: /^Match all/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Match selection" })).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
-    const dialog = await screen.findByRole("dialog", { name: "Match tracks" });
-    fireEvent.click(within(dialog).getByRole("radio", { name: /^All tracks/ }));
-    fireEvent.click(
-      within(dialog).getByRole("checkbox", { name: "Look up tracks that already have a match again" }),
-    );
-    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
-    await waitFor(() =>
-      expect(bridge.startCleanMatch).toHaveBeenCalledWith(
-        expect.objectContaining({ rematch: true, label: "Whole library" }),
-      ),
-    );
-  });
-
-  it("explains a running match on the page (CLN-7)", async () => {
+  it("says a running match in one line, with its name (CLN-7, C22)", async () => {
     // The job never ends until released, so the note can be read while it runs.
     let release: (() => void) | undefined;
     bridge.getJob!.mockImplementation(
@@ -516,37 +527,43 @@ describe("the Match tab", () => {
           release = () => resolve({ id: "job", state: "succeeded" });
         }),
     );
-    renderClean();
-    await screen.findByText("1 of 3");
+    renderClean(undefined, "playlists");
+    await screen.findByText("Peak time");
     expect(screen.queryByRole("region", { name: "Matching" })).toBeNull();
-    await startMatching();
+    await startMatching(["Peak time"]);
 
     const note = await screen.findByRole("region", { name: "Matching" });
-    expect(note).toHaveTextContent(/Matching 2 tracks on Beatport\./);
-    expect(note).toHaveTextContent(/the bar at the bottom shows progress/i);
-    expect(note).toHaveTextContent(/you can keep working/i);
+    expect(note).toHaveTextContent(/^Matching Peak time…$/);
+    expect(note).not.toHaveTextContent(/bar at the bottom|keep working/i);
     await waitFor(() => expect(release).toBeDefined());
     act(() => release?.());
     await waitFor(() => expect(screen.queryByRole("region", { name: "Matching" })).toBeNull());
   });
 
-  it("explains a match already running when the page is opened (CLN-7)", async () => {
+  it("says how far a match already running has got, with a bar, when the page is opened (CLN-7, C22)", async () => {
     bridge.listJobs = vi.fn().mockResolvedValue({
-      jobs: [{ id: "job-1", type: "clean_match", state: "running", progress: null }],
+      jobs: [
+        {
+          id: "job-1",
+          type: "clean_match",
+          state: "running",
+          progress: { completed_tracks: 108, total_tracks: 180 },
+        },
+      ],
       active_count: 1,
     });
-    renderClean();
-    await screen.findByText("1 of 3");
+    renderClean(undefined, "playlists");
     const note = await screen.findByRole("region", { name: "Matching" });
-    expect(note).toHaveTextContent(/A match is running on Beatport\./);
-    expect(note).toHaveTextContent(/the list updates when it finishes/i);
-    expect(screen.getByRole("button", { name: "Match tracks…" })).toBeDisabled();
+    expect(note).toHaveTextContent(/^Matching · 108 of 180$/);
+    const bar = within(note).getByRole("progressbar", { name: "Matching progress" });
+    expect(bar).toHaveAttribute("value", "108");
+    expect(bar).toHaveAttribute("max", "180");
+    expect(screen.getByRole("button", { name: /^Match playlists on Beatport$/ })).toBeDisabled();
   });
 
   it("says why the engine refused a match", async () => {
     bridge.startCleanMatch!.mockRejectedValue(new Error("Every track here is already matched"));
-    renderClean();
-    await screen.findByText("1 of 3");
+    renderClean(undefined, "playlists");
     await startMatching();
     expect(await screen.findByText("Every track here is already matched")).toBeInTheDocument();
   });
@@ -596,30 +613,6 @@ describe("the Match tab", () => {
         rematch: false,
         label: "Not looked up yet",
       }),
-    );
-  });
-
-  it("opens the header's Match tracks… on the rows ticked in the Table, and on none in One at a time", async () => {
-    renderClean();
-    await screen.findByText("1 of 3");
-    fireEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
-    let dialog = await screen.findByRole("dialog", { name: "Match tracks" });
-    expect(within(dialog).queryByRole("radio", { name: /you chose/ })).toBeNull();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
-
-    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Take Track 1" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Take ticked values (1 track)" })).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
-    dialog = await screen.findByRole("dialog", { name: "Match tracks" });
-    await waitFor(() =>
-      expect(within(dialog).getByRole("radio", { name: /^The 1 track you chose/ })).toBeChecked(),
-    );
-    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
-    await waitFor(() =>
-      expect(bridge.startCleanMatch).toHaveBeenCalledWith(
-        expect.objectContaining({ selection: { track_ids: [1] }, label: "1 chosen track" }),
-      ),
     );
   });
 
@@ -972,6 +965,137 @@ describe("opening one track from the Library (CLEAN-13)", () => {
   });
 });
 
+describe("Match N playlists on Beatport (C22)", () => {
+  const BUTTON = /^Match (the whole library|\d+ playlists?|playlists) (on Beatport|again)$/;
+
+  it("is greyed with its reason, tied to the button, until a playlist is ticked", async () => {
+    renderClean(undefined, "playlists");
+    const button = await screen.findByRole("button", { name: "Match playlists on Beatport" });
+    expect(button).toBeDisabled();
+    const reason = screen.getByText("Tick one or more playlists.");
+    expect(button).toHaveAttribute("aria-describedby", reason.id);
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Match Peak time" }));
+    expect(screen.getByRole("button", { name: "Match 1 playlist on Beatport" })).toBeEnabled();
+    expect(screen.queryByText("Tick one or more playlists.")).toBeNull();
+  });
+
+  it("counts the ticked playlists; the whole library is every playlist, and shuts the rest out", async () => {
+    renderClean(undefined, "playlists");
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Match Peak time" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Match Warmup" }));
+    expect(screen.getByRole("button", { name: "Match 2 playlists on Beatport" })).toBeEnabled();
+
+    // The mixed case: whole library ticked beside playlists is the whole library alone.
+    fireEvent.click(screen.getByRole("checkbox", { name: "Match Whole library" }));
+    expect(screen.getByRole("button", { name: "Match the whole library on Beatport" })).toBeEnabled();
+    expect(screen.getByRole("checkbox", { name: "Match Peak time" })).toBeDisabled();
+    expect(screen.getByText("Whole library includes every playlist.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Match the whole library on Beatport" }));
+    await waitFor(() =>
+      expect(bridge.startCleanMatch).toHaveBeenCalledWith({
+        selection: { query: {} },
+        rematch: false,
+        label: "Whole library",
+      }),
+    );
+  });
+
+  it("keeps the ticks when the engine refuses the match", async () => {
+    bridge.startCleanMatch!.mockRejectedValue(new Error("Every track here is already matched"));
+    renderClean(undefined, "playlists");
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Match Peak time" }));
+    fireEvent.click(screen.getByRole("button", { name: "Match 1 playlist on Beatport" }));
+    await screen.findByText("Every track here is already matched");
+    expect(screen.getByRole("checkbox", { name: "Match Peak time" })).toBeChecked();
+    expect(screen.getByRole("button", { name: "Match 1 playlist on Beatport" })).toBeEnabled();
+  });
+
+  it("reads Match N playlists again when every ticked playlist is already matched", async () => {
+    renderClean(undefined, "playlists");
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Match Closing" }));
+    expect(screen.getByRole("button", { name: "Match 1 playlist again" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Match Peak time" }));
+    expect(screen.getByRole("button", { name: "Match 2 playlists on Beatport" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Match Peak time" }));
+    fireEvent.click(screen.getByRole("button", { name: "Match 1 playlist again" }));
+    await waitFor(() =>
+      expect(bridge.startCleanMatch).toHaveBeenCalledWith({
+        selection: {
+          query: {
+            filters: {
+              match: "all",
+              rules: [
+                { field: "in_playlist", operator: "any_of", value: [{ kind: "playlist", id: 11 }] },
+              ],
+            },
+          },
+        },
+        rematch: true,
+        label: "Closing",
+      }),
+    );
+  });
+
+  it("starts one run over the ticked playlists, named up to three and N more, and clears the ticks", async () => {
+    renderClean(undefined, "playlists");
+    for (const name of ["Peak time", "Closing", "Warmup", "hj", "all"]) {
+      fireEvent.click(await screen.findByRole("checkbox", { name: `Match ${name}` }));
+    }
+    const reads = bridge.getCleanPlaylists!.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Match 5 playlists on Beatport" }));
+    await waitFor(() => expect(bridge.startCleanMatch).toHaveBeenCalledTimes(1));
+    expect(bridge.startCleanMatch).toHaveBeenCalledWith({
+      selection: {
+        query: {
+          filters: {
+            match: "all",
+            rules: [
+              {
+                field: "in_playlist",
+                operator: "any_of",
+                value: [10, 11, 12, 13, 14].map((id) => ({ kind: "playlist", id })),
+              },
+            ],
+          },
+        },
+      },
+      rematch: false,
+      label: "Peak time, Closing, Warmup and 2 more",
+    });
+    // The ticks are spent, and the rows are read again.
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Match Peak time" })).not.toBeChecked());
+    expect(screen.getByRole("checkbox", { name: "Match hj" })).not.toBeChecked();
+    await waitFor(() => expect(bridge.getCleanPlaylists!.mock.calls.length).toBeGreaterThan(reads));
+    expect(screen.getByRole("button", { name: /^Match( playlists)? on Beatport$/ })).toBeDisabled();
+    await screen.findByText("Matching finished.");
+  });
+
+  it("matches the whole library as the empty question, called Whole library", async () => {
+    renderClean(undefined, "playlists");
+    await startMatching();
+    await waitFor(() =>
+      expect(bridge.startCleanMatch).toHaveBeenCalledWith({
+        selection: { query: {} },
+        rematch: false,
+        label: "Whole library",
+      }),
+    );
+    expect(screen.queryByRole("button", { name: BUTTON })).not.toBeNull();
+  });
+
+  it("opens Review N on One at a time, on that playlist's waiting tracks", async () => {
+    renderClean(undefined, "playlists");
+    fireEvent.click(await screen.findByRole("button", { name: "Review 4 for all" }));
+    expect(await screen.findByRole("tab", { name: "One at a time" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByLabelText("From")).toHaveValue("playlist:14");
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ playlistId: 14 }));
+    // The header action goes with the Playlists tab.
+    expect(screen.queryByRole("button", { name: BUTTON })).toBeNull();
+  });
+});
+
 describe("the match window, opened from elsewhere (FLW-13)", () => {
   function Opened() {
     const location = useLocation();
@@ -1011,13 +1135,6 @@ describe("the match window, opened from elsewhere (FLW-13)", () => {
     renderOpened(cleanMatchState());
     const dialog = await screen.findByRole("dialog", { name: "Match tracks" });
     expect(within(dialog).getByRole("radio", { name: /^Tracks not looked up yet/ })).toBeChecked();
-  });
-
-  it("opens Match tracks… from the header without tracks", async () => {
-    renderClean();
-    await screen.findByText("Track 1");
-    fireEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
-    expect(await screen.findByRole("dialog", { name: "Match tracks" })).toBeInTheDocument();
   });
 });
 
@@ -1077,6 +1194,7 @@ describe("the Inspector's links to the pages (DISCOVER-11)", () => {
   };
 
   function renderWithInspector(section: string) {
+    if (localStorage.getItem(MATCH_TAB_STORAGE_KEY) === null) localStorage.setItem(MATCH_TAB_STORAGE_KEY, "one");
     localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, section);
     return render(
       <ScaleProvider>

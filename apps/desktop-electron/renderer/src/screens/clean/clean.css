@@ -347,3 +347,29 @@
   color: var(--fg-muted);
 }
 
+
+/* The header's Match N playlists button, with the reason it is greyed beside it (C22). */
+.clean-header-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* One thin bar for a running match: under the page's note, and in a running playlist's row (C22). */
+.clean-progress {
+  width: 100%;
+  max-width: calc(320px * var(--scale));
+  height: calc(6px * var(--scale));
+  border: var(--divider);
+  background: var(--bg-app);
+  border-radius: 0;
+  appearance: none;
+}
+
+.clean-progress::-webkit-progress-bar {
+  background: var(--bg-app);
+}
+
+.clean-progress::-webkit-progress-value {
+  background: var(--accent-primary);
+}

@@ -3,9 +3,11 @@
  *
  * One at a time and the Table are two views of one list, so the list is one
  * question: the Library's own browse, narrowed by **Show** (where a track
- * stands with Beatport) and **From** (all searches, or one run). A run is a
- * rule, `match_run`, whose value is the root job id; the engine follows the
- * resumes that finished it. Nothing here is a second query path (DEC-041).
+ * stands with Beatport) and **From** (all searches, one run, or one playlist:
+ * C22's Review N). A run is a rule, `match_run`, whose value is the root job
+ * id; the engine follows the resumes that finished it. A playlist is the
+ * scope `cleanQuery` already takes (`playlist:12`), as the Library's own
+ * browse of it is. Nothing here is a second query path (DEC-041).
  */
 import type { BatchSelection, FilterRule, FilterRuleSet, MatchRun } from "../../../api/cuepointBridge.types";
 import type { LibraryQuery, SortDirection } from "../../library/libraryQuery";
@@ -39,23 +41,27 @@ export function isMatchScope(value: string, hasRun: boolean): value is MatchScop
   return matchScopeOptions(hasRun).some((option) => option.id === value);
 }
 
+/** What From holds besides all searches: one run, or one playlist (C22). */
+export type MatchSource = { kind: "run"; id: string } | { kind: "playlist"; id: number; name: string };
+
 /** The rule that scopes the list to one run and the resumes that finished it. */
 export function matchRunRule(runId: string): FilterRule {
   return { field: "match_run", operator: "is", value: runId };
 }
 
 /** Show and From as the one rule set the list is asked with. */
-export function matchRules(scope: MatchScope, runId: string | null): FilterRuleSet {
+export function matchRules(scope: MatchScope, source: MatchSource | null): FilterRuleSet {
   const base: FilterRule[] = scope === EVERYTHING ? [] : reviewRules(scope as ReviewScope).rules;
-  return { match: "all", rules: runId ? [...base, matchRunRule(runId)] : base };
+  return { match: "all", rules: source?.kind === "run" ? [...base, matchRunRule(source.id)] : base };
 }
 
 export function matchQuery(
   scope: MatchScope,
-  runId: string | null,
+  source: MatchSource | null,
   order: { sort: string; dir: SortDirection },
 ): LibraryQuery {
-  return cleanQuery(WHOLE_LIBRARY, matchRules(scope, runId), order);
+  const where = source?.kind === "playlist" ? `playlist:${source.id}` : WHOLE_LIBRARY;
+  return cleanQuery(where, matchRules(scope, source), order);
 }
 
 /** A run in From: when it was, and what was matched ("Today 13:42 · Playlist "all""). */

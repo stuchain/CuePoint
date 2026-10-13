@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { MatchRun } from "../../../api/cuepointBridge.types";
-import { runOptionLabel, matchRules, matchScopeOptions, runSelection } from "./matchScope";
+import { DEFAULT_LIBRARY_QUERY } from "../../library/libraryQuery";
+import { runOptionLabel, matchQuery, matchRules, matchScopeOptions, runSelection } from "./matchScope";
 import { canResume, resultParts, statusOf, whatLine, whenLabel } from "./pastSearchWords";
 
 function run(overrides: Partial<MatchRun> = {}): MatchRun {
@@ -99,7 +100,7 @@ describe("status", () => {
 
 describe("a run as a scope", () => {
   it("is a rule on its root job id, beside what Show asks", () => {
-    expect(matchRules("needs_review", "job-1").rules).toEqual([
+    expect(matchRules("needs_review", { kind: "run", id: "job-1" }).rules).toEqual([
       { field: "match_state", operator: "is", value: "needs_review" },
       { field: "match_run", operator: "is", value: "job-1" },
     ]);
@@ -109,7 +110,7 @@ describe("a run as a scope", () => {
   });
 
   it("holds every track of the run for Everything in this search", () => {
-    expect(matchRules("everything", "job-1").rules).toEqual([
+    expect(matchRules("everything", { kind: "run", id: "job-1" }).rules).toEqual([
       { field: "match_run", operator: "is", value: "job-1" },
     ]);
     expect(runSelection("job-1")).toEqual({
@@ -127,6 +128,21 @@ describe("a run as a scope", () => {
       "Not matched",
     ]);
     expect(matchScopeOptions(true).at(-1)?.label).toBe("Everything in this search");
+  });
+
+  it("scopes to a playlist by the scope cleanQuery takes, with no run rule (C22)", () => {
+    const order = { sort: "artist", dir: "asc" } as const;
+    const query = matchQuery("needs_review", { kind: "playlist", id: 12, name: "Peak time" }, order);
+    expect(query).toMatchObject({ playlistId: 12, scope: null, collectionId: null });
+    expect(query.filters).toEqual({
+      match: "all",
+      rules: [{ field: "match_state", operator: "is", value: "needs_review" }],
+    });
+    // A run, or nothing, stays on the whole library.
+    expect(matchQuery("needs_review", { kind: "run", id: "job-1" }, order).playlistId).toBeNull();
+    expect(matchQuery("needs_review", null, order)).toMatchObject({
+      playlistId: DEFAULT_LIBRARY_QUERY.playlistId,
+    });
   });
 
   it("names a run in From by when and what", () => {

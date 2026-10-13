@@ -1,12 +1,14 @@
 /**
- * The Match area (C14, DEC-072 amended).
+ * The Match area (C14, C22, DEC-072 amended).
  *
- * Three sub-tabs over one shared list: **One at a time** (the default: one
- * track per screen, beside the best match Beatport found), **Table** (every
- * track's before → after, to take many at once) and **Past searches** (every
- * match run). One at a time and the Table are two views of one list, so the
+ * Four sub-tabs: **Playlists** (the default, where Match opens: your playlists
+ * and how far each is), then three over one shared list: **One at a time**
+ * (one track per screen, beside the best match Beatport found), **Table**
+ * (every track's before → after, to take many at once) and **Past searches**
+ * (every match run). Review N on a playlist opens One at a time on that
+ * playlist's waiting tracks. One at a time and the Table are two views of one list, so the
  * list is owned here: **Show** (where a track stands with Beatport) and
- * **From** (all searches, or one run) make one `LibraryQuery`, read a window at
+ * **From** (all searches, one run, or the playlist Review opened) make one `LibraryQuery`, read a window at
  * a time as the Library's browse is (DEC-040, DEC-041).
  *
  * **Correct accepts the match and copies the ticked values as one act**, one
@@ -24,6 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   EntityKind,
+  CleanPlaylistStatus,
   LibraryHealth,
   LibraryTrackRow,
   MatchCandidate,
@@ -66,6 +69,7 @@ import {
   isMatchScope,
   matchQuery,
   matchScopeOptions,
+  type MatchSource,
   runOptionLabel,
   runSelection,
   EVERYTHING,
@@ -74,15 +78,18 @@ import {
 import { MatchTable } from "./MatchTable";
 import { OneAtATime } from "./OneAtATime";
 import { PastSearches } from "./PastSearches";
+import { PlaylistsView } from "./PlaylistsView";
+import type { CleanPlaylistsState } from "./useCleanPlaylists";
 import type { MatchStatus } from "./StatusLine";
 import { useMatchJobs } from "./useMatchJobs";
 import { useMatchTicks } from "./useMatchTicks";
 import "./match.css";
 import { NEEDS_DESKTOP, userMessage } from "../../../api/userMessage";
 
-export type MatchTab = "one" | "table" | "past";
+export type MatchTab = "playlists" | "one" | "table" | "past";
 
 const MATCH_TABS: ReadonlyArray<{ id: MatchTab; label: string }> = [
+  { id: "playlists", label: "Playlists" },
   { id: "one", label: "One at a time" },
   { id: "table", label: "Table" },
   { id: "past", label: "Past searches" },
@@ -94,9 +101,9 @@ export const MATCH_TAB_STORAGE_KEY = "cuepoint-clean-match-tab";
 export function loadMatchTab(): MatchTab {
   try {
     const stored = localStorage.getItem(MATCH_TAB_STORAGE_KEY);
-    return MATCH_TABS.find((entry) => entry.id === stored)?.id ?? "one";
+    return MATCH_TABS.find((entry) => entry.id === stored)?.id ?? "playlists";
   } catch {
-    return "one";
+    return "playlists";
   }
 }
 
@@ -129,11 +136,12 @@ interface MatchAreaProps {
   match: CleanMatch;
   /** Open the match window: on the library (CLN-2's offer), or on the tracks given. */
   onMatchTracks: (tracks?: CleanTracks) => void;
-  /**
-   * The tracks the header's Match tracks… should open the window on: the
-   * Table's ticked rows, else none (the window's own default).
-   */
-  onMatchTargetChange?: (tracks: CleanTracks | null) => void;
+  /** The Playlists view's rows, and which are ticked (the page owns the ticks: its header reads them). */
+  playlists: CleanPlaylistsState;
+  ticked: ReadonlySet<string>;
+  onTick: (key: string, on: boolean) => void;
+  /** Which sub-tab is open, said up so the header shows Match N playlists only on Playlists (C22). */
+  onTabChange?: (tab: MatchTab) => void;
 }
 
 export function MatchArea({
@@ -143,7 +151,10 @@ export function MatchArea({
   onOpenEntity,
   match,
   onMatchTracks,
-  onMatchTargetChange,
+  playlists,
+  ticked,
+  onTick,
+  onTabChange,
 }: MatchAreaProps) {
   const { push } = useToast();
   const [tab, setTab] = useState<MatchTab>(loadMatchTab);
@@ -153,8 +164,22 @@ export function MatchArea({
     sort: "artist",
     dir: "asc",
   });
+  // From can also hold a playlist, while Review N opened the list on one (C22).
+  const [playlist, setPlaylist] = useState<{ id: number; name: string } | null>(null);
+  // Review N just opened the list: if nothing waits in it as a new match, what waits is a decision
+  // a newer match disagrees with, so it looks there once (the engine's "waiting" counts both).
+  const [reviewing, setReviewing] = useState<number | null>(null);
   const runId = run?.job_id ?? null;
-  const query = useMemo(() => matchQuery(scope, runId, order), [scope, runId, order]);
+  const source = useMemo<MatchSource | null>(
+    () =>
+      playlist
+        ? { kind: "playlist", id: playlist.id, name: playlist.name }
+        : runId
+          ? { kind: "run", id: runId }
+          : null,
+    [playlist, runId],
+  );
+  const query = useMemo(() => matchQuery(scope, source, order), [scope, source, order]);
 
   const list = useTrackWindow(query);
   const selection = useTrackSelection(query, list.total, list.source.getRow);
@@ -198,6 +223,10 @@ export function MatchArea({
   useReportSelectedTrack(
     shownRow?.id != null ? { id: shownRow.id, key: shownRow.effective_key ?? null } : null,
   );
+
+  useEffect(() => {
+    onTabChange?.(tab);
+  }, [onTabChange, tab]);
 
   const chooseTab = useCallback((id: string) => {
     const next = MATCH_TABS.find((entry) => entry.id === id)?.id;
@@ -306,6 +335,7 @@ export function MatchArea({
         const index = await selection.pickTrack(focus.trackId, target);
         if (cancelled) return;
         setRun(null);
+        setPlaylist(null);
         setScope(next);
         setChecked(0);
         setStatus(null);
@@ -521,6 +551,7 @@ export function MatchArea({
   const openRun = useCallback(
     (picked: MatchRun) => {
       setRun(picked);
+      setPlaylist(null);
       setScope(picked.waiting > 0 ? DEFAULT_MATCH_SCOPE : EVERYTHING);
       restart();
       setTab("one");
@@ -528,6 +559,28 @@ export function MatchArea({
     },
     [restart],
   );
+
+  /** Review N: One at a time, on this playlist's tracks waiting for a yes or no (C22). */
+  const reviewPlaylist = useCallback(
+    (picked: CleanPlaylistStatus | null) => {
+      setRun(null);
+      setPlaylist(picked ? { id: picked.id, name: picked.name } : null);
+      setScope(DEFAULT_MATCH_SCOPE);
+      setReviewing(picked ? picked.id : null);
+      restart();
+      setTab("one");
+      saveMatchTab("one");
+    },
+    [restart],
+  );
+
+  useEffect(() => {
+    if (reviewing === null || !list.answered) return;
+    setReviewing(null);
+    if (list.total === 0 && scope === DEFAULT_MATCH_SCOPE && playlist?.id === reviewing) {
+      setScope("disputed");
+    }
+  }, [list.answered, list.total, playlist, reviewing, scope]);
 
   const resumeRun = useCallback(
     (picked: MatchRun) => {
@@ -550,20 +603,6 @@ export function MatchArea({
     return runs;
   }, [jobs.runs, run]);
   const now = new Date();
-
-  // ----------------------------------------------------------- the header's Match tracks…
-
-  const matchTarget = useMemo<CleanTracks | null>(() => {
-    if (tab !== "table" || selection.count === 0) return null;
-    const chosen = batchSelection(selection.selection, query);
-    if (chosen.track_ids) return { ids: chosen.track_ids };
-    if (chosen.query) return { query: chosen.query, count: selection.count };
-    return null;
-  }, [query, selection.count, selection.selection, tab]);
-  useEffect(() => {
-    onMatchTargetChange?.(matchTarget);
-    return () => onMatchTargetChange?.(null);
-  }, [matchTarget, onMatchTargetChange]);
 
   // ----------------------------------------------------------- the Inspector
 
@@ -600,7 +639,7 @@ export function MatchArea({
   const reading = (!list.answered || pending !== null) && !list.error;
   const empty = reviewEmptyState({
     scope,
-    scoped: run !== null,
+    scoped: run !== null || playlist !== null,
     health,
     error: list.error,
   });
@@ -634,7 +673,7 @@ export function MatchArea({
     <div className="match-area">
       <Tabs tabs={MATCH_TABS.map((entry) => ({ ...entry }))} activeId={tab} onChange={chooseTab} />
 
-      {tab !== "past" && (
+      {tab !== "past" && tab !== "playlists" && (
         <div className="match-toolbar" role="toolbar" aria-label="Match list">
           <Select
             label="Show"
@@ -650,15 +689,19 @@ export function MatchArea({
           <Select
             label="From"
             id="match-from"
-            value={runId ?? ALL_SEARCHES}
+            value={playlist ? `playlist:${playlist.id}` : (runId ?? ALL_SEARCHES)}
             onChange={(event) => {
               const picked = fromOptions.find((entry) => entry.job_id === event.target.value) ?? null;
               setRun(picked);
+              setPlaylist(null);
               if (!picked && scope === EVERYTHING) setScope(DEFAULT_MATCH_SCOPE);
               restart();
             }}
             options={[
               { value: ALL_SEARCHES, label: "All searches" },
+              ...(playlist
+                ? [{ value: `playlist:${playlist.id}`, label: `This playlist: ${playlist.name}` }]
+                : []),
               ...fromOptions.map((entry) => ({
                 value: entry.job_id,
                 label: runOptionLabel(entry, now),
@@ -699,9 +742,19 @@ export function MatchArea({
           )}
         </div>
       )}
-      {tab !== "past" && scopeHint && list.total > 0 && <p className="clean-hint-line">{scopeHint}</p>}
+      {tab !== "past" && tab !== "playlists" && scopeHint && list.total > 0 && <p className="clean-hint-line">{scopeHint}</p>}
 
       <div className="match-area__body">
+        {tab === "playlists" && (
+          <PlaylistsView
+            data={playlists.data}
+            error={playlists.error}
+            loading={playlists.loading}
+            ticked={ticked}
+            onTick={onTick}
+            onReview={reviewPlaylist}
+          />
+        )}
         {tab === "one" && (
           <OneAtATime
             row={row}

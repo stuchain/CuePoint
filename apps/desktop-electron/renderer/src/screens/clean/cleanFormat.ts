@@ -5,7 +5,6 @@
  * feature. "Accepted" on its own does not say whether a person or the matcher
  * decided, and a reviewer about to override a decision needs to know which.
  */
-import { jobExplainer } from "../../components/shell/useActiveJob";
 import type {
   DuplicateSignal,
   FileStatus,
@@ -169,19 +168,20 @@ export function matchStartedLine(started: Pick<MatchStarted, "planned" | "exclud
 }
 
 /**
- * A running match, explained where the reviewer is looking (CLN-7, DEC-132).
- *
- * The started line says how many, the shared explainer says what it is doing
- * and that the person can carry on, and the middle sentence says where
- * progress is and when the list changes.
+ * A running match, in one line (C22): "Matching hj · 108 of 180", with the bar
+ * under it drawn by the page. The name is what the run was started with; back
+ * on the page after leaving it, or before the first count, the line is shorter.
+ * What the job is and that the person can carry on is said once, by the
+ * status strip's explainer, not repeated here.
  */
-export function matchRunningNote(started?: Pick<MatchStarted, "planned" | "excluded">): string {
-  // Back on the page after leaving it, the count is no longer to hand.
-  const head = started ? matchStartedLine(started) : "A match is running on Beatport.";
-  return (
-    `${head} The bar at the bottom shows progress, and the list updates ` +
-    `when it finishes. ${jobExplainer("clean_match")}`
-  );
+export function matchRunningNote(
+  label?: string | null,
+  progress?: { done: number; total: number } | null,
+): string {
+  const known = progress && progress.total > 0;
+  if (!known) return label ? `Matching ${label}…` : "Matching…";
+  const counted = `${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}`;
+  return label ? `Matching ${label} · ${counted}` : `Matching · ${counted}`;
 }
 
 /** One track corrected: said where the reviewer is looking, with Undo beside it (C14). */

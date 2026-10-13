@@ -5,7 +5,8 @@
  * against a real engine, through a real preload, over a real library, for the
  * things only that can show: the page is reachable from the sidebar, reads
  * what the engine really sends, fills the content region, and has three tabs
- * (Match, Missing files, Duplicates; Health and Fix values left it, K3).
+ * (Match, Missing files, Duplicates; Health and Fix values left it, K3). Match
+ * opens on its Playlists sub-tab (C22).
  *
  * CLEAN-14's `clean.spec.ts` is the phase's full journey, matching included;
  * nothing here matches, so Beatport is never reached.
@@ -141,6 +142,13 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await importAndCheck(window, writeExport(workspace));
       await window.getByRole("link", { name: "Clean" }).click();
 
+      // Match opens on Playlists (C22); this export has none. One at a time is a click away.
+      await expect(window.getByRole("tab", { name: "Playlists", exact: true })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      await window.getByRole("tab", { name: "One at a time", exact: true }).click();
+
       // Nothing is matched yet, and the page offers to match every track
       // rather than saying "no tracks".
       await expect(window.getByText("Match your library on Beatport")).toBeVisible({
@@ -151,7 +159,6 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await window.getByRole("combobox", { name: "Show" }).selectOption("not_matched");
       const queue = window.getByRole("table", { name: "Match table" });
       await expect(queue.getByText("Present One")).toBeVisible();
-      await expect(window.getByRole("button", { name: "Match tracks…" })).toBeEnabled();
 
       await window.getByRole("tab", { name: "Missing files" }).click();
       const missing = window.getByRole("table", { name: "Missing files" });
@@ -167,17 +174,22 @@ test.describe("The Clean page (CLEAN-12)", () => {
     }
   });
 
-  test("opens the match window from the header, from the real engine", async () => {
+  test("opens on Match ▸ Playlists, with the header's Match button greyed until a playlist is ticked", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
       await importAndCheck(window, writeExport(workspace));
       await window.getByRole("link", { name: "Clean" }).click();
 
-      await window.getByRole("button", { name: "Match tracks…" }).click();
-      const matching = window.getByRole("dialog", { name: "Match tracks" });
-      await expect(matching.getByRole("radio", { name: /^Tracks not looked up yet/ })).toBeChecked();
-      await expect(matching).toContainText("CuePoint will search Beatport for 3 tracks.");
+      await expect(window.getByRole("tab", { name: "Playlists", exact: true })).toHaveAttribute(
+        "aria-selected",
+        "true",
+        { timeout: 30_000 },
+      );
+      // The export has no playlists: the view says so in one line, and nothing can be ticked.
+      await expect(window.locator("p:visible", { hasText: "No playlists yet" })).toBeVisible();
+      await expect(window.getByRole("button", { name: "Match playlists on Beatport" })).toBeDisabled();
+      await expect(window.locator("span:visible", { hasText: "Tick one or more playlists." })).toBeVisible();
     } finally {
       await app.close();
     }
@@ -252,9 +264,11 @@ test.describe("The Clean page (CLEAN-12)", () => {
         }
         await window.getByRole("tab", { name: /^Match/ }).click();
 
-        // The match window keeps its title and its Match button on screen, also
-        // with the places list open.
-        await window.getByRole("button", { name: "Match tracks…" }).click();
+        // The match window keeps its title and its Match button on screen, also with the
+        // places list open. It opens from One at a time's empty-state button (the header's
+        // Match button starts a run over ticked playlists and opens no window, C22).
+        await window.getByRole("tab", { name: "One at a time", exact: true }).click();
+        await window.getByRole("button", { name: "Match all 3 tracks…" }).click();
         const matching = window.getByRole("dialog", { name: "Match tracks" });
         await expect(matching).toBeVisible();
         const title = matching.getByRole("heading", { name: "Match tracks" });

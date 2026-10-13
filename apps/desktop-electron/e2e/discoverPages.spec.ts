@@ -350,17 +350,12 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
 
       await test.step("match and accept two tracks", async () => {
         await nav(window).getByRole("link", { name: "Clean", exact: true }).click();
-        await expect(window.getByText("Match your library on Beatport")).toBeVisible({ timeout: 30_000 });
-        await window.getByRole("tab", { name: "Table", exact: true }).click();
-        await window.getByRole("combobox", { name: "Show" }).selectOption("not_matched");
-        await expect(queueRow(window, "Low Tide")).toBeVisible({ timeout: 15_000 });
-        await window.getByRole("button", { name: "Match tracks…" }).click();
-        const matchWindow = window.getByRole("dialog", { name: "Match tracks" });
-        await matchWindow.getByRole("radio", { name: /^Tracks in chosen playlists/ }).click();
-        await matchWindow.getByRole("checkbox", { name: "To match" }).check();
-        await matchWindow.getByRole("button", { name: /^Match \d/ }).click();
+        // Match opens on Playlists (C22): tick the playlist and match it.
+        await window.getByRole("checkbox", { name: "Match To match" }).check();
+        await window.getByRole("button", { name: "Match 1 playlist on Beatport" }).click();
         await expect(window.getByText("Matching finished.")).toBeVisible({ timeout: 90_000 });
         await idle(window);
+        await window.getByRole("tab", { name: "Table", exact: true }).click();
         await window.getByRole("combobox", { name: "Show" }).selectOption("accepted");
         await expect(queueRow(window, "Harbour Lights")).toBeVisible({ timeout: 15_000 });
         await expect(queueRow(window, "Low Tide")).toBeVisible();
