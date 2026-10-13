@@ -131,7 +131,11 @@ def set_session_token(token: Optional[str]) -> Dict[str, Any]:
 
     Answers the status; the token itself is never echoed.
     """
+    from cuepoint.services.beatport_api import forget_genres_failure
+
     _store_session_token(token)
+    # A genres failure cached under the old sign-in must not hold back the new one.
+    forget_genres_failure()
     if token and token.strip():
         _scrub_secret(token)
     return get_beatport_token_status()

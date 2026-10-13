@@ -289,3 +289,13 @@ def test_session_and_config_tokens_join_the_report_scrub(tmp_path: Path):
         assert "cfg-secret-0002" not in text
     finally:
         engine_reporting._scrub_context = before
+
+
+def test_session_push_forgets_a_cached_genres_failure():
+    """regression: C20 a new Beatport sign-in asks for genres again at once."""
+    from cuepoint.engine import config_api
+
+    with patch("cuepoint.services.beatport_api.forget_genres_failure") as forget:
+        config_api.set_session_token("new-session-token")
+        config_api.set_session_token(None)
+    assert forget.call_count == 2
