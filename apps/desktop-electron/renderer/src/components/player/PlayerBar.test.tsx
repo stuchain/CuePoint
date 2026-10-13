@@ -8,6 +8,7 @@ import { PlayerSlot } from "./PlayerSlot";
 import { ToastProvider } from "../Toast";
 import { PLAYER_REPEAT_STORAGE_KEY, PLAYER_SHUFFLE_STORAGE_KEY } from "./playerOrderState";
 import { resetPlayerStore } from "./playerStore";
+import { resetQueuePanelStateForTests, useQueueOpen } from "./queuePanelState";
 import { closeWheel, getWheelState } from "../wheel/wheelStore";
 import { EMPTY_AUDIO_STATE } from "./playerFormat";
 import { WAVEFORM_DETAIL_STORAGE_KEY, resetWaveformDetailForTests } from "../waveform/waveformDetailSetting";
@@ -115,10 +116,12 @@ function installBridge(initial: PlayerSnapshot | null = null): Harness {
 beforeEach(() => {
   resetPlayerStore();
   resetWaveformDetailForTests();
+  resetQueuePanelStateForTests();
 });
 
 afterEach(() => {
   resetPlayerStore();
+  resetQueuePanelStateForTests();
   localStorage.clear();
   resetWaveformDetailForTests();
   vi.restoreAllMocks();
@@ -176,6 +179,32 @@ describe("when the bar exists (DEC-053)", () => {
     await waitFor(() =>
       expect(screen.getByRole("region", { name: "Player" })).toBeInTheDocument(),
     );
+  });
+});
+
+describe("where the queue opens (R2-1, DEC-264)", () => {
+  /** Reads the store the bar's toggle writes, from outside the slot. */
+  function OpenProbe() {
+    return <span data-testid="queue-open">{String(useQueueOpen())}</span>;
+  }
+
+  it("opens in the right column, not in the slot", async () => {
+    installBridge(snapshot());
+    const { container } = render(
+      <>
+        <Slot />
+        <OpenProbe />
+      </>,
+    );
+    await screen.findByRole("region", { name: "Player" });
+
+    fireEvent.click(screen.getByRole("button", { name: /Show the queue/ }));
+
+    expect(screen.getByTestId("queue-open")).toHaveTextContent("true");
+    // The bar knows it is open, but the slot draws no panel of its own.
+    expect(screen.getByRole("button", { name: "Hide the queue" })).toBeInTheDocument();
+    expect(container.querySelector(".cp-player-slot__queue")).toBeNull();
+    expect(screen.queryByRole("complementary", { name: "Playback queue" })).toBeNull();
   });
 });
 

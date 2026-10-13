@@ -64,9 +64,11 @@ you had got to, is not — CuePoint starts each session silent, on purpose.
 
 ## The queue
 
-Open the queue from the bar. It is a place to work rather than a list to look
-at: what has played stays above what is playing, so you can see where you have
-been and jump back.
+Open the queue from the bar. It opens in the right-hand column in place of
+Track details, which comes back when you close the queue (if Track details was hidden before, its collapsed tab comes back), so the table keeps
+its full height. It is a place to work rather than a list to look at: what has
+played stays above what is playing, so you can see where you have been and
+jump back.
 
 The panel says the gestures under its title: "Drag to reorder · Alt+↑/↓ moves
 · Delete removes · Enter plays".

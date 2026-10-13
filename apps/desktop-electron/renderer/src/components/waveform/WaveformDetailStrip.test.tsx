@@ -207,7 +207,7 @@ afterEach(async () => {
 });
 
 describe("where the strip is", () => {
-  it("sits between the queue and the bar while a library track plays", async () => {
+  it("sits just above the bar while a library track plays", async () => {
     install();
     render(<Slot />);
     const bar = await screen.findByRole("slider", { name: "Seek" });

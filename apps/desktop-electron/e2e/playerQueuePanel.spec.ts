@@ -67,9 +67,17 @@ test("the queue panel shows the real queue and edits it", async () => {
     await window.waitForSelector(".cp-player-bar", { timeout: 15_000 });
 
     // The bar's toggle opens it, and it lists what main is actually holding.
+    const mainBefore = await window.locator("main.app-main").boundingBox();
     await window.getByRole("button", { name: /Show the queue/ }).click();
     const panel = window.getByRole("complementary", { name: "Playback queue" });
     await expect(panel).toBeVisible();
+
+    // It docks in the right column, beside the content, and the table keeps its height (R2-1).
+    const mainBox = await window.locator("main.app-main").boundingBox();
+    const panelBox = await panel.boundingBox();
+    expect(mainBefore && mainBox && panelBox).toBeTruthy();
+    expect(panelBox!.x).toBeGreaterThanOrEqual(mainBox!.x + mainBox!.width - 1);
+    expect(Math.abs(mainBox!.height - mainBefore!.height)).toBeLessThanOrEqual(1);
     await expect(panel.getByRole("option")).toHaveCount(FIXTURES.length);
     await expect(panel.getByText("Queued 0")).toBeVisible();
     await expect(panel.getByRole("option").first()).toHaveAttribute("aria-selected", "true");

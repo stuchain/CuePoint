@@ -7485,3 +7485,23 @@ sentence in a wide Transition column.
 - Saved Set layouts are reset once (a new storage key) so everyone sees the new order (★ answer 23).
 
 **Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13
+
+## DEC-264 — The Queue Opens in the Right Column
+
+**Status**: Approved · **Related**: DEC-053, DEC-014, DEC-018, PLAYER-08, R2-1
+
+**Context**: The queue opened as a full-width row above the player bar (DEC-053, PLAYER-08). The shell's
+player row sizes to its content, so the table lost up to 45% of the window's height while the queue was
+open, and the empty left part of that row was a dark block.
+
+**Decision**:
+- The queue opens in the right column, the `inspector` grid area, and takes the whole column. Amends
+  DEC-053 / PLAYER-08, which put it above the bar. The table keeps its height.
+- While it is open it replaces Track details. Closing it (the Close button, the bar's toggle) brings Track
+  details back; so do View › Track details and Ctrl/Cmd+I, which close the queue instead of toggling a
+  panel that is not there.
+- If Track details was hidden before, closing the queue brings back its collapsed tab.
+- Closing returns focus to the control that opened it, if it is still on the page.
+- Whether it is open is session only and starts closed (DEC-014).
+
+**Decided with**: User (★ Q6, R2-1) · **Date**: 2026-10-13

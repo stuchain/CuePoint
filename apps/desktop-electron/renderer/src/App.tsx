@@ -22,6 +22,7 @@ import {
   Sidebar,
   StatusStrip,
   TrackInspector,
+  RightColumn,
   InspectorSlotProvider,
   InspectorSlotOutlet,
   retiredRedirects,
@@ -327,9 +328,11 @@ function AppShell() {
         header={<ShellHeader />}
         sidebar={<Sidebar />}
         inspector={
-          <TrackInspector>
-            <InspectorSlotOutlet />
-          </TrackInspector>
+          <RightColumn>
+            <TrackInspector>
+              <InspectorSlotOutlet />
+            </TrackInspector>
+          </RightColumn>
         }
         player={<PlayerSlot onOpenTrack={openPlayingTrack} onOpenArtist={openPlayingArtist} />}
         statusBar={<StatusStrip />}

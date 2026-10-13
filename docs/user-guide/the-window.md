@@ -142,6 +142,10 @@ it with the **›** button or **Ctrl+I**. Hidden, it becomes a tab down the righ
 edge that reads **Track details** and the title of the selected track; one click
 brings it back.
 
+While the [queue](player.md#the-queue) is open it takes the whole right-hand column;
+**Ctrl+I** (or **View → Track details**) then closes the queue and Track details
+comes back.
+
 If you sized it on a large monitor and later open CuePoint on a smaller screen,
 it shrinks to fit rather than pushing the page off-screen — and returns to your
 chosen width when there is room again.
@@ -224,7 +228,7 @@ To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**
 | **Ctrl+Space** | Add or remove the focused track (on a Mac, **Cmd+click** does this; Cmd+Space is Spotlight) |
 | **Esc** | Let go of a selection, or close what is open |
 | **Ctrl+B** | Collapse or expand the sidebar |
-| **Ctrl+I** | Show or hide Track details |
+| **Ctrl+I** | Show or hide Track details; while the queue is open, close it and bring Track details back |
 | **Ctrl+Shift+A** | Open Activity |
 | **F1** or **Ctrl+?** | All keyboard shortcuts |
 

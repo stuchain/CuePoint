@@ -2,18 +2,18 @@ import { useEffect, useState } from "react";
 import { PlayerRegion } from "../shell/PlayerRegion";
 import { PlayerAnnouncer } from "./PlayerAnnouncer";
 import { PlayerBar } from "./PlayerBar";
-import { QueuePanel } from "./QueuePanel";
 import type { PlayerSnapshot } from "../../api/cuepointBridge.types";
 import { WaveformDetailStrip } from "../waveform/WaveformDetailStrip";
 import { useWaveformDetailSetting } from "../waveform/waveformDetailSetting";
 import { selectCurrentItem, selectHasPlayed } from "./playerFormat";
 import { usePlayerValue } from "./playerStore";
+import { toggleQueue, useQueueOpen } from "./queuePanelState";
 import { usePlayerNotices } from "./usePlayerNotices";
 import { usePlayerShortcuts } from "./usePlayerShortcuts";
 import "./PlayerSlot.css";
 
 /**
- * When the player bar exists, and where the queue panel opens (PLAYER-06,
+ * When the player bar exists, and what the bar's queue button shows (PLAYER-06,
  * PLAYER-08, DEC-053).
  *
  * DEC-025 held this region at zero height through Phase 2 with a stated
@@ -28,11 +28,13 @@ import "./PlayerSlot.css";
  * way to retract it, and quitting resets it because nothing is persisted
  * (DEC-014).
  *
- * The queue panel opens above the bar rather than over the content: it is a
- * place to work — reorder, remove, jump — not something glanced at, and it
- * must not cover the table the queue was built from.
+ * The queue panel no longer opens here. It opens in the right column, in place
+ * of Track details (R2-1, DEC-264), so the table keeps its height: it is a
+ * place to work — reorder, remove, jump — and must not cover or squeeze the
+ * table the queue was built from. This slot only holds the bar's toggle, whose
+ * state is `queuePanelState`.
  *
- * Between the queue and the bar sits the zoomed waveform (T4), while the track
+ * Above the bar sits the zoomed waveform (T4), while the track
  * in the player is in the library and Settings › Waveforms has it on. The bar
  * itself is not touched: the strip is a row of the slot, above it.
  */
@@ -59,7 +61,7 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
   usePlayerShortcuts();
   const hasPlayed = usePlayerValue(selectHasPlayed);
   const [everPlayed, setEverPlayed] = useState(false);
-  const [queueOpen, setQueueOpen] = useState(false);
+  const queueOpen = useQueueOpen();
   const [detailOn] = useWaveformDetailSetting();
   const trackId = usePlayerValue(selectCurrentTrackId);
 
@@ -79,15 +81,10 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
     <PlayerRegion>
       <div className="cp-player-slot">
         <PlayerAnnouncer />
-        {queueOpen && (
-          <div className="cp-player-slot__queue">
-            <QueuePanel onClose={() => setQueueOpen(false)} />
-          </div>
-        )}
         {detailOn && trackId !== null ? <WaveformDetailStrip key={trackId} trackId={trackId} /> : null}
         <PlayerBar
           queueOpen={queueOpen}
-          onToggleQueue={() => setQueueOpen((open) => !open)}
+          onToggleQueue={toggleQueue}
           onOpenTrack={onOpenTrack}
           onOpenArtist={onOpenArtist}
         />
