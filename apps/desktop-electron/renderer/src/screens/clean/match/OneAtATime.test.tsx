@@ -647,15 +647,30 @@ describe("the decide buttons stay last (R2-3)", () => {
 });
 
 describe("the cover art thumbnail (R2-3)", () => {
+  /**
+   * Open the larger art once the card has settled. The card can choose its candidate a
+   * second time as the matches finish loading, which fetches the art again and closes
+   * the larger view, so a click that lands before that is undone (a flake seen in CI).
+   * Clicking again until it stays open tests the click, not the loading order.
+   */
+  async function openLarger() {
+    await screen.findByRole("button", { name: "Show the cover art larger" }, LOADED);
+    await waitFor(() => {
+      const button = screen.getByRole("button", { name: "Show the cover art larger" });
+      if (button.getAttribute("aria-expanded") !== "true") fireEvent.click(button);
+      expect(screen.getByRole("figure", { name: "Cover art, larger" })).toBeInTheDocument();
+    }, LOADED);
+    return screen.getByRole("button", { name: "Show the cover art larger" });
+  }
   it("opens the art larger on a click, and closes it on a second click or Escape", async () => {
     bridge.getCandidateArtwork!.mockResolvedValue("blob:beatport-art");
     renderOne();
     await ready();
-    const button = await screen.findByRole("button", { name: "Show the cover art larger" }, LOADED);
-    expect(button).toHaveAttribute("aria-expanded", "false");
+    const closed = await screen.findByRole("button", { name: "Show the cover art larger" }, LOADED);
+    expect(closed).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("figure", { name: "Cover art, larger" })).toBeNull();
 
-    fireEvent.click(button);
+    const button = await openLarger();
     const figure = screen.getByRole("figure", { name: "Cover art, larger" });
     expect(figure.querySelector("img")).toHaveAttribute("src", "blob:beatport-art");
     expect(button).toHaveAttribute("aria-expanded", "true");
@@ -682,11 +697,10 @@ describe("the cover art thumbnail (R2-3)", () => {
     bridge.getCandidatePreview!.mockResolvedValue("blob:preview");
     renderOne();
     await ready();
-    const button = await screen.findByRole("button", { name: "Show the cover art larger" }, LOADED);
+    await screen.findByRole("button", { name: "Show the cover art larger" }, LOADED);
     press("b");
     await screen.findByRole("button", { name: /^Stop preview/ });
-    fireEvent.click(button);
-    expect(screen.getByRole("figure", { name: "Cover art, larger" })).toBeInTheDocument();
+    await openLarger();
 
     press("Escape");
     expect(screen.queryByRole("figure", { name: "Cover art, larger" })).toBeNull();
