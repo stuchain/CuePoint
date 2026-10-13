@@ -353,7 +353,7 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
       await window.keyboard.press("Home");
       await expect(rowAt(0)).toHaveAttribute("aria-selected", "true", { timeout: 30_000 });
       await window.keyboard.press("Shift+ArrowDown");
-      await expect(window.getByText(/2 selected/)).toBeVisible({ timeout: 10_000 });
+      await expect(window.getByRole("status").filter({ hasText: /^2 selected$/ })).toBeVisible({ timeout: 10_000 });
     } finally {
       await app.close();
     }

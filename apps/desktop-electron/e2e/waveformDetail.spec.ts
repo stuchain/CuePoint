@@ -178,7 +178,11 @@ test.describe("The zoomed waveform above the player (T4)", () => {
       await window.mouse.move(box0.x + box0.width / 2, box0.y + box0.height / 2);
       await window.mouse.wheel(0, -100);
       await expect(strip).toHaveAttribute("data-span-ms", "12000");
-      await window.mouse.wheel(0, 200);
+      // One notch is one stop, whatever its size (664e86be): two notches, a gesture apart.
+      await window.mouse.wheel(0, 100);
+      await expect(strip).toHaveAttribute("data-span-ms", "16000");
+      await window.waitForTimeout(250); // longer than WHEEL_IDLE_MS, so the next notch starts a gesture
+      await window.mouse.wheel(0, 100);
       await expect(strip).toHaveAttribute("data-span-ms", "24000");
       const tip = window.getByRole("tooltip");
       await expect(tip).toContainText("Scroll to zoom · 24 s", { timeout: 5_000 });

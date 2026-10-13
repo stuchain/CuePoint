@@ -253,7 +253,8 @@ async function renderersHold(window: Page): Promise<string> {
 /** Opens the sign-in window from Settings and returns it, parked on the stand-in's authorize page. */
 async function openSignIn(app: ElectronApplication, window: Page, origin: string): Promise<Page> {
   await window.getByRole("link", { name: "Settings" }).click();
-  await window.getByRole("button", { name: "Sign in to Beatport" }).click();
+  // Exact: the Library's first steps (kept alive behind Settings, C19e) has "Sign in to Beatport…".
+  await window.getByRole("button", { name: "Sign in to Beatport", exact: true }).click();
   await expect
     .poll(() => app.windows().some((candidate) => candidate.url().startsWith(`${origin}/authorize`)), {
       timeout: 30_000,
