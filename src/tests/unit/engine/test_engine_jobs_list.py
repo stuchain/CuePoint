@@ -328,8 +328,10 @@ class TestEndpoint:
     def test_returns_the_documented_envelope(self, engine):
         payload = _get_json(engine, "/api/v1/jobs")
 
-        assert set(payload) == {"jobs", "active_count"}
+        assert set(payload) == {"jobs", "active_count", "revisions"}
         assert isinstance(payload["jobs"], list)
+        # C19b: additive, opaque numbers per data domain.
+        assert set(payload["revisions"]) == {"library", "waveforms"}
 
     def test_lists_a_job_the_caller_never_started(self, engine):
         # The whole point: this job's id was never handed to the client.

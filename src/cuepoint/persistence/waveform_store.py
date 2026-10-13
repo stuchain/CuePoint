@@ -107,6 +107,7 @@ from typing import (
 )
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
+from cuepoint.persistence import file_watchers
 from cuepoint.models.waveform import (
     StoredDetail,
     StoredFile,
@@ -486,6 +487,8 @@ class WaveformStore:
     def _set_aside(self, reason: str) -> None:
         """Move the store and its sidecars aside, keeping only the newest."""
         target = self.set_aside_path
+        # Windows will not rename a file a watcher still has open.
+        file_watchers.release(self.path)
         try:
             for suffix in _SIDECARS:
                 _sibling(target, suffix).unlink(missing_ok=True)

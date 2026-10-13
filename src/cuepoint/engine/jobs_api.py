@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from cuepoint.engine.revisions import current_revisions
+
 # Jobs a user would consider "happening now", and the only ones the status
 # strip follows.
 ACTIVE_STATES = frozenset({"queued", "running"})
@@ -87,7 +89,10 @@ def list_jobs(
         job_store: The engine's in-memory store.
 
     Returns:
-        ``{"jobs": [...], "active_count": int}``. ``active_count`` counts
+        ``{"jobs": [...], "active_count": int, "revisions": {...}}``.
+        ``revisions`` holds an opaque, rising number per data domain
+        (``library``, ``waveforms``): a new number means "read again".
+        ``active_count`` counts
         active jobs regardless of ``state`` or ``limit``, so a caller showing
         only the first job can still say how many are running.
     """
@@ -126,4 +131,10 @@ def list_jobs(
     jobs.sort(
         key=lambda job: (job.get("created_at") or "", job.get("id") or ""), reverse=True
     )
-    return {"jobs": jobs[:safe_limit], "active_count": active_count}
+    # C19b: additive. Opaque numbers that change when the library or the
+    # waveform store does; the status strip polls this anyway.
+    return {
+        "jobs": jobs[:safe_limit],
+        "active_count": active_count,
+        "revisions": current_revisions(),
+    }

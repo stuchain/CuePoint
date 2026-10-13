@@ -44,6 +44,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from cuepoint.engine.api_errors import ApiError, bad_request, error_payload, not_found
+from cuepoint.engine.revisions import LIBRARY, revision_cache
 from cuepoint.models.filter_rule import FilterRuleError
 from cuepoint.persistence.track_query import BrowseQueryError
 from cuepoint.utils.quoting import quoted
@@ -962,8 +963,17 @@ def tag_writes(params: Dict[str, List[str]]) -> Dict[str, Any]:
 
 def library_health(params: Dict[str, List[str]]) -> Dict[str, Any]:
     """Every Health count, each with the rule set whose count it is."""
-    result: Dict[str, Any] = _service("IHealthService").report().to_dict()
-    return result
+
+    # C19b: counts, last-run times and unavailable roots are all read from the
+    # library database (the rule sets are constants in code, not config, and no
+    # file is stat'ed), so the answer holds until the library changes.
+    def compute() -> Dict[str, Any]:
+        result: Dict[str, Any] = _service("IHealthService").report().to_dict()
+        return result
+
+    return revision_cache(
+        "clean/health", dict(sorted(params.items())), (LIBRARY,), compute
+    )  # shared answer: serialise only, never mutate
 
 
 def export_review(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:

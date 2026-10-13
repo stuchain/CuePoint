@@ -7374,3 +7374,25 @@ about 90 s, on every visit.
   sign-in calls. Only a digest of the token is held to tell tokens apart.
 
 **Decided with**: Claude (C19 scope, "apply ALL") · **Date**: 2026-10-13
+
+## DEC-259 — The Engine Remembers Answers Until the Data Changes
+
+**Status**: Approved · **Related**: DEC-252, DEC-258, C19
+
+**Context**: C19: every page visit asked the engine again for answers that had not changed. At
+50,000 tracks Clean's health took 636 ms and Keys' population 855 ms on each first visit.
+
+**Decision**:
+- The engine keeps a **revision** per data store (`library`, `waveforms`), read from SQLite's
+  `PRAGMA data_version` on its own read-only connection, plus the database's restore generation.
+  Any commit from a route or a job moves it; a read never does (pinned by a test over the GETs a
+  page sends on opening).
+- Clean health, Statistics plays, spreads and health, the Keys population and Discover's artist and
+  label facets keep their last answer while the revisions they read are unchanged, for at most
+  **10 minutes**. The key is the route and all its parameters. A failure is never kept.
+- `GET /api/v1/jobs` carries `revisions: {library, waveforms}`, so the app can tell from the poll it
+  already makes when something changed.
+- A store that cannot be watched is never cached, and its number holds still. Before the engine
+  moves a database file aside or restores one, the watch lets go of it (Windows locks open files).
+
+**Decided with**: Claude (C19 scope, "apply ALL") · **Date**: 2026-10-13

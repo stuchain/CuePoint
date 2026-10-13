@@ -60,6 +60,12 @@ from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from cuepoint.engine.revisions import (  # noqa: E402
+    LIBRARY,
+    WAVEFORMS,
+    RevisionMemo,
+    Revisions,
+)
 from cuepoint.persistence.activity_repository import ActivityRepository  # noqa: E402
 from cuepoint.persistence.authored_data_repository import (  # noqa: E402
     AuthoredDataRepository,
@@ -296,6 +302,16 @@ def build_service(
 #: Times per browse case. Enough for a median to mean something, few enough
 #: that the whole measurement stays a rounding error next to the import.
 BROWSE_REPEATS = 7
+
+
+def _median_fine_ms(call, repeats: int = 25) -> float:
+    """Median wall time of ``call`` in milliseconds, to three places (it is tiny)."""
+    samples = []
+    for _ in range(repeats):
+        started = time.perf_counter()
+        call()
+        samples.append((time.perf_counter() - started) * 1000)
+    return round(statistics.median(samples), 3)
 
 
 def _median_ms(call) -> float:
@@ -951,11 +967,29 @@ def measure_statistics(
         ("health", lambda: service.health().total),
         ("health, playlist scope", lambda: service.health(playlist).total),
     ]
+    # C19b: the engine keeps each route's answer while the library and the
+    # waveform store are unchanged. The same memo, over this run's two files,
+    # times the read that follows a read ("second read"); the count is not a
+    # cached route.
+    memo = RevisionMemo(
+        Revisions.for_files(
+            lambda: database.db_path,
+            lambda: store.path,
+            lambda: database.generation,
+        )
+    )
     measured: List[Dict[str, Any]] = []
     for name, call in cases:
         outcome = call()
         rows = outcome if isinstance(outcome, int) else len(outcome)
-        measured.append({"name": name, "ms": _median_ms(call), "rows": rows})
+        case: Dict[str, Any] = {"name": name, "ms": _median_ms(call), "rows": rows}
+        if not name.startswith("count"):
+            domains = (LIBRARY, WAVEFORMS)
+            memo.get("bench", name, domains, call)  # the first read
+            case["second_ms"] = _median_fine_ms(
+                lambda: memo.get("bench", name, domains, call)
+            )
+        measured.append(case)
     store.close_all()
     return measured
 
@@ -1223,10 +1257,17 @@ def report(result: Dict[str, Any]) -> None:
             print(f"{case['name']:<34}{case['ms']:>11.2f}{case['rows']:>9,}")
     if result.get("statistics"):
         print()
-        print(f"{'statistics (STATS-02, STATS-03)':<34}{'median ms':>11}{'rows':>9}")
-        print("-" * 54)
+        print(
+            f"{'statistics (STATS-02, STATS-03)':<34}{'median ms':>11}{'rows':>9}"
+            f"{'second read ms':>16}"
+        )
+        print("-" * 70)
         for case in result["statistics"]:
-            print(f"{case['name']:<34}{case['ms']:>11.2f}{case['rows']:>9,}")
+            second = case.get("second_ms")
+            print(
+                f"{case['name']:<34}{case['ms']:>11.2f}{case['rows']:>9,}"
+                f"{'-' if second is None else format(second, '.3f'):>16}"
+            )
     if result["problems"]:
         print("\nPROBLEMS:")
         for problem in result["problems"]:

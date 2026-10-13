@@ -37,6 +37,7 @@ from pathlib import Path
 from typing import Iterator, List, Optional, Tuple
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
+from cuepoint.persistence import file_watchers
 from cuepoint.services.interfaces import IConfigService, IDatabaseService
 from cuepoint.services.key_resolver import register_sql_functions
 from cuepoint.utils.paths import cuepoint_home
@@ -165,6 +166,15 @@ class DatabaseService(IDatabaseService):
         if self._resolved_path is None:
             self._resolved_path = self._resolve_path()
         return self._resolved_path
+
+    @property
+    def generation(self) -> int:
+        """How many times :meth:`close_all` has run: a restore moves it.
+
+        Read by the engine's revisions, which count a changed generation as a
+        change to the library even when no connection committed anything.
+        """
+        return self._generation
 
     @property
     def _busy_timeout_seconds(self) -> float:
@@ -513,6 +523,9 @@ class DatabaseService(IDatabaseService):
         Intended for restore, shutdown and test teardown.
         """
         current = threading.current_thread()
+        # A watcher's read-only connection would keep the file (and its -wal and
+        # -shm) from being replaced or deleted on Windows.
+        file_watchers.release(self.db_path)
         with self._lock:
             self._generation += 1
             self._schema_current = None

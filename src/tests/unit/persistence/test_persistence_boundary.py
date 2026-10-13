@@ -134,6 +134,10 @@ _ALLOWED = {
     # read them since it started, so it never writes over what one did. The SQL
     # is the marks, track and source repositories'; no SQL is run there.
     "services/marks_backfill_service.py",
+    # C19b's engine revisions: the database as a file. It asks the service only
+    # for the file's path and generation, then watches ``PRAGMA data_version``
+    # on a read-only connection of its own; it queries no table.
+    "engine/revisions.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")
 

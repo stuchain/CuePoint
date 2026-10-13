@@ -240,3 +240,15 @@ def _socket_report(ports: set[int]) -> str:
         or any(f"{port} " in line + " " or f"{port}->" in line for port in wanted)
     ]
     return "\n".join(lines)
+
+
+@pytest.fixture(autouse=True)
+def _revision_cache_starts_empty():
+    """No answer kept by one test is offered to the next (C19b)."""
+    from cuepoint.engine import revisions
+
+    revisions.set_enabled(True)
+    revisions.clear_cache()
+    yield
+    revisions.set_enabled(True)
+    revisions.clear_cache()

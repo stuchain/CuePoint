@@ -17,6 +17,7 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
+from cuepoint.engine.revisions import LIBRARY, revision_cache
 from cuepoint.models.filter_rule import (
     FACETABLE_FIELDS,
     KEY_SOURCE_YOURS,
@@ -899,17 +900,32 @@ def library_keys_population(sources: List[Dict[str, Any]]) -> Dict[str, Any]:
     Raises:
         SourceNotFoundError: If a named playlist, Collection or Set is gone.
     """
-    named = [s for s in sources if s["kind"] != SOURCE_ALL]
-    rules = RuleSet()
-    if named and len(named) == len(sources):
-        _require_sources(named)
-        rules = RuleSet(rules=(FilterRule("in_playlist", "any_of", named),))
-    total, keys, no_key = _resolve_library_service().key_population(rules)
-    return {
-        "total": total,
-        "keys": [{"code": code, "count": count} for code, count in keys],
-        "no_key": no_key,
-    }
+
+    def compute() -> Dict[str, Any]:
+        named = [s for s in sources if s["kind"] != SOURCE_ALL]
+        rules = RuleSet()
+        if named and len(named) == len(sources):
+            _require_sources(named)
+            rules = RuleSet(rules=(FilterRule("in_playlist", "any_of", named),))
+        total, keys, no_key = _resolve_library_service().key_population(rules)
+        return {
+            "total": total,
+            "keys": [{"code": code, "count": count} for code, count in keys],
+            "no_key": no_key,
+        }
+
+    # C19b: a pure function of the library database (a missing source raises
+    # inside ``compute`` and is never kept). The key is the whole source list.
+    return revision_cache(
+        "library/keys/population",
+        {
+            "sources": sorted(
+                json.dumps(s, sort_keys=True, default=str) for s in sources
+            )
+        },
+        (LIBRARY,),
+        compute,
+    )  # shared answer: callers only serialise it, never mutate it
 
 
 def _require_sources(named: List[Dict[str, Any]]) -> None:

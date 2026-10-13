@@ -73,6 +73,7 @@ from datetime import date
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from cuepoint.engine.api_errors import ApiError, bad_request, error_payload, not_found
+from cuepoint.engine.revisions import LIBRARY, revision_cache
 from cuepoint.models.filter_rule import FilterRuleError
 
 _logger = logging.getLogger(__name__)
@@ -510,11 +511,27 @@ def options(params: Dict[str, List[str]]) -> Dict[str, Any]:
     beatport, genres = _beatport_status()
     library = _resolve("ILibraryService")
     request = _resolve("IDiscoveryService").request()
+    # Both facets are shared with the memo: serialise only, never mutate.
+    # C19b: only the two library facets are kept (a function of the library
+    # database). The Beatport status, the dates in ``defaults`` and the rest
+    # are read fresh.
+    artists = revision_cache(
+        "discover/options/artists",
+        "",
+        (LIBRARY,),
+        lambda: library.facet("artist_name").to_dict(),
+    )
+    labels = revision_cache(
+        "discover/options/labels",
+        "",
+        (LIBRARY,),
+        lambda: library.facet("label_name").to_dict(),
+    )
     return {
         "beatport": beatport,
         "genres": genres,
-        "artists": library.facet("artist_name").to_dict(),
-        "labels": library.facet("label_name").to_dict(),
+        "artists": artists,
+        "labels": labels,
         "defaults": {
             "genre_ids": list(request.genre_ids),
             "charts_from": request.charts_from.isoformat(),

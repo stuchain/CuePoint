@@ -49,6 +49,7 @@ from datetime import date, timedelta
 from typing import Any, Dict, List, Sequence, Tuple
 
 from cuepoint.engine.api_errors import ApiError, bad_request, error_payload, not_found
+from cuepoint.engine.revisions import LIBRARY, WAVEFORMS, revision_cache
 from cuepoint.models.filter_rule import FilterRuleError
 from cuepoint.persistence.track_query import BrowseQueryError
 from cuepoint.services.interfaces import IStatisticsService
@@ -202,31 +203,52 @@ def plays(params: Dict[str, List[str]]) -> Dict[str, Any]:
     since_read = _read(query["since_read"]) if "since_read" in query else None
     scope = parse_scope(query["scope"]) if "scope" in query else PlaysScope()
 
-    service: IStatisticsService = _resolve("IStatisticsService")
-    report = service.plays(
-        limit=limit,
-        since=since,
-        utc_offset=offset,
-        since_read=since_read,
-        scope=scope,
+    def compute() -> Dict[str, Any]:
+        service: IStatisticsService = _resolve("IStatisticsService")
+        report = service.plays(
+            limit=limit,
+            since=since,
+            utc_offset=offset,
+            since_read=since_read,
+            scope=scope,
+        )
+        return report.to_dict()
+
+    # The answer is shared with the memo: serialise only, never mutate.
+    # ``since`` and ``tz`` come from the caller, so they are in the key; the
+    # route reads no clock of its own.
+    return revision_cache(
+        "statistics/plays", sorted(query.items()), (LIBRARY,), compute
     )
-    return report.to_dict()
 
 
 def spreads(params: Dict[str, List[str]]) -> Dict[str, Any]:
     """How the scope's tracks spread by six fields."""
     query = _params(params, _SCOPE_ONLY)
     scope = parse_scope(query["scope"]) if "scope" in query else PlaysScope()
-    service: IStatisticsService = _resolve("IStatisticsService")
-    return service.spreads(scope).to_dict()
+
+    def compute() -> Dict[str, Any]:
+        service: IStatisticsService = _resolve("IStatisticsService")
+        return service.spreads(scope).to_dict()
+
+    # The loudness spread reads waveforms.db, so that is a domain too.
+    return revision_cache(
+        "statistics/spreads", sorted(query.items()), (LIBRARY, WAVEFORMS), compute
+    )
 
 
 def health(params: Dict[str, List[str]]) -> Dict[str, Any]:
     """The scope's tracks by file state, Beatport match and analysis."""
     query = _params(params, _SCOPE_ONLY)
     scope = parse_scope(query["scope"]) if "scope" in query else PlaysScope()
-    service: IStatisticsService = _resolve("IStatisticsService")
-    return service.health(scope).to_dict()
+
+    def compute() -> Dict[str, Any]:
+        service: IStatisticsService = _resolve("IStatisticsService")
+        return service.health(scope).to_dict()
+
+    return revision_cache(
+        "statistics/health", sorted(query.items()), (LIBRARY, WAVEFORMS), compute
+    )
 
 
 def handles_get(path: str) -> bool:
