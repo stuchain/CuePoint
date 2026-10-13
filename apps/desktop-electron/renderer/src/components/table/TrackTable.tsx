@@ -761,7 +761,11 @@ export function TrackTable<Row>({
                     title={column.header}
                     onClick={() => handleSort(column)}
                   >
-                    {column.header}
+                    {column.headerHidden ? (
+                      <span className="track-table__sr-only">{column.header}</span>
+                    ) : (
+                      column.header
+                    )}
                     {active && (
                       <span className="track-table__sort" aria-hidden>
                         {sort?.direction === "asc" ? " ▲" : " ▼"}

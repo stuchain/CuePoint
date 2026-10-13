@@ -199,3 +199,43 @@ describe("candidate preview", () => {
     await expect(client().getCandidatePreview({ candidateId: 5 })).rejects.toThrow(/audio/);
   });
 });
+
+describe("catalog preview", () => {
+  it("returns the bytes and type from the discover route", async () => {
+    const calls = engineAnswering(
+      () => new Response(new Uint8Array([7, 6]), { headers: { "Content-Type": "audio/mpeg" } }),
+    );
+
+    const preview = await client().getCatalogPreview({ beatportTrackId: 1234 });
+
+    expect(preview?.contentType).toBe("audio/mpeg");
+    expect(Array.from(preview!.bytes)).toEqual([7, 6]);
+    expect(calls[0]!.url).toBe(`${BASE}/api/v1/discover/tracks/1234/preview`);
+  });
+
+  it("answers null for 204", async () => {
+    engineAnswering(() => new Response(null, { status: 204 }));
+
+    expect(await client().getCatalogPreview({ beatportTrackId: 1234 })).toBeNull();
+  });
+
+  it("maps an engine error to an EngineError", async () => {
+    engineAnswering(json(400, { error: { code: "VALIDATION_ERROR", message: "Bad id" } }));
+
+    const error = await thrown(client().getCatalogPreview({ beatportTrackId: 1234 }));
+
+    expect(error).toMatchObject({ status: 400, code: "VALIDATION_ERROR" });
+  });
+
+  it("refuses something that is not audio, and an id that is not one", async () => {
+    engineAnswering(() => new Response("x", { headers: { "Content-Type": "image/jpeg" } }));
+
+    await expect(client().getCatalogPreview({ beatportTrackId: 1234 })).rejects.toThrow(/audio/);
+    await expect(client().getCatalogPreview({ beatportTrackId: 0 })).rejects.toThrow(/positive/);
+    await expect(client().getCatalogPreview({ beatportTrackId: 2147483648 })).rejects.toThrow(/positive/);
+    await expect(client().getCatalogPreview({ beatportTrackId: 1.5 })).rejects.toThrow(/positive/);
+    await expect(
+      client().getCatalogPreview(undefined as unknown as { beatportTrackId: number }),
+    ).rejects.toThrow(/positive/);
+  });
+});

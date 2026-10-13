@@ -961,6 +961,10 @@ export class EngineSupervisor {
     return (await this.readyClient()).getCandidatePreview(params);
   }
 
+  async getCatalogPreview(params: Parameters<EngineClient["getCatalogPreview"]>[0]) {
+    return (await this.readyClient()).getCatalogPreview(params);
+  }
+
   async setTrackOverrides(
     params: Parameters<EngineClient["setTrackOverrides"]>[0],
   ): Promise<{ track: LibraryTrackRow }> {

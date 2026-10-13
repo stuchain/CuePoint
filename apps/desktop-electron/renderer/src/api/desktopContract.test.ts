@@ -797,7 +797,7 @@ describe("desktop contract", () => {
     describe("candidate media (C14)", () => {
       // Binary routes: read with fetch like getTrackArtwork, so they sit outside
       // the JSON POST/GET sweep above.
-      const media = ["getCandidateArtwork", "getCandidatePreview"];
+      const media = ["getCandidateArtwork", "getCandidatePreview", "getCatalogPreview"];
 
       it.each(media)("carries %s through every layer", (method) => {
         expect(invokedChannels(preload)).toContain(`engine:${method}`);

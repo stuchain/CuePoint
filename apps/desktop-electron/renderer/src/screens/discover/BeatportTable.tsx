@@ -12,7 +12,7 @@
  * (DEC-097), and a Beatport row has none; a double-click that did something
  * else would teach a gesture the Library means differently.
  */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
@@ -25,7 +25,9 @@ import {
   type TrackTableSort,
 } from "../../components/table";
 import type { TrackTableSource } from "../../components/table";
+import { canPreview, stopAllPreviews } from "../../components/preview/useBeatportPreview";
 import { pluralize } from "../library/libraryFormat";
+import { PREVIEW_COLUMN_ID } from "./beatportColumns";
 import type { BeatportAction, BeatportActionId } from "./beatportActions";
 import type { BeatportSelection } from "./useBeatportSelection";
 
@@ -51,7 +53,7 @@ interface BeatportTableProps<Row> {
 }
 
 export function BeatportTable<Row>({
-  columns,
+  columns: allColumns,
   layoutKey,
   source,
   selection,
@@ -66,7 +68,16 @@ export function BeatportTable<Row>({
   resetKey,
   busy = false,
 }: BeatportTableProps<Row>) {
+  // A build whose bridge cannot fetch samples has no preview column to show (DEC-269).
+  const columns = useMemo(
+    () =>
+      canPreview("catalog") ? allColumns : allColumns.filter((c) => c.id !== PREVIEW_COLUMN_ID),
+    [allColumns],
+  );
   const layout = useColumnLayout<Row>(layoutKey, columns);
+  // Preview cells scroll in and out of a virtualised table, so a sample belongs
+  // to the table's lifetime, not its cell's (DEC-269).
+  useEffect(() => stopAllPreviews, []);
   const [picking, setPicking] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
 

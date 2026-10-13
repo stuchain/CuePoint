@@ -48,6 +48,11 @@ export interface TrackColumnDef<Row> {
   /** What the header shows. */
   header: string;
   /**
+   * The header is drawn as nothing but still named `header` for a screen
+   * reader: a column of icon buttons (the Discover preview cell).
+   */
+  headerHidden?: boolean;
+  /**
    * What the column means, when its header alone does not say: shown on hover
    * and on keyboard focus (DEC-201's "Keys come from Beatport matches").
    */

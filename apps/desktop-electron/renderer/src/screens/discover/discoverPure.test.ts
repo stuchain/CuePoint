@@ -499,6 +499,7 @@ describe("the columns", () => {
   it("draws the specification's columns for a run", () => {
     expect(RUN_COLUMNS.filter((c) => !c.hiddenByDefault).map((c) => c.header)).toEqual([
       "#",
+      "Preview",
       "Title",
       "Artists",
       "Label",

@@ -21,6 +21,7 @@ import type { TrackColumnDef } from "../../components/table";
 import { formatBpm } from "../library/trackValues";
 import { ArtistLinks, LabelLink } from "./BeatportNameLinks";
 import { beatportRowKey } from "./beatportKey";
+import { PreviewCell } from "./PreviewCell";
 import { IN_LIBRARY_EXPLAINER } from "./HideOwnedSwitch";
 import { artistsText, formatWhen, sourcesText, trackName } from "./discoverFormat";
 
@@ -28,9 +29,23 @@ export const RUN_TABLE_LAYOUT_KEY = "cuepoint-discover-run-table-layout";
 export const WANTLIST_TABLE_LAYOUT_KEY = "cuepoint-discover-wantlist-table-layout";
 export const ENTITY_TABLE_LAYOUT_KEY = "cuepoint-discover-page-beatport-layout";
 
+/** The ▶/■ column, first in every Beatport table (DEC-269). */
+export const PREVIEW_COLUMN_ID = "preview";
+
 /** The columns every Beatport table has, over any row that is one. */
 function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
   return [
+    {
+      id: PREVIEW_COLUMN_ID,
+      header: "Preview",
+      headerHidden: true,
+      // Pinned like the title it sits before, so it stays first (sticky columns float to the front).
+      sticky: true,
+      minWidthPx: 32,
+      defaultWidthPx: 32,
+      render: (row) => <PreviewCell beatportTrackId={row.beatport_track_id} title={trackName(row)} />,
+      text: () => "",
+    },
     {
       id: "title",
       header: "Title",

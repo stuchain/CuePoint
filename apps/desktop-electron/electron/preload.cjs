@@ -294,6 +294,13 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
       new Blob([preview.bytes], { type: preview.contentType || "audio/mpeg" }),
     );
   },
+  getCatalogPreview: async (params) => {
+    const preview = await ipcRenderer.invoke("engine:getCatalogPreview", params);
+    if (!preview) return null;
+    return URL.createObjectURL(
+      new Blob([preview.bytes], { type: preview.contentType || "audio/mpeg" }),
+    );
+  },
   releaseCandidatePreview: (url) => {
     if (typeof url === "string" && url.startsWith("blob:")) URL.revokeObjectURL(url);
   },

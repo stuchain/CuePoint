@@ -3970,6 +3970,36 @@ export class EngineClient {
     return { bytes: new Uint8Array(await res.arrayBuffer()), contentType };
   }
 
+  /**
+   * A Beatport track's 2-minute sample (DEC-269) and its type, or null when
+   * Beatport has none or cannot be reached (204).
+   */
+  async getCatalogPreview(params: {
+    beatportTrackId: number;
+  }): Promise<CandidatePreview | null> {
+    const id = params?.beatportTrackId;
+    if (!Number.isSafeInteger(id) || id < 1 || id > 2147483647) {
+      throw new Error("A Beatport track id is a positive whole number");
+    }
+    const res = await fetch(
+      this.url(
+        `/api/v1/discover/tracks/${encodeURIComponent(String(id))}/preview`,
+      ),
+      { headers: this.headers() },
+    );
+    if (res.status === 204) {
+      return null;
+    }
+    if (!res.ok) {
+      await readJson(res);
+    }
+    const contentType = res.headers.get("Content-Type") ?? "";
+    if (!contentType.startsWith("audio/")) {
+      throw new Error("The engine answered a preview with something other than audio");
+    }
+    return { bytes: new Uint8Array(await res.arrayBuffer()), contentType };
+  }
+
   /** Copy chosen fields from decided candidates into CuePoint's layer (DEC-004). */
   async applyMatch(params: {
     fields: Array<"key" | "bpm" | "genre" | "label" | "year">;

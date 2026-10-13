@@ -728,6 +728,9 @@ function registerIpcHandlers(): void {
   handle("engine:getCandidatePreview", (_event, params) =>
     engine.getCandidatePreview(params),
   );
+  handle("engine:getCatalogPreview", (_event, params) =>
+    engine.getCatalogPreview(params),
+  );
   handle("engine:applyMatch", (_event, params) =>
     engine.applyMatch(params),
   );

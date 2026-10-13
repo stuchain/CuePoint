@@ -3669,6 +3669,12 @@ export interface CuePointBridge {
   /** A candidate's audio preview as an object URL, or null; release with `releaseCandidatePreview`. */
   getCandidatePreview?: (params: { candidateId: number }) => Promise<string | null>;
   releaseCandidatePreview?: (url: string) => void;
+  /**
+   * A Beatport track's 2-minute sample as an object URL, or null when it has
+   * none or Beatport is unreachable (DEC-269). Release it with
+   * `releaseCandidatePreview`, which revokes any blob URL.
+   */
+  getCatalogPreview?: (params: { beatportTrackId: number }) => Promise<string | null>;
   setTrackOverrides?: (params: {
     trackId: number;
     key?: string | null;

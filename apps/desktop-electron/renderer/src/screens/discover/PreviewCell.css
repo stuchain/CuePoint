@@ -1,0 +1,30 @@
+.preview-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.preview-cell:hover:not(:disabled),
+.preview-cell[data-state="playing"] {
+  color: var(--accent-primary);
+}
+
+.preview-cell[aria-busy="true"] {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.preview-cell:disabled {
+  color: var(--fg-muted);
+  cursor: default;
+  opacity: 0.5;
+}
+
+.preview-cell:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+}

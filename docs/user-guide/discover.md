@@ -126,9 +126,18 @@ when it ends the page says how many tracks it made the playlist with and offers
 so and nothing is made.
 
 Beatport tracks are not tracks in your library: they have no file, so a
-double-click does nothing and they cannot be played. Selecting one lights its
+double-click does nothing. Selecting one lights its
 key on the Camelot wheel in the header, and Track details says there is nothing
 to inspect.
+
+**Previews.** The ▶ button at the left of each Beatport row plays the track's
+two-minute sample from Beatport, so you can hear it before you buy or add it. It
+needs Beatport to be reachable. When Beatport has no sample the button grays
+out and says "No preview"; if you were offline when you pressed it, that is
+temporary, and it works again a few minutes later or once you are back online.
+Scrolling the table does not interrupt a sample that is playing. Only one
+sound plays at a time: starting a preview stops the one before it, and playing a track in the player stops the
+preview.
 
 ## Signing in to Beatport
 
