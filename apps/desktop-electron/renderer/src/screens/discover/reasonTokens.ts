@@ -45,6 +45,11 @@ function keyStep(from: string, to: string): ReasonTokens["key"] {
   return step === 0 ? "rel." : "next";
 }
 
+/** Rounds .5 away from zero, so a change of −0.5 reads "−1", not "±0". */
+function roundHalfAway(n: number): number {
+  return Math.sign(n) * Math.round(Math.abs(n));
+}
+
 /** What a list of reasons says, token by token. */
 export function reasonTokens(reasons: readonly SimilarReason[]): ReasonTokens {
   const tokens: ReasonTokens = { key: null, tempo: null, genre: false, label: false, artist: false };
@@ -58,7 +63,7 @@ export function reasonTokens(reasons: readonly SimilarReason[]): ReasonTokens {
         tokens.tempo =
           reason.detail === "half" || reason.detail === "double"
             ? reason.detail
-            : { delta: Math.round(reason.to - reason.from) };
+            : { delta: roundHalfAway(reason.to - reason.from) };
         break;
       case "genre":
         tokens.genre = true;
@@ -74,12 +79,22 @@ export function reasonTokens(reasons: readonly SimilarReason[]): ReasonTokens {
   return tokens;
 }
 
-function tempoToken(tempo: NonNullable<ReasonTokens["tempo"]>): string {
+/**
+ * A tempo change as a column of its own reads it, without a unit (the header
+ * says BPM Δ): "−2", "+3", "±0", "0.5×" and "2×". Empty when there is none.
+ */
+export function tempoDeltaText(tempo: ReasonTokens["tempo"]): string {
+  if (tempo === null) return "";
   if (tempo === "half") return "0.5×";
   if (tempo === "double") return "2×";
+  if (tempo.delta === 0) return "±0";
+  return tempo.delta > 0 ? `+${tempo.delta}` : `${MINUS}${Math.abs(tempo.delta)}`;
+}
+
+function tempoToken(tempo: NonNullable<ReasonTokens["tempo"]>): string {
+  const text = tempoDeltaText(tempo);
   // The unit keeps a tempo change from reading as a key step: "+1 · +1 BPM".
-  if (tempo.delta === 0) return "±0 BPM";
-  return tempo.delta > 0 ? `+${tempo.delta} BPM` : `${MINUS}${Math.abs(tempo.delta)} BPM`;
+  return typeof tempo === "string" ? text : `${text} BPM`;
 }
 
 /** The compact cell text: "+1 · −2 BPM · G · A". Empty when nothing is in common. */

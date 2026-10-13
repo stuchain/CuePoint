@@ -3,7 +3,7 @@
  *
  * Over the engine's own answers (`discoverPages.fixture.json`): a seed with a
  * tempo, one without, one with nothing near it, and one gone.
- * - suggestions are drawn in the engine's order with their reasons in words;
+ * - suggestions are drawn in the engine's order with short reason columns and a fit bar;
  * - they are library rows: a double-click plays the list from that row, and
  *   the menu queues without interrupting (DEC-012, DEC-013);
  * - a suggestion leads on to its own Similar tracks and its pages;
@@ -26,9 +26,9 @@ import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selec
 import { libraryOpening } from "../library/libraryLink";
 import { toQueueItem } from "../library/useLibraryPlayback";
 import { SimilarScreen, SIMILAR_LIMIT } from "./SimilarScreen";
+import { SIMILAR_COLUMNS, SIMILAR_TABLE_LAYOUT_KEY } from "./similarColumns";
 import { SIMILAR_ROUTE, entityPath, similarPath } from "./discoverLinks";
 import { consideredLine } from "./entityFormat";
-import { reasonsText } from "./similarColumns";
 import { describeUnused, matchBand } from "./similarReasons";
 import pages from "./discoverPages.fixture.json";
 
@@ -172,7 +172,7 @@ describe("the seed and its suggestions", () => {
     }
   });
 
-  it("draws the suggestions best first, each with its match and its reasons in words", async () => {
+  it("draws the suggestions best first, each with short reason columns and a fit bar (R4-8)", async () => {
     renderAt(similarPath(1));
     await listed();
     const rows = [...table().querySelectorAll('.track-table__row [data-column="title"]')].map(
@@ -180,25 +180,49 @@ describe("the seed and its suggestions", () => {
     );
     expect(rows).toEqual(TITLES);
     const [best] = SIMILAR.value!.suggestions;
+    const cell = (row: HTMLElement, id: string) =>
+      row.querySelector(`[data-column="${id}"]`) as HTMLElement;
+
     const first = rowOf(TITLES[0]);
-    expect(first).toHaveTextContent(reasonsText(best.reasons));
-    expect(first).toHaveTextContent("Strong");
-    expect(first).toHaveTextContent("Mixes well (next key): 8A → 9A");
-    // The number is in the tooltip, not a bare column of figures (DSC-10).
-    expect(within(first).getByText(matchBand(best.score))).toHaveAttribute(
+    expect(cell(first, "key")).toHaveTextContent(/^9A.*\+1$/);
+    expect(cell(first, "key").querySelector("[title]")).toHaveAttribute(
       "title",
-      `Score ${best.score} out of 100`,
+      "Mixes well (next key): 8A → 9A",
     );
-    expect(first).not.toHaveTextContent(String(best.score));
+    expect(cell(first, "bpm_delta")).toHaveTextContent("±0");
+    expect(within(cell(first, "genre_shared")).getByText("Same genre")).toHaveClass("track-table__sr-only");
+    expect(within(cell(first, "label_shared")).getByText("Same label")).toHaveClass("track-table__sr-only");
+    expect(within(cell(first, "artist_shared")).getByText("Shared artist")).toHaveClass("track-table__sr-only");
+    expect(within(first).getByRole("img", { name: `Fit ${best.score} out of 100` })).toHaveAttribute(
+      "title",
+      `Strong: Score ${best.score} out of 100`,
+    );
+    // The word and the sentence are gone from the cells; the sentence is in the hints.
+    expect(first).not.toHaveTextContent("Strong");
+    expect(first).not.toHaveTextContent("Mixes well");
+
+    const second = rowOf(TITLES[1]);
+    expect(cell(second, "key")).toHaveTextContent(/^8A.*same$/);
+    expect(cell(second, "bpm_delta")).toHaveTextContent("0.5×");
+    expect(cell(second, "genre_shared")).toBeEmptyDOMElement();
+    expect(cell(second, "label_shared")).toBeEmptyDOMElement();
+    expect(within(cell(second, "artist_shared")).getByText("Shared artist")).toBeInTheDocument();
+
+    expect(cell(rowOf(TITLES[2]), "key")).toHaveTextContent(/^8B.*rel\.$/);
+    expect(cell(rowOf(TITLES[2]), "bpm_delta")).toHaveTextContent("+4");
+    expect(cell(rowOf(TITLES[4]), "key")).toHaveTextContent("3A");
+    expect(cell(rowOf(TITLES[4]), "key")).not.toHaveTextContent(/same|rel|next|[+−]1/);
   });
 
-  it("names the match column Match, and says what the list is", async () => {
+  it("names the fit column Fit, and says what the list is", async () => {
     renderAt(similarPath(1));
     await listed();
     const headers = [...table().querySelectorAll('[role="columnheader"]')].map(
       (cell) => cell.textContent,
     );
-    expect(headers).toContain("Match");
+    expect(headers).toEqual(expect.arrayContaining(["Key", "BPM Δ", "G", "L", "A", "Fit"]));
+    expect(headers).not.toContain("Reasons");
+    expect(headers).not.toContain("Match");
     expect(headers).not.toContain("Score");
     expect(
       screen.queryByText("Tracks from your library that would mix well after this one."),
@@ -461,5 +485,41 @@ describe("the Inspector on Similar tracks", () => {
     fireEvent.click(button);
     const ids = SIMILAR.value!.suggestions.map((entry) => entry.track_id);
     expect(openedWith()?.rules.rules[0].value).toEqual([SEED.track.id, ids[0], ids[2]]);
+  });
+});
+
+describe("the Key column keeps the Library's key cell (R4-8)", () => {
+  const keyCell = (extra: Record<string, unknown>, relation = true) => {
+    const column = SIMILAR_COLUMNS.find((c) => c.id === "key")!;
+    const row = {
+      id: 1,
+      effective_key: "9A",
+      suggestion: {
+        track_id: 1,
+        score: 80,
+        reasons: relation
+          ? [{ component: "key", detail: "same", points: 1, from: "9A", to: "9A" }]
+          : [],
+      },
+      ...extra,
+    };
+    return render(<>{column.render(row as never)}</>);
+  };
+
+  it("shows a dash for a track with no key, and the hint says why", () => {
+    const { container } = keyCell({ effective_key: "" }, false);
+    expect(container).toHaveTextContent("—");
+    expect(SIMILAR_COLUMNS.find((c) => c.id === "key")!.hint).toContain("Keys come from Beatport matches");
+  });
+
+  it("marks a key the user corrected, beside the relation", () => {
+    const { container } = keyCell({ overridden: ["key"], override_sources: { key: "cuepoint" } });
+    expect(container.querySelector(".library-cell__mark")).not.toBeNull();
+    expect(container).toHaveTextContent("9A");
+    expect(container).toHaveTextContent("same");
+  });
+
+  it("has a new layout key, so the old order is left behind once", () => {
+    expect(SIMILAR_TABLE_LAYOUT_KEY).toBe("cuepoint-discover-similar-layout-v2");
   });
 });

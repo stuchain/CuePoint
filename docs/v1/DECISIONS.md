@@ -7753,3 +7753,23 @@ log of its own, so nothing on his PC could say which engine call or which page t
   with nothing in flight, at most 15 s), how many calls and the slowest. WARN when drawing or settling takes over 1 s.
 
 **Decided with**: User (C19, "apply ALL"; diagnostic build first ★) · **Date**: 2026-10-13
+
+
+
+## DEC-277 — Similar Tracks Read Down Columns
+
+**Status**: Approved · **Related**: R4-8, DEC-261, DEC-096, DSC-10, DEC-201
+
+**Context**: Similar's Reasons column was a sentence cut off at the pane's edge, and its Match column said "Good"
+on nearly every row (DEC-261 left Similar to its own step).
+
+**Decision**:
+- After the title: **Key** (the track's key as the Library shows it, "—" when none, with its override mark, then the
+  relation `same`, `+1`, `−1`, `rel.` or `next`), **BPM Δ** (right-aligned: `−2`, `+3`, `±0`, `0.5×`, `2×`; rounded
+  half away from zero), **G**, **L**, **A** (a ✓ for a shared genre, label or artist, named in full for screen
+  readers), and **Fit** as the five-block `FitBar` (column id `score` kept). The band word and number are in Fit's
+  hint; each reason's sentence is in its cell's hint. Amends DEC-096 and DSC-10 (the band word becomes a bar).
+- The tokens are DEC-261's (`reasonTokens.ts`), so Similar and Suggestions cannot drift apart.
+- The Similar table's saved layout resets once (new storage key), so the new order shows for everyone.
+
+**Decided with**: User (R4-8, "apply ALL") · **Date**: 2026-10-13

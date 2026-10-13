@@ -410,34 +410,62 @@ describe("names for a page's rules in the Library", () => {
 });
 
 describe("the pages' columns", () => {
-  it("draws every reason the engine can emit, in words (DISCOVER-08, from the other side)", () => {
+  it("keeps every reason the engine can emit as a sentence, for the copy and the hints (DISCOVER-08)", () => {
     const every = (reasonsFixture as unknown as { reasons: SimilarReason[] }).reasons;
     expect(every.length).toBeGreaterThanOrEqual(10);
-    const reasonsColumn = SIMILAR_COLUMNS.find((column) => column.id === "reasons")!;
-    for (const reason of every) {
-      const row = { suggestion: { track_id: 1, score: reason.points, reasons: [reason] } };
-      const text = reasonsColumn.text!(row as never);
-      expect(text, JSON.stringify(reason)).toBe(describeSimilarReason(reason));
-      expect(text).not.toBe("");
-    }
+    expect(SIMILAR_COLUMNS.find((column) => column.id === "reasons")).toBeUndefined();
     expect(reasonsText(every.slice(0, 2))).toBe(
       `${describeSimilarReason(every[0])} · ${describeSimilarReason(every[1])}`,
     );
   });
 
+  it("gives each reason a cell of its own, with words for the copy (R4-8)", () => {
+    const col = (id: string) => SIMILAR_COLUMNS.find((column) => column.id === id)!;
+    const row = (reasons: SimilarReason[]) =>
+      ({ effective_key: "9A", suggestion: { track_id: 1, score: 80, reasons } }) as never;
+    const reason = (component: string, detail: string, from: unknown, to: unknown) =>
+      ({ component, detail, points: 1, from, to }) as unknown as SimilarReason;
+    const all = row([
+      reason("key", "adjacent", "8A", "9A"),
+      reason("tempo", "close", 124, 122),
+      reason("genre", "same", "House", "House"),
+      reason("artist", "same", "A", "A"),
+    ]);
+    expect(col("key").text!(all)).toBe("9A +1");
+    expect(col("bpm_delta").text!(all)).toBe("−2");
+    expect(col("genre_shared").text!(all)).toBe("Same genre");
+    expect(col("label_shared").text!(all)).toBe("");
+    expect(col("artist_shared").text!(all)).toBe("Shared artist");
+    expect(col("score").text!(all)).toBe("Strong (80/100)");
+    const none = row([]);
+    const noKey = { ...(none as object), effective_key: "" } as never;
+    expect(col("key").text!(noKey)).toBe("");
+    const withTempo = (detail: string, from: number, to: number) =>
+      row([reason("tempo", detail, from, to)]);
+    expect(col("bpm_delta").text!(withTempo("half", 124, 62))).toBe("0.5×");
+    expect(col("bpm_delta").text!(withTempo("double", 124, 248))).toBe("2×");
+    expect(col("bpm_delta").text!(withTempo("close", 124, 123.5))).toBe("−1");
+    expect(col("bpm_delta").text!(withTempo("close", 124, 121))).toBe("−3");
+    expect(col("bpm_delta").text!(none)).toBe("");
+  });
+
   it("orders suggestions as the engine did: no column sorts them", () => {
     // The reasons beside the title, where a narrow pane still shows them.
-    expect(SIMILAR_COLUMNS.slice(0, 3).map((column) => column.id)).toEqual([
+    expect(SIMILAR_COLUMNS.slice(0, 7).map((column) => column.id)).toEqual([
       "title",
-      "reasons",
+      "key",
+      "bpm_delta",
+      "genre_shared",
+      "label_shared",
+      "artist_shared",
       "score",
     ]);
     expect(SIMILAR_COLUMNS.filter((column) => column.sortKey)).toEqual([]);
     const similar = (pages.similar as { value: unknown }).value as SimilarTracks;
     const score = SIMILAR_COLUMNS.find((column) => column.id === "score")!;
-    expect(score.header).toBe("Match");
+    expect(score.header).toBe("Fit");
     expect(score.text!({ suggestion: similar.suggestions[0] } as never)).toBe(
-      matchBand(similar.suggestions[0].score),
+      `${matchBand(similar.suggestions[0].score)} (${Math.round(similar.suggestions[0].score)}/100)`,
     );
   });
 

@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import fixture from "./similarReasons.fixture.json";
-import { reasonTokens, tokenRun } from "./reasonTokens";
+import { reasonTokens, tempoDeltaText, tokenRun } from "./reasonTokens";
 import type { SimilarReason } from "./similarReasons";
 
 const REASONS = fixture.reasons as SimilarReason[];
@@ -133,5 +133,22 @@ describe("tokenRun", () => {
     expect(run(key("relative", "8A", "8B"))).toBe("rel.");
     expect(run(key("adjacent", "8A", "9A"))).toBe("+1");
     expect(run(key("adjacent", "?", "?"))).toBe("next");
+  });
+});
+
+describe("tempoDeltaText", () => {
+  it("reads a tempo change without a unit, with the real minus", () => {
+    expect(tempoDeltaText({ delta: -2 })).toBe("−2");
+    expect(tempoDeltaText({ delta: 3 })).toBe("+3");
+    expect(tempoDeltaText({ delta: 0 })).toBe("±0");
+    expect(tempoDeltaText("half")).toBe("0.5×");
+    expect(tempoDeltaText("double")).toBe("2×");
+    expect(tempoDeltaText(null)).toBe("");
+  });
+
+  it("rounds a half away from zero", () => {
+    expect(reasonTokens([tempo("close", 124, 123.5)]).tempo).toEqual({ delta: -1 });
+    expect(reasonTokens([tempo("close", 124, 124.5)]).tempo).toEqual({ delta: 1 });
+    expect(tempoDeltaText(reasonTokens([tempo("close", 124, 123.5)]).tempo)).toBe("−1");
   });
 });

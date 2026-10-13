@@ -1,16 +1,21 @@
 /**
- * Similar tracks' columns (DISCOVER-11, DEC-096).
+ * Similar tracks' columns (DISCOVER-11, DEC-096; R4-8, DEC-261).
  *
- * A suggestion is a library row, so it has the Library's columns, and two of
- * its own after the title: its **Match**, as a word (Strong, Good or Some, the
- * number in its tooltip), and a **Reasons** column that says in words why it
- * scored — "Same key: 8A", "Mixes well (next key): 8A → 9A", "Half the tempo:
- * 128 → 64" — from DISCOVER-08's reasons, through `describeSimilarReason`.
- * A suggestion that says why can be discounted; one that does not can only be
- * distrusted.
+ * A suggestion is a library row, so it has the Library's columns, and some of
+ * its own after the title, each a few characters wide and built from the
+ * engine's structured reasons (`reasonTokens`): **Key** (the track's key and
+ * how it relates to the seed's: "9A +1", "8A same"), **BPM Δ** ("−2", "+3",
+ * "±0", "0.5×"), a ✓ each under **G**, **L** and **A** for the genre, label and artist it shares
+ * with the seed, and the **Fit** as a five-step bar with the band word and
+ * number in its title. A sentence ("Mixes well (next key): 8A → 9A", from
+ * `describeSimilarReason`) is the hint on each reason cell, so a token is never
+ * the only account of why a track is here. The copy takes each column's own
+ * `text`; `reasonsText` joins the sentences for Prepare's Suggestions.
  *
  * The list is in the engine's order, best first then by id, so no column
- * sorts it: a sorted suggestion list is a list of something else.
+ * sorts it: a sorted suggestion list is a list of something else. The old
+ * `reasons` column id is gone; a saved layout that names it is dropped by
+ * `reconcileLayout`, which ignores ids the registry does not have.
  */
 import type {
   LibraryTrackRow,
@@ -18,13 +23,21 @@ import type {
   SimilarTrack,
 } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
+import { FitBar } from "../../components/charts/FitBar";
+import { effectiveText } from "../library/libraryClean";
+import { OverriddenValue } from "../library/libraryCells";
 import { LIBRARY_COLUMNS } from "../library/libraryColumns";
-import { describeSimilarReason, matchBand, matchWords } from "./similarReasons";
+import { reasonTokens, tempoDeltaText } from "./reasonTokens";
+import { describeSimilarReason, matchWords } from "./similarReasons";
 
 /** A suggestion: its library row, and what the engine said about it. */
 export type SimilarRow = LibraryTrackRow & { id: number; suggestion: SimilarTrack };
 
-export const SIMILAR_TABLE_LAYOUT_KEY = "cuepoint-discover-similar-layout";
+/**
+ * v2 (R4-8): the columns changed (Reasons became Key, BPM Δ, G, L, A and Fit
+ * in a new order), so a saved v1 layout is left behind once, as for Prepare.
+ */
+export const SIMILAR_TABLE_LAYOUT_KEY = "cuepoint-discover-similar-layout-v2";
 
 /** Every reason a suggestion scored, in the engine's order, as one line. */
 export function reasonsText(reasons: readonly SimilarReason[]): string {
@@ -40,35 +53,110 @@ function unsorted(
 
 const [TITLE, ...REST] = LIBRARY_COLUMNS;
 
+/** The sentence for one component's reasons, or "" when the suggestion has none of it. */
+function sentenceFor(row: SimilarRow, component: SimilarReason["component"]): string {
+  return row.suggestion.reasons
+    .filter((reason) => reason.component === component)
+    .map(describeSimilarReason)
+    .join(" · ");
+}
+
+/** "9A +1": the key as the Library shows it, then its relation to the seed's, if any. */
+function keyText(row: SimilarRow): string {
+  const key = effectiveText(row, "key");
+  const relation = reasonTokens(row.suggestion.reasons).key;
+  return relation ? `${key} ${relation}`.trim() : key;
+}
+
+/** A ✓ column: shared genre, label or artist. The sentence is its hint. */
+function sharedColumn(
+  id: string,
+  letter: string,
+  component: "genre" | "label" | "artist",
+  words: string,
+): TrackColumnDef<SimilarRow> {
+  return {
+    id,
+    header: letter,
+    hint: `${words}: a ✓ when it matches the track you are comparing with`,
+    minWidthPx: 32,
+    defaultWidthPx: 38,
+    render: (row) => {
+      if (!reasonTokens(row.suggestion.reasons)[component]) return "";
+      return (
+        <span title={sentenceFor(row, component)}>
+          <span aria-hidden="true">✓</span>
+          <span className="track-table__sr-only">{words}</span>
+        </span>
+      );
+    },
+    text: (row) => (reasonTokens(row.suggestion.reasons)[component] ? words : ""),
+  };
+}
+
 /**
- * The title, then the reasons beside it and the score after them: the reasons
- * are what this list is read for, so they sit where a narrow pane — the
- * sidebar and the Inspector open — still shows them without scrolling.
+ * The title, then why each suggestion is here in a few characters, and the
+ * fit after them, where a narrow pane — the sidebar and the Inspector open —
+ * still shows them without scrolling. The Library's own key column is
+ * replaced by the Key column here, which says the same and the relation.
  */
 export const SIMILAR_COLUMNS: readonly TrackColumnDef<SimilarRow>[] = [
   { ...unsorted(TITLE), defaultWidthPx: 180 },
   {
-    id: "reasons",
-    header: "Reasons",
-    minWidthPx: 160,
-    defaultWidthPx: 360,
+    id: "key",
+    header: "Key",
+    // An empty cell is a dash; this is why (DEC-201).
+    hint: "Keys come from Beatport matches. Beside the key: how it relates to the key of the track you are comparing with: same, a step either way round the wheel, relative or next",
+    minWidthPx: 60,
+    defaultWidthPx: 72,
     render: (row) => {
-      const text = reasonsText(row.suggestion.reasons);
-      return <span title={text}>{text}</span>;
+      const relation = reasonTokens(row.suggestion.reasons).key;
+      return (
+        <span title={sentenceFor(row, "key") || undefined}>
+          <OverriddenValue row={row} field="key" />
+          {relation ? (
+            <>
+              {" "}
+              <span>{relation}</span>
+            </>
+          ) : null}
+        </span>
+      );
     },
-    text: (row) => reasonsText(row.suggestion.reasons),
+    text: keyText,
   },
+  {
+    id: "bpm_delta",
+    header: "BPM Δ",
+    hint: "How far the BPM is from that of the track you are comparing with: −2, +3 or ±0, and a mark for half or double the tempo",
+    minWidthPx: 52,
+    defaultWidthPx: 56,
+    align: "right",
+    render: (row) => {
+      const text = tempoDeltaText(reasonTokens(row.suggestion.reasons).tempo);
+      return (
+        <span style={{ fontVariantNumeric: "tabular-nums" }} title={sentenceFor(row, "tempo") || undefined}>
+          {text}
+        </span>
+      );
+    },
+    text: (row) => tempoDeltaText(reasonTokens(row.suggestion.reasons).tempo),
+  },
+  sharedColumn("genre_shared", "G", "genre", "Same genre"),
+  sharedColumn("label_shared", "L", "label", "Same label"),
+  sharedColumn("artist_shared", "A", "artist", "Shared artist"),
   {
     // The id stays `score`, which a saved column layout keeps.
     id: "score",
-    header: "Match",
-    minWidthPx: 64,
-    defaultWidthPx: 76,
+    header: "Fit",
+    hint: "How well this track fits, out of 100: the more blocks, the closer",
+    minWidthPx: 56,
+    defaultWidthPx: 64,
     render: (row) => {
       const { band, detail } = matchWords(row.suggestion.score);
-      return <span title={detail}>{band}</span>;
+      return <FitBar score={row.suggestion.score} title={`${band}: ${detail}`} />;
     },
-    text: (row) => matchBand(row.suggestion.score),
+    text: (row) => `${matchWords(row.suggestion.score).band} (${Math.round(row.suggestion.score)}/100)`,
   },
-  ...REST.map(unsorted),
+  ...REST.filter((column) => column.id !== "key").map(unsorted),
 ];
