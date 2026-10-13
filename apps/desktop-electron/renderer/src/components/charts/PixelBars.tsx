@@ -6,7 +6,8 @@
  * are written on the chart. A bar the caller can open is a real button: one tab stop for the chart,
  * the arrow keys moving between its bars, Enter, Space or a click calling `onSelect`. A bar that
  * opens nothing (no `onSelect`, or `isSelectable` says no, or no tracks) is drawn and is neither a
- * button nor a click target. A visually hidden table says the same in words, so the picture is
+ * button nor a click target. A gap bucket (`isGap`) is a narrow break in the run: no bar, no count,
+ * not focusable, not announced and left out of the table. A visually hidden table says the same in words, so the picture is
  * never the only place a fact is. An ordered run longer than the container scrolls sideways inside
  * the chart's own box.
  *
@@ -34,6 +35,8 @@ export interface PixelBarsProps<T extends PixelBucket = PixelBucket> {
   onSelect?: (bucket: T) => void;
   /** Narrows `onSelect` to some bars. Default: every bar with tracks. */
   isSelectable?: (bucket: T) => boolean;
+  /** Marks a bucket that stands for a stretch with nothing in it (a break, not a count). */
+  isGap?: (bucket: T) => boolean;
   /** Vertical charts only: the height before scale. */
   height?: number;
   /** The text table's headings. */
@@ -53,6 +56,7 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
   barName,
   onSelect,
   isSelectable,
+  isGap,
   height = DEFAULT_HEIGHT,
   bucketLabel = "Bucket",
   countLabel = "Tracks",
@@ -74,17 +78,25 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
   }, []);
 
   const layout = useMemo(
-    () => barsLayout({ buckets, orientation, width: Math.max(0, width), height: Math.round(height * scale), scale }),
-    [buckets, height, orientation, scale, width],
+    () =>
+      barsLayout({
+        buckets,
+        orientation,
+        width: Math.max(0, width),
+        height: Math.round(height * scale),
+        scale,
+        isGap: isGap && ((b) => isGap(b as T)),
+      }),
+    [buckets, height, isGap, orientation, scale, width],
   );
 
-  const counts = useMemo(() => new Map(buckets.map((b) => [b.label, b.count])), [buckets]);
+  const counts = useMemo(() => new Map(buckets.filter((b) => !isGap?.(b)).map((b) => [b.label, b.count])), [buckets, isGap]);
   const marks = useCountChanges(counts);
 
   // The bars that are buttons, by index; the arrows move through them.
   const openable = useMemo(
-    () => buckets.map((b, at) => (onSelect && b.count > 0 && (isSelectable?.(b) ?? true) ? at : -1)).filter((at) => at >= 0),
-    [buckets, isSelectable, onSelect],
+    () => buckets.map((b, at) => (onSelect && b.count > 0 && !isGap?.(b) && (isSelectable?.(b) ?? true) ? at : -1)).filter((at) => at >= 0),
+    [buckets, isGap, isSelectable, onSelect],
   );
   // The bar that holds the tab stop, by label, so new data cannot move it to another bucket.
   const [active, setActive] = useState<string | null>(null);
@@ -98,7 +110,7 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
   // only on hover). Pointing wins over focus until the pointer leaves.
   const [pointed, setPointed] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
-  const shown = buckets.find((b) => b.label === (pointed ?? focused));
+  const shown = buckets.find((b) => !isGap?.(b) && b.label === (pointed ?? focused));
 
   function moveTo(at: number | undefined) {
     if (at === undefined) return;
@@ -167,6 +179,22 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
           />
           {layout.bars.map((bar) => {
             const bucket = buckets[bar.index]!;
+            if (bar.gap) {
+              return (
+                <g key={bar.index} className="cp-pixel-bars__gap" data-bar-slot={bar.index} aria-hidden="true">
+                  {bar.label && (
+                    <text
+                      className="cp-pixel-bars__label"
+                      x={bar.label.x}
+                      y={bar.label.y}
+                      textAnchor={bar.label.anchor}
+                    >
+                      {bar.label.text}
+                    </text>
+                  )}
+                </g>
+              );
+            }
             const opens = openable.includes(bar.index);
             const changed = changedMark(marks, bucket.label);
             const name = barName(bucket);
@@ -227,15 +255,17 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
                     />
                   </g>
                 )}
-                <text
-                  className="cp-pixel-bars__count"
-                  data-changed={changed}
-                  x={bar.count.x}
-                  y={bar.count.y}
-                  textAnchor={bar.count.anchor}
-                >
-                  {bar.count.text}
-                </text>
+                {bar.count && (
+                  <text
+                    className="cp-pixel-bars__count"
+                    data-changed={changed}
+                    x={bar.count.x}
+                    y={bar.count.y}
+                    textAnchor={bar.count.anchor}
+                  >
+                    {bar.count.text}
+                  </text>
+                )}
                 {bar.label && (
                   <text
                     className="cp-pixel-bars__label"
@@ -262,12 +292,14 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
           </tr>
         </thead>
         <tbody>
-          {buckets.map((bucket, at) => (
-            <tr key={at}>
-              <th scope="row">{bucket.label}</th>
-              <td>{formatCount(bucket.count)}</td>
-            </tr>
-          ))}
+          {buckets.map((bucket, at) =>
+            isGap?.(bucket) ? null : (
+              <tr key={at}>
+                <th scope="row">{bucket.label}</th>
+                <td>{formatCount(bucket.count)}</td>
+              </tr>
+            ),
+          )}
         </tbody>
       </table>
     </div>

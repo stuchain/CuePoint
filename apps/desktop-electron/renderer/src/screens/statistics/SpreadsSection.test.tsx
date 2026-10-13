@@ -130,6 +130,34 @@ describe("the spreads (STATS-06)", () => {
     expect(bars("Tempo")).toEqual(["123 BPM, 40 tracks", "124 BPM, 312 tracks"]);
   });
 
+  it("shows a ⋯ break between 139 and 170, and the holes of a short stretch as empty bins", () => {
+    const tempo = spread([
+      bucket("138 BPM", 138, 4, rules("bpm", 138)),
+      bucket("140 BPM", 140, 6, rules("bpm", 140)),
+      bucket("170 BPM", 170, 2, rules("bpm", 170)),
+    ]);
+    const { container } = renderSection({ ...SPREADS, tempo });
+    const slots = [...panel("Tempo").querySelectorAll("[data-bar-slot]")];
+    const axis = slots.map((slot) => slot.querySelector("text.cp-pixel-bars__label")?.textContent ?? null);
+    // 138, empty 139, 140, one ⋯ for 141-169, 170.
+    expect(slots).toHaveLength(5);
+    expect(axis[0]).toBe("138");
+    expect(axis[3]).toBe("⋯");
+    expect(titleOf(slots[1]!)).toBe("139 BPM, 0 tracks");
+    expect(titleOf(slots[3]!)).toBeNull();
+    expect(slots[3]).toHaveAttribute("aria-hidden", "true");
+    expect(bars("Tempo")).toEqual(["138 BPM, 4 tracks", "140 BPM, 6 tracks", "170 BPM, 2 tracks"]);
+    const rows = within(within(panel("Tempo")).getByRole("table")).getAllByRole("row");
+    expect(rows.map((r) => r.textContent)).toEqual([
+      "Tempo (BPM)Tracks",
+      "1384",
+      "1390",
+      "1406",
+      "1702",
+    ]);
+    expect(container.querySelectorAll('[data-panel="date_added"] [data-bar-slot]')).toHaveLength(1);
+  });
+
   it("draws each panel's buckets with their counts", () => {
     renderSection();
     expect(bars("Genre")).toEqual(["Techno, 900 tracks", "House, 700 tracks"]);

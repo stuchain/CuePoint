@@ -20,7 +20,8 @@ const ORDERED: PixelBucket[] = Array.from({ length: 30 }, (_, at) => ({
 function numbers(layout: BarsLayout): number[] {
   const all: number[] = [layout.width, layout.height, layout.axis.x, layout.axis.y, layout.axis.width, layout.axis.height];
   for (const bar of layout.bars) {
-    all.push(bar.hit.x, bar.hit.y, bar.hit.width, bar.hit.height, bar.count.x, bar.count.y);
+    all.push(bar.hit.x, bar.hit.y, bar.hit.width, bar.hit.height);
+    if (bar.count) all.push(bar.count.x, bar.count.y);
     if (bar.label) all.push(bar.label.x, bar.label.y);
     if (bar.rect) all.push(bar.rect.x, bar.rect.y, bar.rect.width, bar.rect.height);
     if (bar.outline) all.push(bar.outline.x, bar.outline.y, bar.outline.width, bar.outline.height);
@@ -59,7 +60,7 @@ describe("barsLayout: a zero bucket", () => {
       const zero = layout.bars.find((b) => b.bucket.label === "Ambient")!;
       expect(zero.rect).toBeNull();
       expect(zero.outline).toBeNull();
-      expect(zero.count.text).toBe("0");
+      expect(zero.count).toBeNull();
     }
   });
 
@@ -133,9 +134,11 @@ describe("barsLayout: size and text", () => {
     expect(layout.height).toBeGreaterThanOrEqual(tops.at(-1)! + layout.bars.at(-1)!.hit.height);
   });
 
-  it("writes every count and thins the labels of a crowded axis", () => {
+  it("writes every count but the empty ones, and thins the labels of a crowded axis", () => {
     const layout = barsLayout({ buckets: ORDERED, orientation: "vertical", width: 200, height: 200, scale: 1 });
-    expect(layout.bars.map((b) => b.count.text)).toEqual(ORDERED.map((b) => b.count.toLocaleString("en-US")));
+    expect(layout.bars.map((b) => b.count?.text ?? null)).toEqual(
+      ORDERED.map((b) => (b.count > 0 ? b.count.toLocaleString("en-US") : null)),
+    );
     const shown = layout.bars.filter((b) => b.label).length;
     expect(shown).toBeGreaterThan(0);
     expect(shown).toBeLessThan(ORDERED.length);
@@ -176,5 +179,59 @@ describe("barsLayout: size and text", () => {
     const layout = barsLayout({ buckets: [], orientation: "vertical", width: 100, height: 100, scale: 1 });
     expect(layout.bars).toEqual([]);
     expect(layout.width).toBeGreaterThan(0);
+  });
+});
+
+describe("barsLayout: a gap bucket", () => {
+  const RUN: PixelBucket[] = [
+    { label: "139", count: 5 },
+    { label: "⋯", count: 0 },
+    { label: "170", count: 9 },
+  ];
+  const isGap = (b: PixelBucket) => b.label === "⋯";
+
+  it("is a narrow break with no bar and no count, and its mark is on the axis", () => {
+    const layout = barsLayout({ buckets: RUN, orientation: "vertical", width: 400, height: 200, scale: 1, isGap });
+    const [before, gap, after] = layout.bars;
+    expect(gap!.gap).toBe(true);
+    expect(gap!.rect).toBeNull();
+    expect(gap!.outline).toBeNull();
+    expect(gap!.count).toBeNull();
+    expect(gap!.label?.text).toBe("⋯");
+    expect(gap!.hit.width).toBeLessThan(before!.hit.width);
+    expect(after!.hit.x).toBe(gap!.hit.x + gap!.hit.width);
+    expect(before!.gap).toBe(false);
+  });
+
+  it("stays on whole pixels at every scale", () => {
+    for (const scale of [1, 1.5, 2, 3]) {
+      const layout = barsLayout({ buckets: RUN, orientation: "vertical", width: 400, height: 200, scale, isGap });
+      expect(numbers(layout).every(Number.isInteger)).toBe(true);
+    }
+  });
+
+  it("draws no bar and no count in rows either", () => {
+    const layout = barsLayout({ buckets: RUN, orientation: "horizontal", width: 400, height: 200, scale: 1, isGap });
+    expect(layout.bars[1]!.rect).toBeNull();
+    expect(layout.bars[1]!.count).toBeNull();
+  });
+
+  it("never draws two labels over each other when a gap sits among thinned names", () => {
+    const years = [...Array.from({ length: 13 }, (_, at) => 1990 + at), null, 2015, 2016];
+    const buckets: PixelBucket[] = years.map((y) => ({ label: y === null ? "⋯" : String(y), count: 5 }));
+    for (const scale of SCALES) {
+      const layout = barsLayout({ buckets, orientation: "vertical", width: 100, height: 200, scale, isGap });
+      const spans = layout.bars
+        .flatMap((b) => (b.label ? [b.label] : []))
+        .map((l) => {
+          const w = [...l.text].length * Math.max(1, Math.round(6 * scale));
+          const start = l.anchor === "middle" ? l.x - w / 2 : l.anchor === "end" ? l.x - w : l.x;
+          return [start, start + w] as const;
+        });
+      expect(spans.length).toBeGreaterThan(1);
+      for (let at = 1; at < spans.length; at += 1) {
+        expect(spans[at]![0]).toBeGreaterThanOrEqual(spans[at - 1]![1]);
+      }
+    }
   });
 });

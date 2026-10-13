@@ -78,7 +78,55 @@ describe("PixelBars", () => {
   it("writes the counts on the chart", () => {
     const { container } = chart();
     const texts = [...container.querySelectorAll("svg text")].map((t) => t.textContent);
-    expect(texts).toEqual(expect.arrayContaining(["40", "0", "312", "9"]));
+    expect(texts).toEqual(expect.arrayContaining(["40", "312", "9"]));
+  });
+
+  it("writes no 0 on an empty bucket", () => {
+    const { container } = chart();
+    const texts = [...container.querySelectorAll("svg text")].map((t) => t.textContent);
+    expect(texts).not.toContain("0");
+  });
+
+  describe("a gap bucket", () => {
+    const RUN: PixelBucket[] = [
+      { label: "139", count: 7 },
+      { label: "⋯", count: 0 },
+      { label: "170", count: 3 },
+    ];
+    const isGap = (b: PixelBucket) => b.label === "⋯";
+
+    it("is not focusable, not selectable and not announced", async () => {
+      const onSelect = vi.fn();
+      const user = userEvent.setup();
+      const { container } = chart({ buckets: RUN, isGap, onSelect, barName: (b) => `${b.label} BPM` });
+      const slot = container.querySelector("[data-bar-slot='1']")!;
+      expect(slot).toHaveAttribute("aria-hidden", "true");
+      expect(slot).not.toHaveAttribute("tabindex");
+      expect(slot).not.toHaveAttribute("role");
+      expect(slot.querySelector("title")).toBeNull();
+      expect(screen.getAllByRole("button").map(titleOf)).toEqual(["139 BPM", "170 BPM"]);
+      await user.click(slot);
+      expect(onSelect).not.toHaveBeenCalled();
+      await user.tab();
+      await user.keyboard("{ArrowRight}");
+      expect(button("170 BPM")!).toHaveFocus();
+    });
+
+    it("draws the break's mark but no bar and no count, and is left out of the table", () => {
+      const { container } = chart({ buckets: RUN, isGap });
+      const slot = container.querySelector("[data-bar-slot='1']")!;
+      expect(slot.querySelector("rect[data-bar]")).toBeNull();
+      expect([...slot.querySelectorAll("text")].map((t) => t.textContent)).toEqual(["⋯"]);
+      const rows = within(screen.getByRole("table", { name: "Tempo" })).getAllByRole("row");
+      expect(rows.map((r) => r.textContent)).toEqual(["BucketTracks", "1397", "1703"]);
+    });
+
+    it("does not show a caption when pointed at", async () => {
+      const user = userEvent.setup();
+      const { container } = chart({ buckets: RUN, isGap });
+      await user.hover(container.querySelector("[data-bar-slot='1']")!);
+      expect(container.querySelector(".cp-pixel-bars__caption")!.textContent).toBe("");
+    });
   });
 
   it("enters the chart by Tab on one bar, and the arrow keys move between bars", async () => {

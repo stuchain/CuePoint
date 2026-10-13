@@ -9,7 +9,8 @@
  * Every size is a base size times the scale, rounded to a whole pixel (`px`), and
  * every position is a sum of those, so each edge lands on a whole pixel at 1x,
  * 1.5x, 2x and 3x (DEC-161). The tallest bar fills the plot; a bucket with no
- * tracks draws no rectangle at all; any other bar is at least one pixel.
+ * tracks draws no rectangle and no count; any other bar is at least one pixel. A gap bucket
+ * (`isGap`) is a narrow break in an ordered run: no bar, no count, just its mark.
  */
 import { formatCount } from "./formatCount";
 
@@ -45,8 +46,10 @@ export interface BarGeometry {
   outline: Rect | null;
   /** The whole slot the bar owns, which is what a pointer or a focus ring takes. */
   hit: Rect;
-  /** Its count, written beside the bar's end. Every bucket has one, even a zero. */
-  count: TextMark;
+  /** A narrow break in the run, not a bucket: it has no bar and no count. */
+  gap: boolean;
+  /** Its count, written beside the bar's end; null for an empty bucket and for a gap. */
+  count: TextMark | null;
   /** Its name on the axis; null where a crowded axis skips it. */
   label: TextMark | null;
 }
@@ -76,6 +79,11 @@ export interface BarsLayoutInput {
   height: number;
   /** The app's scale: 1, 1.25, 1.5, 2 or 3. */
   scale: number;
+  /**
+   * Marks a bucket that is a break in the run, not a count. Default: none is. Gaps belong to
+   * vertical (column) charts; in rows a gap is a short, empty row.
+   */
+  isGap?: (bucket: PixelBucket) => boolean;
 }
 
 /** The longest name drawn on a row before it is cut short with an ellipsis. */
@@ -107,17 +115,18 @@ function lengthFor(count: number, biggest: number, full: number): number {
   return Math.max(1, Math.round((count / biggest) * full));
 }
 
-function rows({ buckets, width, scale }: BarsLayoutInput): BarsLayout {
+function rows({ buckets, width, scale, isGap }: BarsLayoutInput): BarsLayout {
   const px = sizer(scale);
   const hair = Math.max(1, Math.floor(scale));
   const fontSize = px(10);
   const charW = px(6);
   const rowH = px(14);
   const barH = px(10);
-  const biggest = Math.max(0, ...buckets.map((b) => b.count));
+  const gapAt = (b: PixelBucket) => isGap?.(b) ?? false;
+  const biggest = Math.max(0, ...buckets.filter((b) => !gapAt(b)).map((b) => b.count));
 
   const labelChars = Math.min(MAX_LABEL_CHARS, Math.max(0, ...buckets.map((b) => [...b.label].length)));
-  const countChars = Math.max(1, ...buckets.map((b) => countText(b.count).length));
+  const countChars = Math.max(1, ...buckets.map((b) => (gapAt(b) ? 0 : countText(b.count).length)));
   const labelW = labelChars * charW;
   const countW = countChars * charW;
   const axisX = labelW + px(6);
@@ -127,22 +136,29 @@ function rows({ buckets, width, scale }: BarsLayoutInput): BarsLayout {
   const room = width - barX - hair - textGap - countW;
   const length = Math.max(minLength, room);
   const total = barX + length + hair + textGap + countW;
-  const height = Math.max(rowH, buckets.length * rowH);
+  const gapH = px(8);
+  const heightOf = (b: PixelBucket) => (gapAt(b) ? gapH : rowH);
+  const height = Math.max(rowH, buckets.reduce((sum, b) => sum + heightOf(b), 0));
+  let rowTop = 0;
   const baseline = Math.round(fontSize * 0.35);
 
   const bars = buckets.map((bucket, index): BarGeometry => {
-    const top = index * rowH;
-    const y = top + Math.floor((rowH - barH) / 2);
-    const long = lengthFor(bucket.count, biggest, length);
-    const mid = top + Math.floor(rowH / 2) + baseline;
+    const top = rowTop;
+    const gap = gapAt(bucket);
+    const thisH = heightOf(bucket);
+    rowTop += thisH;
+    const y = top + Math.floor((thisH - barH) / 2);
+    const long = gap ? 0 : lengthFor(bucket.count, biggest, length);
+    const mid = top + Math.floor(thisH / 2) + baseline;
     const rect = long > 0 ? { x: barX, y, width: long, height: barH } : null;
     return {
       index,
       bucket,
       rect,
       outline: rect ? { x: rect.x - hair, y: rect.y - hair, width: rect.width + 2 * hair, height: rect.height + 2 * hair } : null,
-      hit: { x: 0, y: top, width: total, height: rowH },
-      count: { text: countText(bucket.count), x: barX + long + hair + textGap, y: mid, anchor: "start" },
+      hit: { x: 0, y: top, width: total, height: thisH },
+      gap,
+      count: gap || bucket.count <= 0 ? null : { text: countText(bucket.count), x: barX + long + hair + textGap, y: mid, anchor: "start" },
       label: { text: shorten(bucket.label), x: 0, y: mid, anchor: "start" },
     };
   });
@@ -160,19 +176,23 @@ function rows({ buckets, width, scale }: BarsLayoutInput): BarsLayout {
   };
 }
 
-function columns({ buckets, width, height, scale }: BarsLayoutInput): BarsLayout {
+function columns({ buckets, width, height, scale, isGap }: BarsLayoutInput): BarsLayout {
   const px = sizer(scale);
   const hair = Math.max(1, Math.floor(scale));
   const fontSize = px(10);
   const charW = px(6);
-  const biggest = Math.max(0, ...buckets.map((b) => b.count));
+  const gapAt = (b: PixelBucket) => isGap?.(b) ?? false;
+  const real = buckets.filter((b) => !gapAt(b));
+  const biggest = Math.max(0, ...real.map((b) => b.count));
 
-  const countChars = Math.max(1, ...buckets.map((b) => countText(b.count).length));
-  const labelChars = Math.max(1, ...buckets.map((b) => [...b.label].length));
+  const countChars = Math.max(1, ...real.map((b) => countText(b.count).length));
+  const labelChars = Math.max(1, ...real.map((b) => [...b.label].length));
   const gap = px(6);
   const minPitch = Math.max(px(14) + gap, countChars * charW + px(2));
   const maxPitch = px(40) + gap;
-  const fit = buckets.length > 0 ? Math.floor(width / buckets.length) : minPitch;
+  // A gap is a narrow break, a little over one character wide.
+  const gapPitch = px(12);
+  const fit = real.length > 0 ? Math.floor((width - (buckets.length - real.length) * gapPitch) / real.length) : minPitch;
   const pitch = Math.max(minPitch, Math.min(fit, maxPitch));
   const barW = Math.max(1, pitch - gap);
   const inset = Math.floor((pitch - barW) / 2);
@@ -183,12 +203,49 @@ function columns({ buckets, width, height, scale }: BarsLayoutInput): BarsLayout
   const total = Math.max(top + bottom + px(16), Math.round(height));
   const length = total - top - bottom;
   const baseY = top + length;
-  const totalW = Math.max(1, buckets.length * pitch);
+  const totalW = Math.max(1, real.length * pitch + (buckets.length - real.length) * gapPitch);
   const labelEvery = Math.max(1, Math.ceil((labelChars * charW + px(4)) / pitch));
+  const labelGap = px(4);
+  // Labels are thinned by where they land, not by index, so a narrow gap slot cannot be overrun.
+  let lastLabelEnd = -Infinity;
+  // A gap's ⋯ is always drawn (it is the meaning of the slot), so a name just before it yields.
+  const place = (text: string, start: number, force = false, before?: number): boolean => {
+    if (!force && start < lastLabelEnd + labelGap) return false;
+    if (before !== undefined && start + [...text].length * charW + labelGap > before) return false;
+    lastLabelEnd = start + [...text].length * charW;
+    return true;
+  };
 
+  // Where the next slot's ⋯ starts, if the next bucket is a gap (by its own slot width).
+  const gapStartAfter = (index: number, from: number): number | undefined => {
+    const next = buckets[index + 1];
+    if (!next || !gapAt(next)) return undefined;
+    return from + pitch + Math.floor(gapPitch / 2) - Math.floor(([...next.label].length * charW) / 2);
+  };
+
+  let slot = 0;
   const bars = buckets.map((bucket, index): BarGeometry => {
-    const slot = index * pitch;
-    const x = slot + inset;
+    if (gapAt(bucket)) {
+      const at = slot;
+      slot += gapPitch;
+      const centre = at + Math.floor(gapPitch / 2);
+      const gapW = [...bucket.label].length * charW;
+      return {
+        index,
+        bucket,
+        rect: null,
+        outline: null,
+        hit: { x: at, y: 0, width: gapPitch, height: total },
+        gap: true,
+        count: null,
+        label: place(bucket.label, centre - Math.floor(gapW / 2), true)
+          ? { text: bucket.label, x: centre, y: baseY + hair + px(2) + fontSize, anchor: "middle" }
+          : null,
+      };
+    }
+    const here = slot;
+    slot += pitch;
+    const x = here + inset;
     const tall = lengthFor(bucket.count, biggest, length);
     const rect = tall > 0 ? { x, y: baseY - tall, width: barW, height: tall } : null;
     const centre = x + Math.floor(barW / 2);
@@ -196,16 +253,20 @@ function columns({ buckets, width, height, scale }: BarsLayoutInput): BarsLayout
     // A thinned name starts at its bar; the last ones would run off the chart, so they end at theirs.
     const runsOff = x + [...bucket.label].length * charW > totalW;
     const anchor: TextMark["anchor"] = spread ? "middle" : runsOff ? "end" : "start";
+    const nameW = [...bucket.label].length * charW;
+    const labelX = spread ? centre : anchor === "end" ? x + barW : x;
+    const labelStart = anchor === "middle" ? labelX - Math.floor(nameW / 2) : anchor === "end" ? labelX - nameW : labelX;
     return {
       index,
       bucket,
       rect,
       outline: rect ? { x: rect.x - hair, y: rect.y - hair, width: rect.width + 2 * hair, height: rect.height + hair } : null,
-      hit: { x: slot, y: 0, width: pitch, height: total },
-      count: { text: countText(bucket.count), x: centre, y: baseY - tall - hair - px(2), anchor: "middle" },
+      hit: { x: here, y: 0, width: pitch, height: total },
+      gap: false,
+      count: bucket.count <= 0 ? null : { text: countText(bucket.count), x: centre, y: baseY - tall - hair - px(2), anchor: "middle" },
       label:
-        index % labelEvery === 0
-          ? { text: bucket.label, x: spread ? centre : anchor === "end" ? x + barW : x, y: baseY + hair + px(2) + fontSize, anchor }
+        place(bucket.label, labelStart, false, gapStartAfter(index, here))
+          ? { text: bucket.label, x: labelX, y: baseY + hair + px(2) + fontSize, anchor }
           : null,
     };
   });

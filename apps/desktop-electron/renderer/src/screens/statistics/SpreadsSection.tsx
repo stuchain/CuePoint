@@ -6,8 +6,10 @@
  * ordered ones (vertical). A bar whose bucket has rules opens the Library on them (the engine
  * has already put the scope's own rules in); a bucket without rules, and every loudness bar,
  * is drawn and opens nothing. A line that has rules gets a visible **Open in Library** button.
- * Every number is the engine's.
+ * Tempo, Year and Loudness are numeric axes, so the integers the engine did not send are drawn as
+ * empty bins and a long empty stretch as one ⋯ break (`fillBins`). Every number is the engine's.
  */
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type {
@@ -20,6 +22,7 @@ import { Button } from "../../components/Button";
 import { tracksText } from "../../components/charts/formatCount";
 import { PixelBars } from "../../components/charts/PixelBars";
 import { libraryRulesState } from "../library/libraryLink";
+import { fillBins } from "./spreadBins";
 
 interface Item {
   /** The axis label. */
@@ -28,6 +31,8 @@ interface Item {
   name: string;
   count: number;
   rules: FilterRuleSet | null;
+  /** A ⋯ break in a numeric axis, not a bucket. */
+  gap: boolean;
 }
 
 interface Panel {
@@ -37,6 +42,8 @@ interface Panel {
   bucketLabel: string;
   /** The axis label for a bucket, when it is not the engine's label. */
   axis?: (value: string | number | null) => string;
+  /** A numeric axis: names a bin the engine did not send, so the holes are filled. */
+  fill?: (n: number) => string;
   /** The line for the tracks it cannot place. */
   unknown: (n: number) => string;
   noFile?: (n: number) => string;
@@ -62,6 +69,7 @@ const PANELS: Panel[] = [
     orientation: "vertical",
     bucketLabel: "Tempo (BPM)",
     axis: (value) => String(value),
+    fill: (n) => `${n} BPM`,
     unknown: (n) => `${tracksText(n)} ${has(n)} no tempo`,
     opens: true,
     unit: "BPM",
@@ -71,6 +79,7 @@ const PANELS: Panel[] = [
     title: "Year",
     orientation: "vertical",
     bucketLabel: "Year",
+    fill: String,
     unknown: (n) => `${tracksText(n)} ${has(n)} no year`,
     opens: true,
   },
@@ -96,6 +105,7 @@ const PANELS: Panel[] = [
     orientation: "vertical",
     bucketLabel: "Loudness (LUFS)",
     axis: (value) => String(value),
+    fill: (n) => `${n} LUFS`,
     unknown: (n) => `${tracksText(n)} ${is(n)} not measured yet`,
     noFile: (n) => `${tracksText(n)} ${has(n)} no file to measure`,
     opens: false,
@@ -104,12 +114,17 @@ const PANELS: Panel[] = [
 ];
 
 function itemsOf(panel: Panel, spread: StatisticsSpread): Item[] {
-  return spread.buckets.map((bucket) => ({
-    label: panel.axis ? panel.axis(bucket.value) : bucket.label,
-    name: `${bucket.label}, ${tracksText(bucket.count)}`,
-    count: bucket.count,
-    rules: bucket.rules,
-  }));
+  const buckets = panel.fill ? fillBins(spread.buckets, 1, panel.fill) : spread.buckets;
+  return buckets.map((bucket) => {
+    const gap = "gap" in bucket && bucket.gap === true;
+    return {
+      label: panel.axis && !gap ? panel.axis(bucket.value) : bucket.label,
+      name: `${bucket.label}, ${tracksText(bucket.count)}`,
+      count: bucket.count,
+      rules: bucket.rules,
+      gap,
+    };
+  });
 }
 
 interface LineProps {
@@ -142,12 +157,16 @@ export function SpreadsSection({ spreads }: { spreads: StatisticsSpreads }) {
   const navigate = useNavigate();
   const openRules = (rules: FilterRuleSet) =>
     navigate("/library", { state: libraryRulesState(rules) });
+  const itemsById = useMemo(
+    () => Object.fromEntries(PANELS.map((panel) => [panel.id, itemsOf(panel, spreads[panel.id])])),
+    [spreads],
+  );
 
   return (
     <>
       {PANELS.map((panel) => {
         const spread = spreads[panel.id];
-        const items = itemsOf(panel, spread);
+        const items = itemsById[panel.id]!;
         return (
           <div
             key={panel.id}
@@ -166,6 +185,7 @@ export function SpreadsSection({ spreads }: { spreads: StatisticsSpreads }) {
                 barName={(item) => item.name}
                 onSelect={panel.opens ? (item) => item.rules && openRules(item.rules) : undefined}
                 isSelectable={(item) => item.rules !== null}
+                isGap={(item) => item.gap}
                 bucketLabel={panel.bucketLabel}
               />
             ) : (
