@@ -54,7 +54,7 @@ import { useToast } from "../../components/Toast";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { settingsFocusState } from "../settingsLink";
 import { ColumnPicker, TrackTable, inMemorySource, useColumnLayout } from "../../components/table";
-import { readRowHeight } from "../../components/table/trackTableLayout";
+import { useRowHeight } from "../../components/table/trackTableLayout";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { trackCount } from "../clean/cleanFormat";
 import { cleanMatchState } from "../clean/cleanLink";
@@ -928,8 +928,7 @@ export function PrepareScreen({
   const transitionShown = transitionOpen && entries.length > 0;
 
   // The Set keeps two whole rows under the lanes and the strip (WAVE-07).
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  const rowHeight = useMemo(() => readRowHeight(), [scale]);
+  const rowHeight = useRowHeight();
   const setFloor = useSetAreaFloor(
     setBox,
     rowHeight,

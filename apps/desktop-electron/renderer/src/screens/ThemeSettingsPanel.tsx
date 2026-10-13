@@ -11,7 +11,10 @@ import { useScale } from "../tokens/ScaleContext";
 import { DEFAULT_SCALE, scaleChoices, scaleName, screenAvailHeight, type ScaleFactor } from "../tokens/scale";
 import { DEFAULT_THEME, isCustomThemeId, type ThemeId } from "../tokens/theme";
 import { useTheme } from "../tokens/ThemeContext";
+import { useKeyColours } from "../components/wheel/keyColourSetting";
+import { useRowDensity } from "../tokens/rowDensity";
 import { ResetToDefaults } from "./ResetToDefaults";
+import { TableSettings } from "./TableSettings";
 import "./theme-settings.css";
 
 const COLOR_FIELDS: { key: keyof CustomThemeColors; label: string }[] = [
@@ -76,6 +79,8 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
   const sizes = scaleChoices(scale, screenAvailHeight());
   const tooBig = sizes.filter((size) => size.disabled);
   const [saved, markSaved] = useSavedSignal();
+  const [density, setDensity] = useRowDensity();
+  const [coloured, setColoured] = useKeyColours();
   // A link that asks for the size control gets it scrolled into view and focused, once.
   const focusedFor = useRef<string | null>(null);
   useEffect(() => {
@@ -153,15 +158,20 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
     markSaved();
   };
 
-  // SET-11. A custom theme is not touched; only which theme and size are in use.
+  // SET-11. A custom theme is not touched; only which theme and size are in use,
+  // and the Tables choices (Compact rows, coloured keys).
   const resetToDefaults = () => {
-    const before = { theme: activeThemeId, scale };
+    const before = { theme: activeThemeId, scale, density, coloured };
     setTheme(DEFAULT_THEME);
     setScale(DEFAULT_SCALE);
+    setDensity("compact");
+    setColoured(true);
     markSaved();
     return () => {
       setTheme(before.theme);
       setScale(before.scale);
+      setDensity(before.density);
+      setColoured(before.coloured);
       markSaved();
     };
   };
@@ -200,6 +210,8 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
             fit in the Library.
           </p>
         ) : null}
+
+        <TableSettings onChange={markSaved} />
 
         <div className="theme-settings__actions">
           <Button variant="primary" onClick={openCreate}>

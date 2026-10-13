@@ -486,7 +486,7 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
       expect(defaultSize.probeSeen, "the long-task observer works here").toBe(true);
       expect(defaultSize.long.filter((duration) => duration > 50)).toEqual([]);
 
-      // 1× is the heaviest case: 33px rows put the most on screen.
+      // 1× is the heaviest case: the smallest rows (19px, R4-1) put the most on screen.
       await window.evaluate(() => localStorage.setItem("cuepoint-ui-lab-scale", "1"));
       await window.reload();
       await openLibrary(window);

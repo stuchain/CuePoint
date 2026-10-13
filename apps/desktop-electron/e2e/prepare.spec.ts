@@ -57,8 +57,10 @@ const ON_LINUX = process.platform === "linux";
  * Linux measured 8, held at 7; Windows measured 6 expanded and 7 as a rail.
  * PAGES-14 re-measured on Linux at the new default, 1.5×: 8 again (4 at 2×);
  * Windows' re-measure is owed. DEC-112's floor moved with the default.
+ * R4-1: rows now follow the text (29px at 1.5×, was 50), so Linux measures 19, held at 18 (expanded
+ * and as a rail); Windows and macOS hold 15 until measured.
  */
-const WHOLE_ROWS = ON_LINUX ? 7 : 6;
+const WHOLE_ROWS = ON_LINUX ? 18 : 15;
 const FLOOR = 5;
 
 /**
@@ -72,7 +74,8 @@ const FLOOR = 5;
  */
 // Linux measured 5, held at 4; Windows 3 expanded and 4 as a rail. At 1.5×
 // (PAGES-14) Linux measures 6 (2 at 2×), held at 5; Windows' re-measure is owed.
-const WHOLE_ROWS_PLAYING = ON_LINUX ? 5 : 3;
+// R4-1 (rows follow the text): Linux measures 13, held at 12; Windows holds 10 until measured.
+const WHOLE_ROWS_PLAYING = ON_LINUX ? 12 : 10;
 
 /**
  * The same with the tempo and key lanes open (PREP-11, DEC-111), sidebar
@@ -84,7 +87,8 @@ const WHOLE_ROWS_PLAYING = ON_LINUX ? 5 : 3;
  * transition strip does, since both take three of the Set's rows. At 1.5×
  * (PAGES-14) Linux measures 6 (2 at 2×), held at 5.
  */
-const WHOLE_ROWS_LANES = ON_LINUX ? 5 : 3;
+// R4-1 (rows follow the text): Linux measures 16, held at 15; Windows holds 13 until measured.
+const WHOLE_ROWS_LANES = ON_LINUX ? 15 : 13;
 
 /**
  * The same with the transition strip open (WAVE-07, DEC-120), sidebar expanded
@@ -97,7 +101,8 @@ const WHOLE_ROWS_LANES = ON_LINUX ? 5 : 3;
  * with a row to spare; held at the Windows figure until the Linux run records
  * its own. PAGES-14: Linux measured 5 at 1.5× (1 at 2×), held at 4.
  */
-const WHOLE_ROWS_TRANSITION = ON_LINUX ? 4 : 3;
+// R4-1 (rows follow the text): Linux measures 16, held at 15; Windows holds 13 until measured.
+const WHOLE_ROWS_TRANSITION = ON_LINUX ? 15 : 13;
 
 /**
  * The rows the Set keeps under the lanes or the strip whatever else is on
@@ -406,13 +411,20 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       await win.getByRole("menuitem", { name: "Show transition strip" }).click();
       const strip = win.getByRole("region", { name: "Transition" });
       await expect(strip).toBeVisible();
-      // One row of titles and a waveform two rows tall, in the Set's own rows.
+      // A row of titles and a waveform two rows tall, in the Set's own rows. The titles' row
+      // is a row, or the two lines of its name and times where those are taller (R4-1).
       const geometry = await win.evaluate(() => {
         const shown = document.querySelector<HTMLElement>(".prepare-transition")!;
         const row = document.querySelector<HTMLElement>('[aria-label="Set entries"] .track-table__row')!;
-        return { rows: getComputedStyle(shown).gridTemplateRows, row: row.getBoundingClientRect().height };
+        // --font-size-xs is 10px × --scale (a calc the computed style leaves unresolved).
+        const xs = 10 * parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--scale"));
+        return {
+          rows: getComputedStyle(shown).gridTemplateRows,
+          row: row.getBoundingClientRect().height,
+          titles: Math.max(row.getBoundingClientRect().height, 2.3 * xs),
+        };
       });
-      expect(geometry.rows).toBe(`${geometry.row}px ${geometry.row * 2}px`);
+      expect(geometry.rows).toBe(`${geometry.titles}px ${geometry.row * 2}px`);
       const transition: Record<string, Measured> = {};
       for (const collapsed of [false, true]) {
         await setSidebar(win, collapsed);
@@ -515,17 +527,14 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       const library = win.getByRole("table", { name: "Library tracks" });
       await expect(library).toBeVisible({ timeout: 30_000 });
       await expect(win.locator(".library-screen .track-table__row").first()).toBeVisible({ timeout: 30_000 });
-      // DEC-112 leaves the Library's fit as Phase 8 recorded it, so its page
-      // scrolls at this size. Scrolled as a person would, until the second row
-      // straddles the bottom of what the page shows: Phase 8's situation.
+      // Phase 8 found a double-click defeated where a row straddles the bottom of
+      // what is shown. Rows now follow the text (R4-1), so the Library's page fits
+      // at this size; the same situation is made by scrolling the table's own
+      // scroller half a row, as a person scrolling its rows would.
       await win.evaluate(() => {
-        const column = document.querySelector<HTMLElement>(".library-screen__main")!;
-        const row = document.querySelector<HTMLElement>(
-          '[aria-label="Library tracks"] .track-table__row[data-index="1"]',
-        )!;
-        const box = column.getBoundingClientRect();
-        const r = row.getBoundingClientRect();
-        column.scrollTop += r.top + r.height / 2 - (box.top + column.clientTop + column.clientHeight);
+        const table = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
+        const row = table.querySelector<HTMLElement>(".track-table__row")!;
+        table.scrollTop += row.getBoundingClientRect().height / 2;
       });
       const shown = await measure(win, "Library tracks");
       expect(shown.partial, "a Library row is cut by the table's edge").not.toBeNull();

@@ -11,6 +11,8 @@ import userEvent from "@testing-library/user-event";
 import { ToastProvider } from "../components";
 import { NEO_DARK_EDITOR_COLORS, saveCustomTheme } from "../tokens/customThemes";
 import { DEFAULT_SCALE, SCALE_OPTIONS, scaleOptionLabel } from "../tokens/scale";
+import { resetKeyColoursForTests } from "../components/wheel/keyColourSetting";
+import { resetRowDensityForTests } from "../tokens/rowDensity";
 import { ScaleProvider } from "../tokens/ScaleContext";
 import { ThemeProvider } from "../tokens/ThemeContext";
 import { BUILT_IN_THEME_OPTIONS } from "../tokens/theme";
@@ -36,7 +38,13 @@ beforeEach(() => {
   document.documentElement.removeAttribute("data-theme");
 });
 
-afterEach(() => localStorage.clear());
+afterEach(() => {
+  localStorage.clear();
+  delete document.documentElement.dataset.rowDensity;
+  delete document.documentElement.dataset.keyColours;
+  resetRowDensityForTests();
+  resetKeyColoursForTests();
+});
 
 describe("theme names", () => {
   it("offers the five built-in themes by their new names, ids unchanged", () => {
@@ -216,5 +224,28 @@ describe("custom themes", () => {
     expect(
       screen.getByText("No custom themes yet. Pick nine colors; borders are made from them."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Tables", () => {
+  const density = () => screen.getByRole("combobox", { name: "Row density" });
+  const keys = () => screen.getByRole("checkbox", { name: "Color keys" });
+
+  it("is part of Appearance, and Reset Appearance puts it back, Undo restores it", async () => {
+    renderPanel();
+    await userEvent.selectOptions(density(), "roomy");
+    await userEvent.click(keys());
+    expect(document.documentElement.dataset.rowDensity).toBe("roomy");
+    expect(document.documentElement.dataset.keyColours).toBe("off");
+
+    await userEvent.click(screen.getByRole("button", { name: "Reset Appearance" }));
+    expect(density()).toHaveValue("compact");
+    expect(keys()).toBeChecked();
+    expect(document.documentElement.dataset.rowDensity).toBeUndefined();
+    expect(document.documentElement.dataset.keyColours).toBeUndefined();
+
+    await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(density()).toHaveValue("roomy");
+    expect(keys()).not.toBeChecked();
   });
 });

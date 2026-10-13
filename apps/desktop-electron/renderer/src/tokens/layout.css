@@ -24,7 +24,13 @@
    */
   --screen-padding: var(--space-xl);
   --results-min-rows: 10;
-  --row-height: round(nearest, calc(var(--hit-min) * 0.75), 1px);
+  /*
+   * Table rows follow the text size, not the control size: --row-density is
+   * how many extra-small text heights a row takes. Compact (1.9) gives 19, 24,
+   * 29, 38 and 57px at 1, 1.25, 1.5, 2 and 3x; Roomy (2.6) gives 26, 33, 39, 52
+   * and 78. The Row density setting (tokens/rowDensity.ts) sets data-row-density.
+   */
+  --row-height: round(nearest, calc(var(--font-size-xs) * var(--row-density, 1.9)), 1px);
   --row-unmatched-bg: #5c2e2e;
   /* Breakpoints (reference values for JS/docs; media queries use literals) */
   --bp-sm: 600px;
@@ -43,6 +49,11 @@
     var(--results-col-min) var(--results-col-min) var(--results-col-min)
     minmax(calc(120px * var(--scale)), 1fr) var(--results-col-min) var(--results-col-min)
     var(--results-col-min) var(--results-col-min);
+}
+
+/* Roomy rows (Settings > Appearance > Tables). */
+:root[data-row-density="roomy"] {
+  --row-density: 2.6;
 }
 
 /*

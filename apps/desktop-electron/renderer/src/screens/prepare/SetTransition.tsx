@@ -27,7 +27,6 @@
  * Read without pictures for the two tracks, so a title and the words agree
  * whatever each half has drawn. Shown, never applied.
  */
-import { useMemo } from "react";
 
 import type {
   SetEntry,
@@ -37,7 +36,7 @@ import type {
   WaveformLoudness,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
-import { readRowHeight } from "../../components/table/trackTableLayout";
+import { useRowHeight } from "../../components/table/trackTableLayout";
 import {
   WAVEFORM_LOADING_WORDS,
   waitingWaveformShort,
@@ -51,7 +50,6 @@ import { useWaveformRequest } from "../../components/waveform/useWaveformRequest
 import { WaveformCanvas } from "../../components/waveform/WaveformCanvas";
 import type { WaveformEntry } from "../../components/waveform/waveformCache";
 import { useWaveformBox } from "../../components/waveform/waveformEnvironment";
-import { useScaleFactor } from "../../tokens/ScaleContext";
 import { describeSetWarning } from "./setWarnings";
 import {
   END_OF_SET,
@@ -188,10 +186,8 @@ export function SetTransition({
 }: SetTransitionProps) {
   const { status: analysis } = useWaveformAnalysis();
   const transition = transitionOf(entries, selectedEntryId);
-  const scale = useScaleFactor();
-  // As the table reads it, and when: the row height derives from the scale.
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  const rowHeight = useMemo(() => readRowHeight(), [scale]);
+  // As the table reads it, and when: the row height derives from the size and the row density.
+  const rowHeight = useRowHeight();
   const trackIds = transition
     ? transition.to
       ? [transition.from.trackId, transition.to.trackId]
@@ -211,7 +207,7 @@ export function SetTransition({
     <section
       className="prepare-transition"
       aria-label="Transition"
-      style={{ gridTemplateRows: `${rowHeight}px ${rowHeight * 2}px` }}
+      style={{ gridTemplateRows: `max(${rowHeight}px, calc(2.3 * var(--font-size-xs))) ${rowHeight * 2}px` }}
     >
       {transition ? (
         <>

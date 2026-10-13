@@ -7773,3 +7773,25 @@ on nearly every row (DEC-261 left Similar to its own step).
 - The Similar table's saved layout resets once (new storage key), so the new order shows for everyone.
 
 **Decided with**: User (R4-8, "apply ALL") · **Date**: 2026-10-13
+
+
+
+## DEC-278 — Table Rows Follow the Text Size, with a Row Density Setting
+
+**Status**: Approved · **Related**: R4-1, DEC-112, DEC-234, PAGES-05A, WAVE-06
+
+**Context**: Table rows were three quarters of the touch target (33 px at 1×, 50 at 1.5×) whatever the text inside
+them, so a Library showed four whole rows at the default window and size.
+
+**Decision**:
+- A row is the small text size times the density: `--row-height = round(nearest, --font-size-xs × density, 1px)`.
+  Compact (1.9) is the default for everyone: 19, 24, 29, 38 and 57 px at 1×, 1.25×, 1.5×, 2× and 3×. Roomy (2.6) is
+  26, 33, 39, 52 and 78 px. Settings ▸ Appearance ▸ Tables holds Row density and Color keys; Reset Appearance puts
+  both back.
+- Tables read the height through one hook (`useRowHeight`), so the rows re-measure when the size or density changes.
+- Things that were "two rows tall" keep their own height (the Track details waveform and the waveform settings
+  preview, 66.67 px × scale); Prepare's transition title row never gets shorter than its two lines of text.
+- DEC-112's whole-row floors are re-measured on Linux and raised (Library 12 at 1280×773, Prepare 19); the 5,000-row
+  scroll check (DEC-234) still records no long task at 1× and 1.5×.
+
+**Decided with**: User (R4-1, ★ Compact for everyone) · **Date**: 2026-10-13

@@ -228,7 +228,7 @@ describe("the transition strip", () => {
     // jsdom has no stylesheet, so the table and the strip both read the fallback.
     expect(readRowHeight()).toBe(ROW_HEIGHT_FALLBACK);
     expect(screen.getByRole("region", { name: "Transition" }).style.gridTemplateRows).toBe(
-      `${ROW_HEIGHT_FALLBACK}px ${ROW_HEIGHT_FALLBACK * 2}px`,
+      `max(${ROW_HEIGHT_FALLBACK}px, calc(2.3 * var(--font-size-xs))) ${ROW_HEIGHT_FALLBACK * 2}px`,
     );
   });
 
@@ -560,7 +560,7 @@ describe("the caption and its warning (FLW-19)", () => {
       <SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} shape={SHAPE} warnings={[CLASH]} onAccept={vi.fn()} />,
     );
     expect(screen.getByRole("region", { name: "Transition" }).style.gridTemplateRows).toBe(
-      `${ROW_HEIGHT_FALLBACK}px ${ROW_HEIGHT_FALLBACK * 2}px`,
+      `max(${ROW_HEIGHT_FALLBACK}px, calc(2.3 * var(--font-size-xs))) ${ROW_HEIGHT_FALLBACK * 2}px`,
     );
     await drawn("from", "to");
   });

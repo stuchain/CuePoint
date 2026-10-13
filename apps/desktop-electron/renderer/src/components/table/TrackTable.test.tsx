@@ -24,10 +24,11 @@
  * fake, and it is the only one: the component under test is the real one.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { formatBpm } from "../format/bpm";
+import { resetRowDensityForTests, saveRowDensity } from "../../tokens/rowDensity";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { TrackTable } from "./TrackTable";
 import { inMemorySource, pendingSource, type TrackTableSource } from "./trackTableSource";
@@ -113,6 +114,29 @@ function renderTable(props: Partial<Parameters<typeof TrackTable<Track>>[0]> = {
 function renderedRows(): HTMLElement[] {
   return screen.getAllByRole("row").filter((row) => row.dataset.index !== undefined);
 }
+
+describe("row height", () => {
+  it("follows a change of row density", () => {
+    resetRowDensityForTests();
+    document.documentElement.style.setProperty("--row-height", "19px");
+    try {
+      renderTable();
+      const heights = () => renderedRows().map((row) => row.style.height);
+      expect(heights()[0]).toBe("19px");
+      act(() => {
+        // The stylesheet answers 26 for roomy; jsdom resolves no calc, so say it.
+        document.documentElement.style.setProperty("--row-height", "26px");
+        saveRowDensity("roomy");
+      });
+      expect(heights()[0]).toBe("26px");
+      expect(renderedRows()[1]!.style.transform).toBe("translateY(26px)");
+    } finally {
+      document.documentElement.style.removeProperty("--row-height");
+      saveRowDensity("compact");
+      resetRowDensityForTests();
+    }
+  });
+});
 
 describe("headers", () => {
   it("renders one per column", () => {

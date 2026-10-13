@@ -194,9 +194,15 @@ describe("the --row-height token", () => {
     );
   });
 
-  it("rounds to a whole pixel", () => {
+  it("follows the text size, rounded to a whole pixel", () => {
     expect(layoutCss).toMatch(
-      /--row-height:\s*round\(nearest,\s*calc\(var\(--hit-min\) \* 0\.75\),\s*1px\);/,
+      /--row-height:\s*round\(nearest,\s*calc\(var\(--font-size-xs\) \* var\(--row-density, 1\.9\)\),\s*1px\);/,
+    );
+  });
+
+  it("is roomier when the page says roomy", () => {
+    expect(layoutCss).toMatch(
+      /:root\[data-row-density="roomy"\]\s*\{\s*--row-density:\s*2\.6;\s*\}/,
     );
   });
 });

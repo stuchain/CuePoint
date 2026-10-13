@@ -58,9 +58,9 @@
   gap: var(--space-xs);
 }
 
-/* Two rows of the table tall, the Inspector's waveform height (WAVE-06). */
+/* The Inspector's waveform height (WAVE-06): its own height, not two table rows (R4-1). */
 .cp-waveform-settings__canvas {
-  height: calc(var(--row-height) * 2);
+  height: round(nearest, calc(66.67px * var(--scale)), 1px);
   max-width: 100%;
   border: var(--divider);
   background: var(--bg-panel);

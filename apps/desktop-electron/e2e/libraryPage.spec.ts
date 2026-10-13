@@ -131,20 +131,24 @@ async function importCollection(window: Page, xmlPath: string) {
  * buttons) and measures 4 now: the filter row lost the "Search" word above its box (the
  * label stays for screen readers) and Add filter and Tags… dropped their full hit-target
  * floor, which took the filter bar from 162px to 146px and left the table 271px (a 53px
- * header, four 50px rows and 18px over). The toolbar's buttons stay 30px: a taller button
+ * header, four 50px rows and 18px over; before R4-1). The toolbar's buttons stay 30px: a taller button
  * costs the 4th row's margin (DEC-217). Windows and macOS are owed a measure and hold one
  * row lower until then.
+ *
+ * R4-1: rows now follow the text (29px at 1.5×, was 50), so Linux measures 12 at 1,280 × 773
+ * and 11 at the 1,264 × 735 inner size; Windows and macOS hold one lower (11 and 10) until
+ * measured.
  *
  * The 1,264 × 735 page a Windows window leaves (1,280 × 800 outside, less the frame and the
  * menu bar) is 38px shorter than the Linux one: three whole rows there, with the toolbar
  * on two lines (70px). A third line (103px) leaves two.
  */
 const ON_LINUX = process.platform === "linux";
-const WHOLE_ROWS_LIBRARY_MEASURED = 4;
+const WHOLE_ROWS_LIBRARY_MEASURED = 12;
 const WHOLE_ROWS_LIBRARY = ON_LINUX
   ? WHOLE_ROWS_LIBRARY_MEASURED
   : WHOLE_ROWS_LIBRARY_MEASURED - 1;
-const WHOLE_ROWS_LIBRARY_WINDOWS_INNER = 3;
+const WHOLE_ROWS_LIBRARY_WINDOWS_INNER = 10;
 
 test.describe("The Library page (LIBRARY-11)", () => {
   let userDataDir: string;

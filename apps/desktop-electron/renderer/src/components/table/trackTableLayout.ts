@@ -19,7 +19,10 @@
  * the scale multiplies it, so the same table is legible at 1×, 2× and 3×
  * without three sets of numbers.
  */
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
+
+import { useRowDensity } from "../../tokens/rowDensity";
+import { useScaleFactor } from "../../tokens/ScaleContext";
 
 /** Qt-style minimum column width in CSS pixels, before scale. */
 export const COLUMN_MIN_PX = 80;
@@ -187,6 +190,19 @@ export function readRowHeight(): number {
     .trim();
   const parsed = Number.parseFloat(raw);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : ROW_HEIGHT_FALLBACK;
+}
+
+/**
+ * The row height the stylesheet is using, measured again when the size or the
+ * row density changes: `--row-height` derives from both (`tokens/layout.css`),
+ * and a virtualizer told the old height puts every row in the wrong place.
+ */
+export function useRowHeight(): number {
+  const scale = useScaleFactor();
+  const [density] = useRowDensity();
+  // The values are not read, only waited on: what is measured is the stylesheet.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => readRowHeight(), [scale, density]);
 }
 
 /**

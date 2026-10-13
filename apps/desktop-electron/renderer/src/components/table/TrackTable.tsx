@@ -23,6 +23,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -39,7 +40,7 @@ import {
   gridTemplate,
   insertionAt,
   orderedWidths,
-  readRowHeight,
+  useRowHeight,
   resolveWidths,
   stickyLeft,
   totalWidth,
@@ -379,11 +380,7 @@ export function TrackTable<Row>({
   const template = useMemo(() => gridTemplate(ordered), [ordered]);
   const minWidth = useMemo(() => totalWidth(ordered), [ordered]);
 
-  // `scale` looks unused, but `readRowHeight` reads `--row-height`, which
-  // derives from `--scale`. Without the dependency the virtualizer keeps the
-  // old height and every row lands in the wrong place after a scale change.
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  const rowHeight = useMemo(() => readRowHeight(), [scale]);
+  const rowHeight = useRowHeight();
 
   const virtualizer = useVirtualizer({
     count: source.total,
@@ -394,6 +391,16 @@ export function TrackTable<Row>({
     // page of waveforms in them, one task holding both was a long task.
     useFlushSync: false,
   });
+
+  // The virtualizer keeps the sizes it estimated: a new row height (a new size
+  // or row density) is told to it, or every row stays where the old one put it.
+  const { measure } = virtualizer;
+  const measuredHeight = useRef(rowHeight);
+  useLayoutEffect(() => {
+    if (measuredHeight.current === rowHeight) return;
+    measuredHeight.current = rowHeight;
+    measure();
+  }, [measure, rowHeight]);
 
   // The keyboard's row. Separate from the screen's active row because a Shift range keeps that
   // one where it started, and it is drawn only once a key has moved it, so a mouse user never

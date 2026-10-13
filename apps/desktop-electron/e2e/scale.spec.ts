@@ -5,8 +5,9 @@
  * else 1.5×; Small where even 1.25× is too big). At 1.25× and 1.5× no border width or
  * shadow length on the Library or Settings is fractional (the pixel style stays sharp).
  * In the default 1,280 × 800 window nothing scrolls sideways at any of the five sizes,
- * and the Library's table rows are the size's `--row-height` (33, 41, 50, 66 and 99
- * pixels), the header's height too, with no cell's text cut.
+ * and the Library's table rows are the size's `--row-height` (19, 24, 29, 38 and 57
+ * pixels: 1.9 times the extra-small text, Compact being the default row density),
+ * the header's height too, with no cell's text cut.
  *
  * Sizes are applied the way someone applies them: the stored value, then a reload.
  */
@@ -26,11 +27,11 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 const TONE = path.join(REPO_ROOT, "src", "tests", "fixtures", "audio", "tone.mp3");
 
 const SIZES = [
-  { scale: 1, row: 33 },
-  { scale: 1.25, row: 41 },
-  { scale: 1.5, row: 50 },
-  { scale: 2, row: 66 },
-  { scale: 3, row: 99 },
+  { scale: 1, row: 19 },
+  { scale: 1.25, row: 24 },
+  { scale: 1.5, row: 29 },
+  { scale: 2, row: 38 },
+  { scale: 3, row: 57 },
 ] as const;
 const STORAGE_KEY = "cuepoint-ui-lab-scale";
 const TRACKS = 12;
