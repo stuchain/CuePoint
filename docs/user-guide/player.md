@@ -46,13 +46,17 @@ Along the bottom: what is playing, how far through it is, and the controls.
 - **Play/pause, previous, next.** Previous within the first few seconds goes
   back a track; after that it restarts the one playing, which is what you
   meant if you just missed the intro.
-- **The position bar** can be dragged to seek.
+- **The position bar** can be clicked or dragged to seek; the playhead goes
+  straight to the spot. With it focused, the arrow keys step 5 seconds.
 - **Shuffle** reorders the queue without changing the view it came from.
 - **Repeat** cycles off → all → one, and says which in words beside its icon
   ("All" or "One"). Repeat-one replays the current track when it *ends*;
   pressing next still moves on.
 - **The queue button** shows how many tracks are queued, and hides the number
   when there are none.
+- **The waveform button** hides or shows the [zoomed
+  waveform](waveforms.md#where-you-see-them) above the bar. It is lit while the
+  strip shows, and CuePoint remembers your choice.
 - **Volume** is CuePoint's own, separate from your system volume.
 
 Shuffle and repeat are remembered between sessions. What was playing, and where

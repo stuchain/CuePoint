@@ -19,14 +19,20 @@ slider, and hovering it says why. See [Playing music](player.md#waveforms).
 
 **The zoomed waveform.** A full-width strip just above the player bar shows
 about 8 seconds either side of the playhead, which stays in the middle while
-the music scrolls past. It draws a thin line on every beat and a stronger one
-on each bar, from the track's Rekordbox beat grid; a track without a grid shows
-no lines (hover the strip to read why), because CuePoint never guesses one.
-Click anywhere on it to jump there. The first time a track plays, the strip
-shows the coarse whole-track waveform stretched for a second or two while
-CuePoint reads the file again in detail; tracks played recently come back at
-once. Turn it off with **Settings → Waveforms → Zoomed waveform above the
-player**.
+the music scrolls past. Scroll the mouse wheel over it to zoom: up zooms in,
+down zooms out, from 4 to 64 seconds across the strip, and CuePoint remembers
+the span. Hover it and a hint just above the strip (never over the waveform)
+says "Click to seek · Scroll to zoom" and the span. It draws a thin line on
+every beat and a stronger one on each bar, from the track's Rekordbox beat
+grid; zoomed far out, only the bar lines are drawn. A track without a grid
+shows no lines (the hint says why), because CuePoint never guesses one.
+Click anywhere on it to jump there. While paused, the strip is dimmed. The
+first time a track plays, the strip shows the coarse whole-track waveform
+stretched for a second or two while CuePoint reads the file again in detail;
+tracks played recently come back at once. The **waveform button** on the player
+bar hides or shows it, as does **Settings → Waveforms → Zoomed waveform above
+the player**; both are the same remembered choice. Until you choose, a short
+window (under 700 px of content) starts without it.
 
 **Track details.** The selected track's waveform sits under its title, with its
 hot cues (each with its letter), memory cues, loops and beat grid. When that

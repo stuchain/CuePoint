@@ -7326,3 +7326,32 @@ size after an update); a live row count (it would flip while a window is resized
 **Amends**: DEC-161 (five sizes). **Notes**: DEC-207 (the update note's size line is unchanged).
 
 **Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13
+
+## DEC-257 — The Zoomed Waveform: a Bar Button, Wheel Zoom, Short Windows and a Dim While Paused
+
+**Status**: Approved · **Related**: DEC-240, DEC-250, C16c, C24, C30, R2-2, R4-11
+
+**Context**: Round 2 of the wish list. Stelios asked how the zoomed strip zooms (C24, it did not), wanted it
+optional from where he works rather than only in Settings (C30), and two reviews found the strip loud
+while paused (R4-11) and too tall for short windows (R2-2).
+
+**Decision** (Stelios's picks 10-13; "apply ALL", ★ answers in SCOPE.md):
+- **Bar button (C30):** a waveform button after Queue on the player bar, in the bar's own button style
+  (the bar's look is otherwise kept, C16c; the volume slider is a little shorter to make room). It is lit
+  while the strip shows and is the same remembered choice as Settings → Waveforms.
+- **Short windows (R2-2):** until you choose, the strip is hidden when the window's content is under
+  700 px tall and shown otherwise, live as the window is resized. The default 1280x800 window (about
+  740–775 px of content, depending on the system) keeps it; a 1280x720 window does not. Any choice,
+  from the button or Settings, wins from then on. (★ was "740 px so the default window keeps it"; the
+  line is measured on content, which is smaller than the window, so 700 keeps that promise.)
+- **Wheel zoom (C24):** the mouse wheel over the strip zooms through 4, 6, 8, 12, 16, 24, 32, 48 and 64 s,
+  one notch a stop (a trackpad builds up to a stop), with the playhead kept centred. No on-screen controls.
+  The span is remembered. The hint ("Click to seek · Scroll to zoom · 16 s") is the app's own (DEC-240)
+  and sits just above the strip, never over the waveform. When beats would be under 4 columns apart, only
+  bar lines are drawn.
+- **Dim while paused (R4-11):** the strip's waveform is drawn at 45% while paused. It stays full width,
+  lined up with the bar (R4-11's "start at the content column" was not taken).
+
+**Amends**: DEC-250 (fixed ~8 s either side; on by default everywhere; Settings the only switch).
+
+**Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13
