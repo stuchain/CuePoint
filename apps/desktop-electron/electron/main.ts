@@ -12,6 +12,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { EngineSupervisor, resolvePreloadPath } from "./engineSupervisor";
 import { BEATPORT_PARTITION, BeatportAuth, ElectronSignInHost } from "./beatportAuth";
 import { beatportEndpoints } from "./beatportAuthRules";
+import { BeatportSignInLog } from "./beatportSignInLog";
 import { BEATPORT_TOKEN_FILE, BeatportTokenStore } from "./beatportTokenStore";
 import { resolveAppIconPath } from "./appIcon";
 import { installAppMenu, type MenuPlatform } from "./appMenu";
@@ -190,6 +191,21 @@ function beatportAuth(): BeatportAuth {
     packaged: app.isPackaged,
     e2e: displayChoice(process.env[E2E_DISPLAY_ENV]) !== null,
   });
+  // A token-free log of the sign-in, next to cuepoint.log (the engine says where; Electron's own
+  // logs folder is the fallback). It is always on: it holds scopes, statuses, hosts and paths only.
+  const signInLog = new BeatportSignInLog({
+    getLogsDir: async () => (await engine.getLogsDir()).logs_dir,
+    fallbackDir: () => app.getPath("logs"),
+  });
+  const log = (event: string, fields?: Record<string, string | number | boolean | null | undefined>): void =>
+    signInLog.log(event, fields);
+  log("start", {
+    app: app.getVersion(),
+    platform: process.platform,
+    arch: process.arch,
+    electron: process.versions.electron,
+    endpoints: endpoints.extraOrigins.length > 0 ? "e2e" : "beatport",
+  });
   beatportSignIn = new BeatportAuth({
     host: new ElectronSignInHost({
       BrowserWindow,
@@ -197,6 +213,7 @@ function beatportAuth(): BeatportAuth {
       parent: () => mainWindow,
       packaged: app.isPackaged,
       endpoints,
+      log,
     }),
     store: new BeatportTokenStore(path.join(app.getPath("userData"), BEATPORT_TOKEN_FILE), safeStorage, (message) => breadcrumb("beatport", message)),
     engine: {
@@ -214,6 +231,7 @@ function beatportAuth(): BeatportAuth {
     // The live token joins what the report scrubber removes.
     onToken: addReportingToken,
     breadcrumb: (message) => breadcrumb("beatport", message),
+    log,
   });
   beatportSignIn.init();
   // A computer that slept past the token's end renews on waking (the timer may have been late).

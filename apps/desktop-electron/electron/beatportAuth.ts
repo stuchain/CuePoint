@@ -43,6 +43,7 @@ import {
   type BeatportEndpoints,
   type StoredBeatportToken,
 } from "./beatportAuthRules";
+import { hostAndPath, introspectFields, sessionFields, type SignInLogFields, type SignInLogFn } from "./beatportSignInLog";
 
 /** The partition the sign-in window lives in; the default session never sees Beatport's cookies. */
 export const BEATPORT_PARTITION = "persist:beatport-signin";
@@ -107,6 +108,8 @@ export interface BeatportAuthOptions {
   onToken?: (token: string) => void;
   /** A breadcrumb with no token or header in it. */
   breadcrumb?: (message: string) => void;
+  /** The token-free sign-in log (`beatport-signin.log`); the log itself keeps secrets out. */
+  log?: SignInLogFn;
   now?: () => number;
   pollMs?: number;
   refreshWaitMs?: number;
@@ -167,9 +170,22 @@ export class BeatportAuth {
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private pushChain: Promise<void> = Promise.resolve();
   private readonly open = new Set<SignInSurface>();
+  /** Counts introspections for the log, so a line can be matched with the backoff after it. */
+  private introspectCount = 0;
+  /** Whether the last push to the engine got through (for the log). */
+  private lastPushOk = true;
 
   constructor(private readonly options: BeatportAuthOptions) {
     this.now = options.now ?? Date.now;
+  }
+
+  /** A line in the sign-in log. Never throws; the log decides what may be written. */
+  private note(event: string, fields?: SignInLogFields): void {
+    try {
+      this.options.log?.(event, fields);
+    } catch {
+      /* the log never breaks a sign-in */
+    }
   }
 
   /** What the renderer is shown now. */
@@ -282,6 +298,7 @@ export class BeatportAuth {
     const surface = this.track(this.options.host.open({ visible: true }));
     const captured = await this.capture(surface, { exclude: null, timeoutMs: null });
     this.release(surface);
+    this.note("capture ended", { why: captured.why });
     let found = captured.found;
     // The page may have finished in the last poll interval, or its header never reached us: when
     // the window is closed with nothing, look at the session once more before giving up.
@@ -302,9 +319,15 @@ export class BeatportAuth {
    */
   private async finalCheck(generation: number): Promise<Verified | null> {
     const session = await this.readSession();
-    if (generation !== this.generation || session.kind !== "token") return null;
+    if (generation !== this.generation) return null;
+    if (session.kind !== "token") {
+      this.note("final read", { outcome: session.kind === "ended" ? "ended" : "none" });
+      return null;
+    }
     const verdict = this.withSessionRule(await this.verify(session.token, session.expiresAt), session.token, session.scope);
-    if (generation !== this.generation || verdict.kind !== "ok") return null;
+    if (generation !== this.generation) return null;
+    this.note("final read", { outcome: verdict.kind === "ok" ? "token" : verdict.kind });
+    if (verdict.kind !== "ok") return null;
     return { ...verdict.verified, via: "final-read" };
   }
 
@@ -387,14 +410,17 @@ export class BeatportAuth {
     const direct = await this.renewDirect(stored);
     if (generation !== this.generation) return this.status();
     if (direct.kind === "renewed") {
+      this.note("renew", { outcome: "renewed", via: "direct" });
       await this.accept(direct.verified, generation);
       return this.status();
     }
     if (direct.kind === "same") {
+      this.note("renew", { outcome: "same" });
       this.sameToken(stored, direct.expiresAt);
       return this.status();
     }
     if (direct.kind === "ended") {
+      this.note("renew", { outcome: "ended" });
       this.siteSignInEnded(stored);
       return this.status();
     }
@@ -410,6 +436,7 @@ export class BeatportAuth {
       this.release(surface);
       if (generation !== this.generation) return this.status();
       if (found) {
+        this.note("renew", { outcome: "renewed", via: "hidden-window" });
         const complete = await this.withSessionExpiry(found);
         await this.accept(complete, generation);
         return this.status();
@@ -481,12 +508,15 @@ export class BeatportAuth {
       this.options.breadcrumb?.("beatport sign-in could not be renewed");
       this.options.broadcast(this.status());
     }
-    this.scheduleRetry(RENEW_BACKOFF_MS[Math.min(this.retry, RENEW_BACKOFF_MS.length - 1)]!);
+    const wait = RENEW_BACKOFF_MS[Math.min(this.retry, RENEW_BACKOFF_MS.length - 1)]!;
+    this.note("renew", { outcome: "failed", backoff_s: Math.round(wait / 1000) });
+    this.scheduleRetry(wait);
     this.retry += 1;
   }
 
   /** Forget the token everywhere: file, memory, the partition's cookies and the engine. */
   async signOut(): Promise<BeatportAuthStatus> {
+    this.note("signout");
     this.generation += 1;
     this.retry = 0;
     this.fallbackTried = false;
@@ -510,6 +540,7 @@ export class BeatportAuth {
     if (typeof raw !== "string") throw new Error("The token must be text.");
     const token = raw.trim();
     if (token.length > MAX_PASTED_TOKEN) throw new Error("That token is too long.");
+    this.note("pasted", { state: token === "" ? "cleared" : "saved" });
     this.generation += 1;
     this.retry = 0;
     this.fallbackTried = false;
@@ -537,8 +568,10 @@ export class BeatportAuth {
   private async accept(found: Verified, generation: number): Promise<void> {
     // Signed out, or a token pasted, while this was being checked: it is no longer wanted.
     if (generation !== this.generation) return;
+    let stored = "failed";
     try {
-      this.options.store.save({ token: found.token, expires_at: found.expiresAt, source: "signin" });
+      const kept = this.options.store.save({ token: found.token, expires_at: found.expiresAt, source: "signin" });
+      stored = kept ? "file" : this.options.store.canKeep() ? "failed" : "memory";
     } catch {
       // The store keeps the token in memory before it writes: the sign-in holds for this run.
       this.options.breadcrumb?.("could not keep the token");
@@ -550,6 +583,13 @@ export class BeatportAuth {
     await this.pushToEngine();
     // Signed out, or the app disposed, while the engine was being told: nothing more to arrange.
     if (generation !== this.generation) return;
+    const end = expiryMs(found.expiresAt);
+    this.note("accepted", {
+      via: found.via,
+      expires_in_s: end === null ? undefined : Math.round((end - this.now()) / 1000),
+      store: stored,
+      engine: this.lastPushOk ? "ok" : "failed",
+    });
     this.scheduleRefresh();
     this.options.breadcrumb?.("beatport sign-in accepted");
     this.options.broadcast(this.status());
@@ -563,7 +603,9 @@ export class BeatportAuth {
     const next = this.pushChain.then(async () => {
       try {
         await this.options.engine.setSession(this.options.store.load()?.token ?? null);
+        this.lastPushOk = true;
       } catch {
+        this.lastPushOk = false;
         this.options.breadcrumb?.("could not hand the token to the engine");
       }
     });
@@ -648,6 +690,8 @@ export class BeatportAuth {
       >();
       /** What the latest session read said about its own token (the second detector). */
       let sessionScope: SessionScope | null = null;
+      /** Each distinct bearer this window sends, by order of first sight (for the log). */
+      const bearers = new Map<string, number>();
       let interval: ReturnType<typeof setInterval> | null = null;
       let timeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -670,7 +714,9 @@ export class BeatportAuth {
         if (expiryHint !== null) entry.hint = expiryHint;
         if (entry.latched || entry.asking || this.now() < entry.nextAt) return;
         entry.asking = true;
-        const verdict = this.withSessionRule(await this.verify(token, entry.hint), token, sessionScope);
+        const n = ++this.introspectCount;
+        const verdict = this.withSessionRule(await this.verify(token, entry.hint, n), token, sessionScope);
+        if (verdict.kind === "ok" && verdict.verified.via === "session-scope") this.note("session scope", { n, verdict: "user" });
         entry.asking = false;
         if (done) return;
         if (verdict.kind === "ok") {
@@ -682,6 +728,7 @@ export class BeatportAuth {
           const wait = VERIFY_BACKOFF_MS[Math.min(entry.attempts, VERIFY_BACKOFF_MS.length - 1)]!;
           entry.attempts += 1;
           entry.nextAt = this.now() + wait;
+          this.note("backoff", { n, attempts: entry.attempts, next_s: Math.round(wait / 1000) });
           // Ask again when the wait is over even if the page sends nothing more.
           entry.timer = setTimeout(() => {
             entry!.timer = null;
@@ -713,7 +760,13 @@ export class BeatportAuth {
         }
       };
 
-      surface.onBearer((token) => void consider(token));
+      surface.onBearer((token) => {
+        if (!bearers.has(token)) {
+          bearers.set(token, bearers.size + 1);
+          this.note("bearer seen", { n: bearers.size, jwt: token.startsWith("eyJ"), len: token.length });
+        }
+        void consider(token);
+      });
       surface.onClosed(() => finish(null, "closed"));
       interval = setInterval(() => void poll(), this.options.pollMs ?? SESSION_POLL_MS);
       if (options.timeoutMs !== null) timeout = setTimeout(() => finish(null, "timeout"), options.timeoutMs);
@@ -726,39 +779,48 @@ export class BeatportAuth {
    * inactive token and a guest's are a definite no; a 403 (a firewall answers that too), another
    * failing status, an answer that is not JSON or one that names no user cannot decide.
    */
-  private async verify(token: string, expiryHint: string | null): Promise<Verdict> {
+  private async verify(token: string, expiryHint: string | null, n: number = ++this.introspectCount): Promise<Verdict> {
+    let info: SignInLogFields = {};
+    const settle = (verdict: Verdict, reason: string): Verdict => {
+      this.note("introspect", { n, ...info, verdict: verdict.kind, reason });
+      return verdict;
+    };
     let text: string;
     try {
       const response = await this.options.fetch(`${this.options.apiBase.replace(/\/+$/, "")}/auth/o/introspect/`, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
         signal: AbortSignal.timeout(INTROSPECT_TIMEOUT_MS),
       });
-      if (response.status === 401) return { kind: "rejected", reason: "http-401" };
+      info = { status: response.status, type: (response.headers.get("content-type") ?? "none").split(";")[0]!.trim().toLowerCase() };
+      if (response.status === 401) return settle({ kind: "rejected", reason: "http-401" }, "http-401");
       if (!response.ok) {
-        return { kind: "inconclusive", reason: response.status >= 500 ? "http-5xx" : `http-${response.status}` };
+        const reason = response.status >= 500 ? "http-5xx" : `http-${response.status}`;
+        return settle({ kind: "inconclusive", reason }, reason);
       }
       text = await response.text();
     } catch (error) {
       const name = error instanceof Error ? error.name : "";
-      return { kind: "error", reason: name === "TimeoutError" || name === "AbortError" ? "timeout" : "network" };
+      const reason = name === "TimeoutError" || name === "AbortError" ? "timeout" : "network";
+      return settle({ kind: "error", reason }, reason);
     }
     let body: unknown;
     try {
       body = JSON.parse(text);
     } catch {
-      return { kind: "error", reason: "not-json" };
+      return settle({ kind: "error", reason: "not-json" }, "not-json");
     }
+    info = { ...info, ...introspectFields(body) };
     const verdict = introspectVerdict(body);
-    if (verdict === "anon") return { kind: "rejected", reason: "anon" };
-    if (verdict === "inactive") return { kind: "rejected", reason: "inactive" };
-    if (verdict === "unknown") return { kind: "inconclusive", reason: "no-user" };
+    if (verdict === "anon") return settle({ kind: "rejected", reason: "anon" }, "anon");
+    if (verdict === "inactive") return settle({ kind: "rejected", reason: "inactive" }, "inactive");
+    if (verdict === "unknown") return settle({ kind: "inconclusive", reason: "no-user" }, "no-user");
     // The session JSON's end is the one that holds; the introspection of this site gives none.
     const expiresAt =
       expiryHint ??
       introspectExpiresAt(body, this.now()) ??
       jwtExpiresAt(token) ??
       new Date(this.now() + DEFAULT_TOKEN_TTL_MS).toISOString();
-    return { kind: "ok", verified: { token, expiresAt, fromSession: expiryHint !== null, via: "introspect" } };
+    return settle({ kind: "ok", verified: { token, expiresAt, fromSession: expiryHint !== null, via: "introspect" } }, "user");
   }
 }
 
@@ -773,6 +835,8 @@ export interface ElectronSignInHostOptions {
   parent: () => BrowserWindow | null;
   packaged: boolean;
   endpoints: BeatportEndpoints;
+  /** The token-free sign-in log: pages by host and path only, never a query or a hash. */
+  log?: SignInLogFn;
 }
 
 /**
@@ -785,6 +849,8 @@ export interface ElectronSignInHostOptions {
  */
 export class ElectronSignInHost implements SignInHost {
   private readonly bearerListeners = new Set<(token: string) => void>();
+  /** The last session summary logged, so a poll that finds nothing new adds no line. */
+  private lastSessionLine = "";
 
   constructor(private readonly options: ElectronSignInHostOptions) {
     const { session, endpoints } = options;
@@ -803,6 +869,14 @@ export class ElectronSignInHost implements SignInHost {
     });
   }
 
+  private note(event: string, fields?: SignInLogFields): void {
+    try {
+      this.options.log?.(event, fields);
+    } catch {
+      /* the log never breaks a sign-in */
+    }
+  }
+
   open({ visible }: { visible: boolean }): SignInSurface {
     const { BrowserWindow: Window, endpoints } = this.options;
     const parent = visible ? this.options.parent() : null;
@@ -818,11 +892,15 @@ export class ElectronSignInHost implements SignInHost {
       webPreferences: this.webPreferences(),
     });
     win.removeMenu();
+    this.note("window", { mode: visible ? "visible" : "hidden" });
     const popups = new Set<BrowserWindow>();
-    this.guard(win.webContents, visible, popups);
+    this.guard(win.webContents, visible, popups, "window");
+    /** Set when CuePoint closes the window itself, so the log can tell that from the person. */
+    let closedByApp = false;
     const closePopups = (): void => {
       for (const popup of [...popups]) {
         popups.delete(popup);
+        // `close()` can be cancelled by the page (beforeunload) and would leave the popup up.
         if (!popup.isDestroyed()) popup.destroy();
       }
     };
@@ -834,6 +912,7 @@ export class ElectronSignInHost implements SignInHost {
     this.bearerListeners.add(forward);
     const closed = new Set<() => void>();
     win.on("closed", () => {
+      this.note("closed", { by: closedByApp ? "app" : "person" });
       closePopups();
       this.bearerListeners.delete(forward);
       for (const listener of [...closed]) listener();
@@ -849,8 +928,12 @@ export class ElectronSignInHost implements SignInHost {
       fetchSessionJson: () => this.fetchSessionJson(),
       close: () => {
         closePopups();
+        closedByApp = true;
         // `close()` can be cancelled by the page (beforeunload) and would leave the window up.
-        if (!win.isDestroyed()) win.destroy();
+        if (!win.isDestroyed()) {
+          win.destroy();
+          this.note("destroyed");
+        }
       },
     };
   }
@@ -864,14 +947,32 @@ export class ElectronSignInHost implements SignInHost {
         credentials: "include",
         signal: AbortSignal.timeout(10_000),
       });
-      if (!response.ok) return null;
+      if (!response.ok) {
+        this.noteSession({ status: response.status, type: response.headers.get("content-type") });
+        return null;
+      }
       const json = (await response.json()) as unknown;
+      this.noteSession({ status: response.status, type: response.headers.get("content-type") }, json);
       // The server's clock may differ from this computer's: move the token's end onto ours.
       const date = Date.parse(response.headers.get("date") ?? "");
       return Number.isNaN(date) ? json : rebaseSessionExpiry(json, date - (sent + Date.now()) / 2);
     } catch {
+      this.noteSession({ status: "error", type: null });
       return null;
     }
+  }
+
+  /** One line per change in what the session endpoint says, not one per poll. */
+  private noteSession(response: { status: number | string; type: string | null }, json?: unknown): void {
+    const fields: SignInLogFields = {
+      status: response.status,
+      type: (response.type ?? "none").split(";")[0]!.trim().toLowerCase(),
+      ...(json === undefined ? {} : sessionFields(json)),
+    };
+    const line = JSON.stringify(fields);
+    if (line === this.lastSessionLine) return;
+    this.lastSessionLine = line;
+    this.note("session read", fields);
   }
 
   async clearData(): Promise<void> {
@@ -900,11 +1001,14 @@ export class ElectronSignInHost implements SignInHost {
    * goes anywhere else is refused). Every popup is kept in `popups` so closing the sign-in closes
    * it too.
    */
-  private guard(contents: WebContents, allowPopups: boolean, popups: Set<BrowserWindow>): void {
+  private guard(contents: WebContents, allowPopups: boolean, popups: Set<BrowserWindow>, kind: "window" | "popup"): void {
     const extra = this.options.endpoints.extraOrigins;
     const refuse = (event: { preventDefault: () => void }, url: string): void => {
       if (url === "about:blank") return;
-      if (!isAllowedSignInUrl(url, extra)) event.preventDefault();
+      if (!isAllowedSignInUrl(url, extra)) {
+        event.preventDefault();
+        this.note("refused", { kind, ...hostAndPath(url) });
+      }
     };
     contents.setWindowOpenHandler(({ url }) => {
       if (!allowPopups || (url !== "about:blank" && !isAllowedSignInUrl(url, extra))) return { action: "deny" };
@@ -916,9 +1020,18 @@ export class ElectronSignInHost implements SignInHost {
     contents.on("did-create-window", (child) => {
       popups.add(child);
       child.on("closed", () => popups.delete(child));
-      this.guard(child.webContents, allowPopups, popups);
+      this.note("popup", { kind: "opened" });
+      this.guard(child.webContents, allowPopups, popups, "popup");
     });
     contents.on("will-navigate", refuse);
     contents.on("will-redirect", refuse);
+    // For the log only: where the page went, by host and path (the OAuth code and state are in the query).
+    contents.on("did-navigate", (_event, url) => this.note("nav", { kind, ...hostAndPath(url) }));
+    contents.on("did-redirect-navigation", (details, url) => {
+      this.note("redirect", { kind, ...hostAndPath(typeof url === "string" ? url : details.url) });
+    });
+    contents.on("did-fail-load", (_event, code, _description, url, isMainFrame) => {
+      if (isMainFrame) this.note("load-failed", { kind, code, host: hostAndPath(url).host });
+    });
   }
 }

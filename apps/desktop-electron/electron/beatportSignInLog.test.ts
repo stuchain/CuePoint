@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { BeatportSignInLog, SIGNIN_LOG_FILE, SIGNIN_LOG_MAX_BYTES, hostAndPath, type SignInLogFs } from "./beatportSignInLog";
+import {
+  BeatportSignInLog,
+  SIGNIN_LOG_FILE,
+  SIGNIN_LOG_MAX_BYTES,
+  hostAndPath,
+  introspectFields,
+  sessionFields,
+  type SignInLogFs,
+} from "./beatportSignInLog";
 
 /** An in-memory file system: path -> text. Directories are not modelled. */
 function fakeFs(options: { failAppend?: boolean } = {}) {
@@ -167,16 +175,32 @@ describe("BeatportSignInLog", () => {
     expect(written[1]).toContain("  start  ");
   });
 
-  it("falls back at once when the engine cannot name the folder", async () => {
+  it("asks the engine again each second when it is not up yet, and falls back at 5 s", async () => {
+    let calls = 0;
     const { log, files } = make({
       getLogsDir: async () => {
-        throw new Error("engine down");
+        calls += 1;
+        if (calls < 3) throw new Error("engine starting");
+        return "/engine-logs";
       },
     });
     log.log("start", {});
     await vi.advanceTimersByTimeAsync(0);
+    expect(files.size).toBe(0);
+    await vi.advanceTimersByTimeAsync(2_000);
     await log.flush();
-    expect(files.has(`/electron-logs/${SIGNIN_LOG_FILE}`)).toBe(true);
+    expect(files.has(`/engine-logs/${SIGNIN_LOG_FILE}`)).toBe(true);
+    expect(files.has(`/electron-logs/${SIGNIN_LOG_FILE}`)).toBe(false);
+
+    const down = make({
+      getLogsDir: async () => {
+        throw new Error("engine down");
+      },
+    });
+    down.log.log("start", {});
+    await vi.advanceTimersByTimeAsync(5_000);
+    await down.log.flush();
+    expect(down.files.has(`/electron-logs/${SIGNIN_LOG_FILE}`)).toBe(true);
   });
 
   it("keeps at most 200 buffered lines, the newest", async () => {
@@ -199,5 +223,64 @@ describe("BeatportSignInLog", () => {
     await expect(log.flush()).resolves.toBeUndefined();
     expect(() => log.log("again", {})).not.toThrow();
     await expect(log.flush()).resolves.toBeUndefined();
+  });
+});
+
+describe("sessionFields", () => {
+  it("names the keys and scopes of a session, never a value that identifies anyone", () => {
+    const fields = sessionFields({
+      user: { email: "anna@example.com", name: "Anna" },
+      expires: "2026-11-11T12:00:00.000Z",
+      token: {
+        accessToken: "SECRET-MARKER-token",
+        scope: "app:prostore user:dj",
+        anon: false,
+        accessTokenExpires: 1_800_000_000_000,
+      },
+      introspect: { scope: "app:prostore user:anon", username: "anna", user_id: 77 },
+    });
+    expect(fields).toEqual({
+      keys: "user|expires|token|introspect",
+      token: "yes",
+      token_scope: "app:prostore user:dj",
+      anon: "false",
+      expires: "yes",
+      introspect_scope: "app:prostore user:anon",
+    });
+    expect(JSON.stringify(fields)).not.toMatch(/SECRET|anna|example|77/);
+  });
+
+  it("copes with an empty session, no token, and things that are not objects", () => {
+    expect(sessionFields({})).toEqual({ keys: "none", token: "no", anon: "missing", expires: "no" });
+    expect(sessionFields(null)).toEqual({ keys: "none", token: "no", anon: "missing", expires: "no" });
+    expect(sessionFields([1])).toEqual({ keys: "none", token: "no", anon: "missing", expires: "no" });
+    expect(sessionFields({ token: "x" })).toMatchObject({ token: "no" });
+  });
+});
+
+describe("introspectFields", () => {
+  it("says which keys are there and whether the person is named, never the values", () => {
+    const fields = introspectFields({
+      scope: "app:prostore user:dj",
+      user_id: 123,
+      username: "anna@example.com",
+      exp: null,
+      client_id: "SECRET-MARKER-client",
+    });
+    expect(fields).toEqual({
+      keys: "scope|user_id|username|exp|client_id",
+      active: "missing",
+      scope: "app:prostore user:dj",
+      username: "yes",
+      user_id: "yes",
+      exp: "null",
+    });
+    expect(JSON.stringify(fields)).not.toMatch(/SECRET|anna|example|123/);
+  });
+
+  it("reads active, a numeric exp, and an answer that is not an object", () => {
+    expect(introspectFields({ active: true, exp: 1_800_000_000 })).toMatchObject({ active: "true", exp: "number", username: "no", user_id: "no" });
+    expect(introspectFields({ active: false })).toMatchObject({ active: "false", exp: "missing" });
+    expect(introspectFields("<html>")).toEqual({ keys: "none" });
   });
 });

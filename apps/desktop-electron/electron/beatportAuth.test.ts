@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   BeatportAuth,
+  type BeatportAuthOptions,
   REFRESH_WAIT_MS,
   RENEW_BACKOFF_MS,
   SESSION_READ_TIMEOUT_MS,
@@ -14,6 +15,7 @@ import {
   type SignInSurface,
   type TokenStoreLike,
 } from "./beatportAuth";
+import { BeatportSignInLog, type SignInLogFs } from "./beatportSignInLog";
 import { REFRESH_FLOOR_MS, type BeatportAuthStatus, type StoredBeatportToken } from "./beatportAuthRules";
 
 /**
@@ -131,7 +133,7 @@ interface Introspection {
 /** What Beatport says about a token: one answer, or a function of how many times it was asked. */
 type Answer = Introspection | ((askedBefore: number) => Introspection);
 
-function setup(table: Record<string, Answer> = {}) {
+function setup(table: Record<string, Answer> = {}, extra: Partial<BeatportAuthOptions> = {}) {
   const host = new FakeHost();
   const store = new FakeStore();
   const engine = new FakeEngine();
@@ -159,6 +161,7 @@ function setup(table: Record<string, Answer> = {}) {
     envTokenSet: () => env,
     broadcast: (s) => broadcasts.push(s),
     onToken: (t) => seenTokens.push(t),
+    ...extra,
   });
   return {
     auth,
@@ -848,6 +851,138 @@ describe("when the sign-in window closes", () => {
     await t.auth.signOut();
     await run;
     expect(t.host.sessionReads).toBe(0);
+  });
+});
+
+describe("the sign-in log", () => {
+  /** A real log over an in-memory folder, so what the formatter lets through is what is checked. */
+  function memoryLog() {
+    const files = new Map<string, string>();
+    const fs: SignInLogFs = {
+      mkdir: async () => undefined,
+      appendFile: async (file, text) => void files.set(file, (files.get(file) ?? "") + text),
+      stat: async (file) => ({ size: Buffer.byteLength(files.get(file) ?? "") }),
+      rename: async () => undefined,
+      rm: async () => undefined,
+    };
+    const log = new BeatportSignInLog({ getLogsDir: async () => "/logs", fallbackDir: () => "/x", fs, now: () => Date.now() });
+    return {
+      send: (event: string, fields?: Record<string, string | number | boolean | null | undefined>) => log.log(event, fields),
+      text: async () => {
+        await vi.advanceTimersByTimeAsync(0);
+        await log.flush();
+        return [...files.values()].join("");
+      },
+    };
+  }
+
+  const person = { username: "dj@example.com", user_id: 12345, client_id: "SECRET-MARKER-client" };
+
+  it("regression: C20 records the flows (bearer, 403 + session scope, HTML, final read, renewal, sign-out, paste) with no secret in them", async () => {
+    const lines = memoryLog();
+    const forbidden = { status: 403, raw: "<html>SECRET-MARKER-body Bearer eyJabc code=1</html>", contentType: "text/html" };
+    const t = setup(
+      {
+        "SECRET-MARKER-header-1": { body: { scope: "app:prostore user:dj", exp: null, ...person } },
+        "eyJSECRET-MARKER-jwt-2": forbidden,
+        "SECRET-MARKER-html-3": { raw: "<html>challenge</html>", contentType: "text/html; charset=utf-8" },
+        "SECRET-MARKER-final-4": { status: 503, raw: "SECRET-MARKER" },
+        "SECRET-MARKER-renewed-5": forbidden,
+      },
+      { log: lines.send },
+    );
+
+    // 1. a bearer introspection that names a user
+    t.host.onOpen = (surface) => surface.sendBearer("SECRET-MARKER-header-1");
+    await t.auth.signIn();
+    await t.auth.signOut();
+
+    // 2. the session's scope, with introspection 403 on a JWT-looking token
+    t.host.onOpen = (surface) => {
+      surface.sendBearer("eyJSECRET-MARKER-jwt-2");
+      surface.session = sessionJson("eyJSECRET-MARKER-jwt-2", T0 + 12 * MIN);
+    };
+    const second = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(SESSION_POLL_MS + 10);
+    await second;
+
+    // 3. renewal by the session's scope
+    t.host.session = sessionJson("SECRET-MARKER-renewed-5", T0 + 30 * MIN);
+    await vi.advanceTimersByTimeAsync(12 * MIN);
+    await t.auth.signOut();
+
+    // 4. an HTML answer, backing off
+    t.host.onOpen = (surface) => surface.sendBearer("SECRET-MARKER-html-3");
+    void t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(30_000);
+    await t.auth.signOut();
+
+    // 5. the final read at the close
+    t.host.session = null;
+    t.fetchImpl.mockImplementation(async () => new Response("SECRET-MARKER", { status: 503 }));
+    t.host.onOpen = (surface) =>
+      setTimeout(() => {
+        t.host.session = sessionJson("SECRET-MARKER-final-4", T0 + 60 * MIN);
+        surface.close();
+      }, 100);
+    const last = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(200);
+    await last;
+
+    // 6. a paste
+    await t.auth.savePastedToken("SECRET-MARKER-pasted-6");
+    await t.auth.savePastedToken("");
+
+    const text = await lines.text();
+    for (const event of ["bearer seen", "introspect", "accepted", "backoff", "renew", "final read", "signout", "pasted", "capture ended"]) {
+      expect(text, event).toContain(`  ${event}  `.trimEnd());
+    }
+    expect(text).toContain("via=session-scope");
+    expect(text).toContain("via=final-read");
+    expect(text).toContain("jwt=yes");
+    expect(text).toContain("store=file");
+    expect(text).toContain("engine=ok");
+    expect(text).toContain("scope=app:prostore user:dj");
+    expect(text).toContain("username=yes");
+    expect(text).not.toMatch(/SECRET-MARKER|eyJ|Bearer|code=|@|example|12345|anna|dj-|challenge/);
+    for (const line of text.split("\n").filter((line) => line !== "")) expect(line.length).toBeLessThanOrEqual(200);
+  });
+
+  it("says which store kept the token and whether the engine was told", async () => {
+    const lines = memoryLog();
+    const t = setup({ "user-token-abcd": user(T0 + HOUR) }, { log: lines.send });
+    t.store.secure = false;
+    t.engine.setSession = async () => {
+      throw new Error("engine down");
+    };
+    t.host.onOpen = (surface) => surface.sendBearer("user-token-abcd");
+    await t.auth.signIn();
+    const text = await lines.text();
+    expect(text).toContain("store=memory");
+    expect(text).toContain("engine=failed");
+    expect(text).toMatch(/accepted  via=introspect expires_in_s=3600 /);
+  });
+
+  it("logs a failing renewal with its backoff", async () => {
+    const lines = memoryLog();
+    const t = setup({ "first-token-aaaa": user(T0 + 10 * MIN) }, { log: lines.send });
+    t.host.onOpen = (surface) => surface.sendBearer("first-token-aaaa");
+    t.host.session = sessionJson("first-token-aaaa", T0 + 10 * MIN);
+    await t.auth.signIn();
+    t.host.onOpen = () => undefined;
+    t.host.session = null;
+    await vi.advanceTimersByTimeAsync(9 * MIN + 1000 + REFRESH_WAIT_MS + 100);
+    expect(await lines.text()).toContain("renew  outcome=failed backoff_s=60");
+  });
+
+  it("does not let a log that throws break the sign-in", async () => {
+    const t = setup({ "user-token-abcd": user(T0 + HOUR) }, {
+      log: () => {
+        throw new Error("log broke");
+      },
+    });
+    t.host.onOpen = (surface) => surface.sendBearer("user-token-abcd");
+    expect((await t.auth.signIn()).state).toBe("signed_in");
   });
 });
 
@@ -1564,6 +1699,61 @@ describe("the sign-in window's rules", () => {
     surface.close();
     expect(child.destroy).toHaveBeenCalled();
     expect(child.close).not.toHaveBeenCalled();
+  });
+
+  it("logs the window's pages by host and path only, and who closed it", async () => {
+    const { ElectronSignInHost } = await import("./beatportAuth");
+    const { beatportEndpoints } = await import("./beatportAuthRules");
+    const fake = fakeElectron(true);
+    const log: Array<[string, Record<string, unknown> | undefined]> = [];
+    const h = new ElectronSignInHost({
+      BrowserWindow: fake.FakeWindow as never,
+      session: fake.session as never,
+      parent: () => ({ id: 1 }) as never,
+      packaged: true,
+      endpoints: beatportEndpoints({}, { packaged: true, e2e: false }),
+      log: (event, fields) => log.push([event, fields]),
+    });
+    const surface = h.open({ visible: true });
+    const handlers = fake.FakeWindow.last.webContents.handlers;
+    const call = (name: string, ...args: unknown[]) => (handlers.get(name) as unknown as (...a: unknown[]) => void)(...args);
+    call("did-navigate", {}, "https://www.beatport.com/api/auth/callback/beatport?code=SECRET&state=abc#frag", 200);
+    call("did-redirect-navigation", { url: "https://x.example/new?token=SECRET" }, "https://www.beatport.com/?code=SECRET", false, true);
+    call("did-fail-load", {}, -105, "ERR_NAME_NOT_RESOLVED", "https://www.beatport.com/home?code=SECRET", true);
+    call("did-fail-load", {}, -3, "ERR_ABORTED", "https://www.beatport.com/frame", false);
+    const refused = vi.fn();
+    call("will-navigate", { preventDefault: refused }, "https://evil.example/steal?code=SECRET");
+    expect(refused).toHaveBeenCalled();
+    surface.close();
+
+    expect(log).toEqual([
+      ["window", { mode: "visible" }],
+      ["nav", { kind: "window", host: "www.beatport.com", path: "/api/auth/callback/beatport" }],
+      ["redirect", { kind: "window", host: "www.beatport.com", path: "/" }],
+      ["load-failed", { kind: "window", code: -105, host: "www.beatport.com" }],
+      ["refused", { kind: "window", host: "evil.example", path: "/steal" }],
+      ["closed", { by: "app" }],
+      ["destroyed", undefined],
+    ]);
+    expect(JSON.stringify(log)).not.toMatch(/SECRET|code=|frag/);
+  });
+
+  it("logs a window the person closed as closed by the person", async () => {
+    const { ElectronSignInHost } = await import("./beatportAuth");
+    const { beatportEndpoints } = await import("./beatportAuthRules");
+    const fake = fakeElectron(true);
+    const events: string[] = [];
+    const h = new ElectronSignInHost({
+      BrowserWindow: fake.FakeWindow as never,
+      session: fake.session as never,
+      parent: () => ({ id: 1 }) as never,
+      packaged: true,
+      endpoints: beatportEndpoints({}, { packaged: true, e2e: false }),
+      log: (event, fields) => events.push(`${event} ${fields?.by ?? ""}`.trim()),
+    });
+    h.open({ visible: false });
+    for (const listener of fake.FakeWindow.last.closedListeners) listener();
+    expect(events).toEqual(["window", "closed person"]);
   });
 
   it("regression: C20 closes the sign-in window with destroy(), which a page cannot cancel", async () => {

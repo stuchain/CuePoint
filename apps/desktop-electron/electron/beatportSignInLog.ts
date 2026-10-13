@@ -22,6 +22,8 @@ export const SIGNIN_LOG_MAX_BYTES = 256 * 1024;
 const MAX_BUFFERED_LINES = 200;
 /** How long to wait for the engine's logs folder before using Electron's own. */
 const FOLDER_WAIT_MS = 5_000;
+/** While the engine is not answering, ask again this often until the wait is over. */
+const FOLDER_RETRY_MS = 1_000;
 const MAX_LINE_LENGTH = 200;
 
 /** The keys a line may carry. Anything else is dropped. */
@@ -74,6 +76,56 @@ export function hostAndPath(url: string | null | undefined): { host: string; pat
   } catch {
     return { host: "?", path: "?" };
   }
+}
+
+/** The key names of an object, as `a|b|c` kept short; `none` when it is not an object or empty. */
+function keyNames(value: unknown): string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "none";
+  let out = "";
+  for (const key of Object.keys(value)) {
+    const next = out === "" ? key : `${out}|${key}`;
+    if (next.length > 70) break;
+    out = next;
+  }
+  return out === "" ? "none" : out;
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function scopeOf(value: unknown): string | undefined {
+  return isObject(value) && typeof value.scope === "string" ? value.scope : undefined;
+}
+
+/** What to log about the website's session JSON: key names, scopes and yes/no, never a value. */
+export function sessionFields(json: unknown): SignInLogFields {
+  const top = isObject(json) ? json : null;
+  const token = top && isObject(top.token) ? top.token : null;
+  const anon = token?.anon;
+  return {
+    keys: keyNames(top),
+    token: token !== null && typeof token.accessToken === "string" && token.accessToken !== "" ? "yes" : "no",
+    token_scope: scopeOf(token),
+    anon: typeof anon === "boolean" ? String(anon) : "missing",
+    expires: token !== null && token.accessTokenExpires !== undefined && token.accessTokenExpires !== null ? "yes" : "no",
+    introspect_scope: scopeOf(top?.introspect),
+  };
+}
+
+/** What to log about an introspection answer: key names, `active`, the scope and yes/no for the rest. */
+export function introspectFields(body: unknown): SignInLogFields {
+  if (!isObject(body)) return { keys: "none" };
+  const named = (value: unknown): string => (value === undefined || value === null || value === "" ? "no" : "yes");
+  const exp = body.exp;
+  return {
+    keys: keyNames(body),
+    active: typeof body.active === "boolean" ? String(body.active) : "missing",
+    scope: scopeOf(body),
+    username: named(body.username),
+    user_id: named(body.user_id),
+    exp: typeof exp === "number" ? "number" : exp === null ? "null" : "missing",
+  };
 }
 
 function cleanEvent(event: string): string {
@@ -138,19 +190,32 @@ export class BeatportSignInLog {
   private askForFolder(): void {
     if (this.asked) return;
     this.asked = true;
-    const timer = setTimeout(() => this.useFolder(this.options.fallbackDir(), true), this.options.folderWaitMs ?? FOLDER_WAIT_MS);
+    let retry: ReturnType<typeof setTimeout> | null = null;
+    const timer = setTimeout(() => {
+      if (retry) clearTimeout(retry);
+      this.useFolder(this.options.fallbackDir(), true);
+    }, this.options.folderWaitMs ?? FOLDER_WAIT_MS);
     (timer as { unref?: () => void }).unref?.();
-    const done = (dir: string | null | undefined): void => {
-      clearTimeout(timer);
+    const ask = (): void => {
       if (this.dir !== null) return;
-      if (typeof dir === "string" && dir !== "") this.useFolder(dir, false);
-      else this.useFolder(this.options.fallbackDir(), true);
+      const answered = (dir: string | null | undefined): void => {
+        if (this.dir !== null) return;
+        if (typeof dir === "string" && dir !== "") {
+          clearTimeout(timer);
+          this.useFolder(dir, false);
+        } else {
+          // The engine may still be starting: ask again until the wait is over.
+          retry = setTimeout(ask, FOLDER_RETRY_MS);
+          (retry as { unref?: () => void }).unref?.();
+        }
+      };
+      try {
+        this.options.getLogsDir().then(answered, () => answered(null));
+      } catch {
+        answered(null);
+      }
     };
-    try {
-      this.options.getLogsDir().then(done, () => done(null));
-    } catch {
-      done(null);
-    }
+    ask();
   }
 
   private useFolder(dir: string, fallback: boolean): void {
