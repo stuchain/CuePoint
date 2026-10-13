@@ -1017,6 +1017,77 @@ def export_review(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, 
 
 
 # ---------------------------------------------------------------------------
+# Where playlists stand, and what is not in the files yet (G4 2.1, 2.2)
+# ---------------------------------------------------------------------------
+
+
+def unsaved_values(params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """Tracks with new values that are not in their files yet, and per field.
+
+    ``playlist_id`` narrows the count to one playlist; without it the count is
+    the whole library. An upper bound: the save window reads the files and gives
+    the exact number.
+    """
+    counts = _service("IMatchStatusService").unsaved(_query_int(params, "playlist_id"))
+    return {"tracks": counts.tracks, "fields": dict(counts.fields)}
+
+
+def _counts_to_dict(counts: Any, running: Any) -> Dict[str, Any]:
+    return {
+        "track_count": counts.track_count,
+        "not_matched": counts.not_matched,
+        "waiting": counts.waiting,
+        "accepted": counts.accepted,
+        "rejected": counts.rejected,
+        "no_match": counts.no_match,
+        "unsaved": counts.unsaved,
+        "running": (
+            None
+            if running is None
+            else {
+                "job_id": running.job_id,
+                "done": running.done,
+                "total": running.total,
+            }
+        ),
+    }
+
+
+def _active_match_job_id(job_store: Any) -> Optional[str]:
+    """The id of the match job that is queued or running, if there is one."""
+    from cuepoint.engine.jobs import _ACTIVE_STATES
+    from cuepoint.engine.match_jobs import JOB_TYPE_CLEAN_MATCH
+
+    if job_store is None:
+        return None
+    for job in job_store.list_all():
+        if job.type == JOB_TYPE_CLEAN_MATCH and job.state.value in _ACTIVE_STATES:
+            return str(job.id)
+    return None
+
+
+def clean_playlists(params: Dict[str, List[str]], job_store: Any) -> Dict[str, Any]:
+    """Every playlist with what it needs next, and the whole library's counts."""
+    statuses = _service("IMatchStatusService").playlists(
+        _active_match_job_id(job_store)
+    )
+    return {
+        "playlists": [
+            {
+                "id": status.id,
+                "name": status.name,
+                "path": status.path,
+                **_counts_to_dict(status.counts, status.running),
+            }
+            for status in statuses.playlists
+        ],
+        "whole_library": _counts_to_dict(
+            statuses.whole_library, statuses.whole_library_running
+        ),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
 
@@ -1026,6 +1097,12 @@ _GET_ROUTES: Dict[str, Callable[[Dict[str, List[str]]], Dict[str, Any]]] = {
     "/api/v1/clean/duplicates": duplicate_groups,
     "/api/v1/clean/tags/writes": tag_writes,
     "/api/v1/clean/health": library_health,
+    "/api/v1/clean/unsaved": unsaved_values,
+}
+
+#: GET routes that also read the engine's jobs (the playlists' running match).
+_STORE_GET_ROUTES: Dict[str, Callable[[Dict[str, List[str]], Any], Dict[str, Any]]] = {
+    "/api/v1/clean/playlists": clean_playlists,
 }
 
 _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], Any], Tuple[int, Dict[str, Any]]]] = {
@@ -1048,7 +1125,7 @@ _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], Any], Tuple[int, Dict[str, Any
 }
 
 #: Every literal path this module answers, for tests and the contract.
-GET_PATHS: Tuple[str, ...] = tuple(_GET_ROUTES)
+GET_PATHS: Tuple[str, ...] = (*_GET_ROUTES, *_STORE_GET_ROUTES)
 POST_PATHS: Tuple[str, ...] = tuple(_POST_ROUTES)
 
 
@@ -1056,6 +1133,7 @@ def handles_get(path: str) -> bool:
     """True when this module answers a GET for ``path``."""
     return (
         path in _GET_ROUTES
+        or path in _STORE_GET_ROUTES
         or _MATCHES_ROUTE.match(path) is not None
         or _CANDIDATES_ROUTE.match(path) is not None
         or _FOLDER_ROUTE.match(path) is not None
@@ -1067,7 +1145,9 @@ def handles_post(path: str) -> bool:
     return path in _POST_ROUTES or _OVERRIDES_ROUTE.match(path) is not None
 
 
-def handle_get(path: str, params: Dict[str, List[str]]) -> Tuple[int, Dict[str, Any]]:
+def handle_get(
+    path: str, params: Dict[str, List[str]], *, job_store: Any = None
+) -> Tuple[int, Dict[str, Any]]:
     """Answer a GET, or raise."""
     match = _MATCHES_ROUTE.match(path)
     if match:
@@ -1078,6 +1158,9 @@ def handle_get(path: str, params: Dict[str, List[str]]) -> Tuple[int, Dict[str, 
     match = _FOLDER_ROUTE.match(path)
     if match:
         return 200, track_folder(_path_int(match.group(1), "track id"))
+    store_handler = _STORE_GET_ROUTES.get(path)
+    if store_handler is not None:
+        return 200, store_handler(params, job_store)
     handler = _GET_ROUTES.get(path)
     if handler is None:
         raise not_found("NOT_FOUND", "Unknown path")

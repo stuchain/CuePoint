@@ -3495,5 +3495,10 @@
     "holds": "an outcome constant chosen by our code",
     "verdict": "exempt",
     "reason": "our own constants"
+  },
+  "cuepoint/services/match_status_service.py::MatchStatusService.unsaved::There is no playlist {playlist_id}": {
+    "holds": "an integer id",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
   }
 }

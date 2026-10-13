@@ -577,6 +577,143 @@ KEY_SQL = f"cp_camelot({KEY_RAW_SQL})"
 KEY_WHEEL_SQL = f"cp_wheel({KEY_RAW_SQL})"
 
 
+# "New values not in the files yet" (G4 2.1): one definition, read by the filter
+# field below and by `persistence/match_status_repository.py`, so the bar's count
+# and the rows a query selects cannot disagree. It yields one row per unsaved
+# field, ``(track_id, field)``, and reads the database alone: Rekordbox's value
+# stands in for what the file holds, and the last confirmed write overrules it.
+#
+# A field is unsaved when (1) CuePoint has its own value, (2) it differs from
+# Rekordbox's, once both are put in the one style the file would hold, and (3)
+# the latest settled record of that field, in the file the track has now, is not
+# a record of exactly that value. A record is a confirmed write, a restore, or a
+# skip that kept the value the file already held (it carries the value CuePoint
+# would have written, in a write's own shape); a restore's own skip says only
+# that the file had moved on, so it is no record of a value. The file must be
+# one CuePoint writes: not WAV, not unsupported.
+UNSAVED_FIELDS: Tuple[str, ...] = ("key", "genre", "label", "year", "bpm")
+#: The extensions of the files CuePoint writes tags into; ``data/tag_fields.py``
+#: owns the list and a test holds the two to each other.
+UNSAVED_FILE_SUFFIXES: Tuple[str, ...] = (".mp3", ".aiff", ".aif", ".flac", ".ogg")
+#: Two BPMs closer than this are one BPM: the writer rounds to two decimals.
+UNSAVED_BPM_TOLERANCE = 0.005
+#: The years a tag is written with (``tag_writer._normalize_year``).
+UNSAVED_YEAR_RANGE = (1900, 2100)
+
+
+def _unsaved_mine(field: str, expression: str) -> str:
+    """A value a column holds, in the style compared; NULL when it is no value."""
+    if field == "key":
+        return f"cp_camelot({expression})"
+    if field == "bpm":
+        return f"CASE WHEN {expression} > 0 THEN {expression} END"
+    if field == "year":
+        low, high = UNSAVED_YEAR_RANGE
+        year = f"CAST({expression} AS INTEGER)"
+        return f"CASE WHEN {year} BETWEEN {low} AND {high} THEN {year} END"
+    return f"NULLIF(TRIM({expression}), '')"
+
+
+def _unsaved_written(field: str, expression: str) -> str:
+    """The text a file record holds, in the same style (it may be a date)."""
+    if field == "bpm":
+        return f"CAST(NULLIF(TRIM({expression}), '') AS REAL)"
+    if field == "year":
+        low, high = UNSAVED_YEAR_RANGE
+        year = f"CAST(SUBSTR(TRIM({expression}), 1, 4) AS INTEGER)"
+        return f"CASE WHEN {year} BETWEEN {low} AND {high} THEN {year} END"
+    return _unsaved_mine(field, expression)
+
+
+def _unsaved_same(field: str, left: str, right: str) -> str:
+    """True (1) when two values are one value; NULL or 0 when they are not."""
+    if field == "bpm":
+        return f"(ABS({left} - {right}) < {UNSAVED_BPM_TOLERANCE})"
+    return f"({left} IS {right})"
+
+
+#: Where a scoped count looks: the tracks of one playlist (one ``?`` per select).
+UNSAVED_PLAYLIST_SCOPE = (
+    " AND tracks.id IN (SELECT track_id FROM rekordbox_playlist_tracks"
+    " WHERE playlist_id = ?)"
+)
+
+
+def _unsaved_select(field: str, scope: str = "") -> str:
+    """The rows of one field that are unsaved: the three rules, in order."""
+    theirs = _unsaved_mine(field, f"tracks.{field}")
+    # The first text of the first slot a record put the value in; a comment's
+    # slot is not a tag field's value. A JSON null or a note has no slot.
+    first_text = (
+        "(SELECT json_extract(j.value, '$[0]') FROM json_each("
+        "CASE WHEN json_valid(fw.new_value_json) THEN fw.new_value_json END)"
+        " AS j WHERE j.key <> 'COMM' LIMIT 1)"
+    )
+    # LIKE ignores the case of ASCII letters, as a file extension may differ in it.
+    suffixes = " OR ".join(
+        f"tracks.file_path LIKE '%{suffix}'" for suffix in UNSAVED_FILE_SUFFIXES
+    )
+    # The walk starts where a value of CuePoint's own can be: the metadata rows
+    # that hold the field (CROSS JOIN keeps that order), and for the key also the
+    # accepted matches, whose key stands when the person set none. The rest of
+    # the library is never visited.
+    if field == "key":
+        # The key's expression is long; it is worked out once per row, in a
+        # derived table that SQLite will not fold back into the query (the
+        # LIMIT, under a join).
+        mine = "k.mine"
+        source = (
+            "FROM (SELECT tracks.id AS tid,"
+            f" {_unsaved_mine('key', KEY_RAW_SQL)} AS mine"
+            " FROM (SELECT track_id FROM track_metadata WHERE key IS NOT NULL"
+            " UNION SELECT track_id FROM track_match"
+            f" WHERE state = '{STATE_ACCEPTED}') AS own"
+            " CROSS JOIN tracks ON tracks.id = own.track_id"
+            f" LEFT JOIN track_metadata AS {METADATA_ALIAS}"
+            f" ON {METADATA_ALIAS}.track_id = tracks.id"
+            f" LEFT JOIN track_match AS {MATCH_ALIAS}"
+            f" ON {MATCH_ALIAS}.track_id = tracks.id"
+            f" LEFT JOIN match_candidates AS {MATCH_CANDIDATE_ALIAS}"
+            f" ON {MATCH_CANDIDATE_ALIAS}.id = {MATCH_ALIAS}.candidate_id"
+            " LIMIT -1) AS k CROSS JOIN tracks ON tracks.id = k.tid"
+        )
+    else:
+        mine = _unsaved_mine(field, f"{METADATA_ALIAS}.{field}")
+        source = (
+            f"FROM track_metadata AS {METADATA_ALIAS}"
+            f" CROSS JOIN tracks ON tracks.id = {METADATA_ALIAS}.track_id"
+        )
+    saved = _unsaved_same(field, _unsaved_written(field, first_text), mine)
+    return (
+        f"SELECT tracks.id AS track_id, '{field}' AS field {source}"
+        f" WHERE {mine} IS NOT NULL"
+        f" AND NOT COALESCE({_unsaved_same(field, mine, theirs)}, 0)"
+        f" AND ({suffixes}){scope}"
+        " AND NOT EXISTS (SELECT 1 FROM file_writes AS fw"
+        " WHERE fw.id = (SELECT MAX(lw.id) FROM file_writes AS lw"
+        f" WHERE lw.track_id = tracks.id AND lw.field = '{field}'"
+        " AND lw.file_path = tracks.file_path AND lw.pending = 0"
+        " AND (lw.outcome IN ('written', 'restored')"
+        " OR (lw.outcome = 'skipped' AND lw.restore_of IS NULL"
+        " AND lw.new_value_json IS NOT NULL)))"
+        f" AND fw.outcome IN ('written', 'skipped') AND COALESCE({saved}, 0))"
+    )
+
+
+def unsaved_values_sql(playlist_scope: bool = False) -> str:
+    """Every unsaved ``(track_id, field)``, as a subquery body.
+
+    With ``playlist_scope`` each of its five selects takes one ``?``: the
+    playlist whose tracks are the only ones looked at.
+    """
+    scope = UNSAVED_PLAYLIST_SCOPE if playlist_scope else ""
+    return " UNION ALL ".join(_unsaved_select(f, scope) for f in UNSAVED_FIELDS)
+
+
+#: Every unsaved ``(track_id, field)`` in the library, as a subquery body.
+UNSAVED_VALUES_SQL = unsaved_values_sql()
+
+
 def _effective(name: str, type_: str, label: str, **options: Any) -> FieldSpec:
     """A field that means CuePoint's override when there is one (DEC-068).
 
@@ -864,6 +1001,16 @@ FIELDS: Tuple[FieldSpec, ...] = (
         facetable=True,
         values=LinkTable(DUPLICATE_SIGNALS_VIEW, "signal"),
         choices=DUPLICATE_SIGNAL_CHOICES,
+    ),
+    # Values CuePoint holds that the files do not yet (G4 2.1): the Save bar's
+    # count, and so the selection its Save window opens on.
+    FieldSpec(
+        "unsaved_values",
+        TYPE_BOOL,
+        "New values not in the files yet",
+        group=GROUP_FILES,
+        facetable=True,
+        column=f"(tracks.id IN (SELECT track_id FROM ({UNSAVED_VALUES_SQL})))",
     ),
     # --- Artwork (CLEAN-09, DEC-076) ---------------------------------------
     # What the table would show: the file's own picture, else Beatport's image

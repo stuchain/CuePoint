@@ -1072,7 +1072,10 @@ def make_handler(
                 # Before the track prefix below, for the organization routes'
                 # reason: it would read "7/matches" as a track id (CLEAN-11).
                 self._handle_routed(
-                    lambda: clean_get(path, parse_qs(parsed.query)), clean_status
+                    lambda: clean_get(
+                        path, parse_qs(parsed.query), job_store=job_store
+                    ),
+                    clean_status,
                 )
                 return
             if rekordbox_export_handles_get(path):

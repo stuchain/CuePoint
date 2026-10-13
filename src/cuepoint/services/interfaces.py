@@ -48,6 +48,12 @@ if TYPE_CHECKING:
     )
     from cuepoint.models.artwork import TrackArtwork
     from cuepoint.models.file_status import CurrentFile, TrackFileStatus
+    from cuepoint.models.match_status import (
+        PlaylistNode,
+        PlaylistStatuses,
+        StatusCounts,
+        UnsavedCounts,
+    )
     from cuepoint.models.waveform import (
         AnalysisOutcome,
         DetailAnswer,
@@ -4335,4 +4341,66 @@ class ICheckpointService(ABC):
     @abstractmethod
     def exists(self) -> bool:
         """Return True if a checkpoint file exists."""
+        ...
+
+
+class IMatchStatusRepository(ABC):
+    """Interface for where playlists stand with matching and saving (G4 2.1, 2.2).
+
+    Reads only: counts of match states and of values not yet in the files.
+    """
+
+    @abstractmethod
+    def snapshot(self) -> ContextManager[None]:
+        """Read everything inside the ``with`` block as of one moment."""
+        ...
+
+    @abstractmethod
+    def unsaved(self, playlist_id: Optional[int]) -> "UnsavedCounts":
+        """Return the unsaved counts of a playlist, or of the whole library."""
+        ...
+
+    @abstractmethod
+    def playlist_exists(self, playlist_id: int) -> bool:
+        """Return True when ``playlist_id`` is a playlist (not a folder)."""
+        ...
+
+    @abstractmethod
+    def tree(self) -> List["PlaylistNode"]:
+        """Return every folder and playlist, for naming the way to each."""
+        ...
+
+    @abstractmethod
+    def counts(self) -> Tuple[Dict[int, "StatusCounts"], "StatusCounts"]:
+        """Return the counts of each playlist that holds a track (by id), and the library's."""
+        ...
+
+    @abstractmethod
+    def running(
+        self, job_id: str
+    ) -> Tuple[Dict[int, Tuple[int, int]], Tuple[int, int]]:
+        """Return a job's ``(done, total)`` per playlist, and over the library."""
+        ...
+
+
+class IMatchStatusService(ABC):
+    """Interface for the playlist list and the Save bar's count (G4 2.1, 2.2)."""
+
+    @abstractmethod
+    def unsaved(self, playlist_id: Optional[int] = None) -> "UnsavedCounts":
+        """Return the unsaved counts of a playlist, or of the whole library.
+
+        Raises:
+            LookupError: If ``playlist_id`` is not a playlist.
+        """
+        ...
+
+    @abstractmethod
+    def playlists(self, running_job_id: Optional[str] = None) -> "PlaylistStatuses":
+        """Return every playlist's status, and the whole library's.
+
+        Args:
+            running_job_id: The active match job, if any; its progress is
+                reported against each playlist it covers.
+        """
         ...

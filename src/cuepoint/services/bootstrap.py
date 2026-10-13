@@ -72,6 +72,8 @@ from cuepoint.services.interfaces import (
     IMatchApplyService,
     IMatchCorrectService,
     IMatchJobRepository,
+    IMatchStatusRepository,
+    IMatchStatusService,
     IMatchRepository,
     IMatchService,
     IMatchStateService,
@@ -126,6 +128,7 @@ from cuepoint.persistence.library_source_repository import (
     LibrarySourceRepository,
 )
 from cuepoint.persistence.match_job_repository import MatchJobRepository
+from cuepoint.persistence.match_status_repository import MatchStatusRepository
 from cuepoint.persistence.match_repository import MatchRepository
 from cuepoint.persistence.playlist_repository import PlaylistRepository
 from cuepoint.persistence.collection_repository import CollectionRepository
@@ -157,6 +160,7 @@ from cuepoint.services.waveform_analysis_service import WaveformAnalysisService
 from cuepoint.services.waveform_service import WaveformService
 from cuepoint.services.duplicate_service import DuplicateService
 from cuepoint.services.file_check_service import FileCheckService
+from cuepoint.services.match_status_service import MatchStatusService
 from cuepoint.services.library_service import LibraryService
 from cuepoint.services.health_service import HealthService
 from cuepoint.services.review_export_service import ReviewExportService
@@ -653,6 +657,22 @@ def bootstrap_services() -> None:
         )
 
     container.register_factory(IFileCheckService, create_file_check_service)
+
+    # Where each playlist stands, and what is not in the files yet (G4 2.1, 2.2).
+    def create_match_status_repository() -> IMatchStatusRepository:
+        container.resolve(IMigrationRunner).migrate()
+        return MatchStatusRepository(
+            database_service=container.resolve(IDatabaseService)
+        )
+
+    container.register_factory(IMatchStatusRepository, create_match_status_repository)
+
+    def create_match_status_service() -> IMatchStatusService:
+        return MatchStatusService(
+            match_status_repository=container.resolve(IMatchStatusRepository)
+        )
+
+    container.register_factory(IMatchStatusService, create_match_status_service)
 
     # Possible duplicates and a user's "not duplicates" (CLEAN-08, DEC-074).
     def create_duplicate_repository() -> IDuplicateRepository:
