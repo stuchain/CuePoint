@@ -1,8 +1,8 @@
 /*
  * Everything CuePoint knows about one track (LIBUI-09, DEC-047).
  *
- * Values use --font-data (DEC-048): this is the other place in the app where
- * a column of small values is read closely.
+ * Numbers, times and dates carry `cp-data` (DEC-048, R4-3): this is the other
+ * place in the app where a column of small values is read closely.
  */
 
 .cp-track-detail {
@@ -91,9 +91,13 @@
 .cp-track-detail__value {
   margin: 0;
   min-width: 0;
-  font-family: var(--font-data);
   font-size: var(--font-size-xs);
   word-break: break-word;
+}
+
+/* The key's name and source after its chip (R4-2). */
+.cp-track-detail__keymeta {
+  color: var(--fg-muted);
 }
 
 .cp-track-detail__file {

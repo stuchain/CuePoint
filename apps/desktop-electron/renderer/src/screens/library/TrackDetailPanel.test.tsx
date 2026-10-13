@@ -144,6 +144,29 @@ describe("what the panel shows", () => {
     expect(button).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("draws the key as a chip, with its name and source muted beside it (R4-2, DEC-272)", () => {
+    render(
+      <TrackDetailPanel
+        detail={{ ...DETAIL, track: { ...TRACK, effective_key: "8A", key_name: "A minor", key_source: "beatport" } }}
+      />,
+    );
+    const keyline = screen.getByTestId("track-key");
+    const chip = keyline.querySelector(".key-chip--8A") as HTMLElement;
+    expect(chip).toHaveTextContent("8A");
+    expect(chip).toHaveAttribute("title", "A minor");
+    expect(keyline).toHaveTextContent("8A · A minor · Beatport");
+  });
+
+  it("sets numbers, times and dates in the data face and words in the text face (R4-3, DEC-048)", () => {
+    render(<TrackDetailPanel detail={DETAIL} />);
+    for (const label of ["BPM", "Year", "Length", "Plays", "Added", "Bitrate"]) {
+      expect(rowFor(label).querySelector("dd")).toHaveClass("cp-data");
+    }
+    for (const label of ["Album", "Label", "Genre", "Color", "Comment", "File"]) {
+      expect(rowFor(label).querySelector("dd")).not.toHaveClass("cp-data");
+    }
+  });
+
   it("shows a rating as stars", () => {
     // The parser converted Rekordbox's 0/51/…/255 at import, so what is
     // stored is already a star count.

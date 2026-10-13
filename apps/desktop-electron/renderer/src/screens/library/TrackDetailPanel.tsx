@@ -33,7 +33,7 @@ import { Fragment, useCallback, useState, type ReactNode } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
-import { WheelButton } from "../../components/wheel";
+import { KeyChip, WheelButton } from "../../components/wheel";
 import { formatBpm } from "../../components/format/bpm";
 import type {
   CollectionNode,
@@ -149,18 +149,19 @@ function text(value: string | null | undefined): string {
 }
 
 /**
- * The track's key with its name and where it came from (DEC-201, FLW-9):
- * "8A · A minor · Beatport", "8A · A minor · yours", or null when it has none.
+ * What follows the key chip on the key line (DEC-201, FLW-9, R4-2): " · A minor · Beatport",
+ * " · A minor · yours", or null when the track has no key. The chip itself carries the code.
  */
-function keyLine(track: {
+function keyDetail(track: {
   effective_key?: string | null;
   key_name?: string | null;
   key_source?: "yours" | "beatport" | null;
 }): string | null {
   if (!track.effective_key) return null;
-  return [track.effective_key, track.key_name, track.key_source === "yours" ? "yours" : track.key_source === "beatport" ? "Beatport" : null]
+  const rest = [track.key_name, track.key_source === "yours" ? "yours" : track.key_source === "beatport" ? "Beatport" : null]
     .filter(Boolean)
     .join(" · ");
+  return rest ? ` · ${rest}` : "";
 }
 
 function number(value: number | null | undefined, suffix = ""): string {
@@ -187,11 +188,23 @@ function credited(
   return <CreditLinks credit={credit ?? ""} links={links} onOpen={onOpen} />;
 }
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
+/**
+ * `valueClassName` is `cp-data` for a number, time or date (R4-3, DEC-048): the data face with
+ * figures that line up. Words (genre, label, comment, path) keep the text face.
+ */
+function Row({
+  label,
+  value,
+  valueClassName,
+}: {
+  label: string;
+  value: React.ReactNode;
+  valueClassName?: string;
+}) {
   return (
     <div className="cp-track-detail__row">
       <dt className="cp-track-detail__label">{label}</dt>
-      <dd className="cp-track-detail__value">{value}</dd>
+      <dd className={valueClassName ? `cp-track-detail__value ${valueClassName}` : "cp-track-detail__value"}>{value}</dd>
     </div>
   );
 }
@@ -345,7 +358,7 @@ export function TrackDetailPanel({
   const collections = detail.collections.filter((node) => node.kind !== "set");
   const sets = detail.collections.filter((node) => node.kind === "set");
 
-  const key = keyLine(track);
+  const key = keyDetail(track);
   const queue = availableQueueActions();
   const matchState = matches.matches?.state?.state ?? null;
   // A track with no key is offered the match right where the absence is read;
@@ -454,7 +467,14 @@ export function TrackDetailPanel({
             <Row
               label="Key"
               value={
-                key ?? (
+                key !== null ? (
+                  // The chip is the code, coloured by its wheel position (R4-2, DEC-272);
+                  // the key's name and source follow it as muted text.
+                  <>
+                    <KeyChip value={track.effective_key} />
+                    <span className="cp-track-detail__keymeta">{key}</span>
+                  </>
+                ) : (
                   <span className="cp-track-detail__file">
                     <span>No Beatport key</span>
                     {keyMatchOffered && track.id != null && <MatchOnBeatport trackId={track.id} />}
@@ -523,9 +543,9 @@ export function TrackDetailPanel({
           <Row label="Album" value={text(track.album)} />
           <Row label="Label" value={text(track.label)} />
           <Row label="Genre" value={text(track.genre)} />
-          <Row label="BPM" value={formatBpm(track.bpm) || "—"} />
-          <Row label="Year" value={track.year == null ? "—" : String(track.year)} />
-          <Row label="Length" value={duration(track.duration_seconds)} />
+          <Row label="BPM" value={formatBpm(track.bpm) || "—"} valueClassName="cp-data" />
+          <Row label="Year" value={track.year == null ? "—" : String(track.year)} valueClassName="cp-data" />
+          <Row label="Length" value={duration(track.duration_seconds)} valueClassName="cp-data" />
           {/* Stars, not a number: the parser converted Rekordbox's 0/51/…/255
               encoding at import, so what is stored is already a star count. This
               row stays Rekordbox's own value whatever CuePoint's layer says —
@@ -534,10 +554,10 @@ export function TrackDetailPanel({
             label="Rating"
             value={track.rating == null ? "—" : starsFor(track.rating)}
           />
-          <Row label="Plays" value={number(track.play_count)} />
+          <Row label="Plays" value={number(track.play_count)} valueClassName="cp-data" />
           <Row label="Color" value={text(track.colour)} />
-          <Row label="Added" value={text(track.date_added)} />
-          <Row label="Bitrate" value={number(track.bitrate, " kbps")} />
+          <Row label="Added" value={text(track.date_added)} valueClassName="cp-data" />
+          <Row label="Bitrate" value={number(track.bitrate, " kbps")} valueClassName="cp-data" />
           <Row label="Comment" value={text(track.comment)} />
           <Row
             label="File"
