@@ -37,6 +37,7 @@ import {
   jwtExpiresAt,
   rebaseSessionExpiry,
   refreshDelay,
+  sessionUserScope,
   tokenFromSessionJson,
   type BeatportAuthStatus,
   type BeatportEndpoints,
@@ -116,7 +117,12 @@ interface Verified {
   expiresAt: string | null;
   /** Whether the end came from the website's session JSON, which is the one that carries it. */
   fromSession: boolean;
+  /** Which check accepted it: Beatport's introspection, or the session's own user scope. */
+  via: "introspect" | "session-scope";
 }
+
+/** The session JSON's own claim that its token is a person's (`sessionUserScope`). */
+type SessionScope = { token: string; expiresAt: string | null };
 
 /**
  * What checking a token came to. `rejected` is a definite no (401, an inactive token, a guest's)
@@ -296,8 +302,21 @@ export class BeatportAuth {
     if (session.token === found.token) {
       return session.expiresAt ? { ...found, expiresAt: session.expiresAt, fromSession: true } : found;
     }
-    const verdict = await this.verify(session.token, session.expiresAt);
+    const verdict = this.withSessionRule(await this.verify(session.token, session.expiresAt), session.token, session.scope);
     return verdict.kind === "ok" ? verdict.verified : found;
+  }
+
+  /**
+   * The second detector: when Beatport's introspection could not decide (`inconclusive` or
+   * `error`) and the session JSON itself gave this very token with a user scope, take it. A
+   * definite no (`rejected`) is never overridden, and a token the session did not give is never
+   * trusted on its scope. The end is the session's own.
+   */
+  private withSessionRule(verdict: Verdict, token: string, scope: SessionScope | null): Verdict {
+    if ((verdict.kind !== "inconclusive" && verdict.kind !== "error") || !scope || scope.token !== token) return verdict;
+    const expiresAt =
+      scope.expiresAt ?? jwtExpiresAt(token) ?? new Date(this.now() + DEFAULT_TOKEN_TTL_MS).toISOString();
+    return { kind: "ok", verified: { token, expiresAt, fromSession: true, via: "session-scope" } };
   }
 
   /**
@@ -305,7 +324,7 @@ export class BeatportAuth {
    * "ended": the site says nobody is signed in (`{}`); "none": anything else, or a failed read.
    */
   private async readSession(): Promise<
-    { kind: "token"; token: string; expiresAt: string | null } | { kind: "ended" } | { kind: "none" }
+    { kind: "token"; token: string; expiresAt: string | null; scope: SessionScope | null } | { kind: "ended" } | { kind: "none" }
   > {
     let timer: ReturnType<typeof setTimeout> | null = null;
     try {
@@ -316,7 +335,7 @@ export class BeatportAuth {
         }),
       ]);
       const found = tokenFromSessionJson(json, this.now());
-      if (found) return { kind: "token", token: found.token, expiresAt: found.expiresAt };
+      if (found) return { kind: "token", token: found.token, expiresAt: found.expiresAt, scope: sessionUserScope(json, this.now()) };
       return isSignedOutSession(json) ? { kind: "ended" } : { kind: "none" };
     } catch {
       return { kind: "none" };
@@ -402,7 +421,7 @@ export class BeatportAuth {
       if (expiresAt === null || end === null || end + SAME_TOKEN_SLACK_MS <= this.now()) return { kind: "failed" };
       return { kind: "same", expiresAt };
     }
-    const verdict = await this.verify(session.token, session.expiresAt);
+    const verdict = this.withSessionRule(await this.verify(session.token, session.expiresAt), session.token, session.scope);
     return verdict.kind === "ok" ? { kind: "renewed", verified: verdict.verified } : { kind: "failed" };
   }
 
@@ -599,8 +618,19 @@ export class BeatportAuth {
       let polling = false;
       const tried = new Map<
         string,
-        { latched: boolean; asking: boolean; attempts: number; nextAt: number; hint: string | null; timer: ReturnType<typeof setTimeout> | null }
+        {
+          latched: boolean;
+          asking: boolean;
+          attempts: number;
+          nextAt: number;
+          hint: string | null;
+          /** The last answer could not decide (not a definite no). */
+          open: boolean;
+          timer: ReturnType<typeof setTimeout> | null;
+        }
       >();
+      /** What the latest session read said about its own token (the second detector). */
+      let sessionScope: SessionScope | null = null;
       let interval: ReturnType<typeof setInterval> | null = null;
       let timeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -617,13 +647,13 @@ export class BeatportAuth {
         if (done || token === options.exclude) return;
         let entry = tried.get(token);
         if (!entry) {
-          entry = { latched: false, asking: false, attempts: 0, nextAt: 0, hint: expiryHint, timer: null };
+          entry = { latched: false, asking: false, attempts: 0, nextAt: 0, hint: expiryHint, open: false, timer: null };
           tried.set(token, entry);
         }
         if (expiryHint !== null) entry.hint = expiryHint;
         if (entry.latched || entry.asking || this.now() < entry.nextAt) return;
         entry.asking = true;
-        const verdict = await this.verify(token, entry.hint);
+        const verdict = this.withSessionRule(await this.verify(token, entry.hint), token, sessionScope);
         entry.asking = false;
         if (done) return;
         if (verdict.kind === "ok") {
@@ -631,6 +661,7 @@ export class BeatportAuth {
         } else if (verdict.kind === "rejected") {
           entry.latched = true;
         } else {
+          entry.open = true;
           const wait = VERIFY_BACKOFF_MS[Math.min(entry.attempts, VERIFY_BACKOFF_MS.length - 1)]!;
           entry.attempts += 1;
           entry.nextAt = this.now() + wait;
@@ -646,8 +677,18 @@ export class BeatportAuth {
         if (done || polling) return;
         polling = true;
         try {
-          const found = tokenFromSessionJson(await surface.fetchSessionJson(), this.now());
-          if (found) await consider(found.token, found.expiresAt);
+          const json = await surface.fetchSessionJson();
+          sessionScope = sessionUserScope(json, this.now());
+          const found = tokenFromSessionJson(json, this.now());
+          if (found) {
+            const entry = tried.get(found.token);
+            // A token that could not be decided on, and that the session now names as a person's,
+            // need not wait out its backoff.
+            if (entry?.open && !entry.latched && !entry.asking && sessionScope?.token === found.token) {
+              entry.nextAt = 0;
+            }
+            await consider(found.token, found.expiresAt);
+          }
         } catch {
           /* the page is not ready; the next tick asks again */
         } finally {
@@ -700,7 +741,7 @@ export class BeatportAuth {
       introspectExpiresAt(body, this.now()) ??
       jwtExpiresAt(token) ??
       new Date(this.now() + DEFAULT_TOKEN_TTL_MS).toISOString();
-    return { kind: "ok", verified: { token, expiresAt, fromSession: expiryHint !== null } };
+    return { kind: "ok", verified: { token, expiresAt, fromSession: expiryHint !== null, via: "introspect" } };
   }
 }
 

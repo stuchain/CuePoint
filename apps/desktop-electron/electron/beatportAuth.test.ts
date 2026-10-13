@@ -641,6 +641,125 @@ describe("signing in, with the session endpoint", () => {
   });
 });
 
+describe("the session's own user scope, when introspection cannot decide", () => {
+  const forbidden = { status: 403, raw: "<html>forbidden</html>", contentType: "text/html" };
+
+  it("regression: C20 signs in on the session's user scope when every introspection is a 403", async () => {
+    const t = setup({ "ses-token-aaaa": forbidden, "ses-token-bbbb": forbidden });
+    t.host.onOpen = (surface) => {
+      surface.session = sessionJson("ses-token-aaaa", T0 + 12 * MIN);
+    };
+    const run = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(SESSION_POLL_MS + 10);
+    const status = await run;
+    expect(status.state).toBe("signed_in");
+    expect(t.host.opened[0]!.surface.closed).toBe(true);
+    expect(t.store.value).toEqual({
+      token: "ses-token-aaaa",
+      expires_at: new Date(T0 + 12 * MIN).toISOString(),
+      source: "signin",
+    });
+    expect(t.engine.session).toEqual(["ses-token-aaaa"]);
+    // Renewal is on the calendar, as for any sign-in: a minute before the end.
+    t.host.opened.length = 0;
+    t.host.session = sessionJson("ses-token-bbbb", T0 + 24 * MIN);
+    t.engine.session.length = 0;
+    await vi.advanceTimersByTimeAsync(11 * MIN + 5000);
+    expect(t.store.value?.token).toBe("ses-token-bbbb");
+    expect(t.engine.session).toEqual(["ses-token-bbbb"]);
+    expect(t.host.opened).toHaveLength(0);
+  });
+
+  it("regression: C20 renews on the session's user scope while introspection still answers 403", async () => {
+    const t = setup({ "first-token-aaaa": forbidden, "second-token-bbbb": forbidden, "third-token-cccc": forbidden });
+    t.host.onOpen = (surface) => {
+      surface.session = sessionJson("first-token-aaaa", T0 + 10 * MIN);
+    };
+    const run = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(SESSION_POLL_MS + 10);
+    await run;
+    t.host.opened.length = 0;
+    t.host.onOpen = () => undefined;
+    t.host.session = (n: number) => (n <= 1 ? sessionJson("second-token-bbbb", T0 + 22 * MIN) : sessionJson("third-token-cccc", T0 + 34 * MIN));
+    t.host.sessionReads = 0;
+    await vi.advanceTimersByTimeAsync(9 * MIN + 1000);
+    expect(t.store.value?.token).toBe("second-token-bbbb");
+    await vi.advanceTimersByTimeAsync(12 * MIN);
+    expect(t.store.value?.token).toBe("third-token-cccc");
+    expect(t.store.value?.source).toBe("signin");
+    expect(t.auth.status().state).toBe("signed_in");
+  });
+
+  it("also trusts it when the answer is not JSON or the network fails", async () => {
+    const t = setup({ "ses-token-aaaa": { raw: "<html>challenge</html>", contentType: "text/html" } });
+    t.host.onOpen = (surface) => {
+      surface.session = sessionJson("ses-token-aaaa", T0 + 12 * MIN);
+    };
+    const run = t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(SESSION_POLL_MS + 10);
+    expect((await run).state).toBe("signed_in");
+
+    const u = setup();
+    u.fetchImpl.mockImplementation(async () => {
+      throw new Error("offline");
+    });
+    u.host.onOpen = (surface) => {
+      surface.session = sessionJson("ses-token-aaaa", T0 + 12 * MIN);
+    };
+    const run2 = u.auth.signIn();
+    await vi.advanceTimersByTimeAsync(SESSION_POLL_MS + 10);
+    expect((await run2).state).toBe("signed_in");
+  });
+
+  it("never overrides a definite no: introspection 401, inactive or anon wins over the session", async () => {
+    for (const answer of [
+      { status: 401 },
+      { body: { active: false, scope: "app:prostore user:dj", username: "anna" } },
+      { body: { active: true, scope: "app:prostore user:anon", username: "x" } },
+    ]) {
+      const t = setup({ "ses-token-aaaa": answer });
+      t.host.onOpen = (surface) => {
+        surface.session = sessionJson("ses-token-aaaa", T0 + 12 * MIN);
+      };
+      void t.auth.signIn();
+      await vi.advanceTimersByTimeAsync(SESSION_POLL_MS * 5);
+      expect(t.store.value).toBeNull();
+      expect(t.engine.session).toEqual([]);
+      expect(t.host.opened[0]!.surface.closed).toBe(false);
+    }
+  });
+
+  it("never trusts a header token the session does not name", async () => {
+    const t = setup({ "hdr-token-aaaa": forbidden, "other-token-bbbb": forbidden });
+    t.host.onOpen = (surface) => {
+      surface.sendBearer("hdr-token-aaaa");
+      surface.session = sessionJson("other-token-bbbb", T0 + 12 * MIN);
+    };
+    void t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(SESSION_POLL_MS * 5);
+    expect(t.store.value?.token).not.toBe("hdr-token-aaaa");
+    expect(t.store.value?.token).toBe("other-token-bbbb");
+  });
+
+  it("never trusts a header-only token when the session has no user scope", async () => {
+    const t = setup({ "hdr-token-aaaa": forbidden });
+    t.host.onOpen = (surface) => surface.sendBearer("hdr-token-aaaa");
+    void t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(SESSION_POLL_MS * 5);
+    expect(t.store.value).toBeNull();
+  });
+
+  it("never trusts an anonymous session token", async () => {
+    const t = setup({ "anon-token-0000": forbidden });
+    t.host.onOpen = (surface) => {
+      surface.session = sessionJson("anon-token-0000", T0 + 12 * MIN, { anon: true, scope: "app:prostore user:anon" });
+    };
+    void t.auth.signIn();
+    await vi.advanceTimersByTimeAsync(SESSION_POLL_MS * 5);
+    expect(t.store.value).toBeNull();
+  });
+});
+
 describe("renewing", () => {
   async function signedIn() {
     const t = setup({
