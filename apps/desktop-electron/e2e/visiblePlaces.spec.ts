@@ -686,7 +686,8 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect(editor).toBeVisible();
     await expect(win).toHaveURL(/#\/library/);
     await editor.getByRole("textbox", { name: "Genre value" }).fill("Deep House");
-    await reach(win, editor.getByRole("button", { name: "Apply" }), "Apply");
+    // The button names the change and its count (DEC-267).
+    await reach(win, editor.getByRole("button", { name: "Change 2 tracks" }), "Change 2 tracks");
     await win.keyboard.press("Enter");
     await expect(editor).toBeHidden({ timeout: 30_000 });
     await expect.poll(() => titlesWithGenre("Deep House"), { timeout: 30_000 }).toEqual(["Warm One", "Warm Two"]);
@@ -703,7 +704,8 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     const beatport = win.getByRole("dialog", { name: "Use Beatport's values" });
     await expect(beatport).toContainText("2 tracks");
     await use(win, beatport.getByRole("checkbox", { name: "Genre" }), "Genre", "Space");
-    await reach(win, beatport.getByRole("button", { name: "Apply" }), "Apply");
+    // Counted as the tracks it would change.
+    await reach(win, beatport.getByRole("button", { name: /^Copy to \d+ tracks?$/ }), "Copy to");
     await win.keyboard.press("Enter");
     await expect(beatport).toBeHidden({ timeout: 30_000 });
     await expect.poll(genres, { timeout: 30_000 }).toEqual(expect.arrayContaining(["Tech House", "Deep House"]));
