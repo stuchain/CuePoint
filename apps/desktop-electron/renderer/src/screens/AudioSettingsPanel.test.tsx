@@ -1,3 +1,4 @@
+import { Activity } from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -126,6 +127,73 @@ describe("the panel's words", () => {
       }),
     );
     expect(detail).toBeVisible();
+  });
+
+  it("shows the last device list at once on a revisit while it asks the player again", async () => {
+    const harness = install();
+    const first = renderPanel();
+    expect(await screen.findByText("3 outputs found.")).toBeInTheDocument();
+    first.unmount();
+
+    // The player is slow this time: the answer has not come back yet.
+    harness.audioDevices.mockReturnValue(new Promise(() => {}));
+    renderPanel();
+    expect(screen.getByText("3 outputs found.")).toBeInTheDocument();
+    expect(screen.queryByText("Reading the devices this machine has…")).toBeNull();
+    expect(screen.getByRole("option", { name: "Speakers (Focusrite USB Audio)" })).toBeInTheDocument();
+    await waitFor(() => expect(harness.audioDevices).toHaveBeenCalledTimes(2));
+  });
+
+  it("keeps the list shown while the page is hidden and shown again (React Activity)", async () => {
+    const harness = install();
+    const view = (mode: "visible" | "hidden") => (
+      <ScaleProvider>
+        <Activity mode={mode}>
+          <AudioSettingsPanel />
+        </Activity>
+      </ScaleProvider>
+    );
+    const { rerender } = render(view("visible"));
+    expect(await screen.findByText("3 outputs found.")).toBeInTheDocument();
+
+    rerender(view("hidden"));
+    // The player is slow when the page is shown again: the second answer is still pending.
+    harness.audioDevices.mockReturnValue(new Promise(() => {}));
+    rerender(view("visible"));
+    await waitFor(() => expect(harness.audioDevices).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText("Reading the devices this machine has…")).toBeNull();
+    expect(screen.getByText("3 outputs found.")).toBeInTheDocument();
+  });
+
+  it("lets only the latest ask set the list, however late an older answer lands", async () => {
+    const harness = install();
+    let answerOlder!: (value: unknown) => void;
+    harness.audioDevices.mockReturnValueOnce(new Promise((resolve) => (answerOlder = resolve)));
+    const view = (mode: "visible" | "hidden") => (
+      <ScaleProvider>
+        <Activity mode={mode}>
+          <AudioSettingsPanel />
+        </Activity>
+      </ScaleProvider>
+    );
+    const { rerender } = render(view("visible"));
+    await waitFor(() => expect(harness.audioDevices).toHaveBeenCalledTimes(1));
+    rerender(view("hidden"));
+    harness.audioDevices.mockResolvedValue({ ok: true, devices: [DEVICES[0]!] });
+    rerender(view("visible"));
+    expect(await screen.findByText("1 output found.")).toBeInTheDocument();
+
+    // The first ask answers last, with the old three: it must not replace the newer one.
+    answerOlder({ ok: true, devices: DEVICES });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.getByText("1 output found.")).toBeInTheDocument();
+  });
+
+  it("says it is reading the devices the first time, with no list yet", async () => {
+    const harness = install();
+    harness.audioDevices.mockReturnValue(new Promise(() => {}));
+    renderPanel();
+    expect(await screen.findByText("Reading the devices this machine has…")).toBeInTheDocument();
   });
 
   it("keeps the singular right", async () => {

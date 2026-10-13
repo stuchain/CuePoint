@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import type { AudioDevice } from "../api/cuepointBridge.types";
 import { MoreAbout, Panel } from "../components";
@@ -40,10 +40,25 @@ import { userMessage } from "../api/userMessage";
  * the lie DEC-055 exists to prevent.
  */
 
+/**
+ * The list the player answered last, kept for the next time the panel opens (a tiny cache): the
+ * panel is drawn with it at once while it asks again, so Settings shown again is not blank. It is
+ * still asked every time; this only decides what is on screen meanwhile.
+ */
+const lastDevices = new WeakMap<object, AudioDevice[]>();
+
+/** The list remembered for this player bridge, if any. */
+function remembered(): AudioDevice[] | null {
+  const player = window.cuepoint?.player;
+  return (player && lastDevices.get(player)) || null;
+}
+
 export function AudioSettingsPanel() {
   const audio = usePlayerValue(selectAudio);
-  const [devices, setDevices] = useState<AudioDevice[]>([]);
+  const [devices, setDevices] = useState<AudioDevice[]>(() => remembered() ?? []);
+  const [listed, setListed] = useState(() => remembered() !== null);
   const [loading, setLoading] = useState(false);
+  const epoch = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, markSaved] = useSavedSignal();
@@ -54,17 +69,26 @@ export function AudioSettingsPanel() {
   const refresh = useCallback(async () => {
     const player = window.cuepoint?.player;
     if (!player?.audioDevices) return;
+    // Only the latest ask may set the list: an older answer that lands late is dropped.
+    const mine = ++epoch.current;
     setLoading(true);
     try {
       const result = await player.audioDevices();
-      setDevices(result.devices ?? []);
+      if (mine !== epoch.current) return;
+      const found = result.devices ?? [];
+      lastDevices.set(player, found);
+      setDevices(found);
+      setListed(true);
       setError(result.ok ? null : (result.error ?? "Could not read the audio devices."));
     } catch (problem) {
+      if (mine !== epoch.current) return;
       reportUnexpected(problem);
+      lastDevices.delete(player);
+      setListed(false);
       setDevices([]);
       setError(userMessage(problem, "Could not read the audio devices."));
     } finally {
-      setLoading(false);
+      if (mine === epoch.current) setLoading(false);
     }
   }, []);
 
@@ -124,13 +148,13 @@ export function AudioSettingsPanel() {
           ]}
         />
         <p id={outputsId} className="cp-audio-settings__hint">
-          {loading
+          {loading && !listed
             ? "Reading the devices this machine has…"
             : available
               ? `${devices.length} ${devices.length === 1 ? "output" : "outputs"} found.`
               : "Open CuePoint as a desktop app to choose an output device."}
         </p>
-        {available && !loading && (
+        {available && !(loading && !listed) && (
           <MoreAbout describedBy={outputsId}>
             <p className="cp-audio-settings__hint">
               If the chosen one is unplugged, CuePoint switches to System default.
