@@ -269,7 +269,10 @@ export type JobState = "queued" | "running" | "succeeded" | "failed" | "cancelle
 /** One job's status, from `getJob` and from its event stream. */
 export interface JobStatus {
   id: string;
-  /** The job's kind, e.g. `clean_match` or `library_import`. */
+  /**
+   * On a stream's frame, the frame's kind (`status`, or `error` when the stream itself
+   * failed or timed out), not the job's: the job's kind is on `EngineJobSummary.type`.
+   */
   type?: string;
   state: JobState;
   progress?: Partial<ProgressInfo>;
@@ -1214,6 +1217,11 @@ export interface EngineJobList {
   jobs: EngineJobSummary[];
   /** Active jobs in total, regardless of the state filter or the limit. */
   active_count: number;
+  /**
+   * The engine's change counters, bumped when the library or the waveform cache is
+   * rewritten, so a reader can tell that its copy is stale without a job to watch.
+   */
+  revisions?: { library: number; waveforms: number };
 }
 
 /** The two thumbnail sizes the engine makes (CLEAN-09): a table row, the Inspector. */

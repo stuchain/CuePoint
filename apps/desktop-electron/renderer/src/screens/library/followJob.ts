@@ -11,6 +11,7 @@
  * a browser-lab render or an older preload can still manage.
  */
 import type { EngineJobSummary, JobState } from "../../api/cuepointBridge.types";
+import { subscribeJobEvents } from "../../api/jobsStore";
 import { reportUnexpected } from "../../reporting/reporting";
 import { NEEDS_DESKTOP, isEngineOutage, userMessage } from "../../api/userMessage";
 
@@ -105,10 +106,15 @@ export function followJob(jobId: string, pollMs = POLL_INTERVAL_MS): FollowHandl
     }
   };
 
-  if (bridge.subscribeJobEvents) {
-    unsubscribe = bridge.subscribeJobEvents(jobId, (event) => {
-      consider(event as Partial<EngineJobSummary>);
-    });
+  if (typeof bridge.subscribeJobEvents === "function") {
+    // Through the store, so the strip and this page share one stream for the job.
+    unsubscribe = subscribeJobEvents(
+      jobId,
+      (event) => {
+        consider(event as Partial<EngineJobSummary>);
+      },
+      bridge,
+    );
   } else {
     timer = window.setInterval(() => void check(), pollMs);
   }

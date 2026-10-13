@@ -1,26 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { JOB_POLL_MS, subscribeActiveJobs, subscribeJobEvents } from "../../api/jobsStore";
 import type {
   EngineJobSummary,
   JobStatus,
 } from "../../api/cuepointBridge.types";
 
-/**
- * How often the strip asks what background work is running.
- *
- * This one *is* an HTTP round trip, unlike the engine-status read, so it is
- * deliberately not tight — the strip is mounted for the life of the app, and a
- * permanent component polling hard is permanent load. It only has to notice
- * that a job *started*; once one is found, progress arrives over SSE rather
- * than by polling.
- *
- * Two seconds rather than four because four is long enough to look broken:
- * starting a match and glancing at the strip should not need a wait. It is
- * still a discovery poll, so a job shorter than the interval can finish
- * unseen — a demo run completes in about 300ms and is often missed entirely.
- * That is acceptable: the jobs worth reporting are the ones that take long
- * enough to want reporting on.
- */
-export const JOB_POLL_MS = 2000;
+// Defined beside the shared poll it paces; re-exported for the screens that pass it on.
+export { JOB_POLL_MS };
 
 interface ActiveJobState {
   job: EngineJobSummary | null;
@@ -246,6 +232,9 @@ export function jobTitle(job: EngineJobSummary | null): string | undefined {
  * nothing broadcasts that. Progress is *not* a poll: once a job is known, the
  * existing SSE stream carries its ticks, which is both cheaper and smoother
  * than asking repeatedly.
+ *
+ * Neither is this hook's own: the poll and the stream are the shared ones in
+ * `jobsStore`, so a screen using this beside the strip adds no request.
  */
 export function useActiveJob(
   pollMs: number = JOB_POLL_MS,
@@ -253,57 +242,31 @@ export function useActiveJob(
 ): ActiveJobState {
   const subscribeToProgress = options.subscribe !== false;
   const [state, setState] = useState<ActiveJobState>(EMPTY);
-  // The job we are subscribed to, so a re-poll finding the same job does not
-  // tear down and rebuild the stream.
-  const subscribedTo = useRef<string | null>(null);
-  const unsubscribe = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    const list = window.cuepoint?.listJobs;
-    if (!list) return;
-
-    let cancelled = false;
-
-    const poll = () => {
-      void list({ state: "active", limit: 5 })
-        .then((result) => {
-          if (cancelled) return;
-          // The newest running job, else the newest: background work queued
-          // behind an import (waveforms wait for it) must not hide the import.
-          const job = result.jobs.find((candidate) => candidate.state === "running") ?? result.jobs[0] ?? null;
-          setState({ job, activeCount: result.active_count, jobs: result.jobs, loaded: true, failed: false });
-        })
-        .catch(() => {
-          // The engine being unreachable is reported by the engine-status half
-          // of the strip; there is nothing useful to say about jobs meanwhile.
-          if (!cancelled) setState({ ...EMPTY, loaded: true, failed: true });
+  useEffect(
+    () =>
+      subscribeActiveJobs((snapshot) => {
+        // The newest running job, else the newest: background work queued
+        // behind an import (waveforms wait for it) must not hide the import.
+        const job =
+          snapshot.jobs.find((candidate) => candidate.state === "running") ?? snapshot.jobs[0] ?? null;
+        setState({
+          job,
+          activeCount: snapshot.activeCount,
+          jobs: snapshot.jobs,
+          loaded: snapshot.loaded,
+          failed: snapshot.failed,
         });
-    };
+      }, pollMs),
+    [pollMs],
+  );
 
-    poll();
-    const timer = setInterval(poll, pollMs);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [pollMs]);
-
-  // Follow the current job's progress over SSE.
+  // Follow the current job's progress over SSE. A re-poll finding the same job
+  // leaves the id, and so the stream, alone.
+  const id = state.job?.id ?? null;
   useEffect(() => {
-    const subscribe = subscribeToProgress ? window.cuepoint?.subscribeJobEvents : undefined;
-    const id = state.job?.id ?? null;
-
-    if (!subscribe || !id) {
-      unsubscribe.current?.();
-      unsubscribe.current = null;
-      subscribedTo.current = null;
-      return;
-    }
-    if (subscribedTo.current === id) return;
-
-    unsubscribe.current?.();
-    subscribedTo.current = id;
-    unsubscribe.current = subscribe(id, (event: JobStatus) => {
+    if (!subscribeToProgress || !id) return;
+    return subscribeJobEvents(id, (event: JobStatus) => {
       setState((prev) => {
         if (!prev.job || prev.job.id !== event.id) return prev;
         const job = {
@@ -314,16 +277,7 @@ export function useActiveJob(
         return { ...prev, job, jobs: [job, ...prev.jobs.slice(1)] };
       });
     });
-  }, [state.job?.id, subscribeToProgress]);
-
-  // Tear the stream down when the strip goes away, not only when the job does.
-  useEffect(
-    () => () => {
-      unsubscribe.current?.();
-      unsubscribe.current = null;
-    },
-    [],
-  );
+  }, [id, subscribeToProgress]);
 
   return state;
 }

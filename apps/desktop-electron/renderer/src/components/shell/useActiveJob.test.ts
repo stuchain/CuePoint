@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 import {
@@ -9,6 +10,7 @@ import {
   jobPercent,
   jobStopLabel,
   jobTitle,
+  useActiveJob,
 } from "./useActiveJob";
 
 /**
@@ -339,5 +341,34 @@ describe("what each kind of work is for (STR-3)", () => {
       "CuePoint is working in the background. You can keep working.",
     );
     expect(jobTitle(null)).toBeUndefined();
+  });
+});
+
+describe("useActiveJob, shared", () => {
+  it("asks once per tick and opens one stream for a job, however many screens use it", async () => {
+    vi.useFakeTimers();
+    try {
+      const listJobs = vi.fn(async () => ({ jobs: [job()], active_count: 1 }));
+      const subscribeJobEvents = vi.fn(() => () => {});
+      (window as unknown as { cuepoint?: unknown }).cuepoint = { listJobs, subscribeJobEvents };
+
+      // The strip and Clean's match hook, both live at once.
+      renderHook(() => useActiveJob(2000));
+      renderHook(() => useActiveJob(2000));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(listJobs).toHaveBeenCalledTimes(1);
+      expect(subscribeJobEvents).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+      expect(listJobs).toHaveBeenCalledTimes(2);
+      expect(subscribeJobEvents).toHaveBeenCalledTimes(1);
+    } finally {
+      delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+      vi.useRealTimers();
+    }
   });
 });

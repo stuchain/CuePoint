@@ -16,7 +16,7 @@ import type {
   StatisticsPlays,
   StatisticsSpreads,
 } from "../../api/cuepointBridge.types";
-import { useActiveJob } from "../../components/shell/useActiveJob";
+import { onJobFinished, subscribeActiveJobs } from "../../api/jobsStore";
 import { bridgeErrorFields, isEngineRefusal } from "../../api/bridgeError";
 import { reportUnexpected } from "../../reporting/reporting";
 import { playsParams, type PlaysChoice } from "./playsChoice";
@@ -184,34 +184,37 @@ const LIBRARY_JOBS: ReadonlySet<string> = new Set(["library_import", "library_re
 
 /**
  * Calls `onFinished` when an import or a refresh that was running is gone from the active
- * work. It is found by the status strip's own poll (without its progress stream), because one
- * can be started from the Library or the menu while this page is open, and nothing announces
- * its end.
+ * work. It is found by the shared job poll (without its progress stream), because one can be
+ * started from the Library or the menu while this page is open, and nothing announces its end.
  *
- * A poll that failed says nothing about what is running, so it is ignored. The poll lists at
- * most a few jobs, so one that is not listed while more are active than were listed is not
- * known to be finished either.
+ * The store decides what counts as finished: a poll that failed says nothing about what is
+ * running, and one that is not listed while more are active than were listed is not known to
+ * be finished either. Subscribing to the poll here is what keeps it running while this page
+ * is the only reader.
  */
 export function useLibraryJobsFinished(onFinished: () => void, pollMs?: number): void {
-  const { jobs, activeCount, loaded, failed } = useActiveJob(pollMs, { subscribe: false });
-  const running = useRef<Set<string>>(new Set());
   const latest = useRef(onFinished);
   latest.current = onFinished;
 
   useEffect(() => {
-    if (!loaded || failed) return;
-    const listed = new Set(jobs.map((job) => job.id));
-    const hidden = activeCount > jobs.length;
-    const now = new Set(jobs.filter((job) => LIBRARY_JOBS.has(job.type)).map((job) => job.id));
-    let finished = false;
-    for (const id of running.current) {
-      if (now.has(id)) continue;
-      if (hidden && !listed.has(id)) now.add(id);
-      else finished = true;
-    }
-    running.current = now;
-    if (finished) latest.current();
-  }, [jobs, activeCount, loaded, failed]);
+    const stopPolling = subscribeActiveJobs(() => {}, pollMs);
+    // An import and a refresh that end in one poll read the library once.
+    let due = false;
+    let live = true;
+    const stopListening = onJobFinished((job) => {
+      if (!LIBRARY_JOBS.has(job.type) || due) return;
+      due = true;
+      queueMicrotask(() => {
+        due = false;
+        if (live) latest.current();
+      });
+    });
+    return () => {
+      live = false;
+      stopListening();
+      stopPolling();
+    };
+  }, [pollMs]);
 }
 
 interface StatisticsTrees {
