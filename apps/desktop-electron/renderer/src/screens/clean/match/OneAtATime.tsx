@@ -19,7 +19,7 @@
  * same kind of reason: it is replaced in the commit that shows the card its
  * commands read, so a key pressed between commits is not lost (CLEAN-14).
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { LibraryTrackRow, MatchCandidate } from "../../../api/cuepointBridge.types";
 import { Button } from "../../../components/Button";
@@ -116,6 +116,63 @@ function theirCell(entry: CardRow): ReactNode {
         </span>
       );
   }
+}
+
+/**
+ * The cover art, small beside the title so the decide buttons stay in view. A
+ * click shows the same image larger; a second click or Escape closes it. No art
+ * is a plain placeholder, not a button.
+ */
+function ArtThumb({ src, caption }: { src: string | null; caption: string }) {
+  const [open, setOpen] = useState(false);
+  const largerId = useId();
+
+  useEffect(() => {
+    setOpen(false);
+  }, [src]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(false);
+    };
+    // Capture phase: Escape closes the larger art before the page's own handler
+    // (which would take it to stop a preview) sees it.
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [open]);
+
+  if (!src) {
+    return (
+      <figure className="match-card__figure">
+        <div className="match-card__art match-card__art--none" aria-hidden />
+        <figcaption className="match-card__caption">{caption}</figcaption>
+      </figure>
+    );
+  }
+  return (
+    <figure className="match-card__figure">
+      <button
+        type="button"
+        className="match-card__art-button"
+        aria-label="Show the cover art larger"
+        aria-expanded={open}
+        aria-controls={open ? largerId : undefined}
+        onClick={() => setOpen(!open)}
+      >
+        <img className="match-card__art" src={src} alt="" />
+      </button>
+      {open && (
+        <figure id={largerId} className="match-card__art-larger" aria-label="Cover art, larger">
+          <img className="match-card__art-larger-image" src={src} alt="" />
+        </figure>
+      )}
+      <figcaption className="match-card__caption">{caption}</figcaption>
+    </figure>
+  );
 }
 
 export function OneAtATime({
@@ -267,14 +324,7 @@ export function OneAtATime({
         <section className="match-card" aria-label="Your track">
           <h2 className="match-card__eyebrow">Your track</h2>
           <div className="match-card__body">
-            <figure className="match-card__figure">
-              {artwork ? (
-                <img className="match-card__art" src={artwork} alt="" />
-              ) : (
-                <div className="match-card__art match-card__art--none" aria-hidden />
-              )}
-              <figcaption className="match-card__caption">your art</figcaption>
-            </figure>
+            <ArtThumb src={artwork} caption="your art" />
             <div className="match-card__facts">
               <h3 className="match-card__title">{row.title}</h3>
               <p className="match-card__artist">{row.artist}</p>
@@ -338,14 +388,7 @@ export function OneAtATime({
           )}
           {chosen && (
             <div className="match-card__body">
-              <figure className="match-card__figure">
-                {media.artwork ? (
-                  <img className="match-card__art" src={media.artwork} alt="" />
-                ) : (
-                  <div className="match-card__art match-card__art--none" aria-hidden />
-                )}
-                <figcaption className="match-card__caption">Beatport art</figcaption>
-              </figure>
+              <ArtThumb src={media.artwork} caption="Beatport art" />
               <div className="match-card__facts">
                 <h3 className="match-card__title">
                   {chosen.title ?? "—"}

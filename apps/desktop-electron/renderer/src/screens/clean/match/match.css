@@ -111,7 +111,7 @@
   align-items: stretch;
 }
 
-@media (max-width: 900px) {
+@container content (max-width: 900px) {
   .match-one__cards {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -163,22 +163,63 @@
 
 .match-card__body {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-start;
   gap: var(--space-md);
 }
 
 .match-card__figure {
+  position: relative;
   display: flex;
+  flex: none;
   flex-direction: column;
   gap: var(--space-xs);
   margin: 0;
 }
 
-/* The Inspector thumbnail size the engine makes, drawn at a whole-pixel size so
-   the pixel system's sizes never blur it. */
+.match-card__art-button {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  line-height: 0;
+}
+
+.match-card__art-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-width);
+}
+
+/* The same image, larger, floating over the card until it is closed. */
+.match-card__art-larger {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: 0;
+  z-index: 2;
+  width: max-content;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: var(--space-xs) 0 0;
+  padding: var(--space-xs);
+  border: var(--control-border-width) solid var(--border-control);
+  background: var(--bg-panel);
+}
+
+.match-card__art-larger-image {
+  display: block;
+  width: calc(240px * var(--scale));
+  height: auto;
+  aspect-ratio: 1;
+  max-width: min(calc(240px * var(--scale)), 80cqi);
+  object-fit: cover;
+}
+
+/* A 48 px thumbnail beside the title (a click shows it larger), drawn at a
+   whole-pixel size so the pixel system's sizes never blur it. */
 .match-card__art {
-  width: calc(120px * var(--scale));
-  height: calc(120px * var(--scale));
+  width: calc(48px * var(--scale));
+  height: calc(48px * var(--scale));
   object-fit: cover;
   border: var(--control-border-width) solid var(--border-control);
 }
@@ -198,7 +239,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-xs);
-  min-width: min(100%, calc(200px * var(--scale)));
+  min-width: 0;
 }
 
 .match-card__title {
@@ -372,6 +413,14 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-sm);
+  /* Stays in view while the cards and ticks scroll under it (.match-one scrolls). */
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin-inline: calc(-1 * var(--space-md));
+  padding: var(--space-sm) var(--space-md);
+  border-top: var(--divider);
+  background: var(--bg-panel);
 }
 
 .match-one__position {

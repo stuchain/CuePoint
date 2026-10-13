@@ -621,3 +621,88 @@ describe("with no track left (the last one was just decided)", () => {
     expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
   });
 });
+
+describe("the decide buttons stay last (R2-3)", () => {
+  it("keeps the order: cards, Other results, Why this score?, ticks, Decide", async () => {
+    renderOne({ status: { text: "Corrected “Place”.", batchId: null } });
+    await ready();
+    const cards = screen.getByRole("region", { name: "Your track" }).parentElement as HTMLElement;
+    const results = screen.getByRole("group", { name: "Other results" });
+    const why = screen.getByRole("button", { name: "Why this score?" });
+    const ticks = screen.getByRole("group", { name: /When I say/ });
+    const decide = screen.getByRole("group", { name: "Decide" });
+    const ordered = [cards, results, why, ticks, decide];
+    for (let i = 0; i < ordered.length - 1; i += 1) {
+      expect(
+        ordered[i]!.compareDocumentPosition(ordered[i + 1]!) & Node.DOCUMENT_POSITION_FOLLOWING,
+        `item ${i} comes before item ${i + 1}`,
+      ).toBeTruthy();
+    }
+    // Nothing but the status line follows the Decide group.
+    const after = decide.nextElementSibling;
+    expect(after).toHaveClass("match-status");
+    expect(after).toHaveAttribute("role", "status");
+    expect(after!.nextElementSibling).toBeNull();
+  });
+});
+
+describe("the cover art thumbnail (R2-3)", () => {
+  it("opens the art larger on a click, and closes it on a second click or Escape", async () => {
+    bridge.getCandidateArtwork!.mockResolvedValue("blob:beatport-art");
+    renderOne();
+    await ready();
+    const button = await screen.findByRole("button", { name: "Show the cover art larger" }, LOADED);
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("figure", { name: "Cover art, larger" })).toBeNull();
+
+    fireEvent.click(button);
+    const figure = screen.getByRole("figure", { name: "Cover art, larger" });
+    expect(figure.querySelector("img")).toHaveAttribute("src", "blob:beatport-art");
+    expect(button).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(button);
+    expect(screen.queryByRole("figure", { name: "Cover art, larger" })).toBeNull();
+
+    fireEvent.click(button);
+    expect(screen.getByRole("figure", { name: "Cover art, larger" })).toBeInTheDocument();
+    press("Escape");
+    expect(screen.queryByRole("figure", { name: "Cover art, larger" })).toBeNull();
+  });
+
+  it("keeps a visible caption beside the thumbnail when there is art", async () => {
+    bridge.getCandidateArtwork!.mockResolvedValue("blob:beatport-art");
+    renderOne();
+    await ready();
+    await screen.findByRole("button", { name: "Show the cover art larger" }, LOADED);
+    expect(screen.getByText("Beatport art")).toBeVisible();
+  });
+
+  it("closes the art first on Escape while a preview plays, leaving the preview alone", async () => {
+    bridge.getCandidateArtwork!.mockResolvedValue("blob:beatport-art");
+    bridge.getCandidatePreview!.mockResolvedValue("blob:preview");
+    renderOne();
+    await ready();
+    const button = await screen.findByRole("button", { name: "Show the cover art larger" }, LOADED);
+    press("b");
+    await screen.findByRole("button", { name: /^Stop preview/ });
+    fireEvent.click(button);
+    expect(screen.getByRole("figure", { name: "Cover art, larger" })).toBeInTheDocument();
+
+    press("Escape");
+    expect(screen.queryByRole("figure", { name: "Cover art, larger" })).toBeNull();
+    expect(FakeAudio.instances[0]!.pause).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /^Stop preview/ })).toBeInTheDocument();
+
+    press("Escape");
+    expect(FakeAudio.instances[0]!.pause).toHaveBeenCalled();
+  });
+
+  it("has no button when there is no art, just the placeholder and its caption", async () => {
+    const { container } = renderOne();
+    await ready();
+    expect(screen.queryByRole("button", { name: "Show the cover art larger" })).toBeNull();
+    expect(container.querySelector(".match-card__art--none")).not.toBeNull();
+    expect(screen.getByText("Beatport art")).toBeVisible();
+    expect(screen.getByText("your art")).toBeVisible();
+  });
+});
