@@ -3505,5 +3505,60 @@
     "holds": "an integer id",
     "verdict": "exempt",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/__init__.py::__getattr__::module {__name__!r} has no attribute {name!r}": {
+    "holds": "an attribute name some code asked the package for",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/analysis_protocol.py::_bool::{name} must be true or false, not {type(value).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "verdict": "exempt",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/analysis_protocol.py::_decode::{name} is missing": {
+    "holds": "the name of a protocol field",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/analysis_protocol.py::_decode::{name} is not base64": {
+    "holds": "the name of a protocol field",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/analysis_protocol.py::_decode::{name} must be base64 or null, not {type(value).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "verdict": "exempt",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/analysis_protocol.py::_int::{name} must be an integer, not {type(value).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "verdict": "exempt",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/analysis_protocol.py::_loudness::loudness reason must be a string or null, not {type(reason).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "verdict": "exempt",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/analysis_protocol.py::_loudness::{name} must be a number or null, not {type(value).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "verdict": "exempt",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/analysis_protocol.py::_str::{name} must be a string, not {type(value).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "verdict": "exempt",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/analysis_protocol.py::parse_result::duration_ms must be an integer or null, not {type(duration_ms).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "verdict": "exempt",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/services/analysis_protocol.py::parse_result::reason must be a string or null, not {type(reason).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "verdict": "exempt",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
   }
 }

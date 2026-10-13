@@ -118,7 +118,56 @@ with ad._LIVE_LOCK:
 time.sleep(600)
 `;
 
+// The worker's half (C19g): the engine hands its analysis to a child process,
+// which runs the decoders. The worker program patches the decoder to the same
+// hundredth of the speed, then runs the real loop; the engine computes through
+// the real client and says which process is the worker.
+const WORKER = `
+import sys
+from cuepoint.data import audio_decode as ad
+
+arguments = ad.decoder_arguments
+def slowed(*args, **kwargs):
+    built = arguments(*args, **kwargs)
+    return built[:-2] + ["--speed=0.01"] + built[-2:]
+ad.decoder_arguments = slowed
+
+from cuepoint.engine.analysis_worker import main
+raise SystemExit(main())
+`;
+
+const WORKER_ENGINE = `
+import sys, threading, time
+from pathlib import Path
+from cuepoint.services.analysis_worker_client import WorkerComputer
+
+source, decoder, program = sys.argv[1], sys.argv[2], sys.argv[3]
+computer = WorkerComputer(command=[sys.executable, "-c", program])
+threading.Thread(
+    target=lambda: computer.compute(source, Path(decoder), overview=True, detail=False),
+    daemon=True,
+).start()
+deadline = time.monotonic() + 30
+while computer.pid is None:
+    if time.monotonic() > deadline:
+        sys.exit("no worker started")
+    time.sleep(0.01)
+print(computer.pid, flush=True)
+time.sleep(600)
+`;
+
+/** The ids of a process's children (POSIX), by `pgrep -P`. */
+function childrenOf(pid: number): number[] {
+  const found = spawnSync("pgrep", ["-P", String(pid)], { encoding: "utf8" });
+  return (found.stdout ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(Number);
+}
+
 let workdir: string | null = null;
+let workerPid: number | null = null;
+let mpvPids: number[] = [];
 let engine: ChildProcess | null = null;
 let decoderPid: number | null = null;
 
@@ -132,9 +181,20 @@ afterEach(() => {
     }
   }
   if (workdir) rmSync(workdir, { recursive: true, force: true });
+  for (const pid of [workerPid, ...mpvPids]) {
+    if (pid !== null && alive(pid)) {
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch {
+        // Gone between the look and the kill.
+      }
+    }
+  }
   workdir = null;
   engine = null;
   decoderPid = null;
+  workerPid = null;
+  mpvPids = [];
 });
 
 describeWithDecoder("the waveform decoders end with the engine (WAVE-03)", () => {
@@ -174,5 +234,49 @@ describeWithDecoder("the waveform decoders end with the engine (WAVE-03)", () =>
     // writes seldom: seconds apart here, longer on a slow Intel Mac runner,
     // yet far inside the minute and more it would otherwise decode for.
     await waitFor(() => !alive(pid), "the decoder to end with the engine", 30_000);
+  }, 90_000);
+
+  it("leaves no analysis worker, nor a decoder under it, once the app stops the engine", async () => {
+    workdir = mkdtempSync(path.join(os.tmpdir(), "cuepoint-worker-"));
+    const long = path.join(workdir, "ten minutes of silence.wav");
+    silentWav(long, 600);
+
+    const started = spawn(python!, ["-c", WORKER_ENGINE, long, mpv!, WORKER], {
+      env: { ...process.env, PYTHONPATH: SRC, CUEPOINT_HOME: workdir },
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
+    engine = started;
+    let errors = "";
+    started.stderr!.on("data", (chunk: Buffer) => (errors += chunk.toString()));
+    const pid = await new Promise<number>((resolve, reject) => {
+      let out = "";
+      started.stdout!.on("data", (chunk: Buffer) => {
+        out += chunk.toString();
+        const line = out.split(/\r?\n/)[0];
+        if (out.includes("\n") && line) resolve(Number(line));
+      });
+      started.once("exit", (code) => reject(new Error(`engine exited ${code}: ${errors}`)));
+    });
+    workerPid = pid;
+    expect(alive(pid)).toBe(true);
+
+    if (process.platform !== "win32") {
+      // The worker's decoder, taken before the stop: pgrep cannot find it after.
+      await waitFor(() => childrenOf(pid).length > 0, "the worker to start a decoder", 30_000);
+      mpvPids = childrenOf(pid);
+    }
+    // Slowed, the decode runs for over a minute: only the stop can end it in time.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(alive(pid)).toBe(true);
+
+    stopProcessTree(started);
+
+    await waitFor(() => started.exitCode !== null || started.signalCode !== null, "the engine");
+    // The worker reads end-of-file on its pipe, ends its decoders and exits.
+    await waitFor(() => !alive(pid), "the worker to end with the engine", 30_000);
+    for (const decoder of mpvPids) {
+      await waitFor(() => !alive(decoder), "the worker's decoder to end with it", 30_000);
+    }
   }, 90_000);
 });

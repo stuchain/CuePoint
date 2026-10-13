@@ -10,6 +10,7 @@ This should be called at application startup.
 
 import threading
 
+from cuepoint.services.analysis_worker_client import default_computer
 from cuepoint.services.beatport_api import BeatportApi
 from cuepoint.services.beatport_api_client import BeatportApiClient
 from cuepoint.services.beatport_token import resolve_access_token
@@ -747,6 +748,7 @@ def bootstrap_services() -> None:
         return WaveformService(
             file_status_repository=container.resolve(IFileStatusRepository),
             store=waveform_store(),
+            computer=default_computer(),
         )
 
     container.register_factory(IWaveformService, create_waveform_service)
