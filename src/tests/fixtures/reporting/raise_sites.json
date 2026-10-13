@@ -3490,5 +3490,10 @@
     "holds": "an integer id",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers",
     "verdict": "exempt"
+  },
+  "cuepoint/services/waveform_computer.py::Computed.__post_init__::unknown outcome {self.outcome!r}": {
+    "holds": "an outcome constant chosen by our code",
+    "verdict": "exempt",
+    "reason": "our own constants"
   }
 }
