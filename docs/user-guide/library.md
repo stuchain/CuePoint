@@ -196,8 +196,8 @@ selection**:
 | **Play ▸** | **Play**, **Play next**, **Add to queue**, for the selected tracks in the order the table shows them |
 | **Organize ▸** | **Add to Collection…**, **Add to Set…**, **New Set from these…**, **Remove from "name"** (inside a Collection), **Add tag…**, **Remove tag…**, **Rate ▸**, **Favorite**, **Remove favorite**. See [Organizing your library](organization.md) |
 | **Explore ▸** | **Similar tracks**, **Artist page** and **Label page** (see [Discover](discover.md#artist-and-label-pages)). With several tracks selected they open the first one's |
-| **Beatport ▸** | **Match tracks…**, **Review these matches** and **Use Beatport's values…**. Each opens [Clean](clean.md) with the selected tracks |
-| **Fix ▸** | **Edit values…** and **Save changes into the files…** open Clean's Fix values with the selected tracks; **Check the files are still there** looks for them again |
+| **Beatport ▸** | **Match tracks…** and **Review these matches** open [Clean](clean.md) with the selected tracks; **Use Beatport's values…** opens its dialog right here |
+| **Fix ▸** | **Edit values…** opens its dialog right here for the selected tracks; saving into the files is the green bar at the bottom ([Saving values into your files](clean.md#saving-values-into-your-files)); **Check the files are still there** looks for them again |
 | **More ▸** | **Copy** and **Show in folder** |
 
 A track's right-click menu holds the same groups as submenus: **Play**, **Play
@@ -261,7 +261,7 @@ Then the sections, each folded or opened by clicking its heading:
   counts the changes ("History · 4 changes").
 
 With several tracks selected, the panel shows the last one you clicked, and
-**Edit values for 4 tracks…** opens Clean's Fix values for all of them.
+**Edit values for 4 tracks…** opens the editor for all of them, right here.
 
 Track details and the Collections list on the left grow and shrink with the text size
 (**Settings > Appearance** or **View > Size**), so a bigger size does not squeeze them.
@@ -520,10 +520,10 @@ filters: **Beatport match**, **Match decided by (you or CuePoint)**,
 | --- | --- |
 | Match tracks… | Opens Clean's match window with the selected tracks, to look them up on Beatport. A decision you made is kept, and a newer match that disagrees marks the track *changed since you decided* |
 | Review these matches | Opens Clean's Review on the first selected track, where matches are accepted or rejected |
-| Use Beatport's values… | Opens Clean's Fix values to copy the fields you choose from each track's accepted match into your values |
-| Edit values… | Opens Fix values to set or clear your key, BPM, genre, label or year |
+| Use Beatport's values… | Opens a dialog here to copy the fields you choose from each track's accepted match into your values |
+| Edit values… | Opens a dialog here to set or clear your key, BPM, genre, label or year |
 | Check the files are still there | Looks for the files again. It runs in the background |
-| Save changes into the files… | Opens Fix values on the saving step; see [Writing tags to files](#writing-tags-to-files) |
+| Save changes into the files… | Opens the save window; see [Writing tags to files](#writing-tags-to-files) |
 
 Accepting a match changes no value on its own. **Apply** is what copies
 Beatport's values, and they become your values — Rekordbox's stay underneath.
@@ -536,13 +536,13 @@ Beatport's track matches yours; higher is closer). For each of BPM, genre, label
 and year it shows three lines — **Rekordbox**, **Beatport** and **Using** — and
 says whether *Using* is Rekordbox's value, one applied from Beatport, or one you
 typed. A track not looked up yet gets one sentence and **Match on Beatport**.
-Copying Beatport's values is done in Review and in Fix values, not here.
+Copying Beatport's values is done in Review and from the Library's Beatport menu, not here.
 **Open on the Clean page** takes you to the track's review.
 
 ### Your own values
 
 Open **Yours**, then choose **Edit values…** to set a key, BPM, genre, label or year
-for the track. It is the same editor Clean's Fix values uses, and shows what each
+for the track. It is the same editor the Library's **Edit values…** uses, and shows what each
 value is now. Choose *Clear mine* for a field to go back. The **Your values**
 line under it lists what you have edited, opens by itself when there is
 something to list, and offers **Go back** for each: to Rekordbox's value, or for

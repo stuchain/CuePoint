@@ -206,8 +206,7 @@ each with its progress and a **Stop** button where the work can be stopped. Pres
 The waveform analysis shows as **Analyzing waveforms · 1,234 of 50,000**, counting
 your whole library; hover over it for the rate and the time left. Its button is
 **Pause** rather than Stop, because that is what it does: the analysis stays
-paused, after a restart too, until you resume it from Clean → Health or
-Settings → Waveforms. It also steps aside on its own for an import, a refresh, a
+paused, after a restart too, until you resume it from Settings → Waveforms. It also steps aside on its own for an import, a refresh, a
 file check or a tag write, and carries on after them. See
 [Waveforms](waveforms.md).
 

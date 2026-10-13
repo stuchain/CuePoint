@@ -159,8 +159,9 @@ The analysis can be paused, and stays paused, after a restart too, until you
 resume it:
 
 - from the status strip while it runs (its button is **Pause**);
-- from **Settings → Waveforms**;
-- from **Clean → Health**, where **Waveform drawing** says how far it has got.
+- from **Settings → Waveforms**, which also says how far it has got.
+
+**Statistics ▸ Health** shows how many tracks are analyzed, waiting or failed.
 
 A paused analysis keeps everything it did. Resuming carries on where it
 stopped, not from the start. A track you play or select is still analyzed while

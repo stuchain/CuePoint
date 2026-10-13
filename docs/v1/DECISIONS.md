@@ -2155,7 +2155,7 @@ Nothing here changes the decision. What building it settled, recorded in full in
 
 ## DEC-072 — Clean Is Its Own Page, With Hooks in the Library
 
-**Status**: Approved · **Related**: DEC-020, DEC-062, DEC-047, DEC-045
+**Status**: Approved · Amended by DEC-291 (no Fix values tab) and DEC-292 (Match opens on Playlists) · **Related**: DEC-020, DEC-062, DEC-047, DEC-045
 
 **Decision**: The `clean` nav destination becomes a page: a review queue of tracks by match state
 with side-by-side candidate comparison, and Missing files, Duplicates and Health. The Library gains
@@ -5264,7 +5264,7 @@ Collections and Sets as its value. Statistics uses that field and label rather t
 
 ## DEC-163 — Clean Keeps Its Health Tab; Statistics Shows a Summary
 
-**Status**: Approved · **Related**: Q-164, DEC-136, PAGES-07, STATS-07
+**Status**: Approved · Amended by DEC-291 (Health lives in Statistics; Clean has no Health tab) · **Related**: Q-164, DEC-136, PAGES-07, STATS-07
 
 **Decision**: Clean keeps its Health tab with every check. Statistics shows a health summary (files,
 Beatport, waveforms) whose counts open the Library and which links to Clean's tab with **All health
@@ -7121,7 +7121,7 @@ track), and the engine threw away the 150-a-second envelope it reduces from.
 
 ## DEC-251 — Matching Is One Match Area: One at a Time, Table, Past Searches
 
-**Status**: Approved · **Related**: DEC-004, DEC-012, DEC-065, DEC-066, DEC-067, DEC-068, DEC-072, DEC-076, DEC-132, DEC-201, C14, C15b
+**Status**: Approved · Amended by DEC-292 (Playlists is the first sub-tab) · **Related**: DEC-004, DEC-012, DEC-065, DEC-066, DEC-067, DEC-068, DEC-072, DEC-076, DEC-132, DEC-201, C14, C15b
 
 **Context**: C14: reviewing Beatport matches took too many steps. A person picked a track in a
 queue, read a comparison grid, chose a candidate, pressed Accept, then had to open "Apply from the
@@ -8054,3 +8054,59 @@ buttons, so it never said which playlist or Collection the table was showing or 
   missing, and Export to Rekordbox…. Import another Rekordbox file… moved to Settings ▸ Rekordbox and the File menu.
 
 **Decided with**: User (R4-4 ★ describe the playlist you're in, not the current search; K9) · **Date**: 2026-10-13
+
+## DEC-291 — Clean Has Three Tabs; Fixes Open Where You Are
+
+**Status**: Approved · **Amends**: DEC-072, DEC-163, FLW-12 · **Related**: K3, K4, R3-2, DEC-262
+
+**Context**: Clean had five tabs. Fix values repeated the Library's Fix menu in a second place, and Health repeated
+what Statistics shows, with its own Check, Match and Analyze buttons. Every Library action that changed values sent
+you to Clean and back.
+
+**Decision**:
+- Clean's tabs are **Match**, **Missing files** and **Duplicates**. A stored choice of Fix values or Health opens
+  Match. An old link to Health opens Statistics ▸ Health; an old link to Fix values opens the Library.
+- Amends DEC-163: Health lives in Statistics (its detection rows, **Read cover art** and one "Fix in Clean" link per
+  group included). Waveform analysis is started from Settings ▸ Waveforms; Statistics ▸ Health shows its counts.
+- Amends DEC-072: Edit values, Use Beatport's values and saving to files open in place, as dialogs over the Library,
+  Track details and Keys, on the tracks you chose. Nothing navigates to Clean for them.
+- One home per action: matching is started on Match only; **Missing files** shows one check button at a time
+  ("Check every file" before any check, then "Check again", or "Check N again" with a selection).
+- Clean's own dialogs say what they do (R3-2): the match window button reads "Match N tracks", "Match N tracks
+  again" or "Match the N chosen", and a greyed button gives its reason; a Duplicates confirmation names its verb and
+  count ("Tag 340 tracks").
+
+**Decided with**: User (K3, K4, R3-2; "apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13
+
+## DEC-292 — Match Opens on Your Playlists
+
+**Status**: Approved · **Amends**: DEC-072, DEC-251 · **Related**: C22, C23, K12, K13, DEC-262, DEC-291
+
+**Context**: Match opened on a list of tracks, and starting a match meant a header button and a modal. People think
+in playlists: which ones are matched, which wait for them, which are ready to save.
+
+**Decision**:
+- Match's sub-tabs are **Playlists**, **One at a time**, **Table** and **Past searches**. Playlists is first and the
+  default. It lists every Rekordbox playlist with a status, a filter box (name or folder) and a first row,
+  **Whole library**.
+- Status, first that applies: running ("Matching x of y") > waiting for you ("N waiting", **Review N**) > ready to
+  save ("N ready to save", **Save N to files…**) > not matched > done. Review N opens One at a time on that
+  playlist's waiting tracks, or on "Changed since you decided" when only those wait. Save N to files… opens the save
+  window (DEC-262) on that playlist's unsaved tracks.
+- Tick playlists and press **Match N playlists on Beatport** (**Match the whole library on Beatport** for the
+  whole-library row; "… again" when everything ticked is already matched). Whole library ticked means the whole
+  library alone: the playlists cannot be ticked with it, since it already includes them. A running match shows one
+  line, "Matching hj · 108 of 180", with a progress bar.
+- The header's match button lives on Playlists only. The match window stays for hand-ins from other pages (Library
+  Beatport menu, Track details), with the tracks they hand over.
+- From lists "This playlist" when One at a time was opened from a playlist.
+- Toolbar rules (K12): One at a time has no "Back to Table"; **From** shows only with two or more past searches (or
+  while a playlist or an opened run is the source); the Table's "Values to take" box and tip become the Take
+  button's own menu (a chevron beside **Take ticked values**, whose label adds "(N fields)" when not all five are
+  ticked; Key is off by default); **Save review list as a file…** moves from the Table footer to each run in Past
+  searches; the Table gains a **Preview** column playing Beatport's sample for the proposed match.
+- Missing files with nothing missing is one line (K13): "All N files found · checked <time> · Check again". The
+  steps and table appear only when something is missing.
+- The green save bar (C23, DEC-262) is mounted under every Clean tab.
+
+**Decided with**: User (C22 ★ Playlists first sub-tab; K12, K13 "apply ALL") · **Date**: 2026-10-13
