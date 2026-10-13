@@ -7439,3 +7439,30 @@ off at the default window, and the fit as a number. A narrow panel cannot hold e
   without a token fails its fixture test.
 
 **Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13
+
+## DEC-262 — One Save Preview Covers Every Choice; Saved Means In the File
+
+**Status**: Approved · **Related**: DEC-070, DEC-076, DEC-041, C23, C29
+
+**Context**: The S1 save window (C29) shows a count per field and per key style, and a "Keep values already
+in the files" switch, and changes them instantly as you tick. The save bar (C23) counts tracks whose new
+values are not in their files yet. DEC-070 threw a preview away on any option change, DEC-076 fetched
+artwork during the preview, and nothing recorded a field the write left alone.
+
+**Decision**:
+- A preview reads each file once and keeps every field's before and after (Key, Genre, Label, Year, BPM;
+  Comment and Artwork only when asked), the key in all three styles, and `field_choices` (files each choice
+  would fill or replace). A write may name any options the preview covers; `POST /clean/tags/preview/count`
+  answers how many files a choice writes without reading a file. No options means DEC-070's write as before.
+- `keep_existing` (API default off, the window's default on) leaves a field the file already holds.
+- Artwork is counted from what the library already knows (accepted match, recorded image) and fetched at
+  write; the write stops asking after repeated failures (amends DEC-076's fetch in the preview).
+- A ticked field the write does not write because the file already holds that value, or because Keep kept the
+  file's own, is recorded as a `skipped` `file_writes` row with the value CuePoint would have written. Restore
+  and the "stopped when CuePoint closed" offer ignore these rows.
+- "Not in the files yet" (one SQL in `filter_rule.py`, also the `unsaved_values` filter field): CuePoint has its
+  own value, it differs from Rekordbox's, and the latest written, restored or kept row for that field on the
+  track's current path does not hold it. WAV and formats CuePoint does not write are left out; artwork is not
+  counted. `GET /clean/unsaved` and `GET /clean/playlists` (per-playlist match status) read it.
+
+**Decided with**: User ("apply ALL", ★ answers in SCOPE.md) · **Date**: 2026-10-13
