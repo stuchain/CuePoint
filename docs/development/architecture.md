@@ -17,7 +17,7 @@ Desktop: Library tracks → Query Generation → Search → Match/Score → matc
 
 1. **Parse**: Load XML, extract playlists and tracks (`src/cuepoint/data/rekordbox.py`)
 2. **Query Generation**: Build search queries from title/artist (`src/cuepoint/core/query_generator.py`)
-3. **Search**: Find Beatport track URLs via DuckDuckGo, direct search, or browser (`src/cuepoint/data/beatport.py`)
+3. **Search**: Find Beatport tracks through the signed-in catalog API (`services/beatport_catalog_search.py`, registered with `data/catalog_search.py`), or, with no sign-in, via DuckDuckGo, direct search, or browser (`src/cuepoint/data/beatport.py`)
 4. **Match/Score**: Fetch candidate pages, score with fuzzy matching, apply guards (`src/cuepoint/core/matcher.py`)
 5. **Output**: Write CSV/JSON/Excel with enriched metadata (`src/cuepoint/services/output_writer.py`) — the CLI's step
 

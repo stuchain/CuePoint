@@ -16,6 +16,7 @@ from typing import Any, Optional
 
 from cuepoint.services.interfaces import ILoggingService
 from cuepoint.utils.logger import LogSanitizer, RunContextFilter
+from cuepoint.utils.paths import cuepoint_home
 
 # Disable error output from the logging system itself at module level
 # This prevents "--- Logging error ---" messages from appearing
@@ -119,7 +120,7 @@ class LoggingService(ILoggingService):
         # File handler with rotation
         if enable_file_logging:
             if log_dir is None:
-                log_dir = Path.home() / ".cuepoint" / "logs"
+                log_dir = cuepoint_home() / "logs"
             log_dir.mkdir(parents=True, exist_ok=True)
 
             file_handler = logging.handlers.RotatingFileHandler(

@@ -124,6 +124,7 @@ SETTINGS = {
     "DDG_PREFLIGHT_ENABLED": True,  # Fast TCP/TLS preflight before DDG requests
     "DDG_TIMEOUT_SEC": 6,  # ddgs "overall" timeout in seconds (lower = fail fast on blocked networks)
     "DDG_PREFLIGHT_TIMEOUT_SEC": 1.5,  # quick TCP preflight timeout to avoid long DDG hangs when blocked
+    "DDG_TOTAL_BUDGET_SEC": 12,  # Most one DDG lookup may spend across all its strategies; one that spends it all with no answer pauses DDG for a while
     "DDG_REGION": "us-en",  # ddgs region string
     "DDG_PROXY": None,  # Optional proxy URL for ddgs (otherwise ddgs uses env var DDGS_PROXY)
     "DDG_VERIFY_SSL": True,  # bool or path to PEM file for ddgs verify

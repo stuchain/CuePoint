@@ -57,3 +57,7 @@ The **agreement tests** run over every JSON file here and in `recorded/`: for ea
 label and listing they check that the parser read exactly what the raw JSON says — every id, every
 artist in order, the label, the release, the tempo and the key. So a failing
 agreement test is a shape a reconstruction got wrong, and the parser is what changes.
+
+## Constructed: the search answer
+
+`search_tracks.json` is **constructed, not live**: `GET /catalog/search/?type=tracks` was never recorded, so its tracks are `track.json`'s object (a real, recorded shape) inside the `tracks` list the provider reads. `src/tests/unit/services/test_beatport_catalog_search.py` holds `services/beatport_catalog_search.py` to it. `search_track_page.html` is the equally constructed page of the same track, used to show both routes score alike.

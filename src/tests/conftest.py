@@ -81,6 +81,29 @@ def _restore_cuepoint_logger():
     logger.propagate = propagate
 
 
+@pytest.fixture(autouse=True)
+def _forget_search_cooldowns():
+    """Start every test with every Beatport search backend up.
+
+    ``data.search_health`` remembers, process-wide, that a backend just failed
+    so the next queries skip it. A test that provokes a 403 would otherwise make
+    every later test's search fail without asking.
+    """
+    from cuepoint.data import catalog_search, search_health
+
+    search_health.reset()
+    catalog_search.set_provider(None)
+    catalog_search.clear_prefetched()
+    from cuepoint.services.beatport_token import set_session_token
+
+    set_session_token(None)
+    yield
+    search_health.reset()
+    catalog_search.set_provider(None)
+    catalog_search.clear_prefetched()
+    search_health.set_clock(__import__("time").monotonic)
+
+
 @pytest.fixture(scope="session")
 def _cuepoint_home_sandbox(tmp_path_factory):
     """One temp directory standing in for the user's real ~/.cuepoint."""

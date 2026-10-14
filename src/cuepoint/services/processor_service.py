@@ -23,6 +23,7 @@ from cuepoint.core.mix_parser import (
 )
 from cuepoint.core.query_generator import make_search_queries
 from cuepoint.core.text_processing import sanitize_title_for_search
+from cuepoint.data import search_health
 from cuepoint.data.playlist_file import parse_m3u, read_title_artist_from_file
 from cuepoint.data.rekordbox import (
     extract_artists_from_title,
@@ -72,6 +73,24 @@ from cuepoint.utils.run_performance_collector import (
     RunPerformanceCollector,
 )
 from cuepoint.utils.quoting import quoted
+
+
+def _search_failure_kind(
+    failures: "search_health.FailureLog", candidates: List[Any]
+) -> Optional[str]:
+    """Return why a track's search failed, or None when it merely found nothing.
+
+    A search failed when a backend reported a failure and nothing usable came
+    back: no candidates at all, or only candidates whose pages could not be read.
+    Candidates that were read and scored mean the search answered, whatever else
+    went wrong on the way.
+    """
+    kind = failures.worst_kind()
+    if kind is None:
+        return None
+    if any(getattr(c, "reject_reason", None) != "no_title" for c in candidates):
+        return None
+    return kind
 
 
 def _throttled_progress_callback(
@@ -259,17 +278,18 @@ class ProcessorService(IProcessorService):
         # Execute matching
         min_accept_score = effective_settings.get("MIN_ACCEPT_SCORE", 70)
 
-        best, all_candidates, queries_audit, last_qidx = (
-            self.matcher_service.find_best_match(
-                idx=idx,
-                track_title=title_for_search,
-                track_artists_for_scoring=artists_for_scoring,
-                title_only_mode=title_only_search,
-                queries=queries,
-                input_mix=input_mix_flags,
-                input_generic_phrases=input_generic_phrases,
+        with search_health.collect() as search_failures:
+            best, all_candidates, queries_audit, last_qidx = (
+                self.matcher_service.find_best_match(
+                    idx=idx,
+                    track_title=title_for_search,
+                    track_artists_for_scoring=artists_for_scoring,
+                    title_only_mode=title_only_search,
+                    queries=queries,
+                    input_mix=input_mix_flags,
+                    input_generic_phrases=input_generic_phrases,
+                )
             )
-        )
 
         dur = (time.perf_counter() - t0) * 1000
 
@@ -374,10 +394,19 @@ class ProcessorService(IProcessorService):
                 file_path=track.file_path,
             )
         else:
-            # No match found
-            self.logging_service.warning(
-                f"[{idx}] No match found (duration: {dur:.0f} ms)"
-            )
+            # Nothing usable came back. Either Beatport does not have the track,
+            # or the search never got an answer; the person must be able to
+            # tell the two apart (a failed search is worth running again).
+            failure_kind = _search_failure_kind(search_failures, all_candidates)
+            if failure_kind is not None:
+                self.logging_service.warning(
+                    f"[{idx}] Search failed ({failure_kind}): "
+                    f"{search_failures.describe()} (duration: {dur:.0f} ms)"
+                )
+            else:
+                self.logging_service.warning(
+                    f"[{idx}] No match found (duration: {dur:.0f} ms)"
+                )
 
             # Build candidates_data list even when no match (for export and UI)
             # This ensures candidates are saved even when no match is found
@@ -444,6 +473,9 @@ class ProcessorService(IProcessorService):
                 confidence="low",
                 search_stop_query_index=str(last_qidx),
                 processing_time=dur / 1000.0,  # Convert ms to seconds
+                error=search_health.failure_error(failure_kind)
+                if failure_kind is not None
+                else None,
                 candidates_data=candidates_data,  # Dict format for export compatibility
                 queries_data=queries_data,  # Dict format for export compatibility
                 file_path=track.file_path,

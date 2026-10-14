@@ -455,6 +455,7 @@ def test_every_listing_fixture_is_covered() -> None:
         "label_releases.json",
         "playlist_created.json",
         "release_tracks.json",
+        "search_tracks.json",
         "track.json",
         "track_no_key_no_bpm.json",
         "tracks_by_id.json",

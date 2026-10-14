@@ -34,7 +34,13 @@ import time
 from typing import Any, List
 from urllib.parse import quote_plus
 
-from cuepoint.data.beatport import is_track_url, request_html
+from cuepoint.data import search_health
+from cuepoint.data.beatport import (
+    is_track_url,
+    note_http_status,
+    note_request_error,
+    request_html,
+)
 from cuepoint.models.config import BASE_URL, SESSION, SETTINGS
 from cuepoint.utils.utils import vlog
 
@@ -231,8 +237,16 @@ def beatport_search_via_api(idx: int, query: str, max_results: int = 50) -> List
     ]
 
     for endpoint in api_endpoints:
+        # The site turned us away a moment ago (or a guess above just did):
+        # every other guess would be turned away the same way.
+        if search_health.is_down(search_health.BACKEND_BEATPORT_WEB):
+            break
         try:
-            resp = SESSION.get(endpoint, timeout=SETTINGS["READ_TIMEOUT"])
+            resp = SESSION.get(
+                endpoint,
+                timeout=(SETTINGS["CONNECT_TIMEOUT"], SETTINGS["READ_TIMEOUT"]),
+            )
+            note_http_status(resp.status_code)
             if resp.status_code == 200:
                 try:
                     data = resp.json()
@@ -248,6 +262,7 @@ def beatport_search_via_api(idx: int, query: str, max_results: int = 50) -> List
                     continue
         except Exception as e:
             vlog(idx, f"[beatport-api] Error trying {endpoint}: {e!r}")
+            note_request_error(e)
             continue
 
     return []
@@ -268,6 +283,9 @@ def beatport_search_direct(idx: int, query: str, max_results: int = 50) -> List[
     """
     urls: List[str] = []
     seen = set()
+
+    if search_health.is_down(search_health.BACKEND_BEATPORT_WEB):
+        return []
 
     try:
         # First, try API endpoints
@@ -404,6 +422,11 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
     global _PLAYWRIGHT_ERROR_LOGGED, _PLAYWRIGHT_USABLE
     urls: List[str] = []
 
+    # A browser meets the same Cloudflare challenge a request does, and costs a
+    # 30 second page load to find out. When the site has refused us, don't start one.
+    if search_health.is_down(search_health.BACKEND_BEATPORT_WEB):
+        return []
+
     # Try Playwright first (faster, more modern)
     if _PLAYWRIGHT_USABLE:
         try:
@@ -425,7 +448,11 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
                 encoded_query = quote_plus(clean_query)
                 search_url = f"{BASE_URL}/search?q={encoded_query}"
 
-                page.goto(search_url, wait_until="networkidle", timeout=30000)
+                response = page.goto(
+                    search_url, wait_until="networkidle", timeout=30000
+                )
+                if response is not None:
+                    note_http_status(response.status)
 
                 # Wait for track links to appear
                 try:
@@ -473,6 +500,12 @@ def beatport_search_browser(idx: int, query: str, max_results: int = 50) -> List
                         "to enable Playwright.",
                     )
             vlog(idx, f"[beatport-browser] Playwright error: {e!r}, trying Selenium")
+            if "timeout" in error_text.lower():
+                search_health.mark_down(
+                    search_health.BACKEND_BEATPORT_WEB,
+                    search_health.KIND_TIMEOUT,
+                    "browser page load",
+                )
 
     # Fallback to Selenium
     try:

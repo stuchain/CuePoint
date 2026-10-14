@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
+from cuepoint.utils.paths import cuepoint_home
 from cuepoint.utils.platform import PlatformInfo
 from cuepoint.version import get_version
 
@@ -83,7 +84,7 @@ class TelemetryService:
         """
         self._config = config_service
         self._log = logging_service
-        self._data_dir = data_dir or (Path.home() / ".cuepoint" / "telemetry")
+        self._data_dir = data_dir or (cuepoint_home() / "telemetry")
         self._queue: List[Dict[str, Any]] = []
         self._lock = threading.Lock()
         self._session_id: Optional[str] = None

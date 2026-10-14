@@ -77,7 +77,7 @@ from cuepoint.core.mix_parser import (
     _merge_name_lists,
     _split_display_names,
 )
-from cuepoint.data import beatport_fixture
+from cuepoint.data import beatport_fixture, catalog_search, search_health
 from cuepoint.models.config import BASE_URL, SESSION, SETTINGS
 from cuepoint.utils.http_cache import CacheInvalidation
 from cuepoint.utils.utils import retry_with_backoff, vlog
@@ -430,6 +430,51 @@ def get_last_cache_hit() -> bool:
     return _last_cache_hit
 
 
+def note_http_status(status_code: Any) -> None:
+    """Record a refused or failed beatport.com answer for the track being matched.
+
+    A 403 or 429 is the site (usually Cloudflare's "Just a moment..." challenge)
+    turning us away, and it repeats for every page, so the site is skipped for a
+    while. A 5xx is only noted: the next request may well succeed.
+    """
+    if isinstance(status_code, bool) or not isinstance(status_code, int):
+        return
+    if status_code in (403, 429):
+        search_health.mark_down(
+            search_health.BACKEND_BEATPORT_WEB,
+            search_health.KIND_BLOCKED,
+            f"HTTP {status_code}",
+        )
+    elif status_code >= 500:
+        search_health.note(
+            search_health.BACKEND_BEATPORT_WEB,
+            search_health.KIND_UNAVAILABLE,
+            f"HTTP {status_code}",
+        )
+
+
+def note_request_error(exc: BaseException) -> None:
+    """Record a request to beatport.com that never got an answer."""
+    if isinstance(exc, (requests.ConnectTimeout, requests.ConnectionError)):
+        search_health.mark_down(
+            search_health.BACKEND_BEATPORT_WEB,
+            search_health.KIND_NETWORK,
+            type(exc).__name__,
+        )
+    elif isinstance(exc, requests.Timeout):
+        search_health.note(
+            search_health.BACKEND_BEATPORT_WEB,
+            search_health.KIND_TIMEOUT,
+            type(exc).__name__,
+        )
+    else:
+        search_health.note(
+            search_health.BACKEND_BEATPORT_WEB,
+            search_health.KIND_UNAVAILABLE,
+            type(exc).__name__,
+        )
+
+
 def request_html(url: str) -> Optional[BeautifulSoup]:
     """Fetch a URL robustly, handling empty gzipped/brotli responses.
 
@@ -456,6 +501,11 @@ def request_html(url: str) -> Optional[BeautifulSoup]:
         # a live one would be.
         html = fixture.page(url)
         return None if html is None else BeautifulSoup(html, "lxml")
+
+    # A site that just refused us will refuse the next page too: skip it at once
+    # instead of paying two timeouts per page, per track.
+    if search_health.is_down(search_health.BACKEND_BEATPORT_WEB):
+        return None
 
     to = (SETTINGS["CONNECT_TIMEOUT"], SETTINGS["READ_TIMEOUT"])
 
@@ -498,13 +548,18 @@ def request_html(url: str) -> Optional[BeautifulSoup]:
                     _last_cache_hit = False
             else:
                 _last_cache_hit = False
+            if resp is not None:
+                note_http_status(getattr(resp, "status_code", None))
             return resp
-        except requests.RequestException:
+        except requests.RequestException as exc:
             _last_cache_hit = False
+            note_request_error(exc)
             return None
 
     resp = _get(url)
     if not resp or resp.status_code != 200:
+        if search_health.is_down(search_health.BACKEND_BEATPORT_WEB):
+            return None
         time.sleep(0.1)
         resp = _get(url)
         if not resp or resp.status_code != 200:
@@ -751,6 +806,11 @@ def parse_track_page(
         after all retries, returns empty/default values rather than raising exceptions.
         Design 5.11: Self-healing for stale cache - if empty result from cache, invalidate and retry once.
     """
+    known = catalog_search.prefetched(url)
+    if known is not None:
+        # Returned by a catalog search with everything a page would give.
+        return known
+
     for _stale_retry in range(2):
         soup = request_html(url)
         if soup is None:
@@ -934,6 +994,52 @@ def parse_track_page(
     return "", "", None, None, None, None, None, None, None
 
 
+_LOGGED_PROVIDER_ERRORS: set = set()
+
+
+def _catalog_track_urls(idx: int, query: str, max_results: int) -> Optional[List[str]]:
+    """Search the signed-in catalog, or return None when there is no sign-in.
+
+    None sends the caller down the website/DuckDuckGo path. A search that failed
+    answers an empty list and records why (``search_health``), so the track is
+    reported as a failed search, never as one Beatport has nothing for.
+    """
+    provider = catalog_search.get_provider()
+    if provider is None or not provider.available():
+        return None
+    backend = search_health.BACKEND_BEATPORT_API
+    if search_health.is_down(backend):
+        return []
+    try:
+        hits = provider.search(catalog_search.plain_query(query), max_results)
+    except catalog_search.CatalogSearchError as exc:
+        if exc.cooldown:
+            # A failure that will repeat for every track: stop asking for a while.
+            search_health.mark_down(backend, exc.kind, exc.detail, seconds=exc.cooldown)
+        else:
+            search_health.note(backend, exc.kind, exc.detail)
+        vlog(idx, f"[search] catalog search failed: {exc.kind} {exc.detail}")
+        return []
+    except Exception as exc:  # noqa: BLE001 — a provider bug must not read as "not found"
+        name = type(exc).__name__
+        if name not in _LOGGED_PROVIDER_ERRORS:
+            _LOGGED_PROVIDER_ERRORS.add(name)
+            logger.warning(
+                "Catalog search failed with %s; reporting a failed search", name
+            )
+        search_health.note(backend, search_health.KIND_UNAVAILABLE, name)
+        return []
+    catalog_search.remember(hits)
+    for hit in hits:
+        # What a page parse would have remembered, so previews and artwork are
+        # not scraped for a track the catalog already described.
+        if hit.preview_url:
+            remember_page_preview(hit.url, hit.preview_url)
+        if hit.artwork_url:
+            remember_page_artwork(hit.url, hit.artwork_url)
+    return [hit.url for hit in hits][:max_results]
+
+
 def track_urls(
     idx: int,
     query: str,
@@ -965,6 +1071,11 @@ def track_urls(
     if fixture is not None:
         # End-to-end tests answer from files (CLEAN-14).
         return fixture.search(query, max_results)
+
+    # The signed-in catalog first: Beatport's website no longer answers a search.
+    catalog_urls = _catalog_track_urls(idx, query, max_results)
+    if catalog_urls is not None:
+        return catalog_urls
 
     diag_enabled = bool(SETTINGS.get("TRACE") or SETTINGS.get("VERBOSE"))
     diag_steps: list[str] = []
@@ -1309,6 +1420,30 @@ def track_urls(
     return ddg_urls
 
 
+def _note_ddg_exception(exc: BaseException) -> None:
+    """Record a DuckDuckGo error for the track being matched.
+
+    "No results found" is DuckDuckGo's way of saying a query matched nothing, so
+    it is not a failure. A rate limit is the service turning us away and repeats,
+    so DuckDuckGo is skipped for a while; anything else is only noted.
+    """
+    text = f"{type(exc).__name__} {exc}".lower()
+    if "no results" in text:
+        return
+    if "ratelimit" in text or "rate limit" in text or "429" in text or "403" in text:
+        search_health.mark_down(
+            search_health.BACKEND_DUCKDUCKGO,
+            search_health.KIND_BLOCKED,
+            type(exc).__name__,
+        )
+    else:
+        search_health.note(
+            search_health.BACKEND_DUCKDUCKGO,
+            search_health.KIND_UNAVAILABLE,
+            type(exc).__name__,
+        )
+
+
 def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
     """Enhanced search with multiple query strategies and better fallback.
 
@@ -1340,6 +1475,20 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
     if not SETTINGS.get("DDG_ENABLED", True):
         vlog(idx, "[search] DuckDuckGo disabled - skipping DDG and using fallbacks")
         return []
+
+    # DuckDuckGo just failed in a way that repeats: do not make every query of
+    # every track wait to find that out again.
+    if search_health.is_down(search_health.BACKEND_DUCKDUCKGO):
+        return []
+
+    ddg_started = time.monotonic()
+    try:
+        ddg_budget = float(SETTINGS.get("DDG_TOTAL_BUDGET_SEC", 12))
+    except (TypeError, ValueError):
+        ddg_budget = 12.0
+
+    def _ddg_out_of_time() -> bool:
+        return ddg_budget > 0 and (time.monotonic() - ddg_started) >= ddg_budget
 
     # Fast preflight: if we can't even establish a quick TCP connection to DuckDuckGo,
     # don't wait for ddgs/httpx timeouts. This avoids long stalls on networks where DDG
@@ -1380,6 +1529,11 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                     "DuckDuckGo preflight failed (network/DNS/TCP/TLS). Skipping DDG for this query. "
                     f"Reason: {e!r}"
                 )
+            search_health.mark_down(
+                search_health.BACKEND_DUCKDUCKGO,
+                search_health.KIND_NETWORK,
+                type(e).__name__,
+            )
             return []
 
     urls: List[str] = []
@@ -1437,6 +1591,8 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
         # We need to ensure this function doesn't block indefinitely
         with DDGS(proxy=ddg_proxy, timeout=ddg_timeout, verify=ddg_verify) as ddgs:
             for search_q in search_queries:
+                if _ddg_out_of_time():
+                    break
                 try:
                     # CRITICAL: If DuckDuckGo times out, this iterator will raise TimeoutException
                     # We catch it below and continue to next query
@@ -1484,6 +1640,11 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                         # Log at info level (not warning) since this is expected in some environments
                         # Continue to next query - don't let timeout block processing
                         timed_out = True
+                        search_health.mark_down(
+                            search_health.BACKEND_DUCKDUCKGO,
+                            search_health.KIND_TIMEOUT,
+                            type(e).__name__,
+                        )
                         logger.info(
                             f"[{idx}] DuckDuckGo search timeout for {search_q!r} (will use fallback methods): {e!r}"
                         )
@@ -1504,6 +1665,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                         logger.debug(
                             f"[{idx}] DuckDuckGo search parsing error (ddgs package v9.9.3 known issue): {e!r}"
                         )
+                        _note_ddg_exception(e)
                         vlog(
                             idx,
                             f"[search] ddgs parsing error (known issue, will use fallback): {e!r}",
@@ -1514,6 +1676,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                             f"[{idx}] DuckDuckGo search error for {search_q!r}: {e!r}",
                             exc_info=True,
                         )
+                        _note_ddg_exception(e)
                         vlog(idx, f"[search] ddgs error for '{search_q}': {e!r}")
                     continue
     except ImportError as e:
@@ -1527,6 +1690,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
         # Other errors (network, SSL, etc.)
         logger.error(f"[{idx}] DuckDuckGo search failed: {e!r}", exc_info=True)
         vlog(idx, f"[search] ddgs error: {e!r}")
+        _note_ddg_exception(e)
         return []
 
     # Process and deduplicate URLs
@@ -1535,6 +1699,16 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
         if is_track_url(u) and u not in seen:
             seen.add(u)
             out.append(u)
+
+    # A search that spent its whole budget and has nothing to show did not
+    # "find nothing": it did not get an answer. Say so once, and stop asking
+    # for a while, so the next queries do not each wait as long.
+    if not out and _ddg_out_of_time():
+        search_health.mark_down(
+            search_health.BACKEND_DUCKDUCKGO,
+            search_health.KIND_TIMEOUT,
+            f"no answer in {ddg_budget:.0f}s",
+        )
 
     # Enhanced fallback: when we don't find the expected track, try broader searches.
     # IMPORTANT: If DDG is timing out (especially TLS handshake/connect), don't re-enter DDGS()
@@ -1556,6 +1730,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
             needs_fallback
             and (" " in ql)
             and (not timed_out)
+            and (not _ddg_out_of_time())
             and SETTINGS.get("DDG_ENABLED", True)
         ):
             extra_pages: list[str] = []
@@ -1572,6 +1747,8 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                     proxy=ddg_proxy, timeout=ddg_timeout, verify=ddg_verify
                 ) as ddgs:
                     for fallback_q in fallback_queries:
+                        if _ddg_out_of_time():
+                            break
                         try:
                             for r in ddgs.text(
                                 fallback_q, region=ddg_region, max_results=20
@@ -1622,7 +1799,7 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
 
     # Special case: if we have very few results and the query looks like a specific track,
     # try to construct potential URLs based on common Beatport patterns
-    if len(out) < 3 and ql and " " in ql:
+    if len(out) < 3 and ql and " " in ql and not _ddg_out_of_time() and not timed_out:
         try:
             # Extract potential track name and artist from query
             parts = ql.split()
@@ -1640,8 +1817,12 @@ def ddg_track_urls(idx: int, query: str, max_results: int) -> List[str]:
                     f"beatport.com {track_name} {artist_name}",
                 ]
 
-                with DDGS() as ddgs:
+                with DDGS(
+                    proxy=ddg_proxy, timeout=ddg_timeout, verify=ddg_verify
+                ) as ddgs:
                     for broad_q in broader_searches:
+                        if _ddg_out_of_time():
+                            break
                         try:
                             for r in ddgs.text(broad_q, region="us-en", max_results=10):
                                 href = r.get("href") or r.get("url") or ""

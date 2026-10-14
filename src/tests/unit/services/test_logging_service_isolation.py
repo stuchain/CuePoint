@@ -30,3 +30,24 @@ def test_the_next_test_still_hears_cuepoint_warnings(caplog):
     with caplog.at_level("WARNING", logger="cuepoint.data.audio_decode"):
         logging.getLogger("cuepoint.data.audio_decode").warning("heard")
     assert [r.message for r in caplog.records] == ["heard"]
+
+
+def test_a_default_logging_service_writes_under_cuepoint_home_not_the_real_home(
+    tmp_path, monkeypatch
+):
+    """A test that builds a ``LoggingService`` must not write ``~/.cuepoint/logs``.
+
+    Running ``tests/unit/persistence`` put ``migration_runner`` INFO lines into a
+    developer's real ``cuepoint.log``: the service defaulted to
+    ``Path.home() / ".cuepoint"`` and ignored ``CUEPOINT_HOME``, the seam
+    ``conftest.py`` sandboxes.
+    """
+    home = tmp_path / "home"
+    monkeypatch.setenv("CUEPOINT_HOME", str(home))
+    service = LoggingService(enable_console_logging=False, logger_name="cuepoint.iso")
+    try:
+        assert service.get_log_path() == home / "logs" / "cuepoint.log"
+    finally:
+        for handler in list(service.logger.handlers):
+            handler.close()
+            service.logger.removeHandler(handler)

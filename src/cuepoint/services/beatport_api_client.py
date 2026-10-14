@@ -170,6 +170,27 @@ def parse_retry_after(
     return max(0.0, seconds)
 
 
+def _is_challenge(resp: Any) -> bool:
+    """True when a 403 is Cloudflare's challenge page, not Beatport refusing a token.
+
+    A token Beatport refuses is answered in JSON; a network edge turning the
+    request away answers HTML or says so in ``cf-mitigated``. Signing in again
+    fixes the first and not the second.
+    """
+    try:
+        headers = resp.headers or {}
+        if str(headers.get("cf-mitigated", "")).strip():
+            return True
+        if "html" in str(headers.get("Content-Type", "")).lower():
+            return True
+        body = resp.content[:64].lstrip() if resp.content else b""
+        return isinstance(body, bytes) and body.lower().startswith(
+            (b"<!doctype", b"<html")
+        )
+    except Exception:  # noqa: BLE001 — classifying must never raise
+        return False
+
+
 class BeatportApiClient:
     """HTTP client for Beatport API with Bearer auth and retries."""
 
@@ -261,7 +282,11 @@ class BeatportApiClient:
             raise BeatportAPIError(
                 "Beatport API access forbidden",
                 status_code=403,
-                error_code="BEATPORT_API_FORBIDDEN",
+                error_code=(
+                    "BEATPORT_API_BLOCKED"
+                    if _is_challenge(resp)
+                    else "BEATPORT_API_FORBIDDEN"
+                ),
             )
         if resp.status_code == 429:
             _logger.warning("Beatport API 429 rate limit")

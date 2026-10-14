@@ -19,6 +19,7 @@ Key components:
 - Early exit: Stops searching when excellent match is found
 """
 
+import contextvars
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -1129,7 +1130,13 @@ def best_beatport_match(
 
         with ThreadPoolExecutor(max_workers=SETTINGS["CANDIDATE_WORKERS"]) as ex:
             try:
-                futures = [ex.submit(fetch, u) for u in to_fetch]
+                # Each fetch runs in a copy of this thread's context, so a page
+                # that cannot be fetched is recorded against this track
+                # (data.search_health), not lost on a pool thread.
+                futures = [
+                    ex.submit(contextvars.copy_context().run, fetch, u)
+                    for u in to_fetch
+                ]
             except RuntimeError:
                 # Interpreter shutting down (e.g. "cannot schedule new futures after interpreter shutdown")
                 return (None, [], queries_audit, last_q_processed)
