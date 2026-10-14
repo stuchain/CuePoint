@@ -111,14 +111,17 @@ class TestRequest:
     def test_it_round_trips(self):
         line = wire.request_line(7, "/music/a.flac", Path("/opt/mpv"), True, False)
         request = wire.parse_request(_wire(line))
-        assert request == wire.Request(7, "/music/a.flac", "/opt/mpv", True, False)
+        # The decoder travels as the platform spells the path (backslashes on Windows).
+        assert request == wire.Request(
+            7, "/music/a.flac", str(Path("/opt/mpv")), True, False
+        )
 
     def test_a_path_with_spaces_and_beyond_ascii_comes_back_whole(self):
         path = "/Music/Björk – Jóga (Live) 日本語 \U0001f3b5.flac"
         line = wire.request_line(1, path, Path("/opt/m pv"), False, True)
         request = wire.parse_request(_wire(line))
         assert request.path == path
-        assert request.decoder == "/opt/m pv"
+        assert request.decoder == str(Path("/opt/m pv"))
 
     def test_a_cancel_is_its_own_line(self):
         assert wire.parse_cancel(_wire(wire.cancel_line(9))) == 9

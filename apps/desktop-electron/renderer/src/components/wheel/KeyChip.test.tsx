@@ -3,7 +3,10 @@ import { render, screen } from "@testing-library/react";
 
 import { CAMELOT_CODES } from "./camelot";
 import { KeyChip } from "./KeyChip";
-import chipCss from "./KeyChip.css?raw";
+import chipCssRaw from "./KeyChip.css?raw";
+
+// A Windows checkout gives the stylesheet CRLF line endings.
+const chipCss = chipCssRaw.replace(/\r\n/g, "\n");
 
 describe("a key chip", () => {
   it("writes the Camelot code and names the key in its title", () => {

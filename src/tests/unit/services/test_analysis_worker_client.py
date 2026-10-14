@@ -24,6 +24,7 @@ from typing import Callable, List, Optional, Tuple
 import pytest
 
 from cuepoint.data import audio_decode as ad
+from cuepoint.engine.parent_watch import is_alive
 from cuepoint.services import analysis_worker_client as client
 from cuepoint.services.analysis_worker_client import WorkerComputer
 from cuepoint.services.waveform_computer import (
@@ -180,9 +181,8 @@ class Harness:
 
 
 def _alive(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
+    # Never os.kill(pid, 0) here: on Windows it ends the process instead of asking.
+    if not is_alive(pid):
         return False
     try:
         with open(f"/proc/{pid}/status", encoding="utf-8") as handle:
@@ -210,7 +210,10 @@ def fake(tmp_path):
         made.close()
     for pid in harness.spawns():
         if _alive(pid):
-            os.kill(pid, 9)
+            try:
+                os.kill(pid, 9)
+            except OSError:
+                pass  # it ended between the look and the kill
 
 
 def compute(

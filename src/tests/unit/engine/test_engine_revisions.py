@@ -116,6 +116,9 @@ def test_a_generation_bump_changes_the_library_revision(files):
 def test_a_replaced_file_is_reopened(files, tmp_path):
     before = files.revisions.revision(LIBRARY)
     files.writers[files.library].close()
+    # Whatever moves a database asks its watchers to let go first: Windows will
+    # not delete a file a connection still has open.
+    file_watchers.release(files.library)
     files.library.unlink()
     for sidecar in tmp_path.glob("cuepoint.db-*"):
         sidecar.unlink()
@@ -159,6 +162,7 @@ def test_the_number_moves_once_when_a_domain_becomes_watchable_and_back(tmp_path
     watchable = rev.snapshot()[LIBRARY]
     assert watchable != missing
     assert rev.snapshot()[LIBRARY] == watchable
+    file_watchers.release(library)  # as every mover does (Windows keeps open files)
     library.unlink()
     gone = rev.snapshot()[LIBRARY]
     assert gone != watchable
@@ -227,6 +231,9 @@ def test_a_condemned_store_is_released_before_it_is_set_aside(
     files, tmp_path, monkeypatch
 ):
     path = tmp_path / "waveforms.db"
+    # Only the watch may hold the file: the fixture's own writer would keep
+    # Windows from moving it whatever the watch does.
+    files.writers.pop(path).close()
     store = WaveformStore(path)
     store.count()  # creates the store
     store.close_all()

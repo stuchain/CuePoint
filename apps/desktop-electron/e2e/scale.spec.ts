@@ -151,7 +151,14 @@ test.describe("the sizes (PAGES-14)", () => {
 
       // --- a fresh profile opens at the size its screen suggests (R2-5) --------
       await win.waitForSelector(".app-shell", { timeout: 30_000 });
-      const suggested = await win.evaluate(() => (screen.availHeight < 860 ? "1.25" : "1.5"));
+      // R2-5's rule: Compact under 860 px, else Medium, stepping down while fewer than
+      // 560 px of rows would fit (a CI Mac's small virtual screen gets 1).
+      const suggested = await win.evaluate(() => {
+        const height = screen.availHeight;
+        const wanted = height < 860 ? 1.25 : 1.5;
+        const fits = [1, 1.25, 1.5].filter((s) => s <= wanted && height / s >= 560);
+        return String(fits.length > 0 ? fits[fits.length - 1] : 1);
+      });
       expect(await win.evaluate((key) => localStorage.getItem(key), STORAGE_KEY), "the suggested size is stored").toBe(suggested);
       expect(
         await win.evaluate(() => ({

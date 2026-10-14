@@ -63,6 +63,10 @@ describe("App shell", () => {
   let consoleError: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    // A fresh launch's storage. afterEach clears it too, but the previous test's
+    // page can still store its last destination after that (a redirect to
+    // Statistics left "statistics", so the next test opened there, not on home).
+    localStorage.clear();
     // The onboarding dialog would otherwise open over the shell on first run
     // and swallow the navigation clicks.
     localStorage.setItem("cuepoint-onboarding-complete", "1");
