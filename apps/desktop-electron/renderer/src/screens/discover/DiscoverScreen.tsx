@@ -333,7 +333,7 @@ export function DiscoverScreen() {
             {looking ? <strong>{lookingUpLine(toRead)}</strong> : <span>{resolvePrompt(toRead)}</span>}
           </div>
           <Button variant="secondary" loading={looking} onClick={() => void startResolve()}>
-            Look up
+            Look them up
           </Button>
         </div>
       )}

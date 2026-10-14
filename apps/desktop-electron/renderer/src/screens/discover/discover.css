@@ -100,6 +100,8 @@
 .discover-runs-view {
   display: grid;
   grid-template-columns: minmax(calc(220px * var(--scale)), 20%) minmax(0, 1fr);
+  /* Room between the cards and the table. */
+  column-gap: var(--space-xl);
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -121,12 +123,12 @@
 
 .discover-runs-view--stacked .discover-runs-view__list {
   max-height: calc(120px * var(--scale));
-  border-right: 0;
   border-bottom: var(--divider);
 }
 
+/* No side padding of its own: the page gutter (.screen) is the one left edge. */
 .discover-runs-view__waiting {
-  padding: var(--space-md);
+  padding: var(--space-md) 0;
 }
 
 .discover-runs-view__list {
@@ -135,8 +137,8 @@
   gap: var(--space-sm);
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-sm);
-  border-right: var(--divider);
+  /* Flush left with the tabs, banner and table; the gap to the table is the grid's. */
+  padding: var(--space-sm) 0;
 }
 
 /* Scrolls when the run's header and its table's floor do not both fit, so
@@ -159,7 +161,7 @@
 .discover-runs__list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-md);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -176,6 +178,12 @@
   color: var(--fg-primary);
   text-align: left;
   cursor: pointer;
+}
+
+.discover-runs__item:focus-visible {
+  /* Inset: the list scrolls and has no side padding, so an outer ring would be clipped. */
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
 }
 
 .discover-runs__item--selected {
@@ -727,24 +735,84 @@
   font-size: var(--font-size-sm);
 }
 
-/* A past search's row: the search, and the way to delete it on its own line
-   beneath, so the card's text and its button never share a line to overlap on. */
+/* A past search's row: the card, with its ⋯ menu button at the top right and, while it
+   runs, a progress line along the bottom. */
 .discover-runs__row {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: var(--space-xs);
   min-width: 0;
+  position: relative;
 }
 
 .discover-runs__row > .discover-runs__item {
   width: auto;
   min-width: 0;
+  /* Room on the right for the ⋯ menu button. */
+  padding-right: calc(32px * var(--scale));
 }
 
-.discover-runs__row > :not(.discover-runs__item) {
-  align-self: flex-start;
-  max-width: 100%;
+/* The card's ⋯ menu: top right of the card, a sibling of the card button. */
+.discover-runs__menu {
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(2px * var(--scale));
+  width: calc(24px * var(--scale));
+  height: calc(24px * var(--scale));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.discover-runs__menu:hover:not(:disabled),
+.discover-runs__menu[aria-expanded="true"] {
+  color: var(--fg-primary);
+}
+
+.discover-runs__menu:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+}
+
+.discover-runs__menu-dot {
+  width: calc(3px * var(--scale));
+  height: calc(3px * var(--scale));
+  background: currentColor;
+}
+
+/* A running dig's thin progress line, along the card's bottom edge. */
+.discover-runs__progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: calc(3px * var(--scale));
+  overflow: hidden;
+  background: var(--border-muted);
+}
+
+.discover-runs__progress::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: var(--accent-primary);
+}
+
+:root[data-motion-loading] .discover-runs__progress::after {
+  animation: discover-runs-progress var(--motion-slow) steps(8, end) infinite alternate;
+}
+
+@keyframes discover-runs-progress {
+  to {
+    transform: translateX(150%);
+  }
 }
 
 .discover-run__looked-title {
@@ -792,4 +860,19 @@
 
 .discover-page > .cp-screen-header + .discover-page__header {
   padding-top: 0;
+}
+
+/* One left edge: the tabs strip starts at the page gutter like the banner, the cards and the table. */
+.discover-screen .cp-tabs {
+  padding-left: 0;
+}
+
+/* The first tab's text lines up with the title and banner edge; the underline still spans the tab. */
+.discover-screen .cp-tabs__tab:first-child {
+  padding-left: 0;
+}
+
+.discover-runs__menu[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.5;
 }

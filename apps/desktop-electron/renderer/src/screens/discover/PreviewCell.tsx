@@ -16,9 +16,14 @@ interface PreviewCellProps {
   title: string;
   /** Clean ▸ Table plays the candidate's sample (R4-7); Discover's rows are the catalog's. */
   kind?: "candidate" | "catalog";
+  /**
+   * `"round"` is Discover's tables: a small round ▶ in the accent colour named
+   * "Preview {title}", and ■ with moving bars while it plays. Clean keeps the bare icon.
+   */
+  variant?: "round";
 }
 
-export function PreviewCell({ beatportTrackId, title, kind = "catalog" }: PreviewCellProps) {
+export function PreviewCell({ beatportTrackId, title, kind = "catalog", variant }: PreviewCellProps) {
   // The row scrolls out of a virtualised table while its sample plays; the
   // table, not the cell, ends the sound (BeatportTable).
   const { state, toggle, canPreview } = useBeatportPreview(
@@ -37,16 +42,19 @@ export function PreviewCell({ beatportTrackId, title, kind = "catalog" }: Previe
       </span>
     );
   }
+  const round = variant === "round";
   return (
     <button
       type="button"
-      className="preview-cell"
+      className={`preview-cell${round ? " preview-cell--round" : ""}`}
       aria-label={
         none
           ? `No preview for ${title}`
           : playing || state === "loading"
             ? `Stop preview of ${title}`
-            : `Play preview of ${title}`
+            : round
+              ? `Preview ${title}`
+              : `Play preview of ${title}`
       }
       title={none ? "No preview" : playing || state === "loading" ? "Stop" : "Preview"}
       aria-busy={state === "loading" ? true : undefined}
@@ -59,7 +67,24 @@ export function PreviewCell({ beatportTrackId, title, kind = "catalog" }: Previe
         if (!none) toggle();
       }}
     >
-      <PixelIcon name={playing || state === "loading" ? "pause" : "play"} />
+      {round ? (
+        playing || state === "loading" ? (
+          <>
+            <span className="preview-cell__stop" aria-hidden="true" />
+            {playing && (
+              <span className="preview-cell__bars" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+            )}
+          </>
+        ) : (
+          <PixelIcon name="play" />
+        )
+      ) : (
+        <PixelIcon name={playing || state === "loading" ? "pause" : "play"} />
+      )}
     </button>
   );
 }

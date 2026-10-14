@@ -173,7 +173,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await expect(window.getByRole("table", { name: found }).getByRole("row")).toHaveCount(4);
       await expect(row(window, found, /Harbour Lights/)).toContainText("On a chart by Mara Veil: “Journey Selects”");
 
-      // Phase 14: at 1,280 × 800 and 1.5×, the run card's delete button sits clear of its text
+      // Phase 14: at 1,280 × 800 and 1.5×, the run card's ⋯ menu button sits clear of its text
       // and the runs column does not push anything sideways.
       const size = await window.evaluate(() => [window.innerWidth, window.innerHeight, getComputedStyle(document.documentElement).getPropertyValue("--scale").trim()]);
       expect(size[2]).toBe("1.5");
@@ -199,7 +199,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       expect(card.text.length).toBe(3);
       for (const t of card.text) {
         const apart = card.del.top >= t.bottom || card.del.bottom <= t.top || card.del.left >= t.right || card.del.right <= t.left;
-        expect(apart, "the delete button's box is clear of the card's text").toBe(true);
+        expect(apart, "the ⋯ button's box is clear of the card's text").toBe(true);
       }
       expect(card.width, "the run card is wide enough to read").toBeGreaterThanOrEqual(240);
       expect(card.listSpill, "the runs column does not scroll sideways").toBeLessThanOrEqual(0);

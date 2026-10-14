@@ -39,12 +39,13 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
     {
       id: PREVIEW_COLUMN_ID,
       header: "Preview",
-      headerHidden: true,
       // Pinned like the title it sits before, so it stays first (sticky columns float to the front).
       sticky: true,
-      minWidthPx: 32,
-      defaultWidthPx: 32,
-      render: (row) => <PreviewCell beatportTrackId={row.beatport_track_id} title={trackName(row)} />,
+      minWidthPx: 64,
+      defaultWidthPx: 72,
+      render: (row) => (
+        <PreviewCell beatportTrackId={row.beatport_track_id} title={trackName(row)} variant="round" />
+      ),
       text: () => "",
     },
     {

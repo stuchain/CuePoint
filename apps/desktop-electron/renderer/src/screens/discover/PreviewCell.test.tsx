@@ -125,7 +125,7 @@ describe("the preview cell", () => {
 
   it("plays on click without selecting the row, and stops on a second click", async () => {
     draw();
-    const play = screen.getByRole("button", { name: "Play preview of Alpha" });
+    const play = screen.getByRole("button", { name: "Preview Alpha" });
     expect(play).toHaveAttribute("title", "Preview");
 
     await userEvent.click(play);
@@ -137,16 +137,40 @@ describe("the preview cell", () => {
 
     await userEvent.click(stop);
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Play preview of Alpha" })).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: "Preview Alpha" })).toBeInTheDocument(),
     );
     expect(onRowClick).not.toHaveBeenCalled();
+  });
+
+  it("is a small round button under a visible Preview heading, one per row", () => {
+    draw();
+    const header = screen.getByRole("columnheader", { name: "Preview" });
+    expect(header).toBeVisible();
+    expect(header.textContent).toBe("Preview");
+    for (const name of ["Preview Alpha", "Preview Beta"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button).toHaveClass("preview-cell--round");
+      expect(button.querySelector("svg[data-icon='play']")).not.toBeNull();
+    }
+  });
+
+  it("shows a stop square with moving bars on the playing row only", async () => {
+    draw();
+    await userEvent.click(screen.getByRole("button", { name: "Preview Alpha" }));
+    const stop = await screen.findByRole("button", { name: "Stop preview of Alpha" });
+    await waitFor(() => expect(stop).toHaveAttribute("data-state", "playing"));
+    expect(stop.querySelector(".preview-cell__stop")).not.toBeNull();
+    expect(stop.querySelectorAll(".preview-cell__bars > span")).toHaveLength(3);
+    expect(stop.querySelector("svg")).toBeNull();
+    const other = screen.getByRole("button", { name: "Preview Beta" });
+    expect(other.querySelector(".preview-cell__bars")).toBeNull();
   });
 
   it("shows busy while the sample loads", async () => {
     let resolve!: (url: string) => void;
     bridge.getCatalogPreview!.mockReturnValue(new Promise((r) => (resolve = r)));
     draw();
-    await userEvent.click(screen.getByRole("button", { name: "Play preview of Alpha" }));
+    await userEvent.click(screen.getByRole("button", { name: "Preview Alpha" }));
     expect(screen.getByRole("button", { name: "Stop preview of Alpha" })).toHaveAttribute("aria-busy", "true");
     await act(async () => resolve("blob:x"));
     await waitFor(() =>
@@ -156,7 +180,7 @@ describe("the preview cell", () => {
 
   it("disables itself as No preview when the engine answers null", async () => {
     draw();
-    await userEvent.click(screen.getByRole("button", { name: "Play preview of Beta" }));
+    await userEvent.click(screen.getByRole("button", { name: "Preview Beta" }));
 
     const none = await screen.findByRole("button", { name: "No preview for Beta" });
     expect(none).toHaveAttribute("title", "No preview");
@@ -169,7 +193,7 @@ describe("the preview cell", () => {
 
   it("keeps sounding when the playing row leaves the table, and stops with the table", async () => {
     const view = draw();
-    await userEvent.click(screen.getByRole("button", { name: "Play preview of Alpha" }));
+    await userEvent.click(screen.getByRole("button", { name: "Preview Alpha" }));
     await screen.findByRole("button", { name: "Stop preview of Alpha" });
     const audio = FakeAudio.instances[0]!;
 
@@ -188,7 +212,7 @@ describe("the preview cell", () => {
   it("is not there when the bridge cannot fetch samples", () => {
     delete bridge.getCatalogPreview;
     draw();
-    expect(screen.queryByRole("button", { name: /Play preview/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Preview / })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Preview" })).toBeNull();
   });
 });

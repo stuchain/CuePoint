@@ -107,7 +107,7 @@ Sort by title, artists, release date, or the order the dig found them, by
 clicking a column's header. The **Columns…** icon in the table header's right
 corner chooses which columns to show, and the table remembers its layout.
 
-**Delete this dig…**, on the dig's row in the list, removes a dig and
+**Delete this dig…**, in the ⋯ menu at the corner of the dig's card in the list, removes a dig and
 its list of tracks after asking. Tracks you added to the wantlist from it stay
 there. A dig that is still running cannot be deleted.
 
@@ -158,7 +158,7 @@ double-click does nothing. Selecting one lights its
 key on the Camelot wheel when you open it, and Track details says there is nothing
 to inspect.
 
-**Previews.** The ▶ button at the left of each Beatport row plays the track's
+**Previews.** The small round ▶ button under **Preview** at the left of each Beatport row plays the track's
 two-minute sample from Beatport, so you can hear it before you buy or add it. It
 needs Beatport to be reachable. When Beatport has no sample the button grays
 out and says "No preview"; if you were offline when you pressed it, that is
@@ -260,7 +260,7 @@ this by itself** when a match finishes, as long as you are signed in, and the st
 strip shows it as **Linking tracks to Beatport**. When you are not signed in it does nothing.
 
 If some tracks are still waiting, for example because you signed in later,
-the page says how many and offers **Look up**. While it works, the status bar
+the page says how many and offers **Look them up**. While it works, the status bar
 shows the progress and you can leave the page.
 
 ## Artist and label pages
@@ -337,7 +337,7 @@ When there is nothing to list, the half says why:
 
 | It says | Means | What to do |
 | --- | --- | --- |
-| **Not linked to Beatport yet** | CuePoint does not know which Beatport artist this is. It never searches Beatport for an artist by name, because the wrong artist of the same name is worse than none | **Look up**, when some of the artist's tracks are matched on Beatport |
+| **Not linked to Beatport yet** | CuePoint does not know which Beatport artist this is. It never searches Beatport for an artist by name, because the wrong artist of the same name is worse than none | **Look them up**, when some of the artist's tracks are matched on Beatport |
 | **Several Beatport artists share this name** | Your tracks by this name are matched to different Beatport artists | Choose the one you mean |
 | **No match** | Beatport has no label by this name | None |
 | **Sign in to Beatport to search its charts and releases.**, and the other sign-in states | As at the top of Discover (see [Signing in to Beatport](#signing-in-to-beatport)) | **Sign in to Beatport**, **Sign in again**, or **Try again** |

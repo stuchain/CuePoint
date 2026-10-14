@@ -34,3 +34,99 @@
   color: var(--fg-muted);
   cursor: default;
 }
+
+/* Discover's round preview button (Results, Wantlist, Similar, entity pages). */
+.preview-cell--round {
+  width: calc(22px * var(--scale));
+  height: calc(22px * var(--scale));
+  border: var(--hairline) solid var(--accent-primary);
+  border-radius: 50%;
+  color: var(--accent-primary);
+  gap: calc(2px * var(--scale));
+}
+
+.preview-cell--round .cp-pixel-icon {
+  width: calc(12px * var(--scale));
+  height: calc(12px * var(--scale));
+}
+
+.preview-cell--round:hover:not(:disabled):not([aria-disabled="true"]),
+.preview-cell--round[data-state="playing"],
+.preview-cell--round[data-state="loading"] {
+  background: var(--accent-primary);
+  color: var(--fg-inverse);
+}
+
+.preview-cell--round[aria-disabled="true"] {
+  border-color: var(--fg-muted);
+  color: var(--fg-muted);
+  cursor: default;
+  opacity: 0.5;
+}
+
+.preview-cell__stop {
+  width: calc(8px * var(--scale));
+  height: calc(8px * var(--scale));
+  background: currentColor;
+}
+
+/* Small bars beside the ■ while a sample plays; still unless motion is on. */
+.preview-cell__bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: calc(1px * var(--scale));
+  height: calc(10px * var(--scale));
+  margin-left: calc(4px * var(--scale));
+  color: var(--accent-primary);
+}
+
+.preview-cell__bars > span {
+  width: calc(2px * var(--scale));
+  height: 100%;
+  background: currentColor;
+  transform: scaleY(0.6);
+  transform-origin: bottom;
+}
+
+.preview-cell__bars > span:nth-child(2) {
+  transform: scaleY(1);
+}
+
+.preview-cell__bars > span:nth-child(3) {
+  transform: scaleY(0.4);
+}
+
+:root[data-motion-loading] .preview-cell__bars > span {
+  animation: preview-cell-bars var(--motion-slow) steps(3, end) infinite alternate;
+}
+
+:root[data-motion-loading] .preview-cell__bars > span:nth-child(2) {
+  animation-delay: calc(var(--motion-slow) / -3);
+}
+
+:root[data-motion-loading] .preview-cell__bars > span:nth-child(3) {
+  animation-delay: calc(var(--motion-slow) / -2);
+}
+
+@keyframes preview-cell-bars {
+  to {
+    transform: scaleY(0.2);
+  }
+}
+
+/* The playing row, tinted (Discover's Beatport tables). */
+.track-table__row:not(.track-table__row--selected):has(.preview-cell--round[data-state="playing"]) {
+  background: var(--bg-selected);
+}
+
+/* Playing: the pill grows to hold the bars beside the ■. */
+.preview-cell--round[data-state="playing"] {
+  width: auto;
+  min-width: calc(22px * var(--scale));
+  padding: 0 calc(6px * var(--scale));
+  border-radius: calc(11px * var(--scale));
+}
+
+.preview-cell--round[data-state="playing"] .preview-cell__bars {
+  color: var(--fg-inverse);
+}

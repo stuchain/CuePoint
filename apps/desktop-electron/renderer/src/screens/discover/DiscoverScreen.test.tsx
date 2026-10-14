@@ -160,6 +160,12 @@ function Settings() {
   );
 }
 
+/** Opens a card's ⋯ menu and chooses Delete this dig…. */
+async function openDelete(card: HTMLElement) {
+  fireEvent.click(within(card).getByRole("button", { name: /^More for / }));
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Delete this dig…" }));
+}
+
 function renderDiscover() {
   return render(
     <ScaleProvider>
@@ -283,7 +289,7 @@ describe("the page", () => {
     const row = within(list)
       .getAllByRole("listitem")
       .find((item) => item.textContent?.includes("Finished"))!;
-    fireEvent.click(within(row).getByRole("button", { name: "Delete this dig…" }));
+    await openDelete(row);
     const dialog = await screen.findByRole("dialog", { name: "Delete this dig?" });
     expect(dialog.textContent ?? "").not.toMatch(/\bruns?\b/i);
     expect(document.body.textContent ?? "").not.toMatch(/\bruns?\b/i);
@@ -455,7 +461,7 @@ describe("the lookup prompt (DSC-4)", () => {
     expect(prompt).toHaveTextContent("2 tracks need artist info");
     expect(prompt).not.toHaveTextContent("more accurate");
     install({ ...bridge, getDiscoverOptions: vi.fn(async () => asAnswer(fixture.options_resolved)) });
-    fireEvent.click(within(prompt).getByRole("button", { name: "Look up" }));
+    fireEvent.click(within(prompt).getByRole("button", { name: "Look them up" }));
     await waitFor(() => expect(bridge.startBeatportResolve).toHaveBeenCalledTimes(1));
     expect(await screen.findByText("Looked up 2 tracks on Beatport.")).toBeInTheDocument();
     // Options read again: nothing left to look up, so no prompt.
@@ -466,7 +472,7 @@ describe("the lookup prompt (DSC-4)", () => {
     install({ getJob: vi.fn(async (id: string) => ({ id, state: "running" })) });
     renderDiscover();
     const prompt = await screen.findByRole("status", { name: "Beatport lookup" });
-    fireEvent.click(within(prompt).getByRole("button", { name: "Look up" }));
+    fireEvent.click(within(prompt).getByRole("button", { name: "Look them up" }));
     await waitFor(() => expect(bridge.startBeatportResolve).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(screen.getByRole("status", { name: "Beatport lookup" })).toHaveTextContent(
@@ -534,16 +540,17 @@ describe("Results", () => {
     expect(items[1]).toHaveTextContent("House, Techno (Peak Time / Driving) · 30 days of releases");
     expect(items[1]).toHaveTextContent("7 tracks found");
     for (const item of items) {
-      expect(within(item).getByRole("button", { name: "Delete this dig…" })).toBeInTheDocument();
+      expect(within(item).getByRole("button", { name: /^More for / })).toBeInTheDocument();
+      expect(within(item).queryByRole("button", { name: "Delete this dig…" })).toBeNull();
     }
   });
 
-  it("keeps each card's delete button beside its text, not inside it, with the long text titled", async () => {
+  it("keeps each card's menu button beside its text, not inside it, with the long text titled", async () => {
     renderDiscover();
     const list = await screen.findByRole("navigation", { name: "Past digs" });
     for (const item of within(list).getAllByRole("listitem")) {
       const card = item.querySelector<HTMLElement>(".discover-runs__item")!;
-      const remove = within(item).getByRole("button", { name: "Delete this dig…" });
+      const remove = within(item).getByRole("button", { name: /^More for / });
       // A sibling of the card, so layout can put it on its own line.
       expect(card.contains(remove)).toBe(false);
       expect(remove.parentElement?.closest("li")).toBe(item);
@@ -997,7 +1004,7 @@ describe("Results", () => {
     const row = within(list)
       .getAllByRole("listitem")
       .find((item) => item.textContent?.includes("Finished"))!;
-    fireEvent.click(within(row).getByRole("button", { name: "Delete this dig…" }));
+    await openDelete(row);
     const dialog = await screen.findByRole("dialog", { name: "Delete this dig?" });
     install({
       ...bridge,
@@ -1019,9 +1026,40 @@ describe("Results", () => {
       getJob: vi.fn(async (id: string) => ({ id, state: "running" })),
     });
     renderDiscover();
-    const button = await screen.findByRole("button", { name: "Delete this dig…" });
-    expect(button).toBeDisabled();
-    expect(button).toHaveAttribute("title", "A running dig cannot be deleted.");
+    const more = await screen.findByRole("button", { name: /^More for / });
+    // Focusable, and it says why: a keyboard user is told rather than skipped past.
+    expect(more).toHaveAttribute("aria-disabled", "true");
+    expect(more).toHaveAccessibleName(/A running dig cannot be deleted\./);
+    expect(more).not.toBeDisabled();
+    fireEvent.click(more);
+    expect(screen.queryByRole("menuitem", { name: "Delete this dig…" })).toBeNull();
+  });
+
+  it("shows a thin progress line in a running card and not in a finished one", async () => {
+    const running = { ...RUNS.runs[1]!, running: true, outcome: null };
+    install({
+      listDiscoveryRuns: vi.fn(async () =>
+        value({ ...RUNS, runs: [running, { ...RUNS.runs[0]!, id: 99 }], total: 2 }),
+      ),
+      getDiscoveryRun: vi.fn(async () => value({ run: running, artists: [], labels: [] })),
+      getJob: vi.fn(async (id: string) => ({ id, state: "running" })),
+    });
+    renderDiscover();
+    const list = await screen.findByRole("navigation", { name: "Past digs" });
+    const [first, second] = within(list).getAllByRole("listitem");
+    expect(within(first!).getByRole("progressbar")).toBeInTheDocument();
+    expect(within(second!).queryByRole("progressbar")).toBeNull();
+  });
+
+  it("cancelling the confirmation after the menu's Delete keeps the dig", async () => {
+    renderDiscover();
+    const list = await screen.findByRole("navigation", { name: "Past digs" });
+    await openDelete(within(list).getAllByRole("listitem")[0]!);
+    const dialog = await screen.findByRole("dialog", { name: "Delete this dig?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Delete this dig?" })).toBeNull());
+    expect(bridge.deleteDiscoveryRun).not.toHaveBeenCalled();
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
   });
 
   it("leaves the running explainer to the status strip (K17)", async () => {
