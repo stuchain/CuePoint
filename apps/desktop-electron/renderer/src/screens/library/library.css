@@ -161,7 +161,8 @@
   min-height: 0;
   overflow: hidden;
   gap: 0;
-  padding: 0;
+  /* The page gutters come from .screen; a table runs to the bottom edge. */
+  padding-bottom: 0;
 }
 
 /* A table wants the whole region; the reading width for prose does not apply.

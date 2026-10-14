@@ -96,7 +96,9 @@ describe("screen padding (N2-2)", () => {
       /@container content \(max-width: 600px\) \{\s*\.screen \{[^}]*--screen-padding: var\(--space-md\)/,
     );
     // The four --safe-* are declared once on .screen; the queries set only --screen-padding.
-    expect(layout).toMatch(/\n\.screen \{[^}]*--safe-left: var\(--screen-padding\)/);
+    // The sides and the top are the page margin (pageGutter.test.ts); the bottom is the stepped padding.
+    expect(layout).toMatch(/\n\.screen \{[^}]*--safe-bottom: var\(--screen-padding\)/);
+    expect(layout).toMatch(/\n\.screen \{[^}]*--safe-left: var\(--page-gutter-x\)/);
     expect(layout.match(/--safe-left:/g)).toHaveLength(1);
     expect(rule(layout, ":root")).not.toContain("--safe-");
   });

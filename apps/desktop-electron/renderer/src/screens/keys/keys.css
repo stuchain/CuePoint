@@ -9,7 +9,6 @@
   gap: 0;
   width: 100%;
   min-height: auto;
-  padding: 0;
 }
 
 .app-main .screen.keys-page {
@@ -34,7 +33,7 @@
   flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) 0;
 }
 
 .keys-page__state {
@@ -95,14 +94,14 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-md) var(--space-sm);
+  padding: var(--space-xs) 0 var(--space-sm);
 }
 
 .keys-page__tracks {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-md) var(--space-md);
+  padding: var(--space-xs) 0 var(--space-md);
   border-top: var(--divider);
 }
 

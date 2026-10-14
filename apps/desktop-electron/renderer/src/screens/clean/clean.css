@@ -14,7 +14,8 @@
   min-height: 0;
   overflow: hidden;
   gap: 0;
-  padding: 0;
+  /* The page gutters come from .screen; a table runs to the bottom edge. */
+  padding-bottom: 0;
 }
 
 /* A table wants the whole region. `.screen` is in the selector for the same
@@ -54,7 +55,7 @@
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) 0;
   border-bottom: var(--divider);
 }
 
@@ -71,7 +72,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) 0;
   border-bottom: var(--divider);
 }
 

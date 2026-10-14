@@ -12,6 +12,19 @@
   min-width: 0;
 }
 
+/* The header sits inside the page margin. Its backdrop reaches out over the margin above and to
+   both sides, so rows scrolling under the sticky header do not show in it. */
+.cp-screen-header::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: calc(-1 * var(--page-gutter-top));
+  right: calc(-1 * var(--page-gutter-x));
+  bottom: 0;
+  left: calc(-1 * var(--page-gutter-x));
+  background: var(--bg-app);
+}
+
 .cp-screen-header__crumb {
   font-size: var(--text-label);
   color: var(--fg-muted);
@@ -70,7 +83,8 @@
   margin-top: var(--space-xs);
 }
 
-/* For a page whose box has no padding of its own. */
+/* Kept for callers that still pass `inset`: the page margin now comes from .screen, so there is
+   nothing to add here. */
 .cp-screen-header--inset {
-  padding-inline: var(--space-md);
+  padding-inline: 0;
 }

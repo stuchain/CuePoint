@@ -23,6 +23,16 @@
    * the pill gone it was just dead space under every screen.
    */
   --screen-padding: var(--space-xl);
+  /*
+   * The page margin (one rule for every page): the space between the sidebar (and the Track
+   * details panel) and a page's content, and above its header. `.screen` reads these through the
+   * safe-area variables, so a page takes them unless it opts out. The side margin is 24px * --scale, the top 20px * --scale, each capped
+   * at 4cqi of the content region (the `content` container): at 3x it would be 72px, which on a
+   * narrow window is a fifth of the width, so it gives way before the table does. The cap
+   * resolves where it is used (.screen), not here.
+   */
+  --page-gutter-x: min(calc(24px * var(--scale)), 4cqi);
+  --page-gutter-top: min(calc(20px * var(--scale)), 3.4cqi);
   --results-min-rows: 10;
   /*
    * Table rows follow the text size, not the control size: --row-density is
@@ -63,10 +73,10 @@
  * and inspector take width the viewport does not know about.
  */
 .screen {
-  --safe-top: var(--screen-padding);
-  --safe-right: var(--screen-padding);
+  --safe-top: var(--page-gutter-top);
+  --safe-right: var(--page-gutter-x);
   --safe-bottom: var(--screen-padding);
-  --safe-left: var(--screen-padding);
+  --safe-left: var(--page-gutter-x);
 }
 
 @container content (max-width: 900px) {
