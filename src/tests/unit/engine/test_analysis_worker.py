@@ -239,9 +239,11 @@ class TestTheLoop:
         worker.ask(1, song, stub)
         worker.close_stdin()
         assert worker.process.wait(timeout=PATIENCE) == 0
+        # The reader thread may put the end of the stream after the exit is seen:
+        # wait for it rather than read whatever is queued at this instant.
         rest: List[Optional[bytes]] = []
-        while not worker.lines.empty():
-            rest.append(worker.lines.get())
+        while not rest or rest[-1] is not None:
+            rest.append(worker.lines.get(timeout=PATIENCE))
         assert rest == [None]
 
 
