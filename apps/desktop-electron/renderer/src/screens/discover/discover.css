@@ -364,7 +364,7 @@
   gap: var(--space-sm) var(--space-md);
   box-sizing: border-box;
   padding: var(--space-sm) var(--space-md);
-  border-top: var(--border-width) solid var(--accent-primary);
+  border-top: var(--divider);
   background: color-mix(in srgb, var(--accent-primary) 14%, var(--bg-panel));
 }
 
