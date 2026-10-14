@@ -49,6 +49,7 @@ function stubMatch(overrides: Partial<CleanMatch> = {}): CleanMatch {
     started: 0,
     start: vi.fn(),
     resume: vi.fn(),
+    stop: vi.fn(),
     ...overrides,
   };
 }
@@ -93,8 +94,7 @@ function renderArea(overrides: Partial<Props> = {}) {
     match: stubMatch(),
     onMatchTracks: vi.fn(),
     playlists: { data: null, error: null, loading: false, reload: vi.fn() },
-    ticked: new Set<string>(),
-    onTick: vi.fn(),
+    onMatchPlaylist: vi.fn(),
     ...overrides,
   };
   const view = render(element(props));
@@ -137,7 +137,8 @@ describe("the sub-tabs", () => {
     localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
     renderArea({ playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() } });
     const tabs = await screen.findAllByRole("tab");
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["Playlists", "One at a time", "Table", "Past searches"]);
+    // The tracks waiting for a yes or no ride on One at a time as a count.
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Playlists", "One at a time (18)", "Table", "Past searches"]);
     expect(tabs[0]).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("table", { name: /Your playlists/ })).toBeInTheDocument();
     // The Show and From toolbar belongs to the list, not to the playlists.
@@ -175,23 +176,248 @@ describe("the sub-tabs", () => {
   });
 });
 
-describe("Review N on a playlist (C22)", () => {
-  it("opens One at a time on that playlist's waiting tracks, From naming it", async () => {
-    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
-    renderArea({ playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() } });
-    fireEvent.click(await screen.findByRole("button", { name: "Review 18 for Peak time" }));
+const WITH_RUN: CleanPlaylists = {
+  whole_library: { ...COUNTS, track_count: 100, waiting: 18 },
+  playlists: [
+    { id: 7, name: "Peak time", path: "Techno", ...COUNTS, track_count: 24, accepted: 22, waiting: 3, unsaved: 22 },
+    { id: 8, name: "Closing", path: "", ...COUNTS, unsaved: 5 },
+  ],
+};
 
-    expect(await screen.findByRole("tab", { name: "One at a time" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByLabelText("Show")).toHaveValue("needs_review");
-    expect(screen.getByLabelText("From")).toHaveValue("playlist:7");
-    expect(screen.getByRole("option", { name: "This playlist: Peak time" })).toBeInTheDocument();
+function reviewProps(overrides: Partial<Props> = {}): Partial<Props> {
+  return { playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() }, ...overrides };
+}
+
+describe("Review N on a playlist (C22)", () => {
+  it("opens One at a time on that playlist's tracks to check, under a header that says whose", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea(reviewProps());
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 › for Peak time" }));
+
+    expect(await screen.findByRole("tab", { name: /^One at a time/ })).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(lastBrowse()).toMatchObject({ playlistId: 7 }));
     expect(lastBrowse().filters).toEqual(fixture.rules.needs_review);
+    await onTrack(1);
+    const header = screen.getByRole("group", { name: "Reviewing" });
+    expect(header).toHaveTextContent("Reviewing Peak time");
+    expect(header).toHaveTextContent("1 of 3 · 40 already confirmed");
+    // The header stands in for Show and From.
+    expect(screen.queryByLabelText("Show")).toBeNull();
+    expect(screen.queryByLabelText("From")).toBeNull();
+  });
 
-    // Another From drops the playlist, and its option.
-    fireEvent.change(screen.getByLabelText("From"), { target: { value: "" } });
-    await waitFor(() => expect(lastBrowse().playlistId).toBeNull());
-    expect(screen.queryByRole("option", { name: /This playlist/ })).toBeNull();
+  it("moves the place on as each track is decided, and counts the skipped ones in", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea(reviewProps());
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 › for Peak time" }));
+    await onTrack(1);
+    press("s");
+    await onTrack(2);
+    expect(screen.getByRole("group", { name: "Reviewing" })).toHaveTextContent("2 of 3");
+    press("Enter");
+    await waitFor(() => expect(bridge.correctMatch).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(screen.getByRole("group", { name: "Reviewing" })).toHaveTextContent("3 of 3"),
+    );
+  });
+
+  it("keeps the other results folded away behind Try another result", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea(reviewProps());
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 › for Peak time" }));
+    await onTrack(1);
+    expect(screen.queryByRole("group", { name: "Other results" })).toBeNull();
+    const more = screen.getByRole("button", { name: /^Try another result/ });
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(more);
+    expect(screen.getByRole("group", { name: "Other results" })).toBeInTheDocument();
+    expect(more).toHaveAttribute("aria-expanded", "true");
+    // The decisions, with their keys.
+    expect(screen.getByRole("button", { name: /^Correct/ })).toHaveTextContent("Enter");
+    expect(screen.getByRole("button", { name: /^Not this track/ })).toHaveTextContent("N");
+    expect(screen.getByRole("button", { name: /^Skip/ })).toHaveTextContent("S");
+  });
+
+  it("says the playlist is done after the last track, with Save N and the way back", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    const onSavePlaylist = vi.fn();
+    renderArea(
+      reviewProps({ playlists: { data: WITH_RUN, error: null, loading: false, reload: vi.fn() }, onSavePlaylist }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Review 3 › for Peak time" }));
+    for (const id of [1, 2, 3]) {
+      await onTrack(id === 1 ? 1 : id);
+      press("Enter");
+      await waitFor(() => expect(bridge.correctMatch).toHaveBeenCalledTimes(id));
+    }
+    expect(await screen.findByText("Peak time is done")).toBeInTheDocument();
+    expect(screen.getByText("22 confirmed · 2 not confirmed")).toBeInTheDocument();
+    // Nothing is written to the files until Save: this only opens the window.
+    expect(screen.queryByRole("group", { name: "Reviewing" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Save 22 to files…" }));
+    expect(onSavePlaylist).toHaveBeenCalledWith(WITH_RUN.playlists[0]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to playlists" }));
+    expect(await screen.findByRole("tab", { name: /^Playlists/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("table", { name: /Your playlists/ })).toBeInTheDocument();
+  });
+
+  it("goes back to the playlists from the header", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea(reviewProps());
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 › for Peak time" }));
+    await onTrack(1);
+    fireEvent.click(screen.getByRole("button", { name: "Playlists" }));
+    expect(await screen.findByRole("table", { name: /Your playlists/ })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Reviewing" })).toBeNull();
+  });
+
+  it("opens on the run the row's Match started, when it knows it (From: one run)", async () => {
+    // The row waits on 18 tracks and the run holds all 18: the run is what is reviewed.
+    world.runs = [run({ job_id: "job-match", label: "Peak time", waiting: 18, found: 22 })];
+    world.runTracks["job-match"] = [1, 2, 3];
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea(reviewProps({ runFor: (playlist) => (playlist?.id === 7 ? "job-match" : undefined) }));
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 › for Peak time" }));
+    await onTrack(1);
+    expect(lastBrowse().playlistId).toBeNull();
+    expect(lastBrowse().filters).toEqual({
+      match: "all",
+      rules: [...fixture.rules.needs_review.rules, { field: "match_run", operator: "is", value: "job-match" }],
+    });
+  });
+
+  it.each([
+    ["holds fewer than the row waits on", 2],
+    ["has nothing left to check", 0],
+  ])("reviews the playlist, and forgets the run, when the run %s", async (_name, waiting) => {
+    // The row counts 18 waiting across runs; the run it started holds fewer, so opening only it
+    // would leave the rest unreachable (or open an empty review for ever).
+    world.runs = [run({ job_id: "job-match", label: "Peak time", waiting, found: 22 })];
+    world.runTracks["job-match"] = [1];
+    const onRunSpent = vi.fn();
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea(
+      reviewProps({ runFor: (playlist) => (playlist?.id === 7 ? "job-match" : undefined), onRunSpent }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 › for Peak time" }));
+    await onTrack(1);
+    expect(lastBrowse()).toMatchObject({ playlistId: 7 });
+    expect(JSON.stringify(lastBrowse())).not.toContain("job-match");
+    expect(onRunSpent).toHaveBeenCalledWith(7);
+    expect(screen.getByRole("group", { name: "Reviewing" })).toHaveTextContent("40 already confirmed");
+  });
+
+  it("forgets the run once its review has been done to the end", async () => {
+    world.runs = [run({ job_id: "job-match", label: "Peak time", waiting: 3, found: 22 })];
+    world.runTracks["job-match"] = [1, 2, 3];
+    const onRunSpent = vi.fn();
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea(
+      reviewProps({
+        playlists: { data: WITH_RUN, error: null, loading: false, reload: vi.fn() },
+        runFor: (playlist) => (playlist?.id === 7 ? "job-match" : undefined),
+        onRunSpent,
+      }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Review 3 › for Peak time" }));
+    for (let id = 1; id <= 3; id += 1) {
+      await onTrack(id);
+      press("Enter");
+      await waitFor(() => expect(bridge.correctMatch).toHaveBeenCalledTimes(id));
+    }
+    await screen.findByText("Peak time is done");
+    await waitFor(() => expect(onRunSpent).toHaveBeenCalledWith(7));
+  });
+
+  it("keeps Search again and Search Beatport myself reachable while the other results are folded", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea(reviewProps());
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 › for Peak time" }));
+    await onTrack(1);
+    expect(screen.queryByRole("group", { name: "Other results" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Search again" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Search Beatport myself…" })).toBeEnabled();
+    // The toggle is never disabled, and says what it controls once open.
+    const more = screen.getByRole("button", { name: /^Try another result/ });
+    expect(more).toBeEnabled();
+    fireEvent.click(more);
+    expect(more).toHaveAttribute("aria-controls", screen.getByRole("group", { name: "Other results" }).id);
+  });
+
+  it("wraps Skip on the last card to the first skipped track", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea(reviewProps());
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 › for Peak time" }));
+    await onTrack(1);
+    press("ArrowDown");
+    await onTrack(2);
+    press("ArrowDown");
+    await onTrack(3);
+    press("s");
+    // Track 3 is the last: what is before it was not skipped yet, so Skip goes round to the first.
+    await onTrack(1);
+    expect(screen.getByRole("group", { name: "Reviewing" })).toHaveTextContent("1 of 3");
+  });
+
+  it("ends the review on the skipped ones once every track left has been skipped", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea(reviewProps());
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 › for Peak time" }));
+    for (const id of [1, 2, 3]) {
+      await onTrack(id);
+      press("s");
+    }
+    expect(await screen.findByText("Peak time is done")).toBeInTheDocument();
+    expect(screen.getByText("40 confirmed · 3 skipped")).toBeInTheDocument();
+    // Going through them again brings the first card back.
+    fireEvent.click(screen.getByRole("button", { name: "Go through the skipped ones again" }));
+    await onTrack(1);
+    expect(screen.getByRole("group", { name: "Reviewing" })).toBeInTheDocument();
+  });
+
+  it("announces the done screen as a status and puts focus on its Save button", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea(
+      reviewProps({
+        playlists: { data: WITH_RUN, error: null, loading: false, reload: vi.fn() },
+        onSavePlaylist: vi.fn(),
+      }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Review 3 › for Peak time" }));
+    for (let id = 1; id <= 3; id += 1) {
+      await onTrack(id);
+      press("Enter");
+      await waitFor(() => expect(bridge.correctMatch).toHaveBeenCalledTimes(id));
+    }
+    expect((await screen.findByText("Peak time is done")).closest('[role="status"]')).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Save 22 to files…" })).toHaveFocus();
+  });
+
+  it("never gives the progress bar a range of 0", async () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    renderArea(reviewProps());
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 › for Peak time" }));
+    await onTrack(1);
+    const bar = screen.getByRole("progressbar", { name: "Checked so far" });
+    expect(Number(bar.getAttribute("aria-valuemax"))).toBeGreaterThanOrEqual(1);
+  });
+
+  it("opens from the end-of-run toast on that run, once", async () => {
+    world.runs = [run({ job_id: "job-match", label: "hJ", waiting: 3, found: 15 })];
+    world.runTracks["job-match"] = [1, 2, 3];
+    const onReviewOpened = vi.fn();
+    renderArea(
+      reviewProps({
+        reviewOpening: { token: "t1", run: world.runs[0]!, playlistId: 7, name: "hJ" },
+        onReviewOpened,
+      }),
+    );
+    await onTrack(1);
+    expect(screen.getByRole("group", { name: "Reviewing" })).toHaveTextContent("Reviewing hJ");
+    expect(screen.getByRole("group", { name: "Reviewing" })).toHaveTextContent("15 already confirmed");
+    expect(onReviewOpened).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(lastBrowse())).toContain("job-match");
   });
 
   it("looks at the decisions a newer match disagrees with when a playlist's waiting tracks are all of those", async () => {
@@ -210,32 +436,23 @@ describe("Review N on a playlist (C22)", () => {
         reload: vi.fn(),
       },
     });
-    fireEvent.click(await screen.findByRole("button", { name: "Review 1 for Old decisions" }));
-    await waitFor(() => expect(screen.getByLabelText("Show")).toHaveValue("disputed"), LOADED);
-    expect(screen.getByLabelText("From")).toHaveValue("playlist:9");
-    await waitFor(() => expect(lastBrowse()).toMatchObject({ playlistId: 9 }));
-    expect(lastBrowse().filters).toEqual({
-      match: "all",
-      rules: [{ field: "match_disputed", operator: "is", value: true }],
-    });
+    fireEvent.click(await screen.findByRole("button", { name: "Review 1 › for Old decisions" }));
+    await waitFor(() => expect(lastBrowse()).toMatchObject({ playlistId: 9 }), LOADED);
+    await waitFor(() =>
+      expect(lastBrowse().filters).toEqual({
+        match: "all",
+        rules: [{ field: "match_disputed", operator: "is", value: true }],
+      }),
+    );
     await onTrack(1);
   });
 
-  it("stays on Waiting for you when the playlist has tracks waiting as new matches", async () => {
+  it("opens on the whole library's tracks to check for the Whole library row", async () => {
     localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
-    renderArea({ playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() } });
-    fireEvent.click(await screen.findByRole("button", { name: "Review 18 for Peak time" }));
+    renderArea(reviewProps());
+    fireEvent.click(await screen.findByRole("button", { name: "Review 18 › for Whole library" }));
     await onTrack(1);
-    expect(screen.getByLabelText("Show")).toHaveValue("needs_review");
-  });
-
-  it("opens on the whole library's waiting tracks for the Whole library row", async () => {
-    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
-    renderArea({ playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() } });
-    fireEvent.click(await screen.findByRole("button", { name: "Review 18 for Whole library" }));
-    await onTrack(1);
-    // No playlist as the source, and no past search to choose between: From is not offered.
-    expect(screen.queryByLabelText("From")).toBeNull();
+    expect(screen.getByRole("group", { name: "Reviewing" })).toHaveTextContent("Reviewing Whole library");
     await waitFor(() => expect(lastBrowse().playlistId).toBeNull());
   });
 });
@@ -262,26 +479,6 @@ describe("From shows only when there is something to choose (K12)", () => {
     renderArea();
     await onTrack(1);
     expect(await screen.findByLabelText("From")).toHaveValue("");
-  });
-
-  it("shows while a playlist is the source, so it can be cleared", async () => {
-    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
-    renderArea({ playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() } });
-    fireEvent.click(await screen.findByRole("button", { name: "Review 18 for Peak time" }));
-    await onTrack(1);
-    expect(screen.getByLabelText("From")).toHaveValue("playlist:7");
-  });
-
-  it("moves focus to Show when From goes away under it", async () => {
-    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
-    renderArea({ playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() } });
-    fireEvent.click(await screen.findByRole("button", { name: "Review 18 for Peak time" }));
-    await onTrack(1);
-    const from = screen.getByLabelText("From");
-    from.focus();
-    fireEvent.change(from, { target: { value: "" } });
-    await waitFor(() => expect(screen.queryByLabelText("From")).toBeNull());
-    expect(screen.getByLabelText("Show")).toHaveFocus();
   });
 
   it("shows while one past search is open, so it can be cleared", async () => {
@@ -385,7 +582,7 @@ describe("deciding in One at a time", () => {
     const { props } = renderArea();
     await onTrack(1);
 
-    press("a");
+    press("Enter");
     await waitFor(() =>
       expect(bridge.correctMatch).toHaveBeenCalledWith({
         track_id: 1,
@@ -404,7 +601,7 @@ describe("deciding in One at a time", () => {
   it("Undo reverts the batch of the last act, and the track is back", async () => {
     renderArea();
     await onTrack(1);
-    press("a");
+    press("Enter");
     const undo = await screen.findByRole("button", { name: "Undo" });
     await onTrack(2);
 
@@ -431,7 +628,7 @@ describe("deciding in One at a time", () => {
     });
     renderArea();
     await onTrack(1);
-    press("a");
+    press("Enter");
     expect(await screen.findByText("Nothing to change for “Track 1”.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
   });
@@ -439,7 +636,7 @@ describe("deciding in One at a time", () => {
   it("R says not this track, and leaves the undoing to Track details", async () => {
     renderArea();
     await onTrack(1);
-    press("r");
+    press("n");
     await waitFor(() =>
       expect(bridge.decideMatch).toHaveBeenCalledWith({ decision: "reject", track_id: 1 }),
     );
@@ -451,7 +648,7 @@ describe("deciding in One at a time", () => {
   it("N and the arrows move without deciding anything", async () => {
     renderArea();
     await onTrack(1);
-    press("n");
+    press("s");
     await onTrack(2);
     expect(screen.getByText("2 of 3")).toBeInTheDocument();
     press("ArrowDown");
@@ -484,7 +681,7 @@ describe("deciding in One at a time", () => {
     await screen.findByLabelText("Show");
     fireEvent.change(screen.getByLabelText("Show"), { target: { value: "accepted" } });
     await onTrack(1);
-    press("a");
+    press("Enter");
     await waitFor(() => expect(bridge.correctMatch).toHaveBeenCalledTimes(1));
     await onTrack(2);
     expect(screen.getByText("2 of 2")).toBeInTheDocument();
@@ -494,10 +691,10 @@ describe("deciding in One at a time", () => {
     bridge.correctMatch!.mockRejectedValueOnce(new Error("The engine is busy"));
     renderArea();
     await onTrack(1);
-    press("a");
+    press("Enter");
     expect(await screen.findByText("The engine is busy")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("button", { name: /^Correct/ })).toBeEnabled());
-    press("a");
+    press("Enter");
     await waitFor(() => expect(bridge.correctMatch).toHaveBeenCalledTimes(2));
   });
 
@@ -517,7 +714,7 @@ describe("deciding in One at a time", () => {
     await screen.findByTestId("likelihood", undefined, LOADED);
     expect(screen.getByRole("button", { name: /^2 ·/ })).toHaveAttribute("aria-pressed", "true");
 
-    press("a");
+    press("Enter");
     await waitFor(() =>
       expect(bridge.correctMatch).toHaveBeenCalledWith(
         expect.objectContaining({ track_id: 1, candidate_id: 1002 }),
@@ -530,7 +727,7 @@ describe("deciding in One at a time", () => {
     bridge.player = { playView } as unknown as Fn;
     renderArea();
     await onTrack(1);
-    press("n");
+    press("s");
     await onTrack(2);
     press("y");
     await waitFor(() => expect(playView).toHaveBeenCalledTimes(1));
@@ -580,14 +777,14 @@ describe("a cursor that moves to a row not read yet", () => {
 
     for (let step = 0; step < 100; step += 1) press("ArrowDown");
     expect(await screen.findByText("Reading the next track…", undefined, LOADED)).toBeInTheDocument();
-    press("a");
-    press("r");
+    press("Enter");
+    press("n");
     expect(bridge.correctMatch).not.toHaveBeenCalled();
     expect(bridge.decideMatch).not.toHaveBeenCalled();
 
     release();
     await onTrack(101);
-    press("a");
+    press("Enter");
     await waitFor(() => expect(bridge.correctMatch).toHaveBeenCalledTimes(1));
     expect(bridge.correctMatch).toHaveBeenCalledWith(expect.objectContaining({ track_id: 101 }));
   }, 30000);
@@ -610,7 +807,7 @@ describe("progress", () => {
     expect(screen.getByText("0 of 3 checked")).toBeInTheDocument();
 
     hold = true;
-    press("a");
+    press("Enter");
     expect(await screen.findByText("Corrected “Track 1”.")).toBeInTheDocument();
     // The list still holds Track 1 until it is read again: 1 checked of 3, not of 4.
     expect(screen.getByText("1 of 3 checked")).toBeInTheDocument();
@@ -631,7 +828,7 @@ describe("progress", () => {
     );
     renderArea();
     await onTrack(1);
-    press("a");
+    press("Enter");
     const undo = await screen.findByRole("button", { name: "Undo" });
     await onTrack(2);
     const reads = bridge.browseLibrary!.mock.calls.length;
@@ -725,7 +922,7 @@ describe("the Inspector", () => {
     const { unmount } = renderArea();
     await onTrack(1);
     await waitFor(() => expect(getSelectedTrack()).toEqual({ id: 1, key: "8A" }));
-    press("n");
+    press("s");
     await waitFor(() => expect(getSelectedTrack()).toEqual({ id: 2, key: null }));
     unmount();
     expect(getSelectedTrack()).toBeNull();

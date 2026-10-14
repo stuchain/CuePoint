@@ -88,10 +88,11 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
   });
 
   it("answers each key in the code that binds it", () => {
-    for (const letter of ["a", "r", "n", "b", "y"]) {
+    for (const letter of ["n", "s", "b", "y"]) {
       expect(matchKeyboardSource, letter).toMatch(new RegExp(`case "${letter}"`));
     }
     expect(matchKeyboardSource).toMatch(/"Escape"/);
+    expect(matchKeyboardSource).toMatch(/"Enter"/);
     expect(matchKeyboardSource).toMatch(/case "ArrowLeft"/);
     expect(oneAtATimeSource).toMatch(/matchCommand\(event, "one"\)/);
   });

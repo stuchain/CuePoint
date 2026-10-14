@@ -264,9 +264,9 @@ In Clean's Match area, One at a time:
 
 | Shortcut | Does |
 | --- | --- |
-| **A** | Correct: confirm the match and update the ticked values |
-| **R** | Not this track |
-| **N** | Skip for now |
+| **Enter** | Correct: confirm the match and update the ticked values |
+| **N** | Not this track |
+| **S** | Skip |
 | **Left** / **Right** | Choose another result |
 | **Up** / **Down** | Previous or next track |
 | **B** | Play or stop the Beatport preview |

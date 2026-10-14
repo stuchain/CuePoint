@@ -167,7 +167,8 @@ function queueRow(window: Page, title: string) {
 
 /** The Match area has three views of one list; the journey reads rows in the Table. */
 async function matchView(window: Page, view: "One at a time" | "Table" | "Past searches") {
-  await window.getByRole("tab", { name: view, exact: true }).click();
+  // One at a time carries a count of the tracks to check ("One at a time (9)").
+  await window.getByRole("tab", { name: new RegExp(`^${view}`) }).click();
 }
 
 test.describe("Clean, end to end (CLEAN-14)", () => {
@@ -201,7 +202,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
 
       await test.step("match a playlist", async () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
-        // Match opens on Playlists (C22): the playlist says it is not matched, is ticked, and is matched.
+        // Match opens on Playlists (C22): the playlist says it is not matched, and its own Match button matches it.
         await expect(window.getByRole("tab", { name: "Playlists", exact: true })).toHaveAttribute(
           "aria-selected",
           "true",
@@ -209,10 +210,10 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         );
         const journey = window.getByRole("row").filter({ hasText: "Journey" });
         await expect(journey).toContainText("Not matched", { timeout: 15_000 });
-        await window.getByRole("checkbox", { name: "Match Journey" }).check();
-        await window.getByRole("button", { name: "Match 1 playlist on Beatport" }).click();
+        await window.getByRole("button", { name: "Match Journey" }).click();
         await expect(window.getByText("Matching 3 tracks on Beatport.", { exact: true })).toBeVisible({ timeout: 30_000 });
-        await expect(window.getByText("Matching finished.")).toBeVisible({ timeout: 90_000 });
+        // The row, not a toast, says it ended: what is left to check, with Review N.
+        await expect(journey).toContainText(/to check|ready to save|Done/, { timeout: 90_000 });
         await idle(window);
         // The list the rest of the journey reads is the Table's.
         await matchView(window, "Table");
@@ -281,7 +282,9 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         }
         await expect(ticks.getByRole("checkbox", { name: /^BPM/ })).toBeChecked();
         await expect(ticks.getByRole("checkbox", { name: /^Key/ })).toHaveCount(0);
-        await window.keyboard.press("a");
+        // Enter on a focused tick is the tick's own: put focus on the card itself first.
+        await window.getByRole("region", { name: "Your track" }).getByRole("heading", { name: "Tone Two" }).click();
+        await window.keyboard.press("Enter");
 
         // Corrected, it leaves the Waiting list, and Undo is offered because something changed.
         const status = window.getByRole("status").filter({ hasText: /^Corrected/ });
@@ -300,7 +303,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         ).toBeVisible();
         await window.getByRole("button", { name: new RegExp(`^${other} · .* · 91%`) }).click();
         await window.getByRole("region", { name: "Your track" }).getByRole("heading", { name: "Tone Two" }).click();
-        await window.keyboard.press("a");
+        await window.keyboard.press("Enter");
         await expect(window.getByRole("status").filter({ hasText: /^Corrected/ })).toContainText("Corrected “Tone Two”.", { timeout: 15_000 });
         await matchView(window, "Table");
         await expect(queueRow(window, "Tone Two")).toHaveCount(0, { timeout: 15_000 });

@@ -542,7 +542,12 @@
   font-weight: var(--control-font-weight);
 }
 
+/* One bar, at the row's left edge: the gradient is the first cell's only. */
 .match-past__table tr[data-open="true"] td {
+  background: var(--bg-selected);
+}
+
+.match-past__table tr[data-open="true"] td:first-child {
   background: var(--selected-row-background);
 }
 
@@ -587,4 +592,64 @@
 
 .match-take__arrow {
   display: inline-flex;
+}
+
+/* ---------------------------------------------------------------- Review N › (C22) */
+
+/* The header over the card while one search is reviewed: back, whose, how far. */
+.match-review-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: var(--control-border-width) solid var(--border-muted);
+}
+
+.match-review-bar__name {
+  font-weight: 700;
+}
+
+.match-review-bar__bar {
+  flex: 0 1 calc(160px * var(--scale));
+}
+
+.match-review-bar__words {
+  color: var(--fg-muted);
+}
+
+/* Try another result sits at the right end of the decide bar. */
+.match-action--results {
+  margin-inline-start: auto;
+}
+
+/* After the last one: what was done, and the two ways out. */
+.match-review-done {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-xl) var(--space-md);
+  text-align: center;
+}
+
+.match-review-done__headline {
+  margin: 0;
+  font-size: var(--text-heading);
+  font-weight: 700;
+}
+
+.match-review-done__detail {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.match-review-done__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
 }

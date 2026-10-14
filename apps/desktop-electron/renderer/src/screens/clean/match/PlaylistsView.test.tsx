@@ -1,6 +1,7 @@
 /**
- * The Playlists view (C22): the filter box, the whole library first, ticking,
- * and the buttons in the Next column.
+ * The Playlists view (C22): the filter box, the whole library first, and the
+ * buttons in the Next column: a Match on every row, Stop while it matches,
+ * Review N › and Save N to files….
  */
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
@@ -27,7 +28,7 @@ const DATA: CleanPlaylists = {
   playlists: [
     { id: 1, name: "Peak time", path: "Techno", ...COUNTS },
     { id: 2, name: "Warmup", path: "", ...COUNTS, not_matched: 40, accepted: 0 },
-    { id: 3, name: "all", path: "", ...COUNTS, waiting: 18 },
+    { id: 3, name: "all", path: "", ...COUNTS, waiting: 18, accepted: 22 },
     { id: 4, name: "Closing", path: "", ...COUNTS, unsaved: 39 },
     { id: 5, name: "hj", path: "", ...COUNTS, running: { job_id: "j", done: 108, total: 180 } },
     { id: 6, name: "Spare", path: "", ...COUNTS, track_count: 0 },
@@ -37,8 +38,8 @@ const DATA: CleanPlaylists = {
 function renderView(overrides: Partial<Props> = {}) {
   const props: Props = {
     data: DATA,
-    ticked: new Set<string>(),
-    onTick: vi.fn(),
+    onMatch: vi.fn(),
+    onStop: vi.fn(),
     onReview: vi.fn(),
     ...overrides,
   };
@@ -62,11 +63,22 @@ describe("the Playlists view", () => {
     expect(within(peak).getByText("Techno /", { exact: false })).toHaveClass("playlists__path");
     expect(within(peak).getByText("Done")).toHaveClass("cp-status--done");
     expect(within(rows[2]!).getByText("Not matched")).toHaveClass("cp-status--problem");
-    expect(within(rows[3]!).getByText("18 waiting for you")).toHaveClass("cp-status--action");
+    expect(within(rows[3]!).getByText("18 to check")).toHaveClass("cp-status--action");
+    expect(within(rows[3]!).getByText("22 confirmed")).toHaveClass("cp-status--done");
     expect(within(rows[4]!).getByText("39 ready to save")).toBeInTheDocument();
     expect(within(rows[5]!).getByText("Matching 108 of 180")).toBeInTheDocument();
-    expect(within(rows[5]!).getByText("You can keep working")).toBeInTheDocument();
     expect(within(rows[6]!).getByText("Empty")).toBeInTheDocument();
+  });
+
+  it("has no tick boxes and no table column for them", () => {
+    renderView();
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
+      "Playlist",
+      "Tracks",
+      "Beatport",
+      "Next",
+    ]);
   });
 
   it("filters by name and by folder, ignoring case", () => {
@@ -85,40 +97,38 @@ describe("the Playlists view", () => {
     expect(screen.getByText("No playlist has that in its name or folder.")).toBeInTheDocument();
   });
 
-  it("keeps a ticked row in view whatever the filter says", () => {
-    renderView({ ticked: new Set(["playlist:2"]) });
-    fireEvent.change(screen.getByLabelText("Filter playlists"), { target: { value: "peak" } });
-    expect(screen.getByText("Peak time")).toBeInTheDocument();
-    expect(screen.getByText("Warmup")).toBeInTheDocument();
-    expect(screen.queryByText("hj")).toBeNull();
-  });
-
-  it("draws a bar for a running playlist", () => {
-    renderView();
+  it("draws a bar for a running playlist, and a Stop for its job instead of a Match", () => {
+    const { props } = renderView();
     const bar = screen.getByRole("progressbar", { name: "hj progress" });
     expect(bar).toHaveAttribute("value", "108");
     expect(bar).toHaveAttribute("max", "180");
+    expect(screen.queryByRole("button", { name: "Match hj" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Stop matching hj" }));
+    expect(props.onStop).toHaveBeenCalledWith("j");
   });
 
-  it("disables the playlists' ticks while the whole library is ticked, and says why", () => {
-    renderView({ ticked: new Set(["library"]) });
-    expect(screen.getByText("Whole library includes every playlist.")).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Match Whole library" })).toBeEnabled();
-    expect(screen.getByRole("checkbox", { name: "Match Warmup" })).toBeDisabled();
-  });
-
-  it("reports a tick, for the whole library and for a playlist", () => {
-    const { props } = renderView({ ticked: new Set(["playlist:2"]) });
-    expect(screen.getByRole("checkbox", { name: "Match Warmup" })).toBeChecked();
-    fireEvent.click(screen.getByRole("checkbox", { name: "Match Whole library" }));
-    expect(props.onTick).toHaveBeenLastCalledWith("library", true);
-    fireEvent.click(screen.getByRole("checkbox", { name: "Match Warmup" }));
-    expect(props.onTick).toHaveBeenLastCalledWith("playlist:2", false);
-  });
-
-  it("calls onReview with the playlist when Review N is pressed", () => {
+  it("gives every row with tracks its own Match, and an empty playlist none", () => {
     const { props } = renderView();
-    fireEvent.click(screen.getByRole("button", { name: "Review 18 for all" }));
+    expect(screen.getByRole("button", { name: "Match Peak time" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Match Spare" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Match Warmup" }));
+    expect(props.onMatch).toHaveBeenLastCalledWith(DATA.playlists[1]);
+    // The whole library is a row like the others: null is the library.
+    fireEvent.click(screen.getByRole("button", { name: "Match Whole library" }));
+    expect(props.onMatch).toHaveBeenLastCalledWith(null);
+  });
+
+  it("waits every Match while a match runs, here or elsewhere", () => {
+    renderView({ matching: true });
+    expect(screen.getByRole("button", { name: "Match Warmup" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Match Whole library" })).toBeDisabled();
+  });
+
+  it("offers Review N › as the row's primary button, and calls onReview with the playlist", () => {
+    const { props } = renderView();
+    const review = screen.getByRole("button", { name: "Review 18 › for all" });
+    expect(review).toHaveClass("cp-btn--primary");
+    fireEvent.click(review);
     expect(props.onReview).toHaveBeenCalledWith(DATA.playlists[2]);
   });
 
@@ -132,12 +142,17 @@ describe("the Playlists view", () => {
     expect(onSave).toHaveBeenCalledWith(DATA.playlists[3]);
   });
 
+  it("puts Match beside Save N to files… in the same Next cell", () => {
+    renderView({ onSave: vi.fn() });
+    const closing = bodyRows()[4]!;
+    const cell = within(closing).getByRole("button", { name: "Match Closing" }).closest("td")!;
+    expect(within(cell).getByRole("button", { name: "Save 39 to files… for Closing" })).toBeInTheDocument();
+  });
+
   it("draws the whole library row with a line under it when there are no playlists", () => {
-    const { props, unmount } = renderView({ data: { whole_library: COUNTS, playlists: [] } });
-    expect(screen.getByRole("checkbox", { name: "Match Whole library" })).toBeEnabled();
+    const { unmount } = renderView({ data: { whole_library: COUNTS, playlists: [] } });
+    expect(screen.getByRole("button", { name: "Match Whole library" })).toBeEnabled();
     expect(screen.getByText("No playlists yet")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("checkbox", { name: "Match Whole library" }));
-    expect(props.onTick).toHaveBeenCalledWith("library", true);
     unmount();
     renderView({ data: null, error: "This needs the CuePoint desktop app." });
     expect(screen.getByRole("alert")).toHaveTextContent("This needs the CuePoint desktop app.");

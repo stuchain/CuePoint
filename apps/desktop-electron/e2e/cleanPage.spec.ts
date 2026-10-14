@@ -147,7 +147,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
         "aria-selected",
         "true",
       );
-      await window.getByRole("tab", { name: "One at a time", exact: true }).click();
+      await window.getByRole("tab", { name: /^One at a time/ }).click();
 
       // Nothing is matched yet, and the page offers to match every track
       // rather than saying "no tracks".
@@ -174,7 +174,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
     }
   });
 
-  test("opens on Match ▸ Playlists, with the header's Match button greyed until a playlist is ticked", async () => {
+  test("opens on Match ▸ Playlists, with a Match on the whole-library row and no tick boxes or header button", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
@@ -186,10 +186,12 @@ test.describe("The Clean page (CLEAN-12)", () => {
         "true",
         { timeout: 30_000 },
       );
-      // The export has no playlists: the view says so in one line, and nothing can be ticked.
+      // The export has no playlists: the view says so in one line. Every row has its own Match,
+      // and there are no tick boxes and no button in the header (C22).
       await expect(window.locator("p:visible", { hasText: "No playlists yet" })).toBeVisible();
-      await expect(window.getByRole("button", { name: "Match playlists on Beatport" })).toBeDisabled();
-      await expect(window.locator("span:visible", { hasText: "Tick one or more playlists." })).toBeVisible();
+      await expect(window.getByRole("checkbox")).toHaveCount(0);
+      await expect(window.getByRole("button", { name: "Match Whole library" })).toBeEnabled();
+      await expect(window.getByTestId("clean-header").getByRole("button")).toHaveCount(0);
     } finally {
       await app.close();
     }
@@ -265,9 +267,9 @@ test.describe("The Clean page (CLEAN-12)", () => {
         await window.getByRole("tab", { name: /^Match/ }).click();
 
         // The match window keeps its title and its Match button on screen, also with the
-        // places list open. It opens from One at a time's empty-state button (the header's
-        // Match button starts a run over ticked playlists and opens no window, C22).
-        await window.getByRole("tab", { name: "One at a time", exact: true }).click();
+        // places list open. It opens from One at a time's empty-state button (a playlist's Match
+        // starts a run and opens no window, C22).
+        await window.getByRole("tab", { name: /^One at a time/ }).click();
         await window.getByRole("button", { name: "Match all 3 tracks…" }).click();
         const matching = window.getByRole("dialog", { name: "Match tracks" });
         await expect(matching).toBeVisible();

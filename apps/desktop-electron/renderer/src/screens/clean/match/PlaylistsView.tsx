@@ -1,13 +1,17 @@
 /**
  * The Playlists view (C22, G4 §2.2): where Match opens.
  *
- * Your Rekordbox playlists, each with how far it is: a tick, the playlist
- * (its folder path muted before the name), how many tracks, where it stands with
- * Beatport (`playlistStatus.ts`), and what to do next. The first row is the
- * whole library. A filter box narrows by name or folder, because a library has
- * hundreds of playlists. The view draws and reports: the ticks, Review and Save
- * belong to the page, which also owns the header's **Match N playlists on
- * Beatport**. The Save button shows only when the page can save.
+ * Your Rekordbox playlists, each with how far it is: the playlist (its folder
+ * path muted before the name), how many tracks, where it stands with Beatport
+ * (`playlistStatus.ts`), and what to do next. The first row is the whole
+ * library. A filter box narrows by name or folder, because a library has
+ * hundreds of playlists.
+ *
+ * No ticks and no header button: every row has its own **Match**. While a row
+ * is matched it shows a bar and "Matching 12 of 24" with a **Stop**; when done
+ * it says "9 to check" and "15 confirmed" and offers **Review 9 ›**. The view draws
+ * and reports: matching, stopping, Review and Save belong to the page. The Save
+ * button shows only when the page can save.
  */
 import { useMemo, useState } from "react";
 
@@ -16,8 +20,7 @@ import { Button } from "../../../components/Button";
 import { EmptyState } from "../../../components/EmptyState";
 import { PixelIcon } from "../../../components/PixelIcon";
 import { TextField } from "../../../components/TextField";
-import { WHOLE_LIBRARY } from "../cleanRules";
-import { playlistStatus, type PlaylistStatus } from "./playlistStatus";
+import { playlistStatus, type PlaylistChip } from "./playlistStatus";
 import { WHOLE_LIBRARY_NAME, playlistKey } from "./useCleanPlaylists";
 import "./playlists.css";
 
@@ -26,10 +29,13 @@ interface PlaylistsViewProps {
   /** A problem reading them, said in words. */
   error?: string | null;
   loading?: boolean;
-  /** Tick keys: `library`, or `playlist:12`. */
-  ticked: ReadonlySet<string>;
-  onTick: (key: string, on: boolean) => void;
-  /** Review N: open One at a time on this playlist's waiting tracks; null is the whole library. */
+  /** A match is running, here or elsewhere: one runs at a time, so every Match waits. */
+  matching?: boolean;
+  /** Match: look this playlist up on Beatport; null is the whole library. */
+  onMatch: (playlist: CleanPlaylistStatus | null) => void;
+  /** Stop the match job working on a row. */
+  onStop: (jobId: string) => void;
+  /** Review N ›: open One at a time on this playlist's waiting tracks; null is the whole library. */
   onReview: (playlist: CleanPlaylistStatus | null) => void;
   /** Save N to files…; the button shows only when this is given. */
   onSave?: (playlist: CleanPlaylistStatus | null) => void;
@@ -48,12 +54,12 @@ function matches(playlist: CleanPlaylistStatus, text: string): boolean {
   return `${playlist.path} ${playlist.name}`.toLowerCase().includes(text);
 }
 
-function Chip({ status }: { status: PlaylistStatus }) {
+function Chip({ chip, done = false }: { chip: PlaylistChip; done?: boolean }) {
   return (
-    <span className={`playlists__chip${status.tone === "none" ? "" : ` cp-status--${status.tone}`}`}>
+    <span className={`playlists__chip${chip.tone === "none" ? "" : ` cp-status--${chip.tone}`}`}>
       {/* The tick: a pixel icon, never a typed one. */}
-      {status.kind === "done" && <PixelIcon name="clean" />}
-      {status.text}
+      {done && <PixelIcon name="clean" />}
+      {chip.text}
     </span>
   );
 }
@@ -62,24 +68,18 @@ export function PlaylistsView({
   data,
   error = null,
   loading = false,
-  ticked,
-  onTick,
+  matching = false,
+  onMatch,
+  onStop,
   onReview,
   onSave,
 }: PlaylistsViewProps) {
   const [filter, setFilter] = useState("");
   const text = filter.trim().toLowerCase();
-  // A ticked row stays in view whatever the filter says, so what will be matched is always seen.
   const shown = useMemo(
-    () =>
-      data
-        ? data.playlists.filter(
-            (playlist) => ticked.has(playlistKey(playlist.id)) || matches(playlist, text),
-          )
-        : [],
-    [data, text, ticked],
+    () => (data ? data.playlists.filter((playlist) => matches(playlist, text)) : []),
+    [data, text],
   );
-  const wholeTicked = ticked.has(WHOLE_LIBRARY);
 
   if (!data) {
     return (
@@ -103,57 +103,77 @@ export function PlaylistsView({
     playlist: CleanPlaylistStatus | null,
   ) => {
     const status = playlistStatus(counts);
-    const next = status.next;
     return (
-      <tr key={key} data-ticked={ticked.has(key) ? "true" : undefined}>
-        <td className="playlists__tick">
-          <input
-            type="checkbox"
-            aria-label={`Match ${name}`}
-            checked={ticked.has(key)}
-            // The whole library includes every playlist: ticking one more would mean nothing.
-            disabled={wholeTicked && playlist !== null}
-            onChange={(event) => onTick(key, event.target.checked)}
-          />
-        </td>
+      <tr key={key} data-status={status.kind}>
         <td>
           {prefix && <span className="playlists__path">{prefix}</span>}
           <span className="playlists__name">{name}</span>
         </td>
         <td className="playlists__number cp-data">{counts.track_count.toLocaleString()}</td>
         <td>
-          <Chip status={status} />
-          {counts.running && counts.running.total > 0 && (
-            <progress
-              className="clean-progress"
-              aria-label={`${name} progress`}
-              value={counts.running.done}
-              max={counts.running.total}
-            />
+          {status.running ? (
+            <>
+              <span className="playlists__matching">{status.text}</span>
+              <progress
+                className="clean-progress"
+                aria-label={`${name} progress`}
+                value={status.running.done}
+                max={status.running.total}
+              />
+            </>
+          ) : (
+            <span className="playlists__chips">
+              {status.chips.map((chip, index) => (
+                <Chip key={chip.text} chip={chip} done={status.kind === "done" && index === 0} />
+              ))}
+            </span>
           )}
         </td>
         <td>
-          {next?.kind === "text" && <span className="playlists__next">{next.text}</span>}
-          {next?.kind === "review" && (
-            <Button
-              size="sm"
-              variant="secondary"
-              aria-label={`${next.label} for ${name}`}
-              onClick={() => onReview(playlist)}
-            >
-              {next.label}
-            </Button>
-          )}
-          {next?.kind === "save" && onSave && (
-            <Button
-              size="sm"
-              className="playlists__save"
-              aria-label={`${next.label} for ${name}`}
-              onClick={() => onSave(playlist)}
-            >
-              {next.label}
-            </Button>
-          )}
+          <span className="playlists__actions">
+            {status.running && (
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label={`Stop matching ${name}`}
+                onClick={() => onStop(status.running!.jobId)}
+              >
+                Stop
+              </Button>
+            )}
+            {status.canMatch && (
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label={`Match ${name}`}
+                disabled={matching}
+                onClick={() => onMatch(playlist)}
+              >
+                Match
+              </Button>
+            )}
+            {status.review && (
+              <Button
+                size="sm"
+                variant="primary"
+                aria-label={`${status.review.label} for ${name}`}
+                onClick={() => onReview(playlist)}
+              >
+                {status.review.label}
+              </Button>
+            )}
+            {status.save && onSave && (
+              <Button
+                size="sm"
+                className="playlists__save"
+                aria-label={`${status.save.label} for ${name}`}
+                onClick={() => onSave(playlist)}
+              >
+                {status.save.label}
+              </Button>
+            )}
+            {status.note && <span className="playlists__next">{status.note}</span>}
+          </span>
         </td>
       </tr>
     );
@@ -170,15 +190,11 @@ export function PlaylistsView({
           onChange={(event) => setFilter(event.target.value)}
         />
       </div>
-      {wholeTicked && <p className="playlists__empty">Whole library includes every playlist.</p>}
       <div className="playlists__scroll">
         <table className="playlists__table">
           <caption className="match-visually-hidden">Your playlists and where each stands with Beatport</caption>
           <thead>
             <tr>
-              <th scope="col">
-                <span className="match-visually-hidden">Match</span>
-              </th>
               <th scope="col">Playlist</th>
               <th scope="col" className="playlists__number">
                 Tracks
@@ -188,7 +204,7 @@ export function PlaylistsView({
             </tr>
           </thead>
           <tbody>
-            {row(WHOLE_LIBRARY, WHOLE_LIBRARY_NAME, "", data.whole_library, null)}
+            {row("library", WHOLE_LIBRARY_NAME, "", data.whole_library, null)}
             {shown.map((playlist) =>
               row(
                 playlistKey(playlist.id),

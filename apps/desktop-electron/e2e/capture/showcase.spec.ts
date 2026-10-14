@@ -566,7 +566,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         // Errors and warnings stay until closed (DEC-281): close any still showing.
         await closeToasts(window);
         await expect(window.locator(".cp-toast")).toHaveCount(0, { timeout: 60_000 });
-        await window.getByRole("tab", { name: "One at a time", exact: true }).click();
+        await window.getByRole("tab", { name: /^One at a time/ }).click();
         const yours = window.getByRole("region", { name: "Your track" });
         const theirs = window.getByRole("region", { name: "Best match on Beatport" });
         await expect(yours.getByRole("heading").nth(1)).toBeVisible({ timeout: 30_000 });

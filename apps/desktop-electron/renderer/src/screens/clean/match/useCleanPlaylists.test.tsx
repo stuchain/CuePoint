@@ -4,7 +4,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 
 import type { CleanPlaylists } from "../../../api/cuepointBridge.types";
 import { announceLibraryChange } from "../../../api/libraryChanges";
-import { PLAYLISTS_POLL_MS, usePlaylistTicks, useCleanPlaylists } from "./useCleanPlaylists";
+import { PLAYLISTS_POLL_MS, useCleanPlaylists } from "./useCleanPlaylists";
 
 const COUNTS = {
   track_count: 3,
@@ -124,21 +124,5 @@ describe("useCleanPlaylists while the page is hidden", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
     expect(result.current.data).toEqual(DATA);
-  });
-});
-
-describe("usePlaylistTicks", () => {
-  it("lists the ticked rows, only the whole library when that is ticked, and clears", () => {
-    const { result } = renderHook(() => usePlaylistTicks(DATA));
-    act(() => result.current.onTick("playlist:1", true));
-    expect(result.current.rows.map((row) => row.name)).toEqual(["a"]);
-    act(() => result.current.onTick("library", true));
-    expect(result.current.rows.map((row) => row.name)).toEqual(["Whole library"]);
-    act(() => result.current.onTick("library", false));
-    act(() => result.current.onTick("playlist:1", false));
-    expect(result.current.rows).toEqual([]);
-    act(() => result.current.onTick("library", true));
-    act(() => result.current.clear());
-    expect(result.current.rows).toEqual([]);
   });
 });

@@ -37,18 +37,6 @@
   font-weight: var(--control-font-weight);
 }
 
-.playlists__table tr[data-ticked="true"] td {
-  background: var(--selected-row-background);
-}
-
-.playlists__tick {
-  width: calc(32px * var(--scale));
-}
-
-.playlists__tick input {
-  margin: 0;
-}
-
 .playlists__number {
   text-align: right;
 }
@@ -83,6 +71,19 @@
   border-color: var(--accent-success);
   background: var(--accent-success);
   color: var(--fg-on-status);
+}
+
+.playlists__chips,
+.playlists__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.playlists__matching {
+  display: block;
+  color: var(--fg-primary);
 }
 
 /* A running row: the chip, and under it how far the run is. */

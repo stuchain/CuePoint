@@ -304,10 +304,9 @@ function lastBrowse(): Record<string, unknown> {
   return calls[calls.length - 1]![0] as Record<string, unknown>;
 }
 
-/** Tick these playlists (or the whole library) and press the header's button (C22). */
-async function startMatching(names: string[] = ["Whole library"]) {
-  for (const name of names) fireEvent.click(await screen.findByRole("checkbox", { name: `Match ${name}` }));
-  fireEvent.click(screen.getByRole("button", { name: /^Match (the whole library|\d+ playlists?|playlists) (on Beatport|again)$/ }));
+/** Press a playlist's own Match button (C22): no ticks, no header button. */
+async function startMatching(name = "Whole library") {
+  fireEvent.click(await screen.findByRole("button", { name: `Match ${name}` }));
 }
 
 beforeAll(() => {
@@ -422,30 +421,18 @@ describe("the page", () => {
     );
   });
 
-  it("puts Match N playlists in the header on Match ▸ Playlists only (K4, C22)", async () => {
+  it("has no header button and no tick boxes: every playlist has its own Match (K4, C22)", async () => {
     renderClean(undefined, "playlists");
     const header = await screen.findByTestId("clean-header");
     expect(within(header).getByRole("heading", { level: 1, name: "Clean" })).toBeInTheDocument();
-    const button = /^Match (the whole library|\d+ playlists?|playlists) (on Beatport|again)$/;
-    expect(within(header).getByRole("button", { name: button })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
-
-    for (const other of ["One at a time", "Table", "Past searches"]) {
-      fireEvent.click(screen.getByRole("tab", { name: other }));
-      expect(screen.queryByRole("button", { name: button })).toBeNull();
+    await screen.findByText("Peak time");
+    expect(within(header).queryByRole("button")).toBeNull();
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    expect(screen.queryByText("Tick one or more playlists.")).toBeNull();
+    for (const name of ["Whole library", "Peak time", "Closing", "Warmup", "hj", "all"]) {
+      expect(screen.getByRole("button", { name: `Match ${name}` })).toBeEnabled();
     }
-
-    fireEvent.click(screen.getByRole("tab", { name: "Missing files" }));
-    await screen.findByText("Track 9");
-    expect(screen.queryByRole("button", { name: button })).toBeNull();
-
-    fireEvent.click(screen.getByRole("tab", { name: "Duplicates" }));
-    await screen.findByRole("list", { name: "Possible duplicate groups" });
-    expect(screen.queryByRole("button", { name: button })).toBeNull();
-
-    fireEvent.click(screen.getByRole("tab", { name: "Match" }));
-    fireEvent.click(await screen.findByRole("tab", { name: "Playlists" }));
-    expect(await screen.findByRole("button", { name: button })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
   });
 
   it("asks for an import before there is a library", async () => {
@@ -515,7 +502,6 @@ describe("the Match tab", () => {
         "Matching 2 tracks on Beatport. 1 already matched or decided is left out.",
       ),
     ).toBeInTheDocument();
-    await screen.findByText("Matching finished.");
   });
 
   it("reads Health and the playlists again once a match ends", async () => {
@@ -524,12 +510,11 @@ describe("the Match tab", () => {
     const health = bridge.getLibraryHealth!.mock.calls.length;
     const playlists = bridge.getCleanPlaylists!.mock.calls.length;
     await startMatching();
-    await screen.findByText("Matching finished.");
     await waitFor(() => expect(bridge.getLibraryHealth!.mock.calls.length).toBeGreaterThan(health));
     await waitFor(() => expect(bridge.getCleanPlaylists!.mock.calls.length).toBeGreaterThan(playlists));
   });
 
-  it("says a running match in one line, with its name (CLN-7, C22)", async () => {
+  it("says a running match in one line, with its name, on the tabs without the rows (CLN-7, C22)", async () => {
     // The job never ends until released, so the note can be read while it runs.
     let release: (() => void) | undefined;
     bridge.getJob!.mockImplementation(
@@ -541,8 +526,13 @@ describe("the Match tab", () => {
     renderClean(undefined, "playlists");
     await screen.findByText("Peak time");
     expect(screen.queryByRole("region", { name: "Matching" })).toBeNull();
-    await startMatching(["Peak time"]);
+    await startMatching("Peak time");
 
+    // On Playlists the row says it; the old line above the tabs is gone.
+    await waitFor(() => expect(bridge.startCleanMatch).toHaveBeenCalled());
+    expect(screen.queryByRole("region", { name: "Matching" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Past searches" }));
     const note = await screen.findByRole("region", { name: "Matching" });
     expect(note).toHaveTextContent(/^Matching Peak time…$/);
     expect(note).not.toHaveTextContent(/bar at the bottom|keep working/i);
@@ -563,13 +553,15 @@ describe("the Match tab", () => {
       ],
       active_count: 1,
     });
-    renderClean(undefined, "playlists");
+    renderClean(undefined, "one");
     const note = await screen.findByRole("region", { name: "Matching" });
     expect(note).toHaveTextContent(/^Matching · 108 of 180$/);
     const bar = within(note).getByRole("progressbar", { name: "Matching progress" });
     expect(bar).toHaveAttribute("value", "108");
     expect(bar).toHaveAttribute("max", "180");
-    expect(screen.getByRole("button", { name: /^Match playlists on Beatport$/ })).toBeDisabled();
+    // One run at a time: on the rows every Match waits for it.
+    fireEvent.click(screen.getByRole("tab", { name: "Playlists" }));
+    expect(await screen.findByRole("button", { name: "Match Peak time" })).toBeDisabled();
   });
 
   it("says why the engine refused a match", async () => {
@@ -976,70 +968,36 @@ describe("opening one track from the Library (CLEAN-13)", () => {
   });
 });
 
-describe("Match N playlists on Beatport (C22)", () => {
-  const BUTTON = /^Match (the whole library|\d+ playlists?|playlists) (on Beatport|again)$/;
-
-  it("is greyed with its reason, tied to the button, until a playlist is ticked", async () => {
+describe("a playlist's own Match (C22)", () => {
+  it("starts one run over that playlist, named by it, and says it started", async () => {
     renderClean(undefined, "playlists");
-    const button = await screen.findByRole("button", { name: "Match playlists on Beatport" });
-    expect(button).toBeDisabled();
-    const reason = screen.getByText("Tick one or more playlists.");
-    expect(button).toHaveAttribute("aria-describedby", reason.id);
-    expect(screen.queryByRole("dialog")).toBeNull();
-
-    fireEvent.click(screen.getByRole("checkbox", { name: "Match Peak time" }));
-    expect(screen.getByRole("button", { name: "Match 1 playlist on Beatport" })).toBeEnabled();
-    expect(screen.queryByText("Tick one or more playlists.")).toBeNull();
+    await startMatching("Peak time");
+    await waitFor(() => expect(bridge.startCleanMatch).toHaveBeenCalledTimes(1));
+    expect(bridge.startCleanMatch).toHaveBeenCalledWith({
+      selection: {
+        query: {
+          filters: {
+            match: "all",
+            rules: [{ field: "in_playlist", operator: "any_of", value: [{ kind: "playlist", id: 10 }] }],
+          },
+        },
+      },
+      rematch: false,
+      label: "Peak time",
+    });
+    expect(await screen.findByText(/^Matching 2 tracks on Beatport/)).toBeInTheDocument();
   });
 
-  it("counts the ticked playlists; the whole library is every playlist, and shuts the rest out", async () => {
+  it("matches again, as a rematch, a playlist with nothing left to look up", async () => {
     renderClean(undefined, "playlists");
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Match Peak time" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Match Warmup" }));
-    expect(screen.getByRole("button", { name: "Match 2 playlists on Beatport" })).toBeEnabled();
-
-    // The mixed case: whole library ticked beside playlists is the whole library alone.
-    fireEvent.click(screen.getByRole("checkbox", { name: "Match Whole library" }));
-    expect(screen.getByRole("button", { name: "Match the whole library on Beatport" })).toBeEnabled();
-    expect(screen.getByRole("checkbox", { name: "Match Peak time" })).toBeDisabled();
-    expect(screen.getByText("Whole library includes every playlist.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Match the whole library on Beatport" }));
-    await waitFor(() =>
-      expect(bridge.startCleanMatch).toHaveBeenCalledWith({
-        selection: { query: {} },
-        rematch: false,
-        label: "Whole library",
-      }),
-    );
-  });
-
-  it("keeps the ticks when the engine refuses the match", async () => {
-    bridge.startCleanMatch!.mockRejectedValue(new Error("Every track here is already matched"));
-    renderClean(undefined, "playlists");
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Match Peak time" }));
-    fireEvent.click(screen.getByRole("button", { name: "Match 1 playlist on Beatport" }));
-    await screen.findByText("Every track here is already matched");
-    expect(screen.getByRole("checkbox", { name: "Match Peak time" })).toBeChecked();
-    expect(screen.getByRole("button", { name: "Match 1 playlist on Beatport" })).toBeEnabled();
-  });
-
-  it("reads Match N playlists again when every ticked playlist is already matched", async () => {
-    renderClean(undefined, "playlists");
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Match Closing" }));
-    expect(screen.getByRole("button", { name: "Match 1 playlist again" })).toBeEnabled();
-    fireEvent.click(screen.getByRole("checkbox", { name: "Match Peak time" }));
-    expect(screen.getByRole("button", { name: "Match 2 playlists on Beatport" })).toBeEnabled();
-    fireEvent.click(screen.getByRole("checkbox", { name: "Match Peak time" }));
-    fireEvent.click(screen.getByRole("button", { name: "Match 1 playlist again" }));
+    await startMatching("Closing");
     await waitFor(() =>
       expect(bridge.startCleanMatch).toHaveBeenCalledWith({
         selection: {
           query: {
             filters: {
               match: "all",
-              rules: [
-                { field: "in_playlist", operator: "any_of", value: [{ kind: "playlist", id: 11 }] },
-              ],
+              rules: [{ field: "in_playlist", operator: "any_of", value: [{ kind: "playlist", id: 11 }] }],
             },
           },
         },
@@ -1047,40 +1005,6 @@ describe("Match N playlists on Beatport (C22)", () => {
         label: "Closing",
       }),
     );
-  });
-
-  it("starts one run over the ticked playlists, named up to three and N more, and clears the ticks", async () => {
-    renderClean(undefined, "playlists");
-    for (const name of ["Peak time", "Closing", "Warmup", "hj", "all"]) {
-      fireEvent.click(await screen.findByRole("checkbox", { name: `Match ${name}` }));
-    }
-    const reads = bridge.getCleanPlaylists!.mock.calls.length;
-    fireEvent.click(screen.getByRole("button", { name: "Match 5 playlists on Beatport" }));
-    await waitFor(() => expect(bridge.startCleanMatch).toHaveBeenCalledTimes(1));
-    expect(bridge.startCleanMatch).toHaveBeenCalledWith({
-      selection: {
-        query: {
-          filters: {
-            match: "all",
-            rules: [
-              {
-                field: "in_playlist",
-                operator: "any_of",
-                value: [10, 11, 12, 13, 14].map((id) => ({ kind: "playlist", id })),
-              },
-            ],
-          },
-        },
-      },
-      rematch: false,
-      label: "Peak time, Closing, Warmup and 2 more",
-    });
-    // The ticks are spent, and the rows are read again.
-    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Match Peak time" })).not.toBeChecked());
-    expect(screen.getByRole("checkbox", { name: "Match hj" })).not.toBeChecked();
-    await waitFor(() => expect(bridge.getCleanPlaylists!.mock.calls.length).toBeGreaterThan(reads));
-    expect(screen.getByRole("button", { name: /^Match( playlists)? on Beatport$/ })).toBeDisabled();
-    await screen.findByText("Matching finished.");
   });
 
   it("matches the whole library as the empty question, called Whole library", async () => {
@@ -1093,17 +1017,126 @@ describe("Match N playlists on Beatport (C22)", () => {
         label: "Whole library",
       }),
     );
-    expect(screen.queryByRole("button", { name: BUTTON })).not.toBeNull();
   });
 
-  it("opens Review N on One at a time, on that playlist's waiting tracks", async () => {
+  it("keeps Match available when the engine refuses it, and says why", async () => {
+    bridge.startCleanMatch!.mockRejectedValue(new Error("Every track here is already matched"));
     renderClean(undefined, "playlists");
-    fireEvent.click(await screen.findByRole("button", { name: "Review 4 for all" }));
-    expect(await screen.findByRole("tab", { name: "One at a time" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByLabelText("From")).toHaveValue("playlist:14");
+    await startMatching("Peak time");
+    await screen.findByText("Every track here is already matched");
+    expect(screen.getByRole("button", { name: "Match Peak time" })).toBeEnabled();
+  });
+
+  it("reads the rows again as the run starts, so its row shows the bar", async () => {
+    renderClean(undefined, "playlists");
+    await screen.findByText("Peak time");
+    const reads = bridge.getCleanPlaylists!.mock.calls.length;
+    await startMatching("Peak time");
+    await waitFor(() => expect(bridge.getCleanPlaylists!.mock.calls.length).toBeGreaterThan(reads));
+  });
+
+  it("shows a running row's bar and a Stop that cancels its job", async () => {
+    bridge.getCleanPlaylists!.mockResolvedValue({
+      ...PLAYLISTS,
+      playlists: PLAYLISTS.playlists.map((playlist) =>
+        playlist.id === 13 ? { ...playlist, running: { job_id: "job-9", done: 12, total: 24 } } : playlist,
+      ),
+    });
+    bridge.cancelJob = vi.fn().mockResolvedValue({ id: "job-9", state: "cancelled" });
+    renderClean(undefined, "playlists");
+    expect(await screen.findByText("Matching 12 of 24")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "hj progress" })).toHaveAttribute("value", "12");
+    fireEvent.click(screen.getByRole("button", { name: "Stop matching hj" }));
+    expect(bridge.cancelJob).toHaveBeenCalledWith("job-9");
+  });
+
+  it("opens Review N on One at a time, on that playlist's tracks to check", async () => {
+    renderClean(undefined, "playlists");
+    fireEvent.click(await screen.findByRole("button", { name: "Review 4 › for all" }));
+    expect(await screen.findByRole("tab", { name: /^One at a time/ })).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(lastBrowse()).toMatchObject({ playlistId: 14 }));
-    // The header action goes with the Playlists tab.
-    expect(screen.queryByRole("button", { name: BUTTON })).toBeNull();
+    expect(screen.getByRole("group", { name: "Reviewing" })).toHaveTextContent("Reviewing all");
+  });
+
+  it("opens Review N on the run the row's Match started, when it did in this session", async () => {
+    const run = {
+      job_id: "job-match",
+      created_at: "2026-10-14T10:00:00Z",
+      label: "Warmup",
+      rematch: false,
+      selected: 10,
+      excluded: 0,
+      planned: 10,
+      done: 10,
+      found: 6,
+      waiting: 4,
+      not_found: 0,
+      rejected: 0,
+      disputed: 0,
+      status: "done",
+      finished_at: "2026-10-14T10:01:00Z",
+      latest_job_id: "job-match",
+      resume_job_id: null,
+    };
+    bridge.getMatchJobs!.mockResolvedValue({ jobs: [run], total: 1 });
+    // What the engine would say once the run has ended: Warmup has 4 to check and 6 sure.
+    bridge.getCleanPlaylists!.mockResolvedValue({
+      ...PLAYLISTS,
+      playlists: PLAYLISTS.playlists.map((playlist) =>
+        playlist.id === 12 ? { ...playlist, not_matched: 0, waiting: 4, accepted: 6 } : playlist,
+      ),
+    });
+    renderClean(undefined, "playlists");
+    await startMatching("Warmup");
+    await waitFor(() => expect(bridge.startCleanMatch).toHaveBeenCalled());
+    fireEvent.click(await screen.findByRole("button", { name: "Review 4 › for Warmup" }));
+    await waitFor(() => expect(JSON.stringify(lastBrowse())).toContain("job-match"));
+    expect(screen.getByRole("group", { name: "Reviewing" })).toHaveTextContent("Reviewing Warmup");
+    expect(screen.getByRole("group", { name: "Reviewing" })).toHaveTextContent("6 already confirmed");
+  });
+});
+
+describe("when a playlist's match ends somewhere else (C22)", () => {
+  const RUN = {
+    job_id: "job-match",
+    created_at: "2026-10-14T10:00:00Z",
+    label: "hj",
+    rematch: false,
+    selected: 24,
+    excluded: 0,
+    planned: 24,
+    done: 24,
+    found: 15,
+    waiting: 9,
+    not_found: 0,
+    rejected: 0,
+    disputed: 0,
+    status: "done",
+    finished_at: "2026-10-14T10:01:00Z",
+    latest_job_id: "job-match",
+    resume_job_id: null,
+  };
+
+  it("says it in a toast with Review 9, which opens One at a time on that run", async () => {
+    bridge.getMatchJobs!.mockResolvedValue({ jobs: [RUN], total: 1 });
+    renderClean(undefined, "playlists");
+    await startMatching("hj");
+    // The person leaves the rows for another tab while it runs.
+    fireEvent.click(screen.getByRole("tab", { name: "Past searches" }));
+    expect(await screen.findByText("hj matched · 15 confirmed · 9 to check")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Review 9" }));
+    expect(await screen.findByRole("group", { name: "Reviewing" })).toHaveTextContent("Reviewing hj");
+    await waitFor(() => expect(JSON.stringify(lastBrowse())).toContain("job-match"));
+  });
+
+  it("does not repeat in a toast what the row already says, when the rows are in view", async () => {
+    bridge.getMatchJobs!.mockResolvedValue({ jobs: [RUN], total: 1 });
+    renderClean(undefined, "playlists");
+    await startMatching("hj");
+    await waitFor(() => expect(bridge.getJob).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText(/matched ·/)).toBeNull();
+    expect(screen.queryByText("Matching finished.")).toBeNull();
   });
 });
 

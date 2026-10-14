@@ -47,33 +47,41 @@ The status is the first of these that applies:
 
 | Status | Next |
 | --- | --- |
-| **Matching 108 of 180** | You can keep working |
-| **N waiting for you** | **Review N** |
-| **N ready to save** | **Save N to files…** |
-| **Not matched** or **N not matched** | Tick and press Match |
-| **Done** | Values in your files |
+| **Matching 12 of 24**, with a bar | **Stop** |
+| **N to check** and **N confirmed** | **Match**, **Review N ›** |
+| **N ready to save** | **Match**, **Save N to files…** |
+| **Not matched** or **N not matched** | **Match** |
+| **Done** | **Match**, "Values in your files" |
 
-To match, tick one or more playlists and choose **Match N playlists on
-Beatport**. Tick **Whole library** and the button reads **Match the whole
-library on Beatport**; the whole library includes every playlist, so the playlists
-cannot be ticked with it. When everything you ticked is already matched the
-button says **Match 3 playlists again** (or **Match the whole library again**),
-which looks those tracks up once more. The button is greyed, with the reason
-beside it, until you tick something. The ticks clear when the match starts.
+Every row has its own **Match**: there are no tick boxes and no button in the
+page header. **Whole library** matches every track. A playlist with nothing left
+to look up is looked up again. One match runs at a time, so the other rows'
+**Match** buttons wait until it ends. A row with values ready to save also has its
+own **Save N to files…**.
 
-Matching runs in the background. While it runs, one line on the page names what
-is being matched with its progress ("Matching hj · 108 of 180") and a bar, and
-the status strip shows **Matching on Beatport** with a **Stop** button. You can
-leave the page. A track already matched or decided is skipped, so matching a
-playlist twice does not look anything up twice, unless you ask for **again**. A
-decision you made is kept either way; if a newer search found a different best
-match than the one you chose, the track is marked **Changed since you decided**
-so you can look again.
+Matching runs in the background. While it runs, its row shows a bar and
+"Matching 12 of 24" with a **Stop**, and the status strip shows **Matching on
+Beatport**. You can leave the page: when the match ends, a note says so ("hJ
+matched · 15 confirmed · 9 to check") with a **Review 9** button. A track already
+matched or decided is skipped, so matching a playlist twice does not look
+anything up twice. A decision you made is kept either way; if a newer search found
+a different best match than the one you chose, the track is marked **Changed since
+you decided** so you can look again.
 
-**Review N** opens **One at a time** on that playlist's tracks waiting for you.
-When the only tracks waiting were matched before you decided, it opens **Changed
-since you decided** instead. **Save N to files…** is explained under [Saving
-values into your files](#saving-values-into-your-files).
+When it is done the row says **N to check** (Beatport found candidates, none
+certain enough) and **N confirmed** (every track of the playlist with an accepted match, whether CuePoint was sure or you corrected it), and its button becomes **Review
+N ›**. **One at a time** carries the same count, "One at a time (9)".
+
+**Review N ›** opens **One at a time** on that one search, only the tracks to check,
+under a header: "Reviewing hJ · 2 of 9 · 15 already confirmed" and a **‹
+Playlists** button back. Each card puts your file beside the Beatport result, with
+art and play buttons for both, and the differences in yellow. After the last
+track a screen says "hJ is done · 22 confirmed · 2 not confirmed" (not confirmed is every
+track without an accepted match: not matched, rejected, or skipped), with **Save 22 to files…** (the save window, with a before and after)
+and **‹ Back to playlists**. Nothing is written to your files until you save.
+When the only tracks waiting were matched before you decided, **Review N** opens
+**Changed since you decided** instead. **Save N to files…** is explained under
+[Saving values into your files](#saving-values-into-your-files).
 
 The first time you open Clean, with nothing looked up yet, it says so and offers
 **Match all N tracks…**. Other pages hand tracks to Match too: **Match tracks…**
@@ -168,7 +176,7 @@ is:
 - **Correct** confirms the match and updates the ticked values in one step.
   Titles, artists, remixers and albums are never changed.
 - **Not this track** says none of the results is right.
-- **Skip for now** moves on without deciding.
+- **Skip** moves on without deciding. Skipped tracks stay in the list; on the last card Skip goes round to the first one you skipped, and when only skipped tracks are left the review ends and says how many, with a button to go through them again.
 - **←** and **→** step through the other results.
 
 After Correct, a line says what happened ("Corrected "Tone Two"."), with an
@@ -186,9 +194,9 @@ a dialog open.
 
 | Key | Does |
 | --- | --- |
-| **A** | Correct |
-| **R** | Not this track |
-| **N** | Skip for now |
+| **Enter** | Correct |
+| **N** | Not this track |
+| **S** | Skip |
 | **Left** / **Right** | Choose another result |
 | **Up** / **Down** | Previous or next track |
 | **B** | Play or stop the Beatport preview |

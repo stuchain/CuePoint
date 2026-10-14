@@ -45,6 +45,7 @@ function stubMatch(overrides: Partial<CleanMatch> = {}): CleanMatch {
     started: 0,
     start: vi.fn(),
     resume: vi.fn(),
+    stop: vi.fn(),
     ...overrides,
   };
 }
@@ -69,8 +70,7 @@ function renderPast(overrides: Partial<Props> = {}) {
     match: stubMatch(),
     onMatchTracks: vi.fn(),
     playlists: { data: null, error: null, loading: false, reload: vi.fn() },
-    ticked: new Set<string>(),
-    onTick: vi.fn(),
+    onMatchPlaylist: vi.fn(),
     ...overrides,
   };
   const view = render(element(props));

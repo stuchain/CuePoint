@@ -60,9 +60,9 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   // Space is not here: it is the player's.
   { context: "Clean", action: "Previous or next track in One at a time", shortcut: "Up / Down" },
   { context: "Clean", action: "Choose another result", shortcut: "Left / Right" },
-  { context: "Clean", action: "Correct: confirm the match and update the ticked values", shortcut: "A" },
-  { context: "Clean", action: "Not this track: reject the match", shortcut: "R" },
-  { context: "Clean", action: "Skip to the next track without deciding", shortcut: "N" },
+  { context: "Clean", action: "Correct: confirm the match and update the ticked values", shortcut: "Enter" },
+  { context: "Clean", action: "Not this track: reject the match", shortcut: "N" },
+  { context: "Clean", action: "Skip to the next track without deciding", shortcut: "S" },
   { context: "Clean", action: "Play or stop the Beatport preview", shortcut: "B" },
   { context: "Clean", action: "Play your file", shortcut: "Y" },
   { context: "Clean", action: "Stop the preview", shortcut: "Esc" },

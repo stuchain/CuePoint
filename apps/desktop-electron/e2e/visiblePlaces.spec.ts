@@ -730,13 +730,12 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect(files).toBeHidden();
   });
 
-  test("Match N tracks: Clean's header", async () => {
+  test("Match: a playlist row's own button on Clean ▸ Playlists", async () => {
     await go(win, "#/clean");
     const before = await jobsOf(win, "clean_match");
     await win.getByRole("tab", { name: "Playlists", exact: true }).click();
-    // Match opens on Playlists (C22): tick the whole library, then press the header button; no window opens.
-    await win.getByRole("checkbox", { name: "Match Whole library" }).check();
-    await use(win, win.getByRole("button", { name: "Match the whole library on Beatport" }), "Match the whole library");
+    // Match opens on Playlists (C22): every row has its own Match, none in the header; no window opens.
+    await use(win, win.getByRole("button", { name: "Match Whole library" }), "Match on the whole-library row");
     await expect(win.getByRole("dialog", { name: "Match tracks" })).toHaveCount(0);
     await expect.poll(() => jobsOf(win, "clean_match"), { timeout: 30_000 }).toBeGreaterThan(before);
     // Nothing here reaches Beatport for real: stop what started, and wait until it has stopped,

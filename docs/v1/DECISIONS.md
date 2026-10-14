@@ -8111,6 +8111,8 @@ in playlists: which ones are matched, which wait for them, which are ready to sa
 
 **Decided with**: User (C22 ★ Playlists first sub-tab; K12, K13 "apply ALL") · **Date**: 2026-10-13
 
+**Amendment, 2026-10-14 (C22)**: Match is per row. The tick boxes, "Tick one or more playlists." and the header button **Match N playlists on Beatport** are removed; each row has its own **Match**, a running row shows a bar, "Matching x of y" and **Stop**, and a finished one says "N to check" and "N confirmed" with **Review N ›**. Review opens One at a time on the run the row started (From: one run) only while that run holds what the row waits on, else on the playlist; it has a header with **‹ Playlists**, and ends on a done screen with **Save N to files…**. A run that ends while another page or tab is open says so in a toast with **Review N**. In One at a time the keys are Enter (Correct), N (Not this track) and S (Skip); they act once per press. "Confirmed" is the engine's `accepted` count: it includes values the user corrected by hand, so it is not worded "sure".
+
 
 
 ## DEC-293 — The Empty Library Is First Steps Only; Library Numbers Use the Data Font

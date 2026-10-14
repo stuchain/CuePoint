@@ -86,7 +86,7 @@ let bridge: Record<string, Fn>;
 let world: MatchWorld;
 
 function stubMatch(): CleanMatch {
-  return { matching: false, running: null, note: null, progress: null, ended: 0, started: 0, start: vi.fn(), resume: vi.fn() };
+  return { matching: false, running: null, note: null, progress: null, ended: 0, started: 0, start: vi.fn(), resume: vi.fn(), stop: vi.fn() };
 }
 
 function renderTable(overrides: Partial<Props> = {}) {
@@ -97,8 +97,7 @@ function renderTable(overrides: Partial<Props> = {}) {
     match: stubMatch(),
     onMatchTracks: vi.fn(),
     playlists: { data: null, error: null, loading: false, reload: vi.fn() },
-    ticked: new Set<string>(),
-    onTick: vi.fn(),
+    onMatchPlaylist: vi.fn(),
     ...overrides,
   };
   const view = render(
@@ -408,8 +407,8 @@ describe("the table", () => {
     renderTable();
     fireEvent.click(await screen.findByText("Track 1", undefined, LOADED));
     act(() => {
-      fireEvent.keyDown(window, { key: "a" });
-      fireEvent.keyDown(window, { key: "r" });
+      fireEvent.keyDown(window, { key: "Enter" });
+      fireEvent.keyDown(window, { key: "n" });
     });
     expect(bridge.correctMatch).not.toHaveBeenCalled();
     expect(bridge.decideMatch).not.toHaveBeenCalled();

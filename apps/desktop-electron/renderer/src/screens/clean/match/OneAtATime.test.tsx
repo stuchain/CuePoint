@@ -304,8 +304,8 @@ describe("deciding with the buttons", () => {
     const { props } = renderOne();
     await screen.findByText("This track has not been matched on Beatport yet.", undefined, LOADED);
     expect(screen.getByRole("button", { name: /^Not this track/ })).toBeDisabled();
-    press("r");
-    press("a");
+    press("n");
+    press("Enter");
     expect(props.onNotThis).not.toHaveBeenCalled();
     expect(props.onCorrect).not.toHaveBeenCalled();
   });
@@ -316,9 +316,9 @@ describe("deciding with the buttons", () => {
     for (const name of [/^Correct/, /^Not this track/, /^Skip for now/]) {
       expect(screen.getByRole("button", { name })).toBeDisabled();
     }
-    press("a");
-    press("r");
+    press("Enter");
     press("n");
+    press("s");
     expect(props.onCorrect).not.toHaveBeenCalled();
     expect(props.onNotThis).not.toHaveBeenCalled();
     expect(props.onSkip).not.toHaveBeenCalled();
@@ -342,13 +342,13 @@ describe("deciding from the keyboard", () => {
     const { props } = renderOne({ ticks: new Set<CardField>(["bpm"]) });
     await ready();
 
-    press("a");
+    press("Enter");
     expect(props.onCorrect).toHaveBeenCalledTimes(1);
     expect(props.onCorrect.mock.calls[0]![0].id).toBe(1001);
     expect(props.onCorrect.mock.calls[0]![1]).toEqual({ fields: ["bpm"], replaceKey: false });
-    press("r");
-    expect(props.onNotThis).toHaveBeenCalledTimes(1);
     press("n");
+    expect(props.onNotThis).toHaveBeenCalledTimes(1);
+    press("s");
     expect(props.onSkip).toHaveBeenCalledTimes(1);
     press("ArrowDown");
     expect(props.onNextTrack).toHaveBeenCalledTimes(1);
@@ -363,7 +363,7 @@ describe("deciding from the keyboard", () => {
     await ready();
     press("ArrowRight");
     expect(screen.getByRole("button", { name: /^2 ·/ })).toHaveAttribute("aria-pressed", "true");
-    press("a");
+    press("Enter");
     expect(props.onCorrect.mock.calls[0]![0].id).toBe(1002);
     press("ArrowLeft");
     expect(screen.getByRole("button", { name: /^1 ·/ })).toHaveAttribute("aria-pressed", "true");
@@ -386,11 +386,11 @@ describe("deciding from the keyboard", () => {
     const { props } = renderOne();
     await ready();
     press("A", { shiftKey: true });
-    press("a", { ctrlKey: true });
+    press("Enter", { ctrlKey: true });
     const field = document.createElement("input");
     document.body.append(field);
     act(() => {
-      fireEvent.keyDown(field, { key: "a" });
+      fireEvent.keyDown(field, { key: "Enter" });
     });
     field.remove();
     expect(props.onCorrect).not.toHaveBeenCalled();
@@ -403,7 +403,7 @@ describe("deciding from the keyboard", () => {
     dialog.setAttribute("role", "dialog");
     document.body.append(dialog);
     try {
-      press("a");
+      press("Enter");
       press("ArrowDown");
     } finally {
       dialog.remove();
@@ -421,7 +421,7 @@ describe("deciding from the keyboard", () => {
       window.dispatchEvent(handled);
     });
     expect(props.onCorrect).not.toHaveBeenCalled();
-    press("a");
+    press("Enter");
     expect(props.onCorrect).toHaveBeenCalledTimes(1);
   });
 
@@ -441,7 +441,7 @@ describe("deciding from the keyboard", () => {
         const observer = new MutationObserver(() => {
           if (!screen.queryByTestId("likelihood")) return;
           observer.disconnect();
-          fireEvent.keyDown(window, { key: "a" });
+          fireEvent.keyDown(window, { key: "Enter" });
           resolve();
         });
         observer.observe(document.body, { childList: true, subtree: true, characterData: true });
@@ -471,7 +471,7 @@ describe("the choice of result (CLEAN-14)", () => {
     await ready();
 
     expect(screen.getByRole("button", { name: /^2 ·/ })).toHaveAttribute("aria-pressed", "true");
-    press("a");
+    press("Enter");
     expect(props.onCorrect.mock.calls[0]![0].id).toBe(1002);
   });
 

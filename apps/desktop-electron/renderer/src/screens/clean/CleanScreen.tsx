@@ -11,32 +11,31 @@
  * Match area (`match/MatchArea.tsx`): Playlists, One at a time, Table and Past
  * searches.
  *
- * Match opens on Playlists (C22). Its one action, **Match N playlists on
- * Beatport**, shows on that sub-tab only and starts one run over the ticked
- * playlists; the match window stays for tracks handed in from other pages
- * (`matchWith`).
+ * Match opens on Playlists (C22). Every playlist there has its own **Match**
+ * (no ticks, no header button); the page starts that run, follows it, and says
+ * from another page that it ended, with **Review N**. The match window stays
+ * for tracks handed in from other pages (`matchWith`).
  *
  * Every table here is the Library's `TrackTable` over the Library's windowed
  * browse with a rule set, and every action goes through a route CLEAN-11 built.
  * The page adds surface, not machinery: no second query path, no in-memory
  * results, no rule the engine does not already state.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import type { CleanPlaylistStatus, EntityKind, LibrarySummary } from "../../api/cuepointBridge.types";
+import type { CleanPlaylistStatus, EntityKind, LibrarySummary, MatchRun } from "../../api/cuepointBridge.types";
 import { LIBRARY_SUMMARY, useSharedRead } from "../../api/sharedReads";
-import { Button } from "../../components/Button";
 import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { Tabs } from "../../components/Tabs";
 import { DuplicatesView } from "./DuplicatesView";
 import { MatchWindow } from "./MatchWindow";
 import { MissingFilesView } from "./MissingFilesView";
-import { MatchArea, loadMatchTab, type MatchTab } from "./match/MatchArea";
+import { MatchArea, loadMatchTab, type MatchTab, type ReviewOpening } from "./match/MatchArea";
 import { usePageActive } from "../../components/shell/pageActive";
-import { useCleanPlaylists, usePlaylistTicks } from "./match/useCleanPlaylists";
-import { matchPlaylistsAction, matchPlaylistsLabel, matchPlaylistsSelection } from "./match/matchPlaylists";
+import { WHOLE_LIBRARY_NAME, playlistKey, useCleanPlaylists } from "./match/useCleanPlaylists";
+import { matchRowRequest } from "./match/matchPlaylists";
 import type { CleanMatchOpening, CleanOpening, CleanSectionOpening } from "./cleanLink";
 import type { CleanTracks } from "./cleanTracks";
 import { libraryImportState } from "../library/libraryLink";
@@ -120,11 +119,34 @@ export function CleanScreen({
   const cleanHealth = useCleanHealth();
   const { reload: reloadHealth } = cleanHealth;
   const match = useCleanMatch(reloadHealth);
-  // The Playlists view's rows and ticks live here: the header's button reads them (C22).
+  // The Playlists view's rows live here: a row's Match starts the page's one run (C22).
   const pageActive = usePageActive();
   const playlists = useCleanPlaylists(match.matching, section === "review" && pageActive);
-  const playlistTicks = usePlaylistTicks(playlists.data);
   const [matchTab, setMatchTab] = useState<MatchTab>(loadMatchTab);
+  // Whether the person is looking at the rows: a run that ends elsewhere says so in a toast.
+  // Kept in a ref, read when the run ends, which may be while this page is hidden.
+  const rowsShown = pageActive && section === "review" && matchTab === "playlists";
+  const rowsInView = useRef(rowsShown);
+  const pageShown = useRef(pageActive);
+  // Written after the commit, not during render: a render may be thrown away, and a hidden page's
+  // renders are deferred, but these are only read when a run ends, long after.
+  useLayoutEffect(() => {
+    rowsInView.current = rowsShown;
+    pageShown.current = pageActive;
+  }, [rowsShown, pageActive]);
+  // The run each row's last Match started in this session, so Review opens on that run.
+  const rowRuns = useRef(new Map<string, string>());
+  const rowKey = (playlist: CleanPlaylistStatus | null) => (playlist ? playlistKey(playlist.id) : "library");
+  const runFor = useCallback(
+    (playlist: CleanPlaylistStatus | null) => rowRuns.current.get(rowKey(playlist)),
+    [],
+  );
+  const [reviewOpening, setReviewOpening] = useState<ReviewOpening | null>(null);
+  // A row's run, once it has been reviewed to its end or no longer holds what the row waits on.
+  const runSpent = useCallback((playlistId: number | null) => {
+    rowRuns.current.delete(playlistId === null ? "library" : playlistKey(playlistId));
+  }, []);
+  const reviewOpened = useCallback(() => setReviewOpening(null), []);
   // The save bar under every tab, and its window (C23); a playlist's row opens it on that
   // playlist's tracks. A decision made here (Correct, Take, Undo, a run ending) is not
   // announced as a library change, so it bumps `decided` and the bar and the rows count again.
@@ -191,25 +213,33 @@ export function CleanScreen({
     );
   }
 
-  const ticked = playlistTicks.rows;
-  const matchPlaylists = matchPlaylistsAction(ticked);
-  const startPlaylists = () => {
-    if (ticked.length === 0 || match.matching) return;
-    // The ticks are spent only once the match has started; a refusal keeps them.
+  // Review N ›, from a toast on another page: bring the Match area back on that run.
+  const openReview = (run: MatchRun, playlist: CleanPlaylistStatus | null) => {
+    setSection("review");
+    saveCleanSection("review");
+    setReviewOpening({
+      token: `${run.job_id}:${Date.now()}`,
+      run,
+      playlistId: playlist ? playlist.id : null,
+      name: playlist ? playlist.name : (run.label ?? WHOLE_LIBRARY_NAME),
+    });
+    if (!pageShown.current) navigate("/clean");
+  };
+  // A playlist's Match: one run over that playlist, followed here (C22).
+  const startPlaylist = (playlist: CleanPlaylistStatus | null) => {
+    const data = playlists.data;
+    if (!data || match.matching) return;
+    const request = matchRowRequest(playlist, data.whole_library);
     void match
-      .start(
-        matchPlaylists.again ? "rematch-many" : "match-many",
-        matchPlaylistsSelection(ticked),
-        matchPlaylists.again,
-        matchPlaylistsLabel(ticked),
-      )
+      .start(request.again ? "rematch-many" : "match-many", request.selection, request.again, request.label, {
+        onJob: (jobId) => rowRuns.current.set(rowKey(playlist), jobId),
+        away: () => !rowsInView.current,
+        onReview: (run) => openReview(run, playlist),
+      })
       .then((started) => {
-        if (!started) return;
-        playlistTicks.clear();
-        playlists.reload();
+        if (started) playlists.reload();
       });
   };
-  const needsTick = ticked.length === 0;
 
   const label = CLEAN_SECTIONS.find((entry) => entry.id === section)?.label ?? "";
   const counts = sectionCounts(cleanHealth.health);
@@ -236,28 +266,9 @@ export function CleanScreen({
               onChange={choose}
             />
           }
-          actions={
-            section === "review" && matchTab === "playlists" ? (
-              <div className="clean-header-action">
-                {needsTick && !match.matching && (
-                  <span id="clean-match-reason" className="clean-hint-line">
-                    Tick one or more playlists.
-                  </span>
-                )}
-                <Button
-                  variant="primary"
-                  disabled={needsTick || match.matching}
-                  aria-describedby={needsTick && !match.matching ? "clean-match-reason" : undefined}
-                  onClick={startPlaylists}
-                >
-                  {matchPlaylists.label}
-                </Button>
-              </div>
-            ) : undefined
-          }
         />
       </div>
-      {match.note && (
+      {match.note && !rowsShown && (
         <div className="clean-note" role="region" aria-label="Matching">
           <p className="clean-note__text">{match.note}</p>
           {match.progress && (
@@ -280,8 +291,11 @@ export function CleanScreen({
             match={match}
             onMatchTracks={(tracks) => openMatch(tracks ?? null)}
             playlists={playlists}
-            ticked={playlistTicks.ticked}
-            onTick={playlistTicks.onTick}
+            onMatchPlaylist={startPlaylist}
+            runFor={runFor}
+            onRunSpent={runSpent}
+            reviewOpening={reviewOpening}
+            onReviewOpened={reviewOpened}
             onTabChange={setMatchTab}
             onSavePlaylist={savePlaylist}
           />

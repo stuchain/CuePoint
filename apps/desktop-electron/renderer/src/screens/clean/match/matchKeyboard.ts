@@ -2,7 +2,8 @@
  * Matching from the keyboard (CLEAN-12, C14).
  *
  * Checking 3,000 tracks is a keyboard job, so One at a time decides without a
- * mouse. The keys are bare letters and arrows, which is only safe because of
+ * mouse: Enter corrects, N is Not this track, S skips. The keys are bare letters,
+ * Enter and arrows, which is only safe because of
  * the rules below: a key typed into a field is text, a key pressed inside a
  * dialog belongs to the dialog, and a key held with Ctrl, Alt or the command
  * key belongs to the shell (SHELL-10's shortcuts are all modified). A key
@@ -36,6 +37,8 @@ export interface KeyLike {
   metaKey: boolean;
   altKey: boolean;
   shiftKey: boolean;
+  /** A key held down repeats; a decision is made once, never by the repeats. */
+  repeat?: boolean;
   target: EventTarget | null;
 }
 
@@ -45,15 +48,15 @@ export const MATCH_KEYS: Record<MatchCommand, string> = {
   "next-track": "Down",
   "previous-candidate": "Left",
   "next-candidate": "Right",
-  correct: "A",
-  "not-this": "R",
-  skip: "N",
+  correct: "Enter",
+  "not-this": "N",
+  skip: "S",
   "play-preview": "B",
   "play-file": "Y",
   "stop-preview": "Esc",
 };
 
-/** Inputs that take no typed text: a tick or a radio is not a field, so A still means Correct there. */
+/** Inputs that take no typed text: a tick or a radio is not a field, so N still means Not this track there. */
 const NOT_TEXT_INPUTS = ["checkbox", "radio", "button", "submit", "reset", "range", "color", "file"];
 
 function inTheWay(target: EventTarget | null): boolean {
@@ -69,6 +72,21 @@ function inTheWay(target: EventTarget | null): boolean {
   return (
     target.closest('[role="dialog"], [role="menu"], [role="listbox"], [role="tree"]') !== null
   );
+}
+
+/**
+ * Anything that takes focus for a purpose of its own: Enter pressed on it is theirs, not Correct.
+ * Only the page itself and the card's own regions (not focusable) leave Enter to Correct.
+ */
+const OWN_ENTER =
+  'button, a[href], summary, select, input, textarea, [tabindex]:not([tabindex="-1"]), ' +
+  '[role="button"], [role="tab"], [role="link"], [role="slider"], [role="option"], [role="menuitem"], ' +
+  '[role="menuitemcheckbox"], [role="menuitemradio"], [role="switch"], [role="checkbox"], [role="radio"], ' +
+  '[role="gridcell"], [role="row"], [role="treeitem"], [role="combobox"], [role="spinbutton"]';
+
+function pressesItself(target: EventTarget | null): boolean {
+  if (typeof HTMLElement === "undefined" || !(target instanceof HTMLElement)) return false;
+  return target.closest(OWN_ENTER) !== null;
 }
 
 export function matchCommand(event: KeyLike, view: MatchView): MatchCommand | null {
@@ -88,12 +106,14 @@ export function matchCommand(event: KeyLike, view: MatchView): MatchCommand | nu
   }
   // Letters without Shift: a capital typed by accident is not a decision.
   if (event.shiftKey) return null;
+  // A held key decides once: Enter, N and S never repeat.
+  if (event.repeat && (event.key === "Enter" || event.key === "n" || event.key === "s")) return null;
+  // Enter corrects, unless it is pressed on a button, which it presses.
+  if (event.key === "Enter") return pressesItself(event.target) ? null : "correct";
   switch (event.key) {
-    case "a":
-      return "correct";
-    case "r":
-      return "not-this";
     case "n":
+      return "not-this";
+    case "s":
       return "skip";
     case "b":
       return "play-preview";

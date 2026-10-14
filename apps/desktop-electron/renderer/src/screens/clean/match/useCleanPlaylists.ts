@@ -6,17 +6,12 @@
  * rows say "Matching x of y", so the next read follows two seconds after the
  * last one settled, and one more when the match ends so the rows move to
  * "waiting" or "ready to save". A build without the route says so (`NEEDS_DESKTOP`).
- *
- * The ticks live beside it (`usePlaylistTicks`), because the page header
- * reads them: a row is ticked by its key, `library` for the whole library and
- * `playlist:12` for a playlist, the scope values `cleanRules.ts` already uses.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
-import type { CleanPlaylistCounts, CleanPlaylists, CleanPlaylistStatus } from "../../../api/cuepointBridge.types";
+import type { CleanPlaylists } from "../../../api/cuepointBridge.types";
 import { CLEAN_PLAYLISTS, useReportReadError, useSharedRead } from "../../../api/sharedReads";
 import { NEEDS_DESKTOP, userMessage } from "../../../api/userMessage";
-import { WHOLE_LIBRARY } from "../cleanRules";
 
 /** How often the rows are read again while a match runs. */
 export const PLAYLISTS_POLL_MS = 2000;
@@ -93,54 +88,9 @@ export function useCleanPlaylists(matching: boolean, active = true): CleanPlayli
   return { data, error, loading, reload: refresh };
 }
 
-/** A playlist's tick key. */
+/** A playlist's key: its row's key in the page's record of runs, and in the Playlists table. */
 export function playlistKey(id: number): string {
   return `playlist:${id}`;
 }
 
-/** A ticked row: its key, name, and what it holds. */
-export interface TickedPlaylist {
-  key: string;
-  name: string;
-  /** The playlist's id; null for the whole library. */
-  id: number | null;
-  counts: CleanPlaylistCounts;
-}
-
 export const WHOLE_LIBRARY_NAME = "Whole library";
-
-export interface PlaylistTicks {
-  ticked: ReadonlySet<string>;
-  onTick: (key: string, on: boolean) => void;
-  /** The ticked rows in the list's order, or just the whole library when that is ticked; a row the list no longer has is dropped. */
-  rows: TickedPlaylist[];
-  clear: () => void;
-}
-
-export function usePlaylistTicks(data: CleanPlaylists | null): PlaylistTicks {
-  const [ticked, setTicked] = useState<ReadonlySet<string>>(new Set());
-  const onTick = useCallback((key: string, on: boolean) => {
-    setTicked((current) => {
-      const next = new Set(current);
-      if (on) next.add(key);
-      else next.delete(key);
-      return next;
-    });
-  }, []);
-  const clear = useCallback(() => setTicked(new Set()), []);
-  const rows = useMemo<TickedPlaylist[]>(() => {
-    if (!data) return [];
-    // The whole library includes every playlist: when it is ticked it is the only row.
-    if (ticked.has(WHOLE_LIBRARY)) {
-      return [{ key: WHOLE_LIBRARY, name: WHOLE_LIBRARY_NAME, id: null, counts: data.whole_library }];
-    }
-    const out: TickedPlaylist[] = [];
-    data.playlists.forEach((playlist: CleanPlaylistStatus) => {
-      if (ticked.has(playlistKey(playlist.id))) {
-        out.push({ key: playlistKey(playlist.id), name: playlist.name, id: playlist.id, counts: playlist });
-      }
-    });
-    return out;
-  }, [data, ticked]);
-  return { ticked, onTick, rows, clear };
-}

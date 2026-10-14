@@ -22,55 +22,74 @@ function counts(overrides: Partial<CleanPlaylistCounts> = {}): CleanPlaylistCoun
 }
 
 describe("playlistStatus", () => {
-  it("says how far a running match is, and that the person can keep working", () => {
-    expect(playlistStatus(counts({ running: { job_id: "j", done: 108, total: 1800 } }))).toEqual({
+  it("says how far a running match is, with its job, and offers neither Review nor Match", () => {
+    const status = playlistStatus(counts({ running: { job_id: "j", done: 108, total: 1800 } }));
+    expect(status).toMatchObject({
       kind: "running",
       text: "Matching 108 of 1,800",
-      tone: "none",
-      next: { kind: "text", text: "You can keep working" },
+      running: { jobId: "j", done: 108, total: 1800 },
+      review: null,
+      save: null,
+      canMatch: false,
     });
   });
 
-  it("offers Review N when tracks wait for a yes or no", () => {
-    expect(playlistStatus(counts({ waiting: 1200 }))).toEqual({
+  it("says N to check and N confirmed, and offers Review N ›, when tracks wait for a yes or no", () => {
+    const status = playlistStatus(counts({ waiting: 9, accepted: 15, track_count: 24, unsaved: 15 }));
+    expect(status).toMatchObject({
       kind: "waiting",
-      text: "1,200 waiting for you",
       tone: "action",
-      next: { kind: "review", label: "Review 1,200", count: 1200 },
+      chips: [
+        { text: "9 to check", tone: "action" },
+        { text: "15 confirmed", tone: "done" },
+      ],
+      review: { label: "Review 9 ›", count: 9 },
     });
+    // The values already sure can be saved while the rest waits.
+    expect(status.save).toEqual({ label: "Save 15 to files…", count: 15 });
+  });
+
+  it("leaves out the confirmed chip when none is", () => {
+    expect(playlistStatus(counts({ waiting: 1200, accepted: 0 })).chips).toEqual([
+      { text: "1,200 to check", tone: "action" },
+    ]);
   });
 
   it("offers Save N to files… when values are ready", () => {
-    expect(playlistStatus(counts({ unsaved: 39 }))).toEqual({
+    expect(playlistStatus(counts({ unsaved: 39 }))).toMatchObject({
       kind: "unsaved",
       text: "39 ready to save",
       tone: "action",
-      next: { kind: "save", label: "Save 39 to files…", count: 39 },
+      save: { label: "Save 39 to files…", count: 39 },
+      review: null,
+      canMatch: true,
     });
   });
 
   it("says Not matched when nothing was looked up, and N not matched when some was", () => {
     const all = playlistStatus(counts({ track_count: 64, not_matched: 64, accepted: 0 }));
-    expect(all).toMatchObject({ kind: "not_matched", text: "Not matched", tone: "problem" });
-    expect(all.next).toEqual({ kind: "text", text: "Tick and press Match" });
+    expect(all).toMatchObject({ kind: "not_matched", text: "Not matched", tone: "problem", canMatch: true });
     expect(playlistStatus(counts({ not_matched: 5 })).text).toBe("5 not matched");
   });
 
   it("says Done, in words rather than a typed tick", () => {
-    expect(playlistStatus(counts())).toEqual({
+    expect(playlistStatus(counts())).toMatchObject({
       kind: "done",
       text: "Done",
       tone: "done",
-      next: { kind: "text", text: "Values in your files" },
+      note: "Values in your files",
+      canMatch: true,
     });
   });
 
-  it("says Empty for a playlist with no tracks, with nothing next", () => {
-    expect(playlistStatus(counts({ track_count: 0, accepted: 0 }))).toEqual({
+  it("says Empty for a playlist with no tracks, with nothing to press", () => {
+    expect(playlistStatus(counts({ track_count: 0, accepted: 0 }))).toMatchObject({
       kind: "empty",
       text: "Empty",
       tone: "none",
-      next: null,
+      review: null,
+      save: null,
+      canMatch: false,
     });
   });
 

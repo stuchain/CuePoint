@@ -3,8 +3,8 @@
  *
  * Two cards — **Your track** and **Best match on Beatport** — a likelihood
  * between them, the other results as chips, the values Correct will also copy
- * as ticks, and the buttons that decide: **Correct** (A), **Not this track**
- * (R), **Skip** (N) and the other results (← →). Every key has a button; the
+ * as ticks, and the buttons that decide: **Correct** (Enter), **Not this track**
+ * (N), **Skip** (S) and the other results (← →). Correct is Enter. Every key has a button; the
  * keys are a way to go faster, never the only way (matchKeyboard.ts).
  *
  * **Correct accepts the match and copies the ticked values as one act**
@@ -78,6 +78,11 @@ interface OneAtATimeProps {
   onSearchAgain: () => void;
   /** Said in place of the cards when there is no track. */
   emptyState: ReactNode;
+  /**
+   * Review N › (C22): the page's header shows the place, and the other results wait behind
+   * **Try another result** so the card is the pair of tracks and the three decisions.
+   */
+  reviewing?: boolean;
 }
 
 const MARKS: Record<CardRow["status"], string> = {
@@ -196,6 +201,7 @@ export function OneAtATime({
   onSearchBeatport,
   onSearchAgain,
   emptyState,
+  reviewing = false,
 }: OneAtATimeProps) {
   const trackId = row?.id ?? null;
   const matches = useTrackMatches(trackId, version);
@@ -207,6 +213,8 @@ export function OneAtATime({
   const [chosenId, setChosenId] = useState<number | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [scoreOpen, setScoreOpen] = useState(loadScoreOpen);
+  // Review keeps the other results folded away until asked for.
+  const [resultsOpen, setResultsOpen] = useState(false);
 
   const choiceAttempt = useRef<number | null>(null);
   useEffect(() => {
@@ -223,6 +231,7 @@ export function OneAtATime({
 
   useEffect(() => {
     setShowAll(false);
+    setResultsOpen(false);
   }, [trackId]);
 
   const shown = useMemo(
@@ -235,6 +244,17 @@ export function OneAtATime({
   const plan = useMemo(() => correctPlan(ticks, rows), [ticks, rows]);
   const tickable = useMemo(() => tickableRows(rows), [rows]);
 
+  const resultsId = useId();
+  const searchButtons = (
+    <>
+      <Button variant="secondary" onClick={onSearchBeatport}>
+        Search Beatport myself…
+      </Button>
+      <Button variant="secondary" disabled={busy} onClick={onSearchAgain}>
+        Search again
+      </Button>
+    </>
+  );
   const { stopPreview, togglePreview } = media;
   // One guard per decision, shared by its button and its key: a key must not do
   // what the button beside it would refuse.
@@ -441,7 +461,12 @@ export function OneAtATime({
         </section>
       </div>
 
-      <div className="match-one__results" role="group" aria-label="Other results">
+      {reviewing && !resultsOpen && (
+        // Folded: the two ways to look elsewhere stay, whatever the number of results.
+        <div className="match-one__results">{searchButtons}</div>
+      )}
+      {(!reviewing || resultsOpen) && (
+      <div id={resultsId} className="match-one__results" role="group" aria-label="Other results">
         <span className="match-one__results-label">Other results:</span>
         {shown.map((candidate) => {
           const picked = candidate.id === chosenId;
@@ -467,13 +492,9 @@ export function OneAtATime({
             {showAll ? `Show the first ${CANDIDATE_LIMIT}` : `Show all ${candidateCount} results`}
           </Button>
         )}
-        <Button variant="secondary" onClick={onSearchBeatport}>
-          Search Beatport myself…
-        </Button>
-        <Button variant="secondary" disabled={busy} onClick={onSearchAgain}>
-          Search again
-        </Button>
+        {searchButtons}
       </div>
+      )}
 
       {chosen && (
         <div className="match-one__why">
@@ -545,28 +566,43 @@ export function OneAtATime({
           Not this track <kbd className="match-key" aria-hidden>{MATCH_KEYS["not-this"]}</kbd>
         </Button>
         <Button variant="secondary" disabled={!canSkip} onClick={onSkip}>
-          Skip for now <kbd className="match-key" aria-hidden>{MATCH_KEYS.skip}</kbd>
+          {reviewing ? "Skip" : "Skip for now"} <kbd className="match-key" aria-hidden>{MATCH_KEYS.skip}</kbd>
         </Button>
-        <Button
-          variant="secondary"
-          aria-label="Previous result"
-          disabled={shown.length < 2 || chosenId === shown[0]?.id}
-          onClick={() => setChosenId(stepChoice(shown, chosenId, -1))}
-        >
-          ← <kbd className="match-key" aria-hidden>{MATCH_KEYS["previous-candidate"]}</kbd>
-        </Button>
-        <Button
-          variant="secondary"
-          aria-label="Next result"
-          disabled={shown.length < 2 || chosenId === shown[shown.length - 1]?.id}
-          onClick={() => setChosenId(stepChoice(shown, chosenId, 1))}
-        >
-          → <kbd className="match-key" aria-hidden>{MATCH_KEYS["next-candidate"]}</kbd>
-        </Button>
-        <span className="match-one__position">
-          <span className="match-visually-hidden">Position in the list: </span>
-          {position.toLocaleString()} of {total.toLocaleString()}
-        </span>
+        {reviewing ? (
+          <Button
+            className="match-action--results"
+            variant="secondary"
+            icon="chevron-down"
+            aria-expanded={resultsOpen}
+            aria-controls={resultsOpen ? resultsId : undefined}
+            onClick={() => setResultsOpen(!resultsOpen)}
+          >
+            Try another result
+          </Button>
+        ) : (
+          <>
+            <Button
+              variant="secondary"
+              aria-label="Previous result"
+              disabled={shown.length < 2 || chosenId === shown[0]?.id}
+              onClick={() => setChosenId(stepChoice(shown, chosenId, -1))}
+            >
+              ← <kbd className="match-key" aria-hidden>{MATCH_KEYS["previous-candidate"]}</kbd>
+            </Button>
+            <Button
+              variant="secondary"
+              aria-label="Next result"
+              disabled={shown.length < 2 || chosenId === shown[shown.length - 1]?.id}
+              onClick={() => setChosenId(stepChoice(shown, chosenId, 1))}
+            >
+              → <kbd className="match-key" aria-hidden>{MATCH_KEYS["next-candidate"]}</kbd>
+            </Button>
+            <span className="match-one__position">
+              <span className="match-visually-hidden">Position in the list: </span>
+              {position.toLocaleString()} of {total.toLocaleString()}
+            </span>
+          </>
+        )}
       </div>
 
       <StatusLine key="status" status={status} busy={busy} onUndo={onUndo} />

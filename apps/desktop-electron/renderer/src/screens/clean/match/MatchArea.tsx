@@ -62,6 +62,8 @@ import {
 import { REVIEW_SCOPES } from "../cleanRules";
 import type { CleanTracks } from "../cleanTracks";
 import type { CleanMatch } from "../useCleanMatch";
+import { reviewDoneWords, reviewHeaderWords, type ReviewTarget } from "./matchReview";
+import { ReviewDone } from "./ReviewDone";
 import { CARD_FIELDS, type CardField, type CorrectPlan } from "./matchCard";
 import {
   ALL_SEARCHES,
@@ -88,6 +90,17 @@ import "./match.css";
 import { NEEDS_DESKTOP, userMessage } from "../../../api/userMessage";
 
 export type MatchTab = "playlists" | "one" | "table" | "past";
+
+/**
+ * Review N › opened from a toast, from another page (C22): the run that ended, and the playlist
+ * it was started from. Applied once per `token`, as a track the Library opens is.
+ */
+export interface ReviewOpening {
+  token: string;
+  run: MatchRun;
+  playlistId: number | null;
+  name: string;
+}
 
 const MATCH_TABS: ReadonlyArray<{ id: MatchTab; label: string }> = [
   { id: "playlists", label: "Playlists" },
@@ -137,11 +150,19 @@ interface MatchAreaProps {
   match: CleanMatch;
   /** Open the match window: on the library (CLN-2's offer), or on the tracks given. */
   onMatchTracks: (tracks?: CleanTracks) => void;
-  /** The Playlists view's rows, and which are ticked (the page owns the ticks: its header reads them). */
+  /** The Playlists view's rows. */
   playlists: CleanPlaylistsState;
-  ticked: ReadonlySet<string>;
-  onTick: (key: string, on: boolean) => void;
-  /** Which sub-tab is open, said up so the header shows Match N playlists only on Playlists (C22). */
+  /** A playlist's Match button (null is the whole library); the page starts the run. */
+  onMatchPlaylist: (playlist: CleanPlaylistStatus | null) => void;
+  /** The run a row's last Match started in this session, so Review opens on that run (C22). */
+  runFor?: (playlist: CleanPlaylistStatus | null) => string | undefined;
+  /** A row's run has been reviewed to its end, or no longer matches what the row waits on: forget it. */
+  onRunSpent?: (playlistId: number | null) => void;
+  /** A Review N › opened from the end-of-run toast. */
+  reviewOpening?: ReviewOpening | null;
+  /** The opening has been used, so coming back to this tab does not apply it again. */
+  onReviewOpened?: () => void;
+  /** Which sub-tab is open, said up so the page knows whether the rows are in view (C22). */
   onTabChange?: (tab: MatchTab) => void;
   /** A row's "Save N to files…": the window on that playlist, or the library for its row (C22, C23). */
   onSavePlaylist?: (playlist: CleanPlaylistStatus | null) => void;
@@ -155,8 +176,11 @@ export function MatchArea({
   match,
   onMatchTracks,
   playlists,
-  ticked,
-  onTick,
+  onMatchPlaylist,
+  runFor,
+  onRunSpent,
+  reviewOpening = null,
+  onReviewOpened,
   onTabChange,
   onSavePlaylist,
 }: MatchAreaProps) {
@@ -173,6 +197,11 @@ export function MatchArea({
   // Review N just opened the list: if nothing waits in it as a new match, what waits is a decision
   // a newer match disagrees with, so it looks there once (the engine's "waiting" counts both).
   const [reviewing, setReviewing] = useState<number | null>(null);
+  // What Review N › is reviewing, while it is: the header over the card and the screen after the last track.
+  const [review, setReview] = useState<ReviewTarget | null>(null);
+  // Tracks skipped in this review, so Skip on the last card can wrap round, and the review can end on them.
+  const [skipped, setSkipped] = useState<ReadonlySet<number>>(new Set());
+  const [skipDone, setSkipDone] = useState(false);
   const runId = run?.job_id ?? null;
   const source = useMemo<MatchSource | null>(
     () =>
@@ -246,6 +275,8 @@ export function MatchArea({
     setUnreflected(null);
     setStatus(null);
     setPending(null);
+    setSkipped(new Set());
+    setSkipDone(false);
   }, []);
 
   // ----------------------------------------------------------- the list
@@ -300,6 +331,14 @@ export function MatchArea({
   /** Everything a change to one track makes stale; the cursor stays where it is. */
   const afterChange = useCallback(
     (trackId: number | null) => {
+      if (trackId !== null) {
+        setSkipped((current) => {
+          if (!current.has(trackId)) return current;
+          const next = new Set(current);
+          next.delete(trackId);
+          return next;
+        });
+      }
       setPending({ from: list.identity, trackId });
       list.reload();
       detail.reload();
@@ -316,6 +355,24 @@ export function MatchArea({
     },
     [list.total],
   );
+
+  /**
+   * Skip. In a review it wraps: on the last card, what is before it was skipped, so the next is the
+   * first of those; and once every track left has been skipped the review ends on them.
+   */
+  const skip = useCallback(() => {
+    if (!review || tab !== "one" || row?.id == null) {
+      moveTo(at + 1);
+      return;
+    }
+    const next = new Set(skipped).add(row.id);
+    setSkipped(next);
+    if (next.size >= list.total) {
+      setSkipDone(true);
+      return;
+    }
+    setCursor(at >= list.total - 1 ? 0 : at + 1);
+  }, [at, list.total, moveTo, review, row, skipped, tab]);
 
   // ----------------------------------------------------------- Opened on a track (CLEAN-13)
 
@@ -340,6 +397,7 @@ export function MatchArea({
         if (cancelled) return;
         setRun(null);
         setPlaylist(null);
+        setReview(null);
         setScope(next);
         setChecked(0);
         setStatus(null);
@@ -556,6 +614,7 @@ export function MatchArea({
     (picked: MatchRun) => {
       setRun(picked);
       setPlaylist(null);
+      setReview(null);
       setScope(picked.waiting > 0 ? DEFAULT_MATCH_SCOPE : EVERYTHING);
       restart();
       setTab("one");
@@ -564,19 +623,72 @@ export function MatchArea({
     [restart],
   );
 
-  /** Review N: One at a time, on this playlist's tracks waiting for a yes or no (C22). */
+  /**
+   * Review N ›: One at a time, on the tracks to check of the run the row's last Match started
+   * (From: one run). The row counts every track of the playlist waiting, across runs, so when the
+   * run holds fewer than that (earlier runs left some, or decisions a newer match disagrees with),
+   * or none, the review is of the playlist instead, and the run is forgotten (C22).
+   */
   const reviewPlaylist = useCallback(
     (picked: CleanPlaylistStatus | null) => {
-      setRun(null);
-      setPlaylist(picked ? { id: picked.id, name: picked.name } : null);
-      setScope(DEFAULT_MATCH_SCOPE);
-      setReviewing(picked ? picked.id : null);
-      restart();
-      setTab("one");
-      saveMatchTab("one");
+      const counts = picked ?? playlists.data?.whole_library;
+      const start = (found: MatchRun | null) => {
+        const byRun = found !== null && found.waiting > 0 && found.waiting >= (counts?.waiting ?? 0);
+        if (found && !byRun) onRunSpent?.(picked ? picked.id : null);
+        setRun(byRun ? found : null);
+        setPlaylist(byRun || !picked ? null : { id: picked.id, name: picked.name });
+        setScope(DEFAULT_MATCH_SCOPE);
+        setReviewing(!byRun && picked ? picked.id : null);
+        setReview({
+          name: picked ? picked.name : "Whole library",
+          playlistId: picked ? picked.id : null,
+          sure: byRun ? found.found : (counts?.accepted ?? 0),
+          fromRun: byRun,
+        });
+        restart();
+        setTab("one");
+        saveMatchTab("one");
+      };
+      const jobId = runFor?.(picked);
+      const read = window.cuepoint?.getMatchJobs;
+      if (!jobId || !read) {
+        start(null);
+        return;
+      }
+      void read({ limit: 20 })
+        .then((answer) => start(answer.jobs.find((entry) => entry.job_id === jobId) ?? null))
+        .catch(() => start(null));
     },
-    [restart],
+    [onRunSpent, playlists.data, restart, runFor],
   );
+
+  // Review N › from the end-of-run toast, from another page: the page hands the run over.
+  const openingToken = useRef<string | null>(null);
+  useEffect(() => {
+    if (!reviewOpening || openingToken.current === reviewOpening.token) return;
+    openingToken.current = reviewOpening.token;
+    setRun(reviewOpening.run);
+    setPlaylist(null);
+    setScope(DEFAULT_MATCH_SCOPE);
+    setReviewing(null);
+    setReview({ name: reviewOpening.name, playlistId: reviewOpening.playlistId, sure: reviewOpening.run.found, fromRun: true });
+    restart();
+    setTab("one");
+    saveMatchTab("one");
+    onReviewOpened?.();
+  }, [onReviewOpened, restart, reviewOpening]);
+
+  /** ‹ Playlists: leave the review and go back to the rows. */
+  const leaveReview = useCallback(() => {
+    setReview(null);
+    setRun(null);
+    setPlaylist(null);
+    setScope(DEFAULT_MATCH_SCOPE);
+    setReviewing(null);
+    restart();
+    setTab("playlists");
+    saveMatchTab("playlists");
+  }, [restart]);
 
   useEffect(() => {
     if (reviewing === null || !list.answered) return;
@@ -676,7 +788,6 @@ export function MatchArea({
     </div>
   );
   const readingNode = <p className="match-one__reading">Reading the next track…</p>;
-  const oneEmpty = list.total > 0 || reading ? readingNode : emptyNode;
 
   const scopeOptions = matchScopeOptions(run !== null);
   const scopeHint = scopeOptions.find((option) => option.id === scope)?.hint;
@@ -687,11 +798,101 @@ export function MatchArea({
     unreflected && (list.identity === unreflected.from || !list.answered) ? unreflected.count : 0;
   const progressTotal = checked + Math.max(0, list.total - stale);
 
+  // Review N ›: the header replaces Show and From on One at a time, and a done screen follows the last track.
+  const toCheck = playlists.data?.whole_library.waiting ?? 0;
+  const inReview = review !== null && tab === "one";
+  const reviewCounts = !review
+    ? null
+    : review.playlistId === null
+      ? (playlists.data?.whole_library ?? null)
+      : (playlists.data?.playlists.find((entry) => entry.id === review.playlistId) ?? null);
+  const reviewRow =
+    review?.playlistId != null
+      ? (playlists.data?.playlists.find((entry) => entry.id === review.playlistId) ?? null)
+      : null;
+  const listDone = inReview && list.total === 0 && !reading && list.answered && !list.error;
+  // Everything left was skipped, and each has been skipped once: the review ends on them.
+  const reviewDone = listDone || (inReview && skipDone);
+  // Each progress bar has a range: never 0 wide.
+  const barMax = Math.max(1, progressTotal);
+  const reviewHeader =
+    inReview && review && !reviewDone ? (
+      <div className="match-review-bar" role="group" aria-label="Reviewing">
+        <Button variant="secondary" icon="chevron-left" onClick={leaveReview}>
+          Playlists
+        </Button>
+        <strong className="match-review-bar__name">Reviewing {review.name}</strong>
+        <div
+          className="match-progress__bar match-review-bar__bar"
+          role="progressbar"
+          aria-label="Checked so far"
+          aria-valuemin={0}
+          aria-valuemax={barMax}
+          aria-valuenow={Math.min(checked, barMax)}
+        >
+          <div
+            className="match-progress__fill"
+            style={{ width: `${Math.round((Math.min(checked, barMax) / barMax) * 100)}%` }}
+          />
+        </div>
+        <span className="match-review-bar__words">
+          {reviewHeaderWords(Math.min(progressTotal, checked + at + 1), progressTotal, review.sure)}
+        </span>
+      </div>
+    ) : null;
+  const reviewDoneNode =
+    review && reviewCounts ? (
+      <ReviewDone
+        {...reviewDoneWords(review.name, reviewCounts, skipDone ? skipped.size : 0)}
+        saveCount={reviewCounts.unsaved}
+        onSave={onSavePlaylist ? () => onSavePlaylist(reviewRow) : undefined}
+        onBack={leaveReview}
+        onAgain={
+          skipDone
+            ? () => {
+                setSkipped(new Set());
+                setSkipDone(false);
+                setCursor(0);
+              }
+            : undefined
+        }
+      />
+    ) : null;
+  const oneEmpty =
+    reviewDone && reviewDoneNode
+      ? reviewDoneNode
+      : list.total > 0 || reading
+        ? readingNode
+        : (reviewDoneNode ?? emptyNode);
+
+  // A review that has run to its end no longer needs the run it was opened on.
+  const spentFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!listDone || !review?.fromRun) return;
+    const key = String(review.playlistId);
+    if (spentFor.current === key) return;
+    spentFor.current = key;
+    onRunSpent?.(review.playlistId);
+  }, [listDone, onRunSpent, review]);
+  useEffect(() => {
+    if (!review) spentFor.current = null;
+  }, [review]);
+
   return (
     <div className="match-area">
-      <Tabs tabs={MATCH_TABS.map((entry) => ({ ...entry }))} activeId={tab} onChange={chooseTab} />
+      <Tabs
+        tabs={MATCH_TABS.map((entry) => ({
+          ...entry,
+          // The count of tracks waiting for a yes or no, on the tab that reviews them.
+          label: entry.id === "one" && toCheck > 0 ? `${entry.label} (${toCheck.toLocaleString()})` : entry.label,
+        }))}
+        activeId={tab}
+        onChange={chooseTab}
+      />
 
-      {tab !== "past" && tab !== "playlists" && (
+      {reviewHeader}
+
+      {tab !== "past" && tab !== "playlists" && !inReview && (
         <div className="match-toolbar" role="toolbar" aria-label="Match list">
           <Select
             label="Show"
@@ -713,6 +914,7 @@ export function MatchArea({
                 const picked = fromOptions.find((entry) => entry.job_id === event.target.value) ?? null;
                 setRun(picked);
                 setPlaylist(null);
+                setReview(null);
                 if (!picked && scope === EVERYTHING) setScope(DEFAULT_MATCH_SCOPE);
                 restart();
               }}
@@ -738,8 +940,8 @@ export function MatchArea({
                 role="progressbar"
                 aria-label="Checked so far"
                 aria-valuemin={0}
-                aria-valuemax={progressTotal}
-                aria-valuenow={checked}
+                aria-valuemax={Math.max(1, progressTotal)}
+                aria-valuenow={Math.min(checked, Math.max(1, progressTotal))}
               >
                 <div
                   className="match-progress__fill"
@@ -770,15 +972,16 @@ export function MatchArea({
             data={playlists.data}
             error={playlists.error}
             loading={playlists.loading}
-            ticked={ticked}
-            onTick={onTick}
+            matching={match.matching}
+            onMatch={onMatchPlaylist}
+            onStop={match.stop}
             onReview={reviewPlaylist}
             onSave={onSavePlaylist}
           />
         )}
         {tab === "one" && (
           <OneAtATime
-            row={row}
+            row={inReview && skipDone ? null : row}
             version={version}
             position={at + 1}
             total={list.total}
@@ -789,7 +992,7 @@ export function MatchArea({
             onUndo={() => void undo()}
             onCorrect={(candidate, plan) => void correct(candidate, plan)}
             onNotThis={() => void notThisTrack()}
-            onSkip={() => moveTo(at + 1)}
+            onSkip={skip}
             onPreviousTrack={() => moveTo(at - 1)}
             onNextTrack={() => moveTo(at + 1)}
             onPlayFile={() => {
@@ -798,6 +1001,7 @@ export function MatchArea({
             onSearchBeatport={searchBeatport}
             onSearchAgain={searchAgain}
             emptyState={oneEmpty}
+            reviewing={inReview}
           />
         )}
         {tab === "table" && (

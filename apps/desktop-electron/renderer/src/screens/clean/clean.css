@@ -348,13 +348,6 @@
 }
 
 
-/* The header's Match N playlists button, with the reason it is greyed beside it (C22). */
-.clean-header-action {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
 /* One thin bar for a running match: under the page's note, and in a running playlist's row (C22). */
 .clean-progress {
   width: 100%;
