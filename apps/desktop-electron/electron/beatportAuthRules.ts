@@ -307,6 +307,8 @@ export interface AuthStateInput {
   now: number;
   /** Sign-in cannot be offered (nothing else makes it so today). */
   unavailable?: boolean;
+  /** A renewal is running or on the calendar and has not failed: an ended token is not yet "expired". */
+  renewing?: boolean;
 }
 
 /** The status the renderer is shown. */
@@ -319,7 +321,7 @@ export function authState(input: AuthStateInput): BeatportAuthStatus {
   const masked = maskToken(stored.token);
   if (stored.source === "pasted") return { state: "pasted", masked, expires_at: stored.expires_at, ...base };
   const end = expiryMs(stored.expires_at);
-  const over = expired || (end !== null && end <= now);
+  const over = expired || (end !== null && end <= now && !input.renewing);
   return { state: over ? "expired" : "signed_in", masked, expires_at: stored.expires_at, ...base };
 }
 

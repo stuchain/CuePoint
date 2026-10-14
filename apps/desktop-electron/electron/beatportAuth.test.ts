@@ -1163,6 +1163,127 @@ describe("renewing", () => {
     expect(t.auth.status().state).toBe("signed_in");
   });
 
+  describe("a hidden renewal when the session read is refused (HTML 403)", () => {
+    const anon = { body: { active: true, scope: "app:prostore user:anon", username: "", user_id: "" } };
+
+    async function renewing() {
+      const t = setup({
+        "first-token-aaaa": user(T0 + 10 * MIN),
+        "anon-token-0000": anon,
+        "second-token-bbbb": { body: { active: true, username: "anna", exp: null } },
+      });
+      t.host.onOpen = (surface) => surface.sendBearer("first-token-aaaa");
+      t.host.session = sessionJson("first-token-aaaa", T0 + 10 * MIN);
+      await t.auth.signIn();
+      t.host.opened.length = 0;
+      t.host.session = null; // the direct read finds nothing usable
+      t.host.sessionReads = 0;
+      return t;
+    }
+
+    it("checks the user token that follows an anonymous one in the same hidden window", async () => {
+      const t = await renewing();
+      // The window loads at the renewal time, a minute before the stored token ends; the page
+      // sends an anon token and then a new user token.
+      t.host.onOpen = (surface, visible) => {
+        expect(visible).toBe(false);
+        surface.sendBearer("anon-token-0000");
+        setTimeout(() => surface.sendBearer("second-token-bbbb"), 2000);
+      };
+      await vi.advanceTimersByTimeAsync(10 * MIN + 5000);
+      expect(t.introspected).toContain("anon-token-0000");
+      expect(t.introspected).toContain("second-token-bbbb");
+      expect(t.store.value?.token).toBe("second-token-bbbb");
+      expect(t.auth.status().state).toBe("signed_in");
+    });
+
+    it("does not give up when the page sends the stored token, still valid, after an anonymous one", async () => {
+      const t = await renewing();
+      t.host.onOpen = (surface) => {
+        surface.sendBearer("anon-token-0000");
+        setTimeout(() => surface.sendBearer("first-token-aaaa"), 2000);
+      };
+      await vi.advanceTimersByTimeAsync(9 * MIN + 1000 + REFRESH_WAIT_MS + 1000);
+      expect(t.host.opened).toHaveLength(1);
+      expect(t.host.opened[0]!.surface.closed).toBe(true);
+      // Not a failed renewal: the token is kept and the next look is just after its end.
+      expect(t.store.value?.token).toBe("first-token-aaaa");
+      expect(t.auth.status().state).toBe("signed_in");
+      t.host.onOpen = (surface) => {
+        surface.sendBearer("anon-token-0000");
+        setTimeout(() => surface.sendBearer("second-token-bbbb"), 2000);
+      };
+      await vi.advanceTimersByTimeAsync(MIN + SAME_TOKEN_GRACE_MS + 10_000);
+      expect(t.host.opened).toHaveLength(2);
+      expect(t.store.value?.token).toBe("second-token-bbbb");
+      expect(t.auth.status().state).toBe("signed_in");
+    });
+  });
+
+  describe("a hidden renewal, further cases", () => {
+    async function renewing() {
+      const t = setup({
+        "first-token-aaaa": user(T0 + 10 * MIN),
+        "second-token-bbbb": { body: { active: true, username: "anna", exp: null } },
+      });
+      t.host.onOpen = (surface) => surface.sendBearer("first-token-aaaa");
+      t.host.session = sessionJson("first-token-aaaa", T0 + 10 * MIN);
+      await t.auth.signIn();
+      t.host.opened.length = 0;
+      t.host.session = null;
+      t.host.sessionReads = 0;
+      return t;
+    }
+
+    it("tries a window at every backoff step once windows have worked: unchanged at end+3s, rotated at the next try", async () => {
+      const t = await renewing();
+      // The window sees the stored token (unchanged) at the first and the second try.
+      t.host.onOpen = (surface) => surface.sendBearer("first-token-aaaa");
+      await vi.advanceTimersByTimeAsync(9 * MIN + 1000 + REFRESH_WAIT_MS + 1000);
+      expect(t.host.opened).toHaveLength(1);
+      expect(t.store.value?.token).toBe("first-token-aaaa");
+      // Just after the end: the site has not rotated yet, so this window ends with nothing new.
+      t.host.onOpen = () => undefined;
+      await vi.advanceTimersByTimeAsync(MIN + SAME_TOKEN_GRACE_MS + REFRESH_WAIT_MS + 1000);
+      expect(t.host.opened).toHaveLength(2);
+      expect(t.store.value?.token).toBe("first-token-aaaa");
+      // The next backoff try opens a window again, and the site has rotated.
+      t.host.onOpen = (surface) => surface.sendBearer("second-token-bbbb");
+      await vi.advanceTimersByTimeAsync(RENEW_BACKOFF_MS[0]! + 1000);
+      expect(t.host.opened).toHaveLength(3);
+      expect(t.store.value?.token).toBe("second-token-bbbb");
+      expect(t.auth.status().state).toBe("signed_in");
+    });
+
+    it("keeps waiting after the stored token, and a new token in the same window still wins", async () => {
+      const t = await renewing();
+      t.host.onOpen = (surface) => {
+        surface.sendBearer("first-token-aaaa");
+        setTimeout(() => surface.sendBearer("second-token-bbbb"), 10_000);
+      };
+      await vi.advanceTimersByTimeAsync(9 * MIN + 1000 + 15_000);
+      expect(t.store.value?.token).toBe("second-token-bbbb");
+    });
+
+    it("treats the stored token from the window's own session read like its bearer", async () => {
+      const t = await renewing();
+      t.host.onOpen = (surface) => {
+        surface.session = sessionJson("first-token-aaaa", T0 + 10 * MIN);
+      };
+      await vi.advanceTimersByTimeAsync(9 * MIN + 1000 + REFRESH_WAIT_MS + 1000);
+      expect(t.introspected.filter((asked) => asked === "first-token-aaaa")).toHaveLength(1); // the sign-in's only
+      expect(t.store.value?.token).toBe("first-token-aaaa");
+      expect(t.auth.status().state).toBe("signed_in");
+    });
+
+    it("stays signed in past the token's end while a renewal runs", async () => {
+      const t = await renewing();
+      t.host.fetchSessionJson = () => new Promise<unknown>(() => undefined);
+      await vi.advanceTimersByTimeAsync(10 * MIN + 2000);
+      expect(t.auth.status().state).toBe("signed_in");
+    });
+  });
+
   it("does not wait for a session read that never answers: backoff goes on and sign-in still opens a window", async () => {
     const t = await signedIn();
     t.host.fetchSessionJson = () => new Promise<unknown>(() => undefined);

@@ -169,6 +169,8 @@ export class BeatportAuth {
   private retry = 0;
   /** The hidden-window fallback is tried once per run of failures. */
   private fallbackTried = false;
+  /** A hidden window has seen the site still on our token: direct reads are blocked, windows work. */
+  private windowWorks = false;
   private signingIn: Promise<BeatportAuthStatus> | null = null;
   private refreshing: Promise<BeatportAuthStatus> | null = null;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -198,6 +200,7 @@ export class BeatportAuth {
       envSet: this.options.envTokenSet(),
       stored: this.options.store.load(),
       expired: this.expired,
+      renewing: !this.expired && (this.refreshing !== null || this.refreshTimer !== null),
       secureStorage: this.options.store.canKeep(),
       now: this.now(),
     });
@@ -440,12 +443,20 @@ export class BeatportAuth {
       this.fallbackTried = true;
       // The site's home page, not the NextAuth sign-in page: loading that would only ask to sign in.
       const surface = this.track(this.options.host.open({ visible: false }));
-      const { found } = await this.capture(surface, {
+      const { found, why } = await this.capture(surface, {
         exclude: stored.token,
+        excludeEndsAt: stored.expires_at,
         timeoutMs: this.options.refreshWaitMs ?? REFRESH_WAIT_MS,
       });
       this.release(surface);
       if (generation !== this.generation) return this.status();
+      if (why === "same" && this.options.store.load()?.token === stored.token && stored.expires_at !== null) {
+        // Not renewed yet and still valid: look again just after its end, with a fresh fallback.
+        this.windowWorks = true;
+        this.note("renew", { outcome: "same", via: "hidden-window" });
+        this.sameToken(stored, stored.expires_at);
+        return this.status();
+      }
       if (found) {
         this.note("renew", { outcome: "renewed", via: "hidden-window" });
         const complete = await this.withSessionExpiry(found);
@@ -523,6 +534,8 @@ export class BeatportAuth {
     this.note("renew", { outcome: "failed", backoff_s: Math.round(wait / 1000) });
     this.scheduleRetry(wait);
     this.retry += 1;
+    // The direct read is refused here but a window has worked: every backoff step may use one.
+    if (this.windowWorks) this.fallbackTried = false;
   }
 
   /** Forget the token everywhere: file, memory, the partition's cookies and the engine. */
@@ -531,6 +544,7 @@ export class BeatportAuth {
     this.generation += 1;
     this.retry = 0;
     this.fallbackTried = false;
+    this.windowWorks = false;
     this.cancelRefreshTimer();
     for (const surface of [...this.open]) this.release(surface);
     this.options.store.clear();
@@ -591,6 +605,7 @@ export class BeatportAuth {
     this.expired = false;
     this.retry = 0;
     this.fallbackTried = false;
+    this.windowWorks = false;
     await this.pushToEngine();
     // Signed out, or the app disposed, while the engine was being told: nothing more to arrange.
     if (generation !== this.generation) return;
@@ -683,8 +698,8 @@ export class BeatportAuth {
    */
   private capture(
     surface: SignInSurface,
-    options: { exclude: string | null; timeoutMs: number | null },
-  ): Promise<{ found: Verified | null; why: "found" | "closed" | "timeout"; latched: Set<string> }> {
+    options: { exclude: string | null; excludeEndsAt?: string | null; timeoutMs: number | null },
+  ): Promise<{ found: Verified | null; why: "found" | "closed" | "timeout" | "same"; latched: Set<string> }> {
     return new Promise((resolve) => {
       let done = false;
       let polling = false;
@@ -708,13 +723,29 @@ export class BeatportAuth {
       let interval: ReturnType<typeof setInterval> | null = null;
       let timeout: ReturnType<typeof setTimeout> | null = null;
 
-      const finish = (found: Verified | null, why: "found" | "closed" | "timeout"): void => {
+      const finish = (found: Verified | null, why: "found" | "closed" | "timeout" | "same"): void => {
         if (done) return;
         done = true;
         if (interval) clearInterval(interval);
         if (timeout) clearTimeout(timeout);
         for (const entry of tried.values()) if (entry.timer) clearTimeout(entry.timer);
         resolve({ found, why, latched: new Set([...tried].filter(([, entry]) => entry.latched).map(([token]) => token)) });
+      };
+
+      /**
+       * The page (or the session read) gives the token we hold. While it has not ended the site has
+       * not renewed it yet (it does so once the token has ended): note it and keep waiting, since a
+       * new token can still arrive; at the timeout that is "same", not a failure.
+       */
+      let sawStoredValid = false;
+      const seeExcluded = (token: string): boolean => {
+        if (options.exclude === null || token !== options.exclude) return false;
+        const end = expiryMs(options.excludeEndsAt);
+        if (end !== null && end > this.now() && !sawStoredValid) {
+          sawStoredValid = true;
+          this.note("bearer same", { n: bearers.get(token) });
+        }
+        return true;
       };
 
       const consider = async (token: string, expiryHint: string | null = null): Promise<void> => {
@@ -758,7 +789,7 @@ export class BeatportAuth {
           const json = await surface.fetchSessionJson();
           sessionScope = sessionUserScope(json, this.now());
           const found = tokenFromSessionJson(json, this.now());
-          if (found) {
+          if (found && !seeExcluded(found.token)) {
             const entry = tried.get(found.token);
             // A token that could not be decided on, and that the session now names as a person's,
             // need not wait out its backoff.
@@ -779,11 +810,14 @@ export class BeatportAuth {
           bearers.set(token, bearers.size + 1);
           this.note("bearer seen", { n: bearers.size, jwt: token.startsWith("eyJ"), len: token.length });
         }
+        if (seeExcluded(token)) return;
         void consider(token);
       });
       surface.onClosed(() => finish(null, "closed"));
       interval = setInterval(() => void poll(), this.options.pollMs ?? SESSION_POLL_MS);
-      if (options.timeoutMs !== null) timeout = setTimeout(() => finish(null, "timeout"), options.timeoutMs);
+      if (options.timeoutMs !== null) {
+        timeout = setTimeout(() => finish(null, sawStoredValid ? "same" : "timeout"), options.timeoutMs);
+      }
       void poll();
     });
   }
