@@ -20,7 +20,9 @@
  * stored but whose loudness is still to be measured waits for it here too, and
  * is put first in the queue as a waiting track is.
  */
-import type { MouseEvent } from "react";
+import { useEffect, type MouseEvent } from "react";
+
+import type { WaveformTrack } from "../../api/cuepointBridge.types";
 
 import { selectCurrentItem, selectDuration, selectPosition } from "../../components/player/playerFormat";
 import { usePlayerValue } from "../../components/player/playerStore";
@@ -30,14 +32,30 @@ import {
   WAVEFORM_LOADING_WORDS,
   trackDetailsWaveformWords,
 } from "../../components/waveform/analysisWords";
-import { LOUDNESS_LINE_TITLE, loudnessLine } from "../../components/waveform/loudnessWords";
+import { LOUDNESS_LINE_TITLE, loudnessLine, loudnessShort } from "../../components/waveform/loudnessWords";
 import { useWaveform } from "../../components/waveform/useWaveforms";
 import { useWaveformRequest } from "../../components/waveform/useWaveformRequest";
 import { WaveformCanvas } from "../../components/waveform/WaveformCanvas";
 import { useWaveformBox } from "../../components/waveform/waveformEnvironment";
 import { secondsAtOffset } from "../../components/waveform/waveformLayout";
 
-export function TrackWaveform({ trackId }: { trackId: number }) {
+export function TrackWaveform({
+  trackId,
+  loudnessInFacts = false,
+  onReading,
+}: {
+  trackId: number;
+  /**
+   * The panel's facts line already reads the loudness value, so the line under the
+   * picture is kept only for a track with no value, where it says why.
+   */
+  loudnessInFacts?: boolean;
+  /**
+   * Tells the panel this track's answer as it arrives, so its facts line reads the
+   * loudness from this one request rather than asking again.
+   */
+  onReading?: (track: WaveformTrack | null) => void;
+}) {
   const { box, width } = useWaveformBox<HTMLDivElement>();
   const entry = useWaveform(trackId, width, { marks: true, loudness: true });
   useWaveformRequest(trackId, entry, { loudness: true });
@@ -52,7 +70,17 @@ export function TrackWaveform({ trackId }: { trackId: number }) {
   const picture = track?.state === "ready" ? track.data : null;
   const words = picture ? null : (trackDetailsWaveformWords(entry) ?? WAVEFORM_LOADING_WORDS);
   const durationMs = playing ? playerSeconds * 1000 : (track?.duration_ms ?? 0);
-  const loudness = loudnessLine(track);
+  const reading = track ?? null;
+  useEffect(() => {
+    onReading?.(reading);
+  }, [onReading, reading]);
+  // With the value on the facts line, what stays here is the peak; a track with no
+  // value keeps the whole line, which says why.
+  const line = loudnessLine(track);
+  const loudness =
+    loudnessInFacts && loudnessShort(track) !== null
+      ? (line?.split(" · ").find((part) => part.startsWith("Peak ")) ?? null)
+      : line;
 
   const seek = (event: MouseEvent<HTMLDivElement>) => {
     if (!playing || !picture) return;

@@ -281,7 +281,8 @@ describe("the Beatport zone", () => {
     bridge.getTrackMatches.mockResolvedValue(matches({ state: "needs_review", decided_by: null }));
     panel();
     const zone = await screen.findByRole("region", { name: "Beatport" });
-    await within(zone).findByText("Waiting for you");
+    // Said twice: on the folded heading's right, and in the section itself.
+    expect((await within(zone).findAllByText("Waiting for you")).length).toBeGreaterThan(0);
     expect(within(zone).queryByRole("button", { name: /^Apply/ })).toBeNull();
   });
 

@@ -1859,6 +1859,7 @@ describe("the Inspector (LIBUI-10, DEC-024, DEC-047)", () => {
     await tableReady();
     await userEvent.click(screen.getByText("Track 1"));
     const inspector = await screen.findByRole("region", { name: "Inspector" });
+    await userEvent.click(await within(inspector).findByRole("button", { name: /^Where it is/ }));
     await within(inspector).findByText("Warmups");
 
     await userEvent.click(within(inspector).getByRole("button", { name: /Warmups/ }));

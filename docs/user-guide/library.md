@@ -255,9 +255,14 @@ Selecting one track opens Track details, and clearing the selection folds it to 
 **Details** tab on the right edge. Closing it yourself on the Library keeps it closed
 there until you open it again (**Ctrl+I**, or the tab). From the top:
 
-- **The track's artwork**, or *No artwork* when it has none, its title, and its
-  artists and label. Each artist in the credit, and the label, is a link to
+- **A small cover**, or *No artwork* when it has none, beside the title, the
+  artists and the label. Each artist in the credit, and the label, is a link to
   their page (see [Discover](discover.md#artist-and-label-pages)).
+- **One facts line** under the title: the key chip with the Camelot wheel button
+  beside it, then the BPM, the genre and the loudness ("−8.4 LUFS"). The key
+  keeps where it came from: "8A · A minor · Beatport", "8A · A minor · yours", or
+  "No Beatport key" with **Match on Beatport**, which matches this one track in
+  Clean's match window.
 - **Three buttons**: **Play**, **Queue ▾** (a small menu with **Play next** and
   **Add to queue**) and **Similar** (similar tracks). With several tracks selected,
   Play and the Queue menu act on all of them; **Similar** uses the first. To show a
@@ -265,14 +270,15 @@ there until you open it again (**Ctrl+I**, or the tab). From the top:
   right-click menu. With several tracks selected, a line under the title reads
   "3 selected · Edit values…"; **Edit values…** edits all of them, while the fields
   below still change only the track shown.
-- **Key**, with where it came from: "8A · A minor · Beatport", "8A · A minor ·
-  yours", or "No Beatport key" with **Match on Beatport**, which matches this one
-  track in Clean's match window.
-- **Its waveform**, with its cue points, loops and beat grid; when the track is
-  the one playing, a click on it seeks. Under it, its loudness: "Loudness
-  −8.4 LUFS · Peak −0.3 dBFS". See [Waveforms](waveforms.md).
+- **Its waveform**, a short strip with its cue points, loops and beat grid; when
+  the track is the one playing, a click on it seeks. Under it, the loudest peak:
+  "Peak −0.3 dBFS" (a track whose loudness could not be measured says why here).
+  See [Waveforms](waveforms.md).
 
-Then the sections, each folded or opened by clicking its heading:
+Then the sections. **Every section starts folded** and says its answer on the
+right of its heading ("Beatport · Confirmed", "Where it is · 1 Set · 1 playlist",
+"Cue points · none · grid 124", "Yours · no rating"); rest the pointer on a heading
+to read a long answer in full. Click a heading to open it:
 
 - **Yours** — what you have added in CuePoint: your rating, favorite (the heart
   beside the stars), notes and tags, and **Edit values…** for your key, BPM, genre, label and year. See
@@ -289,7 +295,7 @@ Then the sections, each folded or opened by clicking its heading:
   them, and the beat grid's tempo. See
   [Cue points and beat grids](#cue-points-and-beat-grids-come-from-rekordbox--and-stay-there).
 - **Where it is** — the Collections, Sets and playlists the track is in. Click
-  one to jump to it.
+  one to jump to it. Its heading says "Not in any Collection" for a track in none.
 - **Beatport** — where the track stands with its Beatport match. Folded until you
   open it; its heading says how the match stands ("Beatport · Confirmed"). See
   [The Beatport section](#the-beatport-section).

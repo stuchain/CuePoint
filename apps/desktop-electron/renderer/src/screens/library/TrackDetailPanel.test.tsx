@@ -342,6 +342,7 @@ describe("the editable zone (ORG-10)", () => {
 describe("where the track sits in the collection", () => {
   it("lists the playlists holding it", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
+    fireEvent.click(screen.getByRole("button", { name: /^Where it is/ }));
     expect(screen.getByText("In 1 playlist")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /warmup/ })).toBeInTheDocument();
   });
@@ -356,6 +357,7 @@ describe("where the track sits in the collection", () => {
   it("scopes the table to a playlist that is clicked", () => {
     const onSelectPlaylist = vi.fn();
     render(<TrackDetailPanel detail={DETAIL} onSelectPlaylist={onSelectPlaylist} />);
+    fireEvent.click(screen.getByRole("button", { name: /^Where it is/ }));
 
     fireEvent.click(screen.getByRole("button", { name: /warmup/ }));
 
@@ -373,6 +375,7 @@ describe("the Collections holding it (ORG-09, ORG-10)", () => {
 
   it("lists them", () => {
     render(<TrackDetailPanel detail={{ ...DETAIL, collections: COLLECTIONS }} />);
+    fireEvent.click(screen.getByRole("button", { name: /^Where it is/ }));
     expect(screen.getByText("In 2 Collections")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Closers/ })).toBeInTheDocument();
   });
@@ -384,9 +387,16 @@ describe("the Collections holding it (ORG-09, ORG-10)", () => {
     expect(screen.getByText("In 1 Collection")).toBeInTheDocument();
   });
 
-  it("says when it is in none", () => {
+  it("says what it holds in the heading, and has no sentence about Collections for a track in none", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    expect(screen.getByText(/^Not in any Collection yet\./)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Where it is/ })).toHaveTextContent(
+      "Where it is · 1 playlist",
+    );
+    const none = render(<TrackDetailPanel detail={{ ...DETAIL, playlists: [], playlist_count: 0 }} />);
+    expect(
+      within(none.container).getByRole("button", { name: /^Where it is/ }),
+    ).toHaveTextContent("Where it is · Not in any Collection");
+    expect(screen.queryByText(/Select the track and choose/)).toBeNull();
   });
 
   it("scopes the table to one that is clicked", () => {
@@ -397,6 +407,7 @@ describe("the Collections holding it (ORG-09, ORG-10)", () => {
         onSelectCollection={onSelectCollection}
       />,
     );
+    fireEvent.click(screen.getByRole("button", { name: /^Where it is/ }));
 
     fireEvent.click(screen.getByRole("button", { name: /Over 128/ }));
 

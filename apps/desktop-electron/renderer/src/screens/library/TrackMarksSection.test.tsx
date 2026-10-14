@@ -182,7 +182,8 @@ describe("in the Inspector", () => {
     // The heading explains the two kinds on hover (INS-9).
     expect(within(cues).getByRole("button")).toHaveAttribute(
       "title",
-      "Hot cues (A–H) and memory cues, as set in Rekordbox. Shown here, not editable.",
+      // The hint, then the heading's answer, which a cut-off summary can be read from.
+      expect.stringMatching(/^Hot cues \(A–H\) and memory cues, as set in Rekordbox\. Shown here, not editable\. — /),
     );
     expect(
       fromRekordbox.compareDocumentPosition(cues) & Node.DOCUMENT_POSITION_FOLLOWING,

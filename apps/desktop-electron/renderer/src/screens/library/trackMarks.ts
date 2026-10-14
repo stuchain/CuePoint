@@ -74,6 +74,23 @@ export function cuesSummary(marks: TrackMarksSummary): string | null {
   return parts.join(", ");
 }
 
+/**
+ * The folded Cue points heading's answer: the cues, then the grid's tempo
+ * ("none · grid 124", "2 hot, 1 memory · grid 120–128"). Null before the marks are read.
+ */
+export function cuesHeaderSummary(marks: TrackMarksSummary): string | null {
+  const cues = cuesSummary(marks);
+  const grid = marks.beat_grid;
+  let gridWords: string | null = null;
+  if (grid) {
+    gridWords = grid.variable
+      ? `grid ${formatBpm(grid.min_bpm)}–${formatBpm(grid.max_bpm)}`
+      : `grid ${formatBpm(grid.bpm)}`;
+  }
+  const parts = [cues, gridWords].filter((part): part is string => Boolean(part));
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 /** The Cue points heading's tooltip: what the two kinds are, and that they are not editable here. */
 export const CUES_HINT = "Hot cues (A–H) and memory cues, as set in Rekordbox. Shown here, not editable.";
 

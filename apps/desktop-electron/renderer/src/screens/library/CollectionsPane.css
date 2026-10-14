@@ -73,6 +73,13 @@
   padding: round(down, calc(var(--space-xs) / 2), 1px) var(--space-xs);
 }
 
+/* One line: the label and its text-sized chevron never wrap apart. */
+.cp-collections__new {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: var(--space-xs);
+}
+
 /* The section's heading is a line, not a band, unlike the Playlists heading's
    var(--space-sm) (PlaylistPane.css): in a 1,264 × 735 window (a Windows frame and
    menu bar inside 1,280 × 800) the sixth node needs the height back, and matching

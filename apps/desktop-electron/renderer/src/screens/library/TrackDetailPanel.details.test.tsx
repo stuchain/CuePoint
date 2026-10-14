@@ -161,7 +161,7 @@ afterEach(() => {
 describe("the order (INS-3)", () => {
   it("reads Yours, Details from Rekordbox, Cue points, Where it is, Beatport, History", async () => {
     show();
-    await screen.findByText(/Beatport · Confirmed/);
+    await waitFor(() => expect(section("Beatport")).toHaveTextContent("Beatport · Confirmed"));
     const names = screen
       .getAllByRole("heading", { level: 3 })
       .map((heading) => (heading.textContent ?? ""));
@@ -178,7 +178,7 @@ describe("the order (INS-3)", () => {
     expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "false");
     expect(section("Beatport")).toHaveAttribute("aria-expanded", "false");
     expect(section("History")).toHaveAttribute("aria-expanded", "false");
-    await screen.findByText(/Beatport · Confirmed/);
+    await waitFor(() => expect(section("Beatport")).toHaveTextContent("Beatport · Confirmed"));
   });
 
   it("summarizes a folded section in its heading", async () => {
@@ -191,8 +191,110 @@ describe("the order (INS-3)", () => {
       ],
     });
     show();
-    expect(await screen.findByText(/Beatport · Confirmed/)).toBeInTheDocument();
-    expect(await screen.findByText(/History · 2 changes/)).toBeInTheDocument();
+    await waitFor(() => expect(section("Beatport")).toHaveTextContent("Beatport · Confirmed"));
+    await waitFor(() => expect(section("History")).toHaveTextContent("History · 2 changes"));
+  });
+});
+
+describe("the compact panel (INS-12)", () => {
+  it("starts every section folded", async () => {
+    localStorage.clear();
+    show();
+    for (const name of ["Yours", "Details from Rekordbox", "Cue points", "Where it is", "Beatport", "History"]) {
+      expect(section(name)).toHaveAttribute("aria-expanded", "false");
+    }
+    await waitFor(() => expect(section("Beatport")).toHaveTextContent("Beatport · Confirmed"));
+  });
+
+  it("answers on the right of each folded heading", async () => {
+    localStorage.clear();
+    const detail = detailOf();
+    show(
+      {},
+      {
+        ...detail,
+        playlists: [{ id: 1, name: "Peak", path: "Peak" } as never],
+        collections: [{ id: 9, name: "Friday", kind: "set" } as never],
+      },
+    );
+    await waitFor(() => expect(section("Beatport")).toHaveTextContent("Beatport · Confirmed"));
+    expect(section("Where it is")).toHaveTextContent("Where it is · 1 Set · 1 playlist");
+    expect(section("Cue points")).toHaveTextContent("Cue points · 1 hot · grid 128");
+    expect(section("Yours")).toHaveTextContent("Yours · no rating");
+    expect(section("Details from Rekordbox").textContent).toBe("Details from Rekordbox");
+    // The answer is its own element, drawn at the right of the heading.
+    expect(section("Where it is").querySelector(".cp-track-section__summary")).toHaveTextContent("1 Set · 1 playlist");
+  });
+
+  it("says a track without cues has none, and its grid", () => {
+    localStorage.clear();
+    const detail = detailOf();
+    show({}, { ...detail, marks: { ...detail.marks!, cues: [], hot_cues: 0, beat_grid: { ...detail.marks!.beat_grid!, bpm: 124 } } });
+    expect(section("Cue points")).toHaveTextContent("Cue points · none · grid 124");
+  });
+
+  it("shows the whole answer once a section is opened", () => {
+    localStorage.clear();
+    show();
+    fireEvent.click(section("Cue points"));
+    expect(screen.getByText(/Drop/)).toBeVisible();
+  });
+
+  it("puts key, BPM, genre on one facts line under the name", () => {
+    show();
+    const facts = document.querySelector(".cp-track-detail__facts") as HTMLElement;
+    expect(within(facts).getByTestId("track-key")).toBeInTheDocument();
+    expect(within(facts).getByRole("button", { name: "Camelot wheel" })).toBeInTheDocument();
+    expect(within(facts).getByTestId("track-fact-bpm")).toHaveTextContent("128 BPM");
+    expect(within(facts).getByTestId("track-fact-genre")).toHaveTextContent("Progressive House");
+  });
+
+  it("reads the Key label aloud though it is not drawn", () => {
+    show();
+    const keyline = screen.getByTestId("track-key");
+    expect(within(keyline).getByText("Key")).toHaveClass("cp-visually-hidden");
+    expect(keyline.querySelector("dt")).toHaveTextContent("Key");
+  });
+
+  it("draws the stars, and reads them as words", () => {
+    localStorage.clear();
+    const detail = detailOf();
+    show({}, { ...detail, metadata: { ...detail.metadata, effective_rating: 4, favorite: true } });
+    const heading = section("Yours");
+    const drawn = heading.querySelector(".cp-track-section__summary > [aria-hidden]");
+    expect(drawn).toHaveTextContent("★★★★ · favorite");
+    expect(heading.querySelector(".cp-track-section__summary .cp-visually-hidden:last-child")).toHaveTextContent(
+      "4 stars · favorite",
+    );
+    // The accessible name has the words, not "black star" four times.
+    expect(screen.getByRole("button", { name: "Yours · 4 stars · favorite" })).toBeInTheDocument();
+  });
+
+  it("puts the facts line directly under the title block, above the buttons", () => {
+    show();
+    const facts = document.querySelector(".cp-track-detail__facts") as HTMLElement;
+    const ident = document.querySelector(".cp-track-detail__ident") as HTMLElement;
+    const actions = screen.getByRole("group", { name: "Actions for this track" });
+    expect(ident.nextElementSibling).toBe(facts);
+    expect(facts.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("gives a folded heading's whole answer as its hover text too", async () => {
+    localStorage.clear();
+    show();
+    expect(section("Where it is")).toHaveAttribute("title", "Not in any Collection");
+  });
+
+  it("draws the artwork small, beside the title", () => {
+    (window as unknown as { cuepoint: Record<string, unknown> }).cuepoint.getTrackArtwork = vi
+      .fn()
+      .mockResolvedValue(null);
+    const { container } = show();
+    const ident = container.querySelector(".cp-track-detail__ident") as HTMLElement;
+    expect(ident.querySelector(".cp-track-detail__artwork")).not.toBeNull();
+    expect(ident.querySelector(".cp-track-detail__idtext")).toContainElement(
+      within(ident).getByRole("heading", { level: 2 }),
+    );
   });
 });
 
@@ -222,7 +324,7 @@ describe("folding and remembering (INS-3)", () => {
     localStorage.clear();
     const detail = detailOf();
     show({}, { ...detail, metadata: { ...detail.metadata, effective_rating: 4, favorite: true } });
-    expect(section("Yours")).toHaveTextContent("4 stars · favorite");
+    expect(section("Yours")).toHaveTextContent("★★★★ · favorite");
   });
 
   it("words one tag, many tags, a single star, and skips a zero rating", () => {
@@ -230,17 +332,17 @@ describe("folding and remembering (INS-3)", () => {
     const detail = detailOf();
     const tag = (id: number) => ({ id, name: `t${id}`, track_count: 1 }) as never;
     const one = show({}, { ...detail, tags: [tag(1)], metadata: { ...detail.metadata, effective_rating: 1 } });
-    expect(section("Yours")).toHaveTextContent("1 star · 1 tag");
+    expect(section("Yours")).toHaveTextContent("★ · 1 tag");
     one.unmount();
     show({}, { ...detail, tags: [tag(1), tag(2)], metadata: { ...detail.metadata, effective_rating: 0 } });
     expect(section("Yours")).toHaveTextContent("2 tags");
     expect(section("Yours")).not.toHaveTextContent("star");
   });
 
-  it("calls an empty track's folded heading exactly Yours", () => {
+  it("calls an empty track's folded heading Yours, with no rating on the right", () => {
     localStorage.clear();
     show();
-    expect(section("Yours").textContent).toBe("Yours");
+    expect(section("Yours").textContent).toBe("Yours · no rating");
   });
 
   it("updates the folded summary after a rating or favorite in Yours", async () => {
@@ -250,7 +352,7 @@ describe("folding and remembering (INS-3)", () => {
     fireEvent.click(screen.getByRole("radio", { name: /3 stars?/ }));
     fireEvent.click(screen.getByRole("button", { name: "Favorite" }));
     fireEvent.click(section("Yours"));
-    expect(section("Yours")).toHaveTextContent("3 stars · favorite");
+    expect(section("Yours")).toHaveTextContent("★★★ · favorite");
   });
 
   it("remembers every fold in one key", () => {
@@ -599,10 +701,11 @@ describe("the buttons under the title (FLW-9, K5)", () => {
 describe("plain words (INS-6…10)", () => {
   it("turns the empty Collections and playlists lines into the next step (INS-10)", () => {
     show();
-    expect(
-      screen.getByText(/Not in any Collection yet\. Select the track and choose .*Organize/),
-    ).toBeInTheDocument();
+    // The sentence is gone; the folded heading says it in three words.
+    expect(screen.queryByText(/Select the track and choose/)).toBeNull();
+    expect(screen.queryByText(/drag it onto one/)).toBeNull();
     expect(screen.queryByText(/right-click/i)).toBeNull();
+    expect(section("Where it is")).toHaveTextContent("Where it is · Not in any Collection");
     expect(screen.getByText("Not in any Rekordbox playlist.")).toBeInTheDocument();
   });
 

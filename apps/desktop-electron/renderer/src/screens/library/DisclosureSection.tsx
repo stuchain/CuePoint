@@ -43,8 +43,13 @@ interface DisclosureSectionProps {
   /** The key it is remembered under. */
   id: string;
   title: string;
-  /** Said beside the title, so a folded section still tells its news: "Accepted", "4 changes". */
+  /** Said on the right of the heading, so a folded section still tells its news: "Accepted", "4 changes". */
   summary?: string | null;
+  /**
+   * The summary in words, when what is drawn is a picture of them (stars): drawn text is
+   * hidden from screen readers and these are read instead.
+   */
+  summarySpoken?: string;
   /** What the heading explains on hover. */
   hint?: string;
   /** Open until the person folds it. */
@@ -64,6 +69,7 @@ export function DisclosureSection({
   id,
   title,
   summary,
+  summarySpoken,
   hint,
   defaultOpen,
   remember = true,
@@ -95,13 +101,28 @@ export function DisclosureSection({
           className="cp-track-section__toggle"
           aria-expanded={open}
           aria-controls={bodyId}
-          title={hint}
+          title={[hint, summary].filter(Boolean).join(" — ") || undefined}
           onClick={toggle}
         >
           <span aria-hidden className="cp-track-section__chevron">
             {open ? <PixelIcon name="chevron-down" className="cp-pixel-icon--text" /> : <PixelIcon name="chevron-right" className="cp-pixel-icon--text" />}
           </span>
-          <span>{summary ? `${title} · ${summary}` : title}</span>
+          <span className="cp-track-section__title">{title}</span>
+          {summary ? (
+            // On the right, where it is read as the section's answer. The dot is
+            // kept for the accessible name, which reads "Beatport · Confirmed".
+            <span className="cp-track-section__summary">
+              <span className="cp-visually-hidden"> · </span>
+              {summarySpoken ? (
+                <>
+                  <span aria-hidden>{summary}</span>
+                  <span className="cp-visually-hidden">{summarySpoken}</span>
+                </>
+              ) : (
+                summary
+              )}
+            </span>
+          ) : null}
         </button>
       </Heading>
       <div

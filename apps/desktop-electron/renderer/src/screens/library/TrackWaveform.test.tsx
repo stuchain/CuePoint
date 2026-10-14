@@ -412,3 +412,67 @@ describe("in the Inspector", () => {
     expect(errors.mock.calls.flat().join(" ")).not.toMatch(/same key/);
   });
 });
+
+describe("its loudness on the panel's facts line", () => {
+  const line = () => screen.queryByTestId("inspector-loudness");
+
+  it("keeps only the peak under the picture when the facts line has the value", async () => {
+    install();
+    render(<TrackWaveform trackId={7} loudnessInFacts />);
+    await drawn();
+
+    expect(line()).toHaveTextContent(/^Peak −0\.3 dBFS$/);
+  });
+
+  it("keeps the whole line for a track with no value, which says why", async () => {
+    install({ answer: (id) => waveform(id, "ready", { loudness: null }) });
+    render(<TrackWaveform trackId={7} loudnessInFacts />);
+    await drawn();
+    expect(line()).toHaveTextContent(LOUDNESS_PENDING_WORDS);
+  });
+
+  it.each([
+    [{ integrated_lufs: null, peak_dbfs: -4.3, reason: "too_quiet" as const }, `${LOUDNESS_TOO_QUIET_WORDS} · Peak −4.3 dBFS`],
+    [{ integrated_lufs: null, peak_dbfs: null, reason: "silent" as const }, LOUDNESS_SILENT_WORDS],
+  ])("keeps the reason for %j", async (loudness, words) => {
+    install({ answer: (id) => waveform(id, "ready", { loudness }) });
+    render(<TrackWaveform trackId={7} loudnessInFacts />);
+    await drawn();
+    expect(line()).toHaveTextContent(words);
+  });
+
+  describe("in the panel", () => {
+    const TRACK = { id: 7, title: "Bands", artist: "Fixture", bpm: 128, genre: "House" } as unknown as LibraryTrackRow;
+    const DETAIL = {
+      track: TRACK,
+      playlists: [],
+      playlist_count: 0,
+      metadata: { track_id: 7, effective_rating: null, favorite: false },
+      tags: [],
+      collections: [],
+    } as unknown as LibraryTrackDetail;
+
+    it("reads the value, labelled Loudness, with the peak still shown", async () => {
+      install();
+      render(<TrackDetailPanel detail={DETAIL} />);
+      const fact = await screen.findByTestId("track-fact-loudness");
+      expect(fact).toHaveTextContent("Loudness −8.4 LUFS");
+      expect(within(fact).getByText(/^Loudness/)).toHaveClass("cp-visually-hidden");
+      expect(fact).toHaveAttribute("title", expect.stringContaining("Loudness −8.4 LUFS · Peak −0.3 dBFS"));
+      expect(await screen.findByTestId("inspector-loudness")).toHaveTextContent("Peak −0.3 dBFS");
+    });
+
+    it("makes one read for a selection, and one for the next", async () => {
+      const { waveforms } = install();
+      const { rerender } = render(<TrackDetailPanel detail={DETAIL} />);
+      await screen.findByTestId("track-fact-loudness");
+      await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+      expect(waveforms.get).toHaveBeenCalledTimes(1);
+
+      rerender(<TrackDetailPanel detail={{ ...DETAIL, track: { ...TRACK, id: 8 } }} />);
+      await waitFor(() => expect(waveforms.get).toHaveBeenCalledTimes(2));
+      await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+      expect(waveforms.get).toHaveBeenCalledTimes(2);
+    });
+  });
+});

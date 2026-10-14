@@ -35,6 +35,7 @@ import { PixelIcon } from "../../components/PixelIcon";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
 import { KeyChip, WheelButton } from "../../components/wheel";
 import { formatBpm } from "../../components/format/bpm";
+import { LOUDNESS_LINE_TITLE, loudnessLine, loudnessShort } from "../../components/waveform/loudnessWords";
 import type {
   CollectionNode,
   EntityKind,
@@ -43,6 +44,7 @@ import type {
   LibraryTrackRow,
   TrackCreditLink,
   TrackFieldChange,
+  WaveformTrack,
 } from "../../api/cuepointBridge.types";
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { matchStateLabel } from "../clean/cleanFormat";
@@ -59,7 +61,7 @@ import { MatchOnBeatport, TrackBeatportSection } from "./TrackBeatportSection";
 import { TrackHistorySection } from "./TrackHistorySection";
 import { TrackMarksSection } from "./TrackMarksSection";
 import { availableQueueActions, runQueueAction, type QueueAction } from "./trackDetailsActions";
-import { cuesSummary, CUES_HINT } from "./trackMarks";
+import { cuesHeaderSummary, CUES_HINT } from "./trackMarks";
 import { TrackWaveform } from "./TrackWaveform";
 import { TrackYours } from "./TrackYours";
 import { useTrackHistory } from "./useTrackHistory";
@@ -130,18 +132,40 @@ interface TrackDetailPanelProps {
 
 /**
  * What the folded "Yours" heading still says, in words that read well aloud:
- * "4 stars · favorite · 2 tags", or null when there is nothing of the person's in it.
+ * "★★★★ · favorite · 2 tags", or "no rating" when there is nothing of the person's in it.
  */
 function yoursSummary(
   metadata: { effective_rating: number | null; favorite: boolean },
   tags: readonly unknown[],
-): string | null {
+): string {
   const parts: string[] = [];
   const stars = metadata.effective_rating;
-  if (stars != null && stars > 0) parts.push(stars === 1 ? "1 star" : `${stars} stars`);
+  if (stars != null && stars > 0) parts.push(starsFor(stars));
   if (metadata.favorite) parts.push("favorite");
   if (tags.length > 0) parts.push(tags.length === 1 ? "1 tag" : `${tags.length} tags`);
-  return parts.length > 0 ? parts.join(" · ") : null;
+  return parts.length > 0 ? parts.join(" · ") : "no rating";
+}
+
+/** The same, in words a screen reader reads: "4 stars · favorite", for a rating drawn as stars. */
+function yoursSpoken(
+  metadata: { effective_rating: number | null; favorite: boolean },
+  tags: readonly unknown[],
+): string | undefined {
+  const stars = metadata.effective_rating;
+  if (stars == null || stars <= 0) return undefined;
+  const parts = [stars === 1 ? "1 star" : `${stars} stars`];
+  if (metadata.favorite) parts.push("favorite");
+  if (tags.length > 0) parts.push(tags.length === 1 ? "1 tag" : `${tags.length} tags`);
+  return parts.join(" · ");
+}
+
+/** What the folded "Where it is" heading says: "1 Set · 1 playlist", or that it is nowhere yet. */
+function whereSummary(collections: number, sets: number, playlists: number): string {
+  const parts: string[] = [];
+  if (collections > 0) parts.push(`${collections.toLocaleString()} ${collections === 1 ? "Collection" : "Collections"}`);
+  if (sets > 0) parts.push(`${sets.toLocaleString()} ${sets === 1 ? "Set" : "Sets"}`);
+  if (playlists > 0) parts.push(`${playlists.toLocaleString()} ${playlists === 1 ? "playlist" : "playlists"}`);
+  return parts.length > 0 ? parts.join(" · ") : "Not in any Collection";
 }
 
 /** Absent is absent: an em dash, never a zero. */
@@ -197,14 +221,17 @@ function Row({
   label,
   value,
   valueClassName,
+  hideLabel = false,
 }: {
   label: string;
   value: React.ReactNode;
   valueClassName?: string;
+  /** Read by screen readers, not drawn: the value says what it is. */
+  hideLabel?: boolean;
 }) {
   return (
     <div className="cp-track-detail__row">
-      <dt className="cp-track-detail__label">{label}</dt>
+      <dt className={hideLabel ? "cp-track-detail__label cp-visually-hidden" : "cp-track-detail__label"}>{label}</dt>
       <dd className={valueClassName ? `cp-track-detail__value ${valueClassName}` : "cp-track-detail__value"}>{value}</dd>
     </div>
   );
@@ -249,6 +276,16 @@ export function TrackDetailPanel({
     tags: readonly unknown[];
   } | null>(null);
   const trackId = detail?.track.id ?? null;
+  // The loudness the facts line reads: the waveform's own answer, told up as it
+  // arrives, so one request and one poll serve both.
+  const [reading, setReading] = useState<{ trackId: number | null; track: WaveformTrack | null }>({
+    trackId: null,
+    track: null,
+  });
+  const onReading = useCallback(
+    (track: WaveformTrack | null) => setReading({ trackId: track?.track_id ?? null, track }),
+    [],
+  );
   const history = useTrackHistory(trackId, written);
   const writes = useTrackWrites(trackId, written);
   const matches = useTrackMatches(trackId, written);
@@ -368,25 +405,82 @@ export function TrackDetailPanel({
   const keyMatchOffered = key === null && track.id != null;
   const changeCount = history.changes.length;
   const editable = track.id != null && window.cuepoint?.setTrackOverrides;
+  const loudnessTrack = reading.trackId !== null && reading.trackId === track.id ? reading.track : null;
+  const lufs = loudnessShort(loudnessTrack);
+  const bpm = formatBpm(track.bpm);
+  const genre = track.genre ? track.genre : null;
 
   return (
     <div className="cp-track-detail">
       <header className="cp-track-detail__head">
-        {track.id != null && window.cuepoint?.getTrackArtwork && (
-          <TrackArtwork trackId={track.id} version={written} />
-        )}
-        <h2 className="cp-track-detail__title">{text(track.title)}</h2>
-        <p className="cp-track-detail__artist">
-          {credited(track.artist, credits?.artists, onOpenEntity)}
-        </p>
-        {/* The label a Label page means: the effective one (DEC-068), which
-            is why it is here beside the artist rather than in the imported
-            record below, whose Label row stays what Rekordbox sent. */}
-        {onOpenEntity && credits?.label && (
-          <p className="cp-track-detail__label">
-            {credited(credits.label.name, [credits.label], onOpenEntity)}
-          </p>
-        )}
+        {/* Small art beside the words that name the track. */}
+        <div className="cp-track-detail__ident">
+          {track.id != null && window.cuepoint?.getTrackArtwork && (
+            <TrackArtwork trackId={track.id} version={written} />
+          )}
+          <div className="cp-track-detail__idtext">
+            <h2 className="cp-track-detail__title">{text(track.title)}</h2>
+            <p className="cp-track-detail__artist">
+              {credited(track.artist, credits?.artists, onOpenEntity)}
+            </p>
+            {/* The label a Label page means: the effective one (DEC-068), which
+                is why it is here beside the artist rather than in the imported
+                record below, whose Label row stays what Rekordbox sent. */}
+            {onOpenEntity && credits?.label && (
+              <p className="cp-track-detail__label">
+                {credited(credits.label.name, [credits.label], onOpenEntity)}
+              </p>
+            )}
+          </div>
+        </div>
+        {/* One facts line: the key chip with the Camelot wheel's button beside the
+            key it is about (K8, DEC-282), then BPM, genre and loudness. */}
+        <div className="cp-track-detail__facts">
+          <div className="cp-track-detail__keyrow">
+            <dl className="cp-track-detail__keyline" data-testid="track-key">
+              <Row
+                label="Key"
+                hideLabel
+                value={
+                  key !== null ? (
+                    // The chip is the code, coloured by its wheel position (R4-2, DEC-272);
+                    // the key's name and source follow it as muted text.
+                    <>
+                      <KeyChip value={track.effective_key} />
+                      <span className="cp-track-detail__keymeta">{key}</span>
+                    </>
+                  ) : (
+                    <span className="cp-track-detail__file">
+                      <span>{NO_VALUE}</span>
+                      {keyMatchOffered && track.id != null && <MatchOnBeatport trackId={track.id} />}
+                    </span>
+                  )
+                }
+              />
+            </dl>
+            <WheelButton />
+          </div>
+          {bpm && (
+            <span className="cp-track-detail__fact cp-data" data-testid="track-fact-bpm">
+              {`${bpm} BPM`}
+            </span>
+          )}
+          {genre && (
+            <span className="cp-track-detail__fact" data-testid="track-fact-genre">
+              {genre}
+            </span>
+          )}
+          {lufs && (
+            <span
+              className="cp-track-detail__fact cp-data"
+              data-testid="track-fact-loudness"
+              title={`${loudnessLine(loudnessTrack) ?? lufs}. ${LOUDNESS_LINE_TITLE}`}
+            >
+              <span className="cp-visually-hidden">Loudness </span>
+              {lufs}
+            </span>
+          )}
+        </div>
         {selectionCount > 1 && (
           // DEC-045: the panel shows the last-clicked track and says how many
           // there are; the buttons under it act on all of them, and the
@@ -462,30 +556,6 @@ export function TrackDetailPanel({
             ]}
           />
         )}
-        {/* The Camelot wheel's button sits beside the key it is about (K8, DEC-282). */}
-        <div className="cp-track-detail__keyrow">
-          <dl className="cp-track-detail__keyline" data-testid="track-key">
-            <Row
-              label="Key"
-              value={
-                key !== null ? (
-                  // The chip is the code, coloured by its wheel position (R4-2, DEC-272);
-                  // the key's name and source follow it as muted text.
-                  <>
-                    <KeyChip value={track.effective_key} />
-                    <span className="cp-track-detail__keymeta">{key}</span>
-                  </>
-                ) : (
-                  <span className="cp-track-detail__file">
-                    <span>{NO_VALUE}</span>
-                    {keyMatchOffered && track.id != null && <MatchOnBeatport trackId={track.id} />}
-                  </span>
-                )
-              }
-            />
-          </dl>
-          <WheelButton />
-        </div>
       </header>
 
       {/* The whole track, its marks on it (WAVE-06): under the header, the
@@ -493,7 +563,7 @@ export function TrackDetailPanel({
           last one's picture while its own is read; the key is its own, since
           TrackYours' sits in the same list keyed by the bare track id. */}
       {track.id != null && window.cuepoint?.waveforms && (
-        <TrackWaveform key={`waveform-${track.id}`} trackId={track.id} />
+        <TrackWaveform key={`waveform-${track.id}`} trackId={track.id} loudnessInFacts onReading={onReading} />
       )}
 
       {/* The caller's own slot: its key is the caller's (Prepare keys its zone
@@ -512,6 +582,11 @@ export function TrackDetailPanel({
             shown && shown.trackId === track.id
               ? yoursSummary(shown.metadata, shown.tags)
               : yoursSummary(detail.metadata, detail.tags)
+          }
+          summarySpoken={
+            shown && shown.trackId === track.id
+              ? yoursSpoken(shown.metadata, shown.tags)
+              : yoursSpoken(detail.metadata, detail.tags)
           }
           className="cp-track-section--yours">
           <TrackYours
@@ -576,22 +651,21 @@ export function TrackDetailPanel({
         <DisclosureSection
           id="cues"
           title="Cue points"
-          summary={cuesSummary(detail.marks)}
+          summary={cuesHeaderSummary(detail.marks)}
           hint={CUES_HINT}
-          defaultOpen
+          defaultOpen={false}
         >
           <TrackMarksSection marks={detail.marks} />
         </DisclosureSection>
       )}
 
-      <DisclosureSection id="where" title="Where it is" defaultOpen>
-        {collections.length === 0 ? (
-          <p className="cp-track-detail__none">
-            Not in any Collection yet. Select the track and choose Organize{" "}
-            <PixelIcon name="chevron-right" className="cp-pixel-icon--text" /> in the selection
-            bar, or drag it onto one.
-          </p>
-        ) : (
+      <DisclosureSection
+        id="where"
+        title="Where it is"
+        summary={whereSummary(collections.length, sets.length, playlists.length)}
+        defaultOpen={false}
+      >
+        {collections.length > 0 && (
           <section className="cp-track-detail__playlists">
             <h4 className="cp-track-detail__subtitle">
               {`In ${collections.length} ${collections.length === 1 ? "Collection" : "Collections"}`}

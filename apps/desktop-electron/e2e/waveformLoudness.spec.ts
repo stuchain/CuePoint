@@ -41,6 +41,24 @@ const location = (file: string) => "file://localhost/" + file.replace(/\\/g, "/"
 
 type Bridge = Record<string, any>;
 
+/**
+ * The Inspector's loudness reading: a value is on the facts line under the title ("−3.5 LUFS",
+ * the whole reading with its peak in the title); a track with none keeps the line under its
+ * waveform, which says why.
+ */
+async function expectReading(window: Page, line: string, timeout = 15_000): Promise<void> {
+  if (line.startsWith("Loudness ")) {
+    const fact = window.getByTestId("track-fact-loudness");
+    const [value, peak] = line.split(" · ");
+    await expect(fact).toHaveText(value!, { timeout });
+    expect(await fact.getAttribute("title")).toContain(line);
+    // The peak stays drawn under the waveform.
+    await expect(window.getByTestId("inspector-loudness")).toHaveText(peak!);
+    return;
+  }
+  await expect(window.getByTestId("inspector-loudness")).toHaveText(line, { timeout });
+}
+
 /** The tracks, in the playlist "Friday"'s order: title, file, and what each reads. */
 const TRACKS = [
   { title: "Bands", file: "bands.flac", line: "Loudness −3.5 LUFS · Peak −4.3 dBFS", cell: "−3.5" },
@@ -232,10 +250,9 @@ test.describe("Loudness, measured with each waveform (WAVE-08)", () => {
       // --- the Inspector: each reading, or why there is none ---------------
       await window.getByRole("link", { name: "Library" }).click();
       await expect(window.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
-      const line = window.getByTestId("inspector-loudness");
       for (const track of TRACKS) {
         await inspect(window, track.title);
-        await expect(line).toHaveText(track.line, { timeout: 15_000 });
+        await expectReading(window, track.line);
       }
       await window.locator(".cp-filter-bar").getByRole("textbox", { name: "Search" }).fill("");
 
@@ -341,8 +358,7 @@ test.describe("Loudness, measured with each waveform (WAVE-08)", () => {
       await expect(window.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
       await inspect(window, "Sine");
       await expect(window.locator("[data-testid=inspector-waveform] canvas")).toBeVisible({ timeout: 20_000 });
-      const line = window.getByTestId("inspector-loudness");
-      await expect(line).toHaveText("Loudness −20.0 LUFS · Peak −20.0 dBFS", { timeout: 30_000 });
+      await expectReading(window, "Loudness −20.0 LUFS · Peak −20.0 dBFS", 30_000);
       expect((await analysis(window)).remaining).toBe(TRACKS.length - 1);
 
       // Resumed, the rest are measured, every picture as it was.

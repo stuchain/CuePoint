@@ -79,7 +79,11 @@ async function inspect(window: Page, title: string) {
   await row.click();
   const inspector = window.locator(".cp-inspector").first();
   await expect(inspector.getByRole("heading", { name: title })).toBeVisible({ timeout: 30_000 });
-  return inspector.getByRole("region", { name: "Cue points" });
+  const marks = inspector.getByRole("region", { name: "Cue points" });
+  // Every section starts folded, with its answer on the heading's right: open this one.
+  const toggle = marks.getByRole("button", { name: /^Cue points/ });
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  return marks;
 }
 
 test.describe("Cue points and beat grids (WAVE-04)", () => {
@@ -116,7 +120,7 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
 
       // --- every kind of mark, in the order the track plays them ---------
       let marks = await inspect(window, "Every Mark");
-      await expect(marks.getByRole("heading")).toHaveText(/Cue points · 4 hot, 5 memory$/);
+      await expect(marks.getByRole("heading")).toHaveText(/Cue points · 4 hot, 5 memory · grid 128$/);
       await expect(marks.getByRole("listitem")).toHaveText([
         "Memory · 0:00.0 · Intro",
         "Memory · 0:01.5 · Fade-in · Fade in",
