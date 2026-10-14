@@ -263,11 +263,12 @@ describe("Sidebar", () => {
   });
 
   describe("the Search button (K8)", () => {
-    it("sits between the top row and the list, reading Search with its shortcut", () => {
+    it("sits between the top row and the list, reading Search with the key in its tip", async () => {
       renderSidebar();
-      const button = within(nav()).getByRole("button", { name: /^Search/ });
-      expect(button).toHaveTextContent("Search");
-      expect(button).toHaveTextContent("Ctrl+K");
+      const button = within(nav()).getByRole("button", { name: "Search" });
+      expect(button).toHaveTextContent(/^Search$/);
+      button.focus();
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search (Ctrl+K)");
       const top = nav().querySelector(".cp-sidebar__top")!;
       const list = nav().querySelector(".cp-sidebar__list")!;
       expect(top.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

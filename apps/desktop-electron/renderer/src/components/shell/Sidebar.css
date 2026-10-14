@@ -186,21 +186,19 @@
   padding: var(--space-xs);
 }
 
-/* The Search button wears the entries' look; a button needs its own face reset (K8). */
+/*
+ * The Search button wears the entries' look; a button needs its own face reset (K8). It sits
+ * straight in the rail's column, so it must not take `.cp-sidebar__link`'s `flex: 1`: that would
+ * split the rail's height with the list and float the button in the middle of the gap.
+ */
 .cp-sidebar__search {
+  flex: none;
   width: 100%;
   background: transparent;
   font: inherit;
   font-size: var(--font-size-sm);
   text-align: left;
   cursor: pointer;
-}
-
-.cp-sidebar__shortcut {
-  margin-left: auto;
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  white-space: nowrap;
 }
 
 .cp-sidebar__link:hover {

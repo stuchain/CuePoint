@@ -86,13 +86,13 @@ function Brand({ collapsed }: { collapsed: boolean }) {
 
 /**
  * The Search button (K8, DEC-282): opens the search dialog, which Ctrl+K opens too. Expanded it
- * reads "Search" with its shortcut muted beside it; the collapsed rail shows the icon alone, named
- * "Search library", with the tip saying the key.
+ * reads "Search"; the collapsed rail shows the icon alone, named "Search library". Either way the
+ * tip says the key: the rail is too narrow for "Search" and the shortcut side by side.
  */
 function SearchButton({ collapsed, onOpen }: { collapsed: boolean; onOpen: () => void }) {
   const keys = `${modifierName()}+K`;
   return (
-    <Hint text={collapsed ? `Search (${keys})` : undefined} portal>
+    <Hint text={`Search (${keys})`} portal>
       <button
         type="button"
         className="cp-sidebar__link cp-sidebar__search"
@@ -103,14 +103,7 @@ function SearchButton({ collapsed, onOpen }: { collapsed: boolean; onOpen: () =>
         <span className="cp-sidebar__icon" aria-hidden>
           <PixelIcon name="search" />
         </span>
-        {!collapsed && (
-          <>
-            <span className="cp-sidebar__label">Search</span>
-            <span className="cp-sidebar__shortcut" aria-hidden>
-              {keys}
-            </span>
-          </>
-        )}
+        {!collapsed && <span className="cp-sidebar__label">Search</span>}
       </button>
     </Hint>
   );
