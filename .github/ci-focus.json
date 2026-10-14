@@ -1,0 +1,1 @@
+{"runner": "windows-latest", "pytest": "src/tests/unit/services/test_analysis_worker_client.py src/tests/unit/services/test_analysis_protocol.py src/tests/unit/engine/test_engine_revisions.py", "e2e": "", "repeat": 2}
