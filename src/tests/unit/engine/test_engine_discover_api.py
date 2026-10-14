@@ -414,6 +414,37 @@ class TestOptions:
             "to_read": 2,
         }
 
+    def test_the_library_scans_are_kept_until_the_library_changes(
+        self, engine, world, library, monkeypatch
+    ):
+        # The resolve counts and the index flag scan the library: opening the page
+        # again reads them from the memo, and a write to the library reads them anew.
+        service = resolve("IBeatportResolveService")
+        plans: List[int] = []
+        original = type(service).plan
+
+        def counting(self):
+            plans.append(1)
+            return original(self)
+
+        monkeypatch.setattr(type(service), "plan", counting)
+        first = ok(get(engine, api.OPTIONS_PATH))
+        again = ok(get(engine, api.OPTIONS_PATH))
+        assert len(plans) == 1
+        assert again == first
+
+        own(library[0], 3)
+        moved = ok(get(engine, api.OPTIONS_PATH))
+        assert len(plans) == 2
+        assert moved["resolve"] == {"owned": 1, "to_read": 1}
+
+        # The counts depend on the clock, so a new hour reads them again.
+        monkeypatch.setattr(api, "_utc_hour", lambda: "2099-01-01T00")
+        ok(get(engine, api.OPTIONS_PATH))
+        assert len(plans) == 3
+        ok(get(engine, api.OPTIONS_PATH))
+        assert len(plans) == 3
+
     def test_without_a_token_it_says_so_and_still_answers(self, engine, library):
         use_beatport(BeatportWorld(access_token=""))
         answer = ok(get(engine, api.OPTIONS_PATH))

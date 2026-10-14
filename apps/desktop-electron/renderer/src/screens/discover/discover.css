@@ -401,13 +401,28 @@
   grid-template-rows: minmax(calc(160px * var(--scale)), 1fr) auto;
   flex: 1 1 0;
   /* Hidden overflow would otherwise let the flex column squeeze it to
-     nothing; its content is the least it can be. */
+     nothing, so its minimum is its content's: the rows' floor and however
+     many lines the actions wrap to. The rows contribute only that floor
+     (`contain: size` on `.discover-table__rows`): they are virtualised inside a
+     body as tall as every row put together, and counting it made the table as
+     tall as the whole list, which then drew all of it (1,481 rows of a long
+     dig, seconds on each click). */
   min-height: min-content;
   overflow: hidden;
 }
 
+/* The tab scrolls as one when it is stacked, so the table has no remaining
+   height to take: it gets a height of its own to scroll inside. That makes
+   the rows scroll inside a tab that scrolls, which is accepted: the other
+   way is a table as tall as its rows. */
+.discover-runs-view--stacked .discover-run > .discover-table {
+  min-height: calc(420px * var(--scale));
+}
+
 .discover-table__rows {
   display: flex;
+  /* No intrinsic height of its own: the grid row's floor sizes it. */
+  contain: size;
   min-height: 0;
   overflow: hidden;
 }

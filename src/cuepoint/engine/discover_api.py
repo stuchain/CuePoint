@@ -69,7 +69,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from cuepoint.engine.api_errors import ApiError, bad_request, error_payload, not_found
@@ -494,6 +494,11 @@ def _beatport_status() -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     )
 
 
+def _utc_hour() -> str:
+    """The current UTC hour, as the key of an answer that depends on the clock."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H")
+
+
 def options(params: Dict[str, List[str]]) -> Dict[str, Any]:
     """What a "New run" panel and the Discover page start from."""
     from cuepoint.models.entity_page import MAX_ENTITY_WINDOW
@@ -512,9 +517,10 @@ def options(params: Dict[str, List[str]]) -> Dict[str, Any]:
     library = _resolve("ILibraryService")
     request = _resolve("IDiscoveryService").request()
     # Both facets are shared with the memo: serialise only, never mutate.
-    # C19b: only the two library facets are kept (a function of the library
-    # database). The Beatport status, the dates in ``defaults`` and the rest
-    # are read fresh.
+    # C19b: the two library facets and, below, the resolve counts and the index
+    # flag are kept (functions of the library database). The Beatport status (its
+    # genres have their own day-long cache), the dates in ``defaults`` and the
+    # rest are read fresh, so a sign-in change shows at once.
     artists = revision_cache(
         "discover/options/artists",
         "",
@@ -526,6 +532,24 @@ def options(params: Dict[str, List[str]]) -> Dict[str, Any]:
         "",
         (LIBRARY,),
         lambda: library.facet("label_name").to_dict(),
+    )
+    # Both are functions of the library database, so they are kept until it
+    # changes. The resolve counts also depend on the clock (a cached track goes
+    # stale 30 days after it was read), so they are keyed by the UTC hour: a
+    # count never outlives the hour it was made in. The index flag reads one
+    # small table and is kept only for symmetry with the facets.
+    hour = _utc_hour()
+    resolve_plan = revision_cache(
+        "discover/options/resolve",
+        hour,
+        (LIBRARY,),
+        lambda: _resolve("IBeatportResolveService").plan().to_dict(),
+    )
+    index_current = revision_cache(
+        "discover/options/index_current",
+        "",
+        (LIBRARY,),
+        lambda: bool(_resolve("ICreditIndexService").is_current()),
     )
     return {
         "beatport": beatport,
@@ -551,8 +575,8 @@ def options(params: Dict[str, List[str]]) -> Dict[str, Any]:
             "max_note_length": MAX_NOTE_LENGTH,
             "max_similar": MAX_SIMILAR_LIMIT,
         },
-        "resolve": _resolve("IBeatportResolveService").plan().to_dict(),
-        "index_current": bool(_resolve("ICreditIndexService").is_current()),
+        "resolve": resolve_plan,
+        "index_current": index_current,
     }
 
 
