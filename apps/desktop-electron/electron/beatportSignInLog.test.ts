@@ -10,9 +10,31 @@ import {
   type SignInLogFs,
 } from "./beatportSignInLog";
 
+/**
+ * Paths as keys, spelled with forward slashes: on Windows the code joins with
+ * backslashes ("\\l\\main.log"), and the tests name files the POSIX way.
+ */
+class PathMap extends Map<string, string> {
+  private static key(file: string): string {
+    return file.replace(/\\/g, "/");
+  }
+  override get(file: string) {
+    return super.get(PathMap.key(file));
+  }
+  override set(file: string, text: string) {
+    return super.set(PathMap.key(file), text);
+  }
+  override has(file: string) {
+    return super.has(PathMap.key(file));
+  }
+  override delete(file: string) {
+    return super.delete(PathMap.key(file));
+  }
+}
+
 /** An in-memory file system: path -> text. Directories are not modelled. */
 function fakeFs(options: { failAppend?: boolean; failRename?: () => boolean } = {}) {
-  const files = new Map<string, string>();
+  const files = new PathMap();
   const fs: SignInLogFs = {
     mkdir: async () => undefined,
     appendFile: async (file, text) => {

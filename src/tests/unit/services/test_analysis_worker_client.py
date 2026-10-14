@@ -600,16 +600,22 @@ class TestCrashingBetweenRequests:
     def test_a_worker_that_dies_after_every_answer_is_given_up_on(self, fake, caplog):
         """Regression: it was never counted, so it respawned for ever."""
         made = fake.make("crash-after-answer")
+
+        def given_up() -> bool:
+            return any(
+                "continues inside the engine" in r.getMessage() for r in caplog.records
+            )
+
         with caplog.at_level(logging.WARNING, logger=client._logger.name):
             for n in range(8):
                 compute(made, f"/m/{n}.flac")
-                if made.fallbacks:
+                # Not on the first fallback: a request sent before the death was
+                # seen falls back on its own, and the client has not given up yet.
+                if given_up():
                     break
         assert made.fallbacks >= 1
         assert len(fake.spawns()) == 2
-        assert any(
-            "continues inside the engine" in r.getMessage() for r in caplog.records
-        )
+        assert given_up()
 
 
 class TestCancelAfterADeath:

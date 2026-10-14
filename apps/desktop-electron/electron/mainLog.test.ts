@@ -2,8 +2,30 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createMainLog, type MainLogFs } from "./mainLog";
 
+/**
+ * Paths as keys, spelled with forward slashes: on Windows the code joins with
+ * backslashes ("\\l\\main.log"), and the tests name files the POSIX way.
+ */
+class PathMap extends Map<string, string> {
+  private static key(file: string): string {
+    return file.replace(/\\/g, "/");
+  }
+  override get(file: string) {
+    return super.get(PathMap.key(file));
+  }
+  override set(file: string, text: string) {
+    return super.set(PathMap.key(file), text);
+  }
+  override has(file: string) {
+    return super.has(PathMap.key(file));
+  }
+  override delete(file: string) {
+    return super.delete(PathMap.key(file));
+  }
+}
+
 function memoryFs(options: { failAppend?: boolean; lockMain?: boolean } = {}) {
-  const files = new Map<string, string>();
+  const files = new PathMap();
   const fs: MainLogFs = {
     mkdir: async () => undefined,
     appendFile: async (file, data) => {
@@ -15,7 +37,7 @@ function memoryFs(options: { failAppend?: boolean; lockMain?: boolean } = {}) {
       return { size: Buffer.byteLength(files.get(file)!) };
     },
     rename: async (from, to) => {
-      if (options.lockMain && from.endsWith("/main.log")) throw new Error("EBUSY");
+      if (options.lockMain && from.replace(/\\/g, "/").endsWith("/main.log")) throw new Error("EBUSY");
       if (!files.has(from)) throw new Error("ENOENT");
       files.set(to, files.get(from)!);
       files.delete(from);
