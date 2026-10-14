@@ -226,4 +226,14 @@ describe("the zoomed waveform (T4)", () => {
     expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ track_id: 12 });
     expect(answer.value).toEqual({ track_id: 12, state: "working" });
   });
+
+  it("sends a prepare-ahead request with low, and only then", async () => {
+    const calls = engineAnswering(200, { track_id: 12, state: "working" });
+
+    await client().requestWaveformDetail({ track_id: 12, low: true });
+    await client().requestWaveformDetail({ track_id: 12, low: false });
+
+    expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ track_id: 12, low: true });
+    expect(JSON.parse(String(calls[1]!.init?.body))).toEqual({ track_id: 12 });
+  });
 });

@@ -3,6 +3,7 @@ import { PlayerRegion } from "../shell/PlayerRegion";
 import { PlayerAnnouncer } from "./PlayerAnnouncer";
 import { PlayerBar } from "./PlayerBar";
 import { WaveformDetailStrip } from "../waveform/WaveformDetailStrip";
+import { useWaveformPrefetch } from "../waveform/useWaveformPrefetch";
 import { useWaveformDetailSetting } from "../waveform/waveformDetailSetting";
 import { selectHasPlayed } from "./playerFormat";
 import { markPlayed, selectCurrentTrackId } from "./playedTracks";
@@ -58,6 +59,9 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
   const [everPlayed, setEverPlayed] = useState(false);
   const queueOpen = useQueueOpen();
   const [detailOn] = useWaveformDetailSetting();
+  // The zoomed waveform of the selected and the next track, made before they play; above the
+  // early return, since a selection is made before anything has played.
+  useWaveformPrefetch({ enabled: detailOn });
   const trackId = usePlayerValue(selectCurrentTrackId);
 
   useEffect(() => {

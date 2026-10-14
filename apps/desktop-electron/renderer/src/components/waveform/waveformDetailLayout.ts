@@ -15,14 +15,16 @@
  *
  * **The columns.** A picture of `rateHz` columns a second (the detail's 75, or
  * the overview stretched while the detail is made) drawn at more or fewer
- * columns a second than it has: finer repeats a sample, coarser takes each
- * span's highest value, so a peak is never lost.
+ * columns a second than it has: finer repeats a sample (or, for the stretched
+ * overview, `smooth`, interpolates between them), coarser takes each span's
+ * highest value, so a peak is never lost.
  *
  * **The lines.** A line on every beat, a stronger one on each bar, from a
  * Rekordbox grid only: no marker, no line. `beats` is linear in the window, not
  * the track, since a grid can hold a marker on every beat.
  */
 import type { BeatGridMarker } from "../../api/cuepointBridge.types";
+import { smoothedPeak } from "./waveformStandIn";
 import { BANDS, bandHeight, beatsPerBar, type PaintRect, type WaveformColourMode } from "./waveformLayout";
 
 /** The music one strip shows by default: 8 s either side of the playhead. */
@@ -175,6 +177,13 @@ export function msAtColumn(column: number, midColumn: number, centreMs: number, 
 export interface DetailSource {
   data: Uint8Array;
   rateHz: number;
+  /**
+   * The overview standing in for the detail: where it is drawn finer than it
+   * was made, a column reads the value linearly interpolated between its
+   * neighbours (`smoothedPeak`) instead of repeating one, so it slopes and does
+   * not step in blocks.
+   */
+  smooth?: boolean;
 }
 
 export interface DetailTileInput {
@@ -226,6 +235,9 @@ export function layoutDetailTile(input: DetailTileInput): DetailTile {
         for (let i = start; i < end; i += 1) {
           const value = source.data[i * BANDS + band] ?? 0;
           if (value > peak) peak = value;
+        }
+        if (source.smooth === true && ratio < 1) {
+          peak = Math.round(smoothedPeak(source.data, band, sourceColumns, (world + 0.5) * ratio));
         }
         const units = bandHeight(peak, half);
         if (units > 0) {

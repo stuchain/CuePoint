@@ -111,6 +111,8 @@ interface Setup {
 }
 
 let drawImages: number;
+/** The opacity each tile of the strip was drawn at. */
+let alphas: number[];
 let clears: number;
 let fills: { colour: string; rect: number[] }[];
 
@@ -157,6 +159,7 @@ beforeEach(() => {
   resetWaveformDetailSpanForTests();
   localStorage.clear();
   drawImages = 0;
+  alphas = [];
   clears = 0;
   fills = [];
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
@@ -183,8 +186,10 @@ beforeEach(() => {
         fillRect(this: { fillStyle: string }, x: number, y: number, w: number, h: number) {
           if (counted) fills.push({ colour: String(this.fillStyle), rect: [x, y, w, h] });
         },
-        drawImage: () => {
-          if (counted) drawImages += 1;
+        drawImage(this: { globalAlpha: number }) {
+          if (!counted) return;
+          drawImages += 1;
+          alphas.push(this.globalAlpha);
         },
       });
     }
@@ -202,6 +207,7 @@ afterEach(async () => {
   forgetWaveforms();
   localStorage.clear();
   document.documentElement.removeAttribute("data-motion-scroll");
+  document.documentElement.removeAttribute("data-motion-state");
   vi.restoreAllMocks();
   delete (window as { cuepoint?: unknown }).cuepoint;
 });
@@ -623,5 +629,143 @@ describe("frames", () => {
     await push(snapshot(item(), { positionSeconds: 30.25 }));
     expect(clears).toBeGreaterThan(before);
     expect(window.requestAnimationFrame).not.toHaveBeenCalled();
+  });
+});
+
+describe("the stand-in", () => {
+  let frames: FrameRequestCallback[];
+
+  beforeEach(() => {
+    frames = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation(() => undefined);
+  });
+
+  function whileMade() {
+    let state: WaveformDetailState = "waiting";
+    const handles = install({ initial: snapshot(item(), { playing: false, paused: true }) });
+    handles.waveforms.detail.mockImplementation(async () => ({ value: detailAnswer(state), refusal: null }));
+    return { ...handles, finish: () => (state = "ready") };
+  }
+
+  it("is drawn whole, not faded, before the detail arrives", async () => {
+    whileMade();
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("overview"));
+    await waitFor(() => expect(drawImages).toBeGreaterThan(0));
+    // Drawn whole, not faded, and nothing fades before the detail arrives.
+    expect(alphas.every((a) => a === 1)).toBe(true);
+    expect(strip().getAttribute("data-fading")).toBeNull();
+  });
+
+  it("cross-fades to the detail over 150 ms when it arrives, then draws it alone", async () => {
+    document.documentElement.setAttribute("data-motion-state", "on");
+    const now = vi.spyOn(performance, "now").mockReturnValue(1_000);
+    const { finish } = whileMade();
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("overview"));
+    await waitFor(() => expect(drawImages).toBeGreaterThan(0));
+    alphas = [];
+    finish();
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"), { timeout: 3_000 });
+    expect(strip().getAttribute("data-fading")).toBe("true");
+    // Both are drawn at the start: the stand-in fully, the detail not at all yet.
+    expect(alphas).toContain(1);
+    expect(alphas).toContain(0);
+
+    now.mockReturnValue(1_075);
+    alphas = [];
+    act(() => frames.splice(0).forEach((frame) => frame(0)));
+    expect(alphas.some((a) => a > 0.4 && a < 0.6)).toBe(true);
+    expect(strip().getAttribute("data-fading")).toBe("true");
+
+    now.mockReturnValue(1_150);
+    alphas = [];
+    act(() => frames.splice(0).forEach((frame) => frame(0)));
+    await waitFor(() => expect(strip().getAttribute("data-fading")).toBeNull());
+    expect(alphas.length).toBeGreaterThan(0);
+    expect(alphas.every((a) => a === 1)).toBe(true);
+    // And no frame is left scheduled for a paused strip.
+    expect(frames).toHaveLength(0);
+  });
+
+  it("switches at once when State changes motion is off, even with Scrolling on", async () => {
+    document.documentElement.setAttribute("data-motion-scroll", "on");
+    const { finish } = whileMade();
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("overview"));
+    await waitFor(() => expect(drawImages).toBeGreaterThan(0));
+    alphas = [];
+    finish();
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"), { timeout: 3_000 });
+    expect(strip().getAttribute("data-fading")).toBeNull();
+    expect(alphas.length).toBeGreaterThan(0);
+    expect(alphas.every((a) => a === 1)).toBe(true);
+    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
+  });
+
+  it("does not fade when the detail was there from the start", async () => {
+    document.documentElement.setAttribute("data-motion-state", "on");
+    install({ detail: "ready", initial: snapshot(item(), { playing: false, paused: true }) });
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"));
+    await waitFor(() => expect(drawImages).toBeGreaterThan(0));
+    expect(strip().getAttribute("data-fading")).toBeNull();
+    expect(alphas.every((a) => a === 1)).toBe(true);
+  });
+
+  it("notes how long the stand-in was drawn when the detail replaces it, and not when it never was", async () => {
+    const mark = vi.spyOn(performance, "mark");
+    const { finish } = whileMade();
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("overview"));
+    expect(mark).not.toHaveBeenCalledWith(expect.stringContaining("standin"), expect.anything());
+    finish();
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"), { timeout: 3_000 });
+    expect(mark).toHaveBeenCalledWith("cp-waveform:standin:replaced", { detail: { ms: expect.any(Number) } });
+  });
+
+  it("notes nothing when the detail is ready before anything is drawn", async () => {
+    const mark = vi.spyOn(performance, "mark");
+    install({ detail: "ready" });
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"));
+    expect(mark).not.toHaveBeenCalledWith(expect.stringContaining("standin"), expect.anything());
+  });
+
+  it("fades with State changes on and Scrolling off", async () => {
+    document.documentElement.setAttribute("data-motion-state", "on");
+    const { finish } = whileMade();
+    render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("overview"));
+    await waitFor(() => expect(drawImages).toBeGreaterThan(0));
+    finish();
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"), { timeout: 3_000 });
+    expect(strip().getAttribute("data-fading")).toBe("true");
+  });
+
+  it("notes the stand-in as left when the strip goes before the detail arrives", async () => {
+    const mark = vi.spyOn(performance, "mark");
+    whileMade();
+    const view = render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-source")).toBe("overview"));
+    view.unmount();
+    expect(mark).toHaveBeenCalledWith("cp-waveform:standin:left", { detail: { ms: expect.any(Number) } });
+  });
+
+  it("times nothing when the detail will not come (the file is missing)", async () => {
+    const mark = vi.spyOn(performance, "mark");
+    const { waveforms } = install({ detail: "missing" });
+    waveforms.get.mockImplementation(async ({ track_ids }) => ({
+      value: { width: 1200, paused: false, waveforms: track_ids.map(() => overview(true)), unknown: [] },
+      refusal: null,
+    }));
+    const view = render(<Slot />);
+    await waitFor(() => expect(strip().getAttribute("data-detail")).toBe("missing"));
+    view.unmount();
+    expect(mark).not.toHaveBeenCalledWith(expect.stringContaining("standin"), expect.anything());
   });
 });

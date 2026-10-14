@@ -307,15 +307,25 @@ def detail(params: Dict[str, List[str]], store: JobStore) -> Dict[str, Any]:
 
 
 def request_detail(body: Dict[str, Any], store: JobStore) -> Dict[str, Any]:
-    """Queue a track's zoomed waveform; its state after."""
+    """Queue a track's zoomed waveform; its state after.
+
+    ``low`` marks a prepare-ahead request that never displaces a wanted one."""
     from cuepoint.engine.waveform_jobs import request_detail as queue
 
-    _only(body, ("track_id",))
+    _only(body, ("track_id", "low"))
     track_id = _id(body.get("track_id"))
+    low = body.get("low", False)
+    if not isinstance(low, bool):
+        raise bad_request("low must be true or false")
     answer = _detail_answer(track_id)
     state = answer.state.state
     if state == "waiting":
-        state = STATE_WORKING if queue(store, track_id) else "unavailable"
+        if queue(store, track_id, low=low):
+            state = STATE_WORKING
+        else:
+            # A prepare-ahead request turned away because the worker is busy
+            # is still just waiting; the caller may ask again later.
+            state = "waiting" if low else "unavailable"
     return {"track_id": track_id, "state": state}
 
 

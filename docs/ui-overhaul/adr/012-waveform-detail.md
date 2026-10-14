@@ -56,6 +56,23 @@ within one detail column (13 ms) of 2 s and 4 s; the real `mpv` puts them 0 to 1
 - One more `mpv` child may run beside the library analysis, at the same lowered priority.
 - The renderer has its first `requestAnimationFrame` loop; it runs only while playing and visible.
 
+## Made ahead (amendment)
+
+The detail is still made on demand, but the renderer now asks for it before play: for the track
+selected in a list (after a 300 ms pause in the arrow keys) and for the next track in the queue.
+`POST /waveforms/detail/request` takes an optional `low: true`. A low request never replaces a
+queued or running wanted one and is turned away (state stays `waiting`) while a wanted decode is
+going. A newer low request replaces an older low one, queued or in flight (the newest guess
+wins), and a wanted request for another track cancels a low decode in flight. The renderer keeps one
+prepare-ahead request in flight, never asks while a view waits for another track, and holds the
+results in the same bounded cache. If the detail is still not ready at play, the strip draws the
+overview interpolated between its columns, cross-fades to the detail over 150 ms (instant when
+Settings, Motion, "State changes" is off). The fade runs its own short `requestAnimationFrame`
+loop even while the player is paused (capped at twice the fade, then it stops), so a paused strip
+still fades. The next-in-queue guess wraps to the head of the queue when it repeats all; a queue
+reordered in place gives no signal, so that guess is refreshed on the next queue change, and notes how long the stand-in was used (a profiler mark and a breadcrumb, no
+track identity).
+
 ## Signals to revisit
 
 - Users routinely play more than about 6,000 distinct tracks between replays (cache churn): raise

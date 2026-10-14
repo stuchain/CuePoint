@@ -188,8 +188,10 @@ class _Owed:
 class _DetailRun:
     """One detail decode in flight."""
 
-    def __init__(self, track_id: int) -> None:
+    def __init__(self, track_id: int, low: bool = False) -> None:
         self.track_id = track_id
+        #: A prepare-ahead decode: a foreground request for another track cancels it.
+        self.low = low
         #: Set when "Delete waveform data" or a job it gives way to stops the decode.
         self.cancelled = threading.Event()
         #: Set when the worker has finished with it, however it ended.
@@ -285,6 +287,8 @@ class AnalysisCoordinator:
         #: Wakes the detail worker: a request, or a job it gave way to ending.
         self._detail_wake = threading.Condition(self._lock)
         self._detail_queued: Optional[int] = None
+        #: True when the queued track was asked for ahead of need (low priority).
+        self._detail_queued_low = False
         self._detail_run: Optional[_DetailRun] = None
         self._detail_worker: Optional[threading.Thread] = None
         self._requests: "OrderedDict[int, None]" = OrderedDict()
@@ -432,6 +436,7 @@ class AnalysisCoordinator:
                 if control.stop is None:
                     control.stop = STOP_DATA_DELETED
             self._detail_queued = None
+            self._detail_queued_low = False
             detail_run = self._detail_run
             if detail_run is not None:
                 detail_run.cancelled.set()
@@ -538,16 +543,23 @@ class AnalysisCoordinator:
 
     # ------------------------------------------------------ the detail fill
 
-    def request_detail(self, track_id: int) -> bool:
+    def request_detail(self, track_id: int, low: bool = False) -> bool:
         """Make this track's detail waveform, if it is not already being made.
 
         A newer request replaces one still queued; the decode already going
         finishes. The same track asked twice is one decode. Runs while the
         analysis is paused, and not at all without a decoder.
 
+        ``low`` is a prepare-ahead request (the track is selected or next in the
+        queue, not yet played). It never replaces a foreground request or a
+        wanted decode already going, but a newer one replaces an older low one,
+        queued or in flight (the newest guess wins). A foreground request for
+        another track drops, or cancels the decode of, a low one.
+
         Returns:
             True when the track's detail is queued or being made, False when it
-            cannot be: no decoder, or not a track id.
+            cannot be: no decoder, not a track id, or (``low`` only) the worker
+            is busy with something else.
         """
         if isinstance(track_id, bool) or int(track_id) < 1:
             return False
@@ -561,8 +573,25 @@ class AnalysisCoordinator:
                 and run.track_id == track_id
                 and not run.cancelled.is_set()
             ):
+                if not low:
+                    run.low = False  # now wanted: no longer yields
                 return True
+            if low:
+                wanted_busy = (
+                    run is not None and not run.low and not run.cancelled.is_set()
+                )
+                if wanted_busy or (
+                    self._detail_queued is not None and not self._detail_queued_low
+                ):
+                    return False
+                if run is not None and run.low:
+                    # The newest guess wins: an older prepare-ahead decode gives way.
+                    run.cancelled.set()
+            elif run is not None and run.low:
+                # A prepare-ahead decode gives way to the track now wanted.
+                run.cancelled.set()
             self._detail_queued = track_id
+            self._detail_queued_low = low
             if self._detail_worker is None:
                 worker = threading.Thread(
                     target=self._detail_loop, name="waveform-detail", daemon=True
@@ -622,8 +651,9 @@ class AnalysisCoordinator:
                         self._detail_queued = None
                         continue
                     self._detail_wake.wait(DETAIL_RECHECK_SECONDS)
-                run = _DetailRun(self._detail_queued)
+                run = _DetailRun(self._detail_queued, self._detail_queued_low)
                 self._detail_queued = None
+                self._detail_queued_low = False
                 self._detail_run = run
             try:
                 self._make_detail(run)
@@ -943,9 +973,9 @@ def request_analysis(store: JobStore, track_ids: Iterable[int]) -> Optional[Job]
     return coordinator(store).request(track_ids)
 
 
-def request_detail(store: JobStore, track_id: int) -> bool:
+def request_detail(store: JobStore, track_id: int, low: bool = False) -> bool:
     """Make this track's detail waveform; see :meth:`AnalysisCoordinator.request_detail`."""
-    return coordinator(store).request_detail(track_id)
+    return coordinator(store).request_detail(track_id, low=low)
 
 
 def detail_in_flight(store: JobStore, track_id: int) -> bool:

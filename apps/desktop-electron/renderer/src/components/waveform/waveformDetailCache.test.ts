@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { WaveformAnswer, WaveformDetail, WaveformDetailState } from "../../api/cuepointBridge.types";
-import { DETAIL_LIMIT, DETAIL_TIMEOUT_MS, MAX_REQUESTS, POLL_MS, WaveformDetailCache } from "./waveformDetailCache";
+import {
+  DETAIL_LIMIT,
+  DETAIL_TIMEOUT_MS,
+  MAX_REQUESTS,
+  POLL_MS,
+  PREFETCH_TIMEOUT_MS,
+  WaveformDetailCache,
+} from "./waveformDetailCache";
 
 /**
  * The zoomed waveforms the renderer holds (T4): asked for once, followed while
@@ -252,6 +259,137 @@ describe("WaveformDetailCache", () => {
     cache.forget();
     release(detail(1, "working"));
     await flush();
+    const entry = cache.read(1);
+    expect(entry.kind === "detail" && entry.detail.state).toBe("ready");
+  });
+});
+
+describe("WaveformDetailCache.prefetch", () => {
+  it("makes a waiting detail ahead of time at low priority, and holds it ready", async () => {
+    const { cache, get, requestDetail } = setup((id, call) =>
+      call === 1 ? detail(id, "waiting") : call < 3 ? detail(id, "working") : detail(id, "ready", true),
+    );
+    const handle = cache.prefetch(5);
+    await flush();
+    expect(requestDetail).toHaveBeenCalledTimes(1);
+    expect(requestDetail).toHaveBeenCalledWith({ track_id: 5, low: true });
+    await vi.advanceTimersByTimeAsync(2 * POLL_MS);
+    await handle.done;
+    const entry = cache.read(5);
+    expect(entry.kind === "detail" && entry.detail.state).toBe("ready");
+    expect(get).toHaveBeenCalledTimes(3);
+    // Showing it later asks for nothing.
+    cache.show(5);
+    await flush();
+    expect(get).toHaveBeenCalledTimes(3);
+    expect(requestDetail).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks for nothing when the detail is already held or known to be missing", async () => {
+    const { cache, get, requestDetail } = setup((id) => (id === 2 ? detail(id, "missing") : detail(id, "ready", true)));
+    cache.show(1);
+    cache.show(2);
+    await flush();
+    get.mockClear();
+    await cache.prefetch(1).done;
+    await cache.prefetch(2).done;
+    expect(get).not.toHaveBeenCalled();
+    expect(requestDetail).not.toHaveBeenCalled();
+  });
+
+  it("is one request however often a track is asked for", async () => {
+    const { cache, get, requestDetail } = setup((id, call) => (call === 1 ? detail(id, "waiting") : detail(id, "working")));
+    const first = cache.prefetch(3);
+    const second = cache.prefetch(3);
+    expect(second).toBe(first);
+    await flush();
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+    expect(requestDetail).toHaveBeenCalledTimes(1);
+    expect(get).toHaveBeenCalledTimes(2);
+    first.cancel();
+  });
+
+  it("asks again, still low, when the engine turned the request away as busy", async () => {
+    let requests = 0;
+    const get = vi.fn(async ({ track_id }: { track_id: number }) =>
+      requests < 2 ? detail(track_id, "waiting") : detail(track_id, "ready", true),
+    );
+    const requestDetail = vi.fn(async ({ track_id }: { track_id: number }) => {
+      requests += 1;
+      return { refusal: null, value: { track_id, state: (requests < 2 ? "waiting" : "working") as WaveformDetailState } };
+    });
+    const cache = new WaveformDetailCache({ bridge: () => ({ detail: get, requestDetail }) });
+    cache.prefetch(4);
+    await flush();
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+    expect(requestDetail).toHaveBeenCalledTimes(2);
+    expect(requestDetail).toHaveBeenLastCalledWith({ track_id: 4, low: true });
+    const entry = cache.read(4);
+    expect(entry.kind === "detail" && entry.detail.state).toBe("ready");
+  });
+
+  it("stops when cancelled", async () => {
+    const { cache, get } = setup((id) => detail(id, "working"));
+    const handle = cache.prefetch(6);
+    await flush();
+    handle.cancel();
+    await handle.done;
+    get.mockClear();
+    await vi.advanceTimersByTimeAsync(10 * POLL_MS);
+    expect(get).not.toHaveBeenCalled();
+    // And a new ask is a new request.
+    cache.prefetch(6).cancel();
+    await flush();
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives up after its own, shorter, limit and leaves no error behind", async () => {
+    const { cache, get } = setup((id) => detail(id, "working"));
+    const handle = cache.prefetch(8);
+    await vi.advanceTimersByTimeAsync(PREFETCH_TIMEOUT_MS + 2 * POLL_MS);
+    await handle.done;
+    const calls = get.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(5 * POLL_MS);
+    expect(get.mock.calls.length).toBe(calls);
+    expect(PREFETCH_TIMEOUT_MS).toBeLessThan(DETAIL_TIMEOUT_MS);
+    expect(cache.read(8).kind).not.toBe("error");
+  });
+
+  it("hands over to the view that then shows the track", async () => {
+    const { cache, requestDetail } = setup((id, call) => (call < 3 ? detail(id, "working") : detail(id, "ready", true)));
+    const handle = cache.prefetch(9);
+    await flush();
+    cache.show(9);
+    await flush();
+    await handle.done;
+    await vi.advanceTimersByTimeAsync(3 * POLL_MS);
+    const entry = cache.read(9);
+    expect(entry.kind === "detail" && entry.detail.state).toBe("ready");
+    // The view does not request a thing it was told is working.
+    expect(requestDetail).not.toHaveBeenCalled();
+  });
+
+  it("does not touch the engine while a view is waiting for another track", async () => {
+    const { cache, get, requestDetail } = setup((id) => detail(id, id === 1 ? "working" : "waiting"));
+    cache.show(1);
+    await flush();
+    get.mockClear();
+    const handle = cache.prefetch(2);
+    await vi.advanceTimersByTimeAsync(3 * POLL_MS);
+    expect(requestDetail).not.toHaveBeenCalledWith({ track_id: 2, low: true });
+    expect(get.mock.calls.filter(([a]) => a.track_id === 2)).toHaveLength(0);
+    handle.cancel();
+  });
+
+  it("keeps the shown track and stays within the cache's bound", async () => {
+    const { cache } = setup((id) => detail(id, "ready", true));
+    cache.show(1);
+    await flush();
+    for (const id of [2, 3, 4, 5, 6]) {
+      await cache.prefetch(id).done;
+    }
+    expect(cache.size).toBeLessThanOrEqual(DETAIL_LIMIT);
     const entry = cache.read(1);
     expect(entry.kind === "detail" && entry.detail.state).toBe("ready");
   });

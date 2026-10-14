@@ -1016,6 +1016,127 @@ class TestTheDetailFill:
 
         assert lib.decoder.names() == ["a"]
 
+    def test_a_prepare_ahead_request_makes_the_detail_when_idle(self, lib, engine):
+        _, analysis = engine
+        lib.add("a")
+
+        assert analysis.request_detail(lib.id("a"), low=True) is True
+        wait_for(lambda: self.detail_of(lib, "a") is not None, "the detail")
+
+    def test_a_prepare_ahead_request_is_turned_away_while_a_decode_is_going(
+        self, lib, engine
+    ):
+        _, analysis = engine
+        for name in ("a", "b"):
+            lib.add(name)
+        gate = Gate()
+        lib.decoder.answers[str(lib.path("a"))] = gate
+
+        analysis.request_detail(lib.id("a"))
+        assert gate.entered.wait(TIMEOUT)
+
+        assert analysis.request_detail(lib.id("b"), low=True) is False
+        assert analysis.detail_in_flight(lib.id("b")) is False
+        gate.release.set()
+        wait_for(lambda: not analysis.detail_in_flight(lib.id("a")), "the end")
+
+    def test_a_newer_prepare_ahead_request_replaces_a_low_decode_in_flight(
+        self, lib, engine
+    ):
+        _, analysis = engine
+        for name in ("a", "b"):
+            lib.add(name)
+        gate = Gate()
+        lib.decoder.answers[str(lib.path("a"))] = gate
+
+        analysis.request_detail(lib.id("a"), low=True)
+        assert gate.entered.wait(TIMEOUT)
+
+        assert analysis.request_detail(lib.id("b"), low=True) is True
+        with analysis._lock:
+            assert analysis._detail_run.cancelled.is_set()
+        gate.release.set()
+        wait_for(lambda: self.detail_of(lib, "b") is not None, "the newest guess")
+
+    def test_a_newer_prepare_ahead_request_replaces_a_queued_low_one(self, lib, engine):
+        _, analysis = engine
+        for name in ("b", "c"):
+            lib.add(name)
+        # Hold the worker back so the first request stays queued.
+        analysis._detail_blocked = lambda: True
+
+        assert analysis.request_detail(lib.id("b"), low=True) is True
+        assert analysis.request_detail(lib.id("c"), low=True) is True
+        with analysis._lock:
+            assert analysis._detail_queued == lib.id("c")
+            assert analysis._detail_queued_low is True
+
+    def test_a_prepare_ahead_request_never_cancels_a_wanted_decode(self, lib, engine):
+        _, analysis = engine
+        for name in ("a", "b"):
+            lib.add(name)
+        gate = Gate()
+        lib.decoder.answers[str(lib.path("a"))] = gate
+
+        analysis.request_detail(lib.id("a"))
+        assert gate.entered.wait(TIMEOUT)
+        assert analysis.request_detail(lib.id("b"), low=True) is False
+        with analysis._lock:
+            assert not analysis._detail_run.cancelled.is_set()
+        gate.release.set()
+        wait_for(lambda: self.detail_of(lib, "a") is not None, "the wanted one")
+
+    def test_a_prepare_ahead_request_never_replaces_a_wanted_one_in_the_queue(
+        self, lib, engine
+    ):
+        _, analysis = engine
+        for name in ("a", "b", "c"):
+            lib.add(name)
+        gate = Gate()
+        lib.decoder.answers[str(lib.path("a"))] = gate
+
+        analysis.request_detail(lib.id("a"))
+        assert gate.entered.wait(TIMEOUT)
+        analysis.request_detail(lib.id("b"))
+        assert analysis.request_detail(lib.id("c"), low=True) is False
+        gate.release.set()
+        wait_for(lambda: self.detail_of(lib, "b") is not None, "the wanted one")
+        wait_for(lambda: not analysis.detail_in_flight(lib.id("b")), "the end")
+
+        assert self.detail_of(lib, "c") is None
+
+    def test_a_wanted_request_cancels_a_prepare_ahead_decode_of_another_track(
+        self, lib, engine
+    ):
+        _, analysis = engine
+        for name in ("a", "b"):
+            lib.add(name)
+        gate = Gate()
+        lib.decoder.answers[str(lib.path("a"))] = gate
+
+        analysis.request_detail(lib.id("a"), low=True)
+        assert gate.entered.wait(TIMEOUT)
+        analysis.request_detail(lib.id("b"))
+        with analysis._lock:
+            assert analysis._detail_run.cancelled.is_set()
+        gate.release.set()
+        wait_for(lambda: self.detail_of(lib, "b") is not None, "the wanted one")
+
+    def test_a_wanted_request_for_the_same_track_keeps_the_decode(self, lib, engine):
+        _, analysis = engine
+        lib.add("a")
+        gate = Gate()
+        lib.decoder.answers[str(lib.path("a"))] = gate
+
+        analysis.request_detail(lib.id("a"), low=True)
+        assert gate.entered.wait(TIMEOUT)
+        assert analysis.request_detail(lib.id("a")) is True
+        with analysis._lock:
+            assert not analysis._detail_run.cancelled.is_set()
+            assert analysis._detail_run.low is False
+        gate.release.set()
+        wait_for(lambda: self.detail_of(lib, "a") is not None, "the detail")
+
     def test_a_newer_request_replaces_a_queued_one_and_the_running_one_finishes(
         self, lib, engine
     ):

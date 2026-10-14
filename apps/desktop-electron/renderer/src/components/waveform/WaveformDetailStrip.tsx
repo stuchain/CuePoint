@@ -4,8 +4,13 @@
  * beat and a stronger one on each bar.
  *
  * **What it draws.** The track's detail (75 columns a second) once the engine
- * has made it. Until then, the overview stretched over the same window, so
- * nothing jumps when the detail arrives; with neither, words. The beat grid is
+ * has made it (usually ahead of play: `waveformPrefetch.ts`). If it is not ready
+ * when the track starts, the overview stands in: stretched over the same window
+ * so nothing jumps, and smoothed (linearly interpolated between its columns,
+ * `waveformStandIn.ts`) so it slopes instead of stepping in blocks, then
+ * cross-faded to the detail over `CROSSFADE_MS` when that arrives (instantly
+ * under reduced motion: the "State changes" switch). The time spent on the stand-in is noted for the
+ * profiler and the breadcrumb trail, by outcome only. With neither, words. The beat grid is
  * Rekordbox's, from the track's marks: a track without one gets no lines and
  * says why in the tip above the strip.
  *
@@ -50,6 +55,7 @@ import {
   type DetailSource,
   type DetailTile,
 } from "./waveformDetailLayout";
+import { CROSSFADE_MS, crossfadeAlpha, noteStandIn } from "./waveformStandIn";
 import { themeTokens, useBoxSize, useDevicePixelRatio, useThemeRevision } from "./waveformEnvironment";
 import { BANDS, waveformColumns, waveformUnit } from "./waveformLayout";
 import { resolvePaint } from "./waveformPaint";
@@ -66,18 +72,20 @@ const COARSE_WIDTH = 1200;
 const BAR_LAYERS = 3;
 
 /** True while the scroll may move: the root carries `data-motion-scroll` (Settings, Motion, "Scrolling"). */
-function useMotionOn(): boolean {
-  const read = () =>
-    typeof document !== "undefined" && document.documentElement.hasAttribute("data-motion-scroll");
-  const [on, setOn] = useState(read);
+function useMotionOn(attribute = "data-motion-scroll"): boolean {
+  const [on, setOn] = useState(() => hasRootAttribute(attribute));
   useEffect(() => {
-    setOn(read());
+    setOn(hasRootAttribute(attribute));
     if (typeof MutationObserver === "undefined") return undefined;
-    const observer = new MutationObserver(() => setOn(read()));
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-motion-scroll"] });
+    const observer = new MutationObserver(() => setOn(hasRootAttribute(attribute)));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: [attribute] });
     return () => observer.disconnect();
-  }, []);
+  }, [attribute]);
   return on;
+}
+
+function hasRootAttribute(attribute: string): boolean {
+  return typeof document !== "undefined" && document.documentElement.hasAttribute(attribute);
 }
 
 /** Whether the document is hidden, followed. */
@@ -114,6 +122,16 @@ function paintTile(context: CanvasRenderingContext2D, tile: DetailTile): void {
   context.globalAlpha = 1;
 }
 
+interface TileSet {
+  epoch: object | null;
+  canvases: Map<number, HTMLCanvasElement | null>;
+  /** Drawn from the smoothed overview, not the detail. */
+  standIn: boolean;
+  /** What a tile's place depends on, so a fade only joins tiles that line up. */
+  geometry: string;
+  trackId: number;
+}
+
 export function WaveformDetailStrip({ trackId }: { trackId: number }) {
   const [canvas, box] = useBoxSize<HTMLCanvasElement>();
   const scale = useScaleFactor();
@@ -122,6 +140,8 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
   const [mode] = useWaveformColour();
   const [spanMs, setSpanMs] = useWaveformDetailSpan();
   const motion = useMotionOn();
+  // The cross-fade is a state change (Settings, Motion, "State changes"), not scrolling.
+  const fadeMotion = useMotionOn("data-motion-state");
   const hidden = useHidden();
 
   const position = usePlayerValue(selectPosition);
@@ -151,10 +171,20 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
     if (detailReady) return { data: detail.data!, rateHz: detail.rate_hz! };
     if (coarse?.state === "ready" && coarse.data && coarse.duration_ms && coarse.duration_ms > 0) {
       const columns = Math.floor(coarse.data.length / BANDS);
-      return { data: coarse.data, rateHz: columns / (coarse.duration_ms / 1000) };
+      return { data: coarse.data, rateHz: columns / (coarse.duration_ms / 1000), smooth: true };
     }
     return null;
   }, [coarse, detail, detailReady]);
+
+  /** Drawing the smoothed overview because the detail is not ready. */
+  const standIn = source?.smooth === true;
+
+  // Without motion no frame follows a snapshot, so there is no glide: draw the truth.
+  const motionRef = useRef(motion);
+  motionRef.current = motion;
+  const fadeMotionRef = useRef(fadeMotion);
+  fadeMotionRef.current = fadeMotion;
+  const drawRef = useRef<() => void>(() => undefined);
 
   const columns = waveformColumns(box.width, scale, ratio);
   const unit = waveformUnit(scale, ratio);
@@ -171,10 +201,11 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
   );
 
   const clock = useRef(createPlayheadClock());
-  const tiles = useRef<{ epoch: object | null; canvases: Map<number, HTMLCanvasElement | null> }>({
-    epoch: null,
-    canvases: new Map(),
-  });
+  const tiles = useRef<TileSet>({ epoch: null, canvases: new Map(), standIn: false, geometry: "", trackId });
+  // The stand-in's tiles, drawn fading out under the detail's fading in.
+  const fade = useRef<{ canvases: Map<number, HTMLCanvasElement | null>; startedAt: number } | null>(null);
+  const [fading, setFading] = useState(false);
+  const fadeFrame = useRef(0);
 
   const tileFor = useCallback(
     (index: number): HTMLCanvasElement | null => {
@@ -198,6 +229,24 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
     [durationMs, grid, mode, msPerColumn, rows, source, unit],
   );
 
+  // Frames for the cross-fade, which a paused strip would not otherwise draw.
+  const startFade = useCallback(() => {
+    setFading(true);
+    cancelAnimationFrame(fadeFrame.current);
+    const tick = () => {
+      drawRef.current();
+      const running = fade.current;
+      if (running && performance.now() - running.startedAt > 2 * CROSSFADE_MS) fade.current = null;
+      if (fade.current) {
+        fadeFrame.current = requestAnimationFrame(tick);
+      } else {
+        setFading(false);
+      }
+    };
+    fadeFrame.current = requestAnimationFrame(tick);
+  }, []);
+  useEffect(() => () => cancelAnimationFrame(fadeFrame.current), []);
+
   const draw = useCallback(() => {
     const element = canvas.current;
     if (!element || columns <= 0 || rows <= 0) return;
@@ -211,7 +260,18 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
     if (at === null) return;
     const centre = Math.min(durationMs > 0 ? durationMs : at, Math.max(0, at));
 
-    if (tiles.current.epoch !== epoch) tiles.current = { epoch, canvases: new Map() };
+    if (tiles.current.epoch !== epoch) {
+      const previous = tiles.current;
+      const geometry = `${unit}|${rows}|${msPerColumn}`;
+      const arrived = previous.standIn && !standIn && source !== null && previous.trackId === trackId;
+      if (arrived && previous.geometry === geometry && previous.canvases.size > 0 && fadeMotionRef.current) {
+        fade.current = { canvases: previous.canvases, startedAt: performance.now() };
+        startFade();
+      } else if (!arrived || previous.geometry !== geometry) {
+        fade.current = null;
+      }
+      tiles.current = { epoch, canvases: new Map(), standIn, geometry, trackId };
+    }
     const view = detailView(centre, columns, TILE_UNITS, msPerColumn);
     const top = Math.floor((height - rows * unit) / 2);
     const wanted = new Set(view.tiles.map((t) => t.index));
@@ -221,30 +281,72 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
       }
     }
     if (source) {
+      let alpha = 1;
+      const fadeOut = fade.current;
+      if (fadeOut) {
+        alpha = crossfadeAlpha(performance.now() - fadeOut.startedAt, CROSSFADE_MS);
+        if (alpha >= 1) {
+          fade.current = null;
+        } else {
+          context.globalAlpha = 1 - alpha;
+          for (const tile of view.tiles) {
+            const old = fadeOut.canvases.get(tile.index);
+            if (old) context.drawImage(old, tile.x * unit, top);
+          }
+        }
+      }
+      context.globalAlpha = alpha;
       for (const tile of view.tiles) {
         const image = tileFor(tile.index);
         if (image) context.drawImage(image, tile.x * unit, top);
       }
+      context.globalAlpha = 1;
     }
     const mid = Math.floor(columns / 2) * unit;
     context.fillStyle = resolvePaint("played", themeTokens);
     context.fillRect(0, top, mid, rows * unit);
     context.fillStyle = resolvePaint("playhead", themeTokens);
     context.fillRect(mid, top, unit, rows * unit);
-  }, [canvas, columns, durationMs, epoch, height, msPerColumn, rows, source, tileFor, unit, width]);
+  }, [canvas, columns, durationMs, epoch, height, msPerColumn, rows, source, standIn, startFade, tileFor, trackId, unit, width]);
 
-  const drawRef = useRef(draw);
   useLayoutEffect(() => {
     drawRef.current = draw;
     draw();
   }, [draw, theme]);
 
-  // Without motion no frame follows a snapshot, so there is no glide: draw the truth.
-  const motionRef = useRef(motion);
-  motionRef.current = motion;
-
   // A glide after a snapshot is still fading: a paused strip draws on until it ends.
   const [gliding, setGliding] = useState(false);
+
+  // How long the stand-in was drawn while the detail was being made, noted when the detail
+  // replaces it, the track changes or the strip goes. A detail that will not come (missing,
+  // an error) is not a wait, so nothing is timed for it.
+  const standInSince = useRef<{ trackId: number; at: number } | null>(null);
+  const detailState = detail?.state ?? null;
+  const pending = detailState === "waiting" || detailState === "working";
+  useEffect(() => {
+    const now = performance.now();
+    const held = standInSince.current;
+    if (held && held.trackId !== trackId) {
+      noteStandIn(now - held.at, "left");
+      standInSince.current = null;
+    }
+    if (detailReady) {
+      if (standInSince.current) noteStandIn(now - standInSince.current.at, "replaced");
+      standInSince.current = null;
+    } else if (standIn && pending && standInSince.current === null) {
+      standInSince.current = { trackId, at: now };
+    } else if (!pending) {
+      standInSince.current = null;
+    }
+  }, [detailReady, pending, standIn, trackId]);
+  useEffect(
+    () => () => {
+      const held = standInSince.current;
+      if (held) noteStandIn(performance.now() - held.at, "left");
+      standInSince.current = null;
+    },
+    [],
+  );
 
   // A snapshot from the player: anchor the clock, and draw where it says.
   useLayoutEffect(() => {
@@ -336,6 +438,7 @@ export function WaveformDetailStrip({ trackId }: { trackId: number }) {
         data-testid="waveform-detail-strip"
         data-detail={detailEntry?.kind === "detail" ? detailEntry.detail.state : (detailEntry?.kind ?? "loading")}
         data-source={detailReady ? "detail" : source ? "overview" : "none"}
+        data-fading={fading ? "true" : undefined}
         data-grid={noGrid ? "none" : grid && grid.length > 0 ? "rekordbox" : undefined}
         onClick={seek}
       >

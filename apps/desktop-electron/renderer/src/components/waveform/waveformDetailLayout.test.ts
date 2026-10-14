@@ -181,6 +181,31 @@ describe("layoutDetailTile", () => {
     expect(low).toEqual([0, 2]);
   });
 
+  it("slopes between samples instead of stepping when the stand-in is smoothed", () => {
+    const ramp = new Uint8Array([0, 0, 0, 0, 0, 100, 0, 0, 0, 200, 0, 0]);
+    const wide = { ...base, source: { data: ramp, rateHz: 4, smooth: true }, msPerColumn: 25, columns: 30, unit: 1, rows: 400 };
+    const steps = (smooth: boolean) =>
+      new Set(
+        layoutDetailTile({ ...wide, source: { ...wide.source, smooth } })
+          .bands.filter((r) => r.paint === "low")
+          .map((r) => r.height),
+      ).size;
+    // Unsmoothed, the three samples are three heights; smoothed, a ramp of many.
+    expect(steps(false)).toBeLessThanOrEqual(2);
+    expect(steps(true)).toBeGreaterThan(8);
+    const heights = layoutDetailTile(wide)
+      .bands.filter((r) => r.paint === "low")
+      .map((r) => r.height);
+    // No jump between neighbouring columns beyond the ramp's own slope.
+    for (let i = 1; i < heights.length; i += 1) expect(Math.abs(heights[i]! - heights[i - 1]!)).toBeLessThan(40);
+  });
+
+  it("leaves a smoothed source alone when it is drawn coarser than it was made", () => {
+    const plain = layoutDetailTile({ ...base, msPerColumn: 500, columns: 2 });
+    const smooth = layoutDetailTile({ ...base, source: { ...base.source, smooth: true }, msPerColumn: 500, columns: 2 });
+    expect(smooth).toEqual(plain);
+  });
+
   it("offsets a later tile and leaves silence past the data", () => {
     const tile = layoutDetailTile({ ...base, index: 1, columns: 4 });
     // Tile 1 holds world columns 4-7: past the four samples.

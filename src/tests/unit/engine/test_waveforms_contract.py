@@ -152,3 +152,15 @@ def test_the_client_declares_every_field_of_the_detail_answers(resolved, store):
     for answer in (waiting, ready):
         assert _fields("WaveformDetail") == set(answer)
     assert _fields("WaveformDetailRequested") == set(requested)
+
+
+def test_request_detail_takes_an_optional_low_flag(resolved, store):
+    track = resolved.id("a")
+    resolved.waveforms.analyse(track, detail=True)
+
+    assert api.request_detail({"track_id": track, "low": True}, store) == {
+        "track_id": track,
+        "state": "ready",
+    }
+    with pytest.raises(Exception):
+        api.request_detail({"track_id": track, "low": "yes"}, store)
