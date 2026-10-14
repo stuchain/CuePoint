@@ -108,6 +108,8 @@ DISCOVER_BUSY = "DISCOVER_BUSY"
 RUN_NOT_FOUND = "DISCOVERY_RUN_NOT_FOUND"
 RUN_RUNNING = "DISCOVERY_RUN_RUNNING"
 TRACK_NOT_FOUND = "TRACK_NOT_FOUND"
+LIST_NOT_FOUND = "DISCOVER_LIST_NOT_FOUND"
+LIST_NAME_TAKEN = "DISCOVER_LIST_NAME_TAKEN"
 
 REFUSAL_CODES: Tuple[str, ...] = (
     BEATPORT_REFUSED,
@@ -116,6 +118,8 @@ REFUSAL_CODES: Tuple[str, ...] = (
     RUN_NOT_FOUND,
     RUN_RUNNING,
     TRACK_NOT_FOUND,
+    LIST_NOT_FOUND,
+    LIST_NAME_TAKEN,
 )
 
 #: What each Beatport class arrives as. The request was fine in every case;
@@ -1043,6 +1047,8 @@ __all__: Sequence[str] = (
     "DiscoverUnavailableError",
     "GET_PATHS",
     "INVALID_REQUEST",
+    "LIST_NAME_TAKEN",
+    "LIST_NOT_FOUND",
     "POST_PATHS",
     "PREFIX",
     "REFUSAL_CODES",

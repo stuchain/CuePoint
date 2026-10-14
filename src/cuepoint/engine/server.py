@@ -88,6 +88,12 @@ from cuepoint.persistence.track_query import (
     BROWSE_IDS_LIMIT_DEFAULT,
     BROWSE_LIMIT_DEFAULT,
 )
+from cuepoint.engine.discover_lists_api import (
+    handle_get as discover_lists_get,
+    handle_post as discover_lists_post,
+    handles_get as discover_lists_handles_get,
+    handles_post as discover_lists_handles_post,
+)
 from cuepoint.engine.discover_api import (
     handle_get as discover_get,
     handle_post as discover_post,
@@ -1125,6 +1131,12 @@ def make_handler(
                     discover_status,
                 )
                 return
+            if discover_lists_handles_get(path):
+                self._handle_routed(
+                    lambda: discover_lists_get(path, parse_qs(parsed.query)),
+                    discover_status,
+                )
+                return
             if sets_handles_get(path):
                 self._handle_routed(
                     lambda: sets_get(path, parse_qs(parsed.query)), sets_status
@@ -1522,6 +1534,13 @@ def make_handler(
                 self._handle_routed(
                     lambda: discover_post(path, raw, job_store=job_store),
                     discover_status,
+                )
+                return
+
+            if discover_lists_handles_post(path):
+                raw = self._read_body()
+                self._handle_routed(
+                    lambda: discover_lists_post(path, raw), discover_status
                 )
                 return
 

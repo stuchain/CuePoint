@@ -842,6 +842,18 @@ function registerIpcHandlers(): void {
     engine.startBeatportPlaylistPush(params),
   );
   handle("engine:startBeatportResolve", () => engine.startBeatportResolve());
+  handle("engine:getDiscoverLists", (_event, params) =>
+    engine.getDiscoverLists(params),
+  );
+  handle("engine:createDiscoverList", (_event, params) =>
+    engine.createDiscoverList(params),
+  );
+  handle("engine:updateDiscoverList", (_event, params) =>
+    engine.updateDiscoverList(params),
+  );
+  handle("engine:deleteDiscoverList", (_event, params) =>
+    engine.deleteDiscoverList(params),
+  );
   handle("engine:getEntityPage", (_event, params) =>
     engine.getEntityPage(params),
   );

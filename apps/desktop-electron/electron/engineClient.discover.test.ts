@@ -169,6 +169,35 @@ describe("actions", () => {
     ]);
   });
 
+  it("keeps saved lists on their own routes", async () => {
+    const calls = engineAnswering(200, {});
+    const c = client();
+
+    await c.getDiscoverLists();
+    await c.getDiscoverLists({ kind: "label" });
+    await c.createDiscoverList({ kind: "artist", name: "Peak", members: ["A", "B"] });
+    await c.updateDiscoverList({ list_id: 4, name: "Warm-up", members: ["C"] });
+    await c.updateDiscoverList({ list_id: 4, members: [] });
+    await c.deleteDiscoverList({ list_id: 4 });
+
+    const seen = calls.map((call) => {
+      const url = new URL(call.url);
+      return [
+        method(call),
+        url.pathname + url.search,
+        method(call) === "POST" ? sent(call) : null,
+      ];
+    });
+    expect(seen).toEqual([
+      ["GET", "/api/v1/discover/lists", null],
+      ["GET", "/api/v1/discover/lists?kind=label", null],
+      ["POST", "/api/v1/discover/lists/create", { kind: "artist", name: "Peak", members: ["A", "B"] }],
+      ["POST", "/api/v1/discover/lists/4/update", { name: "Warm-up", members: ["C"] }],
+      ["POST", "/api/v1/discover/lists/4/update", { members: [] }],
+      ["POST", "/api/v1/discover/lists/4/delete", {}],
+    ]);
+  });
+
   it("answers a started job as the value", async () => {
     engineAnswering(202, { id: "j-1", type: "discovery", state: "queued" });
 
@@ -246,6 +275,8 @@ describe("refusals", () => {
     [404, "DISCOVERY_RUN_NOT_FOUND", "No discovery run 7"],
     [409, "DISCOVERY_RUN_RUNNING", "Discovery run 7 is still running; cancel it first"],
     [404, "TRACK_NOT_FOUND", "There is no track 7 in the library"],
+    [404, "DISCOVER_LIST_NOT_FOUND", "No saved list 7"],
+    [409, "DISCOVER_LIST_NAME_TAKEN", "Another list of this kind already has that name"],
   ])("answers a %s %s as a value in the engine's words", async (status, code, message) => {
     engineAnswering(status, { error: { code, message } });
 
@@ -295,6 +326,8 @@ describe("refusals", () => {
       "DISCOVERY_RUN_NOT_FOUND",
       "DISCOVERY_RUN_RUNNING",
       "DISCOVER_BUSY",
+      "DISCOVER_LIST_NAME_TAKEN",
+      "DISCOVER_LIST_NOT_FOUND",
       "INVALID_REQUEST",
       "TRACK_NOT_FOUND",
     ]);

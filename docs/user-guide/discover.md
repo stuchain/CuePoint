@@ -22,8 +22,10 @@ See [Where inCrate went](#where-incrate-went) if you used it.
 
 ## New dig
 
-**New dig** asks what to look for, starting from your defaults. Press
-**Start looking** when you are ready.
+**New dig** asks what to look for, starting from your defaults. A bar at the
+bottom says what the dig will cover ("2 genres · 25 artists · 9 labels") and
+holds **Releases from the last … days** and **Start looking**, which stay in
+view however long the form is.
 
 - **Genres for DJ charts.** On Beatport, artists publish charts, which are short
   lists of tracks they play. CuePoint reads the charts made by artists in your
@@ -31,11 +33,37 @@ See [Where inCrate went](#where-incrate-went) if you used it.
   heading says which dates it will read ("last 30 days"); to choose other dates
   open **More options**, which holds **Charts from** and **Charts to**. Until
   you sign in to Beatport, the genres read "Genres appear after you sign in."
-- **Releases from the last … days.** New releases on your labels in that many
-  days.
-- **Artists** and **Labels.** Every artist or label in your library, only the
-  ones you choose (from a list of the names in your library, with how many
-  tracks each has), or none.
+- **Artists** and **Labels.** Each is every artist or label in your library
+  (with how many), **a saved list** of them, or none. A saved list is picked
+  from the drop-down beside it, which says how many names each list holds.
+- **Releases from the last … days** (in the bottom bar). New releases on your
+  labels in that many days.
+
+### Saved lists
+
+A saved list is a name you give to a set of artists, or of labels, so you do not
+choose them again for every dig. Lists are kept by CuePoint and are the same
+each time you open it.
+
+- **+ New list** under Artists or Labels opens the chooser: type a name, tick
+  the artists or labels from the names in your library (with how many tracks
+  each has) and press **Save**. The new list is chosen for the dig.
+- **Edit…** changes the list shown in the drop-down: its name and the names in
+  it. It does not change what the dig looks for: if "every" is chosen, it stays. A name in the list that is no longer in your library stays, ticked, until
+  you untick it.
+- **Delete list** (inside the chooser, after asking once) removes the list. The
+  artists or labels stay in your library. If the dig was using that list, it
+  keeps "a saved list" with none chosen, and **Start looking** waits until you
+  pick another list or choose every one yourself.
+- A list's name must be different from your other lists of the same kind (capital
+  letters do not count). Artist lists and label lists are separate.
+
+If you had chosen artists or labels for an earlier dig, the newest of those
+choices is kept as a list called **My artists** or **My labels**, so nothing you
+picked is lost.
+
+A dig that uses a list looks for the names in it, exactly as a dig where you
+ticked the same names would.
 
 **Start looking** hands the dig to CuePoint, which does it in the
 background. The status strip shows how far it has got, with a **Stop** button,

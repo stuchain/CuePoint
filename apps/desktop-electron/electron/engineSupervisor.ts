@@ -48,6 +48,9 @@ import {
   type DiscoverJobStarted,
   type DiscoverOptions,
   type DiscoverRunDeleted,
+  type DiscoverList,
+  type DiscoverListDeleted,
+  type DiscoverLists,
   type DiscoverRunHeader,
   type DiscoverRunList,
   type DiscoverRunTracksPage,
@@ -1162,6 +1165,30 @@ export class EngineSupervisor {
     params: Parameters<EngineClient["startBeatportPlaylistPush"]>[0],
   ): Promise<DiscoverAnswer<DiscoverJobStarted>> {
     return (await this.readyClient()).startBeatportPlaylistPush(params);
+  }
+
+  async getDiscoverLists(
+    params?: Parameters<EngineClient["getDiscoverLists"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverLists>> {
+    return (await this.readyClient()).getDiscoverLists(params);
+  }
+
+  async createDiscoverList(
+    params: Parameters<EngineClient["createDiscoverList"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverList>> {
+    return (await this.readyClient()).createDiscoverList(params);
+  }
+
+  async updateDiscoverList(
+    params: Parameters<EngineClient["updateDiscoverList"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverList>> {
+    return (await this.readyClient()).updateDiscoverList(params);
+  }
+
+  async deleteDiscoverList(
+    params: Parameters<EngineClient["deleteDiscoverList"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverListDeleted>> {
+    return (await this.readyClient()).deleteDiscoverList(params);
   }
 
   async startBeatportResolve(): Promise<DiscoverAnswer<DiscoverJobStarted>> {

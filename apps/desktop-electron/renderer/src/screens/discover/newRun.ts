@@ -11,8 +11,8 @@ import type {
   DiscoverRunRequest,
 } from "../../api/cuepointBridge.types";
 
-/** Every name in the library, only the names picked, or none at all. */
-export type ScopeMode = "all" | "picked" | "none";
+/** Every name in the library, the names in a saved list, or none at all. */
+export type ScopeMode = "all" | "list" | "none";
 
 export interface NewRunForm {
   genreIds: number[];
@@ -21,10 +21,22 @@ export interface NewRunForm {
   /** As typed, so a half-typed number is not replaced under the cursor. */
   days: string;
   artists: ScopeMode;
-  pickedArtists: string[];
+  /** The saved artist list a "list" scope reads, or null before one is chosen. */
+  artistListId: number | null;
   labels: ScopeMode;
-  pickedLabels: string[];
+  labelListId: number | null;
 }
+
+/**
+ * The names in the saved lists the form points at (empty when none is
+ * chosen). The form holds which list; the engine holds what is in it.
+ */
+export interface ListMembers {
+  artists: readonly string[];
+  labels: readonly string[];
+}
+
+export const NO_MEMBERS: ListMembers = { artists: [], labels: [] };
 
 export function defaultForm(defaults: DiscoverDefaults): NewRunForm {
   return {
@@ -33,9 +45,9 @@ export function defaultForm(defaults: DiscoverDefaults): NewRunForm {
     chartsTo: defaults.charts_to,
     days: String(defaults.new_releases_days),
     artists: "all",
-    pickedArtists: [],
+    artistListId: null,
     labels: "all",
-    pickedLabels: [],
+    labelListId: null,
   };
 }
 
@@ -53,7 +65,11 @@ function dayOf(text: string): number | null {
 }
 
 /** Each thing the engine would refuse, as the sentence to show. */
-export function formProblems(form: NewRunForm, limits: DiscoverLimits): string[] {
+export function formProblems(
+  form: NewRunForm,
+  limits: DiscoverLimits,
+  members: ListMembers = NO_MEMBERS,
+): string[] {
   const problems: string[] = [];
   if (form.genreIds.length > limits.max_genres) {
     problems.push(`Choose at most ${limits.max_genres} genres.`);
@@ -73,12 +89,8 @@ export function formProblems(form: NewRunForm, limits: DiscoverLimits): string[]
   if (!/^\d+$/.test(form.days.trim()) || days < 1 || days > limits.max_window_days) {
     problems.push(`Releases reach back from 1 to ${limits.max_window_days} days.`);
   }
-  if (form.artists === "picked" && form.pickedArtists.length === 0) {
-    problems.push("Choose at least one artist, or look for every one.");
-  }
-  if (form.labels === "picked" && form.pickedLabels.length === 0) {
-    problems.push("Choose at least one label, or look for every one.");
-  }
+  problems.push(...listProblem("artist", form.artists, form.artistListId, members.artists));
+  problems.push(...listProblem("label", form.labels, form.labelListId, members.labels));
   // Two rules the engine does not make, because it can run them and find
   // nothing: a search's charts are the ones your artists curated, and a search
   // with neither artists nor labels has nothing to look for.
@@ -90,18 +102,34 @@ export function formProblems(form: NewRunForm, limits: DiscoverLimits): string[]
   return problems;
 }
 
-function scope(mode: ScopeMode, picked: readonly string[]): string[] | null {
-  if (mode === "all") return null;
-  return mode === "none" ? [] : [...picked];
+/** What is wrong with a "saved list" scope, if it is one. */
+function listProblem(
+  noun: string,
+  mode: ScopeMode,
+  listId: number | null,
+  members: readonly string[],
+): string[] {
+  if (mode !== "list") return [];
+  if (listId === null) return [`Choose a saved list of ${noun}s, or look for every one.`];
+  if (members.length === 0) return [`That list has no ${noun}s. Add some, or look for every one.`];
+  return [];
 }
 
-/** What the engine is asked to run. */
-export function runRequest(form: NewRunForm): DiscoverRunRequest {
+function scope(mode: ScopeMode, members: readonly string[]): string[] | null {
+  if (mode === "all") return null;
+  return mode === "none" ? [] : [...members];
+}
+
+/**
+ * What the engine is asked to run. A saved list is sent as its names, the same
+ * request a hand-made selection was, so what a dig does is unchanged.
+ */
+export function runRequest(form: NewRunForm, members: ListMembers = NO_MEMBERS): DiscoverRunRequest {
   const request: DiscoverRunRequest = {
     genre_ids: [...form.genreIds],
     new_releases_days: Number(form.days),
-    artists: scope(form.artists, form.pickedArtists),
-    labels: scope(form.labels, form.pickedLabels),
+    artists: scope(form.artists, members.artists),
+    labels: scope(form.labels, members.labels),
   };
   // Chart dates mean nothing without a genre to read charts in.
   if (form.genreIds.length > 0) {
@@ -125,4 +153,10 @@ export function chartsWindowShort(form: NewRunForm, defaults: DiscoverDefaults):
   const days = to - from;
   if (isDefault && days >= 1) return `last ${days} days`;
   return `${form.chartsFrom} to ${form.chartsTo}`;
+}
+
+/** How many names a scope covers, for the dig bar: every one, a list's, or none. */
+export function scopeCount(mode: ScopeMode, total: number, members: readonly string[]): number {
+  if (mode === "all") return total;
+  return mode === "none" ? 0 : members.length;
 }

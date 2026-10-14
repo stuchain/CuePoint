@@ -14,7 +14,8 @@
   min-height: 0;
   overflow: hidden;
   gap: 0;
-  padding: 0;
+  /* The page gutters come from .screen; a table runs to the bottom edge. */
+  padding-bottom: 0;
 }
 
 .app-main .screen.discover-screen {
@@ -212,7 +213,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) 0;
   border-bottom: var(--divider);
 }
 
@@ -253,11 +254,20 @@
 
 .discover-new {
   display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* What scrolls: the form. The dig bar below it never shrinks away. */
+.discover-new__body {
+  display: flex;
+  flex: 1;
   flex-direction: column;
   gap: var(--space-md);
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-md);
+  padding: var(--space-md) 0;
 }
 
 .discover-new__header {
@@ -304,13 +314,33 @@
   cursor: pointer;
 }
 
-.discover-new__picked {
+/* A saved list: its radio, the drop-down of lists, and Edit… in one row. */
+.discover-new__saved {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-sm);
-  padding-left: var(--space-lg);
+}
+
+.discover-new__list-select {
+  flex: 1;
+  min-width: calc(140px * var(--scale));
+}
+
+.discover-new__new-list {
+  align-self: flex-start;
+  margin: 0 0 0 var(--space-lg);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-primary);
+  font: inherit;
   font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.discover-new__new-list:hover {
+  text-decoration: underline;
 }
 
 .discover-new__problems {
@@ -320,11 +350,50 @@
   font-size: var(--font-size-xs);
 }
 
-.discover-new__actions {
+/*
+ * The dig bar: full width at the panel's foot with an accent line above it,
+ * like Clean's save bar. On the left what the dig will cover; on the right how
+ * far back to look, and the button.
+ */
+.discover-new__bar {
   display: flex;
+  flex: none;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm);
+  justify-content: space-between;
+  gap: var(--space-sm) var(--space-md);
+  box-sizing: border-box;
+  padding: var(--space-sm) var(--space-md);
+  border-top: var(--border-width) solid var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 14%, var(--bg-panel));
+}
+
+.discover-new__summary {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.discover-new__bar-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.discover-new__days {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.discover-new__days-input {
+  width: calc(64px * var(--scale));
+  text-align: center;
 }
 
 .discover-genres,
@@ -374,7 +443,7 @@
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-sm) var(--space-md);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) 0;
   border-bottom: var(--divider);
 }
 
@@ -494,6 +563,17 @@
   font-family: var(--font-data);
 }
 
+.discover-dialog__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.discover-dialog__confirm-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
 .discover-dialog__refusal {
   margin: 0;
   color: var(--accent-danger);
@@ -512,7 +592,6 @@
   gap: 0;
   width: 100%;
   min-height: auto;
-  padding: 0;
 }
 
 .app-main .screen.discover-page {
@@ -523,7 +602,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) 0;
   border-bottom: var(--divider);
 }
 
@@ -564,7 +643,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md) var(--space-md);
+  padding: var(--space-sm) 0 var(--space-md);
 }
 
 .discover-page__half > .discover-table,
@@ -707,7 +786,7 @@
 /* The shared header on a Discover page (Artist, Label, Similar): one divider, the inset of the
    details block under it. */
 .discover-page > .cp-screen-header {
-  padding: var(--space-sm) var(--space-md) var(--space-xs);
+  padding: var(--space-sm) 0 var(--space-xs);
   border-bottom: 0;
 }
 

@@ -56,6 +56,7 @@ from cuepoint.services.interfaces import (
     ISetSuggestionService,
     ISimilarityRepository,
     ISimilarityService,
+    IDiscoverListRepository,
     IWantlistRepository,
     IWantlistService,
     ICreditIndexService,
@@ -140,6 +141,7 @@ from cuepoint.persistence.track_metadata_repository import (
 )
 from cuepoint.persistence.beatport_catalog_repository import BeatportCatalogRepository
 from cuepoint.persistence.discovery_repository import DiscoveryRepository
+from cuepoint.persistence.discover_list_repository import DiscoverListRepository
 from cuepoint.persistence.wantlist_repository import WantlistRepository
 from cuepoint.persistence.track_credit_repository import TrackCreditRepository
 from cuepoint.persistence.track_repository import TrackRepository
@@ -938,6 +940,14 @@ def bootstrap_services() -> None:
         return WantlistRepository(database_service=container.resolve(IDatabaseService))
 
     container.register_factory(IWantlistRepository, create_wantlist_repository)
+
+    def create_discover_list_repository() -> IDiscoverListRepository:
+        """Saved artist and label lists (migration 0029)."""
+        return DiscoverListRepository(
+            database_service=container.resolve(IDatabaseService)
+        )
+
+    container.register_factory(IDiscoverListRepository, create_discover_list_repository)
 
     def create_wantlist_service() -> IWantlistService:
         return WantlistService(

@@ -1113,27 +1113,15 @@ describe("New dig", () => {
     expect(screen.queryByRole("region", { name: "New dig" })).toBeNull();
   });
 
-  it("picks artists from the Library's facet, with counts", async () => {
+  it("looks for no labels when asked, and for artists as chosen (saved lists are NewRunPanel's)", async () => {
     renderDiscover();
     const panel = await openNewSearch();
-    const artists = within(panel).getByRole("group", { name: "Artists" });
-    fireEvent.click(within(artists).getByRole("radio", { name: "Only the artists I choose" }));
-    expect(within(panel).getByText("Choose at least one artist, or look for every one.")).toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: "Start looking" })).toBeDisabled();
-
-    fireEvent.click(within(artists).getByRole("button", { name: "Choose artists…" }));
-    const dialog = await screen.findByRole("dialog", { name: "Choose artists" });
-    fireEvent.change(within(dialog).getByLabelText("Find artists"), { target: { value: "ki" } });
-    fireEvent.click(within(dialog).getByRole("checkbox", { name: /Kiko/ }));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Done" }));
-    expect(within(artists).getByText("1 artist: Kiko")).toBeInTheDocument();
-
     const labels = within(panel).getByRole("group", { name: "Labels" });
     fireEvent.click(within(labels).getByRole("radio", { name: "No labels" }));
     fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
     await waitFor(() =>
       expect(bridge.startDiscoveryRun).toHaveBeenCalledWith(
-        expect.objectContaining({ artists: ["Kiko"], labels: [] }),
+        expect.objectContaining({ artists: null, labels: [] }),
       ),
     );
   });

@@ -1431,6 +1431,8 @@ class TestEveryRefusalIsTyped:
             "DISCOVERY_RUN_NOT_FOUND",
             "DISCOVERY_RUN_RUNNING",
             "TRACK_NOT_FOUND",
+            "DISCOVER_LIST_NOT_FOUND",
+            "DISCOVER_LIST_NAME_TAKEN",
         }
 
 

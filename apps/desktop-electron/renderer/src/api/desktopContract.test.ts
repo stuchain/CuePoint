@@ -2463,3 +2463,41 @@ describe("desktop contract", () => {
     });
   });
 });
+
+describe("Discover saved lists", () => {
+  const READS: Record<string, string> = {
+    getDiscoverLists: "`/api/v1/discover/lists${",
+  };
+  const ACTIONS: Record<string, string> = {
+    createDiscoverList: '"/api/v1/discover/lists/create"',
+    updateDiscoverList: "}/update`",
+    deleteDiscoverList: "}/delete`",
+  };
+  const methods = [...Object.keys(READS), ...Object.keys(ACTIONS)];
+
+  const clientMethod = (name: string) => {
+    const start = engineClient.indexOf(`async ${name}(`);
+    expect(start, name).toBeGreaterThan(-1);
+    const next = engineClient.indexOf("\n  async ", start + 1);
+    return engineClient.slice(start, next === -1 ? undefined : next);
+  };
+
+  it.each(methods)("carries %s through every layer", (method) => {
+    expect(invokedChannels(preload)).toContain(`engine:${method}`);
+    expect(handledChannels(main)).toContain(`engine:${method}`);
+    expect(supervisorMethodsDeclared(supervisor)).toContain(method);
+    expect(supervisor).toContain(`(await this.readyClient()).${method}(`);
+    expect(bridgeTypes).toContain(`  ${method}?: (`);
+    expect(clientMethod(method)).toContain("Promise<DiscoverAnswer<");
+  });
+
+  it.each(Object.entries(READS))("%s reads with GET", (method, route) => {
+    expect(clientMethod(method)).toContain(route);
+    expect(clientMethod(method)).toContain("this.discoverGet(");
+  });
+
+  it.each(Object.entries(ACTIONS))("%s acts with POST", (method, route) => {
+    expect(clientMethod(method)).toContain(route);
+    expect(clientMethod(method)).toContain("this.discoverPost(");
+  });
+});

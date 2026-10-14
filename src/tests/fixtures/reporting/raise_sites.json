@@ -3565,5 +3565,30 @@
     "holds": "a field's label and type from our own field registry",
     "verdict": "exempt",
     "reason": "our own constants"
+  },
+  "cuepoint/engine/discover_lists_api.py::list_create::{key} is required": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
+  },
+  "cuepoint/persistence/discover_list_repository.py::clean_members::A list holds at most {MAX_MEMBERS} names": {
+    "holds": "an integer constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/discover_list_repository.py::clean_members::A member's name is at most {MAX_MEMBER} characters": {
+    "holds": "an integer constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/persistence/discover_list_repository.py::clean_name::A list's name is at most {MAX_NAME} characters": {
+    "holds": "an integer constant",
+    "verdict": "exempt",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+  },
+  "cuepoint/engine/discover_lists_api.py::list_update::{key} cannot be null; leave it out to keep it": {
+    "holds": "our own field, label or code name",
+    "verdict": "exempt",
+    "reason": "names of our own fields, parameters and code values, never a user value"
   }
 }

@@ -2113,7 +2113,9 @@ export type DiscoverRefusalCode =
   | "DISCOVER_BUSY"
   | "DISCOVERY_RUN_NOT_FOUND"
   | "DISCOVERY_RUN_RUNNING"
-  | "TRACK_NOT_FOUND";
+  | "TRACK_NOT_FOUND"
+  | "DISCOVER_LIST_NOT_FOUND"
+  | "DISCOVER_LIST_NAME_TAKEN";
 
 export interface DiscoverRefusal {
   code: DiscoverRefusalCode;
@@ -2330,6 +2332,29 @@ export interface DiscoverRunTracksPage {
 }
 
 export interface DiscoverRunDeleted {
+  id: number;
+  deleted: boolean;
+}
+
+/** Which kind of name a saved list holds. */
+export type DiscoverListKind = "artist" | "label";
+
+/** A saved, named list of the artists or labels a dig looks for. */
+export interface DiscoverList {
+  id: number;
+  kind: DiscoverListKind;
+  name: string;
+  /** The names the Library's facets send, in the order saved. */
+  members: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiscoverLists {
+  lists: DiscoverList[];
+}
+
+export interface DiscoverListDeleted {
   id: number;
   deleted: boolean;
 }
@@ -3815,6 +3840,24 @@ export interface CuePointBridge {
   startBeatportPlaylistPush?: (
     params: BeatportPlaylistRequest,
   ) => Promise<DiscoverAnswer<DiscoverJobStarted>>;
+  /** Saved artist and label lists for a dig, with their members. */
+  getDiscoverLists?: (params?: {
+    kind?: DiscoverListKind;
+  }) => Promise<DiscoverAnswer<DiscoverLists>>;
+  createDiscoverList?: (params: {
+    kind: DiscoverListKind;
+    name: string;
+    members: string[];
+  }) => Promise<DiscoverAnswer<DiscoverList>>;
+  /** Rename and/or replace the members; what is left out is kept. */
+  updateDiscoverList?: (params: {
+    list_id: number;
+    name?: string;
+    members?: string[];
+  }) => Promise<DiscoverAnswer<DiscoverList>>;
+  deleteDiscoverList?: (params: {
+    list_id: number;
+  }) => Promise<DiscoverAnswer<DiscoverListDeleted>>;
   /** Resolve the library's accepted matches on Beatport, only when asked. */
   startBeatportResolve?: () => Promise<DiscoverAnswer<DiscoverJobStarted>>;
   getEntityPage?: (params: {

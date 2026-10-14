@@ -54,7 +54,14 @@ import {
   loadDiscoverSection,
   saveDiscoverSection,
 } from "./discoverSections";
-import { chartsWindowShort, defaultForm, formProblems, runRequest, type NewRunForm } from "./newRun";
+import {
+  chartsWindowShort,
+  defaultForm,
+  formProblems,
+  runRequest,
+  scopeCount,
+  type NewRunForm,
+} from "./newRun";
 
 const OPTIONS = fixture.options_ok.value as unknown as DiscoverOptions;
 const LIMITS: DiscoverLimits = OPTIONS.limits;
@@ -257,9 +264,9 @@ describe("the New dig form", () => {
       chartsTo: OPTIONS.defaults.charts_to,
       days: "30",
       artists: "all",
-      pickedArtists: [],
+      artistListId: null,
       labels: "all",
-      pickedLabels: [],
+      labelListId: null,
     });
     expect(formProblems(form(), LIMITS)).toEqual([]);
   });
@@ -281,8 +288,25 @@ describe("the New dig form", () => {
       charts_to: OPTIONS.defaults.charts_to,
     });
     expect(
-      runRequest(form({ artists: "picked", pickedArtists: ["Kiko"], labels: "none" })),
+      runRequest(form({ artists: "list", artistListId: 4, labels: "none" }), {
+        artists: ["Kiko"],
+        labels: [],
+      }),
     ).toMatchObject({ artists: ["Kiko"], labels: [] });
+  });
+
+  it("sends a saved list's names exactly as a hand-made selection was sent", () => {
+    const request = runRequest(
+      form({ artists: "list", artistListId: 1, labels: "list", labelListId: 2 }),
+      { artists: ["Kiko", "Mara Veil"], labels: ["Afterlife"] },
+    );
+    expect(request).toMatchObject({ artists: ["Kiko", "Mara Veil"], labels: ["Afterlife"] });
+  });
+
+  it("counts what a scope covers: every one, a list's, or none", () => {
+    expect(scopeCount("all", 200, [])).toBe(200);
+    expect(scopeCount("list", 200, ["a", "b"])).toBe(2);
+    expect(scopeCount("none", 200, ["a"])).toBe(0);
   });
 
   it("sends no chart dates when no genre is chosen", () => {
@@ -306,8 +330,16 @@ describe("the New dig form", () => {
     [{ days: "0" }, "Releases reach back from 1 to 366 days."],
     [{ days: "367" }, "Releases reach back from 1 to 366 days."],
     [{ days: "3.5" }, "Releases reach back from 1 to 366 days."],
-    [{ artists: "picked" }, "Choose at least one artist, or look for every one."],
-    [{ labels: "picked" }, "Choose at least one label, or look for every one."],
+    [{ artists: "list" }, "Choose a saved list of artists, or look for every one."],
+    [{ labels: "list" }, "Choose a saved list of labels, or look for every one."],
+    [
+      { artists: "list", artistListId: 3 },
+      "That list has no artists. Add some, or look for every one.",
+    ],
+    [
+      { labels: "list", labelListId: 3 },
+      "That list has no labels. Add some, or look for every one.",
+    ],
     [{ artists: "none", labels: "none" }, "A dig needs artists or labels to look for."],
     [
       { artists: "none", genreIds: [5] },
@@ -315,6 +347,11 @@ describe("the New dig form", () => {
     ],
   ] as Array<[Partial<NewRunForm>, string]>)("refuses %j", (patch, problem) => {
     expect(formProblems(form(patch), LIMITS)).toEqual([problem]);
+  });
+
+  it("takes a saved list that has names", () => {
+    const chosen = form({ artists: "list", artistListId: 1 });
+    expect(formProblems(chosen, LIMITS, { artists: ["Kiko"], labels: [] })).toEqual([]);
   });
 
   it("takes a chart window of exactly the longest the engine takes", () => {

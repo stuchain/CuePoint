@@ -350,6 +350,10 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   startBeatportPlaylistPush: (params) =>
     ipcRenderer.invoke("engine:startBeatportPlaylistPush", params),
   startBeatportResolve: () => ipcRenderer.invoke("engine:startBeatportResolve"),
+  getDiscoverLists: (params) => ipcRenderer.invoke("engine:getDiscoverLists", params),
+  createDiscoverList: (params) => ipcRenderer.invoke("engine:createDiscoverList", params),
+  updateDiscoverList: (params) => ipcRenderer.invoke("engine:updateDiscoverList", params),
+  deleteDiscoverList: (params) => ipcRenderer.invoke("engine:deleteDiscoverList", params),
   getEntityPage: (params) => ipcRenderer.invoke("engine:getEntityPage", params),
   getEntityBeatport: (params) => ipcRenderer.invoke("engine:getEntityBeatport", params),
   getSimilarTracks: (params) => ipcRenderer.invoke("engine:getSimilarTracks", params),

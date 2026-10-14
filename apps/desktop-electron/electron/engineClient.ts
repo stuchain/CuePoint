@@ -168,6 +168,8 @@ export const DISCOVER_REFUSAL_CODES: readonly DiscoverRefusalCode[] = [
   "DISCOVERY_RUN_NOT_FOUND",
   "DISCOVERY_RUN_RUNNING",
   "TRACK_NOT_FOUND",
+  "DISCOVER_LIST_NOT_FOUND",
+  "DISCOVER_LIST_NAME_TAKEN",
 ];
 
 /** DISCOVER-01's classes, so a reason the engine never sends reads as none. */
@@ -1752,7 +1754,9 @@ export type DiscoverRefusalCode =
   | "DISCOVER_BUSY"
   | "DISCOVERY_RUN_NOT_FOUND"
   | "DISCOVERY_RUN_RUNNING"
-  | "TRACK_NOT_FOUND";
+  | "TRACK_NOT_FOUND"
+  | "DISCOVER_LIST_NOT_FOUND"
+  | "DISCOVER_LIST_NAME_TAKEN";
 
 export interface DiscoverRefusal {
   code: DiscoverRefusalCode;
@@ -1969,6 +1973,29 @@ export interface DiscoverRunTracksPage {
 }
 
 export interface DiscoverRunDeleted {
+  id: number;
+  deleted: boolean;
+}
+
+/** Which kind of name a saved list holds. */
+export type DiscoverListKind = "artist" | "label";
+
+/** A saved, named list of the artists or labels a dig looks for. */
+export interface DiscoverList {
+  id: number;
+  kind: DiscoverListKind;
+  name: string;
+  /** The names the Library's facets send, in the order saved. */
+  members: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiscoverLists {
+  lists: DiscoverList[];
+}
+
+export interface DiscoverListDeleted {
   id: number;
   deleted: boolean;
 }
@@ -3271,6 +3298,45 @@ export class EngineClient {
   async deleteDiscoveryRun(params: { run_id: number }): Promise<DiscoverAnswer<DiscoverRunDeleted>> {
     return this.discoverPost(
       `/api/v1/discover/runs/${encodeURIComponent(String(params.run_id))}/delete`,
+      {},
+    );
+  }
+
+  /** Every saved artist and label list, or one kind's, with their members. */
+  async getDiscoverLists(params?: {
+    kind?: DiscoverListKind;
+  }): Promise<DiscoverAnswer<DiscoverLists>> {
+    return this.discoverGet(`/api/v1/discover/lists${discoverQuery({ kind: params?.kind })}`);
+  }
+
+  /** Save a new list; a name is unique within its kind. */
+  async createDiscoverList(params: {
+    kind: DiscoverListKind;
+    name: string;
+    members: string[];
+  }): Promise<DiscoverAnswer<DiscoverList>> {
+    return this.discoverPost("/api/v1/discover/lists/create", params);
+  }
+
+  /** Rename a list and/or replace its members; what is left out is kept. */
+  async updateDiscoverList(params: {
+    list_id: number;
+    name?: string;
+    members?: string[];
+  }): Promise<DiscoverAnswer<DiscoverList>> {
+    const { list_id, ...changes } = params;
+    return this.discoverPost(
+      `/api/v1/discover/lists/${encodeURIComponent(String(list_id))}/update`,
+      changes,
+    );
+  }
+
+  /** Delete a list; the artists or labels in it are untouched. */
+  async deleteDiscoverList(params: {
+    list_id: number;
+  }): Promise<DiscoverAnswer<DiscoverListDeleted>> {
+    return this.discoverPost(
+      `/api/v1/discover/lists/${encodeURIComponent(String(params.list_id))}/delete`,
       {},
     );
   }

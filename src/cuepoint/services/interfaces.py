@@ -1685,6 +1685,40 @@ class IDiscoveryService(ABC):
         ...
 
 
+class IDiscoverListRepository(ABC):
+    """Interface for saved artist and label lists (migration 0029)."""
+
+    @abstractmethod
+    def all(self, kind: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Every list with its members, or one kind's."""
+        ...
+
+    @abstractmethod
+    def get(self, list_id: int) -> Optional[Dict[str, Any]]:
+        """One list with its members, or None."""
+        ...
+
+    @abstractmethod
+    def create(self, kind: Any, name: Any, members: Any = ()) -> Dict[str, Any]:
+        """Save a new list."""
+        ...
+
+    @abstractmethod
+    def update(
+        self,
+        list_id: int,
+        name: Optional[Any] = None,
+        members: Optional[Any] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Rename and/or replace the members; None when there is no such list."""
+        ...
+
+    @abstractmethod
+    def delete(self, list_id: int) -> bool:
+        """Delete a list; False when there was none."""
+        ...
+
+
 class IWantlistRepository(ABC):
     """Interface for the wantlist's rows (DISCOVER-06, DEC-093)."""
 
