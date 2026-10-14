@@ -14,13 +14,13 @@
   /*
    * Wide enough for the longest label the registry declares — "Statistics" in bold, 5.68em of
    * Pixelify Sans — plus its icon, gap and padding, and for the top row (logo, "CuePoint" in
-   * bold, toggle): the link row needs about 124px at 1x and the top row about 131px (the toggle is 34px: icon, padding, border), so 132, a whole multiple of 4 (K7). It scales with the interface,
+   * bold), for the Search field (icon, "Search…", "Ctrl+K": about 50px for the placeholder at 1x) and for the bottom row (Settings and the compact 26px toggle side by side, about 52px for the label at 1x). At 152px the inner row is 140px, which leaves about 7px spare for "Search…" and 10px for "Settings"; the figures scale with the interface. 152 is a whole multiple of 4 (K7). Where the cap below bites, the bottom row wraps and the toggle drops under Settings. It scales with the interface,
    * but is capped as a share of the window: at 3x an uncapped rail would take too much of it.
    *
    * `vw` is right here, unlike inside the content region: the sidebar is a
    * child of the shell grid, so the window really is what it divides up.
    */
-  --cp-sidebar-width: min(calc(132px * var(--scale)), 34vw);
+  --cp-sidebar-width: min(calc(152px * var(--scale)), 34vw);
 
   display: flex;
   flex-direction: column;
@@ -28,7 +28,7 @@
   width: var(--cp-sidebar-width);
   height: 100%;
   min-height: 0;
-  /* The nav itself never scrolls: the list below does, the top row and Settings stay put (R2-9). */
+  /* The nav itself never scrolls: the list below does, the top row and the bottom row stay put (R2-9). */
   overflow: hidden;
   padding: var(--cp-sidebar-pad);
   background: var(--bg-toolbar);
@@ -41,21 +41,14 @@
 }
 
 /*
- * The fixed top row (R2-9): the brand at the left, the toggle at the right. Collapsed, the
- * logo stacks above the toggle, both centred. Outside the scrolling list either way.
+ * The fixed top row (R2-9): the brand alone, logo and name (the collapse toggle moved to the
+ * bottom row, beside Settings). Outside the scrolling list either way.
  */
 .cp-sidebar__top {
   display: flex;
   flex: none;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-xs);
   min-width: 0;
-}
-
-.cp-sidebar--collapsed .cp-sidebar__top {
-  flex-direction: column;
-  justify-content: flex-start;
 }
 
 /*
@@ -97,14 +90,18 @@
   text-overflow: ellipsis;
 }
 
+/* The collapse toggle: a small boxed button at the right of the bottom row (option D). */
 .cp-sidebar__toggle {
   flex: none;
+  align-self: center;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: var(--icon-size);
-  min-height: var(--icon-size);
-  padding: 0 var(--space-xs);
+  /* Compact: the icon's box and its border, no side padding; the height is still a full hit target. */
+  box-sizing: content-box;
+  width: var(--icon-size);
+  min-height: var(--hit-min);
+  padding: 0;
   background: var(--bg-panel);
   border: var(--control-border-width) solid var(--border-control);
   color: var(--fg-muted);
@@ -115,6 +112,27 @@
 .cp-sidebar__toggle:hover {
   color: var(--fg-primary);
   background: var(--bg-app);
+}
+
+.cp-sidebar__toggle:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+/* The small "Pages" heading over the entries; fixed, the list below it scrolls. */
+.cp-sidebar__pages-label {
+  flex: none;
+  margin: 0;
+  padding: var(--space-sm) var(--space-xs) 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* The page entries get more room each than the pinned Settings row (hit-min stays the floor). */
+.cp-sidebar:not(.cp-sidebar--collapsed) .cp-sidebar__list .cp-sidebar__link {
+  min-height: calc(var(--hit-min) + var(--space-xs));
 }
 
 /* The workspace destinations: the one part of the rail that scrolls (R2-9). */
@@ -143,12 +161,45 @@
 
 /*
  * Settings is pinned to the bottom of the rail under a thin divider (NAV-6): it sits outside
- * the scrolling list, below it, so it stays at the foot however tall the window is.
+ * the scrolling list, below it, so it stays at the foot however tall the window is. The collapse
+ * toggle sits beside it on the same row; collapsed, the two stack (the group is already a column).
  */
 .cp-sidebar__group--pinned {
   flex: none;
   padding-top: var(--space-xs);
   border-top: var(--divider);
+}
+
+/*
+ * The foot row holds Settings and the toggle alone. It wraps: when the rail is too narrow for
+ * both (the vw cap at high scales), the toggle drops under Settings, right-aligned, and Settings
+ * keeps the whole row. Collapsed, they stack in a column.
+ */
+.cp-sidebar__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+}
+
+.cp-sidebar__foot .cp-hint {
+  flex: 1 0 auto;
+}
+
+.cp-sidebar__foot .cp-sidebar__toggle {
+  margin-left: auto;
+}
+
+.cp-sidebar--collapsed .cp-sidebar__foot {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.cp-sidebar--collapsed .cp-sidebar__foot .cp-sidebar__toggle {
+  margin-left: 0;
 }
 
 .cp-sidebar__group-label {
@@ -199,6 +250,34 @@
   font-size: var(--font-size-sm);
   text-align: left;
   cursor: pointer;
+}
+
+/*
+ * Expanded, the Search button is a field: thin border, darker inside, the way an input reads.
+ * The collapsed rail keeps the entries' plain look (an icon alone).
+ */
+.cp-sidebar__search--box {
+  background: var(--bg-input);
+  border-color: var(--border-control);
+  border-width: var(--control-border-width);
+}
+
+.cp-sidebar__link.cp-sidebar__search--box:hover {
+  background: var(--bg-input);
+  border-color: var(--fg-muted);
+}
+
+.cp-sidebar__search-placeholder {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The shortcut, muted at the field's right edge. */
+.cp-sidebar__search-keys {
+  flex: none;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
 }
 
 .cp-sidebar__link:hover {
@@ -256,4 +335,9 @@
 .cp-sidebar__link--dimmed:hover,
 .cp-sidebar__link--dimmed:focus-visible {
   opacity: 1;
+}
+
+/* The Search field stays put under the pointer: it is a field, not an entry that nudges (motion.css). */
+:root[data-motion-hover] .cp-sidebar__link.cp-sidebar__search--box:hover {
+  transform: none;
 }

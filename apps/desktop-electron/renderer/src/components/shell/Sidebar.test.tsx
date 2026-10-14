@@ -14,6 +14,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import { ToastProvider } from "../Toast";
 import { Sidebar } from "./Sidebar";
+import * as navRegistry from "./navRegistry";
 import { EMPTY_LIBRARY_LINE, NAV_DESTINATIONS } from "./navRegistry";
 import { HINT_HOVER_DELAY_MS } from "../Hint";
 import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "./sidebarState";
@@ -38,6 +39,7 @@ const destinationNames = () =>
 const toggle = () => screen.getByRole("button", { name: /(Collapse|Expand) sidebar/i });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   localStorage.clear();
   delete (window as unknown as { cuepoint?: unknown }).cuepoint;
 });
@@ -216,7 +218,6 @@ describe("Sidebar", () => {
       renderSidebar();
       const discover = within(nav()).getByRole("link", { name: "Discover" });
       await user.tab();
-      await user.tab();
       discover.focus();
       expect(await screen.findByRole("tooltip")).toHaveTextContent("Find new music");
       expect(discover).toHaveAttribute("aria-describedby", screen.getByRole("tooltip").id);
@@ -262,11 +263,16 @@ describe("Sidebar", () => {
     });
   });
 
-  describe("the Search button (K8)", () => {
-    it("sits between the top row and the list, reading Search with the key in its tip", async () => {
+  describe("the Search field (K8, option D)", () => {
+    it("sits under the logo row and above the list, a field reading Search… with Ctrl+K muted", async () => {
       renderSidebar();
       const button = within(nav()).getByRole("button", { name: "Search" });
-      expect(button).toHaveTextContent(/^Search$/);
+      expect(button).toHaveClass("cp-sidebar__search--box");
+      expect(button).toHaveAttribute("aria-haspopup", "dialog");
+      expect(button).toHaveTextContent("Search…");
+      expect(button).toHaveTextContent("Ctrl+K");
+      expect(button.querySelector(".cp-sidebar__search-keys")).toHaveTextContent("Ctrl+K");
+      expect(button.querySelector("svg[data-icon='search']")).not.toBeNull();
       button.focus();
       expect(await screen.findByRole("tooltip")).toHaveTextContent("Search (Ctrl+K)");
       const top = nav().querySelector(".cp-sidebar__top")!;
@@ -277,6 +283,16 @@ describe("Sidebar", () => {
       expect(list).not.toContainElement(button);
     });
 
+    it("shows Cmd+K on a Mac, in the field and in the tip", async () => {
+      vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
+      renderSidebar();
+      const button = within(nav()).getByRole("button", { name: "Search" });
+      expect(button).toHaveTextContent("Cmd+K");
+      expect(button).not.toHaveTextContent("Ctrl+K");
+      button.focus();
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search (Cmd+K)");
+    });
+
     it("is an icon alone in the collapsed rail, named Search library, tipped with the key", async () => {
       const user = userEvent.setup();
       renderSidebar();
@@ -284,6 +300,8 @@ describe("Sidebar", () => {
 
       const button = within(nav()).getByRole("button", { name: "Search library" });
       expect(button).not.toHaveTextContent("Search");
+      expect(button).not.toHaveTextContent("Ctrl+K");
+      expect(button).not.toHaveClass("cp-sidebar__search--box");
       expect(button.querySelector("svg[data-icon='search']")).not.toBeNull();
       button.focus();
       expect(await screen.findByRole("tooltip")).toHaveTextContent("Search (Ctrl+K)");
@@ -300,23 +318,92 @@ describe("Sidebar", () => {
     });
   });
 
-  describe("the fixed top row and the scrolling list (R2-9)", () => {
-    it("holds the brand and the toggle in one top row", () => {
+  describe("the Pages heading (option D)", () => {
+    it("heads the list when expanded, outside the scrolling part", () => {
+      renderSidebar();
+      const heading = within(nav()).getByText("Pages");
+      const list = nav().querySelector<HTMLElement>(".cp-sidebar__list")!;
+      expect(list).not.toContainElement(heading);
+      expect(heading.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("names the list, so the heading labels the pages for a screen reader", () => {
+      renderSidebar();
+      const heading = within(nav()).getByText("Pages");
+      const list = within(nav()).getByRole("group", { name: "Pages" });
+      expect(list).toHaveClass("cp-sidebar__list");
+      expect(list).toHaveAttribute("aria-labelledby", heading.id);
+    });
+
+    it("is gone from the collapsed rail", async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+      await user.click(toggle());
+      expect(within(nav()).queryByText("Pages")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("the fixed rows and the scrolling list (R2-9)", () => {
+    it("holds the brand alone in the top row, with no toggle", () => {
       renderSidebar();
       const top = nav().querySelector<HTMLElement>(".cp-sidebar__top")!;
       expect(top).not.toBeNull();
       expect(within(top).getByRole("link", { name: "CuePoint" })).toBeInTheDocument();
-      expect(within(top).getByRole("button", { name: /Collapse sidebar/i })).toBeInTheDocument();
+      expect(within(top).queryByRole("button")).not.toBeInTheDocument();
       expect(top.querySelector(".cp-sidebar__list")).toBeNull();
     });
 
-    it("keeps the top row outside the list when collapsed too", async () => {
+    it("puts the toggle in the bottom row beside Settings, expanded and collapsed", async () => {
       const user = userEvent.setup();
       renderSidebar();
+      const bottom = () => nav().querySelector<HTMLElement>(".cp-sidebar__group--pinned")!;
+      expect(within(bottom()).getByRole("link", { name: "Settings" })).toBeInTheDocument();
+      expect(within(bottom()).getByRole("button", { name: /Collapse sidebar/i })).toBe(toggle());
+      expect(nav().querySelector(".cp-sidebar__top")).not.toContainElement(toggle());
+      const settings = within(bottom()).getByRole("link", { name: "Settings" });
+      expect(settings.compareDocumentPosition(toggle()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
       await user.click(toggle());
-      const top = nav().querySelector<HTMLElement>(".cp-sidebar__top")!;
-      expect(within(top).getByRole("link", { name: "CuePoint" })).toBeInTheDocument();
-      expect(within(top).getByRole("button", { name: /Expand sidebar/i })).toBeInTheDocument();
+      expect(within(bottom()).getByRole("link", { name: "Settings" })).toBeInTheDocument();
+      expect(within(bottom()).getByRole("button", { name: /Expand sidebar/i })).toBe(toggle());
+      expect(nav().querySelector(".cp-sidebar__top")).not.toContainElement(toggle());
+    });
+
+    it("tabs from Settings to the toggle", async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+      within(nav()).getByRole("link", { name: "Settings" }).focus();
+      await user.tab();
+      expect(toggle()).toHaveFocus();
+    });
+
+    it("shares the foot row between Settings and the toggle alone", () => {
+      renderSidebar();
+      const foot = nav().querySelector<HTMLElement>(".cp-sidebar__foot")!;
+      expect(within(foot).getAllByRole("link").map((l) => l.getAttribute("aria-label"))).toEqual(["Settings"]);
+      expect(within(foot).getAllByRole("button")).toEqual([toggle()]);
+    });
+
+    it("keeps the toggle in a foot row of its own when there is no system group, and no Pages heading when there are no pages", () => {
+      const real = navRegistry.groupedDestinations();
+      const workspaceOnly = real.filter((entry) => entry.group !== "system");
+      const spy = vi.spyOn(navRegistry, "groupedDestinations");
+      spy.mockReturnValue(workspaceOnly);
+      renderSidebar();
+      const foot = nav().querySelector<HTMLElement>(".cp-sidebar__foot")!;
+      expect(within(foot).getByRole("button", { name: /Collapse sidebar/i })).toBeInTheDocument();
+      expect(within(foot).queryByRole("link")).not.toBeInTheDocument();
+      expect(within(nav()).getByText("Pages")).toBeInTheDocument();
+    });
+
+    it("does not list the system group under Pages when it is the only group", () => {
+      const only = navRegistry.groupedDestinations().filter((entry) => entry.group === "system");
+      vi.spyOn(navRegistry, "groupedDestinations").mockReturnValue(only);
+      renderSidebar();
+      const list = nav().querySelector<HTMLElement>(".cp-sidebar__list")!;
+      expect(within(list).queryByRole("link")).not.toBeInTheDocument();
+      expect(within(nav()).queryByText("Pages")).not.toBeInTheDocument();
+      expect(within(nav().querySelector<HTMLElement>(".cp-sidebar__foot")!).getByRole("link", { name: "Settings" })).toBeInTheDocument();
     });
 
     it("scrolls the destinations alone and keeps Settings outside the scroll", () => {
