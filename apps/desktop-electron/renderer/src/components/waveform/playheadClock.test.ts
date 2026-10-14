@@ -88,22 +88,68 @@ describe("createPlayheadClock", () => {
       expect(clock.positionMs(9_000)).toBeCloseTo(10_150, 5);
     });
 
-    it("folds the late settle into the same glide, with no step", () => {
+    it("settles on the pause snapshot within a short glide", () => {
       const clock = createPlayheadClock();
       clock.snapshot(10, true, 0);
-      clock.snapshot(10.15, false, 250);
-      // The engine's settled position lands about 250 ms after the pause.
-      const samples: number[] = [];
-      for (let at = 250; at < 500; at += 4) samples.push(clock.positionMs(at) as number);
-      clock.snapshot(10.17, false, 500);
-      expect(clock.settling(500)).toBe(true);
-      for (let at = 500; at <= 900; at += 4) samples.push(clock.positionMs(at) as number);
-      for (let i = 1; i < samples.length; i += 1) {
-        expect(Math.abs(samples[i]! - samples[i - 1]!)).toBeLessThan(4);
+      clock.snapshot(10.2, false, 250);
+      expect(PAUSE_BLEND_MS).toBeLessThanOrEqual(80);
+      expect(clock.positionMs(250 + PAUSE_BLEND_MS)).toBeCloseTo(10_200, 5);
+      expect(clock.settling(250 + PAUSE_BLEND_MS)).toBe(false);
+    });
+
+    it("ignores a late nudge just after the pause: it stops where it stopped", () => {
+      const clock = createPlayheadClock();
+      clock.snapshot(10, true, 0);
+      clock.snapshot(10.2, false, 250);
+      const after = 250 + PAUSE_BLEND_MS;
+      clock.snapshot(10.19, false, 500);
+      clock.snapshot(10.21, false, 700);
+      for (let at = after; at <= 2_000; at += 16) {
+        expect(clock.positionMs(at)).toBeCloseTo(10_200, 5);
       }
-      expect(clock.positionMs(500 + BLEND_MS)).toBeCloseTo(10_170, 5);
-      expect(clock.positionMs(5_000)).toBeCloseTo(10_170, 5);
-      expect(clock.settling(500 + BLEND_MS)).toBe(false);
+      expect(clock.settling(500)).toBe(false);
+    });
+
+    it("never moves backwards by more than the glide while pausing from ahead", () => {
+      const clock = createPlayheadClock();
+      clock.snapshot(10, true, 0);
+      // Drawn 10.250 s, the audio stopped at 10.230 s.
+      clock.snapshot(10.23, false, 250);
+      let last = clock.positionMs(250) as number;
+      for (let at = 254; at <= 1_000; at += 4) {
+        const here = clock.positionMs(at) as number;
+        expect(here).toBeLessThanOrEqual(last + 1e-9);
+        expect(last - here).toBeLessThan(10);
+        last = here;
+      }
+      expect(last).toBeCloseTo(10_230, 5);
+    });
+
+    it("applies a small paused seek right after a pause", () => {
+      const clock = createPlayheadClock();
+      clock.snapshot(10, true, 0);
+      clock.snapshot(10.2, false, 250);
+      clock.snapshot(10.24, false, 400);
+      expect(clock.positionMs(400 + BLEND_MS + 1)).toBeCloseTo(10_240, 5);
+    });
+
+    it("takes a paused snapshot much later as the real thing", () => {
+      const clock = createPlayheadClock();
+      clock.snapshot(10, true, 0);
+      clock.snapshot(10.2, false, 250);
+      clock.snapshot(10.1, false, 5_000);
+      expect(clock.positionMs(5_000 + PAUSE_BLEND_MS + BLEND_MS)).toBeCloseTo(10_100, 5);
+    });
+
+    it("resumes from the paused position without a jump", () => {
+      const clock = createPlayheadClock();
+      clock.snapshot(10, true, 0);
+      clock.snapshot(10.2, false, 250);
+      clock.snapshot(10.2, true, 5_000);
+      expect(clock.positionMs(5_000)).toBeCloseTo(10_200, 5);
+      expect(clock.positionMs(5_100)).toBeCloseTo(10_300, 5);
+      clock.snapshot(10.45, true, 5_250);
+      expect(clock.positionMs(5_250)).toBeCloseTo(10_450, 5);
     });
 
     it("jumps for a paused seek", () => {

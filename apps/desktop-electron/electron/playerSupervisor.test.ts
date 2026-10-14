@@ -131,6 +131,15 @@ class FakeClient extends EventEmitter {
   async setPaused(paused: boolean): Promise<void> {
     this.commands.push(["set_property", "pause", paused]);
   }
+  /** What mpv answers a `time-pos` read with; null by default, as before a position exists. */
+  settledTimePos: number | null = null;
+  /** When set, a `time-pos` read waits on it (a never-settling promise models a stuck mpv). */
+  timePosGate: Promise<unknown> | null = null;
+  async getProperty(name: string): Promise<unknown> {
+    this.commands.push(["get_property", name]);
+    if (this.timePosGate) return this.timePosGate;
+    return name === "time-pos" ? this.settledTimePos : null;
+  }
   async setVolume(volume: number): Promise<void> {
     this.commands.push(["set_property", "volume", volume]);
   }
@@ -563,6 +572,186 @@ describe("transport", () => {
     await supervisor.resume();
     expect(supervisor.getSnapshot().playback.paused).toBe(false);
     expect(clients[0].commands).toContainEqual(["set_property", "pause", true]);
+  });
+
+  describe("pause position", () => {
+    it("pushes one paused snapshot carrying mpv's settled time-pos, not the last throttled one", async () => {
+      const { supervisor, clients } = track(harness());
+      await supervisor.play("/music/a.flac");
+      clients[0].emitProperty("time-pos", 10);
+      const seen: Array<{ paused: boolean; position: number | null }> = [];
+      supervisor.onSnapshot((s) => seen.push({ paused: s.playback.paused, position: s.playback.positionSeconds }));
+      clients[0].settledTimePos = 10.31;
+      await supervisor.pause();
+      expect(seen).toEqual([{ paused: true, position: 10.31 }]);
+      expect(supervisor.getSnapshot().playback.positionSeconds).toBe(10.31);
+    });
+
+    it("pushes nothing about the pause until the settled position is known", async () => {
+      const { supervisor, clients } = track(harness());
+      await supervisor.play("/music/a.flac");
+      clients[0].emitProperty("time-pos", 10);
+      const seen: Array<{ paused: boolean; position: number | null }> = [];
+      supervisor.onSnapshot((s) => seen.push({ paused: s.playback.paused, position: s.playback.positionSeconds }));
+      clients[0].settledTimePos = 10.31;
+      const pausing = supervisor.pause();
+      // mpv's own pause event and a time-pos arrive while the read is in flight.
+      clients[0].emitProperty("pause", true);
+      clients[0].emitProperty("time-pos", 10.2);
+      await pausing;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      // Exactly one paused push, and it carries a settled value, not the stale 10.
+      const pushed = seen.filter((s) => s.paused).map((s) => s.position);
+      expect(pushed).toHaveLength(1);
+      expect([10.2, 10.31]).toContain(pushed[0]);
+    });
+
+    it("ignores a stale time-pos while paused", async () => {
+      const { supervisor, clients } = track(harness());
+      await supervisor.play("/music/a.flac");
+      clients[0].emitProperty("time-pos", 10);
+      clients[0].settledTimePos = 10.31;
+      await supervisor.pause();
+      clients[0].emitProperty("time-pos", 10.25);
+      clients[0].emitProperty("time-pos", 10.4);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(supervisor.getSnapshot().playback.positionSeconds).toBe(10.31);
+    });
+
+    it("follows time-pos again once resumed, from the paused position", async () => {
+      const { supervisor, clients } = track(harness());
+      await supervisor.play("/music/a.flac");
+      clients[0].emitProperty("time-pos", 10);
+      clients[0].settledTimePos = 10.31;
+      await supervisor.pause();
+      await supervisor.resume();
+      expect(supervisor.getSnapshot().playback.positionSeconds).toBe(10.31);
+      clients[0].emitProperty("time-pos", 10.5);
+      expect(supervisor.getSnapshot().playback.positionSeconds).toBe(10.5);
+    });
+
+    it("settles a pause mpv decided on its own the same way", async () => {
+      const { supervisor, clients } = track(harness());
+      await supervisor.play("/music/a.flac");
+      clients[0].emitProperty("time-pos", 10);
+      clients[0].settledTimePos = 10.31;
+      clients[0].emitProperty("pause", true);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(supervisor.getSnapshot().playback.positionSeconds).toBe(10.31);
+      clients[0].emitProperty("time-pos", 10.2);
+      expect(supervisor.getSnapshot().playback.positionSeconds).toBe(10.31);
+    });
+
+    it("does not let a throttled push already waiting carry the stale position", async () => {
+      const { supervisor, clients } = track(harness());
+      await supervisor.play("/music/a.flac");
+      clients[0].emitProperty("time-pos", 10);
+      await settle(20);
+      // Within the interval of the last push: this one waits on the timer.
+      clients[0].emitProperty("time-pos", 10.1);
+      clients[0].emitProperty("time-pos", 10.2);
+      const seen: Array<{ paused: boolean; position: number | null }> = [];
+      supervisor.onSnapshot((s) => seen.push({ paused: s.playback.paused, position: s.playback.positionSeconds }));
+      let release!: (v: number) => void;
+      clients[0].timePosGate = new Promise<number>((resolve) => (release = resolve));
+      const pausing = supervisor.pause();
+      await settle(40);
+      expect(seen).toEqual([]);
+      release(10.31);
+      await pausing;
+      expect(seen).toEqual([{ paused: true, position: 10.31 }]);
+    });
+
+    it("gives up on a read that never answers and pushes the position it had", async () => {
+      const { supervisor, clients } = track(harness());
+      await supervisor.play("/music/a.flac");
+      clients[0].emitProperty("time-pos", 10);
+      clients[0].timePosGate = new Promise(() => undefined);
+      const seen: Array<{ paused: boolean; position: number | null }> = [];
+      supervisor.onSnapshot((s) => seen.push({ paused: s.playback.paused, position: s.playback.positionSeconds }));
+      const started = Date.now();
+      await supervisor.pause();
+      expect(Date.now() - started).toBeLessThan(400);
+      expect(seen).toEqual([{ paused: true, position: 10 }]);
+    });
+
+    it("pushes no late paused snapshot when resumed while the read is in flight", async () => {
+      const { supervisor, clients } = track(harness());
+      await supervisor.play("/music/a.flac");
+      clients[0].emitProperty("time-pos", 10);
+      let release!: (v: number) => void;
+      clients[0].timePosGate = new Promise<number>((resolve) => (release = resolve));
+      const seen: boolean[] = [];
+      supervisor.onSnapshot((s) => seen.push(s.playback.paused));
+      const pausing = supervisor.pause();
+      await settle(5);
+      clients[0].timePosGate = null;
+      await supervisor.resume();
+      release(10.31);
+      await pausing;
+      await settle(20);
+      expect(seen).not.toContain(true);
+      expect(supervisor.getSnapshot().playback.paused).toBe(false);
+    });
+
+    it("pushes no paused snapshot when playback stops or a new track starts mid-settle", async () => {
+      const { supervisor, clients } = track(harness());
+      await supervisor.play("/music/a.flac");
+      clients[0].emitProperty("time-pos", 10);
+      let release!: (v: number) => void;
+      clients[0].timePosGate = new Promise<number>((resolve) => (release = resolve));
+      const pausing = supervisor.pause();
+      await settle(5);
+      await supervisor.stopPlayback();
+      const seen: Array<number | null> = [];
+      supervisor.onSnapshot((s) => seen.push(s.playback.positionSeconds));
+      release(10.31);
+      await pausing;
+      await settle(20);
+      expect(seen).toEqual([]);
+      expect(supervisor.getSnapshot().playback.positionSeconds).toBeNull();
+      clients[0].timePosGate = null;
+      await supervisor.play("/music/b.flac");
+      clients[0].emitProperty("time-pos", 0.5);
+      expect(supervisor.getSnapshot().playback.positionSeconds).toBe(0.5);
+    });
+
+    it("pushes no late paused snapshot when the player crashes mid-settle", async () => {
+      const { supervisor, clients, children } = track(harness());
+      await supervisor.play("/music/a.flac");
+      clients[0].emitProperty("time-pos", 10);
+      let release!: (v: number) => void;
+      clients[0].timePosGate = new Promise<number>((resolve) => (release = resolve));
+      const pausing = supervisor.pause();
+      await settle(5);
+      children[0].exit(1);
+      await settle(20);
+      const seen: boolean[] = [];
+      supervisor.onSnapshot((s) => seen.push(s.playback.paused && s.playback.positionSeconds === 10.31));
+      release(10.31);
+      await pausing.catch(() => undefined);
+      await settle(20);
+      expect(seen).not.toContain(true);
+    });
+
+    it("keeps the position it had when mpv gives no settled one", async () => {
+      const { supervisor, clients } = track(harness());
+      await supervisor.play("/music/a.flac");
+      clients[0].emitProperty("time-pos", 10);
+      await supervisor.pause();
+      expect(supervisor.getSnapshot().playback.positionSeconds).toBe(10);
+    });
+
+    it("still takes the position of a seek made while paused", async () => {
+      const { supervisor, clients } = track(harness());
+      await supervisor.play("/music/a.flac");
+      clients[0].emitProperty("time-pos", 10);
+      clients[0].settledTimePos = 10.31;
+      await supervisor.pause();
+      await supervisor.seek(42);
+      clients[0].emitProperty("time-pos", 42.02);
+      expect(supervisor.getSnapshot().playback.positionSeconds).toBe(42.02);
+    });
   });
 
   it("toggles from whatever state it is in", async () => {

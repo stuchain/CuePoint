@@ -15,6 +15,11 @@
  * or a new track, and the playhead goes there at once. Once settled, a paused
  * clock holds still, and while hidden it returns the position it had, so
  * nothing is drawn from a clock nobody watches.
+ *
+ * Main pushes one authoritative position with a pause (mpv's settled
+ * `time-pos`) and then none until a resume or a seek, so the pause glide is
+ * short (`PAUSE_BLEND_MS`) and a paused snapshot within `PAUSE_NUDGE_MS` of it soon
+ * after (`PAUSE_LOCK_MS`) is ignored: a stopped playhead never nudges.
  */
 
 /** A snapshot this near the prediction (ms) is blended in. */
@@ -27,11 +32,17 @@ export const GLIDE_MS = 250;
 export const BLEND_MS = 100;
 
 /**
- * How long a pause fades (ms). The engine's settled position follows the
- * pause push by about a quarter of a second; a fade this long is still going
- * when it lands, so the settle is folded into the same glide.
+ * How long a pause fades (ms). The pause snapshot carries mpv's settled
+ * position (main reads it before pushing), so this is only the short glide
+ * from where the extrapolation had got to the place the audio stopped.
  */
-export const PAUSE_BLEND_MS = 300;
+export const PAUSE_BLEND_MS = 80;
+
+/** For this long (ms) after a pause, a paused snapshot within `PAUSE_NUDGE_MS` is a late nudge, not news. */
+export const PAUSE_LOCK_MS = 600;
+
+/** Smaller than any seek a person makes, so a paused seek is never swallowed. */
+export const PAUSE_NUDGE_MS = 20;
 
 export interface PlayheadClock {
   /** The player's position, `null` for none, with the time it was read. */
@@ -56,6 +67,8 @@ export function createPlayheadClock(): PlayheadClock {
   let frozen: number | null = null;
   /** The last snapshot was a start from paused: the next one is still settling in. */
   let starting = false;
+  /** When the pause snapshot came, while the clock sits on it; else null. */
+  let pausedAt: number | null = null;
 
   const raw = (nowMs: number): number | null => {
     if (anchorMs === null) return null;
@@ -71,10 +84,23 @@ export function createPlayheadClock(): PlayheadClock {
         playing = false;
         blendMs = 0;
         starting = false;
+        pausedAt = null;
         return;
       }
       const truth = positionSeconds * 1000;
       const drawn = raw(nowMs);
+      // A paused clock stays where the pause put it: a position within a few
+      // frames of it, soon after, is the engine's time-pos catching up.
+      if (
+        !isPlaying &&
+        !playing &&
+        anchorMs !== null &&
+        pausedAt !== null &&
+        nowMs - pausedAt < PAUSE_LOCK_MS &&
+        Math.abs(truth - anchorMs) <= PAUSE_NUDGE_MS
+      ) {
+        return;
+      }
       const limit = playing && isPlaying && !starting ? JUMP_MS : GLIDE_MS;
       if (glide && drawn !== null && Math.abs(drawn - truth) <= limit) {
         blendMs = drawn - truth;
@@ -91,6 +117,7 @@ export function createPlayheadClock(): PlayheadClock {
       starting = isPlaying && !playing && anchorMs !== null;
       anchorMs = truth;
       anchorAt = nowMs;
+      pausedAt = isPlaying ? null : nowMs;
       playing = isPlaying;
     },
 

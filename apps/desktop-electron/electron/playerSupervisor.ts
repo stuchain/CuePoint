@@ -234,6 +234,8 @@ const OPENING_WAIT_MS = 5_000;
 const SEEK_SETTLE_MS = 750;
 /** A `time-pos` this close to the seek target counts as mpv having arrived. */
 const SEEK_NEAR_S = 0.75;
+/** The longest a pause waits for mpv's settled `time-pos` before using the position it had. */
+const SETTLE_READ_MS = 150;
 
 export class PlayerSupervisor {
   private child: ChildProcess | null = null;
@@ -273,6 +275,18 @@ export class PlayerSupervisor {
    * the playhead back. `until` is infinite while the seek is in flight.
    */
   private seekTarget: { seconds: number; until: number } | null = null;
+  /**
+   * Set while the player is paused with its settled position pushed. mpv's
+   * `time-pos` keeps moving for a moment after a pause (it follows the audio
+   * device's buffer), and a push of it would nudge a playhead that has
+   * stopped, so it is ignored until a resume, a seek or a new track.
+   */
+  private pauseHold = false;
+  /** A pause is reading mpv's settled position; nothing is pushed until it has. */
+  private pauseSettling = false;
+  private pauseToken = 0;
+  /** Hands a `time-pos` that arrives while a pause settles to that settle. */
+  private pauseEvent: ((value: number) => void) | null = null;
   /** Counts `play` and `stopPlayback`, so a seek can tell its track was replaced. */
   private trackEpoch = 0;
   /** What the user asked for; see `AudioState`. */
@@ -643,6 +657,7 @@ export class PlayerSupervisor {
         this.settleOpening();
       }
       this.seekTarget = null;
+      this.releasePause();
       this.playback = { ...this.playback, playing: false };
       this.push(true);
       for (const listener of this.endFileListeners) listener(info);
@@ -804,6 +819,10 @@ export class PlayerSupervisor {
     let idle = false;
     switch (name) {
       case "time-pos": {
+        if (this.pauseHold) {
+          if (this.pauseSettling && typeof value === "number") this.pauseEvent?.(value);
+          return;
+        }
         const target = this.seekTarget;
         if (target) {
           // mpv reports null while a file opens, which is no arrival either.
@@ -830,8 +849,11 @@ export class PlayerSupervisor {
         break;
       case "pause": {
         const paused = value === true;
-        significant = paused !== this.playback.paused;
+        const changed = paused !== this.playback.paused;
+        significant = changed;
         this.playback = { ...this.playback, paused, playing: !paused && this.playback.filePath !== null };
+        if (!paused) this.releasePause();
+        else if (changed) void this.settlePause();
         break;
       }
       case "idle-active":
@@ -853,7 +875,64 @@ export class PlayerSupervisor {
     }
   }
 
+  /** Let `time-pos` through again; a settle still in flight is dropped. */
+  private releasePause(): void {
+    this.pauseHold = false;
+    if (this.pauseSettling) {
+      this.pauseSettling = false;
+      this.pauseToken += 1;
+    }
+  }
+
+  /**
+   * Read mpv's settled position once and push it as the paused position.
+   *
+   * The position the renderer last had is up to a push interval old, and the
+   * `time-pos` that follows a pause is a few frames off it, so pushing either
+   * would move a playhead that is meant to stop where the audio did.
+   */
+  private async settlePause(): Promise<void> {
+    const token = (this.pauseToken += 1);
+    this.pauseHold = true;
+    this.pauseSettling = true;
+    // A throttled push already waiting would carry the stale position.
+    if (this.pushTimer) {
+      clearTimeout(this.pushTimer);
+      this.pushTimer = null;
+    }
+    const client = this.client;
+    let timer: NodeJS.Timeout | undefined;
+    let settled: number | null = null;
+    try {
+      // The first of mpv's answer, a `time-pos` it reports meanwhile, and the cap.
+      const value = await Promise.race([
+        Promise.resolve(client?.getProperty("time-pos") ?? null),
+        new Promise<number>((resolve) => {
+          this.pauseEvent = resolve;
+        }),
+        new Promise<null>((resolve) => {
+          timer = setTimeout(() => resolve(null), SETTLE_READ_MS);
+          timer.unref?.();
+        }),
+      ]);
+      if (typeof value === "number" && Number.isFinite(value)) settled = value;
+    } catch {
+      // Keep the position it had.
+    } finally {
+      clearTimeout(timer);
+      if (token === this.pauseToken) this.pauseEvent = null;
+    }
+    // Resumed, sought, or replaced meanwhile: that path pushes for itself.
+    if (token !== this.pauseToken) return;
+    this.pauseSettling = false;
+    if (settled !== null && this.seekTarget === null) {
+      this.playback = { ...this.playback, positionSeconds: settled };
+    }
+    this.push(true);
+  }
+
   private markStopped(): void {
+    this.releasePause();
     this.playback = { ...this.playback, playing: false, positionSeconds: null };
     this.push(true);
   }
@@ -1019,6 +1098,7 @@ export class PlayerSupervisor {
     const client = this.requireClient();
     this.restartAttempts = 0;
     this.seekTarget = null;
+    this.releasePause();
     this.trackEpoch += 1;
     this.playback = {
       ...this.playback,
@@ -1094,6 +1174,11 @@ export class PlayerSupervisor {
     const client = this.requireClient();
     await client.setPaused(paused);
     this.playback = { ...this.playback, paused, playing: !paused && this.playback.filePath !== null };
+    if (paused) {
+      await this.settlePause();
+      return;
+    }
+    this.releasePause();
     this.push(true);
   }
 
@@ -1103,6 +1188,7 @@ export class PlayerSupervisor {
     const target = { seconds, until: Number.POSITIVE_INFINITY };
     const before = this.playback.positionSeconds;
     const epoch = this.trackEpoch;
+    this.releasePause();
     this.seekTarget = target;
     this.playback = { ...this.playback, positionSeconds: seconds };
     this.push(true);
@@ -1158,6 +1244,7 @@ export class PlayerSupervisor {
   async stopPlayback(): Promise<void> {
     this.settleOpening();
     this.seekTarget = null;
+    this.releasePause();
     this.trackEpoch += 1;
     const client = this.client;
     this.playback = { ...IDLE_PLAYBACK, volume: this.playback.volume, muted: this.playback.muted };
@@ -1186,6 +1273,8 @@ export class PlayerSupervisor {
    */
   private push(significant: boolean): void {
     if (this.snapshotListeners.size === 0) return;
+    // A pause is reading its settled position: its own push carries everything.
+    if (this.pauseSettling) return;
     const interval = this.options.positionPushIntervalMs ?? POSITION_PUSH_INTERVAL_MS;
     const now = Date.now();
 
@@ -1203,6 +1292,7 @@ export class PlayerSupervisor {
     if (this.pushTimer) return;
     this.pushTimer = setTimeout(() => {
       this.pushTimer = null;
+      if (this.pauseSettling) return;
       this.lastPushAt = Date.now();
       const snapshot = this.getSnapshot();
       for (const listener of this.snapshotListeners) listener(snapshot);
