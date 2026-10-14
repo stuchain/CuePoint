@@ -120,7 +120,11 @@ SELECT r.job_id, p.created_at, p.label, p.rematch, p.selected, p.excluded,
   COALESCE(SUM(pl.done = 1 AND tm.state = 'accepted'), 0) AS found,
   COALESCE(SUM(pl.done = 1 AND tm.state = 'needs_review'), 0) AS waiting,
   COALESCE(SUM(pl.done = 1
-               AND (tm.state = 'no_match' OR tm.state IS NULL)), 0) AS not_found,
+               AND (tm.state = 'no_match' OR tm.state IS NULL)
+               AND COALESCE(la.outcome, '') <> 'error'), 0) AS not_found,
+  COALESCE(SUM(pl.done = 1
+               AND (tm.state = 'no_match' OR tm.state IS NULL)
+               AND la.outcome = 'error'), 0) AS search_failed,
   COALESCE(SUM(pl.done = 1 AND tm.state = 'rejected'), 0) AS rejected,
   COALESCE(SUM(tm.newer_attempt_id IS NOT NULL), 0) AS disputed,
   (SELECT c2.job_id FROM chain c2 WHERE c2.root = r.job_id
@@ -128,6 +132,8 @@ SELECT r.job_id, p.created_at, p.label, p.rematch, p.selected, p.excluded,
 FROM roots r JOIN match_jobs p ON p.job_id = r.job_id
 LEFT JOIN plan pl ON pl.root = r.job_id
 LEFT JOIN track_match tm ON tm.track_id = pl.track_id
+LEFT JOIN match_attempts la ON la.id =
+  (SELECT MAX(id) FROM match_attempts WHERE track_id = pl.track_id)
 GROUP BY r.job_id ORDER BY r.ord DESC
 """
 
@@ -430,6 +436,7 @@ class MatchJobRepository(IMatchJobRepository):
                     not_found=int(row["not_found"]),
                     rejected=int(row["rejected"]),
                     disputed=int(row["disputed"]),
+                    search_failed=int(row["search_failed"]),
                     latest_job_id=row["latest_job_id"],
                     latest_state=state,
                     finished_at=(
@@ -438,6 +445,100 @@ class MatchJobRepository(IMatchJobRepository):
                 )
             )
         return runs, total
+
+    def undo_batches(self, track_ids: Iterable[int]) -> Dict[int, str]:
+        """Return the batch behind each track's last match decision, where it has one.
+
+        A Correct or an Accept all records its decision under a batch id, and
+        reverting that batch takes back the decision and the values it copied.
+        A track whose last decision had no batch (Not this track, Leave
+        unmatched) is absent: undoing that is clearing the decision.
+        """
+        found: Dict[int, str] = {}
+        connection = self._db.connect()
+        for chunk in chunked(unique_ids(track_ids), CHUNK_SIZE):
+            placeholders = ", ".join("?" for _ in chunk)
+            for row in connection.execute(
+                "SELECT h.track_id AS track_id, h.batch_id AS batch_id"
+                " FROM track_history h WHERE h.id IN ("
+                "  SELECT MAX(id) FROM track_history"
+                f"  WHERE field = 'match_state' AND track_id IN ({placeholders})"
+                "  GROUP BY track_id) AND h.batch_id IS NOT NULL",
+                chunk,
+            ):
+                found[int(row["track_id"])] = str(row["batch_id"])
+        # A decision a revert put back is not undone by reverting that revert: that would
+        # apply what was just taken back. The batches that are reverts are read once, for
+        # all the batches named, not once per row.
+        reverts = self._revert_batches(connection, set(found.values()))
+        return {
+            track_id: batch for track_id, batch in found.items() if batch not in reverts
+        }
+
+    @staticmethod
+    def _revert_batches(connection: sqlite3.Connection, batches: Set[str]) -> Set[str]:
+        """Return those of ``batches`` that a revert made (an event says what it reverted)."""
+        reverts: Set[str] = set()
+        ordered = sorted(batches)
+        for start in range(0, len(ordered), CHUNK_SIZE):
+            chunk = ordered[start : start + CHUNK_SIZE]
+            placeholders = ", ".join("?" for _ in chunk)
+            for row in connection.execute(
+                "SELECT DISTINCT json_extract(detail_json, '$.batch_id') AS batch_id"
+                " FROM activity_events"
+                " WHERE json_extract(detail_json, '$.revert_of') IS NOT NULL"
+                f" AND json_extract(detail_json, '$.batch_id') IN ({placeholders})",
+                tuple(chunk),
+            ):
+                reverts.add(str(row["batch_id"]))
+        return reverts
+
+    def review_entries(
+        self,
+        job_id: Optional[str] = None,
+        playlist_id: Optional[int] = None,
+    ) -> List[Tuple[int, int]]:
+        """Return the tracks a review lists as ``(track id, rank)``, by rank.
+
+        A run is its first job and every resume that took tracks over (the
+        walk ``match_run`` filters by); a track's rank is its plan position,
+        which never changes. Without a run it is the tracks of a playlist, or
+        of the whole library, that have been matched; a track's rank is its id.
+        Either way the rank is a **stable** key: a rename, a new match or a
+        deletion between two pages moves no other track's place, which is what
+        lets a page be read on from a cursor without skipping a row. A track
+        since deleted is in neither.
+        """
+        connection = self._db.connect()
+        if job_id is not None:
+            sql = (
+                "WITH RECURSIVE ch(j) AS (SELECT :job UNION"
+                " SELECT m.job_id FROM match_jobs m JOIN ch ON m.resumed_from = ch.j)"
+                " SELECT t.track_id AS id, MIN(t.position) AS rank"
+                " FROM match_job_tracks t"
+                " JOIN ch ON t.job_id = ch.j JOIN tracks ON tracks.id = t.track_id"
+                " GROUP BY t.track_id ORDER BY rank, t.track_id"
+            )
+            params: dict = {"job": job_id}
+        else:
+            member = (
+                " AND tracks.id IN (SELECT track_id FROM rekordbox_playlist_tracks"
+                " WHERE playlist_id = :playlist)"
+                if playlist_id is not None
+                else ""
+            )
+            sql = (
+                "SELECT tracks.id AS id, tracks.id AS rank FROM tracks"
+                " WHERE (tracks.id IN"
+                " (SELECT track_id FROM track_match) OR tracks.id IN"
+                f" (SELECT track_id FROM match_attempts)){member}"
+                " ORDER BY tracks.id"
+            )
+            params = {"playlist": playlist_id} if playlist_id is not None else {}
+        return [
+            (int(row["id"]), int(row["rank"]))
+            for row in connection.execute(sql, params)
+        ]
 
 
 # ------------------------------------------------------------------ helpers

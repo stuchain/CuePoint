@@ -692,12 +692,14 @@ class MatchRunSummary:
         done: Of those, tracks finished.
         found: Finished tracks now accepted.
         waiting: Finished tracks now waiting for review.
-        not_found: Finished tracks with no match.
+        not_found: Finished tracks with no match, where the search ran.
         rejected: Finished tracks the person rejected.
         disputed: Tracks a newer attempt disagrees with the person about.
         latest_job_id: The last job of the chain: the one that is or was running.
         latest_state: That job's recorded state, or ``None`` with no record.
         finished_at: When that job's record was last written, if it has ended.
+        search_failed: Finished tracks with no match because their latest
+            attempt could not finish (an error), not counted in ``not_found``.
     """
 
     job_id: str
@@ -716,6 +718,7 @@ class MatchRunSummary:
     latest_job_id: str
     latest_state: Optional[str] = None
     finished_at: Optional[str] = None
+    search_failed: int = 0
 
     @property
     def status(self) -> str:

@@ -22,6 +22,7 @@ import type {
   LibraryTrackRow,
   ListedDuplicateGroup,
 } from "../../api/cuepointBridge.types";
+import { Activity } from "react";
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { ToastProvider } from "../../components";
 import { getSelectedTrack, setSelectedTrack } from "../../components/shell/selectedTrack";
@@ -37,12 +38,14 @@ import {
   CANDIDATES,
   browseAnswer,
   matchesFor,
+  reviewOf,
+  reviewTrack,
   run,
   ruleOf,
   stateFor,
   track,
 } from "../../test/matchFixtures";
-import { MATCH_TAB_STORAGE_KEY } from "./match/MatchArea";
+import { MATCH_TAB_STORAGE_KEY } from "./match/matchTab";
 import {
   cleanMatchOpening,
   cleanMatchState,
@@ -95,9 +98,12 @@ type Fn = ReturnType<typeof vi.fn>;
 let bridge: Record<string, Fn>;
 let queue: LibraryTrackRow[];
 let missing: LibraryTrackRow[];
+/** What the Review list holds: every track of the run being reviewed. */
+let review: ReturnType<typeof reviewTrack>[];
 
 function install(overrides: Record<string, Fn> = {}) {
   queue = [track(1), track(2), track(3)];
+  review = [reviewTrack(1, "to_check"), reviewTrack(2, "matched"), reviewTrack(3, "not_found")];
   missing = [track(9, { file_status: "missing", file_path: "E:\\gone\\9.mp3" })];
   bridge = {
     getLibrarySummary: vi.fn().mockResolvedValue({
@@ -157,6 +163,7 @@ function install(overrides: Record<string, Fn> = {}) {
     getTrackHistory: vi.fn().mockResolvedValue({ track_id: 1, changes: [], limit: 50 }),
     getTrackMatches: vi.fn(async ({ trackId }: { trackId: number }) => matchesFor(trackId)),
     getMatchJobs: vi.fn().mockResolvedValue({ jobs: [], total: 0 }),
+    getMatchReview: vi.fn(async () => reviewOf(review)),
     getCleanPlaylists: vi.fn().mockResolvedValue(PLAYLISTS),
     correctMatch: vi.fn().mockResolvedValue({
       match: stateFor(1),
@@ -272,6 +279,11 @@ function install(overrides: Record<string, Fn> = {}) {
   (window as unknown as { cuepoint?: unknown }).cuepoint = bridge;
 }
 
+function lastBrowse(): Record<string, unknown> {
+  const calls = bridge.browseLibrary!.mock.calls;
+  return calls[calls.length - 1]![0] as Record<string, unknown>;
+}
+
 function LocationProbe() {
   const location = useLocation();
   return (
@@ -281,8 +293,8 @@ function LocationProbe() {
   );
 }
 
-/** `tab` is the Match sub-tab to open on: the tests of the lists open on One at a time; Playlists is the default (C22). */
-function renderClean(section?: string, tab: string | null = "one") {
+/** `tab` is the Match sub-tab to open on; Playlists is the default (C22). */
+function renderClean(section?: string, tab: string | null = null) {
   if (section) localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, section);
   if (tab && localStorage.getItem(MATCH_TAB_STORAGE_KEY) === null) localStorage.setItem(MATCH_TAB_STORAGE_KEY, tab);
   return render(
@@ -297,11 +309,6 @@ function renderClean(section?: string, tab: string | null = "one") {
       </ToastProvider>
     </ScaleProvider>,
   );
-}
-
-function lastBrowse(): Record<string, unknown> {
-  const calls = bridge.browseLibrary!.mock.calls;
-  return calls[calls.length - 1]![0] as Record<string, unknown>;
 }
 
 /** Press a playlist's own Match button (C22): no ticks, no header button. */
@@ -350,10 +357,8 @@ describe("the page", () => {
       "Match",
       "Missing files",
       "Duplicates",
-      // The Match area's own sub-tabs.
+      // The Match area's own sub-tabs: no One at a time and no Table, the review list is their job.
       "Playlists",
-      "One at a time",
-      "Table",
       "Past searches",
     ]);
     expect(screen.getByRole("tab", { name: "Match" })).toHaveAttribute("aria-selected", "true");
@@ -381,8 +386,6 @@ describe("the page", () => {
         "Missing files (3)",
         "Duplicates",
         "Playlists",
-        "One at a time",
-        "Table",
         "Past searches",
       ]),
     );
@@ -390,7 +393,7 @@ describe("the page", () => {
 
   it("opens no part with a paragraph: the tab names and the buttons say what it is for (C15b)", async () => {
     renderClean();
-    await screen.findByRole("region", { name: "One at a time" });
+    await screen.findByRole("table", { name: /Your playlists/ });
     expect(screen.queryByText(/CuePoint looks each track up on Beatport\./)).toBeNull();
 
     fireEvent.click(screen.getByRole("tab", { name: "Missing files" }));
@@ -457,23 +460,12 @@ describe("the page", () => {
 });
 
 describe("the Match tab", () => {
-  it("lists the queue by Show and From, the Library's way (the area's tests are in match/)", async () => {
-    renderClean();
-    await screen.findByText("1 of 3");
-    expect(lastBrowse().filters).toEqual(fixture.rules.needs_review);
-    expect(lastBrowse()).toMatchObject({ offset: 0, limit: 100, sort: "artist" });
-    expect(screen.queryByLabelText("In")).toBeNull();
-  });
-
   it("holds Save review list as a file… beside each past search, not in the header (CLN-11, K12)", async () => {
     renderClean();
-    await screen.findByText("1 of 3");
+    await screen.findByText("Peak time");
     const header = screen.getByTestId("clean-header");
     expect(within(header).queryByRole("button", { name: /Save review list/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Export review list/ })).toBeNull();
-
-    fireEvent.click(screen.getByRole("tab", { name: "Table" }));
-    await act(async () => {});
     expect(screen.queryByRole("button", { name: /Save review list/ })).toBeNull();
 
     bridge.getMatchJobs!.mockResolvedValue({
@@ -514,54 +506,72 @@ describe("the Match tab", () => {
     await waitFor(() => expect(bridge.getCleanPlaylists!.mock.calls.length).toBeGreaterThan(playlists));
   });
 
-  it("says a running match in one line, with its name, on the tabs without the rows (CLN-7, C22)", async () => {
-    // The job never ends until released, so the note can be read while it runs.
-    let release: (() => void) | undefined;
+  it("says a running match in one line, with its name, on every tab, with Stop (CLN-7, C22)", async () => {
+    // The job never ends until released, so the line can be read while it runs.
+    const releases: Array<() => void> = [];
     bridge.getJob!.mockImplementation(
       () =>
         new Promise((resolve) => {
-          release = () => resolve({ id: "job", state: "succeeded" });
+          releases.push(() => resolve({ id: "job", state: "succeeded" }));
         }),
     );
+    bridge.cancelJob = vi.fn().mockResolvedValue({ id: "job-match", state: "cancelled" });
     renderClean(undefined, "playlists");
     await screen.findByText("Peak time");
     expect(screen.queryByRole("region", { name: "Matching" })).toBeNull();
     await startMatching("Peak time");
 
-    // On Playlists the row says it; the old line above the tabs is gone.
-    await waitFor(() => expect(bridge.startCleanMatch).toHaveBeenCalled());
-    expect(screen.queryByRole("region", { name: "Matching" })).toBeNull();
-
+    // At the top of Clean, above the tabs: on the rows, and on every other tab.
+    const line = await screen.findByRole("region", { name: "Matching" });
+    expect(line).toHaveTextContent("Matching Peak time");
+    expect(screen.getByTestId("clean-header").compareDocumentPosition(line)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
     fireEvent.click(screen.getByRole("tab", { name: "Past searches" }));
-    const note = await screen.findByRole("region", { name: "Matching" });
-    expect(note).toHaveTextContent(/^Matching Peak time…$/);
-    expect(note).not.toHaveTextContent(/bar at the bottom|keep working/i);
-    await waitFor(() => expect(release).toBeDefined());
-    act(() => release?.());
+    expect(screen.getByRole("region", { name: "Matching" })).toHaveTextContent("Matching Peak time");
+    fireEvent.click(screen.getByRole("tab", { name: "Missing files" }));
+    expect(screen.getByRole("region", { name: "Matching" })).toHaveTextContent("Matching Peak time");
+
+    await waitFor(() => expect(releases.length).toBeGreaterThan(1));
+    act(() => releases.forEach((release) => release()));
     await waitFor(() => expect(screen.queryByRole("region", { name: "Matching" })).toBeNull());
   });
 
-  it("says how far a match already running has got, with a bar, when the page is opened (CLN-7, C22)", async () => {
+  it("says how far a match already running has got, and for what, when the page is opened (CLN-7, C22)", async () => {
     bridge.listJobs = vi.fn().mockResolvedValue({
       jobs: [
         {
           id: "job-1",
           type: "clean_match",
           state: "running",
-          progress: { completed_tracks: 108, total_tracks: 180 },
+          progress: { completed_tracks: 11, total_tracks: 24, elapsed_time: 110 },
         },
       ],
       active_count: 1,
     });
-    renderClean(undefined, "one");
-    const note = await screen.findByRole("region", { name: "Matching" });
-    expect(note).toHaveTextContent(/^Matching · 108 of 180$/);
-    const bar = within(note).getByRole("progressbar", { name: "Matching progress" });
-    expect(bar).toHaveAttribute("value", "108");
-    expect(bar).toHaveAttribute("max", "180");
-    // One run at a time: on the rows every Match waits for it.
+    // The engine puts the job on the hj row: that is its name, though this page did not start it.
+    bridge.getCleanPlaylists!.mockResolvedValue({
+      ...PLAYLISTS,
+      playlists: PLAYLISTS.playlists.map((playlist) =>
+        playlist.id === 13 ? { ...playlist, running: { job_id: "job-1", done: 11, total: 24 } } : playlist,
+      ),
+    });
+    bridge.cancelJob = vi.fn().mockResolvedValue({ id: "job-1", state: "cancelled" });
+    renderClean(undefined, "past");
+    const line = await screen.findByRole("region", { name: "Matching" });
+    await waitFor(() => expect(line).toHaveTextContent("Matching hj"));
+    expect(line).toHaveTextContent("11 of 24");
+    expect(line).toHaveTextContent("about 2 minutes left");
+    const bar = within(line).getByRole("progressbar", { name: "Matching progress" });
+    expect(bar).toHaveAttribute("value", "11");
+    expect(bar).toHaveAttribute("max", "24");
+    fireEvent.click(within(line).getByRole("button", { name: "Stop matching" }));
+    expect(bridge.cancelJob).toHaveBeenCalledWith("job-1");
+
+    // One run at a time: on the rows every Match waits for it, and says why.
     fireEvent.click(screen.getByRole("tab", { name: "Playlists" }));
     expect(await screen.findByRole("button", { name: "Match Peak time" })).toBeDisabled();
+    expect(screen.getAllByText("one match at a time").length).toBeGreaterThan(0);
   });
 
   it("says why the engine refused a match", async () => {
@@ -569,54 +579,6 @@ describe("the Match tab", () => {
     renderClean(undefined, "playlists");
     await startMatching();
     expect(await screen.findByText("Every track here is already matched")).toBeInTheDocument();
-  });
-
-  it("searches one track again, even one already matched, and names the run for it", async () => {
-    renderClean();
-    await screen.findByText("1 of 3");
-    fireEvent.click(await screen.findByRole("button", { name: "Search again" }));
-    await waitFor(() =>
-      expect(bridge.startCleanMatch).toHaveBeenCalledWith({
-        selection: { track_ids: [1] },
-        rematch: true,
-        label: '1 track: "Track 1"',
-      }),
-    );
-  });
-
-  it("offers to match every track on a first visit, and what it will do (CLN-2)", async () => {
-    bridge.getLibraryHealth!.mockResolvedValue(UNTOUCHED);
-    bridge.browseLibrary!.mockImplementation(async (params: Record<string, unknown>) =>
-      ruleOf(params)?.value === "needs_review"
-        ? (fixture.untouched.needs_review as LibrarySearchResponse)
-        : browseAnswer(params, queue),
-    );
-    renderClean();
-    expect(await screen.findByText("Match your library on Beatport")).toBeInTheDocument();
-    expect(
-      screen.getByText(/CuePoint searches Beatport for each of your 3 tracks to find the right release, key and label\./),
-    ).toBeInTheDocument();
-
-    // The offer opens the match window with "Not looked up yet" chosen (FLW-13).
-    fireEvent.click(screen.getByRole("button", { name: "Match all 3 tracks…" }));
-    const dialog = await screen.findByRole("dialog", { name: "Match tracks" });
-    expect(within(dialog).getByRole("radio", { name: /^Tracks not looked up yet/ })).toBeChecked();
-    expect(bridge.startCleanMatch).not.toHaveBeenCalled();
-    fireEvent.click(within(dialog).getByRole("button", { name: /^Match / }));
-    await waitFor(() =>
-      expect(bridge.startCleanMatch).toHaveBeenCalledWith({
-        selection: {
-          query: {
-            filters: {
-              match: "all",
-              rules: [{ field: "match_state", operator: "is", value: "not_matched" }],
-            },
-          },
-        },
-        rematch: false,
-        label: "Not looked up yet",
-      }),
-    );
   });
 
   it("offers to resume a search that stopped, and resumes only what was left (CLEAN-14)", async () => {
@@ -688,11 +650,6 @@ describe("the Match tab", () => {
     expect(sent.label).toHaveLength(200);
   });
 
-  it("says nothing needs review once everything is settled", async () => {
-    bridge.browseLibrary!.mockResolvedValue(fixture.matched.needs_review as LibrarySearchResponse);
-    renderClean();
-    expect(await screen.findByText("Nothing is waiting for you.")).toBeInTheDocument();
-  });
 });
 
 describe("missing files", () => {
@@ -920,44 +877,18 @@ describe("opening one track from the Library (CLEAN-13)", () => {
     queue = [track(1), track(2, { match_state: "accepted" }), track(3, { match_state: "accepted" })];
   });
 
-  it("opens the Match area on the track's own state, with the track in the cards", async () => {
-    bridge.getTrackMatches!.mockImplementation(async ({ trackId }: { trackId: number }) =>
-      matchesFor(trackId, stateFor(trackId, { state: "accepted", decided_by: "user" })),
-    );
-    // Whatever part was last used, and whatever sub-tab, a link to a track opens One at a time.
+  it("opens the library's review on that track's details, whatever part and sub-tab was last used", async () => {
+    review = [reviewTrack(1, "to_check"), reviewTrack(2, "matched"), reviewTrack(3, "to_check")];
     localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, "missing");
     localStorage.setItem(MATCH_TAB_STORAGE_KEY, "past");
     renderOpened(2);
 
-    const scope = await screen.findByRole("combobox", { name: "Show" });
-    await waitFor(() => expect(scope).toHaveValue("accepted"));
-    await waitFor(() =>
-      expect(lastBrowse()).toMatchObject({
-        filters: { match: "all", rules: [{ field: "match_state", operator: "is", value: "accepted" }] },
-      }),
-    );
-    expect(screen.getByRole("tab", { name: "Match", selected: true })).toBeInTheDocument();
-    const one = await screen.findByRole("region", { name: "One at a time" });
-    expect(await within(one).findByRole("heading", { name: "Track 2" })).toBeInTheDocument();
-    expect(bridge.getLibraryTrack).toHaveBeenCalledWith({ trackId: 2 });
-    expect(bridge.getTrackMatches).toHaveBeenCalledWith({ trackId: 2 });
-  });
-
-  it("opens a disputed track in the disputed list", async () => {
-    queue = [track(2, { match_state: "rejected", match_disputed: true })];
-    renderOpened(2);
-    const scope = await screen.findByRole("combobox", { name: "Show" });
-    await waitFor(() => expect(scope).toHaveValue("disputed"));
-  });
-
-  it("lets go of the track once the reviewer moves on", async () => {
-    renderOpened(2);
-    const one = await screen.findByRole("region", { name: "One at a time" });
-    expect(await within(one).findByRole("heading", { name: "Track 2" })).toBeInTheDocument();
-    fireEvent.click(within(one).getByRole("button", { name: /^Skip for now/ }));
-    // Skipping goes on from where the link put the cursor; the link is not applied again.
-    expect(await within(one).findByRole("heading", { name: "Track 3" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Show")).toHaveValue("accepted");
+    expect(await screen.findByRole("tab", { name: "Match", selected: true })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Review Whole library" })).toHaveAttribute("aria-selected", "true");
+    const panel = await screen.findByRole("complementary", { name: "Track details" });
+    expect(panel).toHaveTextContent("Track 2");
+    expect(bridge.getMatchReview).toHaveBeenCalledWith({ limit: 2000 });
+    await waitFor(() => expect(bridge.getTrackMatches).toHaveBeenCalledWith({ trackId: 2 }));
   });
 
   it("ignores a location that carries no track", () => {
@@ -1050,16 +981,18 @@ describe("a playlist's own Match (C22)", () => {
     expect(bridge.cancelJob).toHaveBeenCalledWith("job-9");
   });
 
-  it("opens Review N on One at a time, on that playlist's tracks to check", async () => {
+  it("opens Review N on that playlist's tracks, all of them, in a tab named for it", async () => {
     renderClean(undefined, "playlists");
     fireEvent.click(await screen.findByRole("button", { name: "Review 4 › for all" }));
-    expect(await screen.findByRole("tab", { name: /^One at a time/ })).toHaveAttribute("aria-selected", "true");
-    await waitFor(() => expect(lastBrowse()).toMatchObject({ playlistId: 14 }));
-    expect(screen.getByRole("group", { name: "Reviewing" })).toHaveTextContent("Reviewing all");
+    expect(await screen.findByRole("tab", { name: "Review all" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalledWith({ playlistId: 14, limit: 2000 }));
+    expect(await screen.findByRole("region", { name: "Review all" })).toHaveTextContent("all · 3 tracks");
+    // Every track, not only the ones to check.
+    expect(await screen.findByText("Track 3 · Artist 3")).toBeInTheDocument();
   });
 
   it("opens Review N on the run the row's Match started, when it did in this session", async () => {
-    const run = {
+    const started = {
       job_id: "job-match",
       created_at: "2026-10-14T10:00:00Z",
       label: "Warmup",
@@ -1073,12 +1006,13 @@ describe("a playlist's own Match (C22)", () => {
       not_found: 0,
       rejected: 0,
       disputed: 0,
+      search_failed: 0,
       status: "done",
       finished_at: "2026-10-14T10:01:00Z",
       latest_job_id: "job-match",
       resume_job_id: null,
     };
-    bridge.getMatchJobs!.mockResolvedValue({ jobs: [run], total: 1 });
+    bridge.getMatchJobs!.mockResolvedValue({ jobs: [started], total: 1 });
     // What the engine would say once the run has ended: Warmup has 4 to check and 6 sure.
     bridge.getCleanPlaylists!.mockResolvedValue({
       ...PLAYLISTS,
@@ -1089,10 +1023,9 @@ describe("a playlist's own Match (C22)", () => {
     renderClean(undefined, "playlists");
     await startMatching("Warmup");
     await waitFor(() => expect(bridge.startCleanMatch).toHaveBeenCalled());
-    fireEvent.click(await screen.findByRole("button", { name: "Review 4 › for Warmup" }));
-    await waitFor(() => expect(JSON.stringify(lastBrowse())).toContain("job-match"));
-    expect(screen.getByRole("group", { name: "Reviewing" })).toHaveTextContent("Reviewing Warmup");
-    expect(screen.getByRole("group", { name: "Reviewing" })).toHaveTextContent("6 already confirmed");
+    // The run ended with things to check and the person was on Clean: it landed on its review.
+    expect(await screen.findByRole("region", { name: "Review Warmup" })).toBeInTheDocument();
+    expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-match", limit: 2000 });
   });
 });
 
@@ -1111,32 +1044,218 @@ describe("when a playlist's match ends somewhere else (C22)", () => {
     not_found: 0,
     rejected: 0,
     disputed: 0,
+    search_failed: 0,
     status: "done",
     finished_at: "2026-10-14T10:01:00Z",
     latest_job_id: "job-match",
     resume_job_id: null,
   };
 
-  it("says it in a toast with Review 9, which opens One at a time on that run", async () => {
+  it("lands on the run's review when it ends and the person is on Clean, saying nothing in a toast", async () => {
     bridge.getMatchJobs!.mockResolvedValue({ jobs: [RUN], total: 1 });
     renderClean(undefined, "playlists");
     await startMatching("hj");
-    // The person leaves the rows for another tab while it runs.
-    fireEvent.click(screen.getByRole("tab", { name: "Past searches" }));
-    expect(await screen.findByText("hj matched · 15 confirmed · 9 to check")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Review 9" }));
-    expect(await screen.findByRole("group", { name: "Reviewing" })).toHaveTextContent("Reviewing hj");
-    await waitFor(() => expect(JSON.stringify(lastBrowse())).toContain("job-match"));
-  });
-
-  it("does not repeat in a toast what the row already says, when the rows are in view", async () => {
-    bridge.getMatchJobs!.mockResolvedValue({ jobs: [RUN], total: 1 });
-    renderClean(undefined, "playlists");
-    await startMatching("hj");
-    await waitFor(() => expect(bridge.getJob).toHaveBeenCalled());
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(await screen.findByRole("tab", { name: "Review hj" }, { timeout: 3000 })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-match", limit: 2000 });
     expect(screen.queryByText(/matched ·/)).toBeNull();
     expect(screen.queryByText("Matching finished.")).toBeNull();
+  });
+
+  it("does not land over a review whose details are open: a toast says it instead", async () => {
+    bridge.getMatchJobs!.mockResolvedValue({ jobs: [RUN], total: 1 });
+    const releases: Array<() => void> = [];
+    bridge.getJob!.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releases.push(() => resolve({ id: "job", state: "succeeded" }));
+        }),
+    );
+    renderClean(undefined, "playlists");
+    await startMatching("hj");
+    // While it runs, the person reviews another playlist and opens a track's details.
+    fireEvent.click(await screen.findByRole("button", { name: "Review 4 › for all" }));
+    await screen.findByRole("region", { name: "Review all" });
+    fireEvent.click(await screen.findByRole("button", { name: "Details of Track 1" }));
+    await screen.findByRole("complementary", { name: "Track details" });
+
+    await waitFor(() => expect(releases.length).toBeGreaterThan(1));
+    act(() => releases.forEach((release) => release()));
+    expect(await screen.findByText("hj matched · 15 confirmed · 9 to check")).toBeInTheDocument();
+    // What is being read stays; Review 9 on the toast is the way to the new run.
+    expect(screen.getByRole("tab", { name: "Review all" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("tab", { name: "Review hj" })).toBeNull();
+    expect(screen.getByRole("complementary", { name: "Track details" })).toBeInTheDocument();
+  });
+
+  it("says it in a toast with Review 9 from another part of Clean, which opens the review of that run", async () => {
+    bridge.getMatchJobs!.mockResolvedValue({ jobs: [RUN], total: 1 });
+    // The job ends only when released, so the person can leave first.
+    const releases: Array<() => void> = [];
+    bridge.getJob!.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releases.push(() => resolve({ id: "job", state: "succeeded" }));
+        }),
+    );
+    renderClean(undefined, "playlists");
+    await startMatching("hj");
+    fireEvent.click(await screen.findByRole("tab", { name: "Missing files" }));
+    await waitFor(() => expect(releases.length).toBeGreaterThan(1));
+    act(() => releases.forEach((release) => release()));
+    expect(await screen.findByText("hj matched · 15 confirmed · 9 to check")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Review 9" }));
+    expect(await screen.findByRole("tab", { name: "Review hj" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-match", limit: 2000 }));
+  });
+});
+
+describe("a match that finds nothing", () => {
+  const NOTHING = {
+    job_id: "job-match",
+    created_at: "2026-10-14T10:00:00Z",
+    label: "hj",
+    rematch: false,
+    selected: 24,
+    excluded: 0,
+    planned: 24,
+    done: 24,
+    found: 0,
+    waiting: 0,
+    not_found: 24,
+    rejected: 0,
+    disputed: 0,
+    search_failed: 0,
+    status: "done",
+    finished_at: "2026-10-14T10:01:00Z",
+    latest_job_id: "job-match",
+    resume_job_id: null,
+  };
+
+  it("shows a red note with the count and a way to see them, instead of landing on an empty review", async () => {
+    bridge.getMatchJobs!.mockResolvedValue({ jobs: [NOTHING], total: 1 });
+    renderClean(undefined, "playlists");
+    await startMatching("hj");
+    const note = await screen.findByRole("alert", undefined, { timeout: 3000 });
+    expect(note).toHaveTextContent("hj: no Beatport match for 24 tracks");
+    expect(note).toHaveTextContent("This usually means the search failed, not that the tracks aren't on Beatport.");
+    expect(screen.queryByRole("tab", { name: /^Review/ })).toBeNull();
+
+    // See the 24: the review, on the tracks not found.
+    review = Array.from({ length: 24 }, (_, index) => reviewTrack(index + 1, "not_found"));
+    fireEvent.click(within(note).getByRole("button", { name: "See the 24 ›" }));
+    expect(await screen.findByRole("tab", { name: "Review hj" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Not found 24" })).toHaveAttribute("aria-pressed", "true"));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("says failed searches as failed, and See them opens the review on the failed ones", async () => {
+    const failed = { ...NOTHING, not_found: 0, search_failed: 24 };
+    bridge.getMatchJobs!.mockResolvedValue({ jobs: [failed], total: 1 });
+    renderClean(undefined, "playlists");
+    await startMatching("hj");
+    const note = await screen.findByRole("alert", undefined, { timeout: 3000 });
+    expect(note).toHaveTextContent("hj: 24 searches failed");
+    expect(note).not.toHaveTextContent("no Beatport match");
+
+    review = Array.from({ length: 24 }, (_, index) => reviewTrack(index + 1, "search_failed"));
+    fireEvent.click(within(note).getByRole("button", { name: "See the 24 ›" }));
+    expect(await screen.findByRole("tab", { name: "Review hj" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Search failed 24" })).toHaveAttribute("aria-pressed", "true"),
+    );
+  });
+
+  it("is dismissed with Dismiss, and gone when the next match starts", async () => {
+    bridge.getMatchJobs!.mockResolvedValue({ jobs: [NOTHING], total: 1 });
+    renderClean(undefined, "playlists");
+    await startMatching("hj");
+    await screen.findByRole("alert", undefined, { timeout: 3000 });
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    // Another match that finds nothing says so again, but not before it has ended.
+    const releases: Array<() => void> = [];
+    bridge.getJob!.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releases.push(() => resolve({ id: "job", state: "succeeded" }));
+        }),
+    );
+    await startMatching("Peak time");
+    await waitFor(() => expect(bridge.startCleanMatch).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("alert")).toBeNull();
+    await waitFor(() => expect(releases.length).toBeGreaterThan(1));
+    act(() => releases.forEach((release) => release()));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Peak time: no Beatport match for 24 tracks");
+  });
+
+  it("keeps the note, with no toast saying it again, from another part of Clean", async () => {
+    bridge.getMatchJobs!.mockResolvedValue({ jobs: [NOTHING], total: 1 });
+    const releases: Array<() => void> = [];
+    bridge.getJob!.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releases.push(() => resolve({ id: "job", state: "succeeded" }));
+        }),
+    );
+    renderClean(undefined, "playlists");
+    await startMatching("hj");
+    fireEvent.click(await screen.findByRole("tab", { name: "Missing files" }));
+    await waitFor(() => expect(releases.length).toBeGreaterThan(1));
+    act(() => releases.forEach((release) => release()));
+    const note = await screen.findByRole("alert");
+    expect(note).toHaveTextContent("hj: no Beatport match for 24 tracks");
+    // One place says it: the note above every part, not a toast beside it.
+    expect(screen.getAllByText("hj: no Beatport match for 24 tracks")).toHaveLength(1);
+    fireEvent.click(within(note).getByRole("button", { name: "See the 24 ›" }));
+    expect(await screen.findByRole("tab", { name: "Review hj" })).toBeInTheDocument();
+  });
+
+  it("is what the row says too: 24 not found, with Match again and See them ›", async () => {
+    bridge.getCleanPlaylists!.mockResolvedValue({
+      ...PLAYLISTS,
+      playlists: PLAYLISTS.playlists.map((playlist) =>
+        playlist.id === 13 ? { ...playlist, not_matched: 0, no_match: 10, accepted: 0 } : playlist,
+      ),
+    });
+    renderClean(undefined, "playlists");
+    expect(await screen.findByText("10 not found")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Match hj again" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "See them › for hj" })).toBeEnabled();
+  });
+});
+
+describe("after leaving the page and coming back", () => {
+  it("enables Match again, and says no match runs, when the run ended while the page was away", async () => {
+    // The job's own follower never sees its end: the page was hidden, as another page is shown.
+    bridge.getJob!.mockResolvedValue({ id: "job-match", state: "running" });
+    const page = (mode: "visible" | "hidden") => (
+      <ScaleProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={["/clean"]}>
+            <Activity mode={mode}>
+              <CleanScreen />
+            </Activity>
+          </MemoryRouter>
+        </ToastProvider>
+      </ScaleProvider>
+    );
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
+    const view = render(page("visible"));
+    await startMatching("Peak time");
+    expect(await screen.findByRole("region", { name: "Matching" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Match Warmup" })).toBeDisabled();
+
+    // Away, and the match ends there: the engine lists no running job.
+    view.rerender(page("hidden"));
+    view.rerender(page("visible"));
+
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Matching" })).toBeNull());
+    expect(await screen.findByRole("button", { name: "Match Warmup" })).toBeEnabled();
+    expect(screen.queryAllByText("one match at a time")).toHaveLength(0);
   });
 });
 
@@ -1238,6 +1357,37 @@ describe("Save to files (C23)", () => {
       { kind: "playlist", id: 14 },
     ]);
   });
+
+  it("saves that run's own unsaved tracks, not the whole library's", async () => {
+    withSaving(47);
+    bridge.getMatchJobs!.mockResolvedValue({ jobs: [run({ job_id: "job-1", label: 'Playlist "all"' })], total: 1 });
+    review = [reviewTrack(1, "done"), reviewTrack(2, "done")];
+    // The engine counts the run's own unsaved tracks, as the Library counts them.
+    const browse = bridge.browseLibrary!.getMockImplementation() as (params: Record<string, unknown>) => Promise<unknown>;
+    bridge.browseLibrary!.mockImplementation(async (params: Record<string, unknown>) => {
+      const rules = (params.filters as { rules?: Array<{ field: string }> } | null)?.rules ?? [];
+      return rules.some((rule) => rule.field === "match_run") ? browseAnswer(params, [track(1), track(2)]) : browse(params);
+    });
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "past");
+    renderClean();
+    fireEvent.click(await screen.findByRole("button", { name: 'Open Playlist "all"' }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save 2 to files…" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(bridge.previewTagWrite).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selection: {
+            query: {
+              filters: {
+                match: "all",
+                rules: [UNSAVED_RULE, { field: "match_run", operator: "is", value: "job-1" }],
+              },
+            },
+          },
+        }),
+      ),
+    );
+  });
 });
 
 describe("the match window, opened from elsewhere (FLW-13)", () => {
@@ -1338,7 +1488,6 @@ describe("the Inspector's links to the pages (DISCOVER-11)", () => {
   };
 
   function renderWithInspector(section: string) {
-    if (localStorage.getItem(MATCH_TAB_STORAGE_KEY) === null) localStorage.setItem(MATCH_TAB_STORAGE_KEY, "one");
     localStorage.setItem(CLEAN_SECTION_STORAGE_KEY, section);
     return render(
       <ScaleProvider>
@@ -1359,10 +1508,7 @@ describe("the Inspector's links to the pages (DISCOVER-11)", () => {
     );
   }
 
-  it.each([
-    ["review", null],
-    ["missing", "Track 9"],
-  ])("opens an artist's page from the %s Inspector", async (section, title) => {
+  it.each([["missing", "Track 9"]])("opens an artist's page from the %s Inspector", async (section, title) => {
     // The queue's own detail, with credits and CuePoint's layer added.
     const read = bridge.getLibraryTrack!.getMockImplementation() as (params: {
       trackId: number;
@@ -1388,8 +1534,8 @@ describe("the Inspector's links to the pages (DISCOVER-11)", () => {
       };
     });
     renderWithInspector(section);
-    // One at a time shows the first track by itself; Missing files needs a row chosen.
-    if (title) fireEvent.click(await screen.findByText(title));
+    // Missing files needs a row chosen.
+    fireEvent.click(await screen.findByText(title));
     const inspector = screen.getByRole("complementary", { name: "Inspector" });
     fireEvent.click(await within(inspector).findByRole("button", { name: "Artist 1" }));
     const probe = await screen.findByTestId("location");

@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { MatchRun } from "../../../api/cuepointBridge.types";
-import { DEFAULT_LIBRARY_QUERY } from "../../library/libraryQuery";
-import { runOptionLabel, matchQuery, matchRules, matchScopeOptions, runSelection } from "./matchScope";
+import { runSelection } from "./matchScope";
 import { canResume, resultParts, statusOf, whatLine, whenLabel } from "./pastSearchWords";
 
 function run(overrides: Partial<MatchRun> = {}): MatchRun {
@@ -20,6 +19,7 @@ function run(overrides: Partial<MatchRun> = {}): MatchRun {
     not_found: 6,
     rejected: 0,
     disputed: 0,
+    search_failed: 0,
     status: "done",
     finished_at: null,
     latest_job_id: "job-1",
@@ -99,54 +99,9 @@ describe("status", () => {
 });
 
 describe("a run as a scope", () => {
-  it("is a rule on its root job id, beside what Show asks", () => {
-    expect(matchRules("needs_review", { kind: "run", id: "job-1" }).rules).toEqual([
-      { field: "match_state", operator: "is", value: "needs_review" },
-      { field: "match_run", operator: "is", value: "job-1" },
-    ]);
-    expect(matchRules("needs_review", null).rules).toEqual([
-      { field: "match_state", operator: "is", value: "needs_review" },
-    ]);
-  });
-
-  it("holds every track of the run for Everything in this search", () => {
-    expect(matchRules("everything", { kind: "run", id: "job-1" }).rules).toEqual([
-      { field: "match_run", operator: "is", value: "job-1" },
-    ]);
+  it("is a rule on its root job id: every track of the run, and the resumes that finished it", () => {
     expect(runSelection("job-1")).toEqual({
       query: { filters: { match: "all", rules: [{ field: "match_run", operator: "is", value: "job-1" }] } },
     });
-  });
-
-  it("offers Everything in this search only once a run is chosen", () => {
-    expect(matchScopeOptions(false).map((option) => option.label)).toEqual([
-      "Waiting for you",
-      "Changed since you decided",
-      "Confirmed",
-      "Rejected",
-      "No match",
-      "Not matched",
-    ]);
-    expect(matchScopeOptions(true).at(-1)?.label).toBe("Everything in this search");
-  });
-
-  it("scopes to a playlist by the scope cleanQuery takes, with no run rule (C22)", () => {
-    const order = { sort: "artist", dir: "asc" } as const;
-    const query = matchQuery("needs_review", { kind: "playlist", id: 12, name: "Peak time" }, order);
-    expect(query).toMatchObject({ playlistId: 12, scope: null, collectionId: null });
-    expect(query.filters).toEqual({
-      match: "all",
-      rules: [{ field: "match_state", operator: "is", value: "needs_review" }],
-    });
-    // A run, or nothing, stays on the whole library.
-    expect(matchQuery("needs_review", { kind: "run", id: "job-1" }, order).playlistId).toBeNull();
-    expect(matchQuery("needs_review", null, order)).toMatchObject({
-      playlistId: DEFAULT_LIBRARY_QUERY.playlistId,
-    });
-  });
-
-  it("names a run in From by when and what", () => {
-    expect(runOptionLabel(run(), NOW)).toBe('Today 13:42 · Playlist "all"');
-    expect(runOptionLabel(run({ label: null, planned: 24 }), NOW)).toBe("Today 13:42 · 24 tracks");
   });
 });

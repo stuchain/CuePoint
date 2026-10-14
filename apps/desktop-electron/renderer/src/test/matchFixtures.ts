@@ -11,7 +11,10 @@ import type {
   LibrarySearchResponse,
   LibraryTrackRow,
   MatchCandidate,
+  MatchReview,
   MatchRun,
+  ReviewStatus,
+  ReviewTrack,
   TrackMatches,
   TrackMatchState,
 } from "../api/cuepointBridge.types";
@@ -188,6 +191,7 @@ export function run(overrides: Partial<MatchRun> = {}): MatchRun {
     not_found: 6,
     rejected: 0,
     disputed: 0,
+    search_failed: 0,
     status: "done",
     finished_at: null,
     latest_job_id: "job-1",
@@ -223,5 +227,58 @@ export function browseAnswer(
     sort: params.sort as string,
     dir: params.dir as "asc" | "desc",
     filters: (params.filters as LibrarySearchResponse["filters"]) ?? null,
+  };
+}
+
+/** One track of a review list, as the engine sends it. A track to check has a match; one not found has none. */
+export function reviewTrack(
+  id: number,
+  status: ReviewStatus,
+  overrides: Partial<ReviewTrack> = {},
+): ReviewTrack {
+  const hasMatch = status === "to_check" || status === "matched" || status === "done";
+  return {
+    track_id: id,
+    title: `Track ${id}`,
+    artist: `Artist ${id}`,
+    status,
+    decision: status === "done" ? "accepted" : null,
+    disputed: false,
+    undo_batch: status === "done" ? `batch-${id}` : null,
+    cursor: `${status === "done" ? 1 : 0}:${id}`,
+    candidate: hasMatch
+      ? {
+          id: 1000 + id,
+          title: `Track ${id} (Extended Mix)`,
+          artists: `Beatport Artist ${id}`,
+          mix: "Extended Mix",
+          key: "A Minor",
+          bpm: 128,
+          label: "Label Two",
+          genre: "Techno",
+          release_year: 2020,
+          score: 90,
+          guard_ok: true,
+        }
+      : null,
+    differing: status === "to_check" ? ["remix"] : [],
+    ...overrides,
+  };
+}
+
+/** A review answer over these tracks, the counts worked out as the engine works them. */
+export function reviewOf(tracks: ReviewTrack[], overrides: Partial<MatchReview> = {}): MatchReview {
+  const counts = { to_check: 0, not_found: 0, search_failed: 0, matched: 0, done: 0 };
+  for (const entry of tracks) counts[entry.status] += 1;
+  return {
+    job_id: "job-1",
+    label: "hJ",
+    total: tracks.length,
+    counts,
+    rejected: tracks.filter((entry) => entry.decision === "rejected").length,
+    disputed: tracks.filter((entry) => entry.disputed).length,
+    matching: tracks.length,
+    tracks,
+    ...overrides,
   };
 }

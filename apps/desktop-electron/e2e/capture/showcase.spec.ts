@@ -57,7 +57,7 @@ const ALT: Record<string, string> = {
   export: "The Export to Rekordbox window: how many tracks and which playlists the new Rekordbox file will hold, before anything is written.",
   discover: "The Discover page after a search: new tracks found on a Beatport chart by an artist in the library, with their artists and labels.",
   clean: "The Clean page's Match area as a table: the tracks a Beatport match left waiting for a yes or no, with their tempo and genre beside them.",
-  "clean-compare": "Clean's Match area, One at a time: a track from the library beside the best match Beatport found, with its likelihood, the other results, and the Correct button.",
+  "clean-compare": "Clean's Match area, the Review of a run: a track from the library beside the best match Beatport found, with its likelihood, the other results, and the Correct button.",
 };
 
 function python(): string {
@@ -428,11 +428,10 @@ test.describe("the website's pictures (SITE-04)", () => {
         await titleCell(window, selected).click();
         const details = window.getByRole("complementary", { name: "Track details" });
         await expect(details.locator("[data-testid=inspector-waveform] canvas")).toBeVisible({ timeout: 30_000 });
-        // fold Yours and Rekordbox's details, so the waveform, its loudness and the cues sit together
-        for (const name of [/^Yours/, /^Details from Rekordbox/]) {
-          const toggle = details.getByRole("button", { name });
-          if ((await toggle.getAttribute("aria-expanded")) === "true") await toggle.click();
-        }
+        // Overview holds the facts, the waveform and the cues: fold Rekordbox's details, so they sit together
+        await details.getByRole("tab", { name: "Overview" }).click();
+        const rekordbox = details.getByRole("button", { name: /^Details from Rekordbox/ });
+        if ((await rekordbox.getAttribute("aria-expanded")) === "true") await rekordbox.click();
         const cues = details.getByRole("button", { name: /^Cue points/ });
         if ((await cues.getAttribute("aria-expanded")) === "false") await cues.click();
         await details.locator("[data-testid=inspector-waveform]").evaluate((el) => el.scrollIntoView({ block: "start" }));
@@ -531,13 +530,12 @@ test.describe("the website's pictures (SITE-04)", () => {
         await shoot(window, "discover", taken);
       });
 
-      await test.step("clean: the Match table after a playlist is matched", async () => {
+      await test.step("clean: the Review of a playlist after it is matched", async () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
         await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
-        // Match opens on Playlists (C22): tick the live playlist and match it.
+        // Match opens on Playlists (C22): the live playlist has its own Match button.
         const live = showcase.playlists.find((p) => p.name === showcase.livePlaylist)!;
-        await window.getByRole("checkbox", { name: `Match ${showcase.livePlaylist}` }).check({ timeout: 30_000 });
-        await window.getByRole("button", { name: "Match 1 playlist on Beatport" }).click();
+        await window.getByRole("button", { name: `Match ${showcase.livePlaylist}`, exact: true }).click({ timeout: 30_000 });
         await expect(window.getByText(`Matching ${live.trackIds.length} tracks on Beatport.`, { exact: true })).toBeVisible({ timeout: 30_000 });
         // the job's end, not the toast's: the toast goes on its own
         await idle(window);
@@ -548,39 +546,38 @@ test.describe("the website's pictures (SITE-04)", () => {
         await openLibrary(window);
         await window.getByRole("link", { name: "Clean", exact: true }).click();
         await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
-        await window.getByRole("tab", { name: "Table", exact: true }).click();
-        const queue = window.getByRole("table", { name: "Match table" });
-        await window.getByRole("combobox", { name: "Show" }).selectOption("needs_review");
-        // the queue's rows have nothing to inspect yet: the panel away gives the table its tempo and genre columns
-        const hide = window.getByRole("button", { name: "Hide track details" });
-        if (await hide.count()) await hide.click();
-        const genre = queue.locator('.track-table__row [data-column="genre"]').first();
-        await expect(genre).not.toBeEmpty({ timeout: 30_000 });
-        await expect(genre).toBeInViewport();
-        await expect(queue.locator('.track-table__row [data-column="bpm"]').first()).toContainText(/\d/);
+        // the run's Review: every track, with what was found for it and where it stands
+        // the match landed on its Review; the page kept it, and its row's Review N › opens it again
+        const reviewTab = window.getByRole("tab", { name: `Review ${showcase.livePlaylist}` });
+        if (await reviewTab.count()) await reviewTab.click();
+        else await window.getByRole("button", { name: new RegExp(`^Review [\\d,]+ › for ${showcase.livePlaylist}$`) }).click();
+        const queue = window.getByRole("region", { name: /^Review / }).getByRole("table");
+        await expect(queue.getByRole("row")).not.toHaveCount(1, { timeout: 30_000 });
+        await expect(queue.locator("td.review-row__theirs").first()).not.toBeEmpty({ timeout: 30_000 });
         await expect(window.locator(".cp-status")).toContainText("Ready");
         await shoot(window, "clean", taken);
       });
 
-      await test.step("clean-compare: One at a time, a track beside the best match Beatport found", async () => {
+      await test.step("clean-compare: Details, a track beside the best match Beatport found", async () => {
         // Errors and warnings stay until closed (DEC-281): close any still showing.
         await closeToasts(window);
         await expect(window.locator(".cp-toast")).toHaveCount(0, { timeout: 60_000 });
-        await window.getByRole("tab", { name: /^One at a time/ }).click();
-        const yours = window.getByRole("region", { name: "Your track" });
-        const theirs = window.getByRole("region", { name: "Best match on Beatport" });
-        await expect(yours.getByRole("heading").nth(1)).toBeVisible({ timeout: 30_000 });
+        // Details › beside the list: your file and the best match Beatport found
+        await window.getByRole("button", { name: /^Details of / }).first().click();
+        const panel = window.getByRole("complementary", { name: "Track details" });
+        const yours = panel.getByRole("region", { name: "Your file" });
+        const theirs = panel.getByRole("region", { name: "Beatport" });
         await expect(theirs.getByTestId("likelihood")).toBeVisible({ timeout: 30_000 });
-        await expect(window.getByRole("group", { name: "Decide" }).getByRole("button", { name: /^Correct/ })).toBeVisible();
+        await expect(panel.getByRole("group", { name: "Decide" }).getByRole("button", { name: /^Correct/ })).toBeVisible();
         // the covers, decoded by the app from the fixture, and the Beatport art fetched through the engine
-        await expect(yours.locator("img.match-card__art")).toBeVisible({ timeout: 30_000 });
-        await expect(theirs.locator("img.match-card__art")).toBeVisible({ timeout: 30_000 });
+        await expect(yours.locator("img.review-panel__art")).toBeVisible({ timeout: 30_000 });
+        await expect(theirs.locator("img.review-panel__art")).toBeVisible({ timeout: 30_000 });
         await expect
-          .poll(() => window.locator(".match-one img").evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0)), {
+          .poll(() => panel.locator("img").evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0)), {
             timeout: 30_000,
           })
           .toBe(true);
-        await expect(window.getByRole("group", { name: "Decide" })).toBeInViewport();
+        await expect(panel.getByRole("group", { name: "Decide" })).toBeInViewport();
         await shoot(window, "clean-compare", taken);
       });
 

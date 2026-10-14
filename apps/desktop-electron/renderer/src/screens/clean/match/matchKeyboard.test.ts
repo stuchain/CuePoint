@@ -27,7 +27,7 @@ describe("the One at a time keys", () => {
     ["y", "play-file"],
     ["Escape", "stop-preview"],
   ])("%s means %s", (value, command) => {
-    expect(matchCommand(key(value), "one")).toBe(command);
+    expect(matchCommand(key(value))).toBe(command);
   });
 
   it("names every command's key for the shortcuts dialog", () => {
@@ -46,30 +46,30 @@ describe("the One at a time keys", () => {
   });
 
   it("leaves Space to the player", () => {
-    expect(matchCommand(key(" "), "one")).toBeNull();
-    expect(matchCommand(key("Spacebar"), "one")).toBeNull();
+    expect(matchCommand(key(" "))).toBeNull();
+    expect(matchCommand(key("Spacebar"))).toBeNull();
     expect(Object.values(MATCH_KEYS)).not.toContain("Space");
   });
 
   it("ignores any other key", () => {
-    expect(matchCommand(key("x"), "one")).toBeNull();
+    expect(matchCommand(key("x"))).toBeNull();
     // A and R were the old keys for Correct and Not this track.
-    expect(matchCommand(key("a"), "one")).toBeNull();
-    expect(matchCommand(key("r"), "one")).toBeNull();
+    expect(matchCommand(key("a"))).toBeNull();
+    expect(matchCommand(key("r"))).toBeNull();
   });
 
   it.each(["ctrlKey", "metaKey", "altKey"] as const)("leaves %s combinations to the shell", (mod) => {
-    expect(matchCommand(key("s", { [mod]: true }), "one")).toBeNull();
-    expect(matchCommand(key("Enter", { [mod]: true }), "one")).toBeNull();
-    expect(matchCommand(key("ArrowDown", { [mod]: true }), "one")).toBeNull();
-    expect(matchCommand(key("b", { [mod]: true }), "one")).toBeNull();
+    expect(matchCommand(key("s", { [mod]: true }))).toBeNull();
+    expect(matchCommand(key("Enter", { [mod]: true }))).toBeNull();
+    expect(matchCommand(key("ArrowDown", { [mod]: true }))).toBeNull();
+    expect(matchCommand(key("b", { [mod]: true }))).toBeNull();
   });
 
   it("does not take a capital letter as a decision", () => {
     for (const letter of ["N", "n", "s", "b", "y"]) {
-      expect(matchCommand(key(letter, { shiftKey: true }), "one")).toBeNull();
+      expect(matchCommand(key(letter, { shiftKey: true }))).toBeNull();
     }
-    expect(matchCommand(key("ArrowDown", { shiftKey: true }), "one")).toBe("next-track");
+    expect(matchCommand(key("ArrowDown", { shiftKey: true }))).toBe("next-track");
   });
 
   it.each(["checkbox", "radio"])("does not treat a %s as typing: N still rejects there", (type) => {
@@ -77,7 +77,7 @@ describe("the One at a time keys", () => {
     box.type = type;
     document.body.append(box);
     try {
-      expect(matchCommand(key("n", { target: box }), "one")).toBe("not-this");
+      expect(matchCommand(key("n", { target: box }))).toBe("not-this");
     } finally {
       box.remove();
     }
@@ -88,7 +88,7 @@ describe("the One at a time keys", () => {
     field.type = "search";
     document.body.append(field);
     try {
-      expect(matchCommand(key("n", { target: field }), "one")).toBeNull();
+      expect(matchCommand(key("n", { target: field }))).toBeNull();
     } finally {
       field.remove();
     }
@@ -96,16 +96,16 @@ describe("the One at a time keys", () => {
 
   it.each(["input", "textarea", "select"])("types into a %s", (tag) => {
     const field = document.createElement(tag);
-    expect(matchCommand(key("n", { target: field }), "one")).toBeNull();
-    expect(matchCommand(key("Enter", { target: field }), "one")).toBeNull();
-    expect(matchCommand(key("ArrowDown", { target: field }), "one")).toBeNull();
-    expect(matchCommand(key("Escape", { target: field }), "one")).toBeNull();
+    expect(matchCommand(key("n", { target: field }))).toBeNull();
+    expect(matchCommand(key("Enter", { target: field }))).toBeNull();
+    expect(matchCommand(key("ArrowDown", { target: field }))).toBeNull();
+    expect(matchCommand(key("Escape", { target: field }))).toBeNull();
   });
 
   it("types into an editable element", () => {
     const editable = document.createElement("div");
     Object.defineProperty(editable, "isContentEditable", { value: true });
-    expect(matchCommand(key("n", { target: editable }), "one")).toBeNull();
+    expect(matchCommand(key("n", { target: editable }))).toBeNull();
   });
 
   it.each(["dialog", "menu", "listbox", "tree"])("leaves keys inside a %s to it", (role) => {
@@ -114,22 +114,22 @@ describe("the One at a time keys", () => {
     const button = document.createElement("button");
     container.appendChild(button);
     document.body.appendChild(container);
-    expect(matchCommand(key("n", { target: button }), "one")).toBeNull();
+    expect(matchCommand(key("n", { target: button }))).toBeNull();
     container.remove();
   });
 
   it("works when the window itself has the event", () => {
-    expect(matchCommand(key("Enter", { target: window }), "one")).toBe("correct");
-    expect(matchCommand(key("Enter", { target: null }), "one")).toBe("correct");
+    expect(matchCommand(key("Enter", { target: window }))).toBe("correct");
+    expect(matchCommand(key("Enter", { target: null }))).toBe("correct");
   });
 
   it("leaves Enter on a button to the button, which it presses", () => {
     const skip = document.createElement("button");
     document.body.append(skip);
     try {
-      expect(matchCommand(key("Enter", { target: skip }), "one")).toBeNull();
+      expect(matchCommand(key("Enter", { target: skip }))).toBeNull();
       // The letters still decide from a focused button.
-      expect(matchCommand(key("s", { target: skip }), "one")).toBe("skip");
+      expect(matchCommand(key("s", { target: skip }))).toBe("skip");
     } finally {
       skip.remove();
     }
@@ -153,7 +153,7 @@ describe("the One at a time keys", () => {
     }
     document.body.append(element);
     try {
-      expect(matchCommand(key("Enter", { target: element }), "one")).toBeNull();
+      expect(matchCommand(key("Enter", { target: element }))).toBeNull();
     } finally {
       element.remove();
     }
@@ -163,7 +163,7 @@ describe("the One at a time keys", () => {
     const region = document.createElement("section");
     document.body.append(region);
     try {
-      expect(matchCommand(key("Enter", { target: region }), "one")).toBe("correct");
+      expect(matchCommand(key("Enter", { target: region }))).toBe("correct");
     } finally {
       region.remove();
     }
@@ -171,10 +171,10 @@ describe("the One at a time keys", () => {
 
   it("decides once: a held Enter, N or S does not repeat", () => {
     for (const value of ["Enter", "n", "s"]) {
-      expect(matchCommand(key(value, { repeat: true }), "one")).toBeNull();
-      expect(matchCommand(key(value), "one")).not.toBeNull();
+      expect(matchCommand(key(value, { repeat: true }))).toBeNull();
+      expect(matchCommand(key(value))).not.toBeNull();
     }
     // Looking at other results may be held.
-    expect(matchCommand(key("ArrowRight", { repeat: true }), "one")).toBe("next-candidate");
+    expect(matchCommand(key("ArrowRight", { repeat: true }))).toBe("next-candidate");
   });
 });

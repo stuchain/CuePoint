@@ -279,6 +279,7 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   correctMatch: (params) => ipcRenderer.invoke("engine:correctMatch", params),
   correctMatches: (params) => ipcRenderer.invoke("engine:correctMatches", params),
   getMatchJobs: (params) => ipcRenderer.invoke("engine:getMatchJobs", params),
+  getMatchReview: (params) => ipcRenderer.invoke("engine:getMatchReview", params),
   // A candidate's Beatport artwork and audio preview (C14), as object URLs like
   // getTrackArtwork's: the bytes stay in this process and the renderer never
   // loads a remote URL. Artwork is released with releaseTrackArtwork.
@@ -307,6 +308,7 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   setTrackOverrides: (params) => ipcRenderer.invoke("engine:setTrackOverrides", params),
   revertChange: (params) => ipcRenderer.invoke("engine:revertChange", params),
   revertBatch: (params) => ipcRenderer.invoke("engine:revertBatch", params),
+  searchMatch: (params) => ipcRenderer.invoke("engine:searchMatch", params),
   startFileCheck: (params) => ipcRenderer.invoke("engine:startFileCheck", params),
   startDuplicateScan: (params) => ipcRenderer.invoke("engine:startDuplicateScan", params),
   getDuplicateGroups: (params) => ipcRenderer.invoke("engine:getDuplicateGroups", params),

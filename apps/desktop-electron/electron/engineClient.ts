@@ -1022,16 +1022,91 @@ export interface MatchRun {
   not_found: number;
   rejected: number;
   disputed: number;
+  /** Finished tracks whose search could not finish: not in `not_found`. */
+  search_failed: number;
   status: "running" | "stopped" | "done";
   finished_at: string | null;
   latest_job_id: string;
   resume_job_id: string | null;
 }
 
+/** What searching Beatport by hand answers: the stored attempt's candidates, scored against the track. */
+export interface MatchSearchAnswer {
+  attempt_id: number;
+  track_id: number;
+  candidates: Array<MatchCandidate & { differing?: string[] }>;
+  total: number;
+  query: string;
+  failure: string | null;
+  failure_message: string | null;
+  state: TrackMatchState;
+}
+
 export interface MatchJobs {
   jobs: MatchRun[];
   total: number;
 }
+
+/** Where one track of a run stands in the review (the engine's words, `match_review.py`). */
+export type ReviewStatus = "to_check" | "not_found" | "search_failed" | "matched" | "done";
+
+/** The few facts of a candidate the review list draws. */
+export interface ReviewCandidate {
+  id: number;
+  title: string | null;
+  artists: string | null;
+  mix: string | null;
+  key: string | null;
+  bpm: number | null;
+  label: string | null;
+  genre: string | null;
+  release_year: number | null;
+  score: number;
+  guard_ok: boolean;
+}
+
+/** One track of the review list: what the engine found for it, and what differs. */
+export interface ReviewTrack {
+  track_id: number;
+  title: string;
+  artist: string;
+  status: ReviewStatus;
+  /** What the person decided; null while nothing was. */
+  decision: "accepted" | "rejected" | null;
+  /** A newer search disagrees with the decision: it is to check again. */
+  disputed: boolean;
+  /** The batch that takes back the track's last decision and the values it copied; null for a refusal. */
+  undo_batch: string | null;
+  /** Where this row stands in the listing: read on from it with `after`, whatever has been decided since. */
+  cursor: string;
+  candidate: ReviewCandidate | null;
+  /** The fields that differ from the candidate: "title", "remix", "key", "bpm"... */
+  differing: string[];
+}
+
+/** Every track of a run (or playlist), for the Review list. */
+export interface MatchReview {
+  job_id: string | null;
+  label: string | null;
+  /** Every track of the run, whatever the page holds. */
+  total: number;
+  counts: Record<ReviewStatus, number>;
+  /** Tracks the person refused, and those a newer search disagrees with them about. */
+  rejected: number;
+  disputed: number;
+  /** How many tracks the filter holds, of which `tracks` is one page. */
+  matching: number;
+  /** With `idsOnly`: every id of the filter. */
+  ids?: number[];
+  tracks: ReviewTrack[];
+}
+
+/** What a review is read with: the run or playlist, a filter, a page, or only the ids. */
+export type MatchReviewFilter =
+  | "all"
+  | ReviewStatus
+  | "rejected"
+  | "disputed";
 
 /** A candidate's audio preview: the bytes and the type the engine named. */
 export interface CandidatePreview {
@@ -3629,8 +3704,12 @@ export class EngineClient {
   /** Ask for a track's zoomed waveform to be made, ahead of the queue. */
   async requestWaveformDetail(params: {
     track_id: number;
+    low?: boolean;
   }): Promise<WaveformAnswer<WaveformDetailRequested>> {
-    return this.waveformsPost("/api/v1/waveforms/detail/request", { track_id: params.track_id });
+    return this.waveformsPost("/api/v1/waveforms/detail/request", {
+      track_id: params.track_id,
+      ...(params.low === true ? { low: true } : {}),
+    });
   }
 
   /** Analyse these tracks first, at most 50, even while the analysis is paused. */
@@ -3984,6 +4063,26 @@ export class EngineClient {
     return this.getJson(`/api/v1/clean/match/jobs${suffix}`);
   }
 
+  /** Every track of a run (or a playlist), where each stands, for the Review list. */
+  async getMatchReview(params?: {
+    jobId?: string;
+    playlistId?: number;
+    filter?: MatchReviewFilter;
+    after?: string;
+    limit?: number;
+    idsOnly?: boolean;
+  }): Promise<MatchReview> {
+    const query = new URLSearchParams();
+    if (params?.jobId) query.set("job_id", params.jobId);
+    if (params?.playlistId != null) query.set("playlist_id", String(params.playlistId));
+    if (params?.filter && params.filter !== "all") query.set("filter", params.filter);
+    if (params?.after) query.set("after", params.after);
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    if (params?.idsOnly) query.set("ids_only", "true");
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return this.getJson(`/api/v1/clean/match/review${suffix}`);
+  }
+
   /** A Beatport candidate's artwork as JPEG bytes, or null when it has none (204). */
   async getCandidateArtwork(params: {
     candidateId: number;
@@ -4107,8 +4206,13 @@ export class EngineClient {
   }
 
   /** Revert every change a batch made, inline or as a job (CLEAN-06). */
-  async revertBatch(params: { batch_id: string }): Promise<BatchRevertOutcome> {
+  async revertBatch(params: { batch_id: string; track_id?: number }): Promise<BatchRevertOutcome> {
     return this.postJson("/api/v1/library/revert/batch", params);
+  }
+
+  /** Search Beatport for one track with words of one's own (the Review's Search panel). */
+  async searchMatch(params: { track_id: number; query: string }): Promise<MatchSearchAnswer> {
+    return this.postJson("/api/v1/clean/match/search", params);
   }
 
   /** Check the files of a selection (DEC-073). */

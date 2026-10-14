@@ -41,13 +41,13 @@ CuePoint then checks, in the background, that your files are where Rekordbox say
 1. Go to **Clean**.
 2. Clean opens on **Playlists**. Press **Match** on the playlist you want, or on **Whole library** to match everything. When it ends, **Review N ›** takes you through the tracks that need you. Later, come back here and do the same.
 
-Matching runs in the background, so you can keep working. Tracks CuePoint is certain about are confirmed for you. The rest wait under **Waiting for you**.
+Matching runs in the background, so you can keep working. Tracks CuePoint is certain about are confirmed for you. The rest are marked **To check** in the review that opens when the match ends.
 
 ### 4. Check the matches
 
-1. Open **Match**. **Show** is on **Waiting for you**, in **One at a time**.
-2. Your track is on the left and the best match Beatport found is on the right, with the values that would change marked. Press **Left** or **Right** for another result.
-3. Under the cards, tick the values **Correct** should also copy (BPM, genre, label, year). Press **Enter** to Correct, **N** for **Not this track**, or **S** to skip. **Undo** takes the last Correct back.
+1. When a match ends on Clean, it opens **Review** with every track of it: your track, the Beatport match, what differs, and a button for each decision. **Confirm all N matched** confirms the ones CuePoint was sure of.
+2. **Correct** confirms a match, **Not this** refuses it, and **Details ›** opens your file beside the best match Beatport found, with the other results behind **show ›**. Press **Left** or **Right** for another result.
+3. In the details, tick the values **Correct** should also copy (BPM, genre, label, year). Press **Enter** to Correct, **N** for **Not this track**, or **S** to skip. **Undo** on a decided row takes it back.
 
 ### 5. Beatport's values
 

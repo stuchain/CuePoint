@@ -2789,6 +2789,7 @@ class TestPastSearches:
                 "disputed": 0,
                 "status": "stopped",
                 "finished_at": None,
+                "search_failed": 0,
                 "latest_job_id": "run-1",
                 "resume_job_id": "run-1",
             }
@@ -2865,3 +2866,837 @@ class TestPastSearches:
             "INVALID_REQUEST",
             "label",
         )
+
+
+# ------------------------------ the review of one run (the Review tab)
+
+
+def failed_attempt(track_id: int, message: str = "Beatport could not be reached"):
+    """An attempt the matcher could not finish: an error, never a no-match."""
+    result = TrackResult(
+        playlist_index=1,
+        title="A Title",
+        artist="An Artist",
+        matched=False,
+        error=message,
+    )
+    return resolve("IMatchRepository").add_attempt(track_id, "job", result, QUESTION)
+
+
+@pytest.mark.unit
+class TestMatchReview:
+    """Every track of a run with where it stands, for one list to decide from."""
+
+    def run_of(self, ids: List[int], job_id: str = "review-run") -> str:
+        resolve("IMatchJobRepository").create(
+            job_id,
+            ids,
+            rematch=False,
+            selected=len(ids),
+            created_at=NOW,
+            label="hJ",
+        )
+        for position in range(len(ids)):
+            resolve("IMatchJobRepository").mark_done(job_id, position)
+        return job_id
+
+    def five_ways(self) -> Tuple[str, Dict[str, int]]:
+        """One run holding a track in each of the five places a track can be."""
+        ids = add_tracks(
+            track("Sure", title="Sure Thing", bpm=124.0),
+            track("Check", title="Physical", bpm=120.0, key="8A"),
+            track("Nothing"),
+            track("Broken"),
+            track("Decided"),
+        )
+        sure, check, nothing, broken, decided = ids
+        attempt(sure, candidate(1, score=99.0, title="Sure Thing", bpm="124"))
+        attempt(
+            check,
+            candidate(
+                2,
+                score=80.0,
+                title="Physical (Extended Mix)",
+                bpm="126",
+                key="A min",
+            ),
+        )
+        attempt(nothing, winner=None)
+        failed_attempt(broken)
+        attempt(decided, candidate(3, score=80.0, title="Decided"))
+        resolve("IMatchStateService").accept(
+            decided, resolve("IMatchRepository").get_match(decided).candidate_id
+        )
+        return self.run_of(ids), dict(
+            sure=sure, check=check, nothing=nothing, broken=broken, decided=decided
+        )
+
+    def test_every_track_says_where_it_stands(self, engine):
+        job_id, ids = self.five_ways()
+
+        payload = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))
+
+        by_track = {row["track_id"]: row for row in payload["tracks"]}
+        assert {
+            name: by_track[track_id]["status"] for name, track_id in ids.items()
+        } == {
+            "sure": "matched",
+            "check": "to_check",
+            "nothing": "not_found",
+            "broken": "search_failed",
+            "decided": "done",
+        }
+        assert payload["counts"] == {
+            "to_check": 1,
+            "not_found": 1,
+            "search_failed": 1,
+            "matched": 1,
+            "done": 1,
+        }
+        assert payload["total"] == 5
+        assert payload["job_id"] == job_id
+
+    def test_a_track_to_check_names_its_match_and_what_differs(self, engine):
+        job_id, ids = self.five_ways()
+
+        row = next(
+            entry
+            for entry in ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))[
+                "tracks"
+            ]
+            if entry["track_id"] == ids["check"]
+        )
+
+        assert row["title"] == "Check" or row["title"] == "Physical"
+        assert row["candidate"]["title"] == "Physical (Extended Mix)"
+        assert row["candidate"]["id"] > 0
+        assert row["candidate"]["mix"] == "Extended Mix"
+        assert "bpm" in row["differing"]
+        assert "key" not in row["differing"]  # 8A is A minor
+
+    def test_a_track_nothing_was_found_for_has_no_match_to_show(self, engine):
+        job_id, ids = self.five_ways()
+
+        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
+        nothing = next(entry for entry in rows if entry["track_id"] == ids["nothing"])
+
+        assert nothing["candidate"] is None
+        assert nothing["differing"] == []
+
+    def test_a_decided_track_says_what_was_decided(self, engine):
+        job_id, ids = self.five_ways()
+        resolve("IMatchStateService").reject(ids["check"])
+
+        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
+        decisions = {entry["track_id"]: entry["decision"] for entry in rows}
+
+        assert decisions[ids["decided"]] == "accepted"
+        assert decisions[ids["check"]] == "rejected"
+        assert decisions[ids["sure"]] is None
+
+    def test_leaving_a_not_found_track_unmatched_makes_it_done(self, engine):
+        job_id, ids = self.five_ways()
+        ok(
+            post(
+                engine,
+                "/api/v1/clean/decide",
+                {"decision": "reject", "track_id": ids["nothing"]},
+            )
+        )
+
+        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
+        nothing = next(entry for entry in rows if entry["track_id"] == ids["nothing"])
+
+        assert (nothing["status"], nothing["decision"]) == ("done", "rejected")
+
+    def test_a_track_whose_search_failed_can_be_left_unmatched(self, engine):
+        job_id, ids = self.five_ways()
+        ok(
+            post(
+                engine,
+                "/api/v1/clean/decide",
+                {"decision": "reject", "track_id": ids["broken"]},
+            )
+        )
+
+        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
+        broken = next(entry for entry in rows if entry["track_id"] == ids["broken"])
+
+        assert (broken["status"], broken["decision"]) == ("done", "rejected")
+        # Undone, it is a failed search again, not a track Beatport had nothing for.
+        ok(
+            post(
+                engine,
+                "/api/v1/clean/decide",
+                {"decision": "clear", "track_id": ids["broken"]},
+            )
+        )
+        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
+        again = next(entry for entry in rows if entry["track_id"] == ids["broken"])
+        assert again["status"] == "search_failed"
+
+    def test_an_unknown_run_is_404(self, engine):
+        refused(
+            get(engine, "/api/v1/clean/match/review", job_id="nope"),
+            404,
+            "MATCH_JOB_NOT_FOUND",
+        )
+
+    def test_a_run_and_a_playlist_together_are_400(self, engine):
+        refused(
+            get(
+                engine,
+                "/api/v1/clean/match/review",
+                job_id="x",
+                playlist_id=1,
+            ),
+            400,
+            "INVALID_REQUEST",
+            "one",
+        )
+
+    def test_without_a_run_it_reviews_every_matched_track(self, engine):
+        job_id, ids = self.five_ways()
+
+        payload = ok(get(engine, "/api/v1/clean/match/review"))
+
+        assert payload["job_id"] is None
+        assert payload["total"] == 5
+
+    def test_a_resumed_run_is_one_run(self, engine):
+        ids = add_tracks(track("ResumeA"), track("ResumeB"), track("ResumeC"))
+        jobs = resolve("IMatchJobRepository")
+        jobs.create("first", ids, rematch=False, selected=3, created_at=NOW)
+        jobs.mark_done("first", 0)
+        jobs.take_over("first", "second", NOW)
+        for position in (1, 2):
+            jobs.mark_done("second", position)
+        attempt(ids[0], candidate(50, score=80.0))
+
+        payload = ok(get(engine, "/api/v1/clean/match/review", job_id="first"))
+
+        assert [row["track_id"] for row in payload["tracks"]] == ids
+        assert payload["total"] == 3
+
+    def test_a_playlist_reviews_its_matched_tracks_only(self, engine):
+        from tests.unit.persistence.match_status_support import add_playlist
+
+        inside, outside, unmatched = add_tracks(
+            track("In"), track("Out"), track("Never")
+        )
+        attempt(inside, candidate(60, score=80.0))
+        attempt(outside, candidate(61, score=80.0))
+        playlist = add_playlist(
+            resolve("IDatabaseService"), "Mine", [inside, unmatched]
+        )
+
+        payload = ok(get(engine, "/api/v1/clean/match/review", playlist_id=playlist))
+
+        assert [row["track_id"] for row in payload["tracks"]] == [inside]
+
+    def test_a_limit_trims_the_rows_but_not_the_counts(self, engine):
+        job_id, ids = self.five_ways()
+
+        payload = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id, limit=2))
+
+        assert len(payload["tracks"]) == 2
+        assert payload["total"] == 5
+        assert sum(payload["counts"].values()) == 5
+        refused(
+            get(engine, "/api/v1/clean/match/review", job_id=job_id, limit=0),
+            400,
+            "INVALID_REQUEST",
+            "limit",
+        )
+
+    def test_a_row_is_a_plain_shape(self, engine):
+        job_id, ids = self.five_ways()
+
+        row = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"][0]
+
+        assert set(row) == {
+            "track_id",
+            "title",
+            "artist",
+            "status",
+            "decision",
+            "disputed",
+            "undo_batch",
+            "cursor",
+            "candidate",
+            "differing",
+        }
+
+    def test_the_track_to_look_at_come_first_and_the_decided_last(self, engine):
+        job_id, ids = self.five_ways()
+
+        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
+
+        assert [row["status"] for row in rows][-1] == "done"
+        assert rows[-1]["track_id"] == ids["decided"]
+
+    def test_a_filter_narrows_the_rows_and_pages_them_with_counts_for_all(self, engine):
+        job_id, ids = self.five_ways()
+        resolve("IMatchStateService").reject(ids["check"])
+
+        page = ok(
+            get(engine, "/api/v1/clean/match/review", job_id=job_id, filter="done")
+        )
+        assert {row["track_id"] for row in page["tracks"]} == {
+            ids["decided"],
+            ids["check"],
+        }
+        assert page["matching"] == 2
+        assert page["total"] == 5
+        assert page["counts"]["done"] == 2
+
+        first = ok(
+            get(
+                engine,
+                "/api/v1/clean/match/review",
+                job_id=job_id,
+                filter="done",
+                limit=1,
+            )
+        )
+        second = ok(
+            get(
+                engine,
+                "/api/v1/clean/match/review",
+                job_id=job_id,
+                filter="done",
+                after=first["tracks"][0]["cursor"],
+                limit=1,
+            )
+        )
+        assert len(second["tracks"]) == 1
+        assert second["tracks"][0]["track_id"] != first["tracks"][0]["track_id"]
+        assert page["rejected"] == 1
+        rejected = ok(
+            get(engine, "/api/v1/clean/match/review", job_id=job_id, filter="rejected")
+        )
+        assert [row["track_id"] for row in rejected["tracks"]] == [ids["check"]]
+        refused(
+            get(engine, "/api/v1/clean/match/review", job_id=job_id, filter="nope"),
+            400,
+            "INVALID_REQUEST",
+            "filter",
+        )
+
+    def test_a_page_read_on_after_decisions_skips_no_track(self, engine):
+        ids = add_tracks(*[track(f"Page{n}") for n in range(5)])
+        for track_id in ids:
+            attempt(track_id, candidate(100 + track_id, score=80.0))
+        job_id = self.run_of(ids, "page-run")
+
+        first = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id, limit=2))[
+            "tracks"
+        ]
+        # Between the pages the person decides the two they have read, which
+        # moves them to the end of the listing: the offset of the rest changes.
+        for row in first:
+            ok(
+                post(
+                    engine,
+                    "/api/v1/clean/decide",
+                    {"decision": "reject", "track_id": row["track_id"]},
+                )
+            )
+        rest = ok(
+            get(
+                engine,
+                "/api/v1/clean/match/review",
+                job_id=job_id,
+                after=first[-1]["cursor"],
+            )
+        )["tracks"]
+
+        seen = {row["track_id"] for row in first} | {row["track_id"] for row in rest}
+        assert seen == set(ids)
+
+    def test_a_playlist_page_read_on_after_a_rename_skips_no_track(self, engine):
+        from tests.unit.persistence.match_status_support import add_playlist
+
+        ids = add_tracks(*[track(f"Rename{n}", artist=f"Artist {n}") for n in range(4)])
+        for track_id in ids:
+            attempt(track_id, candidate(200 + track_id, score=80.0))
+        playlist = add_playlist(resolve("IDatabaseService"), "Mine", ids)
+
+        first = ok(
+            get(
+                engine,
+                "/api/v1/clean/match/review",
+                playlist_id=playlist,
+                limit=2,
+            )
+        )["tracks"]
+        # Between the pages the first track read is renamed, and so would sort
+        # elsewhere in a listing kept by name.
+        with resolve("IDatabaseService").transaction() as connection:
+            connection.execute(
+                "UPDATE tracks SET artist = 'Zzz', title = 'Zzz' WHERE id = ?",
+                (first[0]["track_id"],),
+            )
+        rest = ok(
+            get(
+                engine,
+                "/api/v1/clean/match/review",
+                playlist_id=playlist,
+                after=first[-1]["cursor"],
+            )
+        )["tracks"]
+
+        assert {row["track_id"] for row in first} | {
+            row["track_id"] for row in rest
+        } == set(ids)
+
+    def test_a_cursor_that_is_not_one_is_refused(self, engine):
+        job_id, _ = self.five_ways()
+        refused(
+            get(engine, "/api/v1/clean/match/review", job_id=job_id, after="nonsense"),
+            400,
+            "INVALID_REQUEST",
+            "cursor",
+        )
+
+    def test_ids_only_answers_every_id_of_a_filter(self, engine):
+        job_id, ids = self.five_ways()
+
+        answer = ok(
+            get(
+                engine,
+                "/api/v1/clean/match/review",
+                job_id=job_id,
+                filter="matched",
+                ids_only="true",
+            )
+        )
+
+        assert answer["ids"] == [ids["sure"]]
+        assert answer["tracks"] == []
+
+    def test_a_correction_names_the_batch_that_undoes_it(self, engine):
+        track_id, candidate_id = proposed_track("UndoMe")
+        job_id = self.run_of([track_id], "undo-run")
+        done = ok(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {"track_id": track_id, "candidate_id": candidate_id, "fields": ["bpm"]},
+            )
+        )
+
+        row = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"][0]
+
+        assert row["status"] == "done"
+        assert row["undo_batch"] == done["batch_id"]
+        ok(post(engine, "/api/v1/library/revert/batch", {"batch_id": done["batch_id"]}))
+        again = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"][
+            0
+        ]
+        assert again["status"] == "to_check"
+
+    def test_undoing_one_track_of_a_batch_takes_back_only_that_track(self, engine):
+        first, _ = proposed_track("BatchOne")
+        second, _ = proposed_track("BatchTwo")
+        job_id = self.run_of([first, second], "batch-run")
+        done = ok(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {"selection": ids_selection(first, second), "fields": ["bpm"]},
+            )
+        )["applied"]
+
+        rows = {
+            row["track_id"]: row
+            for row in ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))[
+                "tracks"
+            ]
+        }
+        assert (
+            rows[first]["undo_batch"] == rows[second]["undo_batch"] == done["batch_id"]
+        )
+
+        reverted = ok(
+            post(
+                engine,
+                "/api/v1/library/revert/batch",
+                {"batch_id": done["batch_id"], "track_id": first},
+            )
+        )["reverted"]
+        # The Activity entry names the track it took back, not just the batch.
+        [event] = resolve("IActivityRepository").batch_events(reverted["batch_id"])
+        assert event.detail["track_id"] == first
+        assert "BatchOne" in event.summary
+        assert event.summary.startswith("Undid the change to")
+
+        rows = {
+            row["track_id"]: row
+            for row in ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))[
+                "tracks"
+            ]
+        }
+        assert rows[first]["status"] == "to_check"
+        assert rows[second]["status"] == "done"
+
+    def test_a_track_the_batch_did_not_touch_cannot_be_undone_from_it(self, engine):
+        first, _ = proposed_track("BatchHas")
+        other, _ = proposed_track("BatchNot")
+        done = ok(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {"selection": ids_selection(first), "fields": ["bpm"]},
+            )
+        )["applied"]
+        refused(
+            post(
+                engine,
+                "/api/v1/library/revert/batch",
+                {"batch_id": done["batch_id"], "track_id": other},
+            ),
+            400,
+            "INVALID_REQUEST",
+            "nothing to undo",
+        )
+
+    def test_a_decision_a_revert_put_back_is_not_undone_by_reverting_that_revert(
+        self, engine
+    ):
+        track_id, candidate_id = proposed_track("RevertTwice")
+        job_id = self.run_of([track_id], "twice-run")
+        ok(
+            post(
+                engine,
+                "/api/v1/clean/decide",
+                {"decision": "reject", "track_id": track_id},
+            )
+        )
+        corrected = ok(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {"track_id": track_id, "candidate_id": candidate_id, "fields": []},
+            )
+        )
+        ok(
+            post(
+                engine,
+                "/api/v1/library/revert/batch",
+                {"batch_id": corrected["batch_id"]},
+            )
+        )
+
+        row = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"][0]
+
+        # The reverted correction put the refusal back: done, and nothing to revert again.
+        assert (row["status"], row["decision"]) == ("done", "rejected")
+        assert row["undo_batch"] is None
+
+    def test_a_refusal_has_no_batch_to_revert(self, engine):
+        job_id, ids = self.five_ways()
+        resolve("IMatchStateService").reject(ids["check"])
+
+        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
+        row = next(entry for entry in rows if entry["track_id"] == ids["check"])
+
+        assert row["undo_batch"] is None
+
+    def test_a_decision_a_newer_search_disagrees_with_is_to_check_not_done(
+        self, engine
+    ):
+        job_id, ids = self.five_ways()
+        decided = ids["decided"]
+        attempt(decided, candidate(77, score=99.0, title="Another Track"))
+        state = resolve("IMatchRepository").get_match(decided)
+        assert state is not None and state.newer_attempt_id is not None
+
+        payload = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))
+        row = next(entry for entry in payload["tracks"] if entry["track_id"] == decided)
+
+        assert (row["status"], row["disputed"]) == ("to_check", True)
+        assert payload["disputed"] == 1
+
+    def test_a_run_that_only_failed_reports_failed_searches_not_not_found(self, engine):
+        ids = add_tracks(track("FailOne"), track("FailTwo"))
+        for track_id in ids:
+            failed_attempt(track_id)
+        self.run_of(ids, "failed-run")
+
+        run = ok(get(engine, "/api/v1/clean/match/jobs"))["jobs"][0]
+
+        assert (run["not_found"], run["search_failed"]) == (0, 2)
+
+
+# ------------------------------- searching Beatport by hand (the Review's Search panel)
+
+
+class _Catalog:
+    """A signed-in catalog that answers with fixed hits, or fails as asked."""
+
+    def __init__(self, hits=None, fail: Optional[str] = None, signed_in=True):
+        from cuepoint.data.catalog_search import CatalogHit
+
+        self.hits = [
+            CatalogHit(url=url, details=details) for url, details in (hits or [])
+        ]
+        self.fail = fail
+        self.signed_in = signed_in
+        self.asked: List[str] = []
+
+    def available(self) -> bool:
+        return self.signed_in
+
+    def search(self, query: str, max_results: int):
+        from cuepoint.data.catalog_search import CatalogSearchError
+
+        self.asked.append(query)
+        if self.fail:
+            raise CatalogSearchError(self.fail, "down")
+        return self.hits[:max_results]
+
+
+@pytest.fixture
+def catalog(monkeypatch):
+    from cuepoint.data import catalog_search, search_health
+
+    monkeypatch.delenv("CUEPOINT_SKIP_BEATPORT", raising=False)
+    search_health.reset()
+    catalog_search.clear_prefetched()
+    made: List[Any] = []
+
+    def install(hits=None, **kwargs: Any) -> _Catalog:
+        provider = _Catalog(hits, **kwargs)
+        catalog_search.set_provider(provider)
+        made.append(provider)
+        return provider
+
+    yield install
+    catalog_search.set_provider(None)
+    catalog_search.clear_prefetched()
+    search_health.reset()
+
+
+HITS = [
+    (
+        "https://www.beatport.com/track/glue/1",
+        (
+            "Glue (Original Mix)",
+            "Bicep",
+            "8A",
+            2017,
+            "130",
+            "Ninja Tune",
+            "Electro",
+            "Bicep",
+            "2017-09-01",
+        ),
+    ),
+    (
+        "https://www.beatport.com/track/glue-edit/2",
+        (
+            "Glue (Edit)",
+            "Bicep",
+            "8A",
+            2017,
+            "130",
+            "Ninja Tune",
+            "Electro",
+            "Bicep",
+            "2017-09-01",
+        ),
+    ),
+]
+
+
+@pytest.mark.unit
+class TestSearchByHand:
+    def track_id(self) -> int:
+        [track_id] = add_tracks(track("Glue", artist="Bicep"))
+        return track_id
+
+    def test_without_a_sign_in_it_says_so_instead_of_searching(self, engine, catalog):
+        catalog(signed_in=False)
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/match/search",
+                {"track_id": self.track_id(), "query": "glue bicep"},
+            ),
+            409,
+            "BEATPORT_SIGN_IN_NEEDED",
+        )
+
+    def test_it_needs_words(self, engine, catalog):
+        catalog(HITS)
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/match/search",
+                {"track_id": self.track_id(), "query": "   "},
+            ),
+            400,
+            "INVALID_REQUEST",
+            "search",
+        )
+
+    def test_the_results_are_scored_against_the_track_and_stored_as_an_attempt(
+        self, engine, catalog
+    ):
+        provider = catalog(HITS)
+        track_id = self.track_id()
+
+        answer = ok(
+            post(
+                engine,
+                "/api/v1/clean/match/search",
+                {"track_id": track_id, "query": "  glue   bicep original "},
+            )
+        )
+
+        assert provider.asked == ["glue bicep original"]
+        assert answer["query"] == "glue bicep original"
+        assert answer["failure"] is None
+        assert answer["total"] == 2
+        assert all(entry["differs"] is not None for entry in answer["candidates"])
+        assert {entry["title"] for entry in answer["candidates"]} == {
+            "Glue (Original Mix)",
+            "Glue (Edit)",
+        }
+        attempts = resolve("IMatchRepository").attempts_for(track_id)
+        assert [attempt.id for attempt in attempts] == [answer["attempt_id"]]
+        # Never accepted by a hand search, however certain: the person presses Use this.
+        assert answer["state"]["state"] == "needs_review"
+        assert all("differing" in entry for entry in answer["candidates"])
+
+    def test_one_result_is_then_accepted_with_the_existing_correct(
+        self, engine, catalog
+    ):
+        catalog(HITS)
+        track_id = self.track_id()
+        answer = ok(
+            post(
+                engine,
+                "/api/v1/clean/match/search",
+                {"track_id": track_id, "query": "glue bicep"},
+            )
+        )
+        edit = next(e for e in answer["candidates"] if e["title"] == "Glue (Edit)")
+
+        ok(
+            post(
+                engine,
+                "/api/v1/clean/correct",
+                {"track_id": track_id, "candidate_id": edit["id"], "fields": []},
+            )
+        )
+
+        state = resolve("IMatchRepository").get_match(track_id)
+        assert (state.state, state.candidate_id) == ("accepted", edit["id"])
+
+    def test_a_certain_result_is_still_only_proposed(self, engine, catalog):
+        catalog([HITS[0]])
+        track_id = self.track_id()
+
+        answer = ok(
+            post(
+                engine,
+                "/api/v1/clean/match/search",
+                {"track_id": track_id, "query": "glue bicep original mix"},
+            )
+        )
+
+        assert answer["candidates"][0]["score"] >= 95
+        state = resolve("IMatchRepository").get_match(track_id)
+        assert (state.state, state.decided_by) == ("needs_review", "auto")
+        assert state.candidate_id == answer["candidates"][0]["id"]
+
+    def test_a_state_the_track_already_has_is_left_alone(self, engine, catalog):
+        catalog(HITS)
+        track_id, candidate_id = proposed_track("HasState")
+        before = resolve("IMatchRepository").get_match(track_id)
+
+        ok(
+            post(
+                engine,
+                "/api/v1/clean/match/search",
+                {"track_id": track_id, "query": "has state"},
+            )
+        )
+
+        after = resolve("IMatchRepository").get_match(track_id)
+        assert (after.state, after.candidate_id) == (before.state, before.candidate_id)
+
+    def test_words_that_are_not_text_are_a_bad_request(self, engine, catalog):
+        catalog(HITS)
+        for query in (7, ["glue"], {"q": "glue"}):
+            refused(
+                post(
+                    engine,
+                    "/api/v1/clean/match/search",
+                    {"track_id": self.track_id(), "query": query},
+                ),
+                400,
+                "INVALID_REQUEST",
+                "text",
+            )
+
+    def test_it_waits_while_a_match_runs(self, engine, catalog, store):
+        catalog(HITS)
+        release = hold(store, match_jobs.JOB_TYPE_CLEAN_MATCH)
+        try:
+            refused(
+                post(
+                    engine,
+                    "/api/v1/clean/match/search",
+                    {"track_id": self.track_id(), "query": "glue bicep"},
+                ),
+                409,
+                "MATCH_RUNNING",
+            )
+        finally:
+            release.set()
+
+    def test_a_search_that_failed_says_it_failed_not_that_nothing_was_found(
+        self, engine, catalog
+    ):
+        catalog(fail="network")
+        track_id = self.track_id()
+
+        answer = ok(
+            post(
+                engine,
+                "/api/v1/clean/match/search",
+                {"track_id": track_id, "query": "glue bicep"},
+            )
+        )
+
+        assert answer["failure"] == "network"
+        assert answer["failure_message"]
+        assert answer["total"] == 0
+        attempt = resolve("IMatchRepository").latest_attempt(track_id)
+        assert attempt.outcome == "error"
+
+    def test_a_person_decision_survives_the_search(self, engine, catalog):
+        catalog(HITS)
+        track_id = self.track_id()
+        ok(
+            post(
+                engine,
+                "/api/v1/clean/match/search",
+                {"track_id": track_id, "query": "glue"},
+            )
+        )
+        resolve("IMatchStateService").reject(track_id)
+
+        ok(
+            post(
+                engine,
+                "/api/v1/clean/match/search",
+                {"track_id": track_id, "query": "glue bicep"},
+            )
+        )
+
+        state = resolve("IMatchRepository").get_match(track_id)
+        assert (state.state, state.decided_by) == ("rejected", "user")

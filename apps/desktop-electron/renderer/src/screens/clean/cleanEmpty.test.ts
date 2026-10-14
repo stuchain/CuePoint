@@ -10,99 +10,11 @@ import { describe, expect, it } from "vitest";
 
 import type { DuplicateGroupList, LibraryHealth } from "../../api/cuepointBridge.types";
 import fixture from "./cleanEmpty.fixture.json";
-import { duplicatesEmptyState, missingEmptyState, reviewEmptyState } from "./cleanEmpty";
+import { duplicatesEmptyState, missingEmptyState } from "./cleanEmpty";
 
 const UNTOUCHED = fixture.untouched.health as LibraryHealth;
 const CHECKED = fixture.checked.health as LibraryHealth;
 const SCANNED = fixture.scanned.health as LibraryHealth;
-const MATCHED = fixture.matched.health as LibraryHealth;
-
-describe("the Match list with nothing in it", () => {
-  it("offers to match every track on a first visit, saying what that does", () => {
-    expect(fixture.untouched.needs_review.total).toBe(0);
-    const view = reviewEmptyState({
-      scope: "needs_review",
-      scoped: false,
-      health: UNTOUCHED,
-      error: null,
-    });
-    expect(view.headline).toBe("Match your library on Beatport");
-    expect(view.hint).toBe(
-      `CuePoint searches Beatport for each of your ${UNTOUCHED.track_count} tracks to find the right release, key and label. ` +
-        "It runs in the background and can take a while for a big library; you can keep using the app.",
-    );
-    expect(view.offer).toBe("match_all");
-  });
-
-  it("says nothing needs review once everything was matched", () => {
-    expect(fixture.matched.needs_review.total).toBe(0);
-    const view = reviewEmptyState({
-      scope: "needs_review",
-      scoped: false,
-      health: MATCHED,
-      error: null,
-    });
-    expect(view.headline).toBe("Nothing is waiting for you.");
-    expect(view.offer).toBeNull();
-  });
-
-  it("does not claim nothing is matched about one search", () => {
-    // Health counts the library; one search can be unmatched inside one that is.
-    const view = reviewEmptyState({
-      scope: "needs_review",
-      scoped: true,
-      health: UNTOUCHED,
-      error: null,
-    });
-    expect(view.headline).toBe("Nothing is waiting for you here.");
-  });
-
-  it("does not tell a not-matched queue that nothing is matched", () => {
-    const view = reviewEmptyState({
-      scope: "not_matched",
-      scoped: false,
-      health: UNTOUCHED,
-      error: null,
-    });
-    expect(view.headline).toBe("Every track has been looked up.");
-  });
-
-  it.each([
-    ["disputed", "Nothing has changed since you decided."],
-    ["accepted", "Nothing is confirmed."],
-    ["rejected", "Nothing is rejected."],
-    ["no_match", "Beatport had something for every track."],
-  ] as const)("says what an empty %s queue means", (scope, headline) => {
-    expect(reviewEmptyState({ scope, scoped: false, health: MATCHED, error: null }).headline).toBe(
-      headline,
-    );
-  });
-
-  it("says an empty search has no tracks, whatever Health says", () => {
-    const view = reviewEmptyState({ scope: "everything", scoped: true, health: MATCHED, error: null });
-    expect(view.headline).toBe("This search has no tracks.");
-    expect(view.offer).toBeNull();
-  });
-
-  it("shows the engine's refusal before anything else", () => {
-    const view = reviewEmptyState({
-      scope: "needs_review",
-      scoped: false,
-      health: UNTOUCHED,
-      error: "match_state cannot be sorted",
-    });
-    expect(view).toEqual({
-      headline: "match_state cannot be sorted",
-      hint: null,
-      offer: null,
-    });
-  });
-
-  it("claims nothing before Health has answered", () => {
-    const view = reviewEmptyState({ scope: "needs_review", scoped: false, health: null, error: null });
-    expect(view.headline).toBe("Nothing is waiting for you.");
-  });
-});
 
 describe("missing files with nothing in them", () => {
   it("says files were never checked, and offers to check", () => {

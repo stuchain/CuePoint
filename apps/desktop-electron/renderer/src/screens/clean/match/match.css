@@ -1,5 +1,5 @@
 /*
- * The Match area (C14): One at a time, Table and Past searches.
+ * The Match area (C14): Playlists, the Review of a run and Past searches.
  *
  * The page fills the region and each part scrolls itself, as the Clean page's
  * other parts do (clean.css). Controls take the quieter look the rest of the
@@ -38,289 +38,6 @@
   border: 0;
 }
 
-/* ------------------------------------------------------------ the shared list */
-
-.match-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-sm) var(--space-md);
-  padding: var(--space-sm) 0;
-  border-bottom: var(--control-border-width) solid var(--border-muted);
-}
-
-.match-toolbar__spacer {
-  flex: 1;
-}
-
-.match-progress {
-  display: flex;
-  align-items: center;
-  align-self: center;
-  gap: var(--space-sm);
-  min-width: min(100%, calc(240px * var(--scale)));
-  flex: 1;
-  max-width: calc(420px * var(--scale));
-}
-
-.match-progress__text {
-  align-self: center;
-  font-size: var(--control-font-size);
-  color: var(--fg-muted);
-  white-space: nowrap;
-}
-
-.match-progress__bar {
-  flex: 1;
-  height: var(--space-sm);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-input);
-}
-
-.match-progress__fill {
-  height: 100%;
-  background: var(--accent-primary);
-}
-
-/* ---------------------------------------------------------------- One at a time */
-
-.match-one {
-  position: relative;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--space-md);
-  min-height: 0;
-  padding: var(--space-md) 0;
-  overflow-y: auto;
-}
-
-.match-one > * {
-  flex-shrink: 0;
-}
-
-.match-one__reading {
-  margin: 0;
-  color: var(--fg-muted);
-}
-
-.match-one__cards {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: var(--space-md);
-  align-items: stretch;
-}
-
-@container content (max-width: 900px) {
-  .match-one__cards {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.match-one__score {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-xs);
-  min-width: calc(96px * var(--scale));
-  text-align: center;
-}
-
-.match-one__likely {
-  font-family: var(--font-pixel);
-  font-size: var(--font-size-lg);
-  color: var(--accent-success);
-}
-
-.match-one__likely--refused {
-  font-family: inherit;
-  font-size: var(--font-size-xs);
-  color: var(--accent-danger);
-}
-
-.match-one__likely-word {
-  font-size: var(--control-font-size);
-  color: var(--fg-muted);
-}
-
-.match-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  min-width: 0;
-  padding: var(--space-md);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-panel);
-}
-
-.match-card__eyebrow {
-  margin: 0;
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-  color: var(--fg-muted);
-}
-
-.match-card__body {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-md);
-}
-
-.match-card__figure {
-  position: relative;
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin: 0;
-}
-
-.match-card__art-button {
-  display: block;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: zoom-in;
-  line-height: 0;
-}
-
-.match-card__art-button:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-width);
-}
-
-/* The same image, larger, floating over the card until it is closed. */
-.match-card__art-larger {
-  position: absolute;
-  inset-block-start: 100%;
-  inset-inline-start: 0;
-  z-index: 2;
-  width: max-content;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin: var(--space-xs) 0 0;
-  padding: var(--space-xs);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-panel);
-}
-
-.match-card__art-larger-image {
-  display: block;
-  width: calc(240px * var(--scale));
-  height: auto;
-  aspect-ratio: 1;
-  max-width: min(calc(240px * var(--scale)), 80cqi);
-  object-fit: cover;
-}
-
-/* A 48 px thumbnail beside the title (a click shows it larger), drawn at a
-   whole-pixel size so the pixel system's sizes never blur it. */
-.match-card__art {
-  width: calc(48px * var(--scale));
-  height: calc(48px * var(--scale));
-  object-fit: cover;
-  border: var(--control-border-width) solid var(--border-control);
-}
-
-.match-card__art--none {
-  background: var(--bg-app);
-}
-
-.match-card__caption {
-  font-size: var(--control-font-size);
-  color: var(--fg-muted);
-}
-
-.match-card__facts {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-xs);
-  min-width: 0;
-}
-
-.match-card__title {
-  margin: 0;
-  font-size: var(--font-size-md);
-  overflow-wrap: anywhere;
-}
-
-.match-card__artist,
-.match-card__state,
-.match-card__hint {
-  margin: 0;
-  font-size: var(--control-font-size);
-  color: var(--fg-muted);
-}
-
-.match-card__state {
-  color: var(--fg-primary);
-  font-weight: 700;
-}
-
-.match-card__problem {
-  margin: 0;
-  color: var(--accent-danger);
-}
-
-.match-card__rows {
-  display: flex;
-  flex-direction: column;
-  gap: round(down, calc(var(--space-xs) / 2), 1px);
-  width: 100%;
-  margin: 0 0 var(--space-xs);
-}
-
-.match-card__row {
-  display: grid;
-  grid-template-columns: calc(64px * var(--scale)) minmax(0, 1fr);
-  gap: var(--space-sm);
-  font-size: var(--control-font-size);
-}
-
-.match-card__row dt {
-  color: var(--fg-muted);
-}
-
-.match-card__row dd {
-  margin: 0;
-  font-family: var(--font-data);
-  overflow-wrap: anywhere;
-}
-
-.match-card__empty,
-.match-card__note {
-  color: var(--fg-muted);
-}
-
-/* A value Correct would change: an arrow and words say so as well as this fill. */
-.match-card__changes,
-.match-changes {
-  padding: 0 var(--space-xs);
-  background: color-mix(in srgb, var(--accent-warning) 28%, var(--bg-input));
-  color: var(--fg-primary);
-}
-
-.match-card__attempts {
-  margin-top: var(--space-xs);
-}
-
-/* Results as chips: the chosen one takes the selected look. */
-.match-one__results {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.match-one__results-label {
-  font-size: var(--control-font-size);
-  color: var(--fg-muted);
-}
-
 .match-chip {
   min-height: var(--control-height);
   padding: 0 var(--space-sm);
@@ -346,36 +63,7 @@
   color: var(--accent-danger);
 }
 
-.match-one__why {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-sm);
-}
-
-.match-one__score-table {
-  border-collapse: collapse;
-  font-family: var(--font-data);
-  font-size: var(--control-font-size);
-}
-
-.match-one__score-table th,
-.match-one__score-table td {
-  padding: var(--space-xs) var(--space-sm);
-  border-bottom: var(--control-border-width) solid var(--border-muted);
-  text-align: left;
-}
-
-.match-one__score-table th {
-  color: var(--fg-muted);
-  font-weight: 400;
-}
-
-.match-one__refused {
-  color: var(--accent-danger);
-}
-
-/* "When I say Correct, also update": one preference, in One at a time and over the Table. */
+/* "When I say Correct, also update": one preference, in the details panel. */
 .match-ticks {
   display: flex;
   flex-wrap: wrap;
@@ -408,27 +96,6 @@
   margin-inline-start: auto;
 }
 
-.match-one__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm);
-  /* Stays in view while the cards and ticks scroll under it (.match-one scrolls). */
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  margin-inline: calc(-1 * var(--space-md));
-  padding: var(--space-sm) var(--space-md);
-  border-top: var(--divider);
-  background: var(--bg-panel);
-}
-
-.match-one__position {
-  margin-inline-start: auto;
-  font-size: var(--control-font-size);
-  color: var(--fg-muted);
-}
-
 /* The key beside a button's name: a hint, not the only way (every key has a button). */
 .match-key {
   margin-inline-start: var(--space-xs);
@@ -440,58 +107,6 @@
   opacity: 0.8;
 }
 
-.match-status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-xs);
-  margin: 0;
-  font-size: var(--control-font-size);
-}
-
-/* ---------------------------------------------------------------- Table */
-
-.match-table {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.match-table__head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
-}
-
-.match-table__replacing {
-  margin: 0;
-  font-size: var(--control-font-size);
-  color: var(--fg-muted);
-}
-
-.match-table__grid {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  min-height: calc(120px * var(--scale));
-}
-
-.match-table__selection {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
-  border-top: var(--control-border-width) solid var(--border-muted);
-}
-
-.match-table__tick {
-  margin: 0;
-}
-
 /* ---------------------------------------------------------------- Past searches */
 
 .match-past {
@@ -500,7 +115,7 @@
   flex-direction: column;
   gap: var(--space-sm);
   min-height: 0;
-  padding: var(--space-md);
+  padding: var(--space-md) 0;
   overflow-y: auto;
 }
 
@@ -583,47 +198,7 @@
   color: var(--fg-muted);
 }
 
-/* Correct ticked values and the arrow that opens its values (K12): one control. */
-.match-take {
-  display: inline-flex;
-  align-items: stretch;
-  gap: var(--space-xs);
-}
-
-.match-take__arrow {
-  display: inline-flex;
-}
-
-/* ---------------------------------------------------------------- Review N › (C22) */
-
-/* The header over the card while one search is reviewed: back, whose, how far. */
-.match-review-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm) var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  border-bottom: var(--control-border-width) solid var(--border-muted);
-}
-
-.match-review-bar__name {
-  font-weight: 700;
-}
-
-.match-review-bar__bar {
-  flex: 0 1 calc(160px * var(--scale));
-}
-
-.match-review-bar__words {
-  color: var(--fg-muted);
-}
-
-/* Try another result sits at the right end of the decide bar. */
-.match-action--results {
-  margin-inline-start: auto;
-}
-
-/* After the last one: what was done, and the two ways out. */
+/* Every track decided: what was done, and the ways out. */
 .match-review-done {
   display: flex;
   flex: 1;
@@ -652,4 +227,602 @@
   align-items: center;
   gap: var(--space-sm);
   margin-top: var(--space-md);
+}
+
+/* ------------------------------------------------------- the lines at the top of Clean */
+
+/* While a match runs, on every tab: what, how far, how long, and Stop. */
+.match-run-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+  margin: var(--space-sm) 0;
+  padding: var(--space-sm) var(--space-md);
+  border: var(--control-border-width) solid var(--accent-primary);
+  background: var(--bg-panel);
+}
+
+.match-run-line__name {
+  font-weight: 700;
+}
+
+.match-run-line .clean-progress {
+  flex: 0 1 calc(160px * var(--scale));
+  width: auto;
+}
+
+.match-run-line__count {
+  flex: 1;
+  color: var(--fg-muted);
+}
+
+/* A run that ended finding nothing: red, with the number and the way to see them. */
+.match-nothing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+  margin: var(--space-sm) 0;
+  padding: var(--space-sm) var(--space-md);
+  border: var(--control-border-width) solid var(--accent-danger);
+  background: color-mix(in srgb, var(--accent-danger) 14%, var(--bg-panel));
+}
+
+.match-nothing__headline {
+  font-weight: 700;
+}
+
+.match-nothing__why {
+  flex: 1;
+  min-width: 0;
+  color: var(--fg-primary);
+}
+
+/* ----------------------------------------------------------- the Review of a run */
+
+.review {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-height: 0;
+  padding: var(--space-sm) 0 0;
+}
+
+.review__problem {
+  margin: 0;
+  color: var(--accent-danger);
+}
+
+.review__hint {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--control-font-size);
+}
+
+.review__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+}
+
+.review__name {
+  font-weight: 700;
+}
+
+.review__spacer {
+  flex: 1;
+}
+
+.review__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+/* A chip is a filter: the one pressed takes the selected look, its colour says which status. */
+.review-chip {
+  min-height: var(--control-height);
+  padding: 0 var(--space-sm);
+  border: var(--control-border-width) solid var(--border-control);
+  border-left-width: calc(4px * var(--scale));
+  background: var(--bg-panel);
+  color: var(--fg-primary);
+  font-family: var(--font-pixel);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
+  cursor: pointer;
+}
+
+.review-chip:hover {
+  background: var(--bg-selected);
+}
+
+.review-chip[aria-pressed="true"] {
+  background: var(--selected-row-background);
+  font-weight: 700;
+}
+
+.review-chip--to_check {
+  border-left-color: var(--accent-warning);
+}
+
+.review-chip--not_found,
+.review-chip--search_failed {
+  border-left-color: var(--accent-danger);
+}
+
+.review-chip--matched {
+  border-left-color: var(--accent-success);
+}
+
+.review-chip--done {
+  border-left-color: var(--fg-muted);
+}
+
+/* The same counts as one coloured bar. */
+.review-band {
+  display: flex;
+  flex: none;
+  height: calc(6px * var(--scale));
+  background: var(--bg-app);
+}
+
+.review-band__segment {
+  display: block;
+  height: 100%;
+}
+
+.review-band__segment--to_check {
+  background: var(--accent-warning);
+}
+
+.review-band__segment--not_found,
+.review-band__segment--search_failed {
+  background: var(--accent-danger);
+}
+
+.review-band__segment--matched {
+  background: var(--accent-success);
+}
+
+.review-band__segment--done {
+  background: var(--fg-muted);
+}
+
+.review__body {
+  display: flex;
+  flex: 1;
+  gap: var(--space-md);
+  min-height: 0;
+}
+
+.review__table {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+
+.review-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--control-font-size);
+}
+
+.review-table th,
+.review-table td {
+  padding: var(--space-sm);
+  border-bottom: var(--control-border-width) solid var(--border-muted);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.review-table th {
+  color: var(--fg-muted);
+  font-weight: var(--control-font-weight);
+}
+
+.review-row:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.review-row--current td {
+  background: var(--bg-selected);
+}
+
+.review-row--current td:first-child {
+  background: var(--selected-row-background);
+}
+
+/* A decided row recedes, and sits under the ones still to look at. */
+.review-row--done td {
+  color: var(--fg-muted);
+}
+
+.review-row__yours,
+.review-row__theirs {
+  overflow-wrap: anywhere;
+}
+
+.review-row__differs--differs {
+  color: var(--accent-warning);
+}
+
+.review-row__differs--same {
+  color: var(--accent-success);
+}
+
+.review-row__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.review-preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  border: var(--control-border-width) solid var(--accent-primary);
+  border-radius: 50%;
+  background: none;
+  color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.review-preview:disabled {
+  border-color: var(--border-muted);
+  color: var(--fg-muted);
+  cursor: default;
+}
+
+.review-preview[aria-pressed="true"] {
+  background: var(--accent-primary);
+  color: var(--fg-inverse);
+}
+
+/* Status as words in a coloured chip: colour is never the only cue. */
+.review-status {
+  display: inline-block;
+  padding: 0 var(--space-xs);
+  color: var(--fg-inverse);
+  font-family: var(--font-pixel);
+  font-size: var(--control-font-size);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.review-status--to_check {
+  background: var(--accent-warning);
+}
+
+.review-status--not_found,
+.review-status--search_failed {
+  background: var(--accent-danger);
+}
+
+.review-status--matched {
+  background: var(--accent-success);
+}
+
+.review-status--done {
+  background: var(--fg-muted);
+}
+
+/* ------------------------------------------------- the panel beside the list */
+
+.review-panel {
+  display: flex;
+  flex: 0 0 min(46%, calc(560px * var(--scale)));
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+  padding: var(--space-md);
+  overflow-y: auto;
+  border: var(--control-border-width) solid var(--border-control);
+  background: var(--bg-panel);
+}
+
+.review-panel__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.review-panel__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.review-panel__position,
+.review-panel__hint {
+  color: var(--fg-muted);
+  font-size: var(--control-font-size);
+}
+
+.review-panel__hint {
+  margin-inline-start: auto;
+}
+
+.review-panel__close {
+  display: inline-flex;
+  padding: var(--space-xs);
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.review-panel__close:hover {
+  color: var(--fg-primary);
+}
+
+.review-panel__note {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.review-panel__cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm);
+}
+
+@container content (max-width: 900px) {
+  .review-panel__cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.review-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+  padding: var(--space-sm);
+  border: var(--control-border-width) solid var(--border-muted);
+}
+
+.review-card__eyebrow {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
+}
+
+.review-card__body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.review-card__facts {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.review-card__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  overflow-wrap: anywhere;
+}
+
+.review-card__line,
+.review-card__state {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--control-font-size);
+  overflow-wrap: anywhere;
+}
+
+.review-card__state {
+  color: var(--fg-primary);
+  font-weight: 700;
+}
+
+.review-card__score {
+  margin: 0;
+  color: var(--accent-success);
+  font-size: var(--control-font-size);
+}
+
+.review-card__score--refused {
+  color: var(--accent-danger);
+}
+
+/* A 48 px thumbnail, drawn at a whole-pixel size so the pixel sizes never blur it. */
+.review-panel__art {
+  flex: none;
+  width: calc(48px * var(--scale));
+  height: calc(48px * var(--scale));
+  object-fit: cover;
+  border: var(--control-border-width) solid var(--border-control);
+}
+
+.review-panel__art--none {
+  background: var(--bg-app);
+}
+
+.review-panel__others {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+  font-size: var(--control-font-size);
+}
+
+.review-panel__others-label,
+.review-panel__others-names {
+  color: var(--fg-muted);
+}
+
+.review-panel__show {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.review-panel__chips {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.review-panel__actions,
+.review-panel__more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.review-panel__search {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+}
+
+.review-panel__search .cp-field {
+  flex: 1;
+}
+
+.review-panel__results {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: var(--control-border-width) solid var(--border-muted);
+}
+
+.review-panel__result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: var(--control-border-width) solid var(--border-muted);
+}
+
+.review-panel__result:last-child {
+  border-bottom: 0;
+}
+
+.review-panel__result-title {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.review-panel__result-why {
+  color: var(--accent-danger);
+  font-size: var(--control-font-size);
+}
+
+.review-panel__why {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+
+.review-panel__score-table {
+  border-collapse: collapse;
+  font-family: var(--font-data);
+  font-size: var(--control-font-size);
+}
+
+.review-panel__score-table th,
+.review-panel__score-table td {
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: var(--control-border-width) solid var(--border-muted);
+  text-align: left;
+}
+
+.review-panel__score-table th {
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+/* ------------------------------------------- a long list: fixed rows, drawn only in view */
+
+/* Every row is one line of a known height, which is what lets only the rows in view exist. */
+.review-row {
+  height: calc(42px * var(--scale));
+}
+
+.review-table {
+  table-layout: fixed;
+}
+
+.review-row td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-col--check {
+  width: calc(36px * var(--scale));
+}
+
+.review-col--status {
+  width: calc(116px * var(--scale));
+}
+
+.review-col--preview {
+  width: calc(44px * var(--scale));
+}
+
+.review-col--differs {
+  width: calc(110px * var(--scale));
+}
+
+.review-col--quick {
+  width: calc(330px * var(--scale));
+}
+
+.review-row__quick {
+  white-space: nowrap;
+}
+
+.review-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-app);
+}
+
+.review__live {
+  min-height: 1lh;
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--control-font-size);
+}
+
+.review__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: var(--control-border-width) solid var(--accent-primary);
+  background: var(--bg-panel);
+}
+
+.review__more {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-sm);
 }

@@ -956,6 +956,10 @@ export class EngineSupervisor {
     return (await this.readyClient()).getMatchJobs(params);
   }
 
+  async getMatchReview(params?: Parameters<EngineClient["getMatchReview"]>[0]) {
+    return (await this.readyClient()).getMatchReview(params);
+  }
+
   async getCandidateArtwork(params: Parameters<EngineClient["getCandidateArtwork"]>[0]) {
     return (await this.readyClient()).getCandidateArtwork(params);
   }
@@ -978,7 +982,11 @@ export class EngineSupervisor {
     return (await this.readyClient()).revertChange(params);
   }
 
-  async revertBatch(params: { batch_id: string }): Promise<BatchRevertOutcome> {
+  async searchMatch(params: Parameters<EngineClient["searchMatch"]>[0]) {
+    return (await this.readyClient()).searchMatch(params);
+  }
+
+  async revertBatch(params: { batch_id: string; track_id?: number }): Promise<BatchRevertOutcome> {
     return (await this.readyClient()).revertBatch(params);
   }
 

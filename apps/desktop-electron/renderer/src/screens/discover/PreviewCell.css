@@ -74,7 +74,7 @@
 .preview-cell__bars {
   display: inline-flex;
   align-items: flex-end;
-  gap: calc(1px * var(--scale));
+  gap: calc(2px * var(--scale));
   height: calc(10px * var(--scale));
   margin-left: calc(4px * var(--scale));
   color: var(--accent-primary);
@@ -124,7 +124,7 @@
   width: auto;
   min-width: calc(22px * var(--scale));
   padding: 0 calc(6px * var(--scale));
-  border-radius: calc(11px * var(--scale));
+  border-radius: calc(12px * var(--scale));
 }
 
 .preview-cell--round[data-state="playing"] .preview-cell__bars {

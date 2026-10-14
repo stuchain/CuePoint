@@ -7733,6 +7733,8 @@ search's details in a six-line block; an empty Wantlist drew a toolbar, a column
 - An empty Wantlist with no filter on shows only "Your wantlist is empty" and how to add to it. This is the one
   exception to DEC-209's always-shown buttons: with nothing in the list there is nothing for them to act on.
 - Discover uses the shared page header (ScreenHeader) with its tabs.
+- **Amended 2026-10-14:** the lookup button reads **Look them up** on the Discover banner and on the artist and
+  label pages ("283 tracks need artist info · Look them up").
 
 **Decided with**: User (K6, K17, "apply ALL") · **Date**: 2026-10-13
 

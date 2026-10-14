@@ -1,20 +1,17 @@
 /**
  * Matching from the keyboard (CLEAN-12, C14).
  *
- * Checking 3,000 tracks is a keyboard job, so One at a time decides without a
- * mouse: Enter corrects, N is Not this track, S skips. The keys are bare letters,
- * Enter and arrows, which is only safe because of
- * the rules below: a key typed into a field is text, a key pressed inside a
- * dialog belongs to the dialog, and a key held with Ctrl, Alt or the command
- * key belongs to the shell (SHELL-10's shortcuts are all modified). A key
- * pressed inside a widget that moves with keys of its own — the player's queue
- * list, a tree, a menu — belongs to that widget.
+ * Checking 3,000 tracks is a keyboard job, so the Review's details panel decides without a mouse:
+ * Enter corrects, N is Not this track (or Leave unmatched), S skips, the arrows move between
+ * tracks and results. The keys are bare letters, Enter and arrows, which is only safe because of
+ * the rules below: a key typed into a field is text, a key pressed inside a dialog belongs to the
+ * dialog, and a key held with Ctrl, Alt or the command key belongs to the shell (SHELL-10's
+ * shortcuts are all modified). A key pressed inside a widget that moves with keys of its own, the
+ * player's queue list, a tree, a menu, belongs to that widget. With no panel open the list answers
+ * only Up and Down.
  *
  * **Space is not here.** It is the player's (`usePlayerShortcuts`): play or
  * pause. Playing the track's file is Y, and the Beatport preview is B.
- *
- * The Table keeps the table's own Up, Down and Enter, so over the Table the
- * only key this answers is Esc, to stop a preview.
  */
 
 export type MatchCommand =
@@ -28,8 +25,6 @@ export type MatchCommand =
   | "play-preview"
   | "play-file"
   | "stop-preview";
-
-export type MatchView = "one" | "table";
 
 export interface KeyLike {
   key: string;
@@ -89,11 +84,10 @@ function pressesItself(target: EventTarget | null): boolean {
   return target.closest(OWN_ENTER) !== null;
 }
 
-export function matchCommand(event: KeyLike, view: MatchView): MatchCommand | null {
+export function matchCommand(event: KeyLike): MatchCommand | null {
   if (event.ctrlKey || event.metaKey || event.altKey) return null;
   if (inTheWay(event.target)) return null;
   if (event.key === "Escape") return "stop-preview";
-  if (view === "table") return null;
   switch (event.key) {
     case "ArrowUp":
       return "previous-track";

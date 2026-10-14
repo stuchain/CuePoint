@@ -368,8 +368,13 @@ class RevertService(IRevertService):
         *,
         on_progress: Optional[BatchProgressCallback] = None,
         should_cancel: Optional[BatchCancelCallback] = None,
+        track_id: Optional[int] = None,
     ) -> BatchRevert:
         """Revert every change a batch recorded, newest first, as a new batch.
+
+        With ``track_id`` only that track's changes are reverted: one track
+        taken back out of a batch that covered many. The batch's other tracks
+        keep what it did to them.
 
         Args:
             batch_id: The batch to revert.
@@ -384,7 +389,15 @@ class RevertService(IRevertService):
         """
         self.check_batch(batch_id)
         wanted = _batch_name(batch_id)
-        change_ids = self._history.batch_change_ids(wanted)
+        change_ids = (
+            self._history.batch_change_ids(wanted)
+            if track_id is None
+            else self._history.batch_change_ids(wanted, track_id)
+        )
+        if track_id is not None and not change_ids:
+            raise ValueError(
+                "That batch changed nothing on that track, so there is nothing to undo"
+            )
         new_batch = str(uuid.uuid4())
         notation = _Notation(self._metadata)
 
@@ -413,10 +426,17 @@ class RevertService(IRevertService):
             failed=counts["failed"],
             cancelled=cancelled,
         )
+        detail = result.to_dict()
+        track_name: Optional[str] = None
+        if track_id is not None:
+            # One track out of a batch: the entry names the track, and says so in its payload.
+            detail["track_id"] = int(track_id)
+            first = self._history.get_field_change(change_ids[0])
+            track_name = self._track_name(first) if first is not None else None
         self._activity.record_event(
             EVENT_BATCH_REVERTED,
-            self._summarize(result),
-            result.to_dict(),
+            self._summarize(result, track_name),
+            detail,
         )
         return result
 
@@ -604,8 +624,8 @@ class RevertService(IRevertService):
             return f"track {change.track_id}"
         return f"{track.artist} - {track.title}"
 
-    def _summarize(self, result: BatchRevert) -> str:
-        """One sentence for the activity feed, naming the batch it reverted."""
+    def _summarize(self, result: BatchRevert, track_name: Optional[str] = None) -> str:
+        """One sentence for the activity feed, naming the batch it reverted (and the track, if one)."""
         changes = _changes(result.reverted)
         # The event whose batch id is the one reverted: the batch's own, or
         # the event of the revert being reverted, which carries its new id.
@@ -613,11 +633,15 @@ class RevertService(IRevertService):
             event.summary
             for event in self._history.batch_events(result.reverted_batch_id)
         ]
-        head = (
-            f"Undid {changes} of “{original[0]}”"
-            if original
-            else f"Undid {changes} from a batch"
-        )
+        if track_name is not None:
+            source = f"“{original[0]}”" if original else "a batch"
+            head = f"Undid the change to “{track_name}” from {source}"
+        else:
+            head = (
+                f"Undid {changes} of “{original[0]}”"
+                if original
+                else f"Undid {changes} from a batch"
+            )
         notes: List[str] = []
         if result.skipped:
             notes.append(f"{result.skipped} skipped because they changed since")

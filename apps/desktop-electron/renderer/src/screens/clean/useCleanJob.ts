@@ -52,6 +52,10 @@ export function useCleanJob(
       alive.current = false;
       for (const handle of following.current) handle.stop();
       following.current = [];
+      // The follower is gone, and with it the only thing that would ever clear this. A page that
+      // is hidden keeps its state (Activity), so a key left here would read "running" for good;
+      // what runs is read from the engine's own list of jobs when the page is back.
+      setRunning(null);
     };
   }, []);
 

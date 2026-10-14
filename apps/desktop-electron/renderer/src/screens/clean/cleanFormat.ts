@@ -167,51 +167,12 @@ export function matchStartedLine(started: Pick<MatchStarted, "planned" | "exclud
   return `${head} ${started.excluded.toLocaleString()} already matched or decided ${verb} left out.`;
 }
 
-/**
- * A running match, in one line (C22): "Matching hj · 108 of 180", with the bar
- * under it drawn by the page. The name is what the run was started with; back
- * on the page after leaving it, or before the first count, the line is shorter.
- * What the job is and that the person can carry on is said once, by the
- * status strip's explainer, not repeated here.
- */
-export function matchRunningNote(
-  label?: string | null,
-  progress?: { done: number; total: number } | null,
-): string {
-  const known = progress && progress.total > 0;
-  if (!known) return label ? `Matching ${label}…` : "Matching…";
-  const counted = `${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}`;
-  return label ? `Matching ${label} · ${counted}` : `Matching · ${counted}`;
-}
-
-/** One track corrected: said where the reviewer is looking, with Undo beside it (C14). */
 /** The most characters the engine keeps of a run's name. */
 export const MATCH_LABEL_LIMIT = 200;
 
 /** A run's name kept within the engine's limit: 199 characters and an ellipsis, so it is not refused. */
 export function clampLabel(label: string): string {
   return label.length > MATCH_LABEL_LIMIT ? `${label.slice(0, MATCH_LABEL_LIMIT - 1)}…` : label;
-}
-
-export function correctedLine(title: string): string {
-  return `Corrected “${title}”.`;
-}
-
-/** Correct that changed nothing: the track already had all of it, so there is nothing to undo. */
-export function nothingToCorrectLine(title: string): string {
-  return `Nothing to change for “${title}”.`;
-}
-
-export function nothingToCorrectManyLine(): string {
-  return "Nothing to change for those tracks.";
-}
-
-export function notThisLine(title: string): string {
-  return `Marked “${title}” as not this track.`;
-}
-
-export function undidLine(title: string): string {
-  return `Undid the change to “${title}”.`;
 }
 
 export function correctedManyLine(tracks: number): string {

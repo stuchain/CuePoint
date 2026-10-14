@@ -722,6 +722,9 @@ function registerIpcHandlers(): void {
   handle("engine:getMatchJobs", (_event, params) =>
     engine.getMatchJobs(params),
   );
+  handle("engine:getMatchReview", (_event, params) =>
+    engine.getMatchReview(params),
+  );
   handle("engine:getCandidateArtwork", (_event, params) =>
     engine.getCandidateArtwork(params),
   );
@@ -742,6 +745,9 @@ function registerIpcHandlers(): void {
   );
   handle("engine:revertChange", (_event, params) =>
     engine.revertChange(params),
+  );
+  handle("engine:searchMatch", (_event, params) =>
+    engine.searchMatch(params),
   );
   handle("engine:revertBatch", (_event, params) =>
     engine.revertBatch(params),

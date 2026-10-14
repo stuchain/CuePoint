@@ -571,6 +571,16 @@
     "reason": "integers: ids, counts and lengths the code has already checked as numbers",
     "verdict": "exempt"
   },
+  "cuepoint/engine/clean_api.py::match_review::filter must be one of {', '.join(review.FILTERS)}": {
+    "holds": "our own field, label or code name",
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/engine/clean_api.py::match_review::limit must be between 1 and {REVIEW_LIMIT_MAX}": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
   "cuepoint/engine/clean_api.py::past_matches::limit must be between 1 and {MATCH_JOBS_LIMIT_MAX}": {
     "holds": "an integer id",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers",
@@ -3319,6 +3329,11 @@
   "log::cuepoint/services/processor_service.py::ProcessorService.process_track::[{idx}] Processing: {title_for_search!r} - {original_artists or artists_for_scoring!r}": {
     "holds": "a track title, artist or search query",
     "verdict": "corpus"
+  },
+  "log::cuepoint/services/processor_service.py::ProcessorService.process_track::[{idx}] Search failed ({failure_kind}): {search_failures.describe()} (duration: {dur} ms)": {
+    "holds": "a length, exception text",
+    "verdict": "exempt",
+    "reason": "values are our own constants, numbers and names: a backend name, a failure kind and an HTTP status"
   },
   "log::cuepoint/utils/cache_manager.py::CacheManager.clear_cache::Cleared {cleared_count} cache items ({cleared_size / (1024 * 1024)} MB)": {
     "holds": "arithmetic on integers, exception text",

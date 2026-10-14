@@ -13,11 +13,10 @@
  * responses the real engine gave (`cleanEmpty.fixture.json`).
  */
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
-import { DISPUTED_HINT, formatWhen, trackCount } from "./cleanFormat";
-import type { MatchScope } from "./match/matchScope";
+import { formatWhen } from "./cleanFormat";
 
 /** The one thing an empty state offers to do about itself, when there is one. */
-type CleanEmptyOffer = "match_all" | "check_files" | "find_duplicates";
+type CleanEmptyOffer = "check_files" | "find_duplicates";
 
 interface CleanEmptyView {
   headline: string;
@@ -33,75 +32,10 @@ function view(
   return { headline, hint, offer };
 }
 
-function countOf(health: LibraryHealth, id: string): number | null {
-  return health.counts.find((count) => count.id === id)?.count ?? null;
-}
-
 /** When a detection last ran: a time, null for never, undefined when not reported. */
 export function lastRun(health: LibraryHealth, id: string): string | null | undefined {
   const detection = health.detections.find((run) => run.id === id);
   return detection ? detection.last_run_at : undefined;
-}
-
-interface ReviewEmptyInput {
-  scope: MatchScope;
-  /** True when the list is narrowed to one search (From). */
-  scoped: boolean;
-  health: LibraryHealth | null;
-  error: string | null;
-}
-
-/**
- * The Match list with no rows.
- *
- * "Nothing matched yet" is claimed only for All searches: Health counts the
- * library, and one search can be unmatched inside a library that is not.
- */
-export function reviewEmptyState(input: ReviewEmptyInput): CleanEmptyView {
-  if (input.error) return view(input.error);
-
-  const health = input.health;
-  const nothingMatched =
-    !input.scoped &&
-    health !== null &&
-    health.track_count > 0 &&
-    countOf(health, "not_matched") === health.track_count;
-
-  if (nothingMatched && input.scope !== "not_matched") {
-    // CLN-2: the first thing Clean shows a new user starts the work, and says
-    // what the work is and that it goes online.
-    return view(
-      "Match your library on Beatport",
-      `CuePoint searches Beatport for each of your ${trackCount(health?.track_count ?? 0)} to find the ` +
-        "right release, key and label. It runs in the background and can take a while " +
-        "for a big library; you can keep using the app.",
-      "match_all",
-    );
-  }
-
-  const where = input.scoped ? " here" : "";
-  switch (input.scope) {
-    case "needs_review":
-      return view(
-        `Nothing is waiting for you${where}.`,
-        "Every match was confirmed automatically, decided by you, or found nothing.",
-      );
-    case "disputed":
-      return view(`Nothing has changed since you decided${where}.`, DISPUTED_HINT);
-    case "accepted":
-      return view(`Nothing is confirmed${where}.`);
-    case "rejected":
-      return view(`Nothing is rejected${where}.`);
-    case "no_match":
-      return view(
-        `Beatport had something for every track${where}.`,
-        "Tracks Beatport found nothing for are listed here.",
-      );
-    case "not_matched":
-      return view(`Every track${where} has been looked up.`);
-    case "everything":
-      return view("This search has no tracks.", "The tracks it matched are no longer in your library.");
-  }
 }
 
 /** Missing files with no rows. */

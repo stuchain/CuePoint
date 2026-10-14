@@ -430,11 +430,13 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       ).toBeAttached();
 
       await zone.getByRole("button", { name: /^Compare all on the Clean page/ }).click();
-      // It opens Match, on One at a time, at the track.
+      // It opens Match, on the library's review, with the track's details beside the list.
       await expect(window.getByRole("tab", { name: /^Match/, selected: true })).toBeVisible({ timeout: 15_000 });
-      const yours = window.getByRole("region", { name: "Your track" });
-      await expect(yours.getByRole("heading", { name: "Tone One" })).toBeVisible({ timeout: 15_000 });
-      await expect(window.getByRole("combobox", { name: "Show" })).toHaveValue("accepted");
+      await expect(window.getByRole("tab", { name: "Review Whole library", selected: true })).toBeVisible({
+        timeout: 15_000,
+      });
+      const details = window.getByRole("complementary", { name: "Track details" });
+      await expect(details.locator(".review-panel__title")).toHaveText("Tone One", { timeout: 15_000 });
 
       // With the cards and the Inspector both full, the window itself
       // never scrolls: each part scrolls on its own.

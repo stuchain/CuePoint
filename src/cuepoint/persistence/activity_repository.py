@@ -254,19 +254,29 @@ class ActivityRepository(IActivityRepository):
 
     # ---------------------------------------------------------------- batches
 
-    def batch_change_ids(self, batch_id: str) -> List[int]:
+    def batch_change_ids(
+        self, batch_id: str, track_id: Optional[int] = None
+    ) -> List[int]:
         """Return the ids of every change in a batch, newest first (CLEAN-06).
+
+        With ``track_id``, only that track's changes: undoing one track of a
+        batch that covered many.
 
         Ids rather than rows: a batch over a whole library applying five fields
         is a quarter of a million changes, and a revert reads them a chunk at a
         time. Ids only grow, so id order is the order they were written in, and
         ``idx_track_history_batch`` returns them in it.
         """
+        narrow = "" if track_id is None else " AND track_id = ?"
+        values = (
+            (str(batch_id),) if track_id is None else (str(batch_id), int(track_id))
+        )
         rows = (
             self._db.connect()
             .execute(
-                "SELECT id FROM track_history WHERE batch_id = ? ORDER BY id DESC",
-                (str(batch_id),),
+                "SELECT id FROM track_history WHERE batch_id = ?"
+                f"{narrow} ORDER BY id DESC",
+                values,
             )
             .fetchall()
         )

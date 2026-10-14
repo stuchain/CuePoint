@@ -8,12 +8,19 @@
  */
 import { vi } from "vitest";
 
-import type { FilterRule, LibraryHealth, LibraryTrackRow, MatchRun } from "../api/cuepointBridge.types";
+import type {
+  FilterRule,
+  LibraryHealth,
+  LibraryTrackRow,
+  MatchRun,
+  ReviewTrack,
+} from "../api/cuepointBridge.types";
 import {
   CANDIDATES,
   browseAnswer,
   matchesFor,
   proposed,
+  reviewOf,
   stateFor,
   track,
 } from "./matchFixtures";
@@ -27,6 +34,8 @@ export interface MatchWorld {
   runs: MatchRun[];
   /** The tracks of each run, by root job id. */
   runTracks: Record<string, number[]>;
+  /** What the Review list holds: every track of the run being reviewed, as the engine sends it. */
+  review: ReviewTrack[];
 }
 
 export function newWorld(): MatchWorld {
@@ -34,6 +43,7 @@ export function newWorld(): MatchWorld {
     tracks: [proposed(1), proposed(2), proposed(3)],
     runs: [],
     runTracks: {},
+    review: [],
   };
 }
 
@@ -73,6 +83,61 @@ export function removeTableEnvironment() {
   Reflect.deleteProperty(HTMLElement.prototype, "offsetHeight");
 }
 
+/**
+ * The review as the engine answers it: the tracks still to look at first, a filter, a page, and
+ * the counts for all of them; with `idsOnly`, just the ids of the filter.
+ */
+function reviewAnswer(
+  all: ReviewTrack[],
+  params: { filter?: string; after?: string; limit?: number; idsOnly?: boolean } = {},
+) {
+  const ordered = [...all.filter((row) => row.status !== "done"), ...all.filter((row) => row.status === "done")];
+  const filter = params.filter ?? "all";
+  const held = ordered.filter((row) =>
+    filter === "all"
+      ? true
+      : filter === "rejected"
+        ? row.decision === "rejected"
+        : filter === "disputed"
+          ? row.disputed
+          : row.status === filter,
+  );
+  // Read on from a cursor: the listing order is (decided, plan order), and a cursor carries its place in it.
+  const place = (row: ReviewTrack) => (row.status === "done" ? 1 : 0) * 1e9 + row.track_id;
+  const [group, at] = (params.after ?? "").split(":").map(Number);
+  const past = params.after ? group! * 1e9 + at! : -1;
+  const page = held.filter((row) => place(row) > past).slice(0, params.limit ?? 20000);
+  const answer = reviewOf(page, { total: all.length, matching: held.length, counts: reviewOf(all).counts });
+  return {
+    ...answer,
+    rejected: all.filter((row) => row.decision === "rejected").length,
+    disputed: all.filter((row) => row.disputed).length,
+    ...(params.idsOnly ? { ids: held.map((row) => row.track_id), tracks: [] } : {}),
+  };
+}
+
+/** A decision, as the engine would now say it: the track is done, with what was decided. */
+function decideInReview(
+  world: MatchWorld,
+  trackId: number,
+  status: ReviewTrack["status"],
+  decision: ReviewTrack["decision"],
+  batch: string | null = decision === "accepted" ? `batch-${trackId}` : null,
+) {
+  world.review = world.review.map((row) =>
+    row.track_id === trackId ? { ...row, status, decision, undo_batch: batch } : row,
+  );
+}
+
+/** Undo, as the engine would say it: back to what the search found. */
+function undoInReview(world: MatchWorld, trackId: number) {
+  world.review = world.review.map((row) =>
+    row.track_id === trackId
+      ? { ...row, status: row.candidate ? "to_check" : "not_found", decision: null, undo_batch: null }
+      : row,
+  );
+}
+
 export function installMatchBridge(
   world: MatchWorld,
   overrides: Record<string, Fn> = {},
@@ -104,6 +169,7 @@ export function installMatchBridge(
     releaseCandidatePreview: vi.fn(),
     releaseTrackArtwork: vi.fn(),
     correctMatch: vi.fn(async ({ track_id }: { track_id: number }) => {
+      decideInReview(world, track_id, "done", "accepted");
       world.tracks = world.tracks.map((row) =>
         row.id === track_id ? { ...row, match_state: "accepted", match_proposal: null } : row,
       );
@@ -118,28 +184,57 @@ export function installMatchBridge(
         key: null,
       };
     }),
-    correctMatches: vi.fn(async () => ({
-      applied: {
-        batch_id: "batch-many",
-        operation: "correct_match",
-        target: "",
-        total: 2,
-        changed: 2,
-        unchanged: 0,
-        failed: 0,
-        cancelled: false,
-      },
-    })),
+    correctMatches: vi.fn(async (params?: { selection?: { track_ids?: number[] } }) => {
+      const ids = params?.selection?.track_ids ?? [];
+      for (const id of ids) decideInReview(world, id, "done", "accepted", "batch-many");
+      return {
+        applied: {
+          batch_id: "batch-many",
+          operation: "correct_match",
+          target: "",
+          total: ids.length,
+          changed: ids.length,
+          unchanged: 0,
+          failed: 0,
+          cancelled: false,
+        },
+      };
+    }),
     decideMatch: vi.fn(async (params: { track_id: number; decision: string }) => {
+      if (params.decision === "clear") undoInReview(world, params.track_id);
+      else decideInReview(world, params.track_id, "done", "rejected");
       world.tracks = world.tracks.map((row) =>
         row.id === params.track_id ? { ...row, match_state: "rejected", match_proposal: null } : row,
       );
       return { match: stateFor(params.track_id) };
     }),
-    revertBatch: vi.fn().mockResolvedValue({
-      reverted: { batch_id: "batch", total: 1, reverted: 1, skipped: 0 },
+    revertBatch: vi.fn(async ({ batch_id, track_id }: { batch_id: string; track_id?: number }) => {
+      // A single correction's batch is "batch-<track id>"; Accept all's is "batch-many", which
+      // covers every track decided with it. With a track named, only that track goes back.
+      if (track_id !== undefined) undoInReview(world, track_id);
+      else if (batch_id === "batch-many") {
+        for (const row of world.review) if (row.undo_batch === "batch-many") undoInReview(world, row.track_id);
+      } else {
+        const id = Number(String(batch_id).replace("batch-", ""));
+        if (Number.isInteger(id)) undoInReview(world, id);
+      }
+      return { reverted: { batch_id, total: 1, reverted: 1, skipped: 0 } };
     }),
+    searchMatch: vi.fn(async ({ track_id, query }: { track_id: number; query: string }) => ({
+      attempt_id: 500 + track_id,
+      track_id,
+      candidates: CANDIDATES,
+      total: CANDIDATES.length,
+      query,
+      failure: null,
+      failure_message: null,
+      state: stateFor(track_id),
+    })),
     getMatchJobs: vi.fn(async () => ({ jobs: world.runs, total: world.runs.length })),
+    getMatchReview: vi.fn(
+      async (params?: { filter?: string; after?: string; limit?: number; idsOnly?: boolean }) =>
+        reviewAnswer(world.review, params),
+    ),
     startCleanMatch: vi.fn().mockResolvedValue({
       job_id: "job-match",
       id: "job-match",

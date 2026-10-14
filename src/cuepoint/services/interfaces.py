@@ -828,8 +828,10 @@ class IActivityRepository(ABC):
         ...
 
     @abstractmethod
-    def batch_change_ids(self, batch_id: str) -> List[int]:
-        """Return the ids of every change in a batch, newest first."""
+    def batch_change_ids(
+        self, batch_id: str, track_id: Optional[int] = None
+    ) -> List[int]:
+        """Return the ids of every change in a batch (or one track's), newest first."""
         ...
 
     @abstractmethod
@@ -2071,6 +2073,22 @@ class IMatchRepository(ABC):
         ...
 
     @abstractmethod
+    def add_hand_search(
+        self, track_id: int, result: "TrackResult", track: "Track"
+    ) -> "MatchAttempt":
+        """Store a search the person made by hand, and propose its best result, in one transaction.
+
+        Never accepts: a track with no state, or none but no_match, waits for
+        review on the best result the guards passed; any other state is left as it is.
+        """
+        ...
+
+    @abstractmethod
+    def latest_attempts(self, track_ids: Iterable[int]) -> Dict[int, "MatchAttempt"]:
+        """Return each track's most recent attempt, keyed by track id: one query per chunk."""
+        ...
+
+    @abstractmethod
     def candidates_for(self, attempt_id: int) -> List["MatchCandidate"]:
         """Return an attempt's candidates in the order they were scored."""
         ...
@@ -2259,6 +2277,24 @@ class IMatchJobRepository(ABC):
         """Return a page of past searches, newest first, and how many there are."""
         ...
 
+    @abstractmethod
+    def undo_batches(self, track_ids: Iterable[int]) -> Dict[int, str]:
+        """Return the batch behind each track's last match decision, where it has one."""
+        ...
+
+    @abstractmethod
+    def review_entries(
+        self,
+        job_id: Optional[str] = None,
+        playlist_id: Optional[int] = None,
+    ) -> List[Tuple[int, int]]:
+        """Return the tracks a review lists as (track id, stable rank), by rank.
+
+        A run's tracks by plan position (a chain of resumes is one run); else a
+        playlist's, or the whole library's, that have been matched, by id.
+        """
+        ...
+
 
 class IMatchService(ABC):
     """Interface for matching library tracks on Beatport as a resumable job.
@@ -2335,8 +2371,9 @@ class IRevertService(ABC):
         *,
         on_progress: Optional[Callable[[int, int], None]] = None,
         should_cancel: Optional[Callable[[], bool]] = None,
+        track_id: Optional[int] = None,
     ) -> "BatchRevert":
-        """Revert every change in a batch, newest first, under a new batch id."""
+        """Revert every change in a batch (or one track's), newest first, under a new batch id."""
         ...
 
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { filterShortcuts, KEYBOARD_SHORTCUTS } from "./keyboardShortcuts";
 import { MATCH_KEYS } from "../screens/clean/match/matchKeyboard";
-import oneAtATimeSource from "../screens/clean/match/OneAtATime.tsx?raw";
+import reviewPanelSource from "../screens/clean/match/ReviewPanel.tsx?raw";
 import matchKeyboardSource from "../screens/clean/match/matchKeyboard.ts?raw";
 import appSource from "../App.tsx?raw";
 import modalSource from "../components/Modal.tsx?raw";
@@ -65,7 +65,7 @@ describe("the Library's shortcuts (LIBUI-10)", () => {
 describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
   const clean = KEYBOARD_SHORTCUTS.filter((row) => row.context === "Clean");
 
-  it("documents every key One at a time binds, as it names them", () => {
+  it("documents every key the review panel binds, as it names them", () => {
     const keys = Object.values(MATCH_KEYS);
 
     // Each command's key appears in the dialog: arrows as a pair, letters alone.
@@ -94,7 +94,7 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
     expect(matchKeyboardSource).toMatch(/"Escape"/);
     expect(matchKeyboardSource).toMatch(/"Enter"/);
     expect(matchKeyboardSource).toMatch(/case "ArrowLeft"/);
-    expect(oneAtATimeSource).toMatch(/matchCommand\(event, "one"\)/);
+    expect(reviewPanelSource).toMatch(/matchCommand\(event\)/);
   });
 });
 

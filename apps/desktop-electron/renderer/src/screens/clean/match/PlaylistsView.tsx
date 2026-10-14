@@ -35,8 +35,10 @@ interface PlaylistsViewProps {
   onMatch: (playlist: CleanPlaylistStatus | null) => void;
   /** Stop the match job working on a row. */
   onStop: (jobId: string) => void;
-  /** Review N ›: open One at a time on this playlist's waiting tracks; null is the whole library. */
+  /** Review N ›: open the review of this playlist's tracks; null is the whole library. */
   onReview: (playlist: CleanPlaylistStatus | null) => void;
+  /** See them ›: the review of the tracks a search found nothing for; null is the whole library. */
+  onSee?: (playlist: CleanPlaylistStatus | null) => void;
   /** Save N to files…; the button shows only when this is given. */
   onSave?: (playlist: CleanPlaylistStatus | null) => void;
 }
@@ -72,6 +74,7 @@ export function PlaylistsView({
   onMatch,
   onStop,
   onReview,
+  onSee,
   onSave,
 }: PlaylistsViewProps) {
   const [filter, setFilter] = useState("");
@@ -145,11 +148,22 @@ export function PlaylistsView({
               <Button
                 size="sm"
                 variant="secondary"
-                aria-label={`Match ${name}`}
+                aria-label={status.matchLabel === "Match" ? `Match ${name}` : `Match ${name} again`}
                 disabled={matching}
                 onClick={() => onMatch(playlist)}
               >
-                Match
+                {status.matchLabel}
+              </Button>
+            )}
+            {status.canMatch && matching && <span className="playlists__next">one match at a time</span>}
+            {status.see && onSee && (
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label={`${status.see.label} for ${name}`}
+                onClick={() => onSee(playlist)}
+              >
+                {status.see.label}
               </Button>
             )}
             {status.review && (

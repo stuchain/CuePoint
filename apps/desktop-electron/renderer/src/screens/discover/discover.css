@@ -781,8 +781,8 @@
 }
 
 .discover-runs__menu-dot {
-  width: calc(3px * var(--scale));
-  height: calc(3px * var(--scale));
+  width: calc(4px * var(--scale));
+  height: calc(4px * var(--scale));
   background: currentColor;
 }
 
@@ -792,7 +792,7 @@
   right: 0;
   bottom: 0;
   left: 0;
-  height: calc(3px * var(--scale));
+  height: calc(4px * var(--scale));
   overflow: hidden;
   background: var(--border-muted);
 }

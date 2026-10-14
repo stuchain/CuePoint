@@ -239,3 +239,63 @@ describe("catalog preview", () => {
     ).rejects.toThrow(/positive/);
   });
 });
+
+describe("match review", () => {
+  it("GETs /clean/match/review for a run", async () => {
+    const calls = engineAnswering(json(200, { job_id: "r", label: null, total: 0, counts: {}, tracks: [] }));
+
+    await client().getMatchReview({ jobId: "r" });
+
+    const url = new URL(calls[0]!.url);
+    expect(url.pathname).toBe("/api/v1/clean/match/review");
+    expect(url.searchParams.get("job_id")).toBe("r");
+    expect(calls[0]!.init?.method ?? "GET").toBe("GET");
+  });
+
+  it("asks for a playlist's by id, and for everything with no params", async () => {
+    const calls = engineAnswering(json(200, { job_id: null, label: null, total: 0, counts: {}, tracks: [] }));
+
+    await client().getMatchReview({ playlistId: 7, limit: 50 });
+    await client().getMatchReview();
+
+    const first = new URL(calls[0]!.url);
+    expect(first.searchParams.get("playlist_id")).toBe("7");
+    expect(first.searchParams.get("limit")).toBe("50");
+    expect(calls[1]!.url).toBe(`${BASE}/api/v1/clean/match/review`);
+  });
+
+  it("asks for a filter, a page, or only the ids, leaving All and zero offsets off the wire", async () => {
+    const calls = engineAnswering(json(200, { job_id: "r", label: null, total: 0, counts: {}, tracks: [] }));
+
+    await client().getMatchReview({ jobId: "r", filter: "matched", idsOnly: true });
+    await client().getMatchReview({ jobId: "r", filter: "all", after: "0:1999", limit: 2000 });
+
+    const first = new URL(calls[0]!.url);
+    expect(first.searchParams.get("filter")).toBe("matched");
+    expect(first.searchParams.get("ids_only")).toBe("true");
+    const second = new URL(calls[1]!.url);
+    expect(second.searchParams.has("filter")).toBe(false);
+    expect(second.searchParams.get("after")).toBe("0:1999");
+    expect(second.searchParams.get("limit")).toBe("2000");
+  });
+});
+
+describe("searching by hand and undoing one track", () => {
+  it("POSTs the track and the words to /clean/match/search", async () => {
+    const calls = engineAnswering(json(200, { attempt_id: 1, track_id: 7, candidates: [], total: 0 }));
+
+    await client().searchMatch({ track_id: 7, query: "glue bicep" });
+
+    expect(calls[0]!.url).toBe(`${BASE}/api/v1/clean/match/search`);
+    expect(calls[0]!.init?.method).toBe("POST");
+    expect(sent(calls[0]!)).toEqual({ track_id: 7, query: "glue bicep" });
+  });
+
+  it("names the track when only one track of a batch is reverted", async () => {
+    const calls = engineAnswering(json(200, { reverted: {} }));
+
+    await client().revertBatch({ batch_id: "b", track_id: 4 });
+
+    expect(sent(calls[0]!)).toEqual({ batch_id: "b", track_id: 4 });
+  });
+});

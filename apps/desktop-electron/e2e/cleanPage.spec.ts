@@ -142,23 +142,19 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await importAndCheck(window, writeExport(workspace));
       await window.getByRole("link", { name: "Clean" }).click();
 
-      // Match opens on Playlists (C22); this export has none. One at a time is a click away.
+      // Match opens on Playlists (C22). Nothing is matched yet: the whole library says so,
+      // and offers its own Match rather than saying "no tracks".
       await expect(window.getByRole("tab", { name: "Playlists", exact: true })).toHaveAttribute(
         "aria-selected",
         "true",
       );
-      await window.getByRole("tab", { name: /^One at a time/ }).click();
-
-      // Nothing is matched yet, and the page offers to match every track
-      // rather than saying "no tracks".
-      await expect(window.getByText("Match your library on Beatport")).toBeVisible({
+      await expect(window.getByRole("row").filter({ hasText: "Whole library" })).toContainText("Not matched", {
         timeout: 30_000,
       });
-      await expect(window.getByRole("button", { name: "Match all 3 tracks…" })).toBeEnabled();
-      await window.getByRole("tab", { name: "Table", exact: true }).click();
-      await window.getByRole("combobox", { name: "Show" }).selectOption("not_matched");
-      const queue = window.getByRole("table", { name: "Match table" });
-      await expect(queue.getByText("Present One")).toBeVisible();
+      await expect(window.getByRole("button", { name: "Match Whole library" })).toBeEnabled();
+      // There is no Table and no One at a time: the review list opens on a run.
+      await expect(window.getByRole("tab", { name: "Table", exact: true })).toHaveCount(0);
+      await expect(window.getByRole("tab", { name: /^One at a time/ })).toHaveCount(0);
 
       await window.getByRole("tab", { name: "Missing files" }).click();
       const missing = window.getByRole("table", { name: "Missing files" });
@@ -267,10 +263,12 @@ test.describe("The Clean page (CLEAN-12)", () => {
         await window.getByRole("tab", { name: /^Match/ }).click();
 
         // The match window keeps its title and its Match button on screen, also with the
-        // places list open. It opens from One at a time's empty-state button (a playlist's Match
-        // starts a run and opens no window, C22).
-        await window.getByRole("tab", { name: /^One at a time/ }).click();
-        await window.getByRole("button", { name: "Match all 3 tracks…" }).click();
+        // places list open. It opens from a track's Beatport tab in the Library (a playlist's
+        // Match starts a run and opens no window, C22).
+        await window.getByRole("link", { name: "Library", exact: true }).click();
+        await window.getByRole("table", { name: "Library tracks" }).getByText("Present One").first().click();
+        await window.getByRole("tab", { name: "Beatport" }).click();
+        await window.getByText("Match on Beatport", { exact: true }).click();
         const matching = window.getByRole("dialog", { name: "Match tracks" });
         await expect(matching).toBeVisible();
         const title = matching.getByRole("heading", { name: "Match tracks" });

@@ -157,18 +157,26 @@ function libraryRow(window: Page, title: string) {
     .filter({ hasText: title });
 }
 
-/** A row of the Match area's Table, which the Match tab opens on after One at a time. */
-function queueRow(window: Page, title: string) {
+/** A row of the Review list: every track of the run that just finished, with where each stands. */
+function reviewRow(window: Page, title: string) {
   return window
-    .getByRole("table", { name: "Match table" })
+    .getByRole("region", { name: /^Review / })
+    .getByRole("table")
     .getByRole("row")
     .filter({ hasText: title });
 }
 
-/** The Match area has three views of one list; the journey reads rows in the Table. */
-async function matchView(window: Page, view: "One at a time" | "Table" | "Past searches") {
-  // One at a time carries a count of the tracks to check ("One at a time (9)").
-  await window.getByRole("tab", { name: new RegExp(`^${view}`) }).click();
+/** The panel beside the Review list: one track's details. */
+function detailsPanel(window: Page) {
+  return window.getByRole("complementary", { name: "Track details" });
+}
+
+/** Open a track's details from its row, and put the keyboard on the page, not on a field. */
+async function openDetails(window: Page, title: string) {
+  await reviewRow(window, title).getByRole("button", { name: `Details of ${title}` }).click();
+  const panel = detailsPanel(window);
+  await expect(panel.locator(".review-panel__title")).toHaveText(title, { timeout: 15_000 });
+  return panel;
 }
 
 test.describe("Clean, end to end (CLEAN-14)", () => {
@@ -212,23 +220,22 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         await expect(journey).toContainText("Not matched", { timeout: 15_000 });
         await window.getByRole("button", { name: "Match Journey" }).click();
         await expect(window.getByText("Matching 3 tracks on Beatport.", { exact: true })).toBeVisible({ timeout: 30_000 });
-        // The row, not a toast, says it ended: what is left to check, with Review N.
-        await expect(journey).toContainText(/to check|ready to save|Done/, { timeout: 90_000 });
+        // The run lands on its Review when it ends: every track, with where each stands.
+        await expect(window.getByRole("tab", { name: "Review Journey" })).toHaveAttribute("aria-selected", "true", {
+          timeout: 90_000,
+        });
         await idle(window);
-        // The list the rest of the journey reads is the Table's.
-        await matchView(window, "Table");
-        await window.getByRole("combobox", { name: "Show" }).selectOption("needs_review");
-        await expect(queueRow(window, "Tone Two")).toBeVisible({ timeout: 15_000 });
+        await expect(reviewRow(window, "Tone Two")).toContainText("To check", { timeout: 15_000 });
       });
 
       await test.step("see what was accepted and what needs review", async () => {
-        const show = window.getByRole("combobox", { name: "Show" });
-        await show.selectOption("accepted");
-        await expect(queueRow(window, "Tone One")).toBeVisible({ timeout: 15_000 });
-        await expect(queueRow(window, "Tone Two")).toHaveCount(0);
-        await show.selectOption("needs_review");
-        await expect(queueRow(window, "Tone Two")).toBeVisible({ timeout: 15_000 });
-        await expect(queueRow(window, "Tone One")).toHaveCount(0);
+        const chips = window.getByRole("group", { name: "Show" });
+        await chips.getByRole("button", { name: /^Matched/ }).click();
+        await expect(reviewRow(window, "Tone One")).toBeVisible({ timeout: 15_000 });
+        await expect(reviewRow(window, "Tone Two")).toHaveCount(0);
+        await chips.getByRole("button", { name: /^To check/ }).click();
+        await expect(reviewRow(window, "Tone Two")).toBeVisible({ timeout: 15_000 });
+        await expect(reviewRow(window, "Tone One")).toHaveCount(0);
 
         // Beatport's artwork for the accepted track, decoded into a thumbnail
         // by the engine's guarded decoder — in a packaged build, Pillow's.
@@ -252,61 +259,58 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
       });
 
       await test.step("correct from the keyboard, choosing the second-best result", async () => {
-        // Double-clicking a row of the Table opens it in One at a time.
-        await window.getByRole("combobox", { name: "Show" }).selectOption("needs_review");
-        await queueRow(window, "Tone Two").getByText("Tone Two").dblclick();
-        await expect(window.getByRole("region", { name: "Your track" }).getByRole("heading", { name: "Tone Two" })).toBeVisible();
-        const results = window.getByRole("group", { name: "Other results" });
-        // The page opens on the matcher's proposal, the 94%. Results are
+        // Details › opens the track beside the list, with its other results behind show ›.
+        const panel = await openDetails(window, "Tone Two");
+        await panel.getByRole("button", { name: "show ›" }).click();
+        const results = panel.getByRole("group", { name: "Other results" });
+        // The panel opens on the matcher's proposal, the 94%. Results are
         // listed in the order the matcher scored them, which depends on which
         // page its workers fetched first, so the proposal is #1 or #2.
         const proposal = results.getByRole("button", { name: /^\d · .* · 94%/ });
         await expect(proposal).toHaveAttribute("aria-pressed", "true", { timeout: 15_000 });
         const proposed = Number(/^(\d)/.exec(await proposal.innerText())![1]);
         const other = proposed === 1 ? 2 : 1;
-        await expect(window.getByTestId("likelihood")).toHaveText("94% likely");
+        await expect(panel.getByTestId("likelihood")).toHaveText("94% likely");
 
         // Focus the page, not a field: bare keys belong to the Match area there.
-        await window.getByRole("region", { name: "Your track" }).getByRole("heading", { name: "Tone Two" }).click();
+        await panel.locator(".review-panel__title").click();
         await window.keyboard.press(proposed === 1 ? "ArrowRight" : "ArrowLeft");
         await expect(
           results.getByRole("button", { name: new RegExp(`^${other} · .* · 91%`) }),
         ).toHaveAttribute("aria-pressed", "true");
-        await expect(window.getByTestId("likelihood")).toHaveText("91% likely");
+        await expect(panel.getByTestId("likelihood")).toHaveText("91% likely");
 
         // Correct copies the ticked values with the match. Keep only the BPM here.
-        const ticks = window.getByRole("group", { name: /^When I say/ });
+        const ticks = panel.getByRole("group", { name: /^When I say/ });
         for (const field of ["Genre", "Label", "Year"]) {
           const tick = ticks.getByRole("checkbox", { name: new RegExp(`^${field}`) });
           if (await tick.count()) await tick.uncheck();
         }
         await expect(ticks.getByRole("checkbox", { name: /^BPM/ })).toBeChecked();
-        await expect(ticks.getByRole("checkbox", { name: /^Key/ })).toHaveCount(0);
-        // Enter on a focused tick is the tick's own: put focus on the card itself first.
-        await window.getByRole("region", { name: "Your track" }).getByRole("heading", { name: "Tone Two" }).click();
+        // Replacing a key of the person's own is the one value Correct would take: off unless chosen.
+        await expect(ticks.getByRole("checkbox", { name: /^Key/ })).not.toBeChecked();
+        // Enter on a focused tick is the tick's own: put focus on the panel itself first.
+        await panel.locator(".review-panel__title").click();
         await window.keyboard.press("Enter");
 
-        // Corrected, it leaves the Waiting list, and Undo is offered because something changed.
-        const status = window.getByRole("status").filter({ hasText: /^Corrected/ });
-        await expect(status).toContainText("Corrected “Tone Two”.", { timeout: 15_000 });
-        await expect(status.getByRole("button", { name: "Undo" })).toBeVisible();
+        // Corrected, the row is Done and dims, with Undo on it because something changed.
+        // The panel goes on to the next track to check, or closes when none is left.
+        await window.keyboard.press("Escape");
+        const row = reviewRow(window, "Tone Two");
+        await expect(row).toContainText("Done", { timeout: 15_000 });
+        await expect(row.getByRole("button", { name: "Undo: Tone Two" })).toBeVisible();
 
-        // Undo hands the track back to Waiting for you; then decide it again.
-        await status.getByRole("button", { name: "Undo" }).click();
-        await expect(window.getByRole("region", { name: "Your track" }).getByRole("heading", { name: "Tone Two" })).toBeVisible({ timeout: 15_000 });
-        await matchView(window, "Table");
-        await expect(queueRow(window, "Tone Two")).toBeVisible({ timeout: 15_000 });
-        await queueRow(window, "Tone Two").getByText("Tone Two").dblclick();
-        await expect(window.getByTestId("likelihood")).toBeVisible({ timeout: 15_000 });
-        await expect(
-          window.getByRole("group", { name: "Other results" }).getByRole("button", { name: new RegExp(`^${other} · .* · 91%`) }),
-        ).toBeVisible();
-        await window.getByRole("button", { name: new RegExp(`^${other} · .* · 91%`) }).click();
-        await window.getByRole("region", { name: "Your track" }).getByRole("heading", { name: "Tone Two" }).click();
+        // Undo hands the track back to check; then decide it again, on the other result.
+        await row.getByRole("button", { name: "Undo: Tone Two" }).click();
+        await expect(row).toContainText("To check", { timeout: 15_000 });
+        const again = await openDetails(window, "Tone Two");
+        await again.getByRole("button", { name: "show ›" }).click();
+        await expect(again.getByTestId("likelihood")).toBeVisible({ timeout: 15_000 });
+        await again.getByRole("button", { name: new RegExp(`^${other} · .* · 91%`) }).click();
+        await again.locator(".review-panel__title").click();
         await window.keyboard.press("Enter");
-        await expect(window.getByRole("status").filter({ hasText: /^Corrected/ })).toContainText("Corrected “Tone Two”.", { timeout: 15_000 });
-        await matchView(window, "Table");
-        await expect(queueRow(window, "Tone Two")).toHaveCount(0, { timeout: 15_000 });
+        await window.keyboard.press("Escape");
+        await expect(reviewRow(window, "Tone Two")).toContainText("Done", { timeout: 15_000 });
         // And the engine holds the second result, the one chosen.
         const decided = await window.evaluate(async () => {
           const found = await window.cuepoint!.browseLibrary!({ q: "Tone Two", limit: 1 });
@@ -339,7 +343,8 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
       await test.step("revert the correction", async () => {
         await libraryRow(window, "Tone Two").getByText("Tone Two").click();
         const inspector = window.locator(".cp-track-detail");
-        // History starts folded in Track details (PAGES-06): open it first.
+        // History is under the Yours tab, folded until asked for (PAGES-06): open it first.
+        await inspector.getByRole("tab", { name: "Yours" }).click();
         await inspector.getByRole("button", { name: /^History/ }).click();
         await inspector
           .getByRole("button", { name: /^Undo: .*BPM/i })

@@ -13,6 +13,41 @@ import { reportUnexpected } from "../../../reporting/reporting";
 import { followJob } from "../../library/followJob";
 import type { ToastAction, ToastVariant } from "../../../components/Toast";
 
+/** What a run that found nothing at all found instead: searches that failed, and searches that ran. */
+export interface NothingFound {
+  /** Tracks whose search could not finish: nothing is known about them. */
+  failed: number;
+  /** Tracks whose search ran and found nothing on Beatport. */
+  notFound: number;
+}
+
+/**
+ * A run that found nothing at all, or null when it found or is holding anything. A search that
+ * failed is not "not found": the words (and the chip the review opens on) differ.
+ */
+export function nothingFound(
+  run: Pick<MatchRun, "found" | "waiting" | "not_found" | "search_failed">,
+): NothingFound | null {
+  if (run.found !== 0 || run.waiting !== 0) return null;
+  const failed = run.search_failed ?? 0;
+  return failed + run.not_found > 0 ? { failed, notFound: run.not_found } : null;
+}
+
+/** "hJ: 24 searches failed", "hJ: no Beatport match for 24 tracks", or both said together. */
+export function nothingFoundLine(label: string, found: NothingFound): string {
+  const searches = `${found.failed.toLocaleString()} ${found.failed === 1 ? "search" : "searches"} failed`;
+  const tracks = `no Beatport match for ${found.notFound.toLocaleString()} ${found.notFound === 1 ? "track" : "tracks"}`;
+  if (found.failed > 0 && found.notFound > 0) return `${label}: ${searches}, ${tracks}`;
+  return `${label}: ${found.failed > 0 ? searches : tracks}`;
+}
+
+/** The chip the review opens on for such a run, and how many tracks it holds. */
+export function nothingFoundTarget(found: NothingFound): { filter: "search_failed" | "not_found"; count: number } {
+  return found.failed > 0
+    ? { filter: "search_failed", count: found.failed }
+    : { filter: "not_found", count: found.notFound };
+}
+
 /** "hJ matched · 15 confirmed · 9 to check": what the run found, in the words the row uses. */
 export function matchDoneLine(label: string, run: Pick<MatchRun, "found" | "waiting">): string {
   const parts = [`${label} matched`];
@@ -25,18 +60,37 @@ export function matchDoneLine(label: string, run: Pick<MatchRun, "found" | "wait
 interface WatchOptions {
   jobId: string;
   label: string;
-  /** Whether the person is looking at something other than the Playlists tab. */
+  /** Whether the person is somewhere other than Clean's Match: the end is then said in a toast. */
   away: () => boolean;
   push: (message: string, variant?: ToastVariant, action?: ToastAction) => void;
   /** Review N, from the toast's button. */
   onReview: (run: MatchRun) => void;
+  /** The person is on Clean and the run found something: land on its review. */
+  onLand?: (run: MatchRun) => void;
+  /** The run found nothing at all (however it is said): the page shows its red note. */
+  onNothing?: (run: MatchRun, found: NothingFound) => void;
+  /** Whether that red note is on screen as the run ends: the toast would then say it twice. */
+  noteVisible?: () => boolean;
 }
 
-/** Follow a run to its end and say that it succeeded, in a toast, only if `away` then. */
-export function announceRunEnd({ jobId, label, away, push, onReview }: WatchOptions): void {
+/**
+ * Follow a run to its end. A stop or a failure is said once, by the job follower that started
+ * the run (`useCleanJob`); a run that succeeded is said in a toast when `away`, and lands on its
+ * review when not. One that found nothing is the page's red note either way.
+ */
+export function announceRunEnd({
+  jobId,
+  label,
+  away,
+  push,
+  onReview,
+  onLand,
+  onNothing,
+  noteVisible,
+}: WatchOptions): void {
   void followJob(jobId).finished.then(async (outcome) => {
-    // A stop or a failure is said once, by the job follower that started the run (`useCleanJob`).
-    if (outcome.state !== "succeeded" || !away()) return;
+    if (outcome.state !== "succeeded") return;
+    const isAway = away();
     let run: MatchRun | undefined;
     try {
       const answer = await window.cuepoint?.getMatchJobs?.({ limit: 20 });
@@ -45,10 +99,25 @@ export function announceRunEnd({ jobId, label, away, push, onReview }: WatchOpti
       reportUnexpected(cause);
     }
     if (!run) {
-      push(`${label} matched.`, "success");
+      if (isAway) push(`${label} matched.`, "success");
       return;
     }
     const found = run;
+    const nothing = nothingFound(found);
+    if (nothing !== null) onNothing?.(found, nothing);
+    if (!isAway) {
+      if (nothing === null) onLand?.(found);
+      return;
+    }
+    if (nothing !== null) {
+      if (noteVisible?.()) return;
+      const target = nothingFoundTarget(nothing);
+      push(nothingFoundLine(label, nothing), "warning", {
+        label: `See the ${target.count.toLocaleString()}`,
+        onClick: () => onReview(found),
+      });
+      return;
+    }
     push(
       matchDoneLine(label, found),
       "success",

@@ -51,7 +51,14 @@ import sqlite3
 from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Optional, Sequence
 
-from cuepoint.models.match_attempt import MatchAttempt, MatchCandidate, TrackMatch
+from cuepoint.models.match_attempt import (
+    DECIDED_BY_AUTO,
+    STATE_NEEDS_REVIEW,
+    STATE_NO_MATCH,
+    MatchAttempt,
+    MatchCandidate,
+    TrackMatch,
+)
 from cuepoint.models.result import TrackResult
 from cuepoint.models.track import Track
 from cuepoint.persistence.id_chunks import CHUNK_SIZE, chunked, unique_ids
@@ -220,6 +227,62 @@ class MatchRepository(IMatchRepository):
             .fetchone()
         )
         return None if row is None else MatchAttempt.from_row(row)
+
+    def add_hand_search(
+        self, track_id: int, result: TrackResult, track: Track
+    ) -> MatchAttempt:
+        """Store a hand search as an attempt and propose its best result, in one transaction.
+
+        The automatic rule that accepts a certain match is **not** applied: the
+        person presses Use this. A track with no state, or one that was no match,
+        moves to "waiting for you", pointing at the first result the guards
+        passed; a state the track already has (a decision of the person's above
+        all) is left as it is. Writing both in one transaction keeps a match job
+        running beside it from interleaving.
+        """
+        with self._db.transaction(join_existing=True):
+            attempt = self.add_attempt(track_id, None, result, track)
+            existing = self.get_match(track_id)
+            if existing is None or existing.state == STATE_NO_MATCH:
+                pick = next(
+                    (
+                        c
+                        for c in self.candidates_for(int(attempt.id or 0))
+                        if c.guard_ok
+                    ),
+                    None,
+                )
+                if pick is not None:
+                    self.set_match(
+                        TrackMatch(
+                            track_id=track_id,
+                            state=STATE_NEEDS_REVIEW,
+                            decided_by=DECIDED_BY_AUTO,
+                            attempt_id=int(attempt.id or 0),
+                            decided_at=datetime.now(tz=timezone.utc).isoformat(),
+                            candidate_id=pick.id,
+                        )
+                    )
+        return attempt
+
+    def latest_attempts(self, track_ids: Iterable[int]) -> Dict[int, MatchAttempt]:
+        """Return each track's most recent attempt, keyed by track id.
+
+        One query per chunk, for a list that reads thousands of tracks at once.
+        A track never matched is absent.
+        """
+        found: Dict[int, MatchAttempt] = {}
+        connection = self._db.connect()
+        for chunk in chunked(unique_ids(track_ids), CHUNK_SIZE):
+            placeholders = ", ".join("?" for _ in chunk)
+            for row in connection.execute(
+                f"{_SELECT_ATTEMPT} WHERE id IN (SELECT MAX(id) FROM match_attempts"
+                f" WHERE track_id IN ({placeholders}) GROUP BY track_id)",
+                tuple(chunk),
+            ):
+                attempt = MatchAttempt.from_row(row)
+                found[attempt.track_id] = attempt
+        return found
 
     # ------------------------------------------------------------ candidates
 

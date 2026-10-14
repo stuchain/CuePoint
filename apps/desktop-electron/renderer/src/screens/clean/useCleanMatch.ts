@@ -15,19 +15,25 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { BatchSelection, MatchRun, MatchStarted } from "../../api/cuepointBridge.types";
 import { useToast } from "../../components";
 import { useActiveJob } from "../../components/shell/useActiveJob";
-import { clampLabel, matchRunningNote, matchStartedLine } from "./cleanFormat";
+import { clampLabel, matchStartedLine } from "./cleanFormat";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
 import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
-import { announceRunEnd } from "./match/matchDone";
+import { announceRunEnd, type NothingFound } from "./match/matchDone";
 
 /** What a run started from a playlist's row asks of the page (C22). */
 export interface RunHooks {
   /** The job's id, once the engine has started it. */
   onJob?: (jobId: string) => void;
-  /** Whether the person is looking at something other than the rows: the run then ends in a toast. */
+  /** Whether the person is somewhere other than Clean's Match: the run then ends in a toast. */
   away?: () => boolean;
   /** Review N, from that toast. */
   onReview?: (run: MatchRun) => void;
+  /** The run ended with something found while the person is on Clean: land on its review. */
+  onLand?: (run: MatchRun) => void;
+  /** The run ended having found nothing at all: the red note. */
+  onNothing?: (run: MatchRun, found: NothingFound) => void;
+  /** Whether the red note can be seen as the run ends, so no toast repeats it. */
+  noteVisible?: () => boolean;
 }
 
 export interface CleanMatch {
@@ -35,10 +41,14 @@ export interface CleanMatch {
   matching: boolean;
   /** The key a match started here was started under, while it runs. */
   running: string | null;
-  /** What the page says about the running match, one line (C22); null when none runs. */
-  note: string | null;
+  /** The engine's running match job, whoever started it and whichever page this was started from; null when none. */
+  jobId: string | null;
+  /** What this page started the running match under ("hJ"); null for one it found already running. */
+  label: string | null;
   /** How far the running match is, when the job has said; null before that or when none runs. */
   progress: { done: number; total: number } | null;
+  /** About how many seconds are left, once enough tracks are done to say; null before that. */
+  secondsLeft: number | null;
   /** How many matches have ended while the page was open. */
   ended: number;
   /** How many have been started or resumed here, so Past searches is read again as one begins. */
@@ -57,13 +67,30 @@ export interface CleanMatch {
   stop: (jobId: string) => void;
 }
 
+/** Tracks that must be done before a time left is said: fewer would be a guess at one track's speed. */
+export const TRACKS_BEFORE_TIME_LEFT = 3;
+
+/**
+ * About how long is left, from how long the tracks done so far took. Display only: a track takes
+ * five to forty-five seconds, so it is said in minutes and only once a few are done.
+ */
+export function secondsLeftOf(
+  progress: { done: number; total: number },
+  elapsed: number | undefined,
+): number | null {
+  if (typeof elapsed !== "number" || !(elapsed > 0)) return null;
+  if (progress.done < TRACKS_BEFORE_TIME_LEFT || progress.done >= progress.total) return null;
+  return Math.round((elapsed / progress.done) * (progress.total - progress.done));
+}
+
 export function useCleanMatch(onEnded: () => void): CleanMatch {
   const { push } = useToast();
   const message = useCallback((text: string, tone: CleanMessageTone) => push(text, tone), [push]);
   const jobs = useCleanJob(message);
   const active = useActiveJob().jobs.find((job) => job.type === "clean_match") ?? null;
   // What the run was started with, for the note's one line; a match found already running has none.
-  const [label, setLabel] = useState<string | null>(null);
+  // What the run was started with, and the job it became: a name belongs to its own job only.
+  const [named, setNamed] = useState<{ label: string; jobId: string | null } | null>(null);
   const [ended, setEnded] = useState(0);
   const [started, setStarted] = useState(0);
 
@@ -78,7 +105,7 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
     const finished = lastActive.current !== null && activeId === null;
     lastActive.current = activeId;
     if (!finished) return;
-    setLabel(null);
+    setNamed(null);
     setEnded((count) => count + 1);
     latestEnded.current();
   }, [activeId]);
@@ -99,7 +126,7 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
         // A run that has its own notice (a playlist's row) does not also say "finished".
         succeeded: announced ? undefined : "Matching finished.",
         onEnded: () => {
-          setLabel(null);
+          setNamed(null);
           setEnded((count) => count + 1);
           latestEnded.current();
         },
@@ -120,7 +147,7 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
         push(NEEDS_DESKTOP, "warning");
         return Promise.resolve(false);
       }
-      setLabel(runLabel ? clampLabel(runLabel) : null);
+      setNamed(runLabel ? { label: clampLabel(runLabel), jobId: null } : null);
       return new Promise<boolean>((resolve) => {
         let began = false;
         void follow(
@@ -129,7 +156,10 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
           (answer) => {
             began = true;
             const jobId = answer.job_id ?? answer.id;
-            if (jobId) hooks?.onJob?.(jobId);
+            if (jobId) {
+              setNamed((was) => (was ? { ...was, jobId } : was));
+              hooks?.onJob?.(jobId);
+            }
             if (jobId && hooks?.away && hooks.onReview) {
               // Outside React's effects: a hidden page has those stopped, and this must still speak.
               announceRunEnd({
@@ -138,6 +168,9 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
                 away: hooks.away,
                 push,
                 onReview: hooks.onReview,
+                onLand: hooks.onLand,
+                onNothing: hooks.onNothing,
+                noteVisible: hooks.noteVisible,
               });
             }
             resolve(true);
@@ -146,7 +179,7 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
         ).then(() => {
           // Refused before a job existed: nothing runs, so the run has no name.
           if (!began) {
-            setLabel(null);
+            setNamed(null);
             resolve(false);
           }
         });
@@ -187,7 +220,13 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
   return {
     matching,
     running: jobs.running,
-    note: matching ? matchRunningNote(label, progress) : null,
+    jobId: active?.id ?? null,
+    // A name is for the job it started: another job running now (after this one ended) is not it.
+    label:
+      matching && named && (named.jobId === null || active === null || active.id === named.jobId)
+        ? named.label
+        : null,
+    secondsLeft: progress ? secondsLeftOf(progress, active?.progress?.elapsed_time) : null,
     progress,
     ended,
     started,

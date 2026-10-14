@@ -11,8 +11,10 @@ This should be called at application startup.
 import threading
 
 from cuepoint.services.analysis_worker_client import default_computer
+from cuepoint.data.catalog_search import set_provider as set_catalog_search_provider
 from cuepoint.services.beatport_api import BeatportApi
 from cuepoint.services.beatport_api_client import BeatportApiClient
+from cuepoint.services.beatport_catalog_search import BeatportCatalogSearch
 from cuepoint.services.beatport_token import resolve_access_token
 from cuepoint.services.beatport_service import BeatportService
 from cuepoint.services.cache_service import CacheService
@@ -888,6 +890,10 @@ def bootstrap_services() -> None:
         return BeatportApi(client=client, cache_service=cache_service)
 
     container.register_factory(BeatportApi, create_beatport_api)
+
+    # Clean's matcher searches Beatport through the signed-in catalog; the data
+    # layer asks this provider and falls back to the website with no sign-in.
+    set_catalog_search_provider(BeatportCatalogSearch(config_service))
 
     # Discover's catalog cache and the library's identity on it (DISCOVER-04):
     # the repository, and the resolve service, which is built per job so that

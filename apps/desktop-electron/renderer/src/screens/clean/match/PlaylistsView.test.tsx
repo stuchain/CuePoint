@@ -32,6 +32,7 @@ const DATA: CleanPlaylists = {
     { id: 4, name: "Closing", path: "", ...COUNTS, unsaved: 39 },
     { id: 5, name: "hj", path: "", ...COUNTS, running: { job_id: "j", done: 108, total: 180 } },
     { id: 6, name: "Spare", path: "", ...COUNTS, track_count: 0 },
+    { id: 7, name: "Found nothing", path: "", ...COUNTS, track_count: 24, accepted: 0, no_match: 24 },
   ],
 };
 
@@ -41,6 +42,7 @@ function renderView(overrides: Partial<Props> = {}) {
     onMatch: vi.fn(),
     onStop: vi.fn(),
     onReview: vi.fn(),
+    onSee: vi.fn(),
     ...overrides,
   };
   return { props, ...render(<PlaylistsView {...props} />) };
@@ -54,7 +56,7 @@ describe("the Playlists view", () => {
   it("lists the whole library first, then the playlists, each with its tracks and status", () => {
     renderView();
     const rows = bodyRows();
-    expect(rows).toHaveLength(7);
+    expect(rows).toHaveLength(8);
     expect(within(rows[0]!).getByText("Whole library")).toBeInTheDocument();
     expect(within(rows[0]!).getByText("1,234")).toBeInTheDocument();
     // The folder path is muted before the name.
@@ -68,6 +70,7 @@ describe("the Playlists view", () => {
     expect(within(rows[4]!).getByText("39 ready to save")).toBeInTheDocument();
     expect(within(rows[5]!).getByText("Matching 108 of 180")).toBeInTheDocument();
     expect(within(rows[6]!).getByText("Empty")).toBeInTheDocument();
+    expect(within(rows[7]!).getByText("24 not found")).toHaveClass("cp-status--problem");
   });
 
   it("has no tick boxes and no table column for them", () => {
@@ -118,10 +121,31 @@ describe("the Playlists view", () => {
     expect(props.onMatch).toHaveBeenLastCalledWith(null);
   });
 
-  it("waits every Match while a match runs, here or elsewhere", () => {
+  it("waits every Match while a match runs, here or elsewhere, and says why on each row", () => {
     renderView({ matching: true });
     expect(screen.getByRole("button", { name: "Match Warmup" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Match Whole library" })).toBeDisabled();
+    const warmup = bodyRows()[2]!;
+    expect(within(warmup).getByText("one match at a time")).toBeInTheDocument();
+    // A row that is being matched has its Stop, not the reason.
+    expect(within(bodyRows()[5]!).queryByText("one match at a time")).toBeNull();
+    // Nothing says it while nothing runs.
+    expect(screen.getAllByText("one match at a time").length).toBeGreaterThan(0);
+  });
+
+  it("does not say one at a time while no match runs", () => {
+    renderView();
+    expect(screen.queryByText("one match at a time")).toBeNull();
+  });
+
+  it("offers Match again and See them › on a row whose search found nothing", () => {
+    const { props } = renderView();
+    const row = bodyRows()[7]!;
+    expect(within(row).getByRole("button", { name: "Match Found nothing again" })).toHaveTextContent("Match again");
+    fireEvent.click(within(row).getByRole("button", { name: "Match Found nothing again" }));
+    expect(props.onMatch).toHaveBeenLastCalledWith(DATA.playlists[6]);
+    fireEvent.click(within(row).getByRole("button", { name: "See them › for Found nothing" }));
+    expect(props.onSee).toHaveBeenCalledWith(DATA.playlists[6]);
   });
 
   it("offers Review N › as the row's primary button, and calls onReview with the playlist", () => {

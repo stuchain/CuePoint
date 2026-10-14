@@ -1297,6 +1297,8 @@ export interface MatchRun {
   not_found: number;
   rejected: number;
   disputed: number;
+  /** Finished tracks whose search could not finish: not in `not_found`. */
+  search_failed: number;
   status: "running" | "stopped" | "done";
   finished_at: string | null;
   latest_job_id: string;
@@ -1307,6 +1309,67 @@ export interface MatchJobs {
   jobs: MatchRun[];
   total: number;
 }
+
+/** Where one track of a run stands in the review (the engine's words, `match_review.py`). */
+export type ReviewStatus = "to_check" | "not_found" | "search_failed" | "matched" | "done";
+
+/** The few facts of a candidate the review list draws. */
+export interface ReviewCandidate {
+  id: number;
+  title: string | null;
+  artists: string | null;
+  mix: string | null;
+  key: string | null;
+  bpm: number | null;
+  label: string | null;
+  genre: string | null;
+  release_year: number | null;
+  score: number;
+  guard_ok: boolean;
+}
+
+/** One track of the review list: what the engine found for it, and what differs. */
+export interface ReviewTrack {
+  track_id: number;
+  title: string;
+  artist: string;
+  status: ReviewStatus;
+  /** What the person decided; null while nothing was. */
+  decision: "accepted" | "rejected" | null;
+  /** A newer search disagrees with the decision: it is to check again. */
+  disputed: boolean;
+  /** The batch that takes back the track's last decision and the values it copied; null for a refusal. */
+  undo_batch: string | null;
+  /** Where this row stands in the listing: read on from it with `after`, whatever has been decided since. */
+  cursor: string;
+  candidate: ReviewCandidate | null;
+  /** The fields that differ from the candidate: "title", "remix", "key", "bpm"... */
+  differing: string[];
+}
+
+/** Every track of a run (or playlist), for the Review list. */
+export interface MatchReview {
+  job_id: string | null;
+  label: string | null;
+  /** Every track of the run, whatever the page holds. */
+  total: number;
+  counts: Record<ReviewStatus, number>;
+  /** Tracks the person refused, and those a newer search disagrees with them about. */
+  rejected: number;
+  disputed: number;
+  /** How many tracks the filter holds, of which `tracks` is one page. */
+  matching: number;
+  /** With `idsOnly`: every id of the filter. */
+  ids?: number[];
+  tracks: ReviewTrack[];
+}
+
+/** What a review is read with: the run or playlist, a filter, a page, or only the ids. */
+export type MatchReviewFilter =
+  | "all"
+  | ReviewStatus
+  | "rejected"
+  | "disputed";
 
 export interface ResumableMatch {
   job_id: string;
@@ -1453,6 +1516,18 @@ export interface AttemptCandidates {
   track_id: number;
   candidates: MatchCandidate[];
   total: number;
+}
+
+/** What searching Beatport by hand answers: the stored attempt's candidates, scored against the track. */
+export interface MatchSearchAnswer extends Omit<AttemptCandidates, "candidates"> {
+  /** Each scored against the track, with what differs in the review list's words. */
+  candidates: Array<MatchCandidate & { differing?: string[] }>;
+  /** The words searched, as kept. */
+  query: string;
+  /** Why the search itself failed (`network`, `signed_out`...); null when it answered, even with nothing. */
+  failure: string | null;
+  failure_message: string | null;
+  state: TrackMatchState;
 }
 
 /** One track decided (`match`), or a selection applied inline or as a job. */
@@ -3317,8 +3392,13 @@ export interface WaveformsBridge {
   get: (params: WaveformsQuery) => Promise<WaveformAnswer<WaveformBatch>>;
   /** One track's zoomed waveform, or why there is none yet (T4). */
   detail: (params: { track_id: number }) => Promise<WaveformAnswer<WaveformDetail>>;
-  /** Ask for a track's zoomed waveform to be made, ahead of the queue. */
-  requestDetail: (params: { track_id: number }) => Promise<WaveformAnswer<WaveformDetailRequested>>;
+  /**
+   * Ask for a track's zoomed waveform to be made, ahead of the queue. With
+   * `low`, a prepare-ahead request: it never displaces a wanted one, is turned
+   * away (state stays `waiting`) while the engine is busy, and yields to a
+   * wanted request for another track.
+   */
+  requestDetail: (params: { track_id: number; low?: boolean }) => Promise<WaveformAnswer<WaveformDetailRequested>>;
   /** Analyse these tracks first, at most 50, even while paused. */
   request: (params: { track_ids: number[] }) => Promise<WaveformAnswer<WaveformsRequested>>;
   /** Empty the waveform data; the analysis starts again unless paused. */
@@ -3694,6 +3774,16 @@ export interface CuePointBridge {
     limit?: number;
     offset?: number;
   }) => Promise<MatchJobs>;
+  /** Every track of a run, or of a playlist, with where each stands (the Review list). */
+  getMatchReview?: (params?: {
+    jobId?: string;
+    playlistId?: number;
+    filter?: MatchReviewFilter;
+    /** The `cursor` of the last row read: read on from it. */
+    after?: string;
+    limit?: number;
+    idsOnly?: boolean;
+  }) => Promise<MatchReview>;
   /** A candidate's Beatport artwork as an object URL, or null; release with `releaseTrackArtwork`. */
   getCandidateArtwork?: (params: {
     candidateId: number;
@@ -3717,7 +3807,10 @@ export interface CuePointBridge {
     year?: number | null;
   }) => Promise<{ track: LibraryTrackRow }>;
   revertChange?: (params: { change_id: number }) => Promise<{ revert: FieldRevert }>;
-  revertBatch?: (params: { batch_id: string }) => Promise<BatchRevertOutcome>;
+  /** Revert a batch, or with `track_id` only that track's part of it (Undo on one row after Accept all). */
+  revertBatch?: (params: { batch_id: string; track_id?: number }) => Promise<BatchRevertOutcome>;
+  /** Search Beatport for a track with words of one's own; the results are scored and stored as an attempt. */
+  searchMatch?: (params: { track_id: number; query: string }) => Promise<MatchSearchAnswer>;
   startFileCheck?: (params: { selection: BatchSelection }) => Promise<FileCheckStarted>;
   startDuplicateScan?: (params?: {
     signals?: DuplicateSignal[];

@@ -996,8 +996,8 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await openLibrary(win);
     await pick(win, "Build");
     const details = win.getByRole("complementary", { name: "Track details" });
-    // Yours starts folded (DEC-246): open it to reach Edit values….
-    await details.getByRole("button", { name: /^Yours/ }).click();
+    // Edit values… is under the Yours tab.
+    await details.getByRole("tab", { name: "Yours" }).click();
     await use(win, details.getByRole("button", { name: "Edit values…" }), "Track details' Edit values…");
     await expect(win.getByRole("dialog", { name: "Edit values" })).toBeVisible({ timeout: 15_000 });
     await win.keyboard.press("Escape");

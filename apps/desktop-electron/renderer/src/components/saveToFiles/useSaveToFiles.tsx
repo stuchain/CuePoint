@@ -43,6 +43,13 @@ export function unsavedInPlaylist(playlistId: number): BatchSelection {
   return { query: { filters: { match: "all", rules: [...unsaved, inPlaylist] } } };
 }
 
+/** The unsaved tracks of one match run: what Save N to files… saves from a past search's review. */
+export function unsavedInRun(jobId: string): BatchSelection {
+  const unsaved = UNSAVED_SELECTION.query?.filters?.rules ?? [];
+  const inRun: FilterRule = { field: "match_run", operator: "is", value: jobId };
+  return { query: { filters: { match: "all", rules: [...unsaved, inRun] } } };
+}
+
 interface SaveToFilesOptions {
   /** False while the page is hidden (a kept-alive page): the bar reads nothing then. */
   active?: boolean;

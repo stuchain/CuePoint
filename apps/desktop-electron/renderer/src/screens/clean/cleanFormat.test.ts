@@ -4,19 +4,14 @@ import type { TrackMatchState } from "../../api/cuepointBridge.types";
 import {
   clampLabel,
   attemptLabel,
-  correctedLine,
   correctedManyLine,
   decisionLine,
   exportedLine,
   fileStatusHint,
   fileStatusLabel,
   formatWhen,
-  matchRunningNote,
   matchStartedLine,
   matchStateLabel,
-  nothingToCorrectLine,
-  notThisLine,
-  undidLine,
   rejectReasonText,
   signalExplanation,
   signalLabel,
@@ -116,26 +111,7 @@ describe("sentences about what was done", () => {
     expect(matchStartedLine({ planned: 2, excluded: 1 })).toMatch(/1 already matched or decided is/);
   });
 
-  it("says a running match in one line: its name and how far it is (C22)", () => {
-    expect(matchRunningNote("hj", { done: 108, total: 180 })).toBe("Matching hj · 108 of 180");
-    expect(matchRunningNote("Whole library", { done: 1200, total: 18000 })).toBe(
-      "Matching Whole library · 1,200 of 18,000",
-    );
-    // No name when the page was left and came back.
-    expect(matchRunningNote(null, { done: 3, total: 9 })).toBe("Matching · 3 of 9");
-  });
-
-  it("is short while the count is not known, and has no explainer sentence", () => {
-    expect(matchRunningNote()).toBe("Matching…");
-    expect(matchRunningNote("hj", { done: 0, total: 0 })).toBe("Matching hj…");
-    expect(matchRunningNote("hj", null)).not.toMatch(/bar at the bottom|keep working/);
-  });
-
-  it("says what was corrected, refused and undone, and what changed nothing", () => {
-    expect(correctedLine("Strobe")).toBe("Corrected “Strobe”.");
-    expect(nothingToCorrectLine("Strobe")).toBe("Nothing to change for “Strobe”.");
-    expect(notThisLine("Strobe")).toBe("Marked “Strobe” as not this track.");
-    expect(undidLine("Strobe")).toBe("Undid the change to “Strobe”.");
+  it("says what was corrected, many at once", () => {
     expect(correctedManyLine(1)).toBe("Corrected 1 track.");
     expect(correctedManyLine(1200)).toBe("Corrected 1,200 tracks.");
   });

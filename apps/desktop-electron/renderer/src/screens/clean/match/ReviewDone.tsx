@@ -1,5 +1,5 @@
 /**
- * The screen after the last track of a review (C22): what the search did, and the two ways out.
+ * The screen once every track of a review is decided: what was decided, and the ways out.
  *
  * It is announced as a status, and focus moves to **Save** (or, with nothing to save, the way
  * back), because the card the keyboard was on has just gone.
@@ -15,11 +15,20 @@ interface ReviewDoneProps {
   saveCount: number;
   onSave?: () => void;
   onBack: () => void;
-  /** When tracks were skipped: go through them again. */
+  /** Look at the list again, for a review that is already done. */
   onAgain?: () => void;
+  againLabel?: string;
 }
 
-export function ReviewDone({ headline, detail, saveCount, onSave, onBack, onAgain }: ReviewDoneProps) {
+export function ReviewDone({
+  headline,
+  detail,
+  saveCount,
+  onSave,
+  onBack,
+  onAgain,
+  againLabel = "Go through them again",
+}: ReviewDoneProps) {
   const actions = useRef<HTMLDivElement>(null);
   // The first button there is: Save when there is something to save, else the way back.
   useEffect(() => {
@@ -38,7 +47,7 @@ export function ReviewDone({ headline, detail, saveCount, onSave, onBack, onAgai
         )}
         {onAgain && (
           <Button variant="secondary" onClick={onAgain}>
-            Go through the skipped ones again
+            {againLabel}
           </Button>
         )}
         <Button variant="secondary" icon="chevron-left" onClick={onBack}>

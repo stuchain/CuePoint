@@ -4,8 +4,8 @@
  * Pure, and kept apart from the view for `libraryFormat.ts`'s reason: the words
  * are the feature. The row says where the playlist stands with Beatport and
  * what to do next, by the first of these that applies: matching now, tracks
- * to check, values ready to save, tracks not looked up yet, and otherwise
- * done. A playlist with no tracks says so and offers nothing.
+ * to check, values ready to save, a search that found nothing, tracks not looked
+ * up yet, and otherwise done. A playlist with no tracks says so and offers nothing.
  *
  * Every playlist has its own **Match** button (no ticks, no header button), so
  * the status only says what else the row offers: **Review N ›** while tracks
@@ -21,6 +21,7 @@ export type PlaylistStatusKind =
   | "running"
   | "waiting"
   | "unsaved"
+  | "not_found"
   | "not_matched"
   | "done"
   | "empty";
@@ -41,8 +42,12 @@ export interface PlaylistStatus {
   running: { jobId: string; done: number; total: number } | null;
   /** Review N ›: tracks wait for a yes or no. */
   review: { label: string; count: number } | null;
+  /** See them ›: the search found nothing for these tracks, so they are the ones to look at. */
+  see: { label: string; count: number } | null;
   /** Save N to files…: values are ready to go into the files. */
   save: { label: string; count: number } | null;
+  /** The Match button's words: "Match again" when a search already ran and found nothing. */
+  matchLabel: "Match" | "Match again";
   /** Whether the row has a Match button: not for an empty playlist, nor while it is matched. */
   canMatch: boolean;
   /** Words in the Next column when there is nothing to press. */
@@ -50,11 +55,30 @@ export interface PlaylistStatus {
 }
 
 export function playlistStatus(counts: CleanPlaylistCounts): PlaylistStatus {
-  const { running, waiting, accepted, unsaved, not_matched: notMatched, track_count: tracks } = counts;
+  const {
+    running,
+    waiting,
+    accepted,
+    unsaved,
+    not_matched: notMatched,
+    no_match: noMatch,
+    track_count: tracks,
+  } = counts;
   const review = waiting > 0 ? { label: `Review ${waiting.toLocaleString()} ›`, count: waiting } : null;
   const save =
     unsaved > 0 ? { label: `Save ${unsaved.toLocaleString()} to files…`, count: unsaved } : null;
-  const base = { review, save, canMatch: true, note: null, running: null };
+  const base = {
+    review,
+    save,
+    see: null,
+    matchLabel: "Match" as const,
+    canMatch: true,
+    note: null,
+    running: null,
+  };
+  // What a search found nothing for is said beside whatever else the row says, in the same words.
+  const notFoundChip: PlaylistChip[] =
+    noMatch > 0 ? [{ text: `${noMatch.toLocaleString()} not found`, tone: "problem" }] : [];
 
   if (tracks === 0 && !running) {
     return {
@@ -85,11 +109,30 @@ export function playlistStatus(counts: CleanPlaylistCounts): PlaylistStatus {
   if (waiting > 0) {
     const chips: PlaylistChip[] = [{ text: `${waiting.toLocaleString()} to check`, tone: "action" }];
     if (accepted > 0) chips.push({ text: `${accepted.toLocaleString()} confirmed`, tone: "done" });
+    chips.push(...notFoundChip);
     return { ...base, kind: "waiting", text: chips[0]!.text, tone: "action", chips };
   }
   if (unsaved > 0) {
     const text = `${unsaved.toLocaleString()} ready to save`;
-    return { ...base, kind: "unsaved", text, tone: "action", chips: [{ text, tone: "action" }] };
+    return {
+      ...base,
+      kind: "unsaved",
+      text,
+      tone: "action",
+      chips: [{ text, tone: "action" }, ...notFoundChip],
+    };
+  }
+  if (noMatch > 0) {
+    const text = `${noMatch.toLocaleString()} not found`;
+    return {
+      ...base,
+      kind: "not_found",
+      text,
+      tone: "problem",
+      chips: [{ text, tone: "problem" }],
+      see: { label: "See them ›", count: noMatch },
+      matchLabel: "Match again",
+    };
   }
   if (notMatched > 0) {
     const text = notMatched === tracks ? "Not matched" : `${notMatched.toLocaleString()} not matched`;

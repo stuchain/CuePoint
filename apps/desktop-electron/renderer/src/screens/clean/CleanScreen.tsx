@@ -8,13 +8,16 @@
  * part is for, so no part opens with a paragraph (C15b); the tabs say where
  * work waits (CLN-3). The header is the shared `ScreenHeader`; its one action
  * lives on the Match tab only (K4: one home per action). Match is the
- * Match area (`match/MatchArea.tsx`): Playlists, One at a time, Table and Past
- * searches.
+ * Match area (`match/MatchArea.tsx`): Playlists, the Review of a run (when one is open) and
+ * Past searches.
  *
  * Match opens on Playlists (C22). Every playlist there has its own **Match**
- * (no ticks, no header button); the page starts that run, follows it, and says
- * from another page that it ended, with **Review N**. The match window stays
- * for tracks handed in from other pages (`matchWith`).
+ * (no ticks, no header button); the page starts that run and follows it. While any match
+ * runs, a line at the top of every tab says what, how far and how long is left, with Stop,
+ * read from the engine running job so it is right after leaving the page and coming
+ * back. A run that ends lands on its Review (every track, with what was found); one that
+ * found nothing says so in a red note instead, and from another page a toast says it, with
+ * **Review N**. The match window stays for tracks handed in from other pages (`matchWith`).
  *
  * Every table here is the Library's `TrackTable` over the Library's windowed
  * browse with a rule set, and every action goes through a route CLEAN-11 built.
@@ -32,10 +35,13 @@ import { Tabs } from "../../components/Tabs";
 import { DuplicatesView } from "./DuplicatesView";
 import { MatchWindow } from "./MatchWindow";
 import { MissingFilesView } from "./MissingFilesView";
-import { MatchArea, loadMatchTab, type MatchTab, type ReviewOpening } from "./match/MatchArea";
+import { MatchArea, type ReviewOpening } from "./match/MatchArea";
+import { MatchRunningLine, NothingFoundNote } from "./match/MatchRunLine";
 import { usePageActive } from "../../components/shell/pageActive";
 import { WHOLE_LIBRARY_NAME, playlistKey, useCleanPlaylists } from "./match/useCleanPlaylists";
 import { matchRowRequest } from "./match/matchPlaylists";
+import { nothingFound as nothingFoundOf, nothingFoundTarget, type NothingFound } from "./match/matchDone";
+import type { MatchTab } from "./match/matchTab";
 import type { CleanMatchOpening, CleanOpening, CleanSectionOpening } from "./cleanLink";
 import type { CleanTracks } from "./cleanTracks";
 import { libraryImportState } from "../library/libraryLink";
@@ -47,7 +53,7 @@ import {
   saveCleanSection,
   type CleanSection,
 } from "./cleanSections";
-import { unsavedInPlaylist, useSaveToFiles } from "../../components/saveToFiles/useSaveToFiles";
+import { unsavedInPlaylist, unsavedInRun, useSaveToFiles } from "../../components/saveToFiles/useSaveToFiles";
 import { UNSAVED_SELECTION } from "../../components/saveToFiles/saveChoices";
 import { useCleanHealth } from "./useCleanHealth";
 import { useCleanMatch } from "./useCleanMatch";
@@ -71,6 +77,19 @@ interface CleanScreenProps {
    * the first-run guide and Prepare open the match window with them chosen.
    */
   matchWith?: CleanMatchOpening | null;
+}
+
+/** The name of the running match: what it was started under, else the row the engine puts it on. */
+function runNameOf(
+  started: string | null,
+  jobId: string | null,
+  data: { playlists: CleanPlaylistStatus[]; whole_library: { running: { job_id: string } | null } } | null,
+): string | null {
+  if (started) return started;
+  if (!jobId || !data) return null;
+  const row = data.playlists.find((entry) => entry.running?.job_id === jobId);
+  if (row) return row.name;
+  return data.whole_library.running?.job_id === jobId ? WHOLE_LIBRARY_NAME : null;
 }
 
 export function CleanScreen({
@@ -122,18 +141,32 @@ export function CleanScreen({
   // The Playlists view's rows live here: a row's Match starts the page's one run (C22).
   const pageActive = usePageActive();
   const playlists = useCleanPlaylists(match.matching, section === "review" && pageActive);
-  const [matchTab, setMatchTab] = useState<MatchTab>(loadMatchTab);
-  // Whether the person is looking at the rows: a run that ends elsewhere says so in a toast.
-  // Kept in a ref, read when the run ends, which may be while this page is hidden.
-  const rowsShown = pageActive && section === "review" && matchTab === "playlists";
-  const rowsInView = useRef(rowsShown);
+  // Whether the person is on the Match part of Clean: a run that ends there lands on its review,
+  // and one that ends elsewhere says so in a toast. Kept in a ref, read when the run ends, which
+  // may be while this page is hidden.
+  const matchShown = pageActive && section === "review";
+  // Which Match tab is open, and whether a review's details are: a run that ends lands on its review
+  // only from the rows (or Past searches) or a review with nothing open, never over a panel being read.
+  const [matchView, setMatchView] = useState<{ tab: MatchTab; panelOpen: boolean }>({
+    tab: "playlists",
+    panelOpen: false,
+  });
+  const canLand = matchShown && !matchView.panelOpen;
+  const matchInView = useRef(canLand);
   const pageShown = useRef(pageActive);
   // Written after the commit, not during render: a render may be thrown away, and a hidden page's
   // renders are deferred, but these are only read when a run ends, long after.
   useLayoutEffect(() => {
-    rowsInView.current = rowsShown;
+    matchInView.current = canLand;
     pageShown.current = pageActive;
-  }, [rowsShown, pageActive]);
+  }, [canLand, pageActive]);
+  // A run that ended finding nothing at all: the red note, until it is seen, dismissed or matched again.
+  const [nothingFound, setNothingFound] = useState<{
+    run: MatchRun;
+    playlist: CleanPlaylistStatus | null;
+    name: string;
+    found: NothingFound;
+  } | null>(null);
   // The run each row's last Match started in this session, so Review opens on that run.
   const rowRuns = useRef(new Map<string, string>());
   const rowKey = (playlist: CleanPlaylistStatus | null) => (playlist ? playlistKey(playlist.id) : "library");
@@ -172,6 +205,27 @@ export function CleanScreen({
       else openSave(UNSAVED_SELECTION, playlists.data?.whole_library.unsaved ?? 0);
     },
     [openSave, playlists.data],
+  );
+  // Save N to files… from a past search's review: that run's own unsaved tracks, counted by the
+  // engine as the Library counts them, not the whole library's.
+  const countRunUnsaved = useCallback((jobId: string): Promise<number> => {
+    const browse = window.cuepoint?.browseLibrary;
+    if (!browse) return Promise.resolve(0);
+    return browse({
+      filters: unsavedInRun(jobId).query?.filters ?? null,
+      limit: 1,
+      offset: 0,
+      sort: "artist",
+      dir: "asc",
+    })
+      .then((answer) => answer.total)
+      .catch(() => 0);
+  }, []);
+  const saveRun = useCallback(
+    (jobId: string) => {
+      void countRunUnsaved(jobId).then((count) => openSave(unsavedInRun(jobId), count));
+    },
+    [countRunUnsaved, openSave],
   );
   // Read through the shared cache (C19d): a page shown again does not wait on it.
   // A summary that cannot be read counts as none, and the page goes on (as it always has).
@@ -213,8 +267,13 @@ export function CleanScreen({
     );
   }
 
-  // Review N ›, from a toast on another page: bring the Match area back on that run.
-  const openReview = (run: MatchRun, playlist: CleanPlaylistStatus | null) => {
+  // A run's review: from its end, a toast on another page, or the red note. Brings the Match area
+  // back on that run. `filter` opens it on one chip ("Not found" for a run that found nothing).
+  const openReview = (
+    run: MatchRun,
+    playlist: CleanPlaylistStatus | null,
+    filter?: ReviewOpening["filter"],
+  ) => {
     setSection("review");
     saveCleanSection("review");
     setReviewOpening({
@@ -222,6 +281,7 @@ export function CleanScreen({
       run,
       playlistId: playlist ? playlist.id : null,
       name: playlist ? playlist.name : (run.label ?? WHOLE_LIBRARY_NAME),
+      ...(filter ? { filter } : {}),
     });
     if (!pageShown.current) navigate("/clean");
   };
@@ -230,11 +290,19 @@ export function CleanScreen({
     const data = playlists.data;
     if (!data || match.matching) return;
     const request = matchRowRequest(playlist, data.whole_library);
+    setNothingFound(null);
     void match
       .start(request.again ? "rematch-many" : "match-many", request.selection, request.again, request.label, {
         onJob: (jobId) => rowRuns.current.set(rowKey(playlist), jobId),
-        away: () => !rowsInView.current,
-        onReview: (run) => openReview(run, playlist),
+        away: () => !matchInView.current,
+        onReview: (run) => {
+          const none = nothingFoundOf(run);
+          openReview(run, playlist, none ? nothingFoundTarget(none).filter : undefined);
+        },
+        onLand: (run) => openReview(run, playlist),
+        noteVisible: () => pageShown.current,
+        onNothing: (run, found) =>
+          setNothingFound({ run, playlist, found, name: playlist ? playlist.name : (run.label ?? WHOLE_LIBRARY_NAME) }),
       })
       .then((started) => {
         if (started) playlists.reload();
@@ -243,6 +311,9 @@ export function CleanScreen({
 
   const label = CLEAN_SECTIONS.find((entry) => entry.id === section)?.label ?? "";
   const counts = sectionCounts(cleanHealth.health);
+  // What is being matched, in the playlist or library name: the name a run started here was given,
+  // else the row the engine says the running job is on (right after coming back too).
+  const runName = match.matching ? runNameOf(match.label, match.jobId, playlists.data) : null;
 
   return (
     <div className="screen clean-screen">
@@ -268,36 +339,42 @@ export function CleanScreen({
           }
         />
       </div>
-      {match.note && !rowsShown && (
-        <div className="clean-note" role="region" aria-label="Matching">
-          <p className="clean-note__text">{match.note}</p>
-          {match.progress && (
-            <progress
-              className="clean-progress"
-              aria-label="Matching progress"
-              value={match.progress.done}
-              max={match.progress.total}
-            />
-          )}
-        </div>
+      {match.matching && (
+        <MatchRunningLine
+          name={runName}
+          progress={match.progress}
+          secondsLeft={match.secondsLeft}
+          onStop={match.jobId ? () => match.stop(match.jobId!) : null}
+        />
+      )}
+      {!match.matching && nothingFound && (
+        <NothingFoundNote
+          name={nothingFound.name}
+          found={nothingFound.found}
+          onSee={() => {
+            openReview(nothingFound.run, nothingFound.playlist, nothingFoundTarget(nothingFound.found).filter);
+            setNothingFound(null);
+          }}
+          onDismiss={() => setNothingFound(null)}
+        />
       )}
       <div className="clean-screen__body" role="tabpanel" aria-label={label}>
         {section === "review" && (
           <MatchArea
-            health={cleanHealth.health}
             onHealthChanged={matchChanged}
             focus={focus}
-            onOpenEntity={openEntity}
             match={match}
-            onMatchTracks={(tracks) => openMatch(tracks ?? null)}
             playlists={playlists}
             onMatchPlaylist={startPlaylist}
             runFor={runFor}
             onRunSpent={runSpent}
             reviewOpening={reviewOpening}
             onReviewOpened={reviewOpened}
-            onTabChange={setMatchTab}
+            onViewChange={setMatchView}
             onSavePlaylist={savePlaylist}
+            onSaveRun={saveRun}
+            countRunUnsaved={countRunUnsaved}
+            onOpenEntity={openEntity}
           />
         )}
         {section === "missing" && (

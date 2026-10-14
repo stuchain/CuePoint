@@ -10,7 +10,6 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import type { ComponentProps } from "react";
 
-import type { LibraryHealth } from "../../../api/cuepointBridge.types";
 import { ToastProvider } from "../../../components";
 import { ScaleProvider } from "../../../tokens/ScaleContext";
 import {
@@ -21,15 +20,14 @@ import {
   removeTableEnvironment,
   type MatchWorld,
 } from "../../../test/matchHarness";
-import { run } from "../../../test/matchFixtures";
-import fixture from "../cleanEmpty.fixture.json";
+import { reviewTrack, run } from "../../../test/matchFixtures";
 import type { CleanMatch } from "../useCleanMatch";
-import { MATCH_TAB_STORAGE_KEY, MatchArea } from "./MatchArea";
+import { MatchArea } from "./MatchArea";
+import { MATCH_TAB_STORAGE_KEY } from "./matchTab";
 
 type Fn = ReturnType<typeof vi.fn>;
 type Props = ComponentProps<typeof MatchArea>;
 
-const MATCHED = fixture.matched.health as LibraryHealth;
 const LOADED = { timeout: 3000 };
 
 let bridge: Record<string, Fn>;
@@ -39,8 +37,10 @@ function stubMatch(overrides: Partial<CleanMatch> = {}): CleanMatch {
   return {
     matching: false,
     running: null,
-    note: null,
+    jobId: null,
+    label: null,
     progress: null,
+    secondsLeft: null,
     ended: 0,
     started: 0,
     start: vi.fn(),
@@ -65,10 +65,8 @@ function element(props: Props) {
 function renderPast(overrides: Partial<Props> = {}) {
   localStorage.setItem(MATCH_TAB_STORAGE_KEY, "past");
   const props: Props = {
-    health: MATCHED,
     onHealthChanged: vi.fn(),
     match: stubMatch(),
-    onMatchTracks: vi.fn(),
     playlists: { data: null, error: null, loading: false, reload: vi.fn() },
     onMatchPlaylist: vi.fn(),
     ...overrides,
@@ -213,36 +211,31 @@ describe("the list", () => {
 });
 
 describe("Open", () => {
-  it("sets From to that run and shows its tracks in One at a time", async () => {
+  it("opens the review of that run: every track of it, in a tab named for it", async () => {
+    world.review = [reviewTrack(1, "to_check"), reviewTrack(2, "not_found"), reviewTrack(3, "matched")];
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     fireEvent.click(screen.getByRole("button", { name: 'Open Playlist "all"' }));
 
-    expect(await screen.findByRole("region", { name: "One at a time" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "One at a time" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByLabelText("From")).toHaveValue("job-1");
-    // It still has tracks waiting, so those are what Show starts on.
-    expect(screen.getByLabelText("Show")).toHaveValue("needs_review");
-    await waitFor(() => {
-      const calls = bridge.browseLibrary!.mock.calls;
-      const rules = (calls[calls.length - 1]![0] as { filters: { rules: unknown[] } }).filters.rules;
-      expect(rules).toContainEqual({ field: "match_run", operator: "is", value: "job-1" });
-    });
+    expect(await screen.findByRole("region", { name: 'Review Playlist "all"' })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: 'Review Playlist "all"' })).toHaveAttribute("aria-selected", "true");
+    expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-1", limit: 2000 });
+    expect(await screen.findAllByText("Track 2 · Artist 2", undefined, LOADED)).not.toHaveLength(0);
   });
 
-  it("shows everything in a run that has nothing waiting", async () => {
+  it("names a run with no label by how many tracks it had", async () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     fireEvent.click(screen.getByRole("button", { name: "Open Whole library" }));
-    await waitFor(() => expect(screen.getByLabelText("Show")).toHaveValue("everything"), LOADED);
-    expect(screen.getByLabelText("From")).toHaveValue("job-2");
+    expect(await screen.findByRole("tab", { name: "Review Whole library" })).toBeInTheDocument();
+    expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-2", limit: 2000 });
   });
 
   it("marks the run that is open", async () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     fireEvent.click(screen.getByRole("button", { name: 'Open Playlist "all"' }));
-    await screen.findByRole("region", { name: "One at a time" });
+    await screen.findByRole("region", { name: 'Review Playlist "all"' });
     fireEvent.click(screen.getByRole("tab", { name: "Past searches" }));
     await screen.findByRole("table", { name: /Every match run/ });
     expect(screen.getAllByRole("row").filter((row) => row.getAttribute("data-open") === "true")).toHaveLength(1);

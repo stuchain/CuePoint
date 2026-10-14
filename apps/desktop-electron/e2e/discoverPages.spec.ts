@@ -191,9 +191,9 @@ function bpRow(window: Page, table: string, title: string) {
   return window.getByRole("table", { name: table }).getByRole("row").filter({ hasText: title });
 }
 
-/** A row of the Match area's Table. */
+/** A row of the Review list the Match area opens on a run that just finished. */
 function queueRow(window: Page, title: string) {
-  return window.getByRole("table", { name: "Match table" }).getByRole("row").filter({ hasText: title });
+  return window.getByRole("region", { name: /^Review / }).getByRole("table").getByRole("row").filter({ hasText: title });
 }
 
 /**
@@ -355,8 +355,10 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await window.getByRole("button", { name: "Match 1 playlist on Beatport" }).click();
         await expect(window.getByText("Matching finished.")).toBeVisible({ timeout: 90_000 });
         await idle(window);
-        await window.getByRole("tab", { name: "Table", exact: true }).click();
-        await window.getByRole("combobox", { name: "Show" }).selectOption("accepted");
+        // The run lands on its Review, which lists every track of it.
+        await expect(window.getByRole("tab", { name: /^Review / })).toHaveAttribute("aria-selected", "true", {
+          timeout: 30_000,
+        });
         await expect(queueRow(window, "Harbour Lights")).toBeVisible({ timeout: 15_000 });
         await expect(queueRow(window, "Low Tide")).toBeVisible();
       });

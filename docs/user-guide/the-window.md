@@ -161,8 +161,8 @@ chosen width when there is room again.
 
 On the Library and Clean pages it shows everything CuePoint knows about the
 selected track: its artwork, buttons to play it, your own values, what Rekordbox
-sent, its Beatport match, and its history. Each part folds under its heading, and
-the panel remembers which you folded. See [Track details](library.md#track-details).
+sent, its Beatport match, and its history. They sit under four tabs (Overview,
+Beatport, Where and Yours), and the panel remembers the tab you last chose. See [Track details](library.md#track-details).
 
 ## The status strip
 
@@ -255,12 +255,12 @@ To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**
 | **Ctrl+Shift+A** | Open Activity |
 | **F1** or **Ctrl+?** | All keyboard shortcuts |
 
-Clean's Match area keeps its own keys, listed below, and the table's are off in One at a time.
+Clean's Match area keeps its own keys, listed below, in the review's details panel.
 
 On Prepare, **Left** / **Right** resize the source panel once its divider has focus,
 and **Enter** saves an entry's In or Out time.
 
-In Clean's Match area, One at a time:
+In Clean's Match area, in the review's details panel:
 
 | Shortcut | Does |
 | --- | --- |
@@ -271,7 +271,7 @@ In Clean's Match area, One at a time:
 | **Up** / **Down** | Previous or next track |
 | **B** | Play or stop the Beatport preview |
 | **Y** | Play your file (stops a preview) |
-| **Esc** | Stop the preview |
+| **Esc** | Stop the preview, or close the panel |
 
 These keys do nothing while you are typing in a field or have a dialog open.
 

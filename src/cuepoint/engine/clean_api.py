@@ -442,6 +442,7 @@ def match_run_to_dict(run: Any) -> Dict[str, Any]:
         "disputed": run.disputed,
         "status": run.status,
         "finished_at": run.finished_at,
+        "search_failed": run.search_failed,
         "latest_job_id": run.latest_job_id,
         "resume_job_id": run.resume_job_id,
     }
@@ -465,6 +466,242 @@ def past_matches(params: Dict[str, List[str]]) -> Dict[str, Any]:
         _query_value(params, "q"), limit, offset
     )
     return {"jobs": [match_run_to_dict(run) for run in runs], "total": total}
+
+
+#: The most rows one read of a review answers: a bigger run is read in pages.
+REVIEW_LIMIT_MAX = 20000
+
+
+def _review_candidate(candidate: Any) -> Dict[str, Any]:
+    """The few facts of a candidate the review list draws; the rest is one click away."""
+    from cuepoint.services.match_comparison import mix_of
+
+    return {
+        "id": candidate.id,
+        "title": candidate.title,
+        "artists": candidate.artists,
+        "mix": mix_of(candidate.title),
+        "key": candidate.key,
+        "bpm": candidate.bpm,
+        "label": candidate.label,
+        "genre": candidate.genre,
+        "release_year": candidate.release_year,
+        "score": candidate.score,
+        "guard_ok": bool(candidate.guard_ok),
+    }
+
+
+def match_review(params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """Every track of a run, where each stands, and what it was matched with.
+
+    ``job_id`` is a run (its resumes included); ``playlist_id`` a playlist; with
+    neither it is every matched track of the library. The statuses and the
+    counts are :mod:`cuepoint.engine.match_review`'s rule, so the list and the
+    chips beside it cannot disagree, and they are for every track, whatever the
+    page holds.
+
+    Tracks still to look at come first and the decided last, each in plan order.
+    ``filter`` narrows to one status (or ``rejected`` / ``disputed``); ``limit``
+    (at most :data:`REVIEW_LIMIT_MAX`) and ``after`` page what is left. ``after`` is
+    the ``cursor`` of the last row read, not an offset: the order changes as
+    tracks are decided, and a cursor carries its own place in it, so a track
+    decided between two pages is never skipped or read twice. ``ids_only`` answers
+    just the ids of the filtered tracks, for acting on all of them (Accept all)
+    without reading every row.
+
+
+    The work is a few queries over the whole run, never one per track: states,
+    latest attempts and undo batches in chunks, and tracks and candidates only
+    for the page.
+    """
+    from cuepoint.engine import match_review as review
+    from cuepoint.services.match_comparison import differences
+
+    job_id = _query_value(params, "job_id")
+    playlist_id = _query_int(params, "playlist_id")
+    if job_id is not None and playlist_id is not None:
+        raise bad_request("Review one run or one playlist, not both")
+    wanted = _query_value(params, "filter") or review.FILTER_ALL
+    if wanted not in review.FILTERS:
+        raise bad_request(f"filter must be one of {', '.join(review.FILTERS)}")
+    limit = _query_int(params, "limit")
+    limit = REVIEW_LIMIT_MAX if limit is None else limit
+    after = _query_value(params, "after")
+    if not 1 <= limit <= REVIEW_LIMIT_MAX:
+        raise bad_request(f"limit must be between 1 and {REVIEW_LIMIT_MAX}")
+    if after is not None and review.parse_cursor(after) is None:
+        raise bad_request("after must be the cursor of a row of this review")
+
+    jobs = _service("IMatchJobRepository")
+    label: Optional[str] = None
+    if job_id is not None:
+        plan = jobs.get(job_id)
+        if plan is None:
+            raise not_found("MATCH_JOB_NOT_FOUND", "No match job has that id")
+        label = plan.label
+    entries = jobs.review_entries(job_id, playlist_id)
+    ids = [track_id for track_id, _rank in entries]
+    ranks = [rank for _track_id, rank in entries]
+
+    matches = _service("IMatchRepository")
+    states = matches.get_matches(ids)
+    # The latest attempt only matters for a track with no state of its own.
+    attempts = matches.latest_attempts(
+        [
+            track_id
+            for track_id in ids
+            if track_id not in states or states[track_id].state == "no_match"
+        ]
+    )
+    statuses = [review.status_of(states.get(i), attempts.get(i)) for i in ids]
+    decisions = [review.decision_of(states.get(i)) for i in ids]
+    disputes = [review.is_disputed(states.get(i)) for i in ids]
+    counts = review.count_by_status(statuses)
+    order = [
+        index
+        for index in review.undecided_first(statuses)
+        if review.matches_filter(
+            wanted, statuses[index], decisions[index], disputes[index]
+        )
+    ]
+    base: Dict[str, Any] = {
+        "job_id": job_id,
+        "label": label,
+        "total": len(ids),
+        "counts": counts,
+        "rejected": sum(1 for d in decisions if d == "rejected"),
+        "disputed": sum(1 for d in disputes if d),
+        "matching": len(order),
+    }
+    if _query_bool(params, "ids_only"):
+        return {**base, "ids": [ids[index] for index in order], "tracks": []}
+
+    place = None if after is None else review.parse_cursor(after)
+    if place is not None:
+        order = [
+            index
+            for index in order
+            if review.cursor_key(statuses[index], ranks[index], ids[index]) > place
+        ]
+    page = order[:limit]
+    page_ids = [ids[index] for index in page]
+    tracks = {t.id: t for t in _service("ITrackRepository").get_many(page_ids)}
+    pointed = matches.get_candidates(
+        [
+            states[i].candidate_id
+            for i in page_ids
+            if i in states and states[i].candidate_id
+        ]
+    )
+    # A track nobody pointed at shows its attempt's best result, if it had one.
+    unpointed = [
+        attempts[i].best_candidate_id
+        for i in page_ids
+        if i in attempts
+        and attempts[i].best_candidate_id
+        and not (i in states and states[i].candidate_id)
+    ]
+    fallback = matches.get_candidates(unpointed) if unpointed else {}
+    batches = jobs.undo_batches(
+        [ids[index] for index in page if statuses[index] == review.STATUS_DONE]
+    )
+    rows: List[Dict[str, Any]] = []
+    for index in page:
+        track_id = ids[index]
+        track = tracks.get(track_id)
+        if track is None:
+            continue
+        state = states.get(track_id)
+        candidate = None
+        if state is not None and state.candidate_id:
+            candidate = pointed.get(state.candidate_id)
+        elif track_id in attempts and attempts[track_id].best_candidate_id:
+            candidate = fallback.get(attempts[track_id].best_candidate_id)
+        rows.append(
+            {
+                "track_id": track_id,
+                "title": track.title,
+                "artist": track.artist,
+                "status": statuses[index],
+                "decision": decisions[index],
+                "disputed": disputes[index],
+                "undo_batch": batches.get(track_id),
+                "cursor": review.cursor_of(statuses[index], ranks[index], track_id),
+                "candidate": (
+                    None if candidate is None else _review_candidate(candidate)
+                ),
+                "differing": (
+                    []
+                    if candidate is None
+                    else review.differing(differences(track, candidate))
+                ),
+            }
+        )
+    return {**base, "tracks": rows}
+
+
+def search_match(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
+    """Search Beatport for one track with the person's own words (the Review's Search panel).
+
+    The results are scored by the matcher against the track as the library holds it
+    and stored as an attempt, so they keep their scores and refusal reasons; accepting
+    one is :func:`correct_match` with the candidate's id. Answers the attempt's
+    candidates, and ``failure`` (the search's own kind) when the search itself
+    failed, which is not the same as Beatport having nothing. Without a Beatport
+    sign-in it answers 409 ``BEATPORT_SIGN_IN_NEEDED`` rather than searching in a way
+    that cannot work.
+    """
+    from cuepoint.engine import match_search
+    from cuepoint.models.config import SETTINGS
+    from cuepoint.services.match_input import library_track_to_track
+
+    _only(data, ("track_id", "query"))
+    track_id = _require_int(data, "track_id")
+    try:
+        query = match_search.clean_query(data.get("query"))
+    except ValueError as exc:
+        raise bad_request(str(exc)) from exc
+    if not query:
+        raise bad_request("Type what to search Beatport for")
+    stored = _require_track(track_id)
+    if _active_match_job_id(job_store) is not None:
+        # One match at a time: a hand search writes an attempt and a state, which a
+        # match job running beside it is also writing.
+        raise ApiError(
+            409,
+            "MATCH_RUNNING",
+            "A match is running: wait for it to end, or stop it, then search.",
+        )
+    if not match_search.signed_in():
+        raise ApiError(
+            409,
+            "BEATPORT_SIGN_IN_NEEDED",
+            "Sign in to Beatport in Settings to search from CuePoint.",
+        )
+    track = library_track_to_track(stored)
+    answered = match_search.search_track(
+        track_id,
+        track,
+        query,
+        _service("IMatcherService"),
+        _service("IMatchRepository"),
+        float(str(SETTINGS.get("MIN_ACCEPT_SCORE", 70))),
+    )
+    from cuepoint.engine import match_review as review
+
+    listed = attempt_candidates(answered["attempt_id"])
+    for entry in listed["candidates"]:
+        # What differs from the track, in the review list's words, so a row can be drawn at once.
+        entry["differing"] = review.differing(entry["differs"])
+    return 200, {
+        **listed,
+        "query": query,
+        "failure": answered["failure"],
+        "failure_message": match_search.failure_words(answered["failure"]),
+        "state": match_state_to_dict(
+            track_id, _service("IMatchRepository").get_match(track_id)
+        ),
+    }
 
 
 def track_matches(track_id: int) -> Dict[str, Any]:
@@ -760,7 +997,15 @@ def revert_batch(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, A
     """Revert every change a batch made, inline or as a job (CLEAN-06)."""
     from cuepoint.engine.batch_jobs import revert_or_start
 
-    _only(data, ("batch_id",))
+    _only(data, ("batch_id", "track_id"))
+    track_id = _optional_int(data, "track_id")
+    if track_id is not None:
+        # One track out of a batch that covered many (Undo on a row after Accept all):
+        # always inline, since it is the changes of one track.
+        reverted = _service("IRevertService").revert_batch(
+            _require_str(data, "batch_id"), track_id=track_id
+        )
+        return 200, {"reverted": reverted.to_dict()}
     result, job = revert_or_start(job_store, _require_str(data, "batch_id"))
     if job is not None:
         return _started(job, {})
@@ -1144,6 +1389,7 @@ def clean_playlists(params: Dict[str, List[str]], job_store: Any) -> Dict[str, A
 _GET_ROUTES: Dict[str, Callable[[Dict[str, List[str]]], Dict[str, Any]]] = {
     "/api/v1/clean/match/resumable": resumable_matches,
     "/api/v1/clean/match/jobs": past_matches,
+    "/api/v1/clean/match/review": match_review,
     "/api/v1/clean/duplicates": duplicate_groups,
     "/api/v1/clean/tags/writes": tag_writes,
     "/api/v1/clean/health": library_health,
@@ -1158,6 +1404,7 @@ _STORE_GET_ROUTES: Dict[str, Callable[[Dict[str, List[str]], Any], Dict[str, Any
 _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], Any], Tuple[int, Dict[str, Any]]]] = {
     "/api/v1/clean/match": start_match,
     "/api/v1/clean/match/resume": resume_match,
+    "/api/v1/clean/match/search": search_match,
     "/api/v1/clean/decide": decide,
     "/api/v1/clean/apply": apply_match,
     "/api/v1/clean/apply-preview": preview_apply,
