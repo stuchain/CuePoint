@@ -126,8 +126,6 @@
   padding: var(--space-sm) var(--space-xs) 0;
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 /* The page entries get more room each than the pinned Settings row (hit-min stays the floor). */
