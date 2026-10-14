@@ -255,7 +255,7 @@ export function fixMenuItems(
 // ------------------------------------------------------- Beatport zone
 
 /** One overridable field as the Inspector's Beatport zone shows it. */
-interface BeatportFieldRow {
+export interface BeatportFieldRow {
   field: OverrideField;
   label: string;
   /** What Rekordbox sent. */

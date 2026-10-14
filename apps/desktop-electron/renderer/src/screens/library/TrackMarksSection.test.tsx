@@ -175,18 +175,20 @@ describe("in the Inspector", () => {
     marks: MARKS,
   };
 
-  it("lists the cues in the imported record, after Rekordbox's fields", () => {
+  it("lists the cues in the imported record, before Rekordbox's fields", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
     const fromRekordbox = screen.getByRole("heading", { name: "Details from Rekordbox" });
-    const cues = screen.getByRole("heading", { name: /Cue points · 2 hot, 1 memory/ });
+    const cues = screen.getByRole("heading", { name: "Cue points" });
+    // The count and grid are Overview's fact, said once.
+    expect(screen.getByTestId("track-fact-cues")).toHaveTextContent("2 hot, 1 memory");
     // The heading explains the two kinds on hover (INS-9).
     expect(within(cues).getByRole("button")).toHaveAttribute(
       "title",
-      // The hint, then the heading's answer, which a cut-off summary can be read from.
-      expect.stringMatching(/^Hot cues \(A–H\) and memory cues, as set in Rekordbox\. Shown here, not editable\. — /),
+      "Hot cues (A–H) and memory cues, as set in Rekordbox. Shown here, not editable.",
     );
+    // At the foot of Overview, the cues first, then Rekordbox's own fields.
     expect(
-      fromRekordbox.compareDocumentPosition(cues) & Node.DOCUMENT_POSITION_FOLLOWING,
+      cues.compareDocumentPosition(fromRekordbox) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(screen.getByText("A · 1:04.0 · Drop")).toBeInTheDocument();
   });

@@ -258,11 +258,6 @@ there until you open it again (**Ctrl+I**, or the tab). From the top:
 - **A small cover**, or *No artwork* when it has none, beside the title, the
   artists and the label. Each artist in the credit, and the label, is a link to
   their page (see [Discover](discover.md#artist-and-label-pages)).
-- **One facts line** under the title: the key chip with the Camelot wheel button
-  beside it, then the BPM, the genre and the loudness ("−8.4 LUFS"). The key
-  keeps where it came from: "8A · A minor · Beatport", "8A · A minor · yours", or
-  "No Beatport key" with **Match on Beatport**, which matches this one track in
-  Clean's match window.
 - **Three buttons**: **Play**, **Queue ▾** (a small menu with **Play next** and
   **Add to queue**) and **Similar** (similar tracks). With several tracks selected,
   Play and the Queue menu act on all of them; **Similar** uses the first. To show a
@@ -270,37 +265,38 @@ there until you open it again (**Ctrl+I**, or the tab). From the top:
   right-click menu. With several tracks selected, a line under the title reads
   "3 selected · Edit values…"; **Edit values…** edits all of them, while the fields
   below still change only the track shown.
-- **Its waveform**, a short strip with its cue points, loops and beat grid; when
-  the track is the one playing, a click on it seeks. Under it, the loudest peak:
-  "Peak −0.3 dBFS" (a track whose loudness could not be measured says why here).
-  See [Waveforms](waveforms.md).
+Under the buttons are four tabs: **Overview**, **Beatport**, **Where** and **Yours**.
+The panel remembers the tab you last chose and opens on **Overview** the first time.
 
-Then the sections. **Every section starts folded** and says its answer on the
-right of its heading ("Beatport · Confirmed", "Where it is · 1 Set · 1 playlist",
-"Cue points · none · grid 124", "Yours · no rating"); rest the pointer on a heading
-to read a long answer in full. Click a heading to open it:
-
+- **Overview** — a labelled grid of facts: **Key** (the chip, the Camelot wheel
+  button beside it, and the key's name; rest the pointer on it to see where the key
+  came from, Beatport or you; a track with none shows a dash and **Match on
+  Beatport**, which matches this one track in Clean's match window), **BPM**,
+  **Genre**, **Loudness** ("−8.4 LUFS"; the peak is in its hover text and under the
+  waveform), **Cue points** ("4 hot · grid 128") and **Beatport** (how the match
+  stands). Then **its waveform**, a short strip with its cue points, loops and
+  beat grid; when the track is the one playing, a click on it seeks. Under it, the
+  loudest peak: "Peak −0.3 dBFS" (a track whose loudness could not be measured
+  says why here). See [Waveforms](waveforms.md). At the foot, two sections that
+  start folded and stay as you leave them:
+  - **Cue points**, from Rekordbox and read-only: every hot cue, memory cue, loop,
+    fade and load point, one line each in the order the track plays them, and the
+    beat grid's tempo. See
+    [Cue points and beat grids](#cue-points-and-beat-grids-come-from-rekordbox--and-stay-there).
+  - **Details from Rekordbox** — everything the import captured: remixer, album,
+    label, genre, BPM, year, length, rating, plays, color, comment, bitrate, when
+    it was added and where the file is. **This part is read-only.** It is what
+    Rekordbox sent, and a refresh replaces it.
+- **Beatport** — where the track stands with its Beatport match. See
+  [The Beatport tab](#the-beatport-tab).
+- **Where** — the Collections, Sets and playlists the track is in. Click one to
+  jump to it. A track in no Collection says so.
 - **Yours** — what you have added in CuePoint: your rating, favorite (the heart
-  beside the stars), notes and tags, and **Edit values…** for your key, BPM, genre, label and year. See
-  [Organizing your library](organization.md) and
-  [Your own values](#your-own-values). It starts folded, with a short summary
-  beside its name, and stays as you leave it.
-- **Details from Rekordbox** — everything the import captured: remixer, album,
-  label, genre, BPM, year, length, rating, plays, color,
-  comment, bitrate, when it was added and where the file is. **This part is
-  read-only.** It is what Rekordbox sent, and a refresh replaces it. It starts
-  folded, and stays as you leave it.
-- **Cue points**, also from Rekordbox and also read-only: every hot cue, memory
-  cue, loop, fade and load point, one line each in the order the track plays
-  them, and the beat grid's tempo. See
-  [Cue points and beat grids](#cue-points-and-beat-grids-come-from-rekordbox--and-stay-there).
-- **Where it is** — the Collections, Sets and playlists the track is in. Click
-  one to jump to it. Its heading says "Not in any Collection" for a track in none.
-- **Beatport** — where the track stands with its Beatport match. Folded until you
-  open it; its heading says how the match stands ("Beatport · Confirmed"). See
-  [The Beatport section](#the-beatport-section).
-- **History** — every change to the track, and who made it. Folded, its heading
-  counts the changes ("History · 4 changes").
+  beside the stars), notes and tags, and **Edit values…** for your key, BPM, genre,
+  label and year. See [Organizing your library](organization.md) and
+  [Your own values](#your-own-values). Under it, **History** — every change to the
+  track, and who made it; it starts folded and its heading counts the changes
+  ("History · 4 changes").
 
 With several tracks selected, the panel shows the last one you clicked, and
 **Edit values for 4 tracks…** opens the editor for all of them, right here.
@@ -568,20 +564,22 @@ filters: **Beatport match**, **Match decided by (you or CuePoint)**,
 Confirming a match changes no value on its own. **Apply** is what copies
 Beatport's values, and they become your values — Rekordbox's stay underneath.
 
-### The Beatport section
+### The Beatport tab
 
-Track details' **Beatport** section says where the track stands, who decided it,
-and which Beatport track was decided, with its match score (how closely
-Beatport's track matches yours; higher is closer). For each of BPM, genre, label
-and year it shows three lines — **Rekordbox**, **Beatport** and **Using** — and
-says whether *Using* is Rekordbox's value, one applied from Beatport, or one you
-typed. A track not looked up yet gets one sentence and **Match on Beatport**.
-Copying Beatport's values is done in Review and from the Library's Beatport menu, not here.
-**Open on the Clean page** takes you to the track's review.
+Track details' **Beatport** tab says where the track stands and which Beatport
+track was decided: the release on one line ("Don't Make Me (Original Mix) ·
+ISOLATE"), then how it was decided and where the cover came from ("Confirmed
+automatically · cover art in the file"). Fields that agree are said once ("✓ BPM,
+label and year match"). Only a field that differs is shown in full, with what
+**Using** now (Rekordbox's value, one applied from Beatport, or one you typed) and
+what **Beatport** has. A track not looked up yet gets one sentence and **Match on
+Beatport**. Copying Beatport's values is done in Review and from the Library's
+Beatport menu, not here. **Compare all on the Clean page** takes you to the track's
+side-by-side review.
 
 ### Your own values
 
-Open **Yours**, then choose **Edit values…** to set a key, BPM, genre, label or year
+Open the **Yours** tab, then choose **Edit values…** to set a key, BPM, genre, label or year
 for the track. It is the same editor the Library's **Edit values…** uses, and shows what each
 value is now. Choose *Clear mine* for a field to go back. The **Your values**
 line under it lists what you have edited, opens by itself when there is

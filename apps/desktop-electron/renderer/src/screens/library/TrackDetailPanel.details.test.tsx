@@ -16,7 +16,7 @@ import type {
   TrackMatches,
 } from "../../api/cuepointBridge.types";
 import { cleanMatchOpening } from "../clean/cleanLink";
-import { TrackDetailPanel } from "./TrackDetailPanel";
+import { TRACK_DETAILS_TAB_KEY, TrackDetailPanel } from "./TrackDetailPanel";
 
 const TRACK: LibraryTrackRow = {
   id: 12,
@@ -129,16 +129,15 @@ function where(): { path: string; state: unknown } {
   };
 }
 
-const SECTIONS_KEY = "cuepoint-ui-track-details-sections";
 const section = (name: string) => screen.getByRole("button", { name: new RegExp(`^${name}`) });
+/** Chooses one of the panel's tabs. */
+const tab = (name: string) => fireEvent.click(screen.getByRole("tab", { name }));
 
 let bridge: Record<string, ReturnType<typeof vi.fn>>;
 let player: Record<string, ReturnType<typeof vi.fn>>;
 
 beforeEach(() => {
   localStorage.clear();
-  // Yours starts folded (DEC-246); the tests that read inside it want it open.
-  localStorage.setItem(SECTIONS_KEY, JSON.stringify({ yours: true }));
   player = {
     playQueue: vi.fn().mockResolvedValue({ ok: true }),
     playNext: vi.fn().mockResolvedValue({ ok: true }),
@@ -158,131 +157,130 @@ afterEach(() => {
   localStorage.clear();
 });
 
-describe("the order (INS-3)", () => {
-  it("reads Yours, Details from Rekordbox, Cue points, Where it is, Beatport, History", async () => {
+describe("the tabs", () => {
+  it("offers Overview, Beatport, Where and Yours as tabs, Overview chosen", async () => {
     show();
-    await waitFor(() => expect(section("Beatport")).toHaveTextContent("Beatport · Confirmed"));
-    const names = screen
-      .getAllByRole("heading", { level: 3 })
-      .map((heading) => (heading.textContent ?? ""));
-    const order = ["Yours", "Details from Rekordbox", "Cue points", "Where it is", "Beatport", "History"];
-    const at = order.map((name) => names.findIndex((text) => text.startsWith(name)));
-    expect(at.every((index) => index >= 0)).toBe(true);
-    expect([...at].sort((a, b) => a - b)).toEqual(at);
+    const list = screen.getByRole("tablist");
+    expect(within(list).getAllByRole("tab").map((item) => item.textContent)).toEqual([
+      "Overview",
+      "Beatport",
+      "Where",
+      "Yours",
+    ]);
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: "Overview" })).toBeVisible();
+    await waitFor(() => expect(screen.getByTestId("track-fact-beatport")).toHaveTextContent("Confirmed"));
   });
 
-  it("opens the header, and folds Yours, Details, Beatport and History (K5)", async () => {
-    localStorage.clear();
+  it("shows one panel at a time and keeps the others mounted, hidden", () => {
     show();
-    expect(section("Yours")).toHaveAttribute("aria-expanded", "false");
-    expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "false");
-    expect(section("Beatport")).toHaveAttribute("aria-expanded", "false");
-    expect(section("History")).toHaveAttribute("aria-expanded", "false");
-    await waitFor(() => expect(section("Beatport")).toHaveTextContent("Beatport · Confirmed"));
+    expect(screen.queryByRole("tabpanel", { name: "Yours" })).toBeNull();
+    tab("Yours");
+    expect(screen.getByRole("tab", { name: "Yours" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: "Yours" })).toBeVisible();
+    expect(screen.queryByRole("tabpanel", { name: "Overview" })).toBeNull();
+    // Hidden, not removed: what is typed in Yours is not thrown away by a click elsewhere.
+    expect(document.querySelectorAll('[role="tabpanel"]')).toHaveLength(4);
   });
 
-  it("summarizes a folded section in its heading", async () => {
-    bridge.getTrackHistory.mockResolvedValue({
-      track_id: 12,
-      limit: 50,
-      changes: [
-        { id: 1, track_id: 12, field: "cuepoint_bpm", old_value: null, new_value: 126, source: "cuepoint", changed_at: "2026-09-16T10:00:00Z", batch_id: null },
-        { id: 2, track_id: 12, field: "cuepoint_genre", old_value: null, new_value: "House", source: "cuepoint", changed_at: "2026-09-16T10:00:00Z", batch_id: null },
-      ],
+  it("keeps the header, then the tabs, then the facts", () => {
+    show();
+    const head = document.querySelector(".cp-track-detail__head") as HTMLElement;
+    const tablist = screen.getByRole("tablist");
+    const facts = screen.getByLabelText("Facts");
+    expect(head.compareDocumentPosition(tablist) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tablist.compareDocumentPosition(facts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("remembers the last tab in one key, for the next track and the next visit", () => {
+    const first = show();
+    tab("Where");
+    expect(localStorage.getItem(TRACK_DETAILS_TAB_KEY)).toBe("where");
+    first.unmount();
+    show();
+    expect(screen.getByRole("tab", { name: "Where" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: "Where" })).toBeVisible();
+  });
+
+  it("opens on Overview when the remembered tab is nonsense or not offered", () => {
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, "history");
+    const first = show();
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+    first.unmount();
+    // Beatport is not offered where the build cannot read matches.
+    delete (bridge as Record<string, unknown>).getTrackMatches;
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, "beatport");
+    show();
+    expect(screen.queryByRole("tab", { name: "Beatport" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("works with storage that throws", () => {
+    const get = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
     });
     show();
-    await waitFor(() => expect(section("Beatport")).toHaveTextContent("Beatport · Confirmed"));
-    await waitFor(() => expect(section("History")).toHaveTextContent("History · 2 changes"));
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+    tab("Yours");
+    expect(screen.getByRole("tab", { name: "Yours" })).toHaveAttribute("aria-selected", "true");
+    get.mockRestore();
+    set.mockRestore();
+  });
+
+  it("has no tab for Yours when the track has no id", () => {
+    show({}, detailOf({ ...TRACK, id: null as unknown as number }));
+    expect(screen.queryByRole("tab", { name: "Yours" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Beatport" })).toBeNull();
   });
 });
 
-describe("the compact panel (INS-12)", () => {
-  it("starts every section folded", async () => {
-    localStorage.clear();
+describe("the facts grid", () => {
+  it("labels key, BPM, genre and cue points, two to a row", async () => {
     show();
-    for (const name of ["Yours", "Details from Rekordbox", "Cue points", "Where it is", "Beatport", "History"]) {
-      expect(section(name)).toHaveAttribute("aria-expanded", "false");
-    }
-    await waitFor(() => expect(section("Beatport")).toHaveTextContent("Beatport · Confirmed"));
+    const facts = screen.getByLabelText("Facts");
+    expect(within(facts).getByTestId("track-key").querySelector("dt")).toHaveTextContent("Key");
+    expect(within(facts).getByTestId("track-fact-bpm")).toHaveTextContent("BPM128");
+    expect(within(facts).getByTestId("track-fact-genre")).toHaveTextContent("GenreProgressive House");
+    expect(within(facts).getByTestId("track-fact-cues")).toHaveTextContent("Cue points1 hot · grid 128");
+    await waitFor(() => expect(within(facts).getByTestId("track-fact-beatport")).toHaveTextContent("BeatportConfirmed"));
   });
 
-  it("answers on the right of each folded heading", async () => {
-    localStorage.clear();
-    const detail = detailOf();
-    show(
-      {},
-      {
-        ...detail,
-        playlists: [{ id: 1, name: "Peak", path: "Peak" } as never],
-        collections: [{ id: 9, name: "Friday", kind: "set" } as never],
-      },
+  it("puts the Camelot wheel's button beside the key chip, on the key's own row", () => {
+    show();
+    const key = screen.getByTestId("track-key");
+    expect(within(key).getByRole("button", { name: "Camelot wheel" })).toBeInTheDocument();
+    expect(key).toHaveTextContent("A minor");
+    expect(key.querySelector(".cp-track-detail__keyrow")).toContainElement(
+      within(key).getByRole("button", { name: "Camelot wheel" }),
     );
-    await waitFor(() => expect(section("Beatport")).toHaveTextContent("Beatport · Confirmed"));
-    expect(section("Where it is")).toHaveTextContent("Where it is · 1 Set · 1 playlist");
-    expect(section("Cue points")).toHaveTextContent("Cue points · 1 hot · grid 128");
-    expect(section("Yours")).toHaveTextContent("Yours · no rating");
-    expect(section("Details from Rekordbox").textContent).toBe("Details from Rekordbox");
-    // The answer is its own element, drawn at the right of the heading.
-    expect(section("Where it is").querySelector(".cp-track-section__summary")).toHaveTextContent("1 Set · 1 playlist");
   });
 
   it("says a track without cues has none, and its grid", () => {
-    localStorage.clear();
     const detail = detailOf();
     show({}, { ...detail, marks: { ...detail.marks!, cues: [], hot_cues: 0, beat_grid: { ...detail.marks!.beat_grid!, bpm: 124 } } });
-    expect(section("Cue points")).toHaveTextContent("Cue points · none · grid 124");
+    expect(screen.getByTestId("track-fact-cues")).toHaveTextContent("none · grid 124");
   });
 
-  it("shows the whole answer once a section is opened", () => {
-    localStorage.clear();
+  it("leaves out a fact the track does not have", () => {
+    show({}, detailOf({ ...TRACK, genre: null, bpm: null }));
+    expect(screen.queryByTestId("track-fact-genre")).toBeNull();
+    expect(screen.queryByTestId("track-fact-bpm")).toBeNull();
+    expect(screen.getByTestId("track-key")).toBeInTheDocument();
+  });
+
+  it("opens the cue points and the Rekordbox details from the foot of Overview", () => {
     show();
+    expect(section("Cue points")).toHaveAttribute("aria-expanded", "false");
+    expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(section("Cue points"));
     expect(screen.getByText(/Drop/)).toBeVisible();
-  });
-
-  it("puts key, BPM, genre on one facts line under the name", () => {
-    show();
-    const facts = document.querySelector(".cp-track-detail__facts") as HTMLElement;
-    expect(within(facts).getByTestId("track-key")).toBeInTheDocument();
-    expect(within(facts).getByRole("button", { name: "Camelot wheel" })).toBeInTheDocument();
-    expect(within(facts).getByTestId("track-fact-bpm")).toHaveTextContent("128 BPM");
-    expect(within(facts).getByTestId("track-fact-genre")).toHaveTextContent("Progressive House");
-  });
-
-  it("reads the Key label aloud though it is not drawn", () => {
-    show();
-    const keyline = screen.getByTestId("track-key");
-    expect(within(keyline).getByText("Key")).toHaveClass("cp-visually-hidden");
-    expect(keyline.querySelector("dt")).toHaveTextContent("Key");
-  });
-
-  it("draws the stars, and reads them as words", () => {
-    localStorage.clear();
-    const detail = detailOf();
-    show({}, { ...detail, metadata: { ...detail.metadata, effective_rating: 4, favorite: true } });
-    const heading = section("Yours");
-    const drawn = heading.querySelector(".cp-track-section__summary > [aria-hidden]");
-    expect(drawn).toHaveTextContent("★★★★ · favorite");
-    expect(heading.querySelector(".cp-track-section__summary .cp-visually-hidden:last-child")).toHaveTextContent(
-      "4 stars · favorite",
-    );
-    // The accessible name has the words, not "black star" four times.
-    expect(screen.getByRole("button", { name: "Yours · 4 stars · favorite" })).toBeInTheDocument();
-  });
-
-  it("puts the facts line directly under the title block, above the buttons", () => {
-    show();
-    const facts = document.querySelector(".cp-track-detail__facts") as HTMLElement;
-    const ident = document.querySelector(".cp-track-detail__ident") as HTMLElement;
-    const actions = screen.getByRole("group", { name: "Actions for this track" });
-    expect(ident.nextElementSibling).toBe(facts);
-    expect(facts.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it("gives a folded heading's whole answer as its hover text too", async () => {
-    localStorage.clear();
-    show();
-    expect(section("Where it is")).toHaveAttribute("title", "Not in any Collection");
+    fireEvent.click(section("Details from Rekordbox"));
+    expect(screen.getByText("Bitrate")).toBeVisible();
+    fireEvent.click(section("Details from Rekordbox"));
+    expect(screen.queryByText("Bitrate")).not.toBeVisible();
   });
 
   it("draws the artwork small, beside the title", () => {
@@ -296,103 +294,40 @@ describe("the compact panel (INS-12)", () => {
       within(ident).getByRole("heading", { level: 2 }),
     );
   });
-});
 
-describe("folding and remembering (INS-3)", () => {
-  it("opens a section and folds it again", () => {
+  it("has Yours' rating, History and the rest of the person's layer on the Yours tab", async () => {
     show();
-    expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText("Bitrate")).not.toBeVisible();
-    fireEvent.click(section("Details from Rekordbox"));
-    expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("Bitrate")).toBeVisible();
-    fireEvent.click(section("Details from Rekordbox"));
-    expect(screen.queryByText("Bitrate")).not.toBeVisible();
+    tab("Yours");
+    expect(screen.getByRole("radio", { name: /3 stars?/ })).toBeInTheDocument();
+    await waitFor(() => expect(section("History")).toHaveTextContent("History · none yet"));
   });
 
-  it("Yours starts folded and remembers being opened", () => {
-    localStorage.clear();
-    const first = show();
-    expect(section("Yours")).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(section("Yours"));
-    first.unmount();
-    show();
-    expect(section("Yours")).toHaveAttribute("aria-expanded", "true");
-  });
-
-  it("says what is in Yours while it is folded", () => {
-    localStorage.clear();
-    const detail = detailOf();
-    show({}, { ...detail, metadata: { ...detail.metadata, effective_rating: 4, favorite: true } });
-    expect(section("Yours")).toHaveTextContent("★★★★ · favorite");
-  });
-
-  it("words one tag, many tags, a single star, and skips a zero rating", () => {
-    localStorage.clear();
-    const detail = detailOf();
-    const tag = (id: number) => ({ id, name: `t${id}`, track_count: 1 }) as never;
-    const one = show({}, { ...detail, tags: [tag(1)], metadata: { ...detail.metadata, effective_rating: 1 } });
-    expect(section("Yours")).toHaveTextContent("★ · 1 tag");
-    one.unmount();
-    show({}, { ...detail, tags: [tag(1), tag(2)], metadata: { ...detail.metadata, effective_rating: 0 } });
-    expect(section("Yours")).toHaveTextContent("2 tags");
-    expect(section("Yours")).not.toHaveTextContent("star");
-  });
-
-  it("calls an empty track's folded heading Yours, with no rating on the right", () => {
-    localStorage.clear();
-    show();
-    expect(section("Yours").textContent).toBe("Yours · no rating");
-  });
-
-  it("updates the folded summary after a rating or favorite in Yours", async () => {
-    const detail = detailOf();
-    bridge.setTrackMetadata = vi.fn().mockResolvedValue({ metadata: { ...detail.metadata, effective_rating: 3, rating: 3, favorite: true } });
-    show();
-    fireEvent.click(screen.getByRole("radio", { name: /3 stars?/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Favorite" }));
-    fireEvent.click(section("Yours"));
-    expect(section("Yours")).toHaveTextContent("★★★ · favorite");
-  });
-
-  it("remembers every fold in one key", () => {
-    show();
-    fireEvent.click(section("Details from Rekordbox"));
-    fireEvent.click(section("Beatport"));
-    const stored = JSON.parse(localStorage.getItem(SECTIONS_KEY) ?? "{}");
-    // Yours (seeded open), Details and Beatport.
-    expect(Object.values(stored)).toHaveLength(3);
-  });
-
-  it("restores the folds on a fresh mount, and for the next track", () => {
-    const first = show();
-    fireEvent.click(section("Details from Rekordbox"));
-    fireEvent.click(section("Beatport"));
-    first.unmount();
-    show();
-    expect(section("Details from Rekordbox")).toHaveAttribute("aria-expanded", "true");
-    expect(section("Beatport")).toHaveAttribute("aria-expanded", "true");
-  });
-
-  it("works with storage that throws", () => {
-    const get = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
-      throw new Error("blocked");
-    });
-    const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("blocked");
+  it("summarizes History in its heading", async () => {
+    bridge.getTrackHistory.mockResolvedValue({
+      track_id: 12,
+      limit: 50,
+      changes: [
+        { id: 1, track_id: 12, field: "cuepoint_bpm", old_value: null, new_value: 126, source: "cuepoint", changed_at: "2026-09-16T10:00:00Z", batch_id: null },
+        { id: 2, track_id: 12, field: "cuepoint_genre", old_value: null, new_value: "House", source: "cuepoint", changed_at: "2026-09-16T10:00:00Z", batch_id: null },
+      ],
     });
     show();
-    expect(section("Yours")).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(section("Yours"));
-    expect(section("Yours")).toHaveAttribute("aria-expanded", "true");
-    get.mockRestore();
-    set.mockRestore();
+    tab("Yours");
+    await waitFor(() => expect(section("History")).toHaveTextContent("History · 2 changes"));
+  });
+
+  it("remembers a fold in the sections key", () => {
+    show();
+    fireEvent.click(section("Details from Rekordbox"));
+    const stored = JSON.parse(localStorage.getItem("cuepoint-ui-track-details-sections") ?? "{}");
+    expect(stored).toEqual({ details: true });
   });
 });
 
 describe("Edit values… (INS-4, DEC-205)", () => {
   it("keeps the value boxes out of the panel", () => {
     show();
+    tab("Yours");
     expect(screen.queryByLabelText("Your key")).toBeNull();
     expect(screen.queryByLabelText("Your BPM")).toBeNull();
     expect(screen.getByRole("button", { name: "Edit values…" })).toBeInTheDocument();
@@ -406,10 +341,12 @@ describe("Edit values… (INS-4, DEC-205)", () => {
 
   it("folds the disclosure when nothing is edited", () => {
     show();
+    tab("Yours");
     expect(section("Your values")).toHaveAttribute("aria-expanded", "false");
   });
 
   it("opens the disclosure by itself when an edited value exists", () => {
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, "yours");
     show(
       {},
       detailOf({
@@ -424,6 +361,7 @@ describe("Edit values… (INS-4, DEC-205)", () => {
   });
 
   it("opens the shared editor for this track, showing what each value is now", async () => {
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, "yours");
     show();
     fireEvent.click(screen.getByRole("button", { name: "Edit values…" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit values" });
@@ -437,6 +375,7 @@ describe("Edit values… (INS-4, DEC-205)", () => {
   });
 
   it("reads the track again after a saved value", async () => {
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, "yours");
     const onTrackChanged = vi.fn();
     show({ onTrackChanged });
     fireEvent.click(screen.getByRole("button", { name: "Edit values…" }));
@@ -447,6 +386,7 @@ describe("Edit values… (INS-4, DEC-205)", () => {
   });
 
   it("goes back to Rekordbox's value for a field, and says so", async () => {
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, "yours");
     show(
       {},
       detailOf({
@@ -463,6 +403,7 @@ describe("Edit values… (INS-4, DEC-205)", () => {
   });
 
   it("sends your key back to Beatport's key, or to none (DEC-201)", async () => {
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, "yours");
     const edited = {
       ...TRACK,
       effective_key: "9A",
@@ -487,6 +428,7 @@ describe("Edit values… (INS-4, DEC-205)", () => {
   it.each(["needs_review", "rejected"] as const)(
     "does not offer Beatport's key to go back to when the match is %s",
     async (state) => {
+      localStorage.setItem(TRACK_DETAILS_TAB_KEY, "yours");
       const edited = {
         ...TRACK,
         effective_key: "9A",
@@ -541,12 +483,13 @@ describe("the key with its source (FLW-9, DEC-201)", () => {
 
   it("reads Beatport's key with its name and source", () => {
     show();
-    expect(keyRow()).toHaveTextContent("8A · A minor · Beatport");
+    expect(keyRow()).toHaveTextContent("A minor · Beatport");
+    expect(keyRow().querySelector(".cp-track-detail__keyrow")).toHaveAttribute("title", "Key from Beatport");
   });
 
   it("reads your key as yours", () => {
     show({}, detailOf({ ...TRACK, effective_key: "9A", key_name: "E minor", key_source: "yours" }));
-    expect(keyRow()).toHaveTextContent("9A · E minor · yours");
+    expect(keyRow()).toHaveTextContent("E minor · yours");
   });
 
   it("reads no key as No Beatport key, with Match on Beatport for this one track", async () => {
@@ -577,12 +520,14 @@ describe("an unmatched track (INS-5)", () => {
       {},
       detailOf({ ...TRACK, effective_key: null, key_name: null, key_source: null, match_state: "not_matched" }),
     );
-    fireEvent.click(section("Beatport"));
-    const beatport = screen.getByRole("region", { name: "Beatport" });
+    tab("Beatport");
+    const beatport = screen.getByRole("tabpanel", { name: "Beatport" });
     expect(await within(beatport).findByText(/Not looked up on Beatport yet\. Matching finds this track/)).toBeInTheDocument();
     const action = within(beatport).getByRole("button", { name: "Match on Beatport" });
-    // The key's own line, which reads "No Beatport key", offers the same one.
-    expect(within(screen.getByTestId("track-key")).getByRole("button", { name: "Match on Beatport" })).toBeInTheDocument();
+    // The key's own cell, on the Overview tab, offers the same one.
+    expect(
+      within(screen.getByTestId("track-key")).getByRole("button", { name: "Match on Beatport", hidden: true }),
+    ).toBeInTheDocument();
     expect(beatport.querySelector(".cp-track-beatport__fields")).toBeNull();
     fireEvent.click(action);
     expect(where().path).toBe("/clean");
@@ -591,8 +536,8 @@ describe("an unmatched track (INS-5)", () => {
 
   it("no longer offers Apply for a field", async () => {
     show();
-    fireEvent.click(section("Beatport"));
-    await screen.findByText("Confirmed by you");
+    tab("Beatport");
+    await screen.findByText(/Confirmed by you/);
     expect(screen.queryByRole("button", { name: /^Apply/ })).toBeNull();
   });
 });
@@ -701,11 +646,11 @@ describe("the buttons under the title (FLW-9, K5)", () => {
 describe("plain words (INS-6…10)", () => {
   it("turns the empty Collections and playlists lines into the next step (INS-10)", () => {
     show();
-    // The sentence is gone; the folded heading says it in three words.
+    tab("Where");
     expect(screen.queryByText(/Select the track and choose/)).toBeNull();
     expect(screen.queryByText(/drag it onto one/)).toBeNull();
     expect(screen.queryByText(/right-click/i)).toBeNull();
-    expect(section("Where it is")).toHaveTextContent("Where it is · Not in any Collection");
+    expect(screen.getByText("Not in any Collection.")).toBeInTheDocument();
     expect(screen.getByText("Not in any Rekordbox playlist.")).toBeInTheDocument();
   });
 

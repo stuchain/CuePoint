@@ -595,7 +595,7 @@ describe("the Inspector's Sets", () => {
     await ready();
     await userEvent.click(screen.getByText("Warm One"));
     await waitFor(() => expect(bridge.getLibraryTrack).toHaveBeenCalled());
-    await userEvent.click(await screen.findByRole("button", { name: /^Where it is/ }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Where" }));
     const sets = await screen.findByRole("region", { name: "Sets" });
     await userEvent.click(within(sets).getByRole("button", { name: "Friday" }));
     expect(onOpenInPrepare).toHaveBeenCalledWith(FRIDAY.id);

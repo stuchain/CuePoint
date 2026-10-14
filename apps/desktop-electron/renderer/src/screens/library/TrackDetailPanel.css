@@ -57,8 +57,7 @@
   font-size: var(--font-size-xs);
 }
 
-.cp-track-detail__fields,
-.cp-track-detail__keyline {
+.cp-track-detail__fields {
   display: flex;
   flex-direction: column;
   gap: calc(2px * var(--scale));
@@ -83,42 +82,66 @@
   min-width: 0;
 }
 
-/* The facts line: key chip, BPM, genre, loudness. Wraps rather than clips at the
-   Inspector's narrowest; a dot stands between neighbours. */
+/* The facts: a labelled two-column grid under the tabs. The key takes a whole row so the
+   chip, the wheel's button and the key's name never wrap apart; the rest sit two to a row. */
 .cp-track-detail__facts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  column-gap: var(--space-xs);
-  row-gap: calc(2px * var(--scale));
-  margin-top: var(--space-xs);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm) var(--space-md);
+  margin: 0;
   font-size: var(--font-size-xs);
 }
 
 .cp-track-detail__fact {
-  color: var(--fg-muted);
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--scale));
+  min-width: 0;
 }
 
-.cp-track-detail__fact::before {
-  content: "\00b7";
-  margin-inline-end: var(--space-xs);
+.cp-track-detail__fact--key {
+  grid-column: 1 / -1;
+}
+
+.cp-track-detail__factlabel {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-detail__factvalue {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Sub-tabs (T8) wrap rather than clip at the Inspector's narrowest, and give up some padding so
+   four of them share a row where they can. */
+.cp-track-detail > .cp-tabs {
+  flex-wrap: wrap;
+}
+
+.cp-track-detail > .cp-tabs .cp-tabs__tab {
+  padding: 0 var(--space-sm);
+}
+
+.cp-track-detail__tabpanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.cp-track-detail__tabpanel[hidden] {
+  display: none;
 }
 
 /* The key and the wheel's button beside it (K8). */
 .cp-track-detail__keyrow {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-xs);
   min-width: 0;
-}
-
-.cp-track-detail__keyrow > .cp-track-detail__keyline {
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
-.cp-track-detail__keyline .cp-track-detail__row {
-  display: block;
 }
 
 .cp-track-detail__row {
@@ -140,9 +163,9 @@
   word-break: break-word;
 }
 
-/* The key's name and source after its chip (R4-2). */
+/* The key's name after its chip (R4-2). */
 .cp-track-detail__keymeta {
-  color: var(--fg-muted);
+  color: var(--fg-primary);
 }
 
 .cp-track-detail__file {
@@ -603,32 +626,33 @@
 }
 
 .cp-track-beatport__state,
-.cp-track-beatport__artwork {
+.cp-track-beatport__release,
+.cp-track-beatport__also,
+.cp-track-beatport__agree {
   margin: 0;
   font-size: var(--font-size-xs);
+}
+
+.cp-track-beatport__release {
+  font-family: var(--font-data);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.cp-track-beatport__state {
+  color: var(--fg-muted);
+}
+
+.cp-track-beatport__also {
+  color: var(--fg-muted);
+}
+
+.cp-track-beatport__agree {
+  color: var(--accent-success);
 }
 
 .cp-track-beatport__state--disputed {
   color: var(--accent-warning);
-}
-
-.cp-track-beatport__candidate {
-  display: flex;
-  flex-direction: column;
-  gap: calc(2px * var(--scale));
-  margin: 0;
-  font-family: var(--font-data);
-  font-size: var(--font-size-xs);
-  overflow-wrap: anywhere;
-}
-
-.cp-track-beatport__title {
-  font-weight: 700;
-}
-
-.cp-track-beatport__meta,
-.cp-track-beatport__artwork {
-  color: var(--fg-muted);
 }
 
 .cp-track-beatport__fields {

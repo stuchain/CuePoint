@@ -13,10 +13,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import type { LibraryTrackDetail } from "../../api/cuepointBridge.types";
-import { TrackDetailPanel } from "./TrackDetailPanel";
+import { TRACK_DETAILS_TAB_KEY, TrackDetailPanel } from "./TrackDetailPanel";
 import { TRACK_DETAIL } from "./librarySets.testFixture";
 
 afterEach(() => {
+  localStorage.clear();
   delete (window as unknown as { cuepoint?: unknown }).cuepoint;
 });
 
@@ -42,5 +43,17 @@ describe("the lead zone", () => {
     const zones = screen.getAllByRole("region", { name: "In this Set" });
     expect(zones).toHaveLength(1);
     expect(zones[0]).toHaveTextContent("Entry 21");
+  });
+
+  it("keeps the lead zone above the tabs, and opens on Overview when the remembered tab is not offered", () => {
+    // The tab is remembered for every page that hosts the panel; Prepare passes no Clean link
+    // and a build may offer no Beatport tab, so a remembered Beatport tab falls back gracefully.
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, "beatport");
+    render(<TrackDetailPanel detail={detailOf(3, "Track 03")} leadZone={zone(3)} />);
+    const lead = screen.getByRole("region", { name: "In this Set" });
+    const tabs = screen.getByRole("tablist");
+    expect(lead.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("tab", { selected: true })).toHaveTextContent("Overview");
+    expect(screen.queryByRole("button", { name: /Compare all on the Clean page/ })).toBeNull();
   });
 });

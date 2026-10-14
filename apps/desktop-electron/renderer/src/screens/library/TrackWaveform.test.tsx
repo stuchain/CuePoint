@@ -379,13 +379,17 @@ describe("in the Inspector", () => {
     collections: [],
   } as unknown as LibraryTrackDetail;
 
-  it("sits under the header, before everything else", async () => {
+  it("sits on the Overview tab, under the header, the tabs and the facts", async () => {
     install();
     const { container } = render(<TrackDetailPanel detail={DETAIL} />);
     const section = await screen.findByRole("region", { name: "Waveform" });
     const header = container.querySelector(".cp-track-detail__head")!;
+    const tabs = screen.getByRole("tablist");
 
-    expect(header.nextElementSibling).toBe(section);
+    expect(section.closest('[role="tabpanel"]')).toBe(screen.getByRole("tabpanel", { name: "Overview" }));
+    expect(section.previousElementSibling).toBe(screen.getByLabelText("Facts"));
+    expect(header.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tabs.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("is absent where there are no waveforms to show", () => {
@@ -456,8 +460,8 @@ describe("its loudness on the panel's facts line", () => {
       install();
       render(<TrackDetailPanel detail={DETAIL} />);
       const fact = await screen.findByTestId("track-fact-loudness");
-      expect(fact).toHaveTextContent("Loudness −8.4 LUFS");
-      expect(within(fact).getByText(/^Loudness/)).toHaveClass("cp-visually-hidden");
+      expect(within(fact).getByText("Loudness")).toBeVisible();
+      expect(fact.querySelector("dd")).toHaveTextContent("−8.4 LUFS");
       expect(fact).toHaveAttribute("title", expect.stringContaining("Loudness −8.4 LUFS · Peak −0.3 dBFS"));
       expect(await screen.findByTestId("inspector-loudness")).toHaveTextContent("Peak −0.3 dBFS");
     });

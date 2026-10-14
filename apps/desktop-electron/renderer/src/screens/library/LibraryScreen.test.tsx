@@ -1859,7 +1859,7 @@ describe("the Inspector (LIBUI-10, DEC-024, DEC-047)", () => {
     await tableReady();
     await userEvent.click(screen.getByText("Track 1"));
     const inspector = await screen.findByRole("region", { name: "Inspector" });
-    await userEvent.click(await within(inspector).findByRole("button", { name: /^Where it is/ }));
+    await userEvent.click(await within(inspector).findByRole("tab", { name: "Where" }));
     await within(inspector).findByText("Warmups");
 
     await userEvent.click(within(inspector).getByRole("button", { name: /Warmups/ }));
@@ -1875,8 +1875,8 @@ describe("the Inspector (LIBUI-10, DEC-024, DEC-047)", () => {
     // The panel is optimistic, so a refusal that went nowhere would leave a
     // rating on screen that the library does not have.
     bridge.setTrackMetadata.mockRejectedValue(new Error("No track with id 1"));
-    // Yours starts folded (DEC-246); this test rates from inside it.
-    localStorage.setItem("cuepoint-ui-track-details-sections", JSON.stringify({ yours: true }));
+    // The panel opens on the tab last chosen; this test rates from inside Yours.
+    localStorage.setItem("cuepoint-ui-track-details-tab", "yours");
     renderWithInspector();
     await tableReady();
     await userEvent.click(screen.getByText("Track 1"));

@@ -15,7 +15,7 @@ import { TrackDetailPanel } from "./TrackDetailPanel";
 import { FRIDAY, TRACK_DETAIL, WARMUP } from "./librarySets.testFixture";
 
 afterEach(() => {
-  // Folds are remembered, and every test here opens "Where it is" itself.
+  // Folds are remembered, and every test here opens the Where tab itself.
   localStorage.clear();
   delete (window as unknown as { cuepoint?: unknown }).cuepoint;
 });
@@ -23,10 +23,7 @@ afterEach(() => {
 describe("the Sets a track is in", () => {
   it("lists them beside its Collections, each counted as its own kind", () => {
     render(<TrackDetailPanel detail={TRACK_DETAIL} />);
-    fireEvent.click(screen.getByRole("button", { name: /^Where it is/ }));
-    expect(screen.getByRole("button", { name: /^Where it is/ })).toHaveTextContent(
-      "Where it is · 1 Collection · 1 Set",
-    );
+    fireEvent.click(screen.getByRole("tab", { name: "Where" }));
     expect(screen.getByText("In 1 Collection")).toBeInTheDocument();
     const sets = screen.getByRole("region", { name: "Sets" });
     expect(within(sets).getByRole("heading", { name: "In 1 Set" })).toBeInTheDocument();
@@ -48,7 +45,7 @@ describe("the Sets a track is in", () => {
         onSelectCollection={onSelectCollection}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /^Where it is/ }));
+    fireEvent.click(screen.getByRole("tab", { name: "Where" }));
     const friday = within(screen.getByRole("region", { name: "Sets" })).getByRole("button", {
       name: "Friday",
     });
@@ -61,7 +58,7 @@ describe("the Sets a track is in", () => {
   it("scopes the table to a Set where there is no Prepare, as to a Collection", () => {
     const onSelectCollection = vi.fn();
     render(<TrackDetailPanel detail={TRACK_DETAIL} onSelectCollection={onSelectCollection} />);
-    fireEvent.click(screen.getByRole("button", { name: /^Where it is/ }));
+    fireEvent.click(screen.getByRole("tab", { name: "Where" }));
     fireEvent.click(
       within(screen.getByRole("region", { name: "Sets" })).getByRole("button", { name: "Friday" }),
     );

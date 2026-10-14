@@ -71,6 +71,11 @@ async function importCollection(window: Page, xmlPath: string) {
   await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
 }
 
+/** The Inspector, for the facts beside the cues. */
+function inspector(window: Page) {
+  return window.locator(".cp-inspector").first();
+}
+
 /** Search the page for one title and open it in the Inspector. */
 async function inspect(window: Page, title: string) {
   await window.locator(".cp-filter-bar").getByRole("textbox", { name: "Search" }).fill(title);
@@ -120,7 +125,8 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
 
       // --- every kind of mark, in the order the track plays them ---------
       let marks = await inspect(window, "Every Mark");
-      await expect(marks.getByRole("heading")).toHaveText(/Cue points · 4 hot, 5 memory · grid 128$/);
+      await expect(marks.getByRole("heading")).toHaveText(/^Cue points$/);
+      await expect(inspector(window).getByTestId("track-fact-cues")).toContainText("4 hot, 5 memory · grid 128");
       await expect(marks.getByRole("listitem")).toHaveText([
         "Memory · 0:00.0 · Intro",
         "Memory · 0:01.5 · Fade-in · Fade in",
@@ -150,7 +156,8 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
       await expect(marks.getByRole("listitem")).toHaveText(["Memory · 0:20.0 · Kept"]);
 
       marks = await inspect(window, "No Marks");
-      await expect(marks.getByRole("heading")).toHaveText(/Cue points · none$/);
+      await expect(marks.getByRole("heading")).toHaveText(/^Cue points$/);
+      await expect(inspector(window).getByTestId("track-fact-cues")).toContainText("none");
       await expect(marks).toContainText("No beat grid");
 
       // --- a refresh that moves one cue ---------------------------------

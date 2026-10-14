@@ -33,8 +33,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
 import { SelectionActions } from "./SelectionActions";
-import { TRACK_DETAILS_SECTIONS_KEY } from "./DisclosureSection";
-import { TrackDetailPanel } from "./TrackDetailPanel";
+import { TRACK_DETAILS_TAB_KEY, TrackDetailPanel } from "./TrackDetailPanel";
 import { copySummary, tracksAsText, writeClipboard } from "./trackClipboard";
 import { formatBpm } from "../../components/format/bpm";
 import { useTrackDetail } from "./useTrackDetail";
@@ -96,13 +95,20 @@ const DETAIL: LibraryTrackDetail = {
 };
 
 function rowFor(label: string): HTMLElement {
-  return screen.getByText(label).closest(".cp-track-detail__row") as HTMLElement;
+  const fields = document.querySelector(".cp-track-detail__fields") as HTMLElement;
+  return within(fields).getByText(label).closest(".cp-track-detail__row") as HTMLElement;
 }
 
-// Yours starts folded (DEC-246); the tests below that read inside it want it open.
 beforeEach(() => {
-  localStorage.setItem(TRACK_DETAILS_SECTIONS_KEY, JSON.stringify({ yours: true }));
+  localStorage.clear();
 });
+
+/** The panel opens on the tab the person last chose; tests that read inside one choose it. */
+function openOn(tab: "overview" | "beatport" | "where" | "yours") {
+  beforeEach(() => {
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, tab);
+  });
+}
 
 describe("what the panel shows", () => {
   it("names the track and the artist", () => {
@@ -118,7 +124,6 @@ describe("what the panel shows", () => {
       "Album",
       "Label",
       "Genre",
-      "Key",
       "BPM",
       "Year",
       "Length",
@@ -130,7 +135,9 @@ describe("what the panel shows", () => {
       "Comment",
       "File",
     ]) {
-      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(
+        within(document.querySelector(".cp-track-detail__fields") as HTMLElement).getByText(label),
+      ).toBeInTheDocument();
     }
   });
 
@@ -139,8 +146,7 @@ describe("what the panel shows", () => {
     const keyline = screen.getByTestId("track-key");
     const button = screen.getByRole("button", { name: "Camelot wheel" });
     expect(within(keyline).getByText("Key")).toBeInTheDocument();
-    expect(keyline.parentElement).toContainElement(button);
-    expect(keyline).not.toContainElement(button);
+    expect(keyline.querySelector("dd")).toContainElement(button);
     expect(button).toHaveAttribute("aria-expanded", "false");
   });
 
@@ -154,7 +160,8 @@ describe("what the panel shows", () => {
     const chip = keyline.querySelector(".key-chip--8A") as HTMLElement;
     expect(chip).toHaveTextContent("8A");
     expect(chip).toHaveAttribute("title", "A minor");
-    expect(keyline).toHaveTextContent("8A · A minor · Beatport");
+    expect(keyline).toHaveTextContent("8A");
+    expect(keyline).toHaveTextContent("A minor · Beatport");
   });
 
   it("sets numbers, times and dates in the data face and words in the text face (R4-3, DEC-048)", () => {
@@ -265,6 +272,7 @@ describe("the imported zone is still read-only (DEC-047, ORG-10)", () => {
 });
 
 describe("the editable zone (ORG-10)", () => {
+  openOn("yours");
   it("offers the four things CuePoint owns", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
     expect(screen.getByRole("radiogroup", { name: "Your rating" })).toBeInTheDocument();
@@ -340,9 +348,9 @@ describe("the editable zone (ORG-10)", () => {
 });
 
 describe("where the track sits in the collection", () => {
+  openOn("where");
   it("lists the playlists holding it", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    fireEvent.click(screen.getByRole("button", { name: /^Where it is/ }));
     expect(screen.getByText("In 1 playlist")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /warmup/ })).toBeInTheDocument();
   });
@@ -357,7 +365,6 @@ describe("where the track sits in the collection", () => {
   it("scopes the table to a playlist that is clicked", () => {
     const onSelectPlaylist = vi.fn();
     render(<TrackDetailPanel detail={DETAIL} onSelectPlaylist={onSelectPlaylist} />);
-    fireEvent.click(screen.getByRole("button", { name: /^Where it is/ }));
 
     fireEvent.click(screen.getByRole("button", { name: /warmup/ }));
 
@@ -368,6 +375,7 @@ describe("where the track sits in the collection", () => {
 });
 
 describe("the Collections holding it (ORG-09, ORG-10)", () => {
+  openOn("where");
   const COLLECTIONS = [
     { id: 4, name: "Closers", kind: "collection" as const },
     { id: 5, name: "Over 128", kind: "smart" as const },
@@ -375,7 +383,6 @@ describe("the Collections holding it (ORG-09, ORG-10)", () => {
 
   it("lists them", () => {
     render(<TrackDetailPanel detail={{ ...DETAIL, collections: COLLECTIONS }} />);
-    fireEvent.click(screen.getByRole("button", { name: /^Where it is/ }));
     expect(screen.getByText("In 2 Collections")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Closers/ })).toBeInTheDocument();
   });
@@ -387,15 +394,10 @@ describe("the Collections holding it (ORG-09, ORG-10)", () => {
     expect(screen.getByText("In 1 Collection")).toBeInTheDocument();
   });
 
-  it("says what it holds in the heading, and has no sentence about Collections for a track in none", () => {
+  it("says what it holds, and has no sentence about Collections for a track in none", () => {
     render(<TrackDetailPanel detail={DETAIL} />);
-    expect(screen.getByRole("button", { name: /^Where it is/ })).toHaveTextContent(
-      "Where it is · 1 playlist",
-    );
-    const none = render(<TrackDetailPanel detail={{ ...DETAIL, playlists: [], playlist_count: 0 }} />);
-    expect(
-      within(none.container).getByRole("button", { name: /^Where it is/ }),
-    ).toHaveTextContent("Where it is · Not in any Collection");
+    expect(screen.getByText("In 1 playlist")).toBeInTheDocument();
+    expect(screen.queryByText("Not in any Collection.")).not.toBeNull();
     expect(screen.queryByText(/Select the track and choose/)).toBeNull();
   });
 
@@ -407,7 +409,6 @@ describe("the Collections holding it (ORG-09, ORG-10)", () => {
         onSelectCollection={onSelectCollection}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: /^Where it is/ }));
 
     fireEvent.click(screen.getByRole("button", { name: /Over 128/ }));
 
@@ -525,6 +526,7 @@ describe("the history (DEC-008)", () => {
   });
 
   it("re-reads after an edit rather than guessing what was recorded", async () => {
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, "yours");
     // The engine decides what counts as a change: re-saving the same note
     // records nothing at all, so an entry appended here would be one that does
     // not exist.
@@ -551,6 +553,7 @@ describe("the history (DEC-008)", () => {
 });
 
 describe("with several tracks selected", () => {
+  openOn("yours");
   it("shows the last one clicked, and how many there are", () => {
     render(<TrackDetailPanel detail={DETAIL} selectionCount={7} />);
     expect(screen.getByRole("heading", { name: "Strobe" })).toBeInTheDocument();

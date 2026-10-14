@@ -303,9 +303,9 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       const found = cue as unknown as { column: number; columns: number };
       expect(Math.abs(found.column - Math.floor((HOT_CUE_SECONDS / BANDS_SECONDS) * found.columns))).toBeLessThanOrEqual(1);
       // Its loudness under it, as the pinned decoder measures bands.flac (WAVE-08).
-      // (The value is on the facts line under the title; the peak stays under the waveform.)
+      // (The value is in the Overview's facts grid; the peak stays under the waveform.)
       const loudness = window.getByTestId("track-fact-loudness");
-      await expect(loudness).toHaveText("Loudness −3.5 LUFS");
+      await expect(loudness.locator("dd")).toHaveText("−3.5 LUFS");
       await expect(window.getByTestId("inspector-loudness")).toHaveText("Peak −4.3 dBFS");
       await expect(loudness).toHaveAttribute("title", /^Loudness −3\.5 LUFS · Peak −4\.3 dBFS/);
 

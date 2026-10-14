@@ -30,8 +30,8 @@ as they are replaced.
   track's confirmed Beatport match. Rekordbox's key is never used; a track with
   neither shows "—".
 - **Track details**: The panel on the right that shows the selected track: buttons to
-  play it, your own values, what Rekordbox sent, its cue points, where it is, its Beatport
-  match and its history. It opens when you select a track; close or open it with Ctrl+I, and it folds to a "Details" tab you can click.
+  play it, tabs for its facts and waveform (Overview), its Beatport match, where it is and
+  your own values (Yours, with its history), and what Rekordbox sent and its cue points at the foot of Overview. It opens when you select a track; close or open it with Ctrl+I, and it folds to a "Details" tab you can click.
 - **Keys page**: Shows the keys in the playlists, Collections and Sets you tick, with a
   count for each, and the tracks in the keys you click. See [Keys](keys.md).
 - **Play history**: What CuePoint notes each time you import or refresh: how far

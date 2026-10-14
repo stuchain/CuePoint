@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { Tabs } from "./Tabs";
+import { Tabs, panelId, tabId } from "./Tabs";
 import css from "./Tabs.css?raw";
 
 const TABS = [
@@ -11,6 +11,19 @@ const TABS = [
 ];
 
 describe("Tabs", () => {
+  it("writes no ids without a prefix", () => {
+    render(<Tabs tabs={TABS} activeId="a" onChange={() => {}} />);
+    expect(screen.getByRole("tab", { name: "One" })).not.toHaveAttribute("id");
+    expect(screen.getByRole("tab", { name: "One" })).not.toHaveAttribute("aria-controls");
+  });
+
+  it("names each tab and the panel it controls when given a prefix", () => {
+    render(<Tabs tabs={TABS} activeId="a" onChange={() => {}} idPrefix="x" />);
+    const two = screen.getByRole("tab", { name: "Two" });
+    expect(two).toHaveAttribute("id", tabId("x", "b"));
+    expect(two).toHaveAttribute("aria-controls", panelId("x", "b"));
+  });
+
   it("marks the active tab and reports a change", async () => {
     const onChange = vi.fn();
     render(<Tabs tabs={TABS} activeId="a" onChange={onChange} />);

@@ -42,7 +42,7 @@ const location = (file: string) => "file://localhost/" + file.replace(/\\/g, "/"
 type Bridge = Record<string, any>;
 
 /**
- * The Inspector's loudness reading: a value is on the facts line under the title ("−3.5 LUFS",
+ * The Inspector's loudness reading: a value is in the Overview's facts grid ("−3.5 LUFS",
  * the whole reading with its peak in the title); a track with none keeps the line under its
  * waveform, which says why.
  */
@@ -50,7 +50,7 @@ async function expectReading(window: Page, line: string, timeout = 15_000): Prom
   if (line.startsWith("Loudness ")) {
     const fact = window.getByTestId("track-fact-loudness");
     const [value, peak] = line.split(" · ");
-    await expect(fact).toHaveText(value!, { timeout });
+    await expect(fact.locator("dd")).toHaveText(value!.replace(/^Loudness /, ""), { timeout });
     expect(await fact.getAttribute("title")).toContain(line);
     // The peak stays drawn under the waveform.
     await expect(window.getByTestId("inspector-loudness")).toHaveText(peak!);

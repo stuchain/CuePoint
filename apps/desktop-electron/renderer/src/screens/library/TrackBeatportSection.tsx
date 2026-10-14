@@ -1,20 +1,20 @@
 /**
- * What Beatport says about this track (CLEAN-13, DEC-047, DEC-066, INS-5).
+ * The Beatport tab (CLEAN-13, DEC-047, DEC-066, INS-5).
  *
- * Where the track stands with a match, the candidate that was decided, and for
- * each of the five fields what Rekordbox sent, what Beatport has and what is
- * used now, with where that came from. Reading only: applying Beatport's values
- * is Review's and Fix values' work (FLW-2), and one track's match is Clean's
- * match window, one button away.
+ * The matched release, how the match was decided, the fields that agree on one line, and in
+ * full only the fields where what is used is not what Beatport has (with Rekordbox's own value
+ * when that is a third thing). Reading only: applying Beatport's values is Review's and Fix
+ * values' work (FLW-2), and the full side-by-side is Clean's, one link away.
  *
- * A track not looked up yet gets one sentence and one action, not a table of
- * blanks.
+ * A track not looked up yet gets one sentence and one action, not a table of blanks.
  */
 import { cleanMatchState } from "../clean/cleanLink";
 import { decisionLine } from "../clean/cleanFormat";
 import type { TrackMatchesState } from "../clean/useTrackMatches";
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
+import { agreeLine, compareBeatportRows, joinLabels, releaseLine, scoreWords } from "./beatportComparison";
 import { beatportFieldRows, coverArtText, fieldSourceText } from "./libraryClean";
+import { NO_VALUE } from "../../words";
 import { RouteButton } from "./RouteButton";
 
 interface TrackBeatportSectionProps {
@@ -64,63 +64,65 @@ export function TrackBeatportSection({ track, matches, onOpenInClean }: TrackBea
     );
   }
 
-  const rows = beatportFieldRows(track, candidate);
+  const { agree, applied, alsoGenres, differ } = compareBeatportRows(beatportFieldRows(track, candidate));
   const cover = coverArtText(track.artwork);
+  const release = candidate ? releaseLine(candidate) : "";
+  const agreed = [
+    agreeLine(agree.filter((label) => !applied.includes(label))),
+    applied.length > 0 ? `${joinLabels(applied)} applied from Beatport` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const statusLine = [state ? decisionLine(state) : "", scoreWords(candidate?.score), cover !== "" && cover !== NO_VALUE ? `cover art ${cover}` : ""]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="cp-track-beatport">
-      {state && (
+      {release !== "" && <p className="cp-track-beatport__release">{release}</p>}
+      {statusLine !== "" && (
         <p
           className={`cp-track-beatport__state${
-            state.disputed ? " cp-track-beatport__state--disputed" : ""
+            state?.disputed ? " cp-track-beatport__state--disputed" : ""
           }`}
         >
-          {decisionLine(state)}
+          {statusLine}
+        </p>
+      )}
+      {agreed !== "" && (
+        <p className="cp-track-beatport__agree">
+          <span aria-hidden>{"✓ "}</span>
+          {`${agreed.charAt(0).toUpperCase()}${agreed.slice(1)}`}
         </p>
       )}
 
-      {candidate && (
-        <p className="cp-track-beatport__candidate">
-          <span className="cp-track-beatport__title">
-            {candidate.title ?? "—"}
-            {candidate.mix ? ` (${candidate.mix})` : ""}
-          </span>
-          <span>{candidate.artists ?? "—"}</span>
-          <span className="cp-track-beatport__meta">
-            {[candidate.label, candidate.release_name].filter(Boolean).join(" · ")}
-            {candidate.score != null && (
-              <>
-                {candidate.label || candidate.release_name ? " · " : ""}
-                <span title="How closely Beatport's track matches yours; higher is closer">
-                  {`match score ${candidate.score.toFixed(1)}`}
+      {alsoGenres.length > 0 && (
+        <p className="cp-track-beatport__also">Beatport also lists {alsoGenres.join(", ")}</p>
+      )}
+
+      {differ.length > 0 && (
+        <dl className="cp-track-beatport__fields">
+          {differ.map((row) => (
+            <div key={row.field} className="cp-track-beatport__field" data-field={row.field}>
+              <dt className="cp-track-detail__label">{row.label}</dt>
+              <dd className="cp-track-beatport__values">
+                {row.imported.trim() !== row.effective.trim() && (
+                  <span>
+                    <span className="cp-track-beatport__layer">Rekordbox</span> {dash(row.imported)}
+                  </span>
+                )}
+                <span className="cp-track-beatport__now">
+                  <span className="cp-track-beatport__layer">Using</span> {dash(row.effective)}{" "}
+                  <span className="cp-track-beatport__source">({fieldSourceText(row.source)})</span>
                 </span>
-              </>
-            )}
-          </span>
-        </p>
+                <span>
+                  <span className="cp-track-beatport__layer">Beatport</span> {dash(row.beatport)}
+                </span>
+              </dd>
+            </div>
+          ))}
+        </dl>
       )}
-
-      {cover !== "" && <p className="cp-track-beatport__artwork">Cover art: {cover}</p>}
-
-      <dl className="cp-track-beatport__fields">
-        {rows.map((row) => (
-          <div key={row.field} className="cp-track-beatport__field" data-field={row.field}>
-            <dt className="cp-track-detail__label">{row.label}</dt>
-            <dd className="cp-track-beatport__values">
-              <span>
-                <span className="cp-track-beatport__layer">Rekordbox</span> {dash(row.imported)}
-              </span>
-              <span>
-                <span className="cp-track-beatport__layer">Beatport</span> {dash(row.beatport)}
-              </span>
-              <span className="cp-track-beatport__now">
-                <span className="cp-track-beatport__layer">Using</span> {dash(row.effective)}{" "}
-                <span className="cp-track-beatport__source">({fieldSourceText(row.source)})</span>
-              </span>
-            </dd>
-          </div>
-        ))}
-      </dl>
 
       {onOpenInClean && (
         <button
@@ -128,7 +130,7 @@ export function TrackBeatportSection({ track, matches, onOpenInClean }: TrackBea
           className="cp-track-detail__reveal"
           onClick={() => onOpenInClean(track.id)}
         >
-          Open on the Clean page
+          Compare all on the Clean page {"›"}
         </button>
       )}
     </div>

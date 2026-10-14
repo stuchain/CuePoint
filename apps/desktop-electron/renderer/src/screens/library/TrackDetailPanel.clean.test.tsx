@@ -27,7 +27,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { LIBRARY_CHANGED_EVENT } from "../../api/libraryChanges";
 import { TRACK_DETAILS_SECTIONS_KEY } from "./DisclosureSection";
-import { TrackDetailPanel } from "./TrackDetailPanel";
+import { TRACK_DETAILS_TAB_KEY, TrackDetailPanel } from "./TrackDetailPanel";
 
 const TRACK: LibraryTrackRow = {
   id: 12,
@@ -224,9 +224,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function panel(props: Partial<Parameters<typeof TrackDetailPanel>[0]> = {}) {
-  // Yours, Beatport and History start folded (INS-3, DEC-246); these tests are about their contents.
-  localStorage.setItem(TRACK_DETAILS_SECTIONS_KEY, JSON.stringify({ yours: true, beatport: true, history: true }));
+function panel(props: Partial<Parameters<typeof TrackDetailPanel>[0]> = {}, tab = "yours") {
+  // The panel opens on the tab last chosen; these tests are about the contents of one.
+  localStorage.setItem(TRACK_DETAILS_TAB_KEY, tab);
+  // History is folded until asked for (INS-3); the History tests are about its contents.
+  localStorage.setItem(TRACK_DETAILS_SECTIONS_KEY, JSON.stringify({ history: true }));
   const handlers = {
     onError: vi.fn(),
     onTrackChanged: vi.fn(),
@@ -241,78 +243,116 @@ function field(zone: HTMLElement, name: string): HTMLElement {
   return zone.querySelector(`[data-field="${name}"]`) as HTMLElement;
 }
 
-describe("the Beatport zone", () => {
-  it("shows where the track stands and what was decided", async () => {
-    panel();
-    const zone = await screen.findByRole("region", { name: "Beatport" });
-    expect(await within(zone).findByText("Confirmed by you")).toBeInTheDocument();
-    expect(within(zone).getByText("Strobe (Original Mix)")).toBeInTheDocument();
-    expect(zone.querySelector(".cp-track-beatport__meta")).toHaveTextContent(
-      "mau5trap · For Lack of a Better Name · match score 96.5",
+describe("the Beatport tab", () => {
+  const beatportPanel = (props: Partial<Parameters<typeof TrackDetailPanel>[0]> = {}) => panel(props, "beatport");
+
+  it("says the matched release, how it was decided, and what agrees on one line each", async () => {
+    beatportPanel();
+    const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
+    expect(await within(zone).findByText(/Confirmed by you/)).toHaveTextContent(
+      "Confirmed by you · score 96.5 · cover art from Beatport",
     );
-    expect(within(zone).getByText("match score 96.5")).toHaveAttribute(
-      "title",
-      "How closely Beatport's track matches yours; higher is closer",
-    );
-    expect(within(zone).getByText("Cover art: from Beatport")).toBeInTheDocument();
+    expect(within(zone).getByText("deadmau5 – Strobe (Original Mix) · mau5trap")).toBeInTheDocument();
+    // Genre and label agree; BPM (typed) and year differ.
+    expect(within(zone).getByText(/Genre and label match/)).toBeInTheDocument();
     expect(bridge.getTrackMatches).toHaveBeenCalledWith({ trackId: 12 });
   });
 
-  it("shows three values per field, and the source of the one shown", async () => {
-    panel();
-    const zone = await screen.findByRole("region", { name: "Beatport" });
-    await within(zone).findByText("Confirmed by you");
+  it("shows only the fields that differ, with what is used and what Beatport has", async () => {
+    beatportPanel();
+    const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
+    await within(zone).findByText(/Confirmed by you/);
     // The key is not one of the rows: an accepted match gives it (DEC-201).
     expect(field(zone, "key")).toBeNull();
+    expect(field(zone, "bpm")).toHaveTextContent("Rekordbox 128");
     expect(field(zone, "bpm")).toHaveTextContent("Using 126 (typed by you)");
+    expect(field(zone, "bpm")).toHaveTextContent("Beatport 128");
     expect(field(zone, "year")).toHaveTextContent("Beatport 2010");
     expect(field(zone, "year")).toHaveTextContent("Using 2009 (from Rekordbox)");
+    // Rekordbox's value is the same as the one used, so it is not said a second time.
+    expect(field(zone, "year")).not.toHaveTextContent("Rekordbox 2009");
+    // Equal fields are said once, not drawn three times.
+    expect(field(zone, "genre")).toBeNull();
+    expect(field(zone, "label")).toBeNull();
+  });
+
+  it("counts a value applied from Beatport as agreeing, and shows Rekordbox's value for a real difference", async () => {
+    const applied = {
+      ...TRACK,
+      genre: "House",
+      effective_genre: "Progressive House",
+      overridden: ["genre" as const],
+      override_sources: { genre: "beatport" as const },
+    };
+    const withGenres = matches();
+    withGenres.candidate = { ...CANDIDATE, genre: "Progressive House" };
+    bridge.getTrackMatches.mockResolvedValue(withGenres);
+    beatportPanel({ detail: detailOf(applied) });
+    const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
+    await within(zone).findByText(/Confirmed by you/);
+    expect(within(zone).getByText(/genre applied from Beatport/i)).toBeInTheDocument();
+    expect(field(zone, "genre")).toBeNull();
+    // BPM was typed: Rekordbox's own 128 is shown beside what is used.
+    expect(field(zone, "bpm")).toHaveTextContent("Rekordbox 128");
+  });
+
+  it("lists the other genres Beatport has when the one used is among them", async () => {
+    const many = matches();
+    many.candidate = {
+      ...CANDIDATE,
+      genre: "Progressive House, Progressive House|Melodic Techno, Afro House",
+    };
+    bridge.getTrackMatches.mockResolvedValue(many);
+    beatportPanel();
+    const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
+    expect(await within(zone).findByText("Beatport also lists Melodic Techno, Afro House")).toBeInTheDocument();
+    expect(field(zone, "genre")).toBeNull();
   });
 
   it("never applies a field from here: that is Review's and Fix values' job (FLW-2)", async () => {
-    panel();
-    const zone = await screen.findByRole("region", { name: "Beatport" });
-    await within(zone).findByText("Confirmed by you");
+    beatportPanel();
+    const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
+    await within(zone).findByText(/Confirmed by you/);
     expect(within(zone).queryByRole("button", { name: /^Apply/ })).toBeNull();
     expect(bridge.applyMatch).not.toHaveBeenCalled();
   });
 
   it("offers nothing to apply before a match is accepted", async () => {
     bridge.getTrackMatches.mockResolvedValue(matches({ state: "needs_review", decided_by: null }));
-    panel();
-    const zone = await screen.findByRole("region", { name: "Beatport" });
-    // Said twice: on the folded heading's right, and in the section itself.
-    expect((await within(zone).findAllByText("Waiting for you")).length).toBeGreaterThan(0);
+    beatportPanel();
+    const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
+    expect((await within(zone).findAllByText(/Waiting for you/)).length).toBeGreaterThan(0);
     expect(within(zone).queryByRole("button", { name: /^Apply/ })).toBeNull();
   });
 
   it("says a newer match disagrees", async () => {
     bridge.getTrackMatches.mockResolvedValue(matches({ disputed: true, newer_attempt_id: 9 }));
-    panel();
+    beatportPanel();
     expect(
-      await screen.findByText("Confirmed by you — changed since you decided"),
+      await screen.findByText(/Confirmed by you — changed since you decided/),
     ).toBeInTheDocument();
   });
 
-  it("links to the track on the Clean page", async () => {
-    const handlers = panel();
-    const zone = await screen.findByRole("region", { name: "Beatport" });
-    await userEvent.click(within(zone).getByRole("button", { name: "Open on the Clean page" }));
+  it("links to the full comparison on the Clean page", async () => {
+    const handlers = beatportPanel();
+    const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
+    await userEvent.click(within(zone).getByRole("button", { name: /^Compare all on the Clean page/ }));
     expect(handlers.onOpenInClean).toHaveBeenCalledWith(12);
   });
 
   it("is not drawn by a build without Clean", async () => {
     delete bridge.getTrackMatches;
-    panel();
+    beatportPanel();
     await screen.findByRole("heading", { name: "Strobe" });
-    expect(screen.queryByRole("region", { name: "Beatport" })).toBeNull();
+    expect(screen.queryByRole("tabpanel", { name: "Beatport" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Beatport" })).toBeNull();
   });
 });
 
 describe("the imported record", () => {
   it("stays read-only, whatever the zones above it offer (DEC-047)", async () => {
     panel();
-    await screen.findByRole("region", { name: "Beatport" });
+    await screen.findByRole("tabpanel", { name: "Yours" });
     const imported = document.querySelector(".cp-track-detail__fields") as HTMLElement;
     expect(within(imported).queryByRole("textbox")).toBeNull();
     // Rekordbox's values stay Rekordbox's, whatever CuePoint's layer says;
@@ -327,12 +367,13 @@ describe("the imported record", () => {
         detail={{ ...detail, track: { ...detail.track, effective_key: "9A", key_name: "E minor", key_source: "beatport" } }}
       />,
     );
-    const line = document.querySelector(".cp-track-detail__keyline") as HTMLElement;
-    expect(line).toHaveTextContent("9A · E minor · Beatport");
+    const line = screen.getByTestId("track-key");
+    expect(line).toHaveTextContent("9A");
+    expect(line).toHaveTextContent("E minor · Beatport");
     rerender(
       <TrackDetailPanel detail={{ ...detail, track: { ...detail.track, effective_key: null, key_name: null } }} />,
     );
-    expect(document.querySelector(".cp-track-detail__keyline")).toHaveTextContent("—");
+    expect(screen.getByTestId("track-key")).toHaveTextContent("—");
   });
 });
 
@@ -355,6 +396,7 @@ describe("the artwork", () => {
 
 describe("your five values (DEC-205)", () => {
   async function editor() {
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, "yours");
     await userEvent.click(await screen.findByRole("button", { name: "Edit values…" }));
     return screen.findByRole("dialog", { name: "Edit values" });
   }
@@ -405,7 +447,7 @@ describe("your five values (DEC-205)", () => {
   });
 
   it("reads the track again, and keeps what is being typed in the editor", async () => {
-    localStorage.setItem(TRACK_DETAILS_SECTIONS_KEY, JSON.stringify({ yours: true }));
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, "yours");
     const { rerender } = render(<TrackDetailPanel detail={detailOf()} />);
     await userEvent.click(await screen.findByRole("button", { name: "Edit values…" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit values" });
@@ -418,7 +460,7 @@ describe("your five values (DEC-205)", () => {
   it("are not offered by a build that cannot type them", async () => {
     delete bridge.setTrackOverrides;
     panel();
-    await screen.findByRole("region", { name: "Yours" });
+    await screen.findByRole("tabpanel", { name: "Yours" });
     expect(screen.queryByRole("button", { name: "Edit values…" })).toBeNull();
   });
 });

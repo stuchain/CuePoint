@@ -947,8 +947,8 @@ describe("the entry's plan in the Inspector", () => {
     expect(within(zone).getByLabelText("Mix out")).toHaveValue("4:30");
     expect(within(zone).getByText("Plays for 4:00")).toBeInTheDocument();
     expect(within(zone).getByText(/Entry 1, in Warm-up · starts at 0:00/)).toBeInTheDocument();
-    // Above "Yours", which is about the track.
-    const yours = within(inspector()).getByRole("region", { name: "Yours" });
+    // Above the tabs (Overview, Yours …), which are about the track.
+    const yours = within(inspector()).getByRole("tablist");
     expect(zone.compareDocumentPosition(yours) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 

@@ -201,7 +201,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await expect(tone.locator('[data-column="key"]')).toHaveText("—");
       await tone.getByText("Tone One").click();
       const inspector = window.locator(".cp-track-detail");
-      await expect(inspector.locator(".cp-track-detail__keyline")).toContainText("—");
+      await expect(inspector.getByTestId("track-key")).toContainText("—");
       const resolved = await window.evaluate(async () => {
         const rows = await window.cuepoint!.browseLibrary!({ limit: 10 });
         return rows.tracks.map((t) => ({ key: t.key, effective: t.effective_key, source: t.key_source }));
@@ -221,8 +221,8 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await row(window, "Tone One").getByText("Tone One").click();
 
       const inspector = window.locator(".cp-track-detail");
-      // Yours starts folded (DEC-246): open it to reach Edit values….
-      await inspector.getByRole("button", { name: /^Yours/ }).click();
+      // Edit values… is under the Yours tab.
+      await inspector.getByRole("tab", { name: "Yours" }).click();
       await inspector.getByRole("button", { name: "Edit values…" }).click();
       const dialog = window.getByRole("dialog", { name: "Edit values" });
       await expect(dialog).toContainText("Now: not set");
@@ -235,7 +235,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       const mark = row(window, "Tone One").getByRole("img", { name: /^Key typed by you\. CuePoint uses Beatport.s key, not Rekordbox.s\./ });
       await expect(mark).toBeVisible({ timeout: 15_000 });
       await expect(row(window, "Tone One")).toContainText("11A");
-      await expect(inspector.locator(".cp-track-detail__keyline")).toContainText("11A");
+      await expect(inspector.getByTestId("track-key")).toContainText("11A");
       // The panel lists what was edited, folded open by itself.
       await expect(inspector.getByRole("button", { name: /^Your values · 1 edited/ })).toHaveAttribute(
         "aria-expanded",
@@ -401,17 +401,13 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.getByRole("link", { name: "Library" }).click();
       await row(window, "Tone One").getByText("Tone One").click();
 
-      const zone = window.getByRole("region", { name: "Beatport" });
-      // Folded until asked for, with its news on the heading.
-      await expect(zone.getByRole("button", { name: /^Beatport · Confirmed/ })).toHaveAttribute(
-        "aria-expanded",
-        "false",
-        { timeout: 15_000 },
-      );
-      await zone.getByRole("button", { name: /^Beatport/ }).click();
+      // Overview says how the match stands; the Beatport tab says the rest.
+      await expect(window.getByTestId("track-fact-beatport")).toContainText("Confirmed", { timeout: 15_000 });
+      await window.getByRole("tab", { name: "Beatport" }).click();
+      const zone = window.getByRole("tabpanel", { name: "Beatport" });
       await expect(zone).toContainText("Confirmed automatically", { timeout: 15_000 });
+      // Only a field that differs is drawn in full: what is used, and what Beatport has.
       const genre = zone.locator('[data-field="genre"]');
-      await expect(genre).toContainText("Rekordbox House");
       await expect(genre).toContainText("Beatport Melodic House & Techno");
       await expect(genre).toContainText("Using House (from Rekordbox)");
       // Applying Beatport's values is Match's and the Library's Beatport menu's job, not this panel's.
@@ -425,14 +421,15 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.getByRole("link", { name: "Clean" }).click();
       await window.getByRole("link", { name: "Library" }).click();
       await row(window, "Tone One").getByText("Tone One").click();
-      await expect(genre).toContainText("Using Melodic House & Techno (applied from Beatport)", {
-        timeout: 15_000,
-      });
+      // Used now equals Beatport's, so the field agrees and is said once, not drawn three times.
+      await window.getByRole("tab", { name: "Beatport" }).click();
+      await expect(zone).toContainText(/genre applied from Beatport/i, { timeout: 15_000 });
+      await expect(genre).toHaveCount(0);
       await expect(
         row(window, "Tone One").getByRole("img", { name: /^Genre applied from Beatport\. In Rekordbox it is House\./ }),
       ).toBeAttached();
 
-      await zone.getByRole("button", { name: "Open on the Clean page" }).click();
+      await zone.getByRole("button", { name: /^Compare all on the Clean page/ }).click();
       // It opens Match, on One at a time, at the track.
       await expect(window.getByRole("tab", { name: /^Match/, selected: true })).toBeVisible({ timeout: 15_000 });
       const yours = window.getByRole("region", { name: "Your track" });

@@ -29,7 +29,7 @@
  * why LIBRARY-01 made those columns nullable (DEC-034): unrated and rated-zero
  * are different facts, and so are "never played" and "no play count recorded".
  */
-import { Fragment, useCallback, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useId, useState, type ReactNode } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
@@ -51,6 +51,7 @@ import { matchStateLabel } from "../clean/cleanFormat";
 import { useTrackMatches } from "../clean/useTrackMatches";
 import { similarPath } from "../discover/discoverLinks";
 import { CreditLinks } from "./CreditLinks";
+import { Tabs, panelId, tabId } from "../../components/Tabs";
 import { DisclosureSection } from "./DisclosureSection";
 import { RouteButton } from "./RouteButton";
 import { followJob } from "./followJob";
@@ -128,44 +129,6 @@ interface TrackDetailPanelProps {
    * every other page.
    */
   leadZone?: ReactNode;
-}
-
-/**
- * What the folded "Yours" heading still says, in words that read well aloud:
- * "★★★★ · favorite · 2 tags", or "no rating" when there is nothing of the person's in it.
- */
-function yoursSummary(
-  metadata: { effective_rating: number | null; favorite: boolean },
-  tags: readonly unknown[],
-): string {
-  const parts: string[] = [];
-  const stars = metadata.effective_rating;
-  if (stars != null && stars > 0) parts.push(starsFor(stars));
-  if (metadata.favorite) parts.push("favorite");
-  if (tags.length > 0) parts.push(tags.length === 1 ? "1 tag" : `${tags.length} tags`);
-  return parts.length > 0 ? parts.join(" · ") : "no rating";
-}
-
-/** The same, in words a screen reader reads: "4 stars · favorite", for a rating drawn as stars. */
-function yoursSpoken(
-  metadata: { effective_rating: number | null; favorite: boolean },
-  tags: readonly unknown[],
-): string | undefined {
-  const stars = metadata.effective_rating;
-  if (stars == null || stars <= 0) return undefined;
-  const parts = [stars === 1 ? "1 star" : `${stars} stars`];
-  if (metadata.favorite) parts.push("favorite");
-  if (tags.length > 0) parts.push(tags.length === 1 ? "1 tag" : `${tags.length} tags`);
-  return parts.join(" · ");
-}
-
-/** What the folded "Where it is" heading says: "1 Set · 1 playlist", or that it is nowhere yet. */
-function whereSummary(collections: number, sets: number, playlists: number): string {
-  const parts: string[] = [];
-  if (collections > 0) parts.push(`${collections.toLocaleString()} ${collections === 1 ? "Collection" : "Collections"}`);
-  if (sets > 0) parts.push(`${sets.toLocaleString()} ${sets === 1 ? "Set" : "Sets"}`);
-  if (playlists > 0) parts.push(`${playlists.toLocaleString()} ${playlists === 1 ? "playlist" : "playlists"}`);
-  return parts.length > 0 ? parts.join(" · ") : "Not in any Collection";
 }
 
 /** Absent is absent: an em dash, never a zero. */
@@ -248,6 +211,37 @@ function collectionIcon(kind: TrackCollectionRef["kind"]) {
   return "collections" as const;
 }
 
+/** The panel's tabs, in the order they are read. */
+type DetailTab = "overview" | "beatport" | "where" | "yours";
+
+const TAB_LABELS: Record<DetailTab, string> = {
+  overview: "Overview",
+  beatport: "Beatport",
+  where: "Where",
+  yours: "Yours",
+};
+
+/** The tab the person last chose, remembered like the panel's folds (storage can be blocked). */
+export const TRACK_DETAILS_TAB_KEY = "cuepoint-ui-track-details-tab";
+
+function readTab(): DetailTab {
+  try {
+    const stored = localStorage.getItem(TRACK_DETAILS_TAB_KEY);
+    if (stored === "overview" || stored === "beatport" || stored === "where" || stored === "yours") return stored;
+  } catch {
+    // Blocked: the panel opens on Overview.
+  }
+  return "overview";
+}
+
+function rememberTab(tab: DetailTab): void {
+  try {
+    localStorage.setItem(TRACK_DETAILS_TAB_KEY, tab);
+  } catch {
+    // Blocked or full: the tab still works for as long as the page is open.
+  }
+}
+
 export function TrackDetailPanel({
   detail,
   loading = false,
@@ -269,12 +263,8 @@ export function TrackDetailPanel({
   // re-read. A local append would show entries the engine did not write:
   // re-saving the same note records nothing at all.
   const [written, setWritten] = useState(0);
-  // What TrackYours shows now: its edits are optimistic and never reload `detail`.
-  const [shown, setShown] = useState<{
-    trackId: number;
-    metadata: { effective_rating: number | null; favorite: boolean };
-    tags: readonly unknown[];
-  } | null>(null);
+  const [tab, setTab] = useState<DetailTab>(readTab);
+  const tabsId = useId();
   const trackId = detail?.track.id ?? null;
   // The loudness the facts line reads: the waveform's own answer, told up as it
   // arrives, so one request and one poll serve both.
@@ -399,9 +389,8 @@ export function TrackDetailPanel({
   const key = keyDetail(track);
   const queue = availableQueueActions();
   const matchState = matches.matches?.state?.state ?? null;
-  // A track with no key is offered the match right where the absence is read;
-  // the Beatport section, folded until asked for, offers it again to a track
-  // not looked up yet.
+  // A track with no key is offered the match right where the absence is read (the Key
+  // fact on Overview); the Beatport tab offers it again to a track not looked up yet.
   const keyMatchOffered = key === null && track.id != null;
   const changeCount = history.changes.length;
   const editable = track.id != null && window.cuepoint?.setTrackOverrides;
@@ -409,6 +398,37 @@ export function TrackDetailPanel({
   const lufs = loudnessShort(loudnessTrack);
   const bpm = formatBpm(track.bpm);
   const genre = track.genre ? track.genre : null;
+
+  const sourceWords =
+    track.key_source === "yours" ? "yours" : track.key_source === "beatport" ? "Beatport" : null;
+  const matchWord = matchStateLabel(matchState);
+
+  const tabs: { id: DetailTab; label: string }[] = [
+    { id: "overview", label: TAB_LABELS.overview },
+    ...(track.id != null && !matches.unavailable ? [{ id: "beatport" as const, label: TAB_LABELS.beatport }] : []),
+    { id: "where", label: TAB_LABELS.where },
+    ...(track.id != null ? [{ id: "yours" as const, label: TAB_LABELS.yours }] : []),
+  ];
+  // A remembered tab this track does not offer (Beatport off, no id) reads as Overview.
+  const activeTab: DetailTab = tabs.some((item) => item.id === tab) ? tab : "overview";
+  const choose = (id: string) => {
+    const next = id as DetailTab;
+    setTab(next);
+    rememberTab(next);
+  };
+  // Every panel stays mounted and is hidden when not chosen, as a folded section was: a note
+  // being typed or a read in flight is not thrown away by a click on another tab.
+  const panel = (id: DetailTab, children: ReactNode) => (
+    <div
+      role="tabpanel"
+      id={panelId(tabsId, id)}
+      aria-labelledby={tabId(tabsId, id)}
+      className="cp-track-detail__tabpanel"
+      hidden={activeTab !== id}
+    >
+      {children}
+    </div>
+  );
 
   return (
     <div className="cp-track-detail">
@@ -432,54 +452,6 @@ export function TrackDetailPanel({
               </p>
             )}
           </div>
-        </div>
-        {/* One facts line: the key chip with the Camelot wheel's button beside the
-            key it is about (K8, DEC-282), then BPM, genre and loudness. */}
-        <div className="cp-track-detail__facts">
-          <div className="cp-track-detail__keyrow">
-            <dl className="cp-track-detail__keyline" data-testid="track-key">
-              <Row
-                label="Key"
-                hideLabel
-                value={
-                  key !== null ? (
-                    // The chip is the code, coloured by its wheel position (R4-2, DEC-272);
-                    // the key's name and source follow it as muted text.
-                    <>
-                      <KeyChip value={track.effective_key} />
-                      <span className="cp-track-detail__keymeta">{key}</span>
-                    </>
-                  ) : (
-                    <span className="cp-track-detail__file">
-                      <span>{NO_VALUE}</span>
-                      {keyMatchOffered && track.id != null && <MatchOnBeatport trackId={track.id} />}
-                    </span>
-                  )
-                }
-              />
-            </dl>
-            <WheelButton />
-          </div>
-          {bpm && (
-            <span className="cp-track-detail__fact cp-data" data-testid="track-fact-bpm">
-              {`${bpm} BPM`}
-            </span>
-          )}
-          {genre && (
-            <span className="cp-track-detail__fact" data-testid="track-fact-genre">
-              {genre}
-            </span>
-          )}
-          {lufs && (
-            <span
-              className="cp-track-detail__fact cp-data"
-              data-testid="track-fact-loudness"
-              title={`${loudnessLine(loudnessTrack) ?? lufs}. ${LOUDNESS_LINE_TITLE}`}
-            >
-              <span className="cp-visually-hidden">Loudness </span>
-              {lufs}
-            </span>
-          )}
         </div>
         {selectionCount > 1 && (
           // DEC-045: the panel shows the last-clicked track and says how many
@@ -558,230 +530,270 @@ export function TrackDetailPanel({
         )}
       </header>
 
-      {/* The whole track, its marks on it (WAVE-06): under the header, the
-          panel's full width. Keyed by track, so a new track never shows the
-          last one's picture while its own is read; the key is its own, since
-          TrackYours' sits in the same list keyed by the bare track id. */}
-      {track.id != null && window.cuepoint?.waveforms && (
-        <TrackWaveform key={`waveform-${track.id}`} trackId={track.id} loudnessInFacts onReading={onReading} />
-      )}
-
       {/* The caller's own slot: its key is the caller's (Prepare keys its zone
           by entry id), and in the list beside TrackYours' track-id key two
           different things could both be "3" and leave a stale zone behind. */}
       <Fragment>{leadZone}</Fragment>
 
-      {/* A track with no id is not editable, and there is nothing to say
-          about that: the id is what every write is addressed to. */}
-      {track.id != null && (
-        <DisclosureSection
-          id="yours"
-          title="Yours"
-          defaultOpen={false}
-          summary={
-            shown && shown.trackId === track.id
-              ? yoursSummary(shown.metadata, shown.tags)
-              : yoursSummary(detail.metadata, detail.tags)
-          }
-          summarySpoken={
-            shown && shown.trackId === track.id
-              ? yoursSpoken(shown.metadata, shown.tags)
-              : yoursSpoken(detail.metadata, detail.tags)
-          }
-          className="cp-track-section--yours">
-          <TrackYours
-            // A different track is a different editor: a note being typed
-            // belongs to the track it was typed against, and remounting is what
-            // makes that structural rather than careful.
-            key={track.id}
-            trackId={track.id}
-            metadata={detail.metadata}
-            tags={detail.tags}
-            onError={report}
-            onSaved={onSaved}
-            onShown={(metadata, shownTags) =>
-              setShown({ trackId: track.id as number, metadata, tags: shownTags })
-            }
-            track={editable ? { ...track, id: track.id } : undefined}
-            // Only an accepted match's key is what clearing the edit gives back (DEC-201).
-            beatportKey={matchState === "accepted" ? (matches.matches?.candidate?.key || null) : null}
-            onValueSaved={onChanged}
-          />
-        </DisclosureSection>
+      <Tabs tabs={tabs} activeId={activeTab} onChange={choose} variant="sub" idPrefix={tabsId} />
+
+      {panel(
+        "overview",
+        <>
+          <dl className="cp-track-detail__facts" aria-label="Facts">
+            <div className="cp-track-detail__fact cp-track-detail__fact--key" data-testid="track-key">
+              <dt className="cp-track-detail__factlabel">Key</dt>
+              <dd className="cp-track-detail__factvalue">
+                {key !== null ? (
+                  // The chip is the code, coloured by its wheel position (R4-2, DEC-272); the
+                  // wheel's button sits beside the chip it is about (K8, DEC-282), then the
+                  // key's name. Where it came from is said on hover and to screen readers.
+                  <span className="cp-track-detail__keyrow" title={sourceWords ? `Key from ${sourceWords}` : undefined}>
+                    <KeyChip value={track.effective_key} />
+                    <WheelButton />
+                    <span className="cp-track-detail__keymeta">{track.key_name ?? ""}</span>
+                    {sourceWords !== null && <span className="cp-visually-hidden">{` \u00b7 ${sourceWords}`}</span>}
+                  </span>
+                ) : (
+                  <span className="cp-track-detail__file">
+                    <span>{NO_VALUE}</span>
+                    <WheelButton />
+                    {keyMatchOffered && track.id != null && <MatchOnBeatport trackId={track.id} />}
+                  </span>
+                )}
+              </dd>
+            </div>
+            {bpm && (
+              <div className="cp-track-detail__fact" data-testid="track-fact-bpm">
+                <dt className="cp-track-detail__factlabel">BPM</dt>
+                <dd className="cp-track-detail__factvalue cp-data">{bpm}</dd>
+              </div>
+            )}
+            {genre && (
+              <div className="cp-track-detail__fact" data-testid="track-fact-genre">
+                <dt className="cp-track-detail__factlabel">Genre</dt>
+                <dd className="cp-track-detail__factvalue">{genre}</dd>
+              </div>
+            )}
+            {lufs && (
+              <div
+                className="cp-track-detail__fact"
+                data-testid="track-fact-loudness"
+                title={`${loudnessLine(loudnessTrack) ?? lufs}. ${LOUDNESS_LINE_TITLE}`}
+              >
+                <dt className="cp-track-detail__factlabel">Loudness</dt>
+                <dd className="cp-track-detail__factvalue cp-data">{lufs}</dd>
+              </div>
+            )}
+            {detail.marks && cuesHeaderSummary(detail.marks) !== null && (
+              <div className="cp-track-detail__fact" data-testid="track-fact-cues" title={CUES_HINT}>
+                <dt className="cp-track-detail__factlabel">Cue points</dt>
+                <dd className="cp-track-detail__factvalue cp-data">{cuesHeaderSummary(detail.marks)}</dd>
+              </div>
+            )}
+            {track.id != null && !matches.unavailable && matchWord !== "" && (
+              <div className="cp-track-detail__fact" data-testid="track-fact-beatport">
+                <dt className="cp-track-detail__factlabel">Beatport</dt>
+                <dd className="cp-track-detail__factvalue">{matchWord}</dd>
+              </div>
+            )}
+          </dl>
+
+          {/* The whole track, its marks on it (WAVE-06). Keyed by track, so a new track never
+              shows the last one's picture while its own is read; mounted while another tab is
+              open, so the loudness above keeps arriving. */}
+          {track.id != null && window.cuepoint?.waveforms && (
+            <TrackWaveform key={`waveform-${track.id}`} trackId={track.id} loudnessInFacts onReading={onReading} />
+          )}
+
+          {/* The rest of Rekordbox's record: its cues and grid (WAVE-04). */}
+          {detail.marks && (
+            <DisclosureSection
+              id="cues"
+              title="Cue points"
+              hint={CUES_HINT}
+              defaultOpen={false}
+            >
+              <TrackMarksSection marks={detail.marks} />
+            </DisclosureSection>
+          )}
+
+          <DisclosureSection id="details" title="Details from Rekordbox" defaultOpen={false}>
+            <dl className="cp-track-detail__fields">
+              <Row
+                label="Remixer"
+                value={credited(track.remixer, credits?.remixers, onOpenEntity)}
+              />
+              <Row label="Album" value={text(track.album)} />
+              <Row label="Label" value={text(track.label)} />
+              <Row label="Genre" value={text(track.genre)} />
+              <Row label="BPM" value={formatBpm(track.bpm) || "—"} valueClassName="cp-data" />
+              <Row label="Year" value={track.year == null ? "—" : String(track.year)} valueClassName="cp-data" />
+              <Row label="Length" value={duration(track.duration_seconds)} valueClassName="cp-data" />
+              {/* Stars, not a number: the parser converted Rekordbox's 0/51/…/255
+                  encoding at import, so what is stored is already a star count. This
+                  row stays Rekordbox's own value whatever CuePoint's layer says —
+                  the resolved one is above, with its source on hover. */}
+              <Row
+                label="Rating"
+                value={track.rating == null ? "—" : starsFor(track.rating)}
+              />
+              <Row label="Plays" value={number(track.play_count)} valueClassName="cp-data" />
+              <Row label="Color" value={text(track.colour)} />
+              <Row label="Added" value={text(track.date_added)} valueClassName="cp-data" />
+              <Row label="Bitrate" value={number(track.bitrate, " kbps")} valueClassName="cp-data" />
+              <Row label="Comment" value={text(track.comment)} />
+              <Row
+                label="File"
+                value={
+                  <span className="cp-track-detail__file">
+                    <span title={track.file_path}>{text(track.file_path)}</span>
+                  </span>
+                }
+              />
+            </dl>
+          </DisclosureSection>
+
+        </>,
       )}
 
-      <DisclosureSection id="details" title="Details from Rekordbox" defaultOpen={false}>
-        <dl className="cp-track-detail__fields">
-          <Row
-            label="Remixer"
-            value={credited(track.remixer, credits?.remixers, onOpenEntity)}
-          />
-          <Row label="Album" value={text(track.album)} />
-          <Row label="Label" value={text(track.label)} />
-          <Row label="Genre" value={text(track.genre)} />
-          <Row label="BPM" value={formatBpm(track.bpm) || "—"} valueClassName="cp-data" />
-          <Row label="Year" value={track.year == null ? "—" : String(track.year)} valueClassName="cp-data" />
-          <Row label="Length" value={duration(track.duration_seconds)} valueClassName="cp-data" />
-          {/* Stars, not a number: the parser converted Rekordbox's 0/51/…/255
-              encoding at import, so what is stored is already a star count. This
-              row stays Rekordbox's own value whatever CuePoint's layer says —
-              the resolved one is above, with its source on hover. */}
-          <Row
-            label="Rating"
-            value={track.rating == null ? "—" : starsFor(track.rating)}
-          />
-          <Row label="Plays" value={number(track.play_count)} valueClassName="cp-data" />
-          <Row label="Color" value={text(track.colour)} />
-          <Row label="Added" value={text(track.date_added)} valueClassName="cp-data" />
-          <Row label="Bitrate" value={number(track.bitrate, " kbps")} valueClassName="cp-data" />
-          <Row label="Comment" value={text(track.comment)} />
-          <Row
-            label="File"
-            value={
-              <span className="cp-track-detail__file">
-                <span title={track.file_path}>{text(track.file_path)}</span>
-              </span>
-            }
-          />
-        </dl>
-      </DisclosureSection>
-
-      {/* The rest of Rekordbox's record: its cues and grid (WAVE-04). */}
-      {detail.marks && (
-        <DisclosureSection
-          id="cues"
-          title="Cue points"
-          summary={cuesHeaderSummary(detail.marks)}
-          hint={CUES_HINT}
-          defaultOpen={false}
-        >
-          <TrackMarksSection marks={detail.marks} />
-        </DisclosureSection>
-      )}
-
-      <DisclosureSection
-        id="where"
-        title="Where it is"
-        summary={whereSummary(collections.length, sets.length, playlists.length)}
-        defaultOpen={false}
-      >
-        {collections.length > 0 && (
-          <section className="cp-track-detail__playlists">
-            <h4 className="cp-track-detail__subtitle">
-              {`In ${collections.length} ${collections.length === 1 ? "Collection" : "Collections"}`}
-            </h4>
-            <ul>
-              {collections.map((collection) => (
-                <li key={collection.id}>
-                  <button
-                    type="button"
-                    className="cp-track-detail__playlist"
-                    onClick={() => onSelectCollection?.(collection)}
-                  >
-                    <PixelIcon
-                      name={collectionIcon(collection.kind)}
-                      className="cp-track-detail__icon"
-                    />
-                    {collection.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
+      {track.id != null &&
+        !matches.unavailable &&
+        panel(
+          "beatport",
+          <TrackBeatportSection track={{ ...track, id: track.id }} matches={matches} onOpenInClean={onOpenInClean} />,
         )}
 
-        {sets.length > 0 && (
-          <section className="cp-track-detail__playlists" aria-label="Sets">
-            <h4 className="cp-track-detail__subtitle">
-              {`In ${sets.length} ${sets.length === 1 ? "Set" : "Sets"}`}
-            </h4>
-            <ul>
-              {sets.map((set) => (
-                <li key={set.id}>
-                  <button
-                    type="button"
-                    className="cp-track-detail__playlist"
-                    title={onOpenInPrepare ? `Open ${set.name} in Prepare` : undefined}
-                    onClick={() =>
-                      onOpenInPrepare ? onOpenInPrepare(set) : onSelectCollection?.(set)
-                    }
-                  >
-                    <PixelIcon name={collectionIcon(set.kind)} className="cp-track-detail__icon" />
-                    {set.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+      {panel(
+        "where",
+        <>
+            {collections.length === 0 && sets.length === 0 && (
+              <p className="cp-track-detail__none">Not in any Collection.</p>
+            )}
+          {collections.length > 0 && (
+            <section className="cp-track-detail__playlists">
+              <h4 className="cp-track-detail__subtitle">
+                {`In ${collections.length} ${collections.length === 1 ? "Collection" : "Collections"}`}
+              </h4>
+              <ul>
+                {collections.map((collection) => (
+                  <li key={collection.id}>
+                    <button
+                      type="button"
+                      className="cp-track-detail__playlist"
+                      onClick={() => onSelectCollection?.(collection)}
+                    >
+                      <PixelIcon
+                        name={collectionIcon(collection.kind)}
+                        className="cp-track-detail__icon"
+                      />
+                      {collection.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-        {playlists.length === 0 ? (
-          <p className="cp-track-detail__none">Not in any Rekordbox playlist.</p>
-        ) : (
-          <section className="cp-track-detail__playlists">
-            <h4 className="cp-track-detail__subtitle">
-              {`In ${playlists.length} ${playlists.length === 1 ? "playlist" : "playlists"}`}
-            </h4>
-            <ul>
-              {playlists.map((playlist) => (
-                <li key={playlist.id}>
-                  <button
-                    type="button"
-                    className="cp-track-detail__playlist"
-                    title={playlist.path}
-                    onClick={() => onSelectPlaylist?.(playlist)}
-                  >
-                    <PixelIcon name="playlist" className="cp-track-detail__icon" />
-                    {playlist.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-      </DisclosureSection>
+          {sets.length > 0 && (
+            <section className="cp-track-detail__playlists" aria-label="Sets">
+              <h4 className="cp-track-detail__subtitle">
+                {`In ${sets.length} ${sets.length === 1 ? "Set" : "Sets"}`}
+              </h4>
+              <ul>
+                {sets.map((set) => (
+                  <li key={set.id}>
+                    <button
+                      type="button"
+                      className="cp-track-detail__playlist"
+                      title={onOpenInPrepare ? `Open ${set.name} in Prepare` : undefined}
+                      onClick={() =>
+                        onOpenInPrepare ? onOpenInPrepare(set) : onSelectCollection?.(set)
+                      }
+                    >
+                      <PixelIcon name={collectionIcon(set.kind)} className="cp-track-detail__icon" />
+                      {set.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-      {track.id != null && !matches.unavailable && (
-        <DisclosureSection
-          id="beatport"
-          title="Beatport"
-          summary={matchStateLabel(matchState) || null}
-          defaultOpen={false}
-        >
-          <TrackBeatportSection
-            track={{ ...track, id: track.id }}
-            matches={matches}
-            onOpenInClean={onOpenInClean}
-          />
-        </DisclosureSection>
+          {playlists.length === 0 ? (
+            <p className="cp-track-detail__none">Not in any Rekordbox playlist.</p>
+          ) : (
+            <section className="cp-track-detail__playlists">
+              <h4 className="cp-track-detail__subtitle">
+                {`In ${playlists.length} ${playlists.length === 1 ? "playlist" : "playlists"}`}
+              </h4>
+              <ul>
+                {playlists.map((playlist) => (
+                  <li key={playlist.id}>
+                    <button
+                      type="button"
+                      className="cp-track-detail__playlist"
+                      title={playlist.path}
+                      onClick={() => onSelectPlaylist?.(playlist)}
+                    >
+                      <PixelIcon name="playlist" className="cp-track-detail__icon" />
+                      {playlist.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>,
       )}
 
-      {!history.unavailable && (
-        <DisclosureSection
-          id="history"
-          title="History"
-          summary={
-            history.loading && changeCount === 0
-              ? null
-              : changeCount === 0
-                ? "none yet"
-                : `${changeCount.toLocaleString()} ${changeCount === 1 ? "change" : "changes"}`
-          }
-          defaultOpen={false}
-        >
-          <TrackHistorySection
-            changes={history.changes}
-            loading={history.loading}
-            error={history.error}
-            unavailable={history.unavailable}
-            onRevert={window.cuepoint?.revertChange ? (change) => void revert(change) : undefined}
-            reverting={reverting}
-            writes={writes}
-            onRestore={window.cuepoint?.startTagRestore ? () => void restore() : undefined}
-            restoring={restoring}
-          />
-        </DisclosureSection>
-      )}
+      {track.id != null &&
+        panel(
+          "yours",
+          <>
+            <TrackYours
+              // A different track is a different editor: a note being typed
+              // belongs to the track it was typed against, and remounting is what
+              // makes that structural rather than careful.
+              key={track.id}
+              trackId={track.id}
+              metadata={detail.metadata}
+              tags={detail.tags}
+              onError={report}
+              onSaved={onSaved}
+              track={editable ? { ...track, id: track.id } : undefined}
+              // Only an accepted match's key is what clearing the edit gives back (DEC-201).
+              beatportKey={matchState === "accepted" ? (matches.matches?.candidate?.key || null) : null}
+              onValueSaved={onChanged}
+            />
+            {!history.unavailable && (
+              <DisclosureSection
+                id="history"
+                title="History"
+                summary={
+                  history.loading && changeCount === 0
+                    ? null
+                    : changeCount === 0
+                      ? "none yet"
+                      : `${changeCount.toLocaleString()} ${changeCount === 1 ? "change" : "changes"}`
+                }
+                defaultOpen={false}
+              >
+                <TrackHistorySection
+                  changes={history.changes}
+                  loading={history.loading}
+                  error={history.error}
+                  unavailable={history.unavailable}
+                  onRevert={window.cuepoint?.revertChange ? (change) => void revert(change) : undefined}
+                  reverting={reverting}
+                  writes={writes}
+                  onRestore={window.cuepoint?.startTagRestore ? () => void restore() : undefined}
+                  restoring={restoring}
+                />
+              </DisclosureSection>
+            )}
+          </>,
+        )}
     </div>
   );
 }
