@@ -149,11 +149,11 @@ describe("a dig's results as rows of cards", () => {
   it("says what a dig left out on purpose", async () => {
     install({
       getDiscoveryRunGroups: vi.fn(async () =>
-        value({ ...ARTISTS, notes: ["Genre charts are capped at the newest 25 in each genre, 150 in all."] }),
+        value({ ...ARTISTS, notes: ["Only the first 200 of the 240 artists you chose were looked up: a dig reads at most 200."] }),
       ),
     });
     renderRun();
-    expect(await screen.findByText(/Genre charts are capped/)).toBeInTheDocument();
+    expect(await screen.findByText(/Only the first 200 of the 240 artists/)).toBeInTheDocument();
   });
 
   it("keeps ticks and open rows when a card is opened and closed again", async () => {

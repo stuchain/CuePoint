@@ -30,7 +30,6 @@ from cuepoint.models.discovery_run import (
 )
 from cuepoint.persistence.discovery_repository import DiscoveryRepository
 from cuepoint.services.discovery_service import (
-    MAX_GENRE_CHARTS_PER_GENRE,
     charts_mode,
 )
 from tests.fixtures.beatport_library import accept
@@ -124,16 +123,18 @@ class TestTheRuleThatDecidesRowOne:
         assert all(c.group.owner_key is None for c in stored)
         assert {c.group.key: c.group.curator for c in stored}["2"] == "DJEFF"
 
-    def test_a_genre_charts_are_capped_newest_first(self, db, library, world):
-        for n in range(MAX_GENRE_CHARTS_PER_GENRE + 5):
+    def test_every_genre_chart_in_the_dates_is_read(self, db, library, world):
+        service = make(db, world)
+        before = service.run(request(service, genre_ids=[12], artists=[], labels=[]))
+        for n in range(60):
             world.add_chart(
                 Chart(
                     100 + n, f"Extra {n}", (12,), TODAY - timedelta(days=n % 20), (1,)
                 )
             )
-        service = make(db, world)
         run = service.run(request(service, genre_ids=[12], artists=[], labels=[]))
-        assert run.charts_read == MAX_GENRE_CHARTS_PER_GENRE
+        assert run.charts_read == before.charts_read + 60
+        assert service.run_notes(run.id) == []
 
 
 class TestTheCards:
@@ -293,20 +294,10 @@ class TestPicturesAndLimits:
         (note,) = service.run_notes(run.id)
         assert "first 1 of the 2 artists" in note
 
-    def test_genre_charts_are_capped_in_all_and_the_run_says_so(
-        self, db, library, world, monkeypatch
-    ):
-        from cuepoint.services import discovery_service
-
-        monkeypatch.setattr(discovery_service, "MAX_GENRE_CHARTS_TOTAL", 2)
+    def test_a_run_under_the_artist_limit_says_nothing(self, db, library, world):
         service = make(db, world)
-        run = service.run(request(service, artists=[], labels=[]))
-        assert run.charts_read == 2
-        (note,) = service.run_notes(run.id)
-        assert "capped" in note and "150" not in note.replace("2", "")
-        # A run under the caps says nothing.
-        other = service.run(request(service, artists=["Mara Veil"], labels=[]))
-        assert service.run_notes(other.id) == []
+        run = service.run(request(service, artists=["Mara Veil"], labels=[]))
+        assert service.run_notes(run.id) == []
 
 
 class TestTickingCards:

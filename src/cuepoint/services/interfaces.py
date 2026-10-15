@@ -1613,11 +1613,6 @@ class IDiscoveryRepository(ABC):
         ...
 
     @abstractmethod
-    def update_params(self, run_id: int, params_json: str) -> None:
-        """Replace a running run's parameters."""
-        ...
-
-    @abstractmethod
     def group_ref(
         self, run_id: int, kind: str, key: str
     ) -> Optional["DiscoveryRunGroup"]:

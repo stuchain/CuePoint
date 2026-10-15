@@ -627,15 +627,6 @@ class DiscoveryRepository(IDiscoveryRepository):
         ).fetchone()
         return GroupSelection(tracks=int(row["tracks"]), owned=int(row["owned"]))
 
-    def update_params(self, run_id: int, params_json: str) -> None:
-        """Replace a running run's parameters (what it found out it had to cap)."""
-        with self._db.transaction() as conn:
-            _require_running(conn, run_id)
-            conn.execute(
-                "UPDATE discovery_runs SET params_json = ? WHERE id = ?",
-                (params_json, int(run_id)),
-            )
-
     def group_ref(
         self, run_id: int, kind: str, key: str
     ) -> Optional[DiscoveryRunGroup]:

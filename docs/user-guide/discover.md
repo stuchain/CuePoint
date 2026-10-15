@@ -31,8 +31,8 @@ view however long the form is.
   lists of tracks they play. Which charts CuePoint reads depends on the artists
   you chose below: the charts **those artists made** in the genres you tick; with
   **every artist** in your library, the charts any of them made; with **none**,
-  the general charts of those genres, by anyone (the newest 25 in each genre, 150
-  in all; Results says when a dig was cut short).
+  the general charts of those genres, by anyone: every one published in the
+  dates, so a long range in a busy genre takes a while.
   Tick no genre and it reads no charts. The heading says which dates it will
   read ("last 30 days"); to choose other dates open **More options**, which holds
   **Charts from** and **Charts to**. Until you sign in to Beatport, the genres

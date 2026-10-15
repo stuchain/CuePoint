@@ -169,14 +169,6 @@ EVENT_DISCOVERY_RAN = "discovery.ran"
 #: binding note).
 INTERRUPTED_ERROR = "CuePoint stopped before the run finished"
 
-#: The most general genre charts one genre contributes, newest first, when no
-#: artist was chosen: every chart is a request for its tracks, and a month of
-#: charts in a big genre is hundreds.
-MAX_GENRE_CHARTS_PER_GENRE = 25
-
-#: The most general genre charts one dig reads in all, however many genres.
-MAX_GENRE_CHARTS_TOTAL = 150
-
 #: The most explicitly chosen artists one dig looks up: each costs a search at
 #: worst and a listing of releases, so a very long list is cut, and the dig says so.
 MAX_PICKED_ARTISTS = 200
@@ -316,8 +308,6 @@ class _State:
     pending_groups: List[DiscoveryRunGroup] = field(default_factory=list)
     groups: Dict[Tuple[str, str], DiscoveryRunGroup] = field(default_factory=dict)
     artist_ids: Dict[str, int] = field(default_factory=dict)
-    genre_charts: int = 0
-    charts_capped: bool = False
     last_flush: float = 0.0
 
 
@@ -645,11 +635,6 @@ class DiscoveryService(IDiscoveryService):
         if outcome != RUN_SUCCEEDED:
             self._flush(state)
         self._runs.update_counts(state.run_id, _stored_counts(state))
-        if state.charts_capped:
-            params["capped"] = {**params["capped"], "charts": True}  # type: ignore[dict-item]
-            self._runs.update_params(
-                state.run_id, json.dumps(params, ensure_ascii=False)
-            )
         ended = self._runs.finish_run(
             state.run_id,
             outcome,
@@ -829,17 +814,11 @@ class DiscoveryService(IDiscoveryService):
                 request.charts_to,
             )
             if charts is not _FAILED:
-                taken = 0
+                # With no artist chosen, every chart of the genre in the dates is read.
                 for chart in charts:
                     if chart.id in seen:
                         continue
                     if mode == CHARTS_GENRE:
-                        if (
-                            taken >= MAX_GENRE_CHARTS_PER_GENRE
-                            or state.genre_charts >= MAX_GENRE_CHARTS_TOTAL
-                        ):
-                            state.charts_capped = True
-                            break
                         owner_name: Optional[str] = None
                     else:
                         owner_name = chart_curator(chart, artist_names, linked)
@@ -851,8 +830,6 @@ class DiscoveryService(IDiscoveryService):
                     )
                     if tracks is _FAILED:
                         continue
-                    taken += 1
-                    state.genre_charts += 1
                     state.counts["charts_read"] += 1
                     curator = (
                         chart.artist.name if chart.artist else chart.owner_name
@@ -1273,11 +1250,6 @@ class DiscoveryService(IDiscoveryService):
             notes.append(
                 f"Only the first {kept:,} of the {asked:,} artists you chose were looked up: "
                 f"a dig reads at most {MAX_PICKED_ARTISTS:,}."
-            )
-        if capped.get("charts"):
-            notes.append(
-                f"Genre charts are capped at the newest {MAX_GENRE_CHARTS_PER_GENRE} "
-                f"in each genre, {MAX_GENRE_CHARTS_TOTAL} in all."
             )
         return notes
 
