@@ -264,7 +264,7 @@ function KeyList({
       )}
       {onOpenKeys && (
         <Button variant="secondary" className="cp-quick__keys-link" onClick={onOpenKeys}>
-          See these on the Keys page
+          Open in Keys ›
         </Button>
       )}
     </div>

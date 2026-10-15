@@ -16,6 +16,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "../../components/Modal";
 import { PixelIcon } from "../../components/PixelIcon";
 import type { PixelIconName } from "../../components/pixelIcons";
+import { SearchField } from "../../components/SearchField";
+import { nothingMatches } from "../../format/words";
 import "./PickerDialog.css";
 
 export interface PickerItem {
@@ -49,7 +51,8 @@ interface PickerDialogProps {
    * in the tree that this dialog has no way to ask about.
    */
   onCreate?: (name: string) => void;
-  placeholder?: string;
+  /** What is searched, as a noun phrase: the field reads "Search <thing>…". */
+  thing?: string;
   emptyText?: string;
 }
 
@@ -65,8 +68,8 @@ export function PickerDialog({
   onChoose,
   onClose,
   onCreate,
-  placeholder = "Type to narrow the list",
-  emptyText = "Nothing matches.",
+  thing = "the list",
+  emptyText = "Nothing to choose from.",
 }: PickerDialogProps) {
   const [text, setText] = useState("");
   const [active, setActive] = useState(0);
@@ -126,15 +129,13 @@ export function PickerDialog({
   return (
     <Modal open={open} title={title} onClose={onClose}>
       <div className="cp-picker" onKeyDown={onKeyDown}>
-        <input
+        <SearchField
           ref={inputRef}
-          type="text"
           className="cp-picker__filter"
-          aria-label={placeholder}
-          placeholder={placeholder}
+          thing={thing}
           value={text}
-          onChange={(event) => {
-            setText(event.target.value);
+          onValueChange={(value) => {
+            setText(value);
             setActive(0);
           }}
         />
@@ -164,7 +165,7 @@ export function PickerDialog({
             );
           })}
           {shown.length === 0 && !canCreate && (
-            <li className="cp-picker__empty">{emptyText}</li>
+            <li className="cp-picker__empty">{text.trim() !== "" ? nothingMatches(text.trim()) : emptyText}</li>
           )}
         </ul>
 

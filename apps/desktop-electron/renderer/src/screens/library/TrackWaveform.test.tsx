@@ -462,7 +462,7 @@ describe("its loudness on the panel's facts line", () => {
       const fact = await screen.findByTestId("track-fact-loudness");
       expect(within(fact).getByText("Loudness")).toBeVisible();
       expect(fact.querySelector("dd")).toHaveTextContent("−8.4 LUFS");
-      expect(fact).toHaveAttribute("title", expect.stringContaining("Loudness −8.4 LUFS · Peak −0.3 dBFS"));
+      expect(fact.querySelector(".cp-hint > span")).toHaveAttribute("title", expect.stringContaining("Loudness −8.4 LUFS · Peak −0.3 dBFS"));
       expect(await screen.findByTestId("inspector-loudness")).toHaveTextContent("Peak −0.3 dBFS");
     });
 

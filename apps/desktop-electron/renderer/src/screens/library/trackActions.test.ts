@@ -97,13 +97,13 @@ describe("the groups", () => {
       "Remove favorite",
       "Copy 3 tracks",
     ]);
-    expect(by.beatport).toEqual(["Match tracks…", "Review these matches", "Use Beatport's values…"]);
+    expect(by.beatport).toEqual(["Match on Beatport…", "Review these matches", "Use Beatport's values…"]);
     expect(by.more).toEqual([
       "Similar tracks",
       "Artist page",
       "Label page",
       "Edit values…",
-      "Save to files…",
+      "Sync to files…",
       "Show in folder",
     ]);
   });
@@ -163,8 +163,15 @@ describe("one list behind both surfaces", () => {
     const play = groups.find((group) => group.id === "play")!;
     const rest = groups.filter((group) => group.id !== "play");
 
-    // Top level: Play's three entries, then one parent per other group.
-    expect(labels(menu)).toEqual([...labels(play.items), ...rest.map((group) => group.label)]);
+    // Top level: Play's three entries, a "This page" block holding the Library's own groups,
+    // then More last (the base menu every list has is Play, then More).
+    const page = rest.filter((group) => group.id !== "more");
+    expect(labels(menu)).toEqual([
+      ...labels(play.items),
+      "This page",
+      ...page.map((group) => group.label),
+      "More",
+    ]);
     expect(menu.slice(0, play.items.length).map((item) => item.id)).toEqual(
       play.items.map((item) => item.id),
     );
@@ -186,7 +193,8 @@ describe("one list behind both surfaces", () => {
   it("puts a divider above the first parent, and none above the first line", () => {
     const menu = menuFromGroups(trackActionGroups(IN_COLLECTION, handlers()));
     expect(menu[0]!.separatorBefore).toBeFalsy();
-    expect(menu.find((item) => item.id === groupMenuId("organize"))!.separatorBefore).toBe(true);
+    expect(menu.find((item) => item.id === "this-page")!.separatorBefore).toBe(true);
+    expect(menu.find((item) => item.id === groupMenuId("more"))!.separatorBefore).toBe(true);
   });
 
   it("leaves no parent for a group with nothing to offer", () => {
@@ -197,14 +205,14 @@ describe("one list behind both surfaces", () => {
         { organization: partial.organization, more: { onCopy: vi.fn(), onReveal: null } },
       ),
     );
-    expect(labels(menu)).toEqual(["Organize", "More"]);
+    expect(labels(menu)).toEqual(["This page", "Organize", "More"]);
   });
 
   it("is built by the same function for one track, a few and many", () => {
     for (const count of [1, 2, 40_000]) {
       const groups = trackActionGroups({ ...IN_COLLECTION, count }, handlers());
       const menu = menuFromGroups(groups);
-      expect(leaves(menu).map((item) => item.id)).toEqual(
+      expect(leaves(menu).map((item) => item.id).filter((id) => id !== "this-page")).toEqual(
         leaves(groups.flatMap((group) => group.items)).map((item) => item.id),
       );
     }

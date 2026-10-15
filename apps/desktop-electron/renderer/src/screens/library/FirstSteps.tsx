@@ -87,7 +87,7 @@ function useFirstSteps(imported: boolean, { onMatch, onAddToken, onImport, onHow
       label: "Match your tracks",
       hint: "Keys, genres and labels come from Beatport: match your tracks in Clean.",
       done: matched,
-      action: imported ? { label: "Match tracks…", onClick: onMatch } : undefined,
+      action: imported ? { label: "Match on Beatport…", onClick: onMatch } : undefined,
     },
     {
       id: "play",
@@ -219,7 +219,7 @@ function FirstStepsNoteLine({ onMatch, onAddToken }: Omit<FirstStepsProps, "impo
     <div ref={rootRef} className="first-steps-note">
       <button
         type="button"
-        className="first-steps-chip"
+        className="first-steps-chip cp-badge cp-badge--accent"
         aria-label={`First steps: ${doneCount} of 4 done`}
         aria-haspopup="dialog"
         aria-expanded={open}

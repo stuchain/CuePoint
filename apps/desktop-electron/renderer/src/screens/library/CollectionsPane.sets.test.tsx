@@ -221,7 +221,7 @@ describe("a Set's menu", () => {
     expect(onDuplicateSet).toHaveBeenCalledWith(FRIDAY.id);
     expect(onDuplicateSmart).not.toHaveBeenCalled();
     expect(onNotify).toHaveBeenCalledWith(
-      "Copied Friday. The two are separate from now on.",
+      "Duplicated Friday. The two are separate from now on.",
       "info",
     );
   });

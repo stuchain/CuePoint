@@ -22,6 +22,7 @@ import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { PixelIcon } from "../../components/PixelIcon";
 import type { PixelIconName } from "../../components/pixelIcons";
 import "./PlaylistPane.css";
+import { Hint } from "../../components/Hint";
 
 export interface PaneTreeRow {
   /** Stable identity: the focus, the selection and the drop target use it. */
@@ -272,9 +273,9 @@ export function PaneTree({
                 onCancel={() => onRenameCancel?.()}
               />
             ) : (
-              <span className="cp-playlist-pane__name" title={row.title ?? row.name}>
-                {row.name}
-              </span>
+              <Hint text={row.title ?? row.name} inline>
+                <span className="cp-playlist-pane__name">{row.name}</span>
+              </Hint>
             )}
 
             {row.badge}

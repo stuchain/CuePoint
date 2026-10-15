@@ -31,6 +31,7 @@ import {
 import { TrackEditedValues } from "./TrackEditedValues";
 import { useTrackMetadata } from "./useTrackMetadata";
 import { useTrackTags, type TrackTag } from "./useTrackTags";
+import { Hint } from "../../components/Hint";
 
 interface TrackYoursProps {
   trackId: number;
@@ -185,18 +186,19 @@ export function TrackYours({
               {clearLabel}
             </button>
           )}
-          <button
-            type="button"
-            className={`cp-track-yours__favorite${
-              record.favorite ? " cp-track-yours__favorite--on" : ""
-            }`}
-            aria-label="Favorite"
-            aria-pressed={record.favorite}
-            title={record.favorite ? "Remove favorite" : "Favorite"}
-            onClick={() => editor.setFavorite(!record.favorite)}
-          >
-            {record.favorite ? "♥" : "♡"}
-          </button>
+          <Hint text={record.favorite ? "Remove favorite" : "Favorite"}>
+            <button
+              type="button"
+              className={`cp-track-yours__favorite${
+                record.favorite ? " cp-track-yours__favorite--on" : ""
+              }`}
+              aria-label="Favorite"
+              aria-pressed={record.favorite}
+              onClick={() => editor.setFavorite(!record.favorite)}
+            >
+              {record.favorite ? "♥" : "♡"}
+            </button>
+          </Hint>
         </div>
       </div>
 

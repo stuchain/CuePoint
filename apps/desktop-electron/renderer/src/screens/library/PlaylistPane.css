@@ -99,8 +99,8 @@
 
 .cp-playlist-pane__icon {
   flex-shrink: 0;
-  width: calc(var(--icon-size) * 0.6);
-  height: calc(var(--icon-size) * 0.6);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   color: var(--fg-muted);
 }
 

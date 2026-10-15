@@ -20,6 +20,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { PixelIcon } from "../../components/PixelIcon";
 
 import { Button } from "../../components/Button";
+import { SearchField } from "../../components/SearchField";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
 import type {
@@ -59,7 +60,9 @@ import { QuickFilters } from "./QuickFilters";
 import { hiddenChipCount } from "./chipOverflow";
 import { isModified, smartStatus, type SmartAttachment } from "./smartFilter";
 import { pageOfRule, type PageRef } from "../discover/discoverLinks";
+import { RETRY } from "../../format/words";
 import "./FilterBar.css";
+import { Hint } from "../../components/Hint";
 
 /** One Collection a membership clause can name. Folders are drawn, not chosen. */
 export interface FilterCollectionOption {
@@ -488,11 +491,11 @@ export function FilterBar({
   return (
     <div className="cp-filter-bar">
       <div className="cp-filter-bar__row">
-        <TextField
+        <SearchField
+          thing="these tracks"
           label="Search"
           value={query}
-          placeholder="Search these tracks…"
-          onChange={(event) => onQueryChange(event.target.value)}
+          onValueChange={onQueryChange}
         />
 
         {onRequestQuickFacets && (
@@ -532,15 +535,16 @@ export function FilterBar({
                   >
                     <span>{text}</span>
                     {page && onOpenPage && (
-                      <button
-                        type="button"
-                        className="cp-filter-bar__chip-open"
-                        aria-label={`Open page: ${text}`}
-                        title={page.kind === "label" ? "Open the label page" : "Open the artist page"}
-                        onClick={() => onOpenPage(page)}
-                      >
-                        Open page
-                      </button>
+                      <Hint text={page.kind === "label" ? "Open the label page" : "Open the artist page"}>
+                        <button
+                          type="button"
+                          className="cp-filter-bar__chip-open"
+                          aria-label={`Open page: ${text}`}
+                          onClick={() => onOpenPage(page)}
+                        >
+                          Open page
+                        </button>
+                      </Hint>
                     )}
                     <button
                       type="button"
@@ -673,7 +677,7 @@ export function FilterBar({
           <span>{refusal}</span>
           {onRetry && (
             <button type="button" onClick={onRetry}>
-              Try again
+              {RETRY}
             </button>
           )}
         </div>

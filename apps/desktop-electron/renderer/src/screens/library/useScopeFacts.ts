@@ -18,6 +18,21 @@ import type { LibraryQuery } from "./libraryQuery";
 /** Which scope to describe: the three fields of a query that name one. */
 export type ScopeDescriptor = Pick<LibraryQuery, "playlistId" | "collectionId" | "scope">;
 
+/**
+ * What says "the library is a different one now" to the scope's size and facts. The window's
+ * reload generation alone is not enough: an import that finished elsewhere (the File menu, the
+ * welcome dialog) replaces the library without this page reloading its window, and the answer
+ * asked for the empty library ("0 tracks") then stood beside rows that were listed. The summary's
+ * import time and track count move whenever the library is replaced or refreshed.
+ */
+export function libraryIdentityOf(
+  windowIdentity: string,
+  summary: { track_count: number; source: { imported_at: string } | null } | null,
+): string {
+  const generation = windowIdentity.split("\u0000")[0] ?? "";
+  return `${generation}:${summary?.source?.imported_at ?? ""}:${summary?.track_count ?? ""}`;
+}
+
 export function useScopeFacts(
   descriptor: ScopeDescriptor,
   /** Changes when the library does, so a stale answer is asked again. */

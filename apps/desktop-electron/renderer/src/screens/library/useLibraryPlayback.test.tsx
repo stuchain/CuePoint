@@ -201,6 +201,8 @@ describe("the queue item a row becomes", () => {
       artist: "Artist",
       key: "8A",
       bpm: 128,
+      label: null,
+      year: null,
       durationSeconds: 300,
     });
   });
@@ -216,6 +218,8 @@ describe("the queue item a row becomes", () => {
       artist: "Artist",
       key: null,
       bpm: null,
+      label: null,
+      year: null,
       durationSeconds: null,
     });
     expect(Object.values(bare).every((value) => value !== undefined)).toBe(true);

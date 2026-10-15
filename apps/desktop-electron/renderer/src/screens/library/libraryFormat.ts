@@ -6,6 +6,8 @@
  * understand that DEC-003's removals are permanent. That deserves tests that
  * read like the sentences themselves, not tests that go through a render.
  */
+import { formatDayTime } from "../../format/dates";
+import { formatTotal } from "../../format/durations";
 import type {
   LibraryQuickFacets,
   LibrarySourceInfo,
@@ -40,13 +42,7 @@ export function formatWhen(iso: string | null | undefined): string {
   if (!iso) return "";
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDayTime(parsed);
 }
 
 type SourceState = "missing" | "changed" | "unknown" | "unchanged";
@@ -256,12 +252,7 @@ export function jobErrorMessage(error?: { code?: string; message?: string }): st
  */
 export function formatLength(seconds: number): string | null {
   if (!(seconds > 0)) return null;
-  if (seconds < 60) return `${Math.round(seconds)} s`;
-  const minutes = Math.round(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (hours === 0) return `${rest} min`;
-  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+  return formatTotal(seconds);
 }
 
 /** "122\u2013128 BPM", "124 BPM" for one value, null when no track has a BPM. */

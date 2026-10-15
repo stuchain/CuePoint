@@ -126,7 +126,8 @@ import {
 import { revealTrack } from "../clean/revealTrack";
 import { forgetWaveforms } from "../../components/waveform/waveformCache";
 import { useCollectionTree } from "./useCollectionTree";
-import { useScopeFacts } from "./useScopeFacts";
+import { goTo } from "../../format/words";
+import { libraryIdentityOf, useScopeFacts } from "./useScopeFacts";
 import { useScopeTotal } from "./useScopeTotal";
 import { followJob } from "./followJob";
 import { appliedLine, fileName, jobErrorMessage } from "./libraryFormat";
@@ -229,7 +230,7 @@ export interface LibraryScreenProps {
   onOpenMatch?: (tracks?: CleanTracks) => void;
   /**
    * Open the Keys page on the playlist, Collection or Set the table is open on, or on the whole
-   * library when it is open on none (PAGES-16): the Key list's "See these on the Keys page".
+   * library when it is open on none (PAGES-16): the Key list's "Open in Keys ›".
    */
   onOpenKeys?: (sources: Array<{ kind: "playlist" | "collection" | "set"; id: number }>) => void;
   /**
@@ -337,7 +338,7 @@ export function LibraryScreen({
   );
   const window_ = useTrackWindow(query);
   const selection = useTrackSelection(query, window_.total, window_.source.getRow);
-  const libraryIdentity = window_.identity.split("\u0000")[0] ?? "";
+  const libraryIdentity = libraryIdentityOf(window_.identity, summary);
   const scopeTotal = useScopeTotal(query, window_.total, libraryIdentity);
   const playback = useLibraryPlayback({
     query,
@@ -481,7 +482,7 @@ export function LibraryScreen({
 
   /**
    * True when the list is Health's "No Beatport key": a Key is empty rule, with
-   * rows to match (FLW-14). Its note offers Match tracks… with these tracks.
+   * rows to match (FLW-14). Its note offers Match on Beatport… with these tracks.
    */
   const keyIsEmptyList =
     !window_.loading &&
@@ -1307,7 +1308,7 @@ export function LibraryScreen({
     (id: number, patch: TagPatch) =>
       void runTagWrite(async () => {
         const bridge = window.cuepoint?.updateTag;
-        if (!bridge) throw new Error("This build cannot edit tags.");
+        if (!bridge) throw new Error("You can only edit tags in the CuePoint desktop app.");
         const { tag } = await bridge({ id, ...patch });
         return `Saved “${tag.name}”.`;
       }),
@@ -1318,7 +1319,7 @@ export function LibraryScreen({
     (tag: TagUsage) =>
       void runTagWrite(async () => {
         const bridge = window.cuepoint?.deleteTag;
-        if (!bridge) throw new Error("This build cannot edit tags.");
+        if (!bridge) throw new Error("You can only edit tags in the CuePoint desktop app.");
         const { untagged } = await bridge({ id: tag.id });
         return deletedLine(tag.name, untagged);
       }),
@@ -1329,7 +1330,7 @@ export function LibraryScreen({
     (source: TagUsage, target: TagUsage) =>
       void runTagWrite(async () => {
         const bridge = window.cuepoint?.mergeTags;
-        if (!bridge) throw new Error("This build cannot edit tags.");
+        if (!bridge) throw new Error("You can only edit tags in the CuePoint desktop app.");
         const { moved } = await bridge({ source_id: source.id, target_id: target.id });
         return mergedLine(source.name, target.name, moved);
       }),
@@ -2019,7 +2020,7 @@ export function LibraryScreen({
                     className="library-screen__scope-link"
                     onClick={() => onOpenInPrepare(scopedSet.id)}
                   >
-                    Open in Prepare
+                    {goTo("Prepare")}
                   </button>
                 )}
               </p>

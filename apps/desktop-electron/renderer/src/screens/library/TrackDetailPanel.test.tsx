@@ -157,9 +157,11 @@ describe("what the panel shows", () => {
       />,
     );
     const keyline = screen.getByTestId("track-key");
+    // The key line is only the clickable chip, then the key's name.
     const chip = keyline.querySelector(".key-chip--8A") as HTMLElement;
     expect(chip).toHaveTextContent("8A");
-    expect(chip).toHaveAttribute("title", "A minor");
+    expect(chip.tagName).toBe("BUTTON");
+    expect(keyline.querySelectorAll(".key-chip")).toHaveLength(1);
     expect(keyline).toHaveTextContent("8A");
     expect(keyline).toHaveTextContent("A minor · Beatport");
   });

@@ -259,7 +259,7 @@ describe("the quick filters (FLW-4)", () => {
     expect(
       await panel.findByText("No tracks have a Beatport key yet. Keys come from matching."),
     ).toBeInTheDocument();
-    expect(panel.queryByRole("button", { name: "Match tracks…" })).toBeNull();
+    expect(panel.queryByRole("button", { name: "Match on Beatport…" })).toBeNull();
   });
 
   it("says only this view has no key when the library has some", async () => {
@@ -274,7 +274,7 @@ describe("the quick filters (FLW-4)", () => {
     expect(await panel.findByText("No track here has a Beatport key.")).toBeInTheDocument();
     await waitFor(() => expect(answer.getLibraryFacet).toHaveBeenCalled());
     expect(panel.queryByText(/Keys come from matching/)).toBeNull();
-    expect(panel.queryByRole("button", { name: "Match tracks…" })).toBeNull();
+    expect(panel.queryByRole("button", { name: "Match on Beatport…" })).toBeNull();
   });
 
   it("offers the view's BPM range as two boxes and Apply", () => {
@@ -413,12 +413,12 @@ describe("In playlist (FLW-7)", () => {
 });
 
 describe("the Key list's link to the Keys page (PAGES-16)", () => {
-  it("offers 'See these on the Keys page' under the keys, and opens the page", () => {
+  it("offers 'Open in Keys ›' under the keys, and opens the page", () => {
     const onOpenKeys = vi.fn();
     render(<Harness onOpenKeys={onOpenKeys} />);
     fireEvent.click(screen.getByRole("button", { name: "Key" }));
     const panel = within(screen.getByRole("dialog", { name: "Key" }));
-    fireEvent.click(panel.getByRole("button", { name: "See these on the Keys page" }));
+    fireEvent.click(panel.getByRole("button", { name: "Open in Keys ›" }));
     expect(onOpenKeys).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog", { name: "Key" })).toBeNull();
   });
@@ -437,6 +437,6 @@ describe("the Key list's link to the Keys page (PAGES-16)", () => {
   it("is not drawn where the page has no Keys page to open", () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole("button", { name: "Key" }));
-    expect(screen.queryByRole("button", { name: "See these on the Keys page" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open in Keys ›" })).toBeNull();
   });
 });

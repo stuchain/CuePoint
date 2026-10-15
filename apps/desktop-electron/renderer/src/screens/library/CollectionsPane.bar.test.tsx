@@ -122,7 +122,7 @@ describe("the bar under the tree", () => {
     await userEvent.click(within(bar()).getByRole("button", { name: "Delete" }));
     const dialog = await screen.findByRole("dialog", { name: `Delete ${WARMUP.name}?` });
     expect(props.onDelete).not.toHaveBeenCalled();
-    await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: `Delete ${WARMUP.name}` }));
     expect(props.onDelete).toHaveBeenCalledWith(WARMUP.id);
   });
 
@@ -147,7 +147,7 @@ describe("the bar under the tree", () => {
     );
     await userEvent.click(within(bar()).getByRole("button", { name: "Delete" }));
     const dialog = await screen.findByRole("dialog", { name: `Delete ${WARMUP.name}?` });
-    await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: `Delete ${WARMUP.name}` }));
     expect(props.onDelete).toHaveBeenCalledWith(WARMUP.id);
 
     // The parent deselects the deleted node, so the bar unmounts.

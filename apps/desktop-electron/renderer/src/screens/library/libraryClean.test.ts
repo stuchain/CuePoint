@@ -244,7 +244,7 @@ describe("the Beatport ▸ entries of the operations list", () => {
   it("offer matching, reviewing and Beatport's values, and no deciding", () => {
     const items = beatportMenuItems({ count: 3 }, handlers());
     expect(items.map((item) => item.label)).toEqual([
-      "Match tracks…",
+      "Match on Beatport…",
       "Review these matches",
       "Use Beatport's values…",
     ]);
@@ -271,7 +271,7 @@ describe("the edit and save entries of the operations list", () => {
   it("offer editing and saving into the files, and no file check (Clean's)", () => {
     expect(fixMenuItems({ count: 3 }, handlers()).map((item) => item.label)).toEqual([
       "Edit values…",
-      "Save to files…",
+      "Sync to files…",
     ]);
   });
 

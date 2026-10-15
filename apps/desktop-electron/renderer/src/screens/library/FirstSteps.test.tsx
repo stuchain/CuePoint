@@ -256,14 +256,14 @@ describe("the buttons", () => {
     expect(screen.getByRole("button", { name: "Sign in to Beatport…" })).toBeInTheDocument();
     // The Library's own header has the import button, and there is nothing to match yet.
     expect(screen.queryByRole("button", { name: "Import a Rekordbox file…" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Match on Beatport…" })).toBeNull();
     expect(within(item("Play a track")).queryByRole("button")).toBeNull();
   });
 
-  it("offers Match tracks… once there are tracks to match", () => {
+  it("offers Match on Beatport… once there are tracks to match", () => {
     install({ health: health(10, 10) });
     mount({ imported: true });
-    expect(screen.getByRole("button", { name: "Match tracks…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Match on Beatport…" })).toBeInTheDocument();
   });
 
   it("takes a ticked step's button away", async () => {
@@ -276,7 +276,7 @@ describe("the buttons", () => {
   it("each button calls what the page gave it", async () => {
     install({ health: health(10, 10) });
     const { onMatch, onAddToken } = mount({ imported: true });
-    await userEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Match on Beatport…" }));
     await userEvent.click(screen.getByRole("button", { name: "Sign in to Beatport…" }));
     expect(onMatch).toHaveBeenCalledTimes(1);
     expect(onAddToken).toHaveBeenCalledTimes(1);
@@ -380,13 +380,13 @@ describe("the chip in the Library header", () => {
     expect(await screen.findByText("First steps 2/4")).toBeInTheDocument();
   });
 
-  it("opens the checklist in a dialog with Match tracks… inside it", async () => {
+  it("opens the checklist in a dialog with Match on Beatport… inside it", async () => {
     install({ health: health(10, 10) });
     const { onMatch } = mountNote();
     await userEvent.click(await screen.findByRole("button", { name: /First steps/ }));
     const dialog = screen.getByRole("dialog", { name: "First steps" });
     expect(within(dialog).getAllByRole("listitem")).toHaveLength(4);
-    await userEvent.click(within(dialog).getByRole("button", { name: "Match tracks…" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Match on Beatport…" }));
     expect(onMatch).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).toBeNull();
   });

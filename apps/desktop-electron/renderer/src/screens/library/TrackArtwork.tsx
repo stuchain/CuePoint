@@ -5,6 +5,7 @@
  * guarded route decodes and shrinks it. When there is none the box says so
  * rather than collapsing, so the header does not jump between tracks.
  */
+import { ArtworkPlaceholder } from "../../components/ArtworkPlaceholder";
 import { useTrackArtwork } from "../clean/useTrackArtwork";
 
 export function TrackArtwork({ trackId, version }: { trackId: number; version: number }) {
@@ -14,7 +15,7 @@ export function TrackArtwork({ trackId, version }: { trackId: number; version: n
       {url ? (
         <img src={url} alt="Artwork" />
       ) : (
-        <span className="cp-track-detail__artwork-none">No artwork</span>
+        <ArtworkPlaceholder />
       )}
     </div>
   );

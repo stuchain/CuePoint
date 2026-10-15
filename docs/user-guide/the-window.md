@@ -364,8 +364,8 @@ at Medium otherwise (at Small if Compact would be too big too). If you chose a s
 before, or you updated from an earlier version, CuePoint keeps it, and opens at
 Medium if you never chose one.
 
-**Tables** holds two more choices. **Row density** is **Compact** (the default) or
-**Roomy**: rows are as tall as the text size times the density, so a Compact
+**Tables** holds two more choices. **Row density** is **Compact (26 px)** (the default) or
+**Roomy (32 px)**, at the default size: rows are as tall as the text size times the density, so a Compact
 Library shows many more tracks than before. **Color keys** (on) draws each key
 as a chip in its Camelot color; off, keys are plain text.
 

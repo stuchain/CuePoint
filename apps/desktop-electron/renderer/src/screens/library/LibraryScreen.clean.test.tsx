@@ -271,7 +271,7 @@ const BETWEEN = [
   "Favorite",
   "Remove favorite",
   "Copy",
-  "Match tracks…",
+  "Match on Beatport…",
   "Review these matches",
   "Use Beatport's values…",
   "Edit values…",
@@ -301,6 +301,7 @@ describe("the operations list", () => {
       "Play",
       "Play next",
       "Add to queue",
+      "This page",
       "Organize",
       "Beatport",
       "More",
@@ -347,7 +348,7 @@ describe("what the entries do", () => {
     renderScreen();
     await tableReady();
     await select("Track 1", "Track 3");
-    await userEvent.click((await menuItem("Match tracks…", await openGroup("Beatport"))));
+    await userEvent.click((await menuItem("Match on Beatport…", await openGroup("Beatport"))));
     expect(OPEN_MATCH).toHaveBeenCalledTimes(1);
     expect(OPEN_MATCH.mock.calls[0]![0]).toEqual({ ids: expect.arrayContaining([1, 3]) });
     expect(mock("startCleanMatch")).not.toHaveBeenCalled();
@@ -359,7 +360,7 @@ describe("what the entries do", () => {
     await userEvent.click(screen.getByText("Track 1"));
     fireEvent.keyDown(screen.getByRole("table", { name: "Library tracks" }), { key: "a", ctrlKey: true });
     await screen.findByText(/everything matching/);
-    await userEvent.click((await menuItem("Match tracks…", await openGroup("Beatport"))));
+    await userEvent.click((await menuItem("Match on Beatport…", await openGroup("Beatport"))));
     expect(OPEN_MATCH.mock.calls[0]![0]).toEqual({ query: expect.any(Object), count: 3 });
   });
 
@@ -396,7 +397,7 @@ describe("what the entries do", () => {
     await tableReady();
     await select("Track 1", "Track 2");
     const more = await openGroup("More");
-    expect(within(more).queryByRole("menuitem", { name: "Save to files…" })).toBeNull();
+    expect(within(more).queryByRole("menuitem", { name: "Sync to files…" })).toBeNull();
     expect(within(more).getByRole("menuitem", { name: "Edit values…" })).toBeInTheDocument();
   });
 
@@ -632,6 +633,6 @@ describe("no save bar on the Library", () => {
     renderScreen();
     await tableReady();
     expect(screen.queryByRole("region", { name: "Save to files" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Save to files…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sync to files…" })).toBeNull();
   });
 });

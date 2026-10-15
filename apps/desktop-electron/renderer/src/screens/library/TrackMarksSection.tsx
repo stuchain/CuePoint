@@ -8,6 +8,7 @@
  * so no mark is only a picture.
  */
 import type { TrackMarksSummary } from "../../api/cuepointBridge.types";
+import { Hint } from "../../components/Hint";
 import {
   MARKS_NOT_READ,
   VARIABLE_GRID_HINT,
@@ -46,12 +47,9 @@ export function TrackMarksSection({ marks }: TrackMarksSectionProps) {
         </ul>
       )}
       {grid && (
-        <p
-          className="cp-track-detail__grid"
-          title={marks.beat_grid?.variable ? VARIABLE_GRID_HINT : undefined}
-        >
-          {grid}
-        </p>
+        <Hint text={marks.beat_grid?.variable ? VARIABLE_GRID_HINT : undefined}>
+          <p className="cp-track-detail__grid">{grid}</p>
+        </Hint>
       )}
     </div>
   );

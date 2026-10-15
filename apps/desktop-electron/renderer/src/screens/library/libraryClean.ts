@@ -165,7 +165,7 @@ export interface BeatportMenuHandlers {
   onUseBeatport?: () => void;
 }
 
-/** What Edit values… and Save to files… do; More ▸ holds them (FLW-8). */
+/** What Edit values… and Sync to files… do; More ▸ holds them (FLW-8). */
 export interface FixMenuHandlers {
   onEdit?: () => void;
   onWriteTags?: () => void;
@@ -213,7 +213,7 @@ export function beatportMenuItems(
   if (context.count <= 0) return [];
   const items: TrackContextMenuItem[] = [];
   if (handlers.onMatch) {
-    items.push({ id: "beatport-match", label: "Match tracks…", onSelect: handlers.onMatch });
+    items.push({ id: "beatport-match", label: "Match on Beatport…", onSelect: handlers.onMatch });
   }
   if (handlers.onReview) {
     items.push({
@@ -245,7 +245,7 @@ export function fixMenuItems(
   if (handlers.onWriteTags) {
     items.push({
       id: "fix-write-tags",
-      label: "Save to files…",
+      label: "Sync to files…",
       onSelect: handlers.onWriteTags,
     });
   }

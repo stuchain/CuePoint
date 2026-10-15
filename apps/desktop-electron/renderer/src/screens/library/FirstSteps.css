@@ -72,26 +72,14 @@
   position: relative;
 }
 
+/* The chip look is the shared badge (cp-badge--accent); this only makes it a button. */
 .first-steps-chip {
-  padding: 0 var(--space-xs);
-  background: transparent;
-  border: var(--control-border-width) solid var(--border-control);
-  box-shadow: none;
-  color: var(--accent-primary);
-  font-family: var(--font-pixel);
-  font-size: var(--font-size-xs);
-  line-height: var(--space-lg);
-  white-space: nowrap;
+  font: inherit;
   cursor: pointer;
 }
 
-.first-steps-chip:hover,
-.first-steps-chip:focus-visible {
-  background: var(--bg-selected);
-}
-
-.first-steps-chip:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
+.first-steps-chip:hover {
+  filter: brightness(1.15);
 }
 
 .first-steps-note__popover {

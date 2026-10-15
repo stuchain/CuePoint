@@ -8,6 +8,7 @@
 import type { EntityKind, TrackCreditLink } from "../../api/cuepointBridge.types";
 import { creditSegments } from "./creditSegments";
 import "./CreditLinks.css";
+import { Hint } from "../../components/Hint";
 
 interface CreditLinksProps {
   credit: string;
@@ -27,17 +28,21 @@ export function CreditLinks({ credit, links, onOpen }: CreditLinksProps) {
     <>
       {creditSegments(credit, links).map(({ text, link }, index) =>
         link ? (
-          <button
+          <Hint
             // The split keeps each name once, so a ref is unique in a credit;
             // the index keeps the key stable all the same.
             key={`${link.ref}-${index}`}
-            type="button"
-            className="cp-credit-link"
-            title={hint(link)}
-            onClick={() => onOpen(link.kind, link.ref)}
+            text={hint(link)}
+            inline
           >
-            {text}
-          </button>
+            <button
+              type="button"
+              className="cp-credit-link"
+              onClick={() => onOpen(link.kind, link.ref)}
+            >
+              {text}
+            </button>
+          </Hint>
         ) : (
           <span key={`text-${index}`}>{text}</span>
         ),

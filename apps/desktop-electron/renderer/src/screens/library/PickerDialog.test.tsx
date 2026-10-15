@@ -36,7 +36,7 @@ function draw(props: Partial<React.ComponentProps<typeof PickerDialog>> = {}) {
 }
 
 function filter(): HTMLElement {
-  return screen.getByRole("textbox");
+  return screen.getByRole("searchbox");
 }
 
 describe("the list", () => {

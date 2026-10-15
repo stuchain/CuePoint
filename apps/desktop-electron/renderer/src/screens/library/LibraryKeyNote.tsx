@@ -5,7 +5,7 @@
  * own correction, and Rekordbox's is never used. A library nobody has matched
  * therefore has no keys at all, and a Key column of dashes with no word of
  * explanation reads as a broken import. This is the word, on the notice line,
- * (Matching is the bar's Beatport ▸ Match tracks… once tracks are selected.)
+ * (Matching is the bar's Beatport ▸ Match on Beatport… once tracks are selected.)
  *
  * It asks the engine, over the whole library, rather than guessing from the
  * rows on screen: a note that is wrong about the user's own library is worse

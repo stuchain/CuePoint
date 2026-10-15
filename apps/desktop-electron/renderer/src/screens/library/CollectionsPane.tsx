@@ -40,6 +40,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "../../components/Button";
+import { Hint } from "../../components/Hint";
+import { CANCEL, deleteLabel, deleteTitle } from "../../format/words";
 import { Modal } from "../../components/Modal";
 import { PixelIcon } from "../../components/PixelIcon";
 import {
@@ -279,7 +281,7 @@ export function CollectionsPane({
     if (!run) return;
     const result = await run(node.id);
     if (!result.ok) say(result.error ?? "Could not duplicate that.", "warning");
-    else say(`Copied ${node.name}. The two are separate from now on.`, "info");
+    else say(`Duplicated ${node.name}. The two are separate from now on.`, "info");
   };
 
   const confirmFreeze = async () => {
@@ -528,14 +530,15 @@ export function CollectionsPane({
     // the number a running order is judged by (DEC-058, DEC-104).
     count: holdsTracks(row.node) ? row.node.entry_count : null,
     badge: row.node.broken ? (
-      <span
-        className="cp-collections__broken"
-        role="img"
-        aria-label={`Broken: ${row.node.problem ?? "its rules cannot be run"}`}
-        title={row.node.problem ?? "Its rules cannot be run"}
-      >
-        !
-      </span>
+      <Hint text={row.node.problem ?? "Its rules cannot be run"} inline>
+        <span
+          className="cp-collections__broken"
+          role="img"
+          aria-label={`Broken: ${row.node.problem ?? "its rules cannot be run"}`}
+        >
+          !
+        </span>
+      </Hint>
     ) : null,
   }));
 
@@ -661,20 +664,23 @@ export function CollectionsPane({
           onKeyDown={barKeys.onKeyDown}
         >
           {barButtons.map((button, index) => (
-            <button
+            <Hint
               key={button.id}
-              type="button"
-              className="cp-collections__bar-button"
-              aria-label={button.short ? button.label : undefined}
-              aria-disabled={button.reason ? true : undefined}
-              title={button.reason ?? (button.short ? button.label : undefined)}
-              {...barKeys.buttonProps(index)}
-              onClick={() => {
-                if (!button.reason) button.run();
-              }}
+              text={button.reason ?? (button.short ? button.label : undefined)}
             >
-              {button.short ?? button.label}
-            </button>
+              <Button
+                variant="secondary"
+                className="cp-collections__bar-button"
+                aria-label={button.short ? button.label : undefined}
+                aria-disabled={button.reason ? true : undefined}
+                {...barKeys.buttonProps(index)}
+                onClick={() => {
+                  if (!button.reason) button.run();
+                }}
+              >
+                {button.short ?? button.label}
+              </Button>
+            </Hint>
           ))}
         </div>
       )}
@@ -726,14 +732,15 @@ export function CollectionsPane({
 
       <Modal
         open={pending !== null}
-        title={`Delete ${pending?.node.name ?? ""}?`}
+        title={deleteTitle(pending?.node.name ?? "")}
+        variant="danger"
         onClose={() => setPending(null)}
         primaryAction={{
-          label: "Delete",
+          label: deleteLabel(pending?.node.name ?? ""),
           onClick: () => void confirmDelete(),
           loading: deleting,
         }}
-        secondaryAction={{ label: "Keep it", onClick: () => setPending(null) }}
+        secondaryAction={{ label: CANCEL, onClick: () => setPending(null) }}
       >
         <p>
           {pending?.summary

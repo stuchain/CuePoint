@@ -3,7 +3,7 @@
  *
  * Health's "No Beatport key" opens the Library on Key is empty, the same rule
  * as its count. The note says what the list is; matching them is the bar's
- * Beatport ▸ Match tracks… once they are selected. It also says how this differs from "Not matched": a track
+ * Beatport ▸ Match on Beatport… once they are selected. It also says how this differs from "Not matched": a track
  * can be matched and still have no key, when Beatport's record has none.
  */
 import "./LibraryNotice.css";

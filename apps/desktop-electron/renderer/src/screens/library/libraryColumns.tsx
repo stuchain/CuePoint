@@ -11,6 +11,8 @@
  * Every field DEC-034 imported has a column. Which of them a user actually
  * sees is theirs to decide (DEC-042); the defaults are what a DJ looks at.
  */
+import type { ReactNode } from "react";
+import { MissingValue } from "../../components/MissingValue";
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
 import { camelotOf } from "../../components/wheel/keyColour";
@@ -29,8 +31,9 @@ import { formatDuration } from "./trackValues";
  * with no rating shows nothing; one rated zero shows "unrated", because those
  * are different facts (DEC-034).
  */
-function formatRating(rating: number | null): string {
-  return rating == null ? "" : starsFor(rating);
+function formatRating(rating: number | null): ReactNode {
+  // Unrated and "rated zero" both read as the muted dash: "unrated" is only a filter's word.
+  return rating == null || Math.round(rating) <= 0 ? <MissingValue /> : starsFor(rating);
 }
 
 export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
@@ -127,7 +130,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "rating",
     minWidthPx: 70,
     defaultWidthPx: 92,
-    render: (track) => formatRating(track.rating),
+    render: (track) => formatRating(track.effective_rating),
   },
   {
     id: "album",

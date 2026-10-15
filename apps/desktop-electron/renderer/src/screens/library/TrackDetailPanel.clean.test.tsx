@@ -390,7 +390,7 @@ describe("the artwork", () => {
   it("says when there is none", async () => {
     bridge.getTrackArtwork.mockResolvedValue(null);
     panel();
-    expect(await screen.findByText("No artwork")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "No artwork" })).toBeInTheDocument();
   });
 });
 

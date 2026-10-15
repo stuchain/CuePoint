@@ -785,8 +785,8 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     expect(
       await screen.findByText("No tracks have a Beatport key yet. Keys come from matching."),
     ).toBeInTheDocument();
-    // Matching is the bar's Beatport ▸ Match tracks…, not a button on the note.
-    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
+    // Matching is the bar's Beatport ▸ Match on Beatport…, not a button on the note.
+    expect(screen.queryByRole("button", { name: "Match on Beatport…" })).toBeNull();
   });
 
   it("shows one notice at a time: the ready note first, the key note after", async () => {
@@ -837,7 +837,7 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     expect(screen.queryByRole("dialog", { name: "First steps" })).toBeNull();
     await userEvent.click(entry);
     const list = within(screen.getByRole("dialog", { name: "First steps" }));
-    await userEvent.click(list.getByRole("button", { name: "Match tracks…" }));
+    await userEvent.click(list.getByRole("button", { name: "Match on Beatport…" }));
     expect(onOpenMatch).toHaveBeenCalledTimes(1);
   });
 
@@ -2327,7 +2327,7 @@ describe("organizing a selection (ORG-11)", () => {
 
       await openMenuOn("Track 2");
       await userEvent.click((await menuItem("Add tag…")));
-      const filter = await screen.findByRole("textbox", { name: "Type to narrow the list" });
+      const filter = await screen.findByRole("searchbox", { name: "Search the list" });
       fireEvent.change(filter, { target: { value: "Closer" } });
       await userEvent.click(screen.getByRole("button", { name: /Create “Closer”/ }));
 
@@ -3502,7 +3502,7 @@ describe("opened on a Health count's rules (CLEAN-12)", () => {
     const note = await screen.findByRole("status", { name: "Tracks with no Beatport key" });
     expect(note).toHaveTextContent("3 tracks have no Beatport key.");
     expect(note).toHaveTextContent("Beatport's record has none");
-    expect(within(note).queryByRole("button", { name: "Match tracks…" })).toBeNull();
+    expect(within(note).queryByRole("button", { name: "Match on Beatport…" })).toBeNull();
   });
 
   it("shows no such note for another rule", async () => {
@@ -3657,7 +3657,7 @@ describe("the Key list's link to the Keys page (PAGES-16)", () => {
 
   async function seeOnKeysPage() {
     await userEvent.click(within(document.querySelector(".cp-quick") as HTMLElement).getByRole("button", { name: "Key" }));
-    await userEvent.click(await screen.findByRole("button", { name: "See these on the Keys page" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open in Keys ›" }));
   }
 
   it("opens Keys on the whole library when no playlist or Collection is open", async () => {
@@ -3725,14 +3725,14 @@ describe("the Key list's link to the Keys page (PAGES-16)", () => {
     await userEvent.click(within(tree).getByText("Recent techno"));
     await waitFor(() => expect(lastBrowse()).toMatchObject({ scope: "smart" }));
     await userEvent.click(within(document.querySelector(".cp-quick") as HTMLElement).getByRole("button", { name: "Key" }));
-    expect(screen.queryByRole("button", { name: "See these on the Keys page" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open in Keys ›" })).toBeNull();
   });
 
   it("offers no link where the page has nowhere to send it", async () => {
     renderScreen();
     await tableReady();
     await userEvent.click(within(document.querySelector(".cp-quick") as HTMLElement).getByRole("button", { name: "Key" }));
-    expect(screen.queryByRole("button", { name: "See these on the Keys page" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open in Keys ›" })).toBeNull();
   });
 });
 

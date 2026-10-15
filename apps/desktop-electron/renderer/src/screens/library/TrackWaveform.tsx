@@ -38,6 +38,7 @@ import { useWaveformRequest } from "../../components/waveform/useWaveformRequest
 import { WaveformCanvas } from "../../components/waveform/WaveformCanvas";
 import { useWaveformBox } from "../../components/waveform/waveformEnvironment";
 import { secondsAtOffset } from "../../components/waveform/waveformLayout";
+import { Hint } from "../../components/Hint";
 
 export function TrackWaveform({
   trackId,
@@ -113,9 +114,11 @@ export function TrackWaveform({
         )}
       </div>
       {loudness ? (
-        <p className="cp-track-waveform__loudness" data-testid="inspector-loudness" title={LOUDNESS_LINE_TITLE}>
-          {loudness}
-        </p>
+        <Hint text={LOUDNESS_LINE_TITLE}>
+          <p className="cp-track-waveform__loudness" data-testid="inspector-loudness">
+            {loudness}
+          </p>
+        </Hint>
       ) : null}
     </section>
   );

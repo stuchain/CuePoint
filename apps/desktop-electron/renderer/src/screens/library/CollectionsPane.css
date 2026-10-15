@@ -95,38 +95,12 @@
   padding-block: round(down, calc(var(--space-xs) / 2), 1px);
 }
 
-.cp-collections__bar-button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  min-height: var(--control-height);
-  padding: 0 round(down, calc(var(--space-xs) * 0.75), 1px);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-toolbar);
-  color: var(--fg-primary);
-  font: inherit;
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-  line-height: 1;
-  /* Text only and never broken: in the default window the pane is ~160px wide,
-     so the buttons wrap onto at most two lines instead of one each. */
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-/* The bar's buttons carry whole words ("Duplicate"), so they spend the least
-   on padding: Rename and Duplicate share a line in a pane about 170px wide. */
-.cp-collections__bar-button {
+/* The bar's buttons are the standard .cp-btn; they carry whole words ("Duplicate"), so they
+   spend the least on padding: Rename and Duplicate share a line in a pane about 170px wide. */
+.cp-btn.cp-collections__bar-button {
   padding: 0 round(down, calc(var(--space-xs) / 3), 1px);
-}
-
-.cp-collections__bar-button:hover {
-  border-color: var(--border-light);
-}
-
-.cp-collections__bar-button:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: 1px;
+  /* Text only and never broken. */
+  white-space: nowrap;
 }
 
 /* The bar for the selected node: drawn only while a node is selected (DEC-245).
@@ -143,14 +117,13 @@
   border-top: var(--hairline) solid var(--border-muted);
 }
 
-.cp-collections__bar-button[aria-disabled="true"] {
-  opacity: 0.55;
-  cursor: not-allowed;
-  color: var(--fg-disabled);
-}
-
-.cp-collections__bar-button[aria-disabled="true"]:hover {
+/* A refusal such as Duplicate on a plain Collection: greyed by colour, still reachable by the
+   arrow keys. */
+.cp-btn.cp-collections__bar-button[aria-disabled="true"] {
+  background: var(--bg-panel);
   border-color: var(--border-muted);
+  color: var(--fg-disabled);
+  cursor: not-allowed;
 }
 
 /* The tighter gap is room, not looks: rows carry no controls now (K14), but the pane

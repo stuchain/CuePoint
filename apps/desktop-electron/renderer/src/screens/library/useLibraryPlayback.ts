@@ -34,6 +34,8 @@ export function toQueueItem(row: LibraryTrackRow): QueueItemInput {
     artist: row.artist,
     key: row.effective_key ?? null,
     bpm: row.bpm ?? null,
+    label: row.effective_label ?? row.label ?? null,
+    year: row.effective_year ?? row.year ?? null,
     durationSeconds: row.duration_seconds ?? null,
   };
 }

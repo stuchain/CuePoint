@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LibraryQuickFacets } from "../../api/cuepointBridge.types";
 import { DEFAULT_LIBRARY_QUERY } from "./libraryQuery";
-import { useScopeFacts } from "./useScopeFacts";
+import { libraryIdentityOf, useScopeFacts } from "./useScopeFacts";
 
 function facts(total: number): LibraryQuickFacets {
   return {
@@ -126,5 +126,23 @@ describe("useScopeFacts", () => {
     const { result } = renderHook(() => useScopeFacts(DEFAULT_LIBRARY_QUERY, "0"));
     await waitFor(() => expect(ask).toHaveBeenCalled());
     expect(result.current.facts).toBeNull();
+  });
+});
+
+describe("libraryIdentityOf", () => {
+  it("changes when the library is replaced without the window reloading", () => {
+    // Regression: the header read "0 tracks" beside listed rows after an import that finished
+    // elsewhere, because the facts asked for the empty library were never asked again.
+    const before = libraryIdentityOf("0\u0000key", { track_count: 0, source: null });
+    const after = libraryIdentityOf("0\u0000key", {
+      track_count: 120,
+      source: { imported_at: "2026-10-15T10:00:00Z" },
+    });
+    expect(after).not.toBe(before);
+  });
+
+  it("ignores the question, which the facts do not depend on", () => {
+    const summary = { track_count: 5, source: { imported_at: "x" } };
+    expect(libraryIdentityOf("1\u0000a", summary)).toBe(libraryIdentityOf("1\u0000b", summary));
   });
 });

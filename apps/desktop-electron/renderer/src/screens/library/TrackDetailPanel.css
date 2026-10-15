@@ -9,7 +9,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  padding: var(--space-sm);
+  /* No padding of its own: the Inspector body already insets by 8, so the title bar and this
+     body share one left edge (spacing round 2). */
+  padding: 0;
   overflow-y: auto;
 }
 
@@ -24,8 +26,8 @@
 .cp-track-detail__head {
   display: flex;
   flex-direction: column;
-  gap: calc(2px * var(--scale));
-  padding-bottom: var(--space-sm);
+  gap: var(--space-2xs);
+  padding-bottom: var(--space-xs);
   border-bottom: var(--hairline) solid var(--border-muted);
 }
 
@@ -69,7 +71,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 /* The text wants a readable measure: when the panel is too narrow for the art beside it
@@ -87,7 +89,7 @@
 .cp-track-detail__facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-sm) var(--space-md);
+  gap: var(--space-lg) var(--space-md);
   margin: 0;
   font-size: var(--font-size-xs);
 }
@@ -95,7 +97,7 @@
 .cp-track-detail__fact {
   display: flex;
   flex-direction: column;
-  gap: calc(2px * var(--scale));
+  gap: var(--space-xs);
   min-width: 0;
 }
 
@@ -217,8 +219,8 @@
 }
 
 .cp-track-detail__icon {
-  width: calc(var(--icon-size) * 0.5);
-  height: calc(var(--icon-size) * 0.5);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   color: var(--fg-muted);
 }
 
@@ -468,8 +470,8 @@
 }
 
 .cp-track-yours__tag-icon {
-  width: calc(var(--icon-size) * 0.5);
-  height: calc(var(--icon-size) * 0.5);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   color: var(--fg-muted);
 }
 
@@ -610,11 +612,9 @@
   object-fit: cover;
 }
 
-.cp-track-detail__artwork-none {
-  padding: var(--space-xs);
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  text-align: center;
+.cp-track-detail__artwork .cp-artwork-placeholder {
+  width: 100%;
+  height: 100%;
 }
 
 .cp-track-beatport {
@@ -744,12 +744,20 @@
    --hit-min, and share the row's width. */
 .cp-track-actions {
   display: flex;
-  gap: var(--space-xs);
+  gap: var(--space-md);
   margin-top: var(--space-xs);
 }
 
 /* Three short words (K5): the buttons size to their content and never wrap or cut,
    so Play, Queue ▾ and Similar show whole at a 320 px panel and at 1.5x. */
+.cp-track-actions > .cp-hint {
+  flex: 1 0 auto;
+}
+
+.cp-track-actions .cp-track-actions__button {
+  width: 100%;
+}
+
 .cp-track-actions__button {
   flex: 1 0 auto;
   min-width: min-content;
@@ -833,7 +841,7 @@
   display: inline-flex;
   flex: none;
   align-items: center;
-  width: calc(var(--icon-size) * 0.5);
+  width: var(--icon-size-sm);
 }
 
 .cp-track-section__body[hidden] {

@@ -79,7 +79,7 @@ export function useTrackTags({
       const create = window.cuepoint?.createTag;
       const assign = window.cuepoint?.assignTag;
       if (!create || !assign) {
-        onError("This build cannot edit tags.");
+        onError("You can only edit tags in the CuePoint desktop app.");
         return;
       }
       if (alreadyHas(shown, wanted)) return;
@@ -112,7 +112,7 @@ export function useTrackTags({
       if (trackId == null) return;
       const unassign = window.cuepoint?.unassignTag;
       if (!unassign) {
-        onError("This build cannot edit tags.");
+        onError("You can only edit tags in the CuePoint desktop app.");
         return;
       }
       const before = shown;

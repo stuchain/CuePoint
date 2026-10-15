@@ -122,7 +122,7 @@ export interface CollectionTreeController {
 export type CreatableKind = "folder" | "collection" | "set";
 
 /** Said when the shell has no `sets` namespace: a browser tab, an older shell. */
-export const NO_SETS_BRIDGE = "This build cannot make Sets.";
+export const NO_SETS_BRIDGE = "You can only make Sets in the CuePoint desktop app.";
 
 /**
  * A Set's answer as a write's result (PREP-08, DISCOVER-09).
@@ -244,7 +244,7 @@ export function useCollectionTree(
       run: (() => Promise<T>) | undefined,
       read: (payload: T) => WriteResult,
     ): Promise<WriteResult> => {
-      if (!run) return { ok: false, error: "This build cannot edit Collections." };
+      if (!run) return { ok: false, error: "You can only edit Collections in the CuePoint desktop app." };
       try {
         const payload = await run();
         reload();
@@ -352,7 +352,7 @@ export function useCollectionTree(
   const addTracks = useCallback(
     async (collectionId: number, trackIds: number[]) => {
       const bridge = window.cuepoint?.addTracksToCollection;
-      if (!bridge) return { ok: false, error: "This build cannot edit Collections." };
+      if (!bridge) return { ok: false, error: "You can only edit Collections in the CuePoint desktop app." };
       try {
         const payload = await bridge({
           collection_id: collectionId,

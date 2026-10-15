@@ -25,6 +25,7 @@ import type {
   RememberedRekordboxExport,
 } from "../../api/cuepointBridge.types";
 import type { CollectionTreeNode } from "./collectionTree";
+import { formatFileSize } from "../../format/units";
 import { fileName, formatCount, formatWhen, pluralize } from "./libraryFormat";
 import { KEY_FORMATS } from "../../components/saveToFiles/tagWriting";
 
@@ -74,18 +75,7 @@ export function keyFormatConsequence(format: RekordboxKeyFormat): string | null 
 // ------------------------------------------------------------------ the source
 
 /** A byte count in words, exact when rounding would hide the difference. */
-export function formatSize(bytes: number, other?: number | null): string {
-  const exact = `${bytes.toLocaleString()} bytes`;
-  if (bytes < 1024) return exact;
-  const rounded = (value: number) =>
-    value >= 1024 * 1024
-      ? `${(value / (1024 * 1024)).toFixed(1)} MB`
-      : `${(value / 1024).toFixed(1)} KB`;
-  // Two sizes that round to the same text would read as "no change" beside a
-  // warning saying there was one.
-  if (other != null && other !== bytes && rounded(other) === rounded(bytes)) return exact;
-  return rounded(bytes);
-}
+export const formatSize = formatFileSize;
 
 /** The line naming the file the export patches, and the promise about it. */
 export function sourceLine(source: RekordboxExportSourceState): string {

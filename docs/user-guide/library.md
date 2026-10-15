@@ -95,7 +95,7 @@ Nothing here changes your music. The Library page reads.
   When no track has a Beatport key yet, the Key list says *No tracks have a
   Beatport key yet. Keys come from matching.* If a Key filter finds nothing,
   the line above the table says the same. Matching is in Clean, or **Beatport
-  ▸ Match tracks…** on a selection; the Library has no Match button of its own
+  ▸ Match on Beatport…** on a selection; the Library has no Match button of its own
   beside the filters.
 - **Add a filter** for anything more specific — BPM between 124 and 130, genre
   is Techno, comment contains "promo". The fields are grouped (Track, Your notes
@@ -233,7 +233,7 @@ figures as the table.
 | --- | --- |
 | **Play ▸** | **Play**, **Play next**, **Add to queue**, for the selected tracks in the order the table shows them |
 | **Organize ▸** | **Add to Collection…**, **Add to Set…**, **New Set from these…**, **Remove from "name"** (inside a Collection), **Add tag…**, **Remove tag…**, **Rate ▸**, **Favorite**, **Remove favorite**, **Copy**. See [Organizing your library](organization.md) |
-| **Beatport ▸** | **Match tracks…** and **Review these matches** open [Clean](clean.md) with the selected tracks; **Use Beatport's values…** opens its dialog right here |
+| **Beatport ▸** | **Match on Beatport…** and **Review these matches** open [Clean](clean.md) with the selected tracks; **Use Beatport's values…** opens its dialog right here |
 | **More ▸** | **Similar tracks**, **Artist page** and **Label page** (see [Discover](discover.md#artist-and-label-pages); with several tracks selected they open the first one's), **Edit values…** (its dialog opens right here), **Show in folder** |
 
 The Library has no save bar. Saving values into the audio files is done per
@@ -241,8 +241,9 @@ playlist, on Clean ([Saving values into your
 files](clean.md#saving-values-into-your-files)). Checking that the files are
 still there is on Clean ▸ Missing files.
 
-A track's right-click menu holds the same four groups as submenus, with
-**Play**, **Play next** and **Add to queue** on its first lines. Use the Tab
+A track's right-click menu is the same on every page: **Play**, **Play next** and
+**Add to queue** on its first lines, then a **This page** block with **Organize ▸** and
+**Beatport ▸** (what only the Library does), and **More ▸** last. Use the Tab
 key once to reach the toolbar, then the arrow keys to move between its buttons.
 
 **Copy** (in Organize) puts the visible columns, in the order you have them, ready to paste
@@ -272,8 +273,8 @@ Under the buttons are four tabs: **Overview**, **Beatport**, **Where** and **You
 The panel remembers the tab you last chose and opens on **Overview** the first time.
 
 - **Overview** — a labelled grid of facts: **Key** (the chip, the Camelot wheel
-  button beside it, and the key's name; rest the pointer on it to see where the key
-  came from, Beatport or you; a track with none shows a dash and **Match on
+  button beside it, and the key's name; the key chip is itself the button that opens the
+  wheel, and resting the pointer on the key's name shows where it came from, Beatport or you; a track with none shows a dash and **Match on
   Beatport**, which matches this one track in Clean's match window), **BPM**,
   **Genre**, **Loudness** ("−8.4 LUFS"; the peak is in its hover text and under the
   waveform), **Cue points** ("4 hot · grid 128") and **Beatport** (how the match
@@ -559,7 +560,7 @@ filters: **Beatport match**, **Match decided by (you or CuePoint)**,
 
 | Action | Does |
 | --- | --- |
-| Match tracks… | Opens Clean's match window with the selected tracks, to look them up on Beatport. A decision you made is kept, and a newer match that disagrees marks the track *changed since you decided* |
+| Match on Beatport… | Opens Clean's match window with the selected tracks, to look them up on Beatport. A decision you made is kept, and a newer match that disagrees marks the track *changed since you decided* |
 | Review these matches | Opens Clean's Review on the first selected track, where matches are confirmed or rejected |
 | Use Beatport's values… | Opens a dialog here to copy the fields you choose from each track's confirmed match into your values |
 | Edit values… (in More) | Opens a dialog here to set or clear your key, BPM, genre, label or year |
@@ -614,7 +615,7 @@ says so. An undo is itself a change, and can be undone too.
 
 ## Saving to files
 
-**Save to files…**, on Clean, puts your values into the audio files themselves, so
+**Sync to files…**, on Clean, puts your values into the audio files themselves, so
 Rekordbox and other software can read them. It is the one thing CuePoint does
 outside its own library, so it always goes in the same order:
 

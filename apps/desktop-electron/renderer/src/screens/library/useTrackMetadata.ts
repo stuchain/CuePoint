@@ -138,8 +138,8 @@ export function useTrackMetadata({
     ): Promise<void> => {
       const bridge = window.cuepoint?.setTrackMetadata;
       if (!bridge) {
-        onError("This build cannot edit tracks.");
-        throw new Error("This build cannot edit tracks.");
+        onError("You can only edit tracks in the CuePoint desktop app.");
+        throw new Error("You can only edit tracks in the CuePoint desktop app.");
       }
       if (showing && optimistic) setShown(optimistic);
       try {

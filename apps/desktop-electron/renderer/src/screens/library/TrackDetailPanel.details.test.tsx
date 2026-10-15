@@ -251,10 +251,10 @@ describe("the facts grid", () => {
   it("puts the Camelot wheel's button beside the key chip, on the key's own row", () => {
     show();
     const key = screen.getByTestId("track-key");
-    expect(within(key).getByRole("button", { name: "Camelot wheel" })).toBeInTheDocument();
+    expect(within(key).getByRole("button", { name: "Show 8A on the Camelot wheel" })).toBeInTheDocument();
     expect(key).toHaveTextContent("A minor");
     expect(key.querySelector(".cp-track-detail__keyrow")).toContainElement(
-      within(key).getByRole("button", { name: "Camelot wheel" }),
+      within(key).getByRole("button", { name: "Show 8A on the Camelot wheel" }),
     );
   });
 
@@ -452,7 +452,7 @@ describe("Edit values… (INS-4, DEC-205)", () => {
     const link = screen.getByRole("button", { name: "Edit values for 4 tracks…" });
     expect(link).toHaveAttribute("title", "Edit values for 4 tracks — the fields below change only this one");
     expect(link).toHaveTextContent("Edit values…");
-    expect(link.parentElement).toContainElement(screen.getByRole("status"));
+    expect(link.closest("p")).toContainElement(screen.getByRole("status"));
     fireEvent.click(link);
     expect(onEditValues).toHaveBeenCalledTimes(1);
     // The panel itself goes nowhere: the host opens the dialog.
@@ -484,7 +484,7 @@ describe("the key with its source (FLW-9, DEC-201)", () => {
   it("reads Beatport's key with its name and source", () => {
     show();
     expect(keyRow()).toHaveTextContent("A minor · Beatport");
-    expect(keyRow().querySelector(".cp-track-detail__keyrow")).toHaveAttribute("title", "Key from Beatport");
+    expect(keyRow().querySelector(".cp-track-detail__keymeta")).toHaveAttribute("title", "Key from Beatport");
   });
 
   it("reads your key as yours", () => {
@@ -556,7 +556,9 @@ describe("the buttons under the title (FLW-9, K5)", () => {
       "Queue",
       "Similar",
     ]);
-    for (const child of Array.from(group.children)) expect(child.tagName).toBe("BUTTON");
+    for (const child of Array.from(group.querySelectorAll(":scope > .cp-hint > *, :scope > button"))) {
+      expect(child.tagName).toBe("BUTTON");
+    }
     expect(screen.queryByRole("button", { name: "Show in folder" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Play next" })).toBeNull();
   });

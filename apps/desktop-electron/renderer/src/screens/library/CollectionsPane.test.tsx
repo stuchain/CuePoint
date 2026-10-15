@@ -536,7 +536,7 @@ describe("deleting", () => {
     // The bar under the tree has a Delete of its own (FLW-10): the question's is
     // the one in the dialog.
     const dialog = await screen.findByRole("dialog", { name: "Delete Sets?" });
-    await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Delete Sets" }));
 
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith(1));
   });
@@ -545,7 +545,7 @@ describe("deleting", () => {
     const { onDelete } = paneWith();
 
     fireEvent.keyDown(rowFor("Sets"), { key: "Delete" });
-    await userEvent.click(await screen.findByRole("button", { name: "Keep it" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Cancel" }));
 
     expect(onDelete).not.toHaveBeenCalled();
   });
@@ -699,7 +699,7 @@ describe("the hook behind it", () => {
 
     expect(await result.current.create("folder", "Sets", null)).toEqual({
       ok: false,
-      error: "This build cannot edit Collections.",
+      error: "You can only edit Collections in the CuePoint desktop app.",
     });
   });
 
@@ -769,11 +769,11 @@ describe("the hook behind it", () => {
 
     expect(await result.current.duplicateSmart(5)).toEqual({
       ok: false,
-      error: "This build cannot edit Collections.",
+      error: "You can only edit Collections in the CuePoint desktop app.",
     });
     expect(await result.current.freezeSmart(5)).toEqual({
       ok: false,
-      error: "This build cannot edit Collections.",
+      error: "You can only edit Collections in the CuePoint desktop app.",
     });
   });
 
@@ -1114,7 +1114,7 @@ describe("a row's context menu (EXPORT-07, DEC-087)", () => {
     await user.click(within(menu()).getByRole("menuitem", { name: "Delete…" }));
     expect(onPreviewDelete).toHaveBeenCalledWith(2);
     expect(await screen.findByRole("dialog", { name: /Delete Warmups/ })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Keep it" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     fireEvent.contextMenu(rowFor("Recent techno"));
     await user.click(within(menu()).getByRole("menuitem", { name: "Freeze to a Collection…" }));

@@ -33,7 +33,7 @@ import { Fragment, useCallback, useId, useState, type ReactNode } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
-import { KeyChip, WheelButton } from "../../components/wheel";
+import { WheelButton } from "../../components/wheel";
 import { formatBpm } from "../../components/format/bpm";
 import { LOUDNESS_LINE_TITLE, loudnessLine, loudnessShort } from "../../components/waveform/loudnessWords";
 import type {
@@ -71,6 +71,9 @@ import { reportUnexpected } from "../../reporting/reporting";
 import "./TrackDetailPanel.css";
 import { userMessage } from "../../api/userMessage";
 import { NO_VALUE } from "../../words";
+import { formatLength } from "../../format/durations";
+import { Button } from "../../components/Button";
+import { Hint } from "../../components/Hint";
 
 /** A Collection as the track-detail read names it — enough to show and to open. */
 type TrackCollectionRef = Pick<CollectionNode, "id" | "name" | "kind">;
@@ -157,10 +160,7 @@ function number(value: number | null | undefined, suffix = ""): string {
 }
 
 function duration(seconds: number | null): string {
-  if (seconds == null) return "—";
-  const minutes = Math.floor(seconds / 60);
-  const rest = Math.round(seconds % 60);
-  return `${minutes}:${String(rest).padStart(2, "0")}`;
+  return formatLength(seconds);
 }
 
 /**
@@ -463,15 +463,16 @@ export function TrackDetailPanel({
             {onEditValues && (
               <>
                 {" · "}
-                <button
-                  type="button"
-                  className="cp-track-detail__reveal"
-                  aria-label={`Edit values for ${selectionCount.toLocaleString()} tracks…`}
-                  title={`Edit values for ${selectionCount.toLocaleString()} tracks — the fields below change only this one`}
-                  onClick={onEditValues}
-                >
-                  Edit values…
-                </button>
+                <Hint text={`Edit values for ${selectionCount.toLocaleString()} tracks — the fields below change only this one`}>
+                  <button
+                    type="button"
+                    className="cp-track-detail__reveal"
+                    aria-label={`Edit values for ${selectionCount.toLocaleString()} tracks…`}
+                    onClick={onEditValues}
+                  >
+                    Edit values…
+                  </button>
+                </Hint>
               </>
             )}
           </p>
@@ -481,13 +482,13 @@ export function TrackDetailPanel({
             keep the full names. Show in folder lives in the row's menus. */}
         <div className="cp-track-actions" role="group" aria-label="Actions for this track">
           {queue.play && (
-            <button type="button" className="cp-track-actions__button" disabled={acting !== null} onClick={() => void act("play")}>
+            <Button variant="secondary" className="cp-track-actions__button" disabled={acting !== null} onClick={() => void act("play")}>
               Play
-            </button>
+            </Button>
           )}
           {(queue.next || queue.end) && (
-            <button
-              type="button"
+            <Button
+              variant="secondary"
               className="cp-track-actions__button"
               aria-label="Queue"
               aria-haspopup="menu"
@@ -499,7 +500,7 @@ export function TrackDetailPanel({
               }}
             >
               Queue<PixelIcon name="chevron-down" className="cp-pixel-icon--text cp-pixel-icon--after" />
-            </button>
+            </Button>
           )}
           {track.id != null && (
             <RouteButton
@@ -507,6 +508,7 @@ export function TrackDetailPanel({
               className="cp-track-actions__button"
               aria-label="Similar tracks"
               title="Similar tracks"
+              variant="secondary"
             >
               Similar
             </RouteButton>
@@ -548,11 +550,12 @@ export function TrackDetailPanel({
                   // The chip is the code, coloured by its wheel position (R4-2, DEC-272); the
                   // wheel's button sits beside the chip it is about (K8, DEC-282), then the
                   // key's name. Where it came from is said on hover and to screen readers.
-                  <span className="cp-track-detail__keyrow" title={sourceWords ? `Key from ${sourceWords}` : undefined}>
-                    <KeyChip value={track.effective_key} />
-                    <span className="cp-track-detail__keymeta">{track.key_name ?? ""}</span>
+                  <span className="cp-track-detail__keyrow">
+                    <WheelButton keyName={track.effective_key} />
+                    <Hint text={sourceWords ? `Key from ${sourceWords}` : undefined} inline>
+                      <span className="cp-track-detail__keymeta">{track.key_name ?? ""}</span>
+                    </Hint>
                     {sourceWords !== null && <span className="cp-visually-hidden">{` \u00b7 ${sourceWords}`}</span>}
-                    <WheelButton />
                   </span>
                 ) : (
                   <span className="cp-track-detail__file">
@@ -576,19 +579,23 @@ export function TrackDetailPanel({
               </div>
             )}
             {lufs && (
-              <div
-                className="cp-track-detail__fact"
-                data-testid="track-fact-loudness"
-                title={`${loudnessLine(loudnessTrack) ?? lufs}. ${LOUDNESS_LINE_TITLE}`}
-              >
+              <div className="cp-track-detail__fact" data-testid="track-fact-loudness">
                 <dt className="cp-track-detail__factlabel">Loudness</dt>
-                <dd className="cp-track-detail__factvalue cp-data">{lufs}</dd>
+                <dd className="cp-track-detail__factvalue cp-data">
+                  <Hint text={`${loudnessLine(loudnessTrack) ?? lufs}. ${LOUDNESS_LINE_TITLE}`} inline>
+                    <span>{lufs}</span>
+                  </Hint>
+                </dd>
               </div>
             )}
             {detail.marks && cuesHeaderSummary(detail.marks) !== null && (
-              <div className="cp-track-detail__fact" data-testid="track-fact-cues" title={CUES_HINT}>
+              <div className="cp-track-detail__fact" data-testid="track-fact-cues">
                 <dt className="cp-track-detail__factlabel">Cue points</dt>
-                <dd className="cp-track-detail__factvalue cp-data">{cuesHeaderSummary(detail.marks)}</dd>
+                <dd className="cp-track-detail__factvalue cp-data">
+                  <Hint text={CUES_HINT} inline>
+                    <span>{cuesHeaderSummary(detail.marks)}</span>
+                  </Hint>
+                </dd>
               </div>
             )}
             {track.id != null && !matches.unavailable && matchWord !== "" && (
@@ -647,7 +654,9 @@ export function TrackDetailPanel({
                 label="File"
                 value={
                   <span className="cp-track-detail__file">
-                    <span title={track.file_path}>{text(track.file_path)}</span>
+                    <Hint text={track.file_path ?? undefined} inline>
+                      <span>{text(track.file_path)}</span>
+                    </Hint>
                   </span>
                 }
               />
@@ -703,17 +712,18 @@ export function TrackDetailPanel({
               <ul>
                 {sets.map((set) => (
                   <li key={set.id}>
-                    <button
-                      type="button"
-                      className="cp-track-detail__playlist"
-                      title={onOpenInPrepare ? `Open ${set.name} in Prepare` : undefined}
-                      onClick={() =>
-                        onOpenInPrepare ? onOpenInPrepare(set) : onSelectCollection?.(set)
-                      }
-                    >
-                      <PixelIcon name={collectionIcon(set.kind)} className="cp-track-detail__icon" />
-                      {set.name}
-                    </button>
+                    <Hint text={onOpenInPrepare ? `Open ${set.name} in Prepare` : undefined}>
+                      <button
+                        type="button"
+                        className="cp-track-detail__playlist"
+                        onClick={() =>
+                          onOpenInPrepare ? onOpenInPrepare(set) : onSelectCollection?.(set)
+                        }
+                      >
+                        <PixelIcon name={collectionIcon(set.kind)} className="cp-track-detail__icon" />
+                        {set.name}
+                      </button>
+                    </Hint>
                   </li>
                 ))}
               </ul>
@@ -730,15 +740,16 @@ export function TrackDetailPanel({
               <ul>
                 {playlists.map((playlist) => (
                   <li key={playlist.id}>
-                    <button
-                      type="button"
-                      className="cp-track-detail__playlist"
-                      title={playlist.path}
-                      onClick={() => onSelectPlaylist?.(playlist)}
-                    >
-                      <PixelIcon name="playlist" className="cp-track-detail__icon" />
-                      {playlist.name}
-                    </button>
+                    <Hint text={playlist.path}>
+                      <button
+                        type="button"
+                        className="cp-track-detail__playlist"
+                        onClick={() => onSelectPlaylist?.(playlist)}
+                      >
+                        <PixelIcon name="playlist" className="cp-track-detail__icon" />
+                        {playlist.name}
+                      </button>
+                    </Hint>
                   </li>
                 ))}
               </ul>

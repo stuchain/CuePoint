@@ -29,6 +29,7 @@ import type { PlaylistTreeNode, VisibleRow } from "./playlistTree";
 import { PaneTree, type PaneTreeRow } from "./PaneTree";
 import { isCuePointDrag } from "./collectionDrag";
 import "./PlaylistPane.css";
+import { Hint } from "../../components/Hint";
 
 interface PlaylistPaneProps {
   rows: VisibleRow[];
@@ -102,9 +103,9 @@ export function PlaylistPane({
     <nav className="cp-playlist-pane" aria-label="Playlists">
       <div className="cp-playlist-pane__head">
         <span className="cp-playlist-pane__title">Playlists</span>
-        <span className="cp-playlist-pane__source" title="Mirrored from your Rekordbox file">
-          from Rekordbox
-        </span>
+        <Hint text="Mirrored from your Rekordbox file" inline>
+          <span className="cp-playlist-pane__source">from Rekordbox</span>
+        </Hint>
       </div>
 
       {selectionFellBack && (

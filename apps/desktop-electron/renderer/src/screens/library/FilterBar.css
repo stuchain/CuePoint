@@ -187,6 +187,11 @@
   position: relative;
 }
 
+/* The shared search field, at the width the text box had. */
+.cp-filter-bar__row > .cp-search-field {
+  width: calc(240px * var(--scale));
+}
+
 /* The search box is named by its placeholder and its label; the word "Search"
    above it cost the table a row at the default window (PAGES-05C). The label
    stays for assistive technology. */

@@ -3,7 +3,7 @@
  *
  * Under DEC-201 a library nobody has matched has no keys at all, and a Key
  * column of dashes with no explanation reads as a broken import. The notice
- * line says why; matching is the bar's Beatport ▸ Match tracks…. It is read from
+ * line says why; matching is the bar's Beatport ▸ Match on Beatport…. It is read from
  * the engine, not guessed: a library whose tracks do have keys never shows it.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -41,7 +41,7 @@ describe("the key note", () => {
 
     const note = await screen.findByRole("status");
     expect(note).toHaveTextContent("No tracks have a Beatport key yet. Keys come from matching.");
-    expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Match on Beatport…" })).toBeNull();
   });
 
   it("asks the engine about the whole library, by the key field", async () => {

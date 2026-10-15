@@ -257,7 +257,7 @@ describe("a Set as the table's scope (DEC-104, fact 3)", () => {
     await ready();
     await userEvent.click(within(treeRow("Friday", "set")).getByText("Friday"));
     await userEvent.click(
-      within(await screen.findByRole("note")).getByRole("button", { name: "Open in Prepare" }),
+      within(await screen.findByRole("note")).getByRole("button", { name: "Open in Prepare ›" }),
     );
     expect(onOpenInPrepare).toHaveBeenCalledWith(FRIDAY.id);
   });

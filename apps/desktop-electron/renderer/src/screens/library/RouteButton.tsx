@@ -8,6 +8,8 @@
  */
 import { useInRouterContext, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
+import { Button, type ButtonVariant } from "../../components/Button";
+import { Hint } from "../../components/Hint";
 
 interface RouteButtonProps {
   /** Where to go; a function when the place is found out on the click, or null for nowhere. */
@@ -17,30 +19,35 @@ interface RouteButtonProps {
   className?: string;
   children: ReactNode;
   title?: string;
+  /** Draw it as the standard button of this role; without one it is a plain button (a text link). */
+  variant?: ButtonVariant;
   /** The full name, when the visible text is a short form of it. */
   "aria-label"?: string;
 }
 
-function Inside({ to, state, className, children, title, "aria-label": ariaLabel }: RouteButtonProps) {
+function Inside({ to, state, className, children, title, variant, "aria-label": ariaLabel }: RouteButtonProps) {
   const navigate = useNavigate();
+  const go = () => {
+    if (typeof to === "string") {
+      navigate(to, { state });
+      return;
+    }
+    void to().then((found) => {
+      if (found !== null) navigate(found, { state });
+    });
+  };
   return (
-    <button
-      type="button"
-      className={className}
-      title={title}
-      aria-label={ariaLabel}
-      onClick={() => {
-        if (typeof to === "string") {
-          navigate(to, { state });
-          return;
-        }
-        void to().then((found) => {
-          if (found !== null) navigate(found, { state });
-        });
-      }}
-    >
-      {children}
-    </button>
+    <Hint text={title}>
+      {variant ? (
+        <Button variant={variant} className={className} aria-label={ariaLabel} onClick={go}>
+          {children}
+        </Button>
+      ) : (
+        <button type="button" className={className} aria-label={ariaLabel} onClick={go}>
+          {children}
+        </button>
+      )}
+    </Hint>
   );
 }
 

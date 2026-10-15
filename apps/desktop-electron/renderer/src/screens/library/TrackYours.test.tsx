@@ -279,7 +279,7 @@ describe("the favorite", () => {
     draw();
     const heart = screen.getByRole("button", { name: "Favorite" });
     expect(heart).toHaveTextContent("♡");
-    expect(heart.parentElement).toBe(screen.getByRole("radiogroup").parentElement);
+    expect(heart.closest(".cp-hint")?.parentElement).toBe(screen.getByRole("radiogroup").parentElement);
   });
 
   it("turns off again", async () => {
@@ -693,7 +693,7 @@ describe("a build with no bridge", () => {
     fireEvent.click(star(4));
 
     await waitFor(() =>
-      expect(onError).toHaveBeenCalledWith("This build cannot edit tracks."),
+      expect(onError).toHaveBeenCalledWith("You can only edit tracks in the CuePoint desktop app."),
     );
   });
 
@@ -704,6 +704,6 @@ describe("a build with no bridge", () => {
     fireEvent.change(screen.getByLabelText("Add a tag"), { target: { value: "Closer" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
-    await waitFor(() => expect(onError).toHaveBeenCalledWith("This build cannot edit tags."));
+    await waitFor(() => expect(onError).toHaveBeenCalledWith("You can only edit tags in the CuePoint desktop app."));
   });
 });

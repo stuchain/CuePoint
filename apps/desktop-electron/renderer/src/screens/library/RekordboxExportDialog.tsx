@@ -65,9 +65,11 @@ import {
   unknownTracksLine,
 } from "./rekordboxExport";
 import { reportUnexpected } from "../../reporting/reporting";
+import { RETRY } from "../../format/words";
 import "./cleanDialogs.css";
 import "./rekordboxExport.css";
 import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
+import { Hint } from "../../components/Hint";
 
 export interface RekordboxExportDialogProps {
   open: boolean;
@@ -373,6 +375,7 @@ export function RekordboxExportDialog({
           onClick: () => void confirm(),
           disabled: !canConfirm(confirmState),
           loading: phase === "exporting",
+          variant: "write" as const,
         };
 
   return (
@@ -406,9 +409,9 @@ export function RekordboxExportDialog({
             )}
             {result?.outcome === "written" && (
               <>
-                <p className="rekordbox-export__path" title={result.destination_path}>
-                  {result.destination_path}
-                </p>
+                <Hint text={result.destination_path}>
+                  <p className="rekordbox-export__path">{result.destination_path}</p>
+                </Hint>
                 <p className="clean-dialog__note">{OPEN_IN_REKORDBOX}</p>
                 {show && (
                   <div className="clean-dialog__actions">
@@ -430,9 +433,9 @@ export function RekordboxExportDialog({
               <h3 className="rekordbox-export__heading">Save as</h3>
               <div className="rekordbox-export__destination">
                 {destination ? (
-                  <span className="rekordbox-export__path" title={destination}>
-                    {destination}
-                  </span>
+                  <Hint text={destination} inline>
+                    <span className="rekordbox-export__path">{destination}</span>
+                  </Hint>
                 ) : (
                   <span className="clean-dialog__note">
                     Not chosen yet
@@ -463,7 +466,7 @@ export function RekordboxExportDialog({
                   )}
                   {step === "retry" && (
                     <Button variant="secondary" onClick={() => setAsked((token) => token + 1)}>
-                      Try again
+                      {RETRY}
                     </Button>
                   )}
                   {step === "choose" && (
@@ -508,9 +511,9 @@ export function RekordboxExportDialog({
                 {preview && (
                   <section className="rekordbox-export__part" aria-label="Source">
                     <h3 className="rekordbox-export__heading">From</h3>
-                    <p className="clean-dialog__note" title={preview.source.path}>
-                      {sourceLine(preview.source)}
-                    </p>
+                    <Hint text={preview.source.path}>
+                      <p className="clean-dialog__note">{sourceLine(preview.source)}</p>
+                    </Hint>
                     {unknownTracksLine(preview) && (
                       <p className="clean-dialog__note">{unknownTracksLine(preview)}</p>
                     )}

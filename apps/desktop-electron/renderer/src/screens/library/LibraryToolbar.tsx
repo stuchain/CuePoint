@@ -30,6 +30,7 @@ import type { TrackActionGroup, TrackActionGroupId } from "./trackActions";
 import { needsTwoLines } from "./toolbarLines";
 import { useToolbarKeys } from "./useToolbarKeys";
 import "./LibraryToolbar.css";
+import { Hint } from "../../components/Hint";
 
 interface LibraryToolbarProps {
   groups: readonly TrackActionGroup[];
@@ -197,40 +198,41 @@ export function LibraryToolbar({
           onKeyDown={onKeyDown}
         >
           {groups.map((group, index) => (
-            <Button
-              key={group.id}
-              variant="secondary"
-              className="library-toolbar__button"
-              aria-haspopup="menu"
-              aria-expanded={openGroup === group.id}
-              aria-disabled={group.disabledReason ? true : undefined}
-              title={group.disabledReason ?? undefined}
-              {...keys.buttonProps(index)}
-              onClick={(event) => {
-                if (group.disabledReason) return;
-                const rect = event.currentTarget.getBoundingClientRect();
-                onOpenGroup(group.id, { x: rect.left, y: rect.bottom });
-              }}
-            >
-              {group.label}
-              <span className="library-toolbar__arrow" aria-hidden />
-            </Button>
+            <Hint key={group.id} text={group.disabledReason ?? undefined}>
+              <Button
+                variant="secondary"
+                className="library-toolbar__button"
+                aria-haspopup="menu"
+                aria-expanded={openGroup === group.id}
+                aria-disabled={group.disabledReason ? true : undefined}
+                {...keys.buttonProps(index)}
+                onClick={(event) => {
+                  if (group.disabledReason) return;
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  onOpenGroup(group.id, { x: rect.left, y: rect.bottom });
+                }}
+              >
+                {group.label}
+                <span className="library-toolbar__arrow" aria-hidden />
+              </Button>
+            </Hint>
           ))}
-          <Button
-            variant="secondary"
-            className="library-toolbar__button library-toolbar__clear"
-            aria-label={clearName}
-            title="Clear selection"
-            {...keys.buttonProps(groups.length)}
-            onClick={clear}
-          >
-            {selected.toLocaleString()} selected
-            {describedByQuery && selected > 1 && (
-              // Said, not drawn: the button stays as short as "3 selected".
-              <span className="library-toolbar__sr"> (everything matching)</span>
-            )}
-            <PixelIcon name="close" className="cp-pixel-icon--text cp-pixel-icon--after" />
-          </Button>
+          <Hint text="Clear selection">
+            <Button
+              variant="secondary"
+              className="library-toolbar__button library-toolbar__clear"
+              aria-label={clearName}
+              {...keys.buttonProps(groups.length)}
+              onClick={clear}
+            >
+              {selected.toLocaleString()} selected
+              {describedByQuery && selected > 1 && (
+                // Said, not drawn: the button stays as short as "3 selected".
+                <span className="library-toolbar__sr"> (everything matching)</span>
+              )}
+              <PixelIcon name="close" className="cp-pixel-icon--text cp-pixel-icon--after" />
+            </Button>
+          </Hint>
         </div>
       )}
 
@@ -253,17 +255,18 @@ export function LibraryToolbar({
         </span>
         {/* Always there once there is anything to select, disabled when all is. */}
         {total > 0 && (
-          <Button
-            variant="secondary"
-            className="library-toolbar__button library-toolbar__select-all"
-            aria-disabled={selected >= total ? true : undefined}
-            title={selected >= total ? EVERYTHING_SELECTED : undefined}
-            onClick={() => {
-              if (selected < total) onSelectAll();
-            }}
-          >
-            Select all
-          </Button>
+          <Hint text={selected >= total ? EVERYTHING_SELECTED : undefined}>
+            <Button
+              variant="secondary"
+              className="library-toolbar__button library-toolbar__select-all"
+              aria-disabled={selected >= total ? true : undefined}
+              onClick={() => {
+                if (selected < total) onSelectAll();
+              }}
+            >
+              Select all
+            </Button>
+          </Hint>
         )}
       </div>
     </div>

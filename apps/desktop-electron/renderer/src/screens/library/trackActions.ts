@@ -21,6 +21,7 @@ import {
   type FixMenuHandlers,
 } from "./libraryClean";
 import { organizationMenuItems, type OrganizationMenuHandlers } from "./trackMenu";
+import { thisPageBlock } from "../prepare/prepareMenus";
 
 export type TrackActionGroupId = "play" | "organize" | "beatport" | "more";
 
@@ -216,19 +217,20 @@ export const groupMenuId = (id: TrackActionGroupId) => `group-${id}`;
  */
 export function menuFromGroups(groups: readonly TrackActionGroup[]): TrackContextMenuItem[] {
   const filled = groups.filter((group) => group.items.length > 0);
-  const top: TrackContextMenuItem[] = [];
-  for (const group of filled) {
-    if (group.id === "play") {
-      top.push(...group.items);
-      continue;
-    }
-    top.push({
-      id: groupMenuId(group.id),
-      label: group.label,
-      onSelect: () => undefined,
-      items: group.items,
-      separatorBefore: top.length > 0,
-    });
-  }
+  const submenu = (group: TrackActionGroup): TrackContextMenuItem => ({
+    id: groupMenuId(group.id),
+    label: group.label,
+    onSelect: () => undefined,
+    items: group.items,
+  });
+  // The base track menu every list has is Play, then More; what only the Library does
+  // (Organize, Beatport) sits between them in a "This page" block (area 38).
+  const play = filled.filter((group) => group.id === "play").flatMap((group) => group.items);
+  const page = filled
+    .filter((group) => group.id !== "play" && group.id !== "more")
+    .map(submenu);
+  const more = filled.filter((group) => group.id === "more").map(submenu);
+  const top: TrackContextMenuItem[] = [...play, ...thisPageBlock(page)];
+  for (const entry of more) top.push({ ...entry, separatorBefore: top.length > 0 });
   return top;
 }

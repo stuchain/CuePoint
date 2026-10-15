@@ -12,20 +12,9 @@
   gap: var(--space-sm);
 }
 
+/* The search field is the shared SearchField; it only fills the dialog width. */
 .cp-picker__filter {
   width: 100%;
-  box-sizing: border-box;
-  padding: var(--space-xs) var(--space-sm);
-  border: var(--divider);
-  background: var(--bg-input);
-  color: var(--fg-primary);
-  font-family: var(--font-data);
-  font-size: var(--font-size-sm);
-}
-
-.cp-picker__filter:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: 0;
 }
 
 .cp-picker__list {
@@ -68,8 +57,8 @@
 }
 
 .cp-picker__icon {
-  width: calc(var(--icon-size) * 0.5);
-  height: calc(var(--icon-size) * 0.5);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   flex: 0 0 auto;
 }
 

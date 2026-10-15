@@ -11,6 +11,7 @@
  */
 import { useCallback, useId, useState, type ReactNode } from "react";
 import { PixelIcon } from "../../components/PixelIcon";
+import { Hint } from "../../components/Hint";
 
 export const TRACK_DETAILS_SECTIONS_KEY = "cuepoint-ui-track-details-sections";
 
@@ -96,12 +97,12 @@ export function DisclosureSection({
       aria-label={title}
     >
       <Heading className="cp-track-detail__subtitle cp-track-section__heading">
+        <Hint text={[hint, summary].filter(Boolean).join(" — ") || undefined}>
         <button
           type="button"
           className="cp-track-section__toggle"
           aria-expanded={open}
           aria-controls={bodyId}
-          title={[hint, summary].filter(Boolean).join(" — ") || undefined}
           onClick={toggle}
         >
           <span aria-hidden className="cp-track-section__chevron">
@@ -124,6 +125,7 @@ export function DisclosureSection({
             </span>
           ) : null}
         </button>
+        </Hint>
       </Heading>
       <div
         id={bodyId}

@@ -115,9 +115,9 @@ describe("formatLength", () => {
     [3120, "52 min"],
     [3600, "1 h"],
     [7200, "2 h"],
-    [45, "45 s"],
+    [45, "Under a minute"],
     [60, "1 min"],
-    [14380, "4 h"],
+    [14380, "3 h 59 min"],
   ])("writes %s seconds as %s", (seconds, text) => {
     expect(formatLength(seconds)).toBe(text);
   });
