@@ -169,15 +169,26 @@ export function artistsText(row: Pick<BeatportTrackRow, "artists" | "remixers">)
 }
 
 /**
- * Why a search found a track (DSC-8): "On a chart by {artist}: “{chart}”" or
- * "New on {label}: “{release}”", so the first name is never a guess.
+ * Why a search found a track (DSC-8): "On a chart by {artist}: “{chart}”", "New
+ * on {label}: “{release}”" or "New from {artist}: “{release}”", so the first
+ * name is never a guess. A general genre chart nobody is named for (the engine
+ * then names the chart itself) reads "On the chart “{chart}”".
  */
 export function sourceText(source: DiscoverRunSource): string {
   const name = source.source_name ? `“${source.source_name}”` : null;
+  if (
+    source.source_type === "chart" &&
+    name &&
+    (!source.matched_on || source.matched_on === source.source_name)
+  ) {
+    return `On the chart ${name}`;
+  }
   const lead =
     source.source_type === "chart"
       ? `On a chart by ${source.matched_on}`
-      : `New on ${source.matched_on}`;
+      : source.source_type === "artist_release"
+        ? `New from ${source.matched_on}`
+        : `New on ${source.matched_on}`;
   return name ? `${lead}: ${name}` : lead;
 }
 
@@ -203,12 +214,18 @@ export function pushOutcome(result: BeatportPlaylistResult): string {
     result.skipped_owned > 0
       ? ` ${pluralize(result.skipped_owned, "track")} already in your library ${result.skipped_owned === 1 ? "was" : "were"} left out.`
       : "";
+  const held =
+    result.already_in_playlist > 0
+      ? ` ${pluralize(result.already_in_playlist, "track")} already in the playlist ${result.already_in_playlist === 1 ? "was" : "were"} left out.`
+      : "";
   const failed =
     result.failed > 0
       ? ` ${pluralize(result.failed, "track")} could not be added.`
       : "";
   if (result.outcome === "succeeded") {
-    return `Made ${name} on Beatport with ${pluralize(result.added, "track")}.${skipped}${failed}`;
+    return result.existing_playlist
+      ? `Added ${pluralize(result.added, "track")} to ${name} on Beatport.${skipped}${held}${failed}`
+      : `Made ${name} on Beatport with ${pluralize(result.added, "track")}.${skipped}${failed}`;
   }
   const before = result.playlist_id
     ? `after adding ${pluralize(result.added, "track")} to ${name}`

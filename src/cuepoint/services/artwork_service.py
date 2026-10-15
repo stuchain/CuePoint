@@ -621,6 +621,41 @@ class ArtworkService(IArtworkService):
             self._memory.remember_refused(source)
             return None
 
+    def beatport_image_thumbnail(self, artwork_url: str, size: str) -> Optional[bytes]:
+        """A Beatport image as a JPEG at a named size, or None (Discover's cards).
+
+        The image is one a Discover run stored from a catalog response — a chart's,
+        an artist's or a label's — not a track's. It goes through the same host
+        check, gate, cache, guard and failure memory as a candidate's, and the
+        renderer receives only the re-encoded thumbnail, never the URL.
+
+        Raises:
+            ValueError: If the size is not a named size.
+        """
+        from cuepoint.data.beatport import artwork_url_at_size, is_beatport_artwork_url
+
+        pixels = size_pixels(size)
+        if not artwork_url or not is_beatport_artwork_url(artwork_url):
+            return None
+        source = artwork_url_at_size(artwork_url, BEATPORT_FETCH_SIZE)
+        key = _sha256(source.encode("utf-8"))
+        cached = self._cache.get(key, pixels)
+        if cached is not None:
+            return cached
+        if self._memory.refused(source):
+            return None
+        data = self._gate.run(f"image:{source}", lambda: self._fetch_image(source))
+        if data is None:
+            return None
+        try:
+            return self._store_thumbnails(key, data)[pixels]
+        except ArtworkRefused as refused:
+            _logger.info(
+                "[artwork] a Discover card's image is unreadable (%s)", refused.reason
+            )
+            self._memory.remember_refused(source)
+            return None
+
     def _candidate_repository(self) -> IMatchRepository:
         if self._matches is None:
             from cuepoint.persistence.match_repository import MatchRepository

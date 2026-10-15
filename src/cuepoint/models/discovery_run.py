@@ -70,8 +70,27 @@ SOURCE_CHART = "chart"
 #: Found in a recent release on a library label.
 SOURCE_LABEL_RELEASE = "label_release"
 
+#: Found in a recent release of a chosen artist.
+SOURCE_ARTIST_RELEASE = "artist_release"
+
 #: Why a run found a track.
-SOURCE_TYPES = (SOURCE_CHART, SOURCE_LABEL_RELEASE)
+SOURCE_TYPES = (SOURCE_CHART, SOURCE_LABEL_RELEASE, SOURCE_ARTIST_RELEASE)
+
+#: The cards a run's results are grouped into: a chart, a chosen artist, a
+#: chosen label.
+GROUP_CHART = "chart"
+GROUP_ARTIST = "artist"
+GROUP_LABEL = "label"
+GROUP_KINDS = (GROUP_CHART, GROUP_ARTIST, GROUP_LABEL)
+
+#: Which charts a run read. ``artists``: the charts the chosen artists made.
+#: ``library``: the charts any artist in the library made (every artist was
+#: asked for). ``genre``: no artist was chosen, so the general charts of the
+#: chosen genres. A run stored before groups exist has none of these.
+CHARTS_ARTISTS = "artists"
+CHARTS_LIBRARY = "library"
+CHARTS_GENRE = "genre"
+CHARTS_MODES = (CHARTS_ARTISTS, CHARTS_LIBRARY, CHARTS_GENRE)
 
 #: Owned tracks left out of a run's list: DEC-092's default.
 OWNED_HIDE = "hide"
@@ -268,9 +287,13 @@ class DiscoveryRunSource:
         source_type: One of :data:`SOURCE_TYPES`.
         source_id: The chart's or release's Beatport id.
         matched_on: The library artist or label that put the source in scope,
-            as the library names it (DEC-074: name the signal).
+            as the library names it (DEC-074: name the signal). For a general
+            genre chart no library name is in scope, so it is who made the chart,
+            or the chart's own name when Beatport names nobody.
         source_name: The chart's or release's name.
         source_url: Its page on the Beatport website.
+        group_key: The card the reason belongs to (a chart's id, or an artist's
+            or label's ``name_key``); empty for a run stored before groups.
     """
 
     run_id: int
@@ -280,6 +303,7 @@ class DiscoveryRunSource:
     matched_on: str
     source_name: Optional[str] = None
     source_url: Optional[str] = None
+    group_key: str = ""
 
     def __post_init__(self) -> None:
         """Validate the row."""
@@ -294,6 +318,8 @@ class DiscoveryRunSource:
         required_text(self.matched_on, "matched_on")
         optional_text(self.source_name, "source_name")
         optional_https_url(self.source_url, "source_url")
+        if not isinstance(self.group_key, str):
+            raise ValueError("group_key must be text")
 
     def to_dict(self) -> Dict[str, Any]:
         """Return the persisted row."""
@@ -302,6 +328,7 @@ class DiscoveryRunSource:
             "beatport_track_id": self.beatport_track_id,
             "source_type": self.source_type,
             "source_id": self.source_id,
+            "group_key": self.group_key,
             "source_name": self.source_name,
             "source_url": self.source_url,
             "matched_on": self.matched_on,
@@ -319,7 +346,113 @@ class DiscoveryRunSource:
             matched_on=data["matched_on"],
             source_name=data.get("source_name"),
             source_url=data.get("source_url"),
+            group_key=data.get("group_key") or "",
         )
+
+
+@dataclass(frozen=True)
+class DiscoveryRunGroup:
+    """One card a run's results are grouped into (``discovery_run_groups``).
+
+    Attributes:
+        run_id: The run. Its row cascades.
+        kind: One of :data:`GROUP_KINDS`.
+        key: A chart's Beatport id as text, or an artist's or label's
+            ``name_key``.
+        name: What the card is called: the chart's name, the artist's or the
+            label's name as the library names it.
+        position: Its place in the order the cards were found.
+        beatport_id: Its Beatport id, when one is known.
+        owner_key: For a chart, the chosen artist it counts for; ``None`` for a
+            general genre chart.
+        curator: For a chart, who made it, as Beatport names them.
+        art_url: The image Beatport named; never sent to the renderer.
+    """
+
+    run_id: int
+    kind: str
+    key: str
+    name: str
+    position: int = 0
+    beatport_id: Optional[int] = None
+    owner_key: Optional[str] = None
+    curator: Optional[str] = None
+    art_url: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        """Validate the row."""
+        object.__setattr__(self, "run_id", required_id(self.run_id, "run_id"))
+        one_of(self.kind, GROUP_KINDS, "kind")
+        required_text(self.key, "key")
+        required_text(self.name, "name")
+        object.__setattr__(self, "position", non_negative(self.position, "position"))
+        object.__setattr__(
+            self, "beatport_id", optional_id(self.beatport_id, "beatport_id")
+        )
+        optional_text(self.owner_key, "owner_key")
+        optional_text(self.curator, "curator")
+        optional_https_url(self.art_url, "art_url")
+
+    @classmethod
+    def from_row(cls, row: Any) -> "DiscoveryRunGroup":
+        """Build a group from a database row (``sqlite3.Row`` or mapping)."""
+        data = dict(row)
+        return cls(
+            run_id=data["run_id"],
+            kind=data["kind"],
+            key=data["key"],
+            name=data["name"],
+            position=data.get("position", 0),
+            beatport_id=data.get("beatport_id"),
+            owner_key=data.get("owner_key"),
+            curator=data.get("curator"),
+            art_url=data.get("art_url"),
+        )
+
+
+@dataclass(frozen=True)
+class GroupCard:
+    """A card as a run's results show it, with its counts as they are now.
+
+    Attributes:
+        group: The stored group.
+        tracks: Distinct tracks the card holds.
+        owned: How many of those the library owns now (DEC-092).
+        charts: For an artist, how many charts of theirs the run read.
+        new: For an artist or a label, the tracks found as new releases.
+    """
+
+    group: DiscoveryRunGroup
+    tracks: int = 0
+    owned: int = 0
+    charts: int = 0
+    new: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API; the image URL stays behind (``has_art``)."""
+        return {
+            "kind": self.group.kind,
+            "key": self.group.key,
+            "name": self.group.name,
+            "curator": self.group.curator,
+            "tracks": self.tracks,
+            "owned": self.owned,
+            "charts": self.charts,
+            "new": self.new,
+            "has_art": self.group.art_url is not None,
+        }
+
+
+@dataclass(frozen=True)
+class GroupSelection:
+    """The cards a person ticked: their distinct tracks, and how many are owned."""
+
+    tracks: int
+    owned: int
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for the API."""
+        return {"tracks": self.tracks, "owned": self.owned}
 
 
 @dataclass(frozen=True)

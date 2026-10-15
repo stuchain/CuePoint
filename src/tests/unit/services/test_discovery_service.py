@@ -572,13 +572,19 @@ class TestScope:
     def test_picked_artists_narrow_the_charts_by_any_spelling(self, db, library, world):
         service = make(db, world)
         run = service.run(request(service, artists=["MARA VEIL"], labels=[]))
-        assert found(db, run.id) == [1, 2, 3]
+        # Her charts' tracks, then her own new release (track 7, on Nightfall).
+        assert found(db, run.id) == [1, 2, 3, 7]
         assert (run.artists_in_scope, run.labels_in_scope) == (1, 0)
 
     def test_an_empty_selection_is_none_not_all(self, db, library, world):
+        """No artists chosen reads the genres' general charts and no library artist's."""
         service = make(db, world)
         run = service.run(request(service, artists=[], labels=[]))
-        assert (run.tracks_found, world.requests) == (0, [])
+        assert (run.artists_in_scope, run.labels_in_scope) == (0, 0)
+        # Every chart in the two genres, by anyone: C1-C4, never the old C5 or the
+        # other genre's C6; and no label or artist search.
+        assert found(db, run.id) == [1, 2, 3, 4, 6, 5]  # genre 5, then genre 6
+        assert searches(world) == 0
 
     def test_no_genres_reads_no_charts(self, db, library, world):
         service = make(db, world)
@@ -947,9 +953,9 @@ class TestCommits:
         commits: List[int] = []
         real = service._runs.record_found
 
-        def counting(run_id, tracks, sources, fetched_at, counts):
+        def counting(run_id, tracks, sources, fetched_at, counts, *more):
             commits.append(len(tracks))
-            return real(run_id, tracks, sources, fetched_at, counts)
+            return real(run_id, tracks, sources, fetched_at, counts, *more)
 
         monkeypatch.setattr(service._runs, "record_found", counting)
         return commits

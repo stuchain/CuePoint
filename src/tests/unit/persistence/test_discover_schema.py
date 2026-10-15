@@ -142,6 +142,7 @@ COLUMNS: Dict[str, tuple] = {
         "beatport_track_id",
         "source_type",
         "source_id",
+        "group_key",
         "source_name",
         "source_url",
         "matched_on",
@@ -191,7 +192,13 @@ CREATED_INDEXES = {
         "idx_discovery_run_tracks_track": (["beatport_track_id"], False),
         "idx_discovery_run_tracks_position": (["run_id", "position"], True),
     },
-    "discovery_run_sources": {},
+    # Rebuilt by m0030 (the groups): its one index leads with the run.
+    "discovery_run_sources": {
+        "idx_discovery_run_sources_group": (
+            ["run_id", "source_type", "group_key"],
+            False,
+        )
+    },
     "wantlist": {"idx_wantlist_run": (["added_from_run_id"], False)},
     "track_credits": {"idx_track_credits_name": (["name_key", "track_id"], False)},
     "derived_indexes": {},
@@ -995,7 +1002,7 @@ class TestTheVocabularies:
         add_run_track(db, run, track)
         add_source(db, run, track, source_type=source_type)
 
-    @pytest.mark.parametrize("value", ["artist_release", "CHART", "", "search"])
+    @pytest.mark.parametrize("value", ["CHART", "", "search"])
     def test_a_source_type_outside_the_vocabulary_is_refused(self, db, value):
         run, track = add_run(db), add_catalog(db)
         add_run_track(db, run, track)
@@ -1318,7 +1325,7 @@ class TestTheCatalogFollowsDiscover01:
     AS_CREDITS = {"artists": ROLE_ARTIST, "remixers": ROLE_REMIXER}
     #: Fields read live and never stored: the preview's sample URL is fetched
     #: when a preview is played (DEC-269).
-    NOT_KEPT = {"sample_url"}
+    NOT_KEPT = {"sample_url", "label_image_url"}
 
     def test_every_parsed_field_has_a_home(self, db):
         columns = set(columns_of(db, "beatport_tracks"))

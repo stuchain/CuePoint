@@ -7,24 +7,33 @@ dropped them. They moved here from ``incrate/`` when inCrate retired
 build them.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
 
 @dataclass(frozen=True)
 class CatalogArtist:
-    """A Beatport artist, by id."""
+    """A Beatport artist, by id.
+
+    ``image_url`` is the artist's picture when Beatport named one (the recorded
+    artist and track-credit objects both carry an ``image``); it is checked to be
+    on Beatport's own hosts and never sent to the renderer. It is a picture, not
+    an identity, so two credits of one artist are equal whatever picture they
+    carry.
+    """
 
     id: int
     name: str
+    image_url: Optional[str] = field(default=None, compare=False)
 
 
 @dataclass(frozen=True)
 class CatalogLabel:
-    """A Beatport label, by id."""
+    """A Beatport label, by id; ``image_url`` as on :class:`CatalogArtist`."""
 
     id: int
     name: str
+    image_url: Optional[str] = field(default=None, compare=False)
 
 
 @dataclass(frozen=True)
@@ -55,6 +64,9 @@ class CatalogTrack:
     genre_id: Optional[int]
     genre_name: Optional[str]
     sample_url: Optional[str] = None
+    #: The label's picture, from the release's own ``label`` object; a picture,
+    #: not an identity, so it is left out of equality.
+    label_image_url: Optional[str] = field(default=None, compare=False)
 
 
 @dataclass(frozen=True)
@@ -65,6 +77,7 @@ class CatalogChart:
     is the account that published it, which can be named differently
     (DISCOVER-01's recording). ``url`` is the www.beatport.com page.
     ``publish_date`` is ``YYYY-MM-DD``; ``genre_ids`` are the chart's genres.
+    ``image_url`` is the chart's picture when Beatport named one.
     """
 
     id: int
@@ -75,6 +88,7 @@ class CatalogChart:
     owner_name: Optional[str]
     genre_ids: Tuple[int, ...]
     track_count: Optional[int]
+    image_url: Optional[str] = field(default=None, compare=False)
 
 
 @dataclass

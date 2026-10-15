@@ -274,10 +274,15 @@ GET_PATHS = [
     api.RUNS_PATH,
     run_path(1),
     run_path(1, "/tracks"),
+    run_path(1, "/groups"),
+    run_path(1, "/groups/tracks"),
+    run_path(1, "/groups/summary"),
+    run_path(1, "/art"),
     api.WANTLIST_PATH,
     api.ENTITY_PATH,
     api.ENTITY_BEATPORT_PATH,
     api.SIMILAR_PATH,
+    api.PLAYLISTS_PATH,
 ]
 POST_PATHS = [
     api.RUN_START_PATH,
@@ -1446,3 +1451,279 @@ class TestTheRealContainer:
         assert error["reason"] == "no_token"
         answer = ok(get(engine, api.OPTIONS_PATH))
         assert answer["beatport"]["state"] == "no_token"
+
+
+# ------------------------------------------------------------------ cards
+
+
+def cards_arg(*pairs: Tuple[str, str]) -> str:
+    return json.dumps([{"kind": kind, "key": key} for kind, key in pairs])
+
+
+def dig(engine: str, store: JobStore, **ask: Any) -> int:
+    """A finished run with the given scope, started over the wire."""
+    job = ok(post(engine, api.RUN_START_PATH, {**ASK, **ask}), 202)
+    assert finished(store, job["id"]).state is JobState.SUCCEEDED
+    return int(store.get(job["id"]).result["id"])
+
+
+class TestResultsAsCards:
+    def test_a_dig_with_artists_chosen_is_charts_artists_and_labels(
+        self, engine, store, world
+    ):
+        run = dig(engine, store, artists=["Mara Veil"], labels=["Nightfall Audio"])
+        answer = ok(get(engine, run_path(run, "/groups")))
+        assert answer["grouped"] is True
+        assert answer["charts_mode"] == "artists"
+        assert [row["id"] for row in answer["rows"]] == ["charts", "artists", "labels"]
+        rows = {row["id"]: row["cards"] for row in answer["rows"]}
+        (chart,) = rows["charts"]
+        assert (chart["kind"], chart["key"], chart["tracks"]) == ("chart", "1", 3)
+        assert chart["curator"] == "Mara Veil"
+        (artist,) = rows["artists"]
+        assert (artist["name"], artist["charts"], artist["new"], artist["tracks"]) == (
+            "Mara Veil",
+            1,
+            1,
+            4,
+        )
+        assert set(artist) == set(chart) == set(rows["labels"][0])
+        assert rows["labels"][0]["new"] == 3
+        assert (answer["tracks"], answer["owned"]) == (5, 0)
+
+    def test_a_dig_with_no_artists_chosen_has_the_genre_charts_row(
+        self, engine, store, world
+    ):
+        run = dig(engine, store, artists=[], labels=["Nightfall Audio"])
+        answer = ok(get(engine, run_path(run, "/groups")))
+        assert answer["charts_mode"] == "genre"
+        assert [row["id"] for row in answer["rows"]] == ["genre_charts", "labels"]
+
+    def test_a_run_stored_before_cards_is_not_grouped(self, engine, store, world):
+        repo = resolve("IDiscoveryRepository")
+        old = repo.start_run(
+            DiscoveryRun(started_at="2026-01-01T00:00:00+00:00", params_json="{}")
+        )
+        answer = ok(get(engine, run_path(old.id, "/groups")))
+        assert (answer["grouped"], answer["rows"]) == (False, [])
+        assert answer["charts_mode"] is None
+
+    def test_a_cards_tracks_are_a_window_like_the_runs(self, engine, store, world):
+        run = dig(engine, store, artists=["Mara Veil"], labels=["Nightfall Audio"])
+        answer = ok(
+            get(
+                engine,
+                run_path(run, "/groups/tracks"),
+                groups=cards_arg(("artist", "mara veil"), ("label", "nightfall audio")),
+                owned="all",
+                sort="title",
+            )
+        )
+        assert sorted(ids_of(answer["rows"])) == [1, 2, 3, 7, 8]
+        assert set(answer["rows"][0]) >= TRACK_ROW | {"sources", "position"}
+        assert answer["window"]["sort"] == "title" and answer["total"] == 5
+        assert {s["source_type"] for r in answer["rows"] for s in r["sources"]} == {
+            "chart",
+            "artist_release",
+            "label_release",
+        }
+
+    def test_ticked_cards_are_counted_once_each_track_with_the_owned(
+        self, engine, store, world, library
+    ):
+        run = dig(engine, store, artists=["Mara Veil"], labels=["Nightfall Audio"])
+        own(library[0], 3)
+        answer = ok(
+            get(
+                engine,
+                run_path(run, "/groups/summary"),
+                groups=cards_arg(("artist", "mara veil"), ("label", "nightfall audio")),
+            )
+        )
+        assert answer == {"run_id": run, "cards": 2, "tracks": 5, "owned": 1}
+
+    @pytest.mark.parametrize(
+        "groups, words",
+        [
+            ("not json", "list of {kind, key}"),
+            ("[]", "at least one"),
+            (json.dumps([{"kind": "chart"}]), "Not a card"),
+            (json.dumps([{"kind": "chart", "key": "1", "x": 1}]), "Not a card"),
+            (json.dumps([{"kind": "playlist", "key": "1"}]), "Not a card"),
+        ],
+    )
+    def test_cards_it_cannot_read_are_refused(
+        self, engine, store, world, groups, words
+    ):
+        run = dig(engine, store, artists=["Mara Veil"])
+        refused(
+            get(engine, run_path(run, "/groups/summary"), groups=groups),
+            400,
+            "INVALID_REQUEST",
+            words,
+        )
+
+    def test_a_missing_run_and_a_missing_parameter(self, engine, store, world):
+        refused(get(engine, run_path(999, "/groups")), 404, "DISCOVERY_RUN_NOT_FOUND")
+        refused(
+            get(
+                engine,
+                run_path(999, "/groups/summary"),
+                groups=cards_arg(("chart", "1")),
+            ),
+            404,
+            "DISCOVERY_RUN_NOT_FOUND",
+        )
+        run = dig(engine, store, artists=["Mara Veil"])
+        refused(
+            get(engine, run_path(run, "/groups/tracks")),
+            400,
+            "INVALID_REQUEST",
+            "groups is required",
+        )
+        refused(
+            get(engine, run_path(run, "/groups"), cards="x"),
+            400,
+            "INVALID_REQUEST",
+            "Unknown parameter",
+        )
+
+    def test_a_picture_is_a_thumbnail_and_never_a_url(
+        self, engine, store, world, monkeypatch
+    ):
+        import base64
+        import io
+
+        from PIL import Image
+
+        template = "https://geo-media.beatport.com/image_size/{w}x{h}/c.jpg"
+        world.images[("chart", 1)] = template
+        buffer = io.BytesIO()
+        Image.new("RGB", (600, 600), (200, 30, 30)).save(buffer, "JPEG")
+        fetched: List[str] = []
+
+        def fake_fetch(url: str) -> bytes:
+            fetched.append(url)
+            return buffer.getvalue()
+
+        from cuepoint.services import artwork_service
+
+        monkeypatch.setattr(artwork_service, "fetch_image", fake_fetch)
+        run = dig(engine, store, artists=["Mara Veil"])
+        answer = ok(
+            get(engine, run_path(run, "/art"), kind="chart", key="1", size="row")
+        )
+        jpeg = base64.b64decode(answer["jpeg_base64"])
+        assert jpeg[:2] == b"\xff\xd8"
+        assert Image.open(io.BytesIO(jpeg)).size == (108, 108)
+        assert fetched == ["https://geo-media.beatport.com/image_size/500x500/c.jpg"]
+        assert "http" not in json.dumps(answer)
+        # A card with no picture is an empty answer, not an error.
+        empty = ok(get(engine, run_path(run, "/art"), kind="artist", key="mara veil"))
+        assert empty["jpeg_base64"] is None
+        refused(get(engine, run_path(run, "/art"), key="1"), 400, "INVALID_REQUEST")
+
+
+class TestAddingTickedCards:
+    def test_the_wantlist_takes_the_cards_tracks_the_library_lacks(
+        self, engine, store, world, library
+    ):
+        run = dig(engine, store, artists=["Mara Veil"], labels=["Nightfall Audio"])
+        own(library[0], 3)
+        ok(
+            post(
+                engine,
+                api.WANTLIST_ADD_PATH,
+                {
+                    "run_id": run,
+                    "groups": [{"kind": "artist", "key": "mara veil"}],
+                },
+            )
+        )
+        wanted = ids_of(ok(get(engine, api.WANTLIST_PATH, owned="all"))["rows"])
+        assert sorted(wanted) == [1, 2, 7]  # track 3 is owned and left out
+
+    def test_a_push_of_ticked_cards_skips_the_owned_and_says_so(
+        self, engine, store, world, library
+    ):
+        run = dig(engine, store, artists=["Mara Veil"], labels=["Nightfall Audio"])
+        own(library[0], 3)
+        job = ok(
+            post(
+                engine,
+                api.PLAYLIST_START_PATH,
+                {
+                    "run_id": run,
+                    "name": "Mara and Nightfall",
+                    "groups": [
+                        {"kind": "artist", "key": "mara veil"},
+                        {"kind": "label", "key": "nightfall audio"},
+                    ],
+                },
+            ),
+            202,
+        )
+        done = finished(store, job["id"])
+        assert done.state is JobState.SUCCEEDED
+        assert (done.result["requested"], done.result["skipped_owned"]) == (5, 1)
+        (playlist,) = world.playlists.values()
+        assert sorted(playlist["tracks"]) == [1, 2, 7, 8]
+
+    def test_a_push_to_an_existing_playlist_creates_none(
+        self, engine, store, world, library
+    ):
+        existing = world.post("my/playlists/", json={"name": "Mine"})["id"]
+        run = dig(engine, store, artists=["Mara Veil"])
+        listed = ok(get(engine, api.PLAYLISTS_PATH))["playlists"]
+        assert listed == [{"id": str(existing), "name": "Mine"}]
+        job = ok(
+            post(
+                engine,
+                api.PLAYLIST_START_PATH,
+                {
+                    "run_id": run,
+                    "playlist_id": str(existing),
+                    "name": "Mine",
+                    "groups": [{"kind": "chart", "key": "1"}],
+                },
+            ),
+            202,
+        )
+        done = finished(store, job["id"])
+        assert done.result["added"] == 3 and len(world.playlists) == 1
+        assert sorted(world.playlists[existing]["tracks"]) == [1, 2, 3]
+
+    @pytest.mark.parametrize(
+        "body, words",
+        [
+            ({"groups": [{"kind": "chart", "key": "1"}]}, "groups go with run_id"),
+            (
+                {
+                    "run_id": 1,
+                    "groups": [{"kind": "chart", "key": "1"}],
+                    "track_ids": [1],
+                },
+                "not both",
+            ),
+            (
+                {
+                    "run_id": 1,
+                    "groups": [{"kind": "chart", "key": "1"}],
+                    "owned": "all",
+                },
+                "owned goes with run_id alone",
+            ),
+        ],
+    )
+    def test_a_push_naming_its_tracks_two_ways_is_refused(
+        self, engine, store, world, body, words
+    ):
+        refused(
+            post(engine, api.PLAYLIST_START_PATH, body), 400, "INVALID_REQUEST", words
+        )
+
+    def test_playlists_without_a_token_is_the_no_token_refusal(
+        self, engine, store, library
+    ):
+        error = refused(get(engine, api.PLAYLISTS_PATH), 409, "BEATPORT_REFUSED")
+        assert error["reason"] == "no_token"

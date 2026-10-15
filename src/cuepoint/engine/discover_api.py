@@ -22,6 +22,14 @@ that changes something is a POST to an action path, as ``server.py`` speaks.
   ``GET runs/{id}`` (one run's header and the scope it resolved),
   ``GET runs/{id}/tracks`` (a window of what it found, with the owned filter
   and the hidden count), ``POST runs/start`` and ``POST runs/{id}/delete``.
+- ``GET runs/{id}/groups`` — the run's results as rows of cards (charts,
+  artists, labels), with counts; ``GET runs/{id}/groups/tracks`` (a window of
+  the merged tracks of one or more cards), ``GET runs/{id}/groups/summary``
+  (how many tracks some ticked cards hold, and how many are owned) and
+  ``GET runs/{id}/art`` (a card's picture as a guarded thumbnail, base64: the
+  renderer never receives Beatport's URL, DEC-076). A run stored before cards
+  existed answers ``grouped: false`` and reads as one list.
+- ``GET playlists`` — the user's own Beatport playlists, to add to one.
 - ``GET wantlist`` and ``POST wantlist/add``, ``/remove``, ``/note`` and
   ``/bought``.
 - ``POST playlist/start`` — by explicit ids, or by a run and its owned filter,
@@ -93,12 +101,17 @@ RESOLVE_START_PATH = PREFIX + "resolve/start"
 ENTITY_PATH = PREFIX + "entity"
 ENTITY_BEATPORT_PATH = PREFIX + "entity/beatport"
 SIMILAR_PATH = PREFIX + "similar"
+PLAYLISTS_PATH = PREFIX + "playlists"
 
 #: A run's own routes. The id is matched loosely and read strictly, so
 #: ``runs/abc`` is refused as a bad id rather than answered as an unknown path.
 _RUN_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)$")
 _RUN_TRACKS_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/tracks$")
 _RUN_DELETE_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/delete$")
+_RUN_GROUPS_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/groups$")
+_RUN_GROUP_TRACKS_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/groups/tracks$")
+_RUN_GROUP_SUMMARY_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/groups/summary$")
+_RUN_ART_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/art$")
 
 #: The refusal codes a caller can branch on. Named here and in the client,
 #: and a test compares the two.
@@ -143,6 +156,17 @@ WINDOW_DEFAULT = 100
 #: action's body. Named here so the client's copies can be held to them.
 RUNS_PARAMS: Tuple[str, ...] = ("limit", "offset")
 RUN_TRACKS_PARAMS: Tuple[str, ...] = ("owned", "sort", "dir", "offset", "limit")
+RUN_GROUPS_PARAMS: Tuple[str, ...] = ()
+RUN_GROUP_TRACKS_PARAMS: Tuple[str, ...] = (
+    "groups",
+    "owned",
+    "sort",
+    "dir",
+    "offset",
+    "limit",
+)
+RUN_GROUP_SUMMARY_PARAMS: Tuple[str, ...] = ("groups",)
+RUN_ART_PARAMS: Tuple[str, ...] = ("kind", "key", "size")
 WANTLIST_PARAMS: Tuple[str, ...] = (
     "owned",
     "bought",
@@ -177,7 +201,7 @@ RUN_START_FIELDS: Tuple[str, ...] = (
     "artists",
     "labels",
 )
-WANTLIST_ADD_FIELDS: Tuple[str, ...] = ("track_ids", "run_id")
+WANTLIST_ADD_FIELDS: Tuple[str, ...] = ("track_ids", "run_id", "groups")
 WANTLIST_REMOVE_FIELDS: Tuple[str, ...] = ("track_ids",)
 WANTLIST_NOTE_FIELDS: Tuple[str, ...] = ("track_id", "note")
 WANTLIST_BOUGHT_FIELDS: Tuple[str, ...] = ("track_ids", "bought")
@@ -189,7 +213,12 @@ PLAYLIST_START_FIELDS: Tuple[str, ...] = (
     "dir",
     "name",
     "include_owned",
+    "groups",
+    "playlist_id",
 )
+
+#: The cards a request may name at once; the repository's own bound.
+MAX_GROUPS = 500
 
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _WHOLE = re.compile(r"^\d+$")
@@ -691,6 +720,197 @@ def run_delete(run_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# A run's results as cards
+# ---------------------------------------------------------------------------
+
+#: The rows the cards are shown in, in order, and which kind of card each holds.
+ROW_CHARTS = "charts"
+ROW_GENRE_CHARTS = "genre_charts"
+ROW_ARTISTS = "artists"
+ROW_LABELS = "labels"
+ROWS: Tuple[str, ...] = (ROW_CHARTS, ROW_GENRE_CHARTS, ROW_ARTISTS, ROW_LABELS)
+
+
+def _group_specs(raw: Any) -> List[Tuple[str, str]]:
+    """The cards a request names, as ``(kind, key)``, each once.
+
+    Sent as a list of ``{"kind", "key"}`` objects (in a query string, as that
+    list in JSON): a card's key is a name key, which can hold any character,
+    so no separator is safe.
+    """
+    value = raw
+    if isinstance(raw, str):
+        try:
+            value = json.loads(raw)
+        except ValueError:
+            raise bad_request("groups must be a list of {kind, key} cards") from None
+    if not isinstance(value, list) or not value:
+        raise bad_request("groups must be a list of {kind, key} cards, at least one")
+    if len(value) > MAX_GROUPS:
+        raise bad_request(f"At most {MAX_GROUPS:,} cards at once")
+    found: List[Tuple[str, str]] = []
+    for item in value:
+        if (
+            not isinstance(item, dict)
+            or set(item) - {"kind", "key"}
+            or not isinstance(item.get("kind"), str)
+            or not isinstance(item.get("key"), str)
+            or not item["key"]
+        ):
+            raise bad_request("Not a card. A card is {kind, key}")
+        spec = (item["kind"], item["key"])
+        if spec not in found:
+            found.append(spec)
+    return found
+
+
+def _rows(cards: Sequence[Any], mode: Optional[str]) -> List[Dict[str, Any]]:
+    """The cards laid out in rows; a row with no card is left out.
+
+    Row one is the charts the chosen artists made, or, when no artist was
+    chosen, the general genre charts: the rule is ``charts_mode``'s, recorded
+    with the run, and this only reads it.
+    """
+    from cuepoint.models.discovery_run import (
+        CHARTS_GENRE,
+        GROUP_ARTIST,
+        GROUP_CHART,
+        GROUP_LABEL,
+    )
+
+    chart_row = ROW_GENRE_CHARTS if mode == CHARTS_GENRE else ROW_CHARTS
+    by_row: Dict[str, List[Dict[str, Any]]] = {row: [] for row in ROWS}
+    for card in cards:
+        kind = card.group.kind
+        row = (
+            chart_row
+            if kind == GROUP_CHART
+            else ROW_ARTISTS
+            if kind == GROUP_ARTIST
+            else ROW_LABELS
+            if kind == GROUP_LABEL
+            else None
+        )
+        if row is not None:
+            by_row[row].append(card.to_dict())
+    return [{"id": row, "cards": by_row[row]} for row in ROWS if by_row[row]]
+
+
+def run_groups(run_id: int, params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """A run's results as rows of cards, with counts as they are now.
+
+    ``grouped`` is false for a run stored before cards existed: it has one
+    list, ``runs/{id}/tracks``. ``tracks`` and ``owned`` are the whole run's,
+    the "Everything" button's.
+    """
+    from cuepoint.models.discovery_run import OWNED_ALL
+
+    _params(params, RUN_GROUPS_PARAMS)
+    service = _resolve("IDiscoveryService")
+    try:
+        cards = service.run_groups(run_id)
+        notes = service.run_notes(run_id)
+        page = service.run_tracks(run_id, OWNED_ALL, offset=0, limit=1)
+    except LookupError as exc:
+        raise not_found(RUN_NOT_FOUND, str(exc)) from None
+    mode = _existing_run(service, run_id).params.get("charts_mode")
+    return {
+        "run_id": run_id,
+        "grouped": bool(cards),
+        "charts_mode": mode if isinstance(mode, str) else None,
+        "rows": _rows(cards, mode if isinstance(mode, str) else None),
+        "notes": notes,
+        "tracks": page.tracks,
+        "owned": page.owned,
+    }
+
+
+def run_group_tracks(run_id: int, params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """A window of the merged tracks of one or more cards, owned hidden unless asked."""
+    from cuepoint.models.discovery_run import (
+        OWNED_FILTERS,
+        OWNED_HIDE,
+        RUN_TRACK_SORTS,
+        SORT_FOUND,
+    )
+    from cuepoint.persistence.discovery_repository import MAX_WINDOW
+
+    query = _params(params, RUN_GROUP_TRACKS_PARAMS)
+    groups = _group_specs(_query_required(query, "groups"))
+    owned = _query_choice(query, "owned", OWNED_FILTERS, OWNED_HIDE)
+    sort = _query_choice(query, "sort", RUN_TRACK_SORTS, SORT_FOUND)
+    direction = _query_dir(query, "asc")
+    offset = _query_int(query, "offset", 0, 0, 2**63 - 1)
+    limit = _query_int(query, "limit", WINDOW_DEFAULT, 1, MAX_WINDOW)
+    try:
+        page = _resolve("IDiscoveryService").group_tracks(
+            run_id, groups, owned, sort, direction == "desc", offset, limit
+        )
+    except LookupError as exc:
+        raise not_found(RUN_NOT_FOUND, str(exc)) from None
+    return {
+        "run_id": run_id,
+        **page.to_dict(),
+        "window": {
+            "owned": owned,
+            "sort": sort,
+            "dir": direction,
+            "offset": offset,
+            "limit": limit,
+        },
+    }
+
+
+def run_group_summary(run_id: int, params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """What ticking some cards would add: distinct tracks, and how many are owned."""
+    query = _params(params, RUN_GROUP_SUMMARY_PARAMS)
+    groups = _group_specs(_query_required(query, "groups"))
+    try:
+        selection = _resolve("IDiscoveryService").group_selection(run_id, groups)
+    except LookupError as exc:
+        raise not_found(RUN_NOT_FOUND, str(exc)) from None
+    return {"run_id": run_id, "cards": len(groups), **selection.to_dict()}
+
+
+def run_art(run_id: int, params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """A card's picture as a JPEG thumbnail, base64, or null when it has none.
+
+    The image is fetched, checked and re-encoded by the artwork service, the
+    one place an image from Beatport is read (DEC-076): the renderer is sent
+    bytes, never a URL.
+    """
+    import base64
+
+    from cuepoint.models.discovery_run import GROUP_KINDS
+
+    query = _params(params, RUN_ART_PARAMS)
+    kind = _query_choice(query, "kind", GROUP_KINDS, "")
+    if kind == "":
+        raise bad_request("kind is required")
+    key = _query_required(query, "key")
+    size = _query_choice(query, "size", ("row", "inspector"), "inspector")
+    try:
+        url = _resolve("IDiscoveryService").group_art_url(run_id, kind, key)
+    except LookupError as exc:
+        raise not_found(RUN_NOT_FOUND, str(exc)) from None
+    body = (
+        _resolve("IArtworkService").beatport_image_thumbnail(url, size) if url else None
+    )
+    return {
+        "run_id": run_id,
+        "jpeg_base64": base64.b64encode(body).decode("ascii") if body else None,
+    }
+
+
+def playlists(params: Dict[str, List[str]]) -> Dict[str, Any]:
+    """The user's own Beatport playlists, so tracks can be added to one."""
+    _params(params, ())
+    service = _resolve("IBeatportPlaylistService")
+    service.require_token()
+    return {"playlists": service.my_playlists()}
+
+
+# ---------------------------------------------------------------------------
 # The wantlist
 # ---------------------------------------------------------------------------
 
@@ -733,8 +953,16 @@ def wantlist(params: Dict[str, List[str]]) -> Dict[str, Any]:
 def wantlist_add(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
     """Add Beatport tracks, from a run or a page; reads any not cached."""
     _only(data, WANTLIST_ADD_FIELDS)
-    ids = _ids(data, "track_ids")
     run_id = _optional_int(data, "run_id")
+    if data.get("groups") is not None:
+        # Ticked cards: the tracks of those cards the library does not own.
+        if data.get("track_ids") is not None:
+            raise bad_request("Name the tracks by track_ids or by groups, not both")
+        ids = _group_track_ids(run_id, data["groups"], owned="hide")
+        if not ids:
+            raise bad_request("Those cards hold no tracks the library lacks")
+    else:
+        ids = _ids(data, "track_ids")
     try:
         change = _resolve("IWantlistService").add(ids, run_id=run_id)
     except LookupError as exc:
@@ -798,9 +1026,22 @@ def playlist_start(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str,
     include_owned = _optional_bool(data, "include_owned", False)
     has_ids = data.get("track_ids") is not None
     has_run = data.get("run_id") is not None
-    if has_ids == has_run:
+    has_groups = data.get("groups") is not None
+    playlist_id = _optional_text(data, "playlist_id")
+    if has_groups:
+        # Ticked cards: every track of them, owned ones left to the push's own
+        # rule (skipped and counted unless include_owned).
+        if has_ids:
+            raise bad_request(
+                "A push names its tracks by track_ids or groups, not both"
+            )
+        for key in ("owned", "sort", "dir"):
+            if data.get(key) is not None:
+                raise bad_request(f"{key} goes with run_id alone, not with groups")
+        ids = _group_track_ids(_optional_int(data, "run_id"), data["groups"])
+    elif has_ids == has_run:
         raise bad_request("A push names its tracks by track_ids or by run_id, not both")
-    if has_ids:
+    elif has_ids:
         for key in ("owned", "sort", "dir"):
             if data.get(key) is not None:
                 raise bad_request(f"{key} goes with run_id, not with track_ids")
@@ -821,9 +1062,27 @@ def playlist_start(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str,
         if not ids:
             raise bad_request(f"Discovery run {run_id} shows no tracks to push")
     job = start_beatport_playlist_job(
-        job_store, track_ids=ids, name=name, include_owned=include_owned
+        job_store,
+        track_ids=ids,
+        name=name,
+        include_owned=include_owned,
+        playlist_id=playlist_id,
     )
     return _job_started(job)
+
+
+def _group_track_ids(run_id: Optional[int], raw: Any, owned: str = "all") -> List[int]:
+    """Every distinct track of the cards a body names, in the run's order."""
+    if run_id is None or run_id < 1:
+        raise bad_request("groups go with run_id, a positive whole number")
+    groups = _group_specs(raw)
+    try:
+        ids: List[int] = _resolve("IDiscoveryService").group_track_ids(
+            run_id, groups, owned
+        )
+        return ids
+    except LookupError as exc:
+        raise not_found(RUN_NOT_FOUND, str(exc)) from None
 
 
 def _body_choice(
@@ -946,6 +1205,7 @@ _GET_ROUTES: Dict[str, Callable[[Dict[str, List[str]]], Dict[str, Any]]] = {
     ENTITY_PATH: entity,
     ENTITY_BEATPORT_PATH: entity_beatport,
     SIMILAR_PATH: similar,
+    PLAYLISTS_PATH: playlists,
 }
 
 _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], Any], Tuple[int, Dict[str, Any]]]] = {
@@ -964,14 +1224,29 @@ GET_PATHS: Tuple[str, ...] = (
     *_GET_ROUTES,
     PREFIX + "runs/{id}",
     PREFIX + "runs/{id}/tracks",
+    PREFIX + "runs/{id}/groups",
+    PREFIX + "runs/{id}/groups/tracks",
+    PREFIX + "runs/{id}/groups/summary",
+    PREFIX + "runs/{id}/art",
+)
+
+#: The routes of a run's own, by what follows the id, for the dispatch below.
+_RUN_GET_ROUTES = (
+    (_RUN_TRACKS_ROUTE, run_tracks),
+    (_RUN_GROUPS_ROUTE, run_groups),
+    (_RUN_GROUP_TRACKS_ROUTE, run_group_tracks),
+    (_RUN_GROUP_SUMMARY_ROUTE, run_group_summary),
+    (_RUN_ART_ROUTE, run_art),
 )
 POST_PATHS: Tuple[str, ...] = (*_POST_ROUTES, PREFIX + "runs/{id}/delete")
 
 
 def handles_get(path: str) -> bool:
     """True when this module answers a GET for ``path``."""
-    return path in _GET_ROUTES or bool(
-        _RUN_ROUTE.match(path) or _RUN_TRACKS_ROUTE.match(path)
+    return (
+        path in _GET_ROUTES
+        or bool(_RUN_ROUTE.match(path))
+        or any(route.match(path) for route, _ in _RUN_GET_ROUTES)
     )
 
 
@@ -985,9 +1260,10 @@ def handle_get(path: str, params: Dict[str, List[str]]) -> Tuple[int, Dict[str, 
     handler = _GET_ROUTES.get(path)
     if handler is not None:
         return 200, handler(params)
-    tracks = _RUN_TRACKS_ROUTE.match(path)
-    if tracks:
-        return 200, run_tracks(_id_in_path(tracks.group(1), "run"), params)
+    for route, answer in _RUN_GET_ROUTES:
+        matched = route.match(path)
+        if matched:
+            return 200, answer(_id_in_path(matched.group(1), "run"), params)
     run = _RUN_ROUTE.match(path)
     if run:
         return 200, run_header(_id_in_path(run.group(1), "run"), params)

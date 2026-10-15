@@ -401,6 +401,49 @@ def playlist_refused(ctx: Situation) -> Any:
     return ctx.store.get(started["id"]).result
 
 
+def _dig(ctx: Situation, **ask: Any) -> int:
+    """A finished run with the given scope; its id."""
+    started = ctx.job(api.RUN_START_PATH, {**ASK, **ask})
+    assert finished(ctx.store, started["id"]).state is JobState.SUCCEEDED
+    return int(ctx.store.get(started["id"]).result["id"])
+
+
+def _cards(**ask: Any) -> Callable[[Situation], Any]:
+    def state(ctx: Situation) -> Any:
+        ctx.own_two()
+        return ctx.get(run_path(_dig(ctx, **ask), "/groups"))
+
+    return state
+
+
+def run_group_tracks(ctx: Situation) -> Any:
+    """One artist card's tracks, owned shown: a chart's three and a new release."""
+    ctx.own_two()
+    run_id = _dig(ctx, artists=["Mara Veil"], labels=["Nightfall Audio"])
+    groups = json.dumps([{"kind": "artist", "key": "mara veil"}])
+    return ctx.get(run_path(run_id, "/groups/tracks"), groups=groups, owned="all")
+
+
+def run_group_summary(ctx: Situation) -> Any:
+    """Two ticked cards: a track on both is counted once, and an owned one is told."""
+    ctx.own_two()
+    run_id = _dig(ctx, artists=["Mara Veil"], labels=["Nightfall Audio"])
+    groups = json.dumps(
+        [
+            {"kind": "artist", "key": "mara veil"},
+            {"kind": "label", "key": "nightfall audio"},
+        ]
+    )
+    return ctx.get(run_path(run_id, "/groups/summary"), groups=groups)
+
+
+def playlists_listed(ctx: Situation) -> Any:
+    """The user's own Beatport playlists, to add tracks to one."""
+    ctx.world.post("my/playlists/", json={"name": "Friday finds"})
+    ctx.world.post("my/playlists/", json={"name": "Warm-up"})
+    return ctx.get(api.PLAYLISTS_PATH)
+
+
 def resolve_result(ctx: Situation) -> Any:
     ctx.own_two()
     started = ctx.job(api.RESOLVE_START_PATH)
@@ -431,6 +474,12 @@ STATES: Dict[str, Callable[[Situation], Any]] = {
     "run_tracks_all_owned": run_tracks_all_owned,
     "run_started": run_started,
     "run_deleted": run_deleted,
+    "run_groups_artists": _cards(artists=["Mara Veil"], labels=["Nightfall Audio"]),
+    "run_groups_genre": _cards(artists=[], labels=["Nightfall Audio"]),
+    "run_groups_library": _cards(),
+    "run_group_tracks": run_group_tracks,
+    "run_group_summary": run_group_summary,
+    "playlists_listed": playlists_listed,
     "refusal_busy": refusal_busy,
     "refusal_no_token": refusal_no_token,
     "refusal_note_too_long": refusal_note_too_long,

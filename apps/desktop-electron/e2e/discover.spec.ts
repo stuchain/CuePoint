@@ -168,6 +168,11 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await expect(window.getByText("Found 3 tracks from 1 chart and 0 releases.", { exact: true })).toBeVisible({
         timeout: 60_000,
       });
+      // Results opens on rows of cards; "Everything" is the whole dig as one table.
+      await expect(window.getByRole("button", { name: "Chart Journey Selects, 3 tracks" })).toBeVisible({
+        timeout: 15_000,
+      });
+      await window.getByRole("button", { name: "Everything · 3 tracks" }).click();
       const found = "Tracks this dig found";
       await expect(row(window, found, /Harbour Lights/)).toBeVisible({ timeout: 15_000 });
       await expect(window.getByRole("table", { name: found }).getByRole("row")).toHaveCount(4);
@@ -217,8 +222,19 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await expect(window.getByText("Added 2 tracks to the wantlist")).toBeVisible();
       await expect(row(window, found, /Harbour Lights/)).toContainText("On wantlist");
 
+      // Back on the cards: tick the chart and add its tracks. Two are already wanted; the
+      // engine adds the third.
+      await window.getByRole("button", { name: "All results" }).click();
+      await window.getByRole("checkbox", { name: "Tick Journey Selects" }).check();
+      await expect(window.getByRole("group", { name: "Ticked cards" })).toContainText(
+        "Ticked: Journey Selects · 3 tracks",
+        { timeout: 15_000 },
+      );
+      await window.getByRole("group", { name: "Ticked cards" }).getByRole("button", { name: "Add to wantlist" }).click();
+      await expect(window.getByText(/Night Bus.*2 tracks already on it/)).toBeVisible();
+
       await window.getByRole("tab", { name: "Wantlist" }).click();
-      await expect(window.getByRole("table", { name: "Wantlist" }).getByRole("row")).toHaveCount(3, {
+      await expect(window.getByRole("table", { name: "Wantlist" }).getByRole("row")).toHaveCount(4, {
         timeout: 15_000,
       });
       await row(window, "Wantlist", /Low Tide/).locator('[data-column="title"]').click();

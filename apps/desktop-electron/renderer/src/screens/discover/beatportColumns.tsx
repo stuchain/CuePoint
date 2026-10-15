@@ -158,7 +158,7 @@ export const RUN_COLUMNS: readonly TrackColumnDef<DiscoverRunTrackRow>[] = [
   ...sharedColumns<DiscoverRunTrackRow>(),
   {
     id: "sources",
-    header: "Why it's here",
+    header: "From",
     minWidthPx: 120,
     defaultWidthPx: 260,
     render: (row) => sourcesText(row.sources),

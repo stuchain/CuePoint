@@ -31,12 +31,17 @@ the wantlist through ``wantlist_repository.listed_ids_sql`` (DISCOVER-06).
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 from cuepoint.services.beatport_api_models import CatalogTrack
 from cuepoint.models.beatport_cache import BeatportNameLookup, CachedBeatportTrack
 from cuepoint.models.discovery_run import (
+    GROUP_ARTIST,
+    GROUP_CHART,
+    GROUP_KINDS,
+    GROUP_LABEL,
     OWNED_ALL,
     OWNED_FILTERS,
     OWNED_HIDE,
@@ -48,8 +53,14 @@ from cuepoint.models.discovery_run import (
     SORT_FOUND,
     SORT_RELEASE_DATE,
     SORT_TITLE,
+    SOURCE_ARTIST_RELEASE,
+    SOURCE_CHART,
+    SOURCE_LABEL_RELEASE,
     DiscoveryRun,
+    DiscoveryRunGroup,
     DiscoveryRunSource,
+    GroupCard,
+    GroupSelection,
     RunTrackRow,
     RunTracksPage,
 )
@@ -85,10 +96,26 @@ _SOURCE_COLUMNS: Tuple[str, ...] = (
     "beatport_track_id",
     "source_type",
     "source_id",
+    "group_key",
     "source_name",
     "source_url",
     "matched_on",
 )
+
+_GROUP_COLUMNS: Tuple[str, ...] = (
+    "run_id",
+    "kind",
+    "key",
+    "name",
+    "position",
+    "beatport_id",
+    "owner_key",
+    "curator",
+    "art_url",
+)
+
+#: The most cards one request may name.
+MAX_GROUPS_PER_REQUEST = 500
 
 _SELECT_RUN = f"SELECT {', '.join(_RUN_COLUMNS)} FROM discovery_runs"
 
@@ -165,8 +192,13 @@ class DiscoveryRepository(IDiscoveryRepository):
         sources: Sequence[DiscoveryRunSource],
         fetched_at: str,
         counts: Mapping[str, int],
+        groups: Sequence[DiscoveryRunGroup] = (),
     ) -> int:
         """Store what one chart or label gave a run, in one transaction.
+
+        ``groups`` are the cards the run found or resolved since the last
+        write (a card with no track yet is still a card); a card written
+        before keeps what it had unless the new one knows more.
 
         ``tracks`` in the order they were found: those the run already holds
         keep their place, and new ones take the next positions. A source for a
@@ -218,6 +250,7 @@ class DiscoveryRepository(IDiscoveryRepository):
                     if source.run_id == run_id and source.beatport_track_id in stored
                 ],
             )
+            _write_groups(conn, run_id, groups)
             _write_counts(conn, run_id, counts)
         return len(new)
 
@@ -343,11 +376,16 @@ class DiscoveryRepository(IDiscoveryRepository):
         descending: bool = False,
         offset: int = 0,
         limit: int = 100,
+        groups: Optional[Sequence[Tuple[str, str]]] = None,
     ) -> RunTracksPage:
         """A window of a run's tracks, with ownership as it is now.
 
+        ``groups`` narrows the list to the tracks of those cards (merged,
+        each track once); the counts then describe those tracks only.
+
         Raises:
-            ValueError: If the filter, sort or window is not one this answers.
+            ValueError: If the filter, sort, window or a card is not one this
+                answers.
         """
         if owned not in OWNED_FILTERS:
             raise ValueError(f"owned must be one of {OWNED_FILTERS}, got {owned!r}")
@@ -358,15 +396,20 @@ class DiscoveryRepository(IDiscoveryRepository):
                 f"A window is 1 to {MAX_WINDOW} tracks from offset 0 or later"
             )
         conn = self._db.connect()
-        values = {
+        values: Dict[str, object] = {
             "run": int(run_id),
             "owned": owned_among_json(conn, _RUN_TRACK_IDS, {"run": int(run_id)}),
             "limit": int(limit),
             "offset": int(offset),
         }
+        narrowed = ""
+        if groups is not None:
+            where, found = _group_filter(groups)
+            values.update(found)
+            narrowed = f" AND rt.beatport_track_id IN ({where})"
         counted = conn.execute(
             f"SELECT count(*) AS tracks, coalesce(sum({_OWNED}), 0) AS owned"
-            " FROM discovery_run_tracks AS rt WHERE rt.run_id = :run",
+            f" FROM discovery_run_tracks AS rt WHERE rt.run_id = :run{narrowed}",
             values,
         ).fetchone()
         tracks, owned_count = int(counted["tracks"]), int(counted["owned"])
@@ -381,7 +424,7 @@ class DiscoveryRepository(IDiscoveryRepository):
             f" {', '.join('b.' + c for c in CATALOG_TRACK_COLUMNS)}"
             " FROM discovery_run_tracks AS rt"
             " JOIN beatport_tracks AS b ON b.beatport_track_id = rt.beatport_track_id"
-            f" WHERE rt.run_id = :run{_OWNED_WHERE[owned]}"
+            f" WHERE rt.run_id = :run{narrowed}{_OWNED_WHERE[owned]}"
             f"{_order_by(sort, descending)} LIMIT :limit OFFSET :offset",
             values,
         ).fetchall()
@@ -468,6 +511,168 @@ class DiscoveryRepository(IDiscoveryRepository):
             )
         return found
 
+    # ---------------------------------------------------------------- groups
+
+    def run_groups(self, run_id: int) -> List[GroupCard]:
+        """The cards a run's results are grouped into, with counts as they are now.
+
+        Empty for a run stored before groups existed, which reads as one list.
+        Ownership is computed when read (DEC-092), over the run's own tracks.
+        """
+        conn = self._db.connect()
+        groups = [
+            DiscoveryRunGroup.from_row(row)
+            for row in conn.execute(
+                f"SELECT {', '.join(_GROUP_COLUMNS)} FROM discovery_run_groups"
+                " WHERE run_id = ? ORDER BY position, rowid",
+                (int(run_id),),
+            )
+        ]
+        if not groups:
+            return []
+        owned = {
+            int(row[0])
+            for row in conn.execute(
+                "SELECT rt.beatport_track_id FROM discovery_run_tracks AS rt"
+                f" WHERE rt.run_id = :run AND {_OWNED}",
+                {
+                    "run": int(run_id),
+                    "owned": owned_among_json(
+                        conn, _RUN_TRACK_IDS, {"run": int(run_id)}
+                    ),
+                },
+            )
+        }
+        by_group: Dict[Tuple[str, str], Set[int]] = {}
+        for row in conn.execute(
+            "SELECT source_type, group_key, beatport_track_id"
+            " FROM discovery_run_sources WHERE run_id = ? AND group_key != ''",
+            (int(run_id),),
+        ):
+            by_group.setdefault((row[0], row[1]), set()).add(int(row[2]))
+        charts_of: Dict[str, List[str]] = {}
+        for group in groups:
+            if group.kind == GROUP_CHART and group.owner_key is not None:
+                charts_of.setdefault(group.owner_key, []).append(group.key)
+        cards: List[GroupCard] = []
+        for group in groups:
+            if group.kind == GROUP_CHART:
+                ids = by_group.get((SOURCE_CHART, group.key), set())
+                cards.append(GroupCard(group, len(ids), len(ids & owned)))
+            elif group.kind == GROUP_LABEL:
+                ids = by_group.get((SOURCE_LABEL_RELEASE, group.key), set())
+                cards.append(GroupCard(group, len(ids), len(ids & owned), new=len(ids)))
+            else:
+                released = by_group.get((SOURCE_ARTIST_RELEASE, group.key), set())
+                charts = charts_of.get(group.key, [])
+                ids = set(released)
+                for chart_key in charts:
+                    ids |= by_group.get((SOURCE_CHART, chart_key), set())
+                cards.append(
+                    GroupCard(
+                        group,
+                        len(ids),
+                        len(ids & owned),
+                        charts=len(charts),
+                        new=len(released),
+                    )
+                )
+        return cards
+
+    def group_track_ids(
+        self,
+        run_id: int,
+        groups: Sequence[Tuple[str, str]],
+        owned: str = OWNED_ALL,
+    ) -> List[int]:
+        """The distinct track ids of some cards, in the run's first-seen order.
+
+        ``owned`` is the run's own filter (DEC-092): ``hide`` leaves out the
+        tracks the library owns now.
+
+        Raises:
+            ValueError: If a card or the filter is not one this answers.
+        """
+        if owned not in OWNED_FILTERS:
+            raise ValueError("owned is hide, only or all")
+        where, values = _group_filter(groups)
+        conn = self._db.connect()
+        values["run"] = int(run_id)
+        values["owned"] = owned_among_json(conn, _RUN_TRACK_IDS, {"run": int(run_id)})
+        rows = conn.execute(
+            "SELECT rt.beatport_track_id FROM discovery_run_tracks AS rt"
+            f" WHERE rt.run_id = :run AND rt.beatport_track_id IN ({where})"
+            f"{_OWNED_WHERE[owned]} ORDER BY rt.position",
+            values,
+        )
+        return [int(row[0]) for row in rows]
+
+    def group_selection(
+        self, run_id: int, groups: Sequence[Tuple[str, str]]
+    ) -> GroupSelection:
+        """How many distinct tracks some cards hold, and how many are owned now."""
+        where, values = _group_filter(groups)
+        conn = self._db.connect()
+        values.update(
+            {
+                "run": int(run_id),
+                "owned": owned_among_json(conn, _RUN_TRACK_IDS, {"run": int(run_id)}),
+            }
+        )
+        row = conn.execute(
+            f"SELECT count(*) AS tracks, coalesce(sum({_OWNED}), 0) AS owned"
+            " FROM discovery_run_tracks AS rt"
+            f" WHERE rt.run_id = :run AND rt.beatport_track_id IN ({where})",
+            values,
+        ).fetchone()
+        return GroupSelection(tracks=int(row["tracks"]), owned=int(row["owned"]))
+
+    def update_params(self, run_id: int, params_json: str) -> None:
+        """Replace a running run's parameters (what it found out it had to cap)."""
+        with self._db.transaction() as conn:
+            _require_running(conn, run_id)
+            conn.execute(
+                "UPDATE discovery_runs SET params_json = ? WHERE id = ?",
+                (params_json, int(run_id)),
+            )
+
+    def group_ref(
+        self, run_id: int, kind: str, key: str
+    ) -> Optional[DiscoveryRunGroup]:
+        """One stored card, or None."""
+        row = (
+            self._db.connect()
+            .execute(
+                f"SELECT {', '.join(_GROUP_COLUMNS)} FROM discovery_run_groups"
+                " WHERE run_id = ? AND kind = ? AND key = ?",
+                (int(run_id), kind, key),
+            )
+            .fetchone()
+        )
+        return DiscoveryRunGroup.from_row(row) if row is not None else None
+
+    def set_group_art(self, run_id: int, kind: str, key: str, art_url: str) -> None:
+        """Keep the picture Beatport named for a card, asked for later."""
+        with self._db.transaction() as conn:
+            conn.execute(
+                "UPDATE discovery_run_groups SET art_url = ?"
+                " WHERE run_id = ? AND kind = ? AND key = ? AND art_url IS NULL",
+                (art_url, int(run_id), kind, key),
+            )
+
+    def group_art(self, run_id: int, kind: str, key: str) -> Optional[str]:
+        """The image URL Beatport named for a card, or None."""
+        row = (
+            self._db.connect()
+            .execute(
+                "SELECT art_url FROM discovery_run_groups"
+                " WHERE run_id = ? AND kind = ? AND key = ?",
+                (int(run_id), kind, key),
+            )
+            .fetchone()
+        )
+        return row[0] if row is not None else None
+
     # ---------------------------------------------------------- name lookups
 
     def lookups(self, kind: str, keys: Iterable[str]) -> Dict[str, BeatportNameLookup]:
@@ -553,3 +758,74 @@ def _sources(
             source = DiscoveryRunSource.from_row(row)
             found.setdefault(source.beatport_track_id, []).append(source)
     return found
+
+
+def _group_filter(
+    groups: Sequence[Tuple[str, str]],
+) -> Tuple[str, Dict[str, object]]:
+    """The SELECT of the track ids of some cards, and its named values.
+
+    The cards travel as one JSON value and are joined as a table, so any number
+    of them is two joins rather than a statement per card. A chart's tracks are
+    the reasons recorded for that chart; a label's are its ``label_release``
+    reasons; an artist's are its ``artist_release`` reasons and the tracks of
+    every chart that counts for it (``owner_key``). The two parts are joined
+    with ``UNION``, so a track in two cards is one track.
+
+    Raises:
+        ValueError: If there are none, too many, or one is not a card.
+    """
+    if not groups:
+        raise ValueError("Name at least one card")
+    if len(groups) > MAX_GROUPS_PER_REQUEST:
+        raise ValueError(f"At most {MAX_GROUPS_PER_REQUEST} cards at once")
+    for kind, key in groups:
+        if kind not in GROUP_KINDS or not isinstance(key, str) or not key:
+            raise ValueError("Not a card: a card is a kind and a key")
+    sql = (
+        "WITH picked(kind, key) AS ("
+        " SELECT json_extract(value, '$[0]'), json_extract(value, '$[1]')"
+        " FROM json_each(:picked))"
+        " SELECT s.beatport_track_id FROM discovery_run_sources AS s"
+        " JOIN picked AS p ON s.group_key = p.key AND ("
+        f"(p.kind = '{GROUP_CHART}' AND s.source_type = '{SOURCE_CHART}')"
+        f" OR (p.kind = '{GROUP_LABEL}' AND s.source_type = '{SOURCE_LABEL_RELEASE}')"
+        f" OR (p.kind = '{GROUP_ARTIST}' AND s.source_type = '{SOURCE_ARTIST_RELEASE}'))"
+        " WHERE s.run_id = :run"
+        " UNION"
+        " SELECT s.beatport_track_id FROM discovery_run_sources AS s"
+        " JOIN discovery_run_groups AS g ON g.run_id = s.run_id"
+        f" AND g.kind = '{GROUP_CHART}' AND g.key = s.group_key"
+        " JOIN picked AS p ON p.kind = 'artist' AND p.key = g.owner_key"
+        f" WHERE s.run_id = :run AND s.source_type = '{SOURCE_CHART}'"
+    )
+    return sql, {"picked": json.dumps([[kind, key] for kind, key in groups])}
+
+
+def _write_groups(
+    conn: sqlite3.Connection, run_id: int, groups: Sequence[DiscoveryRunGroup]
+) -> None:
+    """Store cards; one stored before keeps its place and what it knew."""
+    for group in groups:
+        if group.run_id != run_id:
+            continue
+        conn.execute(
+            f"INSERT INTO discovery_run_groups ({', '.join(_GROUP_COLUMNS)})"
+            f" VALUES ({_placeholders(_GROUP_COLUMNS)})"
+            " ON CONFLICT (run_id, kind, key) DO UPDATE SET"
+            " beatport_id = coalesce(excluded.beatport_id, beatport_id),"
+            " art_url = coalesce(excluded.art_url, art_url),"
+            " curator = coalesce(excluded.curator, curator),"
+            " owner_key = coalesce(owner_key, excluded.owner_key)",
+            (
+                group.run_id,
+                group.kind,
+                group.key,
+                group.name,
+                group.position,
+                group.beatport_id,
+                group.owner_key,
+                group.curator,
+                group.art_url,
+            ),
+        )

@@ -1,0 +1,244 @@
+/*
+ * A dig's results as rows of cards (RunCards).
+ *
+ * Built on the page's own tokens and the dividers/hairlines the rest of
+ * Discover uses. Cards sit on a grid that fills the width at any scale; no
+ * motion, no size on a half pixel at 1.5x.
+ */
+
+.discover-cards {
+  position: relative;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-sm) 0 var(--space-lg);
+}
+
+.discover-cards__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.discover-cards__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.discover-cards__row-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+}
+
+.discover-cards__row-title {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.discover-cards__see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.discover-cards__see-all:hover {
+  text-decoration: underline;
+}
+
+.discover-cards__see-all:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+}
+
+.discover-cards__grid {
+  display: grid;
+  /* A card stays about this wide whatever the window: several fit a row at 1.5x. */
+  grid-template-columns: repeat(auto-fill, minmax(calc(150px * var(--scale)), calc(170px * var(--scale))));
+  justify-content: start;
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ------------------------------------------------------------------- card */
+
+.discover-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  border: var(--hairline) solid var(--border-muted);
+  background: var(--bg-panel);
+}
+
+.discover-card:hover {
+  border-color: var(--accent-primary);
+}
+
+.discover-card--ticked {
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 14%, var(--bg-panel));
+}
+
+.discover-card__open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  width: 100%;
+  min-width: 0;
+  padding: 0 0 var(--space-sm);
+  border: 0;
+  background: none;
+  color: var(--fg-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.discover-card__open:focus-visible {
+  /* Inset: the grid's cells touch, and an outer ring would be cut. */
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.discover-card__art {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--accent-primary) 22%, var(--bg-panel-alt));
+}
+
+.discover-card__art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* An artist is a round picture, centred on the card. */
+.discover-card__art--artist {
+  align-self: center;
+  width: 72%;
+  margin-top: var(--space-md);
+  border-radius: 50%;
+}
+
+.discover-card__initial {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+}
+
+.discover-card__title,
+.discover-card__curator,
+.discover-card__counts {
+  padding: 0 var(--space-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discover-card__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.discover-card--artist .discover-card__title,
+.discover-card--artist .discover-card__counts {
+  text-align: center;
+}
+
+.discover-card__curator,
+.discover-card__counts {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+/* The tick sits over the card's top-left corner, beside the button, never inside it. */
+.discover-card__tick {
+  position: absolute;
+  top: var(--space-xs);
+  left: var(--space-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xs);
+  background: color-mix(in srgb, var(--bg-panel) 82%, transparent);
+  cursor: pointer;
+}
+
+.discover-card__tick input {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* -------------------------------------------------------------- tick bar */
+
+/* Over the cards at the foot of the pane, like the dig bar: what is ticked, and what to do with it. */
+.discover-cards__bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm) var(--space-md);
+  box-sizing: border-box;
+  margin-top: auto;
+  padding: var(--space-sm) var(--space-md);
+  border-top: var(--divider);
+  background: color-mix(in srgb, var(--accent-primary) 14%, var(--bg-panel));
+}
+
+.discover-cards__bar-text {
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}
+
+.discover-cards__bar-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.discover-run__reading {
+  padding: var(--space-md) 0;
+}
+
+.discover-run__tracks {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+}
+
+.discover-run__card-title {
+  align-self: center;
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}

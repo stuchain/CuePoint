@@ -3,7 +3,7 @@
 **Discover** finds new music on Beatport from the artists and labels already in
 your library, lets you keep what you want on a **wantlist**, and sends it to a
 playlist on your Beatport account. It reads the charts your artists made and the
-recent releases on your labels, remembers every dig it makes, and knows which
+recent releases of your artists and labels, remembers every dig it makes, and knows which
 of the tracks it finds are already in your library.
 
 It works on the library you imported on the [Library](library.md) page, so
@@ -28,16 +28,21 @@ holds **Releases from the last … days** and **Start looking**, which stay in
 view however long the form is.
 
 - **Genres for DJ charts.** On Beatport, artists publish charts, which are short
-  lists of tracks they play. CuePoint reads the charts made by artists in your
-  library, in the genres you tick. Tick no genre and it reads no charts. The
-  heading says which dates it will read ("last 30 days"); to choose other dates
-  open **More options**, which holds **Charts from** and **Charts to**. Until
-  you sign in to Beatport, the genres read "Genres appear after you sign in."
+  lists of tracks they play. Which charts CuePoint reads depends on the artists
+  you chose below: the charts **those artists made** in the genres you tick; with
+  **every artist** in your library, the charts any of them made; with **none**,
+  the general charts of those genres, by anyone (the newest 25 in each genre, 150
+  in all; Results says when a dig was cut short).
+  Tick no genre and it reads no charts. The heading says which dates it will
+  read ("last 30 days"); to choose other dates open **More options**, which holds
+  **Charts from** and **Charts to**. Until you sign in to Beatport, the genres
+  read "Genres appear after you sign in."
 - **Artists** and **Labels.** Each is every artist or label in your library
   (with how many), **a saved list** of them, or none. A saved list is picked
   from the drop-down beside it, which says how many names each list holds.
 - **Releases from the last … days** (in the bottom bar). New releases on your
-  labels in that many days.
+  labels, and on the artists you chose from a saved list, in that many days. When
+  you ticked genres, only releases in those genres count.
 
 ### Saved lists
 
@@ -81,11 +86,53 @@ sits above it instead. With no dig yet it says so and offers **New dig**.
 An open dig shows how it ended, including why, if Beatport stopped it, and
 one line saying what it looked for (for example "House · last 30 days · 67
 artists · 28 labels"); open that line for the full wording and the artist and
-label names. While it works, the tracks it has found appear as they arrive and
-the status bar at the bottom shows how far it has got. It lists what
-it found: title and mix, artists, label, release date, BPM, key, genre, **Why
-it's here** (the chart or release the track was found in), whether it is
-**In your library**, and whether it is on your wantlist.
+label names. While it works, the cards it has found appear as they arrive and
+the status bar at the bottom shows how far it has got.
+
+### Rows of cards
+
+What a dig found is grouped by where it came from, in rows of cards:
+
+- **Your artists' charts.** The charts made by the artists you chose, in the
+  genres you ticked, one card per chart. When you chose no artists this row is
+  **Genre charts** instead: the general charts of those genres. With artists
+  chosen there are no general genre charts.
+- **Your artists' new releases.** One card per artist you chose, with a round
+  picture and "3 charts · 4 new": how many of their charts the dig read and how
+  many new releases it found in your genres and days. A dig looks up at most 200
+  chosen artists and says so above the cards when it cut a longer list.
+  With **every artist** in your library the row is called **Your artists** and
+  its cards say only "3 charts": a dig does not look up new releases for a whole
+  library.
+- **Your labels.** One card per label, with "6 new": its new releases in your
+  genres and days. Labels make no charts.
+
+Each card has a picture, its name, what it holds and a **tick** in its corner.
+A row shows its first six cards; **See all** shows the rest. Click a card to open
+its tracks: a table with a preview, key, BPM and **In your library** marks, in
+which you can select tracks to leave some out, and **All results** to go back.
+
+**Tick** cards to act on several at once. A bar appears at the foot: "Ticked:
+Argy, Afterlife · 20 tracks · 3 already in your library". A track on two ticked
+cards is counted once, and tracks your library already has are left out.
+
+- **Add to wantlist** adds those tracks and says how many already in your
+  library were left out.
+- **Add to playlist** asks whether to make **a new playlist** (you name it) or
+  add to **a playlist I already have** on Beatport, and whether to include tracks
+  already in your library (off by default; they are skipped and counted). The
+  dialog says how many tracks will go. Adding to an existing playlist skips any
+  track it already holds and says so.
+
+**Everything** opens the whole dig as one table, each track once, with a **From**
+column naming the chart, artist or label it came from. A dig made before cards
+existed has no cards and opens as that table.
+
+### The tracks table
+
+The table (in a card, or in Everything) lists: title and mix, artists, label,
+release date, BPM, key, genre, **From**, whether it is **In your library**, and
+whether it is on your wantlist.
 
 Artist and label names in the table are links to their pages. Press Tab to reach
 them within a row; a click on one opens the page without selecting the row.

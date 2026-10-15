@@ -20,6 +20,7 @@ every vocabulary a union spells is held to the engine's.
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import date
 from pathlib import Path
@@ -37,6 +38,8 @@ from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.models import entity_page
 from cuepoint.models.beatport_cache import ENTITY_KINDS
 from cuepoint.models.discovery_run import (
+    CHARTS_MODES,
+    GROUP_KINDS,
     OWNED_FILTERS,
     RUN_OUTCOMES,
     RUN_TRACK_SORTS,
@@ -235,6 +238,38 @@ class TestRuns:
             holds("DiscoverJobStarted", started)
 
 
+class TestRunGroups:
+    """A dig's results as cards: every shape the grouped routes send."""
+
+    def test_the_rows_and_a_card(self, engine_state):
+        answer = api.run_groups(engine_state["run"].id, {})
+        holds("DiscoverRunGroups", answer)
+        assert answer["grouped"] is True
+        row = first(answer["rows"])
+        holds("DiscoverGroupRow", row)
+        holds("DiscoverGroupCard", first(row["cards"]))
+
+    def test_a_cards_tracks_and_a_selection(self, engine_state):
+        run = engine_state["run"].id
+        card = first(first(api.run_groups(run, {})["rows"])["cards"])
+        groups = json.dumps([{"kind": card["kind"], "key": card["key"]}])
+        page = api.run_group_tracks(run, {"groups": [groups], "owned": ["all"]})
+        holds("DiscoverRunTracksPage", page)
+        holds("DiscoverGroupRef", json.loads(groups)[0])
+        holds("DiscoverGroupSummary", api.run_group_summary(run, {"groups": [groups]}))
+
+    def test_the_playlists_to_add_to(self, engine_state):
+        engine_state["world"].post("my/playlists/", json={"name": "Mine"})
+        answer = api.playlists({})
+        holds("BeatportPlaylists", answer)
+        holds("BeatportPlaylistChoice", first(answer["playlists"]))
+
+    def test_the_words(self):
+        assert _union("DiscoverGroupKind") == set(GROUP_KINDS)
+        assert _union("DiscoverChartsMode") == set(CHARTS_MODES)
+        assert _union("DiscoverGroupRowId") == set(api.ROWS)
+
+
 class TestTheWantlist:
     def test_a_page(self, engine_state):
         page = api.wantlist({})
@@ -378,6 +413,9 @@ class TestRequests:
         [
             ("listDiscoveryRuns", api.RUNS_PARAMS, set()),
             ("getDiscoveryRunTracks", api.RUN_TRACKS_PARAMS, {"run_id"}),
+            ("getDiscoveryGroupTracks", api.RUN_GROUP_TRACKS_PARAMS, {"run_id"}),
+            ("getDiscoveryGroupSummary", api.RUN_GROUP_SUMMARY_PARAMS, {"run_id"}),
+            ("getDiscoveryGroupArt", api.RUN_ART_PARAMS, {"run_id"}),
             ("getWantlist", api.WANTLIST_PARAMS, set()),
             ("getEntityPage", api.ENTITY_PARAMS, set()),
             ("getEntityBeatport", api.ENTITY_BEATPORT_PARAMS, set()),

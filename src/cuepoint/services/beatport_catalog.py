@@ -103,6 +103,25 @@ def catalog_key(value: Any) -> Optional[str]:
     return format_key(parsed[0], parsed[1], NOTATION_CLASSIC)
 
 
+def catalog_image(value: Any) -> Optional[str]:
+    """The picture a catalog object names, or None.
+
+    Beatport's ``image`` object carries ``dynamic_uri`` (a template with
+    ``{w}x{h}``) and ``uri`` (a fixed size). Either is kept as given when it is
+    on Beatport's own artwork hosts; the size is filled in where it is fetched.
+    Not every response was recorded with an ``image`` (the recordings predate
+    this reader), so a missing or foreign one is simply None, never a guess.
+    """
+    from cuepoint.data.beatport import is_beatport_artwork_url
+
+    image = _object(value)
+    for key in ("dynamic_uri", "uri"):
+        text = image.get(key)
+        if isinstance(text, str) and text.strip() and is_beatport_artwork_url(text):
+            return text.strip()
+    return None
+
+
 def parse_catalog_artist(obj: Any) -> Optional[CatalogArtist]:
     """A ``catalog/artists/{id}/`` object, or an artist on a track."""
     artist = _object(obj)
@@ -110,7 +129,9 @@ def parse_catalog_artist(obj: Any) -> Optional[CatalogArtist]:
     name = catalog_text(artist.get("name"))
     if artist_id is None or not name:
         return None
-    return CatalogArtist(id=artist_id, name=name)
+    return CatalogArtist(
+        id=artist_id, name=name, image_url=catalog_image(artist.get("image"))
+    )
 
 
 def parse_catalog_label(obj: Any) -> Optional[CatalogLabel]:
@@ -120,7 +141,9 @@ def parse_catalog_label(obj: Any) -> Optional[CatalogLabel]:
     name = catalog_text(label.get("name"))
     if label_id is None or not name:
         return None
-    return CatalogLabel(id=label_id, name=name)
+    return CatalogLabel(
+        id=label_id, name=name, image_url=catalog_image(label.get("image"))
+    )
 
 
 def _catalog_artists(value: Any) -> Tuple[CatalogArtist, ...]:
@@ -174,6 +197,7 @@ def parse_catalog_track(obj: Any) -> Optional[CatalogTrack]:
         genre_id=positive_id(genre.get("id")),
         genre_name=_optional_text(genre.get("name")),
         sample_url=_sample_url(track.get("sample_url")),
+        label_image_url=label.image_url if label else None,
     )
 
 
@@ -302,4 +326,5 @@ def parse_catalog_chart(obj: Any) -> Optional[CatalogChart]:
         owner_name=chart_owner_name(chart) or None,
         genre_ids=_genre_ids(chart.get("genres")),
         track_count=track_count,
+        image_url=catalog_image(chart.get("image")),
     )

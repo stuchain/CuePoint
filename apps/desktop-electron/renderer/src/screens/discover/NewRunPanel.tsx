@@ -1,10 +1,11 @@
 /**
  * The New search tab's form (DISCOVER-10, DEC-091, FLW-15).
  *
- * What a search reads: charts in the chosen genres, curated by artists in the
- * library, and recent releases on the library's labels — every artist and
- * label, or only those picked from the Library's own facets, with how many
- * tracks each has. Every field starts from the engine's defaults (`options`),
+ * What a search reads: charts in the chosen genres (the ones the chosen
+ * artists made; every library artist's with "every"; the genres' general charts
+ * with no artists chosen), and recent releases of the chosen artists and the
+ * library's labels — every artist and label, or only those picked from the
+ * Library's own facets, with how many tracks each has. Every field starts from the engine's defaults (`options`),
  * and the form refuses what the engine would, from the bounds it sends. The
  * chart dates are two more fields a beginner does not need, so they fold under
  * "More options" with the default said in words (DSC-5).

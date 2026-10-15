@@ -83,6 +83,64 @@ describe("reads", () => {
     expect(calls.every((c) => method(c) === "GET")).toBe(true);
   });
 
+  it("reads a run's cards, and the tracks and count of the cards named, as JSON in the query", async () => {
+    const calls = engineAnswering(200, {});
+    const groups = [
+      { kind: "artist" as const, key: "mara veil" },
+      { kind: "chart" as const, key: "1" },
+    ];
+
+    await client().getDiscoveryRunGroups({ run_id: 7 });
+    await client().getDiscoveryGroupTracks({ run_id: 7, groups, owned: "all", limit: 50 });
+    await client().getDiscoveryGroupSummary({ run_id: 7, groups });
+    await client().getBeatportPlaylists();
+
+    const asked = (call: Call) => new URL(call.url);
+    expect(asked(calls[0]!).pathname).toBe("/api/v1/discover/runs/7/groups");
+    expect(asked(calls[1]!).pathname).toBe("/api/v1/discover/runs/7/groups/tracks");
+    expect(JSON.parse(asked(calls[1]!).searchParams.get("groups")!)).toEqual(groups);
+    expect(asked(calls[1]!).searchParams.get("owned")).toBe("all");
+    expect(asked(calls[1]!).searchParams.get("limit")).toBe("50");
+    expect(asked(calls[2]!).pathname).toBe("/api/v1/discover/runs/7/groups/summary");
+    expect(JSON.parse(asked(calls[2]!).searchParams.get("groups")!)).toEqual(groups);
+    expect(asked(calls[3]!).pathname).toBe("/api/v1/discover/playlists");
+    expect(calls.every((c) => method(c) === "GET")).toBe(true);
+  });
+
+  it("answers a card's picture as bytes, or null when it has none", async () => {
+    const bytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+    const calls = engineAnswering(200, { run_id: 7, jpeg_base64: bytes.toString("base64") });
+
+    const picture = await client().getDiscoveryGroupArt({
+      run_id: 7,
+      kind: "chart",
+      key: "1",
+      size: "row",
+    });
+
+    expect(Array.from(picture!)).toEqual([0xff, 0xd8, 0xff, 0xd9]);
+    expect(calls[0]!.url).toBe(`${BASE}/api/v1/discover/runs/7/art?kind=chart&key=1&size=row`);
+
+    engineAnswering(200, { run_id: 7, jpeg_base64: null });
+    expect(await client().getDiscoveryGroupArt({ run_id: 7, kind: "artist", key: "x" })).toBeNull();
+  });
+
+  it("adds ticked cards to the wantlist and to a playlist by the run and the cards", async () => {
+    const calls = engineAnswering(200, {});
+    const groups = [{ kind: "label" as const, key: "afterlife" }];
+
+    await client().addToWantlist({ run_id: 7, groups });
+    await client().startBeatportPlaylistPush({
+      run_id: 7,
+      groups,
+      name: "Friday",
+      playlist_id: "700002",
+    });
+
+    expect(sent(calls[0]!)).toEqual({ run_id: 7, groups });
+    expect(sent(calls[1]!)).toEqual({ run_id: 7, groups, name: "Friday", playlist_id: "700002" });
+  });
+
   it("reads the wantlist with its two filters", async () => {
     const calls = engineAnswering(200, {});
 

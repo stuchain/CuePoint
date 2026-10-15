@@ -91,13 +91,11 @@ export function formProblems(
   }
   problems.push(...listProblem("artist", form.artists, form.artistListId, members.artists));
   problems.push(...listProblem("label", form.labels, form.labelListId, members.labels));
-  // Two rules the engine does not make, because it can run them and find
-  // nothing: a search's charts are the ones your artists curated, and a search
-  // with neither artists nor labels has nothing to look for.
-  if (form.artists === "none" && form.labels === "none") {
-    problems.push("A dig needs artists or labels to look for.");
-  } else if (form.artists === "none" && form.genreIds.length > 0) {
-    problems.push("Charts come from your artists. Choose some artists, or untick every genre.");
+  // A rule the engine does not make, because it can run it and find nothing: a
+  // dig with no artists, no labels and no genre has nothing to look for. (With no
+  // artists but a genre, it reads that genre's general charts.)
+  if (form.artists === "none" && form.labels === "none" && form.genreIds.length === 0) {
+    problems.push("A dig needs artists, labels or a genre to look for.");
   }
   return problems;
 }

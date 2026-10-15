@@ -492,7 +492,7 @@
    height to take: it gets a height of its own to scroll inside. That makes
    the rows scroll inside a tab that scrolls, which is accepted: the other
    way is a table as tall as its rows. */
-.discover-runs-view--stacked .discover-run > .discover-table {
+.discover-runs-view--stacked .discover-run__tracks > .discover-table {
   min-height: calc(420px * var(--scale));
 }
 
@@ -549,6 +549,15 @@
 .discover-dialog__text {
   margin: 0;
   font-size: var(--font-size-xs);
+}
+
+.discover-dialog__choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .discover-dialog__check {

@@ -538,9 +538,11 @@
   },
   "playlist_refused": {
     "added": 0,
+    "already_in_playlist": 0,
     "cancelled": false,
     "error": "Beatport let CuePoint in but won't allow making playlists.",
     "error_class": "forbidden",
+    "existing_playlist": false,
     "failed": 0,
     "failed_track_ids": [],
     "name": "Friday",
@@ -554,9 +556,11 @@
   },
   "playlist_result": {
     "added": 2,
+    "already_in_playlist": 0,
     "cancelled": false,
     "error": null,
     "error_class": null,
+    "existing_playlist": false,
     "failed": 0,
     "failed_track_ids": [],
     "name": "Friday finds",
@@ -567,6 +571,21 @@
     "requested": 3,
     "skipped_owned": 1,
     "to_add": 2
+  },
+  "playlists_listed": {
+    "refusal": null,
+    "value": {
+      "playlists": [
+        {
+          "id": "700001",
+          "name": "Friday finds"
+        },
+        {
+          "id": "700002",
+          "name": "Warm-up"
+        }
+      ]
+    }
   },
   "refusal_busy": {
     "refusal": {
@@ -631,6 +650,424 @@
     "value": {
       "deleted": true,
       "id": 1
+    }
+  },
+  "run_group_summary": {
+    "refusal": null,
+    "value": {
+      "cards": 2,
+      "owned": 1,
+      "run_id": 1,
+      "tracks": 5
+    }
+  },
+  "run_group_tracks": {
+    "refusal": null,
+    "value": {
+      "hidden": 0,
+      "owned": 1,
+      "rows": [
+        {
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 1,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 1,
+          "label_key": "elsewhere",
+          "label_name": "Elsewhere",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": false,
+          "position": 0,
+          "release_date": "2026-08-31",
+          "release_id": 601,
+          "release_name": "R",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "Mara Veil",
+              "source_id": 1,
+              "source_name": "Mara's September",
+              "source_type": "chart",
+              "source_url": "https://www.beatport.com/chart/chart-1/1"
+            }
+          ],
+          "title": "Track 1",
+          "url": "https://www.beatport.com/track/track-1/1"
+        },
+        {
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 2,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": false,
+          "position": 1,
+          "release_date": "2026-09-16",
+          "release_id": 701,
+          "release_name": "Signal EP",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "Mara Veil",
+              "source_id": 1,
+              "source_name": "Mara's September",
+              "source_type": "chart",
+              "source_url": "https://www.beatport.com/chart/chart-1/1"
+            },
+            {
+              "matched_on": "NIGHTFALL-AUDIO",
+              "source_id": 701,
+              "source_name": "Signal EP",
+              "source_type": "label_release",
+              "source_url": null
+            }
+          ],
+          "title": "Track 2",
+          "url": "https://www.beatport.com/track/track-2/2"
+        },
+        {
+          "artists": [
+            "Someone"
+          ],
+          "beatport_track_id": 3,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 1,
+          "label_key": "elsewhere",
+          "label_name": "Elsewhere",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": true,
+          "position": 2,
+          "release_date": "2026-08-31",
+          "release_id": 603,
+          "release_name": "R",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "Mara Veil",
+              "source_id": 1,
+              "source_name": "Mara's September",
+              "source_type": "chart",
+              "source_url": "https://www.beatport.com/chart/chart-1/1"
+            }
+          ],
+          "title": "Track 3",
+          "url": "https://www.beatport.com/track/track-3/3"
+        },
+        {
+          "artists": [
+            "Mara Veil"
+          ],
+          "beatport_track_id": 7,
+          "bpm": 124.0,
+          "fetched_at": "2026-09-20T12:00:00+00:00",
+          "genre_id": 5,
+          "genre_name": "House",
+          "key": null,
+          "label_id": 40211,
+          "label_key": "nightfall audio",
+          "label_name": "Nightfall Audio",
+          "mix_name": "Original Mix",
+          "on_wantlist": false,
+          "owned": false,
+          "position": 3,
+          "release_date": "2026-09-18",
+          "release_id": 700,
+          "release_name": "Lantern EP",
+          "remixers": [],
+          "sources": [
+            {
+              "matched_on": "Mara Veil",
+              "source_id": 700,
+              "source_name": "Lantern EP",
+              "source_type": "artist_release",
+              "source_url": null
+            },
+            {
+              "matched_on": "NIGHTFALL-AUDIO",
+              "source_id": 700,
+              "source_name": "Lantern EP",
+              "source_type": "label_release",
+              "source_url": null
+            }
+          ],
+          "title": "Track 7",
+          "url": "https://www.beatport.com/track/track-7/7"
+        }
+      ],
+      "run_id": 1,
+      "total": 4,
+      "tracks": 4,
+      "window": {
+        "dir": "asc",
+        "limit": 100,
+        "offset": 0,
+        "owned": "all",
+        "sort": "position"
+      }
+    }
+  },
+  "run_groups_artists": {
+    "refusal": null,
+    "value": {
+      "charts_mode": "artists",
+      "grouped": true,
+      "notes": [],
+      "owned": 1,
+      "rows": [
+        {
+          "cards": [
+            {
+              "charts": 0,
+              "curator": "Mara Veil",
+              "has_art": false,
+              "key": "1",
+              "kind": "chart",
+              "name": "Mara's September",
+              "new": 0,
+              "owned": 1,
+              "tracks": 3
+            }
+          ],
+          "id": "charts"
+        },
+        {
+          "cards": [
+            {
+              "charts": 1,
+              "curator": null,
+              "has_art": false,
+              "key": "mara veil",
+              "kind": "artist",
+              "name": "Mara Veil",
+              "new": 1,
+              "owned": 1,
+              "tracks": 4
+            }
+          ],
+          "id": "artists"
+        },
+        {
+          "cards": [
+            {
+              "charts": 0,
+              "curator": null,
+              "has_art": false,
+              "key": "nightfall audio",
+              "kind": "label",
+              "name": "NIGHTFALL-AUDIO",
+              "new": 3,
+              "owned": 0,
+              "tracks": 3
+            }
+          ],
+          "id": "labels"
+        }
+      ],
+      "run_id": 1,
+      "tracks": 5
+    }
+  },
+  "run_groups_genre": {
+    "refusal": null,
+    "value": {
+      "charts_mode": "genre",
+      "grouped": true,
+      "notes": [],
+      "owned": 2,
+      "rows": [
+        {
+          "cards": [
+            {
+              "charts": 0,
+              "curator": "Mara Veil",
+              "has_art": false,
+              "key": "1",
+              "kind": "chart",
+              "name": "Mara's September",
+              "new": 0,
+              "owned": 1,
+              "tracks": 3
+            },
+            {
+              "charts": 0,
+              "curator": "DJEFF",
+              "has_art": false,
+              "key": "2",
+              "kind": "chart",
+              "name": "DJEFF picks",
+              "new": 0,
+              "owned": 2,
+              "tracks": 2
+            },
+            {
+              "charts": 0,
+              "curator": "Stranger",
+              "has_art": false,
+              "key": "4",
+              "kind": "chart",
+              "name": "A stranger",
+              "new": 0,
+              "owned": 0,
+              "tracks": 1
+            },
+            {
+              "charts": 0,
+              "curator": "Kiko",
+              "has_art": false,
+              "key": "3",
+              "kind": "chart",
+              "name": "Kiko's crate",
+              "new": 0,
+              "owned": 0,
+              "tracks": 1
+            }
+          ],
+          "id": "genre_charts"
+        },
+        {
+          "cards": [
+            {
+              "charts": 0,
+              "curator": null,
+              "has_art": false,
+              "key": "nightfall audio",
+              "kind": "label",
+              "name": "NIGHTFALL-AUDIO",
+              "new": 3,
+              "owned": 0,
+              "tracks": 3
+            }
+          ],
+          "id": "labels"
+        }
+      ],
+      "run_id": 1,
+      "tracks": 8
+    }
+  },
+  "run_groups_library": {
+    "refusal": null,
+    "value": {
+      "charts_mode": "library",
+      "grouped": true,
+      "notes": [],
+      "owned": 2,
+      "rows": [
+        {
+          "cards": [
+            {
+              "charts": 0,
+              "curator": "Mara Veil",
+              "has_art": false,
+              "key": "1",
+              "kind": "chart",
+              "name": "Mara's September",
+              "new": 0,
+              "owned": 1,
+              "tracks": 3
+            },
+            {
+              "charts": 0,
+              "curator": "DJEFF",
+              "has_art": false,
+              "key": "2",
+              "kind": "chart",
+              "name": "DJEFF picks",
+              "new": 0,
+              "owned": 2,
+              "tracks": 2
+            },
+            {
+              "charts": 0,
+              "curator": "Kiko",
+              "has_art": false,
+              "key": "3",
+              "kind": "chart",
+              "name": "Kiko's crate",
+              "new": 0,
+              "owned": 0,
+              "tracks": 1
+            }
+          ],
+          "id": "charts"
+        },
+        {
+          "cards": [
+            {
+              "charts": 1,
+              "curator": null,
+              "has_art": false,
+              "key": "mara veil",
+              "kind": "artist",
+              "name": "Mara Veil",
+              "new": 0,
+              "owned": 1,
+              "tracks": 3
+            },
+            {
+              "charts": 1,
+              "curator": null,
+              "has_art": false,
+              "key": "djeff",
+              "kind": "artist",
+              "name": "DJEFF",
+              "new": 0,
+              "owned": 2,
+              "tracks": 2
+            },
+            {
+              "charts": 1,
+              "curator": null,
+              "has_art": false,
+              "key": "kiko",
+              "kind": "artist",
+              "name": "Kiko",
+              "new": 0,
+              "owned": 0,
+              "tracks": 1
+            }
+          ],
+          "id": "artists"
+        },
+        {
+          "cards": [
+            {
+              "charts": 0,
+              "curator": null,
+              "has_art": false,
+              "key": "nightfall audio",
+              "kind": "label",
+              "name": "NIGHTFALL-AUDIO",
+              "new": 3,
+              "owned": 0,
+              "tracks": 3
+            }
+          ],
+          "id": "labels"
+        }
+      ],
+      "run_id": 1,
+      "tracks": 7
     }
   },
   "run_header": {

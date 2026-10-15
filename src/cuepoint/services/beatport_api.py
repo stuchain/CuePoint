@@ -70,6 +70,9 @@ _PLAYLIST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 # Cache key prefixes and TTLs. The genre key is DISCOVER-09's whole listing;
 # inCrate's first-page key, ``beatport_api:genres``, retired with it.
+#: The artist search's unexpected shape is logged once per process.
+_ARTIST_SHAPE_LOGGED = False
+
 _CACHE_CATALOG_GENRES = "beatport_api:catalog_genres"
 _CACHE_GENRES_TTL = 86400
 _CACHE_LABEL_SEARCH = "beatport_api:label_search"
@@ -562,6 +565,90 @@ class BeatportApi:
         if lid is None:
             return None
         return parse_catalog_label(self._client.get(f"/catalog/labels/{lid}/"))
+
+    def playlist_track_ids(
+        self, playlist_id: str, max_pages: int = MAX_LISTING_PAGES
+    ) -> Optional[List[int]]:
+        """The Beatport track ids already in one of the user's playlists.
+
+        Each item of ``my/playlists/{id}/tracks/`` names its track in a ``track``
+        object. A listing whose items do not (the shape is not in DISCOVER-01's
+        recording) answers None: the caller then knows it could not tell, and
+        does not guess from an item's own id, which is not a track's.
+
+        Raises:
+            ValueError: If ``playlist_id`` is not a Beatport playlist id.
+        """
+        if not _PLAYLIST_ID_RE.match(str(playlist_id)):
+            raise ValueError("That is not a Beatport playlist id")
+        found: List[int] = []
+        for item in self._paginate(
+            f"my/playlists/{playlist_id}/tracks/", {"per_page": MAX_PER_PAGE}, max_pages
+        ):
+            track = item.get("track")
+            track_id = positive_id(track.get("id")) if isinstance(track, dict) else None
+            if track_id is None:
+                _logger.warning(
+                    "Beatport API: a playlist's track listing has no track object; "
+                    "cannot tell which tracks are in it"
+                )
+                return None
+            found.append(track_id)
+        return found
+
+    def search_artist_by_name(self, name: str) -> Optional[int]:
+        """An artist's Beatport id by exact name, or None (Discover groups).
+
+        Asks ``catalog/search`` and reads its ``artists`` list; only an artist
+        whose name has the same key as the one asked for counts, so a near name
+        is never taken for the artist. The shape of the ``artists`` list is not
+        in DISCOVER-01's recording, so any other shape answers None rather than
+        a guess.
+        """
+        from cuepoint.core.entity_names import name_key
+
+        query = (name or "").strip()
+        if not query:
+            return None
+        data = self._client.get("/catalog/search", params={"q": query})
+        if not isinstance(data, dict):
+            return None
+        listed = data.get("artists")
+        items = listed.get("results") if isinstance(listed, dict) else listed
+        if not isinstance(items, list):
+            global _ARTIST_SHAPE_LOGGED
+            if not _ARTIST_SHAPE_LOGGED:
+                _ARTIST_SHAPE_LOGGED = True
+                _logger.warning(
+                    "Beatport API: catalog/search has no artists list (keys: %s); "
+                    "artists are not found by name",
+                    sorted(data)[:10],
+                )
+            return None
+        want = name_key(query)
+        for item in items:
+            artist = parse_catalog_artist(item)
+            if artist is not None and name_key(artist.name) == want:
+                return artist.id
+        return None
+
+    def my_playlists(self, max_pages: int = MAX_LISTING_PAGES) -> List[Tuple[str, str]]:
+        """The user's own Beatport playlists, as ``(id, name)``, in Beatport's order.
+
+        ``my/playlists/`` is listed as every v4 listing is; an item with no
+        usable id or name is left out. Raises as the client does.
+        """
+        found: List[Tuple[str, str]] = []
+        seen: set = set()
+        for item in self._paginate(
+            "my/playlists/", {"per_page": MAX_PER_PAGE}, max_pages
+        ):
+            playlist_id = str(item.get("id") if item.get("id") is not None else "")
+            name = catalog_text(item.get("name"))
+            if _PLAYLIST_ID_RE.match(playlist_id) and name and playlist_id not in seen:
+                seen.add(playlist_id)
+                found.append((playlist_id, name))
+        return found
 
     def artist_tracks(
         self,

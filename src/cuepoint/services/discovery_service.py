@@ -43,6 +43,18 @@ say) fails the run with DISCOVER-01's error class and keeps what was found;
 so do :data:`~cuepoint.services.beatport_api_client.MAX_CONSECUTIVE_FAILURES`
 failures in a row. One activity event, ``discovery.ran``, says how it ended.
 
+Grouped results
+---------------
+What a run finds is also kept *grouped by where it came from* (migration 0030),
+so the results can be shown as rows of cards. The rule, decided here and not in
+the renderer (:func:`charts_mode`): with artists chosen, the charts read are the
+ones those artists made, and every chosen artist is a card with their charts and
+their new releases in the chosen genres and days; with none chosen, the charts
+read are the general charts of the chosen genres; with "every artist in the
+library" asked for, the charts any library artist made. Labels are cards of
+their new releases in the chosen genres and days, and make no charts. A run
+stored before groups has no cards and reads as one list.
+
 Two things of inCrate's are deliberately not ported: the retry of *all*
 genres when the chosen ones gave no chart tracks, which returned charts from
 genres the user had not chosen; and "an empty list of artists means all" —
@@ -70,18 +82,38 @@ from typing import (
 )
 
 from cuepoint.core.entity_names import name_key
-from cuepoint.services.beatport_api_models import CatalogChart, CatalogTrack
-from cuepoint.models.beatport_cache import ENTITY_LABEL, BeatportNameLookup
+from cuepoint.services.beatport_api_models import (
+    CatalogArtist,
+    CatalogChart,
+    CatalogLabel,
+    CatalogTrack,
+)
+from cuepoint.models.beatport_cache import (
+    ENTITY_ARTIST,
+    ENTITY_LABEL,
+    BeatportNameLookup,
+)
 from cuepoint.models.discovery_run import (
+    CHARTS_ARTISTS,
+    CHARTS_GENRE,
+    CHARTS_LIBRARY,
+    GROUP_ARTIST,
+    GROUP_CHART,
+    GROUP_LABEL,
+    OWNED_ALL,
     OWNED_HIDE,
     RUN_CANCELLED,
     RUN_FAILED,
     RUN_SUCCEEDED,
     SORT_FOUND,
+    SOURCE_ARTIST_RELEASE,
     SOURCE_CHART,
     SOURCE_LABEL_RELEASE,
     DiscoveryRun,
+    DiscoveryRunGroup,
     DiscoveryRunSource,
+    GroupCard,
+    GroupSelection,
     RunTracksPage,
 )
 from cuepoint.services.beatport_api_client import (
@@ -137,8 +169,21 @@ EVENT_DISCOVERY_RAN = "discovery.ran"
 #: binding note).
 INTERRUPTED_ERROR = "CuePoint stopped before the run finished"
 
+#: The most general genre charts one genre contributes, newest first, when no
+#: artist was chosen: every chart is a request for its tracks, and a month of
+#: charts in a big genre is hundreds.
+MAX_GENRE_CHARTS_PER_GENRE = 25
+
+#: The most general genre charts one dig reads in all, however many genres.
+MAX_GENRE_CHARTS_TOTAL = 150
+
+#: The most explicitly chosen artists one dig looks up: each costs a search at
+#: worst and a listing of releases, so a very long list is cut, and the dig says so.
+MAX_PICKED_ARTISTS = 200
+
 #: The stages a run reports its progress in.
 STAGE_CHARTS = "Reading charts"
+STAGE_ARTISTS = "Reading artists' new releases"
 STAGE_LABELS = "Resolving labels"
 STAGE_RELEASES = "Reading releases"
 
@@ -177,6 +222,24 @@ class DiscoverySource(Protocol):
         self, label_id: int, since: date, until: Optional[date] = None
     ) -> List[CatalogTrack]:
         """A label's tracks released in a window, newest first."""
+        ...
+
+    def artist_tracks(
+        self, artist_id: int, since: date, until: Optional[date] = None
+    ) -> List[CatalogTrack]:
+        """An artist's tracks released in a window, newest first."""
+        ...
+
+    def search_artist_by_name(self, name: str) -> Optional[int]:
+        """An artist's Beatport id by exact name, or None."""
+        ...
+
+    def get_artist(self, artist_id: int) -> Optional[CatalogArtist]:
+        """An artist by id (with its picture, when Beatport names one)."""
+        ...
+
+    def get_label(self, label_id: int) -> Optional[CatalogLabel]:
+        """A label by id (with its picture, when Beatport names one)."""
         ...
 
 
@@ -225,6 +288,21 @@ class DiscoveryRequest:
                 raise ValueError("A picked artist or label is a name")
 
 
+def charts_mode(request: DiscoveryRequest) -> str:
+    """Which charts a request reads: the rule that decides what row one holds.
+
+    - A chosen artist, or several: the charts *they* made (``artists``).
+    - Every artist in the library (``artists`` of ``None``): the charts any
+      library artist made (``library``), as a run always read them.
+    - No artist chosen (an empty selection): the general charts of the chosen
+      genres, by anyone (``genre``). With artists chosen there are no general
+      genre charts.
+    """
+    if request.artists is None:
+        return CHARTS_LIBRARY
+    return CHARTS_ARTISTS if len(request.artists) > 0 else CHARTS_GENRE
+
+
 @dataclass
 class _State:
     """A run's progress, as it goes."""
@@ -235,6 +313,11 @@ class _State:
     releases: Set[int] = field(default_factory=set)
     pending_tracks: List[CatalogTrack] = field(default_factory=list)
     pending_sources: List[DiscoveryRunSource] = field(default_factory=list)
+    pending_groups: List[DiscoveryRunGroup] = field(default_factory=list)
+    groups: Dict[Tuple[str, str], DiscoveryRunGroup] = field(default_factory=dict)
+    artist_ids: Dict[str, int] = field(default_factory=dict)
+    genre_charts: int = 0
+    charts_capped: bool = False
     last_flush: float = 0.0
 
 
@@ -461,7 +544,20 @@ class DiscoveryService(IDiscoveryService):
             if key in label_names
         }
         releases_from = today - timedelta(days=request.new_releases_days)
+        mode = charts_mode(request)
+        artists_asked = len(artists)
+        if mode == CHARTS_ARTISTS and artists_asked > MAX_PICKED_ARTISTS:
+            artists = artists[:MAX_PICKED_ARTISTS]
+            artist_names = dict(artists)
+            linked_artists = {
+                i: k for i, k in linked_artists.items() if k in artist_names
+            }
         params = {
+            "capped": {
+                "artists_asked": artists_asked,
+                "artists_kept": len(artists),
+            },
+            "charts_mode": mode,
             "genre_ids": list(request.genre_ids),
             "charts_from": request.charts_from.isoformat(),
             "charts_to": request.charts_to.isoformat(),
@@ -506,13 +602,34 @@ class DiscoveryService(IDiscoveryService):
         progress = on_progress or (lambda stage, done, total: None)
         outcome, error, error_class = RUN_SUCCEEDED, None, None
         try:
+            # An explicit pick is a card each, found or not; "every" is only
+            # the ones that found something.
+            if request.artists is not None:
+                for key, name in artists:
+                    self._group(state, GROUP_ARTIST, key, name)
+            if request.labels is not None:
+                for key, name in labels:
+                    self._group(state, GROUP_LABEL, key, name)
             self._read_charts(
-                state, request, artist_names, linked_artists, progress, cancel
+                state, request, mode, artist_names, linked_artists, progress, cancel
             )
+            if mode == CHARTS_ARTISTS:
+                self._read_artist_releases(
+                    state,
+                    request,
+                    artists,
+                    linked_artists,
+                    releases_from,
+                    today,
+                    progress,
+                    cancel,
+                )
             resolved = self._resolve_labels(
                 state, labels, linked_labels, progress, cancel
             )
-            self._read_releases(state, resolved, releases_from, today, progress, cancel)
+            self._read_releases(
+                state, request, resolved, releases_from, today, progress, cancel
+            )
             self._flush(state)
         except _Cancelled:
             outcome = RUN_CANCELLED
@@ -528,6 +645,11 @@ class DiscoveryService(IDiscoveryService):
         if outcome != RUN_SUCCEEDED:
             self._flush(state)
         self._runs.update_counts(state.run_id, _stored_counts(state))
+        if state.charts_capped:
+            params["capped"] = {**params["capped"], "charts": True}  # type: ignore[dict-item]
+            self._runs.update_params(
+                state.run_id, json.dumps(params, ensure_ascii=False)
+            )
         ended = self._runs.finish_run(
             state.run_id,
             outcome,
@@ -615,17 +737,71 @@ class DiscoveryService(IDiscoveryService):
     def _flush(self, state: _State) -> None:
         """Commit what the run holds, with its counts, in one transaction."""
         state.last_flush = self._monotonic()
-        if not state.pending_tracks and not state.pending_sources:
+        if (
+            not state.pending_tracks
+            and not state.pending_sources
+            and not state.pending_groups
+        ):
             return
         tracks, sources = state.pending_tracks, state.pending_sources
+        groups = state.pending_groups
         state.pending_tracks, state.pending_sources = [], []
+        state.pending_groups = []
         self._runs.record_found(
             state.run_id,
             tracks,
             sources,
             self._clock().isoformat(),
             _stored_counts(state),
+            groups,
         )
+
+    def _group(
+        self,
+        state: _State,
+        kind: str,
+        key: str,
+        name: str,
+        *,
+        beatport_id: Optional[int] = None,
+        owner_key: Optional[str] = None,
+        curator: Optional[str] = None,
+        art_url: Optional[str] = None,
+    ) -> None:
+        """Note a card, keeping what is known of it; written with the next flush."""
+        known = state.groups.get((kind, key))
+        if known is not None:
+            if (
+                (beatport_id is None or known.beatport_id is not None)
+                and (art_url is None or known.art_url is not None)
+                and (curator is None or known.curator is not None)
+            ):
+                return
+            group = DiscoveryRunGroup(
+                run_id=state.run_id,
+                kind=kind,
+                key=key,
+                name=known.name,
+                position=known.position,
+                beatport_id=known.beatport_id or beatport_id,
+                owner_key=known.owner_key or owner_key,
+                curator=known.curator or curator,
+                art_url=known.art_url or art_url,
+            )
+        else:
+            group = DiscoveryRunGroup(
+                run_id=state.run_id,
+                kind=kind,
+                key=key,
+                name=name,
+                position=len(state.groups),
+                beatport_id=beatport_id,
+                owner_key=owner_key,
+                curator=curator,
+                art_url=art_url,
+            )
+        state.groups[(kind, key)] = group
+        state.pending_groups.append(group)
 
     # --- charts
 
@@ -633,12 +809,14 @@ class DiscoveryService(IDiscoveryService):
         self,
         state: _State,
         request: DiscoveryRequest,
+        mode: str,
         artist_names: Dict[str, str],
         linked: Dict[int, str],
         progress: Callable[[str, int, int], None],
         cancel: Callable[[], bool],
     ) -> None:
-        genres = request.genre_ids if artist_names else ()
+        # Charts by library artists need artists to match; general charts do not.
+        genres = request.genre_ids if (artist_names or mode == CHARTS_GENRE) else ()
         progress(STAGE_CHARTS, 0, len(genres))
         seen: Set[int] = set()
         for done, genre_id in enumerate(genres):
@@ -651,19 +829,56 @@ class DiscoveryService(IDiscoveryService):
                 request.charts_to,
             )
             if charts is not _FAILED:
+                taken = 0
                 for chart in charts:
                     if chart.id in seen:
                         continue
+                    if mode == CHARTS_GENRE:
+                        if (
+                            taken >= MAX_GENRE_CHARTS_PER_GENRE
+                            or state.genre_charts >= MAX_GENRE_CHARTS_TOTAL
+                        ):
+                            state.charts_capped = True
+                            break
+                        owner_name: Optional[str] = None
+                    else:
+                        owner_name = chart_curator(chart, artist_names, linked)
+                        if owner_name is None:
+                            continue
                     seen.add(chart.id)
-                    curator = chart_curator(chart, artist_names, linked)
-                    if curator is None:
-                        continue
                     tracks = self._ask(
                         state, cancel, self._beatport.chart_tracks, chart.id
                     )
                     if tracks is _FAILED:
                         continue
+                    taken += 1
+                    state.genre_charts += 1
                     state.counts["charts_read"] += 1
+                    curator = (
+                        chart.artist.name if chart.artist else chart.owner_name
+                    ) or None
+                    owner_key = name_key(owner_name) if owner_name else None
+                    self._group(
+                        state,
+                        GROUP_CHART,
+                        str(chart.id),
+                        chart.name,
+                        beatport_id=chart.id,
+                        owner_key=owner_key,
+                        curator=curator,
+                        art_url=chart.image_url,
+                    )
+                    if owner_key is not None and owner_name is not None:
+                        # "Every artist": a card for each one who made a chart.
+                        self._group(
+                            state,
+                            GROUP_ARTIST,
+                            owner_key,
+                            owner_name,
+                            beatport_id=chart.artist.id if chart.artist else None,
+                        )
+                        if chart.artist is not None:
+                            state.artist_ids.setdefault(owner_key, chart.artist.id)
                     self._store(
                         state,
                         tracks,
@@ -673,7 +888,8 @@ class DiscoveryService(IDiscoveryService):
                                 beatport_track_id=track.id,
                                 source_type=SOURCE_CHART,
                                 source_id=chart.id,
-                                matched_on=curator,
+                                group_key=str(chart.id),
+                                matched_on=owner_name or curator or chart.name,
                                 source_name=chart.name,
                                 source_url=chart.url,
                             )
@@ -681,6 +897,101 @@ class DiscoveryService(IDiscoveryService):
                         ],
                     )
             progress(STAGE_CHARTS, done + 1, len(genres))
+
+    # --- artists
+
+    def _read_artist_releases(
+        self,
+        state: _State,
+        request: DiscoveryRequest,
+        artists: Sequence[Tuple[str, str]],
+        linked: Dict[int, str],
+        since: date,
+        until: date,
+        progress: Callable[[str, int, int], None],
+        cancel: Callable[[], bool],
+    ) -> None:
+        """Each chosen artist's new releases in the chosen genres and days.
+
+        An artist's Beatport id is, in order: the one resolution linked to
+        them, the one a chart of theirs named, the cached name search, and
+        only then a search, whose answer (a miss too) is kept as a label's is.
+        An artist Beatport does not know keeps its card with nothing under it.
+        """
+        progress(STAGE_ARTISTS, 0, len(artists))
+        ids_by_key = {key: beatport_id for beatport_id, key in linked.items()}
+        for key_, found_id in state.artist_ids.items():
+            ids_by_key.setdefault(key_, found_id)
+        cached = self._runs.lookups(
+            ENTITY_ARTIST, [key for key, _ in artists if key not in ids_by_key]
+        )
+        now = self._clock()
+        for done, (key, name) in enumerate(artists):
+            beatport_id: Optional[int] = ids_by_key.get(key)
+            lookup = cached.get(key)
+            if (
+                beatport_id is None
+                and lookup is not None
+                and lookup_is_current(lookup, now)
+            ):
+                beatport_id = lookup.beatport_id
+            elif beatport_id is None:
+                answer = self._ask(
+                    state, cancel, self._beatport.search_artist_by_name, name
+                )
+                if answer is not _FAILED:
+                    beatport_id = positive_id(answer)
+                    self._runs.save_lookup(
+                        BeatportNameLookup(
+                            kind=ENTITY_ARTIST,
+                            name_key=key,
+                            looked_up_at=self._clock().isoformat(),
+                            beatport_id=beatport_id,
+                        )
+                    )
+            if beatport_id is not None:
+                tracks = self._ask(
+                    state,
+                    cancel,
+                    self._beatport.artist_tracks,
+                    beatport_id,
+                    since,
+                    until,
+                )
+                self._group(
+                    state,
+                    GROUP_ARTIST,
+                    key,
+                    name,
+                    beatport_id=beatport_id,
+                    art_url=_artist_art(tracks, beatport_id),
+                )
+                if tracks is not _FAILED:
+                    released = _in_genres(
+                        (t for t in tracks if t.release_id is not None),
+                        request.genre_ids,
+                    )
+                    state.releases.update(
+                        t.release_id for t in released if t.release_id
+                    )
+                    state.counts["releases_read"] = len(state.releases)
+                    self._store(
+                        state,
+                        released,
+                        [
+                            DiscoveryRunSource(
+                                run_id=state.run_id,
+                                beatport_track_id=track.id,
+                                source_type=SOURCE_ARTIST_RELEASE,
+                                source_id=int(track.release_id or 0),
+                                group_key=key,
+                                matched_on=name,
+                                source_name=track.release_name or None,
+                            )
+                            for track in released
+                        ],
+                    )
+            progress(STAGE_ARTISTS, done + 1, len(artists))
 
     # --- labels
 
@@ -691,14 +1002,14 @@ class DiscoveryService(IDiscoveryService):
         linked: Dict[str, int],
         progress: Callable[[str, int, int], None],
         cancel: Callable[[], bool],
-    ) -> List[Tuple[str, int]]:
-        """Each label in scope with a Beatport id, as ``(name, id)``, in order."""
+    ) -> List[Tuple[str, str, int]]:
+        """Each label in scope with a Beatport id, as ``(key, name, id)``, in order."""
         progress(STAGE_LABELS, 0, len(labels))
         cached = self._runs.lookups(
             ENTITY_LABEL, [key for key, _ in labels if key not in linked]
         )
         now = self._clock()
-        resolved: List[Tuple[str, int]] = []
+        resolved: List[Tuple[str, str, int]] = []
         for done, (key, name) in enumerate(labels):
             beatport_id: Optional[int] = linked.get(key)
             lookup = cached.get(key)
@@ -723,7 +1034,7 @@ class DiscoveryService(IDiscoveryService):
                         )
                     )
             if beatport_id is not None:
-                resolved.append((name, beatport_id))
+                resolved.append((key, name, beatport_id))
                 state.counts["labels_resolved"] = len(resolved)
             progress(STAGE_LABELS, done + 1, len(labels))
         self._runs.update_counts(state.run_id, _stored_counts(state))
@@ -734,21 +1045,36 @@ class DiscoveryService(IDiscoveryService):
     def _read_releases(
         self,
         state: _State,
-        labels: Sequence[Tuple[str, int]],
+        request: DiscoveryRequest,
+        labels: Sequence[Tuple[str, str, int]],
         since: date,
         until: date,
         progress: Callable[[str, int, int], None],
         cancel: Callable[[], bool],
     ) -> None:
         progress(STAGE_RELEASES, 0, len(labels))
-        for done, (name, label_id) in enumerate(labels):
+        for done, (key, name, label_id) in enumerate(labels):
             tracks = self._ask(
                 state, cancel, self._beatport.label_tracks, label_id, since, until
             )
             if tracks is not _FAILED:
-                released = [t for t in tracks if t.release_id is not None]
+                released = _in_genres(
+                    (t for t in tracks if t.release_id is not None), request.genre_ids
+                )
                 state.releases.update(t.release_id for t in released if t.release_id)
                 state.counts["releases_read"] = len(state.releases)
+                if released or (GROUP_LABEL, key) in state.groups:
+                    self._group(
+                        state,
+                        GROUP_LABEL,
+                        key,
+                        name,
+                        beatport_id=label_id,
+                        art_url=next(
+                            (t.label_image_url for t in tracks if t.label_image_url),
+                            None,
+                        ),
+                    )
                 self._store(
                     state,
                     released,
@@ -758,6 +1084,7 @@ class DiscoveryService(IDiscoveryService):
                             beatport_track_id=track.id,
                             source_type=SOURCE_LABEL_RELEASE,
                             source_id=int(track.release_id or 0),
+                            group_key=key,
                             matched_on=name,
                             source_name=track.release_name or None,
                         )
@@ -835,6 +1162,157 @@ class DiscoveryService(IDiscoveryService):
             ValueError: If it is still running.
         """
         return self._runs.delete_run(run_id)
+
+    # -------------------------------------------------------------- groups
+
+    def run_groups(self, run_id: int) -> List[GroupCard]:
+        """The cards a run's results are grouped into, as they stand now.
+
+        Empty for a run stored before groups existed.
+
+        Raises:
+            LookupError: If there is no such run.
+        """
+        self._require_run(run_id)
+        return self._runs.run_groups(run_id)
+
+    def group_tracks(
+        self,
+        run_id: int,
+        groups: Sequence[Tuple[str, str]],
+        owned: str = OWNED_HIDE,
+        sort: str = SORT_FOUND,
+        descending: bool = False,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> RunTracksPage:
+        """A window of the tracks of some cards, merged, owned hidden by default.
+
+        Raises:
+            LookupError: If there is no such run.
+            ValueError: If a card, the filter, the sort or the window is not
+                one a run answers.
+        """
+        self._require_run(run_id)
+        return self._runs.run_tracks(
+            run_id, owned, sort, descending, offset, limit, groups=groups
+        )
+
+    def group_selection(
+        self, run_id: int, groups: Sequence[Tuple[str, str]]
+    ) -> GroupSelection:
+        """How many distinct tracks some ticked cards hold, and how many are owned.
+
+        Raises:
+            LookupError: If there is no such run.
+            ValueError: If a card is not one a run answers.
+        """
+        self._require_run(run_id)
+        return self._runs.group_selection(run_id, groups)
+
+    def group_track_ids(
+        self,
+        run_id: int,
+        groups: Sequence[Tuple[str, str]],
+        owned: str = OWNED_ALL,
+    ) -> List[int]:
+        """Every distinct Beatport track id of some cards, in first-seen order.
+
+        Raises:
+            LookupError: If there is no such run.
+            ValueError: If a card is not one a run answers.
+        """
+        self._require_run(run_id)
+        return self._runs.group_track_ids(run_id, groups, owned)
+
+    def group_art_url(self, run_id: int, kind: str, key: str) -> Optional[str]:
+        """The picture Beatport named for a card, for the engine's thumbnailer only.
+
+        A run asks Beatport for no picture of its own: a chart's came with its
+        listing, an artist's with their tracks' credits, a label's with its
+        releases. A card none of those named is asked for here, when somebody
+        looks at it, by its Beatport id; the answer is kept on the card, and a
+        miss is not asked again until the engine restarts.
+        """
+        self._require_run(run_id)
+        art = self._runs.group_art(run_id, kind, key)
+        if art is not None or kind not in (GROUP_ARTIST, GROUP_LABEL):
+            return art
+        asked = (run_id, kind, key)
+        group = self._runs.group_ref(run_id, kind, key)
+        if group is None or group.beatport_id is None or asked in _ART_MISSES:
+            return None
+        try:
+            found = (
+                self._beatport.get_artist(group.beatport_id)
+                if kind == GROUP_ARTIST
+                else self._beatport.get_label(group.beatport_id)
+            )
+        except Exception as exc:  # noqa: BLE001 — a missing picture is not an error
+            _logger.debug("[discover] no picture for %s %s: %s", kind, key, exc)
+            _ART_MISSES.add(asked)
+            return None
+        art = found.image_url if found is not None else None
+        if art is None:
+            _ART_MISSES.add(asked)
+        else:
+            self._runs.set_group_art(run_id, kind, key, art)
+        return art
+
+    def run_notes(self, run_id: int) -> List[str]:
+        """What a run left out on purpose, in words, so the page can say so."""
+        run = self._runs.get_run(run_id)
+        if run is None:
+            raise LookupError(f"No discovery run {run_id}")
+        params = run.params
+        found = params.get("capped")
+        capped: Dict[str, Any] = found if isinstance(found, dict) else {}
+        notes: List[str] = []
+        asked, kept = capped.get("artists_asked"), capped.get("artists_kept")
+        if isinstance(asked, int) and isinstance(kept, int) and kept < asked:
+            notes.append(
+                f"Only the first {kept:,} of the {asked:,} artists you chose were looked up: "
+                f"a dig reads at most {MAX_PICKED_ARTISTS:,}."
+            )
+        if capped.get("charts"):
+            notes.append(
+                f"Genre charts are capped at the newest {MAX_GENRE_CHARTS_PER_GENRE} "
+                f"in each genre, {MAX_GENRE_CHARTS_TOTAL} in all."
+            )
+        return notes
+
+    def _require_run(self, run_id: int) -> None:
+        if self._runs.get_run(run_id) is None:
+            raise LookupError(f"No discovery run {run_id}")
+
+
+#: Cards whose picture Beatport could not give when asked, per process.
+_ART_MISSES: Set[Tuple[int, str, str]] = set()
+
+
+def _artist_art(tracks: Any, artist_id: int) -> Optional[str]:
+    """The picture an artist's own credits carry, from tracks that credit them."""
+    if tracks is _FAILED:
+        return None
+    for track in tracks:
+        for credit in (*track.artists, *track.remixers):
+            if credit.id == artist_id and credit.image_url:
+                return str(credit.image_url)
+    return None
+
+
+def _in_genres(
+    tracks: Iterable[CatalogTrack], genre_ids: Sequence[int]
+) -> List[CatalogTrack]:
+    """The tracks in the chosen genres; every track when no genre was chosen.
+
+    A track Beatport gave no genre is left out when genres were chosen: it
+    cannot be shown to be in them.
+    """
+    if not genre_ids:
+        return list(tracks)
+    wanted = set(genre_ids)
+    return [track for track in tracks if track.genre_id in wanted]
 
 
 def chart_curator(

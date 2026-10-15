@@ -340,13 +340,17 @@ describe("the New dig form", () => {
       { labels: "list", labelListId: 3 },
       "That list has no labels. Add some, or look for every one.",
     ],
-    [{ artists: "none", labels: "none" }, "A dig needs artists or labels to look for."],
     [
-      { artists: "none", genreIds: [5] },
-      "Charts come from your artists. Choose some artists, or untick every genre.",
+      { artists: "none", labels: "none", genreIds: [] },
+      "A dig needs artists, labels or a genre to look for.",
     ],
   ] as Array<[Partial<NewRunForm>, string]>)("refuses %j", (patch, problem) => {
     expect(formProblems(form(patch), LIMITS)).toEqual([problem]);
+  });
+
+  it("takes no artists with a genre: it reads the genre's general charts", () => {
+    expect(formProblems(form({ artists: "none", genreIds: [5] }), LIMITS)).toEqual([]);
+    expect(formProblems(form({ artists: "none", labels: "none", genreIds: [5] }), LIMITS)).toEqual([]);
   });
 
   it("takes a saved list that has names", () => {
@@ -469,6 +473,19 @@ describe("the sentences", () => {
     ).toBe("On a chart by Mara Veil");
   });
 
+  it("names a general genre chart by itself when nobody is named for it", () => {
+    const chart = { ...fixture.run_tracks_all.value.rows[0]!.sources[0]!, source_type: "chart" as const };
+    expect(sourceText({ ...chart, matched_on: "Journey", source_name: "Journey" })).toBe(
+      "On the chart “Journey”",
+    );
+    expect(sourceText({ ...chart, matched_on: "DJEFF", source_name: "DJEFF picks" })).toBe(
+      "On a chart by DJEFF: “DJEFF picks”",
+    );
+    expect(sourceText({ ...chart, source_type: "artist_release", matched_on: "Mara", source_name: "EP" })).toBe(
+      "New from Mara: “EP”",
+    );
+  });
+
   it("titles a search by its date, and counts what it found on one line (DSC-2, DSC-6)", () => {
     expect(searchTitle(FINISHED.started_at)).toMatch(/^Dig of /);
     expect(searchTitle(FINISHED.started_at)).not.toMatch(/run/i);
@@ -546,7 +563,7 @@ describe("the columns", () => {
       "BPM",
       "Key",
       "Genre",
-      "Why it's here",
+      "From",
       "In your library",
       "Wantlist",
     ]);

@@ -70,6 +70,12 @@ class BeatportWorld:
     access_token: str = "token"
     #: Playlists created, by id: ``{"name": …, "tracks": [ids in order]}``.
     playlists: Dict[int, Dict[str, Any]] = field(default_factory=dict)
+    #: Pictures by ``(kind, id)`` for ``kind`` ``chart``, ``artist`` or ``label``,
+    #: served as v4's ``image`` object (Discover's grouped results).
+    images: Dict[Tuple[str, int], str] = field(default_factory=dict)
+    #: Pictures that only ``catalog/artists/{id}`` and ``catalog/labels/{id}``
+    #: carry, not the credits and releases on a track.
+    no_credit_images: set = field(default_factory=set)
     #: ``catalog/genres/``, in Beatport's order: ``(id, name, slug)``.
     genres: List[Tuple[int, str, str]] = field(
         default_factory=lambda: [
@@ -166,6 +172,32 @@ class BeatportWorld:
         if parts[:2] == ["catalog", "tracks"] and len(parts) == 3:
             track = self.tracks.get(int(parts[2]))
             return self._track_json(track) if track is not None else None
+        if parts[:2] == ["catalog", "artists"] and len(parts) == 3:
+            name = self._artists().get(int(parts[2]))
+            return self._entity_json("artist", (int(parts[2]), name)) if name else None
+        if parts[:2] == ["catalog", "labels"] and len(parts) == 3:
+            label = next((x for x in self._labels() if x["id"] == int(parts[2])), None)
+            return self._entity_json("label", label) if label else None
+        if parts[:2] == ["my", "playlists"] and parts[3:] == ["tracks"]:
+            playlist = self.playlists.get(int(parts[2]))
+            if playlist is None:
+                raise BeatportAPIError("Beatport answered 404", status_code=404)
+            return self._page(
+                [
+                    {
+                        "id": 9_000 + n,
+                        "position": n,
+                        "track": self._track_json(self.tracks[t]),
+                    }
+                    for n, t in enumerate(playlist["tracks"])
+                ],
+                params,
+            )
+        if route == "my/playlists":
+            return self._page(
+                [{"id": i, "name": p["name"]} for i, p in self.playlists.items()],
+                params,
+            )
         if route == "catalog/genres":
             return self._page(
                 [{"id": i, "name": n, "slug": s} for i, n, s in self.genres], params
@@ -173,7 +205,12 @@ class BeatportWorld:
         if route == "catalog/search":
             query = str(params.get("q") or params.get("query") or "").lower()
             return {
-                "labels": [label for label in self._labels() if _named(label, query)]
+                "labels": [label for label in self._labels() if _named(label, query)],
+                "artists": [
+                    {"id": i, "name": n, "slug": n.lower().replace(" ", "-")}
+                    for i, n in sorted(self._artists().items())
+                    if n.lower() == query
+                ],
             }
         if route == "catalog/labels":
             query = str(params.get("q") or "").lower()
@@ -187,9 +224,28 @@ class BeatportWorld:
     def _chart(self, chart_id: int) -> Optional[Chart]:
         return next((c for c in self.charts if c.id == chart_id), None)
 
-    @staticmethod
-    def _chart_json(chart: Chart) -> Dict[str, Any]:
+    def _artists(self) -> Dict[int, str]:
+        found: Dict[int, str] = {}
+        for track in self.tracks.values():
+            for artist_id, name in track.artists:
+                found.setdefault(artist_id, name)
+        return found
+
+    def _entity_json(self, kind: str, entity: Any) -> Dict[str, Any]:
+        identity = (
+            {"id": entity[0], "name": entity[1]}
+            if isinstance(entity, tuple)
+            else dict(entity)
+        )
+        picture = self.images.get((kind, int(identity["id"])))
+        if picture is not None:
+            identity["image"] = {"id": 1, "uri": picture, "dynamic_uri": picture}
+        return identity
+
+    def _chart_json(self, chart: Chart) -> Dict[str, Any]:
+        picture = self.images.get(("chart", chart.id))
         return {
+            **({"image": {"id": 1, "dynamic_uri": picture}} if picture else {}),
             "id": chart.id,
             "name": chart.name,
             "slug": f"chart-{chart.id}",
@@ -204,14 +260,24 @@ class BeatportWorld:
             "track_count": len(chart.track_ids),
         }
 
-    @staticmethod
-    def _track_json(track: Track) -> Dict[str, Any]:
+    def _picture(self, kind: str, entity_id: int) -> Dict[str, Any]:
+        picture = self.images.get((kind, entity_id))
+        return (
+            {"image": {"id": 1, "uri": picture, "dynamic_uri": picture}}
+            if picture and (kind, entity_id) not in self.no_credit_images
+            else {}
+        )
+
+    def _track_json(self, track: Track) -> Dict[str, Any]:
         return {
             "id": track.id,
             "name": track.name,
             "mix_name": "Original Mix",
             "slug": f"track-{track.id}",
-            "artists": [{"id": i, "name": n} for i, n in track.artists],
+            "artists": [
+                {"id": i, "name": n, **self._picture("artist", i)}
+                for i, n in track.artists
+            ],
             "remixers": [],
             "bpm": 124,
             "genre": {"id": 5, "name": "House"},
@@ -219,7 +285,11 @@ class BeatportWorld:
                 "id": track.release[0],
                 "name": track.release[1],
                 "slug": "release",
-                "label": {"id": track.label[0], "name": track.label[1]},
+                "label": {
+                    "id": track.label[0],
+                    "name": track.label[1],
+                    **self._picture("label", track.label[0]),
+                },
             },
             "new_release_date": track.released.isoformat(),
             "publish_date": track.released.isoformat(),

@@ -392,6 +392,8 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(
           window.getByText("Found 4 tracks from 1 chart and 0 releases.", { exact: true }),
         ).toBeVisible({ timeout: 60_000 });
+        // Results opens on rows of cards; Everything is the dig as one table.
+        await window.getByRole("button", { name: /^Everything · / }).click();
         const rows = window.getByRole("table", { name: found }).getByRole("row");
         // The header and the two tracks nobody owns; the two accepted are counted.
         await expect(rows).toHaveCount(3, { timeout: 15_000 });
@@ -542,6 +544,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(window.getByText("Found 4 tracks from 1 chart and 0 releases.")).toBeVisible({
           timeout: 30_000,
         });
+        await window.getByRole("button", { name: /^Everything · / }).click();
         // The hide switch was left off before quitting, and is remembered (DSC-6);
         // turning it back on is what hides the owned tracks again.
         const hideAgain = window.getByRole("checkbox", { name: "Hide tracks already in your library" });

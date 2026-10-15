@@ -144,7 +144,42 @@ class TestPlanning:
             "to_add": 3,
             "skipped_owned": 0,
             "include_owned": False,
+            "existing_playlist": False,
         }
+
+    def test_tracks_can_go_to_a_playlist_the_user_already_has(self, world, service):
+        existing = str(world.post("my/playlists/", json={"name": "Mine"})["id"])
+        plan = service.plan([501, 502], name="Mine", playlist_id=existing)
+        assert plan.to_dict()["existing_playlist"] is True
+        result = service.push(plan)
+        assert (result.existing_playlist, result.playlist_id, result.added) == (
+            True,
+            existing,
+            2,
+        )
+        assert len(world.playlists) == 1  # none was made
+        assert service.my_playlists() == [{"id": existing, "name": "Mine"}]
+
+    def test_what_a_playlist_already_holds_is_not_added_twice(self, world, service):
+        existing = str(world.post("my/playlists/", json={"name": "Mine"})["id"])
+        world.post(f"my/playlists/{existing}/tracks/", json={"track_id": 501})
+        plan = service.plan([501, 502, 503], name="Mine", playlist_id=existing)
+        result = service.push(plan)
+        assert (result.added, result.already_in_playlist, result.to_add) == (2, 1, 2)
+        assert result.not_attempted == 0
+        assert world.playlists[int(existing)]["tracks"] == [501, 502, 503]
+        assert result.to_dict()["already_in_playlist"] == 1
+
+    def test_a_playlist_that_cannot_be_read_gets_nothing(self, world, service):
+        existing = str(world.post("my/playlists/", json={"name": "Mine"})["id"])
+        fail(world, 500, route=f"my/playlists/{existing}/tracks")
+        result = service.push(service.plan([501], name="Mine", playlist_id=existing))
+        assert result.added == 0 and result.error
+        assert world.playlists[int(existing)]["tracks"] == []
+
+    def test_a_playlist_id_that_is_not_one_is_refused(self, service):
+        with pytest.raises(ValueError, match="not a Beatport playlist id"):
+            service.plan([501], playlist_id="../etc")
 
     def test_owned_tracks_are_skipped_by_default(self, db, service):
         own(db, 502, 504)

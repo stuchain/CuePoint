@@ -159,11 +159,13 @@ def start_beatport_playlist_job(
     track_ids: Sequence[int],
     name: Optional[str] = None,
     include_owned: bool = False,
+    playlist_id: Optional[str] = None,
 ) -> Job:
     """Start pushing Beatport tracks to a new Beatport playlist.
 
     ``name`` of ``None`` takes the dated default; owned tracks are skipped
-    unless ``include_owned``.
+    unless ``include_owned``. With ``playlist_id`` the tracks are added to that
+    existing playlist of the user's instead of a new one.
 
     Raises:
         BeatportAPIError: Classified ``no_token``, when no token is configured.
@@ -172,7 +174,9 @@ def start_beatport_playlist_job(
     """
     service = _playlist_service()
     service.require_token()
-    plan = service.plan(track_ids, name=name, include_owned=include_owned)
+    plan = service.plan(
+        track_ids, name=name, include_owned=include_owned, playlist_id=playlist_id
+    )
 
     def runner(job: Job) -> None:
         run_beatport_playlist_job(job, store, service, plan)

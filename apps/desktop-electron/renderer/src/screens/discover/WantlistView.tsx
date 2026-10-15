@@ -352,7 +352,7 @@ export function WantlistView({ tools }: WantlistViewProps) {
         }
         defaultName={tools.options.defaults.playlist_name}
         maxNameLength={tools.options.limits.max_playlist_name_length}
-        onPush={push}
+        onPush={(target, includeOwned) => push(target.name, includeOwned)}
         onClose={() => setPushOpen(false)}
       />
 

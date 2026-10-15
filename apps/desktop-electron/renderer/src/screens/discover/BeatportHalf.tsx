@@ -522,7 +522,7 @@ export function BeatportHalf({
           }
           defaultName={pushing.options.defaults.playlist_name}
           maxNameLength={pushing.options.limits.max_playlist_name_length}
-          onPush={pushTracks}
+          onPush={(target, includeOwned) => pushTracks(target.name, includeOwned)}
           onClose={() => setPushing(null)}
         />
       )}

@@ -41,6 +41,7 @@ playlist URL when a playlist was created.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Protocol, Sequence, Tuple
@@ -111,6 +112,9 @@ _CREATE_REFUSED = {
 #: The statuses that mean Beatport answered and refused this one request.
 _ACCOUNT_STATUSES = (401, 403, 429)
 
+#: What a Beatport playlist id looks like (as ``BeatportApi`` checks it).
+_PLAYLIST_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
 
 class PlaylistWriter(Protocol):
     """What a push needs from ``BeatportApi`` (DISCOVER-01's playlist methods)."""
@@ -129,6 +133,14 @@ class PlaylistWriter(Protocol):
 
     def playlist_url(self, playlist_id: str) -> Optional[str]:
         """The playlist's page on www.beatport.com."""
+        ...
+
+    def my_playlists(self) -> List[Tuple[str, str]]:
+        """The user's own playlists as ``(id, name)``."""
+        ...
+
+    def playlist_track_ids(self, playlist_id: str) -> Optional[List[int]]:
+        """The track ids already in a playlist, or None when that cannot be told."""
         ...
 
 
@@ -162,12 +174,15 @@ class PlaylistPush:
         track_ids: The tracks to add, in the order asked.
         skipped_owned: Tracks left out because the library owns them.
         include_owned: Whether owned tracks were asked for.
+        playlist_id: An existing playlist of the user's to add to instead of
+            creating one; ``None`` creates a new playlist named ``name``.
     """
 
     name: str
     track_ids: Tuple[int, ...]
     skipped_owned: Tuple[int, ...] = ()
     include_owned: bool = False
+    playlist_id: Optional[str] = None
 
     @property
     def requested(self) -> int:
@@ -182,6 +197,7 @@ class PlaylistPush:
             "to_add": len(self.track_ids),
             "skipped_owned": len(self.skipped_owned),
             "include_owned": self.include_owned,
+            "existing_playlist": self.playlist_id is not None,
         }
 
 
@@ -201,6 +217,9 @@ class BeatportPlaylistResult:
         cancelled: True when it stopped because it was asked to.
         error_class: DISCOVER-01's class of the failure that stopped it.
         error: Why it stopped, when it failed.
+        existing_playlist: True when the tracks went to a playlist that was
+            already the user's, not one this push made.
+        already_in_playlist: Tracks left out because that playlist held them.
     """
 
     name: str
@@ -214,6 +233,8 @@ class BeatportPlaylistResult:
     cancelled: bool = False
     error_class: Optional[str] = None
     error: Optional[str] = None
+    existing_playlist: bool = False
+    already_in_playlist: int = 0
 
     @property
     def failed(self) -> int:
@@ -281,6 +302,8 @@ class BeatportPlaylistResult:
             "cancelled": self.cancelled,
             "error_class": self.error_class,
             "error": self.error,
+            "existing_playlist": self.existing_playlist,
+            "already_in_playlist": self.already_in_playlist,
         }
 
 
@@ -321,8 +344,13 @@ class BeatportPlaylistService(IBeatportPlaylistService):
         track_ids: Sequence[int],
         name: Optional[str] = None,
         include_owned: bool = False,
+        playlist_id: Optional[str] = None,
     ) -> PlaylistPush:
         """What a push of ``track_ids`` will do.
+
+        With ``playlist_id`` the tracks are added to that playlist of the
+        user's own and none is created; ``name`` is then only what the result
+        calls it.
 
         ``name`` defaults to inCrate's dated name (``incrate.playlist_name_format``,
         "short" as ``sep23`` or "iso"), in the user's own date.
@@ -335,6 +363,10 @@ class BeatportPlaylistService(IBeatportPlaylistService):
         ids = requested_track_ids(track_ids, limit=MAX_PLAYLIST_TRACKS)
         if not isinstance(include_owned, bool):
             raise ValueError(f"include_owned is true or false, got {include_owned!r}")
+        if playlist_id is not None and (
+            not isinstance(playlist_id, str) or not _PLAYLIST_ID.match(playlist_id)
+        ):
+            raise ValueError("That is not a Beatport playlist id")
         title = self._name(name)
         owned = set() if include_owned else self._catalog.owned_among(ids)
         to_add = tuple(i for i in ids if i not in owned)
@@ -350,7 +382,19 @@ class BeatportPlaylistService(IBeatportPlaylistService):
             track_ids=to_add,
             skipped_owned=skipped,
             include_owned=include_owned,
+            playlist_id=playlist_id,
         )
+
+    def my_playlists(self) -> List[Dict[str, str]]:
+        """The user's own Beatport playlists, for choosing one to add to.
+
+        Raises:
+            BeatportAPIError: As the client does, so a caller can say why.
+        """
+        return [
+            {"id": playlist_id, "name": name}
+            for playlist_id, name in self._beatport.my_playlists()
+        ]
 
     def default_name(self) -> str:
         """The name a push given none would take today.
@@ -404,6 +448,7 @@ class BeatportPlaylistService(IBeatportPlaylistService):
             requested=plan.requested,
             skipped_owned=len(plan.skipped_owned),
             to_add=total,
+            existing_playlist=plan.playlist_id is not None,
         )
 
         def report(stage: str, done: int) -> None:
@@ -416,8 +461,10 @@ class BeatportPlaylistService(IBeatportPlaylistService):
         report(STAGE_CREATING, 0)
         if cancelled():
             return self._record(replace(start, cancelled=True))
+        playlist_id: Optional[str] = plan.playlist_id
         try:
-            playlist_id = self._beatport.create_playlist(plan.name)
+            if playlist_id is None:
+                playlist_id = self._beatport.create_playlist(plan.name)
         except Exception as exc:  # noqa: BLE001 — classified and reported
             kind = classify_beatport_error(exc)
             _logger.warning("[beatport] playlist create failed (%s): %s", kind, exc)
@@ -441,8 +488,39 @@ class BeatportPlaylistService(IBeatportPlaylistService):
         stopped_by: Optional[str] = None
         stopped_with: Optional[str] = None
         was_cancelled = False
+        track_ids = plan.track_ids
+        already = 0
+        if plan.playlist_id is not None:
+            # An existing playlist: what it holds is read first, so no track is added twice.
+            try:
+                held = self._beatport.playlist_track_ids(plan.playlist_id)
+            except Exception as exc:  # noqa: BLE001 — classified and reported
+                kind = classify_beatport_error(exc)
+                return self._record(
+                    replace(
+                        start,
+                        playlist_id=playlist_id,
+                        playlist_url=url,
+                        error_class=kind,
+                        error=f"Beatport would not say what is in that playlist: {exc}",
+                    )
+                )
+            if held is None:
+                return self._record(
+                    replace(
+                        start,
+                        playlist_id=playlist_id,
+                        playlist_url=url,
+                        error="Beatport did not say what is in that playlist, so nothing was added",
+                    )
+                )
+            have = set(held)
+            track_ids = tuple(t for t in plan.track_ids if t not in have)
+            already = len(plan.track_ids) - len(track_ids)
+            start = replace(start, to_add=len(track_ids), already_in_playlist=already)
+            total = len(track_ids)
         report(STAGE_ADDING, 0)
-        for track_id in plan.track_ids:
+        for track_id in track_ids:
             if cancelled():
                 was_cancelled = True
                 break
