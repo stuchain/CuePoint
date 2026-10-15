@@ -180,6 +180,7 @@
 
 .cp-filter-bar__row > * {
   flex: 0 0 auto;
+  max-width: 100%;
 }
 
 .cp-filter-bar__row > .cp-field {

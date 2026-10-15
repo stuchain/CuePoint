@@ -4,7 +4,10 @@
   display: flex;
   align-items: flex-end;
   gap: var(--space-xs);
-  flex: 0 0 auto;
+  /* Wrap rather than push the bar wider than its column (2x in a narrow window). */
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .cp-quick__item {

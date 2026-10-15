@@ -5,10 +5,36 @@
   position: relative;
 }
 
-/* Let the title keep its room: the source line shrinks (and ellipsizes) instead. */
+/* Wide enough, one line: the title, then the file and its state, then the buttons at the
+   right. Too narrow (a big text size, Track details open), the line wraps: the title keeps its
+   own words and what follows it goes to a second line, rather than the title being cut. */
+.library-header .cp-screen-header__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-md);
+}
+
+.library-header .cp-screen-header__title-row {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-md);
+}
+
+.library-header .cp-screen-header__display {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
 .library-header .cp-screen-header__beside {
   flex: 0 1 auto;
   min-width: 0;
+  max-width: 100%;
+}
+
+.library-header .cp-screen-header__actions {
+  flex: none;
+  margin-inline-start: auto;
 }
 
 /* The scope's name for a screen reader, ahead of the summary (the drawn title is aria-hidden). */
@@ -31,7 +57,14 @@
   align-items: center;
   gap: var(--space-xs);
   min-width: 0;
+  max-width: 100%;
   font-size: var(--font-size-xs);
+}
+
+/* The state never wraps inside its box. */
+.library-header__source .cp-badge {
+  flex: none;
+  white-space: nowrap;
 }
 
 .library-header__file {

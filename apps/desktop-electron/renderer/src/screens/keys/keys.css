@@ -4,7 +4,11 @@
  * wheel keeps its whole-pixel size at every scale: it is never squeezed to fit.
  */
 .keys-page {
-  --keys-wheel: calc(48 * 4px * var(--scale));
+  /* The wheel is 48 cells across, and a cell is a whole number of pixels. It is 4 points at
+     the default and grows with the room (about 0.6% of the page's width a cell), up to 6, so a
+     big window gets a bigger wheel and a small one keeps the size it always had. */
+  --keys-cell: clamp(calc(4px * var(--scale)), round(down, 0.6cqi, 1px), calc(6px * var(--scale)));
+  --keys-wheel: calc(48 * var(--keys-cell));
   flex: none;
   gap: 0;
   width: 100%;
@@ -15,14 +19,20 @@
   max-width: none;
 }
 
+.keys-page .cp-wheel {
+  --wheel-cell: var(--keys-cell);
+}
+
 /* At 3× the wheel's usual size is wider than the middle column of a 1280-wide window, so its
    cell is 3 points there: still a whole number of pixels, and nothing scrolls sideways. */
 :root[data-scale="3"] .keys-page {
-  --keys-wheel: calc(48 * 3px * var(--scale));
+  --keys-cell: round(calc(3px * var(--scale)), 1px);
 }
 
-:root[data-scale="3"] .keys-page .cp-wheel {
-  --wheel-cell: round(calc(3px * var(--scale)), 1px);
+/* The header keeps its top margin when it sticks: it stops one gutter below the top, and its
+   backdrop (ScreenHeader.css) covers the gutter above it, so rows pass under neither. */
+.keys-page .cp-screen-header {
+  top: var(--page-gutter-top);
 }
 
 /* Sources, wheel and counts share one row at the default size (1.5x in a 1,280-wide window with
@@ -121,10 +131,12 @@
 
 .keys-sources {
   display: flex;
-  flex: 0 1 calc(100px * var(--scale));
+  /* Wide enough for a playlist's name on a line or two at any text size; it shrinks only
+     to its floor, and the row wraps before going under it. */
+  flex: 0 1 calc(140px * var(--scale));
   flex-direction: column;
   gap: var(--space-xs);
-  min-width: 0;
+  min-width: min(calc(110px * var(--scale)), 100%);
 }
 
 .keys-sources__body {
@@ -214,6 +226,12 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* Each row draws its own top and bottom lines (a lit one in green), so a row overlaps the one
+   above by a line: one divider between two rows, not two. */
+.keys-counts__list > li + li {
+  margin-top: calc(-1 * var(--hairline));
 }
 
 .keys-counts__row {

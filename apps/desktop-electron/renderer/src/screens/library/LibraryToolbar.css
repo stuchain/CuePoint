@@ -19,7 +19,8 @@
      scrollbar; at the old 4px gaps, 6px sides and a word space before each ▸
      they took 513 and the row went to three lines on Windows (a table row lost). */
   gap: var(--library-toolbar-row-gap) round(down, calc(var(--space-xs) / 3), 1px);
-  padding: round(down, calc(var(--space-xs) / 2), 1px) 0;
+  /* A hair of room at the left, so the pane's rule never touches the first button. */
+  padding: round(down, calc(var(--space-xs) / 2), 1px) round(down, calc(var(--space-xs) / 3), 1px);
   background: var(--bg-toolbar);
   /* The rule is under the bar, where the pane's Collections heading has its own. */
   border-bottom: var(--hairline) solid var(--border-muted);

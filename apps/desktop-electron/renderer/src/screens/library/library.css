@@ -182,9 +182,10 @@
   /* 24%, not 22%: at 1.5× in the default window 22% left the tree's buttons and
      its bar one to a line (PAGES-05C); the table keeps what its toolbar needs.
      The bounds are in 1× pixels times the scale, so they grow with the text (R2-4);
-     96 and 176 draw 144 and 264 at the default 1.5× size, a little wider than
-     the old 140px and 16rem (256px). */
-  grid-template-columns: clamp(calc(96px * var(--scale)), 24%, calc(176px * var(--scale))) minmax(0, 1fr);
+     112 and 220 draw 168 and 330 at the default 1.5× size, so a name and its count
+     fit at any text size; the floor never takes more than 45% of the body, so the
+     table keeps its share in a narrow window. */
+  grid-template-columns: clamp(min(calc(112px * var(--scale)), 45%), 26%, calc(220px * var(--scale))) minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
   /* The three lines both sides share (LibraryScreen measures the right side and writes its real
@@ -230,12 +231,25 @@
  * `.library-screen__body` already does this for the same reason.
  */
 .library-screen__main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(calc(140px * var(--scale)), 1fr);
+  /* A column, not a grid: an `auto` grid row measured a wrapping toolbar as one line, so its
+     second and third lines slid under the table's header (2x, and 1.5x with Track details
+     open). A flex column sizes each part by its real height; the filter bar and the toolbar
+     keep it (flex: none) and the table takes the rest, never less than its floor. */
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
+}
+
+.library-screen__main > * {
+  flex: none;
+  min-width: 0;
+}
+
+.library-screen__main > .library-screen__table {
+  flex: 1 0 calc(140px * var(--scale));
 }
 
 .library-screen__table {
