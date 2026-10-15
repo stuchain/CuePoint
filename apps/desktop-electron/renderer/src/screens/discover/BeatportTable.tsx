@@ -8,11 +8,15 @@
  * (DEC-042). The buttons are always there (DEC-209): one that needs rows says
  * why it waits, in a Hint, until some are selected.
  *
- * **Double-click does nothing, on purpose.** The player plays library files
- * (DEC-097), and a Beatport row has none; a double-click that did something
- * else would teach a gesture the Library means differently.
+ * **Double-click and Enter play from that track**, as in every other track list: a
+ * Beatport row has no file (DEC-097), so what plays is its 2-minute sample, the same
+ * one the round button at the row's right end plays. Esc clears the selection, Ctrl+A
+ * selects every row loaded, and a right-click selects the row first, as everywhere.
+ *
+ * The bar of actions is above the table, like the Library's, and says how many tracks are
+ * selected once, there.
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
@@ -25,9 +29,10 @@ import {
   type TrackTableSort,
 } from "../../components/table";
 import type { TrackTableSource } from "../../components/table";
-import { canPreview, stopAllPreviews } from "../../components/preview/useBeatportPreview";
+import { stopAllPreviews } from "../../components/preview/useBeatportPreview";
 import { pluralize } from "../library/libraryFormat";
-import { PREVIEW_COLUMN_ID } from "./beatportColumns";
+import { PreviewButton } from "./PreviewButton";
+import { trackName } from "./discoverFormat";
 import type { BeatportAction, BeatportActionId } from "./beatportActions";
 import type { BeatportSelection } from "./useBeatportSelection";
 
@@ -52,8 +57,8 @@ interface BeatportTableProps<Row> {
   busy?: boolean;
 }
 
-export function BeatportTable<Row>({
-  columns: allColumns,
+export function BeatportTable<Row extends { beatport_track_id: number; title: string; mix_name: string | null }>({
+  columns,
   layoutKey,
   source,
   selection,
@@ -68,12 +73,6 @@ export function BeatportTable<Row>({
   resetKey,
   busy = false,
 }: BeatportTableProps<Row>) {
-  // A build whose bridge cannot fetch samples has no preview column to show (DEC-269).
-  const columns = useMemo(
-    () =>
-      canPreview("catalog") ? allColumns : allColumns.filter((c) => c.id !== PREVIEW_COLUMN_ID),
-    [allColumns],
-  );
   const layout = useColumnLayout<Row>(layoutKey, columns);
   // Preview cells scroll in and out of a virtualised table, so a sample belongs
   // to the table's lifetime, not its cell's (DEC-269).
@@ -84,8 +83,9 @@ export function BeatportTable<Row>({
   /**
    * The keyboard's way through the rows: the table is the one tab stop. The
    * table itself moves the selection (the arrows, Home/End, Page Up/Down, Ctrl+Space,
-   * Ctrl+A); what is left here is Enter or plain Space selecting the keyboard's row alone.
-   * A key pressed on a name link inside a row is the link's, not the table's.
+   * Ctrl+A) and Enter plays; what is left here is plain Space selecting the keyboard's row
+   * alone, and Escape letting the selection go. A key pressed on a name link inside a row
+   * is the link's, not the table's.
    */
   // The last row a click or key reported: a Shift range keeps the anchor where it began, but
   // Enter and Space belong to the row the keyboard is on. A new anchor means a new start.
@@ -98,16 +98,32 @@ export function BeatportTable<Row>({
     // The table answers a key it owns (the arrows, Ctrl+Space) and says so.
     if (event.defaultPrevented) return;
     if ((event.target as HTMLElement).getAttribute("role") !== "table") return;
+    if (event.key === "Escape" && selection.count > 0) {
+      event.preventDefault();
+      selection.clear();
+      return;
+    }
     const total = source.total;
     if (total === 0) return;
     const active = selection.anchor === null ? null : (reported.current ?? selection.anchor);
-    if ((event.key !== "Enter" && event.key !== " ") || active === null) return;
+    if (event.key !== " " || active === null) return;
     if (event.ctrlKey || event.metaKey) return;
     const row = source.getRow(active);
     event.preventDefault();
     if (!row) return;
-    // Enter and plain Space select the active row alone.
+    // Plain Space selects the active row alone.
     selection.onRowClick(row, active, { shiftKey: false, ctrlKey: false, metaKey: false });
+  };
+
+  const rowsRef = useRef<HTMLDivElement>(null);
+  /** Double-click or Enter: play that track's sample, unless it is sounding already. */
+  const playFrom = (index: number) => {
+    const button = rowsRef.current?.querySelector<HTMLButtonElement>(
+      `[role="row"][data-index="${index}"] .cp-play-btn`,
+    );
+    const state = button?.dataset.state;
+    if (!button || state === "playing" || state === "loading" || state === "none") return;
+    button.click();
   };
 
   const run = (id: BeatportActionId) => {
@@ -117,39 +133,9 @@ export function BeatportTable<Row>({
 
   return (
     <div className="discover-table">
-      <div className="discover-table__rows" onKeyDown={onRowKeys}>
-        <TrackTable<Row>
-          columns={layout.visible}
-          source={source}
-          widths={layout.widths}
-          onWidthsChange={layout.setWidths}
-          onColumnMove={layout.move}
-          sort={sort}
-          onSortChange={onSortChange}
-          selectedKeys={selection.keys}
-          getRowKey={(row) => idOf(row)}
-          onSelect={(row, index, modifiers) => {
-            reported.current = index;
-            selection.onRowClick(row, index, modifiers);
-          }}
-          onSelectAll={selection.selectAll}
-          onRowContextMenu={(row, index, anchor) => {
-            selection.onRowMenu(row, index);
-            setMenu(anchor);
-          }}
-          activeIndex={selection.anchor}
-          emptyState={emptyState}
-          resetKey={resetKey}
-          ariaLabel={label}
-          onColumns={() => setPicking(true)}
-        />
-      </div>
-
       <div className="discover-table__actions" role="toolbar" aria-label={`${label}: actions`}>
         <span className="discover-table__count" role="status">
-          {selection.count > 0
-            ? `${pluralize(selection.count, "track")} selected`
-            : summary}
+          {selection.count > 0 ? `${pluralize(selection.count, "track")} selected` : summary}
         </span>
         {actions.map((action) => (
           <span key={action.id} className="discover-table__action">
@@ -166,10 +152,42 @@ export function BeatportTable<Row>({
           </span>
         ))}
         {selection.count > 0 && (
-          <Button variant="secondary" onClick={selection.clear}>
+          <Button variant="quiet" onClick={selection.clear}>
             Clear
           </Button>
         )}
+      </div>
+
+      <div ref={rowsRef} className="discover-table__rows" onKeyDown={onRowKeys}>
+        <TrackTable<Row>
+          columns={layout.visible}
+          source={source}
+          widths={layout.widths}
+          onWidthsChange={layout.setWidths}
+          onColumnMove={layout.move}
+          sort={sort}
+          onSortChange={onSortChange}
+          selectedKeys={selection.keys}
+          getRowKey={(row) => idOf(row)}
+          onSelect={(row, index, modifiers) => {
+            reported.current = index;
+            selection.onRowClick(row, index, modifiers);
+          }}
+          onSelectAll={selection.selectAll}
+          onRowActivate={(_row, index) => playFrom(index)}
+          rowEnd={(row) => (
+            <PreviewButton beatportTrackId={row.beatport_track_id} title={trackName(row)} />
+          )}
+          onRowContextMenu={(row, index, anchor) => {
+            selection.onRowMenu(row, index);
+            setMenu(anchor);
+          }}
+          activeIndex={selection.anchor}
+          emptyState={emptyState}
+          resetKey={resetKey}
+          ariaLabel={label}
+          onColumns={() => setPicking(true)}
+        />
       </div>
 
       {menu && (

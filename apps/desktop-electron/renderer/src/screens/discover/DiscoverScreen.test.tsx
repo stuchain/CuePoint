@@ -398,7 +398,7 @@ describe("Beatport's state", () => {
     });
     renderDiscover();
     fireEvent.click(await screen.findByRole("button", { name: "Sign in again" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't open the Beatport sign-in.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not open the Beatport sign-in.");
     expect(bridge.getDiscoverOptions).toHaveBeenCalledTimes(1);
   });
 
@@ -545,7 +545,7 @@ describe("Results", () => {
     }
   });
 
-  it("keeps each card's menu button beside its text, not inside it, with the long text titled", async () => {
+  it("keeps each card's menu button beside its text, not inside it, with the long text hinted", async () => {
     renderDiscover();
     const list = await screen.findByRole("navigation", { name: "Past digs" });
     for (const item of within(list).getAllByRole("listitem")) {
@@ -555,7 +555,8 @@ describe("Results", () => {
       expect(card.contains(remove)).toBe(false);
       expect(remove.parentElement?.closest("li")).toBe(item);
       const what = card.querySelector<HTMLElement>(".discover-runs__what")!;
-      expect(what).toHaveAttribute("title", what.textContent ?? "");
+      // The app hint shows the whole text when it is cut short with "…".
+      expect(what).toHaveAttribute("data-cut-hint");
     }
   });
 
@@ -691,10 +692,11 @@ describe("Results", () => {
     expect(buttonsOf(bar)).toEqual(names);
     expect(button("Add to wantlist")).toBeEnabled();
     expect(button("Open on Beatport")).toBeEnabled();
-    expect(bar).toHaveTextContent("1 selected");
+    expect(bar).toHaveTextContent("1 track selected");
     fireEvent.click(third!, { shiftKey: true });
     expect(bar).toHaveTextContent("3 tracks selected");
-    expect(bar).toHaveTextContent("3 selected");
+    // The count is said once, in the bar.
+    expect(bar.textContent?.match(/selected/g)).toHaveLength(1);
     fireEvent.click(first!, { ctrlKey: true });
     expect(bar).toHaveTextContent("2 tracks selected");
     fireEvent.click(within(bar).getByRole("button", { name: "Clear" }));
@@ -794,8 +796,8 @@ describe("Results", () => {
     // The range keeps growing: the keyboard's row moves on while the range's anchor holds still.
     await user.keyboard("{Shift>}{ArrowDown}{/Shift}");
     expect(bar).toHaveTextContent("3 tracks selected");
-    // Enter selects just the keyboard's row (the fourth), not the range's anchor.
-    await user.keyboard("{Enter}");
+    // Space selects just the keyboard's row (the fourth), not the range's anchor.
+    await user.keyboard(" ");
     expect(bar).toHaveTextContent("1 track selected");
     expect(rowsOf("Tracks this dig found")[3]).toHaveAttribute("aria-selected", "true");
     // Ctrl+Space takes it out and puts it back, once each.
@@ -1224,6 +1226,19 @@ describe("the wantlist", () => {
 
   const WANTED = fixture.wantlist_all.value as unknown as WantlistPage;
 
+  it("keeps a tab as it was left when another is opened and this one is come back to", async () => {
+    renderDiscover();
+    await waitFor(() => expect(rowsOf("Wantlist")).toHaveLength(WANTED.total), LOADED);
+    fireEvent.change(screen.getByLabelText("Marked bought"), { target: { value: "hide" } });
+    fireEvent.click(screen.getByRole("tab", { name: "Results" }));
+    // The wantlist is hidden, not taken down.
+    const panel = document.querySelector<HTMLElement>('[role="tabpanel"][aria-label="Wantlist"]');
+    expect(panel).not.toBeNull();
+    expect(panel).toHaveAttribute("hidden");
+    fireEvent.click(screen.getByRole("tab", { name: "Wantlist" }));
+    expect(screen.getByLabelText("Marked bought")).toHaveValue("hide");
+  });
+
   it("draws the wanted tracks with their note, marks and counts", async () => {
     renderDiscover();
     await waitFor(() => expect(rowsOf("Wantlist")).toHaveLength(WANTED.total), LOADED);
@@ -1329,7 +1344,8 @@ describe("the wantlist", () => {
     fireEvent.click(rowsOf("Wantlist")[other]!, { ctrlKey: true });
     expect(buttonsOf(bar)).toEqual(all);
     expect(enabled()).toEqual(all.filter((name) => name !== "Edit note…"));
-    expect(bar).toHaveTextContent("2 selected");
+    expect(bar).toHaveTextContent("2 tracks selected");
+    expect(bar.textContent?.match(/selected/g)).toHaveLength(1);
   });
 
   it("marks a track bought, and un-marks one that was", async () => {
@@ -1364,6 +1380,18 @@ describe("the wantlist", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove from wantlist" }));
     expect(await screen.findByText("Removed 2 tracks from the wantlist")).toBeInTheDocument();
     expect(actionsBar("Wantlist")).not.toHaveTextContent("selected");
+  });
+
+  it("offers Undo on a removal that adds the same tracks back", async () => {
+    renderDiscover();
+    await waitFor(() => expect(rowsOf("Wantlist").length).toBeGreaterThan(1), LOADED);
+    fireEvent.click(rowsOf("Wantlist")[0]!);
+    fireEvent.click(screen.getByRole("button", { name: "Remove from wantlist" }));
+    expect(await screen.findByText("Removed 2 tracks from the wantlist")).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
+
+    await waitFor(() => expect(bridge.addToWantlist).toHaveBeenCalledWith({ track_ids: [1, 7] }));
   });
 
   it("edits a note, and keeps the text when the engine refuses it", async () => {

@@ -22,6 +22,9 @@ import type {
   WantlistSort,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Hint } from "../../components/Hint";
+import { Loading } from "../../components/Loading";
+import { RETRY, UNDO } from "../../format/words";
 import { EmptyState } from "../../components/EmptyState";
 import { Select } from "../../components/Select";
 import type { TrackTableSort } from "../../components/table";
@@ -127,12 +130,21 @@ export function WantlistView({ tools }: WantlistViewProps) {
   const change = async (
     call: () => Promise<DiscoverAnswer<WantlistChange>>,
     clearAfter: boolean,
+    /** Puts back what a successful change took out: the message gets an Undo that runs it. */
+    undo?: (change: WantlistChange) => Promise<void>,
   ) => {
     setWorking(true);
     try {
       const answer = await call();
       if (answer.refusal) notify(refusalText(answer.refusal), "warning");
-      else notify(answer.value.message, "success");
+      else {
+        const done = answer.value;
+        notify(
+          done.message,
+          "success",
+          undo && done.changed.length > 0 ? { label: UNDO, onClick: () => void putBack(undo, done) } : undefined,
+        );
+      }
       // A change that can take rows out of this view leaves nothing sensible
       // selected: the rows it acted on may be gone.
       if (clearAfter) selection.clear();
@@ -146,6 +158,34 @@ export function WantlistView({ tools }: WantlistViewProps) {
   };
 
   const ids = () => selection.rows.map(idOf);
+
+  /** Run an Undo, then read the list again; a failure is said, not thrown. */
+  const putBack = async (undo: (change: WantlistChange) => Promise<void>, change: WantlistChange) => {
+    try {
+      await undo(change);
+      reload();
+    } catch (cause) {
+      reportUnexpected(cause);
+      notify(userMessage(cause), "warning");
+    }
+  };
+
+  /** Re-add removed tracks, with the note and the bought mark each had. */
+  const readd = (removed: WantlistRow[]) => async (change: WantlistChange) => {
+    const bridge = window.cuepoint;
+    if (!bridge?.addToWantlist) return void notify(NO_ENGINE, "warning");
+    const back = new Set(change.changed);
+    const answer = await bridge.addToWantlist({ track_ids: [...back] });
+    if (answer.refusal) return void notify(refusalText(answer.refusal), "warning");
+    for (const row of removed) {
+      if (!back.has(row.beatport_track_id)) continue;
+      if (row.note) await bridge.setWantlistNote?.({ track_id: row.beatport_track_id, note: row.note });
+    }
+    const bought = removed.filter((row) => back.has(row.beatport_track_id) && row.bought_at !== null);
+    if (bought.length > 0) {
+      await bridge.setWantlistBought?.({ track_ids: bought.map(idOf), bought: true });
+    }
+  };
 
   const onAction = (id: BeatportActionId) => {
     const bridge = window.cuepoint;
@@ -171,7 +211,10 @@ export function WantlistView({ tools }: WantlistViewProps) {
         return;
       case "remove":
         if (!bridge?.removeFromWantlist) return notify(NO_ENGINE, "warning");
-        void change(() => bridge.removeFromWantlist!({ track_ids: ids() }), true);
+        {
+          const removed = [...selection.rows];
+          void change(() => bridge.removeFromWantlist!({ track_ids: removed.map(idOf) }), true, readd(removed));
+        }
         return;
       case "add_to_wantlist":
         return;
@@ -251,11 +294,11 @@ export function WantlistView({ tools }: WantlistViewProps) {
           <p className="discover-empty__headline">The wantlist could not be read.</p>
           <p className="discover-note">{list.error}</p>
           <Button variant="secondary" onClick={reload}>
-            Try again
+            {RETRY}
           </Button>
         </>
       ) : list.loading ? (
-        <p className="discover-note">Reading your wantlist…</p>
+        <Loading what="your wantlist" />
       ) : (page?.entries ?? 0) === 0 ? (
         <>
           <p className="discover-empty__headline">{EMPTY_HEADLINE}</p>
@@ -292,7 +335,7 @@ export function WantlistView({ tools }: WantlistViewProps) {
   if (!seenPage.current && page == null && list.status !== "error") {
     return (
       <section className="discover-wantlist" aria-label="Wantlist" {...trackFocus}>
-        <p className="discover-note">Reading your wantlist…</p>
+        <Loading what="your wantlist" />
       </section>
     );
   }
@@ -300,14 +343,15 @@ export function WantlistView({ tools }: WantlistViewProps) {
   return (
     <section className="discover-wantlist" aria-label="Wantlist" {...trackFocus}>
       <div className="discover-toolbar" role="toolbar" aria-label="Wantlist filters">
-        <Select
-          label="In your library"
-          title={IN_LIBRARY_EXPLAINER}
-          id="discover-wantlist-owned"
-          options={OWNED_CHOICES}
-          value={owned}
-          onChange={(event) => isFilter(event.target.value) && setOwned(event.target.value)}
-        />
+        <Hint text={IN_LIBRARY_EXPLAINER}>
+          <Select
+            label="In your library"
+            id="discover-wantlist-owned"
+            options={OWNED_CHOICES}
+            value={owned}
+            onChange={(event) => isFilter(event.target.value) && setOwned(event.target.value)}
+          />
+        </Hint>
         <Select
           label="Marked bought"
           id="discover-wantlist-bought"

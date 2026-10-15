@@ -24,6 +24,8 @@ import type {
 } from "../../api/cuepointBridge.types";
 import type { TrackColumnDef } from "../../components/table";
 import { FitBar } from "../../components/charts/FitBar";
+import { Hint } from "../../components/Hint";
+import { formatMatchScore } from "../../format/units";
 import { effectiveText } from "../library/libraryClean";
 import { OverriddenValue } from "../library/libraryCells";
 import { LIBRARY_COLUMNS, LIBRARY_PREVIOUS_DEFAULT_ORDER } from "../library/libraryColumns";
@@ -84,10 +86,12 @@ function sharedColumn(
     render: (row) => {
       if (!reasonTokens(row.suggestion.reasons)[component]) return "";
       return (
-        <span title={sentenceFor(row, component)}>
-          <span aria-hidden="true">✓</span>
-          <span className="track-table__sr-only">{words}</span>
-        </span>
+        <Hint text={sentenceFor(row, component) || undefined} portal>
+          <span>
+            <span aria-hidden="true">✓</span>
+            <span className="track-table__sr-only">{words}</span>
+          </span>
+        </Hint>
       );
     },
     text: (row) => (reasonTokens(row.suggestion.reasons)[component] ? words : ""),
@@ -112,15 +116,17 @@ export const SIMILAR_COLUMNS: readonly TrackColumnDef<SimilarRow>[] = [
     render: (row) => {
       const relation = reasonTokens(row.suggestion.reasons).key;
       return (
-        <span title={sentenceFor(row, "key") || undefined}>
-          <OverriddenValue row={row} field="key" />
-          {relation ? (
-            <>
-              {" "}
-              <span>{relation}</span>
-            </>
-          ) : null}
-        </span>
+        <Hint text={sentenceFor(row, "key") || undefined} portal>
+          <span>
+            <OverriddenValue row={row} field="key" />
+            {relation ? (
+              <>
+                {" "}
+                <span>{relation}</span>
+              </>
+            ) : null}
+          </span>
+        </Hint>
       );
     },
     text: keyText,
@@ -135,9 +141,9 @@ export const SIMILAR_COLUMNS: readonly TrackColumnDef<SimilarRow>[] = [
     render: (row) => {
       const text = tempoDeltaText(reasonTokens(row.suggestion.reasons).tempo);
       return (
-        <span style={{ fontVariantNumeric: "tabular-nums" }} title={sentenceFor(row, "tempo") || undefined}>
-          {text}
-        </span>
+        <Hint text={sentenceFor(row, "tempo") || undefined} portal>
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>{text}</span>
+        </Hint>
       );
     },
     text: (row) => tempoDeltaText(reasonTokens(row.suggestion.reasons).tempo),
@@ -156,7 +162,7 @@ export const SIMILAR_COLUMNS: readonly TrackColumnDef<SimilarRow>[] = [
       const { band, detail } = matchWords(row.suggestion.score);
       return <FitBar score={row.suggestion.score} title={`${band}: ${detail}`} />;
     },
-    text: (row) => `${matchWords(row.suggestion.score).band} (${Math.round(row.suggestion.score)}/100)`,
+    text: (row) => `${matchWords(row.suggestion.score).band} (${formatMatchScore(row.suggestion.score)})`,
   },
   ...REST.filter((column) => column.id !== "key").map(unsorted),
 ];

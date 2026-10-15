@@ -11,6 +11,7 @@ import { useRef, useState } from "react";
 import type { DiscoverGenre, DiscoverRun } from "../../api/cuepointBridge.types";
 import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
+import { Hint } from "../../components/Hint";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
 import { pluralize } from "../library/libraryFormat";
 import { runStateLabel, runStateTone, runSummary, searchTitle } from "./discoverFormat";
@@ -35,13 +36,13 @@ function RunMenu({ run, onDelete }: { run: DiscoverRun; onDelete: (run: Discover
   const name = searchTitle(run.started_at);
   return (
     <>
+      <Hint text={run.running ? "A running dig cannot be deleted." : undefined}>
       <button
         ref={anchor}
         type="button"
         className="discover-runs__menu"
         aria-label={run.running ? `More for ${name}. A running dig cannot be deleted.` : `More for ${name}`}
         aria-disabled={run.running ? true : undefined}
-        title={run.running ? "A running dig cannot be deleted." : undefined}
         aria-haspopup="menu"
         aria-expanded={menu !== null}
         onClick={(event) => {
@@ -59,6 +60,7 @@ function RunMenu({ run, onDelete }: { run: DiscoverRun; onDelete: (run: Discover
         <span className="discover-runs__menu-dot" aria-hidden="true" />
         <span className="discover-runs__menu-dot" aria-hidden="true" />
       </button>
+      </Hint>
       {menu && (
         <TrackContextMenu
           x={menu.x}
@@ -102,11 +104,11 @@ export function RunList({
               aria-current={selected === run.id ? "page" : undefined}
               onClick={() => onSelect(run.id)}
             >
-              <span className="discover-runs__when" title={searchTitle(run.started_at)}>
+              <span className="discover-runs__when" data-cut-hint="">
                 {searchTitle(run.started_at)}
               </span>
               <Badge variant={BADGE[runStateTone(run)]}>{runStateLabel(run)}</Badge>
-              <span className="discover-runs__what" title={runSummary(run, genres)}>
+              <span className="discover-runs__what" data-cut-hint="">
                 {runSummary(run, genres)}
               </span>
               <span className="discover-runs__found">

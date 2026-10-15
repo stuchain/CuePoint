@@ -24,7 +24,12 @@ import type {
   TrackCreditLinks,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
-import { Panel } from "../../components/Panel";
+import { Hint } from "../../components/Hint";
+import { Loading } from "../../components/Loading";
+import { LinkButton } from "../../components/LinkButton";
+import { formatCount } from "../../format/counts";
+import { RETRY } from "../../format/words";
+import { Notice } from "../../components/Notice";
 import { TrackContextMenu, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { useToast } from "../../components/Toast";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
@@ -317,16 +322,20 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
           <p className="discover-page__kind">Similar tracks</p>
         </header>
         {problem ? (
-          <Panel title="Similar tracks could not open">
-            <p className="discover-note">{problem}</p>
-            {problem !== NO_ENGINE && seedId !== null && (
-              <Button variant="secondary" onClick={() => setVersion((value) => value + 1)}>
-                Try again
-              </Button>
-            )}
-          </Panel>
+          <Notice
+            title="Similar tracks could not open"
+            action={
+              problem !== NO_ENGINE && seedId !== null ? (
+                <Button variant="secondary" onClick={() => setVersion((value) => value + 1)}>
+                  {RETRY}
+                </Button>
+              ) : undefined
+            }
+          >
+            {problem}
+          </Notice>
         ) : (
-          <p className="discover-note">Finding similar tracks…</p>
+          <Loading what="similar tracks" />
         )}
       </div>
     );
@@ -355,14 +364,15 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
         <p className="discover-note">{consideredLine(answer)}</p>
         {unused && <p className="discover-note">{unused}</p>}
         <div className="discover-page__actions">
-          <Button
-            variant="secondary"
-            disabled={seed.track.id == null}
-            title={openInLibrary?.title}
-            onClick={() => openInLibrary && navigate("/library", { state: openInLibrary.state })}
-          >
-            Open in Library
-          </Button>
+          <Hint text={openInLibrary?.title}>
+            <LinkButton
+              go
+              disabled={seed.track.id == null}
+              onClick={() => openInLibrary && navigate("/library", { state: openInLibrary.state })}
+            >
+              Open in Library
+            </LinkButton>
+          </Hint>
         </div>
         {!answer.index_current && (
           <p className="discover-note discover-note--warning" role="status">
@@ -372,7 +382,26 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
       </div>
 
       <div className="discover-table discover-page__similar">
-        <div className="discover-table__rows">
+        <div className="discover-page__library-actions">
+          <DiscoverSelectionBar
+            groups={GROUPS}
+            total={rows.length}
+            selected={selection.count}
+            itemsFor={itemsFor}
+            onClear={selection.clear}
+            onSelectAll={selection.selectAll}
+          />
+        </div>
+        <div
+          className="discover-table__rows"
+          onKeyDown={(event) => {
+            // Esc lets go of the selection, as in the Library.
+            if (event.key === "Escape" && !event.defaultPrevented && selection.count > 0) {
+              event.preventDefault();
+              selection.clear();
+            }
+          }}
+        >
           <TrackTable<SimilarRow>
             columns={columns.visible}
             source={source}
@@ -399,16 +428,6 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
             ariaLabel="Similar tracks"
           />
         </div>
-        <div className="discover-page__library-actions">
-          <DiscoverSelectionBar
-            groups={GROUPS}
-            total={rows.length}
-            selected={selection.count}
-            itemsFor={itemsFor}
-            onClear={selection.clear}
-            onSelectAll={selection.selectAll}
-          />
-        </div>
       </div>
 
       {menu && (
@@ -419,7 +438,7 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
           onClose={() => setMenu(null)}
           label={
             menu.rows.length > 1
-              ? `Actions for ${menu.rows.length.toLocaleString()} tracks`
+              ? `Actions for ${formatCount(menu.rows.length)} tracks`
               : "Track actions"
           }
         />

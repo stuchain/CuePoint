@@ -245,7 +245,9 @@ async function beatportRows(name: RegExp | string) {
 }
 
 function rowOf(text: string): HTMLElement {
-  return screen.getByText(text).closest("[role=row]") as HTMLElement;
+  // In "Your tracks": a selected track's title is also in the Inspector.
+  const mine = within(yourTracks()).queryByText(text);
+  return (mine ?? screen.getByText(text)).closest("[role=row]") as HTMLElement;
 }
 
 beforeAll(() => {
@@ -696,6 +698,21 @@ describe("the library half: library rows", () => {
       sort: "year",
       dir: "desc",
     });
+  });
+
+  it("selects the row first when it is right-clicked, and Esc lets go of it", async () => {
+    renderAt(entityPath("artist", "bp:301001"));
+    await opened("Mara Veil");
+    await within(yourTracks()).findByText("Harbour Lights", {}, LOADED);
+
+    expect(rowOf("Harbour Lights")).toHaveAttribute("aria-selected", "false");
+    fireEvent.contextMenu(rowOf("Harbour Lights"), { clientX: 10, clientY: 10 });
+    await screen.findByRole("menu", {}, LOADED);
+    expect(rowOf("Harbour Lights")).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+
+    fireEvent.keyDown(yourTracks(), { key: "Escape" });
+    await waitFor(() => expect(rowOf("Harbour Lights")).toHaveAttribute("aria-selected", "false"));
   });
 
   it("queues from its menu without interrupting, and leads to Similar tracks and the pages", async () => {

@@ -11,7 +11,7 @@ import type {
   DiscoverOptions,
   DiscoverRefusal,
 } from "../../api/cuepointBridge.types";
-import type { ToastVariant } from "../../components/Toast";
+import type { ToastAction, ToastVariant } from "../../components/Toast";
 import { NEEDS_DESKTOP } from "../../api/userMessage";
 
 export interface DiscoverTools {
@@ -20,7 +20,7 @@ export interface DiscoverTools {
   /** True while a push is running: another would be refused. */
   pushing: boolean;
   push: (request: BeatportPlaylistRequest) => Promise<DiscoverRefusal | null>;
-  notify: (text: string, tone?: ToastVariant) => void;
+  notify: (text: string, tone?: ToastVariant, action?: ToastAction) => void;
 }
 
 /** The message for a bridge this build does not have. */

@@ -9,7 +9,10 @@
  */
 import type { DiscoverFacet, DiscoverList } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { LinkButton } from "../../components/LinkButton";
+import { Notice } from "../../components/Notice";
 import { Select } from "../../components/Select";
+import { opensDialog } from "../../format/words";
 import { formatCount } from "../library/libraryFormat";
 import type { ScopeMode } from "./newRun";
 
@@ -94,22 +97,17 @@ export function SavedListField({
           disabled={chosen === null}
           onClick={onEdit}
         >
-          Edit…
+          {opensDialog("Edit")}
         </Button>
       </div>
-      {readError && (
-        <p className="discover-dialog__refusal" role="alert">
-          {readError}
-        </p>
-      )}
-      <button
-        type="button"
+      {readError && <Notice kind="field-error">{readError}</Notice>}
+      <LinkButton
         className="discover-new__new-list"
         aria-label={`New ${noun} list`}
         onClick={onNew}
       >
         + New list
-      </button>
+      </LinkButton>
       <label className="discover-new__choice">
         <input type="radio" name={name} checked={mode === "none"} onChange={() => onMode("none")} />
         No {noun}s

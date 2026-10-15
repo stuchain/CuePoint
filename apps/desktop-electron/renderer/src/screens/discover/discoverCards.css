@@ -11,55 +11,45 @@
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;
-  gap: var(--space-lg);
-  padding: var(--space-sm) 0 var(--space-lg);
+  /* Row to row 16; the header's rule to the first row 12 (ScreenHeader gives the page's own 12). */
+  gap: var(--space-xl);
+  padding: var(--space-lg) 0 var(--space-lg);
 }
 
 .discover-cards__top {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .discover-cards__row {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  /* Row title to its cards 8. */
+  gap: var(--space-md);
   min-width: 0;
 }
 
 .discover-cards__row-head {
   display: flex;
   align-items: baseline;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .discover-cards__row-title {
   margin: 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-section);
+  font-weight: var(--weight-strong);
 }
 
+/* A LinkButton (the one link look); it only needs its icon beside the words and the right edge. */
 .discover-cards__see-all {
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
   margin-left: auto;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent-primary);
-  font: inherit;
   font-size: var(--font-size-xs);
-  cursor: pointer;
-}
-
-.discover-cards__see-all:hover {
-  text-decoration: underline;
-}
-
-.discover-cards__see-all:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
 }
 
 .discover-cards__grid {
@@ -67,7 +57,8 @@
   /* A card stays about this wide whatever the window: several fit a row at 1.5x. */
   grid-template-columns: repeat(auto-fill, minmax(calc(150px * var(--scale)), calc(170px * var(--scale))));
   justify-content: start;
-  gap: var(--space-md);
+  /* Card to card 12. */
+  gap: var(--space-lg);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -98,7 +89,8 @@
   gap: var(--space-xs);
   width: 100%;
   min-width: 0;
-  padding: 0 0 var(--space-sm);
+  /* Text inset and bottom padding 8; art to title 8 (4 here plus the title's 4). */
+  padding: 0 0 var(--space-md);
   border: 0;
   background: none;
   color: var(--fg-primary);
@@ -144,23 +136,24 @@
   height: 100%;
   color: var(--fg-muted);
   font-size: var(--font-size-xl);
-  font-weight: 700;
+  font-weight: var(--weight-strong);
 }
 
 .discover-card__title,
 .discover-card__curator,
 .discover-card__counts {
-  padding: 0 var(--space-sm);
+  padding: 0 var(--space-md);
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .discover-card__title {
+  margin-top: var(--space-xs);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   font-size: var(--font-size-sm);
-  font-weight: 700;
+  font-weight: var(--weight-strong);
   overflow-wrap: anywhere;
 }
 
@@ -205,10 +198,11 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-sm) var(--space-md);
+  gap: var(--space-md);
   box-sizing: border-box;
   margin-top: auto;
-  padding: var(--space-sm) var(--space-md);
+  min-height: var(--toolbar-height);
+  padding: var(--toolbar-padding);
   border-top: var(--divider);
   background: color-mix(in srgb, var(--accent-primary) 14%, var(--bg-panel));
 }
@@ -223,7 +217,7 @@
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .discover-run__reading {

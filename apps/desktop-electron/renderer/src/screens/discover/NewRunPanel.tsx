@@ -22,6 +22,9 @@ import type {
   DiscoverRunRequest,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Hint } from "../../components/Hint";
+import { Notice } from "../../components/Notice";
+import { SearchField } from "../../components/SearchField";
 import { TextField } from "../../components/TextField";
 import { formatCount, pluralize } from "../library/libraryFormat";
 import { useIncludeUserCharts } from "./includeUserCharts";
@@ -198,10 +201,10 @@ export function NewRunPanel({
         </header>
 
         {emptyLibrary && (
-          <p className="discover-note discover-note--warning">
+          <Notice kind="warning">
             Your library has no artists or labels yet. Import a Rekordbox file in the Library
             first: a dig looks for music by them.
-          </p>
+          </Notice>
         )}
         {!options.index_current && (
           <p className="discover-note">
@@ -223,11 +226,12 @@ export function NewRunPanel({
               </p>
             ) : (
               <>
-                <TextField
-                  label="Find genres"
+                <SearchField
+                  thing="genres"
                   id="discover-genre-filter"
+                  label="Find genres"
                   value={genreFilter}
-                  onChange={(event) => setGenreFilter(event.target.value)}
+                  onValueChange={setGenreFilter}
                 />
                 <ul className="discover-genres" aria-label="Genres">
                   {genres.map((genre) => (
@@ -302,16 +306,16 @@ export function NewRunPanel({
         </div>
 
         {problems.length > 0 && (
-          <ul className="discover-new__problems" aria-label="What to fix">
-            {problems.map((problem) => (
-              <li key={problem}>{problem}</li>
-            ))}
-          </ul>
+          <Notice kind="field-error" aria-label="What to fix">
+            <ul className="discover-new__problems">
+              {problems.map((problem) => (
+                <li key={problem}>{problem}</li>
+              ))}
+            </ul>
+          </Notice>
         )}
         {refusal && (
-          <p className="discover-dialog__refusal" role="alert">
-            {refusal}
-          </p>
+          <Notice>{refusal}</Notice>
         )}
       </div>
 
@@ -337,14 +341,15 @@ export function NewRunPanel({
             />
             <span>days</span>
           </label>
-          <Button
-            onClick={() => void start()}
-            loading={starting}
-            disabled={!usable || busy || problems.length > 0}
-            title={usable ? undefined : (unusableReason ?? undefined)}
-          >
-            Start looking
-          </Button>
+          <Hint text={usable ? undefined : (unusableReason ?? undefined)}>
+            <Button
+              onClick={() => void start()}
+              loading={starting}
+              disabled={!usable || busy || problems.length > 0}
+            >
+              Start looking
+            </Button>
+          </Hint>
         </div>
       </div>
 

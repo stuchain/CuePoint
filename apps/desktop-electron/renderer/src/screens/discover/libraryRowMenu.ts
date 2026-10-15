@@ -28,32 +28,3 @@ export function libraryRowMenu(
   if (count <= 0) return [];
   return menuFromGroups(barGroups(count, ids).map((group) => ({ ...group, items: build(group.id) })));
 }
-
-interface RowPlaybackHandlers {
-  /** One row: play it with the view behind it. Several: play those. */
-  onPlay: () => void;
-  onPlayNext: () => void;
-  onAddToQueue: () => void;
-}
-
-/**
- * Playback first, then whatever follows: the flat list of Prepare's source
- * table, which has no selection bar to match.
- */
-export function libraryRowMenuItems(
-  count: number,
-  playback: RowPlaybackHandlers,
-  after: readonly TrackContextMenuItem[] = [],
-): TrackContextMenuItem[] {
-  if (count <= 0) return [];
-  return [
-    {
-      id: "play",
-      label: count > 1 ? `Play ${count.toLocaleString()} tracks` : "Play",
-      onSelect: playback.onPlay,
-    },
-    { id: "play-next", label: "Play next", onSelect: playback.onPlayNext },
-    { id: "add-to-queue", label: "Add to queue", onSelect: playback.onAddToQueue },
-    ...after,
-  ];
-}

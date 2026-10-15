@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { Button } from "../../components";
+import { Button, Hint } from "../../components";
+import { couldNot } from "../../format/words";
 import { settingsFocusState } from "../settingsLink";
 
 interface BeatportSignInButtonProps {
@@ -41,7 +42,7 @@ export function BeatportSignInButton({ label, title, onDone }: BeatportSignInBut
       await bridge();
       onDone();
     } catch {
-      setProblem("Couldn't open the Beatport sign-in.");
+      setProblem(couldNot("open the Beatport sign-in"));
     } finally {
       setBusy(false);
     }
@@ -50,9 +51,11 @@ export function BeatportSignInButton({ label, title, onDone }: BeatportSignInBut
   return (
     <>
       {problem ? <span role="alert">{problem}</span> : null}
-      <Button variant="primary" title={title} disabled={busy} onClick={() => void signIn()}>
-        {label}
-      </Button>
+      <Hint text={title}>
+        <Button variant="primary" disabled={busy} onClick={() => void signIn()}>
+          {label}
+        </Button>
+      </Hint>
     </>
   );
 }

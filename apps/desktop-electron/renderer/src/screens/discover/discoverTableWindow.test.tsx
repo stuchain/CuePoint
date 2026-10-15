@@ -128,6 +128,31 @@ describe("a dig's table", () => {
       return "";
     };
     expect(rule(".discover-table__rows")).toMatch(/contain:\s*size/);
-    expect(rule(".discover-table")).toMatch(/grid-template-rows:\s*minmax\(/);
+    // The actions bar is above the rows: auto for the bar, the floor-and-fill for the rows.
+    expect(rule(".discover-table")).toMatch(/grid-template-rows:\s*auto\s+minmax\(/);
+  });
+
+  it("keeps the artist page's Your tracks table a grid with a height, so it is not 2px tall", () => {
+    // It was once a flex column: the rows (no height of their own) then took none.
+    const bare = discoverCss.replace(/\/\*[\s\S]*?\*\//g, "");
+    const ruleWith = (selector: string) =>
+      [...bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .filter(([, selectors = ""]) => selectors.split(",").some((one) => one.trim() === selector))
+        .map(([, , body = ""]) => body)
+        .join(" ");
+    const half = ruleWith(".discover-page__half > .discover-table");
+    expect(half).toMatch(/height:\s*calc\(360px/);
+    expect(half).not.toMatch(/display:\s*flex/);
+    // Nothing later turns the .discover-table itself into a flex box.
+    expect(ruleWith(".discover-table")).not.toMatch(/display:\s*flex/);
+  });
+
+  it("aligns the group toolbar on its middle and gives it the toolbar's height", () => {
+    const bare = discoverCss.replace(/\/\*[\s\S]*?\*\//g, "");
+    const toolbar = [...bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(
+      ([, selectors = ""]) => selectors.trim() === ".discover-toolbar",
+    )?.[2];
+    expect(toolbar).toMatch(/align-items:\s*center/);
+    expect(toolbar).toMatch(/min-height:\s*var\(--toolbar-height\)/);
   });
 });

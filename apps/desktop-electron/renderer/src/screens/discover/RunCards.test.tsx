@@ -294,7 +294,7 @@ describe("ticking cards", () => {
     install();
     renderRun();
     fireEvent.click(await screen.findByRole("checkbox", { name: "Tick Mara Veil" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Add to playlist" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add to playlist…" }));
     const dialog = await screen.findByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText("Playlist name"), { target: { value: "Friday finds" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Make playlist" }));
@@ -312,7 +312,7 @@ describe("ticking cards", () => {
     install();
     renderRun();
     fireEvent.click(await screen.findByRole("checkbox", { name: "Tick Mara Veil" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Add to playlist" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add to playlist…" }));
     const dialog = await screen.findByRole("dialog");
     await waitFor(() => expect(bridge.getBeatportPlaylists).toHaveBeenCalled());
     const existing = within(dialog).getByRole("radio", { name: "A playlist I already have" });
@@ -338,7 +338,7 @@ describe("ticking cards", () => {
     fireEvent.click(await screen.findByRole("checkbox", { name: "Tick Mara Veil" }));
     const bar = await screen.findByRole("group", { name: "Ticked cards" });
     await waitFor(() => expect(bar).toHaveTextContent(`${SUMMARY.tracks} tracks`), LOADED);
-    fireEvent.click(within(bar).getByRole("button", { name: "Add to playlist" }));
+    fireEvent.click(within(bar).getByRole("button", { name: "Add to playlist…" }));
     const dialog = await screen.findByRole("dialog");
     const going = SUMMARY.tracks - SUMMARY.owned;
     expect(dialog).toHaveTextContent(`the ${going} tracks on the ticked card`);
@@ -358,7 +358,7 @@ describe("ticking cards", () => {
     });
     renderRun();
     fireEvent.click(await screen.findByRole("checkbox", { name: "Tick Mara Veil" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Add to playlist" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add to playlist…" }));
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Make playlist" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Already in your library");
@@ -369,7 +369,7 @@ describe("ticking cards", () => {
     tools = { ...tools, beatportState: "no_token" };
     renderRun();
     fireEvent.click(await screen.findByRole("checkbox", { name: "Tick Mara Veil" }));
-    expect(await screen.findByRole("button", { name: "Add to playlist" })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: "Add to playlist…" })).toBeDisabled();
   });
 });
 

@@ -123,7 +123,7 @@ cards is counted once, and tracks your library already has are left out.
 
 - **Add to wantlist** adds those tracks and says how many already in your
   library were left out.
-- **Add to playlist** asks whether to make **a new playlist** (you name it) or
+- **Add to playlist…** asks whether to make **a new playlist** (you name it) or
   add to **a playlist I already have** on Beatport, and whether to include tracks
   already in your library (off by default; they are skipped and counted). The
   dialog says how many tracks will go. Adding to an existing playlist skips any
@@ -184,14 +184,19 @@ An empty wantlist shows only a short note on how to fill it (use **Add to wantli
 ## What you can do with Beatport tracks
 
 Select tracks with a click, add to the selection with Ctrl-click (Cmd-click on
-macOS), and extend it with Shift-click. The actions are always shown above the
-table; the ones that need tracks are grayed out until you select some, and their
-hint says why. From the keyboard, Up and Down move the selection, Shift extends it, and Ctrl+A selects every track the table has loaded. The same actions are on the right-click menu:
+macOS), and extend it with Shift-click, which adds the tracks between your last
+click and this one, as in the Library. Esc lets go of the selection. The bar of
+actions is above the table and says how many tracks are selected once; the actions
+that need tracks are grayed out until you select some, and their hint says why. From
+the keyboard, Up and Down move the selection, Shift extends it, Space selects the
+track the keyboard is on, and Ctrl+A selects every track the table has loaded. A
+right-click on a track outside the selection selects it first. The same actions are on
+the right-click menu:
 
 | Action | Where | What it does |
 | --- | --- | --- |
 | **Add to wantlist** | Results, artist and label pages | Adds the selected tracks to your wantlist, noting the dig they came from. A track already there is left as it is |
-| **Make a Beatport playlist…** | Everywhere | Makes a new playlist on your Beatport account with the selected tracks, or, with nothing selected, every track the table shows, in its order. The hint beside it says which: "All 48 shown" or "3 selected" |
+| **Make a Beatport playlist…** | Everywhere | Makes a new playlist on your Beatport account with the selected tracks, or, with nothing selected, every track the table shows, in its order. With nothing selected the hint beside it says "All 48 shown" |
 | **Open on Beatport** | Everywhere | Opens each selected track's Beatport page in your browser, up to ten at once |
 | **Edit note…** | Wantlist, one track | A note of your own, up to 1,000 characters. Leave it empty to clear it |
 | **Mark bought** / **Mark not bought** | Wantlist | Marks the selected tracks bought, or takes the mark away when all of them are marked |
@@ -206,11 +211,11 @@ when it ends the page says how many tracks it made the playlist with and offers
 so and nothing is made.
 
 Beatport tracks are not tracks in your library: they have no file, so a
-double-click does nothing. Selecting one lights its
+double-click (or Enter) plays its two-minute preview instead. Selecting one lights its
 key on the Camelot wheel when you open it, and Track details says there is nothing
 to inspect.
 
-**Previews.** The small round ▶ button under **Preview** at the left of each Beatport row plays the track's
+**Previews.** The small round ▶ button at the right end of each Beatport row (or a double-click, or Enter, on the row) plays the track's
 two-minute sample from Beatport, so you can hear it before you buy or add it. It
 needs Beatport to be reachable. When Beatport has no sample the button grays
 out and says "No preview"; if you were offline when you pressed it, that is
@@ -312,7 +317,7 @@ this by itself** when a match finishes, as long as you are signed in, and the st
 strip shows it as **Linking tracks to Beatport**. When you are not signed in it does nothing.
 
 If some tracks are still waiting, for example because you signed in later,
-the page says how many and offers **Look them up**. While it works, the status bar
+the page says how many and offers **Match on Beatport**. While it works, the status bar
 shows the progress and you can leave the page.
 
 ## Artist and label pages
@@ -360,7 +365,7 @@ counts, newest first. These are your tracks, so they behave as they do in the
 Library: double-click one to play it with the rest of the table queued after
 it. Selecting a track shows it in Track details.
 
-Under the table is the Library's selection bar: with nothing selected only the
+Above the table is the Library's selection bar: with nothing selected only the
 count and **Select all**, with a selection **Play ▸** (Play, Play next, Add to
 queue), **More ▸** (Similar tracks, the artist and label pages, then Copy and
 Show in folder; with several tracks selected the pages open the first one's) and
@@ -389,7 +394,7 @@ When there is nothing to list, the half says why:
 
 | It says | Means | What to do |
 | --- | --- | --- |
-| **Not linked to Beatport yet** | CuePoint does not know which Beatport artist this is. It never searches Beatport for an artist by name, because the wrong artist of the same name is worse than none | **Look them up**, when some of the artist's tracks are matched on Beatport |
+| **Not linked to Beatport yet** | CuePoint does not know which Beatport artist this is. It never searches Beatport for an artist by name, because the wrong artist of the same name is worse than none | **Match on Beatport**, when some of the artist's tracks are matched on Beatport |
 | **Several Beatport artists share this name** | Your tracks by this name are matched to different Beatport artists | Choose the one you mean |
 | **No match** | Beatport has no label by this name | None |
 | **Sign in to Beatport to search its charts and releases.**, and the other sign-in states | As at the top of Discover (see [Signing in to Beatport](#signing-in-to-beatport)) | **Sign in to Beatport**, **Sign in again**, or **Try again** |

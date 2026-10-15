@@ -21,6 +21,8 @@ import type {
   DiscoverSortDirection,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Loading } from "../../components/Loading";
+import { RETRY } from "../../format/words";
 import type { TrackTableSort } from "../../components/table";
 import { pluralize } from "../library/libraryFormat";
 import { BeatportTable } from "./BeatportTable";
@@ -212,11 +214,11 @@ export function RunTracksView({
           <p className="discover-empty__headline">The dig's tracks could not be read.</p>
           <p className="discover-note">{tracks.error}</p>
           <Button variant="secondary" onClick={reload}>
-            Try again
+            {RETRY}
           </Button>
         </>
       ) : tracks.loading ? (
-        <p className="discover-note">Reading the dig's tracks…</p>
+        <Loading what="the dig's tracks" />
       ) : (page?.tracks ?? 0) === 0 ? (
         <p className="discover-empty__headline">
           {running ? "Nothing found yet." : groups ? "Nothing found here." : "This dig found nothing."}

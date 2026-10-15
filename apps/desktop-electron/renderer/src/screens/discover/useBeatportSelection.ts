@@ -3,8 +3,12 @@
  *
  * By Beatport track id, never by row index, for the Library's reason
  * (DEC-045): an index means nothing once the window moves. A plain click
- * selects one row, Ctrl or Cmd adds or removes one, and Shift extends from
- * the last plain click over the rows between.
+ * selects one row, Ctrl or Cmd adds or removes one, and Shift adds the rows
+ * between the last plain click and this one to what is selected. That is the
+ * Library's rule exactly (`useTrackSelection`): the anchor stays where it began,
+ * so shift-clicking twice extends from the same place, and the row last clicked
+ * is the one the Inspector and the wheel follow. Shift with nothing to extend
+ * from is a plain click.
  *
  * **The selected rows are kept, not only their ids.** Every action on a
  * Beatport row needs the row — its page to open, whether it is bought — and a
@@ -49,10 +53,13 @@ export interface BeatportSelection<Row> {
 
 interface State<Row> {
   picked: Map<number, Picked<Row>>;
+  /** Where a Shift range starts: the last plain or Ctrl click. */
   anchor: number | null;
+  /** The row clicked last, which a Shift range does not move the anchor to. */
+  last: number | null;
 }
 
-const NOTHING = { picked: new Map(), anchor: null };
+const NOTHING = { picked: new Map(), anchor: null, last: null };
 
 export function useBeatportSelection<Row>({
   key,
@@ -97,22 +104,26 @@ export function useBeatportSelection<Row>({
     (row: Row, index: number, event: SelectModifiers) => {
       const id = idOf(row);
       setState((previous) => {
-        if (event.shiftKey && previous.anchor !== null) {
+        if (event.shiftKey) {
+          // Nothing to extend from: a plain click, as in the Library.
+          if (previous.anchor === null) {
+            return { picked: new Map([[id, { row, index }]]), anchor: index, last: index };
+          }
           const [from, to] = rangeBetween(previous.anchor, index);
           const picked = new Map(previous.picked);
           for (let at = from; at <= to; at += 1) {
             const inRange = getRow(at);
             if (inRange) picked.set(idOf(inRange), { row: inRange, index: at });
           }
-          return { picked, anchor: previous.anchor };
+          return { picked, anchor: previous.anchor, last: index };
         }
         if (event.ctrlKey || event.metaKey) {
           const picked = new Map(previous.picked);
           if (picked.has(id)) picked.delete(id);
           else picked.set(id, { row, index });
-          return { picked, anchor: index };
+          return { picked, anchor: index, last: index };
         }
-        return { picked: new Map([[id, { row, index }]]), anchor: index };
+        return { picked: new Map([[id, { row, index }]]), anchor: index, last: index };
       });
     },
     [getRow, idOf],
@@ -124,7 +135,7 @@ export function useBeatportSelection<Row>({
       setState((previous) =>
         previous.picked.has(id)
           ? previous
-          : { picked: new Map([[id, { row, index }]]), anchor: index },
+          : { picked: new Map([[id, { row, index }]]), anchor: index, last: index },
       );
     },
     [idOf],
@@ -132,7 +143,7 @@ export function useBeatportSelection<Row>({
 
   const select = useCallback(
     (row: Row, index: number) =>
-      setState({ picked: new Map([[idOf(row), { row, index }]]), anchor: index }),
+      setState({ picked: new Map([[idOf(row), { row, index }]]), anchor: index, last: index }),
     [idOf],
   );
 
@@ -145,6 +156,7 @@ export function useBeatportSelection<Row>({
     setState({
       picked: new Map(everything.map((entry) => [idOf(entry.row), entry])),
       anchor: everything[0]?.index ?? null,
+      last: everything[0]?.index ?? null,
     });
   }, [idOf, loadedRows]);
 
@@ -158,10 +170,10 @@ export function useBeatportSelection<Row>({
   const keys = useMemo(() => new Set(state.picked.keys()), [state.picked]);
 
   const anchorRow = useMemo(() => {
-    if (state.anchor === null) return null;
-    for (const entry of state.picked.values()) if (entry.index === state.anchor) return entry.row;
+    if (state.last === null) return null;
+    for (const entry of state.picked.values()) if (entry.index === state.last) return entry.row;
     return null;
-  }, [state.anchor, state.picked]);
+  }, [state.last, state.picked]);
 
   return {
     keys,

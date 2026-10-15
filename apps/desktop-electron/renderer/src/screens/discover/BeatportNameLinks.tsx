@@ -14,16 +14,17 @@
 import { useNavigate } from "react-router-dom";
 
 import type { BeatportTrackRow, EntityKind } from "../../api/cuepointBridge.types";
+import { Hint } from "../../components/Hint";
 import "../library/CreditLinks.css";
 import { beatportRef, entityPath, nameRef } from "./discoverLinks";
 
 function NameLink({ kind, name, reference }: { kind: EntityKind; name: string; reference: string }) {
   const navigate = useNavigate();
   return (
+    <Hint text={`Open the ${kind} page`} portal inline>
     <button
       type="button"
       className="cp-credit-link"
-      title={`Open the ${kind} page`}
       onClick={(event) => {
         event.stopPropagation();
         navigate(entityPath(kind, reference));
@@ -34,6 +35,7 @@ function NameLink({ kind, name, reference }: { kind: EntityKind; name: string; r
     >
       {name}
     </button>
+    </Hint>
   );
 }
 

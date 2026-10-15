@@ -442,12 +442,18 @@ describe("the list editor", () => {
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete list" }));
     expect(bridge.deleteDiscoverList).not.toHaveBeenCalled();
-    expect(within(dialog).getByText(/Delete the list “Peak time”\?/)).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Keep it" }));
+    const sure = await screen.findByRole("dialog", { name: "Delete list?" });
+    expect(within(sure).getByText(/The list “Peak time” goes\./)).toBeInTheDocument();
+    fireEvent.click(within(sure).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Delete list?" })).toBeNull());
     expect(within(dialog).getByRole("button", { name: "Delete list" })).toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete list" }));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Delete it" }));
+    fireEvent.click(
+      within(await screen.findByRole("dialog", { name: "Delete list?" })).getByRole("button", {
+        name: "Delete list",
+      }),
+    );
     await waitFor(() => expect(bridge.deleteDiscoverList).toHaveBeenCalledWith({ list_id: 1 }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     // Still "a saved list", with none chosen: Start asks for one rather than widening the dig.

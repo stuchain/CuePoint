@@ -18,9 +18,33 @@ import type {
   DiscoverRunSource,
   DiscoveryRunResult,
 } from "../../api/cuepointBridge.types";
-import { formatCount, formatWhen, pluralize } from "../library/libraryFormat";
+import { formatDay, formatDayTime, formatRange } from "../../format/dates";
+import { formatCount, pluralize } from "../library/libraryFormat";
 
-export { formatWhen };
+/**
+ * A calendar day the engine wrote as "2026-09-01". Read as that day on this computer, not as
+ * midnight UTC, which is the evening before west of Greenwich.
+ */
+function calendarDay(value: string | null | undefined): Date | string | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : value;
+}
+
+/** A release date or a chart's day: "Sep 1", "Sep 1, 2025"; empty when there is none. */
+export function formatIsoDay(value: string | null | undefined): string {
+  return formatDay(calendarDay(value));
+}
+
+/** Two days as the app writes a range: "Sep 1 – Sep 26". */
+export function formatIsoRange(from: string, to: string): string {
+  return formatRange(calendarDay(from), calendarDay(to));
+}
+
+/** A moment as the app writes it everywhere: "Oct 15, 5:35 PM" on the computer's clock. */
+export function formatWhen(value: string | null | undefined): string {
+  return formatDayTime(value);
+}
 
 /** What stopped a run or a push, in the words that finish "…because". */
 const STOPPED_BECAUSE: Record<BeatportErrorClass, string> = {
@@ -35,7 +59,7 @@ export function stoppedBecause(errorClass: BeatportErrorClass | null): string {
   return errorClass ? STOPPED_BECAUSE[errorClass] : "of an error";
 }
 
-/** A past search's title: "Search of Sep 27, 2026, 9:14 AM" (DSC-2). */
+/** A past search's title: "Dig of Sep 27, 9:14 AM" (DSC-2). */
 export function searchTitle(startedAt: string): string {
   return `Dig of ${formatWhen(startedAt)}`;
 }
@@ -104,14 +128,14 @@ export function scopeLine(scope: DiscoverRunScope, one: string, many: string): s
 export function chartsLine(run: DiscoverRun, genres: readonly DiscoverGenre[]): string {
   const { genre_ids: ids, charts_from: from, charts_to: to } = run.params;
   if (ids.length === 0) return "No charts: no genre was chosen";
-  const window = from && to ? ` from ${from} to ${to}` : "";
+  const window = from && to ? ` from ${formatIsoRange(from, to)}` : "";
   return `Charts${window} in ${genreNames(ids, genres).join(", ")}`;
 }
 
 /** "Releases from the last 30 days". */
 export function releasesLine(run: DiscoverRun): string {
   const { new_releases_days: days, releases_from: from, releases_to: to } = run.params;
-  if (from && to) return `Releases from ${from} to ${to}`;
+  if (from && to) return `Releases from ${formatIsoRange(from, to)}`;
   if (days != null) return `Releases from the last ${pluralize(days, "day")}`;
   return "Releases";
 }
@@ -128,7 +152,7 @@ export function runScopeLine(run: DiscoverRun, genres: readonly DiscoverGenre[])
   };
   const parts = [
     ids.length > 0 ? genreNames(ids, genres).join(", ") : null,
-    from && to ? `${from} to ${to}` : days != null ? `last ${pluralize(days, "day")}` : null,
+    from && to ? formatIsoRange(from, to) : days != null ? `last ${pluralize(days, "day")}` : null,
     count(run.params.artists, "artist"),
     count(run.params.labels, "label"),
   ];

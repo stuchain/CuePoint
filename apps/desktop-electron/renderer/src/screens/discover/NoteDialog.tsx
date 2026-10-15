@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 
 import type { DiscoverRefusal } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components/Modal";
+import { Notice } from "../../components/Notice";
 import { refusalText } from "./discoverFormat";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
@@ -85,11 +86,7 @@ export function NoteDialog({ open, track, note, maxLength, onSave, onClose }: No
               : "Leave it empty to clear the note."}
           </span>
         </div>
-        {refusal && (
-          <p className="discover-dialog__refusal" role="alert">
-            {refusal}
-          </p>
-        )}
+        {refusal && <Notice>{refusal}</Notice>}
       </div>
     </Modal>
   );

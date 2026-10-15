@@ -29,6 +29,7 @@ import {
   chartsLine,
   discoveryEnded,
   foundLine,
+  formatIsoRange,
   lookingUpLine,
   pushOutcome,
   refusalText,
@@ -205,7 +206,7 @@ describe("what a selection offers", () => {
       runActions(count, { ...usable, total }).find((a) => a.id === "push")!;
     expect(playlist(0, 48).note).toBe("All 48 shown");
     expect(playlist(0, 1).note).toBe("All 1 shown");
-    expect(playlist(3, 48).note).toBe("3 selected");
+    expect(playlist(3, 48).note).toBeNull();
     expect(playlist(0, 0)).toMatchObject({ disabled: true, reason: "Nothing to put in a playlist." });
     expect(playlist(0, 0).note).toBeNull();
   });
@@ -275,7 +276,7 @@ describe("the New dig form", () => {
   it("says the engine's default 30-day window as 30 days, and other windows by their dates", () => {
     expect(chartsWindowShort(form(), OPTIONS.defaults)).toBe("last 30 days");
     expect(chartsWindowShort(form({ chartsFrom: "2026-09-01" }), OPTIONS.defaults)).toBe(
-      `2026-09-01 to ${OPTIONS.defaults.charts_to}`,
+      formatIsoRange("2026-09-01", OPTIONS.defaults.charts_to),
     );
   });
 
@@ -422,7 +423,7 @@ describe("the sentences", () => {
       ),
     ).toBe("1 artist");
     expect(runScopeLine(run({ releases_from: "2026-01-01", releases_to: "2026-02-01" }), genres)).toBe(
-      "House · 2026-01-01 to 2026-02-01 · 67 artists · 28 labels",
+      `House · ${formatIsoRange("2026-01-01", "2026-02-01")} · 67 artists · 28 labels`,
     );
     expect(
       runScopeLine(
@@ -440,14 +441,14 @@ describe("the sentences", () => {
   it("says what a run looked for", () => {
     const genres = OPTIONS.genres;
     expect(chartsLine(FINISHED, genres)).toBe(
-      `Charts from ${FINISHED.params.charts_from} to ${FINISHED.params.charts_to} in House, Techno (Peak Time / Driving)`,
+      `Charts from ${formatIsoRange(FINISHED.params.charts_from!, FINISHED.params.charts_to!)} in House, Techno (Peak Time / Driving)`,
     );
     expect(chartsLine({ ...FINISHED, params: { ...FINISHED.params, genre_ids: [] } }, genres)).toBe(
       "No charts: no genre was chosen",
     );
     expect(chartsLine(FINISHED, [])).toContain("Genre 5, Genre 6");
     expect(releasesLine(FINISHED)).toBe(
-      `Releases from ${FINISHED.params.releases_from} to ${FINISHED.params.releases_to}`,
+      `Releases from ${formatIsoRange(FINISHED.params.releases_from!, FINISHED.params.releases_to!)}`,
     );
     expect(
       releasesLine({
@@ -566,7 +567,6 @@ describe("the columns", () => {
   it("draws the specification's columns for a run", () => {
     expect(RUN_COLUMNS.filter((c) => !c.hiddenByDefault).map((c) => c.header)).toEqual([
       "#",
-      "Preview",
       "Title",
       "Artists",
       "Label",

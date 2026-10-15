@@ -28,7 +28,7 @@ export interface BeatportAction {
   disabled: boolean;
   /** Why it is disabled, for the control's hint. */
   reason: string | null;
-  /** A few words beside the control: "All 48 shown", "3 selected" (DEC-209). */
+  /** A few words beside the control: "All 48 shown" (DEC-209). The selection count is the bar's, said once. */
   note: string | null;
 }
 
@@ -82,7 +82,8 @@ function push(count: number, context: ActionContext): BeatportAction {
   if (count === 0 && context.total === 0) {
     return action("push", label, "Nothing to put in a playlist.");
   }
-  return action("push", label, null, count > 0 ? `${count} selected` : `All ${context.total} shown`);
+  // With rows selected the bar already says how many, once; the note only says what "nothing selected" means.
+  return action("push", label, null, count > 0 ? null : `All ${context.total} shown`);
 }
 
 function open(count: number): BeatportAction {

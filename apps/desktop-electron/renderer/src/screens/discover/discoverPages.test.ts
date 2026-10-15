@@ -51,7 +51,6 @@ import {
   tracksLine,
   yearsText,
 } from "./entityFormat";
-import { libraryRowMenuItems } from "./libraryRowMenu";
 import { SIMILAR_COLUMNS, reasonsText } from "./similarColumns";
 import { describeSimilarReason, matchBand } from "./similarReasons";
 import pages from "./discoverPages.fixture.json";
@@ -361,18 +360,6 @@ describe("the operations list's Discover entries", () => {
     (window as unknown as { cuepoint: unknown }).cuepoint = undefined;
     await expect(creditsFor(3, null)).resolves.toBeNull();
   });
-
-  it("puts playback first, as the Library's menu does", () => {
-    const play = { onPlay: vi.fn(), onPlayNext: vi.fn(), onAddToQueue: vi.fn() };
-    expect(libraryRowMenuItems(0, play)).toEqual([]);
-    expect(libraryRowMenuItems(1, play).map((item) => item.label)).toEqual([
-      "Play",
-      "Play next",
-      "Add to queue",
-    ]);
-    const many = libraryRowMenuItems(1200, play, [{ id: "x", label: "X", onSelect: vi.fn() }]);
-    expect(many.map((item) => item.label)).toEqual(["Play 1,200 tracks", "Play next", "Add to queue", "X"]);
-  });
 });
 
 describe("names for a page's rules in the Library", () => {
@@ -436,7 +423,7 @@ describe("the pages' columns", () => {
     expect(col("genre_shared").text!(all)).toBe("Same genre");
     expect(col("label_shared").text!(all)).toBe("");
     expect(col("artist_shared").text!(all)).toBe("Shared artist");
-    expect(col("score").text!(all)).toBe("Strong (80/100)");
+    expect(col("score").text!(all)).toBe("Strong (80%)");
     const none = row([]);
     const noKey = { ...(none as object), effective_key: "" } as never;
     expect(col("key").text!(noKey)).toBe("");
@@ -465,7 +452,7 @@ describe("the pages' columns", () => {
     const score = SIMILAR_COLUMNS.find((column) => column.id === "score")!;
     expect(score.header).toBe("Fit");
     expect(score.text!({ suggestion: similar.suggestions[0] } as never)).toBe(
-      `${matchBand(similar.suggestions[0].score)} (${Math.round(similar.suggestions[0].score)}/100)`,
+      `${matchBand(similar.suggestions[0].score)} (${Math.round(similar.suggestions[0].score)}%)`,
     );
   });
 

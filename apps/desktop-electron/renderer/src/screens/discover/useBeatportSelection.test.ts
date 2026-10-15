@@ -40,3 +40,44 @@ describe("select", () => {
     expect([...view.result.current.keys].sort()).toEqual([10, 11, 12]);
   });
 });
+
+const click = (view: ReturnType<typeof hook>, at: number, keys: { shiftKey?: boolean; ctrlKey?: boolean } = {}) =>
+  act(() =>
+    view.result.current.onRowClick(ROWS[at]!, at, {
+      shiftKey: false,
+      ctrlKey: false,
+      metaKey: false,
+      ...keys,
+    } as React.MouseEvent),
+  );
+
+describe("a Shift range, as in the Library", () => {
+  it("adds the rows between the anchor and the click, keeps the anchor, and follows the clicked row", () => {
+    const view = hook();
+    click(view, 0);
+    click(view, 2, { shiftKey: true });
+    expect([...view.result.current.keys].sort()).toEqual([10, 11, 12]);
+    expect(view.result.current.anchor).toBe(0);
+    // The Inspector and the wheel follow the row clicked last, not the anchor.
+    expect(view.result.current.anchorRow).toEqual(ROWS[2]);
+    // Shift-clicking again extends from the same place.
+    click(view, 1, { shiftKey: true });
+    expect(view.result.current.anchor).toBe(0);
+    expect(view.result.current.anchorRow).toEqual(ROWS[1]);
+  });
+
+  it("is a plain click when there is nothing to extend from", () => {
+    const view = hook();
+    click(view, 1, { shiftKey: true });
+    expect([...view.result.current.keys]).toEqual([11]);
+    expect(view.result.current.anchor).toBe(1);
+  });
+
+  it("keeps what Ctrl added when a range is added", () => {
+    const view = hook();
+    click(view, 0);
+    click(view, 2, { ctrlKey: true });
+    click(view, 1, { shiftKey: true });
+    expect([...view.result.current.keys].sort()).toEqual([10, 11, 12]);
+  });
+});

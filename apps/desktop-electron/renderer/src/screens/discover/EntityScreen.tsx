@@ -30,8 +30,12 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
+import { LinkButton } from "../../components/LinkButton";
+import { formatCount } from "../../format/counts";
+import { RETRY } from "../../format/words";
 import { MoreAbout } from "../../components/MoreAbout";
-import { Panel } from "../../components/Panel";
+import { Loading } from "../../components/Loading";
+import { Notice } from "../../components/Notice";
 import { useToast } from "../../components/Toast";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { flattenCollections } from "../library/collectionTree";
@@ -234,16 +238,20 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
           <p className="discover-page__kind">{kindTitle(kind)}</p>
         </header>
         {problem ? (
-          <Panel title="This page could not open">
-            <p className="discover-note">{problem}</p>
-            {problem !== NO_ENGINE && (
-              <Button variant="secondary" onClick={() => setVersion((value) => value + 1)}>
-                Try again
-              </Button>
-            )}
-          </Panel>
+          <Notice
+            title="This page could not open"
+            action={
+              problem !== NO_ENGINE ? (
+                <Button variant="secondary" onClick={() => setVersion((value) => value + 1)}>
+                  {RETRY}
+                </Button>
+              ) : undefined
+            }
+          >
+            {problem}
+          </Notice>
         ) : (
-          <p className="discover-note">Opening the page…</p>
+          <Loading what="the page" />
         )}
       </div>
     );
@@ -295,19 +303,19 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
                   >
                     {String(value.value)}
                   </button>{" "}
-                  ({value.count.toLocaleString()})
+                  ({formatCount(value.count)})
                 </span>
               ))}
             </li>
           )}
         </ul>
         <div className="discover-page__actions">
-          <Button
-            variant="secondary"
+          <LinkButton
+            go
             onClick={() => navigate("/library", { state: libraryRulesState(shown.rules, names) })}
           >
             Open in Library
-          </Button>
+          </LinkButton>
           <Button
             variant="secondary"
             disabled={!window.cuepoint?.saveSmartCollection}

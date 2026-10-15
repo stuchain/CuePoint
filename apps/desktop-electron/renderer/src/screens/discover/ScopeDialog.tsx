@@ -19,7 +19,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { DiscoverFacet } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Modal } from "../../components/Modal";
+import { Notice } from "../../components/Notice";
+import { SearchField } from "../../components/SearchField";
+import { deleteLabel, deleteTitle, nothingMatches } from "../../format/words";
 import { TextField } from "../../components/TextField";
 import { formatCount, pluralize } from "../library/libraryFormat";
 
@@ -118,17 +122,13 @@ export function ScopeDialog({
           maxLength={80}
           onChange={(event) => setName(event.target.value)}
         />
-        {error && (
-          <p className="discover-dialog__refusal" role="alert">
-            {error}
-          </p>
-        )}
-        <TextField
+        {error && <Notice>{error}</Notice>}
+        <SearchField
+          thing={`${noun}s`}
           label={`Find ${noun}s`}
           id={`discover-scope-${noun}`}
           value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder="Type to narrow the list"
+          onValueChange={setText}
         />
         <p className="discover-dialog__text" role="status">
           {pluralize(picked.size, `${noun} chosen`, `${noun}s chosen`)}
@@ -149,7 +149,7 @@ export function ScopeDialog({
               </label>
             </li>
           ))}
-          {shown.length === 0 && <li className="discover-dialog__text">Nothing matches.</li>}
+          {shown.length === 0 && <li className="discover-dialog__text">{text.trim() ? nothingMatches(text.trim()) : "Nothing to show."}</li>}
         </ul>
         {facet.truncated && (
           <p className="discover-dialog__text">
@@ -157,29 +157,29 @@ export function ScopeDialog({
             {formatCount(facet.total_values)} in your library.
           </p>
         )}
-        {list && !confirming && (
+        {list && (
           <div>
-            <Button variant="secondary" onClick={() => setConfirming(true)}>
+            <Button variant="danger" onClick={() => setConfirming(true)}>
               Delete list
             </Button>
           </div>
         )}
-        {list && confirming && (
-          <div className="discover-dialog__confirm" role="group" aria-label="Delete this list">
-            <p className="discover-dialog__text">
-              Delete the list “{list.name}”? The {noun}s stay in your library.
-            </p>
-            <div className="discover-dialog__confirm-actions">
-              <Button variant="danger" loading={busy} onClick={onDelete}>
-                Delete it
-              </Button>
-              <Button variant="secondary" onClick={() => setConfirming(false)}>
-                Keep it
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
+      {list && (
+        <ConfirmDialog
+          open={confirming}
+          danger
+          title={deleteTitle("list")}
+          confirmLabel={deleteLabel("list")}
+          onConfirm={() => {
+            setConfirming(false);
+            onDelete();
+          }}
+          onCancel={() => setConfirming(false)}
+        >
+          {`The list “${list.name}” goes. The ${noun}s stay in your library.`}
+        </ConfirmDialog>
+      )}
     </Modal>
   );
 }

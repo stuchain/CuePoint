@@ -13,6 +13,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { DiscoverGroupCard, DiscoverRunHeader } from "../../api/cuepointBridge.types";
 import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
+import { Loading } from "../../components/Loading";
+import { Notice } from "../../components/Notice";
 import { pluralize } from "../library/libraryFormat";
 import { RunCards } from "./RunCards";
 import { RunTracksView } from "./RunTracksView";
@@ -119,7 +121,7 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
 
   let body;
   if (read.loading) {
-    body = <p className="discover-note discover-run__reading">Reading the dig…</p>;
+    body = <Loading what="the dig" className="discover-run__reading" />;
   } else if (view.kind === "card") {
     body = (
       <RunTracksView
@@ -184,11 +186,9 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
     <section className="discover-run" aria-label="Dig">
       <header className="discover-run__header">
         {headerError ? (
-          <p className="discover-note discover-note--warning" role="alert">
-            {headerError}
-          </p>
+          <Notice>{headerError}</Notice>
         ) : !run || !header ? (
-          <p className="discover-note">Reading the dig…</p>
+          <Loading what="the dig" />
         ) : (
           <>
             <div className="discover-run__title-row">
@@ -213,9 +213,7 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
       </header>
 
       {read.error && (
-        <p className="discover-note discover-note--warning" role="alert">
-          {read.error}
-        </p>
+        <Notice>{read.error}</Notice>
       )}
 
       {body}

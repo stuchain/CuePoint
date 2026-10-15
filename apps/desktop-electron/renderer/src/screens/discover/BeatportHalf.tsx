@@ -34,6 +34,10 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { DISCOVER_OPTIONS, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
+import { CloseButton } from "../../components/CloseButton";
+import { MISSING_VALUE } from "../../components/MissingValue";
+import { Loading } from "../../components/Loading";
+import { MATCH_ON_BEATPORT, RETRY } from "../../format/words";
 import { useToast } from "../../components/Toast";
 import { formatCount, pluralize } from "../library/libraryFormat";
 import { BeatportSignInButton } from "./BeatportSignInButton";
@@ -47,7 +51,7 @@ import { beatportSelectedId, useReportSelectedTrack } from "../../components/she
 import { runActions, type BeatportActionId } from "./beatportActions";
 import { ENTITY_COLUMNS, ENTITY_TABLE_LAYOUT_KEY } from "./beatportColumns";
 import { entityPath } from "./discoverLinks";
-import { pushOutcome, refusalText, resolveOutcome } from "./discoverFormat";
+import { formatIsoDay, pushOutcome, refusalText, resolveOutcome } from "./discoverFormat";
 import { NO_ENGINE } from "./discoverTools";
 import { beatportHeadline, freshnessLine, nounOf } from "./entityFormat";
 import { openOnBeatport } from "./openOnBeatport";
@@ -373,7 +377,7 @@ export function BeatportHalf({
           Open the playlist
         </Button>
       )}
-      <Button variant="secondary" iconOnly icon="close" aria-label="Dismiss" onClick={() => setPushNotice(null)} />
+      <CloseButton aria-label="Dismiss" onClick={() => setPushNotice(null)} />
     </div>
   );
 
@@ -387,11 +391,11 @@ export function BeatportHalf({
             <p className="discover-empty__headline">Beatport's half could not be read.</p>
             <p className="discover-note">{tracks.error}</p>
             <Button variant="secondary" onClick={reload}>
-              Try again
+              {RETRY}
             </Button>
           </>
         ) : (
-          <p className="discover-note">Asking Beatport…</p>
+          <Loading what="Beatport" />
         )}
       </div>
     );
@@ -437,12 +441,12 @@ export function BeatportHalf({
             loading={resolve.jobId !== null}
             onClick={() => void startResolve()}
           >
-            Match on Beatport
+            {MATCH_ON_BEATPORT}
           </Button>
         )}
         {(half.state === "rate_limited" || half.state === "unavailable") && (
           <Button variant="secondary" onClick={readAgain}>
-            Try again
+            {RETRY}
           </Button>
         )}
       </div>
@@ -465,7 +469,7 @@ export function BeatportHalf({
         <span className="discover-note" role="status">
           {half.found_by_name ? "Found by name on Beatport. " : ""}
           {page
-            ? `${pluralize(page.tracks, "track")} released since ${half.since ?? "—"}${
+            ? `${pluralize(page.tracks, "track")} released since ${formatIsoDay(half.since) || MISSING_VALUE}${
                 page.owned > 0
                   ? ` · ${formatCount(page.owned)} already in your library${owned === "hide" ? " (hidden)" : ""}`
                   : ""
@@ -497,12 +501,12 @@ export function BeatportHalf({
           emptyState={
             <div className="discover-empty">
               {tracks.loading ? (
-                <p className="discover-note">Asking Beatport…</p>
+                <Loading what="Beatport" />
               ) : (
                 <p className="discover-empty__headline">
                   {owned === "hide" && (page?.tracks ?? 0) > 0
                     ? "Every track released in this window is already in your library."
-                    : `Nothing released on Beatport since ${half.since ?? "then"}.`}
+                    : `Nothing released on Beatport since ${formatIsoDay(half.since) || "then"}.`}
                 </p>
               )}
             </div>

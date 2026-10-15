@@ -17,7 +17,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DiscoverRun } from "../../api/cuepointBridge.types";
 import { discoveryRuns, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
-import { Modal } from "../../components/Modal";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { EmptyState } from "../../components/EmptyState";
+import { Loading } from "../../components/Loading";
+import { Notice } from "../../components/Notice";
+import { RETRY, deleteLabel, deleteTitle } from "../../format/words";
 import { JOB_POLL_MS } from "../../components/shell/useActiveJob";
 import { RunDetail } from "./RunDetail";
 import { RunList } from "./RunList";
@@ -203,26 +207,32 @@ export function RunsView({
   };
 
   if (runs === null) {
-    return <p className="discover-note discover-runs-view__waiting">Reading your digs…</p>;
+    return <Loading what="your digs" className="discover-runs-view__waiting" />;
   }
 
   // A search just started is on its way to the list: not "none yet".
   const starting = awaiting !== null || runningJobId !== null;
   if (runs.length === 0 && !starting) {
     return (
-      <div className="discover-empty">
+      <>
         {listError && (
-          <div className="discover-note discover-note--warning" role="alert">
-            <p>{listError}</p>
-            <Button variant="secondary" onClick={refresh}>
-              Try again
-            </Button>
-          </div>
+          <Notice
+            action={
+              <Button variant="secondary" onClick={refresh}>
+                {RETRY}
+              </Button>
+            }
+          >
+            {listError}
+          </Notice>
         )}
-        <p className="discover-empty__headline">No digs yet</p>
-        <p className="discover-note">What a dig finds appears here.</p>
-        <Button onClick={onNewSearch}>New dig</Button>
-      </div>
+        <EmptyState
+          icon="search"
+          headline="No digs yet"
+          description="What a dig finds appears here."
+          action={{ label: "New dig", onClick: onNewSearch }}
+        />
+      </>
     );
   }
 
@@ -233,12 +243,15 @@ export function RunsView({
     >
       <div className="discover-runs-view__list">
         {listError && (
-          <div className="discover-note discover-note--warning" role="alert">
-            <p>{listError}</p>
-            <Button variant="secondary" onClick={refresh}>
-              Try again
-            </Button>
-          </div>
+          <Notice
+            action={
+              <Button variant="secondary" onClick={refresh}>
+                {RETRY}
+              </Button>
+            }
+          >
+            {listError}
+          </Notice>
         )}
         <RunList
           runs={runs}
@@ -253,7 +266,7 @@ export function RunsView({
       </div>
       <div className="discover-runs-view__detail">
         {selected === null ? (
-          <p className="discover-note">Reading your digs…</p>
+          <Loading what="your digs" />
         ) : (
           <RunDetail
             key={selected}
@@ -265,22 +278,19 @@ export function RunsView({
         )}
       </div>
 
-      <Modal
+      <ConfirmDialog
         open={deleting !== null}
-        title="Delete this dig?"
-        onClose={() => setDeleting(null)}
-        secondaryAction={{ label: "Cancel", onClick: () => setDeleting(null) }}
-        primaryAction={{
-          label: "Delete dig",
-          onClick: () => void remove(),
-          loading: deletePending,
+        title={deleteTitle("this dig")}
+        confirmLabel={deleteLabel("dig")}
+        danger
+        onConfirm={() => {
+          if (!deletePending) void remove();
         }}
+        onCancel={() => setDeleting(null)}
       >
-        <p className="discover-dialog__text">
-          The dig and the list of what it found go. Tracks you added to your wantlist from it
-          stay there.
-        </p>
-      </Modal>
+        The dig and the list of what it found go. Tracks you added to your wantlist from it stay
+        there.
+      </ConfirmDialog>
     </div>
   );
 }

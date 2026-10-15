@@ -10,6 +10,7 @@ import type {
   DiscoverLimits,
   DiscoverRunRequest,
 } from "../../api/cuepointBridge.types";
+import { formatIsoRange } from "./discoverFormat";
 
 /** Every name in the library, the names in a saved list, or none at all. */
 export type ScopeMode = "all" | "list" | "none";
@@ -156,7 +157,7 @@ export function chartsWindowShort(form: NewRunForm, defaults: DiscoverDefaults):
     form.chartsFrom === defaults.charts_from && form.chartsTo === defaults.charts_to;
   const days = to - from;
   if (isDefault && days >= 1) return `last ${days} days`;
-  return `${form.chartsFrom} to ${form.chartsTo}`;
+  return formatIsoRange(form.chartsFrom, form.chartsTo);
 }
 
 /** How many names a scope covers, for the dig bar: every one, a list's, or none. */

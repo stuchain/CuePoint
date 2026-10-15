@@ -8,7 +8,8 @@
  * Every Beatport table sends one row shape (DISCOVER-09's `BeatportTrackRow`),
  * so the shared columns are written once over it and each table adds its own:
  * a search's order and reasons, the wantlist's note, date added and bought mark.
- * Artist and label names are links to their pages (FLW-16).
+ * Artist and label names are links to their pages (FLW-16). The play button is no column:
+ * the table draws it at the right end of each row (`PreviewButton`).
  * A column sorts by the engine's own sort names; one the engine cannot order
  * by has no `sortKey`. Each table keeps its own layout (DEC-042).
  */
@@ -22,32 +23,16 @@ import { KeyChip } from "../../components/wheel/KeyChip";
 import { formatBpm } from "../library/trackValues";
 import { ArtistLinks, LabelLink } from "./BeatportNameLinks";
 import { beatportRowKey } from "./beatportKey";
-import { PreviewCell } from "./PreviewCell";
 import { IN_LIBRARY_EXPLAINER } from "./HideOwnedSwitch";
-import { artistsText, formatWhen, sourcesText, trackName } from "./discoverFormat";
+import { artistsText, formatIsoDay, formatWhen, sourcesText, trackName } from "./discoverFormat";
 
 export const RUN_TABLE_LAYOUT_KEY = "cuepoint-discover-run-table-layout";
 export const WANTLIST_TABLE_LAYOUT_KEY = "cuepoint-discover-wantlist-table-layout";
 export const ENTITY_TABLE_LAYOUT_KEY = "cuepoint-discover-page-beatport-layout";
 
-/** The ▶/■ column, first in every Beatport table (DEC-269). */
-export const PREVIEW_COLUMN_ID = "preview";
-
 /** The columns every Beatport table has, over any row that is one. */
 function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
   return [
-    {
-      id: PREVIEW_COLUMN_ID,
-      header: "Preview",
-      // Pinned like the title it sits before, so it stays first (sticky columns float to the front).
-      sticky: true,
-      minWidthPx: 52,
-      defaultWidthPx: 56,
-      render: (row) => (
-        <PreviewCell beatportTrackId={row.beatport_track_id} title={trackName(row)} variant="round" />
-      ),
-      text: () => "",
-    },
     {
       id: "title",
       header: "Title",
@@ -80,7 +65,7 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
       sortKey: "release_date",
       minWidthPx: 90,
       defaultWidthPx: 96,
-      render: (row) => row.release_date ?? "",
+      render: (row) => formatIsoDay(row.release_date),
     },
     {
       id: "bpm",

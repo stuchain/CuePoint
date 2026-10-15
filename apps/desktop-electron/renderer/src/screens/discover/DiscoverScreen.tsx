@@ -31,11 +31,15 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { DISCOVER_OPTIONS, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
-import { Panel } from "../../components/Panel";
+import { CloseButton } from "../../components/CloseButton";
+import { Hint } from "../../components/Hint";
+import { Loading } from "../../components/Loading";
+import { Notice } from "../../components/Notice";
 import { Tabs } from "../../components/Tabs";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useActiveJob } from "../../components/shell/useActiveJob";
 import { useToast } from "../../components/Toast";
+import { MATCH_ON_BEATPORT, RETRY } from "../../format/words";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { NewRunPanel } from "./NewRunPanel";
 import { RunsView } from "./RunsView";
@@ -257,11 +261,11 @@ export function DiscoverScreen() {
     [options, playlist.jobId, pushTracks, state, toast],
   );
 
-  // The New search tab is mounted when first opened and kept, so a form half
-  // filled in is still there when the tab is come back to.
-  const [newSearchSeen, setNewSearchSeen] = useState(section === "new");
+  // A tab is mounted when first opened and kept, so a form half filled in, the dig open in
+  // Results, and a wantlist's scroll, sort and selection are still there when it is come back to.
+  const [seen, setSeen] = useState<ReadonlySet<DiscoverSection>>(() => new Set([section]));
   useEffect(() => {
-    if (section === "new") setNewSearchSeen(true);
+    setSeen((previous) => (previous.has(section) ? previous : new Set(previous).add(section)));
   }, [section]);
 
   const choose = (id: string) => {
@@ -276,16 +280,20 @@ export function DiscoverScreen() {
       <div className="screen screen--stack screen--scroll discover-screen--waiting">
         <ScreenHeader title="Discover" inset />
         {optionsError ? (
-          <Panel title="Discover could not open">
-            <p className="discover-note">{optionsError}</p>
-            {optionsError !== NO_ENGINE && (
-              <Button variant="secondary" onClick={reloadOptions}>
-                Try again
-              </Button>
-            )}
-          </Panel>
+          <Notice
+            title="Discover could not open"
+            action={
+              optionsError !== NO_ENGINE ? (
+                <Button variant="secondary" onClick={reloadOptions}>
+                  {RETRY}
+                </Button>
+              ) : undefined
+            }
+          >
+            {optionsError}
+          </Notice>
         ) : (
-          <p className="discover-note">Opening Discover…</p>
+          <Loading what="Discover" />
         )}
       </div>
     );
@@ -320,9 +328,11 @@ export function DiscoverScreen() {
               onDone={reloadOptions}
             />
           ) : (
-            <Button variant="secondary" title={notice.hint || undefined} onClick={reloadOptions}>
-              {notice.actionLabel}
-            </Button>
+            <Hint text={notice.hint || undefined}>
+              <Button variant="secondary" onClick={reloadOptions}>
+                {notice.actionLabel}
+              </Button>
+            </Hint>
           )}
         </div>
       )}
@@ -333,7 +343,7 @@ export function DiscoverScreen() {
             {looking ? <strong>{lookingUpLine(toRead)}</strong> : <span>{resolvePrompt(toRead)}</span>}
           </div>
           <Button variant="secondary" loading={looking} onClick={() => void startResolve()}>
-            Match on Beatport
+            {MATCH_ON_BEATPORT}
           </Button>
         </div>
       )}
@@ -359,12 +369,12 @@ export function DiscoverScreen() {
               Open the playlist
             </Button>
           )}
-          <Button variant="secondary" iconOnly icon="close" aria-label="Dismiss" onClick={() => setPushNotice(null)} />
+          <CloseButton aria-label="Dismiss" onClick={() => setPushNotice(null)} />
         </div>
       )}
 
       <div className="discover-screen__body">
-        {newSearchSeen && (
+        {seen.has("new") && (
           <div
             role="tabpanel"
             aria-label="New dig"
@@ -381,8 +391,13 @@ export function DiscoverScreen() {
             />
           </div>
         )}
-        {section === "results" && (
-          <div role="tabpanel" aria-label="Results" className="discover-screen__panel">
+        {seen.has("results") && (
+          <div
+            role="tabpanel"
+            aria-label="Results"
+            hidden={section !== "results"}
+            className="discover-screen__panel"
+          >
             <RunsView
               tools={tools}
               runningJobId={discovery.jobId}
@@ -391,8 +406,13 @@ export function DiscoverScreen() {
             />
           </div>
         )}
-        {section === "wantlist" && (
-          <div role="tabpanel" aria-label="Wantlist" className="discover-screen__panel">
+        {seen.has("wantlist") && (
+          <div
+            role="tabpanel"
+            aria-label="Wantlist"
+            hidden={section !== "wantlist"}
+            className="discover-screen__panel"
+          >
             <WantlistView tools={tools} />
           </div>
         )}

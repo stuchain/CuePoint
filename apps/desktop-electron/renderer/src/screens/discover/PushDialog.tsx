@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 
 import type { BeatportPlaylistChoice, DiscoverRefusal } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components/Modal";
+import { Notice } from "../../components/Notice";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
 import { refusalText } from "./discoverFormat";
@@ -207,11 +208,7 @@ export function PushDialog({
           />
           Include tracks already in your library
         </label>
-        {refusal && (
-          <p className="discover-dialog__refusal" role="alert">
-            {refusal}
-          </p>
-        )}
+        {refusal && <Notice>{refusal}</Notice>}
       </div>
     </Modal>
   );

@@ -21,6 +21,9 @@ import type {
   TrackCreditLinks,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Loading } from "../../components/Loading";
+import { formatCount } from "../../format/counts";
+import { RETRY } from "../../format/words";
 import { TrackContextMenu, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { useToast } from "../../components/Toast";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
@@ -129,6 +132,10 @@ export function LibraryHalf({
     async (row: LibraryTrackRow, index: number, x: number, y: number) => {
       onActivate();
       const inSelection = row.id != null && isSelected(selection.selection, row.id);
+      // A right-click on a row outside the selection selects that row first, as everywhere.
+      if (!inSelection) {
+        selection.onRowClick(row, index, { shiftKey: false, ctrlKey: false, metaKey: false });
+      }
       const rows =
         inSelection && selection.count > 1 ? await selection.gatherRows(QUEUE_ACTION_LIMIT) : [row];
       const firstId = rows[0]?.id;
@@ -250,11 +257,11 @@ export function LibraryHalf({
           <p className="discover-empty__headline">Your tracks could not be read.</p>
           <p className="discover-note">{window_.error}</p>
           <Button variant="secondary" onClick={window_.retry}>
-            Try again
+            {RETRY}
           </Button>
         </>
       ) : window_.loading ? (
-        <p className="discover-note">Reading your tracks…</p>
+        <Loading what="your tracks" />
       ) : (
         <p className="discover-empty__headline">
           None of your tracks is by this {nounOf(kind)}.
@@ -265,7 +272,31 @@ export function LibraryHalf({
 
   return (
     <div className="discover-table discover-page__library">
-      <div className="discover-table__rows">
+      <div className="discover-page__library-actions">
+        <DiscoverSelectionBar
+          groups={GROUPS}
+          total={window_.total}
+          selected={selection.count}
+          describedByQuery={selection.selection.all}
+          itemsFor={itemsFor}
+          onClear={selection.clear}
+          onSelectAll={() => {
+            onActivate();
+            selection.selectAllMatching();
+          }}
+        />
+      </div>
+
+      <div
+        className="discover-table__rows"
+        onKeyDown={(event) => {
+          // Esc lets go of the selection, as in the Library.
+          if (event.key === "Escape" && !event.defaultPrevented && selection.count > 0) {
+            event.preventDefault();
+            selection.clear();
+          }
+        }}
+      >
         <TrackTable<LibraryTrackRow>
           columns={columns.visible}
           source={window_.source}
@@ -297,21 +328,6 @@ export function LibraryHalf({
         />
       </div>
 
-      <div className="discover-page__library-actions">
-        <DiscoverSelectionBar
-          groups={GROUPS}
-          total={window_.total}
-          selected={selection.count}
-          describedByQuery={selection.selection.all}
-          itemsFor={itemsFor}
-          onClear={selection.clear}
-          onSelectAll={() => {
-            onActivate();
-            selection.selectAllMatching();
-          }}
-        />
-      </div>
-
       {menu && (
         <TrackContextMenu
           x={menu.x}
@@ -320,7 +336,7 @@ export function LibraryHalf({
           onClose={() => setMenu(null)}
           label={
             menu.rows.length > 1
-              ? `Actions for ${menu.rows.length.toLocaleString()} tracks`
+              ? `Actions for ${formatCount(menu.rows.length)} tracks`
               : "Track actions"
           }
         />

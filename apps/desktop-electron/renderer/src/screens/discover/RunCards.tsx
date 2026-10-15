@@ -26,6 +26,10 @@ import type {
   DiscoverRunGroups,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Hint } from "../../components/Hint";
+import { Notice } from "../../components/Notice";
+import { opensDialog } from "../../format/words";
+import { LinkButton } from "../../components/LinkButton";
 import { PixelIcon } from "../../components/PixelIcon";
 import { formatCount, pluralize } from "../library/libraryFormat";
 import { GroupArt } from "./GroupArt";
@@ -128,15 +132,10 @@ function CardRow({
           {note ? ` · ${note}` : ""}
         </span>
         {overflow && (
-          <button
-            type="button"
-            className="discover-cards__see-all"
-            aria-expanded={all}
-            onClick={onAll}
-          >
+          <LinkButton className="discover-cards__see-all" aria-expanded={all} onClick={onAll}>
             {all ? "Show fewer" : "See all"}
             <PixelIcon name={all ? "chevron-down" : "chevron-right"} />
-          </button>
+          </LinkButton>
         )}
       </header>
       <ul className="discover-cards__grid">
@@ -268,9 +267,9 @@ export function RunCards({
       </div>
 
       {groups.notes.map((note) => (
-        <p key={note} className="discover-note discover-note--warning" role="status">
+        <Notice key={note} kind="warning">
           {note}
-        </p>
+        </Notice>
       ))}
 
       {groups.rows.map((row) => (
@@ -296,14 +295,15 @@ export function RunCards({
             <Button variant="secondary" loading={working} onClick={() => void addToWantlist()}>
               Add to wantlist
             </Button>
-            <Button
-              icon="chevron-down"
-              disabled={!pushable || tools.pushing}
-              title={pushable ? undefined : (unusableReason(tools.beatportState) ?? undefined)}
-              onClick={() => setPushOpen(true)}
-            >
-              Add to playlist
-            </Button>
+            <Hint text={pushable ? undefined : (unusableReason(tools.beatportState) ?? undefined)}>
+              <Button
+                icon="chevron-down"
+                disabled={!pushable || tools.pushing}
+                onClick={() => setPushOpen(true)}
+              >
+                {opensDialog("Add to playlist")}
+              </Button>
+            </Hint>
           </div>
         </div>
       )}
