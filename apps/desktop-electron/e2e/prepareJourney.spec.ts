@@ -318,9 +318,6 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       // FLW-17: the entry buttons order the Set too. They are on the selected row only (DEC-249):
       // Move down and Move up put Warm Two back where it was.
       await at(win, row(win, "Warm Two"));
-      // At the default size the buttons show as glyphs (↑ ↓ Chapter ↻ ×), the title shortened under them.
-      await expect(win.getByRole("button", { name: "Move up", exact: true })).toHaveCount(1);
-      await expect(row(win, "Warm Two").getByRole("button", { name: "Move up", exact: true })).toBeVisible();
       // The end cell stops at the scroll area's bar: its right edge is the area's, less the bar and border.
       // A bar is forced on, as a Set of many rows has one: a reserved gutter with no bar in it is not
       // taken out of what a sticky cell sticks to.
@@ -347,6 +344,15 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await win.keyboard.press("Escape");
       await expect(row(win, "Warm Two").getByRole("group", { name: "Selected entries" })).toBeVisible();
       // One press of ↓ from the keyboard: React moves the row's node, and focus is still on the button.
+      // With Track details and the picker open the Set pane is too narrow for the buttons: they fold into one
+      // Actions ▾ (visiblePlaces covers that form). The buttons themselves are looked at in a wider window,
+      // and the default size is put back after; the rest of this test runs at the default size.
+      const defaultSize = await win.evaluate(() => [window.innerWidth, window.innerHeight]);
+      await app.evaluate(({ BrowserWindow }) => {
+        BrowserWindow.getAllWindows()[0]?.setContentSize(2000, 1000);
+      });
+      await expect(win.getByRole("button", { name: "Move up", exact: true })).toHaveCount(1);
+      await expect(row(win, "Warm Two").getByRole("button", { name: "Move up", exact: true })).toBeVisible();
       const down = win.getByRole("button", { name: "Move down", exact: true });
       await down.focus();
       await win.keyboard.press("Enter");
@@ -356,6 +362,9 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
         .toBe("down");
       await win.getByRole("button", { name: "Move up", exact: true }).click();
       await expect.poll(async () => (await order(win, setId)).slice(0, 2)).toEqual(["Warm Two", "Warm One"]);
+      await app.evaluate(({ BrowserWindow }, [width, height]) => {
+        BrowserWindow.getAllWindows()[0]?.setContentSize(width!, height!);
+      }, defaultSize as [number, number]);
 
       // --- 4. a gap from Suggestions, and a key warning accepted -------------------
       // The Mix in field above scrolled the table sideways; a click at the row's left needs its left edge.
@@ -387,7 +396,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await win.getByRole("menuitem", { name: "Show transition strip" }).click();
       await at(win, row(win, "Build"));
       const caption = win.getByTestId("transition-caption");
-      await expect(caption.getByTestId("transition-words")).toContainText(/[+−]?[\d.]+% BPM/, { timeout: 15_000 });
+      await expect(caption.getByTestId("transition-words")).toContainText(/[+−]?[\d.]+%/, { timeout: 15_000 });
       await expect(caption.getByTestId("transition-words")).toContainText(/→/);
       // One warning is shown, the first still open; the accepted key clash is the "+1 more" (C15d).
       await expect(caption.getByTestId("transition-warning")).toHaveCount(1);

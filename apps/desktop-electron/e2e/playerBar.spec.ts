@@ -59,6 +59,9 @@ test("the player bar fits the shell at every scale", async () => {
       await w.cuepoint.player.pause();
     }, [path.join(AUDIO, "tone.flac"), path.join(AUDIO, "tone.wav")]);
     await win.waitForSelector(".cp-player-bar", { timeout: 10_000 });
+    // The first-run guide sits over the bar and takes the point the click-area check lands on.
+    await win.getByRole("dialog", { name: "Getting started" }).getByRole("button", { name: "Skip" }).click();
+    await expect(win.getByRole("dialog")).toHaveCount(0);
 
     for (const scale of [1, 1.5, 2, 3]) {
       const report = await win.evaluate((s) => {
@@ -67,15 +70,24 @@ test("the player bar fits the shell at every scale", async () => {
         document.documentElement.style.setProperty("--scale", String(s));
         const bar = document.querySelector(".cp-player-bar") as HTMLElement;
         const rect = bar.getBoundingClientRect();
-        // The title and artist links in the track line are words, not transport; the key
-        // button is counted.
-        const buttons = [...bar.querySelectorAll("button:not(.cp-player-bar__link)")].map((b) => {
+        // The title and artist links in the track line are words, not transport. The key chip
+        // is a button inside the facts line (K8): its box is the chip's, and its hit area is a
+        // layer round it, so it is checked below instead of here.
+        const buttons = [...bar.querySelectorAll("button:not(.cp-player-bar__link):not([data-wheel-opener])")].map((b) => {
           const r = b.getBoundingClientRect();
           return { w: Math.round(r.width), h: Math.round(r.height) };
         });
         // The Wheel button (BAR-5) sits whole inside the bar, beside the track text.
         const key = bar.querySelector<HTMLElement>("[data-wheel-opener]");
         const kr = key?.getBoundingClientRect();
+        // The chip's click area reaches --hit-min: a point just above and just below the chip still
+        // lands on it (the chip's own box is smaller than that).
+        const reach = (dy: number) =>
+          kr !== undefined &&
+          document.elementFromPoint(kr.left + kr.width / 2, kr.top + kr.height / 2 + dy) === key;
+        // The chip is always on screen: a long artist name shrinks to an ellipsis, not the chip.
+        const keyShown = reach(0);
+        const keyArea = keyShown && reach(-(kr!.height / 2 + 1)) && reach(kr!.height / 2 + 1);
         const keyHit =
           kr !== undefined &&
           kr.top >= rect.top - 1 &&
@@ -85,6 +97,7 @@ test("the player bar fits the shell at every scale", async () => {
         return {
           scale: s,
           keyHit,
+          keyArea,
           barHeight: Math.round(rect.height),
           overflowsRight: Math.round(rect.right) > Math.round(document.documentElement.clientWidth),
           docScrollsX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -97,9 +110,32 @@ test("the player bar fits the shell at every scale", async () => {
       }, scale);
       expect(report.docScrollsX, `no horizontal scroll at ${scale}x`).toBe(false);
       expect(report.overflowsRight, `bar within viewport at ${scale}x`).toBe(false);
-      expect(report.keyHit, `the Wheel button is not clipped at ${scale}x`).toBe(true);
+      expect(report.keyHit, `the key chip is not clipped at ${scale}x`).toBe(true);
+      expect(report.keyArea, `the key chip's click area is taller than the chip at ${scale}x`).toBe(true);
       expect(report.minButton, `hit targets at ${scale}x`).toBeGreaterThanOrEqual(24);
       expect(report.clipped, `nothing clipped at ${scale}x`).toBe(false);
+    }
+    // A very long artist and label shrink to an ellipsis; the key chip, BPM and year stay whole.
+    await win.evaluate(async (file) => {
+      const w = window as never as Record<string, any>;
+      await w.cuepoint.player.playQueue(
+        [{ filePath: file, title: "T", artist: "An Extremely Long Artist Name ".repeat(12), label: "A Label ".repeat(10),
+           key: "8A", bpm: 128, durationSeconds: 600 }], 0);
+      await w.cuepoint.player.pause();
+    }, path.join(AUDIO, "tone.flac"));
+    for (const scale of [1, 3]) {
+      const shown = await win.evaluate((s) => {
+        document.documentElement.dataset.scale = String(s);
+        document.documentElement.style.setProperty("--scale", String(s));
+        const bar = document.querySelector(".cp-player-bar") as HTMLElement;
+        const chip = bar.querySelector<HTMLElement>("[data-wheel-opener]");
+        const r = chip?.getBoundingClientRect();
+        const b = bar.getBoundingClientRect();
+        return (
+          r !== undefined && r.width > 0 && r.right <= b.right + 1 && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === chip
+        );
+      }, scale);
+      expect(shown, `the key chip stays visible beside a very long artist at ${scale}x`).toBe(true);
     }
     // The transport buttons keep the heavy border and the hit target (C16c): the border is
     // --border-width, nothing casts a shadow, and the box is at least --hit-min tall.
@@ -145,7 +181,7 @@ test("the player bar fits the shell at every scale", async () => {
  * Both are layout, which jsdom cannot measure. Text is measured with a `Range`
  * (the box of the track section is wider than its words).
  */
-test("the waveform is centred and the Wheel button fits", async () => {
+test("the waveform is centred and the key chip fits", async () => {
   test.skip(!hasPlayer, NO_PLAYER);
   const env = { ...process.env, NODE_ENV: "production",
     CUEPOINT_HOME: mkdtempSync(path.join(tmpdir(), "cp-home-")) } as Record<string, string>;
@@ -205,8 +241,8 @@ test("the waveform is centred and the Wheel button fits", async () => {
           const metaHasKey = (bar.querySelector(".cp-player-bar__meta")!.textContent ?? "").includes("8A");
           return {
             sameRow,
-            // The left group ends at the Wheel button, which follows the track's words.
-            gapLeft: seek.left - Math.max(textRight, rect(bar.querySelector(".cp-player-bar__wheel")!).right),
+            // The left group ends at the track's words (the key chip is one of them).
+            gapLeft: seek.left - textRight,
             gapRight: controls.left - seek.right,
             wheelWhole,
             metaHasKey,
@@ -215,9 +251,9 @@ test("the waveform is centred and the Wheel button fits", async () => {
         const at = `${label} at ${scale}x`;
         if (scale !== 3) expect(r.sameRow, `seek and controls share a row, ${at}`).toBe(true);
         if (r.sameRow) {
-          expect(Math.abs(r.gapLeft - r.gapRight), `waveform centred, ${at}`).toBeLessThanOrEqual(2);
+          expect(Math.abs(r.gapLeft - r.gapRight), `waveform centred, ${at} (left gap ${r.gapLeft}, right gap ${r.gapRight})`).toBeLessThanOrEqual(2);
         }
-        expect(r.wheelWhole, `the Wheel button fits the bar, ${at}`).toBe(true);
+        expect(r.wheelWhole, `the key chip fits the bar, ${at}`).toBe(true);
         expect(r.metaHasKey, `the line keeps the key as words, ${at}`).toBe(true);
       }
     }

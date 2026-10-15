@@ -253,8 +253,8 @@ test.describe("The Your library section (STATS-06)", () => {
       await expect(
         window.getByRole("group", { name: "Sources" }).getByRole("checkbox", { name: "Warmup" }),
       ).toBeChecked({ timeout: 30_000 });
-      await expect(window.getByRole("status").filter({ hasText: "in 1 playlist" })).toHaveText(
-        "2 tracks in 1 playlist",
+      await expect(window.getByRole("status").filter({ hasText: "· 1 playlist" })).toHaveText(
+        "2 tracks · 1 playlist",
         { timeout: 30_000 },
       );
       await expect(window.getByRole("button", { name: "No Beatport key: 1" })).toBeVisible();
@@ -353,7 +353,7 @@ test.describe("The Plays section (STATS-05)", () => {
       await expect(
         list.getByRole("button", { name: "1. Track 2 by Artist 2, 9 plays" }),
       ).toBeVisible();
-      await expect(plays.getByText(/^Counts from your refresh on /)).toBeVisible();
+      await expect(plays.getByText(/^Counts from your refresh (on |today|yesterday)/)).toBeVisible();
 
       // Since the first import (the refresh's own rises), in their own order.
       await plays.getByLabel("Since").selectOption({ label: "Your last refresh" });
@@ -443,13 +443,13 @@ test.describe("The Health section and the whole page (STATS-07)", () => {
       }
       // One button in each group.
       for (const [panel, name] of [
-        ["files", "Fix in Clean ›"],
-        ["beatport", "Fix in Clean ›"],
-        ["waveforms", "Settings ›"],
+        ["files", "Open in Clean"],
+        ["beatport", "Open in Clean"],
+        ["waveforms", "Open in Settings"],
         ["other", "Read cover art"],
       ] as const) {
         await expect(
-          health.locator(`[data-panel="${panel}"]`).getByRole("button", { name, exact: true }),
+          health.locator(`[data-panel="${panel}"]`).getByRole("button", { name }), // a go-to link's arrow is drawn by CSS and is part of its name
         ).toBeVisible();
       }
       await expect(health.getByRole("button", { name: "All health checks" })).toHaveCount(0);
@@ -504,7 +504,7 @@ test.describe("The Health section and the whole page (STATS-07)", () => {
       const health = window.getByRole("region", { name: "Health" });
       await health
         .locator('[data-panel="files"]')
-        .getByRole("button", { name: "Fix in Clean ›" })
+        .getByRole("button", { name: "Open in Clean" })
         .click({ timeout: 30_000 });
       await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
       await expect(window.getByRole("tab", { name: /Missing files/ })).toHaveAttribute(

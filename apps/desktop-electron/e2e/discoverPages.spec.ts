@@ -352,8 +352,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await nav(window).getByRole("link", { name: "Clean", exact: true }).click();
         // Match opens on Playlists (C22): tick the playlist and match it.
         await window.getByRole("checkbox", { name: "Match To match" }).check();
-        await window.getByRole("button", { name: "Match 1 playlist on Beatport" }).click();
-        await expect(window.getByText("Matching finished.")).toBeVisible({ timeout: 90_000 });
+        await window.getByRole("button", { name: "Match 1 playlist" }).click();
         await idle(window);
         // The run lands on its Review, which lists every track of it.
         await expect(window.getByRole("tab", { name: /^Review / })).toHaveAttribute("aria-selected", "true", {

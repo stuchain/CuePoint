@@ -60,7 +60,8 @@ const ON_LINUX = process.platform === "linux";
  * R4-1: rows now follow the text (29px at 1.5×, was 50), so Linux measures 19, held at 18 (expanded
  * and as a rail); Windows and macOS hold 15 until measured.
  */
-const WHOLE_ROWS = ON_LINUX ? 18 : 15;
+// Consistency round (26px rows): Windows measures 13, Linux holds one higher until measured.
+const WHOLE_ROWS = ON_LINUX ? 14 : 13;
 const FLOOR = 5;
 
 /**
@@ -75,7 +76,8 @@ const FLOOR = 5;
 // Linux measured 5, held at 4; Windows 3 expanded and 4 as a rail. At 1.5×
 // (PAGES-14) Linux measures 6 (2 at 2×), held at 5; Windows' re-measure is owed.
 // R4-1 (rows follow the text): Linux measures 13, held at 12; Windows holds 10 until measured.
-const WHOLE_ROWS_PLAYING = ON_LINUX ? 12 : 10;
+// Consistency round (26px rows): Windows holds 8, Linux one higher until measured.
+const WHOLE_ROWS_PLAYING = ON_LINUX ? 9 : 8;
 
 /**
  * The same with the tempo and key lanes open (PREP-11, DEC-111), sidebar
@@ -87,8 +89,8 @@ const WHOLE_ROWS_PLAYING = ON_LINUX ? 12 : 10;
  * transition strip does, since both take three of the Set's rows. At 1.5×
  * (PAGES-14) Linux measures 6 (2 at 2×), held at 5.
  */
-// R4-1 (rows follow the text): Linux measures 16, held at 15; Windows holds 13 until measured.
-const WHOLE_ROWS_LANES = ON_LINUX ? 15 : 13;
+// Consistency round (26px rows, 39px at 1.5×): Windows measures 11 with the lanes, Linux holds one higher.
+const WHOLE_ROWS_LANES = ON_LINUX ? 12 : 11;
 
 /**
  * The same with the transition strip open (WAVE-07, DEC-120), sidebar expanded
@@ -101,8 +103,8 @@ const WHOLE_ROWS_LANES = ON_LINUX ? 15 : 13;
  * with a row to spare; held at the Windows figure until the Linux run records
  * its own. PAGES-14: Linux measured 5 at 1.5× (1 at 2×), held at 4.
  */
-// R4-1 (rows follow the text): Linux measures 16, held at 15; Windows holds 13 until measured.
-const WHOLE_ROWS_TRANSITION = ON_LINUX ? 15 : 13;
+// Consistency round (26px rows, 39px at 1.5×): Windows measures 10 with the strip, Linux holds one higher.
+const WHOLE_ROWS_TRANSITION = ON_LINUX ? 11 : 10;
 
 /**
  * The rows the Set keeps under the lanes or the strip whatever else is on
@@ -222,7 +224,8 @@ async function measure(win: Page, tableName: string): Promise<Measured> {
     for (const row of rows) {
       const r = row.getBoundingClientRect();
       if (r.top >= visibleTop - 0.5 && r.bottom <= visibleBottom + 0.5) whole += 1;
-      else if (!partial && r.top < visibleBottom - 4 && r.bottom > visibleBottom) {
+      // A chapter heading is not a track: a double-click on it plays nothing.
+      else if (!partial && !row.classList.contains("prepare-heading") && r.top < visibleBottom - 4 && r.bottom > visibleBottom) {
         // The playing row's title cell also says "Now playing:" to a screen reader (R4-6).
         const title = (row.querySelector('[data-column="title"]')?.textContent?.trim() ?? "").replace(/^Now playing:\s*/, "");
         partial = {

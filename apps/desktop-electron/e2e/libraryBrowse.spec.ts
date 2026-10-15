@@ -152,7 +152,7 @@ async function importCollection(window: Page, xmlPath: string) {
 
 /** The page's own search box — the shell has one too, on Ctrl+K. */
 function pageSearch(window: Page) {
-  return window.locator(".cp-filter-bar").getByRole("textbox", { name: "Search" });
+  return window.locator(".cp-filter-bar").getByRole("searchbox", { name: "Search" });
 }
 
 /** The titles the table is showing, top to bottom. */

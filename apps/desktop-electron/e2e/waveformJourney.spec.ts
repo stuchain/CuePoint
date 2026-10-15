@@ -289,7 +289,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
         .toBe(true);
 
       // --- 4. the Inspector: the hot cue at its time ------------------------
-      await window.locator(".cp-filter-bar").getByRole("textbox", { name: "Search" }).fill("Bands");
+      await window.locator(".cp-filter-bar").getByRole("searchbox", { name: "Search" }).fill("Bands");
       await window.locator(".track-table__row").filter({ hasText: "Bands" }).first().click();
       const inspector = "[data-testid=inspector-waveform] canvas";
       await expect(window.locator(inspector)).toBeVisible({ timeout: 20_000 });
@@ -307,7 +307,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       const loudness = window.getByTestId("track-fact-loudness");
       await expect(loudness.locator("dd")).toHaveText("−3.5 LUFS");
       await expect(window.getByTestId("inspector-loudness")).toHaveText("Peak −4.3 dBFS");
-      await expect(loudness).toHaveAttribute("title", /^Loudness −3\.5 LUFS · Peak −4\.3 dBFS/);
+      await expect(loudness.locator("dd span:not(.cp-hint)")).toHaveAttribute("title", /^Loudness −3\.5 LUFS · Peak −4\.3 dBFS/);
 
       // --- 5. play a track, and seek by clicking the bar's waveform ---------
       await window.evaluate(

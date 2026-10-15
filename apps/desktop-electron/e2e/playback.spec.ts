@@ -269,7 +269,7 @@ test.describe("Phase 5 end to end", () => {
       // Typing in the library's search box must not touch playback.
       await win.evaluate(() => (window as never as Bridge).cuepoint.player.pause());
       await expect.poll(() => isPaused(win), { timeout: 15_000 }).toBe(true);
-      const search = win.locator(".cp-filter-bar").getByRole("textbox", { name: "Search" });
+      const search = win.locator(".cp-filter-bar").getByRole("searchbox", { name: "Search" });
       await search.click();
       await search.fill("drum and bass");
       await expect(search).toHaveValue("drum and bass");

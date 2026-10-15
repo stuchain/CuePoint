@@ -148,7 +148,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
         "aria-selected",
         "true",
       );
-      await expect(window.getByRole("row").filter({ hasText: "Whole library" })).toContainText("Not matched yet", {
+      await expect(window.getByRole("row").filter({ hasText: "Whole library" })).toHaveAttribute("data-status", "not_matched", {
         timeout: 30_000,
       });
       await expect(window.getByRole("checkbox", { name: "Match Whole library" })).toBeEnabled();
@@ -248,6 +248,12 @@ test.describe("The Clean page (CLEAN-12)", () => {
         await window.reload();
         await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
         await expect(window.getByRole("tab", { name: /^Match/ })).toBeVisible({ timeout: 30_000 });
+        // A reload keeps the history entry the window was opened with, so the match window comes back: close it.
+        const leftOpen = window.getByRole("dialog", { name: "Match on Beatport" });
+        if (await leftOpen.waitFor({ timeout: 3_000 }).then(() => true, () => false)) {
+          await window.keyboard.press("Escape");
+          await expect(leftOpen).toHaveCount(0);
+        }
         expect(
           await window.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--scale").trim()),
         ).toBe(String(scale));
@@ -269,10 +275,10 @@ test.describe("The Clean page (CLEAN-12)", () => {
         await window.getByRole("link", { name: "Library", exact: true }).click();
         await window.getByRole("table", { name: "Library tracks" }).getByText("Present One").first().click();
         await window.getByRole("tab", { name: "Beatport" }).click();
-        await window.getByText("Match on Beatport", { exact: true }).click();
-        const matching = window.getByRole("dialog", { name: "Match tracks" });
+        await window.getByRole("button", { name: "Match on Beatport", exact: true }).first().click();
+        const matching = window.getByRole("dialog", { name: "Match on Beatport" });
         await expect(matching).toBeVisible();
-        const title = matching.getByRole("heading", { name: "Match tracks" });
+        const title = matching.getByRole("heading", { name: "Match on Beatport" });
         const start = matching.getByRole("button", { name: /^Match / });
         expect(await inViewport(title), `title in view at ${scale}x`).toBe(true);
         expect(await inViewport(start), `Match button in view at ${scale}x`).toBe(true);

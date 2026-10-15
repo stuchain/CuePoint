@@ -168,7 +168,7 @@ function reviewRow(window: Page, title: string) {
 
 /** The side panel beside the Review table: one track's candidates. */
 function detailsPanel(window: Page) {
-  return window.getByRole("complementary", { name: "Track details" });
+  return window.getByRole("complementary", { name: /^Candidates for / });
 }
 
 /** Open a track's side panel by clicking its row (not its tick or its preview). */
@@ -217,7 +217,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
           { timeout: 30_000 },
         );
         const journey = window.getByRole("row").filter({ hasText: "Journey" });
-        await expect(journey).toContainText("Not matched yet", { timeout: 15_000 });
+        await expect(journey).toHaveAttribute("data-status", "not_matched", { timeout: 15_000 });
         await window.getByRole("checkbox", { name: "Match Journey" }).check();
         await window.getByRole("button", { name: "Match 1 playlist" }).click();
         await expect(window.getByText("Matching 3 tracks on Beatport.", { exact: true })).toBeVisible({ timeout: 30_000 });

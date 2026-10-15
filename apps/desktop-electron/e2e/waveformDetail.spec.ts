@@ -109,6 +109,12 @@ test.describe("The zoomed waveform above the player (T4)", () => {
     try {
       const window = await ready(app);
       await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setContentSize(1400, 900));
+      // The strip starts hidden on a window under 700 px of content height times the size (1.5× by default: 1,050),
+      // so this test asks for it, as a person who turned it on would.
+      await window.evaluate(() => localStorage.setItem("cuepoint-waveform-detail", "on"));
+      await window.reload();
+      await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
+      await waitForEngine(window);
       await window.evaluate((xmlPath) => window.cuepoint!.startLibraryImport!({ xml_path: xmlPath }), xml);
       await expect
         .poll(
@@ -288,8 +294,13 @@ test.describe("The zoomed waveform above the player (T4)", () => {
     const { xml, file } = writeExport(workspace);
     const app = await launch(userDataDir, cuepointHome);
     try {
-      // No resize: the default 1280x800 window is over the 700 px content threshold.
+      // The strip is on where the window is taller than 700 px times the size (1,050 at the default 1.5×, which is
+      // taller than a 1280x800 window): grow the window to just over it, or skip on a screen that cannot.
       const page = await ready(app);
+      const scale = Number(await page.evaluate(() => document.documentElement.dataset.scale)) || 1;
+      await app.evaluate(({ BrowserWindow }, height) => BrowserWindow.getAllWindows()[0]?.setContentSize(1400, height), Math.ceil(700 * scale) + 40);
+      await page.waitForTimeout(500);
+      test.skip((await page.evaluate(() => innerHeight)) <= 700 * scale, "this screen is too short for a window over the strip's threshold");
       await importAndPlay(page, xml, file);
 
       await expect(page.locator(".cp-detail-strip")).toBeVisible({ timeout: 20_000 });

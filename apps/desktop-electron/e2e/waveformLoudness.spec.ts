@@ -51,7 +51,8 @@ async function expectReading(window: Page, line: string, timeout = 15_000): Prom
     const fact = window.getByTestId("track-fact-loudness");
     const [value, peak] = line.split(" · ");
     await expect(fact.locator("dd")).toHaveText(value!.replace(/^Loudness /, ""), { timeout });
-    expect(await fact.getAttribute("title")).toContain(line);
+    // The hint is the value's own title at rest (the shared Hint).
+    expect(await fact.locator("dd span:not(.cp-hint)").getAttribute("title")).toContain(line);
     // The peak stays drawn under the waveform.
     await expect(window.getByTestId("inspector-loudness")).toHaveText(peak!);
     return;
@@ -210,7 +211,7 @@ async function answers(window: Page, ids: number[]) {
 }
 
 async function inspect(window: Page, title: string) {
-  const search = window.locator(".cp-filter-bar").getByRole("textbox", { name: "Search" });
+  const search = window.locator(".cp-filter-bar").getByRole("searchbox", { name: "Search" });
   await search.fill(title);
   await window.locator(".track-table__row").filter({ hasText: title }).first().click();
   await expect(window.locator("[data-testid=inspector-waveform]")).toBeVisible({ timeout: 20_000 });
@@ -254,7 +255,7 @@ test.describe("Loudness, measured with each waveform (WAVE-08)", () => {
         await inspect(window, track.title);
         await expectReading(window, track.line);
       }
-      await window.locator(".cp-filter-bar").getByRole("textbox", { name: "Search" }).fill("");
+      await window.locator(".cp-filter-bar").getByRole("searchbox", { name: "Search" }).fill("");
 
       // --- the Library's column: the number alone --------------------------
       await window.getByRole("button", { name: "Columns…" }).click();
@@ -368,7 +369,7 @@ test.describe("Loudness, measured with each waveform (WAVE-08)", () => {
       expect(after.map((track) => track.picture)).toEqual(before.map((track) => track.picture));
       expect(after.map((track) => track.loudness)).toEqual(before.map((track) => track.loudness));
       await inspect(window, "Bands");
-      await expect(line).toHaveText("Loudness −3.5 LUFS · Peak −4.3 dBFS", { timeout: 15_000 });
+      await expectReading(window, "Loudness −3.5 LUFS · Peak −4.3 dBFS", 15_000);
     } finally {
       await app.close();
     }

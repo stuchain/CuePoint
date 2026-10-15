@@ -537,7 +537,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await use(win, organize(), "the bar's Organize");
     await choose(win, "Add to Collection…");
     const picker = win.getByRole("dialog");
-    await picker.getByRole("textbox").fill("Organize crate");
+    await picker.getByRole("searchbox").fill("Organize crate");
     await win.keyboard.press("ArrowDown");
     await win.keyboard.press("Enter");
     await expect.poll(() => entriesOf(made.crate), { timeout: 15_000 }).toBe(2);
@@ -545,7 +545,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await pick(win, "Build");
     await use(win, organize(), "the bar's Organize");
     await choose(win, "Add to Set…");
-    await win.getByRole("dialog").getByRole("textbox").fill("Organize set");
+    await win.getByRole("dialog").getByRole("searchbox").fill("Organize set");
     await win.keyboard.press("ArrowDown");
     await win.keyboard.press("Enter");
     await expect
@@ -616,7 +616,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await use(win, treeBar(win).getByRole("button", { name: "Delete", exact: true }), "Delete");
     const confirm = win.getByRole("dialog", { name: /^Delete / });
     await expect(confirm).toBeVisible();
-    await reach(win, confirm.getByRole("button", { name: "Delete", exact: true }), "the confirm's Delete");
+    await reach(win, confirm.getByRole("button", { name: /^Delete / }), "the confirm's Delete");
     await win.keyboard.press("Enter");
     await expect.poll(names, { timeout: 15_000 }).not.toContain("Bar crate renamed");
 
@@ -731,7 +731,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     // Match opens on Playlists (C22): tick the whole library and press Match, none in the header; no window opens.
     await win.getByRole("checkbox", { name: "Match Whole library" }).check();
     await use(win, win.getByRole("button", { name: "Match whole library" }), "Match whole library");
-    await expect(win.getByRole("dialog", { name: "Match tracks" })).toHaveCount(0);
+    await expect(win.getByRole("dialog", { name: "Match on Beatport" })).toHaveCount(0);
     await expect.poll(() => jobsOf(win, "clean_match"), { timeout: 30_000 }).toBeGreaterThan(before);
     // Nothing here reaches Beatport for real: stop what started, and wait until it has stopped,
     // so the next test does not share the engine with a match still winding down.
@@ -750,6 +750,9 @@ test.describe("FLW-1: every action in the table has a visible place that works f
   test("Move up, Move down, Start a chapter here, Repeat after and Remove: Prepare's entry buttons", async () => {
     const setId = await makeSet(win, "Entry buttons", ["Warm One", "Warm Two", "Build", "Peak Jump"]);
     await setInnerSize(app, win);
+    // The buttons are words now (Chapter here, Repeat after, Remove): at the default size the Set pane is too narrow for
+    // all five and shows one Actions ▾ (checked at the end), so the five are looked for in a wider window.
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setContentSize(1800, 900));
     await openSet(win, setId);
     await expect(setRow(win, "Build")).toBeVisible({ timeout: 30_000 });
     const entries = win.getByRole("group", { name: "Selected entries" });
@@ -784,6 +787,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(async () => (await order()).length, { timeout: 15_000 }).toBe(4);
     expect(await order()).not.toContain(first[0]);
     // At twice the size the Set pane has no room even for the glyphs: one Actions ▾ opens the entry's menu.
+    await setInnerSize(app, win);
     await win.evaluate(() => (localStorage.setItem("cuepoint-ui-lab-scale", "2"), localStorage.removeItem("cuepoint-prepare-set-layout-2")));
     await win.reload();
     await expect(setRow(win, "Build")).toBeVisible({ timeout: 30_000 });
@@ -922,7 +926,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
       await reach(win, sources.getByRole("checkbox", { name }), `the ${name} checkbox`);
       await win.keyboard.press("Space");
     }
-    await expect(win.getByRole("status").filter({ hasText: "in 2 playlists" })).toHaveText("4 tracks in 2 playlists", { timeout: 30_000 });
+    await expect(win.getByRole("status").filter({ hasText: "· 2 playlists" })).toHaveText("4 tracks · 2 playlists", { timeout: 30_000 });
     await expect(countOf("8A")).toHaveText("2");
     await expect(countOf("9A")).toHaveText("1");
     await expect(countOf("8B")).toHaveText("1");
@@ -972,15 +976,15 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     // The home: Clean's header.
     await go(win, "#/clean");
     await win.getByRole("tab", { name: "Playlists", exact: true }).click();
-    await expect(win.getByRole("button", { name: /^Match (playlists|\d+ playlists?|the whole library) / })).toBeVisible();
+    await expect(win.getByRole("button", { name: /^Match (playlists|\d+ playlists?|whole library)$/ })).toBeVisible();
 
     // The link: the Library's selection bar.
     await openLibrary(win);
     await pick(win, "Warm One", "Warm Two");
     await use(win, toolbar(win).getByRole("button", { name: "Beatport", exact: true }), "the bar's Beatport");
-    await choose(win, "Match tracks…");
+    await choose(win, "Match on Beatport…");
     await expect(win).toHaveURL(/#\/clean/, { timeout: 15_000 });
-    const matching = win.getByRole("dialog", { name: "Match tracks" });
+    const matching = win.getByRole("dialog", { name: "Match on Beatport" });
     await expect(matching).toBeVisible({ timeout: 15_000 });
     await expect(matching).toContainText("2 tracks");
     await win.keyboard.press("Escape");
@@ -1080,8 +1084,8 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await chooseNode(win, win.getByRole("treeitem", { name: /^Warmup/ }), "the Warmup playlist");
     const keyFilter = win.getByRole("button", { name: /^Key/ }).first();
     await use(win, keyFilter, "the Key filter");
-    const open = win.getByRole("button", { name: "See these on the Keys page" });
-    await use(win, open, "See these on the Keys page");
+    const open = win.getByRole("button", { name: "Open in Keys ›" });
+    await use(win, open, "Open in Keys");
     await expect(win).toHaveURL(/#\/keys/, { timeout: 15_000 });
     await expect(win.getByRole("group", { name: "Sources" }).getByRole("checkbox", { name: "Warmup" })).toBeChecked({ timeout: 15_000 });
   });

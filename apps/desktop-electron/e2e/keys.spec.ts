@@ -134,8 +134,8 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
     const sources = win.getByRole("group", { name: "Sources" });
     await sources.getByRole("checkbox", { name: "Warmup" }).check();
     await sources.getByRole("checkbox", { name: "Peak" }).check();
-    await expect(win.getByRole("status").filter({ hasText: "in 2 playlists" })).toHaveText(
-      "4 tracks in 2 playlists",
+    await expect(win.getByRole("status").filter({ hasText: "· 2 playlists" })).toHaveText(
+      "4 tracks · 2 playlists",
     );
     await expect(countOf("8A")).toHaveText("3");
     await expect(countOf("9A")).toHaveText("1");
@@ -143,8 +143,8 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
 
     // Warmup alone is 8A x2 and 9A x1 (3 tracks).
     await sources.getByRole("checkbox", { name: "Peak" }).uncheck();
-    await expect(win.getByRole("status").filter({ hasText: "in 1 playlist" })).toHaveText(
-      "3 tracks in 1 playlist",
+    await expect(win.getByRole("status").filter({ hasText: "· 1 playlist" })).toHaveText(
+      "3 tracks · 1 playlist",
     );
     await expect(countOf("8A")).toHaveText("2");
     await expect(countOf("9A")).toHaveText("1");

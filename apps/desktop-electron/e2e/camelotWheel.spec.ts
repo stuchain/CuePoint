@@ -219,7 +219,7 @@ test.describe("The Camelot wheel (PAGES-10)", () => {
         .click();
       await expect.poll(() => visibleTitles(window), { timeout: 30_000 }).toEqual(["Track 1", "Track 4"]);
 
-      const search = window.locator(".cp-filter-bar").getByRole("textbox", { name: "Search" });
+      const search = window.locator(".cp-filter-bar").getByRole("searchbox", { name: "Search" });
       await search.fill("Track");
       await expect(search).toHaveValue("Track");
       await expect.poll(() => visibleTitles(window), { timeout: 30_000 }).toEqual(["Track 1", "Track 4"]);
@@ -270,7 +270,7 @@ test.describe("The Camelot wheel (PAGES-10)", () => {
       await wheel.getByRole("button", { name: "Match on Beatport" }).click();
       await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
       // It opens Clean's match window (PAGES-07B); close it before leaving the page.
-      const matchWindow = window.getByRole("dialog", { name: "Match tracks" });
+      const matchWindow = window.getByRole("dialog", { name: "Match on Beatport" });
       await expect(matchWindow).toBeVisible();
       await window.keyboard.press("Escape");
       await expect(matchWindow).toHaveCount(0);

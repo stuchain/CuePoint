@@ -328,7 +328,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await window.getByRole("menuitem", { name: "Organize", exact: true }).click();
       await window.getByRole("menuitem", { name: "Add tag…" }).click();
       const picker = window.getByRole("dialog");
-      await picker.getByLabel("Type to narrow the list").fill("Peak-time");
+      await picker.getByRole("searchbox", { name: /^Search/ }).fill("Peak-time");
       await picker.getByRole("button", { name: /Create/ }).click();
       await expect(picker).toBeHidden({ timeout: 30_000 });
 

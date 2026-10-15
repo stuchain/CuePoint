@@ -78,7 +78,7 @@ function inspector(window: Page) {
 
 /** Search the page for one title and open it in the Inspector. */
 async function inspect(window: Page, title: string) {
-  await window.locator(".cp-filter-bar").getByRole("textbox", { name: "Search" }).fill(title);
+  await window.locator(".cp-filter-bar").getByRole("searchbox", { name: "Search" }).fill(title);
   const row = window.locator(".track-table__row").filter({ hasText: title }).first();
   await expect(row).toBeVisible({ timeout: 30_000 });
   await row.click();
@@ -169,7 +169,7 @@ test.describe("Cue points and beat grids (WAVE-04)", () => {
       const stat = statSync(source);
       utimesSync(source, stat.atime.getTime() / 1000 + 5, stat.mtime.getTime() / 1000 + 5);
 
-      await window.locator(".cp-filter-bar").getByRole("textbox", { name: "Search" }).fill("");
+      await window.locator(".cp-filter-bar").getByRole("searchbox", { name: "Search" }).fill("");
       await window.getByRole("button", { name: /Check for changes/i }).click();
       const dialog = window.getByRole("dialog");
       await expect(dialog).toBeVisible({ timeout: 60_000 });

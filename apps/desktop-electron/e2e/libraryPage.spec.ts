@@ -139,16 +139,19 @@ async function importCollection(window: Page, xmlPath: string) {
  * and 11 at the 1,264 × 735 inner size; Windows and macOS hold one lower (11 and 10) until
  * measured.
  *
+ * Consistency round: every track list has 26px rows at 1× (39px at 1.5×, was 29), and the page margin is 12px,
+ * so Windows measures 7 at the 1,264 × 735 inner size; Linux holds one higher (8) until measured.
+ *
  * The 1,264 × 735 page a Windows window leaves (1,280 × 800 outside, less the frame and the
  * menu bar) is 38px shorter than the Linux one: three whole rows there, with the toolbar
  * on two lines (70px). A third line (103px) leaves two.
  */
 const ON_LINUX = process.platform === "linux";
-const WHOLE_ROWS_LIBRARY_MEASURED = 12;
+const WHOLE_ROWS_LIBRARY_MEASURED = 8;
 const WHOLE_ROWS_LIBRARY = ON_LINUX
   ? WHOLE_ROWS_LIBRARY_MEASURED
   : WHOLE_ROWS_LIBRARY_MEASURED - 1;
-const WHOLE_ROWS_LIBRARY_WINDOWS_INNER = 10;
+const WHOLE_ROWS_LIBRARY_WINDOWS_INNER = 7;
 
 test.describe("The Library page (LIBRARY-11)", () => {
   let userDataDir: string;
@@ -447,8 +450,10 @@ test.describe("The Library page (LIBRARY-11)", () => {
         // As the six groups did before: on two lines the first (the four groups) keeps 40px to
         // spare even beside a 20px scrollbar, and so do the second line's buttons, so a few
         // pixels of a system's fonts or scrollbars cannot wrap either (DEC-217).
+        // The consistency round's button hierarchy and 8px gaps leave the first line 32px beside a 20px scrollbar
+        // (52px without one), so its floor is 30; the second line keeps 40.
         if (lines.length === 2) {
-          expect(lines[0]!.spare, `the first toolbar line's spare at ${label}`).toBeGreaterThanOrEqual(40);
+          expect(lines[0]!.spare, `the first toolbar line's spare at ${label}`).toBeGreaterThanOrEqual(30);
           expect(lines[1]!.spareButtons, `the second toolbar line's spare at ${label}`).toBeGreaterThanOrEqual(40);
         }
         const last = lines[lines.length - 1]!;

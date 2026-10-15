@@ -276,7 +276,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       const bar = window.getByRole("toolbar", { name: "Selected tracks" });
       await bar.getByRole("button", { name: "Beatport", exact: true }).click();
       const beatport = window.getByRole("menu");
-      for (const entry of ["Match tracks…", "Review these matches", "Use Beatport's values…"]) {
+      for (const entry of ["Match on Beatport…", "Review these matches", "Use Beatport's values…"]) {
         await expect(beatport.getByRole("menuitem", { name: entry, exact: true })).toBeVisible();
       }
       await window.keyboard.press("Escape");
@@ -403,7 +403,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await expect(window.getByRole("tab", { name: "Review Whole library", selected: true })).toBeVisible({
         timeout: 15_000,
       });
-      const details = window.getByRole("complementary", { name: "Track details" });
+      const details = window.getByRole("complementary", { name: /^Candidates for / });
       await expect(details.locator(".review-panel__title")).toHaveText("Tone One", { timeout: 15_000 });
 
       // With the cards and the Inspector both full, the window itself
