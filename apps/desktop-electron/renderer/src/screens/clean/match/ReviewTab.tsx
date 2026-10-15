@@ -262,7 +262,7 @@ export function ReviewTab({
         <Button variant="secondary" icon="chevron-left" onClick={onBack}>
           Playlists
         </Button>
-        <strong className="review__name">
+        <strong className="review__name" title={`${name} · ${summaryWords(total, ticked)}`}>
           {name} · {summaryWords(total, ticked)}
         </strong>
         {leftOut && <span className="review__left-out">{leftOut}</span>}

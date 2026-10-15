@@ -337,7 +337,7 @@ body.prepare-resizing {
    it starts hidden. The rows' heights are the Set table's, set inline. */
 .prepare-transition {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.4fr) minmax(0, 1.3fr);
   column-gap: var(--space-sm);
   min-width: 0;
   padding: 0 var(--space-sm) calc(2px * var(--scale));
@@ -892,6 +892,7 @@ body.prepare-resizing {
 .prepare-source__controls,
 .prepare-source__search {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-xs);
   min-width: 0;
@@ -955,6 +956,7 @@ body.prepare-resizing {
   flex: none;
   min-height: var(--control-height);
   padding: 0 var(--space-sm);
+  white-space: nowrap;
   border: var(--control-border-width) solid var(--accent-primary);
   background: var(--accent-primary);
   color: var(--fg-inverse);

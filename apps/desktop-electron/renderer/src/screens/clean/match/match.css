@@ -203,13 +203,34 @@
 
 .review__bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-sm) var(--space-md);
 }
 
+/* The name gives way before the Sync button does: the button never drops to its own line. */
+.review__bar > * {
+  flex: none;
+}
+
+.review__bar > .review__name {
+  flex: 1 1 calc(12ch);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .review__name {
   font-weight: 700;
+}
+
+.review__bar > .review__left-out {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .review__left-out {
@@ -217,7 +238,7 @@
 }
 
 .review__spacer {
-  flex: 1;
+  display: none;
 }
 
 /* The one big green button of a review: what is ticked goes into the files. */
@@ -244,10 +265,12 @@
 }
 
 .review__body {
+  position: relative;
   display: flex;
   flex: 1;
   gap: var(--space-md);
   min-height: 0;
+  container: review-body / inline-size;
 }
 
 .review__table {
@@ -333,11 +356,20 @@
 }
 
 .review-col--status {
-  width: calc(210px * var(--scale));
+  width: calc(130px * var(--scale));
 }
 
+/* Wide enough for the round button and the cell's padding either side, so it is never clipped. */
 .review-col--preview {
-  width: calc(44px * var(--scale));
+  width: calc(var(--control-height) + 2 * var(--space-sm));
+}
+
+.review-row__preview {
+  overflow: visible;
+}
+
+.review-preview {
+  flex: none;
 }
 
 /* The part of a match that differs from your track: a word, never only a colour, in the list's own text. */
@@ -398,6 +430,7 @@
 .review-panel {
   display: flex;
   flex: 0 0 min(42%, calc(520px * var(--scale)));
+  overflow-x: hidden;
   flex-direction: column;
   gap: var(--space-sm);
   min-width: 0;
@@ -568,6 +601,22 @@
 
 .review-panel__search .cp-field {
   flex: 1;
+  min-width: 0;
+}
+
+/* A narrow page has no room for the table and its panel side by side: the panel lies over the
+   table's right side instead, so the table keeps every column and the panel keeps its width. */
+@container review-body (max-width: 720px) {
+  .review-panel {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    z-index: 2;
+    width: min(100%, calc(440px * var(--scale)));
+    max-width: 100%;
+    flex: none;
+    box-shadow: calc(-4px * var(--scale)) 0 0 var(--bg-app);
+  }
 }
 
 .review-panel__actions {
@@ -595,6 +644,9 @@
 }
 
 .review-panel__score-table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   font-family: var(--font-data);
   font-size: var(--control-font-size);

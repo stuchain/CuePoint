@@ -18,7 +18,7 @@ import { Button } from "../../../components/Button";
 import { EmptyState } from "../../../components/EmptyState";
 import { TextField } from "../../../components/TextField";
 import { PixelIcon } from "../../../components/PixelIcon";
-import { matchButtonLabel, type MatchChoice } from "./matchPlaylists";
+import { displayFolderPath, matchButtonLabel, type MatchChoice } from "./matchPlaylists";
 import { playlistStatus, type PlaylistChip } from "./playlistStatus";
 import { WHOLE_LIBRARY_NAME } from "./useCleanPlaylists";
 import "./playlists.css";
@@ -38,12 +38,13 @@ interface PlaylistsViewProps {
 
 /** The folder path before a name, "Techno / ", or nothing for a playlist at the top. */
 function folderPrefix(path: string): string {
-  return path ? `${path} / ` : "";
+  const shown = displayFolderPath(path);
+  return shown ? `${shown} / ` : "";
 }
 
 function matches(playlist: CleanPlaylistStatus, text: string): boolean {
   if (!text) return true;
-  return `${playlist.path} ${playlist.name}`.toLowerCase().includes(text);
+  return `${displayFolderPath(playlist.path)} ${playlist.name}`.toLowerCase().includes(text);
 }
 
 function Chip({ chip }: { chip: PlaylistChip }) {

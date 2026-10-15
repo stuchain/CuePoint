@@ -443,7 +443,7 @@ describe("the caption and its warning (FLW-19)", () => {
     install();
     render(<SetTransition entries={ENTRIES} selectedEntryId={2} onSelect={vi.fn()} shape={SHAPE} />);
     expect(screen.getByTestId("transition-words")).toHaveTextContent(
-      /^No Beatport key: key not checked · 0% BPM$/,
+      /^Keys not checked · 0% BPM$/,
     );
     await drawn("from", "to");
   });

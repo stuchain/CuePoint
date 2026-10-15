@@ -93,7 +93,10 @@ export function shadedTimes(half: TransitionHalf): { inMs: number | null; outMs:
 }
 
 /** Said in place of the keys when either track has none: no check was made (DEC-201). */
-export const NO_BEATPORT_KEY = "No Beatport key: key not checked";
+export const NO_BEATPORT_KEY = "Keys not checked";
+
+/** The whole of it, for the caption's hover: why the keys were not checked. */
+export const NO_BEATPORT_KEY_DETAIL = "No Beatport key: key not checked";
 
 /** "next key up" for a step between neighbors on the wheel, in the key words. */
 function relationWords(

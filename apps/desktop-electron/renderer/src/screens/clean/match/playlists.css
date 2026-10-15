@@ -63,7 +63,11 @@
   padding: var(--space-xs) var(--space-sm);
   border: var(--hairline) solid currentColor;
   font-size: var(--font-size-xs);
-  white-space: nowrap;
+}
+
+/* A name and its folder wrap at any letter, so a long path never widens the table past the page. */
+.playlists__table td:nth-child(2) {
+  overflow-wrap: anywhere;
 }
 
 .playlists__chips {

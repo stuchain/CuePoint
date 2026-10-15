@@ -55,6 +55,8 @@ import { describeSetWarning } from "./setWarnings";
 import {
   END_OF_SET,
   KEYS_CLASH,
+  NO_BEATPORT_KEY,
+  NO_BEATPORT_KEY_DETAIL,
   NO_SELECTION_WORDS,
   captionDetail,
   captionKeys,
@@ -233,7 +235,7 @@ export function SetTransition({
                     className={`prepare-transition__piece${segment === KEYS_CLASH ? " prepare-transition__piece--warning" : ""}`}
                   >
                     {index > 0 && <span aria-hidden="true">{" · "}</span>}
-                    <span className="prepare-transition__segment" title={segment}>
+                    <span className="prepare-transition__segment" title={segment === NO_BEATPORT_KEY ? NO_BEATPORT_KEY_DETAIL : segment}>
                       {keys && index === 0 ? (
                         <>
                           <KeyChip value={keys.from} />

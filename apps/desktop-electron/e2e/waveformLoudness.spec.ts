@@ -307,13 +307,13 @@ test.describe("Loudness, measured with each waveform (WAVE-08)", () => {
       const caption = window.getByTestId("transition-caption");
       // The fixtures carry no Beatport key, so the strip first says the key was not checked (PAGES-09B).
       // The loudness difference is the caption's title, and planned times are not in it (C15d, DEC-249).
-      await expect(words).toHaveText("No Beatport key: key not checked", { timeout: 15_000 });
+      await expect(words).toHaveText("Keys not checked", { timeout: 15_000 });
       await expect(caption).toHaveAttribute("title", /−16\.5 LU means the next track is 16\.5 dB quieter/);
       await expect(window.getByTestId("transition-loudness")).toHaveText([" · −3.5 LUFS", " · −20.0 LUFS"]);
       // Sine into silence: no difference without two values.
       await window.getByTestId("transition-to").click();
       await expect(window.getByTestId("transition-loudness")).toHaveText([" · −20.0 LUFS"]);
-      await expect(words).toHaveText("No Beatport key: key not checked");
+      await expect(words).toHaveText("Keys not checked");
       await expect(caption).not.toHaveAttribute("title", / LU means /);
     } finally {
       await app.close();

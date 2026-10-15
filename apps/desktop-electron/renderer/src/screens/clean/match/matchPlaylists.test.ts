@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { CleanPlaylistCounts, CleanPlaylistStatus } from "../../../api/cuepointBridge.types";
-import { matchButtonLabel, matchRequest } from "./matchPlaylists";
+import { displayFolderPath, matchButtonLabel, matchRequest } from "./matchPlaylists";
 
 const COUNTS: CleanPlaylistCounts = {
   track_count: 10,
@@ -78,5 +78,16 @@ describe("matchButtonLabel", () => {
     expect(matchButtonLabel({ whole: true })).toBe("Match whole library");
     expect(matchButtonLabel({ whole: false, playlists: [playlist(1, "a")] })).toBe("Match 1 playlist");
     expect(matchButtonLabel({ whole: false, playlists: [playlist(1, "a"), playlist(2, "b")] })).toBe("Match 2 playlists");
+  });
+});
+
+describe("displayFolderPath", () => {
+  it("drops Rekordbox's ROOT container and keeps real folders", () => {
+    expect(displayFolderPath("ROOT")).toBe("");
+    expect(displayFolderPath("ROOT/Gigs")).toBe("Gigs");
+    expect(displayFolderPath("ROOT / Gigs / Friday")).toBe("Gigs / Friday");
+    expect(displayFolderPath("Gigs/Friday")).toBe("Gigs / Friday");
+    expect(displayFolderPath("Gigs/ROOT")).toBe("Gigs / ROOT");
+    expect(displayFolderPath("")).toBe("");
   });
 });

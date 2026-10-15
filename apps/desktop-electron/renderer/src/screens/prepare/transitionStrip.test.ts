@@ -161,7 +161,7 @@ describe("the caption (FLW-19, C15d)", () => {
       ...SHAPE,
       entries: SHAPE.entries.map((e) => (e.entry_id === E2 ? { ...e, key: null, camelot: null } : e)),
     };
-    expect(NO_BEATPORT_KEY).toBe("No Beatport key: key not checked");
+    expect(NO_BEATPORT_KEY).toBe("Keys not checked");
     expect(captionFrom(E1, keyless)).toEqual([NO_BEATPORT_KEY, "+1.6% BPM"]);
   });
 

@@ -41,3 +41,17 @@ export function matchButtonLabel(choice: MatchChoice | null): string {
   const count = choice.playlists.length;
   return `Match ${count.toLocaleString()} ${count === 1 ? "playlist" : "playlists"}`;
 }
+
+/**
+ * A playlist's folder path as shown: without Rekordbox's own `ROOT` container, which wraps every
+ * export and is not a folder the user made. "ROOT" alone is the top level (nothing to show);
+ * "ROOT / Gigs" is "Gigs". A folder somewhere deeper that happens to be called ROOT is kept.
+ */
+export function displayFolderPath(path: string): string {
+  const parts = path
+    .split("/")
+    .map((part) => part.trim())
+    .filter((part) => part !== "");
+  if (parts[0] === "ROOT") parts.shift();
+  return parts.join(" / ");
+}
