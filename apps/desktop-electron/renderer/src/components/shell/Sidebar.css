@@ -75,8 +75,25 @@
   padding: var(--space-xs);
 }
 
-.cp-sidebar__brand:hover .cp-sidebar__logo {
+/*
+ * The app's own icon. assets/cuepoint-icon.png is derived from build/icon.png (its 64-pixel art
+ * grid, nearest-neighbour, source untouched). 24px x scale is not a whole multiple of 64, so it is
+ * scaled smoothly rather than pixelated, which would make uneven blocks.
+ */
+.cp-sidebar__logo-img {
+  display: block;
+  width: round(nearest, calc(24px * var(--scale)), 1px);
+  height: round(nearest, calc(24px * var(--scale)), 1px);
+}
+
+.cp-sidebar__brand:hover .cp-sidebar__brand-name {
   color: var(--accent-info);
+}
+
+/* The logo's box is the image, not the icon size. */
+.cp-sidebar__icon.cp-sidebar__logo {
+  width: auto;
+  height: auto;
 }
 
 .cp-sidebar__brand:focus-visible {

@@ -84,9 +84,11 @@ afterEach(() => {
 });
 
 describe("engine state", () => {
-  it("says Ready when connected, and leaves the version out (STR-1)", async () => {
+  it("shows nothing when ready, but still tells a screen reader (STR-1)", async () => {
     render(<StatusStrip />);
-    expect(await screen.findByText("Ready")).toBeInTheDocument();
+    const ready = await screen.findByText("Ready");
+    expect(ready).toHaveClass("cp-visually-hidden");
+    expect(ready.closest("[role='status']")).not.toBeNull();
     expect(screen.queryByText(/1\.0\.0/)).not.toBeInTheDocument();
   });
 
@@ -98,6 +100,7 @@ describe("engine state", () => {
     const text = await screen.findByText("Stopped");
     expect(text).toHaveAttribute("title", "Engine not running");
     expect(text).toHaveClass("cp-status__engine--error");
+    expect(text).not.toHaveClass("cp-visually-hidden");
     expect(screen.queryByText(/Engine not running/)).not.toBeInTheDocument();
   });
 
@@ -111,7 +114,8 @@ describe("engine state", () => {
 
     render(<StatusStrip />);
 
-    expect(await screen.findByText("Starting up…")).toBeInTheDocument();
+    const starting = await screen.findByText("Starting up…");
+    expect(starting).not.toHaveClass("cp-visually-hidden");
     expect(screen.queryByText("Ready")).not.toBeInTheDocument();
     expect(screen.queryByText(/Stopped/)).not.toBeInTheDocument();
   });

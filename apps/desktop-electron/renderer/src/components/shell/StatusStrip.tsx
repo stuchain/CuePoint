@@ -231,10 +231,11 @@ export function StatusStrip() {
       */}
       <div className="cp-status" data-finished={finished > 0 ? finished % 2 : undefined}>
         <span className="cp-status__live" role="status" aria-live="polite">
+        {/* Ready is not drawn (the strip is quiet when all is well); a screen reader still hears it. */}
         <span
           className={`cp-status__engine ${
             connected
-              ? "cp-status__engine--ok"
+              ? "cp-status__engine--ok cp-visually-hidden"
               : reconnecting || starting
                 ? "cp-status__engine--reconnecting"
                 : "cp-status__engine--error"

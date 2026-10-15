@@ -592,22 +592,6 @@ const logo = [
   "............",
 ];
 
-/** The Camelot wheel (HDR-4): a ring cut into quarters, the way the wheel is divided. */
-const wheel = [
-  "....####....",
-  "..##.##.##..",
-  ".##..##..##.",
-  ".#...##...#.",
-  ".#...##...#.",
-  "############",
-  "############",
-  ".#...##...#.",
-  ".#...##...#.",
-  ".##..##..##.",
-  "..##.##.##..",
-  "....####....",
-];
-
 /** A magnifier, for the sidebar's Search button (K8): a ring and its handle running down to the right. */
 const search = [
   "............",
@@ -752,8 +736,6 @@ export const PIXEL_ICONS = {
   columns,
   close,
   logo,
-  // HDR-4: the Camelot wheel button.
-  wheel,
   // K8: the sidebar's Search button.
   search,
 } as const satisfies Record<string, readonly string[]>;

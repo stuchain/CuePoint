@@ -5,27 +5,35 @@
   align-items: center;
 }
 
+/* A small bordered button: the mini coloured ring, then the word "Wheel". */
 .cp-wheel-button__button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: var(--control-height);
+  gap: var(--space-xs);
   min-height: var(--control-height);
-  padding: 0;
+  padding: 0 var(--space-sm);
   background: var(--bg-app);
   border: var(--control-border-width) solid var(--border-control);
-  color: var(--fg-primary);
+  color: var(--fg-secondary);
+  font: inherit;
+  font-size: var(--font-size-sm);
   cursor: pointer;
 }
 
-.cp-wheel-button__button .cp-pixel-icon {
+.cp-wheel-button__ring {
+  display: block;
+  flex: none;
   width: var(--icon-size);
   height: var(--icon-size);
+  fill: none;
+  stroke-width: 5;
 }
 
 .cp-wheel-button__button:hover,
 .cp-wheel-button__button[aria-expanded="true"] {
   background: var(--bg-panel-alt);
+  color: var(--fg-primary);
 }
 
 .cp-wheel-button__button:focus-visible {

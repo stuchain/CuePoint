@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useId, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
+import appIcon from "../../assets/cuepoint-icon.png";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
 import {
@@ -80,7 +81,7 @@ function Brand({ collapsed }: { collapsed: boolean }) {
       title="CuePoint"
     >
       <span className="cp-sidebar__icon cp-sidebar__logo" aria-hidden>
-        <PixelIcon name="logo" />
+        <img className="cp-sidebar__logo-img" src={appIcon} alt="" draggable={false} />
       </span>
       {!collapsed && <span className="cp-sidebar__brand-name">CuePoint</span>}
     </Link>

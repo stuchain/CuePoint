@@ -425,7 +425,8 @@ describe("Sidebar", () => {
       const brand = within(nav()).getByRole("link", { name: "CuePoint" });
       expect(brand).toHaveAttribute("href", "/library");
       expect(within(brand).getByText("CuePoint")).toBeInTheDocument();
-      expect(brand.querySelector("svg[data-icon='logo']")).not.toBeNull();
+      expect(brand.querySelector("img.cp-sidebar__logo-img")).not.toBeNull();
+      expect(brand.querySelector("svg[data-icon='logo']")).toBeNull();
       // A brand link is not a destination: Library alone is lit on /library.
       expect(brand).not.toHaveAttribute("aria-current");
     });
@@ -436,7 +437,8 @@ describe("Sidebar", () => {
       await user.click(toggle());
       const brand = within(nav()).getByRole("link", { name: "CuePoint" });
       expect(within(brand).queryByText("CuePoint")).not.toBeInTheDocument();
-      expect(brand.querySelector("svg[data-icon='logo']")).not.toBeNull();
+      expect(brand.querySelector("img.cp-sidebar__logo-img")).not.toBeNull();
+      expect(brand.querySelector("svg[data-icon='logo']")).toBeNull();
     });
   });
 
