@@ -2133,6 +2133,412 @@ def troubled(engine, tmp_path) -> Dict[str, int]:
 
 
 @pytest.mark.unit
+class TestSyncingAReview:
+    """Sync: a read-only preview, then one job that writes the files and, for what it
+    wrote, accepts the ticked tracks and copies the values, all under one batch."""
+
+    ALL = {
+        "write_key": False,
+        "write_genre": True,
+        "write_label": True,
+        "write_year": True,
+        "write_bpm": True,
+        "write_comment": False,
+        "embed_missing_artwork": False,
+        "keep_existing": False,
+    }
+
+    def only(self, *names: str, keep: bool = False) -> Dict[str, Any]:
+        options = {key: False for key in self.ALL}
+        for name in names:
+            options[f"write_{name}"] = True
+        options["keep_existing"] = keep
+        return options
+
+    @pytest.fixture
+    def ticked(self, tmp_path):
+        """Two real MP3s matched with certainty (so ticked): ``first`` and ``second``."""
+        paths = [
+            audio_copy(tmp_path / "music", "mp3", f"sync{number}.mp3")
+            for number in range(2)
+        ]
+        ids = add_tracks(
+            *[
+                track(
+                    f"Sync{number}",
+                    file_path=str(path),
+                    genre="Deep House",
+                    label="Rekordbox Label",
+                    bpm=120.0,
+                    year=1999,
+                )
+                for number, path in enumerate(paths)
+            ]
+        )
+        for number, track_id in enumerate(ids):
+            attempt(
+                track_id,
+                candidate(
+                    300 + number,
+                    score=99.0,
+                    genre="Techno",
+                    label="Drumcode",
+                    bpm="124",
+                    release_year=2020,
+                ),
+            )
+        record_files(
+            *[
+                TrackFileStatus(
+                    track_id, FILE_PRESENT, str(path), NOW, path.stat().st_size
+                )
+                for track_id, path in zip(ids, paths)
+            ]
+        )
+        return ids, paths
+
+    def preview(self, base: str, ids: List[int]) -> Dict[str, Any]:
+        return ok(
+            post(
+                base,
+                "/api/v1/clean/sync-preview",
+                {"selection": ids_selection(*ids), "options": self.ALL},
+            )
+        )["preview"]
+
+    def sync(
+        self, base: str, store: JobStore, ids: List[int], options: Dict[str, Any]
+    ) -> Job:
+        preview = self.preview(base, ids)
+        started = ok(
+            post(
+                base,
+                "/api/v1/clean/sync",
+                {"preview_id": preview["preview_id"], "options": options},
+            ),
+            202,
+        )
+        return finished(store, started["job_id"])
+
+    def file_value(self, path: Path, name: str) -> Optional[str]:
+        from cuepoint.data.tag_fields import display_value, read_tag_fields
+
+        return display_value(read_tag_fields(str(path)).value(name))
+
+    def layer(self, track_id: int) -> Any:
+        return resolve("IMetadataService").get(track_id)
+
+    def test_the_preview_counts_what_would_change_and_writes_nothing(
+        self, engine, ticked
+    ):
+        ids, paths = ticked
+        before = [path.read_bytes() for path in paths]
+
+        preview = self.preview(engine, ids)
+
+        # The match's values are laid over what the tracks show, so every field counts.
+        assert preview["files"] == 2
+        assert preview["fields"]["genre"] == 2
+        assert preview["fields"]["bpm"] == 2
+        assert preview["fields"]["label"] == 2
+        assert preview["fields"]["year"] == 2
+        # Nothing was written: not to a file, not to CuePoint's own values, not a decision.
+        assert [path.read_bytes() for path in paths] == before
+        for track_id in ids:
+            record = self.layer(track_id)
+            assert record is None or all(
+                getattr(record, name) is None
+                for name in ("genre", "label", "bpm", "year")
+            )
+            state = resolve("IMatchRepository").get_match(track_id)
+            assert state.decided_by == "auto"
+
+    def test_the_preview_keeps_the_key_the_track_already_shows(self, engine, tmp_path):
+        path = audio_copy(tmp_path / "music", "mp3", "keyed.mp3")
+        [track_id] = add_tracks(track("Keyed", file_path=str(path), key="Gm"))
+        resolve("IMetadataService").set_override(track_id, "key", "Gm")
+        attempt(track_id, candidate(310, score=80.0, key="A min"))
+        record_files(
+            TrackFileStatus(track_id, FILE_PRESENT, str(path), NOW, path.stat().st_size)
+        )
+        options = {**self.ALL, "write_key": True}
+
+        preview = ok(
+            post(
+                engine,
+                "/api/v1/clean/sync-preview",
+                {"selection": ids_selection(track_id), "options": options},
+            )
+        )["preview"]
+
+        # The person's own key (Gm) wins over the match's (Am); without one, the match's would show.
+        [change] = preview["changes"]
+        assert change["fields"]["key"]["to"] == "Gm"
+
+    def test_only_the_ticked_fields_reach_the_files_and_the_layer(
+        self, engine, store, ticked
+    ):
+        ids, paths = ticked
+
+        job = self.sync(engine, store, ids, self.only("genre"))
+
+        assert job.state == JobState.SUCCEEDED, job.error
+        for track_id, path in zip(ids, paths):
+            assert self.file_value(path, "genre") == "Techno"
+            assert self.file_value(path, "bpm") is None
+            assert self.file_value(path, "label") is None
+            record = self.layer(track_id)
+            assert record.genre == "Techno"
+            # What was not ticked is untouched in CuePoint's own values too.
+            assert record.bpm is None and record.label is None and record.year is None
+            state = resolve("IMatchRepository").get_match(track_id)
+            assert (state.state, state.decided_by) == ("accepted", "user")
+        assert job.result["synced"] == {"tracks": 2, "values": 2, "batch_id": job.id}
+
+    def test_a_value_you_typed_stays_unless_it_is_ticked_and_written(
+        self, engine, store, ticked
+    ):
+        ids, paths = ticked
+        resolve("IMetadataService").set_override(ids[0], "genre", "Mine")
+
+        job = self.sync(engine, store, ids, self.only("bpm"))
+        assert job.state == JobState.SUCCEEDED, job.error
+        # Genre was not ticked: the typed one is still there, and the file has none.
+        assert self.layer(ids[0]).genre == "Mine"
+        assert self.file_value(paths[0], "genre") is None
+
+        job = self.sync(engine, store, ids, self.only("genre"))
+        assert job.state == JobState.SUCCEEDED, job.error
+        # Ticked and written: the match's value replaces it, in the file and in the layer alike.
+        assert self.file_value(paths[0], "genre") == "Techno"
+        assert self.layer(ids[0]).genre == "Techno"
+
+    def test_a_field_a_file_keeps_is_not_copied(self, engine, store, ticked):
+        from mutagen.id3 import ID3, TCON
+
+        ids, paths = ticked
+        tags = ID3()
+        tags.add(TCON(encoding=3, text="Held"))
+        tags.save(str(paths[1]))
+        resolve("IMetadataService").set_override(ids[1], "genre", "Mine")
+
+        job = self.sync(engine, store, ids, self.only("genre", keep=True))
+
+        assert job.state == JobState.SUCCEEDED, job.error
+        # The first file had no genre: written, so copied.
+        assert self.file_value(paths[0], "genre") == "Techno"
+        assert self.layer(ids[0]).genre == "Techno"
+        # The second kept its own, so nothing was written and nothing was copied: the layer
+        # still holds what it held, and the files and the values agree.
+        assert self.file_value(paths[1], "genre") == "Held"
+        assert self.layer(ids[1]).genre == "Mine"
+        assert job.result["synced"]["values"] == 1
+
+    def test_a_write_that_fails_leaves_the_values_and_decisions_alone(
+        self, engine, store, ticked, monkeypatch
+    ):
+        ids, paths = ticked
+        before = [path.read_bytes() for path in paths]
+
+        from cuepoint.services.tag_write_service import TagWriteService
+
+        def refuse(
+            self: Any,
+            planned: Any,
+            options: Any,
+            job_id: Any,
+            tally: Any,
+            *a: Any,
+            **k: Any,
+        ) -> None:
+            tally.failed += 1
+
+        monkeypatch.setattr(TagWriteService, "_write_file", refuse)
+
+        job = self.sync(engine, store, ids, self.only("genre", "bpm"))
+
+        assert [path.read_bytes() for path in paths] == before
+        assert job.result["written"] == 0
+        for track_id in ids:
+            record = self.layer(track_id)
+            assert record is None or (record.genre is None and record.bpm is None)
+            assert resolve("IMatchRepository").get_match(track_id).decided_by == "auto"
+
+    def test_a_sync_that_cannot_start_writes_nothing(self, engine, ticked):
+        ids, _ = ticked
+        refused(
+            post(
+                engine,
+                "/api/v1/clean/sync",
+                {"preview_id": "nope", "options": self.only("genre")},
+            ),
+            404,
+            "TAG_WRITE_PREVIEW_NOT_FOUND",
+        )
+        for track_id in ids:
+            assert resolve("IMatchRepository").get_match(track_id).decided_by == "auto"
+
+    def test_undoing_the_save_restores_the_files_and_reverts_the_values(
+        self, engine, store, ticked
+    ):
+        ids, paths = ticked
+        before = [path.read_bytes() for path in paths]
+        job = self.sync(engine, store, ids, self.only("genre", "bpm"))
+        assert job.state == JobState.SUCCEEDED, job.error
+        assert self.layer(ids[0]).genre == "Techno"
+
+        undo = ok(post(engine, "/api/v1/clean/tags/restore", {"job_id": job.id}), 202)
+        restored = finished(store, undo["job_id"])
+
+        assert restored.state == JobState.SUCCEEDED, restored.error
+        assert restored.result["values_reverted"] > 0
+        for track_id, path, bytes_before in zip(ids, paths, before):
+            assert self.file_value(path, "genre") is None
+            assert path.read_bytes() != b""
+            record = self.layer(track_id)
+            assert record is None or (record.genre is None and record.bpm is None)
+            # The decision goes back too: the track is the matcher's own again.
+            assert resolve("IMatchRepository").get_match(track_id).decided_by == "auto"
+        assert bytes_before is not None
+
+    def test_a_restore_of_an_ordinary_save_has_no_values_to_revert(
+        self, engine, store, audio
+    ):
+        started = ok(
+            post(
+                engine,
+                "/api/v1/clean/tags/preview",
+                {"selection": ids_selection(*audio), "options": KEY_ONLY},
+            )
+        )["preview"]
+        write = ok(
+            post(
+                engine,
+                "/api/v1/clean/tags/write",
+                {"preview_id": started["preview_id"]},
+            ),
+            202,
+        )
+        finished(store, write["job_id"])
+
+        undo = ok(
+            post(engine, "/api/v1/clean/tags/restore", {"job_id": write["job_id"]}),
+            202,
+        )
+
+        assert finished(store, undo["job_id"]).result["values_reverted"] == 0
+
+
+@pytest.mark.unit
+class TestTickingAReviewAsAWhole:
+    def review_run(self, ids: List[int]) -> str:
+        resolve("IMatchJobRepository").create(
+            "tick-run", ids, rematch=False, selected=len(ids), created_at=NOW
+        )
+        return "tick-run"
+
+    def test_tick_all_does_not_accept_a_proposal_the_guards_turned_down(self, engine):
+        sure, guarded = add_tracks(track("TickSure"), track("TickGuarded"))
+        attempt(sure, candidate(400, score=99.0))
+        attempt(guarded, candidate(401, score=80.0, guard_ok=False))
+        run = self.review_run([sure, guarded])
+        ok(
+            post(
+                engine,
+                "/api/v1/clean/match/ticks",
+                {"ticked": False, "scope": {"job_id": run}},
+            )
+        )
+
+        answer = ok(
+            post(
+                engine,
+                "/api/v1/clean/match/ticks",
+                {"ticked": True, "scope": {"job_id": run}},
+            )
+        )
+
+        assert answer["changed"] == 1 and answer["skipped"] == 1
+        assert resolve("IMatchRepository").get_match(sure).state == "accepted"
+        assert resolve("IMatchRepository").get_match(guarded).state == "needs_review"
+        # Named on its own, it can be ticked.
+        ok(
+            post(
+                engine,
+                "/api/v1/clean/match/ticks",
+                {"ticked": True, "track_ids": [guarded]},
+            )
+        )
+        assert resolve("IMatchRepository").get_match(guarded).state == "accepted"
+
+    def test_ticking_is_refused_while_a_match_runs(self, engine, store):
+        [one] = add_tracks(track("TickBusy"))
+        attempt(one, candidate(410, score=99.0))
+        released = hold(store, "clean_match")
+        try:
+            refused(
+                post(
+                    engine,
+                    "/api/v1/clean/match/ticks",
+                    {"ticked": False, "track_ids": [one]},
+                ),
+                409,
+                "MATCH_RUNNING",
+            )
+        finally:
+            released.set()
+
+    def test_a_long_tick_runs_as_a_job_and_names_its_batch(
+        self, engine, store, monkeypatch
+    ):
+        from cuepoint.services import batch_service
+
+        monkeypatch.setattr(batch_service, "BATCH_JOB_THRESHOLD", 1)
+        ids = add_tracks(track("TickJobA"), track("TickJobB"), track("TickJobC"))
+        for number, track_id in enumerate(ids):
+            attempt(track_id, candidate(420 + number, score=99.0))
+        run = self.review_run(ids)
+
+        started = ok(
+            post(
+                engine,
+                "/api/v1/clean/match/ticks",
+                {"ticked": False, "scope": {"job_id": run}},
+            ),
+            202,
+        )
+
+        job = finished(store, started["job_id"])
+        assert job.state == JobState.SUCCEEDED, job.error
+        assert job.result["changed"] == 3
+        assert job.result["batch_id"] == started["batch_id"]
+        ok(
+            post(
+                engine,
+                "/api/v1/library/revert/batch",
+                {"batch_id": started["batch_id"]},
+            )
+        )
+
+    def test_a_decision_a_newer_search_disagrees_with_is_check_and_marked(self, engine):
+        [one] = add_tracks(track("TickDisputed"))
+        attempt(one, candidate(430, score=99.0, title="First"))
+        resolve("IMatchStateService").accept(
+            one, resolve("IMatchRepository").get_match(one).candidate_id
+        )
+        attempt(one, candidate(431, score=99.0, title="Another"))
+        run = self.review_run([one])
+
+        row = ok(get(engine, "/api/v1/clean/match/review", job_id=run))["tracks"][0]
+
+        assert (row["status"], row["disputed"], row["ticked"]) == (
+            "to_check",
+            True,
+            True,
+        )
+
+
+@pytest.mark.unit
 class TestHealth:
     def test_every_count_equals_the_librarys_count_of_its_rules(self, engine, troubled):
         report = ok(get(engine, "/api/v1/clean/health"))
@@ -2885,7 +3291,7 @@ def failed_attempt(track_id: int, message: str = "Beatport could not be reached"
 
 @pytest.mark.unit
 class TestMatchReview:
-    """Every track of a run with where it stands, for one list to decide from."""
+    """Every track of a run with where it stands and whether it is ticked, for one table."""
 
     def run_of(self, ids: List[int], job_id: str = "review-run") -> str:
         resolve("IMatchJobRepository").create(
@@ -2901,15 +3307,15 @@ class TestMatchReview:
         return job_id
 
     def five_ways(self) -> Tuple[str, Dict[str, int]]:
-        """One run holding a track in each of the five places a track can be."""
+        """One run holding a track in each place a track can be, and one the guards refused."""
         ids = add_tracks(
             track("Sure", title="Sure Thing", bpm=124.0),
             track("Check", title="Physical", bpm=120.0, key="8A"),
             track("Nothing"),
             track("Broken"),
-            track("Decided"),
+            track("Guarded"),
         )
-        sure, check, nothing, broken, decided = ids
+        sure, check, nothing, broken, guarded = ids
         attempt(sure, candidate(1, score=99.0, title="Sure Thing", bpm="124"))
         attempt(
             check,
@@ -2923,117 +3329,240 @@ class TestMatchReview:
         )
         attempt(nothing, winner=None)
         failed_attempt(broken)
-        attempt(decided, candidate(3, score=80.0, title="Decided"))
-        resolve("IMatchStateService").accept(
-            decided, resolve("IMatchRepository").get_match(decided).candidate_id
-        )
+        attempt(guarded, candidate(3, score=80.0, guard_ok=False))
         return self.run_of(ids), dict(
-            sure=sure, check=check, nothing=nothing, broken=broken, decided=decided
+            sure=sure, check=check, nothing=nothing, broken=broken, guarded=guarded
         )
 
-    def test_every_track_says_where_it_stands(self, engine):
+    def review(self, engine, job_id: str, **params: Any) -> Dict[str, Any]:
+        return ok(get(engine, "/api/v1/clean/match/review", job_id=job_id, **params))
+
+    def row(self, engine, job_id: str, track_id: int) -> Dict[str, Any]:
+        rows = self.review(engine, job_id)["tracks"]
+        return next(entry for entry in rows if entry["track_id"] == track_id)
+
+    def tick(self, engine, ticked: bool, **body: Any) -> Dict[str, Any]:
+        return ok(post(engine, "/api/v1/clean/match/ticks", {"ticked": ticked, **body}))
+
+    def test_every_track_says_where_it_stands_and_whether_it_is_ticked(self, engine):
         job_id, ids = self.five_ways()
 
-        payload = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))
+        payload = self.review(engine, job_id)
 
         by_track = {row["track_id"]: row for row in payload["tracks"]}
         assert {
-            name: by_track[track_id]["status"] for name, track_id in ids.items()
+            name: (by_track[track_id]["status"], by_track[track_id]["ticked"])
+            for name, track_id in ids.items()
         } == {
-            "sure": "matched",
-            "check": "to_check",
-            "nothing": "not_found",
-            "broken": "search_failed",
-            "decided": "done",
+            "sure": ("matched", True),
+            # A proposal is ticked while its guards passed, and not when they did not.
+            "check": ("to_check", True),
+            "nothing": ("not_found", False),
+            "broken": ("search_failed", False),
+            "guarded": ("to_check", False),
         }
         assert payload["counts"] == {
-            "to_check": 1,
+            "matched": 1,
+            "to_check": 2,
             "not_found": 1,
             "search_failed": 1,
-            "matched": 1,
-            "done": 1,
         }
+        assert payload["ticked"] == 2
         assert payload["total"] == 5
         assert payload["job_id"] == job_id
 
     def test_a_track_to_check_names_its_match_and_what_differs(self, engine):
         job_id, ids = self.five_ways()
 
-        row = next(
-            entry
-            for entry in ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))[
-                "tracks"
-            ]
-            if entry["track_id"] == ids["check"]
-        )
+        row = self.row(engine, job_id, ids["check"])
 
-        assert row["title"] == "Check" or row["title"] == "Physical"
         assert row["candidate"]["title"] == "Physical (Extended Mix)"
         assert row["candidate"]["id"] > 0
         assert row["candidate"]["mix"] == "Extended Mix"
+        assert row["tickable"] is True
         assert "bpm" in row["differing"]
         assert "key" not in row["differing"]  # 8A is A minor
 
-    def test_a_track_nothing_was_found_for_has_no_match_to_show(self, engine):
+    def test_a_track_nothing_was_found_for_has_no_match_and_cannot_be_ticked(
+        self, engine
+    ):
         job_id, ids = self.five_ways()
 
-        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
-        nothing = next(entry for entry in rows if entry["track_id"] == ids["nothing"])
+        nothing = self.row(engine, job_id, ids["nothing"])
 
         assert nothing["candidate"] is None
         assert nothing["differing"] == []
+        assert nothing["tickable"] is False
 
-    def test_a_decided_track_says_what_was_decided(self, engine):
+    def test_a_row_is_a_plain_shape(self, engine):
+        job_id, _ = self.five_ways()
+
+        row = self.review(engine, job_id)["tracks"][0]
+
+        assert set(row) == {
+            "track_id",
+            "title",
+            "artist",
+            "status",
+            "ticked",
+            "disputed",
+            "tickable",
+            "cursor",
+            "candidate",
+            "differing",
+        }
+
+    def test_unticking_a_match_keeps_its_status_and_its_candidate(self, engine):
         job_id, ids = self.five_ways()
-        resolve("IMatchStateService").reject(ids["check"])
 
-        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
-        decisions = {entry["track_id"]: entry["decision"] for entry in rows}
+        answer = self.tick(engine, False, track_ids=[ids["sure"]])
 
-        assert decisions[ids["decided"]] == "accepted"
-        assert decisions[ids["check"]] == "rejected"
-        assert decisions[ids["sure"]] is None
+        assert (answer["changed"], answer["skipped"]) == (1, 0)
+        row = self.row(engine, job_id, ids["sure"])
+        # The refused match is still the one shown, struck through by the table.
+        assert (row["status"], row["ticked"]) == ("matched", False)
+        assert row["candidate"]["title"] == "Sure Thing"
+        state = resolve("IMatchRepository").get_match(ids["sure"])
+        assert (state.state, state.decided_by) == ("rejected", "user")
+        assert self.review(engine, job_id)["ticked"] == 1
 
-    def test_leaving_a_not_found_track_unmatched_makes_it_done(self, engine):
+    def test_ticking_it_again_accepts_the_same_candidate(self, engine):
         job_id, ids = self.five_ways()
-        ok(
+        before = self.row(engine, job_id, ids["sure"])["candidate"]["id"]
+        self.tick(engine, False, track_ids=[ids["sure"]])
+
+        self.tick(engine, True, track_ids=[ids["sure"]])
+
+        row = self.row(engine, job_id, ids["sure"])
+        assert (row["status"], row["ticked"]) == ("matched", True)
+        assert row["candidate"]["id"] == before
+        state = resolve("IMatchRepository").get_match(ids["sure"])
+        assert (state.state, state.decided_by) == ("accepted", "user")
+
+    def test_a_proposal_the_guards_refused_can_be_ticked_by_choice(self, engine):
+        job_id, ids = self.five_ways()
+
+        self.tick(engine, True, track_ids=[ids["guarded"]])
+
+        row = self.row(engine, job_id, ids["guarded"])
+        assert (row["status"], row["ticked"]) == ("matched", True)
+
+    def test_a_track_with_no_match_cannot_be_ticked_and_is_left_alone(self, engine):
+        job_id, ids = self.five_ways()
+
+        answer = self.tick(engine, True, track_ids=[ids["nothing"], ids["broken"]])
+
+        assert (answer["changed"], answer["skipped"]) == (0, 2)
+        assert answer["batch_id"] is None
+        assert self.row(engine, job_id, ids["broken"])["status"] == "search_failed"
+
+    def test_a_track_already_as_asked_writes_nothing(self, engine):
+        job_id, ids = self.five_ways()
+
+        answer = self.tick(engine, True, track_ids=[ids["sure"]])
+
+        assert (answer["changed"], answer["batch_id"]) == (0, None)
+        state = resolve("IMatchRepository").get_match(ids["sure"])
+        assert state.decided_by == "auto"
+
+    def test_a_whole_review_is_ticked_or_unticked_at_once(self, engine):
+        job_id, ids = self.five_ways()
+
+        off = self.tick(engine, False, scope={"job_id": job_id})
+
+        assert off["changed"] == 2  # the two that were ticked
+        assert self.review(engine, job_id)["ticked"] == 0
+        on = self.tick(engine, True, scope={"job_id": job_id})
+        # Every track with a match, except the proposal the guards turned down (ticked only
+        # by naming it); those with no match are skipped too.
+        assert (on["changed"], on["skipped"]) == (2, 3)
+        assert self.review(engine, job_id)["ticked"] == 2
+
+    def test_one_batch_names_the_decisions_a_tick_made(self, engine):
+        job_id, ids = self.five_ways()
+
+        answer = self.tick(engine, False, scope={"job_id": job_id})
+
+        assert answer["batch_id"]
+        revert = ok(
             post(
                 engine,
-                "/api/v1/clean/decide",
-                {"decision": "reject", "track_id": ids["nothing"]},
+                "/api/v1/library/revert/batch",
+                {"batch_id": answer["batch_id"]},
             )
         )
+        assert revert
+        assert self.review(engine, job_id)["ticked"] == 2
 
-        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
-        nothing = next(entry for entry in rows if entry["track_id"] == ids["nothing"])
-
-        assert (nothing["status"], nothing["decision"]) == ("done", "rejected")
-
-    def test_a_track_whose_search_failed_can_be_left_unmatched(self, engine):
+    def test_a_tick_does_not_move_a_row(self, engine):
         job_id, ids = self.five_ways()
-        ok(
+        before = [row["track_id"] for row in self.review(engine, job_id)["tracks"]]
+
+        self.tick(engine, False, track_ids=[before[0], before[1]])
+
+        after = [row["track_id"] for row in self.review(engine, job_id)["tracks"]]
+        assert after == before == list(ids.values())
+
+    def test_a_tick_survives_a_re_match(self, engine):
+        job_id, ids = self.five_ways()
+        self.tick(engine, False, track_ids=[ids["sure"]])
+
+        attempt(ids["sure"], candidate(1, score=99.0, title="Sure Thing"))
+
+        assert self.row(engine, job_id, ids["sure"])["ticked"] is False
+
+    def test_ticked_ids_answers_the_tracks_sync_takes_to_the_files(self, engine):
+        job_id, ids = self.five_ways()
+        self.tick(engine, False, track_ids=[ids["sure"]])
+
+        answer = self.review(engine, job_id, ticked_ids="true")
+
+        assert answer["ids"] == [ids["check"]]
+        assert answer["tracks"] == []
+        assert answer["ticked"] == 1
+
+    def test_a_playlist_is_ticked_through_its_scope(self, engine):
+        from tests.unit.persistence.match_status_support import add_playlist
+
+        first, second = add_tracks(track("PlayA"), track("PlayB"))
+        attempt(first, candidate(300, score=99.0))
+        attempt(second, candidate(301, score=99.0))
+        playlist = add_playlist(resolve("IDatabaseService"), "Mine", [first])
+
+        self.tick(engine, False, scope={"playlist_id": playlist})
+
+        assert resolve("IMatchRepository").get_match(first).state == "rejected"
+        # The other playlist's track was not named, so it is not touched.
+        assert resolve("IMatchRepository").get_match(second).state == "accepted"
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {},
+            {"ticked": "yes", "track_ids": [1]},
+            {"ticked": True},
+            {"ticked": True, "track_ids": [1], "scope": {}},
+            {"ticked": True, "track_ids": []},
+            {"ticked": True, "track_ids": ["1"]},
+            {"ticked": True, "track_ids": [True]},
+            {"ticked": True, "scope": {"job_id": "x", "playlist_id": 1}},
+            {"ticked": True, "scope": {"nope": 1}},
+            {"ticked": True, "track_ids": [1], "extra": 1},
+        ],
+    )
+    def test_a_request_that_is_not_a_tick_is_a_400(self, engine, body):
+        refused(post(engine, "/api/v1/clean/match/ticks", body), 400, "INVALID_REQUEST")
+
+    def test_a_tick_on_an_unknown_run_is_404(self, engine):
+        refused(
             post(
                 engine,
-                "/api/v1/clean/decide",
-                {"decision": "reject", "track_id": ids["broken"]},
-            )
+                "/api/v1/clean/match/ticks",
+                {"ticked": True, "scope": {"job_id": "nope"}},
+            ),
+            404,
+            "MATCH_JOB_NOT_FOUND",
         )
-
-        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
-        broken = next(entry for entry in rows if entry["track_id"] == ids["broken"])
-
-        assert (broken["status"], broken["decision"]) == ("done", "rejected")
-        # Undone, it is a failed search again, not a track Beatport had nothing for.
-        ok(
-            post(
-                engine,
-                "/api/v1/clean/decide",
-                {"decision": "clear", "track_id": ids["broken"]},
-            )
-        )
-        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
-        again = next(entry for entry in rows if entry["track_id"] == ids["broken"])
-        assert again["status"] == "search_failed"
 
     def test_an_unknown_run_is_404(self, engine):
         refused(
@@ -3056,7 +3585,7 @@ class TestMatchReview:
         )
 
     def test_without_a_run_it_reviews_every_matched_track(self, engine):
-        job_id, ids = self.five_ways()
+        self.five_ways()
 
         payload = ok(get(engine, "/api/v1/clean/match/review"))
 
@@ -3097,7 +3626,7 @@ class TestMatchReview:
     def test_a_limit_trims_the_rows_but_not_the_counts(self, engine):
         job_id, ids = self.five_ways()
 
-        payload = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id, limit=2))
+        payload = self.review(engine, job_id, limit=2)
 
         assert len(payload["tracks"]) == 2
         assert payload["total"] == 5
@@ -3109,110 +3638,18 @@ class TestMatchReview:
             "limit",
         )
 
-    def test_a_row_is_a_plain_shape(self, engine):
-        job_id, ids = self.five_ways()
-
-        row = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"][0]
-
-        assert set(row) == {
-            "track_id",
-            "title",
-            "artist",
-            "status",
-            "decision",
-            "disputed",
-            "undo_batch",
-            "cursor",
-            "candidate",
-            "differing",
-        }
-
-    def test_the_track_to_look_at_come_first_and_the_decided_last(self, engine):
-        job_id, ids = self.five_ways()
-
-        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
-
-        assert [row["status"] for row in rows][-1] == "done"
-        assert rows[-1]["track_id"] == ids["decided"]
-
-    def test_a_filter_narrows_the_rows_and_pages_them_with_counts_for_all(self, engine):
-        job_id, ids = self.five_ways()
-        resolve("IMatchStateService").reject(ids["check"])
-
-        page = ok(
-            get(engine, "/api/v1/clean/match/review", job_id=job_id, filter="done")
-        )
-        assert {row["track_id"] for row in page["tracks"]} == {
-            ids["decided"],
-            ids["check"],
-        }
-        assert page["matching"] == 2
-        assert page["total"] == 5
-        assert page["counts"]["done"] == 2
-
-        first = ok(
-            get(
-                engine,
-                "/api/v1/clean/match/review",
-                job_id=job_id,
-                filter="done",
-                limit=1,
-            )
-        )
-        second = ok(
-            get(
-                engine,
-                "/api/v1/clean/match/review",
-                job_id=job_id,
-                filter="done",
-                after=first["tracks"][0]["cursor"],
-                limit=1,
-            )
-        )
-        assert len(second["tracks"]) == 1
-        assert second["tracks"][0]["track_id"] != first["tracks"][0]["track_id"]
-        assert page["rejected"] == 1
-        rejected = ok(
-            get(engine, "/api/v1/clean/match/review", job_id=job_id, filter="rejected")
-        )
-        assert [row["track_id"] for row in rejected["tracks"]] == [ids["check"]]
-        refused(
-            get(engine, "/api/v1/clean/match/review", job_id=job_id, filter="nope"),
-            400,
-            "INVALID_REQUEST",
-            "filter",
-        )
-
-    def test_a_page_read_on_after_decisions_skips_no_track(self, engine):
+    def test_a_page_read_on_after_ticks_skips_no_track(self, engine):
         ids = add_tracks(*[track(f"Page{n}") for n in range(5)])
         for track_id in ids:
             attempt(track_id, candidate(100 + track_id, score=80.0))
         job_id = self.run_of(ids, "page-run")
 
-        first = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id, limit=2))[
-            "tracks"
-        ]
-        # Between the pages the person decides the two they have read, which
-        # moves them to the end of the listing: the offset of the rest changes.
-        for row in first:
-            ok(
-                post(
-                    engine,
-                    "/api/v1/clean/decide",
-                    {"decision": "reject", "track_id": row["track_id"]},
-                )
-            )
-        rest = ok(
-            get(
-                engine,
-                "/api/v1/clean/match/review",
-                job_id=job_id,
-                after=first[-1]["cursor"],
-            )
-        )["tracks"]
+        first = self.review(engine, job_id, limit=2)["tracks"]
+        # Between the pages the person unticks the two they have read: nothing moves.
+        self.tick(engine, False, track_ids=[row["track_id"] for row in first])
+        rest = self.review(engine, job_id, after=first[-1]["cursor"])["tracks"]
 
-        seen = {row["track_id"] for row in first} | {row["track_id"] for row in rest}
-        assert seen == set(ids)
+        assert [row["track_id"] for row in first + rest] == ids
 
     def test_a_playlist_page_read_on_after_a_rename_skips_no_track(self, engine):
         from tests.unit.persistence.match_status_support import add_playlist
@@ -3259,164 +3696,30 @@ class TestMatchReview:
             "cursor",
         )
 
-    def test_ids_only_answers_every_id_of_a_filter(self, engine):
-        job_id, ids = self.five_ways()
-
-        answer = ok(
-            get(
-                engine,
-                "/api/v1/clean/match/review",
-                job_id=job_id,
-                filter="matched",
-                ids_only="true",
-            )
+    def test_choosing_another_candidate_ticks_the_row(self, engine):
+        track_id, _ = proposed_track("UseThis")
+        job_id = self.run_of([track_id], "use-run")
+        other = resolve("IMatchRepository").candidates_for(
+            resolve("IMatchRepository").get_match(track_id).attempt_id
         )
-
-        assert answer["ids"] == [ids["sure"]]
-        assert answer["tracks"] == []
-
-    def test_a_correction_names_the_batch_that_undoes_it(self, engine):
-        track_id, candidate_id = proposed_track("UndoMe")
-        job_id = self.run_of([track_id], "undo-run")
-        done = ok(
-            post(
-                engine,
-                "/api/v1/clean/correct",
-                {"track_id": track_id, "candidate_id": candidate_id, "fields": ["bpm"]},
-            )
+        chosen = next(
+            entry
+            for entry in other
+            if entry.id != resolve("IMatchRepository").get_match(track_id).candidate_id
         )
+        self.tick(engine, False, track_ids=[track_id])
 
-        row = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"][0]
-
-        assert row["status"] == "done"
-        assert row["undo_batch"] == done["batch_id"]
-        ok(post(engine, "/api/v1/library/revert/batch", {"batch_id": done["batch_id"]}))
-        again = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"][
-            0
-        ]
-        assert again["status"] == "to_check"
-
-    def test_undoing_one_track_of_a_batch_takes_back_only_that_track(self, engine):
-        first, _ = proposed_track("BatchOne")
-        second, _ = proposed_track("BatchTwo")
-        job_id = self.run_of([first, second], "batch-run")
-        done = ok(
-            post(
-                engine,
-                "/api/v1/clean/correct",
-                {"selection": ids_selection(first, second), "fields": ["bpm"]},
-            )
-        )["applied"]
-
-        rows = {
-            row["track_id"]: row
-            for row in ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))[
-                "tracks"
-            ]
-        }
-        assert (
-            rows[first]["undo_batch"] == rows[second]["undo_batch"] == done["batch_id"]
-        )
-
-        reverted = ok(
-            post(
-                engine,
-                "/api/v1/library/revert/batch",
-                {"batch_id": done["batch_id"], "track_id": first},
-            )
-        )["reverted"]
-        # The Activity entry names the track it took back, not just the batch.
-        [event] = resolve("IActivityRepository").batch_events(reverted["batch_id"])
-        assert event.detail["track_id"] == first
-        assert "BatchOne" in event.summary
-        assert event.summary.startswith("Undid the change to")
-
-        rows = {
-            row["track_id"]: row
-            for row in ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))[
-                "tracks"
-            ]
-        }
-        assert rows[first]["status"] == "to_check"
-        assert rows[second]["status"] == "done"
-
-    def test_a_track_the_batch_did_not_touch_cannot_be_undone_from_it(self, engine):
-        first, _ = proposed_track("BatchHas")
-        other, _ = proposed_track("BatchNot")
-        done = ok(
-            post(
-                engine,
-                "/api/v1/clean/correct",
-                {"selection": ids_selection(first), "fields": ["bpm"]},
-            )
-        )["applied"]
-        refused(
-            post(
-                engine,
-                "/api/v1/library/revert/batch",
-                {"batch_id": done["batch_id"], "track_id": other},
-            ),
-            400,
-            "INVALID_REQUEST",
-            "nothing to undo",
-        )
-
-    def test_a_decision_a_revert_put_back_is_not_undone_by_reverting_that_revert(
-        self, engine
-    ):
-        track_id, candidate_id = proposed_track("RevertTwice")
-        job_id = self.run_of([track_id], "twice-run")
         ok(
             post(
                 engine,
                 "/api/v1/clean/decide",
-                {"decision": "reject", "track_id": track_id},
-            )
-        )
-        corrected = ok(
-            post(
-                engine,
-                "/api/v1/clean/correct",
-                {"track_id": track_id, "candidate_id": candidate_id, "fields": []},
-            )
-        )
-        ok(
-            post(
-                engine,
-                "/api/v1/library/revert/batch",
-                {"batch_id": corrected["batch_id"]},
+                {"decision": "accept", "track_id": track_id, "candidate_id": chosen.id},
             )
         )
 
-        row = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"][0]
-
-        # The reverted correction put the refusal back: done, and nothing to revert again.
-        assert (row["status"], row["decision"]) == ("done", "rejected")
-        assert row["undo_batch"] is None
-
-    def test_a_refusal_has_no_batch_to_revert(self, engine):
-        job_id, ids = self.five_ways()
-        resolve("IMatchStateService").reject(ids["check"])
-
-        rows = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))["tracks"]
-        row = next(entry for entry in rows if entry["track_id"] == ids["check"])
-
-        assert row["undo_batch"] is None
-
-    def test_a_decision_a_newer_search_disagrees_with_is_to_check_not_done(
-        self, engine
-    ):
-        job_id, ids = self.five_ways()
-        decided = ids["decided"]
-        attempt(decided, candidate(77, score=99.0, title="Another Track"))
-        state = resolve("IMatchRepository").get_match(decided)
-        assert state is not None and state.newer_attempt_id is not None
-
-        payload = ok(get(engine, "/api/v1/clean/match/review", job_id=job_id))
-        row = next(entry for entry in payload["tracks"] if entry["track_id"] == decided)
-
-        assert (row["status"], row["disputed"]) == ("to_check", True)
-        assert payload["disputed"] == 1
+        row = self.row(engine, job_id, track_id)
+        assert (row["status"], row["ticked"]) == ("matched", True)
+        assert row["candidate"]["id"] == chosen.id
 
     def test_a_run_that_only_failed_reports_failed_searches_not_not_found(self, engine):
         ids = add_tracks(track("FailOne"), track("FailTwo"))

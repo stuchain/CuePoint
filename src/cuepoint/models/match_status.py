@@ -11,26 +11,8 @@ and the rule for each is stated there.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
-
-from cuepoint.models.filter_rule import UNSAVED_FIELDS
-
-
-@dataclass(frozen=True)
-class UnsavedCounts:
-    """Tracks with a new value that is not in the file yet, and per field.
-
-    Attributes:
-        tracks: Tracks with at least one unsaved field.
-        fields: Tracks with an unsaved value, for each of key, genre, label,
-            year and BPM. A track with two counts once in each.
-    """
-
-    tracks: int = 0
-    fields: Dict[str, int] = field(
-        default_factory=lambda: {name: 0 for name in UNSAVED_FIELDS}
-    )
+from dataclasses import dataclass
+from typing import Optional, Tuple
 
 
 @dataclass(frozen=True)

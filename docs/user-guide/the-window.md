@@ -78,7 +78,7 @@ you.** They are deliberately different keys, because they do different things.
 
 ## The Camelot wheel
 
-The button beside the key in Track details opens a wheel of the 24 keys, drawn as two rings of
+The **Wheel** button after the key's name in Track details (a small ring in the key colours) opens a wheel of the 24 keys, drawn as two rings of
 wedges: the minor keys (A) in the inner ring and the major keys (B) in the outer one,
 12 at the top like a clock. It lights the key of the track you have selected, or, with
 nothing selected, the track that is playing, and the keys that mix with it: one step
@@ -166,7 +166,8 @@ Beatport, Where and Yours), and the panel remembers the tab you last chose. See 
 
 ## The status strip
 
-The strip along the bottom says **Ready** when CuePoint is working normally. While
+The strip along the bottom is empty when all is well, and shows text only while CuePoint
+is starting, when work is running, or when something stops. While
 it starts it says **Starting up…**, or **Getting ready…** the first time you open
 CuePoint, before you have been through the guide. If CuePoint's background process
 stops and CuePoint is starting it again, it says **Starting again… (1 of 3)**. The
@@ -255,23 +256,19 @@ To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**
 | **Ctrl+Shift+A** | Open Activity |
 | **F1** or **Ctrl+?** | All keyboard shortcuts |
 
-Clean's Match area keeps its own keys, listed below, in the review's details panel.
+Clean's Match area keeps its own keys, listed below, in the review table and its side panel.
 
 On Prepare, **Left** / **Right** resize the source panel once its divider has focus,
 and **Enter** saves an entry's In or Out time.
 
-In Clean's Match area, in the review's details panel:
+In Clean's Match area, in the review table and its side panel:
 
 | Shortcut | Does |
 | --- | --- |
-| **Enter** | Correct: confirm the match and update the ticked values |
-| **N** | Not this track |
-| **S** | Skip |
-| **Left** / **Right** | Choose another result |
 | **Up** / **Down** | Previous or next track |
-| **B** | Play or stop the Beatport preview |
-| **Y** | Play your file (stops a preview) |
-| **Esc** | Stop the preview, or close the panel |
+| **Esc** | Close the side panel |
+
+A tick is a checkbox: **Space** on it ticks or unticks the track.
 
 These keys do nothing while you are typing in a field or have a dialog open.
 

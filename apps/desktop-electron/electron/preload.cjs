@@ -280,6 +280,7 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   correctMatches: (params) => ipcRenderer.invoke("engine:correctMatches", params),
   getMatchJobs: (params) => ipcRenderer.invoke("engine:getMatchJobs", params),
   getMatchReview: (params) => ipcRenderer.invoke("engine:getMatchReview", params),
+  setMatchTicks: (params) => ipcRenderer.invoke("engine:setMatchTicks", params),
   // A candidate's Beatport artwork and audio preview (C14), as object URLs like
   // getTrackArtwork's: the bytes stay in this process and the renderer never
   // loads a remote URL. Artwork is released with releaseTrackArtwork.
@@ -320,7 +321,8 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   previewTagWrite: (params) => ipcRenderer.invoke("engine:previewTagWrite", params),
   startTagWrite: (params) => ipcRenderer.invoke("engine:startTagWrite", params),
   countTagPreview: (params) => ipcRenderer.invoke("engine:countTagPreview", params),
-  getUnsavedValues: (params) => ipcRenderer.invoke("engine:getUnsavedValues", params),
+  previewSync: (params) => ipcRenderer.invoke("engine:previewSync", params),
+  startSync: (params) => ipcRenderer.invoke("engine:startSync", params),
   getCleanPlaylists: () => ipcRenderer.invoke("engine:getCleanPlaylists"),
   startTagRestore: (params) => ipcRenderer.invoke("engine:startTagRestore", params),
   getTagWrites: (params) => ipcRenderer.invoke("engine:getTagWrites", params),
@@ -342,6 +344,20 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   listDiscoveryRuns: (params) => ipcRenderer.invoke("engine:listDiscoveryRuns", params),
   getDiscoveryRun: (params) => ipcRenderer.invoke("engine:getDiscoveryRun", params),
   getDiscoveryRunTracks: (params) => ipcRenderer.invoke("engine:getDiscoveryRunTracks", params),
+  getDiscoveryRunGroups: (params) => ipcRenderer.invoke("engine:getDiscoveryRunGroups", params),
+  getDiscoveryGroupTracks: (params) =>
+    ipcRenderer.invoke("engine:getDiscoveryGroupTracks", params),
+  getDiscoveryGroupSummary: (params) =>
+    ipcRenderer.invoke("engine:getDiscoveryGroupSummary", params),
+  // A dig card's picture (DEC-076): the engine's thumbnail bytes become an object URL
+  // here, as getCandidateArtwork's do, and the renderer never loads a remote URL.
+  // Released with releaseTrackArtwork.
+  getDiscoveryGroupArt: async (params) => {
+    const bytes = await ipcRenderer.invoke("engine:getDiscoveryGroupArt", params);
+    if (!bytes) return null;
+    return URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
+  },
+  getBeatportPlaylists: () => ipcRenderer.invoke("engine:getBeatportPlaylists"),
   startDiscoveryRun: (params) => ipcRenderer.invoke("engine:startDiscoveryRun", params),
   deleteDiscoveryRun: (params) => ipcRenderer.invoke("engine:deleteDiscoveryRun", params),
   getWantlist: (params) => ipcRenderer.invoke("engine:getWantlist", params),

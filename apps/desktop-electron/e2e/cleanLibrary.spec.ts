@@ -14,7 +14,7 @@
  */
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -272,7 +272,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
 
       await window.getByRole("button", { name: "Select all" }).click();
       // The bar's groups hold the entries the right-click menu does (FLW-8): Beatport ▸
-      // opens Clean with the selection, and More ▸ holds Edit values…; the file writer is the save bar's.
+      // opens Clean with the selection, and More ▸ holds Edit values….
       const bar = window.getByRole("toolbar", { name: "Selected tracks" });
       await bar.getByRole("button", { name: "Beatport", exact: true }).click();
       const beatport = window.getByRole("menu");
@@ -285,7 +285,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       for (const entry of ["Edit values…", "Show in folder"]) {
         await expect(menu.getByRole("menuitem", { name: entry, exact: true })).toBeVisible();
       }
-      // Saving into the files is the save bar's (C23), not More's.
+      // Saving into the files is not in More.
       await expect(menu.getByRole("menuitem", { name: "Save to files…" })).toHaveCount(0);
       await menu.getByRole("menuitem", { name: "Edit values…" }).click();
       // The editor opens at once, in place on the Library, over the three tracks chosen (K4).
@@ -336,57 +336,25 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
     }
   });
 
-  test("tags are previewed, written into a real file, and restored", async () => {
+  test("the Library draws no save bar, even with a value that is not in the files", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
-      const { xml, files } = writeExport(workspace);
+      const { xml } = writeExport(workspace);
       await importAndCheck(window, xml);
-      const before = readFileSync(files[0]!);
       await window.getByRole("link", { name: "Library" }).click();
-      // Only a resolved key is written (PAGES-15): give Tone One one of its own, unlike the file's (the bar counts only values the files lack).
+      // Give Tone One a key of its own, so there is a value the files lack.
       await window.evaluate(async () => {
         const found = await window.cuepoint!.browseLibrary!({ q: "Tone One", limit: 1 });
         await window.cuepoint!.setTrackOverrides!({ trackId: found.tracks[0]!.id!, key: "5A" });
       });
       await window.reload();
-      await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
-      // The Library's save bar counts Tone One's value and opens the save window (C23).
-      const bar = window.locator("main.app-main .screen:visible").getByRole("region", { name: "Save to files" });
-      await expect(bar).toBeVisible({ timeout: 30_000 });
-      await bar.getByRole("button", { name: "Save to files…" }).click();
-
-      const dialog = window.getByRole("dialog", { name: "Save 1 track to your files" });
-      // The files are read first, and nothing is written until Save is pressed.
-      const save = dialog.getByRole("button", { name: "Save to 1 file" });
-      await expect(save).toBeEnabled({ timeout: 30_000 });
-      expect(readFileSync(files[0]!).equals(before)).toBe(true);
-
-      await save.click();
-      const written = dialog.getByRole("region", { name: "Saved" });
-      await expect(written).toContainText("Wrote 1 file.", { timeout: 30_000 });
-      await expect(written).toContainText("Reload Tag");
-      expect(readFileSync(files[0]!).includes(Buffer.from("TKEY"))).toBe(true);
-
-      await dialog.getByRole("button", { name: "Done" }).click();
-
-      // The write's Activity entry offers Restore, and it puts the values back.
-      await window.keyboard.press("Control+Shift+A");
-      const activity = window.getByRole("dialog", { name: "Activity" });
-      const entry = activity.getByRole("listitem").filter({ hasText: "Saved to 1 file" });
-      await expect(entry).toContainText("can be undone", { timeout: 15_000 });
-      await entry.getByRole("button", { name: "Undo" }).click();
-      await entry.getByRole("button", { name: "Undo" }).click();
-      await expect(entry).toContainText("Undid 1 file.", { timeout: 30_000 });
-      await expect(entry).toContainText("Everything saved to files has been undone.");
-      expect(readFileSync(files[0]!).includes(Buffer.from("TKEY"))).toBe(false);
-
-      const record = await window.evaluate(async () => {
-        const detail = await window.cuepoint!.browseLibrary!({ q: "Tone One", limit: 1 });
-        return window.cuepoint!.getTagWrites!({ trackId: detail.tracks[0]!.id!, limit: 1 });
-      });
-      expect(record.restorable).toBe(0);
-      expect(record.unconfirmed).toBe(0);
+      const screen = window.locator("main.app-main .screen:visible");
+      await screen.waitFor({ timeout: 30_000 });
+      await expect(row(window, "Tone One")).toBeVisible({ timeout: 30_000 });
+      // Syncing into the files is per playlist, on Clean: the Library has no bar for it.
+      await expect(screen.getByRole("region", { name: "Save to files" })).toHaveCount(0);
+      await expect(screen.getByRole("button", { name: "Save to files…" })).toHaveCount(0);
     } finally {
       await app.close();
     }

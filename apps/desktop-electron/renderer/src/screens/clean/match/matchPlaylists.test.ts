@@ -1,8 +1,8 @@
-/** What a playlist's Match button says and sends (C22). */
+/** What the Match button says and sends (C22): the ticked playlists as one run. */
 import { describe, expect, it } from "vitest";
 
 import type { CleanPlaylistCounts, CleanPlaylistStatus } from "../../../api/cuepointBridge.types";
-import { matchRowRequest } from "./matchPlaylists";
+import { matchButtonLabel, matchRequest } from "./matchPlaylists";
 
 const COUNTS: CleanPlaylistCounts = {
   track_count: 10,
@@ -19,9 +19,9 @@ function playlist(id: number, name: string, notMatched = 10): CleanPlaylistStatu
   return { id, name, path: "", ...COUNTS, not_matched: notMatched };
 }
 
-describe("matchRowRequest", () => {
+describe("matchRequest", () => {
   it("asks for one playlist as an In playlist rule, named by the playlist", () => {
-    expect(matchRowRequest(playlist(7, "hJ"), COUNTS)).toEqual({
+    expect(matchRequest({ whole: false, playlists: [playlist(7, "hJ")] }, COUNTS)).toEqual({
       selection: {
         query: {
           filters: {
@@ -35,17 +35,48 @@ describe("matchRowRequest", () => {
     });
   });
 
-  it("rematches only when the playlist has nothing left to look up", () => {
-    expect(matchRowRequest(playlist(7, "hJ", 0), COUNTS).again).toBe(true);
-    expect(matchRowRequest(playlist(7, "hJ", 3), COUNTS).again).toBe(false);
+  it("asks for several playlists as one run over all of them, named by how many", () => {
+    const request = matchRequest({ whole: false, playlists: [playlist(7, "hJ"), playlist(8, "all")] }, COUNTS);
+    expect(request.selection).toEqual({
+      query: {
+        filters: {
+          match: "all",
+          rules: [
+            {
+              field: "in_playlist",
+              operator: "any_of",
+              value: [
+                { kind: "playlist", id: 7 },
+                { kind: "playlist", id: 8 },
+              ],
+            },
+          ],
+        },
+      },
+    });
+    expect(request.label).toBe("2 playlists");
+  });
+
+  it("rematches only when every playlist has nothing left to look up", () => {
+    expect(matchRequest({ whole: false, playlists: [playlist(7, "hJ", 0), playlist(8, "a", 0)] }, COUNTS).again).toBe(true);
+    expect(matchRequest({ whole: false, playlists: [playlist(7, "hJ", 0), playlist(8, "a", 2)] }, COUNTS).again).toBe(false);
   });
 
   it("asks for every track for the whole library, by its own count", () => {
-    expect(matchRowRequest(null, { ...COUNTS, not_matched: 4 })).toEqual({
+    expect(matchRequest({ whole: true }, { ...COUNTS, not_matched: 4 })).toEqual({
       selection: { query: {} },
       again: false,
       label: "Whole library",
     });
-    expect(matchRowRequest(null, { ...COUNTS, not_matched: 0 }).again).toBe(true);
+    expect(matchRequest({ whole: true }, { ...COUNTS, not_matched: 0 }).again).toBe(true);
+  });
+});
+
+describe("matchButtonLabel", () => {
+  it("says what it will match", () => {
+    expect(matchButtonLabel(null)).toBe("Match playlists");
+    expect(matchButtonLabel({ whole: true })).toBe("Match whole library");
+    expect(matchButtonLabel({ whole: false, playlists: [playlist(1, "a")] })).toBe("Match 1 playlist");
+    expect(matchButtonLabel({ whole: false, playlists: [playlist(1, "a"), playlist(2, "b")] })).toBe("Match 2 playlists");
   });
 });

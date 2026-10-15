@@ -230,22 +230,25 @@ export function browseAnswer(
   };
 }
 
-/** One track of a review list, as the engine sends it. A track to check has a match; one not found has none. */
+/**
+ * One track of the review table, as the engine sends it. A track to check or matched has a match and
+ * is ticked; one not found has no match and cannot be ticked.
+ */
 export function reviewTrack(
   id: number,
   status: ReviewStatus,
   overrides: Partial<ReviewTrack> = {},
 ): ReviewTrack {
-  const hasMatch = status === "to_check" || status === "matched" || status === "done";
+  const hasMatch = status === "to_check" || status === "matched";
   return {
     track_id: id,
     title: `Track ${id}`,
     artist: `Artist ${id}`,
     status,
-    decision: status === "done" ? "accepted" : null,
+    ticked: hasMatch,
+    tickable: hasMatch,
     disputed: false,
-    undo_batch: status === "done" ? `batch-${id}` : null,
-    cursor: `${status === "done" ? 1 : 0}:${id}`,
+    cursor: `${id}:${id}`,
     candidate: hasMatch
       ? {
           id: 1000 + id,
@@ -268,16 +271,14 @@ export function reviewTrack(
 
 /** A review answer over these tracks, the counts worked out as the engine works them. */
 export function reviewOf(tracks: ReviewTrack[], overrides: Partial<MatchReview> = {}): MatchReview {
-  const counts = { to_check: 0, not_found: 0, search_failed: 0, matched: 0, done: 0 };
+  const counts = { matched: 0, to_check: 0, not_found: 0, search_failed: 0 };
   for (const entry of tracks) counts[entry.status] += 1;
   return {
     job_id: "job-1",
     label: "hJ",
     total: tracks.length,
     counts,
-    rejected: tracks.filter((entry) => entry.decision === "rejected").length,
-    disputed: tracks.filter((entry) => entry.disputed).length,
-    matching: tracks.length,
+    ticked: tracks.filter((entry) => entry.ticked).length,
     tracks,
     ...overrides,
   };

@@ -19,7 +19,6 @@ from cuepoint.models.match_status import (
     PlaylistStatuses,
     RunningMatch,
     StatusCounts,
-    UnsavedCounts,
 )
 from cuepoint.services.interfaces import IMatchStatusRepository, IMatchStatusService
 
@@ -35,18 +34,6 @@ class MatchStatusService(IMatchStatusService):
     def __init__(self, match_status_repository: IMatchStatusRepository) -> None:
         """Store the repository the numbers come from."""
         self._repository = match_status_repository
-
-    def unsaved(self, playlist_id: Optional[int] = None) -> UnsavedCounts:
-        """Return the unsaved counts of a playlist, or of the whole library.
-
-        Raises:
-            LookupError: If ``playlist_id`` is not a playlist.
-        """
-        if playlist_id is not None and not self._repository.playlist_exists(
-            playlist_id
-        ):
-            raise LookupError(f"There is no playlist {playlist_id}")
-        return self._repository.unsaved(playlist_id)
 
     def playlists(self, running_job_id: Optional[str] = None) -> PlaylistStatuses:
         """Return every playlist's status, in the order Rekordbox lists them."""

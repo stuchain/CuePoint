@@ -697,6 +697,7 @@ describe("desktop contract", () => {
       "correctMatches",
       "getMatchJobs",
       "getMatchReview",
+      "setMatchTicks",
       "searchMatch",
       "setTrackOverrides",
       "revertChange",
@@ -909,7 +910,8 @@ describe("desktop contract", () => {
     };
     const added: Array<[string, string, "post" | "get"]> = [
       ["countTagPreview", "/api/v1/clean/tags/preview/count", "post"],
-      ["getUnsavedValues", "/api/v1/clean/unsaved", "get"],
+      ["previewSync", "/api/v1/clean/sync-preview", "post"],
+      ["startSync", "/api/v1/clean/sync", "post"],
       ["getCleanPlaylists", "/api/v1/clean/playlists", "get"],
     ];
 
@@ -935,10 +937,9 @@ describe("desktop contract", () => {
       expect(bridgeTypes).toMatch(/countTagPreview\?: \(params: \{\s*preview_id: string;\s*options: TagWriteOptions;/);
     });
 
-    it("narrows unsaved values by playlist_id on the query string", () => {
-      const method = clientMethod("getUnsavedValues");
-      expect(method).toContain('query.set("playlist_id"');
-      expect(method).toContain("this.getJson(`/api/v1/clean/unsaved${suffix}`)");
+    it("syncs a kept preview by its id and options", () => {
+      expect(bridgeTypes).toMatch(/startSync\?: \(params: \{\s*preview_id: string;\s*options\?: TagWriteOptions;/);
+      expect(bridgeTypes).toMatch(/previewSync\?: \(params: \{\s*selection: BatchSelection;/);
     });
 
     it.each([bridgeTypes, engineClient])("types keep_existing and field_choices", (source) => {
@@ -958,7 +959,6 @@ describe("desktop contract", () => {
       "TagFieldChoices",
       "FieldChoiceCounts",
       "TagCountOutcome",
-      "UnsavedValues",
       "CleanPlaylistStatus",
       "CleanPlaylistCounts",
       "CleanPlaylists",
@@ -1199,6 +1199,10 @@ describe("desktop contract", () => {
       listDiscoveryRuns: "`/api/v1/discover/runs${",
       getDiscoveryRun: "`/api/v1/discover/runs/${",
       getDiscoveryRunTracks: "}/tracks${",
+      getDiscoveryRunGroups: "}/groups`",
+      getDiscoveryGroupTracks: "}/groups/tracks${",
+      getDiscoveryGroupSummary: "}/groups/summary${",
+      getBeatportPlaylists: '"/api/v1/discover/playlists"',
       getWantlist: "`/api/v1/discover/wantlist${",
       getEntityPage: "`/api/v1/discover/entity${",
       getEntityBeatport: "`/api/v1/discover/entity/beatport${",
@@ -1223,8 +1227,18 @@ describe("desktop contract", () => {
       return engineClient.slice(start, next === -1 ? undefined : next);
     };
 
-    it("has sixteen of them", () => {
-      expect(new Set(methods).size).toBe(16);
+    it("has twenty of them", () => {
+      expect(new Set(methods).size).toBe(20);
+    });
+
+    it("carries a card's picture as bytes the preload turns into an object URL, never a URL", () => {
+      // Not a DiscoverAnswer: the same road as a candidate's artwork (DEC-076).
+      expect(invokedChannels(preload)).toContain("engine:getDiscoveryGroupArt");
+      expect(handledChannels(main)).toContain("engine:getDiscoveryGroupArt");
+      expect(supervisor).toContain("(await this.readyClient()).getDiscoveryGroupArt(");
+      expect(preload).toMatch(/getDiscoveryGroupArt: async[\s\S]{0,260}URL\.createObjectURL/);
+      expect(bridgeTypes).toContain("getDiscoveryGroupArt?: (params: {");
+      expect(clientMethod("getDiscoveryGroupArt")).toContain("Promise<Uint8Array | null>");
     });
 
     it.each(methods)("exposes %s on the preload", (method) => {
@@ -1305,6 +1319,13 @@ describe("desktop contract", () => {
       "DiscoverRunTracksWindow",
       "DiscoverRunTracksPage",
       "DiscoverRunDeleted",
+      "DiscoverGroupCard",
+      "DiscoverGroupRow",
+      "DiscoverRunGroups",
+      "DiscoverGroupRef",
+      "DiscoverGroupSummary",
+      "BeatportPlaylistChoice",
+      "BeatportPlaylists",
       "DiscoverJobStarted",
       "WantlistRow",
       "WantlistWindow",
@@ -1359,6 +1380,9 @@ describe("desktop contract", () => {
       "DiscoverSortDirection",
       "DiscoverRunOutcome",
       "DiscoverSourceType",
+      "DiscoverGroupKind",
+      "DiscoverChartsMode",
+      "DiscoverGroupRowId",
       "DiscoverBeatportState",
       "DiscoverJobType",
       "WantlistAction",

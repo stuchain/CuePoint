@@ -54,18 +54,11 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Tables", action: "First or last track", shortcut: "Home / End" },
   { context: "Tables", action: "A page up or down", shortcut: "Page Up / Page Down" },
   { context: "Tables", action: "Add or remove the focused track", shortcut: "Ctrl+Space" },
-  // Clean's Match area, the Review of a run, in its details and search panel (CLEAN-12, C14). Bare keys, because checking thousands of
-  // tracks is a keyboard job; they are not taken while typing in a field or inside a dialog, and
-  // none of them is modified, so none collides with a shell shortcut. Every one has a button too.
-  // Space is not here: it is the player's.
+  // Clean's Match area, the Review of a playlist: the table and its side panel. Bare keys, because checking
+  // thousands of tracks is a keyboard job; they are not taken while typing in a field or inside a dialog, and
+  // none of them is modified, so none collides with a shell shortcut. A tick is a checkbox and takes Space.
   { context: "Clean", action: "Previous or next track in the review", shortcut: "Up / Down" },
-  { context: "Clean", action: "Choose another result", shortcut: "Left / Right" },
-  { context: "Clean", action: "Correct: confirm the match and update the ticked values", shortcut: "Enter" },
-  { context: "Clean", action: "Not this track: reject the match", shortcut: "N" },
-  { context: "Clean", action: "Skip to the next track without deciding", shortcut: "S" },
-  { context: "Clean", action: "Play or stop the Beatport preview", shortcut: "B" },
-  { context: "Clean", action: "Play your file", shortcut: "Y" },
-  { context: "Clean", action: "Stop the preview, or close the details", shortcut: "Esc" },
+  { context: "Clean", action: "Close the track's side panel", shortcut: "Esc" },
   // The player (PLAYER-12). Space is bare because it is the one key everyone
   // already tries; the rest are Ctrl-modified because bare arrows belong to the
   // table and the queue panel, which is where a keyboard user spends their time.

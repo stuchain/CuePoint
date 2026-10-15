@@ -725,6 +725,9 @@ function registerIpcHandlers(): void {
   handle("engine:getMatchReview", (_event, params) =>
     engine.getMatchReview(params),
   );
+  handle("engine:setMatchTicks", (_event, params) =>
+    engine.setMatchTicks(params),
+  );
   handle("engine:getCandidateArtwork", (_event, params) =>
     engine.getCandidateArtwork(params),
   );
@@ -779,8 +782,11 @@ function registerIpcHandlers(): void {
   handle("engine:countTagPreview", (_event, params) =>
     engine.countTagPreview(params),
   );
-  handle("engine:getUnsavedValues", (_event, params) =>
-    engine.getUnsavedValues(params),
+  handle("engine:previewSync", (_event, params) =>
+    engine.previewSync(params),
+  );
+  handle("engine:startSync", (_event, params) =>
+    engine.startSync(params),
   );
   handle("engine:getCleanPlaylists", () => engine.getCleanPlaylists());
   handle("engine:startTagRestore", (_event, params) =>
@@ -823,6 +829,19 @@ function registerIpcHandlers(): void {
   handle("engine:getDiscoveryRunTracks", (_event, params) =>
     engine.getDiscoveryRunTracks(params),
   );
+  handle("engine:getDiscoveryRunGroups", (_event, params) =>
+    engine.getDiscoveryRunGroups(params),
+  );
+  handle("engine:getDiscoveryGroupTracks", (_event, params) =>
+    engine.getDiscoveryGroupTracks(params),
+  );
+  handle("engine:getDiscoveryGroupSummary", (_event, params) =>
+    engine.getDiscoveryGroupSummary(params),
+  );
+  handle("engine:getDiscoveryGroupArt", (_event, params) =>
+    engine.getDiscoveryGroupArt(params),
+  );
+  handle("engine:getBeatportPlaylists", () => engine.getBeatportPlaylists());
   handle("engine:startDiscoveryRun", (_event, params) =>
     engine.startDiscoveryRun(params),
   );

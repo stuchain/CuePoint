@@ -11,6 +11,10 @@
  * A preview or a save large enough to be a job is followed like every job: it shows
  * "Reading 412 of 1,200 files…" and waits for its answer. After a save the window
  * offers Undo this save, which undoes every value, and Done.
+ *
+ * **The Sync variant** is the same window for a playlist's ticked tracks (the Review tab): its
+ * own title, the rows BPM, Genre, Label, Year and Key (no artwork), its own remembered choices,
+ * "See every change" and "Sync N tracks". The choice of fields lives only here.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -34,6 +38,7 @@ import { Select } from "../Select";
 import {
   KEY_STYLES,
   SAVE_FIELDS,
+  SYNC_FIELDS,
   changeRows,
   fieldCount,
   fileWords,
@@ -41,14 +46,14 @@ import {
   noneTicked,
   previewOptions,
   rememberSaveChoices,
-  savedNothing,
   saveState,
   saveTitle,
+  syncButton,
   tagOptionsFor,
-  trackWords,
   type KeyStyle,
   type SaveChoices,
   type SaveFieldId,
+  type SaveVariant,
 } from "./saveChoices";
 import "./SaveToFilesDialog.css";
 
@@ -64,13 +69,12 @@ interface SaveToFilesDialogProps {
   selection: BatchSelection | null;
   /** The tracks the selection holds, for the title. */
   count: number;
-  /** "changes" opens on the list of what would change, as the bar's See changes does. */
+  /** The save window of the Library, or the Sync window of a playlist's review. */
+  variant?: SaveVariant;
+  /** The window's title; the save window's own says how many tracks. */
+  title?: string;
+  /** "changes" opens on the list of what would change. */
   initialView?: "choices" | "changes";
-  /**
-   * The window was opened for tracks the save bar counted. When no file would change,
-   * Save then becomes "Mark N tracks as already saved", which records them as already in the files.
-   */
-  canMarkSaved?: boolean;
   onClose: () => void;
   /** Called after a save or a restore touched files. */
   onChanged?: () => void;
@@ -111,12 +115,13 @@ export function SaveToFilesDialog({
   open,
   selection,
   count,
+  variant = "save",
+  title,
   initialView = "choices",
-  canMarkSaved = false,
   onClose,
   onChanged,
 }: SaveToFilesDialogProps) {
-  const [choices, setChoices] = useState<SaveChoices>(() => loadSaveChoices());
+  const [choices, setChoices] = useState<SaveChoices>(() => loadSaveChoices(variant));
   const [phase, setPhase] = useState<Phase>("reading");
   const [view, setView] = useState<"choices" | "changes">(initialView);
   const [preview, setPreview] = useState<TagWritePreview | null>(null);
@@ -152,7 +157,9 @@ export function SaveToFilesDialog({
   }, []);
 
   const readFiles = async (forChoices: SaveChoices) => {
-    const bridge = window.cuepoint?.previewTagWrite;
+    // Sync previews what the files would become with the match's values laid over, in memory:
+    // it writes nothing, not even to CuePoint's own values.
+    const bridge = variant === "sync" ? window.cuepoint?.previewSync : window.cuepoint?.previewTagWrite;
     const chosen = selectionRef.current;
     const run = ++previewRun.current;
     const current = () => alive.current && run === previewRun.current;
@@ -166,7 +173,7 @@ export function SaveToFilesDialog({
       return;
     }
     try {
-      const outcome = await bridge({ selection: chosen, options: previewOptions(forChoices) });
+      const outcome = await bridge({ selection: chosen, options: previewOptions(forChoices, variant) });
       let answer: TagWritePreview;
       if (outcome.preview) {
         answer = outcome.preview;
@@ -202,7 +209,7 @@ export function SaveToFilesDialog({
       previewRun.current += 1;
       return;
     }
-    const remembered = loadSaveChoices();
+    const remembered = loadSaveChoices(variant);
     setChoices(remembered);
     setView(initialView);
     setWritten(null);
@@ -262,14 +269,15 @@ export function SaveToFilesDialog({
   const tick = (id: SaveFieldId, on: boolean) => change({ fields: { ...choices.fields, [id]: on } });
 
   const state = preview
-    ? saveState({ choices, preview, total, count, canMarkSaved })
-    : { label: "Save to files", enabled: false, reason: null, mark: false };
+    ? saveState({ choices, preview, total, count, variant })
+    : { label: variant === "sync" ? syncButton(count) : "Save to files", enabled: false, reason: null };
 
   const runSave = async () => {
-    const bridge = window.cuepoint?.startTagWrite;
+    // Sync is one job: the files, then the decisions and the values each file got.
+    const bridge = variant === "sync" ? window.cuepoint?.startSync : window.cuepoint?.startTagWrite;
     if (!bridge || !preview || !state.enabled) return;
     setProblem(null);
-    rememberSaveChoices(choices);
+    rememberSaveChoices(choices, variant);
     setPhase("saving");
     let started: string | null = null;
     try {
@@ -344,7 +352,6 @@ export function SaveToFilesDialog({
   const choosing = reading || phase === "ready" || phase === "failed";
   /** The list of changes is shown while reading or once ready; a failed read goes back to the rows. */
   const list = view === "changes" && (reading || phase === "ready");
-  const marked = written !== null && savedNothing(written);
 
   // Focus follows the view: Back on entering the list, See changes on leaving it, and the result
   // once a save or a restore has answered.
@@ -370,7 +377,7 @@ export function SaveToFilesDialog({
   return (
     <Modal
       open={open}
-      title={saveTitle(count)}
+      title={title ?? saveTitle(count)}
       onClose={busy ? () => undefined : requestClose}
       size={list ? "wide" : "default"}
     >
@@ -378,7 +385,7 @@ export function SaveToFilesDialog({
         {choosing && !list && (
           <>
             <ul className="save-dialog__rows">
-              {SAVE_FIELDS.map(({ id, label }) => (
+              {(variant === "sync" ? SYNC_FIELDS : SAVE_FIELDS).map(({ id, label }) => (
                 <li key={id} className="save-dialog__row" data-ticked={choices.fields[id]}>
                   <label className="save-dialog__tick">
                     <input
@@ -492,9 +499,7 @@ export function SaveToFilesDialog({
           <section className="save-dialog__answer" aria-label="Saved">
             <p ref={headlineRef} tabIndex={-1} className="save-dialog__headline" role="status">
               {written
-                ? marked
-                  ? `${trackWords(count)} ${count === 1 ? "is" : "are"} marked as saved.`
-                  : writeHeadline(written)
+                ? writeHeadline(written)
                 : "The save did not finish. Some files may have been changed; undoing the save sets them back as they were."}
             </p>
             {written && written.problems.length > 0 && (
@@ -506,14 +511,16 @@ export function SaveToFilesDialog({
                 ))}
               </ul>
             )}
-            {!marked && <p className="save-dialog__note">{RELOAD_TAG_REMINDER}</p>}
-            {!marked && phase !== "restored" && (
+            <p className="save-dialog__note">{RELOAD_TAG_REMINDER}</p>
+            {phase !== "restored" && (
               <div className="save-dialog__restore">
                 <Button variant="secondary" loading={phase === "restoring"} onClick={() => void runRestore()}>
                   Undo this save
                 </Button>
                 <span className="save-dialog__note">
-                  Undoes every value this save replaced. It is also offered in Activity.
+                  {variant === "sync"
+                    ? "Puts the files back and takes back the matches and values this sync recorded. It is also offered in Activity."
+                    : "Undoes every value this save replaced. It is also offered in Activity."}
                 </span>
               </div>
             )}
@@ -542,7 +549,7 @@ export function SaveToFilesDialog({
               <>
                 {phase === "ready" && !list && (
                   <Button variant="secondary" data-role="see-changes" onClick={() => setView("changes")}>
-                    See changes
+                    {variant === "sync" ? "See every change" : "See changes"}
                   </Button>
                 )}
                 {(reading || phase === "saving") && jobId ? (

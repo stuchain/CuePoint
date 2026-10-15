@@ -1,135 +1,137 @@
 /**
- * The Match area (C14, C22, DEC-072 amended).
+ * The Match area (C14, C22).
  *
- * Tabs: **Playlists** (the default, where Match opens: your playlists and how far each is),
- * **Review <name>** (only while a run is open: every track of one search, with what was found for
- * it and a quick decision on each: `ReviewRun.tsx`) and **Past searches** (every match run;
- * opening one opens its Review). There is no separate Table: the review list is that job.
+ * Tabs: **Playlists** (the default, where Match opens: tick playlists and match them), one
+ * **Review <name>** tab for each playlist matched or reviewed (several playlists, several tabs; the
+ * whole library, only its own: `ReviewTab.tsx`) and **Past searches** (every match run; opening one
+ * opens its review). A review stays until ‹ Playlists closes it.
  *
- * A match that finishes lands on its Review, and Review N › on a playlist, See them › on one whose
- * search found nothing, Open on a past search and the Inspector's link each open one too. What is
- * reviewed is a run (its resumes included), a playlist, or, from the Inspector's link, every
- * matched track. **Correct accepts the match and copies the ticked values as one act**, one batch
- * under one id, and Undo reverts that batch (DEC-004: nothing is written to the files until Save).
+ * A match that finishes opens a review tab for each playlist it was started on, and so do Review
+ * on a row, Open on a past search and the Inspector's link. What a tab reviews is a playlist, a run
+ * (its resumes included) or, from the Inspector's link, every matched track. A tick is the
+ * person's decision to sync a track; nothing is written to a value or a file until Sync.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { CleanPlaylistStatus, EntityKind, MatchRun } from "../../../api/cuepointBridge.types";
+import type { CleanPlaylistStatus, MatchRun } from "../../../api/cuepointBridge.types";
 import { Tabs } from "../../../components/Tabs";
 import type { CleanOpening } from "../cleanLink";
 import type { CleanMatch } from "../useCleanMatch";
 import { PastSearches } from "./PastSearches";
 import { PlaylistsView } from "./PlaylistsView";
-import { ReviewRun } from "./ReviewRun";
-import type { ReviewFilter } from "./reviewList";
+import { ReviewTab } from "./ReviewTab";
+import type { MatchChoice } from "./matchPlaylists";
 import { runSelection } from "./matchScope";
 import { whatLine } from "./pastSearchWords";
 import type { CleanPlaylistsState } from "./useCleanPlaylists";
+import { WHOLE_LIBRARY_NAME } from "./useCleanPlaylists";
 import type { ReviewSource } from "./useMatchReview";
 import { loadMatchTab, saveMatchTab, type MatchTab } from "./matchTab";
 import "./match.css";
 
 export type { MatchTab };
 
+/** One playlist (or, with null, the whole library) to open a review tab for. */
+export interface ReviewTarget {
+  playlistId: number | null;
+  name: string;
+}
+
 /**
- * A review opened from outside the area (a match that finished, the toast's Review): the run, and
- * the playlist it was started from. Applied once per `token`, as a track the Library opens is.
+ * Reviews opened from outside the area (a match that finished, the toast's Review): a tab for each
+ * target. Applied once per `token`, as a track the Library opens is.
  */
 export interface ReviewOpening {
   token: string;
-  run: MatchRun;
-  playlistId: number | null;
-  name: string;
-  /** The chip to open on; "Not found" or "Search failed" for a run that found nothing. */
-  filter?: ReviewFilter;
+  targets: ReviewTarget[];
 }
 
-/** What the Review tab is open on. */
+/** One open review tab. */
 interface Reviewing {
+  /** Which opening this is, so a review opened again starts clean; also its tab's id. */
+  key: string;
   source: ReviewSource;
   name: string;
-  /** The playlist's id, or null for the whole library (Save N to files…). */
-  playlistId: number | null;
-  filter: ReviewFilter;
-  /** A track to open the details of once the list is read (the Inspector's link). */
+  /** A track to open the panel on once the table is read (the Inspector's link). */
   trackId?: number;
-  /** Which opening this is, so a review opened again starts clean. */
-  key: string;
 }
 
 interface MatchAreaProps {
   onHealthChanged: () => void;
-  /** A track the Library asked to open (CLEAN-13): the library's review, on that track's details. */
+  /** A track the Library asked to open (CLEAN-13): the library's review, on that track. */
   focus?: CleanOpening | null;
   /** The page's matching: running state, how many ended, and resuming. */
   match: CleanMatch;
   /** The Playlists view's rows. */
   playlists: CleanPlaylistsState;
-  /** A playlist's Match button (null is the whole library); the page starts the run. */
-  onMatchPlaylist: (playlist: CleanPlaylistStatus | null) => void;
-  /** The run a row's last Match started in this session, so Review opens on that run (C22). */
-  runFor?: (playlist: CleanPlaylistStatus | null) => string | undefined;
-  /** A row's run has been reviewed to its end, or no longer matches what the row waits on: forget it. */
-  onRunSpent?: (playlistId: number | null) => void;
-  /** A review opened from the page (a match that finished, the toast's Review). */
+  /** Match what is ticked; the page starts the run. */
+  onMatch: (choice: MatchChoice) => void;
+  /** Reviews opened from the page (a match that finished, the toast's Review). */
   reviewOpening?: ReviewOpening | null;
   /** The opening has been used, so coming back to this tab does not apply it again. */
   onReviewOpened?: () => void;
-  /** Which sub-tab is open, and whether a review's details are open, said up so a match that ends knows where it may land. */
+  /** Which sub-tab is open, and whether a review's panel is open, said up so a match that ends knows where it may land. */
   onViewChange?: (view: { tab: MatchTab; panelOpen: boolean }) => void;
-  /** A row's "Save N to files…": the window on that playlist, or the library for its row (C22, C23). */
-  onSavePlaylist?: (playlist: CleanPlaylistStatus | null) => void;
-  /** Save N to files… from a past search's review: the window on that run's tracks. */
-  onSaveRun?: (jobId: string) => void;
-  /** How many of a run's tracks hold values the files do not (for the Save button on its done screen). */
-  countRunUnsaved?: (jobId: string) => Promise<number>;
-  /** An artist or label page, from the credits in a review's details. */
-  onOpenEntity?: (kind: EntityKind, ref: string) => void;
 }
+
+const sourceKey = (source: ReviewSource) => `${source.jobId ?? ""}|${source.playlistId ?? ""}`;
+const reviewTabId = (key: string) => `review:${key}`;
 
 export function MatchArea({
   onHealthChanged,
   focus = null,
   match,
   playlists,
-  onMatchPlaylist,
-  runFor,
-  onRunSpent,
+  onMatch,
   reviewOpening = null,
   onReviewOpened,
   onViewChange,
-  onSavePlaylist,
-  onSaveRun,
-  countRunUnsaved,
-  onOpenEntity,
 }: MatchAreaProps) {
-  const [tab, setTab] = useState<MatchTab>(loadMatchTab);
-  const [reviewing, setReviewing] = useState<Reviewing | null>(null);
+  const [tab, setTab] = useState<string>(loadMatchTab);
+  const [reviews, setReviews] = useState<Reviewing[]>([]);
   const openings = useRef(0);
+  const reviewsRef = useRef<Reviewing[]>([]);
 
   const [panelOpen, setPanelOpen] = useState(false);
+  const active = tab.startsWith("review:") && !reviews.some((entry) => reviewTabId(entry.key) === tab) ? "playlists" : tab;
+  const view: MatchTab = active.startsWith("review:") ? "review" : (active as MatchTab);
   useEffect(() => {
-    onViewChange?.({ tab, panelOpen: tab === "review" && panelOpen });
-  }, [onViewChange, panelOpen, tab]);
+    onViewChange?.({ tab: view, panelOpen: view === "review" && panelOpen });
+  }, [onViewChange, panelOpen, view]);
 
   const chooseTab = useCallback((id: string) => {
-    const next = (["playlists", "review", "past"] as const).find((entry) => entry === id);
-    if (!next) return;
-    setTab(next);
-    saveMatchTab(next);
+    setTab(id);
+    if (id === "playlists" || id === "past") saveMatchTab(id);
   }, []);
 
-  const showReview = useCallback((next: Omit<Reviewing, "key" | "filter"> & { filter?: ReviewFilter }) => {
-    openings.current += 1;
-    setReviewing({ ...next, filter: next.filter ?? "all", key: String(openings.current) });
-    setTab("review");
+  /** Open a review tab for each of these, or bring the one already open for the same tracks forward. */
+  const showReviews = useCallback((next: Array<{ source: ReviewSource; name: string; trackId?: number }>) => {
+    let list = reviewsRef.current;
+    let first: string | null = null;
+    next.forEach((entry, index) => {
+      const same = list.find((open) => sourceKey(open.source) === sourceKey(entry.source));
+      // The same tracks again: that tab stays, and starts clean only when a track is asked for.
+      if (same && entry.trackId === undefined) {
+        if (index === 0) first = same.key;
+        return;
+      }
+      openings.current += 1;
+      const made = { ...entry, key: String(openings.current) };
+      list = [...list.filter((open) => open !== same), made];
+      if (index === 0) first = made.key;
+    });
+    reviewsRef.current = list;
+    setReviews(list);
+    if (first !== null) setTab(reviewTabId(first));
   }, []);
 
-  /** ‹ Playlists: leave the review and go back to the rows. */
-  const leaveReview = useCallback(() => {
-    setReviewing(null);
+  /** ‹ Playlists: close this review and go back to the rows. */
+  const closeReview = useCallback((key: string) => {
+    reviewsRef.current = reviewsRef.current.filter((entry) => entry.key !== key);
+    setReviews(reviewsRef.current);
     setTab("playlists");
     saveMatchTab("playlists");
+    setPanelOpen(false);
   }, []);
 
   // The Inspector's link: the library's review, on that track.
@@ -137,64 +139,41 @@ export function MatchArea({
   useEffect(() => {
     if (!focus || focusToken.current === focus.token) return;
     focusToken.current = focus.token;
-    showReview({ source: {}, name: "Whole library", playlistId: null, trackId: focus.trackId });
-  }, [focus, showReview]);
+    showReviews([{ source: {}, name: WHOLE_LIBRARY_NAME, trackId: focus.trackId }]);
+  }, [focus, showReviews]);
 
-  // A review opened from the page: a match that finished, or the toast's Review.
+  // Reviews opened from the page: a match that finished, or the toast's Review.
   const openingToken = useRef<string | null>(null);
   useEffect(() => {
     if (!reviewOpening || openingToken.current === reviewOpening.token) return;
     openingToken.current = reviewOpening.token;
-    showReview({
-      source: { jobId: reviewOpening.run.job_id },
-      name: reviewOpening.name,
-      playlistId: reviewOpening.playlistId,
-      filter: reviewOpening.filter,
-    });
+    showReviews(
+      reviewOpening.targets.map((target) => ({
+        source: target.playlistId === null ? {} : { playlistId: target.playlistId },
+        name: target.name,
+      })),
+    );
     onReviewOpened?.();
-  }, [onReviewOpened, reviewOpening, showReview]);
+  }, [onReviewOpened, reviewOpening, showReviews]);
+
+  /** Review, on a row: that playlist's tracks; null is the whole library. */
+  const reviewPlaylist = useCallback(
+    (picked: CleanPlaylistStatus | null) => {
+      showReviews([
+        picked
+          ? { source: { playlistId: picked.id }, name: picked.name }
+          : { source: {}, name: WHOLE_LIBRARY_NAME },
+      ]);
+    },
+    [showReviews],
+  );
 
   /** Open, from Past searches: that run's tracks, all of them. */
   const openRun = useCallback(
     (picked: MatchRun) => {
-      showReview({ source: { jobId: picked.job_id }, name: picked.label ?? whatLine(picked), playlistId: null });
+      showReviews([{ source: { jobId: picked.job_id }, name: picked.label ?? whatLine(picked) }]);
     },
-    [showReview],
-  );
-
-  /**
-   * Review N › and See them ›: the tracks of the run the row's last Match started, when that run
-   * holds what the row waits on, else the playlist's own (earlier runs left some, or decisions a
-   * newer match disagrees with). The row counts across runs, so the run is only right when it
-   * holds at least that many.
-   */
-  const reviewPlaylist = useCallback(
-    (picked: CleanPlaylistStatus | null, filter: ReviewFilter, holds: "waiting" | "no_match") => {
-      const counts = picked ?? playlists.data?.whole_library;
-      const name = picked ? picked.name : "Whole library";
-      const open = (found: MatchRun | null) => {
-        const want = holds === "waiting" ? (counts?.waiting ?? 0) : (counts?.no_match ?? 0);
-        const have = found ? (holds === "waiting" ? found.waiting : found.not_found) : 0;
-        const byRun = found !== null && have > 0 && have >= want;
-        if (found && !byRun) onRunSpent?.(picked ? picked.id : null);
-        showReview({
-          source: byRun ? { jobId: found.job_id } : picked ? { playlistId: picked.id } : {},
-          name,
-          playlistId: picked ? picked.id : null,
-          filter,
-        });
-      };
-      const jobId = runFor?.(picked);
-      const read = window.cuepoint?.getMatchJobs;
-      if (!jobId || !read) {
-        open(null);
-        return;
-      }
-      void read({ limit: 20 })
-        .then((answer) => open(answer.jobs.find((entry) => entry.job_id === jobId) ?? null))
-        .catch(() => open(null));
-    },
-    [onRunSpent, playlists.data, runFor, showReview],
+    [showReviews],
   );
 
   const resumeRun = useCallback(
@@ -211,57 +190,12 @@ export function MatchArea({
     [match],
   );
 
-  const searchAgain = useCallback(
-    (track: { id: number; title: string }) => {
-      match.start("rematch", { track_ids: [track.id] }, true, `1 track: "${track.title}"`);
-    },
-    [match],
-  );
-
-  const reviewRow = reviewing
-    ? reviewing.playlistId === null
-      ? null
-      : (playlists.data?.playlists.find((entry) => entry.id === reviewing.playlistId) ?? null)
-    : null;
-  const reviewCounts = reviewing
-    ? reviewing.playlistId === null
-      ? (playlists.data?.whole_library ?? null)
-      : reviewRow
-    : null;
-
-  // A past search is saved by its own tracks: count them as the Save window will, again after each change.
-  const [changes, setChanges] = useState(0);
-  const [runUnsaved, setRunUnsaved] = useState<number | undefined>(undefined);
-  const countedRun = reviewing !== null && reviewing.playlistId === null ? (reviewing.source.jobId ?? null) : null;
-  useEffect(() => {
-    if (countedRun === null || !countRunUnsaved) {
-      setRunUnsaved(undefined);
-      return;
-    }
-    let cancelled = false;
-    void countRunUnsaved(countedRun)
-      .then((count) => {
-        if (!cancelled) setRunUnsaved(count);
-      })
-      .catch(() => {
-        if (!cancelled) setRunUnsaved(undefined);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [changes, countRunUnsaved, countedRun, match.ended]);
-  const reviewChanged = useCallback(() => {
-    setChanges((count) => count + 1);
-    onHealthChanged();
-  }, [onHealthChanged]);
-
-  const byRun = reviewing !== null && reviewing.playlistId === null && reviewing.source.jobId !== undefined;
   const tabs = [
     { id: "playlists", label: "Playlists" },
-    ...(reviewing ? [{ id: "review", label: `Review ${reviewing.name}` }] : []),
+    ...reviews.map((entry) => ({ id: reviewTabId(entry.key), label: `Review ${entry.name}` })),
     { id: "past", label: "Past searches" },
   ];
-  const active = tab === "review" && !reviewing ? "playlists" : tab;
+  const current = reviews.find((entry) => reviewTabId(entry.key) === active) ?? null;
 
   return (
     <div className="match-area">
@@ -274,46 +208,28 @@ export function MatchArea({
             error={playlists.error}
             loading={playlists.loading}
             matching={match.matching}
-            onMatch={onMatchPlaylist}
-            onStop={match.stop}
-            onReview={(picked) => reviewPlaylist(picked, "all", "waiting")}
-            onSee={(picked) => reviewPlaylist(picked, "not_found", "no_match")}
-            onSave={onSavePlaylist}
+            onMatch={onMatch}
+            onReview={reviewPlaylist}
           />
         )}
-        {active === "review" && reviewing && (
-          <ReviewRun
-            key={reviewing.key}
-            source={reviewing.source}
-            name={reviewing.name}
+        {current && (
+          <ReviewTab
+            key={current.key}
+            source={current.source}
+            name={current.name}
             version={match.ended + match.started}
             matching={match.matching}
-            // A past search is saved by its own tracks; a playlist's review by the playlist.
-            saveCount={byRun ? runUnsaved : (reviewCounts?.unsaved ?? 0)}
-            onSave={
-              byRun
-                ? onSaveRun
-                  ? () => onSaveRun(reviewing.source.jobId!)
-                  : undefined
-                : onSavePlaylist
-                  ? () => onSavePlaylist(reviewRow)
-                  : undefined
-            }
             onPanelChange={setPanelOpen}
-            onOpenEntity={onOpenEntity}
-            onBack={leaveReview}
-            onChanged={reviewChanged}
-            onSearchAgain={searchAgain}
-            initialFilter={reviewing.filter}
-            initialTrackId={reviewing.trackId}
-            onReviewed={reviewing.source.jobId ? () => onRunSpent?.(reviewing.playlistId) : undefined}
+            onBack={() => closeReview(current.key)}
+            onChanged={onHealthChanged}
+            initialTrackId={current.trackId}
           />
         )}
         {active === "past" && (
           <PastSearches
             version={match.ended + match.started}
             matching={match.matching}
-            openId={reviewing?.source.jobId ?? null}
+            openId={reviews.find((entry) => entry.source.jobId !== undefined)?.source.jobId ?? null}
             onOpen={openRun}
             onResume={resumeRun}
             onMatchAgain={matchAgain}

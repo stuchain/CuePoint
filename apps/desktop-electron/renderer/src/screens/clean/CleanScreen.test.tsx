@@ -311,9 +311,10 @@ function renderClean(section?: string, tab: string | null = null) {
   );
 }
 
-/** Press a playlist's own Match button (C22): no ticks, no header button. */
+/** Tick a playlist (or the whole library) and press Match (C22): the only way to start a match. */
 async function startMatching(name = "Whole library") {
-  fireEvent.click(await screen.findByRole("button", { name: `Match ${name}` }));
+  fireEvent.click(await screen.findByRole("checkbox", { name: `Match ${name}` }));
+  fireEvent.click(screen.getByRole("button", { name: /^Match (whole library|\d+ playlists?)$/ }));
 }
 
 beforeAll(() => {
@@ -424,17 +425,18 @@ describe("the page", () => {
     );
   });
 
-  it("has no header button and no tick boxes: every playlist has its own Match (K4, C22)", async () => {
+  it("has no header button and no save bar: a tick per playlist and one Match button start a match (K4, C22)", async () => {
     renderClean(undefined, "playlists");
     const header = await screen.findByTestId("clean-header");
     expect(within(header).getByRole("heading", { level: 1, name: "Clean" })).toBeInTheDocument();
     await screen.findByText("Peak time");
     expect(within(header).queryByRole("button")).toBeNull();
-    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
-    expect(screen.queryByText("Tick one or more playlists.")).toBeNull();
     for (const name of ["Whole library", "Peak time", "Closing", "Warmup", "hj", "all"]) {
-      expect(screen.getByRole("button", { name: `Match ${name}` })).toBeEnabled();
+      expect(screen.getByRole("checkbox", { name: `Match ${name}` })).toBeEnabled();
+      expect(screen.queryByRole("button", { name: `Match ${name}` })).toBeNull();
     }
+    expect(screen.getByRole("button", { name: "Match playlists" })).toBeDisabled();
+    expect(screen.queryByRole("region", { name: "Save to files" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
   });
 
@@ -570,8 +572,9 @@ describe("the Match tab", () => {
 
     // One run at a time: on the rows every Match waits for it, and says why.
     fireEvent.click(screen.getByRole("tab", { name: "Playlists" }));
-    expect(await screen.findByRole("button", { name: "Match Peak time" })).toBeDisabled();
-    expect(screen.getAllByText("one match at a time").length).toBeGreaterThan(0);
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Match Peak time" }));
+    expect(screen.getByRole("button", { name: "Match 1 playlist" })).toBeDisabled();
+    expect(screen.getByText("One match at a time: wait for the one that is running.")).toBeInTheDocument();
   });
 
   it("says why the engine refused a match", async () => {
@@ -899,7 +902,7 @@ describe("opening one track from the Library (CLEAN-13)", () => {
   });
 });
 
-describe("a playlist's own Match (C22)", () => {
+describe("matching what is ticked (C22)", () => {
   it("starts one run over that playlist, named by it, and says it started", async () => {
     renderClean(undefined, "playlists");
     await startMatching("Peak time");
@@ -917,6 +920,35 @@ describe("a playlist's own Match (C22)", () => {
       label: "Peak time",
     });
     expect(await screen.findByText(/^Matching 2 tracks on Beatport/)).toBeInTheDocument();
+  });
+
+  it("starts one run over several ticked playlists, named by how many", async () => {
+    renderClean(undefined, "playlists");
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Match Peak time" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Match Warmup" }));
+    fireEvent.click(screen.getByRole("button", { name: "Match 2 playlists" }));
+    await waitFor(() => expect(bridge.startCleanMatch).toHaveBeenCalledTimes(1));
+    expect(bridge.startCleanMatch).toHaveBeenCalledWith({
+      selection: {
+        query: {
+          filters: {
+            match: "all",
+            rules: [
+              {
+                field: "in_playlist",
+                operator: "any_of",
+                value: [
+                  { kind: "playlist", id: 10 },
+                  { kind: "playlist", id: 12 },
+                ],
+              },
+            ],
+          },
+        },
+      },
+      rematch: false,
+      label: "2 playlists",
+    });
   });
 
   it("matches again, as a rematch, a playlist with nothing left to look up", async () => {
@@ -938,8 +970,9 @@ describe("a playlist's own Match (C22)", () => {
     );
   });
 
-  it("matches the whole library as the empty question, called Whole library", async () => {
+  it("matches the whole library as the empty question, called Whole library, and only it", async () => {
     renderClean(undefined, "playlists");
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Match Peak time" }));
     await startMatching();
     await waitFor(() =>
       expect(bridge.startCleanMatch).toHaveBeenCalledWith({
@@ -950,12 +983,12 @@ describe("a playlist's own Match (C22)", () => {
     );
   });
 
-  it("keeps Match available when the engine refuses it, and says why", async () => {
+  it("keeps the playlists tickable when the engine refuses it, and says why", async () => {
     bridge.startCleanMatch!.mockRejectedValue(new Error("Every track here is already matched"));
     renderClean(undefined, "playlists");
     await startMatching("Peak time");
     await screen.findByText("Every track here is already matched");
-    expect(screen.getByRole("button", { name: "Match Peak time" })).toBeEnabled();
+    expect(screen.getByRole("checkbox", { name: "Match Peak time" })).toBeEnabled();
   });
 
   it("reads the rows again as the run starts, so its row shows the bar", async () => {
@@ -966,24 +999,22 @@ describe("a playlist's own Match (C22)", () => {
     await waitFor(() => expect(bridge.getCleanPlaylists!.mock.calls.length).toBeGreaterThan(reads));
   });
 
-  it("shows a running row's bar and a Stop that cancels its job", async () => {
+  it("shows a running row's bar, and the Stop is the line at the top", async () => {
     bridge.getCleanPlaylists!.mockResolvedValue({
       ...PLAYLISTS,
       playlists: PLAYLISTS.playlists.map((playlist) =>
         playlist.id === 13 ? { ...playlist, running: { job_id: "job-9", done: 12, total: 24 } } : playlist,
       ),
     });
-    bridge.cancelJob = vi.fn().mockResolvedValue({ id: "job-9", state: "cancelled" });
     renderClean(undefined, "playlists");
     expect(await screen.findByText("Matching 12 of 24")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "hj progress" })).toHaveAttribute("value", "12");
-    fireEvent.click(screen.getByRole("button", { name: "Stop matching hj" }));
-    expect(bridge.cancelJob).toHaveBeenCalledWith("job-9");
+    expect(screen.queryByRole("button", { name: "Stop matching hj" })).toBeNull();
   });
 
-  it("opens Review N on that playlist's tracks, all of them, in a tab named for it", async () => {
+  it("opens Review on that playlist's tracks, all of them, in a tab named for it", async () => {
     renderClean(undefined, "playlists");
-    fireEvent.click(await screen.findByRole("button", { name: "Review 4 › for all" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Review all" }));
     expect(await screen.findByRole("tab", { name: "Review all" })).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalledWith({ playlistId: 14, limit: 2000 }));
     expect(await screen.findByRole("region", { name: "Review all" })).toHaveTextContent("all · 3 tracks");
@@ -991,45 +1022,24 @@ describe("a playlist's own Match (C22)", () => {
     expect(await screen.findByText("Track 3 · Artist 3")).toBeInTheDocument();
   });
 
-  it("opens Review N on the run the row's Match started, when it did in this session", async () => {
-    const started = {
-      job_id: "job-match",
-      created_at: "2026-10-14T10:00:00Z",
-      label: "Warmup",
-      rematch: false,
-      selected: 10,
-      excluded: 0,
-      planned: 10,
-      done: 10,
-      found: 6,
-      waiting: 4,
-      not_found: 0,
-      rejected: 0,
-      disputed: 0,
-      search_failed: 0,
-      status: "done",
-      finished_at: "2026-10-14T10:01:00Z",
-      latest_job_id: "job-match",
-      resume_job_id: null,
-    };
-    bridge.getMatchJobs!.mockResolvedValue({ jobs: [started], total: 1 });
-    // What the engine would say once the run has ended: Warmup has 4 to check and 6 sure.
+  it("opens the whole library's review, to sync every ticked track of the collection", async () => {
+    // The whole library row has a Review once anything is matched.
     bridge.getCleanPlaylists!.mockResolvedValue({
       ...PLAYLISTS,
-      playlists: PLAYLISTS.playlists.map((playlist) =>
-        playlist.id === 12 ? { ...playlist, not_matched: 0, waiting: 4, accepted: 6 } : playlist,
-      ),
+      whole_library: { ...PLAYLISTS.whole_library, not_matched: 0, accepted: 50 },
     });
     renderClean(undefined, "playlists");
-    await startMatching("Warmup");
-    await waitFor(() => expect(bridge.startCleanMatch).toHaveBeenCalled());
-    // The run ended with things to check and the person was on Clean: it landed on its review.
-    expect(await screen.findByRole("region", { name: "Review Warmup" })).toBeInTheDocument();
-    expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-match", limit: 2000 });
+    fireEvent.click(await screen.findByRole("button", { name: "Review Whole library" }));
+    expect(await screen.findByRole("tab", { name: "Review Whole library" })).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalledWith({ limit: 2000 }));
+    bridge.correctMatches = vi.fn().mockResolvedValue({ applied: { batch_id: "values", changed: 2 } });
+    fireEvent.click(await screen.findByRole("button", { name: "Sync Whole library to files…" }));
+    // The Sync window reads the ticked tracks of the whole collection, with no playlist or run named.
+    await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalledWith({ tickedIds: true }));
   });
 });
 
-describe("when a playlist's match ends somewhere else (C22)", () => {
+describe("when a match ends (C22)", () => {
   const RUN = {
     job_id: "job-match",
     created_at: "2026-10-14T10:00:00Z",
@@ -1051,20 +1061,32 @@ describe("when a playlist's match ends somewhere else (C22)", () => {
     resume_job_id: null,
   };
 
-  it("lands on the run's review when it ends and the person is on Clean, saying nothing in a toast", async () => {
+  it("lands on a review of each playlist matched when the person is on Clean, saying nothing in a toast", async () => {
     bridge.getMatchJobs!.mockResolvedValue({ jobs: [RUN], total: 1 });
     renderClean(undefined, "playlists");
-    await startMatching("hj");
-    expect(await screen.findByRole("tab", { name: "Review hj" }, { timeout: 3000 })).toHaveAttribute(
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Match hj" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Match Warmup" }));
+    fireEvent.click(screen.getByRole("button", { name: "Match 2 playlists" }));
+    // A tab for each, the first of them in front.
+    expect(await screen.findByRole("tab", { name: "Review Warmup" }, { timeout: 3000 })).toHaveAttribute(
       "aria-selected",
       "true",
     );
-    expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-match", limit: 2000 });
+    expect(screen.getByRole("tab", { name: "Review hj" })).toHaveAttribute("aria-selected", "false");
+    expect(bridge.getMatchReview).toHaveBeenCalledWith({ playlistId: 12, limit: 2000 });
     expect(screen.queryByText(/matched ·/)).toBeNull();
     expect(screen.queryByText("Matching finished.")).toBeNull();
   });
 
-  it("does not land over a review whose details are open: a toast says it instead", async () => {
+  it("lands on only the whole library's review for a whole-library match", async () => {
+    bridge.getMatchJobs!.mockResolvedValue({ jobs: [{ ...RUN, label: "Whole library" }], total: 1 });
+    renderClean(undefined, "playlists");
+    await startMatching();
+    expect(await screen.findByRole("tab", { name: "Review Whole library" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getAllByRole("tab", { name: /^Review/ })).toHaveLength(1);
+  });
+
+  it("does not land over a review whose panel is open: a toast says it instead", async () => {
     bridge.getMatchJobs!.mockResolvedValue({ jobs: [RUN], total: 1 });
     const releases: Array<() => void> = [];
     bridge.getJob!.mockImplementation(
@@ -1075,22 +1097,23 @@ describe("when a playlist's match ends somewhere else (C22)", () => {
     );
     renderClean(undefined, "playlists");
     await startMatching("hj");
-    // While it runs, the person reviews another playlist and opens a track's details.
-    fireEvent.click(await screen.findByRole("button", { name: "Review 4 › for all" }));
+    // While it runs, the person reviews another playlist and opens a track's panel.
+    fireEvent.click(await screen.findByRole("button", { name: "Review all" }));
     await screen.findByRole("region", { name: "Review all" });
-    fireEvent.click(await screen.findByRole("button", { name: "Details of Track 1" }));
+    const row = (await screen.findAllByRole("row")).find((entry) => entry.getAttribute("data-track-id") === "1")!;
+    fireEvent.click(row);
     await screen.findByRole("complementary", { name: "Track details" });
 
     await waitFor(() => expect(releases.length).toBeGreaterThan(1));
     act(() => releases.forEach((release) => release()));
     expect(await screen.findByText("hj matched · 15 confirmed · 9 to check")).toBeInTheDocument();
-    // What is being read stays; Review 9 on the toast is the way to the new run.
+    // What is being read stays; Review on the toast is the way to the new one.
     expect(screen.getByRole("tab", { name: "Review all" })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByRole("tab", { name: "Review hj" })).toBeNull();
     expect(screen.getByRole("complementary", { name: "Track details" })).toBeInTheDocument();
   });
 
-  it("says it in a toast with Review 9 from another part of Clean, which opens the review of that run", async () => {
+  it("says it in a toast with Review from another part of Clean, which opens the playlist's review", async () => {
     bridge.getMatchJobs!.mockResolvedValue({ jobs: [RUN], total: 1 });
     // The job ends only when released, so the person can leave first.
     const releases: Array<() => void> = [];
@@ -1106,9 +1129,9 @@ describe("when a playlist's match ends somewhere else (C22)", () => {
     await waitFor(() => expect(releases.length).toBeGreaterThan(1));
     act(() => releases.forEach((release) => release()));
     expect(await screen.findByText("hj matched · 15 confirmed · 9 to check")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Review 9" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review" }));
     expect(await screen.findByRole("tab", { name: "Review hj" })).toHaveAttribute("aria-selected", "true");
-    await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-match", limit: 2000 }));
+    await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalledWith({ playlistId: 13, limit: 2000 }));
   });
 });
 
@@ -1143,15 +1166,15 @@ describe("a match that finds nothing", () => {
     expect(note).toHaveTextContent("This usually means the search failed, not that the tracks aren't on Beatport.");
     expect(screen.queryByRole("tab", { name: /^Review/ })).toBeNull();
 
-    // See the 24: the review, on the tracks not found.
+    // See the 24: the review of that playlist, where they show as not found.
     review = Array.from({ length: 24 }, (_, index) => reviewTrack(index + 1, "not_found"));
     fireEvent.click(within(note).getByRole("button", { name: "See the 24 ›" }));
     expect(await screen.findByRole("tab", { name: "Review hj" })).toHaveAttribute("aria-selected", "true");
-    await waitFor(() => expect(screen.getByRole("button", { name: "Not found 24" })).toHaveAttribute("aria-pressed", "true"));
+    await waitFor(() => expect(screen.getByText("24 not found")).toBeInTheDocument());
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("says failed searches as failed, and See them opens the review on the failed ones", async () => {
+  it("says failed searches as failed, and See them opens the review where they show as failed", async () => {
     const failed = { ...NOTHING, not_found: 0, search_failed: 24 };
     bridge.getMatchJobs!.mockResolvedValue({ jobs: [failed], total: 1 });
     renderClean(undefined, "playlists");
@@ -1163,9 +1186,7 @@ describe("a match that finds nothing", () => {
     review = Array.from({ length: 24 }, (_, index) => reviewTrack(index + 1, "search_failed"));
     fireEvent.click(within(note).getByRole("button", { name: "See the 24 ›" }));
     expect(await screen.findByRole("tab", { name: "Review hj" })).toHaveAttribute("aria-selected", "true");
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Search failed 24" })).toHaveAttribute("aria-pressed", "true"),
-    );
+    await waitFor(() => expect(screen.getByText("24 search failed")).toBeInTheDocument());
   });
 
   it("is dismissed with Dismiss, and gone when the next match starts", async () => {
@@ -1214,7 +1235,7 @@ describe("a match that finds nothing", () => {
     expect(await screen.findByRole("tab", { name: "Review hj" })).toBeInTheDocument();
   });
 
-  it("is what the row says too: 24 not found, with Match again and See them ›", async () => {
+  it("is what the row says too: 24 not found, with a Review", async () => {
     bridge.getCleanPlaylists!.mockResolvedValue({
       ...PLAYLISTS,
       playlists: PLAYLISTS.playlists.map((playlist) =>
@@ -1223,8 +1244,7 @@ describe("a match that finds nothing", () => {
     });
     renderClean(undefined, "playlists");
     expect(await screen.findByText("10 not found")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Match hj again" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "See them › for hj" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Review hj" })).toBeEnabled();
   });
 });
 
@@ -1247,146 +1267,29 @@ describe("after leaving the page and coming back", () => {
     const view = render(page("visible"));
     await startMatching("Peak time");
     expect(await screen.findByRole("region", { name: "Matching" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Match Warmup" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Match Warmup" }));
+    expect(screen.getByRole("button", { name: "Match 1 playlist" })).toBeDisabled();
 
     // Away, and the match ends there: the engine lists no running job.
     view.rerender(page("hidden"));
     view.rerender(page("visible"));
 
     await waitFor(() => expect(screen.queryByRole("region", { name: "Matching" })).toBeNull());
-    expect(await screen.findByRole("button", { name: "Match Warmup" })).toBeEnabled();
-    expect(screen.queryAllByText("one match at a time")).toHaveLength(0);
+    expect(await screen.findByRole("button", { name: "Match 1 playlist" })).toBeEnabled();
+    expect(screen.queryAllByText(/One match at a time/)).toHaveLength(0);
   });
 });
 
-describe("Save to files (C23)", () => {
-  const UNSAVED_RULE = { field: "unsaved_values", operator: "is", value: true };
-
-  function withSaving(unsaved: number) {
-    bridge.getUnsavedValues = vi.fn().mockResolvedValue({ tracks: unsaved, fields: {} });
-    bridge.previewTagWrite = vi.fn(() => new Promise(() => {}));
-    bridge.startTagWrite = vi.fn();
-  }
-
-  it("draws no bar when every value is in the files", async () => {
-    withSaving(0);
-    renderClean(undefined, "playlists");
-    await waitFor(() => expect(bridge.getUnsavedValues).toHaveBeenCalled());
-    // Let the answer land before asking whether a bar was drawn for it.
-    await act(async () => {});
-    expect(screen.queryByRole("region", { name: "Save to files" })).toBeNull();
-  });
-
-  it("opens See changes on the list of changes", async () => {
-    withSaving(47);
-    renderClean(undefined, "playlists");
-    const bar = await screen.findByRole("region", { name: "Save to files" });
-    fireEvent.click(within(bar).getByRole("button", { name: "See changes" }));
-    const dialog = await screen.findByRole("dialog", { name: "Save 47 tracks to your files" });
-    expect(within(dialog).getByRole("button", { name: /Back/ })).toBeInTheDocument();
-  });
-
-  it("opens the Whole library row's Save on every unsaved track", async () => {
-    withSaving(47);
-    bridge.getCleanPlaylists!.mockResolvedValue({
-      ...PLAYLISTS,
-      whole_library: { ...PLAYLISTS.whole_library, not_matched: 0, accepted: 50, unsaved: 47 },
-    });
-    renderClean(undefined, "playlists");
-    fireEvent.click(await screen.findByRole("button", { name: "Save 47 to files… for Whole library" }));
-    expect(await screen.findByRole("dialog", { name: "Save 47 tracks to your files" })).toBeInTheDocument();
-    await waitFor(() =>
-      expect(bridge.previewTagWrite).toHaveBeenCalledWith(
-        expect.objectContaining({
-          selection: { query: { filters: { match: "all", rules: [UNSAVED_RULE] } } },
-        }),
-      ),
-    );
-  });
-
-  it.each(["review", "missing", "duplicates"])("shows the bar on %s and opens the window on every unsaved track", async (section) => {
-    withSaving(47);
-    renderClean(section);
-    const bar = await screen.findByRole("region", { name: "Save to files" });
-    fireEvent.click(within(bar).getByRole("button", { name: "Save to files…" }));
-    expect(await screen.findByRole("dialog", { name: "Save 47 tracks to your files" })).toBeInTheDocument();
-    await waitFor(() =>
-      expect(bridge.previewTagWrite).toHaveBeenCalledWith(
-        expect.objectContaining({
-          selection: { query: { filters: { match: "all", rules: [UNSAVED_RULE] } } },
-        }),
-      ),
-    );
-  });
-
-  it("opens a playlist's Save N to files… on that playlist's unsaved tracks", async () => {
-    withSaving(47);
-    bridge.getCleanPlaylists!.mockResolvedValue({
-      ...PLAYLISTS,
-      playlists: PLAYLISTS.playlists.map((entry) =>
-        entry.id === 11 ? { ...entry, unsaved: 6 } : entry.id === 14 ? { ...entry, waiting: 0, unsaved: 2 } : entry,
-      ),
-    });
-    renderClean(undefined, "playlists");
-    fireEvent.click(await screen.findByRole("button", { name: "Save 6 to files… for Closing" }));
-    expect(await screen.findByRole("dialog", { name: "Save 6 tracks to your files" })).toBeInTheDocument();
-    await waitFor(() =>
-      expect(bridge.previewTagWrite).toHaveBeenCalledWith(
-        expect.objectContaining({
-          selection: {
-            query: {
-              filters: {
-                match: "all",
-                rules: [
-                  UNSAVED_RULE,
-                  { field: "in_playlist", operator: "any_of", value: [{ kind: "playlist", id: 11 }] },
-                ],
-              },
-            },
-          },
-        }),
-      ),
-    );
-
-    // Closed and opened on another playlist: a new window, reading that playlist's files.
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
-    fireEvent.click(screen.getByRole("button", { name: "Save 2 to files… for all" }));
-    expect(await screen.findByRole("dialog", { name: "Save 2 tracks to your files" })).toBeInTheDocument();
-    await waitFor(() => expect(bridge.previewTagWrite).toHaveBeenCalledTimes(2));
-    expect(bridge.previewTagWrite.mock.calls[1]![0].selection.query.filters.rules[1].value).toEqual([
-      { kind: "playlist", id: 14 },
-    ]);
-  });
-
-  it("saves that run's own unsaved tracks, not the whole library's", async () => {
-    withSaving(47);
-    bridge.getMatchJobs!.mockResolvedValue({ jobs: [run({ job_id: "job-1", label: 'Playlist "all"' })], total: 1 });
-    review = [reviewTrack(1, "done"), reviewTrack(2, "done")];
-    // The engine counts the run's own unsaved tracks, as the Library counts them.
-    const browse = bridge.browseLibrary!.getMockImplementation() as (params: Record<string, unknown>) => Promise<unknown>;
-    bridge.browseLibrary!.mockImplementation(async (params: Record<string, unknown>) => {
-      const rules = (params.filters as { rules?: Array<{ field: string }> } | null)?.rules ?? [];
-      return rules.some((rule) => rule.field === "match_run") ? browseAnswer(params, [track(1), track(2)]) : browse(params);
-    });
-    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "past");
-    renderClean();
-    fireEvent.click(await screen.findByRole("button", { name: 'Open Playlist "all"' }));
-    fireEvent.click(await screen.findByRole("button", { name: "Save 2 to files…" }));
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
-    await waitFor(() =>
-      expect(bridge.previewTagWrite).toHaveBeenCalledWith(
-        expect.objectContaining({
-          selection: {
-            query: {
-              filters: {
-                match: "all",
-                rules: [UNSAVED_RULE, { field: "match_run", operator: "is", value: "job-1" }],
-              },
-            },
-          },
-        }),
-      ),
-    );
+describe("no save bar on this page", () => {
+  it("draws none on any part, whatever the files hold: syncing is per playlist, from its review", async () => {
+    for (const section of ["review", "missing", "duplicates"]) {
+      localStorage.clear();
+      const view = renderClean(section);
+      await screen.findByRole("tab", { name: "Match" });
+      await act(async () => {});
+      expect(screen.queryByRole("region", { name: "Save to files" })).toBeNull();
+      view.unmount();
+    }
   });
 });
 

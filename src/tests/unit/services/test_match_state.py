@@ -822,6 +822,49 @@ class TestConfirmingAProposal:
             getattr(states, method)(987_654, "b")
 
 
+class TestDecidingMany:
+    """The Review's ticks: some tracks accepted, others refused, in one act."""
+
+    def test_accepts_and_rejects_under_one_batch(
+        self, rematch, states, matches, db, ids
+    ):
+        first = rematch(ids[0], won(beatport_id="1001", score=80.0))
+        second = rematch(ids[1], won(beatport_id="1002", score=80.0))
+
+        made = states.decide_many(
+            [(ids[0], int(first.candidate_id))], [ids[1]], "ticks"
+        )
+
+        assert made == 2
+        assert (
+            matches.get_match(ids[0]).state,
+            matches.get_match(ids[0]).decided_by,
+        ) == (
+            STATE_ACCEPTED,
+            DECIDED_BY_USER,
+        )
+        refused = matches.get_match(ids[1])
+        assert (refused.state, refused.decided_by) == (STATE_REJECTED, DECIDED_BY_USER)
+        # The refusal remembers the candidate it refused, so ticking it again can accept it.
+        assert refused.candidate_id == second.candidate_id
+        assert history(db, ids[0])[-1]["batch_id"] == "ticks"
+        assert history(db, ids[1])[-1]["batch_id"] == "ticks"
+
+    def test_one_that_cannot_be_decided_leaves_all_of_them_undecided(
+        self, rematch, states, matches, ids
+    ):
+        rematch(ids[0], won(beatport_id="1001", score=80.0))
+        before = matches.get_match(ids[0])
+
+        with pytest.raises(ValueError, match="No track"):
+            states.decide_many([], [ids[0], 987_654], "ticks")
+
+        assert matches.get_match(ids[0]) == before
+
+    def test_nothing_to_decide_is_nothing_done(self, states):
+        assert states.decide_many([], [], "ticks") == 0
+
+
 class TestComparingBeatportTracks:
     def test_by_id_when_both_are_known(self):
         assert same_beatport_track(

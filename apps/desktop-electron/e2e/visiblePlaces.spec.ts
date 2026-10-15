@@ -666,7 +666,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(() => jobsOf(win, "library_import"), { timeout: 60_000 }).toBeGreaterThan(imports);
   });
 
-  test("Edit values, Use Beatport's values and the save bar: the Library's More and Beatport menus", async () => {
+  test("Edit values and Use Beatport's values: the Library's More and Beatport menus", async () => {
     await openLibrary(win);
     const genres = () =>
       win.evaluate(async () => {
@@ -713,29 +713,24 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(genres, { timeout: 30_000 }).toEqual(expect.arrayContaining(["Tech House", "Deep House"]));
     expect(await titlesWithGenre("Tech House")).toEqual(["Warm One"]);
 
-    // Saving into the files is the save bar's, not More's: More no longer offers it.
+    // More does not offer saving into the files.
     await pick(win, "Warm One", "Warm Two");
     await use(win, toolbar(win).getByRole("button", { name: "More", exact: true }), "the bar's More");
     await expect(win.getByRole("menuitem", { name: "Edit values…" })).toBeVisible();
     await expect(win.getByRole("menuitem", { name: "Save to files…" })).toHaveCount(0);
     await win.keyboard.press("Escape");
 
-    // The Library's own save bar counts the values made above and opens the save window.
-    const saveBar = win.locator("main.app-main .screen:visible").getByRole("region", { name: "Save to files" });
-    await expect(saveBar).toBeVisible({ timeout: 30_000 });
-    await use(win, saveBar.getByRole("button", { name: "Save to files…" }), "the bar's Save to files…");
-    const files = win.getByRole("dialog", { name: /^Save \d+ tracks? to your files$/ });
-    await expect(files).toBeVisible();
-    await win.keyboard.press("Escape");
-    await expect(files).toBeHidden();
+    // The Library has no save bar of its own: syncing into the files is per playlist, on Clean.
+    await expect(win.locator("main.app-main .screen:visible").getByRole("region", { name: "Save to files" })).toHaveCount(0);
   });
 
-  test("Match: a playlist row's own button on Clean ▸ Playlists", async () => {
+  test("Match: a tick and the Match button on Clean ▸ Playlists", async () => {
     await go(win, "#/clean");
     const before = await jobsOf(win, "clean_match");
     await win.getByRole("tab", { name: "Playlists", exact: true }).click();
-    // Match opens on Playlists (C22): every row has its own Match, none in the header; no window opens.
-    await use(win, win.getByRole("button", { name: "Match Whole library" }), "Match on the whole-library row");
+    // Match opens on Playlists (C22): tick the whole library and press Match, none in the header; no window opens.
+    await win.getByRole("checkbox", { name: "Match Whole library" }).check();
+    await use(win, win.getByRole("button", { name: "Match whole library" }), "Match whole library");
     await expect(win.getByRole("dialog", { name: "Match tracks" })).toHaveCount(0);
     await expect.poll(() => jobsOf(win, "clean_match"), { timeout: 30_000 }).toBeGreaterThan(before);
     // Nothing here reaches Beatport for real: stop what started, and wait until it has stopped,

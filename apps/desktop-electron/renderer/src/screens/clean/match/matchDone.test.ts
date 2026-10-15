@@ -7,7 +7,7 @@ import {
   matchDoneLine,
   nothingFound,
   nothingFoundLine,
-  nothingFoundTarget,
+  nothingFoundCount,
 } from "./matchDone";
 
 const RUN: MatchRun = {
@@ -63,8 +63,8 @@ describe("nothingFound", () => {
     expect(nothingFoundLine("hJ", { failed: 24, notFound: 0 })).toBe("hJ: 24 searches failed");
     expect(nothingFoundLine("hJ", { failed: 1, notFound: 0 })).toBe("hJ: 1 search failed");
     expect(nothingFoundLine("hJ", { failed: 0, notFound: 24 })).toBe("hJ: no Beatport match for 24 tracks");
-    expect(nothingFoundTarget({ failed: 3, notFound: 5 })).toEqual({ filter: "search_failed", count: 3 });
-    expect(nothingFoundTarget({ failed: 0, notFound: 5 })).toEqual({ filter: "not_found", count: 5 });
+    expect(nothingFoundCount({ failed: 3, notFound: 5 })).toBe(3);
+    expect(nothingFoundCount({ failed: 0, notFound: 5 })).toBe(5);
   });
 });
 
@@ -88,17 +88,18 @@ describe("announceRunEnd", () => {
     const [message, variant, action] = push.mock.calls[0]!;
     expect(message).toBe("hJ matched · 15 confirmed · 9 to check");
     expect(variant).toBe("success");
-    expect(action.label).toBe("Review 9");
+    expect(action.label).toBe("Review");
     action.onClick();
     expect(onReview).toHaveBeenCalledWith(RUN);
   });
 
-  it("offers no Review when nothing waits", async () => {
+  it("offers Review even when nothing waits for a yes or no: every track is reviewed", async () => {
     getMatchJobs.mockResolvedValue({ jobs: [{ ...RUN, waiting: 0 }], total: 1 });
     const push = vi.fn();
-    announceRunEnd({ jobId: "job-1", label: "hJ", away: () => true, push, onReview: vi.fn() });
+    const onReview = vi.fn();
+    announceRunEnd({ jobId: "job-1", label: "hJ", away: () => true, push, onReview });
     await vi.waitFor(() => expect(push).toHaveBeenCalled());
-    expect(push.mock.calls[0]![2]).toBeUndefined();
+    expect(push.mock.calls[0]![2].label).toBe("Review");
   });
 
   it("says failed searches as failed, not as nothing on Beatport, in the toast", async () => {

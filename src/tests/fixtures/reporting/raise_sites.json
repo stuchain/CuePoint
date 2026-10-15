@@ -1,13 +1,13 @@
 {
   "cuepoint/core/entity_names.py::name_key::name_key needs text, got {type(name).__name__}": {
     "holds": "a Python type name",
-    "verdict": "exempt",
-    "reason": "Python type names"
+    "reason": "Python type names",
+    "verdict": "exempt"
   },
   "cuepoint/core/entity_names.py::split_credit::split_credit needs text, got {type(credit).__name__}": {
     "holds": "a Python type name",
-    "verdict": "exempt",
-    "reason": "Python type names"
+    "reason": "Python type names",
+    "verdict": "exempt"
   },
   "cuepoint/core/set_analysis.py::EntryFacts.__post_init__::file must be one of {FILE_STATES}, got {self.file!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -15,8 +15,8 @@
   },
   "cuepoint/core/set_analysis.py::analyse::Entry {entry.entry_id} is in chapter {entry.chapter_id}, which is not one of the Set's chapters": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/core/set_analysis.py::transition_warning::Only a transition's warnings can be acknowledged, and {kind!r} is not one of {TRANSITION_KINDS}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -24,8 +24,8 @@
   },
   "cuepoint/core/set_timing.py::format_time::A time cannot be negative: {seconds}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/core/set_timing.py::format_time::A time is a whole number of seconds, not {seconds!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -37,13 +37,13 @@
   },
   "cuepoint/core/set_timing.py::parse_time::{stripped!r} has {minutes} minutes: in h:mm:ss the minutes run from 00 to 59": {
     "holds": "a number or count, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/core/set_timing.py::parse_time::{stripped!r} has {seconds} seconds: seconds run from 00 to 59": {
     "holds": "a number or count, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/core/set_timing.py::parse_time::{stripped!r} is not a time: type minutes and seconds as m:ss (3:45) or hours, minutes and seconds as h:mm:ss (1:03:45)": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -51,8 +51,8 @@
   },
   "cuepoint/core/set_timing.py::planned_seconds::An entry must come in before it goes out, got in {start}s and out {out_seconds}s": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/core/similarity.py::MusicalKey.__post_init__::minor must be True or False, got {self.minor!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -100,13 +100,13 @@
   },
   "cuepoint/core/waveform.py::Waveform.__post_init__::duration_ms is out of range: {self.duration_ms!r}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform.py::Waveform.__post_init__::{self.columns} columns need {self.columns * BAND_COUNT} bytes, not {len(self.data)}": {
     "holds": "a length, a number or count, arithmetic on integers",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform.py::decode::format version {version!r}, not {FORMAT_VERSION}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -114,18 +114,18 @@
   },
   "cuepoint/core/waveform.py::decode::the body does not decompress: {exc}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "zlib.error text: a fixed phrase and a code, never data"
+    "reason": "zlib.error text: a fixed phrase and a code, never data",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform.py::decode::the body holds {len(planar)} bytes, not {expected}": {
     "holds": "a length, a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform.py::decode::{band_count} bands, not {BAND_COUNT}": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform.py::downsample::width must be {MIN_WIDTH} to {columns}, not {width!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -137,58 +137,58 @@
   },
   "cuepoint/core/waveform.py::reduce::A waveform has {BAND_COUNT} bands, not {len(bands)}": {
     "holds": "a length, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform_detail.py::WaveformDetail.__post_init__::columns must be 1 to {MAX_COLUMNS}, not {self.columns!r}": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform_detail.py::WaveformDetail.__post_init__::duration_ms is out of range: {self.duration_ms!r}": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform_detail.py::WaveformDetail.__post_init__::rate_hz must be 1 to 65535, not {self.rate_hz!r}": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform_detail.py::WaveformDetail.__post_init__::{self.columns} columns need {self.columns * BAND_COUNT} bytes, not {len(self.data)}": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform_detail.py::decode_detail::format version {version!r}, not {DETAIL_FORMAT_VERSION}": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform_detail.py::decode_detail::the body does not decompress: {exc}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "zlib.error text: a fixed phrase and a code, never data"
+    "reason": "zlib.error text: a fixed phrase and a code, never data",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform_detail.py::decode_detail::the body holds {len(planar)} bytes, not {expected}": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform_detail.py::decode_detail::{band_count} bands, not {BAND_COUNT}": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/core/waveform_detail.py::reduce_detail::A waveform has {BAND_COUNT} bands, not {len(bands)}": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/data/artwork.py::_base64::a picture is not valid base64: {exc}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "binascii.Error text: a fixed phrase about padding or length, never the data"
+    "reason": "binascii.Error text: a fixed phrase about padding or length, never the data",
+    "verdict": "exempt"
   },
   "cuepoint/data/artwork_image.py::ArtworkRefused.__init__::reason must be one of {REFUSAL_REASONS}, got {reason!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -196,28 +196,28 @@
   },
   "cuepoint/data/artwork_image.py::decode_image::expected bytes, got {type(data).__name__}": {
     "holds": "a Python type name",
-    "verdict": "exempt",
-    "reason": "Python type names"
+    "reason": "Python type names",
+    "verdict": "exempt"
   },
   "cuepoint/data/artwork_image.py::decode_image::not an allowed image format: {exc}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "Pillow error text such as \"cannot identify image file\": a fixed phrase, never the data"
+    "reason": "Pillow error text such as \"cannot identify image file\": a fixed phrase, never the data",
+    "verdict": "exempt"
   },
   "cuepoint/data/artwork_image.py::decode_image::{size} bytes is over the {MAX_INPUT_BYTES}-byte cap": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/data/artwork_image.py::decode_image::{source.format} is not allowed": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "cuepoint/data/artwork_image.py::decode_image::{width} × {height} is over the {MAX_PIXELS}-pixel cap": {
     "holds": "a number or count, exception text, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/data/artwork_image.py::make_thumbnail::A thumbnail size is 1 to {MAX_THUMBNAIL_SIZE}, not {size!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -229,8 +229,8 @@
   },
   "cuepoint/data/audio_decode.py::Loudness.__post_init__::A {self.reason} loudness has no peak": {
     "holds": "an enum-like value chosen by our code",
-    "verdict": "exempt",
-    "reason": "an enum value chosen by our code and already validated"
+    "reason": "an enum value chosen by our code and already validated",
+    "verdict": "exempt"
   },
   "cuepoint/data/audio_decode.py::Loudness.__post_init__::Not a loudness reason: {self.reason!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -248,11 +248,6 @@
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
-  "cuepoint/data/audio_decode.py::decode_envelope::the decoder stopped making progress, {LOG_ATTEMPTS} times": {
-    "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
-  },
   "cuepoint/data/audio_decode.py::_decode_in::could not read the decoder's output: {exc}": {
     "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
     "verdict": "corpus"
@@ -263,8 +258,8 @@
   },
   "cuepoint/data/audio_decode.py::_decode_in::took longer than {timeout_seconds} seconds": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "cuepoint/data/audio_decode.py::_outcome::: {said[:200]!r}": {
     "holds": "decoder error output, which can name the file path",
@@ -272,13 +267,13 @@
   },
   "cuepoint/data/audio_decode.py::_outcome::the analysis filters did not run as built (output {found}; expected {EXPECTED_OUTPUT})": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/data/audio_decode.py::decode_envelope::The {mode} transport does not work on {sys.platform}": {
     "holds": "an enum-like value chosen by our code, the platform name",
-    "verdict": "exempt",
-    "reason": "an enum value chosen by our code and already validated; the platform name"
+    "reason": "an enum value chosen by our code and already validated; the platform name",
+    "verdict": "exempt"
   },
   "cuepoint/data/audio_decode.py::decode_envelope::Unknown transport: {mode!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -287,6 +282,11 @@
   "cuepoint/data/audio_decode.py::decode_envelope::no decoder at '{decoder_path}'": {
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
+  },
+  "cuepoint/data/audio_decode.py::decode_envelope::the decoder stopped making progress, {LOG_ATTEMPTS} times": {
+    "holds": "a number or count, our own constant",
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "cuepoint/data/beatport_fixture.py::BeatportFixture._read::cannot read {name!r}: {exc}": {
     "holds": "a playlist, collection, tag, chapter or Set name; exception or error text from the OS or a library; an OSError quotes its filename",
@@ -310,18 +310,18 @@
   },
   "cuepoint/data/beatport_fixture.py::_api_entry::an api entry's delay_ms is 0 to {MAX_DELAY_MS}": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/data/beatport_fixture.py::_mapping::{what} must map URLs to file names": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/data/beatport_fixture.py::_strings::{what} must be a list of strings": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/data/beatport_fixture.py::active::{ENV_VAR} names {raw!r}, which is not there": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -345,8 +345,8 @@
   },
   "cuepoint/data/rekordbox.py::_iter_collection_elements::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/data/rekordbox.py::collection_entry_count::XML file not found: {quoted(xml_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -354,8 +354,8 @@
   },
   "cuepoint/data/rekordbox.py::collection_entry_count::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/data/rekordbox.py::get_playlist_track_ids::Playlist not found: {playlist_name!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -367,8 +367,8 @@
   },
   "cuepoint/data/rekordbox.py::get_track_locations::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/data/rekordbox.py::iter_playlist_nodes::XML file not found: {quoted(xml_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -376,8 +376,8 @@
   },
   "cuepoint/data/rekordbox.py::iter_playlist_nodes::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/data/rekordbox.py::parse_playlist_tree::XML file not found: {quoted(xml_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -385,8 +385,8 @@
   },
   "cuepoint/data/rekordbox.py::parse_playlist_tree::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/data/rekordbox.py::parse_rekordbox::XML file not found: {quoted(xml_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -394,8 +394,8 @@
   },
   "cuepoint/data/rekordbox.py::parse_rekordbox::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/data/rekordbox_export.py::_document_encoding::Unsupported XML encoding {declared!r}: CuePoint can export only UTF-8 or ASCII Rekordbox files. Save the file again from Rekordbox and import it again.": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -403,8 +403,8 @@
   },
   "cuepoint/data/rekordbox_export.py::_emit::Refusing to export a playlist tree more than {MAX_EXPORT_DEPTH} levels deep: something has gone wrong with the folder structure.": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/data/rekordbox_export.py::_plan::XML file not found: {quoted(source_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -412,13 +412,13 @@
   },
   "cuepoint/data/rekordbox_export.py::_plan::XML file too large: {size} bytes (max {MAX_XML_SIZE_BYTES}). Refusing to parse to prevent resource exhaustion.": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/data/rekordbox_export.py::_scan_document::The collection XML is not well-formed: {exc}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "ElementTree ParseError text: a fixed phrase with a line and column, never the content"
+    "reason": "ElementTree ParseError text: a fixed phrase with a line and column, never the content",
+    "verdict": "exempt"
   },
   "cuepoint/data/rekordbox_export.py::refuse_source_as_destination::Refusing to write the export over the collection it was read from: {quoted(destination_path)}. Choose a different file.": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -430,8 +430,8 @@
   },
   "cuepoint/data/set_list_file.py::_chapters_by_position::Entry {row.position + 1} is in chapter {row.chapter + 1}, which the set list does not have": {
     "holds": "arithmetic on integers",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/data/set_list_file.py::render::A set list is one of {FORMATS}, not {form!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -463,8 +463,8 @@
   },
   "cuepoint/data/tag_fields.py::predicted_value::A {field} to write cannot be blank": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/data/tag_fields.py::read_tag_fields::The tags of {quoted(path)} could not be read: {exc}": {
     "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
@@ -481,6 +481,16 @@
   "cuepoint/data/tag_fields.py::restore_tag_fields::The tags of {quoted(path)} could not be written: {exc}": {
     "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
     "verdict": "corpus"
+  },
+  "cuepoint/engine/__init__.py::__getattr__::module {__name__!r} has no attribute {name!r}": {
+    "holds": "an attribute name some code asked the package for",
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/engine/clean_api.py::_label::label is at most {MAX_LABEL_LENGTH} characters": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/clean_api.py::_only::Unknown field {', '.join(unknown)!r}. This request takes: ": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -504,8 +514,8 @@
   },
   "cuepoint/engine/clean_api.py::_query_value::{name} may be given once": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/clean_api.py::_require_int::{key} is required and must be a whole number, not {value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -513,28 +523,38 @@
   },
   "cuepoint/engine/clean_api.py::_require_str::{key} is required and must be a non-empty string": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/clean_api.py::_require_track::No track with id {track_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/engine/clean_api.py::_tick_targets::track_ids must be a list of 1 to {TICKS_LIMIT} whole numbers": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/clean_api.py::_track_row::No track with id {track_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/clean_api.py::attempt_candidates::No match attempt with id {attempt_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/engine/clean_api.py::correct_match::No candidate with id {candidate_id}": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/clean_api.py::decide::A {decision} names no candidate": {
     "holds": "an enum-like value chosen by our code",
-    "verdict": "exempt",
-    "reason": "an enum value chosen by our code and already validated"
+    "reason": "an enum value chosen by our code and already validated",
+    "verdict": "exempt"
   },
   "cuepoint/engine/clean_api.py::decide::decision must be one of {', '.join(DECISIONS)}, not {decision!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -542,8 +562,8 @@
   },
   "cuepoint/engine/clean_api.py::export_review::A {file_format} export is written to a {suffix} file": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "cuepoint/engine/clean_api.py::export_review::file_path must be an absolute path, not {quoted(file_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -561,21 +581,6 @@
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
   },
-  "cuepoint/engine/clean_api.py::_label::label is at most {MAX_LABEL_LENGTH} characters": {
-    "holds": "an integer id",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
-    "verdict": "exempt"
-  },
-  "cuepoint/engine/clean_api.py::correct_match::No candidate with id {candidate_id}": {
-    "holds": "an integer id",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
-    "verdict": "exempt"
-  },
-  "cuepoint/engine/clean_api.py::match_review::filter must be one of {', '.join(review.FILTERS)}": {
-    "holds": "our own field, label or code name",
-    "reason": "names of our own fields, parameters and code values, never a user value",
-    "verdict": "exempt"
-  },
   "cuepoint/engine/clean_api.py::match_review::limit must be between 1 and {REVIEW_LIMIT_MAX}": {
     "holds": "an integer id",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers",
@@ -592,8 +597,13 @@
   },
   "cuepoint/engine/discover_api.py::_existing_run::No discovery run {run_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/engine/discover_api.py::_group_specs::At most {MAX_GROUPS} cards at once": {
+    "holds": "our own constant",
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/engine/discover_api.py::_id_in_path::A {what} id is a positive whole number, not {raw!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -601,8 +611,8 @@
   },
   "cuepoint/engine/discover_api.py::_ids::{key} must be a list of Beatport track ids": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/discover_api.py::_only::Unknown field {', '.join(unknown)!r}. This request takes: {takes}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -638,8 +648,8 @@
   },
   "cuepoint/engine/discover_api.py::_params::{key} may be given once": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/discover_api.py::_query_bool::{name} must be true or false, not {query[name]!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -651,13 +661,13 @@
   },
   "cuepoint/engine/discover_api.py::_query_required::{name} is required": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/discover_api.py::_required::{key} is required": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/discover_api.py::_whole::{name} must be a whole number, not {raw!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -665,32 +675,37 @@
   },
   "cuepoint/engine/discover_api.py::_whole::{name} must be from {low} to {high}, not {value}": {
     "holds": "a number or count, exception text, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/discover_api.py::playlist_start::Discovery run {run_id} shows no tracks to push": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/discover_api.py::playlist_start::run_id is a positive whole number, not {run_id!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
+  "cuepoint/engine/discover_api.py::playlist_start::{key} goes with run_id alone, not with groups": {
+    "holds": "our own field, label or code name",
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
   "cuepoint/engine/discover_api.py::playlist_start::{key} goes with run_id, not with track_ids": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/discover_api.py::run_delete::Discovery run {run_id} is still running; cancel it first": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/discover_api.py::run_delete::No discovery run {run_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/discover_api.py::wantlist_bought::bought must be true or false, not {bought!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -700,15 +715,25 @@
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
+  "cuepoint/engine/discover_lists_api.py::list_create::{key} is required": {
+    "holds": "our own field, label or code name",
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/engine/discover_lists_api.py::list_update::{key} cannot be null; leave it out to keep it": {
+    "holds": "our own field, label or code name",
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
   "cuepoint/engine/library_api.py::_require_sources::No {kind} with id {ident}": {
     "holds": "a source kind our code already checked and an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/engine/library_api.py::library_track_detail::No track with id {track_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/library_api.py::parse_collection_id::collection_id must be a number, not {raw!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -724,18 +749,18 @@
   },
   "cuepoint/engine/library_api.py::parse_filters_param::filters must be a JSON object: {exc}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "JSONDecodeError text: a fixed phrase with a position, never the content"
+    "reason": "JSONDecodeError text: a fixed phrase with a position, never the content",
+    "verdict": "exempt"
   },
   "cuepoint/engine/library_api.py::parse_int_param::{name} must be an integer": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/library_api.py::parse_key_population_body::a {kind} source needs a positive whole-number id": {
     "holds": "a source kind our code already checked against its four constants",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/engine/library_api.py::parse_key_population_body::source kind {kind!r} is not one of: all, playlist, collection, set": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -759,8 +784,8 @@
   },
   "cuepoint/engine/library_api.py::resolve_scope::scope={scope!r} needs a collection_id": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "cuepoint/engine/library_api.py::validate_import_path::No such file: {quoted(xml_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -784,8 +809,8 @@
   },
   "cuepoint/engine/organization_api.py::_query_int::{name} is required": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/organization_api.py::_query_int::{name} must be a number, not {raw!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -793,8 +818,8 @@
   },
   "cuepoint/engine/organization_api.py::_require_ids::{key} must be a non-empty list of ids": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/organization_api.py::_require_ids::{key} must hold numbers, not {item!r}": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -802,8 +827,8 @@
   },
   "cuepoint/engine/organization_api.py::_require_int::{key} is required and must be a number": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/organization_api.py::_require_int::{key} must be a number, not {value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -811,13 +836,13 @@
   },
   "cuepoint/engine/organization_api.py::_require_str::{key} is required and must be a non-empty string": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/organization_api.py::_rule_set::{key} must be a rule set object": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/organization_api.py::create_collection::kind may only be {allowed} or {CREATABLE_KINDS[-1]!r}, not {kind!r}; a smart collection is created by saving its rules": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -825,8 +850,8 @@
   },
   "cuepoint/engine/organization_api.py::set_track_metadata::No track with id {track_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/organization_api.py::set_track_metadata::favorite must be true or false, not {favorite!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -834,8 +859,8 @@
   },
   "cuepoint/engine/organization_api.py::track_history::No track with id {track_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/rekordbox_export_api.py::_only::Unknown field {', '.join(unknown)!r}. This request takes: ": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -867,8 +892,8 @@
   },
   "cuepoint/engine/server.py::EngineConfig.__post_init__::Port out of range: {self.port}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/server.py::EngineConfig.from_env::CUEPOINT_HOST must be loopback only (got {host!r}); allowed: {sorted(ALLOWED_HOSTS)}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -904,8 +929,8 @@
   },
   "cuepoint/engine/sets_api.py::_params::{key} may be given once": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/sets_api.py::_position::{name} cannot be negative, not {value!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -913,8 +938,8 @@
   },
   "cuepoint/engine/sets_api.py::_position::{name} is required": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/sets_api.py::_position::{name} must be a whole number, not {value!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -922,38 +947,38 @@
   },
   "cuepoint/engine/sets_api.py::_present::{name} is required; send null to clear it": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/sets_api.py::_query_id::{name} is required": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/sets_api.py::_require_chapter::There is no chapter {chapter_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/sets_api.py::_require_entry::There is no entry {entry_id} in a Set": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/sets_api.py::_require_set::There is no Set {set_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/sets_api.py::_required_id::{name} is required": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/sets_api.py::_source::A {kind} source names its id, not track_ids": {
     "holds": "an enum-like value chosen by our code",
-    "verdict": "exempt",
-    "reason": "an enum value chosen by our code and already validated"
+    "reason": "an enum value chosen by our code and already validated",
+    "verdict": "exempt"
   },
   "cuepoint/engine/sets_api.py::_source::source.kind must be one of {', '.join(SET_SOURCES)}, not {kind!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -969,8 +994,8 @@
   },
   "cuepoint/engine/sets_api.py::_whole::{name} must be from {low} to {high}, not {value}": {
     "holds": "a number or count, exception text, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/sets_api.py::set_list_save::The set list could not be written to {quoted(path)}: {exc.strerror or exc}": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -986,13 +1011,13 @@
   },
   "cuepoint/engine/statistics_api.py::_params::{name} must be given once": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/statistics_api.py::_since::since must be a date as YYYY-MM-DD, from {MIN_YEAR} to {MAX_YEAR}": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/engine/waveforms_api.py::_flag::{name} must be 0 or 1, not {raw!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -1016,8 +1041,8 @@
   },
   "cuepoint/engine/waveforms_api.py::_params::{name} must be given once": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/engine/waveforms_api.py::_query_ids::track_ids must be whole numbers above 0, separated by commas, not {part!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1025,28 +1050,28 @@
   },
   "cuepoint/engine/waveforms_api.py::_unique::At most {limit} track ids at once, not {len(wanted)}": {
     "holds": "a length, a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/engine/waveforms_api.py::_width::width must be a whole number from {MIN_WIDTH} to {COLUMNS}": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/models/beatport_cache.py::CachedBeatportTrack.__post_init__::bpm must be positive, got {bpm}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "cuepoint/models/beatport_listing.py::BeatportListing.__post_init__::beatport_id is beyond {MAX_BEATPORT_ID}": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/models/collection.py::Collection.__post_init__::A collection tree may be at most {MAX_COLLECTION_DEPTH} deep, got {self.depth}": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/models/collection.py::Collection.__post_init__::kind must be one of {KINDS}, got {self.kind!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1054,8 +1079,8 @@
   },
   "cuepoint/models/collection.py::_non_negative::{name} cannot be negative: {number}": {
     "holds": "a number or count, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/collection.py::_non_negative::{name} must be a number, got {value!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -1063,8 +1088,8 @@
   },
   "cuepoint/models/collection.py::normalize_collection_name::A collection name may be at most {MAX_COLLECTION_NAME_LENGTH} characters, got {len(name)}": {
     "holds": "a length, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/models/config.py::load_config_from_yaml::Configuration file not found: {quoted(yaml_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -1080,23 +1105,23 @@
   },
   "cuepoint/models/discovery_run.py::DiscoveryRun.__post_init__::labels_resolved ({self.labels_resolved}) cannot exceed labels_in_scope ({self.labels_in_scope})": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/models/discovery_run.py::_json_object::{name} is not valid JSON": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/discovery_run.py::_json_object::{name} must be JSON text, got {type(value).__name__}": {
     "holds": "a Python type name, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/discovery_run.py::_json_object::{name} must be a JSON object": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/duplicate_group.py::DuplicateGroup.__post_init__::member_hash must be a SHA-256 in hex, got {self.member_hash!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1104,8 +1129,8 @@
   },
   "cuepoint/models/entity_page.py::EntityRef.__post_init__::A name key is at most {MAX_NAME_KEY_LENGTH} characters": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/models/entity_page.py::_beatport_id::{name} is a whole number, got {value!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -1133,53 +1158,53 @@
   },
   "cuepoint/models/file_write.py::FileWrite.__post_init__::A {self.outcome} row is never pending": {
     "holds": "an enum-like value chosen by our code",
-    "verdict": "exempt",
-    "reason": "an enum value chosen by our code and already validated"
+    "reason": "an enum value chosen by our code and already validated",
+    "verdict": "exempt"
   },
   "cuepoint/models/file_write.py::FileWrite.__post_init__::A {self.outcome} write must say why": {
     "holds": "an enum-like value chosen by our code",
-    "verdict": "exempt",
-    "reason": "an enum value chosen by our code and already validated"
+    "reason": "an enum value chosen by our code and already validated",
+    "verdict": "exempt"
   },
   "cuepoint/models/file_write.py::_json_or_none::{name} is not valid JSON": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/file_write.py::_json_or_none::{name} must be JSON text, got {type(value).__name__}": {
     "holds": "a Python type name, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/filter_rule.py::FieldSpec.__post_init__::{self.name}: only a beatport field names an identity": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/filter_rule.py::FieldSpec.__post_init__::{self.name}: {self.group!r} is not a field group": {
     "holds": "exception text, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/filter_rule.py::FieldSpec.__post_init__::{self.name}: {self.identity!r} is not an identity kind": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/filter_rule.py::FilterRule._validated_list::A list of tracks holds at most {MAX_TRACK_LIST}": {
     "holds": "a number or count, our own constant",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "cuepoint/models/filter_rule.py::FilterRule._validated_list::{spec.label} 'any of' needs at least one value": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/filter_rule.py::FilterRule._validated_list::{spec.label} 'between' needs exactly two values, got {len(values)}": {
     "holds": "a length, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/filter_rule.py::FilterRule._validated_list::{spec.label} {operator!r} needs a list of values, got {self.value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1199,8 +1224,8 @@
   },
   "cuepoint/models/filter_rule.py::FilterRule.validated::{spec.label} cannot be filtered with {self.operator!r}. Allowed for a {spec.type} field: {allowed}": {
     "holds": "an enum-like value chosen by our code, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value; an enum value chosen by our code and already validated"
+    "reason": "names of our own fields, parameters and code values, never a user value; an enum value chosen by our code and already validated",
+    "verdict": "exempt"
   },
   "cuepoint/models/filter_rule.py::RuleSet.from_dict::A filter must be an object, got {payload!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1234,11 +1259,6 @@
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
-  "cuepoint/models/filter_rule.py::_coerce_id::{spec.label} needs an id, and {value!r} is too large to be one": {
-    "holds": "a value already read as a whole number, our own field label",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
-  },
   "cuepoint/models/filter_rule.py::_coerce_id::{spec.label} is identified by a whole number, and {value!r} is not one": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
@@ -1251,14 +1271,19 @@
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
+  "cuepoint/models/filter_rule.py::_coerce_id::{spec.label} needs an id, and {value!r} is too large to be one": {
+    "holds": "a value already read as a whole number, our own field label",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
   "cuepoint/models/filter_rule.py::_coerce_id::{spec.label} needs an id, not {value!r} ({operator})": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
   "cuepoint/models/filter_rule.py::_coerce_name::{spec.label} {operator!r} needs a name": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/filter_rule.py::_coerce_number::{spec.label} is a whole number; {value!r} is not": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1271,6 +1296,11 @@
   "cuepoint/models/filter_rule.py::_coerce_number::{spec.label} needs a real number, not {value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
+  },
+  "cuepoint/models/filter_rule.py::_coerce_run::{spec.label} {operator!r} needs a job id": {
+    "holds": "our own field, label or code name",
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/filter_rule.py::_coerce_source::{spec.label} names a {kind!r}, which is not one of: ": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1286,17 +1316,12 @@
   },
   "cuepoint/models/filter_rule.py::_coerce_text::{spec.label} {operator!r} needs something to match against": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/filter_rule.py::field_spec::Cannot filter by {name!r}. Filterable fields: {known}": {
     "holds": "a playlist, collection, tag, chapter or Set name",
     "verdict": "corpus"
-  },
-  "cuepoint/models/filter_rule.py::_coerce_run::{spec.label} {operator!r} needs a job id": {
-    "holds": "our own field, label or code name",
-    "reason": "names of our own fields, parameters and code values, never a user value",
-    "verdict": "exempt"
   },
   "cuepoint/models/library_track.py::LibraryTrack.__post_init__::bpm out of range: {self.bpm!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1308,63 +1333,63 @@
   },
   "cuepoint/models/match_attempt.py::MatchCandidate.__post_init__::{name} must be between 0 and 100, got {similarity}": {
     "holds": "a number or count, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/match_attempt.py::MatchPlan.__post_init__::A plan cannot leave out {self.excluded} of {self.selected} tracks": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
-  },
-  "cuepoint/models/match_attempt.py::ResumableMatch.__post_init__::A resumable job has between 1 and {self.plan.planned} tracks left, not {self.remaining}": {
-    "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
-  },
-  "cuepoint/models/match_attempt.py::_json_text::{name} is not valid JSON": {
-    "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/models/match_attempt.py::_json_text::{name} is required": {
-    "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/models/match_attempt.py::_json_text::{name} must be JSON text, got {type(value).__name__}": {
-    "holds": "a Python type name, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/models/match_attempt.py::_json_text::{name} must be a JSON {kind.__name__}": {
-    "holds": "a Python type name, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/models/match_attempt.py::MatchPlan.__post_init__::label is at most {MAX_LABEL_LENGTH} characters": {
     "holds": "an integer id",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers",
     "verdict": "exempt"
   },
+  "cuepoint/models/match_attempt.py::ResumableMatch.__post_init__::A resumable job has between 1 and {self.plan.planned} tracks left, not {self.remaining}": {
+    "holds": "a number or count",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/models/match_attempt.py::_json_text::{name} is not valid JSON": {
+    "holds": "our own field, label or code name",
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/models/match_attempt.py::_json_text::{name} is required": {
+    "holds": "our own field, label or code name",
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/models/match_attempt.py::_json_text::{name} must be JSON text, got {type(value).__name__}": {
+    "holds": "a Python type name, our own field, label or code name",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/models/match_attempt.py::_json_text::{name} must be a JSON {kind.__name__}": {
+    "holds": "a Python type name, our own field, label or code name",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
   "cuepoint/models/rekordbox_export.py::RekordboxExport.__post_init__::changed_track_count ({self.changed_track_count}) cannot exceed track_count ({self.track_count})": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/models/rekordbox_export.py::_json_or_none::{name} is not valid JSON": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/rekordbox_export.py::_json_or_none::{name} must be JSON text, got {type(value).__name__}": {
     "holds": "a Python type name, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/rekordbox_playlist.py::RekordboxPlaylist.__post_init__::depth cannot be negative: {self.depth}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/models/rekordbox_playlist.py::RekordboxPlaylist.__post_init__::kind must be one of {KINDS}, got {self.kind!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1372,8 +1397,8 @@
   },
   "cuepoint/models/rekordbox_playlist.py::RekordboxPlaylist.__post_init__::position cannot be negative: {self.position}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/models/row_values.py::flag::{name} must be true or false, got {value!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -1385,13 +1410,13 @@
   },
   "cuepoint/models/row_values.py::non_negative::{name} cannot be negative: {number}": {
     "holds": "a number or count, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/row_values.py::number::{name} is required": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/row_values.py::one_of::{name} must be one of {tuple(allowed)}, got {value!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -1415,8 +1440,8 @@
   },
   "cuepoint/models/row_values.py::required_id::{name} is required": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/row_values.py::required_text::{name} is required, got {value!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -1432,18 +1457,18 @@
   },
   "cuepoint/models/set_plan.py::SetChapter.__post_init__::A chapter's BPM range must run upwards, got {self.bpm_min} to {self.bpm_max}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/models/set_plan.py::SetEntryPlan.__post_init__::An entry must come in before it goes out, got in {self.in_seconds}s and out {self.out_seconds}s": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/models/set_plan.py::SetEntryPlan.__post_init__::in_seconds cannot be negative: {self.in_seconds}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/models/set_plan.py::_json_object::{name} must be JSON text, got {value!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -1455,18 +1480,18 @@
   },
   "cuepoint/models/set_plan.py::_positive_bpm::{name} must be more than zero, got {bpm}": {
     "holds": "exception text, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/set_plan.py::_positive_seconds::{name} must be more than zero seconds, got {seconds}": {
     "holds": "a number or count, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/set_plan.py::normalize_chapter_name::A chapter name may be at most {MAX_CHAPTER_NAME_LENGTH} characters, got {len(name)}": {
     "holds": "a length, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/models/set_suggestions.py::SetSuggestions.__post_init__::sides must be some of {SIDES}, got {self.sides!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1474,8 +1499,8 @@
   },
   "cuepoint/models/tag.py::normalize_tag_category::A tag category may be at most {MAX_TAG_CATEGORY_LENGTH} characters, got {len(category)}": {
     "holds": "a length, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/models/tag.py::normalize_tag_colour::A tag colour must be one of {known}, got {value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1483,13 +1508,13 @@
   },
   "cuepoint/models/tag.py::normalize_tag_name::A tag name may be at most {MAX_TAG_NAME_LENGTH} characters, got {len(name)}": {
     "holds": "a length, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/models/track.py::Track.__post_init__::Track year must be between 1900 and {datetime.now().year + 1}": {
     "holds": "a year",
-    "verdict": "exempt",
-    "reason": "a year"
+    "reason": "a year",
+    "verdict": "exempt"
   },
   "cuepoint/models/track_clean_state.py::TrackCleanState.__post_init__::match_score must be a number, not {self.match_score!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1505,13 +1530,13 @@
   },
   "cuepoint/models/track_marks.py::BeatGridMarker.__post_init__::bpm must be above zero, got {bpm}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "cuepoint/models/track_marks.py::TrackCue.__post_init__::end_ms must be after start_ms, got {end} <= {start}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/models/track_marks.py::TrackCue.__post_init__::hot_cue must be 0-7 or None, got {hot_cue!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1519,8 +1544,8 @@
   },
   "cuepoint/models/track_marks.py::TrackMarks.__post_init__::{name} must be in position order, got {positions}": {
     "holds": "exception text, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/models/track_marks.py::_mark_ms::{name} must be at most {MAX_MARK_MS}, got {ms!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -1536,8 +1561,8 @@
   },
   "cuepoint/models/track_metadata.py::normalize_notes::A note may be at most {MAX_NOTES_LENGTH} characters, got {len(text)}": {
     "holds": "a length, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/models/track_metadata.py::normalize_override_bpm::The bpm override must be a finite number, got {value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1569,28 +1594,28 @@
   },
   "cuepoint/models/wantlist.py::WantlistEntry.__post_init__::A note is at most {MAX_NOTE_LENGTH} characters, got {len(self.note)}": {
     "holds": "a length, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/models/waveform.py::StoredLoudness.__post_init__::A {self.reason} loudness has no peak": {
     "holds": "an enum-like value chosen by our code",
-    "verdict": "exempt",
-    "reason": "an enum value chosen by our code and already validated"
+    "reason": "an enum value chosen by our code and already validated",
+    "verdict": "exempt"
   },
   "cuepoint/models/waveform.py::WaveformAnswer.__post_init__::{self.width} columns need {self.width * 4} bytes": {
     "holds": "a number or count, arithmetic on integers",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/models/waveform.py::WaveformState.__post_init__::A {self.state} waveform state has no reason": {
     "holds": "an enum-like value chosen by our code",
-    "verdict": "exempt",
-    "reason": "an enum value chosen by our code and already validated"
+    "reason": "an enum value chosen by our code and already validated",
+    "verdict": "exempt"
   },
   "cuepoint/models/waveform.py::WaveformState.__post_init__::A {self.state} waveform state needs a reason": {
     "holds": "an enum-like value chosen by our code",
-    "verdict": "exempt",
-    "reason": "an enum value chosen by our code and already validated"
+    "reason": "an enum value chosen by our code and already validated",
+    "verdict": "exempt"
   },
   "cuepoint/models/waveform.py::_measure::{name} must be a number, not {value!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name; request or file text that failed validation: any user or library text",
@@ -1606,8 +1631,8 @@
   },
   "cuepoint/persistence/beatport_catalog_repository.py::BeatportCatalogRepository.entity_tracks::A window is 1 to {MAX_ENTITY_WINDOW} tracks from offset 0 or later": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/beatport_catalog_repository.py::BeatportCatalogRepository.entity_tracks::No entity of kind {kind!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1619,18 +1644,18 @@
   },
   "cuepoint/persistence/collection_repository.py::CollectionRepository._append::Set {collection_id} has no chapter": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/collection_repository.py::CollectionRepository._chapter_for_slot::Chapter {named} is not a chapter of this Set": {
     "holds": "an int() result",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/collection_repository.py::CollectionRepository._chapter_for_slot::Set {set_id} has no chapter": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/collection_repository.py::CollectionRepository._chapter_for_slot::{_chapter_label(chapter)} does not reach position {position + 1}: the entry {'before' if too_early else 'after'} it is in {_chapter_label(neighbour)}, and a chapter's entries stay together": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -1638,28 +1663,43 @@
   },
   "cuepoint/persistence/collection_repository.py::CollectionRepository.duplicate_set::Entry {entry.id} of Set {set_id} has no chapter": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/persistence/discover_list_repository.py::clean_members::A list holds at most {MAX_MEMBERS} names": {
+    "holds": "an integer constant",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/persistence/discover_list_repository.py::clean_members::A member's name is at most {MAX_MEMBER} characters": {
+    "holds": "an integer constant",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/persistence/discover_list_repository.py::clean_name::A list's name is at most {MAX_NAME} characters": {
+    "holds": "an integer constant",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.delete_run::Discovery run {run_id} is still running": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.finish_run::Discovery run {run_id} has already ended": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.finish_run::No discovery run {run_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.record_found::Not a count a run records here: {sorted(unknown)}": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.run_track_ids::owned must be one of {OWNED_FILTERS}, got {owned!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1671,8 +1711,8 @@
   },
   "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.run_tracks::A window is 1 to {MAX_WINDOW} tracks from offset 0 or later": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.run_tracks::owned must be one of {OWNED_FILTERS}, got {owned!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1684,18 +1724,23 @@
   },
   "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.update_counts::Not a count a run records here: {sorted(counts)}": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/persistence/discovery_repository.py::_group_filter::At most {MAX_GROUPS_PER_REQUEST} cards at once": {
+    "holds": "our own constant",
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/discovery_repository.py::_require_running::Discovery run {run_id} has already ended": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/discovery_repository.py::_require_running::No discovery run {run_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/duplicate_repository.py::DuplicateRepository.replace_signal::A {group.signal} group cannot replace {signal!r} groups": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1711,98 +1756,98 @@
   },
   "cuepoint/persistence/filter_sql.py::_compile_beatport::{spec.label} names no Beatport identity": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/filter_sql.py::_compile_membership::{spec.label} cannot be filtered with {operator!r} — the filter model allows it but the query builder does not implement it": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/filter_sql.py::_compile_source::{spec.label} cannot be filtered with {operator!r}": {
     "holds": "exception text, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/filter_sql.py::_compile_values::{spec.label} cannot be filtered with {operator!r} — the filter model allows it but the query builder does not implement it": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/filter_sql.py::_link::{spec.label} is not a membership field": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/filter_sql.py::_values::{spec.label} is not a multi-valued field": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/filter_sql.py::compile_rule::{spec.label} cannot be filtered with {operator!r} — the filter model allows it but the query builder does not implement it": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/match_job_repository.py::MatchJobRepository.create::A match plan cannot hold {len(ids)} tracks from a selection of {selected}": {
     "holds": "a length, a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/match_job_repository.py::MatchJobRepository.mark_done::Position {position} of match job {job_id} is not waiting": {
     "holds": "a number or count, an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/match_job_repository.py::MatchJobRepository.take_over::Match job {from_job_id} has nothing left to resume": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/match_job_repository.py::MatchJobRepository.take_over::No match job {from_job_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/match_job_repository.py::_insert_plan::Match job {plan.job_id} already has a plan": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/match_repository.py::_check_evidence::Attempt {match.attempt_id} does not exist": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/match_repository.py::_check_evidence::Attempt {match.attempt_id} is track {owner}'s, not track {match.track_id}'s": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/match_repository.py::_check_evidence::Attempt {match.newer_attempt_id} does not exist": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/match_repository.py::_check_evidence::Attempt {match.newer_attempt_id} is older than attempt {match.attempt_id}, so it cannot be the newer one": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/match_repository.py::_check_evidence::Attempt {match.newer_attempt_id} is track {newer_owner}'s, not track {match.track_id}'s": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/match_repository.py::_check_evidence::Candidate {match.candidate_id} does not exist": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/match_repository.py::_check_evidence::Candidate {match.candidate_id} is from attempt {row['attempt_id']}, not attempt {match.attempt_id}: a decision rests on the attempt its candidate came from": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/playlist_repository.py::PlaylistRepository.replace_tree::playlist node {quoted(node.rekordbox_path)} arrived at depth {node.depth} before any node at depth {node.depth - 1}; nodes must be supplied parents-first": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1810,8 +1855,8 @@
   },
   "cuepoint/persistence/rule_references.py::_check_collections::{_clause(spec, rule)} names Collection {identifier}, which no longer exists": {
     "holds": "exception text, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/rule_references.py::_check_collections::{_clause(spec, rule)} names {row['name']!r}, which is a Smart Collection. A rule can filter on what a track is filed in, not on what another rule currently answers": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -1819,13 +1864,13 @@
   },
   "cuepoint/persistence/rule_references.py::_check_sources::{clause} names playlist {identifier}, which no longer exists": {
     "holds": "exception text, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/rule_references.py::_check_sources::{clause} names {kind} {identifier}, which no longer exists": {
     "holds": "exception text, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/rule_references.py::_check_sources::{clause} names {row['name']!r} as a {kind}, but it is a {row['kind']}": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -1837,33 +1882,33 @@
   },
   "cuepoint/persistence/rule_references.py::_check_tags::{_clause(spec, rule)} names tag {identifier}, which no longer exists": {
     "holds": "exception text, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/set_integrity.py::check_set::Set {set_id} has no chapter": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/set_integrity.py::check_set::Set {set_id}'s chapters are out of order in its entries": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/set_integrity.py::check_set::Set {set_id}'s {chapters} chapters are not numbered 0 to {chapters - 1}": {
     "holds": "a number or count, an integer id, arithmetic on integers",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/set_integrity.py::check_set::{row['unplanned']} entries of Set {set_id} have no chapter": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/set_repository.py::SetRepository.delete_chapter::Chapter {chapter_id} is the only chapter of Set {set_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/similarity_repository.py::SimilarityRepository.spellings::{field!r} is not a field a pre-selection spells": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1915,23 +1960,28 @@
   },
   "cuepoint/persistence/track_query.py::_column_facet_spec::{spec.label} is not a column; its facet is built by build_tag_facet_values": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/track_query.py::_joins::No join is registered for {sorted(unknown)}": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/track_query.py::build_facet_range::{spec.label} is a {spec.type} field; a range needs a number field": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/persistence/track_query.py::build_facet_sum::{spec.label} is a {spec.type} field; a sum needs a number field": {
+    "holds": "a field's label and type from our own field registry",
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/wantlist_repository.py::WantlistRepository.page::A window is 1 to {MAX_WINDOW} entries from offset 0 or later": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/persistence/wantlist_repository.py::WantlistRepository.page::bought must be one of {BOUGHT_FILTERS}, got {bought!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1959,13 +2009,63 @@
   },
   "cuepoint/services/activity_service.py::ActivityService.revert_field_change::Track no longer exists: {change.track_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/activity_service.py::ActivityService.revert_field_change::Unknown field change: {change_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/analysis_protocol.py::_bool::{name} must be true or false, not {type(value).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/analysis_protocol.py::_decode::{name} is missing": {
+    "holds": "the name of a protocol field",
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/analysis_protocol.py::_decode::{name} is not base64": {
+    "holds": "the name of a protocol field",
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/analysis_protocol.py::_decode::{name} must be base64 or null, not {type(value).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/analysis_protocol.py::_int::{name} must be an integer, not {type(value).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/analysis_protocol.py::_loudness::loudness reason must be a string or null, not {type(reason).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/analysis_protocol.py::_loudness::{name} must be a number or null, not {type(value).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/analysis_protocol.py::_str::{name} must be a string, not {type(value).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/analysis_protocol.py::parse_result::duration_ms must be an integer or null, not {type(duration_ms).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/analysis_protocol.py::parse_result::reason must be a string or null, not {type(reason).__name__}": {
+    "holds": "a Python type name, and the name of a protocol field",
+    "reason": "Python type names; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/services/artwork_cache.py::ArtworkCache.__init__::The artwork cache needs a positive cap, not {max_bytes!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -1981,26 +2081,26 @@
   },
   "cuepoint/services/artwork_service.py::ArtworkScanResult.__post_init__::An artwork scan of {self.total} tracks cannot finish {self.completed}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/artwork_service.py::ArtworkScanResult.__post_init__::trigger must be one of {TRIGGERS}, got {self.trigger!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
+  "cuepoint/services/artwork_service.py::ArtworkService.candidate_thumbnail::There is no match candidate {candidate_id}": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
   "cuepoint/services/artwork_service.py::ArtworkService.scan::trigger must be one of {TRIGGERS}, got {trigger!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
-  "cuepoint/services/artwork_service.py::ArtworkService.candidate_thumbnail::There is no match candidate {candidate_id}": {
-    "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
-  },
   "cuepoint/services/artwork_service.py::ArtworkService.thumbnail::There is no track {track_id} in the library": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/artwork_service.py::size_pixels::Artwork comes in the sizes {sorted(THUMBNAIL_SIZES)}, not {size!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2012,8 +2112,8 @@
   },
   "cuepoint/services/backup_service.py::BackupService.restore:: as {safety.name}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "cuepoint/services/backup_service.py::BackupService.restore::Restoring the backup failed: {exc}. The database from before the restore was saved first": {
     "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
@@ -2025,13 +2125,13 @@
   },
   "cuepoint/services/backup_service.py::BackupService.verify_backup::This backup could not be read: {exc}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path"
+    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path",
+    "verdict": "exempt"
   },
   "cuepoint/services/backup_service.py::BackupService.verify_backup::This backup failed its integrity check: {result}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "cuepoint/services/batch_service.py::BatchOperation.validated::Favorite must be true or false, not {self.value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2039,8 +2139,8 @@
   },
   "cuepoint/services/batch_service.py::BatchOperation.validated::Unknown batch operation {self.kind!r}. Known operations: {known}": {
     "holds": "an enum-like value chosen by our code, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value; an enum value chosen by our code and already validated"
+    "reason": "names of our own fields, parameters and code values, never a user value; an enum value chosen by our code and already validated",
+    "verdict": "exempt"
   },
   "cuepoint/services/batch_service.py::BatchOperation.validated::{kind} takes no value, not {self.value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2048,18 +2148,18 @@
   },
   "cuepoint/services/batch_service.py::BatchResult.__post_init__::A batch cannot account for {self.completed} of {self.total} tracks": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/batch_service.py::BatchResult.__post_init__::A batch that was not cancelled accounts for every track it resolved: {self.completed} of {self.total}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/batch_service.py::_Tagging.target::No such tag: {self._tag_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/batch_service.py::_as_id::{kind} needs an id, not {value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2071,8 +2171,8 @@
   },
   "cuepoint/services/batch_service.py::_require_collection_named::No such collection: {collection_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/beatport_api.py::BeatportApi.add_track_to_playlist::Not a Beatport playlist id: {playlist_id!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2080,13 +2180,13 @@
   },
   "cuepoint/services/beatport_api_client.py::BeatportApiClient._request::Beatport API error: {resp.status_code}": {
     "holds": "an HTTP status code",
-    "verdict": "exempt",
-    "reason": "an HTTP status"
+    "reason": "an HTTP status",
+    "verdict": "exempt"
   },
   "cuepoint/services/beatport_api_client.py::BeatportApiClient._request::Beatport API response too large ({body_len} bytes)": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/beatport_api_client.py::BeatportApiClient.post._post::Beatport API redirected a POST to {path!r} ({resp.status_code}); the path is wrong": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -2098,23 +2198,23 @@
   },
   "cuepoint/services/beatport_ownership.py::requested_track_ids::At most {limit} Beatport tracks at a time": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/beatport_playlist_service.py::BeatportPlaylistService._name::A playlist name is at most {MAX_PLAYLIST_NAME_LENGTH} characters": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/services/beatport_playlist_service.py::BeatportPlaylistService._name::A playlist name is text, got {type(name).__name__}": {
     "holds": "a Python type name",
-    "verdict": "exempt",
-    "reason": "Python type names"
+    "reason": "Python type names",
+    "verdict": "exempt"
   },
   "cuepoint/services/beatport_playlist_service.py::BeatportPlaylistService.plan::all {_tracks(len(ids))}": {
     "holds": "a track count phrase",
-    "verdict": "exempt",
-    "reason": "a count phrase"
+    "reason": "a count phrase",
+    "verdict": "exempt"
   },
   "cuepoint/services/beatport_playlist_service.py::BeatportPlaylistService.plan::include_owned is true or false, got {include_owned!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2130,8 +2230,8 @@
   },
   "cuepoint/services/candidate_preview.py::CandidatePreviewService.preview::There is no match candidate {candidate_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/collection_service.py::CollectionService._check_destination::That would put part of {node.name!r} deeper than {MAX_COLLECTION_DEPTH} levels": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -2159,8 +2259,8 @@
   },
   "cuepoint/services/collection_service.py::CollectionService._require_node::No such collection: {node_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/collection_service.py::CollectionService._require_set::{node.name!r} is a {node.kind}, not a Set": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -2188,28 +2288,28 @@
   },
   "cuepoint/services/collection_service.py::CollectionService.create_collection_from::No such track: {shown}{more}": {
     "holds": "a length, a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/collection_service.py::CollectionService.insert_track::A position cannot be negative: {position}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/collection_service.py::CollectionService.reorder::A position cannot be negative: {position}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/collection_service.py::CollectionService.reorder_entry::A position cannot be negative: {position}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/collection_service.py::CollectionService.reorder_entry::No such entry: {entry_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/collection_service.py::SetSource.__post_init__::A Set is made from one of {SET_SOURCES}, not {self.kind!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2217,8 +2317,8 @@
   },
   "cuepoint/services/collection_service.py::SetSource.__post_init__::A {self.kind} source names its id and no tracks": {
     "holds": "an enum-like value chosen by our code",
-    "verdict": "exempt",
-    "reason": "an enum value chosen by our code and already validated"
+    "reason": "an enum value chosen by our code and already validated",
+    "verdict": "exempt"
   },
   "cuepoint/services/collection_service.py::SmartResolution.require_query::{self.name!r} cannot be shown: {self.problem}": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -2258,8 +2358,8 @@
   },
   "cuepoint/services/database_service.py::DatabaseService._open_connection::Could not open the CuePoint library database: {exc}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path"
+    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path",
+    "verdict": "exempt"
   },
   "cuepoint/services/database_service.py::DatabaseService._open_connection::The CuePoint library database at {quoted(self.db_path)} could not be read. It may be corrupt or not a database file: {exc}": {
     "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
@@ -2267,47 +2367,57 @@
   },
   "cuepoint/services/database_service.py::DatabaseService.execute_script::Failed to execute database script: {exc}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path"
+    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path",
+    "verdict": "exempt"
   },
   "cuepoint/services/database_service.py::DatabaseService.transaction::Could not save changes to the library database: {exc}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path"
+    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path",
+    "verdict": "exempt"
   },
   "cuepoint/services/discovery_service.py::DiscoveryRequest.__post_init__::A run reads at most {MAX_GENRES} genres": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/services/discovery_service.py::DiscoveryRequest.__post_init__::Genre ids are positive whole numbers: {self.genre_ids}": {
     "holds": "an id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/discovery_service.py::DiscoveryRequest.__post_init__::The chart window is at most {MAX_WINDOW_DAYS} days": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/services/discovery_service.py::DiscoveryRequest.__post_init__::new_releases_days is 1 to {MAX_WINDOW_DAYS}": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/discovery_service.py::DiscoveryService._require_run::No discovery run {run_id}": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/discovery_service.py::DiscoveryService.request::A genre id is a positive whole number, got {value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
   },
+  "cuepoint/services/discovery_service.py::DiscoveryService.run_notes::No discovery run {run_id}": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
   "cuepoint/services/discovery_service.py::DiscoveryService.run_tracks::No discovery run {run_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/discovery_service.py::DiscoveryService.visible_track_ids::No discovery run {run_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/discovery_service.py::_names::A picked name is text, got {value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2319,8 +2429,8 @@
   },
   "cuepoint/services/duplicate_service.py::DuplicateService._require::No duplicate group {group_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/duplicate_service.py::DuplicateService.groups::limit must be at least 1, not {limit!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2340,8 +2450,8 @@
   },
   "cuepoint/services/entity_page_service.py::EntityPageService.beatport::A window is 1 to {MAX_ENTITY_WINDOW} tracks from offset 0 or later": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/services/entity_page_service.py::EntityPageService.beatport::owned must be one of {OWNED_FILTERS}, got {owned!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2373,13 +2483,13 @@
   },
   "cuepoint/services/file_check_service.py::FileCheckResult.__post_init__::A file check of {self.total} tracks cannot finish {self.completed}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/file_check_service.py::FileCheckResult.__post_init__::A file check that was not cancelled finishes all {self.total} tracks, not {self.completed}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/file_check_service.py::FileCheckResult.__post_init__::trigger must be one of {TRIGGERS}, got {self.trigger!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2395,13 +2505,13 @@
   },
   "cuepoint/services/library_import_service.py::LibraryImportService._check_references::{_counted(references.referenced_track_count, 'track')} removed from Rekordbox {'carries' if references.referenced_track_count == 1 else 'carry'} your own work: {_kinds_of_work(references)}. Confirm to remove {'it' if references.referenced_track_count == 1 else 'them'} and everything attached.": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "cuepoint/services/library_import_service.py::LibraryImportService._observed_tracks::Cancelled after reading {completed - 1} tracks": {
     "holds": "arithmetic on integers",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/library_import_service.py::LibraryImportService._require_collection::{quoted(xml_path)} has no COLLECTION section, so it is not a Rekordbox collection export. In Rekordbox, use File > Export Collection in xml format.": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -2413,93 +2523,103 @@
   },
   "cuepoint/services/match_apply.py::MatchApplyService._require_track::No such track: {track_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_apply.py::MatchApplyService.apply_match::The confirmed Beatport match for track {track_id} has no usable {', '.join(missing)}, so nothing was applied": {
     "holds": "an integer id, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_apply.py::MatchApplyService.apply_match::Track {track_id} has no confirmed match, so there is nothing to apply": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/match_correct.py::MatchCorrectService._require_track::No such track: {track_id}": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/match_correct.py::MatchCorrectService.correct::No candidate {candidate_id}": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_input.py::library_track_to_track::Track {track.id} has no title, so there is nothing to ask Beatport": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_record.py::_candidate_row::Candidate {rank} is a {type(candidate).__name__}, not a scored BeatportCandidate": {
     "holds": "a Python type name, an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; Python type names"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; Python type names",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_record.py::_json_default::{type(value).__name__} is not JSON": {
     "holds": "a Python type name",
-    "verdict": "exempt",
-    "reason": "Python type names"
+    "reason": "Python type names",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_record.py::_to_json::The {name} cannot be stored as JSON: {exc}": {
     "holds": "exception text, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "a TypeError saying which Python type is not JSON serializable"
+    "reason": "a TypeError saying which Python type is not JSON serializable",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_service.py::MatchJobResult.__post_init__::A match job cannot have finished {self.completed} of {self.planned} tracks": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_service.py::MatchService._ask::process_track returned {type(result).__name__}, not a TrackResult": {
     "holds": "a Python type name",
-    "verdict": "exempt",
-    "reason": "Python type names"
+    "reason": "Python type names",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_service.py::MatchService._with_lock_retry::The library database stayed locked for {LOCK_RETRY_SECONDS} seconds": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_service.py::MatchService._with_lock_retry::The library database would not save a match result: {exc}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "sqlite3.OperationalError text such as \"database is locked\""
+    "reason": "sqlite3.OperationalError text such as \"database is locked\"",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_service.py::MatchService.check_resumable::Match job {job_id} has nothing left to resume": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_service.py::MatchService.check_resumable::No match job {job_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_service.py::MatchService.prepare::All {_tracks(len(named))} in that selection have already been looked up: matched, waiting for you, or decided. Choose “Look up tracks that already have a match again” to search Beatport again.": {
     "holds": "a track count phrase",
-    "verdict": "exempt",
-    "reason": "a count phrase"
+    "reason": "a count phrase",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_service.py::MatchService.run::No match job {job_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_state.py::MatchStateService._require_track::No track {track_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_state.py::MatchStateService.accept::No candidate {candidate_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_state.py::MatchStateService.reject::Track {track_id} has never been matched, so there is nothing to reject": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/match_state.py::_decision_from::The recorded decision for track {track_id} cannot be read ({exc}): {recorded!r}": {
     "holds": "exception or error text from the OS or a library; an OSError quotes its filename; request or file text that failed validation: any user or library text",
@@ -2507,13 +2627,13 @@
   },
   "cuepoint/services/match_state.py::automatic_state::Attempt {attempt.id} is a match with no winner": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/metadata_service.py::MetadataService._require_track::No such track: {track_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/metadata_service.py::MetadataService.set_override::An override comes from {' or '.join(OVERRIDE_SOURCES)}, not {source!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2521,13 +2641,13 @@
   },
   "cuepoint/services/migration_runner.py::MigrationRunner._apply::Migration {migration.version} ({migration.description}) failed and was rolled back: {exc}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path"
+    "reason": "sqlite3 error text: a fixed phrase that names our own tables, columns or statements, never row data or a path",
+    "verdict": "exempt"
   },
   "cuepoint/services/migration_runner.py::MigrationRunner.migrate::This library database is at schema version {current}, but this version of CuePoint only understands up to {target}. It was likely created by a newer version of CuePoint. Update CuePoint to open it.": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "cuepoint/services/output_writer.py::append_rows_to_main_csv::Invalid delimiter: {delimiter!r}. Must be one of: , ; \\t |": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2587,13 +2707,13 @@
   },
   "cuepoint/services/override_values.py::normalize_text::{field} cannot be blank; clear an override with null": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/services/override_values.py::normalize_text::{field} may be at most {MAX_TEXT_LENGTH} characters, not {len(text)}": {
     "holds": "a length, our own constant, our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants; names of our own fields, parameters and code values, never a user value"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants; names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/services/override_values.py::normalize_text::{field} must be text, not {value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2657,8 +2777,8 @@
   },
   "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._export_tree::No such collection to export: {int(raw)}": {
     "holds": "an int() result",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/rekordbox_export_service.py::RekordboxExportService._require_source::The collection file cannot be read: {quoted(path)} ({exc.strerror or exc}).": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -2678,18 +2798,18 @@
   },
   "cuepoint/services/rekordbox_export_service.py::RekordboxExportService.validate::No such collection to export: {identifier}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "cuepoint/services/revert_service.py::BatchRevert.__post_init__::A revert cannot account for {self.completed} of {self.total} changes": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/revert_service.py::BatchRevert.__post_init__::A revert that was not cancelled accounts for every change in the batch: {self.completed} of {self.total}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/revert_service.py::RevertService.check_batch::Batch {wanted!r} changed fields this revert cannot write: {', '.join(foreign)}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2705,8 +2825,8 @@
   },
   "cuepoint/services/revert_service.py::RevertService.revert_change::Unknown field change: {change_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/revert_service.py::require_cuepoint_field::Field is Rekordbox's, not CuePoint's: {field!r}. It is reverted as an imported field": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2718,8 +2838,8 @@
   },
   "cuepoint/services/set_analysis_service.py::SetAnalysisService._require_set::No such Set: {set_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_analysis_service.py::SetAnalysisService._require_set::{node.name!r} is a {node.kind}, not a Set": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -2727,18 +2847,18 @@
   },
   "cuepoint/services/set_analysis_service.py::SetAnalysisService.acknowledge::Entries {from_entry_id} and {to_entry_id} are in different Sets": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_analysis_service.py::SetAnalysisService.acknowledge::Entry {to_entry_id} does not follow entry {from_entry_id}: only a transition between adjacent entries can be acknowledged": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_analysis_service.py::SetAnalysisService.acknowledge::No such entry in a Set: {missing}": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_analysis_service.py::SetAnalysisService.acknowledge::Only a transition's warnings can be acknowledged, and {warning!r} is not one of {', '.join(TRANSITION_KINDS)}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2746,8 +2866,8 @@
   },
   "cuepoint/services/set_analysis_service.py::SetAnalysisService.acknowledge::There is no {warning} going from entry {from_entry_id} to entry {to_entry_id} to acknowledge": {
     "holds": "an enum-like value chosen by our code, an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; an enum value chosen by our code and already validated"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; an enum value chosen by our code and already validated",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_analysis_service.py::SetAnalysisService.unacknowledge::{warning!r} is not a transition warning, so it is never acknowledged": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2767,18 +2887,18 @@
   },
   "cuepoint/services/set_service.py::SetService._require_chapter::No such chapter: {chapter_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService._require_entry::No such entry in a Set: {entry_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService._require_set::No such Set: {set_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService._require_set::{node.name!r} is a {node.kind}, not a Set": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -2786,13 +2906,13 @@
   },
   "cuepoint/services/set_service.py::SetService._update_chapter::No such chapter: {chapter_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService.create_chapter::A position cannot be negative: {position}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService.create_chapter::{after.label} is not a chapter of {node.name!r}": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -2800,8 +2920,8 @@
   },
   "cuepoint/services/set_service.py::SetService.delete_chapter::No such chapter: {chapter_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService.delete_chapter::{chapter.label} is the only chapter of {name!r}, and a Set always has one": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -2809,43 +2929,43 @@
   },
   "cuepoint/services/set_service.py::SetService.move_chapter::A position cannot be negative: {position}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService.move_chapter::No such chapter: {chapter_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService.move_entry::A position cannot be negative: {position}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService.move_entry::No such entry: {entry_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService.set_entry_times::An entry must come in before it goes out: in {format_time(in_seconds or 0)}, out {format_time(out_seconds)}": {
     "holds": "a time we formatted from a number",
-    "verdict": "exempt",
-    "reason": "times formatted from numbers"
+    "reason": "times formatted from numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService.set_entry_times::The track is {format_time(length)} long, so it cannot come in at {format_time(in_seconds)}": {
     "holds": "a time we formatted from a number",
-    "verdict": "exempt",
-    "reason": "times formatted from numbers"
+    "reason": "times formatted from numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService.set_entry_times::The track is {format_time(length)} long, so it cannot go out at {format_time(out_seconds)}": {
     "holds": "a time we formatted from a number",
-    "verdict": "exempt",
-    "reason": "times formatted from numbers"
+    "reason": "times formatted from numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService.set_notes::No such Set: {set_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_service.py::SetService.split_chapter_at::{chapter.label} already starts at this entry: rename it rather than start another chapter here": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -2857,8 +2977,8 @@
   },
   "cuepoint/services/set_service.py::_check_target::A chapter's target is at most {format_time(MAX_TIME_SECONDS)}, got {format_time(target_seconds)}": {
     "holds": "a time we formatted from a number",
-    "verdict": "exempt",
-    "reason": "times formatted from numbers"
+    "reason": "times formatted from numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_suggestion_service.py::InsertionPointError.__init__::Unknown insertion point reason: {reason!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2866,8 +2986,8 @@
   },
   "cuepoint/services/set_suggestion_service.py::SetSuggestionService.suggest::No such Set: {set_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/set_suggestion_service.py::SetSuggestionService.suggest::against must be one of {SIDES} or None, got {against!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2899,8 +3019,8 @@
   },
   "cuepoint/services/similarity_service.py::SimilarityService.similar::There is no track {seed_id} in the library": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/similarity_service.py::_limit::limit must be a whole number from 1 to {MAX_SIMILAR_LIMIT}, got {limit!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2912,23 +3032,23 @@
   },
   "cuepoint/services/statistics_service.py::StatisticsService.plays::No read with id {since_read}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/statistics_service.py::StatisticsService.scope_rules::No Collection with id {scope.id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/statistics_service.py::StatisticsService.scope_rules::No playlist with id {scope.id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/tag_service.py::TagService._require_tag::No such tag: {tag_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/tag_service.py::TagService.rename::A tag called {clash.name!r} already exists. Merge the two tags instead of renaming.": {
     "holds": "a playlist, collection, tag, chapter or Set name",
@@ -2936,8 +3056,8 @@
   },
   "cuepoint/services/tag_write_options.py::TagWriteOptions.__post_init__::comment_text may be at most {MAX_COMMENT_LENGTH} characters, not {len(self.comment_text)}": {
     "holds": "a length, our own constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/services/tag_write_options.py::TagWriteOptions.__post_init__::key_format must be one of {', '.join(KEY_FORMATS)}, not {self.key_format!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2945,8 +3065,8 @@
   },
   "cuepoint/services/tag_write_options.py::TagWriteOptions.__post_init__::{name} must be true or false": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/services/tag_write_options.py::TagWriteOptions._checked::Unknown option {', '.join(unknown)!r}. Options: {', '.join(sorted(_NAMES))}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -2966,33 +3086,33 @@
   },
   "cuepoint/services/tag_write_service.py::TagRestoreResult.__post_init__::A restore of {self.total} writes accounts for each, not {self.completed}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/tag_write_service.py::TagWritePreview.__post_init__::A preview of {self.total} tracks accounts for each, not {self.decided}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
-  },
-  "cuepoint/services/tag_write_service.py::TagWritePreview.require_covers::These options go beyond what the preview covers ({'; '.join(beyond)}); preview again": {
-    "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/tag_write_service.py::TagWritePreview.__post_init__::Unknown field skip {name}: {sorted(reasons)}": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/services/tag_write_service.py::TagWritePreview.__post_init__::Unknown skip reasons {sorted(unknown)}": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/tag_write_service.py::TagWritePreview.require_covers::These options go beyond what the preview covers ({'; '.join(beyond)}); preview again": {
+    "holds": "our own field, label or code name",
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/services/tag_write_service.py::TagWriteResult.__post_init__::A write of {self.total} files accounts for each, not {self.completed}": {
     "holds": "a number or count",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/tag_write_service.py::TagWriteService.__init__::A preview needs at least one worker, not {workers!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -3000,13 +3120,13 @@
   },
   "cuepoint/services/wantlist_service.py::WantlistService._require_run_found::Discovery run {run_id} did not find {_tracks(len(stray))}: {', '.join((str(i) for i in stray[:5]))}": {
     "holds": "a track count phrase, an integer id, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; a count phrase"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; a count phrase",
+    "verdict": "exempt"
   },
   "cuepoint/services/wantlist_service.py::WantlistService._require_run_found::No discovery run {run_id}": {
     "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "cuepoint/services/wantlist_service.py::WantlistService.set_bought::bought is true or false, got {bought!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -3014,17 +3134,22 @@
   },
   "cuepoint/services/wantlist_service.py::_note::A note is at most {MAX_NOTE_LENGTH} characters": {
     "holds": "our own constant",
-    "verdict": "exempt",
-    "reason": "our own constants"
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/services/wantlist_service.py::_note::A note is text, got {type(value).__name__}": {
     "holds": "a Python type name",
-    "verdict": "exempt",
-    "reason": "Python type names"
+    "reason": "Python type names",
+    "verdict": "exempt"
   },
   "cuepoint/services/wantlist_service.py::_run_id::A run id is a positive whole number, got {value!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
+  },
+  "cuepoint/services/waveform_computer.py::Computed.__post_init__::unknown outcome {self.outcome!r}": {
+    "holds": "an outcome constant chosen by our code",
+    "reason": "our own constants",
+    "verdict": "exempt"
   },
   "cuepoint/services/waveform_service.py::WaveformService.waveforms::width must be {MIN_WIDTH} to {COLUMNS}, not {width!r}": {
     "holds": "request or file text that failed validation: any user or library text",
@@ -3032,13 +3157,13 @@
   },
   "cuepoint/utils/di_container.py::DIContainer._create_instance::Cannot resolve dependency {param_name} for {cls}": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/utils/di_container.py::DIContainer.resolve::Service {interface} not registered": {
     "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
+    "reason": "names of our own fields, parameters and code values, never a user value",
+    "verdict": "exempt"
   },
   "cuepoint/utils/paths.py::AppPaths._ensure_dir::Failed to create directory {quoted(path)}: {e}": {
     "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
@@ -3062,8 +3187,8 @@
   },
   "cuepoint/utils/platform.py::PlatformInfo._detect_platform::Unsupported platform: {system}": {
     "holds": "the platform name",
-    "verdict": "exempt",
-    "reason": "the platform name"
+    "reason": "the platform name",
+    "verdict": "exempt"
   },
   "log::cuepoint/cli/cli_processor.py::CLIProcessor._handle_processing_error::Unexpected error: {error}": {
     "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
@@ -3071,8 +3196,8 @@
   },
   "log::cuepoint/cli/cli_processor.py::CLIProcessor._handle_unmatched_tracks::\n{'=' * 80}": {
     "holds": "arithmetic on integers",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/cli/cli_processor.py::CLIProcessor._handle_unmatched_tracks::  [{result.playlist_index}] {result.title!r} - {artists_str!r}": {
     "holds": "a track title, artist or search query",
@@ -3084,13 +3209,13 @@
   },
   "log::cuepoint/cli/cli_processor.py::CLIProcessor._handle_unmatched_tracks::Found {len(unmatched_results)} unmatched track(s):": {
     "holds": "a length",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/cli/cli_processor.py::CLIProcessor._handle_unmatched_tracks::{'=' * 80}": {
     "holds": "arithmetic on integers",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/cli/cli_processor.py::CLIProcessor._write_output_files::Review candidates: {review_cands_count} rows -> {quoted(review_cands_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -3190,18 +3315,18 @@
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist::Processing track {idx}/{total}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_m3u::[m3u] Using parallel processing with {track_workers} workers for {len(inputs)} tracks": {
     "holds": "a length, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_m3u::[m3u] Using sequential processing (TRACK_WORKERS={track_workers})": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml._record_cancelled_future::Track {idx} {track.title!r} was cancelled and will not be processed.": {
     "holds": "a track title, artist or search query",
@@ -3209,13 +3334,13 @@
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Auto-research: Found {len(unmatched_results)} unmatched track(s), re-searching with enhanced settings...": {
     "holds": "a length",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::CRITICAL: Missing results for {len(missing_indices)} tracks! Expected {expected_count} tracks, got {actual_count}. Missing indices: {missing_indices}": {
     "holds": "a length, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Creating error result for missing track {idx}: {track.title!r}": {
     "holds": "a track title, artist or search query",
@@ -3239,8 +3364,8 @@
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Parallel processing complete: {actual_count}/{expected_count} tracks processed": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Parallel processing failed, falling back to sequential: {parallel_error}": {
     "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
@@ -3252,13 +3377,13 @@
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Processed futures: {len(processed_futures)}, Remaining: {len(remaining_futures)}, Total: {len(future_to_args)}": {
     "holds": "a length",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Processing cancelled; resolving {len(remaining_futures)} remaining futures as cancelled.": {
     "holds": "a length",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Progress callback setup error (non-fatal, continuing): {callback_setup_error}": {
     "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
@@ -3266,13 +3391,13 @@
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Re-searching {len(unmatched_inputs)} unmatched tracks using parallel processing with {min(track_workers, len(unmatched_inputs))} workers": {
     "holds": "a length, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Submitted {len(future_to_args)} tasks to ThreadPoolExecutor, waiting for completion...": {
     "holds": "a length",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Track {idx} {track.title!r} processing timed out after waiting. This may be due to DuckDuckGo search timeouts in packaged app.": {
     "holds": "a track title, artist or search query",
@@ -3284,38 +3409,38 @@
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Using parallel processing with {track_workers} workers for {len(inputs)} tracks": {
     "holds": "a length, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::Using sequential processing (TRACK_WORKERS={track_workers})": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::[perf] run={report.run_id} tracks={report.tracks_processed} duration={report.duration_sec}s memory_mb={report.memory_mb_peak} stages={report.stages}": {
     "holds": "an integer id, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::as_completed iterator exhausted after {loop_iterations} iterations. Processed: {len(processed_futures)}/{len(future_to_args)}": {
     "holds": "a length, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::as_completed loop exceeded safety limit ({max_iterations} iterations)! This should never happen. Breaking to process remaining futures.": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::as_completed loop exited early! Processing {len(remaining_futures)} remaining futures that weren't handled in the loop. This should not happen - investigating...": {
     "holds": "a length",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_playlist_from_xml::as_completed loop finished: {loop_iterations} iterations, {len(processed_futures)} futures processed, {len(results_dict)} results collected": {
     "holds": "a length, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_track::[{idx}] Match found: {best.title!r} - {best.artists!r} (score: {best.score})": {
     "holds": "a track title, artist or search query",
@@ -3323,8 +3448,8 @@
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_track::[{idx}] No match found (duration: {dur} ms)": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_track::[{idx}] Processing: {title_for_search!r} - {original_artists or artists_for_scoring!r}": {
     "holds": "a track title, artist or search query",
@@ -3332,13 +3457,13 @@
   },
   "log::cuepoint/services/processor_service.py::ProcessorService.process_track::[{idx}] Search failed ({failure_kind}): {search_failures.describe()} (duration: {dur} ms)": {
     "holds": "a length, exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names: a backend name, a failure kind and an HTTP status"
+    "reason": "values are our own constants, numbers and names: a backend name, a failure kind and an HTTP status",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/cache_manager.py::CacheManager.clear_cache::Cleared {cleared_count} cache items ({cleared_size / (1024 * 1024)} MB)": {
     "holds": "arithmetic on integers, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/cache_manager.py::CacheManager.clear_cache::Error clearing cache item {str(item)!r}: {e}": {
     "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
@@ -3366,8 +3491,8 @@
   },
   "log::cuepoint/utils/cache_manager.py::CacheManager.prune_cache::Pruned cache: removed {removed_count} files ({removed_size / (1024 * 1024)} MB)": {
     "holds": "arithmetic on integers, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/history_manager.py::HistoryManager.cleanup_old_files::Error cleaning up file {quoted(file)}: {e}": {
     "holds": "a file path (it can name the user's folders and files); exception or error text from the OS or a library; an OSError quotes its filename",
@@ -3379,8 +3504,8 @@
   },
   "log::cuepoint/utils/history_manager.py::HistoryManager.cleanup_old_files::{action} {removed_count} old history files": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/history_manager.py::HistoryManager.get_recent_files::Error getting recent files: {e}": {
     "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
@@ -3404,8 +3529,8 @@
   },
   "log::cuepoint/utils/http_cache.py::CacheInvalidation.clear_old_entries::Cleared {cleared} cache entries older than {days} days": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/http_cache.py::CacheInvalidation.clear_old_entries::Error clearing old cache entries: {e}": {
     "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
@@ -3417,8 +3542,8 @@
   },
   "log::cuepoint/utils/http_cache.py::CachePruner.prune_to_size::Pruned cache: removed {removed} entries, target size: {target_size / (1024 * 1024)} MB": {
     "holds": "arithmetic on integers, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/http_cache.py::HTTPCacheManager.initialize::HTTP cache initialized at {quoted(cache_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
@@ -3426,33 +3551,33 @@
   },
   "log::cuepoint/utils/logger.py::CuePointLogger.configure::Build: {build_info['build_number']}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/logger.py::CuePointLogger.configure::Commit: {build_info.get('short_commit_sha', build_info['commit_sha'][:7])}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/logger.py::CuePointLogger.configure::Platform: {platform.system()} {platform.release()}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/logger.py::CuePointLogger.configure::Python: {platform.python_version()}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/logger.py::CuePointLogger.configure::Version: {build_info.get('version', 'unknown')}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/logger.py::log_timing::Completed {operation_name} in {duration}s": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/logger.py::log_timing::Failed {operation_name} after {duration}s: {e}": {
     "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
@@ -3460,13 +3585,13 @@
   },
   "log::cuepoint/utils/logger.py::log_timing::Starting {operation_name}": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/network.py::exponential_backoff.decorator.wrapper::Retry {attempt + 1}/{retry_config.max_retries} for {f.__name__} (HTTP {e.response.status_code}) after {total_delay}s": {
     "holds": "an HTTP status code, arithmetic on integers, exception text",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers; an HTTP status"
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers; an HTTP status",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/network.py::exponential_backoff.decorator.wrapper::Retry {attempt + 1}/{retry_config.max_retries} for {f.__name__} after {total_delay}s: {e}": {
     "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
@@ -3474,8 +3599,8 @@
   },
   "log::cuepoint/utils/performance.py::PerformanceMonitor.record_operation::Slow operation: {operation} took {duration}s": {
     "holds": "exception text",
-    "verdict": "exempt",
-    "reason": "values are our own constants, numbers and names"
+    "reason": "values are our own constants, numbers and names",
+    "verdict": "exempt"
   },
   "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Could not include config: {e}": {
     "holds": "exception or error text from the OS or a library; an OSError quotes its filename",
@@ -3500,110 +3625,5 @@
   "log::cuepoint/utils/support_bundle.py::SupportBundleGenerator.generate_bundle::Support bundle created: {quoted(bundle_path)}": {
     "holds": "a file path (it can name the user's folders and files)",
     "verdict": "corpus"
-  },
-  "cuepoint/services/match_correct.py::MatchCorrectService._require_track::No such track: {track_id}": {
-    "holds": "an integer id",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
-    "verdict": "exempt"
-  },
-  "cuepoint/services/match_correct.py::MatchCorrectService.correct::No candidate {candidate_id}": {
-    "holds": "an integer id",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
-    "verdict": "exempt"
-  },
-  "cuepoint/services/waveform_computer.py::Computed.__post_init__::unknown outcome {self.outcome!r}": {
-    "holds": "an outcome constant chosen by our code",
-    "verdict": "exempt",
-    "reason": "our own constants"
-  },
-  "cuepoint/services/match_status_service.py::MatchStatusService.unsaved::There is no playlist {playlist_id}": {
-    "holds": "an integer id",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
-  },
-  "cuepoint/engine/__init__.py::__getattr__::module {__name__!r} has no attribute {name!r}": {
-    "holds": "an attribute name some code asked the package for",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/services/analysis_protocol.py::_bool::{name} must be true or false, not {type(value).__name__}": {
-    "holds": "a Python type name, and the name of a protocol field",
-    "verdict": "exempt",
-    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/services/analysis_protocol.py::_decode::{name} is missing": {
-    "holds": "the name of a protocol field",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/services/analysis_protocol.py::_decode::{name} is not base64": {
-    "holds": "the name of a protocol field",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/services/analysis_protocol.py::_decode::{name} must be base64 or null, not {type(value).__name__}": {
-    "holds": "a Python type name, and the name of a protocol field",
-    "verdict": "exempt",
-    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/services/analysis_protocol.py::_int::{name} must be an integer, not {type(value).__name__}": {
-    "holds": "a Python type name, and the name of a protocol field",
-    "verdict": "exempt",
-    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/services/analysis_protocol.py::_loudness::loudness reason must be a string or null, not {type(reason).__name__}": {
-    "holds": "a Python type name, and the name of a protocol field",
-    "verdict": "exempt",
-    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/services/analysis_protocol.py::_loudness::{name} must be a number or null, not {type(value).__name__}": {
-    "holds": "a Python type name, and the name of a protocol field",
-    "verdict": "exempt",
-    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/services/analysis_protocol.py::_str::{name} must be a string, not {type(value).__name__}": {
-    "holds": "a Python type name, and the name of a protocol field",
-    "verdict": "exempt",
-    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/services/analysis_protocol.py::parse_result::duration_ms must be an integer or null, not {type(duration_ms).__name__}": {
-    "holds": "a Python type name, and the name of a protocol field",
-    "verdict": "exempt",
-    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/services/analysis_protocol.py::parse_result::reason must be a string or null, not {type(reason).__name__}": {
-    "holds": "a Python type name, and the name of a protocol field",
-    "verdict": "exempt",
-    "reason": "Python type names; names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/persistence/track_query.py::build_facet_sum::{spec.label} is a {spec.type} field; a sum needs a number field": {
-    "holds": "a field's label and type from our own field registry",
-    "verdict": "exempt",
-    "reason": "our own constants"
-  },
-  "cuepoint/engine/discover_lists_api.py::list_create::{key} is required": {
-    "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
-  },
-  "cuepoint/persistence/discover_list_repository.py::clean_members::A list holds at most {MAX_MEMBERS} names": {
-    "holds": "an integer constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
-  },
-  "cuepoint/persistence/discover_list_repository.py::clean_members::A member's name is at most {MAX_MEMBER} characters": {
-    "holds": "an integer constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
-  },
-  "cuepoint/persistence/discover_list_repository.py::clean_name::A list's name is at most {MAX_NAME} characters": {
-    "holds": "an integer constant",
-    "verdict": "exempt",
-    "reason": "integers: ids, counts and lengths the code has already checked as numbers"
-  },
-  "cuepoint/engine/discover_lists_api.py::list_update::{key} cannot be null; leave it out to keep it": {
-    "holds": "our own field, label or code name",
-    "verdict": "exempt",
-    "reason": "names of our own fields, parameters and code values, never a user value"
   }
 }

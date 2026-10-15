@@ -1,31 +1,11 @@
 /**
- * The values a Correct can also copy, and the key as Camelot (C14).
+ * A key as Camelot, the way the app shows keys (C14).
  *
- * The review panel draws a track beside the candidate it was matched with; which fields **Correct**
- * also copies is the reviewer's choice, remembered (`useMatchTicks.ts`). Whether a value *differs*
- * is the engine's answer (`ReviewTrack.differing`: the same key in two notations is not a
- * difference), so nothing here compares.
- *
- * **The key is not "applied"** (DEC-201, DEC-202): accepting a match already makes Beatport's key
- * the track's shown key, unless the track has a key of the user's own. Only then is there something
- * to tick: replacing it.
+ * The review's panel draws your file's key beside the candidates'. Whether a value *differs* is the
+ * engine's answer (`ReviewTrack.differing`: the same key in two notations is not a difference), so
+ * nothing here compares.
  */
-import type { CorrectField } from "../../../api/cuepointBridge.types";
 import { camelotOf as parseCamelot } from "../../../components/wheel/keyColour";
-
-/** A field a tick names: the four Correct copies, and the key it may replace. */
-export type CardField = CorrectField | "key";
-
-/** The fields in the order a DJ reads them. */
-export const CARD_FIELDS: readonly CardField[] = ["key", "bpm", "genre", "label", "year"];
-
-export const CARD_FIELD_LABELS: Record<CardField, string> = {
-  key: "Key",
-  bpm: "BPM",
-  genre: "Genre",
-  label: "Label",
-  year: "Year",
-};
 
 /**
  * A key as Camelot, the way the app shows keys: "A Minor" is 8A. Anything that

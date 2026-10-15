@@ -1,7 +1,4 @@
-/**
- * The Playlists view's row status (C22, G4 §2.2): each row of the table, and
- * which one wins when more than one applies.
- */
+/** The Playlists view's row status (C22): what each row says, and what it offers. */
 import { describe, expect, it } from "vitest";
 
 import type { CleanPlaylistCounts } from "../../../api/cuepointBridge.types";
@@ -22,118 +19,52 @@ function counts(overrides: Partial<CleanPlaylistCounts> = {}): CleanPlaylistCoun
 }
 
 describe("playlistStatus", () => {
-  it("says how far a running match is, with its job, and offers neither Review nor Match", () => {
-    const status = playlistStatus(counts({ running: { job_id: "j", done: 108, total: 1800 } }));
-    expect(status).toMatchObject({
+  it("says how far a running match is, with its job, and cannot be ticked or reviewed", () => {
+    expect(playlistStatus(counts({ running: { job_id: "j", done: 108, total: 1800 } }))).toMatchObject({
       kind: "running",
       text: "Matching 108 of 1,800",
       running: { jobId: "j", done: 108, total: 1800 },
-      review: null,
-      save: null,
-      canMatch: false,
+      canReview: false,
+      canTick: false,
     });
   });
 
-  it("says N to check and N confirmed, and offers Review N ›, when tracks wait for a yes or no", () => {
-    const status = playlistStatus(counts({ waiting: 9, accepted: 15, track_count: 24, unsaved: 15 }));
-    expect(status).toMatchObject({
-      kind: "waiting",
-      tone: "action",
-      chips: [
-        { text: "9 to check", tone: "action" },
-        { text: "15 confirmed", tone: "done" },
-      ],
-      review: { label: "Review 9 ›", count: 9 },
-    });
-    // The values already sure can be saved while the rest waits.
-    expect(status.save).toEqual({ label: "Save 15 to files…", count: 15 });
+  it("says Matched with how many tracks have a match, and offers Review", () => {
+    const status = playlistStatus(counts({ waiting: 9, accepted: 15, rejected: 1, track_count: 25 }));
+    expect(status).toMatchObject({ kind: "matched", canReview: true, canTick: true });
+    expect(status.chips).toEqual([{ text: "Matched · 25", tone: "done" }]);
   });
 
-  it("leaves out the confirmed chip when none is", () => {
-    expect(playlistStatus(counts({ waiting: 1200, accepted: 0 })).chips).toEqual([
-      { text: "1,200 to check", tone: "action" },
+  it("says what was not found beside it, and what has not been looked up", () => {
+    const status = playlistStatus(counts({ accepted: 20, no_match: 5, not_matched: 3, track_count: 28 }));
+    expect(status.chips).toEqual([
+      { text: "Matched · 20", tone: "done" },
+      { text: "5 not found", tone: "problem" },
+      { text: "3 not matched yet", tone: "none" },
     ]);
   });
 
-  it("offers Save N to files… when values are ready", () => {
-    expect(playlistStatus(counts({ unsaved: 39 }))).toMatchObject({
-      kind: "unsaved",
-      text: "39 ready to save",
-      tone: "action",
-      save: { label: "Save 39 to files…", count: 39 },
-      review: null,
-      canMatch: true,
+  it("offers Review for a playlist the search found nothing for, since those are the tracks to look at", () => {
+    const status = playlistStatus(counts({ accepted: 0, no_match: 24, track_count: 24 }));
+    expect(status.chips).toEqual([{ text: "24 not found", tone: "problem" }]);
+    expect(status.canReview).toBe(true);
+  });
+
+  it("says Not matched yet for one never looked up, with nothing to review", () => {
+    expect(playlistStatus(counts({ accepted: 0, not_matched: 100 }))).toMatchObject({
+      kind: "not_matched",
+      chips: [{ text: "Not matched yet", tone: "none" }],
+      canReview: false,
+      canTick: true,
     });
   });
 
-  it("says Not matched when nothing was looked up, and N not matched when some was", () => {
-    const all = playlistStatus(counts({ track_count: 64, not_matched: 64, accepted: 0 }));
-    expect(all).toMatchObject({ kind: "not_matched", text: "Not matched", tone: "problem", canMatch: true });
-    expect(playlistStatus(counts({ not_matched: 5 })).text).toBe("5 not matched");
-  });
-
-  it("says Done, in words rather than a typed tick", () => {
-    expect(playlistStatus(counts())).toMatchObject({
-      kind: "done",
-      text: "Done",
-      tone: "done",
-      note: "Values in your files",
-      canMatch: true,
-    });
-  });
-
-  it("says Empty for a playlist with no tracks, with nothing to press", () => {
+  it("says Empty for a playlist with no tracks, which cannot be ticked", () => {
     expect(playlistStatus(counts({ track_count: 0, accepted: 0 }))).toMatchObject({
       kind: "empty",
-      text: "Empty",
-      tone: "none",
-      review: null,
-      save: null,
-      canMatch: false,
+      chips: [{ text: "Empty", tone: "none" }],
+      canTick: false,
+      canReview: false,
     });
-  });
-
-  it("takes the first that applies: running, waiting, ready to save, not found, not matched, done", () => {
-    const all = { waiting: 3, unsaved: 2, not_matched: 1, no_match: 4 };
-    const running = { job_id: "j", done: 1, total: 2 };
-    expect(playlistStatus(counts({ ...all, running })).kind).toBe("running");
-    expect(playlistStatus(counts(all)).kind).toBe("waiting");
-    expect(playlistStatus(counts({ unsaved: 2, not_matched: 1, no_match: 4 })).kind).toBe("unsaved");
-    expect(playlistStatus(counts({ not_matched: 1, no_match: 4 })).kind).toBe("not_found");
-    expect(playlistStatus(counts({ not_matched: 1 })).kind).toBe("not_matched");
-    expect(playlistStatus(counts()).kind).toBe("done");
-  });
-
-  it("says N not found when a search ran and found nothing, never Done, and offers Match again and See them ›", () => {
-    const status = playlistStatus(counts({ track_count: 24, accepted: 0, no_match: 24 }));
-    expect(status).toMatchObject({
-      kind: "not_found",
-      text: "24 not found",
-      tone: "problem",
-      chips: [{ text: "24 not found", tone: "problem" }],
-      matchLabel: "Match again",
-      see: { label: "See them ›", count: 24 },
-      canMatch: true,
-      review: null,
-      note: null,
-    });
-  });
-
-  it("keeps not found beside what else the row says", () => {
-    expect(playlistStatus(counts({ track_count: 24, waiting: 9, accepted: 13, no_match: 2 })).chips).toEqual([
-      { text: "9 to check", tone: "action" },
-      { text: "13 confirmed", tone: "done" },
-      { text: "2 not found", tone: "problem" },
-    ]);
-    expect(playlistStatus(counts({ track_count: 24, accepted: 7, unsaved: 7, no_match: 17 })).chips).toEqual([
-      { text: "7 ready to save", tone: "action" },
-      { text: "17 not found", tone: "problem" },
-    ]);
-  });
-
-  it("calls the button Match unless the row already has a search that found nothing", () => {
-    expect(playlistStatus(counts()).matchLabel).toBe("Match");
-    expect(playlistStatus(counts({ waiting: 3 })).matchLabel).toBe("Match");
-    expect(playlistStatus(counts({ no_match: 3 })).matchLabel).toBe("Match again");
   });
 });

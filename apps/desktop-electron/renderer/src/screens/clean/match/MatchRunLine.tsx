@@ -9,7 +9,7 @@
  */
 import { Button } from "../../../components/Button";
 import { aboutDuration } from "../../../components/shell/useActiveJob";
-import { nothingFoundLine, nothingFoundTarget, type NothingFound } from "./matchDone";
+import { nothingFoundLine, nothingFoundCount, type NothingFound } from "./matchDone";
 
 interface MatchRunningLineProps {
   /** What is being matched ("hJ", "Whole library"); null when it is not known. */
@@ -63,7 +63,7 @@ interface NothingFoundNoteProps {
 }
 
 export function NothingFoundNote({ name, found, onSee, onDismiss }: NothingFoundNoteProps) {
-  const target = nothingFoundTarget(found);
+  const count = nothingFoundCount(found);
   return (
     <div className="match-nothing" role="alert">
       <strong className="match-nothing__headline">{nothingFoundLine(name, found)}</strong>
@@ -72,7 +72,7 @@ export function NothingFoundNote({ name, found, onSee, onDismiss }: NothingFound
           ? "Beatport could not be reached or turned the search away, so nothing is known about those tracks. Match again usually fixes it."
           : "This usually means the search failed, not that the tracks aren't on Beatport."}
       </span>
-      <Button size="sm" onClick={onSee}>{`See the ${target.count.toLocaleString()} ›`}</Button>
+      <Button size="sm" onClick={onSee}>{`See the ${count.toLocaleString()} ›`}</Button>
       <Button size="sm" variant="secondary" aria-label="Dismiss" onClick={onDismiss}>
         Dismiss
       </Button>

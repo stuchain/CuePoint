@@ -3,9 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { TrackMatchState } from "../../api/cuepointBridge.types";
 import {
   clampLabel,
-  attemptLabel,
-  correctedManyLine,
   decisionLine,
+  attemptLabel,
   exportedLine,
   fileStatusHint,
   fileStatusLabel,
@@ -16,6 +15,19 @@ import {
   signalExplanation,
   signalLabel,
 } from "./cleanFormat";
+
+describe("a run's name within the engine's limit", () => {
+  it("leaves a name of 200 characters or fewer alone", () => {
+    expect(clampLabel("Whole library")).toBe("Whole library");
+    expect(clampLabel("x".repeat(200))).toBe("x".repeat(200));
+  });
+
+  it("cuts a longer one to 199 characters and an ellipsis", () => {
+    const clamped = clampLabel("y".repeat(201));
+    expect(clamped).toHaveLength(200);
+    expect(clamped).toBe(`${"y".repeat(199)}…`);
+  });
+});
 
 function state(overrides: Partial<TrackMatchState>): TrackMatchState {
   return {
@@ -30,19 +42,6 @@ function state(overrides: Partial<TrackMatchState>): TrackMatchState {
     ...overrides,
   };
 }
-
-describe("a run's name within the engine's limit", () => {
-  it("leaves a name of 200 characters or fewer alone", () => {
-    expect(clampLabel("Whole library")).toBe("Whole library");
-    expect(clampLabel("x".repeat(200))).toBe("x".repeat(200));
-  });
-
-  it("cuts a longer one to 199 characters and an ellipsis", () => {
-    const clamped = clampLabel("y".repeat(201));
-    expect(clamped).toHaveLength(200);
-    expect(clamped).toBe(`${"y".repeat(199)}…`);
-  });
-});
 
 describe("where a track stands", () => {
   it("says who decided", () => {
@@ -111,10 +110,6 @@ describe("sentences about what was done", () => {
     expect(matchStartedLine({ planned: 2, excluded: 1 })).toMatch(/1 already matched or decided is/);
   });
 
-  it("says what was corrected, many at once", () => {
-    expect(correctedManyLine(1)).toBe("Corrected 1 track.");
-    expect(correctedManyLine(1200)).toBe("Corrected 1,200 tracks.");
-  });
 
   it("says what was exported", () => {
     expect(exportedLine(2, "C:\\out\\review-list.csv")).toBe(

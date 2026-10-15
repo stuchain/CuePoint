@@ -347,7 +347,7 @@ describe("when Save is greyed", () => {
       preview: preview({ total: 5, files: 0, skipped: { missing: { count: 4, examples: [] } } }),
     });
     bridge.countTagPreview.mockResolvedValue({ files: 0, fields: {} });
-    open({ count: 5, canMarkSaved: true });
+    open({ count: 5 });
     expect(await screen.findByText("4 files skipped: files that are missing")).toBeInTheDocument();
     expect(screen.queryByText("These files already hold these values.")).toBeNull();
     expect(screen.getByRole("button", { name: /^Save to 0 files$/ })).toBeDisabled();
@@ -358,35 +358,6 @@ describe("when Save is greyed", () => {
     open();
     expect(await screen.findByText("These files already hold these values.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Save to 0 files$/ })).toBeDisabled();
-  });
-});
-
-describe("marking tracks as saved", () => {
-  beforeEach(() => {
-    bridge.countTagPreview.mockResolvedValue({ files: 0, fields: {} });
-  });
-
-  it("turns the button into Mark N tracks as saved when the bar counted them", async () => {
-    open({ canMarkSaved: true });
-    const button = await screen.findByRole("button", { name: "Mark 47 tracks as already saved" });
-    expect(button).toBeEnabled();
-    expect(screen.getByText("These files already hold these values.")).toBeInTheDocument();
-  });
-
-  it("calls the write, which records them, and says they are marked", async () => {
-    results["w-1"] = { ...WRITTEN, total: 47, completed: 47, written: 0, skipped: { nothing_to_write: 47 } };
-    const props = open({ canMarkSaved: true });
-    await userEvent.click(await screen.findByRole("button", { name: "Mark 47 tracks as already saved" }));
-    await waitFor(() =>
-      expect(bridge.startTagWrite).toHaveBeenCalledWith({
-        preview_id: "p-1",
-        options: expect.objectContaining({ write_key: true }),
-      }),
-    );
-    expect(await screen.findByText("47 tracks are marked as saved.")).toBeInTheDocument();
-    // Nothing was written, so there is nothing to restore.
-    expect(screen.queryByRole("button", { name: /Undo this save/ })).toBeNull();
-    expect(props.onChanged).toHaveBeenCalled();
   });
 });
 
@@ -526,16 +497,6 @@ describe("Save", () => {
     expect(bridge.previewTagWrite).toHaveBeenCalledTimes(1);
     await userEvent.click(screen.getByRole("button", { name: /^Save to 38 files$/ }));
     expect(await screen.findByText("Wrote 38 files.")).toBeInTheDocument();
-  });
-
-  it("says marked from the engine's answer, not from the button that was pressed", async () => {
-    // The button said 38 files, but the engine found every file already held the values.
-    results["w-1"] = { ...WRITTEN, written: 0, skipped: { nothing_to_write: 38 } };
-    open();
-    await ready();
-    await userEvent.click(screen.getByRole("button", { name: /^Save to 38 files$/ }));
-    expect(await screen.findByText("47 tracks are marked as saved.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Undo this save/ })).toBeNull();
   });
 
   it("moves focus to the result, and the library is told once", async () => {
@@ -698,4 +659,98 @@ describe("focus and announcements", () => {
     expect(reason).toHaveAttribute("role", "status");
     expect(reason).toHaveAttribute("aria-live", "polite");
   });
+});
+
+describe("the Sync window (a playlist's ticked tracks)", () => {
+  beforeEach(() => {
+    // Sync previews and writes through its own routes: the preview writes nothing, the sync is one job.
+    bridge.previewSync = vi.fn().mockResolvedValue({ preview: preview() });
+    bridge.startSync = vi.fn().mockResolvedValue({ job_id: "w-1", id: "w-1", state: "queued", preview_id: "p-1" });
+  });
+
+  function sync(overrides: Partial<Parameters<typeof SaveToFilesDialog>[0]> = {}) {
+    return open({ variant: "sync", title: "Sync hJ to your files", count: 22, onChanged: vi.fn(), ...overrides });
+  }
+  async function syncReady() {
+    await waitFor(() => expect(screen.getByRole("button", { name: "Sync 22 tracks" })).toBeEnabled());
+  }
+
+  it("is titled by the playlist and lists BPM, Genre, Label, Year and Key with a count each, and no Artwork", async () => {
+    sync();
+    expect(screen.getByRole("dialog", { name: "Sync hJ to your files" })).toBeInTheDocument();
+    await syncReady();
+    const names = screen
+      .getAllByRole("checkbox")
+      .map((box) => box.getAttribute("aria-label") ?? box.closest("label")?.textContent);
+    expect(names).toEqual(["BPM", "Genre", "Label", "Year", "Key", "Keep values already in the files"]);
+    expect(within(row("BPM")).getByText("6 files")).toBeInTheDocument();
+    expect(within(row("Year")).getByText("25 files")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Artwork" })).toBeNull();
+  });
+
+  it("starts with BPM, Genre, Label and Year ticked, Key not, and Keep ticked", async () => {
+    sync();
+    await syncReady();
+    for (const name of ["BPM", "Genre", "Label", "Year"]) expect(screen.getByRole("checkbox", { name })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Key" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Keep values already in the files" })).toBeChecked();
+    // The key style is chosen here, with Am / 8A / Amin as examples.
+    expect(screen.getByRole("combobox", { name: "Key style" })).toBeInTheDocument();
+  });
+
+  it("reads the files without asking for artwork", async () => {
+    sync();
+    await syncReady();
+    expect(bridge.previewSync).toHaveBeenCalledWith(
+      expect.objectContaining({ options: expect.objectContaining({ embed_missing_artwork: false, write_bpm: true }) }),
+    );
+    expect(bridge.previewTagWrite).not.toHaveBeenCalled();
+  });
+
+  it("says See every change, and Sync N tracks, and sends exactly the ticked options", async () => {
+    sync();
+    await syncReady();
+    expect(screen.getByRole("button", { name: "See every change" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Key" }));
+    await syncReady();
+    await userEvent.click(screen.getByRole("button", { name: "Sync 22 tracks" }));
+    await waitFor(() => expect(bridge.startSync).toHaveBeenCalled());
+    expect(bridge.startTagWrite).not.toHaveBeenCalled();
+    expect(bridge.startSync).toHaveBeenCalledWith({
+      preview_id: "p-1",
+      options: expect.objectContaining({
+        write_key: true,
+        write_bpm: true,
+        write_year: true,
+        embed_missing_artwork: false,
+      }),
+    });
+  });
+
+  it("remembers its own choices, not the save window's", async () => {
+    sync();
+    await syncReady();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Year" }));
+    await syncReady();
+    await userEvent.click(screen.getByRole("button", { name: "Sync 22 tracks" }));
+    await waitFor(() => expect(bridge.startSync).toHaveBeenCalled());
+    expect(localStorage.getItem("cuepoint-save-to-files")).toBeNull();
+    expect(JSON.parse(localStorage.getItem("cuepoint-sync-to-files")!).fields.year).toBe(false);
+  });
+
+  it("says the files hold the values when nothing would change, and offers nothing else", async () => {
+    bridge.countTagPreview.mockResolvedValue({ files: 0, fields: {} });
+    sync();
+    await waitFor(() => expect(screen.getByText("These files already hold these values.")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Sync 22 tracks" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /Mark/ })).toBeNull();
+  });
+
+  it("says that Undo puts back the matches and values it recorded", async () => {
+    sync();
+    await syncReady();
+    await userEvent.click(screen.getByRole("button", { name: "Sync 22 tracks" }));
+    expect(await screen.findByText(/takes back the matches and values this sync recorded/)).toBeInTheDocument();
+  });
+
 });

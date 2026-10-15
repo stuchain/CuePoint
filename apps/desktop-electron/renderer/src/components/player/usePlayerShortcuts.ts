@@ -56,7 +56,7 @@ function isSpaceTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return Boolean(
     target.closest(
-      'button, summary, a[href], input:not([type="range"]), [role="button"], [role="menuitem"], [role="option"], [role="checkbox"], [role="tab"], [role="switch"], [role="treeitem"], [role="radio"], [role="gridcell"]',
+      'button, summary, a[href], input:not([type="range"]), [role="button"], [role="menuitem"], [role="option"], [role="checkbox"], [role="tab"], [role="switch"], [role="treeitem"], [role="radio"], [role="gridcell"], [data-owns-space]',
     ),
   );
 }

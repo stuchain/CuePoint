@@ -516,6 +516,8 @@ test.describe("the website's pictures (SITE-04)", () => {
         await panel.getByRole("checkbox", { name: "House", exact: true }).check();
         await panel.getByRole("button", { name: "Start looking" }).click();
         await expect(window.getByText(/^Found \d+ tracks from 1 chart/)).toBeVisible({ timeout: 90_000 });
+        // The shot of the table: Everything, after the cards.
+        await window.getByRole("button", { name: /^Everything · / }).click();
         const found = window.getByRole("table", { name: "Tracks this dig found" });
         await expect(found.locator(".track-table__row").first()).toBeVisible();
         await idle(window);
@@ -533,9 +535,10 @@ test.describe("the website's pictures (SITE-04)", () => {
       await test.step("clean: the Review of a playlist after it is matched", async () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
         await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
-        // Match opens on Playlists (C22): the live playlist has its own Match button.
+        // Match opens on Playlists (C22): tick the live playlist and press Match.
         const live = showcase.playlists.find((p) => p.name === showcase.livePlaylist)!;
-        await window.getByRole("button", { name: `Match ${showcase.livePlaylist}`, exact: true }).click({ timeout: 30_000 });
+        await window.getByRole("checkbox", { name: `Match ${showcase.livePlaylist}`, exact: true }).check({ timeout: 30_000 });
+        await window.getByRole("button", { name: "Match 1 playlist" }).click();
         await expect(window.getByText(`Matching ${live.trackIds.length} tracks on Beatport.`, { exact: true })).toBeVisible({ timeout: 30_000 });
         // the job's end, not the toast's: the toast goes on its own
         await idle(window);
@@ -547,10 +550,10 @@ test.describe("the website's pictures (SITE-04)", () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
         await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
         // the run's Review: every track, with what was found for it and where it stands
-        // the match landed on its Review; the page kept it, and its row's Review N › opens it again
+        // the match landed on its Review; the page kept it, and its row's Review opens it again
         const reviewTab = window.getByRole("tab", { name: `Review ${showcase.livePlaylist}` });
         if (await reviewTab.count()) await reviewTab.click();
-        else await window.getByRole("button", { name: new RegExp(`^Review [\\d,]+ › for ${showcase.livePlaylist}$`) }).click();
+        else await window.getByRole("button", { name: `Review ${showcase.livePlaylist}`, exact: true }).click();
         const queue = window.getByRole("region", { name: /^Review / }).getByRole("table");
         await expect(queue.getByRole("row")).not.toHaveCount(1, { timeout: 30_000 });
         await expect(queue.locator("td.review-row__theirs").first()).not.toBeEmpty({ timeout: 30_000 });
@@ -562,22 +565,21 @@ test.describe("the website's pictures (SITE-04)", () => {
         // Errors and warnings stay until closed (DEC-281): close any still showing.
         await closeToasts(window);
         await expect(window.locator(".cp-toast")).toHaveCount(0, { timeout: 60_000 });
-        // Details › beside the list: your file and the best match Beatport found
-        await window.getByRole("button", { name: /^Details of / }).first().click();
+        // a click on a row opens the side panel: your file and every candidate Beatport found
+        await window.getByRole("region", { name: /^Review / }).locator("tr.review-row").first().locator("td.review-row__yours").click();
         const panel = window.getByRole("complementary", { name: "Track details" });
         const yours = panel.getByRole("region", { name: "Your file" });
-        const theirs = panel.getByRole("region", { name: "Beatport" });
-        await expect(theirs.getByTestId("likelihood")).toBeVisible({ timeout: 30_000 });
-        await expect(panel.getByRole("group", { name: "Decide" }).getByRole("button", { name: /^Correct/ })).toBeVisible();
-        // the covers, decoded by the app from the fixture, and the Beatport art fetched through the engine
+        const candidates = panel.getByRole("list", { name: "Beatport candidates" });
+        await expect(candidates).toBeVisible({ timeout: 30_000 });
+        await expect(panel.getByRole("button", { name: "None of these — leave it out" })).toBeVisible();
+        // your cover, decoded by the app from the fixture
         await expect(yours.locator("img.review-panel__art")).toBeVisible({ timeout: 30_000 });
-        await expect(theirs.locator("img.review-panel__art")).toBeVisible({ timeout: 30_000 });
         await expect
           .poll(() => panel.locator("img").evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0)), {
             timeout: 30_000,
           })
           .toBe(true);
-        await expect(panel.getByRole("group", { name: "Decide" })).toBeInViewport();
+        await expect(candidates).toBeInViewport();
         await shoot(window, "clean-compare", taken);
       });
 

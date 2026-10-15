@@ -7,11 +7,9 @@
  * files, is asked of the engine.
  */
 import type {
-  BatchSelection,
   FieldChoiceCounts,
   TagFieldChoices,
   TagWritePreview,
-  TagWriteResult,
 } from "../../api/cuepointBridge.types";
 import { fieldName, fileSkipText, type DialogTagOptions } from "./tagWriting";
 
@@ -25,7 +23,21 @@ export const SAVE_FIELDS = [
   { id: "artwork", label: "Artwork" },
 ] as const;
 
+/**
+ * The rows of the Sync window, in the order it lists them. Artwork is not one: Sync is about the
+ * values a match found, and the field choice lives only there.
+ */
+export const SYNC_FIELDS = [
+  { id: "bpm", label: "BPM" },
+  { id: "genre", label: "Genre" },
+  { id: "label", label: "Label" },
+  { id: "year", label: "Year" },
+  { id: "key", label: "Key" },
+] as const;
+
 export type SaveFieldId = (typeof SAVE_FIELDS)[number]["id"];
+/** Which window the choices are for: saving unsaved values (the Library), or syncing a playlist's matches. */
+export type SaveVariant = "save" | "sync";
 export type KeyStyle = DialogTagOptions["key_format"];
 
 /** The key styles the window offers, each shown by an example. */
@@ -48,18 +60,24 @@ export const DEFAULT_SAVE_CHOICES: SaveChoices = {
   keep_existing: true,
 };
 
-export const SAVE_CHOICES_KEY = "cuepoint-save-to-files";
-
-/** The tracks the save bar counted: everything with a value the files do not hold (Q2). */
-export const UNSAVED_SELECTION: BatchSelection = {
-  query: { filters: { match: "all", rules: [{ field: "unsaved_values", operator: "is", value: true }] } },
+/** What a Sync starts from: the four values a match brings, and the key only by choice. */
+export const DEFAULT_SYNC_CHOICES: SaveChoices = {
+  fields: { key: false, genre: true, label: true, year: true, bpm: true, artwork: false },
+  key_format: "normal",
+  keep_existing: true,
 };
 
+export const SAVE_CHOICES_KEY = "cuepoint-save-to-files";
+export const SYNC_CHOICES_KEY = "cuepoint-sync-to-files";
+
+const STORAGE_KEYS: Record<SaveVariant, string> = { save: SAVE_CHOICES_KEY, sync: SYNC_CHOICES_KEY };
+
 /** Remembered choices, each piece checked, so a stale or hand-edited value cannot reach the engine. */
-export function loadSaveChoices(): SaveChoices {
+export function loadSaveChoices(variant: SaveVariant = "save"): SaveChoices {
+  const defaults = variant === "sync" ? DEFAULT_SYNC_CHOICES : DEFAULT_SAVE_CHOICES;
   let stored: unknown = null;
   try {
-    const text = window.localStorage.getItem(SAVE_CHOICES_KEY);
+    const text = window.localStorage.getItem(STORAGE_KEYS[variant]);
     stored = text ? JSON.parse(text) : null;
   } catch {
     stored = null;
@@ -67,22 +85,23 @@ export function loadSaveChoices(): SaveChoices {
   const record = stored !== null && typeof stored === "object" ? (stored as Record<string, unknown>) : {};
   const saved =
     record.fields !== null && typeof record.fields === "object" ? (record.fields as Record<string, unknown>) : {};
-  const fields = { ...DEFAULT_SAVE_CHOICES.fields };
+  const fields = { ...defaults.fields };
   for (const { id } of SAVE_FIELDS) {
     if (typeof saved[id] === "boolean") fields[id] = saved[id] as boolean;
   }
+  // Artwork is not a row of the Sync window, so a remembered tick for it can never be seen or undone there.
+  if (variant === "sync") fields.artwork = false;
   const style = KEY_STYLES.find((entry) => entry.value === record.key_format)?.value;
   return {
     fields,
-    key_format: style ?? DEFAULT_SAVE_CHOICES.key_format,
-    keep_existing:
-      typeof record.keep_existing === "boolean" ? record.keep_existing : DEFAULT_SAVE_CHOICES.keep_existing,
+    key_format: style ?? defaults.key_format,
+    keep_existing: typeof record.keep_existing === "boolean" ? record.keep_existing : defaults.keep_existing,
   };
 }
 
-export function rememberSaveChoices(choices: SaveChoices): void {
+export function rememberSaveChoices(choices: SaveChoices, variant: SaveVariant = "save"): void {
   try {
-    window.localStorage.setItem(SAVE_CHOICES_KEY, JSON.stringify(choices));
+    window.localStorage.setItem(STORAGE_KEYS[variant], JSON.stringify(choices));
   } catch {
     // Choices are a convenience: a store that refuses just means asking again next time.
   }
@@ -117,9 +136,10 @@ export function tagOptionsFor(choices: SaveChoices): DialogTagOptions {
  * What the one preview is asked with: every field on, and Keep off. Keep off is the superset:
  * its counts hold both `fill` and `replace`, so Keep, a tick and the key style are then
  * applied here without asking again. The list of changes is cut down by Keep on this side.
+ * The Sync window has no artwork row, so it never asks for it.
  */
-export function previewOptions(choices: SaveChoices): DialogTagOptions {
-  return { ...options(choices, () => true), keep_existing: false };
+export function previewOptions(choices: SaveChoices, variant: SaveVariant = "save"): DialogTagOptions {
+  return { ...options(choices, (id) => id !== "artwork" || variant === "save"), keep_existing: false };
 }
 
 function counts(choices: SaveChoices, entry: FieldChoiceCounts | undefined): number {
@@ -191,6 +211,11 @@ export function saveTitle(count: number): string {
   return `Save ${trackWords(count)} to your files`;
 }
 
+/** The Sync button's words: it names the tracks, not the files, because the person ticked tracks. */
+export function syncButton(count: number): string {
+  return `Sync ${trackWords(count)}`;
+}
+
 export const NONE_TICKED = "Tick at least one value.";
 export const ALREADY_HOLD = "These files already hold these values.";
 export const ALL_WAV = "WAV files are skipped (Rekordbox does not read their tags).";
@@ -200,8 +225,6 @@ export interface SaveState {
   enabled: boolean;
   /** The line under the buttons: why it is greyed, or what the button will do. */
   reason: string | null;
-  /** The button records the tracks as already in the files rather than changing any. */
-  mark: boolean;
 }
 
 interface SaveStateInput {
@@ -211,8 +234,8 @@ interface SaveStateInput {
   total: number | null;
   /** The tracks the window was opened for. */
   count: number;
-  /** The window was opened for tracks the bar counted, so none to change can still be marked saved. */
-  canMarkSaved: boolean;
+  /** Sync's button names the tracks ("Sync 22 tracks"), not a count of files. */
+  variant?: SaveVariant;
 }
 
 /** The reason most files are skipped, other than already holding the values; null when none are. */
@@ -225,16 +248,28 @@ function mainSkip(preview: TagWritePreview): { reason: string; count: number } |
   return top;
 }
 
-export function saveState({ choices, preview, total, count, canMarkSaved }: SaveStateInput): SaveState {
+export function saveState({
+  choices,
+  preview,
+  total,
+  count,
+  variant = "save",
+}: SaveStateInput): SaveState {
+  const sync = variant === "sync";
   const idle = (reason: string | null): SaveState => ({
-    label: total === null ? "Save to files" : `Save to ${fileWords(total)}`,
+    label: sync ? syncButton(count) : total === null ? "Save to files" : `Save to ${fileWords(total)}`,
     enabled: false,
     reason,
-    mark: false,
   });
   if (noneTicked(choices)) return idle(NONE_TICKED);
   if (total === null) return idle(null);
-  if (total > 0) return { label: `Save to ${fileWords(total)}`, enabled: true, reason: null, mark: false };
+  if (total > 0) {
+    return {
+      label: sync ? syncButton(count) : `Save to ${fileWords(total)}`,
+      enabled: true,
+      reason: null,
+    };
+  }
   // Nothing would change. That means the values are already in the files only when the files the
   // preview could read cover the whole selection; otherwise say what held the others back.
   const skip = mainSkip(preview);
@@ -242,9 +277,6 @@ export function saveState({ choices, preview, total, count, canMarkSaved }: Save
     return idle(
       skip.reason === "wav" ? ALL_WAV : `${fileWords(skip.count)} skipped: ${fileSkipText(skip.reason)}`,
     );
-  }
-  if (canMarkSaved) {
-    return { label: `Mark ${trackWords(count)} as already saved`, enabled: true, reason: ALREADY_HOLD, mark: true };
   }
   return idle(ALREADY_HOLD);
 }
@@ -281,17 +313,4 @@ export function changeRows(preview: TagWritePreview, choices: SaveChoices): Chan
     });
   }
   return rows;
-}
-
-/**
- * A save that changed no file because the files already held the values, which is what
- * "Mark as saved" asks for. Judged from the engine's answer, not from which button was pressed.
- */
-export function savedNothing(result: TagWriteResult): boolean {
-  return (
-    result.written === 0 &&
-    result.failed === 0 &&
-    !result.cancelled &&
-    Object.keys(result.skipped).every((reason) => reason === "nothing_to_write")
-  );
 }

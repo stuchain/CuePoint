@@ -19,7 +19,6 @@ import pytest
 from cuepoint.engine.jobs import JobState, JobStore
 from cuepoint.engine.match_jobs import JOB_TYPE_CLEAN_MATCH
 from cuepoint.engine.server import EngineConfig, start_engine_thread
-from cuepoint.persistence.track_metadata_repository import TrackMetadataRepository
 from cuepoint.services import database_service as database_service_module
 from cuepoint.services.interfaces import IDatabaseService
 from cuepoint.utils.di_container import get_container, reset_container
@@ -102,50 +101,6 @@ COUNT_KEYS = {
 
 
 @pytest.mark.unit
-class TestUnsavedRoute:
-    def test_the_envelope_for_the_whole_library(self, engine, library_db):
-        a = add_track(library_db, "/m/a.mp3", genre="House")
-        TrackMetadataRepository(library_db).set_override(a, "genre", "Techno")
-        TrackMetadataRepository(library_db).set_override(a, "bpm", 130.0)
-
-        status, body = get(engine, "/api/v1/clean/unsaved")
-
-        assert status == 200
-        assert body == {
-            "tracks": 1,
-            "fields": {"key": 0, "genre": 1, "label": 0, "year": 0, "bpm": 1},
-        }
-
-    def test_a_playlist_narrows_it(self, engine, library_db):
-        a, b = add_track(library_db, "/m/a.mp3"), add_track(library_db, "/m/b.mp3")
-        TrackMetadataRepository(library_db).set_override(a, "genre", "Techno")
-        TrackMetadataRepository(library_db).set_override(b, "genre", "Techno")
-        playlist = add_playlist(library_db, "P", [a])
-
-        status, body = get(engine, "/api/v1/clean/unsaved", playlist_id=playlist)
-
-        assert (status, body["tracks"]) == (200, 1)
-
-    def test_an_empty_library_is_zero(self, engine):
-        status, body = get(engine, "/api/v1/clean/unsaved")
-        assert (status, body["tracks"]) == (200, 0)
-
-    def test_a_folder_or_unknown_playlist_is_404(self, engine, library_db):
-        folder = add_playlist(library_db, "F", kind="folder")
-        for playlist_id in (folder, 404):
-            status, body = get(engine, "/api/v1/clean/unsaved", playlist_id=playlist_id)
-            assert (status, body["error"]["code"]) == (404, "NOT_FOUND")
-
-    def test_a_playlist_id_that_is_not_a_number_is_400(self, engine):
-        status, body = get(engine, "/api/v1/clean/unsaved", playlist_id="x")
-        assert (status, body["error"]["code"]) == (400, "INVALID_REQUEST")
-
-    def test_it_needs_the_token(self, engine):
-        status, _ = get(engine, "/api/v1/clean/unsaved", token=None)
-        assert status in (401, 403)
-
-
-@pytest.mark.unit
 class TestPlaylistsRoute:
     def test_the_envelope(self, engine, library_db):
         a, b = add_track(library_db, "/m/a.mp3"), add_track(library_db, "/m/b.mp3")
@@ -224,5 +179,5 @@ class TestPlaylistsRoute:
 def test_the_routes_are_listed_for_the_contract():
     from cuepoint.engine.clean_api import GET_PATHS, handles_get
 
-    for path in ("/api/v1/clean/unsaved", "/api/v1/clean/playlists"):
+    for path in ("/api/v1/clean/playlists",):
         assert path in GET_PATHS and handles_get(path)

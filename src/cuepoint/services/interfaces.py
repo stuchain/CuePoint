@@ -52,7 +52,6 @@ if TYPE_CHECKING:
         PlaylistNode,
         PlaylistStatuses,
         StatusCounts,
-        UnsavedCounts,
     )
     from cuepoint.models.waveform import (
         AnalysisOutcome,
@@ -109,7 +108,10 @@ if TYPE_CHECKING:
     from cuepoint.services.discovery_service import DiscoveryRequest
     from cuepoint.models.discovery_run import (
         DiscoveryRun,
+        DiscoveryRunGroup,
         DiscoveryRunSource,
+        GroupCard,
+        GroupSelection,
         RunTracksPage,
     )
     from cuepoint.models.wantlist import WantlistEntry, WantlistPage
@@ -1511,6 +1513,7 @@ class IDiscoveryRepository(ABC):
         sources: Sequence["DiscoveryRunSource"],
         fetched_at: str,
         counts: Mapping[str, int],
+        groups: Sequence["DiscoveryRunGroup"] = (),
     ) -> int:
         """Store what one chart or label gave a run; how many tracks were new."""
         ...
@@ -1577,8 +1580,53 @@ class IDiscoveryRepository(ABC):
         descending: bool = False,
         offset: int = 0,
         limit: int = 100,
+        groups: Optional[Sequence[Tuple[str, str]]] = None,
     ) -> "RunTracksPage":
         """A window of a run's tracks, with ownership as it is now."""
+        ...
+
+    @abstractmethod
+    def run_groups(self, run_id: int) -> List["GroupCard"]:
+        """The cards a run's results are grouped into, with counts as they are now."""
+        ...
+
+    @abstractmethod
+    def group_track_ids(
+        self,
+        run_id: int,
+        groups: Sequence[Tuple[str, str]],
+        owned: str = "all",
+    ) -> List[int]:
+        """The distinct track ids of some cards, in first-seen order."""
+        ...
+
+    @abstractmethod
+    def group_selection(
+        self, run_id: int, groups: Sequence[Tuple[str, str]]
+    ) -> "GroupSelection":
+        """How many distinct tracks some cards hold, and how many are owned."""
+        ...
+
+    @abstractmethod
+    def group_art(self, run_id: int, kind: str, key: str) -> Optional[str]:
+        """The image URL Beatport named for a card, or None."""
+        ...
+
+    @abstractmethod
+    def update_params(self, run_id: int, params_json: str) -> None:
+        """Replace a running run's parameters."""
+        ...
+
+    @abstractmethod
+    def group_ref(
+        self, run_id: int, kind: str, key: str
+    ) -> Optional["DiscoveryRunGroup"]:
+        """One stored card, or None."""
+        ...
+
+    @abstractmethod
+    def set_group_art(self, run_id: int, kind: str, key: str, art_url: str) -> None:
+        """Keep the picture Beatport named for a card."""
         ...
 
     @abstractmethod
@@ -1684,6 +1732,52 @@ class IDiscoveryService(ABC):
     @abstractmethod
     def delete_run(self, run_id: int) -> bool:
         """Delete an ended run; True when it existed."""
+        ...
+
+    @abstractmethod
+    def run_groups(self, run_id: int) -> List["GroupCard"]:
+        """The cards a run's results are grouped into; none for an older run."""
+        ...
+
+    @abstractmethod
+    def group_tracks(
+        self,
+        run_id: int,
+        groups: Sequence[Tuple[str, str]],
+        owned: str = "hide",
+        sort: str = "position",
+        descending: bool = False,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> "RunTracksPage":
+        """A window of the tracks of some cards, merged."""
+        ...
+
+    @abstractmethod
+    def group_selection(
+        self, run_id: int, groups: Sequence[Tuple[str, str]]
+    ) -> "GroupSelection":
+        """How many distinct tracks some ticked cards hold, and how many are owned."""
+        ...
+
+    @abstractmethod
+    def group_track_ids(
+        self,
+        run_id: int,
+        groups: Sequence[Tuple[str, str]],
+        owned: str = "all",
+    ) -> List[int]:
+        """Every distinct Beatport track id of some cards, in first-seen order."""
+        ...
+
+    @abstractmethod
+    def run_notes(self, run_id: int) -> List[str]:
+        """What a run left out on purpose, in words."""
+        ...
+
+    @abstractmethod
+    def group_art_url(self, run_id: int, kind: str, key: str) -> Optional[str]:
+        """The picture Beatport named for a card (for the thumbnailer only)."""
         ...
 
 
@@ -1836,8 +1930,14 @@ class IBeatportPlaylistService(ABC):
         track_ids: Sequence[int],
         name: Optional[str] = None,
         include_owned: bool = False,
+        playlist_id: Optional[str] = None,
     ) -> "PlaylistPush":
         """What a push will do; ValueError when it could do nothing."""
+        ...
+
+    @abstractmethod
+    def my_playlists(self) -> List[Dict[str, str]]:
+        """The user's own Beatport playlists, as ``{"id", "name"}``."""
         ...
 
     @abstractmethod
@@ -2188,6 +2288,16 @@ class IMatchStateService(ABC):
         ...
 
     @abstractmethod
+    def decide_many(
+        self,
+        accept: Sequence[Tuple[int, int]],
+        reject: Sequence[int],
+        batch_id: Optional[str] = None,
+    ) -> int:
+        """Accept ``(track, candidate)`` pairs and reject tracks as one transaction."""
+        ...
+
+    @abstractmethod
     def restore_decision(
         self,
         track_id: int,
@@ -2275,11 +2385,6 @@ class IMatchJobRepository(ABC):
         self, query: Optional[str], limit: int, offset: int
     ) -> Tuple[List["MatchRunSummary"], int]:
         """Return a page of past searches, newest first, and how many there are."""
-        ...
-
-    @abstractmethod
-    def undo_batches(self, track_ids: Iterable[int]) -> Dict[int, str]:
-        """Return the batch behind each track's last match decision, where it has one."""
         ...
 
     @abstractmethod
@@ -2532,6 +2637,11 @@ class IArtworkService(ABC):
     @abstractmethod
     def thumbnail(self, track_id: int, size: str) -> Optional[bytes]:
         """A track's artwork as a JPEG at a named size, or None."""
+        ...
+
+    @abstractmethod
+    def beatport_image_thumbnail(self, artwork_url: str, size: str) -> Optional[bytes]:
+        """A Beatport image (by its checked URL) as a JPEG at a named size, or None."""
         ...
 
     @abstractmethod
@@ -2802,8 +2912,12 @@ class ITagWriteService(ABC):
         preview_id: str,
         on_progress: Optional[Callable[[int, int], None]] = None,
         should_cancel: Optional[Callable[[], bool]] = None,
+        overlay: Optional[Mapping[int, Mapping[str, Any]]] = None,
     ) -> "TagWritePreview":
-        """Say what a write would change, reading every file and writing none."""
+        """Say what a write would change, reading every file and writing none.
+
+        ``overlay`` lays a match's values over what tracks show, in memory only.
+        """
         ...
 
     @abstractmethod
@@ -2820,6 +2934,11 @@ class ITagWriteService(ABC):
 
         Recording each field before writing it.
         """
+        ...
+
+    @abstractmethod
+    def written_fields(self, job_id: str) -> Dict[int, List[str]]:
+        """The fields a write job actually put into each track's file."""
         ...
 
     @abstractmethod
@@ -4464,16 +4583,6 @@ class IMatchStatusRepository(ABC):
         ...
 
     @abstractmethod
-    def unsaved(self, playlist_id: Optional[int]) -> "UnsavedCounts":
-        """Return the unsaved counts of a playlist, or of the whole library."""
-        ...
-
-    @abstractmethod
-    def playlist_exists(self, playlist_id: int) -> bool:
-        """Return True when ``playlist_id`` is a playlist (not a folder)."""
-        ...
-
-    @abstractmethod
     def tree(self) -> List["PlaylistNode"]:
         """Return every folder and playlist, for naming the way to each."""
         ...
@@ -4493,15 +4602,6 @@ class IMatchStatusRepository(ABC):
 
 class IMatchStatusService(ABC):
     """Interface for the playlist list and the Save bar's count (G4 2.1, 2.2)."""
-
-    @abstractmethod
-    def unsaved(self, playlist_id: Optional[int] = None) -> "UnsavedCounts":
-        """Return the unsaved counts of a playlist, or of the whole library.
-
-        Raises:
-            LookupError: If ``playlist_id`` is not a playlist.
-        """
-        ...
 
     @abstractmethod
     def playlists(self, running_job_id: Optional[str] = None) -> "PlaylistStatuses":

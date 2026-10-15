@@ -39,19 +39,19 @@ CuePoint then checks, in the background, that your files are where Rekordbox say
 ### 3. Match on Beatport
 
 1. Go to **Clean**.
-2. Clean opens on **Playlists**. Press **Match** on the playlist you want, or on **Whole library** to match everything. When it ends, **Review N ›** takes you through the tracks that need you. Later, come back here and do the same.
+2. Clean opens on **Playlists**. Tick the playlists you want (or **Whole library** to match everything) and press **Match N playlists**. When it ends, a **Review** tab opens for each playlist. Later, come back here and do the same.
 
 Matching runs in the background, so you can keep working. Tracks CuePoint is certain about are confirmed for you. The rest are marked **To check** in the review that opens when the match ends.
 
 ### 4. Check the matches
 
-1. When a match ends on Clean, it opens **Review** with every track of it: your track, the Beatport match, what differs, and a button for each decision. **Confirm all N matched** confirms the ones CuePoint was sure of.
-2. **Correct** confirms a match, **Not this** refuses it, and **Details ›** opens your file beside the best match Beatport found, with the other results behind **show ›**. Press **Left** or **Right** for another result.
-3. In the details, tick the values **Correct** should also copy (BPM, genre, label, year). Press **Enter** to Correct, **N** for **Not this track**, or **S** to skip. **Undo** on a decided row takes it back.
+1. When a match ends on Clean, it opens **Review** for each playlist: a plain table with your track, the Beatport match (the part that differs is marked) and a tick. Matched tracks start ticked; tracks with no match cannot be.
+2. **Untick** a track to leave it out. Click a row to open a side panel on the Beatport candidates: **Use this** picks another one, **Search Beatport** looks for it yourself, **None of these — leave it out** unticks it. **Up** and **Down** move along the table; **Esc** closes the panel.
+3. Press the green **Sync … to files…** at the top. Choose which values go into the files (BPM, Genre, Label, Year, Key), look at **See every change**, then **Sync N tracks**. Nothing is written before that, and **Undo this save** puts the files back.
 
 ### 5. Beatport's values
 
-**Correct** confirms the match and copies the values you ticked into your own values in one step. The key needs no tick: a confirmed match gives it. Rekordbox's values stay underneath, and you can undo any change from the track's History.
+Syncing copies the values of the Beatport matches you left ticked into your own values and then into the files, in one recorded step. The key needs no choice beyond its tick: a confirmed match gives it, and a key you typed yourself is never replaced. Rekordbox's values stay underneath, and you can undo any change from the track's History.
 
 CuePoint never deletes or moves tracks or files, and never writes to your Rekordbox file.
 

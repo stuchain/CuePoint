@@ -492,27 +492,25 @@ def _review_candidate(candidate: Any) -> Dict[str, Any]:
 
 
 def match_review(params: Dict[str, List[str]]) -> Dict[str, Any]:
-    """Every track of a run, where each stands, and what it was matched with.
+    """Every track of a run or playlist, where each stands, and whether it is ticked.
 
     ``job_id`` is a run (its resumes included); ``playlist_id`` a playlist; with
-    neither it is every matched track of the library. The statuses and the
-    counts are :mod:`cuepoint.engine.match_review`'s rule, so the list and the
-    chips beside it cannot disagree, and they are for every track, whatever the
-    page holds.
+    neither it is every matched track of the library. The statuses, the ticks and
+    the counts are :mod:`cuepoint.engine.match_review`'s rule, so the table and
+    the numbers above it cannot disagree, and they are for every track, whatever
+    the page holds. A tick is the person's decision to sync a track's Beatport
+    values (ticked is an accepted match, unticked a refused one); without a
+    decision of theirs a sure match is ticked and a track with no match is not.
 
-    Tracks still to look at come first and the decided last, each in plan order.
-    ``filter`` narrows to one status (or ``rejected`` / ``disputed``); ``limit``
-    (at most :data:`REVIEW_LIMIT_MAX`) and ``after`` page what is left. ``after`` is
-    the ``cursor`` of the last row read, not an offset: the order changes as
-    tracks are decided, and a cursor carries its own place in it, so a track
-    decided between two pages is never skipped or read twice. ``ids_only`` answers
-    just the ids of the filtered tracks, for acting on all of them (Accept all)
-    without reading every row.
+    Rows come in plan order and stay there as ticks change. ``limit`` (at most
+    :data:`REVIEW_LIMIT_MAX`) and ``after`` page them; ``after`` is the ``cursor``
+    of the last row read, which carries its own place in the order, so a page
+    read on never skips or repeats a track. ``ticked_ids`` answers just the ids
+    of the ticked tracks, which is what Sync takes to the files.
 
-
-    The work is a few queries over the whole run, never one per track: states,
-    latest attempts and undo batches in chunks, and tracks and candidates only
-    for the page.
+    The work is a few queries over the whole run, never one per track: states
+    in chunks, the candidates of the proposals and refusals (their guards say
+    what is ticked), and tracks and candidates for the page.
     """
     from cuepoint.engine import match_review as review
     from cuepoint.services.match_comparison import differences
@@ -521,9 +519,6 @@ def match_review(params: Dict[str, List[str]]) -> Dict[str, Any]:
     playlist_id = _query_int(params, "playlist_id")
     if job_id is not None and playlist_id is not None:
         raise bad_request("Review one run or one playlist, not both")
-    wanted = _query_value(params, "filter") or review.FILTER_ALL
-    if wanted not in review.FILTERS:
-        raise bad_request(f"filter must be one of {', '.join(review.FILTERS)}")
     limit = _query_int(params, "limit")
     limit = REVIEW_LIMIT_MAX if limit is None else limit
     after = _query_value(params, "after")
@@ -553,80 +548,69 @@ def match_review(params: Dict[str, List[str]]) -> Dict[str, Any]:
             if track_id not in states or states[track_id].state == "no_match"
         ]
     )
-    statuses = [review.status_of(states.get(i), attempts.get(i)) for i in ids]
-    decisions = [review.decision_of(states.get(i)) for i in ids]
-    disputes = [review.is_disputed(states.get(i)) for i in ids]
-    counts = review.count_by_status(statuses)
-    order = [
-        index
-        for index in review.undecided_first(statuses)
-        if review.matches_filter(
-            wanted, statuses[index], decisions[index], disputes[index]
-        )
-    ]
+    # What a track points at: a proposal's guards say whether it is ticked, a
+    # refusal's score what it reads as, and every row shows the match it has.
+    # One read for the whole review, in chunks.
+    pointed = matches.get_candidates(
+        [state.candidate_id for state in states.values() if state.candidate_id]
+    )
+
+    def candidate_of(track_id: int) -> Any:
+        state = states.get(track_id)
+        return None if state is None else pointed.get(state.candidate_id)
+
+    statuses: List[str] = []
+    ticks: List[bool] = []
+    for track_id in ids:
+        state = states.get(track_id)
+        candidate = candidate_of(track_id)
+        status = review.status_of(state, attempts.get(track_id), candidate)
+        statuses.append(status)
+        ticks.append(review.ticked_of(state, status, candidate))
     base: Dict[str, Any] = {
         "job_id": job_id,
         "label": label,
         "total": len(ids),
-        "counts": counts,
-        "rejected": sum(1 for d in decisions if d == "rejected"),
-        "disputed": sum(1 for d in disputes if d),
-        "matching": len(order),
+        "counts": review.count_by_status(statuses),
+        "ticked": sum(1 for tick in ticks if tick),
     }
-    if _query_bool(params, "ids_only"):
-        return {**base, "ids": [ids[index] for index in order], "tracks": []}
+    if _query_bool(params, "ticked_ids"):
+        return {
+            **base,
+            "ids": [track_id for track_id, tick in zip(ids, ticks) if tick],
+            "tracks": [],
+        }
 
+    order = list(range(len(ids)))
     place = None if after is None else review.parse_cursor(after)
     if place is not None:
-        order = [
-            index
-            for index in order
-            if review.cursor_key(statuses[index], ranks[index], ids[index]) > place
-        ]
+        order = [index for index in order if (ranks[index], ids[index]) > place]
     page = order[:limit]
-    page_ids = [ids[index] for index in page]
-    tracks = {t.id: t for t in _service("ITrackRepository").get_many(page_ids)}
-    pointed = matches.get_candidates(
-        [
-            states[i].candidate_id
-            for i in page_ids
-            if i in states and states[i].candidate_id
-        ]
-    )
-    # A track nobody pointed at shows its attempt's best result, if it had one.
-    unpointed = [
-        attempts[i].best_candidate_id
-        for i in page_ids
-        if i in attempts
-        and attempts[i].best_candidate_id
-        and not (i in states and states[i].candidate_id)
-    ]
-    fallback = matches.get_candidates(unpointed) if unpointed else {}
-    batches = jobs.undo_batches(
-        [ids[index] for index in page if statuses[index] == review.STATUS_DONE]
-    )
+    tracks = {
+        t.id: t for t in _service("ITrackRepository").get_many([ids[i] for i in page])
+    }
     rows: List[Dict[str, Any]] = []
     for index in page:
         track_id = ids[index]
         track = tracks.get(track_id)
         if track is None:
             continue
-        state = states.get(track_id)
-        candidate = None
-        if state is not None and state.candidate_id:
-            candidate = pointed.get(state.candidate_id)
-        elif track_id in attempts and attempts[track_id].best_candidate_id:
-            candidate = fallback.get(attempts[track_id].best_candidate_id)
+        # A track the search found nothing for shows no match: a row with a dash.
+        candidate = (
+            candidate_of(track_id)
+            if statuses[index] in (review.STATUS_MATCHED, review.STATUS_TO_CHECK)
+            else None
+        )
         rows.append(
             {
                 "track_id": track_id,
                 "title": track.title,
                 "artist": track.artist,
                 "status": statuses[index],
-                "decision": decisions[index],
-                "disputed": disputes[index],
-                "undo_batch": batches.get(track_id),
-                "cursor": review.cursor_of(statuses[index], ranks[index], track_id),
+                "ticked": ticks[index],
+                "disputed": review.is_disputed(states.get(track_id)),
+                "tickable": review.is_tickable(statuses[index], candidate),
+                "cursor": review.cursor_of(ranks[index], track_id),
                 "candidate": (
                     None if candidate is None else _review_candidate(candidate)
                 ),
@@ -638,6 +622,118 @@ def match_review(params: Dict[str, List[str]]) -> Dict[str, Any]:
             }
         )
     return {**base, "tracks": rows}
+
+
+#: The most tracks one tick request names.
+TICKS_LIMIT = REVIEW_LIMIT_MAX
+
+
+def _tick_targets(data: Dict[str, Any]) -> List[int]:
+    """The tracks a tick request is about: the ids it names, or a whole review."""
+    named = data.get("track_ids")
+    scope = data.get("scope")
+    if (named is None) == (scope is None):
+        raise bad_request("Name the track_ids to tick, or the scope of a whole review")
+    if named is not None:
+        if (
+            not isinstance(named, list)
+            or not named
+            or len(named) > TICKS_LIMIT
+            or not all(
+                isinstance(entry, int) and not isinstance(entry, bool)
+                for entry in named
+            )
+        ):
+            raise bad_request(
+                f"track_ids must be a list of 1 to {TICKS_LIMIT} whole numbers"
+            )
+        return list(dict.fromkeys(int(entry) for entry in named))
+    if not isinstance(scope, dict):
+        raise bad_request("scope must be an object: {} for the whole library")
+    _only(scope, ("job_id", "playlist_id"))
+    job_id = scope.get("job_id")
+    playlist_id = _optional_int(scope, "playlist_id")
+    if job_id is not None and not isinstance(job_id, str):
+        raise bad_request("scope.job_id must be text")
+    if job_id is not None and playlist_id is not None:
+        raise bad_request("Tick one run or one playlist, not both")
+    jobs = _service("IMatchJobRepository")
+    if job_id is not None and jobs.get(job_id) is None:
+        raise not_found("MATCH_JOB_NOT_FOUND", "No match job has that id")
+    return [track_id for track_id, _rank in jobs.review_entries(job_id, playlist_id)]
+
+
+def set_match_ticks(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
+    """Tick or untick tracks of a review: whether their Beatport values will be synced.
+
+    Ticked is an accepted match of the person's, unticked a refused one, recorded
+    as one batch in the match history like any decision of theirs (the answer
+    names it, so a header tick can be taken back by reverting it). Only a track
+    with a match can be ticked: the others are counted as ``skipped`` and left
+    as they are. A track already as asked is left alone and not counted, so
+    nothing is written for it. A tick of a whole review (``scope``) leaves a
+    proposal the guards turned down unticked: it is ticked only by naming it.
+    More than the batch threshold of decisions runs as a job. Refused while a
+    match runs, which writes the same states. Nothing here touches a value or a
+    file.
+    """
+    import uuid
+
+    from cuepoint.engine import match_review as review
+    from cuepoint.engine.match_sync import start_ticks_job
+    from cuepoint.services.batch_service import BATCH_JOB_THRESHOLD
+
+    _only(data, ("ticked", "track_ids", "scope"))
+    wanted = data.get("ticked")
+    if not isinstance(wanted, bool):
+        raise bad_request("ticked must be true or false")
+    if _active_match_job_id(job_store) is not None:
+        raise ApiError(
+            409,
+            "MATCH_RUNNING",
+            "A match is running: wait for it to end, or stop it, then tick.",
+        )
+    by_scope = data.get("scope") is not None
+    ids = _tick_targets(data)
+    matches = _service("IMatchRepository")
+    states = matches.get_matches(ids)
+    pointed = matches.get_candidates(
+        [state.candidate_id for state in states.values() if state.candidate_id]
+    )
+    accept: List[Tuple[int, int]] = []
+    reject: List[int] = []
+    skipped = 0
+    for track_id in ids:
+        state = states.get(track_id)
+        candidate = None if state is None else pointed.get(state.candidate_id)
+        status = review.status_of(state, None, candidate)
+        if candidate is None or not review.is_tickable(status, candidate):
+            skipped += 1
+        elif (
+            wanted
+            and by_scope
+            and status == review.STATUS_TO_CHECK
+            and not review.decided_by_user(state)
+            and not candidate.guard_ok
+        ):
+            # Tick-all is not a yes to a proposal the guards turned down.
+            skipped += 1
+        elif review.ticked_of(state, status, candidate) != wanted:
+            if wanted:
+                accept.append((track_id, candidate.id))
+            else:
+                reject.append(track_id)
+    batch_id = str(uuid.uuid4())
+    if len(accept) + len(reject) > BATCH_JOB_THRESHOLD:
+        job = start_ticks_job(job_store, accept, reject, batch_id, wanted, skipped)
+        return _started(job, {"ticked": wanted, "batch_id": batch_id})
+    changed = _service("IMatchStateService").decide_many(accept, reject, batch_id)
+    return 200, {
+        "ticked": wanted,
+        "changed": changed,
+        "skipped": skipped,
+        "batch_id": batch_id if changed else None,
+    }
 
 
 def search_match(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
@@ -1149,6 +1245,47 @@ def preview_tags(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, A
     return 200, {"preview": preview.to_dict()}
 
 
+def sync_preview(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
+    """Say what a Sync would change in the files. Writes nothing, anywhere.
+
+    The Beatport match's BPM, Genre, Label and Year are laid over what each
+    track shows, in memory, and the files are read as the Save window's preview
+    reads them. The key a track already shows keeps winning. The answer is a
+    tag-write preview, kept under its id for :func:`start_sync`.
+    """
+    from cuepoint.engine.match_sync import preview_sync
+    from cuepoint.services.tag_write_options import TagWriteOptions
+
+    _only(data, ("selection", "options"))
+    options = TagWriteOptions.from_request(data.get("options"))
+    preview, job = preview_sync(job_store, _selection(data), options)
+    if job is not None:
+        return _started(job, {"preview_id": job.id})
+    assert preview is not None
+    return 200, {"preview": preview.to_dict()}
+
+
+def start_sync(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
+    """Write the files from a Sync preview, then record the decisions and values.
+
+    One job: the files first, then (only for what was written) the ticked tracks
+    are accepted and the values each file got are copied into CuePoint's own, as
+    one batch named by the job's id. Undoing the save restores both.
+    """
+    from cuepoint.engine.match_sync import start_sync_job
+    from cuepoint.services.tag_write_options import TagWriteOptions
+
+    _only(data, ("preview_id", "options"))
+    preview_id = _require_str(data, "preview_id")
+    options = (
+        None
+        if data.get("options") is None
+        else TagWriteOptions.from_request(data["options"])
+    )
+    job = start_sync_job(job_store, preview_id, options)
+    return _started(job, {"preview_id": preview_id})
+
+
 def write_tags(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
     """Write what a preview planned, once.
 
@@ -1316,17 +1453,6 @@ def export_review(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, 
 # ---------------------------------------------------------------------------
 
 
-def unsaved_values(params: Dict[str, List[str]]) -> Dict[str, Any]:
-    """Tracks with new values that are not in their files yet, and per field.
-
-    ``playlist_id`` narrows the count to one playlist; without it the count is
-    the whole library. An upper bound: the save window reads the files and gives
-    the exact number.
-    """
-    counts = _service("IMatchStatusService").unsaved(_query_int(params, "playlist_id"))
-    return {"tracks": counts.tracks, "fields": dict(counts.fields)}
-
-
 def _counts_to_dict(counts: Any, running: Any) -> Dict[str, Any]:
     return {
         "track_count": counts.track_count,
@@ -1393,7 +1519,6 @@ _GET_ROUTES: Dict[str, Callable[[Dict[str, List[str]]], Dict[str, Any]]] = {
     "/api/v1/clean/duplicates": duplicate_groups,
     "/api/v1/clean/tags/writes": tag_writes,
     "/api/v1/clean/health": library_health,
-    "/api/v1/clean/unsaved": unsaved_values,
 }
 
 #: GET routes that also read the engine's jobs (the playlists' running match).
@@ -1405,6 +1530,7 @@ _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], Any], Tuple[int, Dict[str, Any
     "/api/v1/clean/match": start_match,
     "/api/v1/clean/match/resume": resume_match,
     "/api/v1/clean/match/search": search_match,
+    "/api/v1/clean/match/ticks": set_match_ticks,
     "/api/v1/clean/decide": decide,
     "/api/v1/clean/apply": apply_match,
     "/api/v1/clean/apply-preview": preview_apply,
@@ -1416,6 +1542,8 @@ _POST_ROUTES: Dict[str, Callable[[Dict[str, Any], Any], Tuple[int, Dict[str, Any
     "/api/v1/clean/duplicates/dismiss": dismiss_duplicates,
     "/api/v1/clean/duplicates/restore": restore_duplicates,
     "/api/v1/clean/artwork/scan": scan_artwork,
+    "/api/v1/clean/sync-preview": sync_preview,
+    "/api/v1/clean/sync": start_sync,
     "/api/v1/clean/tags/preview": preview_tags,
     "/api/v1/clean/tags/preview/count": count_tag_write,
     "/api/v1/clean/tags/write": write_tags,

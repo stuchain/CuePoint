@@ -264,19 +264,39 @@ describe("match review", () => {
     expect(calls[1]!.url).toBe(`${BASE}/api/v1/clean/match/review`);
   });
 
-  it("asks for a filter, a page, or only the ids, leaving All and zero offsets off the wire", async () => {
+  it("asks for a page, or only the ids of the ticked tracks, leaving the rest off the wire", async () => {
     const calls = engineAnswering(json(200, { job_id: "r", label: null, total: 0, counts: {}, tracks: [] }));
 
-    await client().getMatchReview({ jobId: "r", filter: "matched", idsOnly: true });
-    await client().getMatchReview({ jobId: "r", filter: "all", after: "0:1999", limit: 2000 });
+    await client().getMatchReview({ jobId: "r", tickedIds: true });
+    await client().getMatchReview({ jobId: "r", after: "0:1999", limit: 2000 });
 
     const first = new URL(calls[0]!.url);
-    expect(first.searchParams.get("filter")).toBe("matched");
-    expect(first.searchParams.get("ids_only")).toBe("true");
+    expect(first.searchParams.get("ticked_ids")).toBe("true");
+    expect(first.searchParams.has("filter")).toBe(false);
     const second = new URL(calls[1]!.url);
-    expect(second.searchParams.has("filter")).toBe(false);
+    expect(second.searchParams.has("ticked_ids")).toBe(false);
     expect(second.searchParams.get("after")).toBe("0:1999");
     expect(second.searchParams.get("limit")).toBe("2000");
+  });
+});
+
+describe("ticking tracks of a review", () => {
+  it("POSTs the ticked answer and the tracks to /clean/match/ticks", async () => {
+    const calls = engineAnswering(json(200, { ticked: false, changed: 1, skipped: 0, batch_id: "b" }));
+
+    await client().setMatchTicks({ ticked: false, track_ids: [7, 8] });
+
+    expect(calls[0]!.url).toBe(`${BASE}/api/v1/clean/match/ticks`);
+    expect(calls[0]!.init?.method).toBe("POST");
+    expect(sent(calls[0]!)).toEqual({ ticked: false, track_ids: [7, 8] });
+  });
+
+  it("names a whole review by its scope", async () => {
+    const calls = engineAnswering(json(200, { ticked: true, changed: 0, skipped: 0, batch_id: null }));
+
+    await client().setMatchTicks({ ticked: true, scope: { playlist_id: 3 } });
+
+    expect(sent(calls[0]!)).toEqual({ ticked: true, scope: { playlist_id: 3 } });
   });
 });
 
@@ -297,5 +317,26 @@ describe("searching by hand and undoing one track", () => {
     await client().revertBatch({ batch_id: "b", track_id: 4 });
 
     expect(sent(calls[0]!)).toEqual({ batch_id: "b", track_id: 4 });
+  });
+});
+
+describe("syncing a review", () => {
+  it("POSTs the selection and options to /clean/sync-preview, which writes nothing", async () => {
+    const calls = engineAnswering(json(200, { preview: { preview_id: "p" } }));
+
+    await client().previewSync({ selection: { track_ids: [1, 2] }, options: { write_genre: true } });
+
+    expect(calls[0]!.url).toBe(`${BASE}/api/v1/clean/sync-preview`);
+    expect(calls[0]!.init?.method).toBe("POST");
+    expect(sent(calls[0]!)).toEqual({ selection: { track_ids: [1, 2] }, options: { write_genre: true } });
+  });
+
+  it("POSTs the kept preview's id and the chosen options to /clean/sync", async () => {
+    const calls = engineAnswering(json(202, { job_id: "j", preview_id: "p" }));
+
+    await client().startSync({ preview_id: "p", options: { write_bpm: true } });
+
+    expect(calls[0]!.url).toBe(`${BASE}/api/v1/clean/sync`);
+    expect(sent(calls[0]!)).toEqual({ preview_id: "p", options: { write_bpm: true } });
   });
 });

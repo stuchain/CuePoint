@@ -175,10 +175,6 @@ export function clampLabel(label: string): string {
   return label.length > MATCH_LABEL_LIMIT ? `${label.slice(0, MATCH_LABEL_LIMIT - 1)}…` : label;
 }
 
-export function correctedManyLine(tracks: number): string {
-  return `Corrected ${count(tracks, "track")}.`;
-}
-
 /** One attempt in the picker (a disputed track has more than one): when, what came of it, and its notes. */
 export function attemptLabel(
   attempt: Pick<MatchAttempt, "id" | "outcome" | "finished_at">,

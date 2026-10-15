@@ -11,13 +11,15 @@
  * Match area (`match/MatchArea.tsx`): Playlists, the Review of a run (when one is open) and
  * Past searches.
  *
- * Match opens on Playlists (C22). Every playlist there has its own **Match**
- * (no ticks, no header button); the page starts that run and follows it. While any match
+ * Match opens on Playlists (C22). Tick one or more playlists (or the whole library) and press
+ * **Match N playlists**: the page starts that one run and follows it. While any match
  * runs, a line at the top of every tab says what, how far and how long is left, with Stop,
  * read from the engine running job so it is right after leaving the page and coming
- * back. A run that ends lands on its Review (every track, with what was found); one that
- * found nothing says so in a red note instead, and from another page a toast says it, with
- * **Review N**. The match window stays for tracks handed in from other pages (`matchWith`).
+ * back. A run that ends lands on a Review tab for each playlist it matched (every track, with what
+ * was found and a tick to sync it); one that found nothing says so in a red note instead, and from
+ * another page a toast says it, with **Review**. Syncing is per playlist, from its Review tab: there
+ * is no save bar on this page. The match window stays for tracks handed in from other pages
+ * (`matchWith`).
  *
  * Every table here is the Library's `TrackTable` over the Library's windowed
  * browse with a rule set, and every action goes through a route CLEAN-11 built.
@@ -35,12 +37,12 @@ import { Tabs } from "../../components/Tabs";
 import { DuplicatesView } from "./DuplicatesView";
 import { MatchWindow } from "./MatchWindow";
 import { MissingFilesView } from "./MissingFilesView";
-import { MatchArea, type ReviewOpening } from "./match/MatchArea";
+import { MatchArea, type ReviewOpening, type ReviewTarget } from "./match/MatchArea";
 import { MatchRunningLine, NothingFoundNote } from "./match/MatchRunLine";
 import { usePageActive } from "../../components/shell/pageActive";
-import { WHOLE_LIBRARY_NAME, playlistKey, useCleanPlaylists } from "./match/useCleanPlaylists";
-import { matchRowRequest } from "./match/matchPlaylists";
-import { nothingFound as nothingFoundOf, nothingFoundTarget, type NothingFound } from "./match/matchDone";
+import { WHOLE_LIBRARY_NAME, useCleanPlaylists } from "./match/useCleanPlaylists";
+import { matchRequest, type MatchChoice } from "./match/matchPlaylists";
+import type { NothingFound } from "./match/matchDone";
 import type { MatchTab } from "./match/matchTab";
 import type { CleanMatchOpening, CleanOpening, CleanSectionOpening } from "./cleanLink";
 import type { CleanTracks } from "./cleanTracks";
@@ -53,8 +55,6 @@ import {
   saveCleanSection,
   type CleanSection,
 } from "./cleanSections";
-import { unsavedInPlaylist, unsavedInRun, useSaveToFiles } from "../../components/saveToFiles/useSaveToFiles";
-import { UNSAVED_SELECTION } from "../../components/saveToFiles/saveChoices";
 import { useCleanHealth } from "./useCleanHealth";
 import { useCleanMatch } from "./useCleanMatch";
 import "../screens.css";
@@ -77,6 +77,13 @@ interface CleanScreenProps {
    * the first-run guide and Prepare open the match window with them chosen.
    */
   matchWith?: CleanMatchOpening | null;
+}
+
+/** What a run reviews once it ends: one tab for each playlist it was started on. */
+function targetsOf(choice: MatchChoice): ReviewTarget[] {
+  return choice.whole
+    ? [{ playlistId: null, name: WHOLE_LIBRARY_NAME }]
+    : choice.playlists.map((playlist) => ({ playlistId: playlist.id, name: playlist.name }));
 }
 
 /** The name of the running match: what it was started under, else the row the engine puts it on. */
@@ -163,70 +170,18 @@ export function CleanScreen({
   // A run that ended finding nothing at all: the red note, until it is seen, dismissed or matched again.
   const [nothingFound, setNothingFound] = useState<{
     run: MatchRun;
-    playlist: CleanPlaylistStatus | null;
+    targets: ReviewTarget[];
     name: string;
     found: NothingFound;
   } | null>(null);
-  // The run each row's last Match started in this session, so Review opens on that run.
-  const rowRuns = useRef(new Map<string, string>());
-  const rowKey = (playlist: CleanPlaylistStatus | null) => (playlist ? playlistKey(playlist.id) : "library");
-  const runFor = useCallback(
-    (playlist: CleanPlaylistStatus | null) => rowRuns.current.get(rowKey(playlist)),
-    [],
-  );
   const [reviewOpening, setReviewOpening] = useState<ReviewOpening | null>(null);
-  // A row's run, once it has been reviewed to its end or no longer holds what the row waits on.
-  const runSpent = useCallback((playlistId: number | null) => {
-    rowRuns.current.delete(playlistId === null ? "library" : playlistKey(playlistId));
-  }, []);
   const reviewOpened = useCallback(() => setReviewOpening(null), []);
-  // The save bar under every tab, and its window (C23); a playlist's row opens it on that
-  // playlist's tracks. A decision made here (Correct, Take, Undo, a run ending) is not
-  // announced as a library change, so it bumps `decided` and the bar and the rows count again.
-  const [decided, setDecided] = useState(0);
-  const save = useSaveToFiles({ active: pageActive, refreshKey: decided });
-  const { open: openSave } = save;
   const { reload: reloadPlaylists } = playlists;
+  // A tick, a choice or a sync made on a review changes what Health and the rows count.
   const matchChanged = useCallback(() => {
     reloadHealth();
     reloadPlaylists();
-    setDecided((count) => count + 1);
   }, [reloadHealth, reloadPlaylists]);
-  // A run ending counts too, whichever tab is open (MatchArea is mounted only on Match).
-  const endedSeen = useRef(match.ended);
-  useEffect(() => {
-    if (endedSeen.current === match.ended) return;
-    endedSeen.current = match.ended;
-    setDecided((count) => count + 1);
-  }, [match.ended]);
-  const savePlaylist = useCallback(
-    (playlist: CleanPlaylistStatus | null) => {
-      if (playlist) openSave(unsavedInPlaylist(playlist.id), playlist.unsaved);
-      else openSave(UNSAVED_SELECTION, playlists.data?.whole_library.unsaved ?? 0);
-    },
-    [openSave, playlists.data],
-  );
-  // Save N to files… from a past search's review: that run's own unsaved tracks, counted by the
-  // engine as the Library counts them, not the whole library's.
-  const countRunUnsaved = useCallback((jobId: string): Promise<number> => {
-    const browse = window.cuepoint?.browseLibrary;
-    if (!browse) return Promise.resolve(0);
-    return browse({
-      filters: unsavedInRun(jobId).query?.filters ?? null,
-      limit: 1,
-      offset: 0,
-      sort: "artist",
-      dir: "asc",
-    })
-      .then((answer) => answer.total)
-      .catch(() => 0);
-  }, []);
-  const saveRun = useCallback(
-    (jobId: string) => {
-      void countRunUnsaved(jobId).then((count) => openSave(unsavedInRun(jobId), count));
-    },
-    [countRunUnsaved, openSave],
-  );
   // Read through the shared cache (C19d): a page shown again does not wait on it.
   // A summary that cannot be read counts as none, and the page goes on (as it always has).
   const summaryRead = useSharedRead(LIBRARY_SUMMARY);
@@ -267,42 +222,28 @@ export function CleanScreen({
     );
   }
 
-  // A run's review: from its end, a toast on another page, or the red note. Brings the Match area
-  // back on that run. `filter` opens it on one chip ("Not found" for a run that found nothing).
-  const openReview = (
-    run: MatchRun,
-    playlist: CleanPlaylistStatus | null,
-    filter?: ReviewOpening["filter"],
-  ) => {
+  // A run's reviews: from its end, a toast on another page, or the red note. Brings the Match area
+  // back with a tab for each playlist.
+  const openReview = (run: MatchRun, targets: ReviewTarget[]) => {
     setSection("review");
     saveCleanSection("review");
-    setReviewOpening({
-      token: `${run.job_id}:${Date.now()}`,
-      run,
-      playlistId: playlist ? playlist.id : null,
-      name: playlist ? playlist.name : (run.label ?? WHOLE_LIBRARY_NAME),
-      ...(filter ? { filter } : {}),
-    });
+    setReviewOpening({ token: `${run.job_id}:${Date.now()}`, targets });
     if (!pageShown.current) navigate("/clean");
   };
-  // A playlist's Match: one run over that playlist, followed here (C22).
-  const startPlaylist = (playlist: CleanPlaylistStatus | null) => {
+  // Match what is ticked: one run over all of it, followed here (C22).
+  const startMatch = (choice: MatchChoice) => {
     const data = playlists.data;
     if (!data || match.matching) return;
-    const request = matchRowRequest(playlist, data.whole_library);
+    const request = matchRequest(choice, data.whole_library);
+    const targets = targetsOf(choice);
     setNothingFound(null);
     void match
       .start(request.again ? "rematch-many" : "match-many", request.selection, request.again, request.label, {
-        onJob: (jobId) => rowRuns.current.set(rowKey(playlist), jobId),
         away: () => !matchInView.current,
-        onReview: (run) => {
-          const none = nothingFoundOf(run);
-          openReview(run, playlist, none ? nothingFoundTarget(none).filter : undefined);
-        },
-        onLand: (run) => openReview(run, playlist),
+        onReview: (run) => openReview(run, targets),
+        onLand: (run) => openReview(run, targets),
         noteVisible: () => pageShown.current,
-        onNothing: (run, found) =>
-          setNothingFound({ run, playlist, found, name: playlist ? playlist.name : (run.label ?? WHOLE_LIBRARY_NAME) }),
+        onNothing: (run, found) => setNothingFound({ run, targets, found, name: request.label }),
       })
       .then((started) => {
         if (started) playlists.reload();
@@ -352,7 +293,7 @@ export function CleanScreen({
           name={nothingFound.name}
           found={nothingFound.found}
           onSee={() => {
-            openReview(nothingFound.run, nothingFound.playlist, nothingFoundTarget(nothingFound.found).filter);
+            openReview(nothingFound.run, nothingFound.targets);
             setNothingFound(null);
           }}
           onDismiss={() => setNothingFound(null)}
@@ -365,16 +306,10 @@ export function CleanScreen({
             focus={focus}
             match={match}
             playlists={playlists}
-            onMatchPlaylist={startPlaylist}
-            runFor={runFor}
-            onRunSpent={runSpent}
+            onMatch={startMatch}
             reviewOpening={reviewOpening}
             onReviewOpened={reviewOpened}
             onViewChange={setMatchView}
-            onSavePlaylist={savePlaylist}
-            onSaveRun={saveRun}
-            countRunUnsaved={countRunUnsaved}
-            onOpenEntity={openEntity}
           />
         )}
         {section === "missing" && (
@@ -388,7 +323,6 @@ export function CleanScreen({
           <DuplicatesView health={cleanHealth.health} onHealthChanged={reloadHealth} />
         )}
       </div>
-      {save.bar}
       <MatchWindow
         open={matchOpen}
         tracks={matchTracks}
@@ -398,7 +332,6 @@ export function CleanScreen({
         }
         onClose={() => setMatchOpen(false)}
       />
-      {save.dialog}
     </div>
   );
 }

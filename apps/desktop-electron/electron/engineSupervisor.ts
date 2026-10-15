@@ -54,6 +54,9 @@ import {
   type DiscoverRunHeader,
   type DiscoverRunList,
   type DiscoverRunTracksPage,
+  type DiscoverRunGroups,
+  type DiscoverGroupSummary,
+  type BeatportPlaylists,
   type EntityBeatportHalf,
   type EntityPage,
   type SimilarTracks,
@@ -96,7 +99,6 @@ import {
   type TagWriteRecord,
   type TagWriteStarted,
   type TagCountOutcome,
-  type UnsavedValues,
   type CleanPlaylists,
   type TrackFolder,
   type TrackMatches,
@@ -960,6 +962,10 @@ export class EngineSupervisor {
     return (await this.readyClient()).getMatchReview(params);
   }
 
+  async setMatchTicks(params: Parameters<EngineClient["setMatchTicks"]>[0]) {
+    return (await this.readyClient()).setMatchTicks(params);
+  }
+
   async getCandidateArtwork(params: Parameters<EngineClient["getCandidateArtwork"]>[0]) {
     return (await this.readyClient()).getCandidateArtwork(params);
   }
@@ -1038,10 +1044,16 @@ export class EngineSupervisor {
     return (await this.readyClient()).countTagPreview(params);
   }
 
-  async getUnsavedValues(
-    params?: Parameters<EngineClient["getUnsavedValues"]>[0],
-  ): Promise<UnsavedValues> {
-    return (await this.readyClient()).getUnsavedValues(params);
+  async previewSync(
+    params: Parameters<EngineClient["previewSync"]>[0],
+  ): Promise<TagPreviewOutcome> {
+    return (await this.readyClient()).previewSync(params);
+  }
+
+  async startSync(
+    params: Parameters<EngineClient["startSync"]>[0],
+  ): Promise<TagWriteStarted> {
+    return (await this.readyClient()).startSync(params);
   }
 
   async getCleanPlaylists(): Promise<CleanPlaylists> {
@@ -1125,6 +1137,34 @@ export class EngineSupervisor {
     params: Parameters<EngineClient["getDiscoveryRunTracks"]>[0],
   ): Promise<DiscoverAnswer<DiscoverRunTracksPage>> {
     return (await this.readyClient()).getDiscoveryRunTracks(params);
+  }
+
+  async getDiscoveryRunGroups(
+    params: Parameters<EngineClient["getDiscoveryRunGroups"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverRunGroups>> {
+    return (await this.readyClient()).getDiscoveryRunGroups(params);
+  }
+
+  async getDiscoveryGroupTracks(
+    params: Parameters<EngineClient["getDiscoveryGroupTracks"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverRunTracksPage>> {
+    return (await this.readyClient()).getDiscoveryGroupTracks(params);
+  }
+
+  async getDiscoveryGroupSummary(
+    params: Parameters<EngineClient["getDiscoveryGroupSummary"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverGroupSummary>> {
+    return (await this.readyClient()).getDiscoveryGroupSummary(params);
+  }
+
+  async getDiscoveryGroupArt(
+    params: Parameters<EngineClient["getDiscoveryGroupArt"]>[0],
+  ): Promise<Uint8Array | null> {
+    return (await this.readyClient()).getDiscoveryGroupArt(params);
+  }
+
+  async getBeatportPlaylists(): Promise<DiscoverAnswer<BeatportPlaylists>> {
+    return (await this.readyClient()).getBeatportPlaylists();
   }
 
   async startDiscoveryRun(

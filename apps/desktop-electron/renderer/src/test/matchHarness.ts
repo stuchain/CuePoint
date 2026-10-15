@@ -83,58 +83,26 @@ export function removeTableEnvironment() {
   Reflect.deleteProperty(HTMLElement.prototype, "offsetHeight");
 }
 
-/**
- * The review as the engine answers it: the tracks still to look at first, a filter, a page, and
- * the counts for all of them; with `idsOnly`, just the ids of the filter.
- */
+/** The review as the engine answers it: plan order, a page, and the counts and the tick count for all of them. */
 function reviewAnswer(
   all: ReviewTrack[],
-  params: { filter?: string; after?: string; limit?: number; idsOnly?: boolean } = {},
+  params: { after?: string; limit?: number; tickedIds?: boolean } = {},
 ) {
-  const ordered = [...all.filter((row) => row.status !== "done"), ...all.filter((row) => row.status === "done")];
-  const filter = params.filter ?? "all";
-  const held = ordered.filter((row) =>
-    filter === "all"
-      ? true
-      : filter === "rejected"
-        ? row.decision === "rejected"
-        : filter === "disputed"
-          ? row.disputed
-          : row.status === filter,
-  );
-  // Read on from a cursor: the listing order is (decided, plan order), and a cursor carries its place in it.
-  const place = (row: ReviewTrack) => (row.status === "done" ? 1 : 0) * 1e9 + row.track_id;
-  const [group, at] = (params.after ?? "").split(":").map(Number);
-  const past = params.after ? group! * 1e9 + at! : -1;
-  const page = held.filter((row) => place(row) > past).slice(0, params.limit ?? 20000);
-  const answer = reviewOf(page, { total: all.length, matching: held.length, counts: reviewOf(all).counts });
+  // A cursor is "<rank>:<track id>" and the fixture's rank is its id, so reading on is "ids after".
+  const after = params.after ? Number(params.after.split(":")[1]) : -1;
+  const page = all.filter((row) => row.track_id > after).slice(0, params.limit ?? 20000);
+  const answer = reviewOf(page, { total: all.length, counts: reviewOf(all).counts });
   return {
     ...answer,
-    rejected: all.filter((row) => row.decision === "rejected").length,
-    disputed: all.filter((row) => row.disputed).length,
-    ...(params.idsOnly ? { ids: held.map((row) => row.track_id), tracks: [] } : {}),
+    ticked: all.filter((row) => row.ticked).length,
+    ...(params.tickedIds ? { ids: all.filter((row) => row.ticked).map((row) => row.track_id), tracks: [] } : {}),
   };
 }
 
-/** A decision, as the engine would now say it: the track is done, with what was decided. */
-function decideInReview(
-  world: MatchWorld,
-  trackId: number,
-  status: ReviewTrack["status"],
-  decision: ReviewTrack["decision"],
-  batch: string | null = decision === "accepted" ? `batch-${trackId}` : null,
-) {
+/** A tick, as the engine would now say it: the row is ticked or not, and keeps its place. */
+function tickInReview(world: MatchWorld, trackIds: number[], ticked: boolean) {
   world.review = world.review.map((row) =>
-    row.track_id === trackId ? { ...row, status, decision, undo_batch: batch } : row,
-  );
-}
-
-/** Undo, as the engine would say it: back to what the search found. */
-function undoInReview(world: MatchWorld, trackId: number) {
-  world.review = world.review.map((row) =>
-    row.track_id === trackId
-      ? { ...row, status: row.candidate ? "to_check" : "not_found", decision: null, undo_batch: null }
-      : row,
+    trackIds.includes(row.track_id) && row.tickable ? { ...row, ticked } : row,
   );
 }
 
@@ -168,28 +136,11 @@ export function installMatchBridge(
     getCandidatePreview: vi.fn().mockResolvedValue(null),
     releaseCandidatePreview: vi.fn(),
     releaseTrackArtwork: vi.fn(),
-    correctMatch: vi.fn(async ({ track_id }: { track_id: number }) => {
-      decideInReview(world, track_id, "done", "accepted");
-      world.tracks = world.tracks.map((row) =>
-        row.id === track_id ? { ...row, match_state: "accepted", match_proposal: null } : row,
-      );
-      return {
-        match: stateFor(track_id, { state: "accepted", decided_by: "user" }),
-        track: track(track_id),
-        batch_id: `batch-${track_id}`,
-        changed: true,
-        applied: ["bpm", "label", "year"],
-        skipped: [],
-        unchanged: [],
-        key: null,
-      };
-    }),
     correctMatches: vi.fn(async (params?: { selection?: { track_ids?: number[] } }) => {
       const ids = params?.selection?.track_ids ?? [];
-      for (const id of ids) decideInReview(world, id, "done", "accepted", "batch-many");
       return {
         applied: {
-          batch_id: "batch-many",
+          batch_id: "batch-values",
           operation: "correct_match",
           target: "",
           total: ids.length,
@@ -200,26 +151,33 @@ export function installMatchBridge(
         },
       };
     }),
-    decideMatch: vi.fn(async (params: { track_id: number; decision: string }) => {
-      if (params.decision === "clear") undoInReview(world, params.track_id);
-      else decideInReview(world, params.track_id, "done", "rejected");
-      world.tracks = world.tracks.map((row) =>
-        row.id === params.track_id ? { ...row, match_state: "rejected", match_proposal: null } : row,
-      );
+    setMatchTicks: vi.fn(
+      async (params: { ticked: boolean; track_ids?: number[]; scope?: unknown }) => {
+        const ids = params.track_ids ?? world.review.map((row) => row.track_id);
+        const before = world.review.filter((row) => row.ticked !== params.ticked && ids.includes(row.track_id) && row.tickable);
+        tickInReview(world, ids, params.ticked);
+        return { ticked: params.ticked, changed: before.length, skipped: 0, batch_id: before.length ? "batch-ticks" : null };
+      },
+    ),
+    decideMatch: vi.fn(async (params: { track_id: number; decision: string; candidate_id?: number }) => {
+      if (params.decision === "accept") {
+        world.review = world.review.map((row) =>
+          row.track_id === params.track_id
+            ? {
+                ...row,
+                status: "matched" as const,
+                ticked: true,
+                tickable: true,
+                candidate: row.candidate ? { ...row.candidate, id: params.candidate_id ?? row.candidate.id } : row.candidate,
+              }
+            : row,
+        );
+      }
       return { match: stateFor(params.track_id) };
     }),
-    revertBatch: vi.fn(async ({ batch_id, track_id }: { batch_id: string; track_id?: number }) => {
-      // A single correction's batch is "batch-<track id>"; Accept all's is "batch-many", which
-      // covers every track decided with it. With a track named, only that track goes back.
-      if (track_id !== undefined) undoInReview(world, track_id);
-      else if (batch_id === "batch-many") {
-        for (const row of world.review) if (row.undo_batch === "batch-many") undoInReview(world, row.track_id);
-      } else {
-        const id = Number(String(batch_id).replace("batch-", ""));
-        if (Number.isInteger(id)) undoInReview(world, id);
-      }
-      return { reverted: { batch_id, total: 1, reverted: 1, skipped: 0 } };
-    }),
+    revertBatch: vi.fn(async ({ batch_id }: { batch_id: string }) => ({
+      reverted: { batch_id, total: 1, reverted: 1, skipped: 0 },
+    })),
     searchMatch: vi.fn(async ({ track_id, query }: { track_id: number; query: string }) => ({
       attempt_id: 500 + track_id,
       track_id,
@@ -231,9 +189,8 @@ export function installMatchBridge(
       state: stateFor(track_id),
     })),
     getMatchJobs: vi.fn(async () => ({ jobs: world.runs, total: world.runs.length })),
-    getMatchReview: vi.fn(
-      async (params?: { filter?: string; after?: string; limit?: number; idsOnly?: boolean }) =>
-        reviewAnswer(world.review, params),
+    getMatchReview: vi.fn(async (params?: { after?: string; limit?: number; tickedIds?: boolean }) =>
+      reviewAnswer(world.review, params),
     ),
     startCleanMatch: vi.fn().mockResolvedValue({
       job_id: "job-match",

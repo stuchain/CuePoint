@@ -66,15 +66,7 @@
   white-space: nowrap;
 }
 
-/* The one green button here: the values are ready to go into the files. */
-.playlists__save {
-  border-color: var(--accent-success);
-  background: var(--accent-success);
-  color: var(--fg-on-status);
-}
-
-.playlists__chips,
-.playlists__actions {
+.playlists__chips {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
@@ -91,4 +83,16 @@
   display: block;
   margin-top: var(--space-xs);
   max-width: calc(120px * var(--scale));
+}
+
+.playlists__tick {
+  width: calc(36px * var(--scale));
+}
+
+/* Match N playlists: the one way to start, under the list. */
+.playlists__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
 }

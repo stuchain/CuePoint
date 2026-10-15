@@ -68,7 +68,7 @@ function renderPast(overrides: Partial<Props> = {}) {
     onHealthChanged: vi.fn(),
     match: stubMatch(),
     playlists: { data: null, error: null, loading: false, reload: vi.fn() },
-    onMatchPlaylist: vi.fn(),
+    onMatch: vi.fn(),
     ...overrides,
   };
   const view = render(element(props));

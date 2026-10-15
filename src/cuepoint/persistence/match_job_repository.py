@@ -446,53 +446,6 @@ class MatchJobRepository(IMatchJobRepository):
             )
         return runs, total
 
-    def undo_batches(self, track_ids: Iterable[int]) -> Dict[int, str]:
-        """Return the batch behind each track's last match decision, where it has one.
-
-        A Correct or an Accept all records its decision under a batch id, and
-        reverting that batch takes back the decision and the values it copied.
-        A track whose last decision had no batch (Not this track, Leave
-        unmatched) is absent: undoing that is clearing the decision.
-        """
-        found: Dict[int, str] = {}
-        connection = self._db.connect()
-        for chunk in chunked(unique_ids(track_ids), CHUNK_SIZE):
-            placeholders = ", ".join("?" for _ in chunk)
-            for row in connection.execute(
-                "SELECT h.track_id AS track_id, h.batch_id AS batch_id"
-                " FROM track_history h WHERE h.id IN ("
-                "  SELECT MAX(id) FROM track_history"
-                f"  WHERE field = 'match_state' AND track_id IN ({placeholders})"
-                "  GROUP BY track_id) AND h.batch_id IS NOT NULL",
-                chunk,
-            ):
-                found[int(row["track_id"])] = str(row["batch_id"])
-        # A decision a revert put back is not undone by reverting that revert: that would
-        # apply what was just taken back. The batches that are reverts are read once, for
-        # all the batches named, not once per row.
-        reverts = self._revert_batches(connection, set(found.values()))
-        return {
-            track_id: batch for track_id, batch in found.items() if batch not in reverts
-        }
-
-    @staticmethod
-    def _revert_batches(connection: sqlite3.Connection, batches: Set[str]) -> Set[str]:
-        """Return those of ``batches`` that a revert made (an event says what it reverted)."""
-        reverts: Set[str] = set()
-        ordered = sorted(batches)
-        for start in range(0, len(ordered), CHUNK_SIZE):
-            chunk = ordered[start : start + CHUNK_SIZE]
-            placeholders = ", ".join("?" for _ in chunk)
-            for row in connection.execute(
-                "SELECT DISTINCT json_extract(detail_json, '$.batch_id') AS batch_id"
-                " FROM activity_events"
-                " WHERE json_extract(detail_json, '$.revert_of') IS NOT NULL"
-                f" AND json_extract(detail_json, '$.batch_id') IN ({placeholders})",
-                tuple(chunk),
-            ):
-                reverts.add(str(row["batch_id"]))
-        return reverts
-
     def review_entries(
         self,
         job_id: Optional[str] = None,

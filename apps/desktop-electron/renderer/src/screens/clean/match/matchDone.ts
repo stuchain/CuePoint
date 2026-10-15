@@ -41,11 +41,9 @@ export function nothingFoundLine(label: string, found: NothingFound): string {
   return `${label}: ${found.failed > 0 ? searches : tracks}`;
 }
 
-/** The chip the review opens on for such a run, and how many tracks it holds. */
-export function nothingFoundTarget(found: NothingFound): { filter: "search_failed" | "not_found"; count: number } {
-  return found.failed > 0
-    ? { filter: "search_failed", count: found.failed }
-    : { filter: "not_found", count: found.notFound };
+/** How many tracks the red note offers to show: the failed searches when there are any, else those not found. */
+export function nothingFoundCount(found: NothingFound): number {
+  return found.failed > 0 ? found.failed : found.notFound;
 }
 
 /** "hJ matched · 15 confirmed · 9 to check": what the run found, in the words the row uses. */
@@ -111,19 +109,14 @@ export function announceRunEnd({
     }
     if (nothing !== null) {
       if (noteVisible?.()) return;
-      const target = nothingFoundTarget(nothing);
+      const count = nothingFoundCount(nothing);
       push(nothingFoundLine(label, nothing), "warning", {
-        label: `See the ${target.count.toLocaleString()}`,
+        label: `See the ${count.toLocaleString()}`,
         onClick: () => onReview(found),
       });
       return;
     }
-    push(
-      matchDoneLine(label, found),
-      "success",
-      found.waiting > 0
-        ? { label: `Review ${found.waiting.toLocaleString()}`, onClick: () => onReview(found) }
-        : undefined,
-    );
+    // Every track of a finished run is reviewed, not only the ones to check: Review is always offered.
+    push(matchDoneLine(label, found), "success", { label: "Review", onClick: () => onReview(found) });
   });
 }

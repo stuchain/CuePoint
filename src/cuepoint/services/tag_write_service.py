@@ -78,9 +78,18 @@ import math
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+)
 
 from cuepoint.data.tag_fields import (
     FIELD_BPM,
@@ -324,6 +333,25 @@ def _field_text(
     else:
         text = _text(comment_text)
     return (text, "") if text else (None, reason or FIELD_NO_VALUE)
+
+
+def overlaid(target: TagTarget, overlay: Optional[Mapping[str, Any]]) -> TagTarget:
+    """A track as a write would see it once a match's values were laid over it.
+
+    The Sync preview asks "what would the files become" before anything is
+    copied into CuePoint's own values, so the values a match found are laid over
+    the shown ones in memory, for the fields the overlay names, and nothing is
+    stored. **The key is the exception**: a key the track already shows (the
+    person's own correction, or its accepted match's) always wins, and the
+    match's key only fills in when the track shows none, which is what accepting
+    the match would make of it.
+    """
+    if not overlay:
+        return target
+    changes = {name: value for name, value in overlay.items() if name != FIELD_KEY}
+    if FIELD_KEY in overlay and target.key is None:
+        changes[FIELD_KEY] = overlay[FIELD_KEY]
+    return replace(target, **changes)
 
 
 def written_values(
@@ -577,6 +605,8 @@ class TagWritePreview:
         duration_seconds: How long it took.
         choices: Every readable file the preview read that was not skipped for
             what it is, with what each choice would make of it, in path order.
+        overlay: Per track, the match values laid over what it shows (a Sync
+            preview); the write looks at each file again through the same overlay.
     """
 
     preview_id: str
@@ -589,6 +619,7 @@ class TagWritePreview:
     computed_at: str = ""
     duration_seconds: float = 0.0
     choices: Tuple[FileChoices, ...] = ()
+    overlay: Dict[int, Dict[str, Any]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Hold the counts to what a preview can produce."""
@@ -1052,6 +1083,7 @@ class TagWriteService(ITagWriteService):
         preview_id: str,
         on_progress: Optional[Callable[[int, int], None]] = None,
         should_cancel: Optional[Callable[[], bool]] = None,
+        overlay: Optional[Mapping[int, Mapping[str, Any]]] = None,
     ) -> TagWritePreview:
         """Say what writing ``options`` into these tracks' files would do.
 
@@ -1065,8 +1097,13 @@ class TagWriteService(ITagWriteService):
         started = self._monotonic()
         wanted = unique_ids(track_ids)
         total = len(wanted)
+        laid = {int(track): dict(values) for track, values in (overlay or {}).items()}
         targets = sorted(
-            self._writes.targets(wanted), key=lambda t: (t.file_path, t.track_id)
+            (
+                overlaid(target, laid.get(target.track_id))
+                for target in self._writes.targets(wanted)
+            ),
+            key=lambda t: (t.file_path, t.track_id),
         )
         found = {target.track_id for target in targets}
         skipped: Dict[str, List[FileRef]] = {}
@@ -1169,6 +1206,7 @@ class TagWriteService(ITagWriteService):
             computed_at=self._clock(),
             duration_seconds=self._monotonic() - started,
             choices=tuple(choices for choices, _planned, _quiet in reads),
+            overlay=laid,
         )
         _report(on_progress, preview.decided, total)
         _logger.info("[tags] preview %s: %s", preview_id, preview.summary_line())
@@ -1261,7 +1299,9 @@ class TagWriteService(ITagWriteService):
             if should_cancel is not None and should_cancel():
                 cancelled = True
                 break
-            self._write_file(planned, options, job_id, tally, record_kept)
+            self._write_file(
+                planned, options, job_id, tally, record_kept, preview.overlay
+            )
             if len(tally.kept) >= KEPT_ROWS_CHUNK:
                 self._flush_kept(tally)
             _report(on_progress, index + 1, total)
@@ -1317,6 +1357,7 @@ class TagWriteService(ITagWriteService):
         job_id: str,
         tally: _Tally,
         record_kept: bool = False,
+        overlay: Optional[Mapping[int, Mapping[str, Any]]] = None,
     ) -> None:
         """Look at one planned file again, record, write, read back, confirm."""
         path = planned.file_path
@@ -1324,7 +1365,7 @@ class TagWriteService(ITagWriteService):
         if not now:
             tally.skip(SKIP_VANISHED)
             return
-        target = now[0]
+        target = overlaid(now[0], (overlay or {}).get(planned.track_id))
         if target.file_path != path:
             tally.skip(SKIP_CHANGED_SINCE_PREVIEW)
             return
@@ -1561,6 +1602,26 @@ class TagWriteService(ITagWriteService):
             )
 
     # -------------------------------------------------------------- restore
+
+    def written_fields(self, job_id: str) -> Dict[int, List[str]]:
+        """The fields a write job actually put into each track's file.
+
+        Read from what the job recorded, so a field the file already held, or
+        kept under ``keep_existing``, is not in it: it is the truth about the
+        files, which is what the values copied into CuePoint must agree with.
+        """
+        found: Dict[int, List[str]] = {}
+        for row in self._writes.for_job(job_id):
+            if (
+                row.outcome == WRITE_WRITTEN
+                and row.track_id is not None
+                and not row.pending
+                and row.field in WRITE_FIELDS
+            ):
+                names = found.setdefault(int(row.track_id), [])
+                if row.field not in names:
+                    names.append(row.field)
+        return found
 
     def restorable_count(
         self, *, job_id: Optional[str] = None, track_id: Optional[int] = None

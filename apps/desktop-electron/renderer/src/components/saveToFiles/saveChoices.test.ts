@@ -6,8 +6,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TagFieldChoices, TagWritePreview } from "../../api/cuepointBridge.types";
 import {
   DEFAULT_SAVE_CHOICES,
+  DEFAULT_SYNC_CHOICES,
   SAVE_CHOICES_KEY,
-  UNSAVED_SELECTION,
+  SYNC_CHOICES_KEY,
+  SYNC_FIELDS,
   changeRows,
   fieldCount,
   keyIn,
@@ -135,12 +137,6 @@ describe("the options sent", () => {
       keep_existing: false,
     });
   });
-
-  it("select the tracks that have unsaved values, whole library", () => {
-    expect(UNSAVED_SELECTION).toEqual({
-      query: { filters: { match: "all", rules: [{ field: "unsaved_values", operator: "is", value: true }] } },
-    });
-  });
 });
 
 describe("counts from the preview", () => {
@@ -163,10 +159,10 @@ describe("counts from the preview", () => {
 
 describe("what the button says", () => {
   const ticked = DEFAULT_SAVE_CHOICES;
-  const base = { choices: ticked, preview: preview(), total: 38, count: 47, canMarkSaved: false };
+  const base = { choices: ticked, preview: preview(), total: 38, count: 47 };
 
   it("counts the files it will save", () => {
-    expect(saveState(base)).toEqual({ label: "Save to 38 files", enabled: true, reason: null, mark: false });
+    expect(saveState(base)).toEqual({ label: "Save to 38 files", enabled: true, reason: null });
     expect(saveState({ ...base, total: 1 }).label).toBe("Save to 1 file");
   });
 
@@ -187,14 +183,11 @@ describe("what the button says", () => {
     });
   });
 
-  it("offers to mark the tracks as saved when no file changes and the bar counted tracks", () => {
-    expect(saveState({ ...base, total: 0, canMarkSaved: true })).toEqual({
-      label: "Mark 47 tracks as already saved",
-      enabled: true,
+  it("says the files already hold the values when no file changes", () => {
+    expect(saveState({ ...base, total: 0 })).toMatchObject({
+      enabled: false,
       reason: "These files already hold these values.",
-      mark: true,
     });
-    expect(saveState({ ...base, total: 0 })).toMatchObject({ enabled: false, reason: "These files already hold these values." });
   });
 
   it("waits, without a reason, while the total is being counted", () => {
@@ -211,10 +204,9 @@ describe("what the button says", () => {
         nothing_to_write: { count: 1, examples: [] },
       },
     });
-    const state = saveState({ ...base, preview: skipped, total: 0, canMarkSaved: true });
+    const state = saveState({ ...base, preview: skipped, total: 0 });
     expect(state).toMatchObject({
       enabled: false,
-      mark: false,
       reason: "6 files skipped: files not checked at their current path — check files first",
     });
   });
@@ -230,11 +222,11 @@ describe("what the button says", () => {
     );
   });
 
-  it("marks tracks as saved when the only thing skipped is files that already hold the values", () => {
+  it("says the files already hold the values when the only thing skipped is files that do", () => {
     const covered = preview({ total: 10, files: 0, skipped: { nothing_to_write: { count: 10, examples: [] } } });
-    expect(saveState({ ...base, preview: covered, total: 0, canMarkSaved: true })).toMatchObject({
-      label: "Mark 47 tracks as already saved",
-      mark: true,
+    expect(saveState({ ...base, preview: covered, total: 0 })).toMatchObject({
+      enabled: false,
+      reason: "These files already hold these values.",
     });
   });
 });
@@ -292,5 +284,58 @@ describe("the list of changes", () => {
     expect(changeRows(sample, keepOff)[0]!.what.map((entry) => entry.name)).toEqual(["Key", "Genre"]);
     const withYear = { ...keepOff, fields: { ...keepOff.fields, year: true } };
     expect(changeRows(sample, withYear)).toHaveLength(2);
+  });
+});
+
+describe("the Sync window's own choices", () => {
+  it("lists BPM, Genre, Label, Year and Key, and no artwork", () => {
+    expect(SYNC_FIELDS.map((field) => field.id)).toEqual(["bpm", "genre", "label", "year", "key"]);
+  });
+
+  it("start with BPM, Genre, Label and Year on and Key off, in Am, keeping what the files hold", () => {
+    expect(loadSaveChoices("sync")).toEqual({
+      fields: { key: false, genre: true, label: true, year: true, bpm: true, artwork: false },
+      key_format: "normal",
+      keep_existing: true,
+    });
+    expect(DEFAULT_SYNC_CHOICES.fields.artwork).toBe(false);
+  });
+
+  it("are remembered apart from the save window's", () => {
+    const choices: SaveChoices = {
+      fields: { key: true, genre: false, label: true, year: true, bpm: true, artwork: true },
+      key_format: "camelot",
+      keep_existing: false,
+    };
+    rememberSaveChoices(choices, "sync");
+    expect(localStorage.getItem(SAVE_CHOICES_KEY)).toBeNull();
+    expect(JSON.parse(localStorage.getItem(SYNC_CHOICES_KEY)!).key_format).toBe("camelot");
+    // Artwork is never offered here, so it is never read back on.
+    expect(loadSaveChoices("sync").fields.artwork).toBe(false);
+    expect(loadSaveChoices()).toEqual(DEFAULT_SAVE_CHOICES);
+  });
+
+  it("ask for the preview without artwork", () => {
+    expect(previewOptions(DEFAULT_SYNC_CHOICES, "sync")).toMatchObject({
+      write_key: true,
+      write_bpm: true,
+      embed_missing_artwork: false,
+      keep_existing: false,
+    });
+    expect(previewOptions(DEFAULT_SYNC_CHOICES).embed_missing_artwork).toBe(true);
+  });
+
+  it("say Sync N tracks on the button, never a count of files", () => {
+    const base = {
+      choices: DEFAULT_SYNC_CHOICES,
+      preview: preview(),
+      total: 38,
+      count: 22,
+      variant: "sync" as const,
+    };
+    expect(saveState(base)).toEqual({ label: "Sync 22 tracks", enabled: true, reason: null });
+    expect(saveState({ ...base, total: 0 })).toMatchObject({ label: "Sync 22 tracks", enabled: false });
+    expect(saveState({ ...base, total: null })).toMatchObject({ label: "Sync 22 tracks", enabled: false });
+    expect(saveState({ ...base, count: 1 }).label).toBe("Sync 1 track");
   });
 });

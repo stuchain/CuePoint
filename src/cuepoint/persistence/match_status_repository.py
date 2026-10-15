@@ -25,12 +25,10 @@ from __future__ import annotations
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import replace
-from typing import Dict, Iterator, List, Optional, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 from cuepoint.models.filter_rule import (
-    UNSAVED_FIELDS,
     UNSAVED_VALUES_SQL,
-    unsaved_values_sql,
 )
 from cuepoint.models.match_attempt import (
     STATE_ACCEPTED,
@@ -38,7 +36,7 @@ from cuepoint.models.match_attempt import (
     STATE_NO_MATCH,
     STATE_REJECTED,
 )
-from cuepoint.models.match_status import PlaylistNode, StatusCounts, UnsavedCounts
+from cuepoint.models.match_status import PlaylistNode, StatusCounts
 from cuepoint.services.interfaces import IDatabaseService, IMatchStatusRepository
 
 #: The tracks of each playlist, once each.
@@ -104,14 +102,6 @@ _RUNNING_WHOLE = (
     " FROM match_job_tracks WHERE job_id = ?"
 )
 
-#: Per-field and distinct-track counts of what is unsaved, from one pass over
-#: the definition (``{unsaved}``): the row with no field is the tracks.
-_UNSAVED_SUMMARY = (
-    "WITH un AS MATERIALIZED ({unsaved})"
-    " SELECT field, COUNT(DISTINCT track_id) AS n FROM un GROUP BY field"
-    " UNION ALL SELECT NULL, COUNT(DISTINCT track_id) FROM un"
-)
-
 
 def _counts(row: sqlite3.Row) -> StatusCounts:
     return StatusCounts(
@@ -148,35 +138,6 @@ class MatchStatusRepository(IMatchStatusRepository):
             yield
         finally:
             connection.execute("ROLLBACK")
-
-    def unsaved(self, playlist_id: Optional[int]) -> UnsavedCounts:
-        """Return the tracks with new values not in their files, and per field."""
-        scoped = playlist_id is not None
-        sql = _UNSAVED_SUMMARY.format(unsaved=unsaved_values_sql(scoped))
-        # One ``?`` for each of the definition's selects.
-        params = (
-            (int(playlist_id),) * len(UNSAVED_FIELDS) if playlist_id is not None else ()
-        )
-        fields = {name: 0 for name in UNSAVED_FIELDS}
-        tracks = 0
-        for row in self._db.connect().execute(sql, params):
-            if row["field"] is None:
-                tracks = int(row["n"])
-            else:
-                fields[str(row["field"])] = int(row["n"])
-        return UnsavedCounts(tracks=tracks, fields=fields)
-
-    def playlist_exists(self, playlist_id: int) -> bool:
-        """Return True when ``playlist_id`` is a playlist, not a folder."""
-        row = (
-            self._db.connect()
-            .execute(
-                "SELECT 1 FROM rekordbox_playlists WHERE id = ? AND kind = 'playlist'",
-                (int(playlist_id),),
-            )
-            .fetchone()
-        )
-        return row is not None
 
     def tree(self) -> List[PlaylistNode]:
         """Return every folder and playlist, in order within each parent."""

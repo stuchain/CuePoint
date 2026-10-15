@@ -189,19 +189,6 @@ class TestRunning:
 
 
 @pytest.mark.unit
-class TestUnsavedFor:
-    def test_a_folder_or_missing_playlist_is_not_found(self, db, service):
-        folder = add_playlist(db, "F", kind="folder")
-        with pytest.raises(LookupError):
-            service.unsaved(folder)
-        with pytest.raises(LookupError):
-            service.unsaved(404)
-
-    def test_the_whole_library_needs_no_playlist(self, db, service):
-        assert service.unsaved().tracks == 0
-
-
-@pytest.mark.unit
 class TestOneSnapshot:
     def test_the_list_is_read_in_one_transaction_that_ends_with_it(self, db, service):
         a = add_track(db)

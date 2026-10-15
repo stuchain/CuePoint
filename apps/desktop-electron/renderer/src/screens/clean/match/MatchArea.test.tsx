@@ -1,10 +1,10 @@
 /**
- * The Match area (C14, C22): Playlists, the Review of a run, and Past searches.
+ * The Match area (C14, C22): Playlists, one Review tab per playlist, and Past searches.
  *
- * Against the real area over a faked bridge: which tab opens and is remembered, how a review is
- * opened (Review N ›, See them ›, a match that finished, Past searches, the Inspector's link), what
- * it is a review of (a run, or the playlist when the run holds less than the row waits on), and
- * the way back.
+ * Against the real area over a faked bridge: which tab opens and is remembered, how reviews are
+ * opened (Review on a row, a match that finished for several playlists, Past searches, the
+ * Inspector's link), that each playlist has its own tab and the whole library only its own, and the
+ * way back.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -72,8 +72,8 @@ const PLAYLISTS: CleanPlaylists = {
   whole_library: { ...COUNTS, track_count: 100, waiting: 18 },
   playlists: [
     { id: 7, name: "Peak time", path: "Techno", ...COUNTS, waiting: 18 },
-    { id: 8, name: "Closing", path: "", ...COUNTS, unsaved: 5 },
-    { id: 9, name: "Found nothing", path: "", ...COUNTS, track_count: 24, accepted: 0, no_match: 24 },
+    { id: 8, name: "Closing", path: "", ...COUNTS },
+    { id: 9, name: "Not yet", path: "", ...COUNTS, accepted: 0, not_matched: 40 },
   ],
 };
 
@@ -82,7 +82,7 @@ function renderArea(overrides: Partial<Props> = {}) {
     onHealthChanged: vi.fn(),
     match: stubMatch(),
     playlists: { data: PLAYLISTS, error: null, loading: false, reload: vi.fn() },
-    onMatchPlaylist: vi.fn(),
+    onMatch: vi.fn(),
     ...overrides,
   };
   const view = render(element(props));
@@ -101,183 +101,141 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+function tabNames() {
+  return screen.getAllByRole("tab").map((tab) => tab.textContent);
+}
+
 describe("the sub-tabs", () => {
-  it("are Playlists and Past searches, opening on Playlists, with no One at a time and no Table", async () => {
+  it("are Playlists and Past searches, opening on Playlists", async () => {
     renderArea();
-    const tabs = await screen.findAllByRole("tab");
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["Playlists", "Past searches"]);
+    expect(tabNames()).toEqual(["Playlists", "Past searches"]);
     expect(screen.getByRole("tab", { name: "Playlists" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("table", { name: /Your playlists/ })).toBeInTheDocument();
   });
 
-  it("remembers Past searches, and opens on Playlists for a tab that no longer exists", async () => {
-    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "past");
-    const first = renderArea();
-    expect(await screen.findByRole("tab", { name: "Past searches" })).toHaveAttribute("aria-selected", "true");
-    first.unmount();
-
-    for (const gone of ["one", "table", "review", "nonsense"]) {
-      localStorage.setItem(MATCH_TAB_STORAGE_KEY, gone);
-      const view = renderArea();
-      expect(await screen.findByRole("tab", { name: "Playlists" })).toHaveAttribute("aria-selected", "true");
-      view.unmount();
-    }
-  });
-
-  it("says up which tab is open, and whether a review's details are", async () => {
-    const onViewChange = vi.fn();
-    renderArea({ onViewChange });
-    await waitFor(() => expect(onViewChange).toHaveBeenLastCalledWith({ tab: "playlists", panelOpen: false }));
+  it("remember Past searches, and open on it again", () => {
+    const { unmount } = renderArea();
     fireEvent.click(screen.getByRole("tab", { name: "Past searches" }));
-    expect(onViewChange).toHaveBeenLastCalledWith({ tab: "past", panelOpen: false });
     expect(localStorage.getItem(MATCH_TAB_STORAGE_KEY)).toBe("past");
+    unmount();
+    renderArea();
+    expect(screen.getByRole("tab", { name: "Past searches" })).toHaveAttribute("aria-selected", "true");
   });
 
-  it("says a review's details are open, so a match that ends does not land over them", async () => {
-    const onViewChange = vi.fn();
-    renderArea({ onViewChange, focus: { trackId: 3, token: "f1" } });
-    await screen.findByRole("complementary", { name: "Track details" }, LOADED);
-    await waitFor(() => expect(onViewChange).toHaveBeenLastCalledWith({ tab: "review", panelOpen: true }));
+  it("open on Playlists when a tab that no longer exists was remembered", () => {
+    localStorage.setItem(MATCH_TAB_STORAGE_KEY, "review");
+    renderArea();
+    expect(screen.getByRole("tab", { name: "Playlists" })).toHaveAttribute("aria-selected", "true");
   });
 });
 
-describe("Review N ›", () => {
-  it("opens the review of the playlist, in a tab named for it", async () => {
+describe("Review on a row", () => {
+  it("opens a tab named for the playlist, reading that playlist's tracks", async () => {
     renderArea();
-    fireEvent.click(screen.getByRole("button", { name: "Review 18 › for Peak time" }));
-    expect(await screen.findByRole("tab", { name: "Review Peak time" }, LOADED)).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Review Peak time" }));
+    expect(tabNames()).toEqual(["Playlists", "Review Peak time", "Past searches"]);
+    expect(screen.getByRole("tab", { name: "Review Peak time" })).toHaveAttribute("aria-selected", "true");
+    await screen.findByRole("table", { name: /Every track of this playlist/ }, LOADED);
     expect(bridge.getMatchReview).toHaveBeenCalledWith({ playlistId: 7, limit: 2000 });
-    expect(await screen.findByRole("region", { name: "Review Peak time" }, LOADED)).toBeInTheDocument();
-    // Review is not a tab to come back to: the area still opens on Playlists.
-    expect(localStorage.getItem(MATCH_TAB_STORAGE_KEY)).not.toBe("review");
   });
 
-  it("opens the review of the whole library from its row", async () => {
+  it("reads the whole library's matched tracks for its row, in a tab of its own", async () => {
     renderArea();
-    fireEvent.click(screen.getByRole("button", { name: "Review 18 › for Whole library" }));
-    expect(await screen.findByRole("tab", { name: "Review Whole library" }, LOADED)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Review Whole library" }));
+    expect(tabNames()).toContain("Review Whole library");
+    await screen.findByRole("table", { name: /Every track of this playlist/ }, LOADED);
     expect(bridge.getMatchReview).toHaveBeenCalledWith({ limit: 2000 });
   });
 
-  it("opens on the run the row's last Match started, when that run holds what the row waits on", async () => {
-    world.runs = [run({ job_id: "job-9", waiting: 18, not_found: 0 })];
-    renderArea({ runFor: (playlist) => (playlist?.id === 7 ? "job-9" : undefined) });
-    fireEvent.click(screen.getByRole("button", { name: "Review 18 › for Peak time" }));
-    await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-9", limit: 2000 }), LOADED);
-  });
-
-  it("opens on the playlist, and forgets the run, when the run holds less than the row waits on", async () => {
-    world.runs = [run({ job_id: "job-9", waiting: 3, not_found: 0 })];
-    const onRunSpent = vi.fn();
-    renderArea({ runFor: () => "job-9", onRunSpent });
-    fireEvent.click(screen.getByRole("button", { name: "Review 18 › for Peak time" }));
-    await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalledWith({ playlistId: 7, limit: 2000 }), LOADED);
-    expect(onRunSpent).toHaveBeenCalledWith(7);
-  });
-
-  it("goes back to the rows with ‹ Playlists, and the Review tab goes", async () => {
+  it("gives each playlist its own tab, and brings an open one forward instead of opening it twice", async () => {
     renderArea();
-    fireEvent.click(screen.getByRole("button", { name: "Review 18 › for Peak time" }));
-    await screen.findByRole("region", { name: "Review Peak time" }, LOADED);
-    fireEvent.click(await screen.findByRole("button", { name: "Playlists" }, LOADED));
-    expect(await screen.findByRole("table", { name: /Your playlists/ })).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Review Peak time" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Review Peak time" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Playlists" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review Closing" }));
+    expect(tabNames()).toEqual(["Playlists", "Review Peak time", "Review Closing", "Past searches"]);
+    fireEvent.click(screen.getByRole("tab", { name: "Playlists" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review Peak time" }));
+    expect(tabNames()).toHaveLength(4);
+    expect(screen.getByRole("tab", { name: "Review Peak time" })).toHaveAttribute("aria-selected", "true");
   });
 
-  it("saves that playlist's values from the end screen, and nothing before", async () => {
-    world.review = [reviewTrack(1, "done")];
-    const onSavePlaylist = vi.fn();
-    renderArea({
-      onSavePlaylist,
-      reviewOpening: { token: "t", run: run({ job_id: "job-8" }), playlistId: 8, name: "Closing" },
-    });
-    await screen.findByText("Closing is reviewed", undefined, LOADED);
-    expect(onSavePlaylist).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Save 5 to files…" }));
-    expect(onSavePlaylist).toHaveBeenCalledWith(PLAYLISTS.playlists[1]);
+  it("closes the tab with ‹ Playlists, and lands on Playlists", async () => {
+    renderArea();
+    fireEvent.click(screen.getByRole("button", { name: "Review Peak time" }));
+    await screen.findByRole("table", { name: /Every track of this playlist/ }, LOADED);
+    fireEvent.click(screen.getByRole("button", { name: "Playlists" }));
+    expect(tabNames()).toEqual(["Playlists", "Past searches"]);
+    expect(screen.getByRole("tab", { name: "Playlists" })).toHaveAttribute("aria-selected", "true");
   });
 });
 
-describe("saving a past search's review", () => {
-  it("counts the run's own unsaved tracks for the Save button, and saves that run", async () => {
-    world.review = [reviewTrack(1, "done")];
-    const countRunUnsaved = vi.fn().mockResolvedValue(7);
-    const onSaveRun = vi.fn();
-    renderArea({
-      countRunUnsaved,
-      onSaveRun,
-      reviewOpening: { token: "t", run: run({ job_id: "job-5" }), playlistId: null, name: "Whole library" },
-    });
-    await screen.findByText("Whole library is reviewed", undefined, LOADED);
-    await waitFor(() => expect(countRunUnsaved).toHaveBeenCalledWith("job-5"));
-    fireEvent.click(await screen.findByRole("button", { name: "Save 7 to files…" }));
-    expect(onSaveRun).toHaveBeenCalledWith("job-5");
-  });
-});
-
-describe("See them ›", () => {
-  it("opens the review on the tracks that were not found", async () => {
-    renderArea();
-    fireEvent.click(screen.getByRole("button", { name: "See them › for Found nothing" }));
-    await screen.findByRole("region", { name: "Review Found nothing" }, LOADED);
-    expect(bridge.getMatchReview).toHaveBeenCalledWith({ playlistId: 9, filter: "not_found", limit: 2000 });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Not found 1" })).toHaveAttribute("aria-pressed", "true"));
+describe("Match", () => {
+  it("passes what is ticked up to the page, which starts the run", () => {
+    const { props } = renderArea();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Match Peak time" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Match Closing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Match 2 playlists" }));
+    expect(props.onMatch).toHaveBeenCalledWith({ whole: false, playlists: [PLAYLISTS.playlists[0], PLAYLISTS.playlists[1]] });
   });
 });
 
 describe("a review opened from the page", () => {
-  const opening = {
-    token: "t1",
-    run: run({ job_id: "job-7", label: "hJ" }),
-    playlistId: 7,
-    name: "hJ",
-  };
-
-  it("opens the run's review once, and says it was used", async () => {
+  it("opens a tab for each playlist a match finished on, once per opening", async () => {
+    const opening = {
+      token: "a",
+      targets: [
+        { playlistId: 7, name: "Peak time" },
+        { playlistId: 8, name: "Closing" },
+      ],
+    };
     const onReviewOpened = vi.fn();
     const { update } = renderArea({ reviewOpening: opening, onReviewOpened });
-    expect(await screen.findByRole("tab", { name: "Review hJ" }, LOADED)).toHaveAttribute("aria-selected", "true");
-    expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-7", limit: 2000 });
+    expect(tabNames()).toEqual(["Playlists", "Review Peak time", "Review Closing", "Past searches"]);
+    expect(screen.getByRole("tab", { name: "Review Peak time" })).toHaveAttribute("aria-selected", "true");
     expect(onReviewOpened).toHaveBeenCalledTimes(1);
-
-    // Leaving, and the same opening arriving again, does not reopen it.
+    // Used once: coming back to the area does not open them again.
     fireEvent.click(await screen.findByRole("button", { name: "Playlists" }, LOADED));
-    update({ reviewOpening: opening, onReviewOpened });
-    expect(screen.queryByRole("tab", { name: "Review hJ" })).toBeNull();
+    update({ reviewOpening: opening });
+    expect(tabNames()).toEqual(["Playlists", "Review Closing", "Past searches"]);
+    await waitFor(() => expect(onReviewOpened).toHaveBeenCalledTimes(1));
   });
 
-  it("opens on a chip when asked to: the run that found nothing opens on Not found", async () => {
-    world.review = [reviewTrack(1, "not_found"), reviewTrack(2, "not_found")];
-    renderArea({ reviewOpening: { ...opening, filter: "not_found" } });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Not found 2" })).toHaveAttribute("aria-pressed", "true"), LOADED);
+  it("opens only the whole library's tab for a whole-library match", () => {
+    renderArea({ reviewOpening: { token: "w", targets: [{ playlistId: null, name: "Whole library" }] } });
+    expect(tabNames()).toEqual(["Playlists", "Review Whole library", "Past searches"]);
   });
+});
 
-  it("reads the list again when a match ends", async () => {
-    const { update } = renderArea({ reviewOpening: opening });
-    await screen.findByRole("region", { name: "Review hJ" }, LOADED);
-    const reads = bridge.getMatchReview!.mock.calls.length;
-    update({ match: stubMatch({ ended: 1 }) });
-    await waitFor(() => expect(bridge.getMatchReview!.mock.calls.length).toBeGreaterThan(reads));
+describe("Past searches", () => {
+  it("opens a run's review in its own tab, all of its tracks", async () => {
+    world.runs = [run({ job_id: "job-9", label: "Peak time" })];
+    renderArea();
+    fireEvent.click(screen.getByRole("tab", { name: "Past searches" }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Open/ }, LOADED));
+    expect(screen.getByRole("tab", { name: "Review Peak time" })).toHaveAttribute("aria-selected", "true");
+    await screen.findByRole("table", { name: /Every track of this playlist/ }, LOADED);
+    expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-9", limit: 2000 });
   });
 });
 
 describe("the Inspector's link", () => {
-  it("opens the library's review on that track's details", async () => {
-    renderArea({ focus: { trackId: 3, token: "f1" } });
-    expect(await screen.findByRole("tab", { name: "Review Whole library" }, LOADED)).toBeInTheDocument();
+  it("opens the library's review with that track's panel", async () => {
+    renderArea({ focus: { token: "t", trackId: 3 } });
+    expect(tabNames()).toContain("Review Whole library");
     const panel = await screen.findByRole("complementary", { name: "Track details" }, LOADED);
-    expect(panel).toHaveTextContent("Track 3");
-    expect(bridge.getMatchReview).toHaveBeenCalledWith({ limit: 2000 });
+    expect(within(panel).getByText("3 of 3")).toBeInTheDocument();
   });
 });
 
-describe("a track searched again from the review", () => {
-  it("starts a match of that one track, under its own name", async () => {
-    world.review = [reviewTrack(6, "search_failed")];
-    const start = vi.fn();
-    renderArea({ match: stubMatch({ start }), reviewOpening: { token: "t", run: run(), playlistId: 7, name: "hJ" } });
-    const row = await screen.findByRole("row", { name: /Track 6/ }, LOADED);
-    fireEvent.click(within(row).getByRole("button", { name: "Match again: Track 6" }));
-    expect(start).toHaveBeenCalledWith("rematch", { track_ids: [6] }, true, '1 track: "Track 6"');
+describe("what the page is told", () => {
+  it("says which tab is open, and whether a review's panel is", async () => {
+    const onViewChange = vi.fn();
+    renderArea({ onViewChange });
+    expect(onViewChange).toHaveBeenLastCalledWith({ tab: "playlists", panelOpen: false });
+    fireEvent.click(screen.getByRole("button", { name: "Review Peak time" }));
+    expect(onViewChange).toHaveBeenLastCalledWith({ tab: "review", panelOpen: false });
+    const row = (await screen.findAllByRole("row", undefined, LOADED)).find((entry) => entry.hasAttribute("data-track-id"))!;
+    fireEvent.click(row);
+    await waitFor(() => expect(onViewChange).toHaveBeenLastCalledWith({ tab: "review", panelOpen: true }));
   });
 });

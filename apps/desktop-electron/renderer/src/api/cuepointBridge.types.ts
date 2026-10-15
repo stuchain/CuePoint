@@ -1310,10 +1310,10 @@ export interface MatchJobs {
   total: number;
 }
 
-/** Where one track of a run stands in the review (the engine's words, `match_review.py`). */
-export type ReviewStatus = "to_check" | "not_found" | "search_failed" | "matched" | "done";
+/** Where one track of a review stands (the engine's words, `match_review.py`). */
+export type ReviewStatus = "matched" | "to_check" | "not_found" | "search_failed";
 
-/** The few facts of a candidate the review list draws. */
+/** The few facts of a candidate the review table draws. */
 export interface ReviewCandidate {
   id: number;
   title: string | null;
@@ -1328,48 +1328,58 @@ export interface ReviewCandidate {
   guard_ok: boolean;
 }
 
-/** One track of the review list: what the engine found for it, and what differs. */
+/** One track of the review table: what the engine found for it, whether it is ticked, and what differs. */
 export interface ReviewTrack {
   track_id: number;
   title: string;
   artist: string;
   status: ReviewStatus;
-  /** What the person decided; null while nothing was. */
-  decision: "accepted" | "rejected" | null;
-  /** A newer search disagrees with the decision: it is to check again. */
+  /** Whether its Beatport values will be synced: the person's own tick, else the engine's default. */
+  ticked: boolean;
+  /** Whether it has a Beatport match that could be ticked. */
+  tickable: boolean;
+  /** A newer search found a different best match than the decision the person made: the row is Check. */
   disputed: boolean;
-  /** The batch that takes back the track's last decision and the values it copied; null for a refusal. */
-  undo_batch: string | null;
-  /** Where this row stands in the listing: read on from it with `after`, whatever has been decided since. */
+  /** Where this row stands in the listing: read on from it with `after`. Ticks never move it. */
   cursor: string;
   candidate: ReviewCandidate | null;
   /** The fields that differ from the candidate: "title", "remix", "key", "bpm"... */
   differing: string[];
 }
 
-/** Every track of a run (or playlist), for the Review list. */
+/** Every track of a run (or playlist), for the Review table. */
 export interface MatchReview {
   job_id: string | null;
   label: string | null;
-  /** Every track of the run, whatever the page holds. */
+  /** Every track of the review, whatever the page holds. */
   total: number;
   counts: Record<ReviewStatus, number>;
-  /** Tracks the person refused, and those a newer search disagrees with them about. */
-  rejected: number;
-  disputed: number;
-  /** How many tracks the filter holds, of which `tracks` is one page. */
-  matching: number;
-  /** With `idsOnly`: every id of the filter. */
+  /** How many tracks are ticked, of all of them. */
+  ticked: number;
+  /** With `tickedIds`: the id of every ticked track. */
   ids?: number[];
   tracks: ReviewTrack[];
 }
 
-/** What a review is read with: the run or playlist, a filter, a page, or only the ids. */
-export type MatchReviewFilter =
-  | "all"
-  | ReviewStatus
-  | "rejected"
-  | "disputed";
+/** What a tick request is about: one run or one playlist; with neither, the whole library. */
+export interface MatchTickScope {
+  job_id?: string;
+  playlist_id?: number;
+}
+
+/** What ticking or unticking tracks did. */
+export interface MatchTicksOutcome {
+  ticked: boolean;
+  /** Tracks whose tick changed. Absent when it runs as a job: the job's result has it. */
+  changed?: number;
+  /** Tracks named that have no match and cannot be ticked. */
+  skipped?: number;
+  /** The batch the decisions were recorded under; null when nothing changed. Reverting it takes the ticks back. */
+  batch_id: string | null;
+  /** Present when more than a batch's worth of ticks run as a job; follow it, then read its result. */
+  job_id?: string;
+  id?: string;
+}
 
 export interface ResumableMatch {
   job_id: string;
@@ -1677,12 +1687,6 @@ export interface TagFieldChoices {
 /** What a kept preview would change for some options, counted without reading a file. */
 export interface TagCountOutcome {
   files: number;
-  fields: Record<string, number>;
-}
-
-/** New values not yet in the files, per field. An upper bound. */
-export interface UnsavedValues {
-  tracks: number;
   fields: Record<string, number>;
 }
 
@@ -2214,7 +2218,7 @@ export type DiscoverRunSort = "position" | "release_date" | "artist" | "title";
 export type WantlistSort = "added_at" | "release_date" | "artist" | "title";
 export type DiscoverSortDirection = "asc" | "desc";
 export type DiscoverRunOutcome = "succeeded" | "cancelled" | "failed";
-export type DiscoverSourceType = "chart" | "label_release";
+export type DiscoverSourceType = "chart" | "label_release" | "artist_release";
 export type DiscoverBeatportState = "ok" | "no_token" | "rejected" | "forbidden" | "rate_limited" | "unavailable";
 export type DiscoverJobType = "discovery" | "beatport_playlist" | "beatport_resolve";
 export type WantlistAction = "added" | "removed" | "noted" | "bought" | "unbought";
@@ -2411,6 +2415,70 @@ export interface DiscoverRunDeleted {
   deleted: boolean;
 }
 
+/** What a card is: a chart, a chosen artist, or a chosen label. */
+export type DiscoverGroupKind = "chart" | "artist" | "label";
+/** Which charts a dig read: the chosen artists', every library artist's, or the genres' general ones. */
+export type DiscoverChartsMode = "artists" | "library" | "genre";
+/** The rows a dig's cards are shown in. */
+export type DiscoverGroupRowId = "charts" | "genre_charts" | "artists" | "labels";
+
+/** One card of a dig's results. Its picture is `has_art`: the engine never sends Beatport's URL. */
+export interface DiscoverGroupCard {
+  kind: DiscoverGroupKind;
+  key: string;
+  name: string;
+  /** For a chart, who made it. */
+  curator: string | null;
+  tracks: number;
+  owned: number;
+  /** For an artist: how many of their charts the dig read. */
+  charts: number;
+  /** For an artist or a label: how many tracks it found as new releases. */
+  new: number;
+  has_art: boolean;
+}
+
+export interface DiscoverGroupRow {
+  id: DiscoverGroupRowId;
+  cards: DiscoverGroupCard[];
+}
+
+/** A dig's results as rows of cards; `grouped` is false for a dig made before cards, which is one list. */
+export interface DiscoverRunGroups {
+  run_id: number;
+  grouped: boolean;
+  charts_mode: DiscoverChartsMode | null;
+  rows: DiscoverGroupRow[];
+  /** What the dig left out on purpose (a cap), in words. */
+  notes: string[];
+  tracks: number;
+  owned: number;
+}
+
+/** A card named in a request. */
+export interface DiscoverGroupRef {
+  kind: DiscoverGroupKind;
+  key: string;
+}
+
+/** What ticking some cards would add: distinct tracks and how many are already owned. */
+export interface DiscoverGroupSummary {
+  run_id: number;
+  cards: number;
+  tracks: number;
+  owned: number;
+}
+
+/** One of the user's own Beatport playlists. */
+export interface BeatportPlaylistChoice {
+  id: string;
+  name: string;
+}
+
+export interface BeatportPlaylists {
+  playlists: BeatportPlaylistChoice[];
+}
+
 /** Which kind of name a saved list holds. */
 export type DiscoverListKind = "artist" | "label";
 
@@ -2511,6 +2579,10 @@ export interface BeatportPlaylistResult {
   cancelled: boolean;
   error_class: BeatportErrorClass | null;
   error: string | null;
+  /** True when the tracks went to a playlist that was already the user's. */
+  existing_playlist: boolean;
+  /** Tracks left out because the playlist already held them. */
+  already_in_playlist: number;
 }
 
 /** A resolve's result (DISCOVER-04). */
@@ -3174,9 +3246,12 @@ export interface DiscoverRunRequest {
 export type BeatportPlaylistRequest = {
   name?: string | null;
   include_owned?: boolean;
+  /** An existing playlist of the user's to add to, instead of making a new one. */
+  playlist_id?: string | null;
 } & (
   | { track_ids: number[] }
   | { run_id: number; owned?: DiscoverOwnedFilter; sort?: DiscoverRunSort; dir?: DiscoverSortDirection }
+  | { run_id: number; groups: DiscoverGroupRef[] }
 );
 
 /** Similar Tracks' seed and the Library's own scope parameters (DISCOVER-08). */
@@ -3774,16 +3849,22 @@ export interface CuePointBridge {
     limit?: number;
     offset?: number;
   }) => Promise<MatchJobs>;
-  /** Every track of a run, or of a playlist, with where each stands (the Review list). */
+  /** Every track of a run, or of a playlist, with where each stands and whether it is ticked (the Review table). */
   getMatchReview?: (params?: {
     jobId?: string;
     playlistId?: number;
-    filter?: MatchReviewFilter;
     /** The `cursor` of the last row read: read on from it. */
     after?: string;
     limit?: number;
-    idsOnly?: boolean;
+    /** Answer only the ids of the ticked tracks, which Sync takes to the files. */
+    tickedIds?: boolean;
   }) => Promise<MatchReview>;
+  /** Tick or untick tracks of a review (named, or a whole review by its scope): whether their Beatport values are synced. */
+  setMatchTicks?: (params: {
+    ticked: boolean;
+    track_ids?: number[];
+    scope?: MatchTickScope;
+  }) => Promise<MatchTicksOutcome>;
   /** A candidate's Beatport artwork as an object URL, or null; release with `releaseTrackArtwork`. */
   getCandidateArtwork?: (params: {
     candidateId: number;
@@ -3839,7 +3920,16 @@ export interface CuePointBridge {
     preview_id: string;
     options: TagWriteOptions;
   }) => Promise<TagCountOutcome>;
-  getUnsavedValues?: (params?: { playlist_id?: number }) => Promise<UnsavedValues>;
+  /** What a Sync would change in the files: the match's values laid over the tracks' own, in memory; writes nothing. */
+  previewSync?: (params: {
+    selection: BatchSelection;
+    options?: TagWriteOptions;
+  }) => Promise<TagPreviewOutcome>;
+  /** Sync a kept preview: one job writes the files, then records the decisions and the values each file got. */
+  startSync?: (params: {
+    preview_id: string;
+    options?: TagWriteOptions;
+  }) => Promise<TagWriteStarted>;
   getCleanPlaylists?: () => Promise<CleanPlaylists>;
   startTagRestore?: (params: {
     job_id?: string;
@@ -3898,6 +3988,32 @@ export interface CuePointBridge {
     offset?: number;
     limit?: number;
   }) => Promise<DiscoverAnswer<DiscoverRunTracksPage>>;
+  /** A dig's results as rows of cards; `grouped` is false for a dig made before cards. */
+  getDiscoveryRunGroups?: (params: { run_id: number }) => Promise<DiscoverAnswer<DiscoverRunGroups>>;
+  /** A window of the merged tracks of one or more cards. */
+  getDiscoveryGroupTracks?: (params: {
+    run_id: number;
+    groups: DiscoverGroupRef[];
+    owned?: DiscoverOwnedFilter;
+    sort?: DiscoverRunSort;
+    dir?: DiscoverSortDirection;
+    offset?: number;
+    limit?: number;
+  }) => Promise<DiscoverAnswer<DiscoverRunTracksPage>>;
+  /** What ticking some cards would add: distinct tracks, and how many the library owns. */
+  getDiscoveryGroupSummary?: (params: {
+    run_id: number;
+    groups: DiscoverGroupRef[];
+  }) => Promise<DiscoverAnswer<DiscoverGroupSummary>>;
+  /** A card's picture as an object URL, or null; release with `releaseTrackArtwork`. */
+  getDiscoveryGroupArt?: (params: {
+    run_id: number;
+    kind: DiscoverGroupKind;
+    key: string;
+    size?: ArtworkSize;
+  }) => Promise<string | null>;
+  /** The user's own Beatport playlists, to add tracks to one. */
+  getBeatportPlaylists?: () => Promise<DiscoverAnswer<BeatportPlaylists>>;
   /** Start a discovery run; a refusal is an answer, and nothing starts. */
   startDiscoveryRun?: (
     params?: DiscoverRunRequest,
@@ -3914,8 +4030,10 @@ export interface CuePointBridge {
     limit?: number;
   }) => Promise<DiscoverAnswer<WantlistPage>>;
   addToWantlist?: (params: {
-    track_ids: number[];
+    track_ids?: number[];
     run_id?: number | null;
+    /** Ticked cards of a dig (with `run_id`): their tracks the library does not own. */
+    groups?: DiscoverGroupRef[];
   }) => Promise<DiscoverAnswer<WantlistChange>>;
   removeFromWantlist?: (params: {
     track_ids: number[];

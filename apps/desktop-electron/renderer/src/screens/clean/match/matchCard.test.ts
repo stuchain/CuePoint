@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CARD_FIELDS, CARD_FIELD_LABELS, camelotOf } from "./matchCard";
+import { camelotOf } from "./matchCard";
 
 describe("the key in the app's notation", () => {
   it("turns Beatport's names into Camelot", () => {
@@ -19,12 +19,5 @@ describe("the key in the app's notation", () => {
 
   it("shows a notation it does not know as it came", () => {
     expect(camelotOf("open key 3m")).toBe("open key 3m");
-  });
-});
-
-describe("the fields a tick names", () => {
-  it("are read in a DJ's order, each with its word", () => {
-    expect(CARD_FIELDS).toEqual(["key", "bpm", "genre", "label", "year"]);
-    expect(CARD_FIELDS.map((field) => CARD_FIELD_LABELS[field])).toEqual(["Key", "BPM", "Genre", "Label", "Year"]);
   });
 });

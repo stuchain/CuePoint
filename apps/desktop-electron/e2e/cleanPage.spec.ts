@@ -143,15 +143,15 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await window.getByRole("link", { name: "Clean" }).click();
 
       // Match opens on Playlists (C22). Nothing is matched yet: the whole library says so,
-      // and offers its own Match rather than saying "no tracks".
+      // and offers a tick to match it rather than saying "no tracks".
       await expect(window.getByRole("tab", { name: "Playlists", exact: true })).toHaveAttribute(
         "aria-selected",
         "true",
       );
-      await expect(window.getByRole("row").filter({ hasText: "Whole library" })).toContainText("Not matched", {
+      await expect(window.getByRole("row").filter({ hasText: "Whole library" })).toContainText("Not matched yet", {
         timeout: 30_000,
       });
-      await expect(window.getByRole("button", { name: "Match Whole library" })).toBeEnabled();
+      await expect(window.getByRole("checkbox", { name: "Match Whole library" })).toBeEnabled();
       // There is no Table and no One at a time: the review list opens on a run.
       await expect(window.getByRole("tab", { name: "Table", exact: true })).toHaveCount(0);
       await expect(window.getByRole("tab", { name: /^One at a time/ })).toHaveCount(0);
@@ -170,7 +170,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
     }
   });
 
-  test("opens on Match ▸ Playlists, with a Match on the whole-library row and no tick boxes or header button", async () => {
+  test("opens on Match ▸ Playlists, with a tick on the whole-library row, one Match button and no header button", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
@@ -182,11 +182,12 @@ test.describe("The Clean page (CLEAN-12)", () => {
         "true",
         { timeout: 30_000 },
       );
-      // The export has no playlists: the view says so in one line. Every row has its own Match,
-      // and there are no tick boxes and no button in the header (C22).
+      // The export has no playlists: the view says so in one line. Only the whole library has a tick,
+      // one Match button under the list starts a match, and there is no button in the header (C22).
       await expect(window.locator("p:visible", { hasText: "No playlists yet" })).toBeVisible();
-      await expect(window.getByRole("checkbox")).toHaveCount(0);
-      await expect(window.getByRole("button", { name: "Match Whole library" })).toBeEnabled();
+      await expect(window.getByRole("checkbox")).toHaveCount(1);
+      await expect(window.getByRole("checkbox", { name: "Match Whole library" })).toBeEnabled();
+      await expect(window.getByRole("button", { name: "Match playlists" })).toBeDisabled();
       await expect(window.getByTestId("clean-header").getByRole("button")).toHaveCount(0);
     } finally {
       await app.close();

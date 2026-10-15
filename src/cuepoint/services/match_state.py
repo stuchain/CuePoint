@@ -77,7 +77,7 @@ one person's decision is a per-track act (:meth:`~MatchStateService.accept`,
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 from cuepoint.models.library_track import utc_now_iso
 from cuepoint.models.match_attempt import (
@@ -496,6 +496,36 @@ class MatchStateService(IMatchStateService):
                 return False
             self.reject(track_id, batch_id)
             return True
+
+    def decide_many(
+        self,
+        accept: Sequence[Tuple[int, int]],
+        reject: Sequence[int],
+        batch_id: Optional[str] = None,
+    ) -> int:
+        """Accept some tracks' candidates and reject others, all or nothing.
+
+        The Review's ticks: ticking a track accepts its match, unticking refuses
+        it, and a header tick does thousands at once. One transaction, one batch
+        id, every decision recorded in history as a single one is.
+
+        Args:
+            accept: ``(track id, candidate id)`` pairs to accept.
+            reject: Track ids to say no candidate is.
+            batch_id: The id the history rows share, so one revert takes them all back.
+
+        Returns:
+            How many decisions were made.
+
+        Raises:
+            ValueError: If a track or candidate does not exist. Nothing is written.
+        """
+        with self._db.transaction():
+            for track_id, candidate_id in accept:
+                self.accept(track_id, candidate_id, batch_id)
+            for track_id in reject:
+                self.reject(track_id, batch_id)
+        return len(accept) + len(reject)
 
     # --------------------------------------------------------------- helpers
 

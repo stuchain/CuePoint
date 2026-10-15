@@ -157,7 +157,7 @@ function libraryRow(window: Page, title: string) {
     .filter({ hasText: title });
 }
 
-/** A row of the Review list: every track of the run that just finished, with where each stands. */
+/** A row of the Review table: every track of the playlist that just finished, with where each stands. */
 function reviewRow(window: Page, title: string) {
   return window
     .getByRole("region", { name: /^Review / })
@@ -166,14 +166,14 @@ function reviewRow(window: Page, title: string) {
     .filter({ hasText: title });
 }
 
-/** The panel beside the Review list: one track's details. */
+/** The side panel beside the Review table: one track's candidates. */
 function detailsPanel(window: Page) {
   return window.getByRole("complementary", { name: "Track details" });
 }
 
-/** Open a track's details from its row, and put the keyboard on the page, not on a field. */
+/** Open a track's side panel by clicking its row (not its tick or its preview). */
 async function openDetails(window: Page, title: string) {
-  await reviewRow(window, title).getByRole("button", { name: `Details of ${title}` }).click();
+  await reviewRow(window, title).locator("td.review-row__yours").click();
   const panel = detailsPanel(window);
   await expect(panel.locator(".review-panel__title")).toHaveText(title, { timeout: 15_000 });
   return panel;
@@ -210,32 +210,30 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
 
       await test.step("match a playlist", async () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
-        // Match opens on Playlists (C22): the playlist says it is not matched, and its own Match button matches it.
+        // Match opens on Playlists (C22): the playlist says it is not matched; tick it and press Match.
         await expect(window.getByRole("tab", { name: "Playlists", exact: true })).toHaveAttribute(
           "aria-selected",
           "true",
           { timeout: 30_000 },
         );
         const journey = window.getByRole("row").filter({ hasText: "Journey" });
-        await expect(journey).toContainText("Not matched", { timeout: 15_000 });
-        await window.getByRole("button", { name: "Match Journey" }).click();
+        await expect(journey).toContainText("Not matched yet", { timeout: 15_000 });
+        await window.getByRole("checkbox", { name: "Match Journey" }).check();
+        await window.getByRole("button", { name: "Match 1 playlist" }).click();
         await expect(window.getByText("Matching 3 tracks on Beatport.", { exact: true })).toBeVisible({ timeout: 30_000 });
-        // The run lands on its Review when it ends: every track, with where each stands.
+        // The run lands on its Review when it ends: every track, with where each stands and a tick.
         await expect(window.getByRole("tab", { name: "Review Journey" })).toHaveAttribute("aria-selected", "true", {
           timeout: 90_000,
         });
         await idle(window);
-        await expect(reviewRow(window, "Tone Two")).toContainText("To check", { timeout: 15_000 });
+        await expect(reviewRow(window, "Tone Two")).toContainText("Check", { timeout: 15_000 });
       });
 
       await test.step("see what was accepted and what needs review", async () => {
-        const chips = window.getByRole("group", { name: "Show" });
-        await chips.getByRole("button", { name: /^Matched/ }).click();
-        await expect(reviewRow(window, "Tone One")).toBeVisible({ timeout: 15_000 });
-        await expect(reviewRow(window, "Tone Two")).toHaveCount(0);
-        await chips.getByRole("button", { name: /^To check/ }).click();
-        await expect(reviewRow(window, "Tone Two")).toBeVisible({ timeout: 15_000 });
-        await expect(reviewRow(window, "Tone One")).toHaveCount(0);
+        // One plain table: the sure match is Matched and ticked, the proposal is Check.
+        await expect(reviewRow(window, "Tone One")).toContainText("Matched", { timeout: 15_000 });
+        await expect(window.getByRole("checkbox", { name: /^Sync Tone One/ })).toBeChecked();
+        await expect(reviewRow(window, "Tone Two")).toContainText("Check");
 
         // Beatport's artwork for the accepted track, decoded into a thumbnail
         // by the engine's guarded decoder — in a packaged build, Pillow's.
@@ -258,59 +256,17 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         expect(artwork!.height).toBe(artwork!.width);
       });
 
-      await test.step("correct from the keyboard, choosing the second-best result", async () => {
-        // Details › opens the track beside the list, with its other results behind show ›.
+      await test.step("choose the second-best result from the side panel, then sync the playlist", async () => {
+        // A click on the row opens the panel straight on the candidates.
         const panel = await openDetails(window, "Tone Two");
-        await panel.getByRole("button", { name: "show ›" }).click();
-        const results = panel.getByRole("group", { name: "Other results" });
-        // The panel opens on the matcher's proposal, the 94%. Results are
-        // listed in the order the matcher scored them, which depends on which
-        // page its workers fetched first, so the proposal is #1 or #2.
-        const proposal = results.getByRole("button", { name: /^\d · .* · 94%/ });
-        await expect(proposal).toHaveAttribute("aria-pressed", "true", { timeout: 15_000 });
-        const proposed = Number(/^(\d)/.exec(await proposal.innerText())![1]);
-        const other = proposed === 1 ? 2 : 1;
-        await expect(panel.getByTestId("likelihood")).toHaveText("94% likely");
-
-        // Focus the page, not a field: bare keys belong to the Match area there.
-        await panel.locator(".review-panel__title").click();
-        await window.keyboard.press(proposed === 1 ? "ArrowRight" : "ArrowLeft");
-        await expect(
-          results.getByRole("button", { name: new RegExp(`^${other} · .* · 91%`) }),
-        ).toHaveAttribute("aria-pressed", "true");
-        await expect(panel.getByTestId("likelihood")).toHaveText("91% likely");
-
-        // Correct copies the ticked values with the match. Keep only the BPM here.
-        const ticks = panel.getByRole("group", { name: /^When I say/ });
-        for (const field of ["Genre", "Label", "Year"]) {
-          const tick = ticks.getByRole("checkbox", { name: new RegExp(`^${field}`) });
-          if (await tick.count()) await tick.uncheck();
-        }
-        await expect(ticks.getByRole("checkbox", { name: /^BPM/ })).toBeChecked();
-        // Replacing a key of the person's own is the one value Correct would take: off unless chosen.
-        await expect(ticks.getByRole("checkbox", { name: /^Key/ })).not.toBeChecked();
-        // Enter on a focused tick is the tick's own: put focus on the panel itself first.
-        await panel.locator(".review-panel__title").click();
-        await window.keyboard.press("Enter");
-
-        // Corrected, the row is Done and dims, with Undo on it because something changed.
-        // The panel goes on to the next track to check, or closes when none is left.
+        const candidates = panel.getByRole("list", { name: "Beatport candidates" });
+        await expect(candidates).toBeVisible({ timeout: 15_000 });
+        // The other result is the one in E minor (9A): Use this confirms it and ticks the track.
+        await candidates.getByRole("listitem").filter({ hasText: "9A" }).getByRole("button", { name: /^Use / }).click();
         await window.keyboard.press("Escape");
         const row = reviewRow(window, "Tone Two");
-        await expect(row).toContainText("Done", { timeout: 15_000 });
-        await expect(row.getByRole("button", { name: "Undo: Tone Two" })).toBeVisible();
-
-        // Undo hands the track back to check; then decide it again, on the other result.
-        await row.getByRole("button", { name: "Undo: Tone Two" }).click();
-        await expect(row).toContainText("To check", { timeout: 15_000 });
-        const again = await openDetails(window, "Tone Two");
-        await again.getByRole("button", { name: "show ›" }).click();
-        await expect(again.getByTestId("likelihood")).toBeVisible({ timeout: 15_000 });
-        await again.getByRole("button", { name: new RegExp(`^${other} · .* · 91%`) }).click();
-        await again.locator(".review-panel__title").click();
-        await window.keyboard.press("Enter");
-        await window.keyboard.press("Escape");
-        await expect(reviewRow(window, "Tone Two")).toContainText("Done", { timeout: 15_000 });
+        await expect(row).toContainText("Matched", { timeout: 15_000 });
+        await expect(window.getByRole("checkbox", { name: /^Sync Tone Two/ })).toBeChecked();
         // And the engine holds the second result, the one chosen.
         const decided = await window.evaluate(async () => {
           const found = await window.cuepoint!.browseLibrary!({ q: "Tone Two", limit: 1 });
@@ -325,34 +281,41 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
           };
         });
         expect(decided).toMatchObject({ state: "accepted", decidedBy: "user", chosen: "E Minor" });
+
+        // Sync: the green button opens one window for the ticked tracks; the choice of values is made there.
+        const before = readFileSync(library.files[1]!);
+        await window.getByRole("button", { name: "Sync Journey to files…" }).click();
+        const dialog = window.getByRole("dialog", { name: "Sync Journey to your files" });
+        await dialog.getByRole("checkbox", { name: "Key" }).check({ timeout: 60_000 });
+        const sync = dialog.getByRole("button", { name: /^Sync \d[\d,]* tracks?$/ });
+        await expect(sync).toBeEnabled({ timeout: 30_000 });
+        expect(readFileSync(library.files[1]!).equals(before)).toBe(true);
+        await sync.click();
+        await expect(dialog.getByRole("region", { name: "Saved" })).toContainText(/Wrote \d[\d,]* files?/, {
+          timeout: 30_000,
+        });
+        expect(readFileSync(library.files[1]!).includes(Buffer.from("TKEY"))).toBe(true);
+        // Only now are the values in CuePoint's own: the sync recorded what each file got, as one batch.
+        const bpm = () =>
+          window.evaluate(async () => {
+            const found = await window.cuepoint!.browseLibrary!({ q: "Tone Two", limit: 1 });
+            return found.tracks[0]!.effective_bpm;
+          });
+        expect(await bpm()).toBe(125);
+        // Undo this save puts the files back and takes that batch back with them.
+        await dialog.getByRole("button", { name: "Undo this save" }).click();
+        await expect(dialog).toContainText(/Undid \d[\d,]* files?/, { timeout: 30_000 });
+        expect(readFileSync(library.files[1]!).includes(Buffer.from("TKEY"))).toBe(false);
+        expect(await bpm()).toBe(124);
+        await dialog.getByRole("button", { name: "Done" }).click();
+        await idle(window);
       });
 
-      await test.step("see the corrected BPM and the match's key in the Library", async () => {
+      await test.step("the Library shows Rekordbox's values again after the undo", async () => {
         await window.getByRole("link", { name: "Library", exact: true }).click();
         const row = libraryRow(window, "Tone Two");
-        // The BPM cell, whole (R4-9). The row's text runs its cells together, so a pattern on it
-        // cannot tell the BPM from the key before it or the Beatport mark "B" after it.
-        await expect(row.locator('[data-column="bpm"]')).toHaveText(/^125B?$/, { timeout: 30_000 });
-        // The accepted match's key ("E Minor") is the key: Camelot 9A, not Rekordbox's 8A.
-        await expect(row).toContainText("9A");
-        await expect(
-          row.getByRole("img", { name: /^BPM applied from Beatport\. In Rekordbox it is 124/ }),
-        ).toBeAttached();
-      });
-
-      await test.step("revert the correction", async () => {
-        await libraryRow(window, "Tone Two").getByText("Tone Two").click();
-        const inspector = window.locator(".cp-track-detail");
-        // History is under the Yours tab, folded until asked for (PAGES-06): open it first.
-        await inspector.getByRole("tab", { name: "Yours" }).click();
-        await inspector.getByRole("button", { name: /^History/ }).click();
-        await inspector
-          .getByRole("button", { name: /^Undo: .*BPM/i })
-          .first()
-          .click();
-        const row = libraryRow(window, "Tone Two");
-        await expect(row.getByRole("img")).toHaveCount(0, { timeout: 15_000 });
-        await expect(row.locator('[data-column="bpm"]')).toHaveText("124");
+        await expect(row.locator('[data-column="bpm"]')).toHaveText("124", { timeout: 30_000 });
+        await expect(row.getByRole("img")).toHaveCount(0);
       });
 
       await test.step("check files, with one missing", async () => {
@@ -378,27 +341,9 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         ).toBeVisible({ timeout: 15_000 });
       });
 
-      await test.step("save the new values into the copied files from the save bar, and restore them", async () => {
-        // The bar saves what CuePoint changed: Tone Two (files[1]), corrected on Match above.
-        const before = readFileSync(library.files[1]!);
-        // The save bar (C23) under Clean's tabs replaced the Library's "Save changes into the files…".
+      await test.step("the Library keeps no save bar and Clean none either", async () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
-        const bar = window.getByRole("region", { name: "Save to files" }).filter({ visible: true });
-        await bar.getByRole("button", { name: "Save to files…" }).click();
-        const dialog = window.getByRole("dialog", { name: /^Save \d[\d,]* tracks? to your files$/ });
-        const save = dialog.getByRole("button", { name: /^Save to \d[\d,]* files?$/ });
-        await expect(save).toBeEnabled({ timeout: 30_000 });
-        expect(readFileSync(library.files[1]!).equals(before)).toBe(true);
-        await save.click();
-        await expect(dialog.getByRole("region", { name: "Saved" })).toContainText(/Wrote \d[\d,]* files?/, {
-          timeout: 30_000,
-        });
-        expect(readFileSync(library.files[1]!).includes(Buffer.from("TKEY"))).toBe(true);
-        await dialog.getByRole("button", { name: "Undo this save" }).click();
-        await expect(dialog).toContainText(/Undid \d[\d,]* files?/, { timeout: 30_000 });
-        expect(readFileSync(library.files[1]!).includes(Buffer.from("TKEY"))).toBe(false);
-        await dialog.getByRole("button", { name: "Done" }).click();
-        await idle(window);
+        await expect(window.getByRole("region", { name: "Save to files" })).toHaveCount(0);
         // The refresh below is the Library's.
         await window.getByRole("link", { name: "Library", exact: true }).click();
       });

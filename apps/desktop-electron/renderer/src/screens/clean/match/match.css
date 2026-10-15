@@ -38,75 +38,6 @@
   border: 0;
 }
 
-.match-chip {
-  min-height: var(--control-height);
-  padding: 0 var(--space-sm);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-panel);
-  color: var(--fg-primary);
-  font-family: var(--font-pixel);
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-  cursor: pointer;
-}
-
-.match-chip:hover {
-  background: var(--bg-selected);
-}
-
-.match-chip[aria-pressed="true"] {
-  background: var(--selected-row-background);
-  font-weight: 700;
-}
-
-.match-chip[data-refused="true"] {
-  color: var(--accent-danger);
-}
-
-/* "When I say Correct, also update": one preference, in the details panel. */
-.match-ticks {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-xs) var(--space-md);
-  margin: 0;
-  padding: var(--space-xs) var(--space-md);
-  border: var(--control-border-width) solid var(--border-control);
-  font-size: var(--control-font-size);
-}
-
-.match-ticks__legend {
-  padding: 0 var(--space-xs);
-  color: var(--fg-muted);
-}
-
-.match-ticks__field {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  cursor: pointer;
-}
-
-.match-ticks__none,
-.match-ticks__note {
-  color: var(--fg-muted);
-}
-
-.match-ticks__note {
-  margin-inline-start: auto;
-}
-
-/* The key beside a button's name: a hint, not the only way (every key has a button). */
-.match-key {
-  margin-inline-start: var(--space-xs);
-  padding: 0 var(--space-xs);
-  border: var(--control-border-width) solid var(--border-control);
-  font-family: var(--font-data);
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-  opacity: 0.8;
-}
-
 /* ---------------------------------------------------------------- Past searches */
 
 .match-past {
@@ -198,37 +129,6 @@
   color: var(--fg-muted);
 }
 
-/* Every track decided: what was done, and the ways out. */
-.match-review-done {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  padding: var(--space-xl) var(--space-md);
-  text-align: center;
-}
-
-.match-review-done__headline {
-  margin: 0;
-  font-size: var(--text-heading);
-  font-weight: 700;
-}
-
-.match-review-done__detail {
-  margin: 0;
-  color: var(--fg-muted);
-}
-
-.match-review-done__actions {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-sm);
-  margin-top: var(--space-md);
-}
-
 /* ------------------------------------------------------- the lines at the top of Clean */
 
 /* While a match runs, on every tab: what, how far, how long, and Stop. */
@@ -279,7 +179,7 @@
   color: var(--fg-primary);
 }
 
-/* ----------------------------------------------------------- the Review of a run */
+/* ------------------------------------------------------------ a review tab */
 
 .review {
   display: flex;
@@ -312,84 +212,35 @@
   font-weight: 700;
 }
 
+.review__left-out {
+  color: var(--fg-muted);
+}
+
 .review__spacer {
   flex: 1;
 }
 
-.review__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-}
-
-/* A chip is a filter: the one pressed takes the selected look, its colour says which status. */
-.review-chip {
-  min-height: var(--control-height);
-  padding: 0 var(--space-sm);
-  border: var(--control-border-width) solid var(--border-control);
-  border-left-width: calc(4px * var(--scale));
-  background: var(--bg-panel);
-  color: var(--fg-primary);
-  font-family: var(--font-pixel);
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-  cursor: pointer;
-}
-
-.review-chip:hover {
-  background: var(--bg-selected);
-}
-
-.review-chip[aria-pressed="true"] {
-  background: var(--selected-row-background);
+/* The one big green button of a review: what is ticked goes into the files. */
+.review__sync {
+  min-height: calc(var(--control-height) * 1.5);
+  padding-inline: var(--space-lg);
+  border-color: var(--accent-success);
+  background: var(--accent-success);
+  color: var(--fg-on-status);
   font-weight: 700;
 }
 
-.review-chip--to_check {
-  border-left-color: var(--accent-warning);
+.review__sync:disabled {
+  border-color: var(--border-muted);
+  background: var(--bg-panel);
+  color: var(--fg-muted);
 }
 
-.review-chip--not_found,
-.review-chip--search_failed {
-  border-left-color: var(--accent-danger);
-}
-
-.review-chip--matched {
-  border-left-color: var(--accent-success);
-}
-
-.review-chip--done {
-  border-left-color: var(--fg-muted);
-}
-
-/* The same counts as one coloured bar. */
-.review-band {
-  display: flex;
-  flex: none;
-  height: calc(6px * var(--scale));
-  background: var(--bg-app);
-}
-
-.review-band__segment {
-  display: block;
-  height: 100%;
-}
-
-.review-band__segment--to_check {
-  background: var(--accent-warning);
-}
-
-.review-band__segment--not_found,
-.review-band__segment--search_failed {
-  background: var(--accent-danger);
-}
-
-.review-band__segment--matched {
-  background: var(--accent-success);
-}
-
-.review-band__segment--done {
-  background: var(--fg-muted);
+.review__live {
+  min-height: 1lh;
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--control-font-size);
 }
 
 .review__body {
@@ -405,9 +256,17 @@
   overflow: auto;
 }
 
+.review__more {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-sm);
+}
+
+/* Every row is one line of a known height, which is what lets only the rows in view exist. */
 .review-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: var(--control-font-size);
 }
 
@@ -424,6 +283,23 @@
   font-weight: var(--control-font-weight);
 }
 
+.review-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-app);
+}
+
+.review-row {
+  height: calc(42px * var(--scale));
+}
+
+.review-row td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .review-row:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: calc(-1 * var(--focus-ring-width));
@@ -437,28 +313,36 @@
   background: var(--selected-row-background);
 }
 
-/* A decided row recedes, and sits under the ones still to look at. */
-.review-row--done td {
+/* A decision a newer search disagrees with: said in words beside its Check. */
+.review-row__disputed {
+  color: var(--accent-warning);
+  font-size: var(--font-size-xs);
+}
+
+/* An unticked row recedes: it will be left out of the sync. Its match is struck through, not hidden. */
+.review-row--off td {
   color: var(--fg-muted);
 }
 
-.review-row__yours,
-.review-row__theirs {
-  overflow-wrap: anywhere;
+.review-row__theirs--off {
+  text-decoration: line-through;
 }
 
-.review-row__differs--differs {
+.review-col--check {
+  width: calc(36px * var(--scale));
+}
+
+.review-col--status {
+  width: calc(210px * var(--scale));
+}
+
+.review-col--preview {
+  width: calc(44px * var(--scale));
+}
+
+/* The part of a match that differs from your track: a word, never only a colour, in the list's own text. */
+.review-part--differs {
   color: var(--accent-warning);
-}
-
-.review-row__differs--same {
-  color: var(--accent-success);
-}
-
-.review-row__quick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
 }
 
 .review-preview {
@@ -509,15 +393,11 @@
   background: var(--accent-success);
 }
 
-.review-status--done {
-  background: var(--fg-muted);
-}
-
-/* ------------------------------------------------- the panel beside the list */
+/* ------------------------------------------------- the panel beside the table */
 
 .review-panel {
   display: flex;
-  flex: 0 0 min(46%, calc(560px * var(--scale)));
+  flex: 0 0 min(42%, calc(520px * var(--scale)));
   flex-direction: column;
   gap: var(--space-sm);
   min-width: 0;
@@ -567,72 +447,41 @@
   color: var(--fg-muted);
 }
 
-.review-panel__cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-sm);
-}
-
-@container content (max-width: 900px) {
-  .review-panel__cards {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.review-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  min-width: 0;
-  padding: var(--space-sm);
-  border: var(--control-border-width) solid var(--border-muted);
-}
-
-.review-card__eyebrow {
+.review-panel__eyebrow {
   margin: 0;
   color: var(--fg-muted);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
 }
 
-.review-card__body {
+/* Your file: the art, its facts, and a button to hear it. */
+.review-card {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-sm);
+  min-width: 0;
+  padding: var(--space-sm);
+  border: var(--control-border-width) solid var(--border-muted);
 }
 
 .review-card__facts {
   display: flex;
   flex: 1;
   flex-direction: column;
-  align-items: flex-start;
   gap: var(--space-xs);
   min-width: 0;
 }
 
 .review-card__title {
   margin: 0;
-  font-size: var(--font-size-md);
-  overflow-wrap: anywhere;
+  font-weight: 700;
 }
 
-.review-card__line,
-.review-card__state {
+.review-card__line {
   margin: 0;
   color: var(--fg-muted);
   font-size: var(--control-font-size);
   overflow-wrap: anywhere;
-}
-
-.review-card__state {
-  color: var(--fg-primary);
-  font-weight: 700;
-}
-
-.review-card__score {
-  margin: 0;
-  color: var(--accent-success);
-  font-size: var(--control-font-size);
 }
 
 .review-card__score--refused {
@@ -652,41 +501,63 @@
   background: var(--bg-app);
 }
 
-.review-panel__others {
+/* Every candidate: a play button, what it is called, who made it, and Use this. */
+.review-candidates {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: var(--control-border-width) solid var(--border-muted);
+}
+
+.review-candidate {
+  display: flex;
   align-items: center;
-  gap: var(--space-xs) var(--space-sm);
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: var(--control-border-width) solid var(--border-muted);
+  border-left: calc(4px * var(--scale)) solid transparent;
+}
+
+.review-candidate:last-child {
+  border-bottom: 0;
+}
+
+.review-candidate--in-use {
+  border-left-color: var(--accent-success);
+  background: color-mix(in srgb, var(--accent-success) 10%, var(--bg-panel));
+}
+
+.review-candidate__facts {
+  flex: 1;
+  min-width: 0;
+}
+
+.review-candidate__title,
+.review-candidate__line,
+.review-candidate__why {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.review-candidate__line {
+  color: var(--fg-muted);
   font-size: var(--control-font-size);
 }
 
-.review-panel__others-label,
-.review-panel__others-names {
-  color: var(--fg-muted);
+.review-candidate__why {
+  color: var(--accent-danger);
+  font-size: var(--control-font-size);
 }
 
-.review-panel__show {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent-primary);
-  font: inherit;
-  cursor: pointer;
-}
-
-.review-panel__chips {
-  display: flex;
-  flex-basis: 100%;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-}
-
-.review-panel__actions,
-.review-panel__more {
-  display: flex;
-  flex-wrap: wrap;
+.review-candidate__use--in-use {
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
+  color: var(--accent-success);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .review-panel__search {
@@ -699,43 +570,28 @@
   flex: 1;
 }
 
-.review-panel__results {
+.review-panel__actions {
   display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border: var(--control-border-width) solid var(--border-muted);
-}
-
-.review-panel__result {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
-  border-bottom: var(--control-border-width) solid var(--border-muted);
 }
 
-.review-panel__result:last-child {
-  border-bottom: 0;
+.review-panel__more-toggle {
+  margin-inline-start: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-primary);
+  font: inherit;
+  cursor: pointer;
 }
 
-.review-panel__result-title {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.review-panel__result-why {
-  color: var(--accent-danger);
-  font-size: var(--control-font-size);
-}
-
-.review-panel__why {
+.review-panel__more {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
 }
 
 .review-panel__score-table {
@@ -754,75 +610,4 @@
 .review-panel__score-table th {
   color: var(--fg-muted);
   font-weight: 400;
-}
-
-/* ------------------------------------------- a long list: fixed rows, drawn only in view */
-
-/* Every row is one line of a known height, which is what lets only the rows in view exist. */
-.review-row {
-  height: calc(42px * var(--scale));
-}
-
-.review-table {
-  table-layout: fixed;
-}
-
-.review-row td {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.review-col--check {
-  width: calc(36px * var(--scale));
-}
-
-.review-col--status {
-  width: calc(116px * var(--scale));
-}
-
-.review-col--preview {
-  width: calc(44px * var(--scale));
-}
-
-.review-col--differs {
-  width: calc(110px * var(--scale));
-}
-
-.review-col--quick {
-  width: calc(330px * var(--scale));
-}
-
-.review-row__quick {
-  white-space: nowrap;
-}
-
-.review-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--bg-app);
-}
-
-.review__live {
-  min-height: 1lh;
-  margin: 0;
-  color: var(--fg-muted);
-  font-size: var(--control-font-size);
-}
-
-.review__confirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm) var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  border: var(--control-border-width) solid var(--accent-primary);
-  background: var(--bg-panel);
-}
-
-.review__more {
-  display: flex;
-  justify-content: center;
-  padding: var(--space-sm);
 }

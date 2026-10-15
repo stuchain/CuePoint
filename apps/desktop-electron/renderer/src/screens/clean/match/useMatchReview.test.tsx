@@ -1,4 +1,4 @@
-/** The review list's data: paged, filtered by the engine, patched in place, never overtaken. */
+/** The review table's data: paged, patched in place, never overtaken. */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 
@@ -30,18 +30,6 @@ describe("useMatchReview", () => {
     const list = renderHook(() => useMatchReview({ playlistId: 7 }));
     await waitFor(() => expect(list.result.current.review).not.toBeNull());
     expect(read).toHaveBeenLastCalledWith({ playlistId: 7, limit: REVIEW_PAGE });
-  });
-
-  it("asks the engine for the filter, keeping the list in view until it answers", async () => {
-    const { result, rerender } = renderHook(({ filter }) => useMatchReview({ jobId: "r1" }, 0, filter), {
-      initialProps: { filter: "all" as "all" | "not_found" },
-    });
-    await waitFor(() => expect(result.current.review).not.toBeNull());
-    rerender({ filter: "not_found" });
-    expect(result.current.review).not.toBeNull();
-    await waitFor(() =>
-      expect(read).toHaveBeenLastCalledWith({ jobId: "r1", filter: "not_found", limit: REVIEW_PAGE }),
-    );
   });
 
   it("reads nothing without a source", () => {
@@ -85,15 +73,15 @@ describe("useMatchReview", () => {
   it("reads on when the run holds more than a page, without repeating a track", async () => {
     read.mockImplementation(async (params?: { after?: string }) =>
       params?.after
-        ? review("r1", { matching: 3, tracks: [reviewTrack(2, "matched"), reviewTrack(3, "matched")] })
-        : review("r1", { matching: 3 }),
+        ? review("r1", { total: 3, tracks: [reviewTrack(2, "matched"), reviewTrack(3, "matched")] })
+        : review("r1", { total: 3 }),
     );
     const { result } = renderHook(() => useMatchReview({ jobId: "r1" }));
     await waitFor(() => expect(result.current.hasMore).toBe(true));
     act(() => result.current.loadMore());
     await waitFor(() => expect(result.current.review?.tracks.map((row) => row.track_id)).toEqual([1, 2, 3]));
     // Read on from the last row's own cursor, not from a count of rows.
-    expect(read).toHaveBeenLastCalledWith({ jobId: "r1", after: "0:2", limit: REVIEW_PAGE });
+    expect(read).toHaveBeenLastCalledWith({ jobId: "r1", after: "2:2", limit: REVIEW_PAGE });
     expect(result.current.hasMore).toBe(false);
   });
 
@@ -103,7 +91,7 @@ describe("useMatchReview", () => {
     read.mockImplementation(async (params?: { after?: string; limit?: number }) => {
       const past = params?.after ? Number(params.after.split(":")[1]) : 0;
       const tracks = all.filter((row) => row.track_id > past).slice(0, params?.limit === 2 ? 2 : (params?.limit ?? 99));
-      return review("r1", { matching: 3, tracks: params?.after ? tracks : all.slice(0, 2) });
+      return review("r1", { total: 3, tracks: params?.after ? tracks : all.slice(0, 2) });
     });
     const { result, rerender } = renderHook(({ version }) => useMatchReview({ jobId: "r1" }, version), {
       initialProps: { version: 0 },
@@ -117,17 +105,23 @@ describe("useMatchReview", () => {
     expect(result.current.review?.tracks.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("patches a decision in place: the row and the counts move, with no second read", async () => {
+  it("patches a tick in place: the row and the tick count move, with no second read", async () => {
     const { result } = renderHook(() => useMatchReview({ jobId: "r1" }));
     await waitFor(() => expect(result.current.review).not.toBeNull());
-    act(() =>
-      result.current.patchTrack(1, { status: "done", decision: "rejected", undo_batch: null, disputed: false }),
-    );
-    const { counts, tracks, rejected } = result.current.review!;
-    expect(counts).toMatchObject({ to_check: 0, matched: 1, done: 1 });
-    expect(rejected).toBe(1);
-    expect(tracks[0]).toMatchObject({ track_id: 1, status: "done", decision: "rejected" });
+    expect(result.current.review!.ticked).toBe(2);
+    act(() => result.current.patchTrack(1, { ticked: false }));
+    const { tracks, ticked } = result.current.review!;
+    expect(ticked).toBe(1);
+    expect(tracks[0]).toMatchObject({ track_id: 1, ticked: false });
+    expect(tracks.map((row) => row.track_id)).toEqual([1, 2]);
     expect(read).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves the counts when a patch changes a row's status", async () => {
+    const { result } = renderHook(() => useMatchReview({ jobId: "r1" }));
+    await waitFor(() => expect(result.current.review).not.toBeNull());
+    act(() => result.current.patchTrack(1, { status: "matched" }));
+    expect(result.current.review!.counts).toMatchObject({ to_check: 0, matched: 2 });
   });
 
   it("says why when the read fails, and when the build has no route", async () => {

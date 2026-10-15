@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { filterShortcuts, KEYBOARD_SHORTCUTS } from "./keyboardShortcuts";
 import { MATCH_KEYS } from "../screens/clean/match/matchKeyboard";
-import reviewPanelSource from "../screens/clean/match/ReviewPanel.tsx?raw";
+import reviewTabSource from "../screens/clean/match/ReviewTab.tsx?raw";
 import matchKeyboardSource from "../screens/clean/match/matchKeyboard.ts?raw";
 import appSource from "../App.tsx?raw";
 import modalSource from "../components/Modal.tsx?raw";
@@ -65,14 +65,20 @@ describe("the Library's shortcuts (LIBUI-10)", () => {
 describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
   const clean = KEYBOARD_SHORTCUTS.filter((row) => row.context === "Clean");
 
-  it("documents every key the review panel binds, as it names them", () => {
+  it("documents every key the review binds, as it names them", () => {
     const keys = Object.values(MATCH_KEYS);
 
-    // Each command's key appears in the dialog: arrows as a pair, letters alone.
+    // Each command's key appears in the dialog: the arrows as a pair.
     for (const key of keys) {
       expect(clean.some((row) => row.shortcut.split(" / ").includes(key)), key).toBe(true);
     }
-    expect(clean).toHaveLength(8);
+    expect(clean).toHaveLength(2);
+  });
+
+  it("lists no decision key: a tick is the decision", () => {
+    expect(clean.map((row) => row.shortcut)).not.toContain("Enter");
+    expect(clean.map((row) => row.shortcut)).not.toContain("N");
+    expect(clean.map((row) => row.shortcut)).not.toContain("S");
   });
 
   it("binds no modified key, so none can collide with a shell shortcut", () => {
@@ -88,13 +94,10 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
   });
 
   it("answers each key in the code that binds it", () => {
-    for (const letter of ["n", "s", "b", "y"]) {
-      expect(matchKeyboardSource, letter).toMatch(new RegExp(`case "${letter}"`));
-    }
     expect(matchKeyboardSource).toMatch(/"Escape"/);
-    expect(matchKeyboardSource).toMatch(/"Enter"/);
-    expect(matchKeyboardSource).toMatch(/case "ArrowLeft"/);
-    expect(reviewPanelSource).toMatch(/matchCommand\(event\)/);
+    expect(matchKeyboardSource).toMatch(/case "ArrowUp"/);
+    expect(matchKeyboardSource).toMatch(/case "ArrowDown"/);
+    expect(reviewTabSource).toMatch(/matchCommand\(event\)/);
   });
 });
 

@@ -1,19 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { MatchCandidate, TrackMatchState } from "../../api/cuepointBridge.types";
+import type { MatchCandidate } from "../../api/cuepointBridge.types";
 import {
   APPLY_FIELDS,
-  CANDIDATE_LIMIT,
-  SCORE_OPEN_STORAGE_KEY,
   SCORE_ROWS,
   applyValue,
   cellText,
-  defaultChoice,
-  loadScoreOpen,
-  saveScoreOpen,
   scoreLine,
-  stepChoice,
-  visibleCandidates,
 } from "./comparison";
 
 function candidate(id: number, overrides: Partial<MatchCandidate> = {}): MatchCandidate {
@@ -54,66 +47,6 @@ function candidate(id: number, overrides: Partial<MatchCandidate> = {}): MatchCa
     ...overrides,
   };
 }
-
-function state(overrides: Partial<TrackMatchState> = {}): TrackMatchState {
-  return {
-    track_id: 1,
-    state: "needs_review",
-    decided_by: null,
-    attempt_id: 1,
-    candidate_id: null,
-    newer_attempt_id: null,
-    disputed: false,
-    decided_at: null,
-    ...overrides,
-  };
-}
-
-describe("which candidate a reviewer starts on", () => {
-  const list = [candidate(1), candidate(2, { is_winner: true }), candidate(3)];
-
-  it("is the one the state points at", () => {
-    expect(defaultChoice(state({ candidate_id: 3 }), list)).toBe(3);
-  });
-
-  it("is the matcher's pick when the state points at none of these", () => {
-    expect(defaultChoice(state({ candidate_id: 99 }), list)).toBe(2);
-  });
-
-  it("is the first when nothing won", () => {
-    expect(defaultChoice(null, [candidate(1), candidate(2)])).toBe(1);
-  });
-
-  it("is nothing without candidates", () => {
-    expect(defaultChoice(state(), [])).toBeNull();
-  });
-});
-
-describe("the candidates drawn", () => {
-  const many = Array.from({ length: CANDIDATE_LIMIT + 3 }, (_, i) => candidate(i + 1));
-
-  it("are the first few by rank", () => {
-    const shown = visibleCandidates([...many].reverse(), false, null);
-    expect(shown.map((c) => c.id)).toEqual([1, 2, 3, 4, 5]);
-  });
-
-  it("keep the chosen one wherever it ranks", () => {
-    expect(visibleCandidates(many, false, 8).map((c) => c.id)).toEqual([1, 2, 3, 4, 5, 8]);
-  });
-
-  it("are all of them when asked", () => {
-    expect(visibleCandidates(many, true, null)).toHaveLength(many.length);
-  });
-
-  it("move left and right and stop at the ends", () => {
-    const shown = many.slice(0, 3);
-    expect(stepChoice(shown, 1, 1)).toBe(2);
-    expect(stepChoice(shown, 3, 1)).toBe(3);
-    expect(stepChoice(shown, 1, -1)).toBe(1);
-    expect(stepChoice(shown, 42, 1)).toBe(1);
-    expect(stepChoice([], 1, 1)).toBeNull();
-  });
-});
 
 describe("the scoring rows", () => {
   it("show how the matcher scored, and why it refused", () => {
@@ -182,29 +115,5 @@ describe("the scoring rows folded under Why this score?", () => {
       "Guards",
       "Found by",
     ]);
-  });
-
-  it("start folded", () => {
-    expect(loadScoreOpen()).toBe(false);
-  });
-
-  it("are remembered open and closed in one key", () => {
-    saveScoreOpen(true);
-    expect(localStorage.getItem(SCORE_OPEN_STORAGE_KEY)).toBe("open");
-    expect(loadScoreOpen()).toBe(true);
-    saveScoreOpen(false);
-    expect(localStorage.getItem(SCORE_OPEN_STORAGE_KEY)).toBe("closed");
-    expect(loadScoreOpen()).toBe(false);
-  });
-
-  it("work when storage cannot be used", () => {
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
-      throw new Error("denied");
-    });
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("denied");
-    });
-    expect(loadScoreOpen()).toBe(false);
-    expect(() => saveScoreOpen(true)).not.toThrow();
   });
 });

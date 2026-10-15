@@ -45,7 +45,7 @@ import time
 import uuid
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from cuepoint.compat.gui_types import ProgressInfo
 from cuepoint.engine.artwork_jobs import JOB_TYPE_ARTWORK_SCAN
@@ -235,8 +235,14 @@ def preview_or_start(
     options: TagWriteOptions,
     *,
     previews: Optional[TagWritePreviewStore] = None,
+    overlay_for: Optional[
+        Callable[[Sequence[int]], Mapping[int, Mapping[str, Any]]]
+    ] = None,
 ) -> Tuple[Optional[TagWritePreview], Optional[Job]]:
     """Preview a write inline, or start a job for it, and say which happened.
+
+    ``overlay_for`` names the tracks' match values to lay over what they show,
+    in memory (a Sync preview), once the selection is resolved.
 
     Returns exactly one of the two: a preview already kept, or the job computing
     one, whose result carries its ``preview_id``.
@@ -251,9 +257,16 @@ def preview_or_start(
     track_ids: List[int] = service.resolve(selection)
     if len(track_ids) <= BATCH_JOB_THRESHOLD:
         refuse_if_busy(store)
-        preview = service.preview(track_ids, options, preview_id=str(uuid.uuid4()))
+        preview = service.preview(
+            track_ids,
+            options,
+            preview_id=str(uuid.uuid4()),
+            overlay=None if overlay_for is None else overlay_for(track_ids),
+        )
         return kept.put(preview), None
-    return None, start_tag_preview_job(store, track_ids, options, previews=kept)
+    return None, start_tag_preview_job(
+        store, track_ids, options, previews=kept, overlay_for=overlay_for
+    )
 
 
 def start_tag_preview_job(
@@ -262,6 +275,9 @@ def start_tag_preview_job(
     options: TagWriteOptions,
     *,
     previews: Optional[TagWritePreviewStore] = None,
+    overlay_for: Optional[
+        Callable[[Sequence[int]], Mapping[int, Mapping[str, Any]]]
+    ] = None,
 ) -> Job:
     """Start a preview over tracks already resolved.
 
@@ -272,7 +288,7 @@ def start_tag_preview_job(
     wanted = list(track_ids)
 
     def runner(job: Job) -> None:
-        run_tag_preview_job(job, store, wanted, options, kept)
+        run_tag_preview_job(job, store, wanted, options, kept, overlay_for)
 
     return store.create_job(
         job_type=JOB_TYPE_TAG_WRITE_PREVIEW,
@@ -288,6 +304,9 @@ def run_tag_preview_job(
     track_ids: Sequence[int],
     options: TagWriteOptions,
     previews: TagWritePreviewStore,
+    overlay_for: Optional[
+        Callable[[Sequence[int]], Mapping[int, Mapping[str, Any]]]
+    ] = None,
 ) -> None:
     """Compute a preview under ``job``, keep it under the job's id, and answer it."""
 
@@ -300,6 +319,7 @@ def run_tag_preview_job(
             preview_id=job.id,
             on_progress=on_progress,
             should_cancel=should_cancel,
+            overlay=None if overlay_for is None else overlay_for(track_ids),
         )
         if not preview.cancelled:
             previews.put(preview)
@@ -426,20 +446,25 @@ def start_tag_restore_job(
 def run_tag_restore_job(
     job: Job, store: JobStore, job_id: Optional[str], track_id: Optional[int]
 ) -> None:
-    """Restore under ``job``."""
-    _run(
-        job,
-        store,
-        RESTORE_MESSAGE,
-        lambda on_progress, should_cancel: _tag_write_service().restore(
+    """Restore under ``job``; a Sync's own values and decisions go back with its files."""
+
+    def work(
+        on_progress: Callable[[int, int], None], should_cancel: Callable[[], bool]
+    ) -> Any:
+        result = _tag_write_service().restore(
             job.id,
             job_id=job_id,
             track_id=track_id,
             on_progress=on_progress,
             should_cancel=should_cancel,
-        ),
-        "TAG_RESTORE_FAILED",
-    )
+        )
+        if result.cancelled:
+            return result
+        from cuepoint.engine.match_sync import revert_synced_values
+
+        return _Restored(result, revert_synced_values(job_id))
+
+    _run(job, store, RESTORE_MESSAGE, work, "TAG_RESTORE_FAILED")
 
 
 def offer_interrupted_tag_jobs() -> int:
@@ -481,6 +506,21 @@ def offer_interrupted_tag_jobs() -> int:
         )
         offered += 1
     return offered
+
+
+class _Restored:
+    """A restore's result with how many of a Sync's recorded values went back too."""
+
+    def __init__(self, result: Any, values_reverted: int) -> None:
+        self._result = result
+        self.cancelled = bool(result.cancelled)
+        self._values_reverted = values_reverted
+
+    def summary_line(self) -> str:
+        return str(self._result.summary_line())
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {**self._result.to_dict(), "values_reverted": self._values_reverted}
 
 
 def _run(

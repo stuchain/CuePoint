@@ -25,7 +25,6 @@ from cuepoint.services.database_service import DatabaseService
 from cuepoint.services.migration_runner import MigrationRunner
 from tests.unit.key_support import accept_with_key
 from tests.unit.persistence.match_status_support import (
-    add_playlist,
     add_track,
     write_row,
 )
@@ -224,59 +223,13 @@ class TestEachRule:
 
 
 @pytest.mark.unit
-class TestCounts:
-    def test_tracks_and_fields(self, db, repo, meta):
-        a = add_track(db, "/m/a.mp3", genre="House")
-        b = add_track(db, "/m/b.mp3")
-        add_track(db, "/m/c.mp3")
-        meta.set_override(a, "genre", "Techno")
-        meta.set_override(a, "bpm", 130.0)
-        meta.set_override(b, "bpm", 128.0)
-
-        counts = repo.unsaved(None)
-
-        assert counts.tracks == 2
-        assert counts.fields == {"key": 0, "genre": 1, "label": 0, "year": 0, "bpm": 2}
-
-    def test_nothing_unsaved_is_zero_everywhere(self, db, repo):
-        add_track(db)
-        counts = repo.unsaved(None)
-        assert (counts.tracks, sum(counts.fields.values())) == (0, 0)
-
-    def test_a_playlist_counts_only_its_own_tracks(self, db, repo, meta):
-        a = add_track(db, "/m/a.mp3")
-        b = add_track(db, "/m/b.mp3")
-        meta.set_override(a, "genre", "Techno")
-        meta.set_override(b, "bpm", 128.0)
-        mine = add_playlist(db, "Mine", [a])
-
-        counts = repo.unsaved(mine)
-
-        assert counts.tracks == 1
-        assert counts.fields["genre"] == 1 and counts.fields["bpm"] == 0
-
-    def test_a_track_twice_in_a_playlist_counts_once(self, db, repo, meta):
-        a = add_track(db)
-        meta.set_override(a, "genre", "Techno")
-        playlist = add_playlist(db, "Twice", [a, a])
-        assert repo.unsaved(playlist).tracks == 1
-
-    def test_only_playlists_exist_as_playlists(self, db, repo):
-        folder = add_playlist(db, "F", kind="folder")
-        playlist = add_playlist(db, "P", parent=folder)
-        assert repo.playlist_exists(playlist)
-        assert not repo.playlist_exists(folder)
-        assert not repo.playlist_exists(999)
-
-
-@pytest.mark.unit
 class TestFilterField:
     def test_the_field_is_a_boolean_in_files_and_facetable(self):
         spec = field_spec("unsaved_values")
         assert (spec.type, spec.group, spec.facetable) == ("bool", "Files", True)
         assert spec.label == "New values not in the files yet"
 
-    def test_the_rule_finds_the_tracks_the_repository_counts(self, db, repo, meta):
+    def test_the_rule_finds_the_tracks_with_a_new_value(self, db, repo, meta):
         a = add_track(db, "/m/a.mp3", genre="House")
         b = add_track(db, "/m/b.mp3", genre="House")
         c = add_track(db, "/m/c.wav")
@@ -292,7 +245,7 @@ class TestFilterField:
             sql, params = build_count(query)
             return int(db.connect().execute(sql, params).fetchone()[0])
 
-        assert count(True) == repo.unsaved(None).tracks == 1
+        assert count(True) == 1
         assert count(False) == 2
 
     def test_it_composes_with_another_field(self, db, meta):
