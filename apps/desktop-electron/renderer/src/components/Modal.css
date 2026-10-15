@@ -77,3 +77,9 @@
   padding: var(--space-md) var(--space-lg);
   border-top: var(--divider);
 }
+
+/* The extra action (Reset columns, Skip) is on the far left; the auto margin is the space
+   before Cancel and the main button. */
+.cp-modal__footer > .cp-modal__extra {
+  margin-right: auto;
+}

@@ -47,7 +47,7 @@ export function ColumnPicker<Row>({
       onClose={onClose}
       title="Columns"
       primaryAction={{ label: "Done", onClick: onClose }}
-      secondaryAction={{ label: "Reset columns", onClick: onReset }}
+      extraAction={{ label: "Reset columns", onClick: onReset }}
     >
       <ul className="cp-column-picker" role="list">
         {layout.map((entry) => {

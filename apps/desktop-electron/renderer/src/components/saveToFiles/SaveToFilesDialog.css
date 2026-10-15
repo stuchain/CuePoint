@@ -157,7 +157,7 @@
   bottom: calc(-1 * var(--space-lg));
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: stretch;
   margin: 0 calc(-1 * var(--space-lg)) calc(-1 * var(--space-lg));
   padding: var(--space-md) var(--space-lg);
   border-top: var(--divider);
@@ -169,6 +169,11 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-sm);
+}
+
+/* The extra action ("See every change") is on the far left; the space is before Cancel. */
+.save-dialog__buttons > .save-dialog__extra {
+  margin-right: auto;
 }
 
 .save-dialog__reason {

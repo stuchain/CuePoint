@@ -77,7 +77,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
       title="Activity"
       onClose={onClose}
       size="wide"
-      secondaryAction={{ label: "Refresh", onClick: () => load() }}
+      extraAction={{ label: "Refresh", onClick: () => load() }}
     >
       <div className="cp-activity">
         {status === "loading" && <p className="cp-activity__note">Loading activity…</p>}

@@ -548,7 +548,7 @@ export function SaveToFilesDialog({
             ) : (
               <>
                 {phase === "ready" && !list && (
-                  <Button variant="secondary" data-role="see-changes" onClick={() => setView("changes")}>
+                  <Button variant="secondary" className="save-dialog__extra" data-role="see-changes" onClick={() => setView("changes")}>
                     {variant === "sync" ? "See every change" : "See changes"}
                   </Button>
                 )}

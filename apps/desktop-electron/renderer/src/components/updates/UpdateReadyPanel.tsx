@@ -61,7 +61,7 @@ export function UpdateReadyPanel({ open, state, onClose, flow }: UpdateReadyPane
         title={title}
         onClose={flow.cancel}
         secondaryAction={{ label: "Cancel", onClick: flow.cancel }}
-        backAction={flow.unknown ? undefined : { label: "Restart now", onClick: flow.restartNow }}
+        extraAction={flow.unknown ? undefined : { label: "Restart now", onClick: flow.restartNow }}
         primaryAction={
           flow.unknown
             ? { label: "Restart now", onClick: flow.restartNow }

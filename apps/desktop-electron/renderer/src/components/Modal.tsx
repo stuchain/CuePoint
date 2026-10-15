@@ -23,6 +23,11 @@ interface ModalProps {
   };
   secondaryAction?: { label: string; onClick: () => void };
   /**
+   * An extra action that is neither the decision nor its cancel (Reset columns, Skip, Refresh):
+   * on the far left of the footer, a space, then Cancel, then the main button on the far right.
+   */
+  extraAction?: { label: string; onClick: () => void };
+  /**
    * A step back in a multi-screen dialog (the first-run guide), in the footer between
    * the secondary and the primary action, so the buttons keep their places. Disabled
    * rather than absent on the first screen, for the same reason.
@@ -63,6 +68,7 @@ export function Modal({
   onClose,
   primaryAction,
   secondaryAction,
+  extraAction,
   backAction,
   size = "default",
   closeOnBackdrop = true,
@@ -170,8 +176,13 @@ export function Modal({
             {reason}
           </p>
         )}
-        {(primaryAction || secondaryAction || backAction) && (
+        {(primaryAction || secondaryAction || extraAction || backAction) && (
           <footer className="cp-modal__footer">
+            {extraAction && (
+              <Button variant="secondary" className="cp-modal__extra" onClick={extraAction.onClick}>
+                {extraAction.label}
+              </Button>
+            )}
             {secondaryAction && (
               <Button variant="secondary" onClick={secondaryAction.onClick}>
                 {secondaryAction.label}

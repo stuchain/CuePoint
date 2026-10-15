@@ -711,6 +711,14 @@ describe("the Sync window (a playlist's ticked tracks)", () => {
     sync();
     await syncReady();
     expect(screen.getByRole("button", { name: "See every change" })).toBeInTheDocument();
+    // See every change on the far left, then Cancel, then the main button on the far right.
+    const buttons = screen.getByRole("dialog").querySelector(".save-dialog__buttons")!;
+    expect([...buttons.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
+      "See every change",
+      "Cancel",
+      "Sync 22 tracks",
+    ]);
+    expect(screen.getByRole("button", { name: "See every change" })).toHaveClass("save-dialog__extra");
     await userEvent.click(screen.getByRole("checkbox", { name: "Key" }));
     await syncReady();
     await userEvent.click(screen.getByRole("button", { name: "Sync 22 tracks" }));

@@ -178,6 +178,27 @@ describe("the footer", () => {
   });
 });
 
+describe("the footer's extra action", () => {
+  it("is first (far left), then Cancel, then the main button", () => {
+    open({
+      primaryAction: { label: "Sync", onClick: () => {} },
+      secondaryAction: { label: "Cancel", onClick: () => {} },
+      extraAction: { label: "See every change", onClick: () => {} },
+    });
+    const footer = screen.getByRole("dialog").querySelector(".cp-modal__footer")!;
+    expect([...footer.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
+      "See every change",
+      "Cancel",
+      "Sync",
+    ]);
+    expect(screen.getByRole("button", { name: "See every change" })).toHaveClass("cp-modal__extra");
+  });
+
+  it("is pushed to the left edge by an auto margin", () => {
+    expect(css).toMatch(/\.cp-modal__footer > \.cp-modal__extra \{[^}]*margin-right:\s*auto;/);
+  });
+});
+
 describe("the title", () => {
   it("names each dialog by its own title when two are on the page at once", () => {
     // One dialog playing its exit while the next opens (PAGES-12) puts two on the page. A

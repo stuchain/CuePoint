@@ -119,7 +119,7 @@ export function OnboardingDialog({
         label: isLast ? "Done" : "Next",
         onClick: () => (isLast ? finish() : setStep((s) => s + 1)),
       }}
-      secondaryAction={isLast ? undefined : { label: "Skip", onClick: finish }}
+      extraAction={isLast ? undefined : { label: "Skip", onClick: finish }}
       backAction={{ label: "Back", onClick: () => setStep((s) => s - 1), disabled: step === 0 }}
     >
       <div className="onboarding-dialog">
