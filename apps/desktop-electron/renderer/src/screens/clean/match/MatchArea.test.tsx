@@ -106,6 +106,11 @@ function tabNames() {
 }
 
 describe("the sub-tabs", () => {
+  it("are the small sub-tab row, not the page's big tab strip", () => {
+    renderArea();
+    expect(screen.getByRole("tablist")).toHaveClass("cp-tabs--sub");
+  });
+
   it("are Playlists and Past searches, opening on Playlists", async () => {
     renderArea();
     expect(tabNames()).toEqual(["Playlists", "Past searches"]);

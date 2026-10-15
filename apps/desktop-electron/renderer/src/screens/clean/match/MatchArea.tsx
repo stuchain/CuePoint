@@ -199,7 +199,7 @@ export function MatchArea({
 
   return (
     <div className="match-area">
-      <Tabs tabs={tabs} activeId={active} onChange={chooseTab} />
+      <Tabs tabs={tabs} activeId={active} onChange={chooseTab} variant="sub" />
 
       <div className="match-area__body">
         {active === "playlists" && (

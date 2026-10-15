@@ -15,6 +15,13 @@
   min-height: 0;
 }
 
+/* The second row of tabs (Playlists, Reviews, Past searches) is the small sub-tab look Track
+   details and Keys use; the first row (Match, Missing files, Duplicates) stays the big strip. */
+.match-area > .cp-tabs--sub {
+  flex: none;
+  margin: var(--space-xs) 0;
+}
+
 /* The hidden helper text is absolutely placed: its box must be this pane's, or a
    scrolled-out line lengthens the whole window (the pane clips only what it contains). */
 .match-area__body {
