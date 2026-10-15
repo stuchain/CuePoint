@@ -29,6 +29,7 @@ import {
   useRememberDestination,
 } from "./components/shell";
 import { useEngineOffline } from "./api/engineOnline";
+import { findOwningDestination } from "./components/shell/navRegistry";
 import { WheelPopoverHost } from "./components/wheel";
 import { PlayerSlot } from "./components/player/PlayerSlot";
 import { useRestorePlayerAudio } from "./components/player/playerAudioState";
@@ -124,9 +125,11 @@ function AppShell() {
   const [bannerPulse, setBannerPulse] = useState(0);
   const offline = useEngineOffline();
 
+  // The window title names the page, like "Library — CuePoint" (Area 51).
   useEffect(() => {
-    document.title = "CuePoint";
-  }, []);
+    const page = findOwningDestination(location.pathname);
+    document.title = page ? `${page.label} — CuePoint` : "CuePoint";
+  }, [location.pathname]);
 
   useEffect(() => {
     sendExitClearing();

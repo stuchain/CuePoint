@@ -171,6 +171,29 @@ export function totalWidth(widths: number[]): number {
   return widths.reduce((sum, width) => sum + width, 0);
 }
 
+/** Room, in unscaled pixels, the other columns must keep beside the pinned ones. */
+export const STICKY_ROOM_PX = 120;
+
+/**
+ * Whether the pinned columns may stay pinned: only while they leave room beside them in the
+ * viewport. A pane narrower than its pinned columns plus a little room would otherwise
+ * show nothing but them, every other column out of reach. `viewport` of 0 (not measured)
+ * keeps them pinned.
+ */
+export function stickyFits<Row>(
+  columns: readonly TrackColumnDef<Row>[],
+  widths: number[],
+  viewport: number,
+  scale: number,
+): boolean {
+  if (viewport <= 0) return true;
+  let pinned = 0;
+  for (let i = 0; i < columns.length; i += 1) {
+    if (columns[i]?.sticky) pinned += widths[i] ?? 0;
+  }
+  return pinned + STICKY_ROOM_PX * scale <= viewport;
+}
+
 /**
  * How far from the left edge a sticky column sits: the width of the sticky
  * columns before it, and nothing else. A non-sticky column between two sticky

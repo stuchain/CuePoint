@@ -140,6 +140,15 @@ describe("App shell", () => {
     expect(container.querySelector(".app-shell__inspector .cp-inspector")).toBe(before);
   });
 
+  it("names the page in the window title (Area 51)", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(navLink("Settings"));
+    await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED);
+
+    expect(document.title).toBe("Settings — CuePoint");
+  });
+
   it("mounts the player boundary without giving it any content (DEC-025)", () => {
     // The region exists so Phase 5 fills it by editing PlayerRegion alone, and
     // is empty so it occupies no space until then.

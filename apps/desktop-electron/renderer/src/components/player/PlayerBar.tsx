@@ -217,9 +217,12 @@ export function PlayerBar({
   // The facts line is artist · label · key · BPM · year, skipping what is missing. The artist
   // is a button when the track is in the Library; the key is the clickable chip that opens the
   // Camelot wheel (BAR-5); the rest is text.
-  const factParts: ReactNode[] = [];
+  // The artist and label can be long and shrink to an ellipsis; the key chip, BPM and year keep
+  // their room, so the chip (the player's only way to the wheel) is always visible.
+  const leadParts: ReactNode[] = [];
+  const tailParts: ReactNode[] = [];
   if (artistText !== "") {
-    factParts.push(
+    leadParts.push(
       onOpenArtist && openableTrack !== null ? (
         <Hint inline text={`Show ${artistText} in Discover`}>
           <button type="button" className="cp-player-bar__link" onClick={() => onOpenArtist(artistText)}>
@@ -231,10 +234,10 @@ export function PlayerBar({
       ),
     );
   }
-  if (facts.label !== "") factParts.push(facts.label);
-  if (keyText !== null) factParts.push(<WheelButton source="player" keyName={keyText} />);
-  if (facts.bpm !== "") factParts.push(facts.bpm);
-  if (facts.year !== "") factParts.push(facts.year);
+  if (facts.label !== "") leadParts.push(facts.label);
+  if (keyText !== null) tailParts.push(<WheelButton source="player" keyName={keyText} />);
+  if (facts.bpm !== "") tailParts.push(facts.bpm);
+  if (facts.year !== "") tailParts.push(facts.year);
 
   // The waveform's reason (WAVE-06) is the slider's Hint, on hover and on
   // keyboard focus: the slider is the one focusable piece.
@@ -302,11 +305,21 @@ export function PlayerBar({
           </span>
         )}
         <span className="cp-player-bar__meta">
-          {factParts.map((part, index) => (
-            <Fragment key={index}>
-              {index > 0 ? " · " : null}
+          {leadParts.length > 0 && (
+            <span className="cp-player-bar__meta-lead">
+              {leadParts.map((part, index) => (
+                <Fragment key={index}>
+                  {index > 0 ? " · " : null}
+                  {part}
+                </Fragment>
+              ))}
+            </span>
+          )}
+          {tailParts.map((part, index) => (
+            <span key={index} className="cp-player-bar__meta-fixed">
+              {index > 0 || leadParts.length > 0 ? " · " : null}
               {part}
-            </Fragment>
+            </span>
           ))}
         </span>
       </div>

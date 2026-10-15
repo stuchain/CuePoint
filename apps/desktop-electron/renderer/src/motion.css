@@ -336,7 +336,7 @@
 
 /* A refused time, and a refused chapter length or tempo, shake. */
 :root[data-motion-feedback] .prepare-header__refusal,
-:root[data-motion-feedback] .prepare-dialog__problem {
+:root[data-motion-feedback] .cp-notice--field-error {
   animation: cp-shake var(--motion-slow) steps(1, end);
 }
 

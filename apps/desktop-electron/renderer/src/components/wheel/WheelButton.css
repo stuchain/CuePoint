@@ -17,3 +17,17 @@
 .key-chip--button[aria-expanded="true"] {
   background: color-mix(in srgb, var(--key) 32%, transparent);
 }
+
+/* The chip is small; the click area round it reaches 24px (as tall as a Settings row). */
+.key-chip--button {
+  position: relative;
+}
+
+.key-chip--button::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: max(100%, calc(24px * var(--scale)));
+  transform: translateY(-50%);
+}

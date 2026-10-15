@@ -653,7 +653,7 @@ perKind(
 perKind(
   "feedback",
   "a refused chapter length shakes",
-  () => ({ ui: <p className="prepare-dialog__problem">Too long</p>, target: first(".prepare-dialog__problem") }),
+  () => ({ ui: <p className="cp-notice--field-error">Too long</p>, target: first(".cp-notice--field-error") }),
   (m) => expect(m.animation).toMatch(/cp-shake/),
 );
 
@@ -1084,7 +1084,7 @@ describe("feedback: the same refusal coming back shakes again", () => {
       <SetNotesDialog set={set} error="Too long" errorKey={key} onSave={() => {}} onClose={() => {}} />
     );
     const { rerender } = mount(dialog(1));
-    const first = document.querySelector(".prepare-dialog__problem");
+    const first = document.querySelector(".cp-notice--field-error");
     expect(first).not.toBeNull();
     const wrap = (ui: ReactElement) => (
       <MemoryRouter>
@@ -1098,8 +1098,8 @@ describe("feedback: the same refusal coming back shakes again", () => {
       </MemoryRouter>
     );
     rerender(wrap(dialog(1)));
-    expect(document.querySelector(".prepare-dialog__problem")).toBe(first);
+    expect(document.querySelector(".cp-notice--field-error")).toBe(first);
     rerender(wrap(dialog(2)));
-    expect(document.querySelector(".prepare-dialog__problem")).not.toBe(first);
+    expect(document.querySelector(".cp-notice--field-error")).not.toBe(first);
   });
 });

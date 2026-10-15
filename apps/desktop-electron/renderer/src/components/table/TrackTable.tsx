@@ -43,6 +43,7 @@ import {
   orderedWidths,
   useRowHeight,
   resolveWidths,
+  stickyFits,
   stickyLeft,
   totalWidth,
   widthAfterDrag,
@@ -423,6 +424,20 @@ export function TrackTable<Row>({
   const template = useMemo(() => gridTemplate(ordered), [ordered]);
   const minWidth = useMemo(() => totalWidth(ordered), [ordered]);
 
+  // The scroll area's width, so pinned columns can let go when they would leave no room.
+  const [viewportWidth, setViewportWidth] = useState(0);
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return undefined;
+    const measure = () => setViewportWidth(element.clientWidth);
+    measure();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const pinned = stickyFits(columns, ordered, viewportWidth, scale);
+
   const rowHeight = useRowHeight();
 
   const virtualizer = useVirtualizer({
@@ -783,8 +798,8 @@ export function TrackTable<Row>({
             return (
               <div
                 key={column.id}
-                className={`track-table__header-cell-wrap${column.sticky ? " track-table__header-cell-wrap--sticky" : ""}${dragging === column.id ? " track-table__header-cell-wrap--dragging" : ""}`}
-                style={column.sticky ? { left: stickyLeft(columns, ordered, index) } : undefined}
+                className={`track-table__header-cell-wrap${column.sticky && pinned ? " track-table__header-cell-wrap--sticky" : ""}${dragging === column.id ? " track-table__header-cell-wrap--dragging" : ""}`}
+                style={column.sticky && pinned ? { left: stickyLeft(columns, ordered, index) } : undefined}
                 role="columnheader"
                 aria-sort={ariaSort(active, sort?.direction ?? "asc")}
                 data-column={column.id}
@@ -961,9 +976,9 @@ export function TrackTable<Row>({
                   {columns.map((column, index) => (
                     <div
                       key={column.id}
-                      className={`track-table__cell${column.sticky ? " track-table__cell--sticky" : ""}${column.align === "right" ? " track-table__cell--right" : ""}`}
+                      className={`track-table__cell${column.sticky && pinned ? " track-table__cell--sticky" : ""}${column.align === "right" ? " track-table__cell--right" : ""}`}
                       style={{
-                        ...(column.sticky ? { left: stickyLeft(columns, ordered, index) } : null),
+                        ...(column.sticky && pinned ? { left: stickyLeft(columns, ordered, index) } : null),
                         // The end cell takes the whole first grid row, so the cells are placed by hand.
                         ...(hasEnd ? { gridColumn: index + 1, gridRow: 1 } : null),
                       }}

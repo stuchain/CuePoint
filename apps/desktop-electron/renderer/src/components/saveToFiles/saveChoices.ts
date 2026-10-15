@@ -63,7 +63,8 @@ export function cleanComment(text: string): string {
     if (code === 0x2028 || code === 0x2029 || (code >= 9 && code <= 13)) clean += " ";
     else if (code >= 0x20 && code !== 0x7f && !(code >= 0x80 && code <= 0x9f)) clean += char;
   }
-  return clean.slice(0, MAX_COMMENT_LENGTH);
+  // By code points, as the engine counts: a surrogate pair is never cut in half.
+  return Array.from(clean).slice(0, MAX_COMMENT_LENGTH).join("");
 }
 
 export interface SaveChoices {

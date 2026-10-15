@@ -366,6 +366,15 @@ describe("the Sync window's Comment row", () => {
     expect(tagOptionsFor(unticked)).toMatchObject({ write_comment: false });
   });
 
+  it("never splits a surrogate pair at the cap", () => {
+    const emoji = String.fromCodePoint(0x1f3b5);
+    const text = "x".repeat(254) + emoji + "tail";
+    const cut = cleanComment(text);
+    expect(Array.from(cut)).toHaveLength(255);
+    expect(cut.endsWith(emoji)).toBe(true);
+    expect(cut.charCodeAt(cut.length - 1)).not.toBeLessThan(0xdc00);
+  });
+
   it("is one clean line within the engine's cap", () => {
     expect(cleanComment(["a", "b", "c"].join(String.fromCharCode(10)))).toBe("a b c");
     expect(cleanComment("a" + String.fromCharCode(0, 27) + "b")).toBe("ab");

@@ -30,6 +30,14 @@ describe("the player bar keeps its look", () => {
     expect(button["background"]).toBe("var(--bg-panel)");
   });
 
+  it("lets the artist and label shrink while the key chip, BPM and year keep their room", () => {
+    expect(ruleDecls(playerBar, ".cp-player-bar__meta")["display"]).toBe("flex");
+    const lead = ruleDecls(playerBar, ".cp-player-bar__meta-lead");
+    expect(lead["min-width"]).toBe("0");
+    expect(lead["text-overflow"]).toBe("ellipsis");
+    expect(ruleDecls(playerBar, ".cp-player-bar__meta-fixed")["flex"]).toBe("none");
+  });
+
   it("keeps the structural tokens and the player badge shadow", () => {
     const tokens = stripComments(tokensCss);
     expect(tokens).toMatch(/--border-width:\s*round\(down, calc\(2px \* var\(--scale\)\), 1px\);/);

@@ -21,6 +21,8 @@ interface ModalProps {
     disabled?: boolean;
     /** One line saying why it is greyed; shown only while `disabled` is true. */
     disabledReason?: string;
+    /** `"write"` is a button that writes to the user's files (Export to Rekordbox): the green fill. */
+    variant?: "write";
   };
   secondaryAction?: { label: string; onClick: () => void };
   /**
@@ -97,6 +99,10 @@ export function Modal({
   // Read when the dialog closes, not when it opened.
   const restoreFocusRef = useRef(restoreFocus);
   restoreFocusRef.current = restoreFocus;
+  // Kept in a ref so a new inline `onClose` on a re-render does not re-register the dialog:
+  // re-registering would push a parent above a child dialog that opened after it.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   // Layout effects, not passive ones: the dialog is on screen from this commit, and
   // a passive effect runs after the paint, so an Escape pressed as it appeared (or
@@ -126,7 +132,7 @@ export function Modal({
       if (openDialogs[openDialogs.length - 1] !== me) return;
       if (event.key === "Escape") {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -154,7 +160,7 @@ export function Modal({
       const at = openDialogs.indexOf(me);
       if (at !== -1) openDialogs.splice(at, 1);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   // A closed dialog may play its exit (PAGES-12). The leaving copy is inert and takes no
   // pointer events at all, so a click on its backdrop lands on what is behind it.
@@ -214,7 +220,7 @@ export function Modal({
             )}
             {primaryAction && (
               <Button
-                variant={variant === "danger" ? "danger-confirm" : "primary"}
+                variant={variant === "danger" ? "danger-confirm" : (primaryAction.variant ?? "primary")}
                 onClick={primaryAction.onClick}
                 loading={primaryAction.loading}
                 disabled={primaryAction.disabled}

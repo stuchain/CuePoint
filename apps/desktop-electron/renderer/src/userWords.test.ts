@@ -210,7 +210,7 @@ const GLOSSARY_ALLOWED: { file: RegExp; text: RegExp; reason: string }[] = [
   },
   {
     file: /\.\/hooks\/useBeatportToken\.ts$/,
-    text: /^Couldn't save the token\. Try again\.$/,
+    text: /^Could not save the token\. Try again\.$/,
     reason: "the pasted-token fallback's own error (glossary)",
   },
 ];

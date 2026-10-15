@@ -1,3 +1,4 @@
+import { ToastProvider } from "../Toast";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -52,12 +53,12 @@ function OpenProbe() {
 
 function renderColumn() {
   return render(
-    <>
+    <ToastProvider>
       <RightColumn>
         <div>Track details stub</div>
       </RightColumn>
       <OpenProbe />
-    </>,
+    </ToastProvider>,
   );
 }
 
@@ -142,12 +143,12 @@ describe("asking for Track details while the queue is open", () => {
 
   it("keeps focus where the user is typing", async () => {
     render(
-      <>
+      <ToastProvider>
         <input aria-label="Search" />
         <RightColumn>
           <div>Track details stub</div>
         </RightColumn>
-      </>,
+      </ToastProvider>,
     );
     act(() => setQueueOpen(true));
     await screen.findByRole("complementary", { name: "Playback queue" });

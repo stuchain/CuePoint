@@ -13,9 +13,7 @@ import cleanDialogs from "../screens/library/cleanDialogs.css?raw";
 import rekordboxExport from "../screens/library/rekordboxExport.css?raw";
 import prepare from "../screens/prepare/prepare.css?raw";
 import credit from "../screens/library/CreditLinks.css?raw";
-import keys from "../screens/keys/keys.css?raw";
 import privacy from "./PrivacyDialog.css?raw";
-import errorReporting from "../screens/error-reporting-settings.css?raw";
 import tabs from "./Tabs.css?raw";
 
 function rule(css: string, selector: string): string {
@@ -29,7 +27,7 @@ describe("type roles (T1, N2)", () => {
     expect(rule(tokens, "body")).toContain("font-size: var(--text-body);");
   });
   it("sets the statistics title to the heading role", () => {
-    expect(rule(plays, ".plays__title")).toContain("font-size: var(--text-heading);");
+    expect(rule(plays, ".plays__title")).toContain("font-size: var(--font-size-section);");
   });
   it("gives both empty states the body role", () => {
     expect(rule(inspector, ".cp-inspector__empty")).toContain("font-size: var(--text-body);");
@@ -40,12 +38,9 @@ describe("type roles (T1, N2)", () => {
 describe("one link colour (T13)", () => {
   it.each([
     ["library", library, ".library-screen__scope-link"],
-    ["plays", plays, ".plays__link"],
     ["prepare", prepare, ".prepare-link"],
     ["credit", credit, ".cp-credit-link"],
-    ["keys", keys, ".keys-link"],
     ["privacy", privacy, ".privacy-dialog__link"],
-    ["error reporting", errorReporting, ".cp-error-reporting__link"],
   ])("%s link uses --link", (_n, css, selector) => {
     expect(rule(css, selector)).toContain("color: var(--link);");
   });

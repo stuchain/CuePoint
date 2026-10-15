@@ -25,6 +25,9 @@
   min-height: 0;
   min-width: 0;
   width: 100%;
+  /* A panel sliding in from the right edge (the queue, Track details) is wider than the window for a moment: clipped,
+     so the document never grows a sideways scrollbar that shortens every page by its height. */
+  overflow-x: clip;
 }
 
 .app-shell__sidebar {

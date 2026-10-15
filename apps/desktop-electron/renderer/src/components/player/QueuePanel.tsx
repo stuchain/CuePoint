@@ -1,10 +1,12 @@
 import { useCallback, useRef, useState } from "react";
-import type { QueueItem } from "../../api/cuepointBridge.types";
+import type { QueueItem, QueueItemInput } from "../../api/cuepointBridge.types";
 import { Button } from "../Button";
 import { CloseButton } from "../CloseButton";
 import { Hint } from "../Hint";
 import { Kbd } from "../Kbd";
 import { Modal } from "../Modal";
+import { useToast } from "../Toast";
+import { UNDO } from "../../format/words";
 import { PixelIcon } from "../PixelIcon";
 import { useRowHeight } from "../table/trackTableLayout";
 import { formatTime, formatTrackMeta } from "./playerFormat";
@@ -44,6 +46,21 @@ interface QueuePanelProps {
 
 const bridge = () => window.cuepoint?.player;
 
+/** A queued track as the queue takes it in, for Undo of a removal. */
+function toInput(queued: QueueItem): QueueItemInput {
+  return {
+    trackId: queued.trackId,
+    filePath: queued.filePath,
+    title: queued.title,
+    artist: queued.artist,
+    key: queued.key,
+    bpm: queued.bpm,
+    label: queued.label ?? null,
+    year: queued.year ?? null,
+    durationSeconds: queued.durationSeconds,
+  };
+}
+
 export function QueuePanel({ onClose }: QueuePanelProps) {
   const { items, offset, total, requestRange, refresh } = useQueueWindow();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -68,12 +85,31 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
     [],
   );
 
+  const { push } = useToast();
+
+  // Removing is at once; the toast's Undo puts the track back in the same place (appended, then
+  // moved to where it was). A track that was playing comes back as a queued one.
   const remove = useCallback(
     async (item: QueueItem) => {
+      const was = items.findIndex((candidate) => candidate.id === item.id);
+      const index = was >= 0 ? offset + was : -1;
+      const lengthBefore = total;
       await bridge()?.removeFromQueue(item.id);
       refresh();
+      if (index < 0) return;
+      push(`Removed ${item.title || "the track"} from the queue.`, "success", {
+        label: UNDO,
+        onClick: () => {
+          void (async () => {
+            await bridge()?.addToQueue([toInput(item)]);
+            // Appended last; the queue was one shorter, so it sits at the old length - 1.
+            if (index < lengthBefore - 1) await bridge()?.moveInQueue(lengthBefore - 1, index);
+            refresh();
+          })();
+        },
+      });
     },
-    [refresh],
+    [items, offset, push, refresh, total],
   );
 
   const move = useCallback(

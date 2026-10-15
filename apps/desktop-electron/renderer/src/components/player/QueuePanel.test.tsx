@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PlayerSnapshot, QueueItem, QueueWindow } from "../../api/cuepointBridge.types";
+import { ToastProvider } from "../Toast";
 import { QueuePanel } from "./QueuePanel";
 import { ROW_HEIGHT_FALLBACK } from "../table/trackTableLayout";
 import { resetPlayerStore } from "./playerStore";
@@ -65,6 +66,7 @@ interface Harness {
   jumpTo: ReturnType<typeof vi.fn>;
   removeFromQueue: ReturnType<typeof vi.fn>;
   moveInQueue: ReturnType<typeof vi.fn>;
+  addToQueue: ReturnType<typeof vi.fn>;
   clearQueue: ReturnType<typeof vi.fn>;
   push: (state: PlayerSnapshot) => void;
   /** Every window request the panel made. */
@@ -88,6 +90,7 @@ function install(total: number, items?: QueueItem[]): Harness {
   const removeFromQueue = vi.fn().mockResolvedValue(undefined);
   const moveInQueue = vi.fn().mockResolvedValue(undefined);
   const clearQueue = vi.fn().mockResolvedValue(undefined);
+  const addToQueue = vi.fn().mockResolvedValue(undefined);
 
   window.cuepoint = {
     player: {
@@ -101,6 +104,7 @@ function install(total: number, items?: QueueItem[]): Harness {
       jumpTo,
       removeFromQueue,
       moveInQueue,
+      addToQueue,
       clearQueue,
     },
   } as unknown as typeof window.cuepoint;
@@ -110,6 +114,7 @@ function install(total: number, items?: QueueItem[]): Harness {
     jumpTo,
     removeFromQueue,
     moveInQueue,
+    addToQueue,
     clearQueue,
     requests,
     push: (state) => push?.(state),
@@ -129,7 +134,7 @@ afterEach(() => {
 describe("what it shows", () => {
   it("lists the queue in order", async () => {
     install(5);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
 
     await waitFor(() => expect(rows().length).toBeGreaterThan(0));
     expect(rows().map((row) => within(row).getByText(/^Track/).textContent)).toEqual([
@@ -143,7 +148,7 @@ describe("what it shows", () => {
 
   it("marks the track that is playing", async () => {
     install(3);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(3));
 
     expect(rows()[0]).toHaveAttribute("aria-selected", "true");
@@ -159,7 +164,7 @@ describe("what it shows", () => {
       makeItem(2),
     ];
     install(3, items);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(3));
 
     expect(within(rows()[0]).getByText("Track 0")).toBeInTheDocument();
@@ -169,7 +174,7 @@ describe("what it shows", () => {
   it("marks a track that would not play (DEC-054)", async () => {
     // The skip stays visible after the toast is gone.
     install(2, [makeItem(0, { status: "failed" }), makeItem(1, { status: "playing" })]);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(2));
 
     expect(rows()[0]).toHaveAttribute("data-status", "failed");
@@ -178,7 +183,7 @@ describe("what it shows", () => {
 
   it("shows each track's position, name and length", async () => {
     install(2);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(2));
 
     const first = rows()[0];
@@ -189,7 +194,7 @@ describe("what it shows", () => {
 
   it("says so plainly when the queue is empty", async () => {
     install(0);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
 
     expect(await screen.findByText(/Nothing queued/i)).toBeInTheDocument();
     expect(rows()).toHaveLength(0);
@@ -197,14 +202,14 @@ describe("what it shows", () => {
 
   it("counts the queue in its heading", async () => {
     install(42);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     expect(await screen.findByText(/Queue · 42/)).toBeInTheDocument();
   });
 
   it("closes when asked", async () => {
     install(2);
     const onClose = vi.fn();
-    render(<QueuePanel onClose={onClose} />);
+    render(<ToastProvider><QueuePanel onClose={onClose} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(2));
 
     fireEvent.click(screen.getByRole("button", { name: "Close the queue" }));
@@ -216,7 +221,7 @@ describe("what it shows", () => {
 describe("acting on a track", () => {
   it("plays the one double-clicked", async () => {
     const harness = install(4);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(4));
 
     fireEvent.doubleClick(rows()[2]);
@@ -226,7 +231,7 @@ describe("acting on a track", () => {
 
   it("plays the focused one on Enter", async () => {
     const harness = install(4);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(4));
 
     fireEvent.keyDown(rows()[1], { key: "Enter" });
@@ -236,7 +241,7 @@ describe("acting on a track", () => {
 
   it("removes one with its button", async () => {
     const harness = install(3);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(3));
 
     fireEvent.click(screen.getByRole("button", { name: "Remove Track 1 from the queue" }));
@@ -244,9 +249,23 @@ describe("acting on a track", () => {
     await waitFor(() => expect(harness.removeFromQueue).toHaveBeenCalledWith("q1"));
   });
 
+  it("offers Undo that puts the removed track back in the same place", async () => {
+    const harness = install(4);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(4));
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Track 1 from the queue" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
+
+    await waitFor(() => expect(harness.addToQueue).toHaveBeenCalledTimes(1));
+    expect(harness.addToQueue.mock.calls[0]![0][0]).toMatchObject({ trackId: 1, filePath: "/music/1.flac", title: "Track 1" });
+    // Appended last (the queue was 4 long), then moved to where it was.
+    await waitFor(() => expect(harness.moveInQueue).toHaveBeenCalledWith(3, 1));
+  });
+
   it("removes the focused one with Delete", async () => {
     const harness = install(3);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(3));
 
     fireEvent.keyDown(rows()[2], { key: "Delete" });
@@ -258,7 +277,7 @@ describe("acting on a track", () => {
     // PLAYER-04 advances when the playing entry goes; the panel has only to
     // ask, and then show what main reports.
     const harness = install(3);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(3));
 
     fireEvent.keyDown(rows()[0], { key: "Delete" });
@@ -272,7 +291,7 @@ describe("acting on a track", () => {
 describe("reordering without a mouse", () => {
   it("moves a track up with Alt+Up", async () => {
     const harness = install(4);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(4));
 
     fireEvent.keyDown(rows()[2], { key: "ArrowUp", altKey: true });
@@ -282,7 +301,7 @@ describe("reordering without a mouse", () => {
 
   it("moves a track down with Alt+Down", async () => {
     const harness = install(4);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(4));
 
     fireEvent.keyDown(rows()[1], { key: "ArrowDown", altKey: true });
@@ -292,7 +311,7 @@ describe("reordering without a mouse", () => {
 
   it("does not move the first track above the queue", async () => {
     const harness = install(3);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(3));
 
     fireEvent.keyDown(rows()[0], { key: "ArrowUp", altKey: true });
@@ -302,7 +321,7 @@ describe("reordering without a mouse", () => {
 
   it("does not move the last track past the end", async () => {
     const harness = install(3);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(3));
 
     fireEvent.keyDown(rows()[2], { key: "ArrowDown", altKey: true });
@@ -312,7 +331,7 @@ describe("reordering without a mouse", () => {
 
   it("leaves a plain arrow key to normal navigation", async () => {
     const harness = install(3);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(3));
 
     fireEvent.keyDown(rows()[1], { key: "ArrowDown" });
@@ -322,7 +341,7 @@ describe("reordering without a mouse", () => {
 
   it("reorders by drag as well", async () => {
     const harness = install(4);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(4));
 
     fireEvent.dragStart(rows()[3]);
@@ -334,7 +353,7 @@ describe("reordering without a mouse", () => {
 
   it("ignores a drop onto the row that was picked up", async () => {
     const harness = install(3);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(3));
 
     fireEvent.dragStart(rows()[1]);
@@ -349,7 +368,7 @@ describe("a queue too big to render", () => {
     // The acceptance criterion. A panel that rendered the list would pass every
     // behavioural test above and be unusable on a real queue.
     install(5_000);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
 
     await waitFor(() => expect(rows().length).toBeGreaterThan(0));
     expect(rows().length).toBeLessThan(200);
@@ -357,7 +376,7 @@ describe("a queue too big to render", () => {
 
   it("asks main for a window rather than the whole queue", async () => {
     const harness = install(5_000);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(harness.requests.length).toBeGreaterThan(0));
 
     for (const request of harness.requests) {
@@ -368,7 +387,7 @@ describe("a queue too big to render", () => {
   it("sizes its scrollbar for the whole queue", async () => {
     // The rows are a window; the scrollbar has to describe the queue.
     install(5_000);
-    const { container } = render(<QueuePanel onClose={() => undefined} />);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBeGreaterThan(0));
 
     const sizer = container.querySelector(".cp-queue__sizer") as HTMLElement;
@@ -380,7 +399,7 @@ describe("a queue too big to render", () => {
     document.documentElement.style.setProperty("--row-height", "29px");
     try {
       install(3);
-      render(<QueuePanel onClose={() => undefined} />);
+      render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
       await waitFor(() => expect(rows().length).toBe(3));
       expect(rows()[1]!.style.height).toBe("29px");
       expect(rows()[1]!.style.top).toBe("29px");
@@ -391,7 +410,7 @@ describe("a queue too big to render", () => {
 
   it("asks for a different slice when scrolled", async () => {
     const harness = install(5_000);
-    const { container } = render(<QueuePanel onClose={() => undefined} />);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBeGreaterThan(0));
     const before = harness.requests.length;
 
@@ -408,7 +427,7 @@ describe("a queue too big to render", () => {
 
 describe("without a bridge", () => {
   it("renders its empty state rather than throwing", () => {
-    expect(() => render(<QueuePanel onClose={() => undefined} />)).not.toThrow();
+    expect(() => render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>)).not.toThrow();
     expect(screen.getByText(/Nothing queued/i)).toBeInTheDocument();
   });
 });
@@ -416,7 +435,7 @@ describe("without a bridge", () => {
 describe("managing the queue (BAR-8)", () => {
   it("says the gestures in a hint line", async () => {
     install(2);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     const hint = await screen.findByText(/Drag to reorder/);
     expect(hint).toHaveTextContent("Drag to reorder · Alt+↑/↓ moves · Delete removes · Enter plays");
     // The keys are drawn as key caps.
@@ -425,7 +444,7 @@ describe("managing the queue (BAR-8)", () => {
 
   it("asks before clearing, then clears once", async () => {
     const harness = install(3);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(3));
 
     fireEvent.click(screen.getByRole("button", { name: "Clear queue…" }));
@@ -441,7 +460,7 @@ describe("managing the queue (BAR-8)", () => {
 
   it("clears nothing when the question is declined", async () => {
     const harness = install(3);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(3));
 
     fireEvent.click(screen.getByRole("button", { name: "Clear queue…" }));
@@ -453,20 +472,20 @@ describe("managing the queue (BAR-8)", () => {
 
   it("offers no Clear queue for an empty queue", () => {
     install(0);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     expect(screen.queryByRole("button", { name: "Clear queue…" })).toBeNull();
   });
 
   it("offers no Clear queue when the playing track is the only row", async () => {
     install(1);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(1));
     expect(screen.queryByRole("button", { name: "Clear queue…" })).toBeNull();
   });
 
   it("draws a drop line at the row being dragged over, and removes it on drop", async () => {
     const harness = install(4);
-    const { container } = render(<QueuePanel onClose={() => undefined} />);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(4));
 
     fireEvent.dragStart(rows()[0]);
@@ -483,7 +502,7 @@ describe("managing the queue (BAR-8)", () => {
 
   it("removes the line when the drag ends elsewhere", async () => {
     install(4);
-    const { container } = render(<QueuePanel onClose={() => undefined} />);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(4));
 
     fireEvent.dragStart(rows()[0]);
@@ -495,7 +514,7 @@ describe("managing the queue (BAR-8)", () => {
 
   it("draws the close and remove controls as icons, not letters", async () => {
     install(2);
-    const { container } = render(<QueuePanel onClose={() => undefined} />);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(2));
 
     // × only closes: removing a track has its own icon.
@@ -521,7 +540,7 @@ describe("a track that could not be played (BAR-9)", () => {
       makeItem(1, { status: "failed", failure: "the file is missing or could not be opened" }),
       makeItem(2),
     ]);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(3));
 
     const failed = within(rows()[1]);
@@ -532,7 +551,7 @@ describe("a track that could not be played (BAR-9)", () => {
 
   it("still says it failed when no reason came", async () => {
     install(2, [makeItem(0), makeItem(1, { status: "failed" })]);
-    render(<QueuePanel onClose={() => undefined} />);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(2));
 
     expect(within(rows()[1]).getByText("Couldn't play this track")).toBeInTheDocument();

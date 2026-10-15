@@ -109,7 +109,7 @@ export function useBeatportToken() {
       await refresh();
       return next;
     } catch {
-      setAuthError("Couldn't open the Beatport sign-in. Try again.");
+      setAuthError("Could not open the Beatport sign-in. Try again.");
       return null;
     } finally {
       setSigningIn(false);
@@ -129,7 +129,7 @@ export function useBeatportToken() {
       await refresh();
       return next;
     } catch {
-      setAuthError("Couldn't sign out. Try again.");
+      setAuthError("Could not sign out. Try again.");
       return null;
     } finally {
       setSigningOut(false);
@@ -156,7 +156,7 @@ export function useBeatportToken() {
       await refresh();
       return next;
     } catch {
-      setAuthError("Couldn't save the token. Try again.");
+      setAuthError("Could not save the token. Try again.");
       return null;
     } finally {
       setSaving(false);

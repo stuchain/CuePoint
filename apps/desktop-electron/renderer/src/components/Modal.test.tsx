@@ -6,7 +6,7 @@
  * `aria-modal="true"` explicitly promises does not happen. A keyboard user
  * could open a dialog and never reach it.
  */
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -139,6 +139,46 @@ describe("Modal", () => {
   it("is a default-width dialog otherwise", () => {
     open();
     expect(screen.getByRole("dialog")).not.toHaveClass("cp-modal--wide");
+  });
+});
+
+describe("nested dialogs", () => {
+  it("keeps the child on top when the parent re-renders with a new inline onClose", async () => {
+    const parentClosed = vi.fn();
+    const childClosed = vi.fn();
+    function Both() {
+      const [tick, setTick] = useState(0);
+      const [child, setChild] = useState(false);
+      // The child's handler is stable; only the parent's changes identity on a re-render.
+      const closeChild = useCallback(() => childClosed(), []);
+      return (
+        <>
+          <button type="button" onClick={() => setTick(tick + 1)}>
+            rerender
+          </button>
+          {/* A new function every render, as an inline handler is. */}
+          <Modal open title="Parent" onClose={() => parentClosed(tick)}>
+            <button type="button" onClick={() => setChild(true)}>
+              open child
+            </button>
+          </Modal>
+          <Modal open={child} title="Child" onClose={closeChild}>
+            <button type="button">in child</button>
+          </Modal>
+        </>
+      );
+    }
+    render(<Both />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "open child" }));
+    await user.keyboard("{Escape}");
+    expect(childClosed).toHaveBeenCalledTimes(1);
+
+    // The parent re-renders while the child is still open (its own close does not close it here).
+    await user.click(screen.getByRole("button", { name: "rerender", hidden: true }));
+    await user.keyboard("{Escape}");
+    expect(childClosed).toHaveBeenCalledTimes(2);
+    expect(parentClosed).not.toHaveBeenCalled();
   });
 });
 
