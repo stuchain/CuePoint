@@ -4,6 +4,13 @@
  * where there is not they run above the sections.
  */
 
+/* The header leaves 12 under its divider; the page adds no gap of its own, and is not centred or
+   capped (--content-max-width is 100%). */
+.settings-page {
+  gap: 0;
+  margin: 0;
+}
+
 .settings-page__layout {
   display: grid;
   grid-template-columns: calc(160px * var(--scale)) minmax(0, 1fr);
@@ -47,10 +54,11 @@
   outline: var(--focus-ring-width) solid var(--focus-ring);
 }
 
+/* Section to section: 16. */
 .settings-page__sections {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: var(--space-xl);
   min-width: 0;
 }
 
@@ -66,7 +74,43 @@
 .settings-page__about {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-lg);
+}
+
+/*
+ * One checkbox or radio row for every Settings panel: an even 24px row, the box 6 from its text.
+ * The hit area stays 44px tall: the label's own box is 24, and an invisible layer reaches 10 above
+ * and below it, so the small row is still an easy target (a row below wins where two layers meet).
+ */
+.settings-check {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: calc(24px * var(--scale));
+  font-size: var(--font-size-sm);
+  color: var(--fg-primary);
+  cursor: pointer;
+}
+
+.settings-check::before {
+  content: "";
+  position: absolute;
+  inset: calc(-10px * var(--scale)) 0;
+}
+
+/* The box sits above the invisible layers (its own and the neighbours'), so a click on the box itself reaches the box. */
+.settings-check > input {
+  position: relative;
+  z-index: 1;
+}
+
+/* An option and its hint: the hint sits 4 under the option. */
+.settings-option {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
 }
 
 .settings-page__about p {

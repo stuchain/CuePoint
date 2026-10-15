@@ -22,24 +22,31 @@ import type {
   StatisticsTrack,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
-import { PixelIcon } from "../../components/PixelIcon";
+import { Hint } from "../../components/Hint";
+import { LinkButton } from "../../components/LinkButton";
+import { Loading } from "../../components/Loading";
+import { Notice } from "../../components/Notice";
+import { PlayButton } from "../../components/PlayButton";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
 import { changedMark, useCountChanges } from "../../components/wheel/useCountChanges";
 import { isEngineRefusal } from "../../api/bridgeError";
 import { reportUnexpected } from "../../reporting/reporting";
+import { formatCount, plural } from "../../format/counts";
+import { RETRY } from "../../format/words";
 import { libraryRulesState, libraryTrackState } from "../library/libraryLink";
 import { runQueueAction } from "../library/trackDetailsActions";
 import {
   PLAYS_LIMITS,
   SINCE_OPTIONS,
   collectionName,
-  dayWords,
   FIRST_YEAR,
   isValidDay,
   localDay,
+  onDay,
+  onStamp,
   savePlaysChoice,
-  stampWords,
+  sinceStamp,
   type PlaysChoice,
   type PlaysLimit,
   type PlaysSince,
@@ -89,17 +96,9 @@ const TOP_ROWS = 10;
 /** The longest bar, in blocks. */
 const BAR_BLOCKS = 24;
 
-function count(n: number): string {
-  return n.toLocaleString("en-US");
-}
-
-function playsWord(n: number): string {
-  return `${count(n)} ${n === 1 ? "play" : "plays"}`;
-}
-
-function tracksWord(n: number): string {
-  return `${count(n)} ${n === 1 ? "track" : "tracks"}`;
-}
+const count = (n: number): string => formatCount(n);
+const playsWord = (n: number): string => plural(n, "play");
+const tracksWord = (n: number): string => plural(n, "track");
 
 interface PlaysSectionProps {
   data: StatisticsPlays;
@@ -250,28 +249,25 @@ export function PlaysSection({
         )}
       </div>
 
-      {stale && (
-        <p className="statistics-note" role="status">
-          Reading…
-        </p>
-      )}
+      {stale && <Loading what="plays" />}
       {failed && (
-        <div className="plays__failed" role="alert">
-          <p className="statistics-note">
-            These plays could not be read, so what is shown is the earlier list.
-          </p>
-          {onRetry && (
-            <Button variant="secondary" onClick={onRetry}>
-              Try again
-            </Button>
-          )}
-        </div>
+        <Notice
+          action={
+            onRetry ? (
+              <Button variant="secondary" onClick={onRetry}>
+                {RETRY}
+              </Button>
+            ) : undefined
+          }
+        >
+          These plays could not be read, so what is shown is the earlier list.
+        </Notice>
       )}
 
       {data.since_clamped && data.history_from && (
         <p className="statistics-note" role="status">
-          Your play history starts on {stampWords(data.history_from)}, so the counts begin there
-          rather than on {data.since ? dayWords(data.since) : "that day"}.
+          Your play history starts {onStamp(data.history_from)}, so the counts begin there
+          rather than {data.since ? onDay(data.since) : "on that day"}.
         </p>
       )}
       {choice.since === "refresh" && data.last_read && data.history_from === data.last_read && (
@@ -289,7 +285,7 @@ export function PlaysSection({
 
       {!noRefresh && (
       <>
-      <h3 className="plays__title" id={`${ids}-tracks`}>
+      <h3 className="plays__title cp-text-section" id={`${ids}-tracks`}>
         Most played
       </h3>
       {data.tracks.length === 0 ? (
@@ -325,15 +321,13 @@ export function PlaysSection({
                   </span>
                 </button>
                 {canPreview && (
-                  <button
-                    type="button"
-                    className="plays__preview"
-                    aria-label={`Preview ${track.title} by ${track.artist}`}
-                    title="Play"
-                    onClick={() => void preview(track)}
-                  >
-                    <PixelIcon name="play" />
-                  </button>
+                  <Hint text="Play">
+                    <PlayButton
+                      className="plays__play"
+                      aria-label={`Play ${track.title} by ${track.artist}`}
+                      onClick={() => void preview(track)}
+                    />
+                  </Hint>
                 )}
               </li>
             );
@@ -365,18 +359,18 @@ export function PlaysSection({
         <p className="statistics-note" role="status">
           Kept {tracksWord(kept.tracks)} in rank order as “{kept.name}”, in Collections in the
           Library.{" "}
-          <button type="button" className="plays__link" onClick={() => openKept(kept)}>
+          <LinkButton go onClick={() => openKept(kept)}>
             Open it in the Library
-          </button>
+          </LinkButton>
         </p>
       )}
       {keepFailed && (
         <p className="statistics-note" role="alert">
           {keepFailed}{" "}
           {staleList && onRetry && (
-            <button type="button" className="plays__link" onClick={onRetry}>
+            <LinkButton onClick={onRetry}>
               Read the list again
-            </button>
+            </LinkButton>
           )}
         </p>
       )}
@@ -437,7 +431,7 @@ function footer(data: StatisticsPlays): string {
   if (!data.last_read || !data.history_from) {
     return "No refresh has been recorded yet. The counts are the ones in your library.";
   }
-  return `Counts from your refresh on ${stampWords(data.last_read)}. History since ${stampWords(data.history_from)}.`;
+  return `Counts from your refresh ${onStamp(data.last_read)}. History since ${sinceStamp(data.history_from)}.`;
 }
 
 interface RankingRow {
@@ -461,7 +455,7 @@ function Ranking({
   const id = useId();
   return (
     <div className="plays__ranking">
-      <h3 className="plays__title" id={id}>
+      <h3 className="plays__title cp-text-section" id={id}>
         {title}
       </h3>
       {rows.length === 0 ? (

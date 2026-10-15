@@ -11,7 +11,9 @@ import { useMemo } from "react";
 import type { KeyPopulationEntry } from "../../api/cuepointBridge.types";
 import { countedName, keyName } from "../../components/wheel/camelot";
 import type { PickModifiers } from "../../components/wheel/CamelotWheel";
+import { Hint } from "../../components/Hint";
 import { KeyChip } from "../../components/wheel";
+import { formatCount } from "../../format/counts";
 import { changedMark, useCountChanges } from "../../components/wheel/useCountChanges";
 import { barPercent } from "./keysCounts";
 
@@ -78,7 +80,7 @@ export function KeysCountsList({
                   <span style={{ width: `${barPercent(entry.count, biggest)}%` }} />
                 </span>
                 <span className="keys-counts__count" data-changed={changedMark(marks, entry.code)}>
-                  {entry.count.toLocaleString()}
+                  {formatCount(entry.count)}
                 </span>
               </button>
             </li>
@@ -101,18 +103,19 @@ export function KeysNoKeyRow({
 }: Pick<KeysCountsListProps, "noKey" | "noneChosen" | "onPickNone">) {
   return (
     <div className="keys-counts__none" data-line="no-key">
-      <button
-        type="button"
-        className="keys-counts__row keys-counts__row--none"
-        aria-pressed={noneChosen}
-        aria-disabled={noKey === 0 ? true : undefined}
-        title={noKey === 0 ? "Every track here has a key" : undefined}
-        onClick={() => {
-          if (noKey > 0) onPickNone();
-        }}
-      >
-        No Beatport key: {noKey.toLocaleString()}
-      </button>
+      <Hint text={noKey === 0 ? "Every track here has a key" : undefined}>
+        <button
+          type="button"
+          className="keys-counts__row keys-counts__row--none"
+          aria-pressed={noneChosen}
+          aria-disabled={noKey === 0 ? true : undefined}
+          onClick={() => {
+            if (noKey > 0) onPickNone();
+          }}
+        >
+          No Beatport key: {formatCount(noKey)}
+        </button>
+      </Hint>
     </div>
   );
 }

@@ -164,7 +164,7 @@ describe("signed out", () => {
     });
     renderPanel();
     await userEvent.click(await screen.findByRole("button", { name: "Sign in to Beatport" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't open the Beatport sign-in. Try again.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not open the Beatport sign-in. Try again.");
     expect(screen.getByRole("button", { name: "Sign in to Beatport" })).toBeEnabled();
   });
 
@@ -195,7 +195,7 @@ describe("signed out", () => {
     await waitFor(() => expect(field).toBeEnabled());
     await userEvent.type(field, "abc");
     await userEvent.click(screen.getByRole("button", { name: "Save token" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't save the token. Try again.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not save the token. Try again.");
   });
 
   it("drops a half-typed token when the sign-in goes through (type, then sign in)", async () => {
@@ -357,11 +357,11 @@ describe("opened by a link that wants the token field, while signed in", () => {
 });
 
 describe("expired", () => {
-  it("says the sign-in ended and offers Sign in again", async () => {
+  it("says the sign-in ended and offers Sign in to Beatport", async () => {
     install({ state: "expired", masked: null, expires_at: null, secure_storage: true });
     renderPanel();
     expect(await screen.findByText("Beatport sign-in ended")).toBeInTheDocument();
-    await userEvent.click(within(panel()).getByRole("button", { name: "Sign in again" }));
+    await userEvent.click(within(panel()).getByRole("button", { name: "Sign in to Beatport" }));
     await waitFor(() => expect(bridge.beatportSignIn).toHaveBeenCalledTimes(1));
     expect(within(panel()).queryByRole("button", { name: "Sign in to Beatport" })).toBeNull();
   });

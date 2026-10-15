@@ -6,7 +6,7 @@
 .cp-export-settings {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-lg);
 }
 
 .cp-export-settings__hint {
@@ -16,15 +16,6 @@
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
   line-height: 1.5;
-}
-
-.cp-export-settings__problem {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm);
-  color: var(--accent-danger);
-  font-size: var(--font-size-xs);
 }
 
 .cp-export-settings__facts {
@@ -53,9 +44,6 @@
 
 .cp-export-settings__heading {
   margin: 0 0 var(--space-xs);
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
 }
 
 .cp-export-settings__list {

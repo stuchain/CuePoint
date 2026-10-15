@@ -1,10 +1,11 @@
-import { Select } from "../components";
+import { Fieldset, Select } from "../components";
 import { useKeyColours } from "../components/wheel/keyColourSetting";
 import { useRowDensity, type RowDensity } from "../tokens/rowDensity";
 
-const DENSITIES: readonly { value: RowDensity; label: string }[] = [
-  { value: "compact", label: "Compact" },
-  { value: "roomy", label: "Roomy" },
+/** The two row heights at the default size (they follow the text size): 26 and 32 px. */
+export const DENSITIES: readonly { value: RowDensity; label: string }[] = [
+  { value: "compact", label: "Compact (26 px)" },
+  { value: "roomy", label: "Roomy (32 px)" },
 ];
 
 /**
@@ -18,8 +19,7 @@ export function TableSettings({ onChange }: { onChange?: () => void } = {}) {
   const [coloured, setColoured] = useKeyColours();
 
   return (
-    <fieldset className="theme-settings__group">
-      <legend className="theme-settings__legend">Tables</legend>
+    <Fieldset legend="Tables" className="theme-settings__group">
       <Select
         label="Row density"
         value={density}
@@ -29,7 +29,7 @@ export function TableSettings({ onChange }: { onChange?: () => void } = {}) {
         }}
         options={DENSITIES.map((option) => ({ ...option }))}
       />
-      <label className="theme-settings__option">
+      <label className="theme-settings__option settings-check">
         <input
           type="checkbox"
           checked={coloured}
@@ -40,6 +40,6 @@ export function TableSettings({ onChange }: { onChange?: () => void } = {}) {
         />
         <span>Color keys</span>
       </label>
-    </fieldset>
+    </Fieldset>
   );
 }

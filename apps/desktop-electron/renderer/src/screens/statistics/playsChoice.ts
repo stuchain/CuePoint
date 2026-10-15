@@ -9,6 +9,7 @@
  * a daylight-saving change is still its own midnight.
  */
 import type { StatisticsPlaysParams } from "../../api/cuepointBridge.types";
+import { formatDay } from "../../format/dates";
 
 export const PLAYS_STORAGE_KEY = "cuepoint-statistics-plays";
 
@@ -147,12 +148,31 @@ export function dayWords(day: string): string {
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
-/** `Nov 2`, or `Nov 2, 2025` in another year, from a stored UTC timestamp, in local time. */
+/**
+ * `Nov 2`, `Nov 2, 2025` in another year, or `Today` / `Yesterday`, from a stored UTC
+ * timestamp, in local time (the one date helper).
+ */
 export function stampWords(stamp: string, now: Date = new Date()): string {
-  const at = new Date(stamp);
-  if (Number.isNaN(at.getTime())) return "";
-  const short = `${MONTHS[at.getMonth()]} ${at.getDate()}`;
-  return at.getFullYear() === now.getFullYear() ? short : `${short}, ${at.getFullYear()}`;
+  return formatDay(stamp, { now });
+}
+
+/** `on Nov 2`, or `today` / `yesterday`: the stamp as it reads inside a sentence. */
+export function onStamp(stamp: string, now: Date = new Date()): string {
+  const words = stampWords(stamp, now);
+  return words === "Today" || words === "Yesterday" ? words.toLowerCase() : `on ${words}`;
+}
+
+/** `Nov 2`, or `today` / `yesterday`: the stamp after a word like "since". */
+export function sinceStamp(stamp: string, now: Date = new Date()): string {
+  const words = stampWords(stamp, now);
+  return words === "Today" || words === "Yesterday" ? words.toLowerCase() : words;
+}
+
+/** The same for a local `YYYY-MM-DD` day. */
+export function onDay(day: string, now: Date = new Date()): string {
+  const [y, m, d] = day.split("-").map(Number) as [number, number, number];
+  const words = formatDay(new Date(y, m - 1, d), { now });
+  return words === "Today" || words === "Yesterday" ? words.toLowerCase() : `on ${words}`;
 }
 
 /** The local `YYYY-MM-DD` of a stored UTC timestamp. */

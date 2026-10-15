@@ -8,16 +8,7 @@
 .cp-error-reporting {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.cp-error-reporting__toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  min-height: var(--hit-min);
-  font-size: var(--font-size-sm);
-  color: var(--fg-primary);
+  gap: var(--space-lg);
 }
 
 .cp-error-reporting__toggle input:disabled + span {
@@ -33,45 +24,19 @@
   line-height: 1.5;
 }
 
-.cp-error-reporting__error {
-  overflow-wrap: anywhere;
-  margin: 0;
-  padding: var(--space-sm);
-  border: var(--divider);
-  background: var(--bg-panel-alt);
-  color: var(--accent-danger);
-  font-size: var(--font-size-xs);
-  line-height: 1.5;
-}
-
 .cp-error-reporting__link {
   align-self: flex-start;
-  min-height: var(--hit-min);
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--link);
-  font: inherit;
   font-size: var(--font-size-xs);
-  text-decoration: underline;
-  cursor: pointer;
 }
 
+/* "When CuePoint quits": a Fieldset (the one legend style) under a divider, rows 0 apart. */
 .cp-error-reporting__exit {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin: var(--space-sm) 0 0;
-  padding: var(--space-md) 0 0;
+  gap: 0;
+  margin: 0;
+  padding: var(--space-lg) 0 0;
   border: 0;
   border-top: var(--divider);
   font-size: var(--font-size-sm);
-}
-
-.cp-error-reporting__exit legend {
-  padding: 0;
-  font-weight: 700;
-  color: var(--fg-primary);
 }
 
 .cp-error-reporting__row {

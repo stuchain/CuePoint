@@ -17,6 +17,7 @@ import { ToastProvider } from "../../components";
 import { cleanSectionOpening } from "../clean/cleanLink";
 import { rulesFromLocationState } from "../library/libraryLink";
 import { settingsFocus } from "../settingsLink";
+import { formatDayTime } from "../../format/dates";
 import { HealthSection } from "./HealthSection";
 
 const rules = (field: string, value: unknown): FilterRuleSet => ({
@@ -94,9 +95,8 @@ const bar = (id: string, name: string) =>
   within(panel(id))
     .getAllByRole("button")
     .find((el) => titleOf(el) === name)!;
-/** The day an instant falls on here, so the tests hold in any time zone (UTC-10 to UTC+14). */
-const dayOf = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+/** An instant as the page writes it (the day and the time, on this computer), so the tests hold in any time zone. */
+const whenOf = (iso: string) => formatDayTime(iso);
 const where = () => screen.getByTestId("where");
 
 beforeEach(() => {
@@ -194,14 +194,14 @@ describe("the Health section (STATS-07, K3)", () => {
     ]);
   });
 
-  it("says when the files were last checked, in American date words", () => {
+  it("says when the files were last checked, with the time on the computer's clock", () => {
     renderSection();
-    expect(within(panel("files")).getByText(`Last checked ${dayOf("2026-09-03T12:00:00Z")}`)).toBeInTheDocument();
+    expect(within(panel("files")).getByText(`Last checked ${whenOf("2026-09-03T12:00:00Z")}`)).toBeInTheDocument();
   });
 
   it("reads a time with an explicit offset the same way", () => {
     renderSection({ ...HEALTH, checked_at: "2026-09-03T12:00:00+00:00" });
-    expect(within(panel("files")).getByText(`Last checked ${dayOf("2026-09-03T12:00:00Z")}`)).toBeInTheDocument();
+    expect(within(panel("files")).getByText(`Last checked ${whenOf("2026-09-03T12:00:00Z")}`)).toBeInTheDocument();
   });
 
   it("says the files have not been checked yet when no check is recorded", () => {
@@ -212,7 +212,7 @@ describe("the Health section (STATS-07, K3)", () => {
   it("says when the cover art was last read", () => {
     renderSection();
     expect(
-      within(panel("other")).getByText(`Cover art last read ${dayOf("2026-09-05T12:00:00Z")}`),
+      within(panel("other")).getByText(`Cover art last read ${whenOf("2026-09-05T12:00:00Z")}`),
     ).toBeInTheDocument();
   });
 
@@ -279,21 +279,21 @@ describe("the Health section (STATS-07, K3)", () => {
 
   it("sends Files' button to Clean's Missing files tab", async () => {
     renderSection();
-    await userEvent.click(within(panel("files")).getByRole("button", { name: "Fix in Clean ›" }));
+    await userEvent.click(within(panel("files")).getByRole("button", { name: "Open in Clean" }));
     expect(where()).toHaveTextContent("/clean");
     expect(where().dataset.section).toBe("missing");
   });
 
   it("sends Beatport's button to Clean's Match tab", async () => {
     renderSection();
-    await userEvent.click(within(panel("beatport")).getByRole("button", { name: "Fix in Clean ›" }));
+    await userEvent.click(within(panel("beatport")).getByRole("button", { name: "Open in Clean" }));
     expect(where()).toHaveTextContent("/clean");
     expect(where().dataset.section).toBe("review");
   });
 
   it("sends Waveforms' button to Settings on Waveforms", async () => {
     renderSection();
-    await userEvent.click(within(panel("waveforms")).getByRole("button", { name: "Settings ›" }));
+    await userEvent.click(within(panel("waveforms")).getByRole("button", { name: "Open in Settings" }));
     expect(where()).toHaveTextContent("/settings");
     expect(where().dataset.settings).toBe("waveforms");
   });

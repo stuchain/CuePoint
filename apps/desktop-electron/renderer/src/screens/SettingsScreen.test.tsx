@@ -238,7 +238,7 @@ describe("the Beatport test result", () => {
 
   it("says Beatport could not be reached for a network or server failure", async () => {
     const result = await runTest({ ok: false, message: "The request did not go through.", reason: "unreachable" });
-    expect(result).toHaveTextContent("Couldn't reach Beatport.");
+    expect(result).toHaveTextContent("Could not reach Beatport.");
     expect(result).not.toHaveTextContent(/rejected/i);
     expect(result).toHaveClass("cp-beatport-settings__result--unreachable");
   });

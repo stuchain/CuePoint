@@ -133,7 +133,7 @@ a line what it looks for and has one button to where it is dealt with.
   check has run for the track's current location yet). A track that was never
   checked is not counted as present. Under the bars it says "Last checked"
   with the date of the latest check, or "Files have not been checked yet".
-  **Fix in Clean ›** opens Clean's Missing files tab, where the check is run.
+  **Open in Clean ›** opens Clean's Missing files tab, where the check is run.
 - **Beatport** is where each track stands in matching, in the words Clean
   uses: **Confirmed**, **Waiting for you** (a match is waiting for your
   decision), **Rejected**, **No match** and **Not matched**. **Fix in

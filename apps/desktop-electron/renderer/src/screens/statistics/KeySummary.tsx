@@ -11,8 +11,10 @@ import { useNavigate } from "react-router-dom";
 
 import type { CollectionNode } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
-import { formatCount } from "../../components/charts/formatCount";
-import { PixelSpinner } from "../../components/PixelSpinner";
+import { LinkButton } from "../../components/LinkButton";
+import { Loading } from "../../components/Loading";
+import { formatCount } from "../../format/counts";
+import { RETRY, needsDesktopApp } from "../../format/words";
 import { keysState } from "../keys/keysLink";
 import { requestSources } from "../keys/keysSources";
 import { useKeysPopulation } from "../keys/useKeysPopulation";
@@ -46,18 +48,18 @@ export function KeySummary({ scope, collections }: KeySummaryProps) {
   if (keysScope.kind === "unsupported") {
     body = <p className="statistics-note">{keysScope.reason}</p>;
   } else if (population.status === "unavailable") {
-    body = <p className="statistics-note">Keys can be read in the desktop app.</p>;
+    body = <p className="statistics-note">{needsDesktopApp("read the keys")}</p>;
   } else if (population.status === "error") {
     body = (
       <>
         <p className="statistics-note">The keys could not be read.</p>
         <Button variant="secondary" onClick={population.retry}>
-          Try again
+          {RETRY}
         </Button>
       </>
     );
   } else if (shown === null) {
-    body = <PixelSpinner label="Reading keys…" />;
+    body = <Loading what="keys" />;
   } else {
     const { total, no_key, keys } = shown;
     const common = [...keys]
@@ -76,13 +78,11 @@ export function KeySummary({ scope, collections }: KeySummaryProps) {
 
   return (
     <div className="statistics-panel statistics-panel--keys">
-      <h3 className="statistics-panel__title">
-        Keys
-      </h3>
+      <h3 className="statistics-panel__title">Keys</h3>
       {body}
-      <Button variant="secondary" onClick={() => navigate("/keys", { state: keysState(picked) })}>
+      <LinkButton go onClick={() => navigate("/keys", { state: keysState(picked) })}>
         Open in Keys
-      </Button>
+      </LinkButton>
     </div>
   );
 }

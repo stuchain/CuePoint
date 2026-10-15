@@ -25,7 +25,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .theme-settings__row {
@@ -33,7 +33,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-md);
-  padding: var(--space-md);
+  padding: var(--space-lg);
   border: var(--control-border-width) solid var(--border-muted);
   background: var(--bg-input);
 }
@@ -51,14 +51,14 @@
 
 .theme-settings__name {
   flex: 1;
-  font-weight: 600;
+  font-weight: var(--weight-strong);
   font-size: var(--font-size-sm);
 }
 
 .theme-settings__row-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-xs);
+  gap: var(--space-md);
 }
 
 .theme-settings__hint {
@@ -107,30 +107,11 @@
   min-width: calc(64px * var(--scale));
 }
 
-/* Settings > Appearance > Tables: a bare group, spaced as the panel's own controls are. */
+/* Settings > Appearance > Tables: a Fieldset (the one legend style), spaced as the panel's own
+   controls are. The checkbox row is the shared .settings-check (24px, hit area kept). */
 .theme-settings__group {
-  display: flex;
-  flex-direction: column;
   gap: var(--space-md);
   margin: 0;
   padding: 0;
   border: 0;
-  min-width: 0;
-}
-
-.theme-settings__legend {
-  padding: 0;
-  margin-bottom: var(--space-md);
-  font-size: var(--font-size-sm);
-  font-weight: bold;
-  color: var(--fg-primary);
-}
-
-.theme-settings__option {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  min-height: var(--hit-min);
-  font-size: var(--font-size-sm);
-  color: var(--fg-primary);
 }

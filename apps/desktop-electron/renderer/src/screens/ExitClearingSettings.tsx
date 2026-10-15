@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { Fieldset } from "../components";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { onExitClearingChanged, readExitClearing, saveExitClearing } from "./exitClearing";
 import "./error-reporting-settings.css";
@@ -28,9 +29,8 @@ export function ExitClearingSettings() {
   };
 
   return (
-    <fieldset className="cp-error-reporting__exit">
-      <legend>When CuePoint quits</legend>
-      <label className="cp-error-reporting__toggle">
+    <Fieldset legend="When CuePoint quits" className="cp-error-reporting__exit">
+      <label className="cp-error-reporting__toggle settings-check">
         <input
           type="checkbox"
           checked={choices.clearCache}
@@ -38,7 +38,7 @@ export function ExitClearingSettings() {
         />
         <span>Clear cache</span>
       </label>
-      <label className="cp-error-reporting__toggle">
+      <label className="cp-error-reporting__toggle settings-check">
         <input
           type="checkbox"
           checked={choices.clearLogs}
@@ -47,6 +47,6 @@ export function ExitClearingSettings() {
         <span>Clear logs</span>
       </label>
       <SavedTick signal={saved} />
-    </fieldset>
+    </Fieldset>
   );
 }

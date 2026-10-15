@@ -30,7 +30,7 @@ describe("Tables settings", () => {
   it("offers Compact and Roomy", () => {
     render(<TableSettings />);
     const options = Array.from((density() as HTMLSelectElement).options).map((o) => o.textContent);
-    expect(options).toEqual(["Compact", "Roomy"]);
+    expect(options).toEqual(["Compact (26 px)", "Roomy (32 px)"]);
   });
 
   it("applies and remembers Roomy, and says it was saved", async () => {

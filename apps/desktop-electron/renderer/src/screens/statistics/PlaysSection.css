@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   width: 100%;
   min-width: 0;
 }
@@ -15,18 +15,21 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--space-sm) var(--space-md);
+  gap: var(--space-md);
 }
 
+/* The section role (14, bold) over its list: 8 under it. */
 .plays__title {
-  margin: var(--space-sm) 0 0;
-  font-size: var(--text-heading);
+  margin: 0;
+  font-size: var(--font-size-section);
+  font-weight: var(--weight-strong);
 }
 
+/* One row height for every track list; no boxes, no gaps between rows. */
 .plays__list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -35,18 +38,12 @@
 .plays__item {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-md);
   min-width: 0;
+  min-height: var(--row-height);
 }
 
-/* The rows that carry a play button are one box; the stack lists keep their own look. */
-.plays__item:not(.plays__item--stack) {
-  padding-right: var(--space-sm);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-panel);
-}
-
-.plays__item:not(.plays__item--stack):hover {
+.plays__item:hover {
   background: var(--bg-panel-alt);
 }
 
@@ -55,10 +52,10 @@
   flex: 1 1 auto;
   grid-template-columns: 3ch minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   min-width: 0;
-  min-height: var(--hit-min);
-  padding: var(--space-xs) var(--space-sm);
+  min-height: var(--row-height);
+  padding: 0 var(--space-sm);
   border: 0;
   background: transparent;
   color: var(--fg-primary);
@@ -84,17 +81,24 @@
   min-width: 4ch;
 }
 
+/* Title and artist on one line, so the row keeps the one row height. */
 .plays__what {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  gap: var(--space-md);
   min-width: 0;
 }
 
 .plays__name,
 .plays__artist {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.plays__name {
+  flex: 0 1 auto;
 }
 
 .plays__artist {
@@ -116,31 +120,10 @@
   background: var(--accent-primary);
 }
 
-/* A play icon the size of the row's text, in the row and not boxed. */
-.plays__preview {
-  display: inline-flex;
+/* The row's play button is the shared PlayButton, at the row's right end. */
+.plays__play {
   flex: none;
-  align-items: center;
-  justify-content: center;
-  align-self: stretch;
-  /* The icon stays small and unboxed; the button around it is a full-size target. */
-  min-width: max(var(--hit-min), calc(24px * var(--scale, 1)));
-  min-height: calc(24px * var(--scale, 1));
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--fg-muted);
-  font-size: var(--font-size-md);
-  cursor: pointer;
-}
-
-.plays__preview:hover {
-  color: var(--fg-primary);
-}
-
-.plays__preview .cp-pixel-icon {
-  width: 1em;
-  height: 1em;
+  margin-right: var(--space-sm);
 }
 
 .plays__keep,
@@ -148,37 +131,25 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm) var(--space-md);
-}
-
-.plays__link {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--link);
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
+  gap: var(--space-md);
 }
 
 .plays__pair {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(calc(var(--unit) * 70), 1fr));
-  gap: var(--space-md);
+  gap: var(--space-lg);
 }
 
 .plays__ranking {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-md);
   min-width: 0;
 }
 
-.plays__row:focus-visible,
-.plays__preview:focus-visible,
-.plays__link:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-width);
+/* Inside a clipping parent the ring is drawn inward. */
+.plays__row:focus-visible {
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 /* A row whose rank moved steps once; the bar fades. Odd and even changes name different
@@ -197,7 +168,8 @@
 
 .plays--stale .plays__list,
 .plays--stale .plays__pair {
-  opacity: 0.5;
+  /* Out of date, not disabled: the muted-out look, not a see-through one. */
+  color: var(--fg-disabled);
 }
 
 .plays__failed,

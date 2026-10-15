@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import type { AudioDevice } from "../api/cuepointBridge.types";
-import { MoreAbout, Panel } from "../components";
+import { MoreAbout, Notice, Panel } from "../components";
 import { Select } from "../components/Select";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { audioFellBack, selectAudio } from "../components/player/playerFormat";
@@ -131,6 +131,7 @@ export function AudioSettingsPanel() {
   return (
     <Panel title="Playback" badge={<SavedTick signal={saved} />}>
       <div className="cp-audio-settings">
+        <div className="settings-option">
         <Select
           label="Output device"
           className="cp-audio-settings__field"
@@ -161,11 +162,12 @@ export function AudioSettingsPanel() {
             </p>
           </MoreAbout>
         )}
+        </div>
 
         {/* Where the system has no such mode, the control is not drawn at all. */}
         {audio.exclusiveSupported && (
-          <>
-            <label className="cp-audio-settings__toggle">
+          <div className="settings-option">
+            <label className="cp-audio-settings__toggle settings-check">
               <input
                 type="checkbox"
                 checked={audio.exclusive}
@@ -175,7 +177,7 @@ export function AudioSettingsPanel() {
               <span>Exclusive output</span>
             </label>
             <p id={exclusiveId} className="cp-audio-settings__hint">
-              Plays straight to your audio interface. Other apps can&apos;t use it meanwhile.
+              Plays straight to your audio interface. Other apps cannot use it meanwhile.
             </p>
             <MoreAbout describedBy={exclusiveId}>
               <p className="cp-audio-settings__hint">
@@ -184,20 +186,18 @@ export function AudioSettingsPanel() {
                 has the device.
               </p>
             </MoreAbout>
-          </>
+          </div>
         )}
 
         {fellBack && (
-          <p className="cp-audio-settings__fallback" role="status">
+          <Notice kind="warning">
             {audio.exclusive && !audio.activeExclusive
-              ? "Currently playing through the shared device — exclusive output was not available."
-              : "Currently playing through the system default — the selected device was not available."}
-          </p>
+              ? "Currently playing through the shared device. Exclusive output was not available."
+              : "Currently playing through the system default. The selected device was not available."}
+          </Notice>
         )}
         {error && (
-          <p className="cp-audio-settings__error" role="status">
-            {error}
-          </p>
+          <Notice kind="problem">{error}</Notice>
         )}
       </div>
     </Panel>

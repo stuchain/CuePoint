@@ -19,7 +19,8 @@ import type {
   StatisticsSpreads,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
-import { tracksText } from "../../components/charts/formatCount";
+import { plural } from "../../format/counts";
+import { formatBpmText, formatLufs } from "../../format/units";
 import { PixelBars } from "../../components/charts/PixelBars";
 import { libraryRulesState } from "../library/libraryLink";
 import { fillBins } from "./spreadBins";
@@ -51,6 +52,7 @@ interface Panel {
   unit?: string;
 }
 
+const tracksOf = (n: number): string => plural(n, "track");
 const has = (n: number) => (n === 1 ? "has" : "have");
 const is = (n: number) => (n === 1 ? "is" : "are");
 
@@ -60,7 +62,7 @@ const PANELS: Panel[] = [
     title: "Genre",
     orientation: "horizontal",
     bucketLabel: "Genre",
-    unknown: (n) => `${tracksText(n)} ${has(n)} no genre`,
+    unknown: (n) => `${tracksOf(n)} ${has(n)} no genre`,
     opens: true,
   },
   {
@@ -69,8 +71,8 @@ const PANELS: Panel[] = [
     orientation: "vertical",
     bucketLabel: "Tempo (BPM)",
     axis: (value) => String(value),
-    fill: (n) => `${n} BPM`,
-    unknown: (n) => `${tracksText(n)} ${has(n)} no tempo`,
+    fill: (n) => formatBpmText(n),
+    unknown: (n) => `${tracksOf(n)} ${has(n)} no tempo`,
     opens: true,
     unit: "BPM",
   },
@@ -80,7 +82,7 @@ const PANELS: Panel[] = [
     orientation: "vertical",
     bucketLabel: "Year",
     fill: String,
-    unknown: (n) => `${tracksText(n)} ${has(n)} no year`,
+    unknown: (n) => `${tracksOf(n)} ${has(n)} no year`,
     opens: true,
   },
   {
@@ -88,7 +90,7 @@ const PANELS: Panel[] = [
     title: "Date added",
     orientation: "vertical",
     bucketLabel: "Month",
-    unknown: (n) => `${tracksText(n)} ${has(n)} an unknown date added`,
+    unknown: (n) => `${tracksOf(n)} ${has(n)} an unknown date added`,
     opens: true,
   },
   {
@@ -96,7 +98,7 @@ const PANELS: Panel[] = [
     title: "Rating",
     orientation: "horizontal",
     bucketLabel: "Rating",
-    unknown: (n) => `${tracksText(n)} ${is(n)} unrated`,
+    unknown: (n) => `${tracksOf(n)} ${is(n)} unrated`,
     opens: true,
   },
   {
@@ -105,9 +107,9 @@ const PANELS: Panel[] = [
     orientation: "vertical",
     bucketLabel: "Loudness (LUFS)",
     axis: (value) => String(value),
-    fill: (n) => `${n} LUFS`,
-    unknown: (n) => `${tracksText(n)} ${is(n)} not measured yet`,
-    noFile: (n) => `${tracksText(n)} ${has(n)} no file to measure`,
+    fill: (n) => `${formatLufs(n)} LUFS`,
+    unknown: (n) => `${tracksOf(n)} ${is(n)} not measured yet`,
+    noFile: (n) => `${tracksOf(n)} ${has(n)} no file to measure`,
     opens: false,
     unit: "LUFS",
   },
@@ -119,7 +121,7 @@ function itemsOf(panel: Panel, spread: StatisticsSpread): Item[] {
     const gap = "gap" in bucket && bucket.gap === true;
     return {
       label: panel.axis && !gap ? panel.axis(bucket.value) : bucket.label,
-      name: `${bucket.label}, ${tracksText(bucket.count)}`,
+      name: `${bucket.label}, ${tracksOf(bucket.count)}`,
       count: bucket.count,
       rules: bucket.rules,
       gap,

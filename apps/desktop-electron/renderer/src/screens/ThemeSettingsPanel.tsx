@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Modal, Panel, Select, TextField } from "../components";
+import { Button, ConfirmDialog, Modal, Panel, Select, TextField } from "../components";
+import { deleteLabel, deleteTitle, opensDialog, quoted } from "../format/words";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import {
   createEmptyCustomTheme,
@@ -233,7 +234,7 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
                       key={key}
                       className="theme-settings__swatch"
                       style={{ background: theme.colors[key] }}
-                      title={COLOR_FIELDS.find((field) => field.key === key)?.label ?? key}
+                      aria-hidden="true"
                     />
                   ))}
                 </div>
@@ -243,10 +244,10 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
                     Apply
                   </Button>
                   <Button variant="secondary" onClick={() => openEdit(theme)}>
-                    Edit
+                    {opensDialog("Edit")}
                   </Button>
                   <Button variant="danger" onClick={() => setDeleting(theme)}>
-                    Delete
+                    {opensDialog("Delete")}
                   </Button>
                 </div>
               </li>
@@ -259,15 +260,16 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
         )}
       </div>
 
-      <Modal
+      <ConfirmDialog
         open={deleting !== null}
-        title="Delete theme?"
-        onClose={() => setDeleting(null)}
-        secondaryAction={{ label: "Cancel", onClick: () => setDeleting(null) }}
-        primaryAction={{ label: "Delete", onClick: confirmDelete }}
+        title={deleteTitle("theme")}
+        confirmLabel={deleteLabel("theme")}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+        danger
       >
-        <p>Delete the theme “{deleting?.name}”? This can&apos;t be undone.</p>
-      </Modal>
+        The theme {quoted(deleting?.name ?? "")} will be gone. This cannot be undone.
+      </ConfirmDialog>
 
       <Modal
         open={editorOpen}

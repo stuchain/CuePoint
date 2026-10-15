@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef } from "react";
 
-import { Button, MoreAbout, Panel, TextField } from "../components";
+import { Button, MoreAbout, Notice, Panel, TextField } from "../components";
 import type { BeatportAuth } from "../api/cuepointBridge.types";
 import { NEEDS_DESKTOP } from "../api/userMessage";
 import { useBeatportToken } from "../hooks/useBeatportToken";
@@ -79,7 +79,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
   const showPaste = signedOutOrEnded || replacing;
   const line = lineFor(state, masked);
   const fromConfig = !signedIn && !env && status.configured && status.source === "config";
-  const signInLabel = state === "expired" ? "Sign in again" : "Sign in to Beatport";
+  const signInLabel = "Sign in to Beatport";
   const noDesktop = !engineAvailable;
 
   const tokenHint = engineAvailable
@@ -100,7 +100,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
         : testReason === "rejected"
           ? `Beatport refused the sign-in. ${testMessage}`
           : testReason === "unreachable"
-            ? `Couldn't reach Beatport. ${testMessage}`
+            ? `Could not reach Beatport. ${testMessage}`
             : testMessage}
     </p>
   ) : null;
@@ -130,9 +130,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
           </p>
         ) : null}
         {authError ? (
-          <p className="cp-beatport-settings__result cp-beatport-settings__result--rejected" role="alert">
-            {authError}
-          </p>
+          <Notice kind="problem">{authError}</Notice>
         ) : null}
         <div className="match-actions">
           {signedIn || env ? (
@@ -212,8 +210,8 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
           </MoreAbout>
         ) : null}
         {replacing ? testResult : null}
-        <div className="cp-beatport-settings__choice">
-          <label className="cp-beatport-settings__option">
+        <div className="cp-beatport-settings__choice settings-option">
+          <label className="cp-beatport-settings__option settings-check">
             <input
               type="checkbox"
               checked={includeUsers}
@@ -245,7 +243,7 @@ function lineFor(state: BeatportAuth["state"], masked: string | null): string {
     case "env":
       return "Using BEATPORT_ACCESS_TOKEN from the environment";
     case "unavailable":
-      return "Signing in to Beatport isn't available on this system.";
+      return "Signing in to Beatport is not available on this system.";
     case "signed_out":
       return "Sign in to let Discover search Beatport.";
   }

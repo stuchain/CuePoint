@@ -328,7 +328,7 @@ describe("the source picker", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Keys" })).toBeInTheDocument();
     expect(within(sourcesPanel()).getByRole("checkbox", { name: "Whole library" })).toBeChecked();
     expect(mock("getKeysPopulation")).toHaveBeenCalledWith({ sources: [{ kind: "all" }] });
-    expect(screen.getByText("1,500 tracks in the whole library")).toBeInTheDocument();
+    expect(screen.getByText("1,500 tracks · Whole library")).toBeInTheDocument();
   });
 
   it("offers Rekordbox's playlists, the Collections and the Sets to tick", async () => {
@@ -361,13 +361,13 @@ describe("the source picker", () => {
       }),
     );
     expect(within(panel).getByRole("checkbox", { name: "Whole library" })).not.toBeChecked();
-    expect(await screen.findByText("20 tracks in 1 playlist and 1 Set")).toBeInTheDocument();
+    expect(await screen.findByText("20 tracks · 1 playlist and 1 Set")).toBeInTheDocument();
     expect(await within(countsList()).findByRole("button", { name: /^1B,/ })).toBeInTheDocument();
 
     fireEvent.click(within(panel).getByRole("checkbox", { name: "Whole library" }));
     // The whole library's counts were read on opening and are still in the shared cache (C19d),
     // so going back to them shows them without asking again.
-    expect(await screen.findByText("1,500 tracks in the whole library")).toBeInTheDocument();
+    expect(await screen.findByText("1,500 tracks · Whole library")).toBeInTheDocument();
     expect(within(panel).getByRole("checkbox", { name: "Warm-up" })).not.toBeChecked();
   });
 
@@ -414,7 +414,7 @@ describe("the source picker", () => {
       ),
     });
     renderKeys();
-    await screen.findByText("Counting the keys…");
+    await screen.findByText("Loading keys…");
     expect(mock("getKeysPopulation")).not.toHaveBeenCalled();
     release({ playlists: PLAYLISTS, total: 3 });
     await opened().catch(() => undefined);
@@ -881,8 +881,8 @@ describe("revisiting the page (C19d)", () => {
     const before = reads();
 
     renderKeys();
-    // The first render: the counts are already there, no "Counting the keys…".
-    expect(screen.queryByText("Counting the keys…")).toBeNull();
+    // The first render: the counts are already there, no "Loading keys…".
+    expect(screen.queryByText("Loading keys…")).toBeNull();
     expect(within(countsList()).getByRole("button", { name: /^8A,/ })).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(reads()).toEqual(before);
@@ -1053,7 +1053,7 @@ describe("when there is nothing to count", () => {
     expect(screen.queryByRole("group", { name: "Keys in these sources" })).toBeNull();
   });
 
-  it("sends a library with no Beatport keys to Match tracks…", async () => {
+  it("sends a library with no Beatport keys to Match on Beatport", async () => {
     install({
       getKeysPopulation: vi.fn().mockResolvedValue({ total: 40, keys: [], no_key: 40 }),
     });
@@ -1061,7 +1061,7 @@ describe("when there is nothing to count", () => {
     expect(
       await screen.findByText("Keys come from Beatport. Match your tracks in Clean."),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
+    fireEvent.click(screen.getByRole("button", { name: "Match on Beatport" }));
     expect(where()).toHaveTextContent("/clean");
     expect(cleanMatchOpening({ state: state(), key: "k" })).not.toBeNull();
   });
@@ -1077,9 +1077,9 @@ describe("when there is nothing to count", () => {
     renderKeys();
     await opened();
     fireEvent.click(await within(sourcesPanel()).findByRole("checkbox", { name: "Warm-up" }, LOADED));
-    expect(await screen.findByText("This playlist is empty")).toBeInTheDocument();
+    expect(await screen.findByText("This playlist is empty.")).toBeInTheDocument();
     fireEvent.click(within(sourcesPanel()).getByRole("checkbox", { name: "Friday" }));
-    expect(await screen.findByText("These playlists are empty")).toBeInTheDocument();
+    expect(await screen.findByText("These playlists are empty.")).toBeInTheDocument();
   });
 
   it("does not call the whole library 'these playlists' when it holds no tracks", async () => {

@@ -21,14 +21,20 @@ import { useNavigate } from "react-router-dom";
 
 import type { EntityKind, FilterRuleSet, LibraryPlaylistNode } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { EmptyState } from "../../components/EmptyState";
+import { Hint } from "../../components/Hint";
+import { Loading } from "../../components/Loading";
+import { Notice } from "../../components/Notice";
 import { Tabs } from "../../components/Tabs";
 import { useToast } from "../../components/Toast";
 import { CamelotWheel, type PickModifiers } from "../../components/wheel/CamelotWheel";
-import { CAMELOT_CODES, tracksWord } from "../../components/wheel/camelot";
+import { CAMELOT_CODES } from "../../components/wheel/camelot";
 import { useCompatibleKeys } from "../../components/wheel/useWheelSubject";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { LIBRARY_PLAYLISTS, LIBRARY_SUMMARY, useReportReadError, useSharedRead } from "../../api/sharedReads";
+import { formatCount, plural } from "../../format/counts";
+import { MATCH_ON_BEATPORT, RETRY } from "../../format/words";
 import { cleanMatchState, cleanTrackState } from "../clean/cleanLink";
 import type { CleanTracks } from "../clean/cleanTracks";
 import { entityPath, similarPath } from "../discover/discoverLinks";
@@ -344,7 +350,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
           <span role="status">
             {data.total === 0
               ? "No tracks here"
-              : `${tracksWord(data.total)} in ${sourcesWords(picked)}`}
+              : `${plural(data.total, "track")} · ${sourcesWords(picked)}`}
           </span>
         ) : undefined
       }
@@ -355,13 +361,15 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
     return (
       <div className="screen screen--scroll keys-page">
         {header}
-        <div className="keys-empty keys-empty--page">
-          <p className="keys-empty__headline">Import a Rekordbox file first</p>
-          <p className="keys-note">The Keys page counts the keys of the tracks in your library.</p>
-          <Button variant="primary" onClick={() => navigate("/library", { state: libraryImportState() })}>
-            Import a Rekordbox file…
-          </Button>
-        </div>
+        <EmptyState
+          icon="keys"
+          headline="Import a Rekordbox file first"
+          description="The Keys page counts the keys of the tracks in your library."
+          action={{
+            label: "Import a Rekordbox file…",
+            onClick: () => navigate("/library", { state: libraryImportState() }),
+          }}
+        />
       </div>
     );
   }
@@ -385,15 +393,19 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
           onClear={() => update([])}
         />
 
-        {population.status === "loading" && <p className="keys-note keys-page__state">Counting the keys…</p>}
+        {population.status === "loading" && <Loading what="keys" className="keys-page__state" />}
 
         {population.status === "error" && (
-          <div className="keys-empty keys-page__state">
-            <p className="keys-empty__headline">The keys could not be counted.</p>
-            <Button variant="secondary" onClick={population.retry}>
-              Try again
-            </Button>
-          </div>
+          <Notice
+            className="keys-page__state"
+            action={
+              <Button variant="secondary" onClick={population.retry}>
+                {RETRY}
+              </Button>
+            }
+          >
+            The keys could not be counted.
+          </Notice>
         )}
 
         {population.status === "unavailable" && (
@@ -403,19 +415,20 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
         )}
 
         {noKeys && (
-          <div className="keys-empty keys-page__state">
-            <p className="keys-empty__headline">Keys come from Beatport. Match your tracks in Clean.</p>
-            <p className="keys-note">{`No Beatport key: ${data!.no_key.toLocaleString()}`}</p>
-            <Button variant="primary" onClick={() => openMatch()}>
-              Match tracks…
-            </Button>
-          </div>
+          <EmptyState
+            className="keys-page__state"
+            icon="keys"
+            headline="Keys come from Beatport. Match your tracks in Clean."
+            description={`No Beatport key: ${formatCount(data!.no_key)}`}
+            action={{ label: MATCH_ON_BEATPORT, onClick: () => openMatch() }}
+          />
         )}
 
         {emptySources && (
-          <p className="keys-empty__headline keys-page__state">
-            {picked.length === 1 ? `This ${emptyNoun(picked[0]!)} is empty` : "These playlists are empty"}
-          </p>
+          <EmptyState
+            className="keys-page__state"
+            headline={picked.length === 1 ? `This ${emptyNoun(picked[0]!)} is empty.` : "These playlists are empty."}
+          />
         )}
 
         {countable && data && (
@@ -443,7 +456,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
                     chosen={chosen}
                     center={
                       <>
-                        <strong>{(data.total - data.no_key).toLocaleString()}</strong>
+                        <strong>{formatCount(data.total - data.no_key)}</strong>
                         <small>with a key</small>
                       </>
                     }
@@ -470,39 +483,42 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
 
       {(countable || noKeys) && (
         <div className="keys-page__actions">
-          <Button
-            variant="secondary"
-            aria-pressed={showMix}
-            aria-disabled={choice.anchor === null ? true : undefined}
-            title={choice.anchor === null ? CLICK_A_KEY : undefined}
-            onClick={() => {
-              if (choice.anchor !== null) setShowMix((on) => !on);
-            }}
-          >
-            {mixWord}
-          </Button>
-          <Button
-            variant="secondary"
-            aria-disabled={needChoice ? true : undefined}
-            title={needChoice ? CLICK_A_KEY : undefined}
-            onClick={() => {
-              if (!needChoice) openInLibrary();
-            }}
-          >
-            Open in Library
-          </Button>
-          <Button
-            variant="secondary"
-            aria-disabled={needChoice || !window.cuepoint?.saveSmartCollection ? true : undefined}
-            title={needChoice ? CLICK_A_KEY : undefined}
-            onClick={() => {
-              if (needChoice) return;
-              setSaveError(null);
-              setSaving("open");
-            }}
-          >
-            Save as Smart Collection…
-          </Button>
+          <Hint text={choice.anchor === null ? CLICK_A_KEY : undefined}>
+            <Button
+              variant="secondary"
+              aria-pressed={showMix}
+              aria-disabled={choice.anchor === null ? true : undefined}
+              onClick={() => {
+                if (choice.anchor !== null) setShowMix((on) => !on);
+              }}
+            >
+              {mixWord}
+            </Button>
+          </Hint>
+          <Hint text={needChoice ? CLICK_A_KEY : undefined}>
+            <Button
+              variant="secondary"
+              aria-disabled={needChoice ? true : undefined}
+              onClick={() => {
+                if (!needChoice) openInLibrary();
+              }}
+            >
+              Open in Library
+            </Button>
+          </Hint>
+          <Hint text={needChoice ? CLICK_A_KEY : undefined}>
+            <Button
+              variant="secondary"
+              aria-disabled={needChoice || !window.cuepoint?.saveSmartCollection ? true : undefined}
+              onClick={() => {
+                if (needChoice) return;
+                setSaveError(null);
+                setSaving("open");
+              }}
+            >
+              Save as Smart Collection…
+            </Button>
+          </Hint>
         </div>
       )}
 
@@ -510,7 +526,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
         <section ref={tracksRef} className="keys-page__tracks" aria-labelledby="keys-tracks-title">
           {hasChoice(choice) && rules ? (
             <>
-              <h2 id="keys-tracks-title" className="keys-section-title">
+              <h2 id="keys-tracks-title" className="cp-text-section">
                 {`Tracks in ${choiceWords(choice)}`}
               </h2>
               <KeysTracks
@@ -532,7 +548,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
             </>
           ) : (
             <>
-              <h2 id="keys-tracks-title" className="keys-section-title">
+              <h2 id="keys-tracks-title" className="cp-text-section">
                 Tracks
               </h2>
               <p className="keys-note">Click a key to list its tracks.</p>

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
-import { MoreAbout, Panel } from "../components";
+import { LinkButton, MoreAbout, Notice, Panel } from "../components";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { reportUnexpected, setReportingChoice } from "../reporting/reporting";
 import "./error-reporting-settings.css";
@@ -96,8 +96,9 @@ export function ErrorReportingSettingsPanel({
   return (
     <Panel title="Privacy">
       <div className="cp-error-reporting">
+        <div className="settings-option">
         <div className="cp-error-reporting__row">
-          <label className="cp-error-reporting__toggle">
+          <label className="cp-error-reporting__toggle settings-check">
             <input
               id={ERROR_REPORTING_FIELD_ID}
               type="checkbox"
@@ -113,23 +114,22 @@ export function ErrorReportingSettingsPanel({
         <p id={lineId} className="cp-error-reporting__text">
           Sends what went wrong, never your track or file names.
         </p>
+        </div>
         <MoreAbout describedBy={lineId}>
           <p className="cp-error-reporting__text">
             A report says what went wrong, where in CuePoint&apos;s code, and the steps that led to
             it. It is built not to carry your file, folder, track, artist, label or playlist names,
             your notes, tags or Beatport sign-in: they are removed on your computer before it is sent.
           </p>
-          <button type="button" className="cp-error-reporting__link" onClick={() => onOpenPrivacy?.()}>
+          <LinkButton className="cp-error-reporting__link" onClick={() => onOpenPrivacy?.()}>
             Privacy details
-          </button>
+          </LinkButton>
         </MoreAbout>
         {!available && (
           <p className="cp-error-reporting__text">Open CuePoint as a desktop app to change this.</p>
         )}
         {error && (
-          <p className="cp-error-reporting__error" role="alert">
-            {error}
-          </p>
+          <Notice kind="problem">{error}</Notice>
         )}
         {children}
       </div>

@@ -207,7 +207,7 @@ describe("the panel's words", () => {
     renderPanel();
     expect(
       await screen.findByText(
-        "Plays straight to your audio interface. Other apps can't use it meanwhile.",
+        "Plays straight to your audio interface. Other apps cannot use it meanwhile.",
       ),
     ).toBeInTheDocument();
     const detail = screen.getByText(/Leave it off unless you use an audio interface/);
@@ -217,7 +217,7 @@ describe("the panel's words", () => {
       name: "More about this",
     });
     expect(toggle).toHaveAccessibleDescription(
-      "Plays straight to your audio interface. Other apps can't use it meanwhile.",
+      "Plays straight to your audio interface. Other apps cannot use it meanwhile.",
     );
     fireEvent.click(toggle);
     expect(detail).toBeVisible();
@@ -323,7 +323,7 @@ describe("exclusive output", () => {
     renderPanel();
 
     expect(
-      await screen.findByText(/Other apps can.t use it meanwhile/i),
+      await screen.findByText(/Other apps cannot use it meanwhile/i),
     ).toBeInTheDocument();
   });
 

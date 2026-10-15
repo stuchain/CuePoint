@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 
 import type { RekordboxExportHistory } from "../api/cuepointBridge.types";
 import { exportHistory, useReportReadError, useSharedRead } from "../api/sharedReads";
-import { Button, MoreAbout, Panel } from "../components";
+import { Button, MoreAbout, Notice, Panel } from "../components";
+import { RETRY } from "../format/words";
 import { fileName } from "./library/libraryFormat";
 import { libraryImportState } from "./library/libraryLink";
 import {
@@ -81,12 +82,15 @@ export function RekordboxExportSettingsPanel() {
         )}
 
         {error && (
-          <div className="cp-export-settings__problem" role="alert">
-            <span>{error}</span>
-            <Button variant="secondary" onClick={load}>
-              Try again
-            </Button>
-          </div>
+          <Notice
+            action={
+              <Button variant="secondary" onClick={load}>
+                {RETRY}
+              </Button>
+            }
+          >
+            {error}
+          </Notice>
         )}
 
         {remembered && (
@@ -110,7 +114,7 @@ export function RekordboxExportSettingsPanel() {
 
         {history && (
           <section aria-label="Recent exports">
-            <h3 className="cp-export-settings__heading">Recent exports</h3>
+            <h3 className="cp-export-settings__heading cp-text-label">Recent exports</h3>
             {history.exports.length === 0 ? (
               <p className="cp-export-settings__hint">No exports yet.</p>
             ) : (

@@ -24,6 +24,7 @@ import { reportUnexpected } from "../../reporting/reporting";
 import { StatisticsScreen } from "./StatisticsScreen";
 import { statisticsFocusState } from "./statisticsLink";
 import { PLAYS_STORAGE_KEY } from "./playsChoice";
+import { formatDayTime } from "../../format/dates";
 import { STATISTICS_SCOPE_STORAGE_KEY } from "./statisticsScope";
 import { useLibraryJobsFinished } from "./useStatistics";
 
@@ -209,6 +210,15 @@ describe("the Statistics page (STATS-04)", () => {
     expect(names).toEqual(["Plays", "Your library", "Health"]);
   });
 
+  it("puts the scope picker beside the title and says what is counted in one summary line", async () => {
+    renderPage();
+    const picker = await screen.findByRole("combobox", { name: "Scope" });
+    const header = screen.getByRole("banner");
+    expect(header).toContainElement(picker);
+    expect(picker.closest(".cp-screen-header__beside")).not.toBeNull();
+    expect(header.querySelector(".cp-screen-header__summary")).not.toBeNull();
+  });
+
   it("shows each section reading while its answer is on the way", async () => {
     install({
       getStatisticsPlays: vi.fn(never),
@@ -218,13 +228,13 @@ describe("the Statistics page (STATS-04)", () => {
     renderPage();
 
     const plays = await screen.findByRole("region", { name: "Plays" });
-    expect(within(plays).getByRole("status")).toHaveTextContent("Reading plays");
+    expect(within(plays).getByRole("status")).toHaveTextContent("Loading plays");
     expect(
       within(screen.getByRole("region", { name: "Your library" })).getByRole("status"),
-    ).toHaveTextContent("Reading your library");
+    ).toHaveTextContent("Loading your library");
     expect(
       within(screen.getByRole("region", { name: "Health" })).getByRole("status"),
-    ).toHaveTextContent("Reading health");
+    ).toHaveTextContent("Loading health");
   });
 
   it("fills each section with what was read, and invents nothing", async () => {
@@ -237,7 +247,7 @@ describe("the Statistics page (STATS-04)", () => {
       within(screen.getByRole("region", { name: "Your library" })).getByRole("heading", { level: 3, name: "Genre" }),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole("region", { name: "Health" })).getByText(`Last checked ${new Date("2026-10-08T12:00:00Z").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`),
+      within(screen.getByRole("region", { name: "Health" })).getByText(`Last checked ${formatDayTime("2026-10-08T12:00:00Z")}`),
     ).toBeInTheDocument();
     // The whole library is the scope until the picker says otherwise.
     expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "library" });
@@ -292,7 +302,7 @@ describe("the Statistics page (STATS-04)", () => {
     expect(section).not.toHaveTextContent(/engine said no/);
     expect(reportUnexpected).toHaveBeenCalled();
     // The other sections are not taken down with it.
-    await within(screen.getByRole("region", { name: "Health" })).findByText(`Last checked ${new Date("2026-10-08T12:00:00Z").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`);
+    await within(screen.getByRole("region", { name: "Health" })).findByText(`Last checked ${formatDayTime("2026-10-08T12:00:00Z")}`);
 
     await userEvent.click(within(section).getByRole("button", { name: "Try again" }));
 

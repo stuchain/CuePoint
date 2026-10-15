@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import type { AppBuildInfo, UpdateState, WhatsNew as WhatsNewNotes } from "../api/cuepointBridge.types";
 import { Button } from "../components/Button";
+import { formatTimeOfDay } from "../format/dates";
 import { WhatsNew } from "../components/updates/WhatsNew";
 import { useRestartFlow } from "../components/updates/useRestartFlow";
 import { useUpdateState } from "../components/updates/useUpdateState";
@@ -16,9 +17,8 @@ function isTestVersion(version: string | null | undefined): boolean {
 /** "Last checked 10:42" in the person's own clock, or that it never has. */
 function lastCheckedWords(iso: string | null): string {
   if (iso === null) return "Never checked";
-  const when = new Date(iso);
-  if (Number.isNaN(when.getTime())) return "Never checked";
-  return `Last checked ${when.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+  const when = formatTimeOfDay(iso);
+  return when === "" ? "Never checked" : `Last checked ${when}`;
 }
 
 /** The state in words, and the second line some states add. */
@@ -33,7 +33,7 @@ function stateWords(state: UpdateState | null, installed: boolean | null): { mai
     case "checking":
       return { main: "Checking for updates…" };
     case "up-to-date":
-      return { main: "You're up to date" };
+      return { main: "You are up to date" };
     case "downloading":
       return { main: `Downloading ${state.version ?? ""}…` };
     case "ready":
@@ -44,16 +44,16 @@ function stateWords(state: UpdateState | null, installed: boolean | null): { mai
         more:
           state.manualReason === "linux"
             ? "Updates on Linux are installed by hand."
-            : "CuePoint can't replace itself from where it is installed. Download the new version.",
+            : "CuePoint cannot replace itself from where it is installed. Download the new version.",
       };
     case "failed":
       return {
         main:
           state.error === "download-failed"
-            ? "The update didn't download. CuePoint will try again later."
+            ? "The update did not download. CuePoint will try again later."
             : state.error === "install-failed"
-              ? "The update didn't install. CuePoint will try again later."
-              : "Couldn't check for updates. You may be offline.",
+              ? "The update did not install. CuePoint will try again later."
+              : "Could not check for updates. You may be offline.",
       };
   }
 }
@@ -76,7 +76,7 @@ function ReadyActions() {
       <div className="about-updates__ask" role="group" aria-label="Restart CuePoint">
         <p>
           {flow.unknown
-            ? "CuePoint couldn't tell whether work is still running."
+            ? "CuePoint could not tell whether work is still running."
             : `${flow.work ?? "Background work"} is still running.`}
         </p>
         <div className="about-updates__row">

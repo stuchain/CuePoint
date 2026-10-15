@@ -82,20 +82,20 @@ describe("last checked", () => {
 
 describe("the state in words", () => {
   it.each([
-    [{ status: "up-to-date" }, "You're up to date"],
+    [{ status: "up-to-date" }, "You are up to date"],
     [{ status: "checking" }, "Checking for updates…"],
     [{ status: "downloading", version: "1.0.0-test.2", progress: 40 }, "Downloading 1.0.0-test.2…"],
     [{ status: "idle" }, "Not checked yet"],
-    [{ status: "failed", error: "could-not-check" }, "Couldn't check for updates. You may be offline."],
-    [{ status: "failed", error: "download-failed" }, "The update didn't download. CuePoint will try again later."],
-    [{ status: "failed", error: "install-failed" }, "The update didn't install. CuePoint will try again later."],
+    [{ status: "failed", error: "could-not-check" }, "Could not check for updates. You may be offline."],
+    [{ status: "failed", error: "download-failed" }, "The update did not download. CuePoint will try again later."],
+    [{ status: "failed", error: "install-failed" }, "The update did not install. CuePoint will try again later."],
     [
       { status: "manual", manualReason: "linux", version: "1.0.1" },
       "Updates on Linux are installed by hand.",
     ],
     [
       { status: "manual", manualReason: "cannot-replace", version: "1.0.1" },
-      "CuePoint can't replace itself from where it is installed. Download the new version.",
+      "CuePoint cannot replace itself from where it is installed. Download the new version.",
     ],
   ] as [Partial<UpdateState>, string][])("%j reads %s", async (state, words) => {
     setup(state);
@@ -134,20 +134,20 @@ describe("the state in words", () => {
 
   it("uses none of the engine's words", async () => {
     const { container } = setup({ status: "failed", error: "download-failed" });
-    await screen.findByText(/didn't download/);
+    await screen.findByText(/did not download/);
     expect(container.textContent).not.toMatch(/\b(engine|jobs?|channel|feed|pre-?release)\b/i);
   });
 
   it("follows a push", async () => {
     setup({ status: "up-to-date" });
-    await screen.findByText("You're up to date");
+    await screen.findByText("You are up to date");
     act(() => fake.push(updateState({ status: "checking" })));
     expect(screen.getByText("Checking for updates…")).toBeInTheDocument();
   });
 
   it("announces politely", async () => {
     setup({ status: "up-to-date" });
-    const words = await screen.findByText("You're up to date");
+    const words = await screen.findByText("You are up to date");
     expect(words.closest("[aria-live='polite']")).not.toBeNull();
   });
 });

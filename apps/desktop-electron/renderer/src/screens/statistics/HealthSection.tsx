@@ -28,7 +28,9 @@ import type {
   StatisticsOtherState,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components";
-import { tracksText } from "../../components/charts/formatCount";
+import { LinkButton } from "../../components/LinkButton";
+import { plural } from "../../format/counts";
+import { formatDayTime } from "../../format/dates";
 import { PixelBars } from "../../components/charts/PixelBars";
 import { fileStatusLabel, matchStateLabel } from "../clean/cleanFormat";
 import { cleanSectionState } from "../clean/cleanLink";
@@ -80,11 +82,9 @@ const PURPOSES = {
   other: "Duplicate tracks, matches Beatport changed after you decided, and the cover pictures stored inside your audio files.",
 } as const;
 
-/** The day an instant falls on, in American date words; the text itself if it is not a date. */
+/** When an instant was, with the time on the computer's clock; the text itself if it is not a date. */
 function dayWords(iso: string): string {
-  const when = new Date(iso);
-  if (Number.isNaN(when.getTime())) return iso;
-  return when.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  return formatDayTime(iso) || iso;
 }
 
 /** "Last checked September 3, 2026", or the plain fact that no check has run. */
@@ -105,7 +105,10 @@ interface GroupProps {
   purpose: string;
   items: Item[];
   note?: string;
-  action: { label: string; onClick: () => void; disabled?: boolean; loading?: boolean };
+  /** A "go to" link (it opens another page), or a button that acts here. */
+  action:
+    | { kind: "go"; page: string; onClick: () => void }
+    | { kind: "button"; label: string; onClick: () => void; disabled?: boolean; loading?: boolean };
 }
 
 function Group({ id, title, purpose, items, note, action }: GroupProps) {
@@ -118,18 +121,26 @@ function Group({ id, title, purpose, items, note, action }: GroupProps) {
         title={title}
         buckets={items}
         orientation="horizontal"
-        barName={(item) => `${item.label}, ${tracksText(item.count)}`}
+        barName={(item) => `${item.label}, ${plural(item.count, "track")}`}
         onSelect={opens ? (item) => item.open?.() : undefined}
         isSelectable={(item) => item.open !== null}
         bucketLabel={title}
       />
       {note && <p className="statistics-note">{note}</p>}
-      <Button variant="secondary" onClick={action.onClick}
-        disabled={action.disabled}
-        loading={action.loading}
-      >
-        {action.label}
-      </Button>
+      {action.kind === "go" ? (
+        <LinkButton go onClick={action.onClick}>
+          {`Open in ${action.page}`}
+        </LinkButton>
+      ) : (
+        <Button
+          variant="secondary"
+          onClick={action.onClick}
+          disabled={action.disabled}
+          loading={action.loading}
+        >
+          {action.label}
+        </Button>
+      )}
     </div>
   );
 }
@@ -181,7 +192,8 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
         items={files}
         note={checkedLine(health.checked_at)}
         action={{
-          label: "Fix in Clean ›",
+          kind: "go",
+          page: "Clean",
           onClick: () => navigate("/clean", { state: cleanSectionState("missing") }),
         }}
       />
@@ -191,7 +203,8 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
         purpose={PURPOSES.beatport}
         items={beatport}
         action={{
-          label: "Fix in Clean ›",
+          kind: "go",
+          page: "Clean",
           onClick: () => navigate("/clean", { state: cleanSectionState("review") }),
         }}
       />
@@ -201,7 +214,8 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
         purpose={PURPOSES.waveforms}
         items={waveforms}
         action={{
-          label: "Settings ›",
+          kind: "go",
+          page: "Settings",
           onClick: () => navigate("/settings", { state: settingsFocusState("waveforms") }),
         }}
       />
@@ -212,6 +226,7 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
         items={other}
         note={artworkLine(health.artwork_checked_at)}
         action={{
+          kind: "button",
           label: "Read cover art",
           onClick: onReadCoverArt,
           disabled: coverArtRunning,

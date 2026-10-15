@@ -22,7 +22,11 @@ import type { CleanJobStarted, LibrarySummary } from "../../api/cuepointBridge.t
 import { LIBRARY_SUMMARY, useSharedRead } from "../../api/sharedReads";
 import { useToast } from "../../components";
 import { Button } from "../../components/Button";
-import { PixelSpinner } from "../../components/PixelSpinner";
+import { EmptyState } from "../../components/EmptyState";
+import { Loading } from "../../components/Loading";
+import { Notice } from "../../components/Notice";
+import { plural } from "../../format/counts";
+import { RETRY } from "../../format/words";
 import { Select } from "../../components/Select";
 import { useCleanJob, type CleanMessageTone } from "../clean/useCleanJob";
 import { libraryImportState } from "../library/libraryLink";
@@ -69,15 +73,18 @@ function Section({ id, title, status, loading, failed, onRetry, children }: Sect
       <h2 id={`statistics-${id}`} className="statistics-section__title">
         {title}
       </h2>
-      {status === "loading" && <PixelSpinner label={loading} />}
+      {status === "loading" && <Loading what={loading} />}
       {status === "unavailable" && <p className="statistics-note">{NOT_HERE}</p>}
       {status === "error" && (
-        <div className="statistics-section__failed">
-          <p className="statistics-note">{failed}</p>
-          <Button variant="secondary" onClick={onRetry}>
-            Try again
-          </Button>
-        </div>
+        <Notice
+          action={
+            <Button variant="secondary" onClick={onRetry}>
+              {RETRY}
+            </Button>
+          }
+        >
+          {failed}
+        </Notice>
       )}
       {status === "ready" && children}
     </section>
@@ -162,11 +169,26 @@ export function StatisticsScreen() {
     saveScope(form);
   };
 
+  // The page summary line: what is being counted, as a facts line.
+  const summaryValue = answered?.summary ?? null;
+  const scopeLabel = options.find((option) => option.value === scope)?.label ?? null;
+  const summaryLine =
+    !settled || libraryEmpty || summaryValue === null
+      ? undefined
+      : scope === "library"
+        ? [
+            typeof summaryValue.track_count === "number" ? plural(summaryValue.track_count, "track") : null,
+            typeof summaryValue.playlist_count === "number" ? plural(summaryValue.playlist_count, "playlist") : null,
+          ]
+            .filter((part): part is string => part !== null)
+            .join(" · ") || undefined
+        : (scopeLabel ?? undefined);
+
   const header = (
     <ScreenHeader
       title="Statistics"
       inset
-      actions={
+      beside={
         answered !== null && !libraryEmpty ? (
           <Select
             label="Scope"
@@ -178,6 +200,7 @@ export function StatisticsScreen() {
           />
         ) : undefined
       }
+      summary={summaryLine}
     />
   );
 
@@ -186,15 +209,19 @@ export function StatisticsScreen() {
     return (
       <div className="screen screen--scroll statistics-page">
         {header}
-        <div className="statistics-empty">
-          <p className="statistics-empty__title">{empty.title}</p>
-          {empty.hint && <p className="statistics-note">{empty.hint}</p>}
-          {empty.action && (
-            <Button variant="primary" onClick={() => navigate("/library", { state: libraryImportState() })}>
-              {empty.action.label}
-            </Button>
-          )}
-        </div>
+        <EmptyState
+          icon="statistics"
+          headline={empty.title}
+          description={empty.hint ?? undefined}
+          action={
+            empty.action
+              ? {
+                  label: empty.action.label,
+                  onClick: () => navigate("/library", { state: libraryImportState() }),
+                }
+              : undefined
+          }
+        />
       </div>
     );
   }
@@ -209,7 +236,7 @@ export function StatisticsScreen() {
         id="plays"
         title="Plays"
         status={plays.status}
-        loading="Reading plays…"
+        loading="plays"
         failed="Plays could not be read."
         onRetry={plays.retry}
       >
@@ -237,7 +264,7 @@ export function StatisticsScreen() {
         id="library"
         title="Your library"
         status={spreads.status}
-        loading="Reading your library…"
+        loading="your library"
         failed="Your library could not be read."
         onRetry={spreads.retry}
       >
@@ -253,7 +280,7 @@ export function StatisticsScreen() {
         id="health"
         title="Health"
         status={health.status}
-        loading="Reading health…"
+        loading="health"
         failed="Health could not be read."
         onRetry={health.retry}
       >

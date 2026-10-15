@@ -393,7 +393,7 @@ describe("the Plays section (STATS-05)", () => {
       const region = await section();
 
       expect(within(region).getByRole("status")).toHaveTextContent(
-        "Your play history starts on Oct 8, so the counts begin there rather than on Jan 1, 2026.",
+        "Your play history starts on Oct 8, so the counts begin there rather than on Jan 1.",
       );
     });
 
@@ -430,7 +430,7 @@ describe("the Plays section (STATS-05)", () => {
       expect(navigated()).toEqual({ path: "/library", state: { cuepointLibraryTrack: 90 } });
     });
 
-    it("has a small unboxed play button in the row that previews the track", async () => {
+    it("has the shared round play button at the row's right end, and it plays the track", async () => {
       const playQueue = vi.fn().mockResolvedValue({ ok: true });
       const row = { id: 812, title: "Alpha", artist: "B", file_path: "/m/a.mp3" };
       install({
@@ -441,9 +441,11 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      const play = within(region).getByRole("button", { name: "Preview Alpha by B" });
+      const play = within(region).getByRole("button", { name: "Play Alpha by B" });
       expect(play).toHaveAttribute("title", "Play");
       expect(play.closest("li")).toHaveClass("plays__item");
+      expect(play).toHaveClass("cp-play-btn", "plays__play");
+      expect(play.closest(".cp-hint")?.nextElementSibling).toBeNull();
       expect(play.querySelector(".cp-pixel-icon")).not.toBeNull();
       expect(play).toHaveTextContent("");
       await user.click(play);
@@ -470,7 +472,7 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      expect(within(region).queryByRole("button", { name: /^Preview / })).toBeNull();
+      expect(within(region).queryByRole("button", { name: /^Play / })).toBeNull();
     });
 
     it("lists the top artists and labels with plays and tracks, and opens their tracks", async () => {
@@ -940,14 +942,14 @@ describe("the Plays section, after review (STATS-05)", () => {
       const user = userEvent.setup();
       renderPage();
       const region = await section();
-      expect(within(region).queryByText("Reading…")).toBeNull();
+      expect(within(region).queryByText("Loading plays…")).toBeNull();
 
       await user.selectOptions(within(region).getByLabelText("Top"), "Top 25");
 
-      expect(await within(region).findByText("Reading…")).toBeVisible();
+      expect(await within(region).findByText("Loading plays…")).toBeVisible();
       expect(region.querySelector(".plays--stale")).not.toBeNull();
       release(plays());
-      await waitFor(() => expect(within(region).queryByText("Reading…")).toBeNull());
+      await waitFor(() => expect(within(region).queryByText("Loading plays…")).toBeNull());
       expect(region.querySelector(".plays--stale")).toBeNull();
     });
   });
@@ -1012,7 +1014,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.click(within(region).getByRole("button", { name: "Preview Alpha by B" }));
+      await user.click(within(region).getByRole("button", { name: "Play Alpha by B" }));
 
       expect(await within(region).findByText("That track could not be read.")).toBeVisible();
     });

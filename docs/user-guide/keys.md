@@ -55,7 +55,7 @@ Smart Collection, whose filters, not a place, decide its tracks.
 
 - Before your first import, Keys asks you to import a Rekordbox file.
 - If none of the tracks in your sources has a Beatport key, Keys says so and
-  offers **Match tracks…**, which opens Clean.
+  offers **Match on Beatport**, which opens Clean.
 - A playlist, Collection or Set with no tracks says it is empty.
 - **No Beatport key** is dimmed, with a note, when every track in your sources has a key.
 

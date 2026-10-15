@@ -9,7 +9,8 @@
  */
 import { useMemo, useState } from "react";
 
-import { TextField } from "../../components/TextField";
+import { SearchField } from "../../components/SearchField";
+import { nothingMatches } from "../../format/words";
 import { flatten, type PlaylistTreeNode } from "../library/playlistTree";
 import {
   collectionPickerNodes,
@@ -85,7 +86,7 @@ export function KeysSourcePicker({
 
   return (
     <section className="keys-sources" aria-labelledby="keys-sources-title">
-      <h2 id="keys-sources-title" className="keys-section-title">
+      <h2 id="keys-sources-title" className="cp-text-section">
         Sources
       </h2>
       <div className="keys-sources__body" role="group" aria-label="Sources">
@@ -102,18 +103,17 @@ export function KeysSourcePicker({
         </label>
 
         {any && (
-          <TextField
-            label="Find a source"
+          <SearchField
+            thing="sources"
             className="keys-sources__filter"
             value={filter}
-            placeholder="Find a source"
-            onChange={(event) => setFilter(event.target.value)}
+            onValueChange={setFilter}
           />
         )}
 
         {sections.map((section) => (
           <div key={section.title} className="keys-sources__section">
-            <h3 className="keys-sources__title">{section.title}</h3>
+            <h3 className="cp-text-label keys-sources__title">{section.title}</h3>
             <ul className="keys-sources__list">
               {section.rows.map((row) => (
                 <li
@@ -139,7 +139,7 @@ export function KeysSourcePicker({
           </div>
         ))}
         {needle !== "" && sections.length === 0 && (
-          <p className="keys-note">Nothing here is called that.</p>
+          <p className="keys-note">{nothingMatches(filter.trim())}</p>
         )}
       </div>
     </section>

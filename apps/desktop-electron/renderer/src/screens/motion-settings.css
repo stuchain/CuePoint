@@ -28,7 +28,7 @@
 .motion-settings__modes {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 0;
   margin: 0;
   padding: 0;
   border: 0;
@@ -56,11 +56,10 @@
   min-width: 0;
 }
 
-.motion-settings__legend {
-  padding: 0;
-  margin-bottom: var(--space-sm);
-  font-size: var(--font-size-md);
-  font-weight: 600;
+/* Legends are the one label style (index.css); the label sits 4 above its first control. */
+.motion-settings__modes > legend,
+.motion-settings__group > legend {
+  margin-bottom: var(--space-xs);
 }
 
 .motion-settings__row {
@@ -76,13 +75,6 @@
   min-width: 0;
 }
 
-.motion-settings__label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-}
 
 .motion-settings__hint {
   margin: 0;
@@ -94,7 +86,8 @@
   flex: none;
   width: calc(var(--unit) * 3);
   height: calc(var(--unit) * 3);
-  margin-top: var(--space-xs);
+  /* Centred on the first 24px row. */
+  margin-top: var(--space-sm);
   position: relative;
   background: transparent;
   border: var(--divider);

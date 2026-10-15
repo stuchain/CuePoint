@@ -22,7 +22,13 @@ import type {
   EntityKind,
   FilterRuleSet,
 } from "../../api/cuepointBridge.types";
+import { EmptyState } from "../../components/EmptyState";
+import { Loading } from "../../components/Loading";
+import { Notice } from "../../components/Notice";
 import { useToast } from "../../components/Toast";
+import { Button } from "../../components/Button";
+import { formatCount } from "../../format/counts";
+import { RETRY } from "../../format/words";
 import { TrackContextMenu, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -224,7 +230,7 @@ export function KeysTracks({
         depth: node.depth,
         icon: iconForKind(node.kind),
         disabled: !isCollection(node),
-        hint: isCollection(node) ? node.entry_count.toLocaleString() : undefined,
+        hint: isCollection(node) ? formatCount(node.entry_count) : undefined,
       }));
     }
     if (picker.kind === "set") {
@@ -234,14 +240,14 @@ export function KeysTracks({
         depth: node.depth,
         icon: iconForKind(node.kind),
         disabled: !isSet(node),
-        hint: isSet(node) ? node.entry_count.toLocaleString() : undefined,
+        hint: isSet(node) ? formatCount(node.entry_count) : undefined,
       }));
     }
     return tags.map((tag) => ({
       id: tag.id,
       label: tag.name,
       icon: "tag" as const,
-      hint: tag.track_count.toLocaleString(),
+      hint: formatCount(tag.track_count),
     }));
   }, [collections, picker, tags]);
 
@@ -512,22 +518,21 @@ export function KeysTracks({
     return keys;
   }, [selection.selection, window_.source, window_.total]);
 
-  const emptyState = (
-    <div className="keys-empty">
-      {window_.error ? (
-        <>
-          <p className="keys-empty__headline">The tracks could not be read.</p>
-          <p className="keys-note">{window_.error}</p>
-          <button type="button" className="keys-link" onClick={window_.retry}>
-            Try again
-          </button>
-        </>
-      ) : window_.loading ? (
-        <p className="keys-note">Reading the tracks…</p>
-      ) : (
-        <p className="keys-empty__headline">No track is in these keys here.</p>
-      )}
-    </div>
+  const emptyState = window_.error ? (
+    <Notice
+      title="The tracks could not be read."
+      action={
+        <Button variant="secondary" onClick={window_.retry}>
+          {RETRY}
+        </Button>
+      }
+    >
+      <p>{window_.error}</p>
+    </Notice>
+  ) : window_.loading ? (
+    <Loading what="tracks" centered />
+  ) : (
+    <EmptyState headline="No track is in these keys here." />
   );
 
   return (
@@ -578,7 +583,7 @@ export function KeysTracks({
           onClose={() => setMenu(null)}
           label={
             menu.target.count > 1
-              ? `Actions for ${menu.target.count.toLocaleString()} tracks`
+              ? `Actions for ${formatCount(menu.target.count)} tracks`
               : "Track actions"
           }
         />

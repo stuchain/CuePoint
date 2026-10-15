@@ -184,7 +184,7 @@ describe("custom themes", () => {
     ).toBeInTheDocument();
   });
 
-  it("names the swatches in words, not code keys", () => {
+  it("draws the swatches as decoration: the theme's name is what names it", () => {
     saveCustomTheme({
       id: "mine",
       name: "Mine",
@@ -193,10 +193,12 @@ describe("custom themes", () => {
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
     const { container } = renderPanel();
-    const titles = [...container.querySelectorAll(".theme-settings__swatch")].map((s) =>
-      s.getAttribute("title"),
-    );
-    expect(titles).toEqual(["App background", "Panel background", "Accent"]);
+    const swatches = [...container.querySelectorAll(".theme-settings__swatch")];
+    expect(swatches).toHaveLength(3);
+    for (const swatch of swatches) {
+      expect(swatch).toHaveAttribute("aria-hidden", "true");
+      expect(swatch).not.toHaveAttribute("title");
+    }
   });
 
   it("deletes only after the confirm", async () => {
@@ -209,16 +211,16 @@ describe("custom themes", () => {
     });
     const { container } = renderPanel();
     const listed = () => container.querySelector(".theme-settings__list");
-    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
     const dialog = screen.getByRole("dialog", { name: "Delete theme?" });
-    expect(within(dialog).getByText("Delete the theme “Mine”? This can't be undone.")).toBeInTheDocument();
+    expect(within(dialog).getByText("The theme “Mine” will be gone. This cannot be undone.")).toBeInTheDocument();
     // Asked, not done: Cancel keeps it.
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(listed()).toHaveTextContent("Mine");
 
-    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
     await userEvent.click(
-      within(screen.getByRole("dialog", { name: "Delete theme?" })).getByRole("button", { name: "Delete" }),
+      within(screen.getByRole("dialog", { name: "Delete theme?" })).getByRole("button", { name: "Delete theme" }),
     );
     expect(listed()).toBeNull();
     expect(

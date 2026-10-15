@@ -163,11 +163,9 @@ export function WaveformSettingsPanel() {
         )}
 
         <fieldset className="cp-waveform-settings__choice">
-          <legend id={colorsId} className="cp-waveform-settings__label">
-            Colors
-          </legend>
+          <legend id={colorsId}>Colors</legend>
           {WAVEFORM_COLOUR_OPTIONS.map((option) => (
-            <label key={option.mode} className="cp-waveform-settings__option">
+            <label key={option.mode} className="cp-waveform-settings__option settings-check">
               <input
                 type="radio"
                 name="waveform-colour"
@@ -192,8 +190,8 @@ export function WaveformSettingsPanel() {
           </div>
         </fieldset>
 
-        <div className="cp-waveform-settings__choice">
-          <label className="cp-waveform-settings__option">
+        <div className="cp-waveform-settings__choice settings-option">
+          <label className="cp-waveform-settings__option settings-check">
             <input
               type="checkbox"
               checked={detailOn}
@@ -241,6 +239,8 @@ export function WaveformSettingsPanel() {
       <Modal
         open={confirming}
         title="Delete waveform data?"
+        variant="danger"
+        size="narrow"
         onClose={() => setConfirming(false)}
         primaryAction={{
           label: "Delete waveform data",

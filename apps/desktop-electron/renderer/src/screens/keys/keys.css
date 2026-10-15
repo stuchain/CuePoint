@@ -42,8 +42,10 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: var(--space-sm);
-  padding: var(--space-sm) 0;
+  /* Sources, view and counts sit 12 apart. The header leaves 12 below its divider, so the row
+     adds no space above itself. */
+  gap: var(--space-lg);
+  padding: 0 0 var(--space-lg);
 }
 
 .keys-page__state {
@@ -56,7 +58,7 @@
 .keys-page__view {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-md);
   min-width: 0;
 }
 
@@ -72,7 +74,7 @@
 .keys-page__panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-md);
   min-width: 0;
 }
 
@@ -103,21 +105,16 @@
 .keys-page__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-xs);
-  padding: var(--space-xs) 0 var(--space-sm);
+  gap: var(--space-md);
+  padding: 0 0 var(--space-lg);
 }
 
 .keys-page__tracks {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-xs) 0 var(--space-md);
+  gap: var(--space-md);
+  padding: var(--space-lg) 0 var(--space-xl);
   border-top: var(--divider);
-}
-
-.keys-section-title {
-  margin: 0;
-  font-size: var(--font-size-md);
 }
 
 .keys-note {
@@ -135,16 +132,17 @@
      to its floor, and the row wraps before going under it. */
   flex: 0 1 calc(140px * var(--scale));
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-md);
   min-width: min(calc(110px * var(--scale)), 100%);
 }
 
 .keys-sources__body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-md);
   max-height: var(--keys-wheel);
-  padding: var(--space-xs);
+  /* A dense side panel: 8 inside. */
+  padding: var(--space-md);
   overflow-y: auto;
   background: var(--bg-panel);
   border: var(--divider);
@@ -152,27 +150,16 @@
 
 /* The label stays for assistive technology; the placeholder names the box, and a box of one
    line is the height the list under it needs (as the Library's search box does). */
-.keys-sources__filter > .cp-field__label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+.keys-sources__filter {
+  width: 100%;
 }
 
-.keys-sources__filter .cp-field__input {
-  min-height: 0;
-  padding: var(--space-xs);
-  font-size: var(--font-size-xs);
-}
-
+/* Even 24px rows, the box 6 from its text. */
 .keys-sources__row {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
+  min-height: calc(24px * var(--scale));
   font-size: var(--font-size-xs);
   cursor: pointer;
 }
@@ -181,17 +168,19 @@
   font-weight: 700;
 }
 
+/* A group's name is the label role (.cp-text-label); it sits 4 above its list. */
 .keys-sources__title {
-  margin: var(--space-xs) 0 0;
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
+  margin: 0 0 var(--space-xs);
+}
+
+.keys-sources__section + .keys-sources__section {
+  margin-top: var(--space-lg);
 }
 
 .keys-sources__list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -214,7 +203,7 @@
   display: flex;
   flex: 1 1 calc(130px * var(--scale));
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-md);
   min-width: 0;
   max-height: var(--keys-wheel);
   overflow-y: auto;
@@ -236,10 +225,14 @@
 
 .keys-counts__row {
   display: grid;
-  grid-template-columns: 3ch minmax(0, 1fr) minmax(0, 0.6fr) 4ch;
+  /* The first column is as wide as the widest key chip ("10A": three characters of the data
+     font and the chip's own padding on both sides), so a chip never runs into the key's name.
+     It was 3ch of the row's font, which is narrower than the chip. */
+  grid-template-columns: calc(4ch + 2 * var(--key-chip-pad, round(nearest, calc(5px * var(--scale)), 1px))) minmax(0, 1fr) minmax(0, 0.6fr) 4ch;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-md);
   width: 100%;
+  min-height: var(--row-height);
   padding: 0 var(--space-xs);
   border: var(--hairline) solid transparent;
   background: none;
@@ -257,13 +250,10 @@
   font-weight: 700;
 }
 
-.keys-counts__row:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: round(up, calc(-2px * var(--scale)), 1px);
-}
-
 .keys-counts__code {
+  min-width: 0;
   font-family: var(--font-data);
+  white-space: nowrap;
 }
 
 .keys-counts__name {
@@ -311,7 +301,7 @@
 }
 
 .keys-counts__none {
-  padding-top: var(--space-xs);
+  padding-top: var(--space-md);
   border-top: var(--hairline) solid var(--border-muted);
 }
 
@@ -338,37 +328,6 @@
 
 .keys-tracks__rows > .track-table {
   flex: 1;
-}
-
-.keys-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-sm);
-  max-width: 56ch;
-  padding: var(--space-md);
-}
-
-.keys-empty--page {
-  margin: 0 auto;
-  align-items: center;
-  text-align: center;
-}
-
-.keys-empty__headline {
-  margin: 0;
-  font-size: var(--text-heading);
-  font-weight: 700;
-}
-
-.keys-link {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--link);
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
 }
 
 .keys-counts__row[aria-disabled="true"] {

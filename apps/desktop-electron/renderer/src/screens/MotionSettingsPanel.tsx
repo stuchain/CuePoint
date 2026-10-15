@@ -100,11 +100,9 @@ export function MotionSettingsPanel() {
         </p>
 
         <fieldset className="motion-settings__modes">
-          <legend className="motion-settings__legend">
-            Motion
-          </legend>
+          <legend>Motion</legend>
           {MODES.map((option) => (
-            <label key={option.mode} className="motion-settings__label">
+            <label key={option.mode} className="motion-settings__label settings-check">
               <input
                 type="radio"
                 name="motion-mode"
@@ -131,7 +129,7 @@ export function MotionSettingsPanel() {
         <div id={listId} className="motion-settings__list" hidden={!listOpen}>
           {MOTION_GROUPS.map((group) => (
             <fieldset key={group.title} className="motion-settings__group">
-              <legend className="motion-settings__legend">{group.title}</legend>
+              <legend>{group.title}</legend>
               {group.kinds.map((kind) => {
                 const hintId = `motion-hint-${kind.id}`;
                 const count = plays[kind.id] ?? 0;
@@ -146,7 +144,7 @@ export function MotionSettingsPanel() {
                       aria-hidden="true"
                     />
                     <div className="motion-settings__text">
-                      <label className="motion-settings__label">
+                      <label className="motion-settings__label settings-check">
                         <input
                           type="checkbox"
                           checked={switches[kind.id]}

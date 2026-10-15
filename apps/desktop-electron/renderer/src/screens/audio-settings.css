@@ -10,22 +10,13 @@
 .cp-audio-settings {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-lg);
 }
 
 .cp-audio-settings__field {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-}
-
-.cp-audio-settings__toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  min-height: var(--hit-min);
-  font-size: var(--font-size-sm);
-  color: var(--fg-primary);
 }
 
 .cp-audio-settings__toggle input:disabled + span {
@@ -41,24 +32,5 @@
   line-height: 1.5;
 }
 
-/* The two states worth interrupting the reading order for: what is actually
-   playing is not what was asked for, and something went wrong. */
-.cp-audio-settings__fallback,
-.cp-audio-settings__error {
-  overflow-wrap: anywhere;
-  margin: 0;
-  padding: var(--space-sm);
-  border: var(--divider);
-  font-size: var(--font-size-xs);
-  line-height: 1.5;
-}
-
-.cp-audio-settings__fallback {
-  background: var(--bg-panel-alt);
-  color: var(--fg-primary);
-}
-
-.cp-audio-settings__error {
-  background: var(--bg-panel-alt);
-  color: var(--accent-danger);
-}
+/* The two states worth interrupting the reading order for (what is actually playing is not what
+   was asked for, and something went wrong) are Notices. */
