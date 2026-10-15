@@ -15,7 +15,7 @@
   padding: 0 var(--space-sm);
   background: var(--bg-app);
   border: var(--control-border-width) solid var(--border-control);
-  color: var(--fg-secondary);
+  color: var(--fg-muted);
   font: inherit;
   font-size: var(--font-size-sm);
   cursor: pointer;
