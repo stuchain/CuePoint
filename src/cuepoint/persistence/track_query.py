@@ -781,13 +781,22 @@ def build_select_queue(
     # key Rekordbox guessed beside the one the user corrected shows the wrong one.
     parts = _predicate(
         valid,
-        joins=(METADATA_ALIAS, *field_spec("key").joins, *sort_joins(valid.sort)),
+        joins=(
+            METADATA_ALIAS,
+            *field_spec("key").joins,
+            *field_spec("label").joins,
+            *field_spec("year").joins,
+            *sort_joins(valid.sort),
+        ),
     )
     key = field_spec("key").expression
     bpm = field_spec("bpm").expression
+    label = field_spec("label").expression
+    year = field_spec("year").expression
     sql = (
         f"{parts.cte}SELECT tracks.id, tracks.title, tracks.artist, {key} AS key, "
-        f"{bpm} AS bpm, tracks.duration_seconds, tracks.file_path "
+        f"{bpm} AS bpm, {label} AS label, {year} AS year, "
+        f"tracks.duration_seconds, tracks.file_path "
         f"FROM tracks{parts.join}{parts.where} "
         f"{_order_by(valid)} LIMIT ? OFFSET ?"
     )

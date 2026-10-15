@@ -32,6 +32,8 @@ function fakeEngine(count: number, options: { totalOverride?: number } = {}): Fa
     artist: `Artist ${index + 1}`,
     key: "8A",
     bpm: 128,
+    label: "Drumcode",
+    year: 2021,
     duration_seconds: 100 + index,
     file_path: `/music/${index + 1}.flac`,
   }));
@@ -89,6 +91,8 @@ describe("resolving a whole view", () => {
       artist: "Artist 1",
       key: "8A",
       bpm: 128,
+      label: "Drumcode",
+      year: 2021,
       durationSeconds: 100,
     });
   });

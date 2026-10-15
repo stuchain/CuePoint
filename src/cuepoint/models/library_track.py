@@ -308,6 +308,8 @@ class QueueTrack:
     bpm: Optional[float]
     duration_seconds: Optional[int]
     file_path: str
+    label: Optional[str] = None
+    year: Optional[int] = None
 
     @classmethod
     def from_row(cls, row: Any) -> "QueueTrack":
@@ -321,4 +323,6 @@ class QueueTrack:
             bpm=data.get("bpm"),
             duration_seconds=data.get("duration_seconds"),
             file_path=data.get("file_path") or "",
+            label=data.get("label") or None,
+            year=int(data["year"]) if data.get("year") else None,
         )

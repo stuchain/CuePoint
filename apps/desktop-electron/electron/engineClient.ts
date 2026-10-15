@@ -867,6 +867,8 @@ export interface QueueTrackRow {
   /** What a DJ reads off a player, so the bar shows it without a second fetch. */
   key: string | null;
   bpm: number | null;
+  label?: string | null;
+  year?: number | null;
   duration_seconds: number | null;
   file_path: string;
 }

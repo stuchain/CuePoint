@@ -95,8 +95,10 @@ class TestStatusCounts:
 
     def test_last_written_is_the_latest_standing_write_of_its_tracks(self, db, service):
         a, b, c = (add_track(db, f"/m/{n}.mp3") for n in "abc")
-        write_row(db, a, "genre", value="Techno")
-        write_row(db, b, "bpm", value="128")
+        for track in (a, b, c):
+            set_state(db, track, "accepted")
+        write_row(db, a, "genre", value="Techno", sync=True)
+        write_row(db, b, "bpm", value="128", sync=True)
         write_row(db, b, "bpm", "restored")  # undone: does not count
         write_row(db, c, "key", "failed")  # never reached the file
         first = add_playlist(db, "First", [a, b])
@@ -105,13 +107,60 @@ class TestStatusCounts:
 
         statuses = service.playlists()
 
-        assert status_of(statuses, first).last_written_at == "2026-09-15T12:00:00+00:00"
+        # b's write was undone, so First is not whole; Second and Third hold c.
+        assert status_of(statuses, first).last_written_at is None
         assert status_of(statuses, second).last_written_at is None
         assert status_of(statuses, third).last_written_at is None
 
+    def test_a_playlist_is_written_when_every_accepted_track_has_a_sync_write(
+        self, db, service
+    ):
+        a, b = add_track(db, "/m/a.mp3"), add_track(db, "/m/b.mp3")
+        for track in (a, b):
+            set_state(db, track, "accepted")
+        write_row(db, a, "genre", value="Techno", sync=True)
+        write_row(db, b, "genre", value="House", sync=True)
+        playlist = add_playlist(db, "P", [a, b])
+
+        found = status_of(service.playlists(), playlist)
+
+        assert found.last_written_at == "2026-09-15T12:00:00+00:00"
+
+    def test_a_track_written_for_another_playlist_does_not_sync_this_one(
+        self, db, service
+    ):
+        a, b = add_track(db, "/m/a.mp3"), add_track(db, "/m/b.mp3")
+        for track in (a, b):
+            set_state(db, track, "accepted")
+        write_row(db, a, "genre", value="Techno", sync=True)
+        # Only a was synced (with the first playlist); b, shared, was not.
+        first = add_playlist(db, "First", [a])
+        second = add_playlist(db, "Second", [a, b])
+
+        statuses = service.playlists()
+
+        assert status_of(statuses, first).last_written_at is not None
+        assert status_of(statuses, second).last_written_at is None
+
+    def test_a_library_save_is_not_a_sync(self, db, service):
+        a = add_track(db, "/m/a.mp3")
+        set_state(db, a, "accepted")
+        write_row(db, a, "genre", value="Techno")  # no sync history: Save to files
+        playlist = add_playlist(db, "P", [a])
+
+        assert status_of(service.playlists(), playlist).last_written_at is None
+
+    def test_a_playlist_without_accepted_matches_is_not_written(self, db, service):
+        a = add_track(db, "/m/a.mp3")
+        write_row(db, a, "genre", value="Techno", sync=True)
+        playlist = add_playlist(db, "P", [a])
+
+        assert status_of(service.playlists(), playlist).last_written_at is None
+
     def test_a_pending_write_is_not_yet_written(self, db, service):
         a = add_track(db, "/m/a.mp3")
-        write_row(db, a, "genre", value="Techno", pending=1)
+        set_state(db, a, "accepted")
+        write_row(db, a, "genre", value="Techno", pending=1, sync=True)
         playlist = add_playlist(db, "P", [a])
 
         assert status_of(service.playlists(), playlist).last_written_at is None

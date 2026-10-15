@@ -13,6 +13,7 @@
  * `isOutage` accepts, and a 5xx is not one.
  */
 import { useSyncExternalStore } from "react";
+import { LOST_TOUCH } from "../format/words";
 import type { EngineStatus } from "./cuepointBridge.types";
 
 /**
@@ -127,7 +128,7 @@ function poll(): Promise<void> {
   const run: Promise<void> = read()
     .then(settle)
     // A failed status read *is* a status: the background process is not reachable.
-    .catch(() => settle({ connected: false, error: "Background process unreachable" }))
+    .catch(() => settle({ connected: false, error: LOST_TOUCH }))
     .finally(() => {
       if (mine !== generation) return;
       inflight = null;

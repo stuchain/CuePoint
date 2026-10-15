@@ -111,6 +111,8 @@ def queue_track_to_dict(track: QueueTrack) -> Dict[str, Any]:
         "artist": track.artist,
         "key": track.key,
         "bpm": track.bpm,
+        "label": track.label,
+        "year": track.year,
         "duration_seconds": track.duration_seconds,
         "file_path": track.file_path,
     }

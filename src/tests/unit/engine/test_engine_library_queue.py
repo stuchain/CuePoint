@@ -79,6 +79,8 @@ class TestTheProjection:
             "artist",
             "key",
             "bpm",
+            "label",
+            "year",
             "duration_seconds",
             "file_path",
         }
@@ -99,7 +101,7 @@ class TestTheProjection:
         # for once per track.
         row = queue_rows(engine)[0]
         # Key and BPM are deliberately present (PLAYER-06); these are not.
-        for absent in ("rating", "label", "colour", "comment", "genre", "album"):
+        for absent in ("rating", "colour", "comment", "genre", "album"):
             assert absent not in row
 
     def test_reports_the_full_total_not_the_page_length(self, engine):

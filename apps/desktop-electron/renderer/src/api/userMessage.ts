@@ -8,17 +8,17 @@
  */
 import { bridgeErrorFields } from "./bridgeError";
 import type { CuePointBridge } from "./cuepointBridge.types";
+import { LOST_TOUCH, LOST_TOUCH_PARTWAY } from "../format/words";
 import { noteOutage } from "./engineOnline";
 
 /** What the user reads when the background process cannot be reached. */
-export const OUTAGE_MESSAGE = "CuePoint lost touch with its background process. Nothing was changed.";
+export const OUTAGE_MESSAGE = LOST_TOUCH;
 
 /** What the user reads when a feature needs the desktop app and this window has no bridge. */
 export const NEEDS_DESKTOP = "This needs the CuePoint desktop app.";
 
 /** The same outage, once a job had started: some of its work may be done. */
-export const OUTAGE_PARTWAY_MESSAGE =
-  "CuePoint lost touch with its background process partway through. Activity shows what was done.";
+export const OUTAGE_PARTWAY_MESSAGE = LOST_TOUCH_PARTWAY;
 
 /**
  * The engine is not there: stopped, starting or restarting. Polled calls fail this way every few
@@ -67,7 +67,9 @@ export function userMessage(cause: unknown, fallback?: string, options?: { partw
       return options?.partway ? OUTAGE_PARTWAY_MESSAGE : OUTAGE_MESSAGE;
     }
     if (cause instanceof Error) return cause.message;
-    return fallback ?? String(cause);
+    if (typeof cause === "string") return cause;
+    // Anything else (undefined, an object) is not words for a person: use the caller's sentence.
+    return fallback ?? "Something went wrong.";
   } catch {
     return fallback ?? "Something went wrong.";
   }

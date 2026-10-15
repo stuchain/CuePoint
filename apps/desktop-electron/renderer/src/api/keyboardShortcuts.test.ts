@@ -72,7 +72,7 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
     for (const key of keys) {
       expect(clean.some((row) => row.shortcut.split(" / ").includes(key)), key).toBe(true);
     }
-    expect(clean).toHaveLength(2);
+    expect(clean).toHaveLength(4);
   });
 
   it("lists no decision key: a tick is the decision", () => {
@@ -81,8 +81,9 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
     expect(clean.map((row) => row.shortcut)).not.toContain("S");
   });
 
-  it("binds no modified key, so none can collide with a shell shortcut", () => {
-    for (const row of clean) {
+  it("binds no modified key but Select all, so none can collide with a shell shortcut", () => {
+    // Ctrl+A is the Library's select all, taken only outside a field and a dialog; no shell shortcut uses it.
+    for (const row of clean.filter((r) => r.shortcut !== MATCH_KEYS["select-all"])) {
       expect(row.shortcut).not.toMatch(/Ctrl|Alt|Shift|Cmd/);
     }
   });

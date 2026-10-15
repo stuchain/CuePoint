@@ -69,6 +69,7 @@ import {
   testWindowOptions,
   testWindowPlacement,
 } from "./testWindowPlacement";
+import { WINDOW_MIN_SIZE } from "./windowSize";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === "development";
@@ -1436,6 +1437,7 @@ async function createWindow(): Promise<void> {
   });
   const win = new BrowserWindow({
     ...size,
+    ...WINDOW_MIN_SIZE,
     ...(placement ? testWindowOptions(placement) : {}),
     // Windows and Linux show the window's own icon; macOS uses the bundle's (DIST-09).
     ...(appIconPath ? { icon: appIconPath } : {}),

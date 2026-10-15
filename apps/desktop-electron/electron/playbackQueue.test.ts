@@ -718,6 +718,22 @@ describe("reordering in play order (PLAYER-08)", () => {
   });
 });
 
+describe("label and year", () => {
+  it("keeps the label and the year a track brings, and null when it brings none", () => {
+    const queue = new PlaybackQueue();
+    queue.replace(
+      [
+        { filePath: "/a.flac", title: "a", label: "Drumcode", year: 2021 },
+        { filePath: "/b.flac", title: "b" },
+      ],
+      0,
+    );
+    const [first, second] = queue.window(0, 2).items;
+    expect([first.label, first.year]).toEqual(["Drumcode", 2021]);
+    expect([second.label, second.year]).toEqual([null, null]);
+  });
+});
+
 describe("what crosses the IPC boundary (PLAYER-08)", () => {
   /** A queue the size PLAYER-05 allows, with realistic paths and titles. */
   function bigQueue(count: number): PlaybackQueue {

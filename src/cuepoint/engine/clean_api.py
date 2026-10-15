@@ -1518,7 +1518,8 @@ def clean_playlists(params: Dict[str, List[str]], job_store: Any) -> Dict[str, A
                 "name": status.name,
                 "path": status.path,
                 **_counts_to_dict(status.counts, status.running),
-                # In the files: something was written and nothing waits to be.
+                # In the files: every accepted track was written by a sync (the
+                # repository decides) and nothing waits to be saved.
                 "synced": status.last_written_at is not None
                 and status.counts.unsaved == 0,
                 "synced_at": (

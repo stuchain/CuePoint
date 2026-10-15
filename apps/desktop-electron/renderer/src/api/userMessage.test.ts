@@ -27,7 +27,8 @@ describe("userMessage", () => {
   it("falls back for what is not an Error", () => {
     expect(userMessage("x")).toBe("x");
     expect(userMessage(undefined, "F")).toBe("F");
-    expect(userMessage(undefined)).toBe("undefined");
+    expect(userMessage(undefined)).toBe("Something went wrong.");
+    expect(userMessage({ odd: true })).toBe("Something went wrong.");
   });
 
   it("has a fixed sentence for the missing desktop app", () => {
@@ -38,7 +39,7 @@ describe("userMessage", () => {
     expect(userMessage(new Error("fetch failed"), undefined, { partway: true })).toBe(OUTAGE_PARTWAY_MESSAGE);
     expect(userMessage(new Error("fetch failed"), undefined, { partway: false })).toBe(OUTAGE_MESSAGE);
     expect(OUTAGE_PARTWAY_MESSAGE).toBe(
-      "CuePoint lost touch with its background process partway through. Activity shows what was done.",
+      "CuePoint stopped responding partway through. Activity shows what was done.",
     );
     expect(userMessage(withFields("No such track", { status: 404 }), undefined, { partway: true })).toBe("No such track");
   });

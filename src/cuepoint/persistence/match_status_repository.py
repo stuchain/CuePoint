@@ -88,19 +88,29 @@ _LIBRARY_MATCH_COUNTS = (
     " FROM track_match"
 )
 
-#: The latest time a value of each playlist's tracks was written into a file by
-#: a write that has not been undone. Per track first (the file_writes track
-#: index), then once per playlist: no track is walked in Python.
+#: The playlists that are in the files, and when. A playlist is in the files when
+#: it has accepted matches and every one of them has a standing write made by a
+#: Clean sync: a file write that was neither undone nor still pending, whose job
+#: also recorded the track's change history under its batch (Sync copies the
+#: written values in as one batch named for its write job; the Library's "Save
+#: to files" records no such batch). Written per track first (the file_writes
+#: track index), then once per playlist: no track is walked in Python. The time
+#: is the latest of those writes.
 _WRITTEN_BY_PLAYLIST = (
     "WITH w AS (SELECT fw.track_id AS track_id, MAX(fw.written_at) AS at"
     " FROM file_writes AS fw"
     " WHERE fw.outcome = 'written' AND fw.pending = 0 AND fw.track_id IS NOT NULL"
     " AND NOT EXISTS (SELECT 1 FROM file_writes AS r WHERE r.restore_of = fw.id"
     " AND r.outcome = 'restored' AND r.pending = 0)"
+    " AND EXISTS (SELECT 1 FROM track_history AS th WHERE th.batch_id = fw.job_id"
+    " AND th.track_id = fw.track_id)"
     " GROUP BY fw.track_id)"
-    " SELECT pt.playlist_id AS playlist_id, MAX(w.at) AS at"
-    " FROM w JOIN rekordbox_playlist_tracks AS pt ON pt.track_id = w.track_id"
-    " GROUP BY pt.playlist_id"
+    " SELECT m.playlist_id AS playlist_id, MAX(w.at) AS at"
+    f" FROM ({_MEMBERS}) AS m"
+    f" JOIN track_match AS tm ON tm.track_id = m.track_id AND tm.state = '{STATE_ACCEPTED}'"
+    " LEFT JOIN w ON w.track_id = m.track_id"
+    " GROUP BY m.playlist_id"
+    " HAVING COUNT(w.track_id) = COUNT(*)"
 )
 
 #: A running job's progress per playlist: the plan's tracks, once per playlist.
@@ -203,10 +213,11 @@ class MatchStatusRepository(IMatchStatusRepository):
         return playlists, library
 
     def last_written(self) -> Dict[int, str]:
-        """Return, per playlist, when a value of its tracks last went into a file.
+        """Return, per playlist, when a Clean sync last wrote it into the files.
 
-        Only writes still standing count (an undone one does not); a playlist
-        none of whose tracks was written has no entry.
+        A playlist has an entry only when it has accepted matches and each of
+        them has a standing Clean-sync write (an undone one does not count, nor
+        a write only another playlist's sync or the Library's save made).
         """
         return {
             int(row["playlist_id"]): str(row["at"])

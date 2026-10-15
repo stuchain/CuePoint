@@ -98,6 +98,8 @@ export async function resolveQueueFromView(
         artist: row.artist,
         key: row.key,
         bpm: row.bpm,
+        label: row.label ?? null,
+        year: row.year ?? null,
         durationSeconds: row.duration_seconds,
       });
     }

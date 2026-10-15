@@ -33,6 +33,9 @@ export interface QueueItem {
   /** What the player bar and the queue panel show for a DJ (PLAYER-06). */
   key: string | null;
   bpm: number | null;
+  /** The record label and the year, when the track brings them (the facts line). */
+  label?: string | null;
+  year?: number | null;
   durationSeconds: number | null;
   status: QueueItemStatus;
   /** Why it failed, in plain words, while `status` is "failed" (BAR-9). */
@@ -47,6 +50,8 @@ export interface QueueItemInput {
   artist?: string;
   key?: string | null;
   bpm?: number | null;
+  label?: string | null;
+  year?: number | null;
   durationSeconds?: number | null;
 }
 
@@ -112,6 +117,8 @@ function makeItem(input: QueueItemInput): QueueItem {
     artist: input.artist ?? "",
     key: input.key ?? null,
     bpm: input.bpm ?? null,
+    label: input.label ?? null,
+    year: input.year ?? null,
     durationSeconds: input.durationSeconds ?? null,
     status: "pending",
   };

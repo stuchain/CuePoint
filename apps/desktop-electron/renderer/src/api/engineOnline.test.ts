@@ -14,6 +14,7 @@ import {
   resetEngineOnlineForTests,
   subscribe,
 } from "./engineOnline";
+import { LOST_TOUCH } from "../format/words";
 import { userMessage } from "./userMessage";
 
 let getEngineStatus: ReturnType<typeof vi.fn>;
@@ -75,7 +76,7 @@ describe("polling", () => {
 
     expect(getSnapshot().status).toEqual({
       connected: false,
-      error: "Background process unreachable",
+      error: LOST_TOUCH,
     });
     expect(getSnapshot().offline).toBe(true);
   });

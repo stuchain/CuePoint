@@ -48,8 +48,12 @@ def write_row(
     new_value_json: Optional[str] = None,
     file_path: Optional[str] = None,
     restore_of: Optional[int] = None,
+    sync: bool = False,
 ) -> int:
     """Record one ``file_writes`` row, newest last, and return its id.
+
+    ``sync`` also records the track's change history under this write's job, as a
+    Clean sync does when it copies the written values in.
 
     ``value`` is put in the slot a writer of ``field`` would use; pass
     ``new_value_json`` to say the JSON outright.
@@ -70,6 +74,13 @@ def write_row(
                 "SELECT MAX(id) AS id FROM file_writes WHERE track_id = ?",
                 (track_id,),
             ).fetchone()["id"]
+        if sync:
+            conn.execute(
+                "INSERT INTO track_history (track_id, field, old_value_json,"
+                " new_value_json, source, changed_at, batch_id)"
+                " VALUES (?, ?, NULL, NULL, 'sync', ?, 'job')",
+                (track_id, field, NOW),
+            )
         return int(
             conn.execute(
                 "INSERT INTO file_writes (job_id, track_id, file_path, field,"

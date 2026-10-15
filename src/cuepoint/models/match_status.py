@@ -69,8 +69,9 @@ class PlaylistNode:
 class PlaylistStatus:
     """One playlist's name, place and counts.
 
-    ``last_written_at`` is when a sync last put a value into one of its tracks'
-    files (ISO text), if one still stands: a write that was undone does not count.
+    ``last_written_at`` is when a Clean sync last wrote the playlist (ISO text):
+    set only when it has accepted matches and every one has a standing sync
+    write, so a track written by another playlist's sync does not count for it.
     """
 
     id: int

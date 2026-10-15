@@ -58,6 +58,8 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   // thousands of tracks is a keyboard job; they are not taken while typing in a field or inside a dialog, and
   // none of them is modified, so none collides with a shell shortcut. A tick is a checkbox and takes Space.
   { context: "Clean", action: "Previous or next track in the review", shortcut: "Up / Down" },
+  { context: "Clean", action: "First or last track in the review", shortcut: "Home / End" },
+  { context: "Clean", action: "Select every track in the review", shortcut: "Ctrl+A" },
   { context: "Clean", action: "Close the track's side panel", shortcut: "Esc" },
   // The player (PLAYER-12). Space is bare because it is the one key everyone
   // already tries; the rest are Ctrl-modified because bare arrows belong to the

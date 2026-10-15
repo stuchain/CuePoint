@@ -125,7 +125,9 @@ class TestPlaylistsRoute:
 
     def test_written_to_the_files_is_synced_with_its_time(self, engine, library_db):
         a, b = add_track(library_db, "/m/a.mp3"), add_track(library_db, "/m/b.mp3")
-        write_row(library_db, a, "genre", value="Techno")
+        set_state(library_db, a, "accepted")
+        set_state(library_db, b, "accepted")
+        write_row(library_db, a, "genre", value="Techno", sync=True)
         done = add_playlist(library_db, "Done", [a])
         partly = add_playlist(library_db, "Partly", [a, b])
         TrackMetadataRepository(library_db).set_override(b, "genre", "House")
@@ -139,6 +141,24 @@ class TestPlaylistsRoute:
         # Written, but a value is still waiting to be saved: not in the files.
         assert rows[partly]["unsaved"] == 1
         assert (rows[partly]["synced"], rows[partly]["synced_at"]) == (False, None)
+
+    def test_a_shared_track_written_by_another_playlist_is_not_synced(
+        self, engine, library_db
+    ):
+        a, b = add_track(library_db, "/m/a.mp3"), add_track(library_db, "/m/b.mp3")
+        set_state(library_db, a, "accepted")
+        set_state(library_db, b, "accepted")
+        write_row(library_db, a, "genre", value="Techno", sync=True)
+        # b was only saved from the Library, not synced from Clean.
+        write_row(library_db, b, "genre", value="House")
+        first = add_playlist(library_db, "First", [a])
+        second = add_playlist(library_db, "Second", [a, b])
+
+        _, body = get(engine, "/api/v1/clean/playlists")
+
+        rows = {row["id"]: row for row in body["playlists"]}
+        assert rows[first]["synced"] is True
+        assert (rows[second]["synced"], rows[second]["synced_at"]) == (False, None)
 
     def test_a_library_without_playlists(self, engine, library_db):
         add_track(library_db)
