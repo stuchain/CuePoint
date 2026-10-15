@@ -200,6 +200,7 @@ RUN_START_FIELDS: Tuple[str, ...] = (
     "new_releases_days",
     "artists",
     "labels",
+    "include_user_charts",
 )
 WANTLIST_ADD_FIELDS: Tuple[str, ...] = ("track_ids", "run_id", "groups")
 WANTLIST_REMOVE_FIELDS: Tuple[str, ...] = ("track_ids",)
@@ -471,6 +472,7 @@ def run_to_dict(run: Any) -> Dict[str, Any]:
             "releases_to": params.get("releases_to"),
             "artists": _scope_summary(params.get("artists")),
             "labels": _scope_summary(params.get("labels")),
+            "include_user_charts": bool(params.get("include_user_charts", False)),
         },
         **{name: getattr(run, name) for name in RUN_COUNTS},
         "error": run.error,
@@ -700,6 +702,7 @@ def run_start(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]
         new_releases_days=_optional_int(data, "new_releases_days"),
         artists=_optional_list(data, "artists"),
         labels=_optional_list(data, "labels"),
+        include_user_charts=_optional_bool(data, "include_user_charts", False),
     )
     return _job_started(job)
 

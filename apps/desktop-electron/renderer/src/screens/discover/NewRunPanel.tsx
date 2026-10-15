@@ -3,8 +3,8 @@
  *
  * What a search reads: charts in the chosen genres (the ones the chosen
  * artists made; every library artist's with "every"; the genres' general charts
- * with no artists chosen), and recent releases of the chosen artists and the
- * library's labels — every artist and label, or only those picked from the
+ * with no artists chosen; users' charts too when Settings → Beatport says so),
+ * and recent releases of the chosen artists and the library's labels — every artist and label, or only those picked from the
  * Library's own facets, with how many tracks each has. Every field starts from the engine's defaults (`options`),
  * and the form refuses what the engine would, from the bounds it sends. The
  * chart dates are two more fields a beginner does not need, so they fold under
@@ -24,6 +24,7 @@ import type {
 import { Button } from "../../components/Button";
 import { TextField } from "../../components/TextField";
 import { formatCount, pluralize } from "../library/libraryFormat";
+import { useIncludeUserCharts } from "./includeUserCharts";
 import { SavedListField } from "./SavedListField";
 import { ScopeDialog } from "./ScopeDialog";
 import { refusalText } from "./discoverFormat";
@@ -75,6 +76,7 @@ export function NewRunPanel({
   const [starting, setStarting] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const saved = useDiscoverLists();
+  const [includeUserCharts] = useIncludeUserCharts();
 
   const listsOf = (kind: DiscoverListKind) => saved.lists.filter((list) => list.kind === kind);
   const artistLists = listsOf("artist");
@@ -172,7 +174,7 @@ export function NewRunPanel({
     setStarting(true);
     setRefusal(null);
     try {
-      const refused = await onStart(runRequest(form, members));
+      const refused = await onStart(runRequest(form, members, includeUserCharts));
       if (refused) setRefusal(refusalText(refused));
     } catch (cause) {
       reportUnexpected(cause);
@@ -243,6 +245,11 @@ export function NewRunPanel({
                 </ul>
               </>
             )}
+            <p className="discover-note">
+              {includeUserCharts
+                ? "With no artists chosen, this reads charts by artists and by regular Beatport users (Settings → Beatport)."
+                : "With no artists chosen, this reads charts by artists. Settings → Beatport can include charts by regular Beatport users."}
+            </p>
             <details className="discover-new__more">
               <summary>More options</summary>
               <div className="discover-new__dates">

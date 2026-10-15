@@ -31,8 +31,12 @@ view however long the form is.
   lists of tracks they play. Which charts CuePoint reads depends on the artists
   you chose below: the charts **those artists made** in the genres you tick; with
   **every artist** in your library, the charts any of them made; with **none**,
-  the general charts of those genres, by anyone: every one published in the
-  dates, so a long range in a busy genre takes a while.
+  the charts artists published in those genres, as Beatport's own genre charts
+  page lists them: every one in the dates, so a long range in a busy genre takes
+  a while. Beatport also holds charts made by ordinary Beatport users, with no
+  artist behind them; a dig leaves those out unless you turn on **Include charts
+  by regular Beatport users** in **Settings → Beatport**. The note under the
+  genres says which it will read. A dig records which it read.
   Tick no genre and it reads no charts. The heading says which dates it will
   read ("last 30 days"); to choose other dates open **More options**, which holds
   **Charts from** and **Charts to**. Until you sign in to Beatport, the genres
@@ -95,8 +99,9 @@ What a dig found is grouped by where it came from, in rows of cards:
 
 - **Your artists' charts.** The charts made by the artists you chose, in the
   genres you ticked, one card per chart. When you chose no artists this row is
-  **Genre charts** instead: the general charts of those genres. With artists
-  chosen there are no general genre charts.
+  **Genre charts** instead: the charts artists published in those genres (and
+  regular users' charts, if the setting is on). With artists chosen there are no
+  general genre charts.
 - **Your artists' new releases.** One card per artist you chose, with a round
   picture and "3 charts · 4 new": how many of their charts the dig read and how
   many new releases it found in your genres and days. A dig looks up at most 200

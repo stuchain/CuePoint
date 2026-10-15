@@ -12,6 +12,10 @@ import type { BeatportAuth } from "../api/cuepointBridge.types";
 import { BEATPORT_TOKEN_STATUS, useSharedRead } from "../api/sharedReads";
 import { useBeatportToken } from "../hooks/useBeatportToken";
 import { BeatportSettingsPanel } from "./BeatportSettingsPanel";
+import {
+  INCLUDE_USER_CHARTS_STORAGE_KEY,
+  resetIncludeUserChartsForTests,
+} from "./discover/includeUserCharts";
 
 const FIELD_ID = "settings-beatport-token";
 
@@ -75,6 +79,30 @@ beforeEach(() => {
 afterEach(() => {
   delete (window as unknown as { cuepoint?: unknown }).cuepoint;
   vi.restoreAllMocks();
+  localStorage.clear();
+  resetIncludeUserChartsForTests();
+});
+
+describe("charts by regular Beatport users", () => {
+  const label = "Include charts by regular Beatport users";
+
+  it("is off to begin with", async () => {
+    install(SIGNED_OUT);
+    renderPanel();
+    expect(await screen.findByRole("checkbox", { name: label })).not.toBeChecked();
+  });
+
+  it("is remembered when turned on, and off again", async () => {
+    install(SIGNED_OUT);
+    renderPanel();
+    const box = await screen.findByRole("checkbox", { name: label });
+    await userEvent.click(box);
+    expect(box).toBeChecked();
+    expect(localStorage.getItem(INCLUDE_USER_CHARTS_STORAGE_KEY)).toBe("on");
+    await userEvent.click(box);
+    expect(box).not.toBeChecked();
+    expect(localStorage.getItem(INCLUDE_USER_CHARTS_STORAGE_KEY)).toBe("off");
+  });
 });
 
 describe("signed out", () => {

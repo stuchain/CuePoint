@@ -247,6 +247,10 @@ class DiscoveryRequest:
         artists: The library artists to match chart makers against, as the
             user named them; ``None`` for every artist in the library.
         labels: The library labels to read releases from; ``None`` for all.
+        include_user_charts: With no artist chosen, also read the charts made by
+            ordinary Beatport users (a chart with no linked artist). Beatport's
+            own genre charts page lists only charts with an artist, so off, the
+            default, reads only those.
     """
 
     genre_ids: Tuple[int, ...]
@@ -255,6 +259,7 @@ class DiscoveryRequest:
     new_releases_days: int
     artists: Optional[Tuple[str, ...]] = None
     labels: Optional[Tuple[str, ...]] = None
+    include_user_charts: bool = False
 
     def __post_init__(self) -> None:
         """Validate the request."""
@@ -273,6 +278,8 @@ class DiscoveryRequest:
             raise ValueError("new_releases_days is a whole number of days")
         if not 1 <= days <= MAX_WINDOW_DAYS:
             raise ValueError(f"new_releases_days is 1 to {MAX_WINDOW_DAYS}")
+        if not isinstance(self.include_user_charts, bool):
+            raise ValueError("include_user_charts is true or false")
         for names in (self.artists, self.labels):
             if names is not None and any(
                 not isinstance(n, str) or not n.strip() for n in names
@@ -436,6 +443,7 @@ class DiscoveryService(IDiscoveryService):
         new_releases_days: Optional[int] = None,
         artists: Optional[Iterable[str]] = None,
         labels: Optional[Iterable[str]] = None,
+        include_user_charts: bool = False,
     ) -> DiscoveryRequest:
         """A run's request, with inCrate's defaults for what is not given.
 
@@ -472,6 +480,7 @@ class DiscoveryService(IDiscoveryService):
             new_releases_days=days,
             artists=_names(artists),
             labels=_names(labels),
+            include_user_charts=include_user_charts,
         )
 
     def _configured_genres(self) -> List[int]:
@@ -548,6 +557,7 @@ class DiscoveryService(IDiscoveryService):
                 "artists_kept": len(artists),
             },
             "charts_mode": mode,
+            "include_user_charts": request.include_user_charts,
             "genre_ids": list(request.genre_ids),
             "charts_from": request.charts_from.isoformat(),
             "charts_to": request.charts_to.isoformat(),
@@ -814,11 +824,16 @@ class DiscoveryService(IDiscoveryService):
                 request.charts_to,
             )
             if charts is not _FAILED:
-                # With no artist chosen, every chart of the genre in the dates is read.
+                # With no artist chosen, every artist's chart of the genre in the dates is
+                # read (users' charts too, when the run asks).
                 for chart in charts:
                     if chart.id in seen:
                         continue
                     if mode == CHARTS_GENRE:
+                        # Beatport's genre charts page lists only charts with a
+                        # linked artist; users' own charts are read on request.
+                        if chart.artist is None and not request.include_user_charts:
+                            continue
                         owner_name: Optional[str] = None
                     else:
                         owner_name = chart_curator(chart, artist_names, linked)

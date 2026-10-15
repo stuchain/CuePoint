@@ -108,14 +108,15 @@ class TestTheRuleThatDecidesRowOne:
         assert charts == {"1"}
         assert run.params["charts_mode"] == CHARTS_ARTISTS
 
-    def test_with_none_chosen_every_chart_in_the_genres_counts(
+    def test_with_none_chosen_every_artist_chart_in_the_genres_counts(
         self, db, library, world
     ):
         service = make(db, world)
         run = service.run(request(service, artists=[], labels=[]))
         found = cards(db, run.id)
         charts = {k for kind, k in found if kind == GROUP_CHART}
-        assert charts == {"1", "2", "3", "4"}  # not the 60-day-old C5, nor genre 7
+        # Not the 60-day-old C5, nor genre 7, nor C3: Kiko's account has no artist.
+        assert charts == {"1", "2", "4"}
         assert not [k for kind, k in found if kind == GROUP_ARTIST]
         assert run.params["charts_mode"] == CHARTS_GENRE
         # Their reasons name who made them, and no library artist owns them.
@@ -123,13 +124,51 @@ class TestTheRuleThatDecidesRowOne:
         assert all(c.group.owner_key is None for c in stored)
         assert {c.group.key: c.group.curator for c in stored}["2"] == "DJEFF"
 
+    def test_regular_users_charts_are_read_only_when_asked(self, db, library, world):
+        service = make(db, world)
+        default = service.run(request(service, artists=[], labels=[]))
+        assert default.params["include_user_charts"] is False
+        asked = service.run(
+            request(service, artists=[], labels=[], include_user_charts=True)
+        )
+        assert asked.params["include_user_charts"] is True
+        assert {k for kind, k in cards(db, asked.id) if kind == GROUP_CHART} == {
+            "1",
+            "2",
+            "3",
+            "4",
+        }
+        assert asked.charts_read == default.charts_read + 1
+
+    def test_a_skipped_users_chart_costs_no_request(self, db, library, world):
+        service = make(db, world)
+        service.run(request(service, artists=[], labels=[]))
+        assert world.paths("catalog/charts/3/tracks") == []
+        service.run(request(service, artists=[], labels=[], include_user_charts=True))
+        assert world.paths("catalog/charts/3/tracks") != []
+
+    def test_the_option_leaves_charts_by_library_artists_alone(
+        self, db, library, world
+    ):
+        service = make(db, world)
+        plain = service.run(request(service, labels=[]))
+        with_users = service.run(request(service, labels=[], include_user_charts=True))
+        assert {k for kind, k in cards(db, plain.id) if kind == GROUP_CHART} == {
+            k for kind, k in cards(db, with_users.id) if kind == GROUP_CHART
+        }
+
     def test_every_genre_chart_in_the_dates_is_read(self, db, library, world):
         service = make(db, world)
         before = service.run(request(service, genre_ids=[12], artists=[], labels=[]))
         for n in range(60):
             world.add_chart(
                 Chart(
-                    100 + n, f"Extra {n}", (12,), TODAY - timedelta(days=n % 20), (1,)
+                    100 + n,
+                    f"Extra {n}",
+                    (12,),
+                    TODAY - timedelta(days=n % 20),
+                    (1,),
+                    (900 + n, f"Maker {n}"),
                 )
             )
         run = service.run(request(service, genre_ids=[12], artists=[], labels=[]))

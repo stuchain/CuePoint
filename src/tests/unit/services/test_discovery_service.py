@@ -577,13 +577,13 @@ class TestScope:
         assert (run.artists_in_scope, run.labels_in_scope) == (1, 0)
 
     def test_an_empty_selection_is_none_not_all(self, db, library, world):
-        """No artists chosen reads the genres' general charts and no library artist's."""
+        """No artists chosen reads the genres' artist charts and no library artist's."""
         service = make(db, world)
         run = service.run(request(service, artists=[], labels=[]))
         assert (run.artists_in_scope, run.labels_in_scope) == (0, 0)
-        # Every chart in the two genres, by anyone: C1-C4, never the old C5 or the
-        # other genre's C6; and no label or artist search.
-        assert found(db, run.id) == [1, 2, 3, 4, 6, 5]  # genre 5, then genre 6
+        # Every chart with an artist in the two genres: C1, C2, C4, never the old C5,
+        # the other genre's C6 or Kiko's account C3; and no label or artist search.
+        assert found(db, run.id) == [1, 2, 3, 4, 6]  # C3's track 5 is not read
         assert searches(world) == 0
 
     def test_no_genres_reads_no_charts(self, db, library, world):

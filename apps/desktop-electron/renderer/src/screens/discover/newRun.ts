@@ -122,7 +122,11 @@ function scope(mode: ScopeMode, members: readonly string[]): string[] | null {
  * What the engine is asked to run. A saved list is sent as its names, the same
  * request a hand-made selection was, so what a dig does is unchanged.
  */
-export function runRequest(form: NewRunForm, members: ListMembers = NO_MEMBERS): DiscoverRunRequest {
+export function runRequest(
+  form: NewRunForm,
+  members: ListMembers = NO_MEMBERS,
+  includeUserCharts = false,
+): DiscoverRunRequest {
   const request: DiscoverRunRequest = {
     genre_ids: [...form.genreIds],
     new_releases_days: Number(form.days),
@@ -133,6 +137,8 @@ export function runRequest(form: NewRunForm, members: ListMembers = NO_MEMBERS):
   if (form.genreIds.length > 0) {
     request.charts_from = form.chartsFrom;
     request.charts_to = form.chartsTo;
+    // Settings → Beatport; left out when off, which is the engine's default.
+    if (includeUserCharts) request.include_user_charts = true;
   }
   return request;
 }

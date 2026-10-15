@@ -929,17 +929,6 @@
               "new": 0,
               "owned": 0,
               "tracks": 1
-            },
-            {
-              "charts": 0,
-              "curator": "Kiko",
-              "has_art": false,
-              "key": "3",
-              "kind": "chart",
-              "name": "Kiko's crate",
-              "new": 0,
-              "owned": 0,
-              "tracks": 1
             }
           ],
           "id": "genre_charts"
@@ -962,7 +951,7 @@
         }
       ],
       "run_id": 1,
-      "tracks": 8
+      "tracks": 7
     }
   },
   "run_groups_library": {
@@ -1120,6 +1109,7 @@
             5,
             6
           ],
+          "include_user_charts": false,
           "labels": {
             "count": 2,
             "linked_ids": 0,
@@ -1646,6 +1636,7 @@
               5,
               6
             ],
+            "include_user_charts": false,
             "labels": {
               "count": 2,
               "linked_ids": 2,
@@ -1683,6 +1674,7 @@
               5,
               6
             ],
+            "include_user_charts": false,
             "labels": {
               "count": 2,
               "linked_ids": 0,

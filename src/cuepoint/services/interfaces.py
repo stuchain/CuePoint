@@ -1664,6 +1664,7 @@ class IDiscoveryService(ABC):
         new_releases_days: Optional[int] = None,
         artists: Optional[Iterable[str]] = None,
         labels: Optional[Iterable[str]] = None,
+        include_user_charts: bool = False,
     ) -> "DiscoveryRequest":
         """A run's request, with the defaults filled in; ValueError if unusable."""
         ...

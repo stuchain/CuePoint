@@ -132,7 +132,7 @@ describe("a dig's results as rows of cards", () => {
     install({ getDiscoveryRunGroups: vi.fn(async () => value(GENRE)) });
     renderRun();
     const row = await screen.findByRole("region", { name: "Genre charts" });
-    expect(within(row).getAllByRole("button")).toHaveLength(4);
+    expect(within(row).getAllByRole("button")).toHaveLength(3);
     expect(screen.queryByRole("region", { name: "Your artists' charts" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Your artists' new releases" })).not.toBeInTheDocument();
   });

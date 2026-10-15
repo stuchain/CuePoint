@@ -2314,6 +2314,8 @@ export interface DiscoverRunParams {
   releases_to: string | null;
   artists: DiscoverRunScope;
   labels: DiscoverRunScope;
+  /** Whether the dig also read charts by regular Beatport users (no linked artist). */
+  include_user_charts: boolean;
 }
 
 export interface DiscoverRun {
@@ -3240,6 +3242,8 @@ export interface DiscoverRunRequest {
   /** Library artist names; absent or null is the whole library, [] is none. */
   artists?: string[] | null;
   labels?: string[] | null;
+  /** With no artist chosen, also read charts by regular Beatport users; absent is false. */
+  include_user_charts?: boolean;
 }
 
 /** A push: explicit ids, or a run and the order and filter its table shows. */

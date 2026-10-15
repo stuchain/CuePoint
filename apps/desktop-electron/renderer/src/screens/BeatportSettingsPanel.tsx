@@ -4,6 +4,7 @@ import { Button, MoreAbout, Panel, TextField } from "../components";
 import type { BeatportAuth } from "../api/cuepointBridge.types";
 import { NEEDS_DESKTOP } from "../api/userMessage";
 import { useBeatportToken } from "../hooks/useBeatportToken";
+import { useIncludeUserCharts } from "./discover/includeUserCharts";
 import "./beatport-settings.css";
 
 interface BeatportSettingsPanelProps {
@@ -42,6 +43,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
     savePasted,
     test,
   } = useBeatportToken();
+  const [includeUsers, setIncludeUsers] = useIncludeUserCharts();
   const lineId = useId();
   const lineRef = useRef<HTMLParagraphElement>(null);
 
@@ -210,6 +212,21 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
           </MoreAbout>
         ) : null}
         {replacing ? testResult : null}
+        <div className="cp-beatport-settings__choice">
+          <label className="cp-beatport-settings__option">
+            <input
+              type="checkbox"
+              checked={includeUsers}
+              onChange={(event) => setIncludeUsers(event.target.checked)}
+            />
+            <span>Include charts by regular Beatport users</span>
+          </label>
+          <p className="cp-beatport-settings__hint">
+            A Discover dig with no artists chosen reads the charts artists made, as Beatport&apos;s
+            genre charts page lists them. Turn this on to read charts by ordinary Beatport users
+            too; there are many more, so the dig takes longer.
+          </p>
+        </div>
       </div>
     </Panel>
   );

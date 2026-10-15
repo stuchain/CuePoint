@@ -15,10 +15,12 @@ import type {
   DiscoverList,
   DiscoverListKind,
   DiscoverOptions,
+  DiscoverRunRequest,
 } from "../../api/cuepointBridge.types";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import fixture from "./discoverPage.fixture.json";
 import { NewRunPanel } from "./NewRunPanel";
+import { resetIncludeUserChartsForTests, saveIncludeUserCharts } from "./includeUserCharts";
 
 const OPTIONS = fixture.options_ok.value as unknown as DiscoverOptions;
 
@@ -83,7 +85,7 @@ function install(initial: DiscoverList[]) {
   (window as unknown as { cuepoint: unknown }).cuepoint = bridge;
 }
 
-const onStart = vi.fn(async () => null);
+const onStart = vi.fn(async (_request: DiscoverRunRequest) => null);
 
 async function renderPanel(props: { busy?: boolean; usable?: boolean } = {}) {
   render(
@@ -111,6 +113,34 @@ beforeEach(() => {
 
 afterEach(() => {
   delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+  localStorage.clear();
+  resetIncludeUserChartsForTests();
+});
+
+describe("charts by regular Beatport users", () => {
+  it("are left out of the dig by default, and the note says so", async () => {
+    install([]);
+    const panel = await renderPanel();
+    expect(within(panel).getByText(/reads charts by artists\. Settings/)).toBeInTheDocument();
+    fireEvent.click(within(panel).getByRole("checkbox", { name: "House" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    await waitFor(() => expect(onStart).toHaveBeenCalled());
+    expect(onStart.mock.calls[0]![0]).not.toHaveProperty("include_user_charts");
+  });
+
+  it("go with the dig request once Settings includes them", async () => {
+    install([]);
+    saveIncludeUserCharts(true);
+    const panel = await renderPanel();
+    expect(within(panel).getByText(/by artists and by regular Beatport users/)).toBeInTheDocument();
+    fireEvent.click(within(panel).getByRole("checkbox", { name: "House" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    await waitFor(() =>
+      expect(onStart).toHaveBeenCalledWith(
+        expect.objectContaining({ genre_ids: [5], include_user_charts: true }),
+      ),
+    );
+  });
 });
 
 describe("the dig bar", () => {

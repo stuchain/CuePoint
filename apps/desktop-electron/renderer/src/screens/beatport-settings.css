@@ -27,3 +27,27 @@
 .cp-beatport-settings__result--unreachable {
   color: var(--accent-warning);
 }
+
+.cp-beatport-settings__choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.cp-beatport-settings__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--hit-min);
+  font-size: var(--font-size-sm);
+  color: var(--fg-primary);
+}
+
+.cp-beatport-settings__hint {
+  overflow-wrap: anywhere;
+  margin: 0;
+  max-width: 60ch;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}

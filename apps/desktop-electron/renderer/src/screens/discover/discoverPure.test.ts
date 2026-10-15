@@ -57,6 +57,7 @@ import {
 import {
   chartsWindowShort,
   defaultForm,
+  NO_MEMBERS,
   formProblems,
   runRequest,
   scopeCount,
@@ -307,6 +308,16 @@ describe("the New dig form", () => {
     expect(scopeCount("all", 200, [])).toBe(200);
     expect(scopeCount("list", 200, ["a", "b"])).toBe(2);
     expect(scopeCount("none", 200, ["a"])).toBe(0);
+  });
+
+  it("sends include_user_charts only when asked, and only with a genre", () => {
+    expect(runRequest(form({ genreIds: [5] }))).not.toHaveProperty("include_user_charts");
+    expect(runRequest(form({ genreIds: [5] }), NO_MEMBERS, true)).toMatchObject({
+      include_user_charts: true,
+    });
+    expect(runRequest(form({ genreIds: [] }), NO_MEMBERS, true)).not.toHaveProperty(
+      "include_user_charts",
+    );
   });
 
   it("sends no chart dates when no genre is chosen", () => {
