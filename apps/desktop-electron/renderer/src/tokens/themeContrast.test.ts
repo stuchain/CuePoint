@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { NEO_DARK_EDITOR_COLORS } from "./customThemes";
 import { CUSTOM_PALETTES, THEMES, themeTokens } from "../test/themeFixtures";
-import { contrastRatio, deriveThemeTokens } from "./themeDerivation";
+import { SELECTED_ACCENT_MIX, contrastRatio, deriveThemeTokens } from "./themeDerivation";
 
 /**
  * Contrast floors for every theme (G6 step 1, R2-6/R2-7/T5/T13/T16): the surface ladder, the
@@ -119,6 +119,76 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
   it("keeps the warning colour a hue apart from the accent", () => {
     if (!builtIn) return;
     expect(hueGap(t["accent-warning"]!, t["accent-primary"]!)).toBeGreaterThanOrEqual(10);
+  });
+});
+
+/** `color-mix(in srgb, <top> <percent>%, <base>)`, as the stylesheets write it. */
+function mixHex(top: string, base: string, percent: number): string {
+  const channel = (hex: string, at: number) => parseInt(hex.slice(1 + at * 2, 3 + at * 2), 16);
+  const out = [0, 1, 2].map((at) =>
+    Math.round((channel(top, at) * percent + channel(base, at) * (100 - percent)) / 100)
+      .toString(16)
+      .padStart(2, "0"),
+  );
+  return `#${out.join("")}`;
+}
+
+/**
+ * The pairs the consistency build added or fixed (areas 3, 18, 52), for the five built-in themes:
+ * muted text on every chrome surface, the accent and the danger colour as text on the table
+ * rows' surface, the one chip (Badge.css) and the status text tokens (tokens.css).
+ */
+describe.each(BUILT_IN)("text pairs in %s", (_name, t) => {
+  const surfaces: [string, string][] = [
+    ["panel", t["bg-panel"]!],
+    ["input", t["bg-input"]!],
+    ["toolbar", t["bg-toolbar"]!],
+  ];
+
+  it("reads --fg-muted at 4.5:1 on the panel, the rows and the toolbar", () => {
+    for (const [name, colour] of surfaces) {
+      expect(contrastRatio(t["fg-muted"]!, colour), name).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("reads the accent (the playing track's title, the first-steps chip) at 4.5:1 on the rows", () => {
+    expect(contrastRatio(t["accent-primary"]!, t["bg-input"]!)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("reads the danger colour at 4.5:1 on the rows", () => {
+    expect(contrastRatio(t["accent-danger"]!, t["bg-input"]!)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("draws the focus ring at 3:1 on a selected row", () => {
+    const selected = mixHex(t["accent-primary"]!, t["bg-input"]!, SELECTED_ACCENT_MIX);
+    expect(contrastRatio(t["focus-ring-color"]!, selected)).toBeGreaterThanOrEqual(3);
+  });
+
+  // The chip: the tone at --chip-fill-mix over what it sits on, its words the tone lifted
+  // --chip-text-mix towards the text colour.
+  it.each([
+    ["success", "accent-success"],
+    ["warning", "accent-warning"],
+    ["danger", "accent-danger"],
+    ["accent", "accent-primary"],
+    ["neutral", "fg-muted"],
+  ])("reads a %s chip's words at 4.5:1 on its tint over every surface", (_tone, token) => {
+    const words = mixHex(t[token]!, t["fg-primary"]!, 35);
+    for (const [name, colour] of [...surfaces, ["panel-alt", t["bg-panel-alt"]!] as [string, string]]) {
+      const fill = mixHex(t[token]!, colour, 20);
+      expect(contrastRatio(words, fill), `${_tone} on ${name}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it.each([
+    ["danger-text", "accent-danger"],
+    ["success-text", "accent-success"],
+    ["warning-text", "accent-warning"],
+  ])("reads --%s (the status colour lifted towards the text) at 4.5:1 on the panel and the rows", (_token, base) => {
+    const words = mixHex(t[base]!, t["fg-primary"]!, 60);
+    for (const [name, colour] of surfaces) {
+      expect(contrastRatio(words, colour), name).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });
 

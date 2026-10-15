@@ -1,7 +1,7 @@
 .get-help-dialog {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-lg);
   font-size: var(--text-body);
 }
 
@@ -32,9 +32,7 @@
 }
 
 .get-help-dialog__note,
-.get-help-dialog__off,
-.get-help-dialog__done,
-.get-help-dialog__error {
+.get-help-dialog__done {
   margin: 0;
   font-size: var(--font-size-xs);
   line-height: 1.5;
@@ -42,17 +40,6 @@
 
 .get-help-dialog__note {
   color: var(--fg-muted);
-}
-
-.get-help-dialog__off {
-  padding: var(--space-sm);
-  border: var(--divider);
-  background: var(--bg-panel-alt);
-  color: var(--fg-primary);
-}
-
-.get-help-dialog__error {
-  color: var(--accent-danger);
 }
 
 .get-help-dialog__facts {
@@ -78,6 +65,7 @@
   gap: var(--space-sm);
 }
 
+/* A link-looking button: the one link look (index.css .cp-link). */
 .get-help-dialog__link {
   padding: 0;
   font: inherit;

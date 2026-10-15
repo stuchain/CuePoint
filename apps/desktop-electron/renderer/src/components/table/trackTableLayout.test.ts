@@ -192,19 +192,19 @@ describe("the --row-height token", () => {
   // of layout.css plus e2e/scale.spec.ts carry the regression.
   it("is registered as an inherited length, so the browser resolves it", () => {
     expect(layoutCss).toMatch(
-      /@property --row-height\s*\{[^}]*syntax:\s*"<length>";[^}]*inherits:\s*true;[^}]*initial-value:\s*36px;/,
+      /@property --row-height\s*\{[^}]*syntax:\s*"<length>";[^}]*inherits:\s*true;[^}]*initial-value:\s*26px;/,
     );
   });
 
   it("follows the text size, rounded to a whole pixel", () => {
     expect(layoutCss).toMatch(
-      /--row-height:\s*round\(nearest,\s*calc\(var\(--font-size-xs\) \* var\(--row-density, 1\.9\)\),\s*1px\);/,
+      /--row-height:\s*round\(nearest,\s*calc\(var\(--font-size-xs\) \* var\(--row-density, 2\.6\)\),\s*1px\);/,
     );
   });
 
   it("is roomier when the page says roomy", () => {
     expect(layoutCss).toMatch(
-      /:root\[data-row-density="roomy"\]\s*\{\s*--row-density:\s*2\.6;\s*\}/,
+      /:root\[data-row-density="roomy"\]\s*\{\s*--row-density:\s*3\.2;\s*\}/,
     );
   });
 });

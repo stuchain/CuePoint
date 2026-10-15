@@ -11,6 +11,7 @@ import {
   selectCurrentItem,
   selectHasPlayed,
   selectPlaying,
+  trackFacts,
 } from "./playerFormat";
 
 /**
@@ -90,10 +91,10 @@ describe("times", () => {
   it("shows a dash for anything unknown", () => {
     // Not "0:00": a duration that has not arrived is not a duration of zero,
     // and showing one makes the bar look full at the start of every track.
-    expect(formatTime(null)).toBe("–:––");
-    expect(formatTime(undefined)).toBe("–:––");
-    expect(formatTime(Number.NaN)).toBe("–:––");
-    expect(formatTime(-5)).toBe("–:––");
+    expect(formatTime(null)).toBe("—");
+    expect(formatTime(undefined)).toBe("—");
+    expect(formatTime(Number.NaN)).toBe("—");
+    expect(formatTime(-5)).toBe("—");
   });
 });
 
@@ -128,6 +129,29 @@ describe("the line under the title", () => {
 
   it("says nothing when nothing is playing", () => {
     expect(formatTrackMeta(null)).toBe("");
+  });
+});
+
+describe("the facts in one order: artist, label, key, BPM, year", () => {
+  it("puts the label after the artist and the year last", () => {
+    expect(formatTrackMeta(item({ label: "mau5trap", year: 2009 }))).toBe(
+      "deadmau5 · mau5trap · 8A · 128 BPM · 2009",
+    );
+  });
+
+  it("skips what is missing", () => {
+    expect(formatTrackMeta(item({ label: null, year: 2009 }))).toBe("deadmau5 · 8A · 128 BPM · 2009");
+    expect(formatTrackMeta(item({ label: "mau5trap", key: null, bpm: null }))).toBe("deadmau5 · mau5trap");
+  });
+
+  it("writes a classic key as its Camelot code, never the raw spelling", () => {
+    expect(formatTrackMeta(item({ key: "Am" }))).toBe("deadmau5 · 8A · 128 BPM");
+    expect(formatTrackMeta(item({ key: "F#m" }))).toBe("deadmau5 · 11A · 128 BPM");
+    expect(trackFacts(item({ key: "Am" })).key).toBe("8A");
+  });
+
+  it("keeps text that is not a key as it came", () => {
+    expect(trackFacts(item({ key: "loud" })).key).toBe("loud");
   });
 });
 

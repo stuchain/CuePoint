@@ -5,6 +5,8 @@ import type {
   RepeatMode,
 } from "../../api/cuepointBridge.types";
 import { formatBpm } from "../format/bpm";
+import { MISSING_VALUE } from "../MissingValue";
+import { camelotOf } from "../wheel/keyColour";
 
 /**
  * Formatting and selectors for the player bar (PLAYER-06).
@@ -17,13 +19,13 @@ import { formatBpm } from "../format/bpm";
 /**
  * Seconds as `m:ss`, or `h:mm:ss` past an hour.
  *
- * A dash for anything unknown rather than `0:00`: a track whose duration has
+ * The one missing-value dash for anything unknown rather than `0:00`: a track whose duration has
  * not arrived yet has not got a duration of zero, and showing one makes the
  * position bar look full at the start of every track.
  */
 export function formatTime(seconds: number | null | undefined): string {
   if (seconds === null || seconds === undefined || !Number.isFinite(seconds) || seconds < 0) {
-    return "–:––";
+    return MISSING_VALUE;
   }
   const whole = Math.floor(seconds);
   const hours = Math.floor(whole / 3600);
@@ -39,19 +41,43 @@ export function formatTime(seconds: number | null | undefined): string {
 /** The shared BPM format, re-exported so the player's importers stay put. */
 export { formatBpm };
 
+/** The facts under a title, each already written for the line (a missing one is an empty string). */
+export interface TrackFacts {
+  artist: string;
+  label: string;
+  /** The Camelot code ("8A"), also for a classic spelling ("Am"); text that is not a key is kept as it came. */
+  key: string;
+  /** "128.0 BPM". */
+  bpm: string;
+  year: string;
+}
+
 /**
- * The line under the title: artist, then key and BPM when they are known.
+ * The track's facts in the one order used everywhere: artist, label, key, BPM, year. A key is
+ * always its Camelot code, never the raw classic spelling.
+ */
+export function trackFacts(item: QueueItem | null): TrackFacts {
+  if (!item) return { artist: "", label: "", key: "", bpm: "", year: "" };
+  const bpm = formatBpm(item.bpm);
+  const key = (item.key ?? "").trim();
+  return {
+    artist: (item.artist ?? "").trim(),
+    label: (item.label ?? "").trim(),
+    key: camelotOf(key) ?? key,
+    bpm: bpm ? `${bpm} BPM` : "",
+    year: item.year ? String(item.year) : "",
+  };
+}
+
+/**
+ * The line under the title: artist · label · key · BPM · year, skipping what is missing.
  *
  * Joined here rather than in JSX so the separators cannot end up stranded
  * around a missing value — "— · 128.0" for a track with no artist.
  */
 export function formatTrackMeta(item: QueueItem | null): string {
-  if (!item) return "";
-  const bpm = formatBpm(item.bpm);
-  return [item.artist, item.key ?? "", bpm ? `${bpm} BPM` : ""]
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .join(" · ");
+  const facts = trackFacts(item);
+  return [facts.artist, facts.label, facts.key, facts.bpm, facts.year].filter(Boolean).join(" · ");
 }
 
 /** The key the player bar shows for a queue item: its Camelot key, or null (BAR-5). */

@@ -35,10 +35,10 @@ const SIZES = [1, 1.25, 1.5, 2, 3];
 /** Evaluate a `calc()` body built from `--unit`, the spacing tokens and `--scale`; null when it holds anything else (vw, %, em). */
 function valueAt(body: string, scale: number): number | null {
   const unit = 4 * scale;
-  const steps: Record<string, number> = { xs: 1, sm: 1.5, md: 2, lg: 3, xl: 4 };
+  const steps: Record<string, number> = { "2xs": 0.5, xs: 1, sm: 1.5, md: 2, lg: 3, xl: 4, "2xl": 6 };
   const text = body
     .replace(/var\(--unit\)/g, `(${unit})`)
-    .replace(/var\(--space-(xs|sm|md|lg|xl)\)/g, (_, step: string) => `(${unit * steps[step]!})`)
+    .replace(/var\(--space-(2xs|xs|sm|md|lg|xl|2xl)\)/g, (_, step: string) => `(${unit * steps[step]!})`)
     .replace(/var\(--scale\)/g, `(${scale})`)
     .replace(/(\d)px/g, "$1");
   if (!/^[\d\s.+\-*/()]+$/.test(text)) return null;
@@ -72,7 +72,7 @@ function findFractionalSpacing(css: string): number[] {
       else if (text[end] === ")" && --depth === 0) break;
     }
     const body = text.slice(at + 5, end);
-    if (!/var\(--(unit|space-[a-z]+)\)/.test(body) || !/[*/]/.test(body)) continue;
+    if (!/var\(--(unit|space-[a-z0-9]+)\)/.test(body) || !/[*/]/.test(body)) continue;
     const fractional = SIZES.some((scale) => {
       const value = valueAt(body, scale);
       return value !== null && Math.abs(value - Math.round(value)) > 1e-9;

@@ -1,12 +1,22 @@
+/*
+ * The one chip (status chips, counts, tags): a tinted fill, a 1px line and words, all from one
+ * tone. The fill is the tone's colour at --chip-fill-mix over whatever it sits on, the line is
+ * the colour, and the words are the colour lifted towards the theme's text colour so they read
+ * at 4.5:1 in every theme (themeContrast.test.ts holds the pairs).
+ */
 .cp-badge {
+  --chip-tone: var(--fg-muted);
   display: inline-flex;
   align-items: center;
-  padding: round(nearest, calc(var(--space-xs) * 0.75), 1px) var(--space-sm);
-  /* The badge's own colour, drawn as a hairline (T5). */
-  border: var(--hairline) solid currentColor;
+  box-sizing: border-box;
+  padding: var(--space-2xs) var(--space-sm);
+  border: var(--hairline) solid var(--chip-tone);
+  background: color-mix(in srgb, var(--chip-tone) var(--chip-fill-mix), transparent);
+  color: color-mix(in srgb, var(--chip-tone) var(--chip-text-mix), var(--fg-primary));
   font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-weight: var(--weight-strong);
   line-height: 1;
+  white-space: nowrap;
 }
 
 /* The player bar's queue badge keeps its bevelled look (C16c). */
@@ -15,32 +25,25 @@
   box-shadow: var(--shadow-badge);
 }
 
-.cp-badge--default {
+.cp-badge--default,
+.cp-badge--neutral {
+  --chip-tone: var(--fg-muted);
   border-color: var(--border-muted);
-  background: var(--bg-panel-alt);
-  color: var(--fg-primary);
 }
 
 .cp-badge--success {
-  border-color: var(--accent-success);
-  background: var(--accent-success);
-  color: var(--fg-on-status);
+  --chip-tone: var(--accent-success);
 }
 
 .cp-badge--warning {
-  border-color: var(--accent-warning);
-  background: var(--accent-warning);
-  color: var(--fg-on-status);
+  --chip-tone: var(--accent-warning);
 }
 
 .cp-badge--danger {
-  border-color: var(--accent-danger);
-  background: var(--accent-danger);
-  color: var(--fg-on-status);
+  --chip-tone: var(--accent-danger);
 }
 
+.cp-badge--accent,
 .cp-badge--info {
-  border-color: var(--accent-info);
-  background: var(--accent-info);
-  color: var(--fg-on-status);
+  --chip-tone: var(--accent-primary);
 }

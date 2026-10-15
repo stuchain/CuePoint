@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
@@ -103,8 +103,26 @@ describe("PrivacyDialog (REPORT-08, DEC-128)", () => {
   it("keeps the explanation and the one-off clean-up buttons", () => {
     install(async () => ({ enabled: true, configured: true }));
     show();
-    expect(screen.getByRole("button", { name: "Clear cache now" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Clear logs now" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clear cache now…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clear logs now…" })).toBeInTheDocument();
+  });
+
+  it("asks in the app, never with window.confirm, and clears only on the dialog's button", async () => {
+    const confirm = vi.spyOn(window, "confirm");
+    const clearCuepointLogs = vi.fn().mockResolvedValue(undefined);
+    install(async () => ({ enabled: true, configured: true }));
+    (window as unknown as { cuepoint: Record<string, unknown> }).cuepoint.clearCuepointLogs = clearCuepointLogs;
+    show();
+    await userEvent.click(screen.getByRole("button", { name: "Clear logs now…" }));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(clearCuepointLogs).not.toHaveBeenCalled();
+    const ask = screen.getByRole("dialog", { name: "Clear logs?" });
+    await userEvent.click(within(ask).getByRole("button", { name: "Cancel" }));
+    expect(clearCuepointLogs).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear logs now…" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Clear logs?" })).getByRole("button", { name: "Clear logs" }));
+    await waitFor(() => expect(clearCuepointLogs).toHaveBeenCalledTimes(1));
   });
 });
 

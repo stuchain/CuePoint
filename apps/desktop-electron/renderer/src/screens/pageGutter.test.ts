@@ -28,10 +28,11 @@ function decls(css: string, selector: string): Record<string, string> {
 }
 
 describe("the shared page margin", () => {
-  it("is 24px left and right and 20px on top, scaled, each capped by the region", () => {
+  it("is 12px on every side, scaled, each capped by the region", () => {
     const root = decls(layout, ":root");
-    expect(root["--page-gutter-x"]).toBe("min(calc(24px * var(--scale)), 4cqi)");
-    expect(root["--page-gutter-top"]).toBe("min(calc(20px * var(--scale)), 3.4cqi)");
+    expect(root["--page-gutter-x"]).toBe("min(calc(12px * var(--scale)), 4cqi)");
+    expect(root["--page-gutter-top"]).toBe("min(calc(12px * var(--scale)), 3.4cqi)");
+    expect(root["--content-max-width"]).toBe("100%");
   });
 
   it("reaches every page through .screen", () => {

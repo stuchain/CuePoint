@@ -2,7 +2,7 @@
 .cp-tabs {
   display: flex;
   gap: var(--space-xs);
-  padding: 0 var(--space-sm);
+  padding: 0;
   flex-shrink: 0;
   width: 100%;
   background: var(--bg-toolbar);
@@ -33,11 +33,11 @@
 .cp-tabs__tab--active {
   color: var(--fg-primary);
   border-bottom-color: var(--tab-underline-color, var(--accent-primary));
-  font-weight: 700;
+  font-weight: var(--weight-strong);
 }
 
 .cp-tabs__tab:disabled {
-  opacity: 0.45;
+  color: var(--fg-disabled);
   cursor: not-allowed;
 }
 
@@ -56,7 +56,6 @@
 }
 
 .cp-tabs--sub .cp-tabs__tab {
-  padding: 0 var(--space-sm);
   white-space: nowrap;
   border-bottom: 0;
   font-size: var(--font-size-xs);

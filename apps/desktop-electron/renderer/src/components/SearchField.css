@@ -1,0 +1,56 @@
+/* The one search field: icon at the left, clear x at the right, the standard control height. */
+.cp-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.cp-search-field__icon {
+  position: absolute;
+  left: var(--space-sm);
+  display: inline-flex;
+  color: var(--fg-muted);
+  pointer-events: none;
+}
+
+.cp-search-field__input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--control-height);
+  padding: 0 calc(var(--icon-size-sm) + var(--space-sm) * 2);
+  border: var(--control-border-width) solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--fg-primary);
+  font-family: var(--font-pixel);
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
+}
+
+.cp-search-field__input::placeholder {
+  color: var(--fg-muted);
+}
+
+/* The browser's own clear mark is hidden: the field draws the one clear button. */
+.cp-search-field__input::-webkit-search-cancel-button,
+.cp-search-field__input::-webkit-search-decoration {
+  appearance: none;
+  display: none;
+}
+
+.cp-search-field__clear {
+  position: absolute;
+  right: var(--space-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xs);
+  border: 0;
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.cp-search-field__clear:hover {
+  color: var(--fg-primary);
+}

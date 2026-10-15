@@ -1,0 +1,11 @@
+.cp-loading {
+  display: flex;
+  align-items: center;
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+}
+
+.cp-loading--centered {
+  justify-content: center;
+  padding: var(--space-lg);
+}

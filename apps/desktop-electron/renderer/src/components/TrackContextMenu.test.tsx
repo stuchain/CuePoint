@@ -492,8 +492,8 @@ describe("a submenu inside a submenu (FLW-8)", () => {
     const rules = parseRules(stripComments(css));
     const body = (selector: string) => rules.find((r) => r.selector === selector)?.body ?? "";
 
-    it("draws the submenu chevron at half the icon cell", () => {
-      expect(body(".cp-track-menu__arrow .cp-pixel-icon")).toMatch(/calc\(var\(--icon-size\) \* 0\.5\)/);
+    it("draws the submenu chevron at the small icon size", () => {
+      expect(body(".cp-track-menu__arrow .cp-pixel-icon")).toMatch(/var\(--icon-size-sm\)/);
     });
 
     it("sets the item font size to the control size", () => {

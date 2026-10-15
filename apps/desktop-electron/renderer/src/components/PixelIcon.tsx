@@ -10,7 +10,14 @@ interface PixelIconProps {
    */
   title?: string;
   className?: string;
+  /**
+   * One of three sizes, and no other: `"sm"` 12, `"md"` 16, `"lg"` 24 (the default), each times
+   * the text size and a whole multiple of the 12-unit grid, so no art pixel is fractional.
+   */
+  size?: PixelIconSize;
 }
+
+export type PixelIconSize = "sm" | "md" | "lg";
 
 /**
  * Renders pixel artwork as an SVG whose rectangles inherit `currentColor`.
@@ -19,15 +26,16 @@ interface PixelIconProps {
  * antialiasing on rectangle edges, so pixels stay square at any scale rather
  * than picking up soft borders the way a scaled bitmap would.
  */
-export function PixelIcon({ name, title, className = "" }: PixelIconProps) {
+export function PixelIcon({ name, title, className = "", size = "lg" }: PixelIconProps) {
   const runs = pixelRunsFor(name);
   const labelled = Boolean(title);
 
   return (
     <svg
-      className={`cp-pixel-icon ${className}`.trim()}
+      className={`cp-pixel-icon${size === "lg" ? "" : ` cp-pixel-icon--${size}`} ${className}`.trim()}
       viewBox={`0 0 ${PIXEL_GRID_SIZE} ${PIXEL_GRID_SIZE}`}
       shapeRendering="crispEdges"
+      data-size={size}
       focusable="false"
       role={labelled ? "img" : "presentation"}
       aria-hidden={labelled ? undefined : true}

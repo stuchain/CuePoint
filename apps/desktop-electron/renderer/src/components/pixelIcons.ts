@@ -690,6 +690,53 @@ const columns = [
   "............",
 ];
 
+// Icons with one meaning each (area 48): × only closes, so removing, moving and "after" get their own.
+const remove = [
+  "............",
+  "....####....",
+  "..########..",
+  "............",
+  "..########..",
+  "..#.#..#.#..",
+  "..#.#..#.#..",
+  "..#.#..#.#..",
+  "..#.#..#.#..",
+  "..########..",
+  "............",
+  "............",
+];
+
+const move = [
+  "............",
+  ".....##.....",
+  "....####....",
+  ".....##.....",
+  ".#...##...#.",
+  "##.######.##",
+  "##.######.##",
+  ".#...##...#.",
+  ".....##.....",
+  "....####....",
+  ".....##.....",
+  "............",
+];
+
+// Repeat-after: an arrow running into a bar, "carry on after this one".
+const repeatAfter = [
+  "............",
+  "............",
+  ".........##.",
+  ".....#...##.",
+  "......#..##.",
+  ".#######.##.",
+  "......#..##.",
+  ".....#...##.",
+  ".........##.",
+  "............",
+  "............",
+  "............",
+];
+
 export const PIXEL_ICONS = {
   play,
   pause,
@@ -735,6 +782,9 @@ export const PIXEL_ICONS = {
   edit,
   columns,
   close,
+  remove,
+  move,
+  "repeat-after": repeatAfter,
   logo,
   // K8: the sidebar's Search button.
   search,

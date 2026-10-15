@@ -19,13 +19,13 @@
 
 .cp-panel__title {
   margin: 0;
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-section);
   font-weight: 700;
   color: var(--fg-primary);
 }
 
 .cp-panel__body {
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-lg);
 }
 
 .cp-panel--fill {

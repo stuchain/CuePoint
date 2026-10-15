@@ -1,7 +1,7 @@
 .shortcuts-dialog {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-lg);
 }
 
 .shortcuts-dialog__table-wrap {
@@ -27,12 +27,6 @@
   background: var(--bg-toolbar);
   position: sticky;
   top: 0;
-}
-
-.shortcuts-dialog kbd {
-  padding: 0 var(--space-xs);
-  border: var(--divider);
-  background: var(--bg-panel);
 }
 
 /* The body font, not the pixel one, so the letter O and the digit 0 differ. */

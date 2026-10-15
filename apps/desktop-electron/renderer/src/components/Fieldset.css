@@ -1,0 +1,11 @@
+.cp-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+/* Label to control: 4. The legend style itself is global (index.css). */
+.cp-fieldset > legend {
+  margin-bottom: var(--space-xs);
+}

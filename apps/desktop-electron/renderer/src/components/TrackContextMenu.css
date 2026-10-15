@@ -26,10 +26,12 @@
 }
 
 .cp-track-menu__item {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
-  min-height: calc(var(--hit-min) * 0.75);
-  padding: var(--space-sm) var(--space-md);
+  /* A menu row is a list row: the one row height. */
+  min-height: var(--row-height);
+  padding: 0 var(--space-md);
   border: 0;
   background: transparent;
   color: var(--fg-primary);
@@ -48,14 +50,14 @@
 }
 
 .cp-track-menu__item:disabled {
-  color: var(--fg-muted);
+  color: var(--fg-disabled);
   cursor: default;
 }
 
 .cp-track-menu__separator {
   height: 0;
   margin: var(--space-xs) 0;
-  border-top: 1px solid var(--border-muted);
+  border-top: var(--divider);
 }
 
 /*
@@ -70,6 +72,12 @@
   position: relative;
 }
 
+/* An item's hint wrapper (components/Hint) takes the menu's width, so the row does. */
+.cp-track-menu__group > .cp-hint {
+  display: flex;
+  width: 100%;
+}
+
 .cp-track-menu__item--parent {
   display: flex;
   align-items: center;
@@ -82,8 +90,8 @@
 }
 
 .cp-track-menu__arrow .cp-pixel-icon {
-  width: calc(var(--icon-size) * 0.5);
-  height: calc(var(--icon-size) * 0.5);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
 }
 
 .cp-track-menu__item--active .cp-track-menu__arrow {
@@ -112,8 +120,8 @@
 /* A tickable entry (K12): a fixed slot for the tick, so labels line up ticked or not. */
 .cp-track-menu__check {
   display: inline-block;
-  width: calc(var(--icon-size) * 0.5);
-  height: calc(var(--icon-size) * 0.5);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   margin-right: var(--space-sm);
   vertical-align: middle;
 }

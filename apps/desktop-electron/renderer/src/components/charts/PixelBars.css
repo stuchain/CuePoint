@@ -59,7 +59,7 @@
 
 .cp-pixel-bars__bar--open:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(var(--focus-ring-width) * -1);
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 /* The full name of the bar pointed at or focused; nothing is only on hover. Empty when idle, but

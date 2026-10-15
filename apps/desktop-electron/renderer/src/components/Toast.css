@@ -13,11 +13,19 @@
   overflow-y: auto;
 }
 
+/*
+ * One toast style: a panel with a bar on its left edge in the status colour, the words in the
+ * theme's text colour, the standard small button for its action and the one close button.
+ */
 .cp-toast {
-  padding: var(--space-md) var(--space-lg);
-  border: var(--control-border-width) solid var(--border-outline);
+  --toast-tone: var(--accent-info);
+  padding: var(--space-md) var(--space-md) var(--space-md) var(--space-lg);
+  border: var(--control-border-width) solid var(--border-control);
+  border-left: var(--selected-bar-width) solid var(--toast-tone);
+  background: var(--bg-panel-alt);
+  color: var(--fg-primary);
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: var(--weight-normal);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -33,51 +41,22 @@
 
 .cp-toast__action {
   flex: none;
-  padding: var(--space-xs) var(--space-sm);
-  border: var(--control-border-width) solid currentColor;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.cp-toast__close {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-xs);
-  border: var(--control-border-width) solid transparent;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.cp-toast__close:hover,
-.cp-toast__close:focus-visible {
-  border-color: currentColor;
 }
 
 .cp-toast--info {
-  background: var(--accent-info);
-  color: var(--fg-on-status);
+  --toast-tone: var(--accent-info);
 }
 
 .cp-toast--success {
-  background: var(--accent-success);
-  color: var(--fg-on-status);
+  --toast-tone: var(--accent-success);
 }
 
 .cp-toast--warning {
-  background: var(--accent-warning);
-  color: var(--fg-on-status);
+  --toast-tone: var(--accent-warning);
 }
 
 .cp-toast--error {
-  background: var(--accent-danger);
-  color: var(--fg-on-status);
+  --toast-tone: var(--accent-danger);
 }
 
 /* The slide steps in whole --motion-step-px (DEC-135). */

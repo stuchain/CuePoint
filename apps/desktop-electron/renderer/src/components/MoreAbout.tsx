@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode } from "react";
 import { Button } from "./Button";
+import { DisclosureArrow } from "./DisclosureArrow";
 import "./MoreAbout.css";
 
 interface MoreAboutProps {
@@ -14,7 +15,7 @@ interface MoreAboutProps {
 
 /**
  * The detail behind a one-line explanation. A visible secondary button opens
- * it; nothing is remembered, so it is collapsed on load unless `defaultOpen` says otherwise.
+ * it (a quiet, text-only button with the disclosure arrow); nothing is remembered, so it is collapsed on load unless `defaultOpen` says otherwise.
  */
 export function MoreAbout({ children, label = "More about this", describedBy, defaultOpen = false }: MoreAboutProps) {
   const [open, setOpen] = useState(defaultOpen);
@@ -22,11 +23,12 @@ export function MoreAbout({ children, label = "More about this", describedBy, de
   return (
     <div className="cp-more-about">
       <Button
-        variant="secondary"
+        variant="quiet"
         className="cp-more-about__toggle"
         aria-expanded={open}
         aria-controls={regionId}
         aria-describedby={describedBy}
+        icon={<DisclosureArrow open={open} />}
         onClick={() => setOpen((v) => !v)}
       >
         {open ? "Less about this" : label}

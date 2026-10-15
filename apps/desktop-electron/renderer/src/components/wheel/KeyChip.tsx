@@ -1,16 +1,26 @@
+import { MissingValue } from "../MissingValue";
 import { keyName } from "./camelot";
+import { WheelButton } from "./WheelButton";
 import { camelotOf } from "./keyColour";
 import "./KeyChip.css";
 
 /**
  * A key as a Camelot-coloured chip (R4-2): the code is always written ("8A", never "Am"), the
- * title is the key's name, and the colours come from the class alone (no style, no hook), because
+ * title is the key's name (pass `wheel` to make it the button that opens the wheel), and the colours come from the class alone (no style, no hook), because
  * a table renders a chip per row. Text that is not a key is shown as it came, and no key is a dash
  * (DEC-201).
  */
-export function KeyChip({ value }: { value: string | null | undefined }) {
+export function KeyChip({
+  value,
+  wheel,
+}: {
+  value: string | null | undefined;
+  /** Make the chip the button that opens the Camelot wheel (Track details, the player bar): which surface it opens for. */
+  wheel?: "details" | "player";
+}) {
   const text = (value ?? "").trim();
-  if (text === "") return <span>—</span>;
+  if (wheel) return <WheelButton source={wheel} keyName={text} />;
+  if (text === "") return <MissingValue />;
   const code = camelotOf(text);
   if (!code) return <span>{text}</span>;
   return (

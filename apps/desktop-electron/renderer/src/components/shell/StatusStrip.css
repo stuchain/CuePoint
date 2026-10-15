@@ -36,7 +36,7 @@
 }
 
 .cp-status__engine--error {
-  color: var(--accent-danger);
+  color: var(--danger-text);
 }
 
 .cp-status__job,
@@ -78,80 +78,33 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Pushed to the right: it is the strip's only action, not part of the status. */
+/* The strip's buttons are the standard small button at the strip's own height (a control's);
+   only their place is theirs. The Activity button is pushed to the right: it is the strip's only
+   action, not part of the status. */
 .cp-status__activity {
   flex: none;
   margin-left: auto;
   min-height: var(--control-height);
+  min-width: 0;
   padding: 0 var(--space-sm);
-  background: var(--bg-panel);
-  border: var(--control-border-width) solid var(--border-control);
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-}
-
-.cp-status__activity:hover {
-  color: var(--fg-primary);
-  background: var(--bg-app);
-}
-
-.cp-status__activity:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--focus-ring-width));
 }
 
 /* Stopping the job the strip is reporting (ORG-13). Beside the progress it
    belongs to rather than at the end of the strip, which is where the Activity
-   button lives — the two are different kinds of thing and a user reaching for
-   one must not find the other. */
+   button lives. */
 .cp-status__cancel {
   flex: none;
   min-height: var(--control-height);
+  min-width: 0;
   padding: 0 var(--space-sm);
-  background: var(--bg-panel);
-  border: var(--control-border-width) solid var(--border-control);
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-}
-
-.cp-status__cancel:hover:not(:disabled) {
-  color: var(--accent-warning);
-  background: var(--bg-app);
-}
-
-.cp-status__cancel:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--focus-ring-width));
-}
-
-.cp-status__cancel:disabled {
-  cursor: default;
-  opacity: 0.6;
 }
 
 /* A button since STR-5: it opens the list of everything running. */
 .cp-status__more {
   flex: none;
   min-height: var(--control-height);
-  padding: 0 var(--space-xs);
-  background: transparent;
-  border: var(--control-border-width) solid var(--border-control);
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-}
-
-.cp-status__more:hover,
-.cp-status__more[aria-expanded="true"] {
-  color: var(--fg-primary);
-  background: var(--bg-app);
-}
-
-.cp-status__more:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--focus-ring-width));
+  min-width: 0;
+  padding: 0 var(--space-sm);
 }
 
 /* The Hint wrappers (components/Hint.tsx) carry the layout their child had. */

@@ -23,14 +23,14 @@
   --fg-inverse: #0d1b2a;
   --fg-on-status: #000000;
 
-  --accent-primary: #ee6c4d;
+  --accent-primary: #ef785b;
   --accent-primary-hover: #f2846b;
   --accent-primary-pressed: #c8553d;
   --accent-secondary: #2d4563;
   --accent-secondary-hover: #4d6a90;
   --accent-success: #4caf50;
   --accent-warning: #ffb703;
-  --accent-danger: #e63946;
+  --accent-danger: #eb5d67;
   --accent-info: #48cae4;
 
   /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */

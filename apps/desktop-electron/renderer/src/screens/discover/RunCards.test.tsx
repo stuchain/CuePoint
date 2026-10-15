@@ -413,7 +413,7 @@ describe("opening a card, and Everything", () => {
     renderRun();
     fireEvent.click(await screen.findByRole("button", { name: "Everything · 5 tracks" }));
     const table = await screen.findByRole("table", { name: "Tracks this dig found" });
-    expect(within(table).getByRole("button", { name: "From" })).toBeInTheDocument();
+    expect(within(table).getByText("From")).toBeInTheDocument();
     expect(bridge.getDiscoveryRunTracks).toHaveBeenCalled();
     expect(bridge.getDiscoveryGroupTracks).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "All results" }));

@@ -11,26 +11,10 @@
   align-items: flex-end;
 }
 
+/* The shared search field (components/SearchField), taking the room the controls leave. */
 .log-viewer-dialog__search {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  min-width: 240px;
-}
-
-.log-viewer-dialog__search-label {
-  font-size: var(--font-size-sm);
-  color: var(--fg-muted);
-}
-
-.log-viewer-dialog__search-input {
-  width: 100%;
-  height: 34px;
-  border: 1px solid var(--border-muted);
-  border-radius: 8px;
-  padding: 0 10px;
-  background: var(--bg-input);
-  color: var(--fg-primary);
+  flex: 1 1 calc(240px * var(--scale));
+  min-width: calc(160px * var(--scale));
 }
 
 .log-viewer-dialog__auto {
@@ -48,21 +32,15 @@
   align-items: center;
 }
 
-.log-viewer-dialog__error {
-  margin: 0;
-  color: var(--accent-danger);
-}
-
 .log-viewer-dialog__output {
   margin: 0;
-  max-height: 420px;
+  max-height: calc(420px * var(--scale));
   overflow: auto;
   padding: var(--space-sm);
   border: var(--divider);
-  border-radius: 10px;
   background: var(--bg-app);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1.4;
   white-space: pre-wrap;
 }

@@ -15,43 +15,38 @@
   height: 100%;
   box-sizing: border-box;
   width: min(max(calc(300px * var(--scale)), 448px), 40vw);
-  border-left: var(--border-width) solid var(--border-outline);
+  border-left: var(--divider);
   background: var(--bg-panel);
 }
 
+/* A panel's title bar is one height (a toolbar's), whatever it holds; dense side panels pad 8. */
 .cp-queue__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
-  border-bottom: var(--border-width) solid var(--border-outline);
+  gap: var(--space-md);
+  box-sizing: border-box;
+  min-height: var(--toolbar-height);
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: var(--divider);
 }
 
 .cp-queue__title {
+  flex: 1;
   margin: 0;
-  font-size: var(--font-size-sm);
-}
-
-.cp-queue__close {
-  min-width: var(--hit-min);
-  min-height: var(--hit-min);
-  border: var(--border-width) solid var(--border-outline);
-  background: var(--bg-panel);
-  color: var(--fg-primary);
-  cursor: pointer;
+  font-size: var(--font-size-section);
+  font-weight: var(--weight-strong);
 }
 
 /* The gestures, said once under the title (BAR-8). */
 .cp-queue__hint {
   margin: 0;
   padding: var(--space-xs) var(--space-md);
-  border-bottom: var(--border-width) solid var(--border-outline);
+  border-bottom: var(--divider);
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
 }
 
-.cp-queue__close svg,
 .cp-queue__remove svg {
   display: block;
   margin: auto;
@@ -95,7 +90,7 @@
   gap: var(--space-sm);
   width: 100%;
   padding: 0 var(--space-sm);
-  border-bottom: 1px solid var(--border-muted);
+  border-bottom: var(--hairline) solid var(--border-muted);
   box-sizing: border-box;
   cursor: default;
 }
@@ -105,14 +100,13 @@
 }
 
 .cp-queue__row:focus-visible {
-  outline: var(--border-width) solid var(--focus-ring);
-  outline-offset: -2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 /* The playing row is marked with weight and a bar, not colour alone. */
 .cp-queue__row--playing {
-  background: var(--bg-panel-alt);
-  border-left: 3px solid var(--accent-primary);
+  background: var(--selected-row-background);
   font-weight: 700;
 }
 
@@ -135,25 +129,30 @@
   text-align: right;
 }
 
+/* One line: the title, then its facts muted after it. Each ends in "..." when cut (full text in the app hint). */
 .cp-queue__text {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  gap: var(--space-md);
   min-width: 0;
   flex: 1 1 auto;
 }
 
 .cp-queue__row-title,
 .cp-queue__row-meta {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .cp-queue__row-title {
-  font-size: var(--font-size-sm);
+  flex: 0 1 auto;
+  font-size: var(--font-size-xs);
 }
 
 .cp-queue__row-meta {
+  flex: 1 1 0;
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
   color: var(--fg-muted);
@@ -161,20 +160,23 @@
 
 .cp-queue__failed {
   font-weight: 400;
-  color: var(--accent-danger);
+  color: var(--danger-text);
 }
 
+/* Removing a track from the queue: its own icon, not the close x. */
 .cp-queue__remove {
   flex: 0 0 auto;
-  min-width: 24px;
-  min-height: 24px;
-  border: var(--border-width) solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xs);
+  border: var(--hairline) solid transparent;
   background: transparent;
   color: var(--fg-muted);
   cursor: pointer;
 }
 
 .cp-queue__remove:hover {
-  border-color: var(--border-outline);
+  border-color: var(--border-control);
   color: var(--fg-primary);
 }

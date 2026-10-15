@@ -45,12 +45,12 @@
 .cp-column-picker__moves {
   display: flex;
   flex-shrink: 0;
-  gap: var(--space-xs);
+  gap: var(--space-md);
 }
 
 /* What the marks in the cells mean (LIB-9): small, and under the list it is about. */
 .cp-column-picker__note {
-  margin: var(--space-sm) 0 0;
+  margin: var(--space-lg) 0 0;
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
 }

@@ -9,7 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import { reportToast } from "../reporting/reporting";
-import { PixelIcon } from "./PixelIcon";
+import { Button } from "./Button";
+import { CloseButton } from "./CloseButton";
 import { usePresence } from "../tokens/usePresence";
 import "./Toast.css";
 
@@ -160,8 +161,9 @@ function ToastItem({
     >
       <span>{toast.message}</span>
       {toast.action ? (
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           className="cp-toast__action"
           onClick={() => {
             const run = toast.action?.onClick;
@@ -170,11 +172,9 @@ function ToastItem({
           }}
         >
           {toast.action.label}
-        </button>
+        </Button>
       ) : null}
-      <button type="button" className="cp-toast__close" aria-label="Close message" onClick={() => onDismiss(toast.id)}>
-        <PixelIcon name="close" />
-      </button>
+      <CloseButton className="cp-toast__close" aria-label="Close message" onClick={() => onDismiss(toast.id)} />
     </div>
   );
 }

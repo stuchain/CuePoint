@@ -99,3 +99,42 @@ describe("the wheel's styles", () => {
     expect(shape?.[2]).toMatch(/stroke:\s*var\(--fg-muted\)/);
   });
 });
+
+/**
+ * The popover's wheel is drawn in the 24 key colours (area 44): an unlit key is a tint of its own
+ * colour, a key that mixes with the track's is its full colour. Each label keeps 4.5:1 on its fill
+ * in every built-in theme; the colours are the ones the key chips use (tokens/keyColours.css).
+ */
+const keyColourSheet = (await import("../../tokens/keyColours.css?raw")).default;
+
+function keyColoursOf(theme: string): Record<string, string> {
+  const block = new RegExp(`\\[data-theme="${theme}"\\]\\s*\\{([^}]*)\\}`).exec(keyColourSheet)![1]!;
+  return Object.fromEntries([...block.matchAll(/--key-(\w+):\s*(#[0-9a-fA-F]{6})/g)].map((m) => [m[1]!, m[2]!]));
+}
+
+describe.each(Object.entries(THEMES))("the key-coloured wheel in %s", (name, css) => {
+  const t = tokens(css);
+  const keys = keyColoursOf(name);
+
+  it("has all 24 key colours", () => {
+    expect(Object.keys(keys)).toHaveLength(24);
+  });
+
+  it("reads each unlit label at 4.5:1 on its key's tint", () => {
+    for (const [code, colour] of Object.entries(keys)) {
+      const fill = mix(colour, t["bg-panel-alt"]!, 22);
+      expect(contrastRatio(t["fg-primary"]!, fill), code).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("reads each lit label (the dark outline colour) at 4.5:1 on its key's full colour", () => {
+    for (const [code, colour] of Object.entries(keys)) {
+      expect(contrastRatio(t["border-outline"]!, colour), code).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("styles the wedges from the key colour, not the green and violet of old", () => {
+    expect(wheelCss).toMatch(/\.cp-wheel--keys \.cp-wheel__shape\s*\{[^}]*var\(--wheel-key\) 22%/);
+    expect(wheelCss).toMatch(/\.cp-wheel--keys \.cp-wheel__shape\[data-lit\]\s*\{[^}]*fill:\s*var\(--wheel-key\)/);
+  });
+});

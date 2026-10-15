@@ -553,9 +553,10 @@ describe("the Activity button (STR-9)", () => {
     );
     await user.tab();
     while (document.activeElement !== button) await user.tab();
-    expect(screen.getByRole("tooltip")).toHaveTextContent(
-      "Activity: what CuePoint has done (Ctrl+Shift+A)",
-    );
+    // The tip says it in words and draws the shortcut as a key cap.
+    const tip = screen.getByRole("tooltip");
+    expect(tip).toHaveTextContent("Activity: what CuePoint has done Ctrl+Shift+A");
+    expect(tip.querySelector("kbd.cp-kbd")).toHaveTextContent("Ctrl+Shift+A");
   });
 
   it("carries no unread badge", () => {

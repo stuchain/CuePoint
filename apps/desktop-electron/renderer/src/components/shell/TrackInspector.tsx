@@ -10,6 +10,9 @@ import {
   type InspectorState,
 } from "./inspectorState";
 import { useInspectorAutoOpen } from "./inspectorSlot";
+import { CloseButton } from "../CloseButton";
+import { Hint } from "../Hint";
+import { PixelIcon } from "../PixelIcon";
 import { findOwningDestination } from "./navRegistry";
 import { useMotion } from "../../tokens/MotionContext";
 import { useScaleFactor } from "../../tokens/ScaleContext";
@@ -207,19 +210,22 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   if (!visible) {
     return (
       <div className="cp-inspector cp-inspector--hidden">
-        <button
-          ref={revealRef}
-          type="button"
-          className="cp-inspector__reveal"
-          onClick={toggle}
-          aria-expanded={false}
-          aria-label={selectedTitle ? `Show track details: ${selectedTitle}` : "Show track details"}
-          title="Show track details (Ctrl+I)"
-        >
-          <span className="cp-inspector__reveal-name">Details</span>
-          {selectedTitle && <span className="cp-inspector__reveal-title">{selectedTitle}</span>}
-          <span aria-hidden className="cp-inspector__reveal-chevron">‹</span>
-        </button>
+        <Hint text="Show track details" shortcut="Mod+I">
+          <button
+            ref={revealRef}
+            type="button"
+            className="cp-inspector__reveal"
+            onClick={toggle}
+            aria-expanded={false}
+            aria-label={selectedTitle ? `Show track details: ${selectedTitle}` : "Show track details"}
+          >
+            <span className="cp-inspector__reveal-name">Details</span>
+            {selectedTitle && <span className="cp-inspector__reveal-title">{selectedTitle}</span>}
+            <span aria-hidden className="cp-inspector__reveal-chevron">
+              <PixelIcon name="chevron-left" size="sm" />
+            </span>
+          </button>
+        </Hint>
       </div>
     );
   }
@@ -263,17 +269,15 @@ export function TrackInspector({ children }: TrackInspectorProps) {
 
       <header className="cp-inspector__header">
         <h2 className="cp-inspector__title">Track details</h2>
-        <button
-          ref={hideRef}
-          type="button"
-          className="cp-inspector__hide"
-          onClick={toggle}
-          aria-expanded
-          aria-label="Hide track details"
-          title="Hide track details (Ctrl+I)"
-        >
-          <span aria-hidden>›</span>
-        </button>
+        <Hint text="Hide track details" shortcut="Mod+I">
+          <CloseButton
+            ref={hideRef}
+            className="cp-inspector__hide"
+            onClick={toggle}
+            aria-expanded
+            aria-label="Hide track details"
+          />
+        </Hint>
       </header>
 
       <div className="cp-inspector__body">

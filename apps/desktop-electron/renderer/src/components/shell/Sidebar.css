@@ -11,6 +11,8 @@
  */
 .cp-sidebar {
   --cp-sidebar-pad: var(--space-sm);
+  /* Where an entry's icon starts: its own padding and border. The logo and the "Pages" label start there too. */
+  --cp-sidebar-edge: calc(var(--space-sm) + var(--hairline));
   /*
    * Wide enough for the longest label the registry declares — "Statistics" in bold, 5.68em of
    * Pixelify Sans — plus its icon, gap and padding, and for the top row (logo, "CuePoint" in
@@ -69,13 +71,14 @@
   flex: 1 1 auto;
   min-width: 0;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
   min-height: min(var(--hit-min), var(--cp-sidebar-fit));
-  /* No block padding: the 24px logo/icon box at 2x is already taller than the fitted row. */
-  padding: 0;
+  /* No block padding. The left edge is the entries' (their padding and border), so the logo, the
+     "Pages" label and the icons all start at one x. */
+  padding: 0 0 0 var(--cp-sidebar-edge);
   color: var(--fg-primary);
   font-size: var(--font-size-sm);
-  font-weight: 700;
+  font-weight: var(--weight-strong);
   text-decoration: none;
 }
 
@@ -83,6 +86,16 @@
   flex: none;
   justify-content: center;
   padding: var(--space-xs);
+}
+
+/* The brand's hint wrapper takes the row, so the link keeps its width. */
+.cp-sidebar__top > .cp-hint {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cp-sidebar--collapsed .cp-sidebar__top > .cp-hint {
+  flex: none;
 }
 
 /*
@@ -108,7 +121,7 @@
 
 .cp-sidebar__brand:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--focus-ring-width));
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 .cp-sidebar__brand-name {
@@ -143,22 +156,20 @@
 
 .cp-sidebar__toggle:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--focus-ring-width));
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 /* The small "Pages" heading over the entries; fixed, the list below it scrolls. */
 .cp-sidebar__pages-label {
   flex: none;
   margin: 0;
-  padding: var(--space-sm) var(--space-xs) 0;
+  padding: var(--space-sm) 0 0 var(--cp-sidebar-edge);
   color: var(--fg-muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
 }
 
-/* The page entries get more room each than the pinned Settings row (hit-min stays the floor). */
-.cp-sidebar:not(.cp-sidebar--collapsed) .cp-sidebar__list .cp-sidebar__link {
-  min-height: min(calc(var(--hit-min) + var(--space-xs)), var(--cp-sidebar-fit));
-}
+/* Every entry is one height (Search, the pages and Settings alike). */
 
 /* The workspace destinations: the one part of the rail that scrolls (R2-9). */
 .cp-sidebar__list {
@@ -167,6 +178,7 @@
   flex-direction: column;
   gap: var(--space-xs);
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -212,6 +224,11 @@
   flex: 1 0 auto;
 }
 
+.cp-sidebar__foot .cp-hint:has(> .cp-sidebar__toggle) {
+  flex: none;
+  margin-left: auto;
+}
+
 .cp-sidebar__foot .cp-sidebar__toggle {
   margin-left: auto;
 }
@@ -229,9 +246,10 @@
 
 .cp-sidebar__group-label {
   margin: 0;
-  padding: var(--space-xs) var(--space-xs) 0;
+  padding: var(--space-xs) 0 0 var(--cp-sidebar-edge);
   color: var(--fg-muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
 }
 
 /* The Hint wrapper takes the entry's full width (K7). */
@@ -317,12 +335,12 @@
   color: var(--fg-primary);
   background: var(--selected-row-background);
   background-origin: border-box;
-  font-weight: 700;
+  font-weight: var(--weight-strong);
 }
 
 .cp-sidebar__link:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--focus-ring-width));
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 .cp-sidebar__icon {
@@ -354,17 +372,12 @@
   line-height: 1.25;
 }
 
-/* Pages with nothing to show before the first import (NAV-5): quieter, still clickable. */
+/* Pages with nothing to show before the first import (NAV-5): greyed by colour, still clickable. */
 .cp-sidebar__link--dimmed {
-  opacity: 0.55;
+  color: var(--fg-disabled);
 }
 
 .cp-sidebar__link--dimmed:hover,
 .cp-sidebar__link--dimmed:focus-visible {
-  opacity: 1;
-}
-
-/* The Search field stays put under the pointer: it is a field, not an entry that nudges (motion.css). */
-:root[data-motion-hover] .cp-sidebar__link.cp-sidebar__search--box:hover {
-  transform: none;
+  color: var(--fg-primary);
 }

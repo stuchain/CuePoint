@@ -10,11 +10,12 @@
 @property --row-height {
   syntax: "<length>";
   inherits: true;
-  initial-value: 36px;
+  initial-value: 26px;
 }
 
 :root {
-  --content-max-width: min(1200px, 100%);
+  /* No page is capped or centred: Settings starts at the same left edge as every other page. */
+  --content-max-width: 100%;
   --content-narrow-width: min(480px, 100%);
 
   /*
@@ -26,21 +27,23 @@
   /*
    * The page margin (one rule for every page): the space between the sidebar (and the Track
    * details panel) and a page's content, and above its header. `.screen` reads these through the
-   * safe-area variables, so a page takes them unless it opts out. The side margin is 24px * --scale, the top 20px * --scale, each capped
-   * at 4cqi of the content region (the `content` container): at 3x it would be 72px, which on a
-   * narrow window is a fifth of the width, so it gives way before the table does. The cap
-   * resolves where it is used (.screen), not here.
+   * safe-area variables, so a page takes them unless it opts out. The margin is 12px * --scale on
+   * every side, each capped at 4cqi of the content region (the `content` container): at 3x it
+   * would be 36px, which on a narrow window is a lot of the width, so it gives way before the
+   * table does. The cap resolves where it is used (.screen), not here.
    */
-  --page-gutter-x: min(calc(24px * var(--scale)), 4cqi);
-  --page-gutter-top: min(calc(20px * var(--scale)), 3.4cqi);
+  --page-gutter-x: min(calc(12px * var(--scale)), 4cqi);
+  --page-gutter-top: min(calc(12px * var(--scale)), 3.4cqi);
   --results-min-rows: 10;
   /*
-   * Table rows follow the text size, not the control size: --row-density is
-   * how many extra-small text heights a row takes. Compact (1.9) gives 19, 24,
-   * 29, 38 and 57px at 1, 1.25, 1.5, 2 and 3x; Roomy (2.6) gives 26, 33, 39, 52
-   * and 78. The Row density setting (tokens/rowDensity.ts) sets data-row-density.
+   * One row height for every track list (Library, Keys, Discover, Prepare, Clean Review, the
+   * queue, Statistics, search): 26px at 1x, following the text size, not the control size.
+   * --row-density is how many extra-small text heights a row takes. The default (2.6) gives
+   * 26, 33, 39, 52 and 78px at 1, 1.25, 1.5, 2 and 3x. The Row density setting
+   * (tokens/rowDensity.ts) sets data-row-density: "roomy" is 3.2 (32 at 1x). Menu rows and
+   * dropdown options use this token too.
    */
-  --row-height: round(nearest, calc(var(--font-size-xs) * var(--row-density, 1.9)), 1px);
+  --row-height: round(nearest, calc(var(--font-size-xs) * var(--row-density, 2.6)), 1px);
   --row-unmatched-bg: #5c2e2e;
   /* Breakpoints (reference values for JS/docs; media queries use literals) */
   --bp-sm: 600px;
@@ -61,9 +64,9 @@
     var(--results-col-min) var(--results-col-min);
 }
 
-/* Roomy rows (Settings > Appearance > Tables). */
+/* Roomy rows (Settings > Appearance > Tables): a step taller than the one row height. */
 :root[data-row-density="roomy"] {
-  --row-density: 2.6;
+  --row-density: 3.2;
 }
 
 /*

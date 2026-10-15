@@ -1,17 +1,18 @@
 .onboarding-dialog__title {
-  margin: 0 0 var(--space-sm);
-  font-size: var(--font-size-md);
+  margin: 0 0 var(--space-md);
+  font-size: var(--font-size-section);
+  font-weight: var(--weight-strong);
 }
 
 .onboarding-dialog__body {
-  margin: 0 0 var(--space-md);
+  margin: 0 0 var(--space-lg);
   color: var(--fg-muted);
   font-size: var(--font-size-sm);
   line-height: 1.5;
 }
 
 .about-dialog p {
-  margin: 0 0 var(--space-sm);
+  margin: 0 0 var(--space-md);
   font-size: var(--font-size-sm);
   line-height: 1.5;
 }

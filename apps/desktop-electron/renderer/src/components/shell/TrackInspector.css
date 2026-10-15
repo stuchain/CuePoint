@@ -72,8 +72,7 @@
   order: -1;
 }
 
-.cp-inspector__reveal,
-.cp-inspector__hide {
+.cp-inspector__reveal {
   min-width: var(--icon-size);
   min-height: var(--icon-size);
   padding: 0 var(--space-xs);
@@ -84,17 +83,15 @@
   cursor: pointer;
 }
 
-.cp-inspector__reveal:hover,
-.cp-inspector__hide:hover {
+.cp-inspector__reveal:hover {
   color: var(--fg-primary);
   background: var(--bg-app);
 }
 
 .cp-inspector__reveal:focus-visible,
-.cp-inspector__hide:focus-visible,
 .cp-inspector__handle:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--focus-ring-width));
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 /*
@@ -116,8 +113,7 @@
 
 .cp-inspector__handle:hover,
 .cp-inspector__handle--active {
-  background: var(--accent-info);
-  opacity: 0.5;
+  background: color-mix(in srgb, var(--accent-info) 50%, transparent);
 }
 
 /* While dragging, the cursor should not flicker over text it passes. */
@@ -130,8 +126,11 @@ body.cp-inspector-resizing {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md);
+  gap: var(--space-md);
+  box-sizing: border-box;
+  /* A panel's title bar is one height (a toolbar's) and pads 4 x 8, as the queue's does. */
+  min-height: var(--toolbar-height);
+  padding: var(--space-xs) var(--space-md);
   border-bottom: var(--divider);
 }
 
@@ -148,7 +147,8 @@ body.cp-inspector-resizing {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--fg-primary);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-section);
+  font-weight: var(--weight-strong);
 }
 
 .cp-inspector__hide,
@@ -188,5 +188,5 @@ body.cp-inspector-resizing {
 
 .cp-inspector .cp-tabs--sub .cp-tabs__tab:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--focus-ring-width));
+  outline-offset: var(--focus-ring-offset-inset);
 }

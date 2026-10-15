@@ -1,11 +1,23 @@
 import { useMemo, useState } from "react";
-import { Modal, TextField } from "./index";
+import { Modal } from "./index";
+import { SearchField } from "./SearchField";
+import { shortcutLabel } from "./shell/platformKeys";
 import { filterShortcuts, KEYBOARD_SHORTCUTS, type KeyboardShortcutEntry } from "../api/keyboardShortcuts";
 import "./ShortcutsDialog.css";
 
 interface ShortcutsDialogProps {
   open: boolean;
   onClose: () => void;
+}
+
+/** A listed shortcut in this platform's words: the list says Ctrl, and a Mac shows its Command sign. */
+function platformShortcut(shortcut: string): string {
+  return shortcutLabel(
+    shortcut
+      .split("+")
+      .map((part) => (part === "Ctrl" ? "Mod" : part))
+      .join("+"),
+  );
 }
 
 export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
@@ -23,12 +35,7 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
   return (
     <Modal open={open} title="Keyboard shortcuts" onClose={onClose} secondaryAction={{ label: "Close", onClick: onClose }}>
       <div className="shortcuts-dialog">
-        <TextField
-          label="Search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Filter shortcuts…"
-        />
+        <SearchField thing="shortcuts" label="Search" value={query} onValueChange={setQuery} />
         <p className="shortcuts-dialog__note">On a Mac, use Cmd where a shortcut says Ctrl.</p>
         <div className="shortcuts-dialog__table-wrap">
           <table className="shortcuts-dialog__table">
@@ -49,7 +56,7 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
                   <tr key={`${row.context}-${row.action}`}>
                     <td>{row.action}</td>
                     <td>
-                      <kbd className="shortcuts-dialog__key">{row.shortcut}</kbd>
+                      <kbd className="cp-kbd shortcuts-dialog__key">{platformShortcut(row.shortcut)}</kbd>
                     </td>
                   </tr>
                 ))}

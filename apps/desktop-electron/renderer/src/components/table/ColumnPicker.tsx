@@ -67,28 +67,28 @@ export function ColumnPicker<Row>({
                 />
                 <span>{column.header}</span>
                 {column.sticky && (
-                  <span className="cp-column-picker__pinned" title="Pinned to the left">
-                    Pinned
-                  </span>
+                  <span className="cp-column-picker__pinned">Pinned</span>
                 )}
               </label>
               <span className="cp-column-picker__moves">
                 <Button
                   variant="secondary"
+                  size="sm"
+                  iconOnly
+                  icon="chevron-left"
                   aria-label={`Move ${column.header} left`}
                   disabled={!canMove(columns, layout, entry.id, -1)}
                   onClick={() => onNudge(entry.id, -1)}
-                >
-                  ◀
-                </Button>
+                />
                 <Button
                   variant="secondary"
+                  size="sm"
+                  iconOnly
+                  icon="chevron-right"
                   aria-label={`Move ${column.header} right`}
                   disabled={!canMove(columns, layout, entry.id, 1)}
                   onClick={() => onNudge(entry.id, 1)}
-                >
-                  ▶
-                </Button>
+                />
               </span>
             </li>
           );

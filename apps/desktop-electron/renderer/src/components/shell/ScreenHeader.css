@@ -8,8 +8,15 @@
   gap: var(--space-xs);
   padding-bottom: var(--space-md);
   border-bottom: var(--divider);
+  /* Divider to the first content: 12, for every page. */
+  margin-bottom: var(--space-lg);
   background: var(--bg-app);
   min-width: 0;
+}
+
+/* The one exception: a strip attached to the header has no gap under the divider. */
+.cp-screen-header--attached {
+  margin-bottom: 0;
 }
 
 /* The header sits inside the page margin. Its backdrop reaches out over the margin above and to
@@ -67,7 +74,7 @@
 .cp-screen-header__actions {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .cp-screen-header__summary {

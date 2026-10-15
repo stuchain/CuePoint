@@ -76,7 +76,7 @@
 .cp-player-bar__transport {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-md);
 }
 
 .cp-player-bar__button {
@@ -106,8 +106,8 @@
 }
 
 .cp-player-bar__button:focus-visible {
-  outline: var(--border-width) solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .cp-player-bar__button--play {
@@ -140,7 +140,7 @@
 }
 
 .cp-player-bar__meta {
-  /* Artist, key and BPM: dense values, so the data face (DEC-048). */
+  /* Artist, label, key, BPM and year: dense values, so the data face (DEC-048). */
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
   color: var(--fg-muted);
@@ -174,7 +174,7 @@
 
 .cp-player-bar__slider:disabled {
   cursor: default;
-  opacity: 0.5;
+  accent-color: var(--fg-disabled);
 }
 
 /*
@@ -236,13 +236,13 @@
 /* The focus ring goes around the waveform, since the input itself is not seen. */
 .cp-player-bar__wave--drawn:has(.cp-player-bar__slider:focus-visible) {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--hairline);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .cp-player-bar__order {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-md);
 }
 
 /* An engaged toggle is filled, not merely outlined: at a glance across a dark
@@ -331,75 +331,11 @@
 }
 
 .cp-player-bar__link:focus-visible {
-  outline: var(--border-width) solid var(--focus-ring);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
-/* The key opens the Camelot wheel (BAR-5): Track details' small Wheel button (mini ring and the
-   word), kept whole beside the track text; the bar wraps before it is squeezed. */
-.cp-player-bar__wheel {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-}
-
-/*
- * Short of room, the Wheel button is just its ring (the word is hidden; the name and title stay):
- * the seek bar then keeps a usable width. A query cannot read --scale, so each scale has its own
- * width, 640px times the scale, and the bar spans the window, so the window's width
- * stands for it (a container here would trap the bar's fixed hints and panels).
- */
-@media (max-width: 1280px) {
-  :root[data-scale="2"] .cp-player-bar__wheel .cp-wheel-button__word {
-    display: none;
-  }
-
-  :root[data-scale="2"] .cp-player-bar__wheel .cp-wheel-button__button {
-    min-width: var(--control-height);
-    padding: 0;
-  }
-}
-
-@media (max-width: 1920px) {
-  :root[data-scale="3"] .cp-player-bar__wheel .cp-wheel-button__word {
-    display: none;
-  }
-
-  :root[data-scale="3"] .cp-player-bar__wheel .cp-wheel-button__button {
-    min-width: var(--control-height);
-    padding: 0;
-  }
-}
-
-@media (max-width: 960px) {
-  :root[data-scale="1.5"] .cp-player-bar__wheel .cp-wheel-button__word {
-    display: none;
-  }
-
-  :root[data-scale="1.5"] .cp-player-bar__wheel .cp-wheel-button__button {
-    min-width: var(--control-height);
-    padding: 0;
-  }
-}
-
-@media (max-width: 800px) {
-  :root[data-scale="1.25"] .cp-player-bar__wheel .cp-wheel-button__word {
-    display: none;
-  }
-
-  :root[data-scale="1.25"] .cp-player-bar__wheel .cp-wheel-button__button {
-    min-width: var(--control-height);
-    padding: 0;
-  }
-}
-
-@media (max-width: 640px) {
-  :root[data-scale="1"] .cp-player-bar__wheel .cp-wheel-button__word {
-    display: none;
-  }
-
-  :root[data-scale="1"] .cp-player-bar__wheel .cp-wheel-button__button {
-    min-width: var(--control-height);
-    padding: 0;
-  }
+/* The key in the facts line is the clickable chip that opens the Camelot wheel (BAR-5): no separate button. */
+.cp-player-bar__meta .cp-wheel-button {
+  vertical-align: baseline;
 }

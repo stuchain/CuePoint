@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Badge } from "../Badge";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
-import { modifierName } from "../shell/platformKeys";
 import { WheelButton } from "../wheel/WheelButton";
 import { waveformEntryWords } from "../waveform/analysisWords";
 import { useWaveform } from "../waveform/useWaveforms";
@@ -12,7 +11,6 @@ import { useWaveformDetailSetting } from "../waveform/waveformDetailSetting";
 import { useWaveformBox } from "../waveform/waveformEnvironment";
 import {
   formatTime,
-  formatTrackMeta,
   playingKey,
   sameItem,
   selectCurrentItem,
@@ -24,6 +22,7 @@ import {
   selectRepeat,
   selectShuffle,
   selectVolume,
+  trackFacts,
 } from "./playerFormat";
 import { nextRepeatMode, repeatLabel, saveRepeat, saveShuffle } from "./playerOrderState";
 import { usePlayerValue } from "./playerStore";
@@ -208,20 +207,34 @@ export function PlayerBar({
     onScrub(Math.max(0, Math.min(seekMax || 1, shownPosition + delta)));
   };
 
-  const mod = modifierName();
   const title = item?.title || "Nothing playing";
   // A queue item with no track id is not in the library: plain text, artist
   // included (BAR-4).
   const openableTrack = onOpenTrack && item && item.trackId !== null ? item.trackId : null;
-  const meta = formatTrackMeta(item);
+  const facts = trackFacts(item);
   const keyText = playingKey(item);
-  // The artist leads the line (`playerFormat.ts`); the button replaces just its
-  // words, and what follows (key, BPM) stays text.
-  const artistText = item?.artist.trim() ?? "";
-  const artistSplit =
-    onOpenArtist && openableTrack !== null && artistText !== "" && meta.startsWith(artistText)
-      ? meta.slice(artistText.length)
-      : null;
+  const artistText = facts.artist;
+  // The facts line is artist · label · key · BPM · year, skipping what is missing. The artist
+  // is a button when the track is in the Library; the key is the clickable chip that opens the
+  // Camelot wheel (BAR-5); the rest is text.
+  const factParts: ReactNode[] = [];
+  if (artistText !== "") {
+    factParts.push(
+      onOpenArtist && openableTrack !== null ? (
+        <Hint inline text={`Show ${artistText} in Discover`}>
+          <button type="button" className="cp-player-bar__link" onClick={() => onOpenArtist(artistText)}>
+            {artistText}
+          </button>
+        </Hint>
+      ) : (
+        artistText
+      ),
+    );
+  }
+  if (facts.label !== "") factParts.push(facts.label);
+  if (keyText !== null) factParts.push(<WheelButton source="player" keyName={keyText} />);
+  if (facts.bpm !== "") factParts.push(facts.bpm);
+  if (facts.year !== "") factParts.push(facts.year);
 
   // The waveform's reason (WAVE-06) is the slider's Hint, on hover and on
   // keyboard focus: the slider is the one focusable piece.
@@ -239,7 +252,7 @@ export function PlayerBar({
   return (
     <div className="cp-player-bar" role="region" aria-label="Player">
       <div className="cp-player-bar__transport">
-        <Hint text={`Previous track (${mod}+←)`}>
+        <Hint text="Previous track" shortcut="Mod+←">
           <button
             type="button"
             className="cp-player-bar__button"
@@ -249,7 +262,7 @@ export function PlayerBar({
             <PixelIcon name="previous" />
           </button>
         </Hint>
-        <Hint text={`${playing ? "Pause" : "Play"} (Space)`}>
+        <Hint text={playing ? "Pause" : "Play"} shortcut="Space">
           <button
             type="button"
             className="cp-player-bar__button cp-player-bar__button--play"
@@ -260,7 +273,7 @@ export function PlayerBar({
             <PixelIcon name={playing ? "pause" : "play"} />
           </button>
         </Hint>
-        <Hint text={`Next track (${mod}+→)`}>
+        <Hint text="Next track" shortcut="Mod+→">
           <button
             type="button"
             className="cp-player-bar__button"
@@ -284,37 +297,19 @@ export function PlayerBar({
             </button>
           </Hint>
         ) : (
-          <span className="cp-player-bar__title" title={item?.title ?? ""}>
+          <span className="cp-player-bar__title" data-cut-hint="">
             {title}
           </span>
         )}
-        {artistSplit !== null ? (
-          <span className="cp-player-bar__meta">
-            <Hint inline text={`Show ${artistText} in Discover`}>
-              <button
-                type="button"
-                className="cp-player-bar__link"
-                onClick={() => onOpenArtist?.(artistText)}
-              >
-                {artistText}
-              </button>
-            </Hint>
-            {artistSplit}
-          </span>
-        ) : (
-          <span className="cp-player-bar__meta">
-            {meta}
-          </span>
-        )}
+        <span className="cp-player-bar__meta">
+          {factParts.map((part, index) => (
+            <Fragment key={index}>
+              {index > 0 ? " · " : null}
+              {part}
+            </Fragment>
+          ))}
+        </span>
       </div>
-
-      {/* The key opens the Camelot wheel (BAR-5): the same small button as Track details', named
-          for the key. */}
-      {keyText !== null && (
-        <div className="cp-player-bar__wheel">
-          <WheelButton source="player" keyName={keyText} />
-        </div>
-      )}
 
       {/* Why there is no waveform is the slider's Hint, never the region's
           space, so the bar never shows an empty box (WAVE-06). No title here:
@@ -434,7 +429,7 @@ export function PlayerBar({
             <PixelIcon name={muted ? "volume-muted" : "volume"} />
           </button>
         </Hint>
-        <Hint text={`Volume (${mod}+↑/↓)`}>
+        <Hint text="Volume" shortcut="Mod+↑/↓">
           <input
             type="range"
             className="cp-player-bar__slider cp-player-bar__slider--volume"

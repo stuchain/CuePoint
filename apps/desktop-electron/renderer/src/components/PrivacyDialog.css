@@ -26,12 +26,8 @@
   font-size: var(--font-size-xs);
 }
 
+/* A link-looking button: the one link look (index.css .cp-link). */
 .privacy-dialog__link {
-  padding: 0;
-  border: 0;
-  background: none;
   color: var(--link);
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
+  text-align: left;
 }

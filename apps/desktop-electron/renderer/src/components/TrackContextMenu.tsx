@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLeaveGhost } from "../tokens/useLeaveGhost";
+import { Hint } from "./Hint";
 import { PixelIcon } from "./PixelIcon";
 import "./TrackContextMenu.css";
 
@@ -280,6 +281,7 @@ export function TrackContextMenu({ x, y, items, onClose, label, anchor }: TrackC
       return (
         <div key={item.id} className="cp-track-menu__group">
           {item.separatorBefore && <div className="cp-track-menu__separator" role="separator" />}
+          <Hint text={item.title}>
           <button
             type="button"
             role={item.checked === undefined ? "menuitem" : "menuitemcheckbox"}
@@ -287,7 +289,6 @@ export function TrackContextMenu({ x, y, items, onClose, label, anchor }: TrackC
             className={`cp-track-menu__item${index === activeAt(at) ? " cp-track-menu__item--active" : ""}${parent ? " cp-track-menu__item--parent" : ""}`}
             disabled={item.disabled}
             aria-disabled={item.disabled || undefined}
-            title={item.title}
             aria-haspopup={parent ? "menu" : undefined}
             aria-expanded={parent ? showing : undefined}
             onMouseEnter={() => {
@@ -310,6 +311,7 @@ export function TrackContextMenu({ x, y, items, onClose, label, anchor }: TrackC
               </span>
             )}
           </button>
+          </Hint>
           {showing && <Submenu label={item.label}>{renderList(item.items!, at + 1)}</Submenu>}
         </div>
       );

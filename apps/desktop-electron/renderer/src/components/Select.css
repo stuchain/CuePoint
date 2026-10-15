@@ -6,7 +6,7 @@
 
 .cp-select__label {
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--fg-muted);
 }
 
@@ -45,16 +45,17 @@
   flex: 1;
   min-width: 0;
   padding-block: 0;
-  padding-right: calc(var(--icon-size) * 0.5 + var(--space-sm) * 2);
+  padding-right: calc(var(--icon-size-sm) + var(--space-sm) * 2);
 }
 
 .cp-select__chevron .cp-pixel-icon {
-  width: calc(var(--icon-size) * 0.5);
-  height: calc(var(--icon-size) * 0.5);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
 }
 
 .cp-select__control:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .cp-select__control:disabled {

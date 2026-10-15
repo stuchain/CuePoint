@@ -1,7 +1,9 @@
 import { useCallback, useRef, useState } from "react";
 import type { QueueItem } from "../../api/cuepointBridge.types";
 import { Button } from "../Button";
+import { CloseButton } from "../CloseButton";
 import { Hint } from "../Hint";
+import { Kbd } from "../Kbd";
 import { Modal } from "../Modal";
 import { PixelIcon } from "../PixelIcon";
 import { useRowHeight } from "../table/trackTableLayout";
@@ -33,8 +35,8 @@ import "./QueuePanel.css";
  * PLAYER-08 was flagged for.
  */
 
-/** An entry is two lines (title, then the meta line), so two of the table's rows. */
-const TABLE_ROWS_PER_ENTRY = 2;
+/** An entry is one line (title, then its facts muted), one of the table's rows: every track list has the one row height. */
+const TABLE_ROWS_PER_ENTRY = 1;
 
 interface QueuePanelProps {
   onClose: () => void;
@@ -120,28 +122,23 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
           Queue{total > 0 ? ` · ${total.toLocaleString()}` : ""}
         </h2>
         {total > 1 && (
-          <Button variant="secondary" onClick={() => setConfirmingClear(true)}>
-            Clear queue
+          <Button variant="danger" size="sm" onClick={() => setConfirmingClear(true)}>
+            Clear queue…
           </Button>
         )}
         <Hint text="Close the queue">
-          <button
-            type="button"
-            className="cp-queue__close"
-            onClick={onClose}
-            aria-label="Close the queue"
-          >
-            <PixelIcon name="close" />
-          </button>
+          <CloseButton onClick={onClose} aria-label="Close the queue" />
         </Hint>
       </header>
       <p className="cp-queue__hint">
-        Drag to reorder · Alt+↑/↓ moves · Delete removes · Enter plays
+        Drag to reorder · <Kbd keys="Alt+↑/↓" /> moves · <Kbd keys="Delete" /> removes · <Kbd keys="Enter" /> plays
       </p>
 
       <Modal
         open={confirmingClear}
-        title="Clear queue"
+        title="Clear queue?"
+        size="narrow"
+        variant="danger"
         onClose={() => setConfirmingClear(false)}
         primaryAction={{ label: "Clear queue", onClick: () => void clear() }}
         secondaryAction={{ label: "Cancel", onClick: () => setConfirmingClear(false) }}
@@ -207,7 +204,9 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
                 >
                   <span className="cp-queue__position">{index + 1}</span>
                   <span className="cp-queue__text">
-                    <span className="cp-queue__row-title">{item.title || "Untitled"}</span>
+                    <span className="cp-queue__row-title" data-cut-hint="">
+                      {item.title || "Untitled"}
+                    </span>
                     {item.status === "failed" ? (
                       // DEC-054: the skip stays visible after the toast is gone,
                       // and BAR-9 says why, as text and not only a title. It
@@ -216,7 +215,9 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
                         {item.failure ? `Couldn't play: ${item.failure}` : "Couldn't play this track"}
                       </span>
                     ) : (
-                      <span className="cp-queue__row-meta">{formatTrackMeta(item)}</span>
+                      <span className="cp-queue__row-meta" data-cut-hint="">
+                        {formatTrackMeta(item)}
+                      </span>
                     )}
                   </span>
                   <span className="cp-queue__duration">{formatTime(item.durationSeconds)}</span>
@@ -227,7 +228,7 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
                       onClick={() => void remove(item)}
                       aria-label={`Remove ${item.title || "track"} from the queue`}
                     >
-                      <PixelIcon name="close" />
+                      <PixelIcon name="remove" size="sm" />
                     </button>
                   </Hint>
                 </div>

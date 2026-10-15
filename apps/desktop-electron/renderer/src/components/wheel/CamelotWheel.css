@@ -68,6 +68,27 @@
   stroke: var(--accent-primary);
 }
 
+/*
+ * The popover's wheel (area 44) is drawn in the 24 key colours, the same ones the key chips use
+ * (tokens/keyColours.css): an unlit key is a tint of its own colour, a key that mixes with the
+ * track's is its full colour, and the track's own key has a rim in the text colour as well. The
+ * Keys page's counts mode keeps the accent levels above. wheelContrast.test.ts holds the labels.
+ */
+.cp-wheel--keys .cp-wheel__shape {
+  fill: color-mix(in srgb, var(--wheel-key) 22%, var(--bg-panel-alt));
+}
+
+.cp-wheel--keys .cp-wheel__shape[data-lit] {
+  fill: var(--wheel-key);
+  stroke: var(--wheel-key);
+}
+
+.cp-wheel--keys .cp-wheel__shape[data-lit="same"] {
+  fill: var(--wheel-key);
+  stroke: var(--fg-primary);
+  stroke-width: var(--border-width);
+}
+
 /* Hover and focus draw a ring round the wedge and never change its fill. */
 .cp-wheel__mark {
   fill: none;

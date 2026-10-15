@@ -657,8 +657,9 @@ describe("Results", () => {
         expect.objectContaining({ sort: "release_date", dir: "asc" }),
       ),
     );
-    // A column the engine cannot order by is not a button that pretends to.
-    expect(within(table("Tracks this dig found")).getByRole("button", { name: "Label" })).toBeDisabled();
+    // A column the engine cannot order by is plain text, not a button that pretends to.
+    expect(within(table("Tracks this dig found")).queryByRole("button", { name: "Label" })).toBeNull();
+    expect(within(table("Tracks this dig found")).getByText("Label")).toBeInTheDocument();
   });
 
   it("shows the actions always, those that need rows disabled with their reason until rows are selected (DEC-209)", async () => {

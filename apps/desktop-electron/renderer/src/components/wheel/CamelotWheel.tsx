@@ -103,7 +103,7 @@ export function CamelotWheel({
   const levelOf = (code: string) => (counts ? countLevel(counts.get(code) ?? 0, biggest) : 0);
 
   return (
-    <div className="cp-wheel" role="group" aria-label="Keys" onKeyDown={onKeyDown}>
+    <div className={`cp-wheel${counts ? "" : " cp-wheel--keys"}`} role="group" aria-label="Keys" onKeyDown={onKeyDown}>
       <svg className="cp-wheel__art" viewBox={`0 0 ${GRID_CELLS} ${GRID_CELLS}`} aria-hidden="true">
         {CAMELOT_CODES.map((code) => (
           <path
@@ -115,6 +115,7 @@ export function CamelotWheel({
             data-level={levelOf(code) || undefined}
             data-chosen={chosen?.has(code) ? "true" : undefined}
             data-changed={counts ? changedMark(marks, code) : undefined}
+            style={{ "--wheel-key": `var(--key-${code})` } as CSSProperties}
           />
         ))}
         {/* The marks go last so they lie over the neighbors' fills. */}

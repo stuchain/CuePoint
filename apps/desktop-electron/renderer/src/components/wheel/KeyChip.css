@@ -7,15 +7,22 @@
   color: var(--key);
   background: color-mix(in srgb, var(--key) 18%, transparent);
   border-radius: round(nearest, calc(3px * var(--scale)), 1px);
-  padding: 0 round(nearest, calc(5px * var(--scale)), 1px);
+  --key-chip-pad: round(nearest, calc(5px * var(--scale)), 1px);
+  padding: 0 var(--key-chip-pad);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 :root[data-key-colours="off"] .key-chip {
+  --key-chip-pad: 0px;
   color: inherit;
   background: none;
   padding: 0;
+}
+
+/* A chip with no key colour (a track with no key, as a button) is muted. */
+.key-chip--button {
+  --key: var(--fg-muted);
 }
 
 .key-chip--1A {

@@ -1,14 +1,28 @@
-import type { ButtonHTMLAttributes, ReactElement, ReactNode } from "react";
+import type { ComponentPropsWithRef, ReactElement, ReactNode } from "react";
 import { PixelIcon } from "./PixelIcon";
 import { PIXEL_ICONS, type PixelIconName } from "./pixelIcons";
 import "./Button.css";
 
-type ButtonVariant = "primary" | "secondary" | "danger";
+/**
+ * One standard look (`.cp-btn`) and six roles:
+ * - `primary`: violet fill; at most one per area.
+ * - `secondary` (also `standard`): neutral grey; the default for everything else.
+ * - `write`: green fill, for the buttons that write to the user's files (Sync to files, Save to
+ *   files, Export to Rekordbox, Write tags).
+ * - `danger`: red outline, for a destructive action that opens a question or acts at once.
+ * - `danger-confirm`: red fill; only the confirm button of a delete dialog.
+ * - `quiet`: text only ("More about this", "See every change").
+ */
+export type ButtonVariant =
+    | "primary"
+    | "secondary"
+    | "standard"
+    | "write"
+    | "danger"
+    | "danger-confirm"
+    | "quiet";
 
-interface ButtonBaseProps extends Omit<
-    ButtonHTMLAttributes<HTMLButtonElement>,
-    "children"
-> {
+interface ButtonBaseProps extends Omit<ComponentPropsWithRef<"button">, "children"> {
     variant?: ButtonVariant;
     loading?: boolean;
     /** `"sm"` is for rows and chips (T12): 80% of the control height. */
@@ -55,9 +69,10 @@ export function Button(props: ButtonProps) {
         ...rest
     } = props;
     const isDisabled = disabled || loading;
+    const look = variant === "standard" ? "secondary" : variant;
     const classes = [
         "cp-btn",
-        `cp-btn--${variant}`,
+        `cp-btn--${look}`,
         iconOnly ? "cp-btn--icon" : "",
         size === "sm" ? "cp-btn--sm" : "",
         loading ? "cp-btn--loading" : "",

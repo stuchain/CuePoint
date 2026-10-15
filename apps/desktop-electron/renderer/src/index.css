@@ -37,18 +37,131 @@ fieldset {
   padding: 0;
 }
 
-legend {
+/*
+ * One focus ring for every focusable control: violet, a square 2px line, one offset. It is
+ * zero-specificity (:where) so a control that must draw it inside its own box (a clipped
+ * header cell, a row) says so with its own outline-offset, and the browser's own rounded ring
+ * (Chromium's white one) is never drawn.
+ */
+:where(:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+:where(:focus:not(:focus-visible)) {
+  outline: none;
+}
+
+/*
+ * One legend style: the label role (10, bold, muted). Every <legend> (see components/Fieldset)
+ * and every small group title in the app reads like this.
+ */
+legend,
+.cp-legend {
+  padding: 0;
   color: var(--fg-muted);
-  font-size: var(--text-label);
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
 }
 
-/* One link colour (T13). */
+/*
+ * Text roles: page 24 / dialog 18 / section 14 / label 10 bold muted. One weight (700), never
+ * 600 or "bold". The pixel face is the chrome's; --font-data is for data values only (.cp-data).
+ */
+.cp-text-page {
+  margin: 0;
+  font-size: var(--font-size-page);
+  font-weight: var(--weight-strong);
+  color: var(--fg-primary);
+}
+
+.cp-text-dialog {
+  margin: 0;
+  font-size: var(--font-size-dialog);
+  font-weight: var(--weight-strong);
+  color: var(--fg-primary);
+}
+
+.cp-text-section {
+  margin: 0;
+  font-size: var(--font-size-section);
+  font-weight: var(--weight-strong);
+  color: var(--fg-primary);
+}
+
+.cp-text-label {
+  margin: 0;
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
+  color: var(--fg-muted);
+}
+
+/*
+ * One link: the --link colour, underlined only while hovered or focused. A link-looking button
+ * (class cp-link on a <button>) is reset to look the same.
+ */
 .cp-link {
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--link);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
 }
 
-.cp-link:hover {
+.cp-link:hover,
+.cp-link:focus-visible,
+a[href]:where(:not([class])):hover {
   text-decoration: underline;
+}
+
+/* A bare <a href> in prose is the one link too. */
+a[href]:where(:not([class])) {
+  color: var(--link);
+  text-decoration: none;
+}
+
+/* "Go to" links: the same link, ending in the arrow ›. */
+.cp-link--go::after {
+  content: " ›";
+  text-decoration: none;
+  display: inline-block;
+}
+
+.cp-link--go:hover::after {
+  text-decoration: none;
+}
+
+/*
+ * Greyed means unavailable: --fg-disabled on a control that cannot be used, and nothing else.
+ * A live control that is merely quiet uses --fg-muted. No opacity rule dims a control.
+ */
+.cp-muted {
+  color: var(--fg-muted);
+}
+
+.cp-disabled-text {
+  color: var(--fg-disabled);
+}
+
+/* A missing value: one muted dash (components/MissingValue). */
+.cp-missing {
+  color: var(--fg-muted);
+}
+
+/* A shortcut drawn as a key cap (components/Kbd). */
+.cp-kbd {
+  display: inline-block;
+  padding: 0 var(--space-xs);
+  border: var(--hairline) solid var(--border-control);
+  background: var(--bg-panel-alt);
+  color: var(--fg-muted);
+  font-family: var(--font-pixel);
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 /* Dense data: the data face with figures that line up (DEC-048, T7). */

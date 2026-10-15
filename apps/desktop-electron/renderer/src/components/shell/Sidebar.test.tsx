@@ -242,6 +242,9 @@ describe("Sidebar", () => {
       const user = userEvent.setup();
       renderSidebar();
       await user.click(toggle());
+      await user.unhover(toggle());
+      toggle().blur();
+      await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
 
       const collapsed = within(nav()).getByRole("link", { name: "Discover" });
       expect(within(collapsed).queryByText("Find new music")).not.toBeInTheDocument();
@@ -257,6 +260,8 @@ describe("Sidebar", () => {
       expect(toggle().textContent).toBe("");
 
       await user.click(toggle());
+      // The pointer rests on the button, where the app hint speaks and the native title is off.
+      await user.unhover(toggle());
 
       expect(toggle()).toHaveAttribute("title", "Expand sidebar (Ctrl+B)");
       expect(toggle().querySelector("svg[data-icon='chevron-right']")).not.toBeNull();
@@ -274,7 +279,7 @@ describe("Sidebar", () => {
       expect(button.querySelector(".cp-sidebar__search-keys")).toHaveTextContent("Ctrl+K");
       expect(button.querySelector("svg[data-icon='search']")).not.toBeNull();
       button.focus();
-      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search (Ctrl+K)");
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search Ctrl+K");
       const top = nav().querySelector(".cp-sidebar__top")!;
       const list = nav().querySelector(".cp-sidebar__list")!;
       expect(top.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -287,16 +292,19 @@ describe("Sidebar", () => {
       vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
       renderSidebar();
       const button = within(nav()).getByRole("button", { name: "Search" });
-      expect(button).toHaveTextContent("Cmd+K");
+      expect(button).toHaveTextContent("⌘K");
       expect(button).not.toHaveTextContent("Ctrl+K");
       button.focus();
-      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search (Cmd+K)");
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search ⌘K");
     });
 
     it("is an icon alone in the collapsed rail, named Search library, tipped with the key", async () => {
       const user = userEvent.setup();
       renderSidebar();
       await user.click(toggle());
+      await user.unhover(toggle());
+      toggle().blur();
+      await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
 
       const button = within(nav()).getByRole("button", { name: "Search library" });
       expect(button).not.toHaveTextContent("Search");
@@ -304,7 +312,7 @@ describe("Sidebar", () => {
       expect(button).not.toHaveClass("cp-sidebar__search--box");
       expect(button.querySelector("svg[data-icon='search']")).not.toBeNull();
       button.focus();
-      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search (Ctrl+K)");
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Search Ctrl+K");
     });
 
     it("asks the shell to open the search dialog, which App mounts", async () => {

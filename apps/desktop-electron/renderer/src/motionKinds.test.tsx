@@ -218,10 +218,6 @@ perKind(
 
 // ---- hover ----------------------------------------------------------------------------------
 
-perKind("hover", "a button", () => ({ ui: <Button>Go</Button>, target: first(".cp-btn") }), (m) => {
-  expect(steps(m.transition)).toBe(true);
-});
-
 perKind(
   "hover",
   "a row in the table",
@@ -620,7 +616,7 @@ describe("loading: the table holds still while it scrolls", () => {
       <TrackTable<Row> columns={COLUMNS} source={inMemorySource([])} loading emptyState="Nothing here" />,
     );
     expect(container.querySelector(".track-table__empty .cp-spinner")).not.toBeNull();
-    expect(screen.getByText("Loading tracks")).toBeInTheDocument();
+    expect(screen.getByText("Loading tracks…")).toBeInTheDocument();
     expect(screen.queryByText("Nothing here")).toBeNull();
   });
 

@@ -1,5 +1,5 @@
 .rekordbox-instructions p {
-  margin: 0 0 var(--space-sm);
+  margin: 0 0 var(--space-md);
   font-size: var(--font-size-sm);
   color: var(--fg-muted);
   line-height: 1.5;

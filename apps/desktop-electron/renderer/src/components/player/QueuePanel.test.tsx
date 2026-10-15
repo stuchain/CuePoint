@@ -375,15 +375,15 @@ describe("a queue too big to render", () => {
     expect(Number.parseInt(sizer.style.height, 10)).toBeGreaterThan(5_000 * 20);
   });
 
-  it("makes each row two table rows tall, following the size and Row density (R4-1)", async () => {
-    // Two lines per entry (title, then artist and key), so two of the table's rows.
+  it("makes each row one table row tall, following the size and Row density (R4-1)", async () => {
+    // One line per entry (title, then its facts muted), so one of the table's rows.
     document.documentElement.style.setProperty("--row-height", "29px");
     try {
       install(3);
       render(<QueuePanel onClose={() => undefined} />);
       await waitFor(() => expect(rows().length).toBe(3));
-      expect(rows()[1]!.style.height).toBe("58px");
-      expect(rows()[1]!.style.top).toBe("58px");
+      expect(rows()[1]!.style.height).toBe("29px");
+      expect(rows()[1]!.style.top).toBe("29px");
     } finally {
       document.documentElement.style.removeProperty("--row-height");
     }
@@ -397,8 +397,8 @@ describe("a queue too big to render", () => {
 
     const scroller = container.querySelector(".cp-queue__scroll") as HTMLElement;
     Object.defineProperty(scroller, "clientHeight", { configurable: true, value: 400 });
-    // jsdom has no stylesheet, so the table's fallback row height applies: two per entry.
-    scroller.scrollTop = ROW_HEIGHT_FALLBACK * 2 * 1_000;
+    // jsdom has no stylesheet, so the table's fallback row height applies: one per entry.
+    scroller.scrollTop = ROW_HEIGHT_FALLBACK * 1_000;
     fireEvent.scroll(scroller);
 
     await waitFor(() => expect(harness.requests.length).toBeGreaterThan(before));
@@ -417,9 +417,10 @@ describe("managing the queue (BAR-8)", () => {
   it("says the gestures in a hint line", async () => {
     install(2);
     render(<QueuePanel onClose={() => undefined} />);
-    expect(
-      await screen.findByText("Drag to reorder · Alt+↑/↓ moves · Delete removes · Enter plays"),
-    ).toBeInTheDocument();
+    const hint = await screen.findByText(/Drag to reorder/);
+    expect(hint).toHaveTextContent("Drag to reorder · Alt+↑/↓ moves · Delete removes · Enter plays");
+    // The keys are drawn as key caps.
+    expect(hint.querySelectorAll("kbd.cp-kbd")).toHaveLength(3);
   });
 
   it("asks before clearing, then clears once", async () => {
@@ -427,7 +428,7 @@ describe("managing the queue (BAR-8)", () => {
     render(<QueuePanel onClose={() => undefined} />);
     await waitFor(() => expect(rows().length).toBe(3));
 
-    fireEvent.click(screen.getByRole("button", { name: "Clear queue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear queue…" }));
     expect(harness.clearQueue).not.toHaveBeenCalled();
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("Clear the queue? The playing track keeps playing.");
@@ -443,7 +444,7 @@ describe("managing the queue (BAR-8)", () => {
     render(<QueuePanel onClose={() => undefined} />);
     await waitFor(() => expect(rows().length).toBe(3));
 
-    fireEvent.click(screen.getByRole("button", { name: "Clear queue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear queue…" }));
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
 
     expect(harness.clearQueue).not.toHaveBeenCalled();
@@ -453,14 +454,14 @@ describe("managing the queue (BAR-8)", () => {
   it("offers no Clear queue for an empty queue", () => {
     install(0);
     render(<QueuePanel onClose={() => undefined} />);
-    expect(screen.queryByRole("button", { name: "Clear queue" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Clear queue…" })).toBeNull();
   });
 
   it("offers no Clear queue when the playing track is the only row", async () => {
     install(1);
     render(<QueuePanel onClose={() => undefined} />);
     await waitFor(() => expect(rows().length).toBe(1));
-    expect(screen.queryByRole("button", { name: "Clear queue" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Clear queue…" })).toBeNull();
   });
 
   it("draws a drop line at the row being dragged over, and removes it on drop", async () => {
@@ -497,8 +498,10 @@ describe("managing the queue (BAR-8)", () => {
     const { container } = render(<QueuePanel onClose={() => undefined} />);
     await waitFor(() => expect(rows().length).toBe(2));
 
-    expect(container.querySelector(".cp-queue__close [data-icon='close']")).not.toBeNull();
-    expect(container.querySelectorAll(".cp-queue__remove [data-icon='close']")).toHaveLength(2);
+    // × only closes: removing a track has its own icon.
+    expect(container.querySelector(".cp-close [data-icon='close']")).not.toBeNull();
+    expect(container.querySelectorAll(".cp-queue__remove [data-icon='remove']")).toHaveLength(2);
+    expect(container.querySelectorAll(".cp-queue__remove [data-icon='close']")).toHaveLength(0);
     expect(container.textContent).not.toContain("×");
     expect(screen.getByRole("button", { name: "Close the queue" })).toHaveAttribute(
       "title",

@@ -1,6 +1,7 @@
 import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { usePresence } from "../tokens/usePresence";
 import { Button } from "./Button";
+import { CloseButton } from "./CloseButton";
 import "./Modal.css";
 
 interface ModalProps {
@@ -34,10 +35,17 @@ interface ModalProps {
    */
   backAction?: { label: string; onClick: () => void; disabled?: boolean };
   /**
-   * `"wide"` for content that is a table or a log rather than a message or a
-   * form. The default 520px is right for a question and too narrow for rows.
+   * Three widths, all scaled with the text: `"narrow"` for a question (a confirmation), the
+   * default for a form, `"wide"` for content that is a table or a log rather than a message
+   * or a form (the log viewer, search).
    */
-  size?: "default" | "wide";
+  size?: "narrow" | "default" | "wide";
+  /**
+   * `"danger"` is a delete confirmation: the main button is red (the one place a red fill is
+   * used). Title it "Delete <thing>?", say what is lost in the body, offer Cancel and
+   * a button named "Delete <thing>".
+   */
+  variant?: "default" | "danger";
   /**
    * False when a stray click must not end the dialog (the first-run guide, RUN-1):
    * the backdrop then does nothing. Escape and the close button still call `onClose`.
@@ -49,6 +57,9 @@ interface ModalProps {
    */
   restoreFocus?: boolean;
 }
+
+/** Dialogs open now, oldest first: only the newest answers Escape and Tab, so a question asked from inside a dialog does not close both. */
+const openDialogs: object[] = [];
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -71,6 +82,7 @@ export function Modal({
   extraAction,
   backAction,
   size = "default",
+  variant = "default",
   closeOnBackdrop = true,
   restoreFocus = true,
 }: ModalProps) {
@@ -108,7 +120,10 @@ export function Modal({
 
   useLayoutEffect(() => {
     if (!open) return;
+    const me = {};
+    openDialogs.push(me);
     const onKeyDown = (event: KeyboardEvent) => {
+      if (openDialogs[openDialogs.length - 1] !== me) return;
       if (event.key === "Escape") {
         event.stopPropagation();
         onClose();
@@ -134,7 +149,11 @@ export function Modal({
       }
     };
     window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      const at = openDialogs.indexOf(me);
+      if (at !== -1) openDialogs.splice(at, 1);
+    };
   }, [open, onClose]);
 
   // A closed dialog may play its exit (PAGES-12). The leaving copy is inert and takes no
@@ -155,7 +174,7 @@ export function Modal({
     >
       <div
         ref={dialogRef}
-        className={`cp-modal ${size === "wide" ? "cp-modal--wide" : ""}`.trim()}
+        className={`cp-modal${size === "wide" ? " cp-modal--wide" : ""}${size === "narrow" ? " cp-modal--narrow" : ""}${variant === "danger" ? " cp-modal--danger" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -168,7 +187,7 @@ export function Modal({
           <h2 id={titleId} className="cp-modal__title">
             {title}
           </h2>
-          <Button variant="secondary" iconOnly icon="close" onClick={onClose} aria-label="Close" />
+          <CloseButton onClick={onClose} />
         </header>
         <div className="cp-modal__body">{children}</div>
         {reason && (
@@ -195,7 +214,7 @@ export function Modal({
             )}
             {primaryAction && (
               <Button
-                variant="primary"
+                variant={variant === "danger" ? "danger-confirm" : "primary"}
                 onClick={primaryAction.onClick}
                 loading={primaryAction.loading}
                 disabled={primaryAction.disabled}

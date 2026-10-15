@@ -1,0 +1,47 @@
+/*
+ * The three problem looks (area 18): problem and warning are a box with a bar on the left edge,
+ * tinted from the status colour; a field error is one line of red text with no box.
+ */
+.cp-notice {
+  --notice-tone: var(--accent-danger);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border: var(--hairline) solid var(--notice-tone);
+  border-left: var(--selected-bar-width) solid var(--notice-tone);
+  background: color-mix(in srgb, var(--notice-tone) 12%, transparent);
+  color: var(--fg-primary);
+  font-size: var(--text-body);
+}
+
+.cp-notice--warning {
+  --notice-tone: var(--accent-warning);
+}
+
+.cp-notice__text {
+  min-width: 0;
+}
+
+.cp-notice__text > p {
+  margin: 0;
+}
+
+.cp-notice__title {
+  font-weight: var(--weight-strong);
+}
+
+.cp-notice__action {
+  flex: none;
+}
+
+/* A field error: red words under the field, nothing around them. */
+.cp-notice--field-error {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--danger-text);
+  font-size: var(--font-size-xs);
+}

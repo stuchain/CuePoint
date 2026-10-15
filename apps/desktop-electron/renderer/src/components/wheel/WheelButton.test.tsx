@@ -4,20 +4,28 @@ import { describe, expect, it } from "vitest";
 import { WheelButton } from "./WheelButton";
 
 describe("WheelButton", () => {
-  it("is named Camelot wheel and shows the word Wheel", () => {
+  it("is named Camelot wheel when the track has no key, and shows a muted dash", () => {
     render(<WheelButton />);
     const button = screen.getByRole("button", { name: "Camelot wheel" });
-    expect(button).toHaveTextContent("Wheel");
+    expect(button).toHaveTextContent("—");
     expect(button).toHaveAttribute("aria-haspopup", "dialog");
+    expect(button).toHaveClass("key-chip", "key-chip--button");
   });
 
-  it("draws a ring of twelve segments in the key colours", () => {
-    render(<WheelButton />);
-    const paths = screen.getByRole("button", { name: "Camelot wheel" }).querySelectorAll("svg path");
-    expect(paths).toHaveLength(12);
-    paths.forEach((path, index) => {
-      expect((path as SVGPathElement).style.stroke).toBe(`var(--key-${index + 1}A)`);
-    });
+  it("is the coloured key chip itself, with no ring and no word Wheel", () => {
+    render(<WheelButton keyName="10B" />);
+    const button = screen.getByRole("button", { name: "Show 10B on the Camelot wheel" });
+    expect(button).toHaveClass("key-chip", "key-chip--10B", "key-chip--button");
+    expect(button).toHaveTextContent("10B");
+    expect(button).not.toHaveTextContent("Wheel");
+    expect(button.querySelector("svg")).toBeNull();
+  });
+
+  it("writes the classic spelling as its Camelot code, in the name too", () => {
+    render(<WheelButton source="player" keyName="Am" />);
+    const button = screen.getByRole("button", { name: "Show 8A on the Camelot wheel" });
+    expect(button).toHaveTextContent("8A");
+    expect(button).toHaveClass("key-chip--8A");
   });
 
   it("reports whether the wheel is open", async () => {
@@ -30,11 +38,11 @@ describe("WheelButton", () => {
     expect(button).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("is named for the playing key on the player bar, with the same ring and word", () => {
-    render(<WheelButton source="player" keyName="10B" />);
-    const button = screen.getByRole("button", { name: "Show 10B on the Camelot wheel" });
-    expect(button).toHaveAttribute("title", "Show 10B on the Camelot wheel");
-    expect(button).toHaveTextContent("Wheel");
-    expect(button.querySelectorAll("svg path")).toHaveLength(12);
+  it("says in its hint what a press does", () => {
+    render(<WheelButton keyName="10B" />);
+    expect(screen.getByRole("button", { name: "Show 10B on the Camelot wheel" })).toHaveAttribute(
+      "title",
+      "Show 10B on the Camelot wheel",
+    );
   });
 });

@@ -383,7 +383,8 @@ describe("Suggestions", () => {
       "title",
       `${fitText(best.score)}: the mean of ${best.before!.score} and ${best.after!.score}`,
     );
-    const header = (name: string) => within(screen.getByRole("table", { name: "Suggestions" })).getByText(name);
+    const header = (name: string) =>
+      within(screen.getByRole("table", { name: "Suggestions" })).getByText(name).closest<HTMLElement>(".track-table__header-cell")!;
     expect(header("Fit")).toHaveAttribute("title", expect.stringContaining("out of 100"));
     expect(header("Fits after")).toHaveAttribute("title", expect.stringContaining("the one before"));
     expect(header("Fits before")).toHaveAttribute("title", expect.stringContaining("the one after"));

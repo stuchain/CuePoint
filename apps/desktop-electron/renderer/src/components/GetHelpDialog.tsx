@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Modal } from "./index";
 import { Button } from "./Button";
 import { MoreAbout } from "./MoreAbout";
+import { Notice } from "./Notice";
 import { DESKTOP_ENGINE_VERSION } from "./AboutDialog";
 import { userMessage } from "../api/userMessage";
 import { lastReportId, reportingSetUp, sendProblemReport, setReportingChoice } from "../reporting/reporting";
@@ -171,14 +172,14 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
       <div className="get-help-dialog">
         <p className="get-help-dialog__lead">Something not working? Tell us what you were doing.</p>
         {choice === "off" ? (
-          <p className="get-help-dialog__off" role="status">
+          <Notice kind="warning" className="get-help-dialog__off">
             Sending is off in Settings: save a help file and attach it to your email or GitHub issue.
-          </p>
+          </Notice>
         ) : null}
         {choice === "unavailable" ? (
-          <p className="get-help-dialog__off" role="status">
+          <Notice kind="warning" className="get-help-dialog__off">
             Sending is off in this version: save a help file and attach it to your email or GitHub issue.
-          </p>
+          </Notice>
         ) : null}
         {canReport ? (
           <>
@@ -212,9 +213,9 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
           </p>
         ) : null}
         {phase === "failed" ? (
-          <p className="get-help-dialog__error" role="alert">
+          <Notice kind="problem" className="get-help-dialog__error">
             Your note could not be sent. Check your connection and try again.
-          </p>
+          </Notice>
         ) : null}
 
         {canSaveFile || canOpenFolder ? (
@@ -247,14 +248,14 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
               </p>
             ) : null}
             {helpFile.kind === "error" ? (
-              <p className="get-help-dialog__error" role="alert">
+              <Notice kind="problem" className="get-help-dialog__error">
                 {helpFile.message}
-              </p>
+              </Notice>
             ) : null}
             {folderError ? (
-              <p className="get-help-dialog__error" role="alert">
+              <Notice kind="problem" className="get-help-dialog__error">
                 {folderError}
-              </p>
+              </Notice>
             ) : null}
           </section>
         ) : null}

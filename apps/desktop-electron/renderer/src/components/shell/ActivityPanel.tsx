@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { Hint } from "../Hint";
+import { Loading } from "../Loading";
 import { Modal } from "../Modal";
 import type { ActivityFeed } from "../../api/cuepointBridge.types";
 import {
@@ -80,7 +82,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
       extraAction={{ label: "Refresh", onClick: () => load() }}
     >
       <div className="cp-activity">
-        {status === "loading" && <p className="cp-activity__note">Loading activity…</p>}
+        {status === "loading" && <Loading what="activity" className="cp-activity__note" />}
 
         {status === "unavailable" && (
           <p className="cp-activity__note">
@@ -89,14 +91,16 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
         )}
 
         {status === "error" && (
-          <p
-            className="cp-activity__note cp-activity__note--error"
-            role="alert"
-            // The raw reason stays out of the sentence (STR-8).
-            title={error ?? undefined}
-          >
-            Couldn't load the list. Try Refresh.
-          </p>
+          <Hint text={error ?? undefined} portal>
+            <p
+              className="cp-activity__note cp-activity__note--error"
+              role="alert"
+              // The raw reason stays out of the sentence (STR-8); the hint carries it.
+              tabIndex={error ? 0 : undefined}
+            >
+              Couldn't load the list. Try Refresh.
+            </p>
+          </Hint>
         )}
 
         {status === "ready" && events.length === 0 && (

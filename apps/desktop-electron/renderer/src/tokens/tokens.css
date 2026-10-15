@@ -71,12 +71,24 @@
   /* How much of the app background veils a page that is shown but cannot be used: offline. */
   --dim-veil: 45%;
 
-  /* Spacing */
+  /*
+   * Spacing: the scale is 2 / 4 / 8 / 12 / 16 / 24 (times --scale). --space-sm (6) is only for
+   * an icon or a checkbox next to its text. Roles: page gutter 12, header divider to content 12,
+   * module to module 16 (xl), group to group 12 (lg), panel / card / dialog padding 12 (lg; dense
+   * side panels 8), section heading to body 8 (md), label to control 4 (xs), buttons in a row 8
+   * (md; attached groups 0), toolbar --toolbar-height with --toolbar-padding.
+   */
+  --space-2xs: max(1px, round(nearest, calc(2px * var(--scale)), 1px));
   --space-xs: calc(var(--unit) * 1);
   --space-sm: round(nearest, calc(var(--unit) * 1.5), 1px);
   --space-md: calc(var(--unit) * 2);
   --space-lg: calc(var(--unit) * 3);
   --space-xl: calc(var(--unit) * 4);
+  --space-2xl: calc(var(--unit) * 6);
+
+  /* A toolbar: 32 high, 6 x 8 padding (one shape for every filter bar and selection bar). */
+  --toolbar-height: round(nearest, calc(32px * var(--scale)), 1px);
+  --toolbar-padding: round(nearest, calc(6px * var(--scale)), 1px) var(--space-md);
 
   /* Typography */
   --font-pixel: "Pixelify Sans", "Segoe UI", sans-serif;
@@ -102,12 +114,49 @@
   --font-size-md: calc(14px * var(--scale));
   --font-size-lg: calc(18px * var(--scale));
   --font-size-xl: calc(24px * var(--scale));
+  /* Text roles: page 24 / dialog 18 / section 14 / label 10 bold muted. One weight. */
+  --font-size-page: var(--font-size-xl);
+  --font-size-dialog: var(--font-size-lg);
+  --font-size-section: var(--font-size-md);
+  --font-size-label: var(--font-size-xs);
+  --weight-strong: 700;
+  --weight-normal: 400;
+
+  /* Pixel icons come in three sizes only (12 / 16 / 24 times the text size), each a multiple of
+     the 12-unit grid so no art pixel is fractional. */
+  --icon-size-sm: max(12px, round(nearest, calc(12px * var(--scale)), 12px));
+  --icon-size-md: max(12px, round(nearest, calc(16px * var(--scale)), 12px));
+  --icon-size-lg: round(down, calc(24px * var(--scale)), 12px);
+
+  /* One focus ring for every focusable control: violet, a square 2px line, the same offset. */
+  --focus-ring-offset: var(--focus-ring-width);
+  --focus-ring-offset-inset: calc(-1 * var(--focus-ring-width));
+
+  /*
+   * Status text: a status colour lifted towards the theme's text colour, so the words read at
+   * 4.5:1 on a panel in every theme (themeContrast.test.ts holds the pairs). Chips and notices
+   * draw their fill from the colour itself and their words from these.
+   */
+  --danger-text: color-mix(in srgb, var(--accent-danger) 60%, var(--fg-primary));
+  --success-text: color-mix(in srgb, var(--accent-success) 60%, var(--fg-primary));
+  --warning-text: color-mix(in srgb, var(--accent-warning) 60%, var(--fg-primary));
+  --accent-text: color-mix(in srgb, var(--accent-primary) 50%, var(--fg-primary));
+
+  /* Chips and badges: the fill is the tone's colour at 20% over the panel, the line the colour. */
+  --chip-fill-mix: 20%;
+  --chip-text-mix: 35%;
+  /* Modal widths: narrow (a question), normal (a form), wide (rows, logs, search). */
+  --modal-width-narrow: calc(340px * var(--scale));
+  --modal-width-normal: calc(420px * var(--scale));
+  --modal-width-wide: calc(720px * var(--scale));
+  /* The close button every panel, dialog, toast and inspector shares. */
+  --close-size: var(--control-height);
 
   /* Hit targets */
   --hit-min: calc(44px * var(--scale));
 
   /* Pixel icons: a multiple of the 12px grid, so cells stay whole pixels */
-  --icon-size: round(down, calc(24px * var(--scale)), 12px);
+  --icon-size: var(--icon-size-lg);
 
   /* Native controls follow the theme (a custom light theme gets light ones); dark until one is set. */
   color-scheme: var(--color-scheme, dark);

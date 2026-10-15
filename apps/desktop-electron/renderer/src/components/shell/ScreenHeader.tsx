@@ -24,6 +24,12 @@ export interface ScreenHeaderProps {
   status?: ReactNode;
   /** Pad the sides, for a page whose own box has no padding. */
   inset?: boolean;
+  /**
+   * The content is a strip attached to the header (a table or a toolbar that starts straight
+   * under the divider): no gap below it. Otherwise the header leaves 12 between its divider
+   * and the first content, and a page adds none of its own.
+   */
+  attached?: boolean;
 }
 
 /**
@@ -41,6 +47,7 @@ export function ScreenHeader({
   tabs,
   status,
   inset = false,
+  attached = false,
 }: ScreenHeaderProps) {
   const root = useRef<HTMLElement>(null);
   // The header sticks, so what sticks or scrolls under it needs its height: the page gets it as
@@ -60,7 +67,10 @@ export function ScreenHeader({
   }, []);
   const hasDisplay = display !== undefined && display !== null && display !== false && display !== "";
   return (
-    <header ref={root} className={inset ? "cp-screen-header cp-screen-header--inset" : "cp-screen-header"}>
+    <header
+      ref={root}
+      className={`cp-screen-header${inset ? " cp-screen-header--inset" : ""}${attached ? " cp-screen-header--attached" : ""}`}
+    >
       {crumb && <div className="cp-screen-header__crumb">{crumb}</div>}
       <div className="cp-screen-header__main">
         <div className="cp-screen-header__title-row">

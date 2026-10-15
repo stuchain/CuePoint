@@ -6,6 +6,7 @@
  * filled; the number stays in the title, for whoever wants it. The bar is a
  * fixed width and height, so a row never shifts for it.
  */
+import { Hint } from "../Hint";
 import { fitSteps } from "./fitSteps";
 import "./FitBar.css";
 
@@ -15,18 +16,15 @@ export function FitBar({ score, title }: { score: number; title?: string }) {
   const shown = Number.isFinite(score) ? Math.round(score) : 0;
   const steps = fitSteps(shown);
   return (
-    <span
-      className="cp-fit-bar"
-      role="img"
-      aria-label={`Fit ${shown} out of 100`}
-      title={title ?? `${shown}/100`}
-    >
-      {BLOCKS.map((block) => (
-        <span
-          key={block}
-          className={block < steps ? "cp-fit-bar__block cp-fit-bar__block--filled" : "cp-fit-bar__block"}
-        />
-      ))}
-    </span>
+    <Hint text={title ?? `${shown}/100`} portal>
+      <span className="cp-fit-bar" role="img" aria-label={`Fit ${shown} out of 100`}>
+        {BLOCKS.map((block) => (
+          <span
+            key={block}
+            className={block < steps ? "cp-fit-bar__block cp-fit-bar__block--filled" : "cp-fit-bar__block"}
+          />
+        ))}
+      </span>
+    </Hint>
   );
 }

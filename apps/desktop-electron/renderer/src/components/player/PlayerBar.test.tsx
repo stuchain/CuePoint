@@ -244,7 +244,7 @@ describe("what it shows", () => {
     installBridge(snapshot({ playback: { durationSeconds: null, positionSeconds: null } }));
     render(<PlayerBar />);
     await screen.findByText("Strobe");
-    expect(screen.getAllByText("–:––").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 });
 
@@ -823,7 +823,7 @@ describe("every control names itself (BAR-1)", () => {
 
     screen.getByRole("button", { name: "Next track" }).focus();
 
-    expect(await screen.findByRole("tooltip")).toHaveTextContent("Next track (Ctrl+→)");
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Next track Ctrl+→");
   });
 });
 
@@ -918,11 +918,15 @@ describe("the key opens the Camelot wheel (BAR-5, PAGES-10)", () => {
     installBridge(snapshot());
     render(<PlayerBar />);
     const key = await screen.findByRole("button", { name: "Show 8A on the Camelot wheel" });
-    // A small Wheel button (ring and word), named for the key; the key stays in the line's words.
-    expect(key).toHaveTextContent("Wheel");
-    expect(key.querySelectorAll("svg path")).toHaveLength(12);
+    // The key in the facts line is itself the chip that opens the wheel: no ring, no word Wheel,
+    // no second button.
+    expect(key).toHaveTextContent("8A");
+    expect(key).toHaveClass("key-chip", "key-chip--8A");
+    expect(key.querySelector("svg")).toBeNull();
     expect(key).toHaveAttribute("title", "Show 8A on the Camelot wheel");
     expect(metaLine()).toHaveTextContent("deadmau5 · 8A · 128 BPM");
+    expect(screen.queryByRole("button", { name: "Camelot wheel" })).toBeNull();
+    expect(document.querySelector(".cp-player-bar__wheel")).toBeNull();
 
     fireEvent.click(key);
     expect(getWheelState()).toMatchObject({ open: true, source: "player" });
@@ -952,7 +956,9 @@ describe("the key opens the Camelot wheel (BAR-5, PAGES-10)", () => {
     const key = await screen.findByRole("button", { name: "Show 8A on the Camelot wheel" });
     expect(key).toBeInTheDocument();
     expect(metaLine()).toHaveTextContent("8A · 8A · 128 BPM");
-    expect(metaLine().querySelector("button")).toBeNull();
+    // Only the key is a button: the artist, with no track to open, is text.
+    expect(metaLine().querySelectorAll("button")).toHaveLength(1);
+    expect(metaLine().querySelector("button")).toBe(key);
   });
 });
 
@@ -1018,18 +1024,10 @@ describe("the bar's CSS (C7, C9)", () => {
     expect(rule(".cp-player-bar")).toMatch(/user-select:\s*none;/);
   });
 
-  it("lets the Wheel button drop its word when the window is short of room", () => {
+  it("has no separate Wheel button to make room for", () => {
     // Not a container: that would make the bar the box its fixed hints are placed in.
     expect(rule(".cp-player-bar")).not.toMatch(/container-type/);
-    // 640px times the scale, one rule per scale (a query cannot read --scale).
-    for (const [scale, width] of [["1", 640], ["1.25", 800], ["1.5", 960], ["2", 1280], ["3", 1920]] as const) {
-      const at = playerBarCss.indexOf(`@media (max-width: ${width}px) {`);
-      expect(at, `the ${scale}x query`).toBeGreaterThan(-1);
-      const block = playerBarCss.slice(at, playerBarCss.indexOf("\n}\n", at));
-      expect(block).toContain(`:root[data-scale="${scale}"] .cp-player-bar__wheel .cp-wheel-button__word`);
-      expect(block).toMatch(/display:\s*none;/);
-      expect(block).toMatch(/min-width:\s*var\(--control-height\);/);
-    }
+    expect(playerBarCss).not.toContain("cp-wheel-button__word");
   });
 });
 

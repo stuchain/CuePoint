@@ -2,9 +2,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   padding: var(--space-xl) var(--space-lg);
   text-align: center;
+}
+
+.cp-empty-state__icon {
+  display: inline-flex;
+  color: var(--fg-muted);
 }
 
 .cp-empty-state__headline {
@@ -22,5 +27,5 @@
 }
 
 .cp-empty-state .cp-btn {
-  margin-top: var(--space-sm);
+  margin-top: var(--space-xs);
 }

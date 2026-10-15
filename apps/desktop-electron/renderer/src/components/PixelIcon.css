@@ -2,19 +2,32 @@
   /*
    * A 12-unit viewBox drawn into 24px means one grid cell is exactly 2 CSS
    * pixels at 1x, 4 at 2x, 6 at 3x — always a whole number, so cell edges
-   * never land mid-pixel.
+   * never land mid-pixel. Only three sizes exist (--icon-size-sm / -md / -lg), each a
+   * whole multiple of the grid, and they scale pixelated, never smoothed.
    */
-  width: var(--icon-size);
-  height: var(--icon-size);
+  width: var(--icon-size-lg);
+  height: var(--icon-size-lg);
   display: block;
   flex: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
-/* An icon standing where a typed symbol was (T10): half the icon cell, in the line of text. */
+.cp-pixel-icon--sm {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.cp-pixel-icon--md {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+}
+
+/* An icon standing where a typed symbol was (T10): the small size, in the line of text. */
 .cp-pixel-icon--text {
   display: inline-block;
-  width: calc(var(--icon-size) * 0.5);
-  height: calc(var(--icon-size) * 0.5);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   vertical-align: middle;
 }
 

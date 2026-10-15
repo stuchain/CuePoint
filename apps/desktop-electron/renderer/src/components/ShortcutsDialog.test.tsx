@@ -25,7 +25,7 @@ describe("ShortcutsDialog", () => {
 
   it("filters by what is typed", async () => {
     render(<ShortcutsDialog open onClose={vi.fn()} />);
-    await userEvent.type(screen.getByRole("textbox", { name: "Search" }), "volume");
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search" }), "volume");
     const rows = screen.getAllByRole("row");
     // The header, the Player heading, and its two volume rows.
     expect(rows).toHaveLength(4);

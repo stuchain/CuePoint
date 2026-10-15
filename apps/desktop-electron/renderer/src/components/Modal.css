@@ -10,7 +10,8 @@
 }
 
 .cp-modal {
-  width: min(520px, 100%);
+  /* Normal; --narrow and --wide are the other two. All scale with the text. */
+  width: min(var(--modal-width-normal), 100%);
   background: var(--bg-panel);
   border: var(--divider);
   box-shadow: var(--shadow-dialog);
@@ -21,9 +22,14 @@
   outline: none;
 }
 
-/* For rows rather than sentences: a log at 520px clips every line. */
+/* A question (a confirmation) needs no more than this. */
+.cp-modal--narrow {
+  width: min(var(--modal-width-narrow), 100%);
+}
+
+/* For rows rather than sentences: a log at the normal width clips every line. */
 .cp-modal--wide {
-  width: min(880px, 92vw);
+  width: min(var(--modal-width-wide), 92vw);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -34,19 +40,32 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-md) var(--space-lg);
+  /* A panel's title bar is one height (a toolbar's), whatever its title. */
+  box-sizing: border-box;
+  min-height: var(--toolbar-height);
+  padding: var(--space-xs) var(--space-lg);
   border-bottom: var(--divider);
   background: var(--overlay-header);
 }
 
 .cp-modal__title {
   margin: 0;
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-dialog);
+  font-weight: var(--weight-strong);
 }
 
 .cp-modal__body {
   padding: var(--space-lg);
   font-size: var(--text-body);
+}
+
+/* Paragraphs in a body are blocks 12 apart (the default <p> margin put 22 between text and edge). */
+.cp-modal__body > p {
+  margin: 0 0 var(--space-lg);
+}
+
+.cp-modal__body > p:last-child {
+  margin-bottom: 0;
 }
 
 /* A tall dialog scrolls its body, so the title and the buttons stay on screen. */

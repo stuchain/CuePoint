@@ -29,7 +29,7 @@
   --accent-secondary-hover: #3d4656;
   --accent-success: #10b981;
   --accent-warning: #fde047;
-  --accent-danger: #ef4444;
+  --accent-danger: #ef4a4a;
   --accent-info: #38bdf8;
 
   /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */

@@ -31,6 +31,7 @@ export function DiagnosticsDialog({ open, onClose }: DiagnosticsDialogProps) {
     <Modal
       open={open}
       title="Diagnostics"
+      size="wide"
       onClose={onClose}
       secondaryAction={{ label: "Close", onClick: onClose }}
     >

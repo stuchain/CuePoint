@@ -9,7 +9,7 @@ import {
   homeDestination,
   type NavDestination,
 } from "./navRegistry";
-import { modifierName } from "./platformKeys";
+import { Kbd } from "../Kbd";
 import { emitShellCommand, useShellCommand } from "./shellCommands";
 import { loadSidebarCollapsed, saveSidebarCollapsed } from "./sidebarState";
 import { useLibraryEmpty } from "./useLibraryPresence";
@@ -74,17 +74,14 @@ function DestinationLink({ destination, collapsed, dimmed, reasonId }: {
 /** The brand (HDR-6): the pixel logo and the name, or the logo alone when the rail is closed. */
 function Brand({ collapsed }: { collapsed: boolean }) {
   return (
-    <Link
-      to={homeDestination().path}
-      className="cp-sidebar__brand"
-      aria-label="CuePoint"
-      title="CuePoint"
-    >
-      <span className="cp-sidebar__icon cp-sidebar__logo" aria-hidden>
-        <img className="cp-sidebar__logo-img" src={appIcon} alt="" draggable={false} />
-      </span>
-      {!collapsed && <span className="cp-sidebar__brand-name">CuePoint</span>}
-    </Link>
+    <Hint text={collapsed ? "CuePoint" : undefined} portal>
+      <Link to={homeDestination().path} className="cp-sidebar__brand" aria-label="CuePoint">
+        <span className="cp-sidebar__icon cp-sidebar__logo" aria-hidden>
+          <img className="cp-sidebar__logo-img" src={appIcon} alt="" draggable={false} />
+        </span>
+        {!collapsed && <span className="cp-sidebar__brand-name">CuePoint</span>}
+      </Link>
+    </Hint>
   );
 }
 
@@ -95,9 +92,8 @@ function Brand({ collapsed }: { collapsed: boolean }) {
  * shows the icon alone, named "Search library", and the tip says the key there.
  */
 function SearchButton({ collapsed, onOpen }: { collapsed: boolean; onOpen: () => void }) {
-  const keys = `${modifierName()}+K`;
   return (
-    <Hint text={`Search (${keys})`} portal>
+    <Hint text="Search" shortcut="Mod+K" portal>
       <button
         type="button"
         className={`cp-sidebar__link cp-sidebar__search${collapsed ? "" : " cp-sidebar__search--box"}`}
@@ -111,7 +107,9 @@ function SearchButton({ collapsed, onOpen }: { collapsed: boolean; onOpen: () =>
         {!collapsed && (
           <>
             <span className="cp-sidebar__label cp-sidebar__search-placeholder">Search…</span>
-            <span className="cp-sidebar__search-keys" aria-hidden>{keys}</span>
+            <span className="cp-sidebar__search-keys" aria-hidden>
+              <Kbd keys="Mod+K" />
+            </span>
           </>
         )}
       </button>
@@ -165,19 +163,20 @@ export function Sidebar() {
     : undefined;
 
   const toggleButton = (
-    <button
-      ref={toggleRef}
-      type="button"
-      className="cp-sidebar__toggle"
-      onClick={toggle}
-      aria-expanded={!collapsed}
-      aria-label={`${collapsed ? "Expand" : "Collapse"} sidebar`}
-      title={`${collapsed ? "Expand" : "Collapse"} sidebar (${modifierName()}+B)`}
-    >
-      <span aria-hidden className="cp-sidebar__icon">
-        <PixelIcon name={collapsed ? "chevron-right" : "chevron-left"} />
-      </span>
-    </button>
+    <Hint text={`${collapsed ? "Expand" : "Collapse"} sidebar`} shortcut="Mod+B" portal>
+      <button
+        ref={toggleRef}
+        type="button"
+        className="cp-sidebar__toggle"
+        onClick={toggle}
+        aria-expanded={!collapsed}
+        aria-label={`${collapsed ? "Expand" : "Collapse"} sidebar`}
+      >
+        <span aria-hidden className="cp-sidebar__icon">
+          <PixelIcon name={collapsed ? "chevron-right" : "chevron-left"} />
+        </span>
+      </button>
+    </Hint>
   );
 
   const renderLink = (destination: NavDestination) => (

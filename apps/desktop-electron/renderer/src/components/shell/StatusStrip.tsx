@@ -3,11 +3,11 @@ import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 import { useEngineOnline } from "../../api/engineOnline";
 import { useLeaveGhost } from "../../tokens/useLeaveGhost";
 import { shouldShowOnboarding } from "../firstRunMemory";
+import { Button } from "../Button";
 import { Hint } from "../Hint";
 import { PixelSpinner } from "../PixelSpinner";
 import { UpdateStatusItem } from "../updates/UpdateStatusItem";
 import { ActivityPanel } from "./ActivityPanel";
-import { modifierName } from "./platformKeys";
 import { jobLabel, jobPercent, jobStopLabel, jobTitle, useActiveJob } from "./useActiveJob";
 import { useEngineStatus } from "./useEngineStatus";
 import { usePlayerStatusMessage } from "./usePlayerStatus";
@@ -29,10 +29,8 @@ import "./StatusStrip.css";
  * strip is the only entry point to a feed that has been recorded since Phase 1
  * and never shown.
  */
-/** The Activity button's reason, with the shortcut the keyboard handler below answers to. */
-function activityHint(): string {
-  return `Activity: what CuePoint has done (${modifierName()}+Shift+A)`;
-}
+/** The Activity button's reason; its shortcut is drawn beside it as a key cap. */
+const ACTIVITY_HINT = "Activity: what CuePoint has done";
 
 /**
  * Everything that is running, from "+N more" (STR-5).
@@ -95,7 +93,7 @@ function RunningList({
           const percent = jobPercent(job);
           return (
             <li className="cp-status__running-item" key={job.id}>
-              <span className="cp-status__running-label" title={jobTitle(job)}>
+              <span className="cp-status__running-label" data-cut-hint="">
                 {jobLabel(job)}
               </span>
               {percent !== null && (
@@ -107,15 +105,15 @@ function RunningList({
                 />
               )}
               {canStop(job) && (
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
                   className="cp-status__cancel"
                   onClick={() => onStop(job)}
                   disabled={stopping === job.id}
                   aria-label={`${jobStopLabel(job)} ${jobLabel(job).toLowerCase()}`}
                 >
                   {jobStopLabel(job)}
-                </button>
+                </Button>
               )}
             </li>
           );
@@ -232,6 +230,7 @@ export function StatusStrip() {
       <div className="cp-status" data-finished={finished > 0 ? finished % 2 : undefined}>
         <span className="cp-status__live" role="status" aria-live="polite">
         {/* Ready is not drawn (the strip is quiet when all is well); a screen reader still hears it. */}
+        <Hint text={engineText === "Stopped" ? status?.error : undefined} portal>
         <span
           className={`cp-status__engine ${
             connected
@@ -242,10 +241,11 @@ export function StatusStrip() {
           }`}
           // The raw reason is for the hover and Diagnostics, never the strip's
           // text (DEC-155).
-          title={engineText === "Stopped" ? status?.error : undefined}
+          tabIndex={engineText === "Stopped" && status?.error ? 0 : undefined}
         >
           {engineText}
         </span>
+        </Hint>
 
         {/*
           The player speaks only when it was in use and broke (PLAYER-03).
@@ -285,8 +285,8 @@ export function StatusStrip() {
             )}
             {activeCount > 1 && (
               <>
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
                   className="cp-status__more"
                   ref={moreButton}
                   aria-expanded={listOpen}
@@ -294,7 +294,7 @@ export function StatusStrip() {
                   onClick={() => setListOpen((open) => !open)}
                 >
                   +{activeCount - 1} more
-                </button>
+                </Button>
                 {listOpen && (
                   <RunningList
                     jobs={jobs}
@@ -309,8 +309,8 @@ export function StatusStrip() {
               </>
             )}
             {canCancel(job) && (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
                 className="cp-status__cancel"
                 onClick={() => void cancel(job)}
                 disabled={cancelling === job.id}
@@ -325,21 +325,17 @@ export function StatusStrip() {
                     ? "Pausing…"
                     : "Stopping…"
                   : jobStopLabel(job)}
-              </button>
+              </Button>
             )}
           </span>
         ) : null}
 
         <UpdateStatusItem />
 
-        <Hint text={activityHint()}>
-          <button
-            type="button"
-            className="cp-status__activity"
-            onClick={() => setActivityOpen(true)}
-          >
+        <Hint text={ACTIVITY_HINT} shortcut="Mod+Shift+A">
+          <Button variant="secondary" className="cp-status__activity" onClick={() => setActivityOpen(true)}>
             Activity
-          </button>
+          </Button>
         </Hint>
       </div>
 

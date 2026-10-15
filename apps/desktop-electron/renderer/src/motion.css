@@ -90,20 +90,8 @@
 
 /* ---- Hover and keyboard focus (hover) -------------------------------------------------- */
 
-:root[data-motion-hover] .cp-btn,
-:root[data-motion-hover] .cp-sidebar__link,
-:root[data-motion-hover] .settings-page__nav a {
-  transition: transform var(--motion-instant) steps(1);
-}
-
-:root[data-motion-hover] .cp-btn:hover:not(:disabled):not(:active):not(.cp-btn--loading) {
-  transform: translate(0, calc(var(--hairline) * -1));
-}
-
-:root[data-motion-hover] .cp-sidebar__link:hover,
-:root[data-motion-hover] .settings-page__nav a:hover {
-  transform: translate(calc(var(--motion-step-px) / 2), 0);
-}
+/* There is no hover nudge: no button, link or menu item moves when the pointer is over it (the
+   colour change is its hover). The kind keeps the row's edge bar and the focus step below. */
 
 /* A row shows a bar on its edge that steps in. Rows have their own transform for their place,
    so the bar moves, not the row. Only the row under the pointer has the bar at all, and only while
@@ -238,10 +226,16 @@
     cp-fade-out var(--motion-base) var(--motion-fade) forwards;
 }
 
+/* One popover motion: a menu, a dropdown list, the wheel, search and the running list hang from
+   their control, stepping down a unit while they fade in. */
 :root[data-motion-entrance] .cp-track-menu,
 :root[data-motion-entrance] .cp-track-menu__submenu,
 :root[data-motion-entrance] .cp-global-search__panel,
-:root[data-motion-entrance] .cp-status__running {
+:root[data-motion-entrance] .cp-status__running,
+:root[data-motion-entrance] .cp-wheel-pop,
+:root[data-motion-entrance] .cp-suggest__list,
+:root[data-motion-entrance] .cp-hint__tip,
+:root[data-motion-entrance] .cp-popover {
   animation:
     cp-drop-in var(--motion-quick) steps(var(--motion-steps-short)),
     cp-fade-in var(--motion-quick) var(--motion-fade);
@@ -259,8 +253,12 @@
     cp-fade-out var(--motion-base) var(--motion-fade) forwards;
 }
 
-/* The Inspector slides in from its edge after a toggle (never as the app opens). */
-:root[data-motion-entrance] .cp-inspector[data-entering] {
+/* One side-panel motion: the Inspector, the queue, the activity list and any panel that hangs on
+   a page's edge (class cp-side-panel) slide in from their edge. The Inspector only after a toggle,
+   never as the app opens; the others when they are opened. */
+:root[data-motion-entrance] .cp-inspector[data-entering],
+:root[data-motion-entrance] .cp-queue,
+:root[data-motion-entrance] .cp-side-panel {
   animation:
     cp-from-edge var(--motion-base) steps(var(--motion-steps-short)),
     cp-fade-in var(--motion-base) var(--motion-fade);

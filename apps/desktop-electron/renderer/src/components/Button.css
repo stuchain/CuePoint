@@ -21,21 +21,51 @@
   transition: transform var(--motion-instant) steps(1);
 }
 
+/* Primary: the violet fill. At most one per area. */
 .cp-btn--primary {
   border-color: var(--accent-fill);
   background: var(--accent-fill);
   color: var(--fg-inverse);
 }
 
+/* Standard: neutral grey. */
 .cp-btn--secondary {
   background: var(--accent-secondary);
   color: var(--fg-primary);
 }
 
+/* Write: green, for what writes to the user's files. */
+.cp-btn--write {
+  border-color: var(--accent-success);
+  background: var(--accent-success);
+  color: var(--fg-on-status);
+}
+
+/* Danger: a red outline; the fill is kept for the confirm button of a delete dialog. */
 .cp-btn--danger {
+  border-color: var(--danger-text);
+  background: transparent;
+  color: var(--danger-text);
+}
+
+.cp-btn--danger-confirm {
   border-color: var(--danger-fill);
   background: var(--danger-fill);
   color: var(--fg-primary);
+}
+
+/* Quiet: words only. It keeps the standard height, so a row of buttons lines up. */
+.cp-btn--quiet {
+  min-width: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--fg-muted);
+}
+
+.cp-btn--quiet:hover:not(:disabled) {
+  color: var(--fg-primary);
+  text-decoration: underline;
+  filter: none;
 }
 
 .cp-btn:hover:not(:disabled) {
@@ -53,6 +83,11 @@
   border-color: var(--border-muted);
   color: var(--fg-disabled);
   cursor: not-allowed;
+}
+
+.cp-btn--quiet:disabled:not(.cp-btn--loading) {
+  background: transparent;
+  border-color: transparent;
 }
 
 /* Small (T12): rows and chips. */
@@ -74,8 +109,8 @@
 
 /* Half the icon cell, as in PickerDialog: the glyph sits inside the square, not filling it. */
 .cp-btn--icon .cp-pixel-icon {
-  width: calc(var(--icon-size) * 0.5);
-  height: calc(var(--icon-size) * 0.5);
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
 }
 
 .cp-btn__icon {

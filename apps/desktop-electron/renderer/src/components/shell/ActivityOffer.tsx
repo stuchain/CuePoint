@@ -17,6 +17,7 @@
  * Beatport about the tracks the match had not reached, and changes nothing a
  * person decided.
  */
+import { Button } from "../Button";
 import { useCallback, useEffect, useState } from "react";
 
 import type {
@@ -204,14 +205,15 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
       <span className="cp-activity__offer" aria-live="polite">
         {!said && <span className="cp-activity__reason">{resumeOfferLine(remaining)}</span>}
         {remaining !== null && (
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             className="cp-activity__action"
             disabled={busy}
             onClick={() => void resume(offer.jobId)}
           >
             {busy ? "Resuming…" : "Resume"}
-          </button>
+          </Button>
         )}
         {said && <span className="cp-activity__said">{said}</span>}
       </span>
@@ -223,9 +225,9 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
     if (offer.disabledReason) {
       return (
         <span className="cp-activity__offer">
-          <button type="button" className="cp-activity__action" disabled>
+          <Button variant="secondary" size="sm" className="cp-activity__action" disabled>
             Undo this batch
-          </button>
+          </Button>
           <span className="cp-activity__reason">{offer.disabledReason}</span>
         </span>
       );
@@ -235,26 +237,28 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
         {reverted ? null : asking ? (
           <>
             <span>Undo every change this batch made?</span>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               className="cp-activity__action"
               onClick={() => void revert(offer.batchId)}
             >
               Undo
-            </button>
-            <button type="button" className="cp-activity__action" onClick={() => setAsking(false)}>
+            </Button>
+            <Button variant="secondary" size="sm" className="cp-activity__action" onClick={() => setAsking(false)}>
               Keep
-            </button>
+            </Button>
           </>
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             className="cp-activity__action"
             disabled={busy}
             onClick={() => setAsking(true)}
           >
             {busy ? "Undoing…" : "Undo this batch"}
-          </button>
+          </Button>
         )}
         {said && <span className="cp-activity__said">{said}</span>}
       </span>
@@ -273,26 +277,28 @@ export function ActivityOffer({ event, onDone }: ActivityOfferProps) {
         (asking ? (
           <>
             <span>Undo these saves? Every value they replaced goes back.</span>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               className="cp-activity__action"
               onClick={() => void restore(offer.jobIds)}
             >
               Undo
-            </button>
-            <button type="button" className="cp-activity__action" onClick={() => setAsking(false)}>
+            </Button>
+            <Button variant="secondary" size="sm" className="cp-activity__action" onClick={() => setAsking(false)}>
               Keep
-            </button>
+            </Button>
           </>
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             className="cp-activity__action"
             disabled={busy}
             onClick={() => setAsking(true)}
           >
             {busy ? "Undoing…" : "Undo"}
-          </button>
+          </Button>
         ))}
       {said && <span className="cp-activity__said">{said}</span>}
     </span>

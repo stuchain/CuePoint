@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { Hint } from "../Hint";
 import { Modal } from "../Modal";
+import { PlayButton } from "../PlayButton";
+import { SearchField } from "../SearchField";
 import { useShellCommand } from "./shellCommands";
-import { PixelIcon } from "../PixelIcon";
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
 import { useToast } from "../Toast";
@@ -119,27 +121,21 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
 
   return (
     <div className="cp-global-search" role="search">
-      <label className="cp-global-search__field">
-        <span className="cp-global-search__label">Search library</span>
-        <input
-          ref={ref}
-          type="search"
-          className="cp-global-search__input"
-          placeholder="Search library…"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={onKeyDown}
-          aria-label="Search library"
-          // The results are a listbox, so the input owns the
-          // expanded/collapsed state for anyone not looking at the screen.
-          role="combobox"
-          aria-expanded={showPanel}
-          aria-controls={showList ? LISTBOX_ID : undefined}
-          aria-activedescendant={showList ? optionId(active) : undefined}
-          aria-autocomplete="list"
-          autoComplete="off"
-        />
-      </label>
+      <SearchField
+        ref={ref}
+        thing="library"
+        className="cp-global-search__field"
+        value={query}
+        onValueChange={setQuery}
+        onKeyDown={onKeyDown}
+        // The results are a listbox, so the input owns the
+        // expanded/collapsed state for anyone not looking at the screen.
+        role="combobox"
+        aria-expanded={showPanel}
+        aria-controls={showList ? LISTBOX_ID : undefined}
+        aria-activedescendant={showList ? optionId(active) : undefined}
+        aria-autocomplete="list"
+      />
 
       {showPanel && (
         <div
@@ -174,14 +170,16 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
           )}
 
           {status === "error" && (
-            <p
-              className="cp-global-search__note cp-global-search__note--error"
-              role="alert"
-              // What went wrong is for the title; the sentence says what to do.
-              title={error ?? undefined}
-            >
-              Search didn't work. Try again.
-            </p>
+            <Hint text={error ?? undefined} portal>
+              <p
+                className="cp-global-search__note cp-global-search__note--error"
+                role="alert"
+                // What went wrong is for the hint; the sentence says what to do.
+                tabIndex={error ? 0 : undefined}
+              >
+                Search didn't work. Try again.
+              </p>
+            </Hint>
           )}
 
           {status === "results" && response && (
@@ -205,9 +203,13 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
                       onClick={(event) => openTrack(track, event.currentTarget)}
                       onMouseMove={() => index !== active && setActive(index)}
                     >
-                      <span className="cp-global-search__title">{track.title}</span>
-                      <span className="cp-global-search__artist">{track.artist}</span>
-                      <span className="cp-global-search__meta">
+                      <span className="cp-global-search__title" data-cut-hint="">
+                        {track.title}
+                      </span>
+                      <span className="cp-global-search__artist" data-cut-hint="">
+                        {track.artist}
+                      </span>
+                      <span className="cp-global-search__meta" data-cut-hint="">
                         {/* Found by its key or tempo rather than its words (FLW-5). */}
                         {matchedLabel(track) && (
                           <>
@@ -218,19 +220,17 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
                         {trackSubtitle(track)}
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      className="cp-global-search__play"
-                      aria-label={`Play ${track.title}`}
-                      title={`Play ${track.title}`}
-                      // Not a tab stop: ↑/↓ and Shift+Enter do this from the field.
-                      tabIndex={-1}
-                      // Not an option, so out of the listbox's tree: Shift+Enter is the keyboard path.
-                      aria-hidden="true"
-                      onClick={() => playTrack(track)}
-                    >
-                      <PixelIcon name="play" />
-                    </button>
+                    <Hint text={`Play ${track.title}`} portal>
+                      <PlayButton
+                        className="cp-global-search__play"
+                        aria-label={`Play ${track.title}`}
+                        // Not a tab stop: ↑/↓ and Shift+Enter do this from the field.
+                        tabIndex={-1}
+                        // Not an option, so out of the listbox's tree: Shift+Enter is the keyboard path.
+                        aria-hidden="true"
+                        onClick={() => playTrack(track)}
+                      />
+                    </Hint>
                   </li>
                 ))}
               </ul>

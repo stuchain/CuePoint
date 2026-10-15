@@ -10,6 +10,8 @@ import {
   type ReactElement,
 } from "react";
 import { createPortal } from "react-dom";
+import { Kbd } from "./Kbd";
+import { shortcutLabel } from "./shell/platformKeys";
 import "./Hint.css";
 
 interface HintProps {
@@ -17,6 +19,12 @@ interface HintProps {
   text: string | undefined;
   /** The one control it belongs to. */
   children: ReactElement<Record<string, unknown>>;
+  /**
+   * The control's shortcut, written once with the platform-neutral names (`Mod+K`): drawn as a
+   * key cap after the words in the tip, and in this platform's words (Ctrl, or the Command sign
+   * on a Mac). The control's own title has it in brackets, as before.
+   */
+  shortcut?: string;
   /** Render the wrapper `display: inline`, for a control inside a text line. */
   inline?: boolean;
   /**
@@ -71,7 +79,7 @@ function focusIsVisible(target: EventTarget & Element): boolean {
  * The tooltip is positioned in the viewport, not inside the wrapper: the status
  * strip it was first made for clips anything that overflows it.
  */
-export function Hint({ text, children, inline = false, portal = false }: HintProps) {
+export function Hint({ text, shortcut, children, inline = false, portal = false }: HintProps) {
   const id = useId();
   const wrapper = useRef<HTMLSpanElement | null>(null);
   const tip = useRef<HTMLSpanElement | null>(null);
@@ -175,6 +183,12 @@ export function Hint({ text, children, inline = false, portal = false }: HintPro
       ref={tip}
     >
       {text}
+      {shortcut ? (
+        <>
+          {" "}
+          <Kbd keys={shortcut} />
+        </>
+      ) : null}
     </span>
   ) : null;
 
@@ -187,7 +201,7 @@ export function Hint({ text, children, inline = false, portal = false }: HintPro
     >
       {cloneElement(children, {
         // Left off while the pointer is inside (the themed tip speaks).
-        title: hovered ? undefined : text,
+        title: hovered ? undefined : shortcut ? `${text} (${shortcutLabel(shortcut)})` : text,
         ...(describedBy ? { "aria-describedby": describedBy } : {}),
         onFocus: (event: FocusEvent) => {
           (own.onFocus as ((e: FocusEvent) => void) | undefined)?.(event);

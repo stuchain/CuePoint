@@ -1,0 +1,9 @@
+/* The one close button (area 6): the standard icon button at the control height, bordered. */
+.cp-close {
+  flex: none;
+  width: var(--close-size);
+  min-width: var(--close-size);
+  min-height: var(--close-size);
+  height: var(--close-size);
+  padding: 0;
+}

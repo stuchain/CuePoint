@@ -15,7 +15,7 @@ export function NoteLink({ href, children }: { href: string; children: ReactNode
       role="link"
       tabIndex={0}
       draggable={false}
-      className="cp-release-notes__link"
+      className="cp-link cp-release-notes__link"
       onClick={open}
       onAuxClick={(event) => event.preventDefault()}
       onDragStart={(event) => event.preventDefault()}

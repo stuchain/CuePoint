@@ -25,7 +25,7 @@ describe("Select", () => {
     expect(bare).not.toMatch(/padding-right|appearance/);
   });
 
-  it("draws the chevron at half the icon cell", () => {
-    expect(rawCss).toMatch(/\.cp-select__chevron \.cp-pixel-icon\s*\{[^}]*calc\(var\(--icon-size\) \* 0\.5\)/);
+  it("draws the chevron at the small icon size", () => {
+    expect(rawCss).toMatch(/\.cp-select__chevron \.cp-pixel-icon\s*\{[^}]*var\(--icon-size-sm\)/);
   });
 });

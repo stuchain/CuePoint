@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { settingsFocusState } from "../screens/settingsLink";
 import { Button, Modal, useToast } from "./index";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { LinkButton } from "./LinkButton";
 import { reportUnexpected } from "../reporting/reporting";
 import "./PrivacyDialog.css";
 import { userMessage } from "../api/userMessage";
@@ -54,10 +56,12 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
     };
   }, [open]);
 
+  // Which clear is being asked about: an app dialog, never window.confirm.
+  const [asking, setAsking] = useState<"cache" | "logs" | null>(null);
+
   const handleClearCacheNow = async () => {
     if (!window.cuepoint?.clearCuepointCache) return;
-    const ok = window.confirm("Clear cache now? This may improve privacy at the cost of performance.");
-    if (!ok) return;
+    setAsking(null);
     setClearing(true);
     try {
       await window.cuepoint.clearCuepointCache();
@@ -72,8 +76,7 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
 
   const handleClearLogsNow = async () => {
     if (!window.cuepoint?.clearCuepointLogs) return;
-    const ok = window.confirm("Clear logs now? This cannot be undone.");
-    if (!ok) return;
+    setAsking(null);
     setClearing(true);
     try {
       await window.cuepoint.clearCuepointLogs();
@@ -100,6 +103,7 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
   else if (reporting !== null) reportingWords = `Error reports: ${reporting ? "on" : "off"}`;
 
   return (
+    <>
     <Modal
       open={open}
       title="Privacy"
@@ -110,9 +114,9 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
         <pre className="privacy-dialog__text">{PRIVACY_TEXT}</pre>
         <p className="privacy-dialog__reporting">
           <span data-testid="privacy-error-reports">{reportingWords}</span>{" "}
-          <button type="button" className="privacy-dialog__link" onClick={handleChangeInSettings}>
+          <LinkButton className="privacy-dialog__link" onClick={handleChangeInSettings}>
             Change these in Settings → Privacy
-          </button>
+          </LinkButton>
         </p>
 
         <div className="privacy-dialog__actions">
@@ -120,20 +124,40 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
             variant="secondary"
             loading={clearing}
             disabled={clearing}
-            onClick={() => void handleClearCacheNow()}
+            onClick={() => setAsking("cache")}
           >
-            Clear cache now
+            Clear cache now…
           </Button>
           <Button
-            variant="secondary"
+            variant="danger"
             loading={clearing}
             disabled={clearing}
-            onClick={() => void handleClearLogsNow()}
+            onClick={() => setAsking("logs")}
           >
-            Clear logs now
+            Clear logs now…
           </Button>
         </div>
       </div>
     </Modal>
+    <ConfirmDialog
+      open={asking === "cache"}
+      title="Clear cache?"
+      confirmLabel="Clear cache"
+      onConfirm={() => void handleClearCacheNow()}
+      onCancel={() => setAsking(null)}
+    >
+      This may improve privacy at the cost of performance.
+    </ConfirmDialog>
+    <ConfirmDialog
+      open={asking === "logs"}
+      title="Clear logs?"
+      danger
+      confirmLabel="Clear logs"
+      onConfirm={() => void handleClearLogsNow()}
+      onCancel={() => setAsking(null)}
+    >
+      Every line in the log is removed. This cannot be undone.
+    </ConfirmDialog>
+    </>
   );
 }

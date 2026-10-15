@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { OverflowHintHost } from "../OverflowHintHost";
 import "./AppShellLayout.css";
 
 interface AppShellLayoutProps {
@@ -140,6 +141,8 @@ export function AppShellLayout({
       {statusBar ? (
         <footer className="app-shell__status" ref={statusRegion}>{statusBar}</footer>
       ) : null}
+      {/* The whole value of anything cut short with "…" (data-cut-hint), in the app hint. */}
+      <OverflowHintHost />
     </div>
   );
 }

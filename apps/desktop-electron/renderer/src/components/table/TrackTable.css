@@ -80,20 +80,40 @@
   width: 100%;
   min-width: 0;
   height: var(--row-height);
-  padding: 0 calc(var(--space-sm) + 6px) 0 var(--space-sm);
+  padding: 0 var(--space-lg) 0 var(--space-sm);
   border: none;
   border-right: var(--hairline) solid var(--border-muted);
   background: inherit;
   color: var(--fg-muted);
   font-family: var(--font-pixel);
   font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-weight: var(--weight-strong);
   line-height: 1.2;
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
+}
+
+/* The heading's words end in "…" when the column is narrower than they are. */
+.track-table__header-text {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A heading follows its column: numbers are right-aligned, so their headings are, with the
+   same padding on the right as the cells (the resize handle sits over the border, not the text). */
+.track-table__header-cell--right {
+  justify-content: flex-end;
+  padding: 0 var(--space-sm) 0 var(--space-lg);
+  text-align: right;
+}
+
+/* A heading that cannot sort is plain text: no hand, no hover. */
+.track-table__header-cell--plain {
+  cursor: default;
 }
 
 .track-table__header-cell-wrap > .cp-hint {
@@ -108,10 +128,10 @@
 .track-table__header-cell:focus-visible {
   /* Inside the cell: the header sits at the top of the scroll area, which clips a ring drawn outside. */
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--focus-ring-width));
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
-.track-table__header-cell:not(:disabled):not([aria-disabled="true"]):hover {
+.track-table__header-cell:not(:disabled):not([aria-disabled="true"]):not(.track-table__header-cell--plain):hover {
   color: var(--fg-primary);
   background: color-mix(in srgb, var(--bg-panel) 30%, var(--bg-toolbar));
 }
@@ -134,7 +154,8 @@
 }
 
 .track-table__header-cell-wrap--dragging {
-  opacity: 0.5;
+  /* Dimmed by colour, not opacity: only a column being moved looks like this. */
+  background: var(--bg-panel);
 }
 
 .track-table__sort {
@@ -268,7 +289,20 @@
   color: var(--fg-primary);
   white-space: nowrap;
   overflow: hidden;
+}
+
+/* The cell is a flex box, where text-overflow never applies: the value sits in a box of its own
+   that does end in "..." and shows in full in the app hint (components/OverflowHintHost). */
+.track-table__cell-text {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A key chip's text lines up with its heading: the chip's tint reaches into the cell's padding. */
+.track-table__cell .key-chip {
+  margin-inline-start: calc(-1 * var(--key-chip-pad));
 }
 
 .track-table__cell--right {

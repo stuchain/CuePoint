@@ -10,8 +10,11 @@ interface TabsProps {
   tabs: TabItem[];
   activeId: string;
   onChange: (id: string) => void;
-  /** `"page"` is the underline strip; `"sub"` is the quiet pill row inside a page (T8). */
-  variant?: "page" | "sub";
+  /**
+   * Exactly two looks. `"main"` (the default) is the underline strip that switches a page's
+   * views; `"sub"` is the quiet pill row inside a page or a panel (T8). Both pad a tab the same.
+   */
+  variant?: "main" | "sub";
   /**
    * Wires the tabs to their panels: each tab gets `id` and `aria-controls`, and the page gives
    * its panels the ids from `tabId` and `panelId`. Absent, no ids are written.
@@ -29,7 +32,7 @@ export function panelId(idPrefix: string, id: string): string {
   return `${idPrefix}-panel-${id}`;
 }
 
-export function Tabs({ tabs, activeId, onChange, variant = "page", idPrefix }: TabsProps) {
+export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix }: TabsProps) {
   return (
     <div className={`cp-tabs ${variant === "sub" ? "cp-tabs--sub" : ""}`.trim()} role="tablist">
       {tabs.map((tab) => (

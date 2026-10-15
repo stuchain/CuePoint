@@ -35,7 +35,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "../Button";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
-import { PixelSpinner } from "../PixelSpinner";
+import { Loading } from "../Loading";
 import { useScale } from "../../tokens/ScaleContext";
 import {
   gridTemplate,
@@ -283,6 +283,29 @@ export interface TrackTableProps<Row> {
   resetKey?: string | number;
 
   ariaLabel?: string;
+}
+
+/** Whether a column's heading is a button: it sorts. */
+function sortable<Row>(column: TrackColumnDef<Row>): boolean {
+  return Boolean(column.sortKey);
+}
+
+/**
+ * A text cell is drawn in its own box that ends in "..." when the value is cut short (the cell
+ * itself is a flex box, where `text-overflow` never applies), and the full value shows in the app
+ * hint on hover (components/OverflowHintHost). Anything that is not plain text (a chip, a button, an input)
+ * is drawn as it came.
+ */
+function cellContent(content: ReactNode): ReactNode {
+  if (typeof content === "string" || typeof content === "number") {
+    if (content === "") return content;
+    return (
+      <span className="track-table__cell-text" data-cut-hint="">
+        {content}
+      </span>
+    );
+  }
+  return content;
 }
 
 /** How the header labels a sort direction, for a screen reader. */
@@ -786,29 +809,45 @@ export function TrackTable<Row>({
                   onColumnMove?.(moved, index);
                 }}
               >
-                <Hint text={column.hint}>
-                  <button
-                    type="button"
-                    className="track-table__header-cell"
-                    // A hinted header stays focusable, so the keyboard reaches
-                    // its hint; it just does not sort.
-                    disabled={!column.sortKey && !column.hint}
-                    aria-disabled={!column.sortKey && column.hint ? true : undefined}
-                    title={column.header}
-                    onClick={() => handleSort(column)}
+                {sortable(column) || column.hint ? (
+                  <Hint text={column.hint ?? (column.headerHidden ? column.header : undefined)}>
+                    <button
+                      type="button"
+                      className={`track-table__header-cell${column.align === "right" ? " track-table__header-cell--right" : ""}`}
+                      // A hinted header stays focusable, so the keyboard reaches
+                      // its hint; it just does not sort.
+                      disabled={!column.sortKey && !column.hint}
+                      aria-disabled={!column.sortKey && column.hint ? true : undefined}
+                      onClick={() => handleSort(column)}
+                    >
+                      {column.headerHidden ? (
+                        <span className="track-table__sr-only">{column.header}</span>
+                      ) : (
+                        <span className="track-table__header-text" data-cut-hint="">
+                          {column.header}
+                        </span>
+                      )}
+                      {active && (
+                        <span className="track-table__sort" aria-hidden>
+                          <PixelIcon name={sort?.direction === "asc" ? "arrow-up" : "arrow-down"} className="cp-pixel-icon--text cp-pixel-icon--after" />
+                        </span>
+                      )}
+                    </button>
+                  </Hint>
+                ) : (
+                  // A heading that cannot sort is plain text, not a button that does nothing.
+                  <div
+                    className={`track-table__header-cell track-table__header-cell--plain${column.align === "right" ? " track-table__header-cell--right" : ""}`}
                   >
                     {column.headerHidden ? (
                       <span className="track-table__sr-only">{column.header}</span>
                     ) : (
-                      column.header
-                    )}
-                    {active && (
-                      <span className="track-table__sort" aria-hidden>
-                        <PixelIcon name={sort?.direction === "asc" ? "arrow-up" : "arrow-down"} className="cp-pixel-icon--text cp-pixel-icon--after" />
+                      <span className="track-table__header-text" data-cut-hint="">
+                        {column.header}
                       </span>
                     )}
-                  </button>
-                </Hint>
+                  </div>
+                )}
                 <button
                   type="button"
                   className="track-table__col-resizer"
@@ -840,7 +879,7 @@ export function TrackTable<Row>({
 
         {empty ? (
           <div className="track-table__empty">
-            {loading ? <PixelSpinner label="Loading tracks" /> : (emptyState ?? "No tracks")}
+            {loading ? <Loading what="tracks" /> : (emptyState ?? "No tracks")}
           </div>
         ) : (
           <div
@@ -938,7 +977,7 @@ export function TrackTable<Row>({
                         </>
                       ) : null}
                       {row ? (
-                        column.render(row)
+                        cellContent(column.render(row))
                       ) : (
                         // A shape, not a spinner: fifty of them scrolling past
                         // should read as "loading", not as an error.

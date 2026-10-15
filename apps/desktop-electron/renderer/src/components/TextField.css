@@ -6,7 +6,7 @@
 
 .cp-field__label {
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--fg-muted);
 }
 
@@ -23,7 +23,7 @@
 
 .cp-field__input:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--hairline);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .cp-field__input--error {
@@ -40,5 +40,5 @@
 }
 
 .cp-field__error {
-  color: var(--accent-danger);
+  color: var(--danger-text);
 }

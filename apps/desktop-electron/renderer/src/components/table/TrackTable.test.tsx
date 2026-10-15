@@ -139,11 +139,22 @@ describe("row height", () => {
 });
 
 describe("headers", () => {
-  it("renders one per column", () => {
+  it("renders one per column: a button where it sorts, plain text where it cannot", () => {
     renderTable();
     for (const column of COLUMNS) {
-      expect(screen.getByRole("button", { name: column.header })).toBeInTheDocument();
+      if (column.sortKey) {
+        expect(screen.getByRole("button", { name: column.header })).toBeInTheDocument();
+      } else {
+        expect(screen.queryByRole("button", { name: column.header })).toBeNull();
+        expect(screen.getByText(column.header)).toBeInTheDocument();
+      }
     }
+  });
+
+  it("follows the column's alignment: a number heading is right-aligned like its cells", () => {
+    renderTable();
+    expect(screen.getByRole("button", { name: "BPM" })).toHaveClass("track-table__header-cell--right");
+    expect(screen.getByRole("button", { name: "Artist" })).not.toHaveClass("track-table__header-cell--right");
   });
 
   it("asks for an ascending sort on first click", () => {
@@ -207,16 +218,17 @@ describe("headers", () => {
 });
 
 describe("a column that cannot be sorted", () => {
-  it("has a disabled header", () => {
+  it("has a plain heading, not a button that does nothing", () => {
     renderTable({ onSortChange: vi.fn() });
-    expect(screen.getByRole("button", { name: "File" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "File" })).toBeNull();
+    expect(screen.getByText("File").closest(".track-table__header-cell")).toHaveClass("track-table__header-cell--plain");
   });
 
   it("asks for nothing when clicked", () => {
     const onSortChange = vi.fn();
     renderTable({ onSortChange });
 
-    fireEvent.click(screen.getByRole("button", { name: "File" }));
+    fireEvent.click(screen.getByText("File"));
 
     expect(onSortChange).not.toHaveBeenCalled();
   });
@@ -1099,13 +1111,13 @@ describe("a column's hint (DEC-201)", () => {
     },
   ];
 
-  it("shows the hint on hover and keeps the header as the button's name", () => {
+  it("shows the hint on hover and keeps the header as the button's name (the app hint, not a native title)", () => {
     renderTable({ columns: WITH_HINT });
 
     const key = screen.getByRole("button", { name: "Key" });
     expect(key).toHaveAttribute("title", "Keys come from Beatport matches");
     // A column without a hint still names itself.
-    expect(screen.getByRole("button", { name: "Title" })).toHaveAttribute("title", "Title");
+    expect(screen.getByRole("button", { name: "Title" })).toBeInTheDocument();
   });
 
   it("shows it on keyboard focus too", async () => {
@@ -1231,5 +1243,45 @@ describe("the columns button in the header's corner (K21)", () => {
     // It sits in the header row, outside any cell of the ARIA table.
     expect(button.closest(".track-table__header")).not.toBeNull();
     expect(button.closest("[role='presentation']")).not.toBeNull();
+  });
+});
+
+describe("cut-off text ends in an ellipsis and shows in full in the app hint (area 13)", () => {
+  it("draws a text value in its own box that the hint host reads, not as a bare flex child", () => {
+    renderTable({ source: inMemorySource([{ id: 7, title: "A very long title", artist: "deadmau5", bpm: 128 }]) });
+    const row = renderedRows()[0]!;
+    const title = within(row).getByText("A very long title");
+    expect(title).toHaveClass("track-table__cell-text");
+    expect(title).toHaveAttribute("data-cut-hint");
+  });
+
+  it("leaves a value that is not plain text as it came", () => {
+    const columns: TrackColumnDef<Track>[] = [
+      { id: "title", header: "Title", sortKey: "title", render: (t) => <b data-testid="chip">{t.title}</b> },
+    ];
+    renderTable({ columns, source: inMemorySource([{ id: 1, title: "X", artist: "Y", bpm: 1 }]) });
+    expect(screen.getByTestId("chip").closest(".track-table__cell-text")).toBeNull();
+  });
+
+  it("puts the ellipsis on the value's box, because a flex cell cannot truncate text itself", async () => {
+    const css = (await import("./TrackTable.css?raw")).default;
+    const cell = /\.track-table__cell\s*\{([^}]*)\}/.exec(css)![1]!;
+    const text = /\.track-table__cell-text\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(cell).toMatch(/display:\s*flex/);
+    expect(cell).not.toMatch(/text-overflow/);
+    expect(text).toMatch(/text-overflow:\s*ellipsis/);
+    expect(text).toMatch(/overflow:\s*hidden/);
+    expect(text).toMatch(/white-space:\s*nowrap/);
+  });
+});
+
+describe("a heading follows its column (areas 14, 41)", () => {
+  it("is right-aligned for a number column, and plain text for a column that cannot sort", () => {
+    renderTable();
+    const bpm = screen.getByRole("button", { name: "BPM" });
+    expect(bpm).toHaveClass("track-table__header-cell--right");
+    const file = screen.getByText("File").closest(".track-table__header-cell")!;
+    expect(file.tagName).toBe("DIV");
+    expect(file).toHaveClass("track-table__header-cell--plain");
   });
 });

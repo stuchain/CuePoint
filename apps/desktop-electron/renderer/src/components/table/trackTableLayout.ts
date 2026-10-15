@@ -31,7 +31,7 @@ export const COLUMN_MIN_PX = 80;
 export const COLUMN_DEFAULT_PX = 120;
 
 /** Fallback row height, in CSS pixels, when no stylesheet has loaded. */
-export const ROW_HEIGHT_FALLBACK = 36;
+export const ROW_HEIGHT_FALLBACK = 26;
 
 type ColumnAlign = "left" | "right";
 

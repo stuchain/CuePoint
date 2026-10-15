@@ -1,42 +1,19 @@
-/* Positions the wheel's popover; the button is a control's height, for Track details' key line (K8). */
+/* Positions the wheel's popover; the button is the key chip itself (K8, area 44). */
 .cp-wheel-button {
   position: relative;
-  display: flex;
+  display: inline-flex;
   align-items: center;
 }
 
-/* A small bordered button: the mini coloured ring, then the word "Wheel". */
-.cp-wheel-button__button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-xs);
-  min-height: var(--control-height);
-  padding: 0 var(--space-sm);
-  background: var(--bg-app);
-  border: var(--control-border-width) solid var(--border-control);
-  color: var(--fg-muted);
+/* The chip as a button: the same chip, with a hand and a lit state while its wheel is open. */
+.key-chip--button {
+  border: 0;
   font: inherit;
-  font-size: var(--font-size-sm);
+  font-size: inherit;
   cursor: pointer;
 }
 
-.cp-wheel-button__ring {
-  display: block;
-  flex: none;
-  width: var(--icon-size);
-  height: var(--icon-size);
-  fill: none;
-  stroke-width: 5;
-}
-
-.cp-wheel-button__button:hover,
-.cp-wheel-button__button[aria-expanded="true"] {
-  background: var(--bg-panel-alt);
-  color: var(--fg-primary);
-}
-
-.cp-wheel-button__button:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--focus-ring-width));
+.key-chip--button:hover,
+.key-chip--button[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--key) 32%, transparent);
 }

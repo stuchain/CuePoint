@@ -102,9 +102,25 @@ describe("Button", () => {
     expect(body).toMatch(/color:\s*var\(--fg-disabled\)/);
   });
 
-  it("fills primary with --accent-fill and danger with --danger-fill (R2-8)", () => {
+  it("fills primary with --accent-fill and the danger confirm with --danger-fill (R2-8)", () => {
     expect(css).toMatch(/\.cp-btn--primary\s*\{[^}]*background:\s*var\(--accent-fill\)[^}]*color:\s*var\(--fg-inverse\)/);
-    expect(css).toMatch(/\.cp-btn--danger\s*\{[^}]*background:\s*var\(--danger-fill\)[^}]*color:\s*var\(--fg-primary\)/);
+    expect(css).toMatch(/\.cp-btn--danger-confirm\s*\{[^}]*background:\s*var\(--danger-fill\)[^}]*color:\s*var\(--fg-primary\)/);
+  });
+
+  it("draws danger as a red outline, write as a green fill and quiet as words only", () => {
+    expect(css).toMatch(/\.cp-btn--danger\s*\{[^}]*background:\s*transparent[^}]*color:\s*var\(--danger-text\)/);
+    expect(css).toMatch(/\.cp-btn--write\s*\{[^}]*background:\s*var\(--accent-success\)[^}]*color:\s*var\(--fg-on-status\)/);
+    expect(css).toMatch(/\.cp-btn--quiet\s*\{[^}]*background:\s*transparent/);
+  });
+
+  it.each([
+    ["write", "cp-btn--write"],
+    ["danger-confirm", "cp-btn--danger-confirm"],
+    ["quiet", "cp-btn--quiet"],
+    ["standard", "cp-btn--secondary"],
+  ] as const)("the %s variant draws %s", (variant, cls) => {
+    render(<Button variant={variant}>Go</Button>);
+    expect(screen.getByRole("button")).toHaveClass("cp-btn", cls);
   });
 
   it("is small with size=sm (T12)", () => {
@@ -127,8 +143,8 @@ describe("Button", () => {
     expect(nameless).toBeTruthy();
   });
 
-  it("draws an icon-only glyph at half the icon cell (T10)", () => {
-    expect(css).toMatch(/\.cp-btn--icon \.cp-pixel-icon\s*\{[^}]*width:\s*calc\(var\(--icon-size\) \* 0\.5\)[^}]*height:\s*calc\(var\(--icon-size\) \* 0\.5\)/);
+  it("draws an icon-only glyph at the small icon size (T10)", () => {
+    expect(css).toMatch(/\.cp-btn--icon \.cp-pixel-icon\s*\{[^}]*width:\s*var\(--icon-size-sm\)[^}]*height:\s*var\(--icon-size-sm\)/);
   });
 
   it("greys only a disabled button that is not loading, and marks a loading icon button busy", () => {

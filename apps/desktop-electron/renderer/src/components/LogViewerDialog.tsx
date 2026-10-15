@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "./Button";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { Modal } from "./Modal";
+import { Notice } from "./Notice";
+import { SearchField } from "./SearchField";
 import { Select } from "./Select";
 import { reportUnexpected } from "../reporting/reporting";
 import "./LogViewerDialog.css";
@@ -73,10 +76,11 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
     return () => window.clearInterval(id);
   }, [open, autoRefresh, refresh]);
 
+  const [confirmingClear, setConfirmingClear] = useState(false);
+
   const handleClearLogs = useCallback(async () => {
     if (!window.cuepoint?.clearCuepointLogs) return;
-    const ok = window.confirm("Clear logs now? This cannot be undone.");
-    if (!ok) return;
+    setConfirmingClear(false);
     setLoading(true);
     try {
       await window.cuepoint.clearCuepointLogs();
@@ -118,9 +122,11 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
   );
 
   return (
+    <>
     <Modal
       open={open}
       title="Log viewer"
+      size="wide"
       onClose={onClose}
       secondaryAction={{ label: "Close", onClick: onClose }}
     >
@@ -132,15 +138,12 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
             value={level}
             onChange={(e) => setLevel(e.target.value as (typeof LEVEL_OPTIONS)[number])}
           />
-          <label className="log-viewer-dialog__search">
-            <span className="log-viewer-dialog__search-label">Search</span>
-            <input
-              className="log-viewer-dialog__search-input"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search logs…"
-            />
-          </label>
+          <SearchField
+            thing="logs"
+            className="log-viewer-dialog__search"
+            value={search}
+            onValueChange={setSearch}
+          />
           <label className="log-viewer-dialog__auto">
             <input
               type="checkbox"
@@ -155,8 +158,8 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
           <Button variant="secondary" disabled={loading} loading={loading} onClick={() => void refresh()}>
             Refresh
           </Button>
-          <Button variant="secondary" disabled={loading} onClick={() => void handleClearLogs()}>
-            Clear logs
+          <Button variant="danger" disabled={loading} onClick={() => setConfirmingClear(true)}>
+            Clear logs…
           </Button>
           <Button variant="secondary" disabled={loading} onClick={handleExport}>
             Export…
@@ -166,11 +169,21 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
           </Button>
         </div>
 
-        {error ? <p className="log-viewer-dialog__error">{error}</p> : null}
+        {error ? <Notice kind="problem">{error}</Notice> : null}
 
         <pre className="log-viewer-dialog__output">{logText === "" && !error && !loading ? emptyText : logText}</pre>
       </div>
     </Modal>
+    <ConfirmDialog
+      open={confirmingClear}
+      title="Clear logs?"
+      danger
+      confirmLabel="Clear logs"
+      onConfirm={() => void handleClearLogs()}
+      onCancel={() => setConfirmingClear(false)}
+    >
+      Every line in the log is removed. This cannot be undone.
+    </ConfirmDialog>
+    </>
   );
 }
-
