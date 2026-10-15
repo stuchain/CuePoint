@@ -71,7 +71,8 @@
   align-items: center;
   gap: var(--space-xs);
   min-height: min(var(--hit-min), var(--cp-sidebar-fit));
-  padding: var(--space-xs) 0;
+  /* No block padding: the 24px logo/icon box at 2x is already taller than the fitted row. */
+  padding: 0;
   color: var(--fg-primary);
   font-size: var(--font-size-sm);
   font-weight: 700;
@@ -249,7 +250,9 @@
    * with its width would be hardest to hit exactly when it is narrowest.
    */
   min-height: min(var(--hit-min), var(--cp-sidebar-fit));
-  padding: var(--space-xs) var(--space-sm);
+  /* No block padding: the row's height is its min-height, so the icon box plus padding at
+     large text cannot push a row past the fitted height. */
+  padding: 0 var(--space-sm);
   border: var(--hairline) solid transparent;
   color: var(--fg-muted);
   font-size: var(--font-size-sm);

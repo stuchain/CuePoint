@@ -231,6 +231,8 @@
 
 .cp-library-pane__all .cp-playlist-pane__row {
   flex: 1 1 auto;
+  /* Shrink to the pane: the name ellipsises, the count (flex: none) stays whole. */
+  min-width: 0;
 }
 
 .cp-library-pane .cp-collections > .cp-playlist-pane__head {

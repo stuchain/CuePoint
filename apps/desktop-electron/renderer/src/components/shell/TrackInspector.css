@@ -181,7 +181,9 @@ body.cp-inspector-resizing {
 }
 
 .cp-inspector .cp-track-detail > .cp-tabs--sub .cp-tabs__tab {
-  padding: 0 var(--space-xs);
+  /* Half a gutter each side: at 1.5x in a 1,264-wide window the four labels at --space-xs
+     were 10px wider than the panel and "Yours" was clipped at the right edge. */
+  padding: 0 round(down, calc(var(--space-xs) / 2), 1px);
 }
 
 .cp-inspector .cp-tabs--sub .cp-tabs__tab:focus-visible {
