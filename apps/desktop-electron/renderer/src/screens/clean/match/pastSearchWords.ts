@@ -6,36 +6,23 @@
  * for you" is what still waits, not what the run found a week ago.
  */
 import type { MatchRun } from "../../../api/cuepointBridge.types";
+import { plural } from "../../../format/counts";
+import { formatDay, formatTimeOfDay } from "../../../format/dates";
 
 function tracks(count: number): string {
-  return `${count.toLocaleString()} ${count === 1 ? "track" : "tracks"}`;
-}
-
-function clock(when: Date): string {
-  return `${String(when.getHours()).padStart(2, "0")}:${String(when.getMinutes()).padStart(2, "0")}`;
-}
-
-function sameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-  );
+  return plural(count, "track");
 }
 
 /**
- * When a run happened, short: "Today 13:42", "Yesterday 22:10", "10 Oct 18:31".
- * What is not a time is shown as it came, as `formatWhen` does.
+ * When a run happened, short, in the one date wording and the computer's clock: "Today 1:42 PM",
+ * "Yesterday 10:10 PM", "Oct 10 6:31 PM". What is not a time is shown as it came, as `formatWhen`
+ * does.
  */
 export function whenLabel(iso: string | null | undefined, now: Date = new Date()): string {
   if (!iso) return "";
   const when = new Date(iso);
   if (Number.isNaN(when.getTime())) return iso;
-  if (sameDay(when, now)) return `Today ${clock(when)}`;
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (sameDay(when, yesterday)) return `Yesterday ${clock(when)}`;
-  const day = when.toLocaleDateString("en-US", { day: "numeric", month: "short" });
-  const [month, number] = day.split(" ");
-  return `${number} ${month} ${clock(when)}`;
+  return `${formatDay(when, { now })} ${formatTimeOfDay(when)}`;
 }
 
 /** What was matched: the label the window gave it, else how many tracks. */

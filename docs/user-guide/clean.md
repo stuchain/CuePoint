@@ -39,30 +39,34 @@ playlist you matched or opened (**Review hJ**) and **Past searches**. It opens o
 whichever you used last.
 
 While a match runs, a line at the top of Clean, above every tab, says what it is
-doing: **Matching hJ**, a bar, **11 of 24**, **about 2 minutes left** (once a few
-tracks are done) and a **Stop**. It is read from the match that is running, so it
-is right when you come back to Clean from another page too, and whichever tab you
+doing: **Matching hJ**, **11 of 24** and **about 2 minutes left** (once a few
+tracks are done). It is words only: the bar and **Stop** are on the status strip,
+so progress is shown once. It is read from the match that is running, so it is
+right when you come back to Clean from another page too, and whichever tab you
 are on.
 
 ### Playlists
 
+A line at the top shows the three steps: **1 Tick the playlists to match**,
+**2 Review**, **3 Sync to files**, with the first lit, because this list is step 1.
+
 One row for every Rekordbox playlist, and a first row, **Whole library**. Each
-row has a tick, the playlist's folder (muted) and name, how many **Tracks** it
-has and its **Status**. The box above the list narrows it by name or folder,
+row has a large tick, the playlist's folder (muted) and name, how many **Tracks**
+it has and **In your files**. The box above the list narrows it by name or folder,
 which helps when you have hundreds.
 
-A playlist whose values CuePoint has written into your files, with nothing left to
-save, is marked **Synced** with the day it was written. Undoing that save, or a
-value that is waiting to be saved again, takes the mark away.
+**In your files** says one thing: a playlist whose values CuePoint has written
+into your files, with nothing left to save, shows a green **Synced** with the day
+it was written. Any other playlist shows nothing there. Undoing that save, or a
+value that is waiting to be saved again, takes the mark away. Where a playlist
+stands with Beatport (matched, not found) is not on this list: that is what
+**Review** is for, and a playlist with something to review has a **Review**
+button. A playlist being matched says "Matching 12 of 24", and an empty playlist
+cannot be ticked.
 
-| Status | Means |
-| --- | --- |
-| **Matching 12 of 24**, with a bar | A match is working on it |
-| **Matched · 24**, with **Review** | That many tracks have a Beatport match |
-| **N not found** | Beatport was asked and had nothing for these |
-| **N not matched yet** | Never looked up |
-| **Not matched yet** | Nothing in it has been looked up |
-| **Empty** | No tracks, so it cannot be ticked |
+The bar under the list says what is ticked: **Tick one or more playlists** while
+nothing is, then, for example, **2 playlists · 203 tracks** with **Match 2
+playlists** beside it.
 
 **Tick one or more playlists and press Match N playlists.** That is the only way
 to start a match: there is no button on a row. The ticked playlists are matched as
@@ -71,8 +75,8 @@ playlists (they are in it) and matches only the collection. A playlist with
 nothing left to look up is looked up again. One match runs at a time, so **Match**
 waits until the running one ends, and says why.
 
-Matching runs in the background; a row being matched shows a bar and "Matching 12
-of 24", and the status strip shows **Matching on Beatport**. A track already
+Matching runs in the background; a row being matched says "Matching 12 of 24",
+and the status strip shows **Matching on Beatport** with the bar and **Stop**. A track already
 matched or decided is skipped, so matching a playlist twice does not look anything
 up twice. A tick or untick you made is kept either way.
 
@@ -91,8 +95,7 @@ opens the Review, where those tracks show as **Search failed** or **Not found**.
 A match that ends while you are reading a track's side panel does not replace
 what you are reading: a note says so, with **Review**.
 
-The first time you open Clean, with nothing looked up yet, every row says **Not
-matched yet**. Other pages hand tracks to Match too: **Match tracks…** in the
+The first time you open Clean, with nothing looked up yet, no row has a Review. Other pages hand tracks to Match too: **Match on Beatport** in the
 Library's Beatport menu, or **Match on Beatport** in Track details. Those open the
 [match window](#the-match-window) with the tracks they handed over.
 
@@ -151,7 +154,8 @@ drawn.
 Each row shows:
 
 - A **tick**. The header tick ticks or unticks every track that has a match.
-- **Status**: **Matched**, **Check**, **Not found** or **Search failed**.
+- **Status**, as a coloured chip: **Matched** (green), **Check** (amber), **Not
+  found** or **Search failed** (red).
 - **Your track** and the **Beatport match** found for it, with the part that
   differs from yours (a version, the title, the artists) marked.
 - A **▶** that plays Beatport's short sample of the match.
@@ -166,10 +170,13 @@ that happens only in **Sync**.
 **Click a row**, or press **Enter** on it, to open its side panel. It opens
 straight on the Beatport candidates:
 
-- **Your file** at the top, with its art and a ▶ to play it.
-- **Every candidate** the matcher scored, each with a ▶, its title and version,
-  artists, BPM, key and year, and **Use this**. The one the track is matched with
-  is marked **in use**. A candidate that was ruled out says why.
+- **Your track · from your library** at the top: its art, a big title, its
+  artists, then its label, key, BPM, length and year, and a ▶ to play it.
+- **Found on Beatport · pick the right one**: every candidate the matcher scored,
+  each with its title (the words that differ from yours in orange), its artists
+  (orange when they differ), a line of label, key, BPM and year, a ▶ and **Use
+  this**. The one the track is matched with is tinted green and marked **in use**.
+  A candidate that was ruled out says why.
 - A search box, filled with the track's title and artist, and **Search Beatport**,
   which searches from CuePoint with those words (it needs your Beatport sign-in;
   without one the panel says so). The results are scored against your track as any
@@ -181,8 +188,8 @@ straight on the Beatport candidates:
   candidate) and, for a track searched more than once, an **Attempt** menu.
 
 **Use this** confirms that candidate and ticks the track. **Up** and **Down** move
-to the previous or next track (the table moves too, also with no panel open), and
-**Esc** closes the panel. The keys do nothing while you are typing in a field or
+to the previous or next track (the table moves too, also with no panel open),
+**Home** and **End** go to the first or last track, and **Esc** closes the panel. The keys do nothing while you are typing in a field or
 have a dialog open. **Space** still plays and pauses the player.
 
 ### Previews and artwork
@@ -190,7 +197,7 @@ have a dialog open. **Space** still plays and pauses the player.
 The **▶** on a row and on a candidate play Beatport's short sample of that match.
 It plays through your computer's default sound output, not the device chosen in
 Settings → Audio, and it does not join the queue. Starting a preview pauses the
-player, and **Play your file** stops the preview. Only one preview plays at a time,
+player, and **Play your track** stops the preview. Only one preview plays at a time,
 and it stops when you move to another track or leave the page. When Beatport has
 no sample for a result, the ▶ is greyed.
 

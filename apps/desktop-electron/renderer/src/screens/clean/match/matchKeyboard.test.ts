@@ -1,7 +1,7 @@
 /** Moving along the review from the keyboard: three bare keys, and never one that is someone else's. */
 import { describe, expect, it } from "vitest";
 
-import { MATCH_KEYS, matchCommand, type KeyLike } from "./matchKeyboard";
+import { MATCH_KEYS, isSelectAll, matchCommand, type KeyLike } from "./matchKeyboard";
 
 function press(key: string, init: Partial<KeyLike> = {}): KeyLike {
   return { key, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, target: document.body, ...init };
@@ -12,6 +12,21 @@ describe("matchCommand", () => {
     expect(matchCommand(press("ArrowUp"))).toBe("previous-track");
     expect(matchCommand(press("ArrowDown"))).toBe("next-track");
     expect(matchCommand(press("Escape"))).toBe("close");
+  });
+
+  it("answers Home and End, which go to the first and the last track", () => {
+    expect(matchCommand(press("Home"))).toBe("first-track");
+    expect(matchCommand(press("End"))).toBe("last-track");
+    expect(matchCommand(press("Home", { target: document.createElement("input") }))).toBeNull();
+  });
+
+  it("leaves the arrows, Home and End to a slider, but not Esc", () => {
+    const slider = document.createElement("input");
+    slider.type = "range";
+    for (const key of ["ArrowUp", "ArrowDown", "Home", "End"]) {
+      expect(matchCommand(press(key, { target: slider }))).toBeNull();
+    }
+    expect(matchCommand(press("Escape", { target: slider }))).toBe("close");
   });
 
   it("no longer answers the decision keys: a tick is the decision", () => {
@@ -46,7 +61,21 @@ describe("matchCommand", () => {
     expect(matchCommand(press("Escape", { target: inside }))).toBeNull();
   });
 
+  it("answers Ctrl+A and Command+A outside a field, as every track list does", () => {
+    expect(isSelectAll(press("a", { ctrlKey: true }))).toBe(true);
+    expect(isSelectAll(press("A", { metaKey: true }))).toBe(true);
+    expect(isSelectAll(press("a"))).toBe(false);
+    expect(isSelectAll(press("a", { ctrlKey: true, target: document.createElement("input") }))).toBe(false);
+  });
+
   it("names the keys for the shortcuts dialog", () => {
-    expect(MATCH_KEYS).toEqual({ "previous-track": "Up", "next-track": "Down", close: "Esc" });
+    expect(MATCH_KEYS).toEqual({
+      "previous-track": "Up",
+      "next-track": "Down",
+      "first-track": "Home",
+      "last-track": "End",
+      close: "Esc",
+      "select-all": "Ctrl+A",
+    });
   });
 });

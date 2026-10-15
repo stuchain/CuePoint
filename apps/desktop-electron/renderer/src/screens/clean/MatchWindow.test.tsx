@@ -80,7 +80,7 @@ function show(tracks: CleanTracks | null = null) {
   const onStart = vi.fn();
   const onClose = vi.fn();
   render(<MatchWindow open tracks={tracks} health={HEALTH} onStart={onStart} onClose={onClose} />);
-  return { onStart, onClose, dialog: screen.getByRole("dialog", { name: "Match tracks" }) };
+  return { onStart, onClose, dialog: screen.getByRole("dialog", { name: "Match on Beatport" }) };
 }
 
 const NOT_YET = { match: "all", rules: [{ field: "match_state", operator: "is", value: "not_matched" }] };
@@ -250,7 +250,7 @@ describe("the button says what it will do (R3-2)", () => {
   it("says why it is greyed when no place is chosen", () => {
     const { dialog } = show();
     fireEvent.click(within(dialog).getByRole("radio", { name: /^Tracks in chosen playlists/ }));
-    expect(within(dialog).getByRole("button", { name: "Match tracks" })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: "Match on Beatport" })).toBeDisabled();
     expect(within(dialog).getByText("Choose which tracks.")).toHaveClass("cp-modal__reason");
   });
 
@@ -260,7 +260,7 @@ describe("the button says what it will do (R3-2)", () => {
       counts: HEALTH.counts.map((entry) => (entry.id === "not_matched" ? { ...entry, count: 0 } : entry)),
     };
     render(<MatchWindow open tracks={null} health={none} onStart={() => {}} onClose={() => {}} />);
-    expect(screen.getByRole("button", { name: "Match tracks" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Match on Beatport" })).toBeDisabled();
     expect(document.querySelector(".cp-modal__reason")).toHaveTextContent(
       "Every track has been looked up; choose other tracks.",
     );

@@ -6,6 +6,8 @@
  * cuts the match into the parts the table draws. No rule about a match lives here.
  */
 import type { MatchCandidate, ReviewCandidate, ReviewStatus } from "../../../api/cuepointBridge.types";
+import type { BadgeVariant } from "../../../components/Badge";
+import { formatCount, plural } from "../../../format/counts";
 
 export type ReviewCounts = Record<ReviewStatus, number>;
 
@@ -19,6 +21,18 @@ const LABELS: Record<ReviewStatus, string> = {
 /** The word on a status chip. */
 export function statusLabel(status: ReviewStatus): string {
   return LABELS[status];
+}
+
+/** The chip tone of a status: fine is green, to check is amber, a miss is red. */
+export function statusTone(status: ReviewStatus): BadgeVariant {
+  switch (status) {
+    case "matched":
+      return "success";
+    case "to_check":
+      return "warning";
+    default:
+      return "danger";
+  }
 }
 
 /** One part of the Beatport match as drawn, and whether it is the part that differs from your track. */
@@ -68,15 +82,16 @@ export function matchText(candidate: ReviewCandidate | null): string {
 
 /** "24 tracks · 22 ticked to sync", then what was not found. */
 export function summaryWords(total: number, ticked: number): string {
-  const tracks = `${total.toLocaleString()} ${total === 1 ? "track" : "tracks"}`;
-  return `${tracks} · ${ticked.toLocaleString()} ticked to sync`;
+  return `${plural(total, "track")} · ${formatCount(ticked)} ticked to sync`;
 }
 
 /** "2 not found", or "2 not found · 1 search failed": what has no match to tick. */
 export function leftOutWords(counts: ReviewCounts): string {
   const parts: string[] = [];
-  if (counts.not_found > 0) parts.push(`${counts.not_found.toLocaleString()} not found`);
-  if (counts.search_failed > 0) parts.push(`${counts.search_failed.toLocaleString()} search failed`);
+  if (counts.not_found > 0) parts.push(`${formatCount(counts.not_found)} not found`);
+  if (counts.search_failed > 0) {
+    parts.push(`${plural(counts.search_failed, "search", "searches")} failed`);
+  }
   return parts.join(" · ");
 }
 
@@ -93,7 +108,7 @@ export function tickedLine(ticked: boolean, title: string): string {
 /** What the header tick says in the live region: how many tracks it ticked or unticked. */
 export function allTickedLine(ticked: boolean, changed: number): string {
   if (changed === 0) return "No track changed.";
-  const many = `${changed.toLocaleString()} ${changed === 1 ? "track" : "tracks"}`;
+  const many = plural(changed, "track");
   return ticked ? `Ticked ${many}: they will be synced.` : `Unticked ${many}: they will be left out.`;
 }
 

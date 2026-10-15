@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { MatchRun } from "../../../api/cuepointBridge.types";
+import { formatTimeOfDay } from "../../../format/dates";
 import { runSelection } from "./matchScope";
 import { canResume, resultParts, statusOf, whatLine, whenLabel } from "./pastSearchWords";
 
@@ -32,9 +33,9 @@ const NOW = new Date("2026-10-12T15:00:00");
 
 describe("when a run happened", () => {
   it("says today, yesterday, or the date", () => {
-    expect(whenLabel("2026-10-12T13:42:00", NOW)).toBe("Today 13:42");
-    expect(whenLabel("2026-10-11T22:10:00", NOW)).toBe("Yesterday 22:10");
-    expect(whenLabel("2026-10-10T18:31:00", NOW)).toBe("10 Oct 18:31");
+    expect(whenLabel("2026-10-12T13:42:00", NOW)).toBe(`Today ${formatTimeOfDay("2026-10-12T13:42:00")}`);
+    expect(whenLabel("2026-10-11T22:10:00", NOW)).toBe(`Yesterday ${formatTimeOfDay("2026-10-11T22:10:00")}`);
+    expect(whenLabel("2026-10-10T18:31:00", NOW)).toBe(`Oct 10 ${formatTimeOfDay("2026-10-10T18:31:00")}`);
   });
 
   it("shows what is not a time as it came, and nothing for none", () => {

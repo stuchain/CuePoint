@@ -17,6 +17,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { BatchSelection, LibraryHealth } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components";
+import { formatCount, plural } from "../../format/counts";
+import { MATCH_ON_BEATPORT } from "../../format/words";
 import type { RuleSource } from "../library/filterText";
 import { trackCount } from "./cleanFormat";
 import {
@@ -126,10 +128,10 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
         .map((place) => sources.find((source) => source.kind === place.kind && source.id === place.id))
         .filter((source): source is CleanSource => source !== undefined);
       if (named.length === 1) return `${PLACE_WORDS[named[0]!.kind]} "${named[0]!.name}"`;
-      return `${places.length.toLocaleString()} chosen places`;
+      return `${formatCount(places.length)} chosen places`;
     }
     const chosenTracks = tracks ? chosenCount(tracks) : 0;
-    return `${chosenTracks.toLocaleString()} chosen ${chosenTracks === 1 ? "track" : "tracks"}`;
+    return `${plural(chosenTracks, "track").replace(/^(\S+) /, "$1 chosen ")}`;
   };
 
   const nothingChosen = which === "places" && places.length === 0;
@@ -156,9 +158,9 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
   if (searched) {
     primaryLabel = `Match ${trackCount(searched)}${lookedUpAgain ? " again" : ""}`;
   } else if (searched === null && total) {
-    primaryLabel = total === 1 ? "Match the chosen track" : `Match the ${total.toLocaleString()} chosen`;
+    primaryLabel = total === 1 ? "Match the chosen track" : `Match the ${formatCount(total)} chosen`;
   } else {
-    primaryLabel = "Match tracks";
+    primaryLabel = MATCH_ON_BEATPORT;
   }
   let reason: string | null = null;
   if (nothingChosen) {
@@ -177,12 +179,12 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
   };
 
   const figure = (value: number | null) =>
-    value === null ? null : <span className="clean-match__figure">{value.toLocaleString()}</span>;
+    value === null ? null : <span className="clean-match__figure">{formatCount(value)}</span>;
 
   return (
     <Modal
       open={open}
-      title="Match tracks"
+      title={MATCH_ON_BEATPORT}
       size="wide"
       onClose={onClose}
       primaryAction={{
@@ -234,7 +236,7 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
         </label>
         <p className="clean-fix__hint">
           {notYet !== null
-            ? `Left off, only the ${notYet.toLocaleString()} not looked up yet are searched.`
+            ? `Left off, only the ${formatCount(notYet)} not looked up yet are searched.`
             : "Left off, tracks that already have a match are skipped."}{" "}
           A decision you made is never changed by a new search.
         </p>

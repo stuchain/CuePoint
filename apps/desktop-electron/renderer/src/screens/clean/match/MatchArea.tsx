@@ -7,11 +7,12 @@
  * opens its review). A review stays until ‹ Playlists closes it.
  *
  * A match that finishes opens a review tab for each playlist it was started on, and so do Review
- * on a row, Open on a past search and the Inspector's link. What a tab reviews is a playlist, a run
+ * on a row, Open on a past search and the Inspector's link. A tab left for another keeps what it
+ * was showing (its scroll, ticks, selection and open panel): its pane is hidden, not unmounted. What a tab reviews is a playlist, a run
  * (its resumes included) or, from the Inspector's link, every matched track. A tick is the
  * person's decision to sync a track; nothing is written to a value or a file until Sync.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Activity, useCallback, useEffect, useRef, useState } from "react";
 
 import type { CleanPlaylistStatus, MatchRun } from "../../../api/cuepointBridge.types";
 import { Tabs } from "../../../components/Tabs";
@@ -93,8 +94,12 @@ export function MatchArea({
   const reviewsRef = useRef<Reviewing[]>([]);
 
   const [panelOpen, setPanelOpen] = useState(false);
+  // Panes already opened stay mounted (hidden) when another tab is shown, so coming back finds
+  // the same scroll, selection and ticks. A pane never opened is not drawn.
+  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
   const active = tab.startsWith("review:") && !reviews.some((entry) => reviewTabId(entry.key) === tab) ? "playlists" : tab;
   const view: MatchTab = active.startsWith("review:") ? "review" : (active as MatchTab);
+  if (!opened.has(active)) setOpened(new Set([...opened, active]));
   useEffect(() => {
     onViewChange?.({ tab: view, panelOpen: view === "review" && panelOpen });
   }, [onViewChange, panelOpen, view]);
@@ -195,45 +200,52 @@ export function MatchArea({
     ...reviews.map((entry) => ({ id: reviewTabId(entry.key), label: `Review ${entry.name}` })),
     { id: "past", label: "Past searches" },
   ];
-  const current = reviews.find((entry) => reviewTabId(entry.key) === active) ?? null;
+  const shown = (id: string) => (id === active ? "visible" : "hidden");
 
   return (
     <div className="match-area">
       <Tabs tabs={tabs} activeId={active} onChange={chooseTab} variant="sub" />
 
       <div className="match-area__body">
-        {active === "playlists" && (
-          <PlaylistsView
-            data={playlists.data}
-            error={playlists.error}
-            loading={playlists.loading}
-            matching={match.matching}
-            onMatch={onMatch}
-            onReview={reviewPlaylist}
-          />
+        {opened.has("playlists") && (
+          <Activity mode={shown("playlists")}>
+            <PlaylistsView
+              data={playlists.data}
+              error={playlists.error}
+              loading={playlists.loading}
+              matching={match.matching}
+              onMatch={onMatch}
+              onReview={reviewPlaylist}
+            />
+          </Activity>
         )}
-        {current && (
-          <ReviewTab
-            key={current.key}
-            source={current.source}
-            name={current.name}
-            version={match.ended + match.started}
-            matching={match.matching}
-            onPanelChange={setPanelOpen}
-            onBack={() => closeReview(current.key)}
-            onChanged={onHealthChanged}
-            initialTrackId={current.trackId}
-          />
-        )}
-        {active === "past" && (
-          <PastSearches
-            version={match.ended + match.started}
-            matching={match.matching}
-            openId={reviews.find((entry) => entry.source.jobId !== undefined)?.source.jobId ?? null}
-            onOpen={openRun}
-            onResume={resumeRun}
-            onMatchAgain={matchAgain}
-          />
+        {reviews
+          .filter((entry) => opened.has(reviewTabId(entry.key)))
+          .map((entry) => (
+            <Activity key={entry.key} mode={shown(reviewTabId(entry.key))}>
+              <ReviewTab
+                source={entry.source}
+                name={entry.name}
+                version={match.ended + match.started}
+                matching={match.matching}
+                onPanelChange={setPanelOpen}
+                onBack={() => closeReview(entry.key)}
+                onChanged={onHealthChanged}
+                initialTrackId={entry.trackId}
+              />
+            </Activity>
+          ))}
+        {opened.has("past") && (
+          <Activity mode={shown("past")}>
+            <PastSearches
+              version={match.ended + match.started}
+              matching={match.matching}
+              openId={reviews.find((entry) => entry.source.jobId !== undefined)?.source.jobId ?? null}
+              onOpen={openRun}
+              onResume={resumeRun}
+              onMatchAgain={matchAgain}
+            />
+          </Activity>
         )}
       </div>
     </div>

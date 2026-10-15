@@ -52,7 +52,7 @@ describe("the scoring rows", () => {
   it("show how the matcher scored, and why it refused", () => {
     const text = (id: string, c: MatchCandidate) =>
       SCORE_ROWS.find((row) => row.id === id)!.candidate(c);
-    expect(text("score", candidate(1))).toBe("89.0");
+    expect(text("score", candidate(1))).toBe("89%");
     expect(text("title_sim", candidate(1))).toBe("91");
     expect(text("bonus_year", candidate(1))).toBe("+1");
     expect(text("bonus_key", candidate(1, { bonus_key: -2 }))).toBe("-2");

@@ -56,19 +56,33 @@ afterEach(() => {
 });
 
 describe("the candidates", () => {
-  it("opens focused, on your file and every candidate with its facts, the one in use marked", async () => {
+  it("opens focused, on your track card and every candidate with its facts, the one in use marked", async () => {
     renderPanel();
-    const panel = screen.getByRole("complementary", { name: "Track details" });
+    const panel = screen.getByRole("complementary", { name: /^Candidates for / });
     expect(panel).toHaveFocus();
-    expect(within(panel).getByText("Your file")).toBeInTheDocument();
-    expect(await within(panel).findByText("Artist 1 · 126 BPM · 8A")).toBeInTheDocument();
+    expect(panel).toHaveClass("cp-side-panel");
+    const card = within(panel).getByRole("region", { name: "Your track" });
+    // Labelled as yours, with a big title, the artists, and label, key and BPM (length and year when known).
+    expect(within(card).getByText("Your track \u00b7 from your library")).toBeInTheDocument();
+    expect(within(card).getByText("Track 1")).toBeInTheDocument();
+    expect(within(card).getByText("Artist 1")).toBeInTheDocument();
+    expect(await within(card).findByText(/^Label One \u00b7 8A \u00b7 126 BPM/)).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Play your track" })).toBeInTheDocument();
+    expect(within(panel).getByText("Found on Beatport \u00b7 pick the right one")).toBeInTheDocument();
     const list = await candidates();
     expect(list.getAllByRole("listitem")).toHaveLength(2);
     expect(list.getByText("in use")).toBeInTheDocument();
     // The first candidate is the row's own (1001): it is in use, so only the other offers Use this.
-    expect(list.getAllByRole("button", { name: /^Use / })).toHaveLength(1);
-    expect(list.getAllByText(/BPM/)).toHaveLength(2);
+    expect(list.getAllByRole("button", { name: /^Use this/ })).toHaveLength(1);
+    // Each candidate has its facts on a line of their own: label, key, BPM, year.
+    expect(list.getAllByText("Label Two \u00b7 8A \u00b7 128 BPM \u00b7 2020")).toHaveLength(2);
     expect(list.getAllByRole("button", { name: /Play the Beatport preview/ })).toHaveLength(2);
+  });
+
+  it("names the status with a chip and closes with the shared Close button", () => {
+    renderPanel({ row: reviewTrack(1, "to_check") });
+    expect(screen.getByText("Check")).toHaveClass("cp-badge--warning");
+    expect(screen.getByRole("button", { name: "Close" })).toHaveClass("cp-close");
   });
 
   it("says why a candidate the guards ruled out was", async () => {
@@ -81,20 +95,20 @@ describe("the candidates", () => {
     renderPanel({ row: reviewTrack(1, "matched", { ticked: false }) });
     const list = await candidates();
     expect(list.queryByText("in use")).toBeNull();
-    expect(list.getAllByRole("button", { name: /^Use / })).toHaveLength(2);
+    expect(list.getAllByRole("button", { name: /^Use this/ })).toHaveLength(2);
   });
 
   it("uses a candidate with Use this", async () => {
     const props = renderPanel();
     const list = await candidates();
-    await userEvent.click(list.getByRole("button", { name: /^Use / }));
+    await userEvent.click(list.getByRole("button", { name: /^Use this/ }));
     expect(props.onUse).toHaveBeenCalledWith(1002);
   });
 
   it("waits while a choice is being sent", async () => {
     renderPanel({ busy: true });
     const list = await candidates();
-    expect(list.getByRole("button", { name: /^Use / })).toBeDisabled();
+    expect(list.getByRole("button", { name: /^Use this/ })).toBeDisabled();
   });
 
   it("says there are no candidates for a track with none, and offers the search", async () => {
@@ -111,7 +125,10 @@ describe("the candidates", () => {
       attempts: [{ ...matchesFor(5).attempts[0]!, outcome: "error", error: "Beatport could not be reached" }],
     });
     renderPanel({ row: reviewTrack(5, "search_failed") });
-    expect(await screen.findByText("This attempt failed: Beatport could not be reached.")).toBeInTheDocument();
+    expect(await screen.findByText(/Could not search Beatport for this track\./)).toBeInTheDocument();
+    // The matcher's raw reason is not in the line; it is the hint on Details.
+    expect(screen.queryByText(/Beatport could not be reached/)).toBeNull();
+    expect(screen.getByText("Details")).toBeInTheDocument();
   });
 });
 

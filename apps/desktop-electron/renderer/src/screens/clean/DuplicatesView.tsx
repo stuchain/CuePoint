@@ -21,7 +21,9 @@ import type {
   TagUsage,
 } from "../../api/cuepointBridge.types";
 import { Badge } from "../../components/Badge";
-import { Button, Modal, useToast } from "../../components";
+import { Button, EmptyState, Loading, Modal, useToast } from "../../components";
+import { formatCount, plural } from "../../format/counts";
+import { UNDO } from "../../format/words";
 import { COLLECTIONS, TAGS, useSharedRead } from "../../api/sharedReads";
 import { PickerDialog, type PickerItem } from "../library/PickerDialog";
 import {
@@ -60,7 +62,7 @@ function GroupCard({ group, busy, onAnswer, onTag, onCollect, onReveal }: GroupC
       aria-labelledby={headingId}
     >
       <div className="clean-group__head">
-        <h3 id={headingId} className="clean-group__title">
+        <h3 id={headingId} className="clean-group__title cp-text-section">
           {signalLabel(group.signal)} · {trackCount(group.track_ids.length)}
         </h3>
         {group.dismissed && <Badge>Marked not duplicates</Badge>}
@@ -125,7 +127,7 @@ interface DuplicatesViewProps {
  */
 function confirmWordsFor(pending: BatchRun | null): { title: string; button: string } {
   if (!pending) return { title: "Change tracks?", button: "Apply" };
-  const tracks = `${pending.count.toLocaleString()} ${pending.count === 1 ? "track" : "tracks"}`;
+  const tracks = plural(pending.count, "track");
   switch (pending.action.kind) {
     case "add_tag":
       return { title: `Tag ${tracks} “${pending.action.target}”?`, button: `Tag ${tracks}` };
@@ -237,11 +239,20 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
             previous.map((entry) => (entry.id === group.id ? { ...entry, ...changed } : entry)),
           );
         }
+        // Marking a group is undoable, so it is done at once and the toast offers Undo.
         push(
           kind === "dismiss"
             ? "Marked as not duplicates. It comes back if these tracks change."
             : "Shown as possible duplicates again.",
           "success",
+          kind === "dismiss"
+            ? {
+                label: UNDO,
+                onClick: () => {
+                  void answer(group, "restore").then(() => setReloads((value) => value + 1));
+                },
+              }
+            : undefined,
         );
         onHealthChanged();
       } catch (cause) {
@@ -277,14 +288,14 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
         // it is not a crate (fact 2), and copies of one track have no place
         // side by side in a running order.
         disabled: !isCollection(node),
-        hint: isCollection(node) ? node.entry_count.toLocaleString() : undefined,
+        hint: isCollection(node) ? formatCount(node.entry_count) : undefined,
       }));
     }
     return tags.map((tag) => ({
       id: tag.id,
       label: tag.name,
       icon: "tag" as const,
-      hint: tag.track_count.toLocaleString(),
+      hint: formatCount(tag.track_count),
     }));
   }, [collections, picker, tags]);
 
@@ -360,7 +371,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
     <div className="clean-duplicates">
       <div className="clean-toolbar" role="toolbar" aria-label="Duplicates">
         <span className="clean-toolbar__count">
-          {total === 1 ? "1 group" : `${total.toLocaleString()} groups`}
+          {plural(total, "group")}
         </span>
         <label className="clean-toolbar__check">
           <input
@@ -383,17 +394,17 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
 
       <div className="clean-duplicates__list">
         {loading && groups.length === 0 ? (
-          <p className="clean-empty__hint">Reading possible duplicates…</p>
+          <Loading what="possible duplicates" />
         ) : groups.length === 0 ? (
-          <div className="clean-empty">
-            <p className="clean-empty__headline">{empty.headline}</p>
-            {empty.hint && <p className="clean-empty__hint">{empty.hint}</p>}
-            {empty.offer === "find_duplicates" && (
-              <Button variant="secondary" disabled={jobs.running !== null} onClick={scan}>
-                Find duplicates
-              </Button>
-            )}
-          </div>
+          <EmptyState
+            headline={empty.headline}
+            description={empty.hint ?? undefined}
+            action={
+              empty.offer === "find_duplicates"
+                ? { label: "Find duplicates", onClick: scan, disabled: jobs.running !== null }
+                : undefined
+            }
+          />
         ) : (
           <ul className="clean-groups" aria-label="Possible duplicate groups">
             {groups.map((group) => (

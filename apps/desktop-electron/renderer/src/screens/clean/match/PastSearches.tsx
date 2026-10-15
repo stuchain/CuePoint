@@ -14,7 +14,10 @@ import { useEffect, useState } from "react";
 import type { MatchRun } from "../../../api/cuepointBridge.types";
 import { Badge, type BadgeVariant } from "../../../components/Badge";
 import { Button } from "../../../components/Button";
-import { TextField } from "../../../components/TextField";
+import { Notice } from "../../../components/Notice";
+import { SearchField } from "../../../components/SearchField";
+import { formatCount } from "../../../format/counts";
+import { nothingMatches } from "../../../format/words";
 import { canResume, resultParts, statusOf, whatLine, whenLabel, type StatusTone } from "./pastSearchWords";
 import { ReviewListSave } from "./ReviewListSave";
 import { useMatchJobs } from "./useMatchJobs";
@@ -62,27 +65,22 @@ export function PastSearches({
   return (
     <section className="match-past" aria-label="Past searches">
       <div className="match-past__bar">
-        <TextField
+        <SearchField
+          thing="past searches"
           label="Search"
-          type="search"
           className="match-past__search"
-          placeholder="name or date…"
           value={typed}
-          onChange={(event) => setTyped(event.target.value)}
+          onValueChange={setTyped}
         />
       </div>
 
-      {jobs.error && (
-        <p className="match-past__problem" role="alert">
-          {jobs.error}
-        </p>
-      )}
+      {jobs.error && <Notice kind="problem">{jobs.error}</Notice>}
       {!jobs.available && (
         <p className="match-past__empty">{NEEDS_DESKTOP}</p>
       )}
       {jobs.available && !jobs.error && jobs.runs.length === 0 && !jobs.loading && (
         <p className="match-past__empty">
-          {query.trim() ? "No search matches that." : "Nothing has been matched on Beatport yet."}
+          {query.trim() ? nothingMatches(query.trim()) : "Nothing has been matched on Beatport yet."}
         </p>
       )}
 
@@ -112,7 +110,7 @@ export function PastSearches({
                   <tr key={run.job_id} data-open={run.job_id === openId ? "true" : undefined}>
                     <td>{whenLabel(run.created_at, now)}</td>
                     <td>{what}</td>
-                    <td className="match-past__number">{run.planned.toLocaleString()}</td>
+                    <td className="match-past__number">{formatCount(run.planned)}</td>
                     <td>
                       {resultParts(run).map((part, index) => (
                         <span key={part.text} className={`match-result match-result--${part.tone}`}>
@@ -166,7 +164,7 @@ export function PastSearches({
           </table>
           {jobs.total > jobs.runs.length && (
             <p className="match-past__more">
-              Showing the newest {jobs.runs.length.toLocaleString()} of {jobs.total.toLocaleString()}.
+              Showing the newest {formatCount(jobs.runs.length)} of {formatCount(jobs.total)}.
               Search to find an older one.
             </p>
           )}

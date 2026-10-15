@@ -92,8 +92,9 @@ describe("the words over the table", () => {
   it("says what has no match to tick, and nothing when all have one", () => {
     expect(leftOutWords({ matched: 5, to_check: 1, not_found: 2, search_failed: 0 })).toBe("2 not found");
     expect(leftOutWords({ matched: 5, to_check: 1, not_found: 2, search_failed: 3 })).toBe(
-      "2 not found · 3 search failed",
+      "2 not found · 3 searches failed",
     );
+    expect(leftOutWords({ matched: 5, to_check: 0, not_found: 0, search_failed: 1 })).toBe("1 search failed");
     expect(leftOutWords({ matched: 5, to_check: 0, not_found: 0, search_failed: 0 })).toBe("");
   });
 

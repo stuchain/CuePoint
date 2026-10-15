@@ -29,7 +29,9 @@ import type {
   LibraryHealth,
   LibraryTrackRow,
 } from "../../api/cuepointBridge.types";
-import { Button, useToast } from "../../components";
+import { Button, EmptyState, Notice, useToast } from "../../components";
+import { formatCount, plural } from "../../format/counts";
+import { couldNot } from "../../format/words";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { useInspectorSlot } from "../../components/shell";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
@@ -132,7 +134,7 @@ export function MissingFilesView({
       const text = await gatherTracksAsText(columns.visible, rows);
       const wrote = text === "" ? false : await writeClipboard(text);
       push(
-        wrote ? copySummary(rows.length, selection.count) : "Could not copy to the clipboard",
+        wrote ? copySummary(rows.length, selection.count) : couldNot("copy to the clipboard"),
         wrote ? "success" : "warning",
       );
     } finally {
@@ -206,7 +208,7 @@ export function MissingFilesView({
         )
       }
     >
-      {selection.count > 0 ? `Check ${selection.count.toLocaleString()} again` : "Check again"}
+      {selection.count > 0 ? `Check ${formatCount(selection.count)} again` : "Check again"}
     </Button>
   );
 
@@ -223,7 +225,7 @@ export function MissingFilesView({
         <div className="clean-toolbar" role="toolbar" aria-label="Missing files">
           {window_.answered && (
             <span className="clean-toolbar__count" role="status">
-              {`All ${found.toLocaleString()} ${found === 1 ? "file" : "files"} found`}
+              {`All ${plural(found, "file")} found`}
               {checkedAt && (
                 <>
                   <span aria-hidden="true"> · </span>
@@ -239,12 +241,7 @@ export function MissingFilesView({
     );
   }
 
-  const emptyState = (
-    <div className="clean-empty">
-      <p className="clean-empty__headline">{empty.headline}</p>
-      {empty.hint && <p className="clean-empty__hint">{empty.hint}</p>}
-    </div>
-  );
+  const emptyState = <EmptyState headline={empty.headline} description={empty.hint ?? undefined} />;
 
   return (
     <div className="clean-missing">
@@ -266,9 +263,9 @@ export function MissingFilesView({
           </li>
         </ol>
         {roots.map((root) => (
-          <p key={root.root} className="clean-note__finding" role="status">
+          <Notice key={root.root} kind="warning">
             At the last check: {root.summary}.
-          </p>
+          </Notice>
         ))}
       </div>
 
@@ -292,6 +289,7 @@ export function MissingFilesView({
           onSelectAll={selection.selectAllMatching}
           activeIndex={selection.selection.anchor}
           emptyState={emptyState}
+          onColumns={() => setColumnsOpen(true)}
           resetKey={queryKey(query)}
           ariaLabel="Missing files"
         />
@@ -309,9 +307,6 @@ export function MissingFilesView({
           onClear={selection.clear}
           onSelectAll={selection.selectAllMatching}
         />
-        <Button variant="secondary" onClick={() => setColumnsOpen(true)}>
-          Columns…
-        </Button>
       </div>
 
       <ColumnPicker

@@ -1,13 +1,50 @@
-/* The Playlists view (C22): where Match opens. */
+/* The Playlists view (C22): where Match opens, step 1 of "tick, review, sync". */
 
 .playlists {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   min-height: 0;
   padding: var(--space-md) 0;
   overflow-y: auto;
+}
+
+/* 1 Tick the playlists to match -> 2 Review -> 3 Sync to files: a map, with this list lit. */
+.playlists__steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.playlists__step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xs) var(--space-md);
+  border: var(--control-border-width) solid var(--border-muted);
+  color: var(--fg-muted);
+  font-size: var(--control-font-size);
+}
+
+.playlists__step[aria-current="step"] {
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
+  color: var(--fg-primary);
+  font-weight: var(--weight-strong);
+}
+
+.playlists__step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(16px * var(--scale));
+  border: var(--control-border-width) solid currentColor;
+  font-size: var(--font-size-xs);
 }
 
 .playlists__bar {
@@ -16,6 +53,7 @@
 
 .playlists__scroll {
   overflow-x: auto;
+  border: var(--control-border-width) solid var(--border-muted);
 }
 
 .playlists__table {
@@ -26,18 +64,28 @@
 
 .playlists__table th,
 .playlists__table td {
-  padding: var(--space-sm);
+  padding: var(--space-md);
   border-bottom: var(--control-border-width) solid var(--border-muted);
   text-align: left;
   vertical-align: middle;
 }
 
-.playlists__table th {
-  color: var(--fg-muted);
-  font-weight: var(--control-font-weight);
+.playlists__table tbody tr:last-child td {
+  border-bottom: 0;
 }
 
-.playlists__number {
+.playlists__table th {
+  color: var(--fg-muted);
+  font-weight: var(--weight-strong);
+}
+
+/* A ticked row is the choice: tinted so a long list still shows what Match will take. */
+.playlists__table tr[data-ticked="true"] {
+  background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
+}
+
+/* After `.playlists__table th, td` (which left-align) in weight: the number and its heading line up. */
+.playlists__table .playlists__number {
   text-align: right;
 }
 
@@ -49,20 +97,7 @@
 
 .playlists__empty {
   margin: 0;
-}
-
-.playlists__problem {
-  margin: 0;
-  color: var(--accent-danger);
-}
-
-.playlists__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-sm);
-  border: var(--hairline) solid currentColor;
-  font-size: var(--font-size-xs);
+  padding: var(--space-md);
 }
 
 /* A name and its folder wrap at any letter, so a long path never widens the table past the page. */
@@ -70,33 +105,50 @@
   overflow-wrap: anywhere;
 }
 
-.playlists__chips {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
 .playlists__matching {
-  display: block;
   color: var(--fg-primary);
 }
 
-/* A running row: the chip, and under it how far the run is. */
-.playlists__table td .clean-progress {
-  display: block;
-  margin-top: var(--space-xs);
-  max-width: calc(120px * var(--scale));
+.playlists__synced {
+  gap: var(--space-xs);
 }
 
+/* The tick column: a bigger tick, easier to hit down a long list. */
 .playlists__tick {
-  width: calc(36px * var(--scale));
+  width: calc(44px * var(--scale));
 }
 
-/* Match N playlists: the one way to start, under the list. */
+.playlists__tick input[type="checkbox"] {
+  width: calc(20px * var(--scale));
+  height: calc(20px * var(--scale));
+  margin: 0;
+}
+
+/* The bar under the list: what is ticked on the left, Match on the right. */
 .playlists__footer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm) var(--space-md);
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: var(--control-border-width) solid var(--border-muted);
+}
+
+.playlists__footer > .cp-btn {
+  margin-left: auto;
+}
+
+.playlists__choice {
+  color: var(--fg-primary);
+  font-weight: var(--weight-strong);
+}
+
+.playlists__stepitem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.playlists__arrow {
+  color: var(--fg-muted);
 }

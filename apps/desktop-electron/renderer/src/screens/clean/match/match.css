@@ -19,7 +19,7 @@
    details and Keys use; the first row (Match, Missing files, Duplicates) stays the big strip. */
 .match-area > .cp-tabs--sub {
   flex: none;
-  margin: var(--space-xs) 0;
+  margin: 0 0 var(--space-md);
 }
 
 /* The hidden helper text is absolutely placed: its box must be this pane's, or a
@@ -51,9 +51,9 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-lg);
   min-height: 0;
-  padding: var(--space-md) 0;
+  padding: 0;
   overflow-y: auto;
 }
 
@@ -65,11 +65,6 @@
 .match-past__empty {
   margin: 0;
   color: var(--fg-muted);
-}
-
-.match-past__problem {
-  margin: 0;
-  color: var(--accent-danger);
 }
 
 .match-past__scroll {
@@ -84,7 +79,7 @@
 
 .match-past__table th,
 .match-past__table td {
-  padding: var(--space-sm);
+  padding: var(--space-md);
   border-bottom: var(--control-border-width) solid var(--border-muted);
   text-align: left;
   vertical-align: middle;
@@ -92,7 +87,7 @@
 
 .match-past__table th {
   color: var(--fg-muted);
-  font-weight: var(--control-font-weight);
+  font-weight: var(--weight-strong);
 }
 
 /* One bar, at the row's left edge: the gradient is the first cell's only. */
@@ -112,24 +107,24 @@
 .match-past__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-xs);
+  gap: var(--space-md);
 }
 
 .match-past__more {
-  margin: var(--space-sm) 0 0;
+  margin: var(--space-md) 0 0;
   color: var(--fg-muted);
 }
 
 .match-result--found {
-  color: var(--accent-success);
+  color: var(--success-text);
 }
 
 .match-result--waiting {
-  color: var(--accent-warning);
+  color: var(--warning-text);
 }
 
 .match-result--missing {
-  color: var(--accent-danger);
+  color: var(--danger-text);
 }
 
 .match-result__dot {
@@ -138,25 +133,21 @@
 
 /* ------------------------------------------------------- the lines at the top of Clean */
 
-/* While a match runs, on every tab: what, how far, how long, and Stop. */
+/* While a match runs, on every tab: what and how far, in words. The bar and Stop are on the
+   status strip, so progress is drawn once. */
 .match-run-line {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm) var(--space-md);
-  margin: var(--space-sm) 0;
-  padding: var(--space-sm) var(--space-md);
+  gap: var(--space-md);
+  margin: 0 0 var(--space-md);
+  padding: var(--space-md) var(--space-lg);
   border: var(--control-border-width) solid var(--accent-primary);
   background: var(--bg-panel);
 }
 
 .match-run-line__name {
-  font-weight: 700;
-}
-
-.match-run-line .clean-progress {
-  flex: 0 1 calc(160px * var(--scale));
-  width: auto;
+  font-weight: var(--weight-strong);
 }
 
 .match-run-line__count {
@@ -169,15 +160,15 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm) var(--space-md);
-  margin: var(--space-sm) 0;
-  padding: var(--space-sm) var(--space-md);
+  gap: var(--space-md);
+  margin: 0 0 var(--space-md);
+  padding: var(--space-md) var(--space-lg);
   border: var(--control-border-width) solid var(--accent-danger);
   background: color-mix(in srgb, var(--accent-danger) 14%, var(--bg-panel));
 }
 
 .match-nothing__headline {
-  font-weight: 700;
+  font-weight: var(--weight-strong);
 }
 
 .match-nothing__why {
@@ -192,14 +183,9 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   min-height: 0;
-  padding: var(--space-sm) 0 0;
-}
-
-.review__problem {
-  margin: 0;
-  color: var(--accent-danger);
+  padding: 0;
 }
 
 .review__hint {
@@ -212,7 +198,7 @@
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: var(--space-sm) var(--space-md);
+  gap: var(--space-md);
 }
 
 /* The name gives way before the Sync button does: the button never drops to its own line. */
@@ -229,7 +215,7 @@
 }
 
 .review__name {
-  font-weight: 700;
+  font-weight: var(--weight-strong);
 }
 
 .review__bar > .review__left-out {
@@ -246,22 +232,6 @@
 
 .review__spacer {
   display: none;
-}
-
-/* The one big green button of a review: what is ticked goes into the files. */
-.review__sync {
-  min-height: calc(var(--control-height) * 1.5);
-  padding-inline: var(--space-lg);
-  border-color: var(--accent-success);
-  background: var(--accent-success);
-  color: var(--fg-on-status);
-  font-weight: 700;
-}
-
-.review__sync:disabled {
-  border-color: var(--border-muted);
-  background: var(--bg-panel);
-  color: var(--fg-muted);
 }
 
 .review__live {
@@ -289,7 +259,7 @@
 .review__more {
   display: flex;
   justify-content: center;
-  padding: var(--space-sm);
+  padding: var(--space-md);
 }
 
 /* Every row is one line of a known height, which is what lets only the rows in view exist. */
@@ -302,7 +272,7 @@
 
 .review-table th,
 .review-table td {
-  padding: var(--space-sm);
+  padding: 0 var(--space-md);
   border-bottom: var(--control-border-width) solid var(--border-muted);
   text-align: left;
   vertical-align: middle;
@@ -310,7 +280,12 @@
 
 .review-table th {
   color: var(--fg-muted);
-  font-weight: var(--control-font-weight);
+  font-weight: var(--weight-strong);
+}
+
+/* Data is Inter; the headings stay in the pixel font. */
+.review-table td {
+  font-family: var(--font-data);
 }
 
 .review-table thead th {
@@ -321,7 +296,9 @@
 }
 
 .review-row {
-  height: calc(42px * var(--scale));
+  height: var(--row-height);
+  /* Shift-click selects rows, never the browser's own text selection. */
+  user-select: none;
 }
 
 .review-row td {
@@ -332,20 +309,39 @@
 
 .review-row:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--focus-ring-width));
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
-.review-row--current td {
+.review-row--current td,
+.review-row--selected td {
   background: var(--bg-selected);
 }
 
-.review-row--current td:first-child {
+.review-row--current td:first-child,
+.review-row--selected td:first-child {
   background: var(--selected-row-background);
+}
+
+/* The bar above the table when tracks are selected: the count, said once, and what to do with them. */
+.review__selected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: var(--toolbar-height);
+  padding: var(--toolbar-padding);
+  border: var(--control-border-width) solid var(--border-muted);
+  background: var(--bg-panel);
+}
+
+.review__selected-count {
+  margin-inline-end: auto;
+  font-weight: var(--weight-strong);
 }
 
 /* A decision a newer search disagrees with: said in words beside its Check. */
 .review-row__disputed {
-  color: var(--accent-warning);
+  color: var(--warning-text);
   font-size: var(--font-size-xs);
 }
 
@@ -366,70 +362,20 @@
   width: calc(130px * var(--scale));
 }
 
-/* Wide enough for the round button and the cell's padding either side, so it is never clipped. */
+/* The play button is the row's right end: wide enough for it and the cell's padding, never clipped. */
 .review-col--preview {
-  width: calc(var(--control-height) + 2 * var(--space-sm));
+  width: calc(var(--icon-size-md) + 2 * var(--space-md));
+  text-align: right;
 }
 
 .review-row__preview {
   overflow: visible;
+  text-align: right;
 }
 
-.review-preview {
-  flex: none;
-}
-
-/* The part of a match that differs from your track: a word, never only a colour, in the list's own text. */
+/* The part of a match that differs from your track, in the list's own text. */
 .review-part--differs {
-  color: var(--accent-warning);
-}
-
-.review-preview {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--control-height);
-  height: var(--control-height);
-  border: var(--control-border-width) solid var(--accent-primary);
-  border-radius: 50%;
-  background: none;
-  color: var(--accent-primary);
-  cursor: pointer;
-}
-
-.review-preview:disabled {
-  border-color: var(--border-muted);
-  color: var(--fg-muted);
-  cursor: default;
-}
-
-.review-preview[aria-pressed="true"] {
-  background: var(--accent-primary);
-  color: var(--fg-inverse);
-}
-
-/* Status as words in a coloured chip: colour is never the only cue. */
-.review-status {
-  display: inline-block;
-  padding: 0 var(--space-xs);
-  color: var(--fg-inverse);
-  font-family: var(--font-pixel);
-  font-size: var(--control-font-size);
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.review-status--to_check {
-  background: var(--accent-warning);
-}
-
-.review-status--not_found,
-.review-status--search_failed {
-  background: var(--accent-danger);
-}
-
-.review-status--matched {
-  background: var(--accent-success);
+  color: var(--warning-text);
 }
 
 /* ------------------------------------------------- the panel beside the table */
@@ -439,8 +385,9 @@
   flex: 0 0 min(42%, calc(520px * var(--scale)));
   overflow-x: hidden;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   min-width: 0;
+  /* A dense side panel: 8. */
   padding: var(--space-md);
   overflow-y: auto;
   border: var(--control-border-width) solid var(--border-control);
@@ -451,7 +398,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .review-panel__title {
@@ -469,19 +416,6 @@
   margin-inline-start: auto;
 }
 
-.review-panel__close {
-  display: inline-flex;
-  padding: var(--space-xs);
-  border: 0;
-  background: none;
-  color: var(--fg-muted);
-  cursor: pointer;
-}
-
-.review-panel__close:hover {
-  color: var(--fg-primary);
-}
-
 .review-panel__note {
   margin: 0;
   color: var(--fg-muted);
@@ -489,19 +423,17 @@
 
 .review-panel__eyebrow {
   margin: 0;
-  color: var(--fg-muted);
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
 }
 
-/* Your file: the art, its facts, and a button to hear it. */
+/* Your track: the art, its facts, and a button to hear it. A bar on its left edge says it is yours. */
 .review-card {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   min-width: 0;
-  padding: var(--space-sm);
+  padding: var(--space-md);
   border: var(--control-border-width) solid var(--border-muted);
+  border-left: calc(4px * var(--scale)) solid var(--accent-primary);
 }
 
 .review-card__facts {
@@ -512,33 +444,38 @@
   min-width: 0;
 }
 
+/* The big title of your track. */
 .review-card__title {
   margin: 0;
-  font-weight: 700;
+  font-size: var(--font-size-section);
+  font-weight: var(--weight-strong);
+  overflow-wrap: anywhere;
+}
+
+.review-card__artists {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .review-card__line {
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-data);
   font-size: var(--control-font-size);
   overflow-wrap: anywhere;
 }
 
 .review-card__score--refused {
-  color: var(--accent-danger);
+  color: var(--danger-text);
 }
 
-/* A 48 px thumbnail, drawn at a whole-pixel size so the pixel sizes never blur it. */
+/* The card's artwork: a whole-pixel square, so the pixel sizes never blur it. */
 .review-panel__art {
   flex: none;
-  width: calc(48px * var(--scale));
-  height: calc(48px * var(--scale));
+  width: calc(72px * var(--scale));
+  height: calc(72px * var(--scale));
   object-fit: cover;
   border: var(--control-border-width) solid var(--border-control);
-}
-
-.review-panel__art--none {
-  background: var(--bg-app);
 }
 
 /* Every candidate: a play button, what it is called, who made it, and Use this. */
@@ -554,8 +491,8 @@
 .review-candidate {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
+  gap: var(--space-md);
+  padding: var(--space-md);
   border-bottom: var(--control-border-width) solid var(--border-muted);
   border-left: calc(4px * var(--scale)) solid transparent;
 }
@@ -575,19 +512,25 @@
 }
 
 .review-candidate__title,
+.review-candidate__artists,
 .review-candidate__line,
 .review-candidate__why {
   margin: 0;
   overflow-wrap: anywhere;
 }
 
+.review-candidate__title {
+  font-weight: var(--weight-strong);
+}
+
 .review-candidate__line {
   color: var(--fg-muted);
+  font-family: var(--font-data);
   font-size: var(--control-font-size);
 }
 
 .review-candidate__why {
-  color: var(--accent-danger);
+  color: var(--danger-text);
   font-size: var(--control-font-size);
 }
 
@@ -595,15 +538,15 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
-  color: var(--accent-success);
-  font-weight: 700;
+  color: var(--success-text);
+  font-weight: var(--weight-strong);
   white-space: nowrap;
 }
 
 .review-panel__search {
   display: flex;
   align-items: flex-end;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .review-panel__search .cp-field {
@@ -630,24 +573,18 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .review-panel__more-toggle {
   margin-inline-start: auto;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent-primary);
-  font: inherit;
-  cursor: pointer;
 }
 
 .review-panel__more {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .review-panel__score-table {
@@ -661,7 +598,7 @@
 
 .review-panel__score-table th,
 .review-panel__score-table td {
-  padding: var(--space-xs) var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
   border-bottom: var(--control-border-width) solid var(--border-muted);
   text-align: left;
 }

@@ -15,15 +15,21 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { MatchSearchAnswer, ReviewTrack } from "../../../api/cuepointBridge.types";
+import type { LibraryTrackRow, MatchSearchAnswer, ReviewTrack } from "../../../api/cuepointBridge.types";
 import { NEEDS_DESKTOP, userMessage } from "../../../api/userMessage";
-import { Button, useToast } from "../../../components";
+import { Button, Hint, Notice, useToast } from "../../../components";
+import { TrackContextMenu, type TrackContextMenuItem } from "../../../components/TrackContextMenu";
+import { plural } from "../../../format/counts";
+import { toQueueItem, queuedMessage } from "../../library/useLibraryPlayback";
+import { writeClipboard } from "../../library/trackClipboard";
+import { revealTrack } from "../revealTrack";
 import { queryShown } from "../../../components/shell/pageActive";
 import { reportUnexpected } from "../../../reporting/reporting";
 import { CandidatePanel } from "./CandidatePanel";
 import { ReviewTable } from "./ReviewTable";
 import { SyncPlaylistDialog } from "./SyncPlaylistDialog";
-import { matchCommand } from "./matchKeyboard";
+import { isSelectAll, matchCommand } from "./matchKeyboard";
+import { reviewMenuItems } from "./reviewMenu";
 import { allTickedLine, leftOutWords, reviewCandidateOf, summaryWords, syncLabel, tickedLine } from "./reviewList";
 import { useMatchReview, type ReviewSource } from "./useMatchReview";
 import { useReviewTicks } from "./useReviewTicks";
@@ -46,6 +52,9 @@ interface ReviewTabProps {
   /** Whether the panel is open, so a match that ends does not replace what is being read. */
   onPanelChange?: (open: boolean) => void;
 }
+
+/** The most tracks one Play, Play next or Add to queue reads from the Library at once. */
+const QUEUE_CAP = 200;
 
 export function ReviewTab({
   source,
@@ -96,10 +105,52 @@ export function ReviewTab({
     wasOpen.current = panel;
   }, [panel]);
 
+  // The selection: Ctrl/Command toggles, Shift extends from the anchor, Ctrl+A takes all, Esc clears.
+  const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
+  const anchor = useRef<number | null>(null);
+  // Rows leave as the list changes (a filter, a tick that drops one, a re-read): the selection
+  // keeps only tracks still shown, so a count or a bulk action never covers a track out of sight.
+  useEffect(() => {
+    setSelected((now) => {
+      if (now.size === 0) return now;
+      const shown = new Set(rows.map((row) => row.track_id));
+      const kept = [...now].filter((id) => shown.has(id));
+      return kept.length === now.size ? now : new Set(kept);
+    });
+  }, [rows]);
+  const [menu, setMenu] = useState<{ x: number; y: number; items: TrackContextMenuItem[] } | null>(null);
+
   const open = useCallback((row: ReviewTrack) => {
     setCurrent(row.track_id);
     setPanel(row.track_id);
+    setSelected(new Set([row.track_id]));
+    anchor.current = row.track_id;
   }, []);
+
+  const select = useCallback(
+    (row: ReviewTrack, how: { shift: boolean; toggle: boolean }) => {
+      setCurrent(row.track_id);
+      if (how.shift && anchor.current !== null) {
+        const from = rows.findIndex((entry) => entry.track_id === anchor.current);
+        const to = rows.findIndex((entry) => entry.track_id === row.track_id);
+        if (from >= 0 && to >= 0) {
+          const [low, high] = from < to ? [from, to] : [to, from];
+          const range = rows.slice(low, high + 1).map((entry) => entry.track_id);
+          setSelected((now) => new Set(how.toggle ? [...now, ...range] : range));
+          return;
+        }
+      }
+      anchor.current = row.track_id;
+      setSelected((now) => {
+        if (!how.toggle) return new Set([row.track_id]);
+        const next = new Set(now);
+        if (next.has(row.track_id)) next.delete(row.track_id);
+        else next.add(row.track_id);
+        return next;
+      });
+    },
+    [rows],
+  );
 
   // Opened on a track (the Inspector's link): its panel, once the table has it.
   const focused = useRef(false);
@@ -113,12 +164,19 @@ export function ReviewTab({
   // ----------------------------------------------------------- moving along the table
 
   const move = useCallback(
-    (step: -1 | 1) => {
+    (step: -1 | 1 | "first" | "last") => {
       if (rows.length === 0) return;
       // With nothing chosen yet the cursor is on the first row, the one in the tab order.
       const from = panel ?? current ?? rows[0]!.track_id;
       const at = rows.findIndex((row) => row.track_id === from);
-      const target = at === -1 ? rows[step === 1 ? 0 : rows.length - 1]! : rows[Math.max(0, Math.min(rows.length - 1, at + step))]!;
+      const target =
+        step === "first"
+          ? rows[0]!
+          : step === "last"
+            ? rows[rows.length - 1]!
+            : at === -1
+              ? rows[step === 1 ? 0 : rows.length - 1]!
+              : rows[Math.max(0, Math.min(rows.length - 1, at + step))]!;
       setCurrent(target.track_id);
       if (panel !== null) setPanel(target.track_id);
       else setFocusToken((token) => token + 1);
@@ -134,20 +192,33 @@ export function ReviewTab({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       if (queryShown('[role="dialog"], dialog[open], [role="menu"]')) return;
+      if (isSelectAll(event)) {
+        if (rows.length === 0) return;
+        event.preventDefault();
+        setSelected(new Set(rows.map((row) => row.track_id)));
+        return;
+      }
       const which = matchCommand(event);
       if (which === null) return;
       if (which === "close") {
-        if (panel === null) return;
-        event.preventDefault();
-        setPanel(null);
+        // Esc closes the panel first, then clears the selection; with neither it is left alone.
+        if (panel !== null) {
+          event.preventDefault();
+          setPanel(null);
+        } else if (selected.size > 0) {
+          event.preventDefault();
+          setSelected(new Set());
+        }
         return;
       }
       event.preventDefault();
-      move(which === "next-track" ? 1 : -1);
+      move(
+        which === "next-track" ? 1 : which === "previous-track" ? -1 : which === "first-track" ? "first" : "last",
+      );
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [move, panel]);
+  }, [move, panel, rows, selected.size]);
 
   // ----------------------------------------------------------- ticking and choosing
 
@@ -236,12 +307,122 @@ export function ReviewTab({
     [onChanged, patchTrack, reread],
   );
 
+  // ------------------------------------------------- the selection and its right-click menu
+
+  /** The library's rows for these tracks, read one by one (the queue wants whole rows). */
+  const libraryRows = useCallback(async (ids: readonly number[]): Promise<LibraryTrackRow[]> => {
+    // A cap, said out loud by the caller (`queueRows`), never applied silently.
+    const read = window.cuepoint?.getLibraryTrack;
+    if (!read) return [];
+    const answers = await Promise.all(
+      ids.slice(0, QUEUE_CAP).map((id) =>
+        read({ trackId: id })
+          .then(({ track }) => track)
+          .catch(() => null),
+      ),
+    );
+    return answers.filter((track): track is LibraryTrackRow => track !== null);
+  }, []);
+
+  const queueRows = useCallback(
+    async (ids: readonly number[], how: "play" | "next" | "end") => {
+      const player = window.cuepoint?.player;
+      const tracks = await libraryRows(ids);
+      if (!player || tracks.length === 0) return;
+      const items = tracks.map(toQueueItem);
+      if (ids.length > QUEUE_CAP) {
+        push(`Only the first ${QUEUE_CAP} of ${ids.length.toLocaleString()} selected tracks were queued.`, "warning");
+      }
+      if (how === "play") {
+        const result = await player.playQueue?.(items, 0);
+        if (result && !result.ok) push(result.error, "warning");
+      } else if (how === "next") {
+        await player.playNext?.(items);
+        push(queuedMessage(items.length, "next"), "info");
+      } else {
+        await player.addToQueue?.(items);
+        push(queuedMessage(items.length, "end"), "info");
+      }
+    },
+    [libraryRows, push],
+  );
+
+  /** Right-click: the row joins the selection (or becomes it), then the menu opens on the selection. */
+  const openMenu = useCallback(
+    (row: ReviewTrack, at: { x: number; y: number }) => {
+      const ids = selected.has(row.track_id) ? [...selected] : [row.track_id];
+      if (!selected.has(row.track_id)) {
+        setSelected(new Set(ids));
+        anchor.current = row.track_id;
+      }
+      setCurrent(row.track_id);
+      const chosen = rows.filter((entry) => ids.includes(entry.track_id));
+      const items = reviewMenuItems(
+        {
+          count: chosen.length,
+          canTick: chosen.some((entry) => entry.tickable && !entry.ticked),
+          canLeaveOut: chosen.some((entry) => entry.ticked),
+        },
+        {
+          onPlay: () => void queueRows(ids, "play"),
+          onPlayNext: () => void queueRows(ids, "next"),
+          onAddToQueue: () => void queueRows(ids, "end"),
+          onCopy: () => {
+            const text = chosen.map((entry) => `${entry.artist} - ${entry.title}`).join("\n");
+            void writeClipboard(text).then((wrote) =>
+              push(wrote ? `Copied ${plural(chosen.length, "track")}.` : "Could not copy to the clipboard.", wrote ? "success" : "warning"),
+            );
+          },
+          onReveal:
+            chosen.length === 1
+              ? () => {
+                  void revealTrack(chosen[0]!.track_id).then((outcome) => {
+                    if (outcome) push(outcome.message, outcome.tone);
+                  });
+                }
+              : null,
+          onTick: () => void ticks.setTicked(chosen.filter((entry) => entry.tickable && !entry.ticked), true).then((n) => {
+            if (n !== null) {
+              setSaid(`Ticked ${plural(n, "track")}: they will be synced.`);
+              onChanged();
+            }
+          }),
+          onLeaveOut: () => void ticks.setTicked(chosen.filter((entry) => entry.ticked), false).then((n) => {
+            if (n !== null) {
+              setSaid(`Unticked ${plural(n, "track")}: they will be left out.`);
+              onChanged();
+            }
+          }),
+          onChoose: () => open(chosen[0]!),
+        },
+      );
+      setMenu({ ...at, items });
+    },
+    [onChanged, open, push, queueRows, rows, selected, ticks],
+  );
+
+  /** Tick or untick the whole selection from the bar above the table. */
+  const tickSelected = useCallback(
+    async (wanted: boolean) => {
+      const chosen = rows.filter(
+        (entry) => selected.has(entry.track_id) && (wanted ? entry.tickable && !entry.ticked : entry.ticked),
+      );
+      const changed = await ticks.setTicked(chosen, wanted);
+      if (changed === null) return;
+      setSaid(
+        wanted
+          ? `Ticked ${plural(changed, "track")}: they will be synced.`
+          : `Unticked ${plural(changed, "track")}: they will be left out.`,
+      );
+      onChanged();
+    },
+    [onChanged, rows, selected, ticks],
+  );
+
   if (error && !review) {
     return (
       <section className="review" aria-label={`Review ${name}`}>
-        <p className="review__problem" role="alert">
-          {error}
-        </p>
+        <Notice kind="problem">{error}</Notice>
       </section>
     );
   }
@@ -262,24 +443,36 @@ export function ReviewTab({
         <Button variant="secondary" icon="chevron-left" onClick={onBack}>
           Playlists
         </Button>
-        <strong className="review__name" title={`${name} · ${summaryWords(total, ticked)}`}>
+        <strong className="review__name" data-cut-hint>
           {name} · {summaryWords(total, ticked)}
         </strong>
         {leftOut && <span className="review__left-out">{leftOut}</span>}
         <span className="review__spacer" />
-        <Button
-          className="review__sync"
-          disabled={ticked === 0}
-          title={ticked === 0 ? "Tick at least one track to sync." : undefined}
-          onClick={() => setSyncOpen(true)}
-        >
-          {syncLabel(name)}
-        </Button>
+        <Hint text={ticked === 0 ? "Tick at least one track to sync." : undefined}>
+          <Button variant="write" className="review__sync" disabled={ticked === 0} onClick={() => setSyncOpen(true)}>
+            {syncLabel(name)}
+          </Button>
+        </Hint>
       </div>
       {/* Always there, so a screen reader hears each tick and choice as it is made. */}
       <p className="review__live" role="status" aria-live="polite">
         {said}
       </p>
+
+      {selected.size > 0 && (
+        <div className="review__selected" role="toolbar" aria-label="Selected tracks">
+          <span className="review__selected-count">{plural(selected.size, "track")} selected</span>
+          <Button size="sm" variant="secondary" disabled={ticks.busy} onClick={() => void tickSelected(true)}>
+            Tick to sync
+          </Button>
+          <Button size="sm" variant="secondary" disabled={ticks.busy} onClick={() => void tickSelected(false)}>
+            Leave out
+          </Button>
+          <Button size="sm" variant="quiet" onClick={() => setSelected(new Set())}>
+            Clear
+          </Button>
+        </div>
+      )}
 
       <div className={`review__body${panelRow ? " review__body--panel" : ""}`} ref={tableArea}>
         <ReviewTable
@@ -290,6 +483,9 @@ export function ReviewTab({
           remaining={total - rows.length}
           onLoadMore={loadMore}
           onOpen={open}
+          selectedIds={selected}
+          onSelect={select}
+          onContextMenu={openMenu}
           onTick={(row, wanted) => void tick(row, wanted)}
           onTickAll={(wanted) => void tickAll(wanted)}
           busy={ticks.busy}
@@ -313,6 +509,9 @@ export function ReviewTab({
           />
         )}
       </div>
+      {menu && (
+        <TrackContextMenu x={menu.x} y={menu.y} items={menu.items} label="Selected tracks" onClose={() => setMenu(null)} />
+      )}
       <SyncPlaylistDialog
         open={syncOpen}
         name={name}

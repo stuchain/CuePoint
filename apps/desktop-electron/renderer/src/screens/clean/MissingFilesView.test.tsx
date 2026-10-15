@@ -174,7 +174,7 @@ describe("nothing missing (K13)", () => {
 
   it("words the time short, and hides the separators from a screen reader", async () => {
     const line = await nothingMissing();
-    expect(line).toHaveTextContent(/checked \d{1,2} Sep 10:00/);
+    expect(line).toHaveTextContent(/checked [A-Z][a-z]{2} \d{1,2} \d{1,2}:\d{2}/);
     expect(line.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThanOrEqual(2);
   });
 

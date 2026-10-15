@@ -159,7 +159,7 @@ describe("the list", () => {
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     world.runs = [];
     fireEvent.change(screen.getByLabelText("Search"), { target: { value: "zzz" } });
-    expect(await screen.findByText("No search matches that.", undefined, LOADED)).toBeInTheDocument();
+    expect(await screen.findByText("Nothing matches \u201czzz\u201d.", undefined, LOADED)).toBeInTheDocument();
   });
 
   it("asks the engine to search, after a pause in typing", async () => {

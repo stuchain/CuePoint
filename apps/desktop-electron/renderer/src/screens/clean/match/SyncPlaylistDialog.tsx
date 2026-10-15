@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { NEEDS_DESKTOP, userMessage } from "../../../api/userMessage";
 import { Modal } from "../../../components/Modal";
+import { Notice } from "../../../components/Notice";
 import { SaveToFilesDialog } from "../../../components/saveToFiles/SaveToFilesDialog";
 import { reportUnexpected } from "../../../reporting/reporting";
 import type { ReviewSource } from "./useMatchReview";
@@ -90,7 +91,7 @@ export function SyncPlaylistDialog({ open, name, source, onClose, onChanged }: S
       >
         {phase === "reading" && <p role="status">Reading what is ticked… Nothing is written to your files.</p>}
         {phase === "empty" && <p role="status">Nothing is ticked, so there is nothing to sync.</p>}
-        {phase === "failed" && <p role="alert">{problem}</p>}
+        {phase === "failed" && <Notice kind="problem">{problem}</Notice>}
       </Modal>
       <SaveToFilesDialog
         key={opening}

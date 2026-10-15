@@ -1,13 +1,15 @@
 /**
  * The lines at the top of Clean that say what the matching is doing.
  *
- * **While a match runs** ("Matching hJ · bar · 11 of 24 · about 2 minutes left · Stop"), on every
- * Clean tab and again when the person comes back to the page: it is read from the engine's running
- * job, not from what this page remembers. **When a run ended finding nothing**, a red note with the
+ * **While a match runs** ("Matching hJ · 11 of 24 · about 2 minutes left"), on every Clean tab and
+ * again when the person comes back to the page: it is read from the engine's running job, not
+ * from what this page remembers. It is words only: the bar and Stop are on the status strip, so
+ * progress is drawn once. **When a run ended finding nothing**, a red note with the
  * count and a way to see them: a search that found nothing for every track usually failed.
  * The page decides when each shows; these only draw.
  */
 import { Button } from "../../../components/Button";
+import { formatCount } from "../../../format/counts";
 import { aboutDuration } from "../../../components/shell/useActiveJob";
 import { nothingFoundLine, nothingFoundCount, type NothingFound } from "./matchDone";
 
@@ -17,11 +19,9 @@ interface MatchRunningLineProps {
   progress: { done: number; total: number } | null;
   /** About how long is left, in seconds, once it can be said. */
   secondsLeft: number | null;
-  /** Stop the match; null until the engine's job is known. */
-  onStop: (() => void) | null;
 }
 
-export function MatchRunningLine({ name, progress, secondsLeft, onStop }: MatchRunningLineProps) {
+export function MatchRunningLine({ name, progress, secondsLeft }: MatchRunningLineProps) {
   const words = progress
     ? name
       ? `Matching ${name}`
@@ -33,23 +33,10 @@ export function MatchRunningLine({ name, progress, secondsLeft, onStop }: MatchR
     <div className="match-run-line" role="region" aria-label="Matching">
       <strong className="match-run-line__name">{words}</strong>
       {progress && (
-        <>
-          <progress
-            className="clean-progress"
-            aria-label="Matching progress"
-            value={progress.done}
-            max={progress.total}
-          />
-          <span className="match-run-line__count">
-            {progress.done.toLocaleString()} of {progress.total.toLocaleString()}
-            {secondsLeft !== null && ` · ${aboutDuration(secondsLeft)} left`}
-          </span>
-        </>
-      )}
-      {onStop && (
-        <Button size="sm" variant="secondary" aria-label="Stop matching" onClick={onStop}>
-          Stop
-        </Button>
+        <span className="match-run-line__count">
+          {formatCount(progress.done)} of {formatCount(progress.total)}
+          {secondsLeft !== null && ` · ${aboutDuration(secondsLeft)} left`}
+        </span>
       )}
     </div>
   );
@@ -72,7 +59,7 @@ export function NothingFoundNote({ name, found, onSee, onDismiss }: NothingFound
           ? "Beatport could not be reached or turned the search away, so nothing is known about those tracks. Match again usually fixes it."
           : "This usually means the search failed, not that the tracks aren't on Beatport."}
       </span>
-      <Button size="sm" onClick={onSee}>{`See the ${count.toLocaleString()} ›`}</Button>
+      <Button size="sm" onClick={onSee}>{`See the ${formatCount(count)} ›`}</Button>
       <Button size="sm" variant="secondary" aria-label="Dismiss" onClick={onDismiss}>
         Dismiss
       </Button>

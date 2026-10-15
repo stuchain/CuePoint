@@ -227,7 +227,7 @@ describe("the Inspector's link", () => {
   it("opens the library's review with that track's panel", async () => {
     renderArea({ focus: { token: "t", trackId: 3 } });
     expect(tabNames()).toContain("Review Whole library");
-    const panel = await screen.findByRole("complementary", { name: "Track details" }, LOADED);
+    const panel = await screen.findByRole("complementary", { name: /^Candidates for / }, LOADED);
     expect(within(panel).getByText("3 of 3")).toBeInTheDocument();
   });
 });

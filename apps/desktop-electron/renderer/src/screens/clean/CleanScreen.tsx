@@ -26,12 +26,13 @@
  * The page adds surface, not machinery: no second query path, no in-memory
  * results, no rule the engine does not already state.
  */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Activity, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type { CleanPlaylistStatus, EntityKind, LibrarySummary, MatchRun } from "../../api/cuepointBridge.types";
 import { LIBRARY_SUMMARY, useSharedRead } from "../../api/sharedReads";
 import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
+import { Loading } from "../../components/Loading";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { Tabs } from "../../components/Tabs";
 import { DuplicatesView } from "./DuplicatesView";
@@ -114,6 +115,10 @@ export function CleanScreen({
     openWith ? "review" : (openSection?.section ?? loadCleanSection()),
   );
   const opened = useRef<string | null>(null);
+  // A part left for another keeps what it was showing (scroll, sort, selection): its pane is
+  // hidden, not unmounted. A part never opened is not drawn.
+  const [visited, setVisited] = useState<ReadonlySet<CleanSection>>(new Set());
+  if (!visited.has(section)) setVisited(new Set([...visited, section]));
   const [focus, setFocus] = useState<CleanOpening | null>(null);
 
   useEffect(() => {
@@ -204,7 +209,7 @@ export function CleanScreen({
   if (summary === undefined) {
     return (
       <div className="screen screen--stack clean-screen--waiting">
-        <p className="clean-empty__hint">Reading your library…</p>
+        <Loading what="your library" />
       </div>
     );
   }
@@ -285,7 +290,6 @@ export function CleanScreen({
           name={runName}
           progress={match.progress}
           secondsLeft={match.secondsLeft}
-          onStop={match.jobId ? () => match.stop(match.jobId!) : null}
         />
       )}
       {!match.matching && nothingFound && (
@@ -300,27 +304,33 @@ export function CleanScreen({
         />
       )}
       <div className="clean-screen__body" role="tabpanel" aria-label={label}>
-        {section === "review" && (
-          <MatchArea
-            onHealthChanged={matchChanged}
-            focus={focus}
-            match={match}
-            playlists={playlists}
-            onMatch={startMatch}
-            reviewOpening={reviewOpening}
-            onReviewOpened={reviewOpened}
-            onViewChange={setMatchView}
-          />
+        {visited.has("review") && (
+          <Activity mode={section === "review" ? "visible" : "hidden"}>
+            <MatchArea
+              onHealthChanged={matchChanged}
+              focus={focus}
+              match={match}
+              playlists={playlists}
+              onMatch={startMatch}
+              reviewOpening={reviewOpening}
+              onReviewOpened={reviewOpened}
+              onViewChange={setMatchView}
+            />
+          </Activity>
         )}
-        {section === "missing" && (
-          <MissingFilesView
-            health={cleanHealth.health}
-            onHealthChanged={reloadHealth}
-            onOpenEntity={openEntity}
-          />
+        {visited.has("missing") && (
+          <Activity mode={section === "missing" ? "visible" : "hidden"}>
+            <MissingFilesView
+              health={cleanHealth.health}
+              onHealthChanged={reloadHealth}
+              onOpenEntity={openEntity}
+            />
+          </Activity>
         )}
-        {section === "duplicates" && (
-          <DuplicatesView health={cleanHealth.health} onHealthChanged={reloadHealth} />
+        {visited.has("duplicates") && (
+          <Activity mode={section === "duplicates" ? "visible" : "hidden"}>
+            <DuplicatesView health={cleanHealth.health} onHealthChanged={reloadHealth} />
+          </Activity>
         )}
       </div>
       <MatchWindow

@@ -13,6 +13,7 @@ import type {
   MatchCandidate,
   OverrideField,
 } from "../../api/cuepointBridge.types";
+import { formatMatchScore } from "../../format/units";
 import { formatBpm } from "../library/trackValues";
 import { rejectReasonText } from "./cleanFormat";
 
@@ -38,8 +39,8 @@ interface ScoreRow {
 
 /** How the matcher scored each candidate: only candidates have these. */
 export const SCORE_ROWS: readonly ScoreRow[] = [
-  { id: "score", label: "Score", candidate: (c) => c.score.toFixed(1) },
-  { id: "base_score", label: "Before bonuses", candidate: (c) => cellText(c.base_score?.toFixed(1)) },
+  { id: "score", label: "Score", candidate: (c) => formatMatchScore(c.score) },
+  { id: "base_score", label: "Before bonuses", candidate: (c) => cellText(formatMatchScore(c.base_score)) },
   { id: "title_sim", label: "Title similarity", candidate: (c) => whole(c.title_sim) },
   { id: "artist_sim", label: "Artist similarity", candidate: (c) => whole(c.artist_sim) },
   { id: "bonus_year", label: "Year bonus", candidate: (c) => signed(c.bonus_year) },
@@ -59,7 +60,7 @@ export const SCORE_ROWS: readonly ScoreRow[] = [
  */
 export function scoreLine(candidate: MatchCandidate): string {
   if (!candidate.guard_ok) return rejectReasonText(candidate.reject_reason);
-  return `${Math.round(candidate.score)}% likely`;
+  return `${formatMatchScore(candidate.score)} likely`;
 }
 
 /** The words for a field Correct can name. */

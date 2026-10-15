@@ -8,6 +8,7 @@ import type { ComponentProps } from "react";
 
 import type { CleanPlaylistCounts, CleanPlaylists } from "../../../api/cuepointBridge.types";
 import { PlaylistsView } from "./PlaylistsView";
+import css from "./playlists.css?raw";
 
 type Props = ComponentProps<typeof PlaylistsView>;
 
@@ -22,15 +23,17 @@ const COUNTS: CleanPlaylistCounts = {
   running: null,
 };
 
+const NOT_SYNCED = { synced: false, synced_at: null };
+
 const DATA: CleanPlaylists = {
   whole_library: { ...COUNTS, track_count: 1234 },
   playlists: [
-    { id: 1, name: "Peak time", path: "Techno", ...COUNTS },
-    { id: 2, name: "Warmup", path: "", ...COUNTS, not_matched: 40, accepted: 0 },
-    { id: 3, name: "all", path: "", ...COUNTS, waiting: 18, accepted: 22 },
-    { id: 5, name: "hj", path: "", ...COUNTS, running: { job_id: "j", done: 108, total: 180 } },
-    { id: 6, name: "Spare", path: "", ...COUNTS, track_count: 0 },
-    { id: 7, name: "Found nothing", path: "", ...COUNTS, track_count: 24, accepted: 0, no_match: 24 },
+    { id: 1, name: "Peak time", path: "Techno", ...COUNTS, synced: true, synced_at: "2020-03-04T10:00:00" },
+    { id: 2, name: "Warmup", path: "", ...COUNTS, not_matched: 40, accepted: 0, ...NOT_SYNCED },
+    { id: 3, name: "all", path: "", ...COUNTS, waiting: 18, accepted: 22, ...NOT_SYNCED },
+    { id: 5, name: "hj", path: "", ...COUNTS, running: { job_id: "j", done: 108, total: 180 }, ...NOT_SYNCED },
+    { id: 6, name: "Spare", path: "", ...COUNTS, track_count: 0, ...NOT_SYNCED },
+    { id: 7, name: "Found nothing", path: "", ...COUNTS, track_count: 24, accepted: 0, no_match: 24, ...NOT_SYNCED },
   ],
 };
 
@@ -48,7 +51,7 @@ function tick(name: string) {
 }
 
 describe("the list", () => {
-  it("lists the whole library first, then the playlists, each with its tracks and status", () => {
+  it("lists the whole library first, then the playlists, each with its tracks", () => {
     renderView();
     const rows = bodyRows();
     expect(rows).toHaveLength(7);
@@ -57,21 +60,50 @@ describe("the list", () => {
     const peak = rows[1]!;
     expect(peak).toHaveTextContent("Techno / Peak time");
     expect(within(peak).getByText("Techno /", { exact: false })).toHaveClass("playlists__path");
-    expect(within(peak).getByText("Matched · 40")).toHaveClass("cp-status--done");
-    expect(within(rows[2]!).getByText("Not matched yet")).toBeInTheDocument();
-    expect(within(rows[3]!).getByText("Matched · 40")).toBeInTheDocument();
-    expect(within(rows[4]!).getByText("Matching 108 of 180")).toBeInTheDocument();
-    expect(within(rows[5]!).getByText("Empty")).toBeInTheDocument();
-    expect(within(rows[6]!).getByText("24 not found")).toHaveClass("cp-status--problem");
   });
 
-  it("has a tick column, and the columns Playlist, Tracks and Status", () => {
+  it("says only 'Synced <day>', in green, for a playlist whose values are in the files", () => {
+    renderView();
+    const rows = bodyRows();
+    const badge = within(rows[1]!).getByText(/^Synced /);
+    expect(badge).toHaveClass("cp-badge--success");
+    expect(badge).toHaveTextContent("Synced Mar 4, 2020");
+    // Nothing else is said about where a playlist stands: no Matched, not found or not matched yet.
+    expect(screen.queryByText(/Matched/)).toBeNull();
+    expect(screen.queryByText(/not found/)).toBeNull();
+    expect(screen.queryByText(/not matched yet/i)).toBeNull();
+    expect(screen.queryByText("Empty")).toBeNull();
+    expect(screen.getAllByText(/^Synced /)).toHaveLength(1);
+  });
+
+  it("says Synced alone when a playlist is synced but no date came", () => {
+    renderView({
+      data: { whole_library: COUNTS, playlists: [{ id: 9, name: "x", path: "", ...COUNTS, synced: true, synced_at: null }] },
+    });
+    expect(screen.getByText("Synced")).toHaveClass("cp-badge--success");
+  });
+
+  it("names the steps, with the first one lit", () => {
+    renderView();
+    const steps = screen.getByRole("list", { name: "The steps" });
+    expect(within(steps).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "1Tick the playlists to match",
+      "2Review",
+      "3Sync to files",
+    ]);
+    expect(within(steps).getByText("Tick the playlists to match").closest("[aria-current]")).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+  });
+
+  it("has a tick column, and the columns Playlist, Tracks and In your files", () => {
     renderView();
     expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
       "Match",
       "Playlist",
       "Tracks",
-      "Status",
+      "In your files",
       "Review",
     ]);
   });
@@ -90,16 +122,36 @@ describe("the list", () => {
     expect(screen.queryByText("Warmup")).toBeNull();
     expect(screen.getByText("Whole library")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Filter playlists"), { target: { value: "zzz" } });
-    expect(screen.getByText("No playlist has that in its name or folder.")).toBeInTheDocument();
+    expect(screen.getByText("Nothing matches \u201czzz\u201d.")).toBeInTheDocument();
   });
 
-  it("draws a bar for a running playlist, which cannot be ticked", () => {
+  it("says a running playlist is matching, with no bar of its own, and it cannot be ticked", () => {
     renderView();
-    const bar = screen.getByRole("progressbar", { name: "hj progress" });
-    expect(bar).toHaveAttribute("value", "108");
-    expect(bar).toHaveAttribute("max", "180");
+    expect(screen.getByText("Matching 108 of 180")).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).toBeNull();
     expect(screen.getByRole("checkbox", { name: "Match hj" })).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "Match Spare" })).toBeDisabled();
+  });
+});
+
+describe("the bar under the list", () => {
+  it("says to tick something while nothing is ticked", () => {
+    renderView();
+    expect(screen.getByText("Tick one or more playlists")).toBeInTheDocument();
+  });
+
+  it("counts the ticked playlists and their tracks", () => {
+    renderView();
+    tick("Peak time");
+    tick("Warmup");
+    expect(screen.getByText("2 playlists \u00b7 80 tracks")).toBeInTheDocument();
+    expect(screen.queryByText("Tick one or more playlists")).toBeNull();
+  });
+
+  it("counts the whole library by its tracks", () => {
+    renderView();
+    tick("Whole library");
+    expect(screen.getByText("Whole library \u00b7 1,234 tracks")).toBeInTheDocument();
   });
 });
 
@@ -182,5 +234,12 @@ describe("with nothing to show", () => {
     unmount();
     renderView({ data: null, error: "This needs the CuePoint desktop app." });
     expect(screen.getByRole("alert")).toHaveTextContent("This needs the CuePoint desktop app.");
+  });
+});
+
+describe("the number column's alignment", () => {
+  it("is set by a rule that outweighs the table's left-aligned cells", () => {
+    // `.playlists__table th, td` is (0,1,1); a bare `.playlists__number` (0,1,0) loses to it.
+    expect(css).toMatch(/\.playlists__table \.playlists__number\s*\{[^}]*text-align:\s*right/);
   });
 });

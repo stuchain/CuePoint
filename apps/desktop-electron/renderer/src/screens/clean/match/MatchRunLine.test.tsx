@@ -8,22 +8,19 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MatchRunningLine, NothingFoundNote } from "./MatchRunLine";
 
 describe("MatchRunningLine", () => {
-  it("says what is matched, how far, about how long is left, and offers Stop", () => {
-    const onStop = vi.fn();
-    render(<MatchRunningLine name="hJ" progress={{ done: 11, total: 24 }} secondsLeft={130} onStop={onStop} />);
+  it("says what is matched, how far and about how long is left, in words only", () => {
+    render(<MatchRunningLine name="hJ" progress={{ done: 11, total: 24 }} secondsLeft={130} />);
     const line = screen.getByRole("region", { name: "Matching" });
     expect(line).toHaveTextContent("Matching hJ");
     expect(line).toHaveTextContent("11 of 24");
     expect(line).toHaveTextContent("about 2 minutes left");
-    const bar = screen.getByRole("progressbar", { name: "Matching progress" });
-    expect(bar).toHaveAttribute("value", "11");
-    expect(bar).toHaveAttribute("max", "24");
-    fireEvent.click(screen.getByRole("button", { name: "Stop matching" }));
-    expect(onStop).toHaveBeenCalledTimes(1);
+    // The bar and Stop are on the status strip: progress is drawn once.
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Stop/ })).toBeNull();
   });
 
   it("leaves out the time before it can be said, and the name when it is not known", () => {
-    render(<MatchRunningLine name={null} progress={{ done: 1, total: 24 }} secondsLeft={null} onStop={vi.fn()} />);
+    render(<MatchRunningLine name={null} progress={{ done: 1, total: 24 }} secondsLeft={null} />);
     const line = screen.getByRole("region", { name: "Matching" });
     expect(line).toHaveTextContent("Matching");
     expect(line).not.toHaveTextContent("Matching hJ");
@@ -32,14 +29,8 @@ describe("MatchRunningLine", () => {
   });
 
   it("says only Matching before the job has said how far it is", () => {
-    render(<MatchRunningLine name="hJ" progress={null} secondsLeft={null} onStop={vi.fn()} />);
+    render(<MatchRunningLine name="hJ" progress={null} secondsLeft={null} />);
     expect(screen.getByRole("region", { name: "Matching" })).toHaveTextContent("Matching hJ…");
-    expect(screen.queryByRole("progressbar")).toBeNull();
-  });
-
-  it("has no Stop until the engine's job is known", () => {
-    render(<MatchRunningLine name="hJ" progress={null} secondsLeft={null} onStop={null} />);
-    expect(screen.queryByRole("button", { name: "Stop matching" })).toBeNull();
   });
 });
 

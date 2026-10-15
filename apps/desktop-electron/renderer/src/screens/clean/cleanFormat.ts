@@ -5,6 +5,8 @@
  * feature. "Accepted" on its own does not say whether a person or the matcher
  * decided, and a reviewer about to override a decision needs to know which.
  */
+import { plural } from "../../format/counts";
+import { formatDayTime } from "../../format/dates";
 import type {
   DuplicateSignal,
   FileStatus,
@@ -15,7 +17,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 
 function count(number: number, noun: string): string {
-  return `${number.toLocaleString()} ${noun}${number === 1 ? "" : "s"}`;
+  return plural(number, noun);
 }
 
 /**
@@ -154,9 +156,7 @@ export function fileStatusHint(status: FileStatus | null | undefined): string {
  */
 export function formatWhen(iso: string | null | undefined): string {
   if (!iso) return "";
-  const when = new Date(iso);
-  if (Number.isNaN(when.getTime())) return iso;
-  return when.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return formatDayTime(iso) || iso;
 }
 
 /** A match that started, and what it left out (DEC-065). */

@@ -53,8 +53,9 @@
 .clean-toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-sm);
+  align-items: center;
+  gap: var(--space-md);
+  min-height: var(--toolbar-height);
   padding: var(--space-sm) 0;
   border-bottom: var(--divider);
 }
@@ -71,8 +72,8 @@
 .clean-note {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-sm) 0;
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
   border-bottom: var(--divider);
 }
 
@@ -84,46 +85,11 @@
   font-size: var(--font-size-xs);
 }
 
-/* A disconnected drive is the one finding a user has to act on before any row
-   below it means anything, so it is not muted. */
-.clean-note__finding {
-  margin: 0;
-  padding: var(--space-xs) var(--space-sm);
-  border: var(--divider);
-  background: var(--accent-warning);
-  color: var(--fg-inverse);
-  font-weight: 700;
-}
-
-.clean-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-sm);
-  max-width: 56ch;
-  margin: 0 auto;
-  padding: var(--space-md);
-  text-align: center;
-}
-
-.clean-empty__headline {
-  margin: 0;
-  font-size: var(--text-heading);
-  font-weight: 700;
-}
-
-.clean-empty__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-sm);
-}
-
 .clean-match-choice {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  margin: var(--space-sm) 0 0;
+  margin: var(--space-md) 0 0;
   padding: 0;
   border: 0;
 }
@@ -131,13 +97,8 @@
 .clean-match-choice label {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
   cursor: pointer;
-}
-
-.clean-empty__hint {
-  margin: 0;
-  color: var(--fg-muted);
 }
 
 /* --------------------------------------------------------------- missing */
@@ -161,8 +122,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
+  gap: var(--space-md);
+  padding: var(--toolbar-padding);
   border-top: var(--hairline) solid var(--border-muted);
 }
 
@@ -180,14 +141,14 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-md);
-  padding: var(--space-md);
+  gap: var(--space-lg);
+  padding: var(--space-md) 0;
 }
 
 .clean-groups {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-lg);
   width: 100%;
   margin: 0;
   padding: 0;
@@ -197,26 +158,26 @@
 .clean-group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
+  gap: var(--space-md);
+  padding: var(--space-lg);
   border: var(--divider);
   background: var(--bg-panel);
 }
 
+/* A group marked not duplicates recedes in words, not in opacity. */
 .clean-group--dismissed {
-  opacity: 0.75;
+  color: var(--fg-muted);
 }
 
 .clean-group__head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .clean-group__title {
   margin: 0;
-  font-size: var(--font-size-sm);
 }
 
 .clean-group__why {
@@ -241,7 +202,7 @@
     "track facts reveal"
     "path path reveal";
   align-items: center;
-  gap: 2px var(--space-sm);
+  gap: var(--space-2xs) var(--space-md);
   padding-bottom: var(--space-xs);
   border-bottom: var(--hairline) solid var(--border-muted);
 }
@@ -253,7 +214,7 @@
 }
 
 .clean-group__name {
-  font-weight: 700;
+  font-weight: var(--weight-strong);
 }
 
 .clean-group__facts {
@@ -273,12 +234,12 @@
 .clean-group__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .clean-note__steps {
   margin: 0;
-  padding-left: var(--space-lg);
+  padding-left: var(--space-xl);
   max-width: 80ch;
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
@@ -295,7 +256,7 @@
   flex-direction: column;
   gap: var(--space-xs);
   max-height: calc(120px * var(--scale));
-  padding: var(--space-xs);
+  padding: var(--space-md);
   overflow-y: auto;
   background: var(--bg-input);
   border: var(--hairline) solid var(--border-outline);
@@ -314,7 +275,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  padding-inline-start: calc(var(--depth, 0) * var(--space-sm));
+  padding-inline-start: calc(var(--depth, 0) * var(--space-md));
   cursor: pointer;
 }
 
@@ -346,26 +307,6 @@
 .clean-match-again label:has(input:disabled) {
   cursor: default;
   color: var(--fg-muted);
-}
-
-
-/* One thin bar for a running match: under the page's note, and in a running playlist's row (C22). */
-.clean-progress {
-  width: 100%;
-  max-width: calc(320px * var(--scale));
-  height: calc(6px * var(--scale));
-  border: var(--divider);
-  background: var(--bg-app);
-  border-radius: 0;
-  appearance: none;
-}
-
-.clean-progress::-webkit-progress-bar {
-  background: var(--bg-app);
-}
-
-.clean-progress::-webkit-progress-value {
-  background: var(--accent-primary);
 }
 
 /* The save bar sits under the tab's body and never shrinks away (C23). */

@@ -14,12 +14,17 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { ReviewTrack } from "../../../api/cuepointBridge.types";
+import { Badge } from "../../../components/Badge";
 import { Button } from "../../../components/Button";
+import { Hint } from "../../../components/Hint";
+import { MissingValue } from "../../../components/MissingValue";
+import { PlayButton } from "../../../components/PlayButton";
 import { useBeatportPreview } from "../../../components/preview/useBeatportPreview";
-import { matchParts, statusLabel } from "./reviewList";
+import { formatCount } from "../../../format/counts";
+import { matchParts, statusLabel, statusTone } from "./reviewList";
 
-/** The row height before it has been measured, and the rows drawn beyond the ones in view. */
-const ROW_HEIGHT = 42;
+/** The row height before it has been measured (the table's own is `--row-height`), and the rows drawn beyond the ones in view. */
+const ROW_HEIGHT = 26;
 const OVERSCAN = 8;
 /** A view not yet measured is taken to be this tall, so the first draw holds a screenful. */
 const FALLBACK_VIEW = 800;
@@ -34,8 +39,14 @@ interface ReviewTableProps {
   hasMore: boolean;
   remaining: number;
   onLoadMore: () => void;
-  /** A click or Enter on a row: open its panel. */
+  /** A click or Enter on a row: open its panel (and select only it). */
   onOpen: (row: ReviewTrack) => void;
+  /** The tracks selected: Ctrl-click, Shift-click and Ctrl+A build it. */
+  selectedIds: ReadonlySet<number>;
+  /** A Ctrl- or Shift-click: change the selection without opening the panel. */
+  onSelect: (row: ReviewTrack, modifiers: { shift: boolean; toggle: boolean }) => void;
+  /** Right-click: the page selects the row and opens the menu here. */
+  onContextMenu: (row: ReviewTrack, anchor: { x: number; y: number }) => void;
   onTick: (row: ReviewTrack, ticked: boolean) => void;
   /** The header tick: tick or untick every track with a match. */
   onTickAll: (ticked: boolean) => void;
@@ -53,16 +64,12 @@ function RowPreview({ row }: { row: ReviewTrack }) {
   if (!row.candidate) return null;
   const playing = preview.state === "playing";
   return (
-    <button
-      type="button"
-      className="review-preview"
+    <PlayButton
       aria-label={playing ? `Stop the preview of ${row.title}` : `Play the Beatport preview of ${row.title}`}
-      aria-pressed={playing}
+      playing={playing}
       disabled={!preview.canPreview || preview.state === "none" || preview.state === "loading"}
       onClick={preview.toggle}
-    >
-      <span aria-hidden>{playing ? "■" : "▶"}</span>
-    </button>
+    />
   );
 }
 
@@ -74,6 +81,9 @@ export function ReviewTable({
   remaining,
   onLoadMore,
   onOpen,
+  selectedIds,
+  onSelect,
+  onContextMenu,
   onTick,
   onTickAll,
   busy,
@@ -185,16 +195,27 @@ export function ReviewTable({
                 data-track-id={row.track_id}
                 data-status={row.status}
                 aria-rowindex={start + offset + 2}
-                className={`review-row${off ? " review-row--off" : ""}${current === row.track_id ? " review-row--current" : ""}`}
+                className={`review-row${off ? " review-row--off" : ""}${current === row.track_id ? " review-row--current" : ""}${selectedIds.has(row.track_id) ? " review-row--selected" : ""}`}
+                aria-selected={selectedIds.has(row.track_id)}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  onContextMenu(row, { x: event.clientX, y: event.clientY });
+                }}
                 aria-current={current === row.track_id ? "true" : undefined}
                 // One row is in the tab order; the arrows move it, and Space on it ticks it, so the
                 // table is one tab stop and not a checkbox per track.
                 tabIndex={row.track_id === tabStop ? 0 : -1}
                 data-owns-space=""
+                // Shift-click selects a range here, never the browser's own text selection.
+                onMouseDown={(event) => {
+                  if (event.shiftKey) event.preventDefault();
+                }}
                 onClick={(event) => {
                   // A click on a button, a tick or a link inside the row is that control's own.
                   if ((event.target as HTMLElement).closest("button, input, a")) return;
-                  onOpen(row);
+                  const toggle = event.ctrlKey || event.metaKey;
+                  if (toggle || event.shiftKey) onSelect(row, { shift: event.shiftKey, toggle });
+                  else onOpen(row);
                 }}
                 onKeyDown={(event) => {
                   if (event.target !== event.currentTarget || event.repeat) return;
@@ -209,31 +230,34 @@ export function ReviewTable({
                 }}
               >
                 <td>
-                  <input
-                    type="checkbox"
-                    aria-label={`Sync ${row.title} · ${row.artist}`}
-                    tabIndex={-1}
-                    title={row.tickable ? undefined : "No Beatport match to sync"}
-                    checked={row.ticked}
-                    disabled={!row.tickable}
-                    onChange={(event) => onTick(row, event.target.checked)}
-                  />
+                  <Hint text={row.tickable ? undefined : "No Beatport match to sync"}>
+                    <input
+                      type="checkbox"
+                      aria-label={`Sync ${row.title} · ${row.artist}`}
+                      tabIndex={-1}
+                      checked={row.ticked}
+                      disabled={!row.tickable}
+                      onChange={(event) => onTick(row, event.target.checked)}
+                    />
+                  </Hint>
                 </td>
                 <td>
-                  <span className={`review-status review-status--${row.status}`}>{statusLabel(row.status)}</span>
+                  <Badge tone={statusTone(row.status)}>{statusLabel(row.status)}</Badge>
                   {row.disputed && (
-                    <span className="review-row__disputed" title="A newer search found a different best match than the one you chose.">
-                      {" "}
-                      newer match differs
-                    </span>
+                    <Hint text="A newer search found a different best match than the one you chose.">
+                      <span className="review-row__disputed"> newer match differs</span>
+                    </Hint>
                   )}
                 </td>
-                <td className="review-row__yours">
+                <td className="review-row__yours" data-cut-hint>
                   {row.title} · {row.artist}
                 </td>
-                <td className={`review-row__theirs${row.candidate && off ? " review-row__theirs--off" : ""}`}>
+                <td
+                  className={`review-row__theirs${row.candidate && off ? " review-row__theirs--off" : ""}`}
+                  data-cut-hint
+                >
                   {parts.length === 0
-                    ? "—"
+                    ? <MissingValue />
                     : parts.map((part, index) => (
                         <span key={index} className={part.differs ? "review-part--differs" : undefined}>
                           {index > 0 && " "}
@@ -258,7 +282,7 @@ export function ReviewTable({
       {hasMore && (
         <div className="review__more">
           <Button variant="secondary" onClick={onLoadMore}>
-            {`Show more (${remaining.toLocaleString()} more)`}
+            {`Show more (${formatCount(remaining)} more)`}
           </Button>
         </div>
       )}
