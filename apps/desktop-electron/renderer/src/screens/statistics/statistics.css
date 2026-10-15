@@ -31,7 +31,7 @@
 
 .statistics-section__title {
   margin: 0;
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-md);
 }
 
 .statistics-section__failed {
