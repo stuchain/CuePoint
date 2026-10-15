@@ -119,18 +119,18 @@ const captionFrom = (entryId: number, shape = SHAPE) => captionSegments(transiti
 
 describe("the caption (FLW-19, C15d)", () => {
   it("reads the keys, how they relate and the tempo change, with no planned times", () => {
-    expect(captionFrom(E1).join(" · ")).toBe("8A → 9A · next key up · +1.6% BPM");
+    expect(captionFrom(E1).join(" · ")).toBe("8A → 9A · next key up · +1.6%");
     expect(captionFrom(E1).join(" ")).not.toMatch(/Out|In /);
   });
 
   it("names a step down, a relative key and a clash in the key words", () => {
-    expect(captionFrom(E2)).toEqual(["9A → 8A", "next key down", "+3.2% BPM"]);
-    expect(captionFrom(E6)).toEqual(["8A → 8B", "relative key", "+2.5% BPM"]);
-    expect(captionFrom(E3)).toEqual(["8A → 3B", KEYS_CLASH, "+9.4% BPM"]);
+    expect(captionFrom(E2)).toEqual(["9A → 8A", "next key down", "+3.2%"]);
+    expect(captionFrom(E6)).toEqual(["8A → 8B", "relative key", "+2.5%"]);
+    expect(captionFrom(E3)).toEqual(["8A → 3B", KEYS_CLASH, "+9.4%"]);
   });
 
   it("says a slower tempo with a minus sign, and the same key as the same", () => {
-    expect(captionFrom(E4)[2]).toBe("−12.9% BPM");
+    expect(captionFrom(E4)[2]).toBe("−12.9%");
     const same = {
       ...SHAPE,
       transitions: SHAPE.transitions.map((t) => (t.from_entry_id === E1 ? { ...t, key_relation: "same" as const } : t)),
@@ -162,7 +162,7 @@ describe("the caption (FLW-19, C15d)", () => {
       entries: SHAPE.entries.map((e) => (e.entry_id === E2 ? { ...e, key: null, camelot: null } : e)),
     };
     expect(NO_BEATPORT_KEY).toBe("Keys not checked");
-    expect(captionFrom(E1, keyless)).toEqual([NO_BEATPORT_KEY, "+1.6% BPM"]);
+    expect(captionFrom(E1, keyless)).toEqual([NO_BEATPORT_KEY, "+1.6%"]);
   });
 
   it("leaves the tempo out when either side has none, and everything out without the shape", () => {
@@ -187,7 +187,7 @@ describe("the caption (FLW-19, C15d)", () => {
       ...SHAPE,
       entries: SHAPE.entries.map((e) => (e.entry_id === E2 ? { ...e, bpm: 122 } : e)),
     };
-    expect(captionFrom(E1, flat)[2]).toBe("0% BPM");
+    expect(captionFrom(E1, flat)[2]).toBe("0%");
   });
 });
 

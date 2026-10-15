@@ -16,11 +16,13 @@ import type {
 import { formatBpmRange } from "../../components/format/bpm";
 import { chapterName } from "./prepareRows";
 import { describeFileCheck, describeSetWarning } from "./setWarnings";
-import { formatTime } from "./setTime";
+import { formatLength } from "../../format/durations";
 import { NEEDS_DESKTOP } from "../../api/userMessage";
+import { NO_BPM, formatTempoPercent } from "../../format/units";
+import { plural } from "../../format/counts";
 
 function counted(count: number, one: string, many: string): string {
-  return `${count.toLocaleString()} ${count === 1 ? one : many}`;
+  return plural(count, one, many);
 }
 
 /** Said in the track count's title while no time is typed, when "0:00 planned" would read as a plan (PRP-3). */
@@ -34,7 +36,7 @@ const NO_TIMES_YET =
  */
 export function runningTimeLine(running: SetRunningTime): string | null {
   if (running.timed === 0 && running.seconds === 0) return null;
-  return `${formatTime(running.seconds)} planned`;
+  return `${formatLength(running.seconds)} planned`;
 }
 
 /** "3 without times"; null when every entry has one. */
@@ -130,9 +132,9 @@ export function headerFacts(
 
 /** A heading's time: "9:00 of 8:00", or "9:00" without a target, and what is untimed. */
 export function chapterTimeText(chapter: Pick<SetChapterPlan, "running_time" | "target_seconds">): string {
-  const run = formatTime(chapter.running_time.seconds);
+  const run = formatLength(chapter.running_time.seconds);
   const planned =
-    chapter.target_seconds == null ? run : `${run} of ${formatTime(chapter.target_seconds)}`;
+    chapter.target_seconds == null ? run : `${run} of ${formatLength(chapter.target_seconds)}`;
   const untimed = chapter.running_time.untimed;
   return untimed > 0 ? `${planned} · ${untimed.toLocaleString()} without times` : planned;
 }
@@ -146,11 +148,11 @@ export function bpmRangeText(chapter: Pick<SetChapterPlan, "bpm_min" | "bpm_max"
 export function shortWarning(warning: SetWarning): string {
   switch (warning.kind) {
     case "tempo_jump":
-      return `${warning.detail === "faster" ? "+" : "−"}${warning.compared.percent}% tempo`;
+      return `${formatTempoPercent(warning.detail === "faster" ? warning.compared.percent : -warning.compared.percent)} tempo`;
     case "key_clash":
       return "Key clash";
     case "tempo_unknown":
-      return "No BPM";
+      return NO_BPM;
     case "file_missing":
       return "File missing";
     case "file_unreadable":
@@ -196,7 +198,7 @@ export function summarizeWarnings(warnings: readonly SetWarning[]): WarningSumma
 
 /** A planned time for a cell: "4:30", or empty when there is none. */
 export function timeCell(seconds: number | null): string {
-  return seconds == null ? "" : formatTime(seconds);
+  return seconds == null ? "" : formatLength(seconds);
 }
 
 /** A Set's notes as typed, as they are sent: trimmed, and blank is none (PREP-12). */

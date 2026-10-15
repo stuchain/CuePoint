@@ -107,19 +107,21 @@ export function stepMoves(
   return moves;
 }
 
+// One meaning per icon (area 48): the arrows sort, × only closes, so moving, removing and
+// "carry on after" have icons of their own. Up and Down share the move mark; their names say which.
 const SHORT: Record<EntryButtonId, EntryMark> = {
-  up: { icon: "arrow-up" },
-  down: { icon: "arrow-down" },
+  up: { icon: "move" },
+  down: { icon: "move" },
   split: { text: "Chapter here" },
   repeat: { text: "Repeat after" },
   remove: { text: "Remove" },
 };
 const GLYPHS: Record<EntryButtonId, EntryMark> = {
-  up: { icon: "arrow-up" },
-  down: { icon: "arrow-down" },
+  up: { icon: "move" },
+  down: { icon: "move" },
   split: { text: "Chapter" },
-  repeat: { icon: "repeat" },
-  remove: { icon: "close" },
+  repeat: { icon: "repeat-after" },
+  remove: { icon: "remove" },
 };
 
 /** What a button does, to the entries it acts on: "Move 3 entries up", "Remove". */

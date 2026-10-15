@@ -14,7 +14,8 @@
 
 import type { SetFileCheck, SetNotice, SetWarning } from "../../api/cuepointBridge.types";
 import { formatBpm } from "../../components/format/bpm";
-import { formatTime } from "./setTime";
+import { formatTempoPercent } from "../../format/units";
+import { formatLength } from "../../format/durations";
 
 // The wire's own types, declared with the rest of the bridge's shapes;
 // re-exported so a caller of this module needs one import.
@@ -41,7 +42,7 @@ export function describeSetWarning(warning: SetWarning): string {
   switch (warning.kind) {
     case "tempo_jump": {
       const { from, to, percent } = warning.compared;
-      return `Tempo jumps ${percent}% ${warning.detail}: ${formatBpm(from)} → ${formatBpm(to)}`;
+      return `Tempo jumps ${warning.detail} (${formatTempoPercent(warning.detail === "faster" ? percent : -percent)}): ${formatBpm(from)} → ${formatBpm(to)}`;
     }
     case "key_clash":
       return `Keys clash: ${warning.compared.from} → ${warning.compared.to}`;
@@ -66,16 +67,16 @@ export function describeSetWarning(warning: SetWarning): string {
     case "time_outside_track": {
       const { length, in: start, out } = warning.compared;
       const planned =
-        warning.detail === "in" ? `Planned in at ${formatTime(start ?? 0)}` : `Planned out at ${formatTime(out ?? 0)}`;
-      return `${planned}, after the track ends at ${formatTime(length)}`;
+        warning.detail === "in" ? `Planned in at ${formatLength(start ?? 0)}` : `Planned out at ${formatLength(out ?? 0)}`;
+      return `${planned}, after the track ends at ${formatLength(length)}`;
     }
     case "over_target":
     case "under_target": {
       const { target, planned, untimed } = warning.compared;
       if (warning.kind === "under_target") {
-        return `${formatTime(target - planned)} under the ${formatTime(target)} target`;
+        return `${formatLength(target - planned)} under the ${formatLength(target)} target`;
       }
-      const over = `${formatTime(planned - target)} over the ${formatTime(target)} target`;
+      const over = `${formatLength(planned - target)} over the ${formatLength(target)} target`;
       return warning.detail === "partly_timed" ? `${over}, before ${entries(untimed)} still without times` : over;
     }
     case "bpm_outside_range": {

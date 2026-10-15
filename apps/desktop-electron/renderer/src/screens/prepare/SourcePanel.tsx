@@ -28,10 +28,15 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { LIBRARY_PLAYLISTS, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
+import { Hint } from "../../components/Hint";
+import { LinkButton } from "../../components/LinkButton";
+import { Loading } from "../../components/Loading";
+import { Notice } from "../../components/Notice";
+import { SearchField } from "../../components/SearchField";
 import { Select } from "../../components/Select";
-import { PixelSpinner } from "../../components/PixelSpinner";
 import { Tabs } from "../../components/Tabs";
-import { inMemorySource, useColumnLayout } from "../../components/table";
+import { CLEAR_SEARCH, RETRY, nothingMatches } from "../../format/words";
+import { ColumnPicker, inMemorySource, useColumnLayout } from "../../components/table";
 import { parseScope, scopeOptions } from "../clean/cleanRules";
 import { SIMILAR_INDEX_BUILDING } from "../discover/entityFormat";
 import { DEFAULT_LIBRARY_QUERY, type LibraryQuery } from "../library/libraryQuery";
@@ -109,7 +114,7 @@ interface SourcePanelProps {
   /** The Set changed under the view: re-read it. */
   onStale: (refusal: SetRefusal) => void;
   onGone: (refusal: SetRefusal) => void;
-  onMessage: (message: string, tone: "info" | "warning") => void;
+  onMessage: (message: string, tone: "success" | "info" | "warning") => void;
   onOpenSimilar: (trackId: number) => void;
   onOpenEntity: (kind: EntityKind, ref: string) => void;
   /** The rows picked in the panel, whenever they change (the selected-track store). */
@@ -155,9 +160,16 @@ export function SourcePanel(props: SourcePanelProps) {
   const pool = poolOrLibrary(chosenPool, options);
   const poolWords = poolName(pool, options);
 
+  // A tab is mounted the first time it is opened and kept after that, so coming back to it finds its
+  // scroll, sort, search and selection as they were (area 42).
+  const [visited, setVisited] = useState<Record<SourceTab, boolean>>(() => ({
+    suggestions: tab === "suggestions",
+    library: tab === "library",
+  }));
   const chooseTab = (next: string) => {
     const value = next === "library" ? "library" : "suggestions";
     setTab(value);
+    setVisited((was) => (was[value] ? was : { ...was, [value]: true }));
     saveSourceTab(value);
   };
   const choosePool = (next: PoolValue) => {
@@ -168,8 +180,16 @@ export function SourcePanel(props: SourcePanelProps) {
   const words = pointWords(point, chapters);
   // The rows selected in the tab open, for the one button beside the pool:
   // on the pool's own line, so the panel's height stays rows (DEC-112).
-  const [picked, setPicked] = useState<LibraryTrackRow[]>([]);
-  useEffect(() => setPicked([]), [tab]);
+  const [pickedBy, setPickedBy] = useState<Record<SourceTab, LibraryTrackRow[]>>({ suggestions: [], library: [] });
+  const pickSuggestions = useCallback(
+    (rows: LibraryTrackRow[]) => setPickedBy((was) => ({ ...was, suggestions: rows })),
+    [],
+  );
+  const pickLibrary = useCallback(
+    (rows: LibraryTrackRow[]) => setPickedBy((was) => ({ ...was, library: rows })),
+    [],
+  );
+  const picked = pickedBy[tab];
   const { onPickedChange } = props;
   useEffect(() => onPickedChange?.(picked), [onPickedChange, picked]);
   // What the neighbors could not be compared by, which Suggestions finds out
@@ -187,55 +207,69 @@ export function SourcePanel(props: SourcePanelProps) {
     if (explaining) saveSeenSuggestionsNote();
   }, [explaining]);
   const body = useRef<HTMLDivElement>(null);
-  const pickTracks = () => body.current?.querySelector<HTMLElement>('[role="table"]')?.focus();
+  const pickTracks = () => body.current?.querySelector<HTMLElement>('[data-active="true"] [role="table"]')?.focus();
 
   return (
     <section className="prepare-source" aria-label="Add to the Set">
       <PointLine words={words} title={pointTitle} />
       <Tabs tabs={TABS} activeId={tab} onChange={chooseTab} />
       <div className="prepare-source__controls">
-        <Select
-          id={`${selectId}-from`}
-          label="From"
-          hideLabel
-          className="prepare-source__select"
-          value={pool}
-          onChange={(event) => choosePool(event.target.value)}
-          title="Where Suggestions and the search look: the library, a playlist, a Collection or a Set"
-          options={options.map((option) => ({ value: option.value, label: option.label, disabled: option.disabled }))}
-        />
-        <button
-          type="button"
-          className="prepare-source__insert"
-          data-idle={picked.length === 0 ? "" : undefined}
-          onClick={() => (picked.length === 0 ? pickTracks() : props.onInsert(picked))}
-          title={
+        <Hint text="Where Suggestions and the search look: the library, a playlist, a Collection or a Set">
+          <Select
+            id={`${selectId}-from`}
+            label="From"
+            hideLabel
+            className="prepare-source__select"
+            value={pool}
+            onChange={(event) => choosePool(event.target.value)}
+            options={options.map((option) => ({ value: option.value, label: option.label, disabled: option.disabled }))}
+          />
+        </Hint>
+        <Hint
+          text={
             picked.length === 0
               ? `Select tracks below, then insert them. ${insertingText(words)}`
               : pointText(words)
           }
         >
-          {insertLabel(picked.length)}
-        </button>
+          <Button
+            variant={picked.length === 0 ? "secondary" : "primary"}
+            onClick={() => (picked.length === 0 ? pickTracks() : props.onInsert(picked))}
+          >
+            {insertLabel(picked.length)}
+          </Button>
+        </Hint>
       </div>
-      <div
-        ref={body}
-        className="prepare-source__body"
-        role="tabpanel"
-        aria-label={tab === "suggestions" ? "Suggestions" : "Library"}
-      >
-        {tab === "suggestions" ? (
-          <SuggestionsTab
-            {...props}
-            pool={pool}
-            poolWords={poolWords}
-            onPicked={setPicked}
-            onPointDetail={setPointDetail}
-            onOpenLibrary={() => chooseTab("library")}
-            explain={explaining}
-          />
-        ) : (
-          <LibraryTab {...props} pool={pool} poolWords={poolWords} onPicked={setPicked} />
+      <div ref={body} className="prepare-source__body">
+        {visited.suggestions && (
+          <div
+            className="prepare-source__pane"
+            role="tabpanel"
+            aria-label="Suggestions"
+            aria-hidden={tab !== "suggestions"}
+            data-active={tab === "suggestions"}
+          >
+            <SuggestionsTab
+              {...props}
+              pool={pool}
+              poolWords={poolWords}
+              onPicked={pickSuggestions}
+              onPointDetail={setPointDetail}
+              onOpenLibrary={() => chooseTab("library")}
+              explain={explaining}
+            />
+          </div>
+        )}
+        {visited.library && (
+          <div
+            className="prepare-source__pane"
+            role="tabpanel"
+            aria-label="Library"
+            aria-hidden={tab !== "library"}
+            data-active={tab === "library"}
+          >
+            <LibraryTab {...props} pool={pool} poolWords={poolWords} onPicked={pickLibrary} />
+          </div>
         )}
       </div>
     </section>
@@ -332,6 +366,7 @@ function SuggestionsTab({
     );
   }, [answer, layout.visible]);
   const { play, queue } = useQueueActions(onMessage);
+  const [picking, setPicking] = useState(false);
 
   // What the neighbors could not be compared by: the notes are drawn here, the
   // rest rides the point line above the tabs as its title.
@@ -359,15 +394,18 @@ function SuggestionsTab({
   let empty: React.ReactNode;
   if (suggestions.problem) {
     empty = (
-      <div className="prepare-source__empty">
-        <p className="prepare-note">{suggestions.problem}</p>
-        <Button variant="secondary" onClick={suggestions.retry}>
-          Try again
-        </Button>
-      </div>
+      <Notice
+        action={
+          <Button variant="secondary" onClick={suggestions.retry}>
+            {RETRY}
+          </Button>
+        }
+      >
+        {suggestions.problem}
+      </Notice>
     );
   } else if (!answer) {
-    empty = <p className="prepare-note">Finding what fits…</p>;
+    empty = <Loading what="what fits" />;
   } else if (answer.no_fit && point.after) {
     empty = (
       <div className="prepare-source__empty">
@@ -392,9 +430,7 @@ function SuggestionsTab({
         <p className="prepare-source__note">
           {sideOnlyText(against, against === "before" ? beforeTitle : afterTitle)}
           {" · "}
-          <button type="button" className="prepare-link prepare-link--inline" onClick={() => setSide(null)}>
-            Fit both sides
-          </button>
+          <LinkButton onClick={() => setSide(null)}>Fit both sides</LinkButton>
         </p>
       )}
       {explain && <p className="prepare-source__note prepare-source__note--line" title={SUGGESTIONS_RANKING_TITLE}>
@@ -428,6 +464,17 @@ function SuggestionsTab({
         onQueue={(chosen, where) => void queue(chosen, where)}
         onOpenSimilar={onOpenSimilar}
         onOpenEntity={onOpenEntity}
+        onColumns={() => setPicking(true)}
+        onMessage={onMessage}
+      />
+      <ColumnPicker
+        open={picking}
+        onClose={() => setPicking(false)}
+        columns={SUGGESTION_COLUMNS}
+        layout={layout.layout}
+        onToggle={layout.toggle}
+        onNudge={layout.nudge}
+        onReset={layout.reset}
       />
     </>
   );
@@ -465,42 +512,38 @@ function LibraryTab({
   const say = useCallback((message: string) => onMessage(message, "info"), [onMessage]);
   const playback = useLibraryPlayback({ query, onMessage: say });
   const noRows = useCallback(() => [], []);
+  const [picking, setPicking] = useState(false);
 
   let empty: React.ReactNode;
   if (window_.status === "error") {
     empty = (
-      <div className="prepare-source__empty">
-        <p className="prepare-note">{window_.error}</p>
-        <Button variant="secondary" onClick={window_.retry}>
-          Try again
-        </Button>
-      </div>
+      <Notice
+        action={
+          <Button variant="secondary" onClick={window_.retry}>
+            {RETRY}
+          </Button>
+        }
+      >
+        {window_.error}
+      </Notice>
     );
   } else if (window_.loading) {
-    empty = (
-      <p className="prepare-note">
-        <PixelSpinner label="Reading your library…" />
-      </p>
-    );
+    empty = <Loading what="tracks" />;
   } else if (q) {
-    empty = <p className="prepare-note">{`Nothing in ${poolWords} matches “${q}”.`}</p>;
+    empty = (
+      <div className="prepare-source__empty">
+        <p className="prepare-note">{nothingMatches(q)}</p>
+        <p className="prepare-note">{`Nothing in ${poolWords} fits that. Try another word.`}</p>
+        <LinkButton onClick={() => setText("")}>{CLEAR_SEARCH}</LinkButton>
+      </div>
+    );
   } else {
     empty = <p className="prepare-note">{`${poolWords.charAt(0).toUpperCase()}${poolWords.slice(1)} holds no tracks.`}</p>;
   }
 
   return (
     <>
-      <label className="prepare-source__search">
-        <span className="prepare-visually-hidden">Search</span>
-        <input
-          type="search"
-          className="prepare-source__input"
-          placeholder="Search title, artist, label…"
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          aria-label="Search"
-        />
-      </label>
+      <SearchField className="prepare-source__search" thing="tracks" value={text} onValueChange={setText} />
       <SourceTable<LibraryTrackRow>
         ariaLabel="Library tracks to add"
         columns={layout.visible}
@@ -522,6 +565,17 @@ function LibraryTab({
         }
         onOpenSimilar={onOpenSimilar}
         onOpenEntity={onOpenEntity}
+        onColumns={() => setPicking(true)}
+        onMessage={onMessage}
+      />
+      <ColumnPicker
+        open={picking}
+        onClose={() => setPicking(false)}
+        columns={SOURCE_LIBRARY_COLUMNS}
+        layout={layout.layout}
+        onToggle={layout.toggle}
+        onNudge={layout.nudge}
+        onReset={layout.reset}
       />
     </>
   );

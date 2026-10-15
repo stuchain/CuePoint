@@ -542,6 +542,74 @@ describe("the selected track (PAGES-03)", () => {
   });
 });
 
+describe("Track details follow the row last clicked, in either list", () => {
+  afterEach(() => setSelectedTrack(null));
+
+  it("shows a track picked in Suggestions, then an entry of the Set, then the track again", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    fireEvent.click(setRow(OPEN_ONE));
+    const entry = BUILD.entries.entries.find((candidate) => candidate.entry_id === OPEN_ONE)!;
+    const inspector = screen.getByRole("complementary", { name: "Inspector" });
+    await within(inspector).findByRole("region", { name: "In this Set" }, LOADED);
+    await waitFor(() => expect(bridge.getLibraryTrack).toHaveBeenLastCalledWith({ trackId: entry.track_id }));
+
+    const picked = SUGGESTIONS.both.suggestions[0].track;
+    await suggestionRows();
+    fireEvent.click(rowsOf("Suggestions")[0]);
+    await waitFor(() => expect(bridge.getLibraryTrack).toHaveBeenLastCalledWith({ trackId: picked.id }));
+    // A track outside the Set has no entry to plan.
+    await waitFor(() => expect(within(inspector).queryByRole("region", { name: "In this Set" })).toBeNull());
+
+    fireEvent.click(setRow(OPEN_TWO));
+    const second = BUILD.entries.entries.find((candidate) => candidate.entry_id === OPEN_TWO)!;
+    await waitFor(() => expect(bridge.getLibraryTrack).toHaveBeenLastCalledWith({ trackId: second.track_id }));
+    await within(inspector).findByRole("region", { name: "In this Set" }, LOADED);
+  });
+
+  it("shows a track picked in the Library tab", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    fireEvent.click(within(panel()).getByRole("tab", { name: "Library" }));
+    await waitFor(() => expect(rowsOf("Library tracks to add").length).toBeGreaterThan(0), LOADED);
+    const row = rowsOf("Library tracks to add")[0];
+    fireEvent.click(row);
+    const id = ALL_TRACKS.find((track) => track.title === titleOf(row))!.id;
+    await waitFor(() => expect(bridge.getLibraryTrack).toHaveBeenLastCalledWith({ trackId: id }));
+  });
+});
+
+describe("the source tabs keep their state", () => {
+  it("comes back to the Library tab with its search and rows as they were", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    fireEvent.click(within(panel()).getByRole("tab", { name: "Library" }));
+    await waitFor(() => expect(rowsOf("Library tracks to add").length).toBeGreaterThan(0), LOADED);
+    fireEvent.change(within(panel()).getByRole("searchbox", { name: "Search tracks" }), { target: { value: "Deep" } });
+    await waitFor(() =>
+      expect(rowsOf("Library tracks to add").map(titleOf).sort()).toEqual(["Bridge Deep", "Deep Relative", "Deep Spare"]),
+    );
+    fireEvent.click(rowsOf("Library tracks to add")[0]);
+    fireEvent.click(within(panel()).getByRole("tab", { name: "Suggestions" }));
+    expect(screen.queryByRole("table", { name: "Library tracks to add" })).toBeNull();
+    fireEvent.click(within(panel()).getByRole("tab", { name: "Library" }));
+    expect(within(panel()).getByRole("searchbox", { name: "Search tracks" })).toHaveValue("Deep");
+    expect(rowsOf("Library tracks to add").map(titleOf).sort()).toEqual(["Bridge Deep", "Deep Relative", "Deep Spare"]);
+    expect(rowsOf("Library tracks to add").filter((row) => row.getAttribute("aria-selected") === "true")).toHaveLength(1);
+  });
+
+  it("draws no grip on a row that is only copied, and Escape lets go of the picked rows", async () => {
+    renderAt(preparePath(SOURCE_IDS.build));
+    await opened();
+    const rows = await suggestionRows();
+    expect(rows.some((row) => row.classList.contains("track-table__row--grip"))).toBe(false);
+    fireEvent.click(rows[0]);
+    expect(rowsOf("Suggestions")[0]).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(screen.getByRole("table", { name: "Suggestions" }), { key: "Escape" });
+    await waitFor(() => expect(rowsOf("Suggestions")[0]).not.toHaveAttribute("aria-selected", "true"));
+  });
+});
+
 describe("inserting", () => {
   it("puts the selected suggestion at the point, selects it, and says so", async () => {
     renderAt(preparePath(SOURCE_IDS.build));
@@ -626,8 +694,10 @@ describe("inserting", () => {
     fireEvent.contextMenu(rows[0]);
     const menu = await screen.findByRole("menu", {}, LOADED);
     const items = within(menu).getAllByRole("menuitem").map((item) => item.textContent);
-    expect(items.slice(0, 4)).toEqual(["Insert here", "Play", "Play next", "Add to queue"]);
-    expect(items).toContain("Similar tracks");
+    // The base track menu (Play, then More), with Insert here between in "This page".
+    expect(items).toEqual(["Play", "Play next", "Add to queue", "This page", "Insert here", "More"]);
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "More" }));
+    expect(await screen.findByRole("menuitem", { name: "Similar tracks" })).toBeInTheDocument();
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Insert here" }));
     await waitFor(() => expect(bridge.insertTrackInCollection).toHaveBeenCalledWith(
       expect.objectContaining({ position: 5, chapter_id: PEAK }),
@@ -887,7 +957,7 @@ describe("the Library tab", () => {
     fireEvent.click(within(panel()).getByRole("tab", { name: "Library" }));
     expect(localStorage.getItem(SOURCE_TAB_STORAGE_KEY)).toBe("library");
     await waitFor(() => expect(rowsOf("Library tracks to add").length).toBeGreaterThan(0), LOADED);
-    fireEvent.change(within(panel()).getByRole("searchbox", { name: "Search" }), { target: { value: "Deep" } });
+    fireEvent.change(within(panel()).getByRole("searchbox", { name: "Search tracks" }), { target: { value: "Deep" } });
     await waitFor(() =>
       expect(bridge.browseLibrary).toHaveBeenLastCalledWith(expect.objectContaining({ q: "Deep", sort: "artist", dir: "asc" })),
     );

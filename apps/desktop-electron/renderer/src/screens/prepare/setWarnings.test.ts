@@ -47,8 +47,8 @@ describe("every warning the engine gives", () => {
 
   it("reads as a DJ would say it", () => {
     expect(WARNINGS.map(describeSetWarning)).toEqual([
-      "Tempo jumps 16.7% faster: 120 → 140",
-      "Tempo jumps 14.3% slower: 140 → 120",
+      "Tempo jumps faster (+16.7%): 120 → 140",
+      "Tempo jumps slower (−14.3%): 140 → 120",
       "Keys clash: 8A → 3B",
       "The track before has no BPM to compare",
       "This track has no BPM to compare",

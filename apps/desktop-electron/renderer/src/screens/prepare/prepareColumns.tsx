@@ -56,7 +56,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
         <span title={repeat ? describeSetNotice(repeat) : undefined}>
           {repeat && (
             <span className="prepare-repeat" aria-label="Played again">
-              <PixelIcon name="repeat" className="cp-pixel-icon--text cp-pixel-icon--before" />
+              <PixelIcon name="repeat-after" className="cp-pixel-icon--text cp-pixel-icon--before" />
             </span>
           )}
           {row.entry.position + 1}

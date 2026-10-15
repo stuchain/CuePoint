@@ -50,6 +50,9 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { LIBRARY_PLAYLISTS, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
+import { Hint } from "../../components/Hint";
+import { Loading } from "../../components/Loading";
+import { Notice } from "../../components/Notice";
 import { Modal } from "../../components/Modal";
 import { Panel } from "../../components/Panel";
 import { PixelIcon } from "../../components/PixelIcon";
@@ -62,6 +65,8 @@ import { settingsFocusState } from "../settingsLink";
 import { ColumnPicker, TrackTable, inMemorySource, useColumnLayout } from "../../components/table";
 import { useRowHeight } from "../../components/table/trackTableLayout";
 import { useScaleFactor } from "../../tokens/ScaleContext";
+import { formatLength } from "../../format/durations";
+import { RETRY, UNDO, opensDialog } from "../../format/words";
 import { cleanSectionState } from "../clean/cleanLink";
 import { entityPath, similarPath } from "../discover/discoverLinks";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
@@ -72,7 +77,7 @@ import type { FolderOption } from "../library/SaveSmartDialog";
 import { TrackDetailPanel } from "../library/TrackDetailPanel";
 import { flattenCollections, isSet, setPickerNodes } from "../library/collectionTree";
 import { TRACK_IDS_MIME, draggedTrackIds, isTrackDrag } from "../library/collectionDrag";
-import { creditsFor, discoverMenuItems } from "../library/libraryDiscover";
+import { creditsFor } from "../library/libraryDiscover";
 import { newSetMadeLine, setSourceOf, type NewSetSource } from "../library/newSetFrom";
 import { useCollectionTree } from "../library/useCollectionTree";
 import { queuedMessage, toQueueItem } from "../library/useLibraryPlayback";
@@ -111,7 +116,8 @@ import {
   setIdFromRoute,
   setToOpen,
 } from "./prepareLink";
-import { entryMenuItems, headingMenuItems } from "./prepareMenus";
+import { entryMenuItems, headingMenuItems, moreEntries } from "./prepareMenus";
+import { copyTrackRows, revealOne } from "./prepareTrackActions";
 import {
   buildSetRows,
   canSplitAt,
@@ -139,6 +145,16 @@ import { usePreparedSet, type Tone } from "./usePreparedSet";
 import "../screens.css";
 import "./prepare.css";
 import { useTrackPlayMarks } from "../../components/player/playedTracks";
+
+/** What Undo needs of a removed entry to put it back. */
+interface SavedEntry {
+  track_id: number;
+  position: number;
+  chapter_id: number;
+  in_seconds: number | null;
+  out_seconds: number | null;
+  note: string | null;
+}
 
 const trackIdOfRow = (row: PrepareRow) => (row.kind === "entry" ? row.entry.track.id : null);
 
@@ -173,12 +189,10 @@ const idOfRow = (row: PrepareRow) => rowKey(row);
  * A page still reading says so inside a panel, not as bare text (PRP-12). The
  * pixel loading motion (DEC-134) is PAGES-12's; this is where it will play.
  */
-function LoadingPanel({ title, words }: { title?: string; words: string }) {
+function LoadingPanel({ title, what }: { title?: string; what: string }) {
   return (
     <Panel title={title}>
-      <p className="prepare-note prepare-loading" role="status">
-        {words}
-      </p>
+      <Loading what={what} />
     </Panel>
   );
 }
@@ -232,7 +246,11 @@ export function PrepareScreen({
   );
   const entries = useMemo(() => entriesOf(rows), [rows]);
   const source = useMemo(() => inMemorySource(rows), [rows]);
-  const loadedRows = useCallback(() => rows.map((row, index) => ({ row, index })), [rows]);
+  // Only entries are ever selected: a chapter heading is no track (Ctrl+A skips it).
+  const loadedRows = useCallback(
+    () => rows.flatMap((row, index) => (isEntryRow(row) ? [{ row, index }] : [])),
+    [rows],
+  );
   const selection = useBeatportSelection<PrepareRow>({
     key: String(setId),
     idOf: idOfRow,
@@ -420,18 +438,85 @@ export function PrepareScreen({
     [setId, write],
   );
 
+  // Put removed entries back where they were, in their order, with their times and notes (Undo on
+  // the toast that says they were removed). Warnings marked OK are not brought back.
+  const restoreEntries = useCallback(
+    async (saved: SavedEntry[]) => {
+      const insert = window.cuepoint?.insertTrackInCollection;
+      if (!insert || setId === null || saved.length === 0) return;
+      const made = await write(async () => {
+        // One that cannot go back (its track left the library, say) does not stop the rest.
+        const ids: Array<number | null> = [];
+        for (const entry of saved) {
+          try {
+            const put = await insert({
+              collection_id: setId,
+              track_id: entry.track_id,
+              position: entry.position,
+              chapter_id: entry.chapter_id,
+            });
+            ids.push(put.entry.id);
+          } catch {
+            ids.push(null);
+          }
+        }
+        return ids;
+      });
+      if (!made) return;
+      const failed = made.filter((id) => id === null).length;
+      if (failed > 0) {
+        push(
+          failed === saved.length
+            ? "Undo could not bring back any of the removed entries."
+            : `Undo could not bring back ${failed} of ${saved.length} removed entries; the rest are back.`,
+          "warning",
+        );
+      }
+      for (const [at, entry] of saved.entries()) {
+        const id = made[at];
+        if (id == null) continue;
+        if (entry.in_seconds != null || entry.out_seconds != null) {
+          await edit((sets) =>
+            sets.setEntryTimes({
+              entry_id: id,
+              in_time: entry.in_seconds == null ? null : formatLength(entry.in_seconds),
+              out_time: entry.out_seconds == null ? null : formatLength(entry.out_seconds),
+            }),
+          );
+        }
+        if (entry.note) await edit((sets) => sets.setEntryNote({ entry_id: id, note: entry.note }));
+      }
+      tree.reload();
+    },
+    [edit, push, setId, tree, write],
+  );
+
   const removeEntries = useCallback(
     async (chosen: EntryRow[]) => {
       const remove = window.cuepoint?.removeCollectionEntries;
       if (!remove || chosen.length === 0 || !shown) return;
+      const saved: SavedEntry[] = chosen
+        .map((row) => row.entry)
+        .sort((a, b) => a.position - b.position)
+        .map(({ track_id, position, chapter_id, in_seconds, out_seconds, note }) => ({
+          track_id,
+          position,
+          chapter_id,
+          in_seconds,
+          out_seconds,
+          note,
+        }));
       const done = await write(() => remove({ entry_ids: chosen.map((row) => row.entry.entry_id) }));
       if (!done) return;
       selection.clear();
       tree.reload();
       const what = done.removed === 1 ? "1 entry" : `${done.removed.toLocaleString()} entries`;
-      push(`Removed ${what} from “${shown.plan.name}”.`, "success");
+      push(`Removed ${what} from “${shown.plan.name}”.`, "success", {
+        label: UNDO,
+        onClick: () => void restoreEntries(saved),
+      });
     },
-    [push, selection, shown, tree, write],
+    [push, restoreEntries, selection, shown, tree, write],
   );
 
   // --- the entry buttons and the table's keys (FLW-17)
@@ -598,11 +683,13 @@ export function PrepareScreen({
         if (selected.length > 0) act(() => void moveSelected(event.key === "ArrowUp" ? -1 : 1));
       } else if (plain && (event.key === "Delete" || event.key === "Backspace")) {
         if (selected.length > 0) act(() => void removeEntries(selected));
+      } else if (plain && event.key === "Escape") {
+        if (selected.length > 0) act(() => selection.clear());
       } else if (plain && (event.key === "Enter" || event.key === "F2")) {
         if (focused && headingAt === null) act(() => startTimeEdit(focused.entry.entry_id, "in"));
       }
     },
-    [focused, headingAt, moveSelected, removeEntries, selected, startTimeEdit],
+    [focused, headingAt, moveSelected, removeEntries, selected, selection, startTimeEdit],
   );
 
   /**
@@ -700,7 +787,9 @@ export function PrepareScreen({
 
   // --- the Inspector: the entry's plan above the track (PREP-10)
 
-  const detail = useTrackDetail(focused ? focused.entry.track_id : null);
+  // Track details follow the row last clicked in either list: the Set, or the picker beside it.
+  const panelShown = chosenIn === "panel" && panelTrack?.id != null ? panelTrack : undefined;
+  const detail = useTrackDetail(panelShown ? (panelShown.id as number) : focused ? focused.entry.track_id : null);
   const previousEntryId = focused ? (entries[indexOfEntry(focused.entry.entry_id) - 1]?.entry_id ?? null) : null;
   /** Accept a transition warning between two entries, or withdraw the acceptance. */
   const acknowledgeBetween = useCallback(
@@ -729,7 +818,7 @@ export function PrepareScreen({
   );
 
   const zone =
-    focused && shown ? (
+    focused && shown && !panelShown ? (
       <SetEntryZone
         key={focused.entry.entry_id}
         row={focused}
@@ -755,7 +844,7 @@ export function PrepareScreen({
       detail={detail.detail}
       loading={detail.loading}
       error={detail.error}
-      selectionCount={selected.length}
+      selectionCount={panelShown ? panelPicked.length : selected.length}
       leadZone={zone}
       onError={(message) => push(message, "warning")}
       onMessage={(message) => push(message, "success")}
@@ -779,6 +868,8 @@ export function PrepareScreen({
   const openEntryMenu = useCallback(
     async (row: EntryRow, index: number, x: number, y: number) => {
       selection.onRowMenu(row, index);
+      setHeadingAt(null);
+      setChosenIn("set");
       const chosen = selection.keys.has(rowKey(row)) && selected.length > 1 ? selected : [row];
       const credits = chosen.length === 1 ? await creditsFor(chosen[0].entry.track_id, detail.detail) : null;
       setMenu({ kind: "entry", x, y, rows: chosen, credits });
@@ -816,14 +907,19 @@ export function PrepareScreen({
         onRepeat: () => one && insertRepeat(one),
         onRemove: () => void removeEntries(chosen),
       },
-      one
-        ? discoverMenuItems(
-            { count: 1, credits: menu.credits },
-            { onSimilar: () => navigate(similarPath(one.entry.track_id)), onOpenPage: openEntity },
-          )
-        : [],
+      moreEntries(
+        { count: chosen.length, credits: menu.credits, revealable: one !== null && one.entry.track.file_path !== "" },
+        {
+          onSimilar: one ? () => navigate(similarPath(one.entry.track_id)) : null,
+          onOpenPage: openEntity,
+          onCopy: () => void copyTrackRows(columns.visible, chosen, push),
+          onReveal: one ? () => void revealOne(one.entry.track_id, push) : null,
+        },
+      ),
     );
   }, [
+    columns.visible,
+    push,
     indexOfEntry,
     insertRepeat,
     menu,
@@ -1049,7 +1145,7 @@ export function PrepareScreen({
                   setCreating(true);
                 }}
               >
-                New Set
+                {opensDialog("New Set")}
               </Button>
               <Button variant="secondary" onClick={() => void chooseSource()}>
                 New Set from…
@@ -1057,14 +1153,17 @@ export function PrepareScreen({
             </div>
           </Panel>
         ) : tree.status === "error" ? (
-          <Panel>
-            <p className="prepare-note">{tree.error}</p>
-            <Button variant="secondary" onClick={tree.reload}>
-              Try again
-            </Button>
-          </Panel>
+          <Notice
+            action={
+              <Button variant="secondary" onClick={tree.reload}>
+                {RETRY}
+              </Button>
+            }
+          >
+            {tree.error}
+          </Notice>
         ) : (
-          <LoadingPanel words="Reading your Sets…" />
+          <LoadingPanel what="your Sets" />
         )}
         {dialogs}
       </div>
@@ -1083,14 +1182,18 @@ export function PrepareScreen({
             </Button>
           </Panel>
         ) : prepared.problem ? (
-          <Panel title="The Set could not open">
-            <p className="prepare-note">{prepared.problem}</p>
-            <Button variant="secondary" onClick={prepared.reload}>
-              Try again
-            </Button>
-          </Panel>
+          <Notice
+            title="The Set could not open"
+            action={
+              <Button variant="secondary" onClick={prepared.reload}>
+                {RETRY}
+              </Button>
+            }
+          >
+            {prepared.problem}
+          </Notice>
         ) : (
-          <LoadingPanel words="Reading the Set…" />
+          <LoadingPanel what="the Set" />
         )}
       </div>
     );
@@ -1150,6 +1253,11 @@ export function PrepareScreen({
           onWidthsChange={columns.setWidths}
           onColumnMove={columns.move}
           onColumns={() => setPicking(true)}
+          onSelectAll={() => {
+            setHeadingAt(null);
+            setChosenIn("set");
+            selection.selectAll();
+          }}
           selectedKeys={selection.keys}
           getRowKey={idOfRow}
           {...playMarks}
@@ -1242,7 +1350,7 @@ export function PrepareScreen({
               }}
             >
               Set
-              <PixelIcon name="chevron-down" className="prepare-header__chevron" />
+              <PixelIcon name="chevron-down" className="cp-pixel-icon--text cp-pixel-icon--after" />
             </Button>
             <Button
               variant="secondary"
@@ -1254,17 +1362,19 @@ export function PrepareScreen({
               }}
             >
               View
-              <PixelIcon name="chevron-down" className="prepare-header__chevron" />
+              <PixelIcon name="chevron-down" className="cp-pixel-icon--text cp-pixel-icon--after" />
             </Button>
           </>
         }
         summary={
           <span className="prepare-header__facts" role="status">
             {timeWords && (
-              <span key={timeWords.n} className="prepare-header__refusal" title={timeWords.line}>
-                <span className="prepare-header__refusal-reason">{timeWords.reason}</span>
-                <span className="prepare-header__refusal-entry">{timeWords.entry}</span>
-              </span>
+              <Hint text={timeWords.line} inline>
+                <span key={timeWords.n} className="prepare-header__refusal" tabIndex={0}>
+                  <span className="prepare-header__refusal-reason">{timeWords.reason}</span>
+                  <span className="prepare-header__refusal-entry">{timeWords.entry}</span>
+                </span>
+              </Hint>
             )}
             <span className="prepare-header__summary">
               {facts
@@ -1272,24 +1382,27 @@ export function PrepareScreen({
                 .map((fact, index) => (
                   <span key={fact.text} className={fact.strong ? "prepare-header__warnings" : undefined}>
                     {index > 0 && <span aria-hidden="true"> · </span>}
-                    <span title={fact.title}>{fact.text}</span>
+                    <Hint text={fact.title} inline>
+                      <span tabIndex={fact.title ? 0 : undefined}>{fact.text}</span>
+                    </Hint>
                   </span>
                 ))}
             </span>
             {facts
               .filter((fact) => fact.action)
               .map((fact) => (
-                <span key={fact.action} className="prepare-header__action" title={fact.title}>
+                <span key={fact.action} className="prepare-header__action">
                   {fact.text}
                   <span aria-hidden="true"> · </span>
-                  <button
-                    type="button"
-                    className="cp-link prepare-header__link"
-                    title={fact.title}
-                    onClick={() => navigate("/clean", { state: cleanSectionState("missing") })}
-                  >
-                    {fact.actionText}
-                  </button>
+                  <Hint text={fact.title} inline>
+                    <button
+                      type="button"
+                      className="cp-link prepare-header__link"
+                      onClick={() => navigate("/clean", { state: cleanSectionState("missing") })}
+                    >
+                      {fact.actionText}
+                    </button>
+                  </Hint>
                 </span>
               ))}
           </span>
@@ -1421,6 +1534,8 @@ export function PrepareScreen({
         open={chapterDeleting !== null}
         title={chapterDeleting ? `Delete the chapter “${chapterName(chapterDeleting)}”?` : "Delete chapter"}
         onClose={() => setChapterDeleting(null)}
+        variant="danger"
+        size="narrow"
         primaryAction={{
           label: "Delete chapter",
           onClick: () => chapterDeleting && void deleteChapter(chapterDeleting),

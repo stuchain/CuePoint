@@ -9,8 +9,8 @@
  */
 import { useId, useLayoutEffect, useState } from "react";
 
-import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
+import { Notice } from "../../components/Notice";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
 import type { NewSetSource } from "../library/newSetFrom";
@@ -65,7 +65,13 @@ export function NewSetDialog({ open, folders, busy = false, error = null, errorK
   };
 
   return (
-    <Modal open={open} title="New Set" onClose={onClose}>
+    <Modal
+      open={open}
+      title="New Set"
+      onClose={onClose}
+      primaryAction={{ label: "Make the Set", onClick: submit, loading: busy }}
+      secondaryAction={{ label: "Cancel", onClick: onClose }}
+    >
       <div className="prepare-dialog">
         <TextField
           id={`${ids}-name`}
@@ -89,18 +95,10 @@ export function NewSetDialog({ open, folders, busy = false, error = null, errorK
           onChange={(event) => setParent(event.target.value)}
         />
         {(problem ?? error) && (
-          <p key={problem ?? errorKey} className="prepare-dialog__problem" role="alert">
+          <Notice key={problem ?? errorKey} kind="field-error">
             {problem ?? error}
-          </p>
+          </Notice>
         )}
-        <div className="prepare-dialog__actions">
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={submit} disabled={busy}>
-            {busy ? "Making…" : "Make the Set"}
-          </Button>
-        </div>
       </div>
     </Modal>
   );
@@ -129,7 +127,13 @@ export function SetSourceDialog({ open, groups, onChoose, onClose }: SetSourceDi
   const source = all.find((candidate) => sourceKey(candidate) === chosen) ?? null;
 
   return (
-    <Modal open={open} title="New Set from…" onClose={onClose}>
+    <Modal
+      open={open}
+      title="New Set from…"
+      onClose={onClose}
+      primaryAction={{ label: "Continue…", onClick: () => source && onChoose(source), disabled: !source }}
+      secondaryAction={{ label: "Cancel", onClick: onClose }}
+    >
       <div className="prepare-dialog">
         {all.length === 0 ? (
           <p className="prepare-dialog__note">
@@ -151,14 +155,6 @@ export function SetSourceDialog({ open, groups, onChoose, onClose }: SetSourceDi
             )}
           />
         )}
-        <div className="prepare-dialog__actions">
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={() => source && onChoose(source)} disabled={!source}>
-            Continue…
-          </Button>
-        </div>
       </div>
     </Modal>
   );

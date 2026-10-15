@@ -92,7 +92,7 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
         <span title={suggestionSummary(row)}>
           {inSet && (
             <span className="prepare-source__in-set" title={inSet} aria-label={inSet}>
-              <PixelIcon name="repeat" className="cp-pixel-icon--text cp-pixel-icon--before" />
+              <PixelIcon name="repeat-after" className="cp-pixel-icon--text cp-pixel-icon--before" />
             </span>
           )}
           {row.title}

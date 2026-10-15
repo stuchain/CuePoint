@@ -26,11 +26,13 @@ import {
   type TrackTableSort,
   type TrackTableSource,
 } from "../../components/table";
-import { libraryRowMenuItems } from "../discover/libraryRowMenu";
 import { useBeatportSelection, type Picked } from "../discover/useBeatportSelection";
 import { setDraggedTrackIds } from "../library/collectionDrag";
-import { creditsFor, discoverMenuItems } from "../library/libraryDiscover";
+import { creditsFor } from "../library/libraryDiscover";
 import { pluralize } from "../library/libraryFormat";
+import { playItems } from "../library/trackActions";
+import { moreEntries, moreSubmenu, thisPageBlock } from "./prepareMenus";
+import { copyTrackRows, revealOne } from "./prepareTrackActions";
 import { useTrackPlayMarks } from "../../components/player/playedTracks";
 
 /** The row menu's first entry, as the panel's button says it for one track. */
@@ -59,6 +61,10 @@ interface SourceTableProps<Row extends LibraryTrackRow> {
   onQueue: (rows: Row[], where: "next" | "end") => void;
   onOpenSimilar: (trackId: number) => void;
   onOpenEntity: (kind: EntityKind, ref: string) => void;
+  /** Opens the table's column picker: the Columns icon in its header corner. */
+  onColumns?: () => void;
+  /** Said after a copy, or when a file cannot be shown. */
+  onMessage: (message: string, tone: "success" | "info" | "warning") => void;
 }
 
 const idOf = (row: LibraryTrackRow) => row.id ?? -1;
@@ -105,6 +111,8 @@ export function SourceTable<Row extends LibraryTrackRow>({
   onQueue,
   onOpenSimilar,
   onOpenEntity,
+  onColumns,
+  onMessage,
 }: SourceTableProps<Row>) {
   const playMarks = useTrackPlayMarks(idOf);
   const selection = useBeatportSelection<Row>({
@@ -138,38 +146,52 @@ export function SourceTable<Row extends LibraryTrackRow>({
     if (!menu) return [];
     const { rows, index, credits } = menu;
     const one = rows.length === 1 ? rows[0] : null;
+    // The base track menu every list has (Play, then More), with Insert here between, in "This page".
     return [
-      {
-        id: "insert-here",
-        label: rows.length > 1 ? `${INSERT_HERE}: ${pluralize(rows.length, "track")}` : INSERT_HERE,
-        onSelect: () => onInsert(rows),
-      },
-      ...libraryRowMenuItems(
-        rows.length,
+      ...playItems(rows.length, {
+        onPlay: () => (one && index >= 0 ? onPlayFrom(index) : onPlayRows(rows)),
+        onPlayNext: () => onQueue(rows, "next"),
+        onAddToQueue: () => onQueue(rows, "end"),
+      }),
+      ...thisPageBlock([
         {
-          onPlay: () => (one && index >= 0 ? onPlayFrom(index) : onPlayRows(rows)),
-          onPlayNext: () => onQueue(rows, "next"),
-          onAddToQueue: () => onQueue(rows, "end"),
+          id: "insert-here",
+          label: rows.length > 1 ? `${INSERT_HERE}: ${pluralize(rows.length, "track")}` : INSERT_HERE,
+          onSelect: () => onInsert(rows),
         },
-        one && one.id != null
-          ? discoverMenuItems(
-              { count: 1, credits },
-              { onSimilar: () => onOpenSimilar(one.id as number), onOpenPage: onOpenEntity },
-            )
-          : [],
-      ).map((item, at) => (at === 0 ? { ...item, separatorBefore: true } : item)),
+      ]),
+      ...moreSubmenu(
+        moreEntries(
+          { count: rows.length, credits, revealable: one !== null && one.file_path !== "" },
+          {
+            onSimilar: one && one.id != null ? () => onOpenSimilar(one.id as number) : null,
+            onOpenPage: onOpenEntity,
+            onCopy: () => void copyTrackRows(columns, rows, onMessage),
+            onReveal: one && one.id != null ? () => void revealOne(one.id as number, onMessage) : null,
+          },
+        ),
+      ),
     ];
-  }, [menu, onInsert, onOpenEntity, onOpenSimilar, onPlayFrom, onPlayRows, onQueue]);
+  }, [columns, menu, onInsert, onMessage, onOpenEntity, onOpenSimilar, onPlayFrom, onPlayRows, onQueue]);
 
   return (
     <div className="prepare-source__table">
-      <div className="prepare-source__rows">
+      {/* Esc lets go of the selection, as it does in every list (area 36). */}
+      <div
+        className="prepare-source__rows"
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && selection.count > 0 && (event.target as HTMLElement).getAttribute("role") === "table") {
+            selection.clear();
+          }
+        }}
+      >
         <TrackTable<Row>
           columns={columns}
           source={source}
           widths={widths}
           onWidthsChange={onWidthsChange}
           onColumnMove={onColumnMove}
+          onColumns={onColumns}
           sort={sort}
           onSortChange={onSortChange}
           selectedKeys={selection.keys}
@@ -180,6 +202,8 @@ export function SourceTable<Row extends LibraryTrackRow>({
           onRowActivate={(_row, index) => onPlayFrom(index)}
           onRowContextMenu={(row, index, anchor) => void openMenu(row, index, anchor.x, anchor.y)}
           activeIndex={selection.anchor}
+          // A copy, not a reorder: nothing here changes an order, so no grip.
+          showGrip={false}
           onRowDragStart={(row, _index, transfer) => {
             const ids = chosenFor(row)
               .map((chosen) => chosen.id)

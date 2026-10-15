@@ -58,8 +58,8 @@ describe("the columns", () => {
   it("say what each draws in their titles", () => {
     const layout = laneLayout(shape, titles, 700, 1);
     expect(layout.columns[2].label).toBe("3 · Half Time · 63 BPM · 9A");
-    expect(layout.columns[3].label).toBe("4 · No Tempo · no BPM · no key");
-    expect(columnLabel(0, "X", 124, "Am", { number: 8, letter: "A" })).toBe("1 · X · 124 BPM · 8A (Am)");
+    expect(layout.columns[3].label).toBe("4 · No Tempo · No BPM · no key");
+    expect(columnLabel(0, "X", 124, "Am", { number: 8, letter: "A" })).toBe("1 · X · 124 BPM · 8A");
   });
 });
 
@@ -69,7 +69,7 @@ describe("the tempo lane", () => {
   it("spans the BPMs drawn", () => {
     expect(layout.tempo.range).toEqual({ min: 63, max: 145 });
     expect(rangeText(layout.tempo.range)).toBe("63–145");
-    expect(rangeText(null)).toBe("No BPMs");
+    expect(rangeText(null)).toBe("No BPM");
     expect(rangeText({ min: 124, max: 124 })).toBe("124 BPM");
     expect(rangeText({ min: 127.98, max: 128.02 })).toBe("128 BPM");
   });
@@ -104,7 +104,7 @@ describe("the tempo lane", () => {
 
 describe("a missing tempo", () => {
   it("is said as no BPM, for an unknown or zero tempo", () => {
-    expect(columnLabel(0, "Strobe", 0, "8A", { number: 8, letter: "A" })).toBe("1 · Strobe · no BPM · 8A");
+    expect(columnLabel(0, "Strobe", 0, "8A", { number: 8, letter: "A" })).toBe("1 · Strobe · No BPM · 8A");
   });
 });
 

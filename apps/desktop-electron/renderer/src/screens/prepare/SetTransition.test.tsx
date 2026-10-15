@@ -425,7 +425,7 @@ describe("the caption and its warning (FLW-19)", () => {
     install();
     render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} shape={SHAPE} />);
     const words = screen.getByTestId("transition-words");
-    expect(words).toHaveTextContent(/^8A → 3B · keys clash · \+1\.6% BPM$/);
+    expect(words).toHaveTextContent(/^8A → 3B · keys clash · \+1\.6%$/);
     expect(within(words).getByText("keys clash").closest(".prepare-transition__piece")).toHaveClass(
       "prepare-transition__piece--warning",
     );
@@ -443,7 +443,7 @@ describe("the caption and its warning (FLW-19)", () => {
     install();
     render(<SetTransition entries={ENTRIES} selectedEntryId={2} onSelect={vi.fn()} shape={SHAPE} />);
     expect(screen.getByTestId("transition-words")).toHaveTextContent(
-      /^Keys not checked · 0% BPM$/,
+      /^Keys not checked · 0%$/,
     );
     await drawn("from", "to");
   });
@@ -470,7 +470,7 @@ describe("the caption and its warning (FLW-19)", () => {
     expect(within(warning).getByTitle("Keys clash: 8A → 3B")).toBeInTheDocument();
     // The caption still says "keys clash", in the warning colour, as the mockup draws it.
     expect(within(caption).getByTestId("transition-words")).toHaveTextContent(
-      /^8A → 3B · keys clash · \+1\.6% BPM$/,
+      /^8A → 3B · keys clash · \+1\.6%$/,
     );
     expect(
       screen.getByTestId("transition-words").compareDocumentPosition(warning) & Node.DOCUMENT_POSITION_FOLLOWING,

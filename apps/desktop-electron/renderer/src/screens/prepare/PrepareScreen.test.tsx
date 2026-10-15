@@ -297,14 +297,14 @@ describe("with no Sets", () => {
     install(noSets);
     renderAt(PREPARE_PATH);
     expect(await screen.findByText(WHAT_A_SET_IS, {}, LOADED)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "New Set" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New Set…" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New Set from…" })).toBeInTheDocument();
   });
 
   it("makes a Set where it is asked, and opens it", async () => {
     install(noSets);
     renderAt(PREPARE_PATH);
-    fireEvent.click(await screen.findByRole("button", { name: "New Set" }, LOADED));
+    fireEvent.click(await screen.findByRole("button", { name: "New Set…" }, LOADED));
     const dialog = screen.getByRole("dialog", { name: "New Set" });
     fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Friday II" } });
     fireEvent.change(within(dialog).getByLabelText("In"), { target: { value: String(IDS.gigs) } });
@@ -318,7 +318,7 @@ describe("with no Sets", () => {
   it("refuses a Set with no name before asking the engine", async () => {
     install(noSets);
     renderAt(PREPARE_PATH);
-    fireEvent.click(await screen.findByRole("button", { name: "New Set" }, LOADED));
+    fireEvent.click(await screen.findByRole("button", { name: "New Set…" }, LOADED));
     const dialog = screen.getByRole("dialog", { name: "New Set" });
     fireEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
     expect(within(dialog).getByRole("alert")).toHaveTextContent("Give it a name");
@@ -329,7 +329,7 @@ describe("with no Sets", () => {
     install(noSets);
     sets.create.mockResolvedValue(refused({ code: "INVALID_REQUEST", message: "Too deep", reason: null, path: null }));
     renderAt(PREPARE_PATH);
-    fireEvent.click(await screen.findByRole("button", { name: "New Set" }, LOADED));
+    fireEvent.click(await screen.findByRole("button", { name: "New Set…" }, LOADED));
     const dialog = screen.getByRole("dialog", { name: "New Set" });
     fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "X" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
@@ -419,7 +419,7 @@ describe("the header's facts and buttons (PRP-3, PRP-6, PRP-10)", () => {
   it("says no times are planned until one is typed", async () => {
     renderAt(preparePath(IDS.plain));
     await opened("Plain");
-    const facts = screen.getByRole("status", { name: "" });
+    const facts = document.querySelector(".prepare-header__facts") as HTMLElement;
     // No "0:00 planned" to read as a plan: the count's title says no times are planned yet.
     expect(facts).not.toHaveTextContent("planned");
     expect(within(facts).getByText(/ tracks?$/)).toHaveAttribute(
@@ -457,7 +457,7 @@ describe("while a Set is read (PRP-12)", () => {
   it("says it inside a panel, not as bare text", async () => {
     sets.plan.mockImplementation(() => new Promise(() => undefined));
     renderAt(preparePath(IDS.friday));
-    const loading = await screen.findByText("Reading the Set…", {}, LOADED);
+    const loading = await screen.findByText("Loading the Set…", {}, LOADED);
     expect(loading.closest(".cp-panel")).not.toBeNull();
     expect(loading.closest("[role='status']")).not.toBeNull();
   });
@@ -545,7 +545,7 @@ describe("the Set", () => {
   it("names it, and says how long it is planned to run and what its checks found", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    const facts = screen.getByRole("status", { name: "" });
+    const facts = document.querySelector(".prepare-header__facts") as HTMLElement;
     expect(facts).toHaveTextContent(
       "6 tracks · 9:00 planned · 5 warnings",
     );
@@ -651,7 +651,7 @@ describe("the Set", () => {
     expect(first.querySelector('[data-column="out"]')).toHaveTextContent("4:30");
     expect(first.querySelector('[data-column="planned"]')).toHaveTextContent("4:00");
     expect(first.querySelector('[data-column="position"]')).toHaveTextContent("1");
-    expect(first.querySelector('[data-column="position"] [data-icon="repeat"]')).not.toBeNull();
+    expect(first.querySelector('[data-column="position"] [data-icon="repeat-after"]')).not.toBeNull();
     const peakTwo = rowAt(5);
     expect(peakTwo.querySelector('[data-column="transition"]')).toHaveTextContent("⚠ +9.4% tempo");
     expect(rowAt(4).querySelector('[data-column="note"]')).toHaveTextContent("Let the break run");
@@ -827,6 +827,43 @@ describe("an entry's menu", () => {
     expect(await screen.findByText("Removed 1 entry from “Friday”.")).toBeInTheDocument();
   });
 
+  it("offers Undo with the removal, and puts the entry back where it was", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.contextMenu(rowAt(2));
+    fireEvent.click(await menuItem("Remove from Set"));
+    const gone = FRIDAY.entries.entries[1];
+    expect(await screen.findByText("Removed 1 entry from “Friday”.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() =>
+      expect(bridge.insertTrackInCollection).toHaveBeenCalledWith({
+        collection_id: IDS.friday,
+        track_id: gone.track_id,
+        position: gone.position,
+        chapter_id: gone.chapter_id,
+      }),
+    );
+  });
+
+  it("says which entries Undo could not bring back when an Undo insert fails, and keeps going", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(1));
+    fireEvent.click(rowAt(2), { ctrlKey: true });
+    expect(await within(inspector()).findByText(/2 selected/, {}, LOADED)).toBeInTheDocument();
+    fireEvent.contextMenu(rowAt(2));
+    fireEvent.click(await menuItem("Remove 2 entries from Set"));
+    expect(await screen.findByText(/^Removed .* from “Friday”\.$/)).toBeInTheDocument();
+    const insert = bridge.insertTrackInCollection as unknown as ReturnType<typeof vi.fn>;
+    insert.mockClear();
+    insert.mockRejectedValueOnce(new Error("gone"));
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(insert).toHaveBeenCalledTimes(2));
+    expect(
+      await screen.findByText("Undo could not bring back 1 of 2 removed entries; the rest are back."),
+    ).toBeInTheDocument();
+  });
+
   it("acts on every selected entry", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
@@ -846,6 +883,7 @@ describe("an entry's menu", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.contextMenu(rowAt(4));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "More" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "Similar tracks" }));
     await waitFor(() => expect(where()).toBe(`/discover/similar/${FRIDAY.entries.entries[2].track_id}`));
   });
@@ -999,7 +1037,7 @@ describe("the entry's plan in the Inspector", () => {
 
   it("acknowledges a transition warning, and withdraws an acknowledged one", async () => {
     const zone = await select(5);
-    const jump = within(zone).getByText(/Tempo jumps 9.4% faster/).closest("li") as HTMLElement;
+    const jump = within(zone).getByText(/Tempo jumps faster \(\+9\.4%\)/).closest("li") as HTMLElement;
     fireEvent.click(within(jump).getByRole("button", { name: "Mark OK" }));
     await waitFor(() =>
       expect(sets.acknowledge).toHaveBeenCalledWith({ from_entry_id: E3, to_entry_id: E4, warning: "tempo_jump" }),
@@ -1076,6 +1114,46 @@ const factsLine = () => document.querySelector(".prepare-header__facts") as HTML
 const button = (name: string, index = 2) => within(rowAt(index)).getByRole("button", { name });
 const tableKey = (init: KeyboardEventInit) => fireEvent.keyDown(table(), init);
 
+describe("selecting in the Set (area 36)", () => {
+  const selectedRows = () =>
+    within(table())
+      .getAllByRole("row")
+      .filter((row) => row.getAttribute("aria-selected") === "true");
+
+  it("selects every entry on Ctrl+A, never a chapter heading, and lets go on Escape", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    act(() => table().focus());
+    tableKey({ key: "a", ctrlKey: true });
+    await waitFor(() => expect(selectedRows()).toHaveLength(FRIDAY.entries.entries.length));
+    expect(selectedRows().every((row) => !row.classList.contains("prepare-heading"))).toBe(true);
+    tableKey({ key: "Escape" });
+    await waitFor(() => expect(selectedRows()).toHaveLength(0));
+  });
+
+  it("draws a heading that cannot sort as plain text, and a click on it sorts nothing", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    const headers = within(table()).getAllByRole("columnheader");
+    expect(headers.length).toBeGreaterThan(0);
+    for (const header of headers) expect(header).toHaveAttribute("aria-sort", "none");
+    fireEvent.click(within(headers[2]).getByText(/./));
+    for (const header of within(table()).getAllByRole("columnheader")) {
+      expect(header).toHaveAttribute("aria-sort", "none");
+    }
+  });
+
+  it("draws Set and View as menu buttons with a small arrow, the height of Play Set", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    for (const name of ["Set", "View"]) {
+      const trigger = screen.getByRole("button", { name });
+      expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+      expect(trigger.querySelector('[data-icon="chevron-down"]')).toHaveClass("cp-pixel-icon--text");
+    }
+  });
+});
+
 describe("the entry buttons (FLW-17, C15d)", () => {
   const names = ["Move up", "Move down", "Start a chapter here", "Repeat after", "Remove"];
 
@@ -1089,8 +1167,8 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     fireEvent.click(rowAt(2));
     const group = within(rowAt(2)).getByRole("group", { name: "Selected entries" });
     expect(within(group).getAllByRole("button").map(markOf)).toEqual([
-      "arrow-up",
-      "arrow-down",
+      "move",
+      "move",
       "Chapter here",
       "Repeat after",
       "Remove",
@@ -1231,8 +1309,8 @@ describe("the entry buttons (FLW-17, C15d)", () => {
       await opened();
       fireEvent.click(rowAt(2));
       expect(within(within(rowAt(2)).getByRole("group", { name: "Selected entries" })).getAllByRole("button").map(markOf)).toEqual([
-        "arrow-up",
-        "arrow-down",
+        "move",
+        "move",
         "Chapter here",
         "Repeat after",
         "Remove",
@@ -1245,8 +1323,8 @@ describe("the entry buttons (FLW-17, C15d)", () => {
       await opened();
       fireEvent.click(rowAt(2));
       expect(button("Start a chapter here").textContent).toBe("Chapter");
-      expect(markOf(button("Repeat after"))).toBe("repeat");
-      expect(markOf(button("Remove"))).toBe("close");
+      expect(markOf(button("Repeat after"))).toBe("repeat-after");
+      expect(markOf(button("Remove"))).toBe("remove");
     });
 
     it("draws one Actions button that opens the row's menu where not even the glyphs fit", async () => {
@@ -1260,7 +1338,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
       fireEvent.click(within(group).getByRole("button", { name: "Actions" }));
       // The entry's own context menu, as a right-click opens it.
       expect(await menuItem("Remove from Set")).toBeInTheDocument();
-      expect(await menuItem("Play Set from here")).toBeInTheDocument();
+      expect(await menuItem("Play")).toBeInTheDocument();
     });
   });
 
@@ -1888,7 +1966,7 @@ describe("the transition strip's caption and Accept (FLW-19)", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.click(rowAt(1));
-    expect(await screen.findByTestId("transition-words")).toHaveTextContent(/^8A → 9A · next key up · \+1\.6% BPM$/);
+    expect(await screen.findByTestId("transition-words")).toHaveTextContent(/^8A → 9A · next key up · \+1\.6%$/);
   });
 
   it("ends the line with one warning, the first still open, and Accept writes the acceptance", async () => {

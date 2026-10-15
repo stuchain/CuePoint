@@ -20,9 +20,10 @@
  */
 import type { SetEntry, SetShape, SetWarning } from "../../api/cuepointBridge.types";
 import { formatBpm } from "../../components/format/bpm";
+import { formatTempoChange } from "../../format/units";
 import { shortWarning } from "./prepareFormat";
 import { keyRelationWords } from "./prepareSource";
-import { formatTime } from "./setTime";
+import { formatLength } from "../../format/durations";
 
 /** What the strip says with no entry selected. */
 export const NO_SELECTION_WORDS = "Select an entry to see its transition";
@@ -78,9 +79,9 @@ const NO_OUT_TIME = "No out time";
 /** A half's planned times in words: "In 0:16 · Out 5:42", "In 0:16 · no out time", "No out time". */
 export function halfTimesWords(half: TransitionHalf): string {
   if (half.outSeconds !== null) {
-    return `In ${formatTime(half.inSeconds ?? 0)} · Out ${formatTime(half.outSeconds)}`;
+    return `In ${formatLength(half.inSeconds ?? 0)} · Out ${formatLength(half.outSeconds)}`;
   }
-  if (half.inSeconds !== null) return `In ${formatTime(half.inSeconds)} · no out time`;
+  if (half.inSeconds !== null) return `In ${formatLength(half.inSeconds)} · no out time`;
   return NO_OUT_TIME;
 }
 
@@ -109,17 +110,14 @@ function relationWords(
   return `${words} ${(to.number - from.number + 12) % 12 === 1 ? "up" : "down"}`;
 }
 
-/** The change of tempo as the caption says it: "+2.8% BPM", "−12.9% BPM", "0% BPM". */
+/** The change of tempo as the caption says it: "+2.8%", "−12.9%", "0%". */
 function tempoChange(from: number, to: number): string {
-  const change = ((to - from) / from) * 100;
-  const rounded = Math.round(Math.abs(change) * 10) / 10;
-  const sign = rounded === 0 ? "" : change > 0 ? "+" : "−";
-  return `${sign}${rounded}% BPM`;
+  return formatTempoChange(from, to);
 }
 
 /** "122 → 124 BPM (+1.6%)": the tempos and how far the second is from the first, for a title. */
 function tempoWords(from: number, to: number): string {
-  const change = tempoChange(from, to).replace(" BPM", "");
+  const change = tempoChange(from, to);
   return `${formatBpm(from)} → ${formatBpm(to)} BPM (${change})`;
 }
 

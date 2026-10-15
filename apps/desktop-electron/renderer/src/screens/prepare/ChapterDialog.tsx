@@ -12,10 +12,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { SetChapterPlan, SetChapterUpdate } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
+import { Notice } from "../../components/Notice";
 import { TextField } from "../../components/TextField";
 import { CHAPTER_NAME_MAX_LENGTH, chapterUpdate, readBpm } from "./chapterForm";
 import { chapterName } from "./prepareRows";
-import { formatTime } from "./setTime";
+import { formatLength } from "../../format/durations";
 import "./prepare.css";
 
 /** What a chapter is, before the fields that set it (PRP-11). */
@@ -66,7 +67,7 @@ export function ChapterDialog({
   useEffect(() => {
     if (!chapter) return;
     setName(chapter.name);
-    setTarget(chapter.target_seconds == null ? "" : formatTime(chapter.target_seconds));
+    setTarget(chapter.target_seconds == null ? "" : formatLength(chapter.target_seconds));
     setBpmMin(chapter.bpm_min == null ? "" : String(chapter.bpm_min));
     setBpmMax(chapter.bpm_max == null ? "" : String(chapter.bpm_max));
     setNotes(chapter.notes ?? "");
@@ -114,6 +115,8 @@ export function ChapterDialog({
       open={chapter !== null}
       title={chapter ? `Chapter “${chapterName(chapter)}”` : "Chapter"}
       onClose={onClose}
+      primaryAction={{ label: "Save", onClick: submit, loading: busy }}
+      secondaryAction={{ label: "Cancel", onClick: onClose }}
     >
       <div className="prepare-dialog">
         <p className="prepare-note">{CHAPTER_LEAD}</p>
@@ -165,13 +168,13 @@ export function ChapterDialog({
         </label>
 
         {(problem ?? error) && (
-          <p key={problem ?? errorKey} className="prepare-dialog__problem" role="alert">
+          <Notice key={problem ?? errorKey} kind="field-error">
             {problem ?? error}
-          </p>
+          </Notice>
         )}
 
         <div className="prepare-dialog__actions">
-          {/* The chapter's place and its deletion, at the left; they act at once, apart from the form. */}
+          {/* The chapter's place and its deletion; they act at once, apart from the form. */}
           <div className="prepare-dialog__actions-start" ref={moves}
             onFocus={(event) => {
               const buttons = Array.from(moves.current?.querySelectorAll("button") ?? []);
@@ -189,12 +192,6 @@ export function ChapterDialog({
               Delete chapter…
             </Button>
           </div>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={submit} disabled={busy}>
-            {busy ? "Saving…" : "Save"}
-          </Button>
         </div>
       </div>
     </Modal>

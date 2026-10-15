@@ -359,16 +359,20 @@ describe("the menus", () => {
     const items = entryMenuItems({ count: 1, canSplit: true }, handlers, [
       { id: "similar", label: "Similar tracks", onSelect: noop },
     ]);
+    // The base track menu (Play, then More), with the Set's own edits between in "This page".
     expect(items.map((item) => item.id)).toEqual([
       "play",
       "play-next",
       "add-to-queue",
+      "this-page",
       "split",
       "repeat",
       "remove",
-      "similar",
+      "group-more",
     ]);
-    expect(items[0].label).toBe("Play Set from here");
+    expect(items[0].label).toBe("Play");
+    expect(items.find((item) => item.id === "this-page")).toMatchObject({ label: "This page", disabled: true });
+    expect(items.find((item) => item.id === "group-more")?.items?.map((item) => item.id)).toEqual(["similar"]);
     expect(items.find((item) => item.id === "split")?.disabled).toBe(false);
     // PRP-11: what a chapter is, where the menu starts one.
     expect(items.find((item) => item.id === "split")?.title).toBe(
@@ -384,9 +388,10 @@ describe("the menus", () => {
   it("offers several entries playing and removing, and nothing about one place", () => {
     const items = entryMenuItems({ count: 3, canSplit: true }, handlers);
     expect(items.map((item) => item.label)).toEqual([
-      "Play 3 entries",
+      "Play 3 tracks",
       "Play next",
       "Add to queue",
+      "This page",
       "Remove 3 entries from Set",
     ]);
     expect(entryMenuItems({ count: 0, canSplit: true }, handlers)).toEqual([]);

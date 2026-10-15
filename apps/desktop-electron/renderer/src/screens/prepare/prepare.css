@@ -142,12 +142,8 @@
 }
 
 .prepare-link:disabled {
-  opacity: 0.6;
+  color: var(--fg-disabled);
   cursor: progress;
-}
-
-.prepare-header__chevron {
-  margin-left: var(--space-xs);
 }
 
 /* "Missing files ›": a link in the facts line, not a filled button. */
@@ -239,6 +235,18 @@ body.prepare-resizing {
 
 .prepare-set__rows > .track-table {
   flex: 1;
+}
+
+/* A click or a Shift-click on a row selects the row, never the text in it (area 36); a field being
+   typed in still selects its own text. */
+.prepare-set__rows,
+.prepare-source__rows {
+  user-select: none;
+}
+
+.prepare-set__rows input,
+.prepare-set__rows textarea {
+  user-select: text;
 }
 
 /* --------------------------------------------------------------- the lanes */
@@ -480,7 +488,7 @@ body.prepare-resizing {
 
 /* A key clash in the caption, in the warning colour; the words say it too (colour is not the only cue). */
 .prepare-transition__piece--warning {
-  color: var(--accent-warning, var(--accent-danger));
+  color: var(--warning-text);
 }
 
 .prepare-transition__segment {
@@ -591,7 +599,6 @@ body.prepare-resizing {
 
 .prepare-heading__button:disabled,
 .prepare-row-buttons__button:disabled {
-  opacity: 0.55;
   color: var(--fg-disabled);
   cursor: not-allowed;
 }
@@ -814,15 +821,13 @@ body.prepare-resizing {
 .prepare-dialog {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  min-width: calc(320px * var(--scale));
-  max-width: calc(420px * var(--scale));
+  gap: var(--space-lg);
 }
 
 .prepare-dialog__pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-sm);
+  gap: var(--space-lg);
 }
 
 .prepare-dialog__notes {
@@ -837,24 +842,16 @@ body.prepare-resizing {
   font-size: var(--font-size-xs);
 }
 
-.prepare-dialog__problem {
-  margin: 0;
-  color: var(--accent-danger);
-  font-size: var(--font-size-xs);
-}
-
 .prepare-dialog__actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .prepare-dialog__actions-start {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm);
-  margin-right: auto;
+  gap: var(--space-md);
 }
 
 /* -------------------------------------------------------- the source panel */
@@ -868,10 +865,10 @@ body.prepare-resizing {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: calc(2px * var(--scale));
+  gap: var(--space-md);
   min-width: 0;
   min-height: 0;
-  padding: calc(2px * var(--scale)) var(--space-xs);
+  padding: var(--space-md);
   overflow: hidden;
 }
 
@@ -889,31 +886,16 @@ body.prepare-resizing {
 
 /* The pool, and the panel's one action at the end of its line: the select
    gives way, so the button always shows whole. */
-.prepare-source__controls,
-.prepare-source__search {
+.prepare-source__controls {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-md);
   min-width: 0;
 }
 
 .prepare-source__search {
   flex: none;
-}
-
-.prepare-source__input {
-  flex: 1;
-  width: 100%;
-  min-width: 0;
-  min-height: var(--control-height);
-  padding: 0 var(--space-xs);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-input);
-  color: var(--fg-primary);
-  font-family: var(--font-pixel);
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
 }
 
 .cp-select.prepare-source__select {
@@ -922,18 +904,30 @@ body.prepare-resizing {
   min-width: calc(112px * var(--scale));
 }
 
-.prepare-source__input:focus,
-.prepare-source__insert:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-}
-
+/* Both tabs stay mounted once opened (area 42), stacked in the room the body has; the one not
+   shown is hidden, not removed, so its scroll, sort, search and selection are still there. */
 .prepare-source__body {
+  position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: calc(2px * var(--scale));
   min-width: 0;
   min-height: 0;
+}
+
+.prepare-source__pane {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+  min-height: 0;
+}
+
+.prepare-source__pane[aria-hidden="true"] {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .prepare-source__point {
@@ -949,32 +943,6 @@ body.prepare-resizing {
 .prepare-source__point em {
   font-style: normal;
   font-weight: 700;
-}
-
-/* The panel's one action: compact, and the accent, so it reads as the verb. */
-.prepare-source__insert {
-  flex: none;
-  min-height: var(--control-height);
-  padding: 0 var(--space-sm);
-  white-space: nowrap;
-  border: var(--control-border-width) solid var(--accent-primary);
-  background: var(--accent-primary);
-  color: var(--fg-inverse);
-  font-family: var(--font-pixel);
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-  cursor: pointer;
-}
-
-.prepare-source__insert:hover:not(:disabled) {
-  background: var(--accent-primary-hover);
-}
-
-/* Nothing picked: still a button (it takes you to the table), no longer dim. */
-.prepare-source__insert[data-idle] {
-  border-color: var(--border-control);
-  background: var(--bg-input);
-  color: var(--fg-primary);
 }
 
 .prepare-source__note {

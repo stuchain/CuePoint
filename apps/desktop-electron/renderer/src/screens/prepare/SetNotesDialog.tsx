@@ -10,8 +10,8 @@
  */
 import { useEffect, useId, useState } from "react";
 
-import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
+import { Notice } from "../../components/Notice";
 import { notesToSend } from "./prepareFormat";
 import "./prepare.css";
 
@@ -35,7 +35,10 @@ export function SetNotesDialog({ set, error = null, errorKey = 0, onSave, onClos
   }, [set]);
 
   return (
-    <Modal open={set !== null} title={set ? `Notes for “${set.name}”` : "Notes"} onClose={onClose}>
+    <Modal open={set !== null} title={set ? `Notes for “${set.name}”` : "Notes"} onClose={onClose}
+      primaryAction={{ label: "Save", onClick: () => onSave(notesToSend(notes)) }}
+      secondaryAction={{ label: "Cancel", onClick: onClose }}
+    >
       <div className="prepare-dialog">
         <label className="prepare-dialog__notes" htmlFor={`${id}-notes`}>
           <span className="cp-field__label">Notes</span>
@@ -49,17 +52,10 @@ export function SetNotesDialog({ set, error = null, errorKey = 0, onSave, onClos
         </label>
 
         {error && (
-          <p key={errorKey} className="prepare-dialog__problem" role="alert">
+          <Notice key={errorKey} kind="field-error">
             {error}
-          </p>
+          </Notice>
         )}
-
-        <div className="prepare-dialog__actions">
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={() => onSave(notesToSend(notes))}>Save</Button>
-        </div>
       </div>
     </Modal>
   );

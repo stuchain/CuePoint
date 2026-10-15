@@ -22,7 +22,8 @@
  * rectangles the way `PixelIcon` draws.
  */
 import type { SetKeyRelation, SetShape } from "../../api/cuepointBridge.types";
-import { formatBpm, formatBpmRange } from "../../components/format/bpm";
+import { formatBpmRange } from "../../components/format/bpm";
+import { NO_BPM, formatBpmText } from "../../format/units";
 import { keyRelationWords } from "./prepareSource";
 
 /** A rectangle in whole pixels. */
@@ -253,14 +254,14 @@ export function columnLabel(
   index: number,
   title: string,
   bpm: number | null,
-  key: string | null,
+  _key: string | null,
   camelot: { number: number; letter: "A" | "B" } | null,
 ): string {
-  const tempo = formatBpm(bpm) ? `${formatBpm(bpm)} BPM` : "no BPM";
+  const tempo = formatBpmText(bpm);
   let wheel = "no key";
   if (camelot) {
-    const code = `${camelot.number}${camelot.letter}`;
-    wheel = key && key !== code ? `${code} (${key})` : code;
+    // Every key is a Camelot code, never the raw "Am".
+    wheel = `${camelot.number}${camelot.letter}`;
   }
   return `${index + 1} · ${title} · ${tempo} · ${wheel}`;
 }
@@ -272,7 +273,7 @@ export function linkWords(style: KeyLinkStyle): string {
 
 /** The tempo lane's range in words: "120–146 BPM", or "No BPMs". */
 export function rangeText(range: { min: number; max: number } | null): string {
-  if (!range) return "No BPMs";
+  if (!range) return NO_BPM;
   const text = formatBpmRange(range.min, range.max);
   return text.includes("–") ? text : `${text} BPM`;
 }

@@ -66,19 +66,19 @@ describe("the five buttons", () => {
       "Remove",
     ]);
     expect(list.map((button) => button.short)).toEqual([
-      { icon: "arrow-up" },
-      { icon: "arrow-down" },
+      { icon: "move" },
+      { icon: "move" },
       { text: "Chapter here" },
       { text: "Repeat after" },
       { text: "Remove" },
     ]);
     // A pane with no room for the words draws these instead (DEC-249).
     expect(list.map((button) => button.glyph)).toEqual([
-      { icon: "arrow-up" },
-      { icon: "arrow-down" },
+      { icon: "move" },
+      { icon: "move" },
       { text: "Chapter" },
-      { icon: "repeat" },
-      { icon: "close" },
+      { icon: "repeat-after" },
+      { icon: "remove" },
     ]);
   });
 

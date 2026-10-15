@@ -89,7 +89,15 @@ track is in, and each opens there too.
   With several selected, they move together.
 - **Remove**, among the same buttons (also Delete), or **Remove from Set** on an
   entry's right-click menu, removes the selected entries and nothing else. No
-  track is ever deleted.
+  track is ever deleted. A toast says what was removed and offers **Undo**, which puts
+  the entries back where they were, with their times and notes (a warning you had
+  marked OK is not brought back).
+
+Click, Ctrl-click and Shift-click select rows, **Ctrl+A** (Cmd+A on a Mac) selects every
+entry, and **Esc** lets go; the same keys work in the panel beside the Set. Right-click
+selects the row first. The menu is the one every track list has (**Play**, **Play next**,
+**Add to queue**, and **More** with the track's pages, Copy and Show in folder), with the
+Set's own edits in a **This page** block.
 
 The buttons are at the right end of the selected row, so they push nothing down.
 With nothing selected there are none; with several entries selected they are on
@@ -290,10 +298,14 @@ first track; add that one from the Library tab.
 one, and clicking it takes you to the table), or drag them into the Set. Drop anywhere in the Set table, even in the empty space
 below the last row: while you drag, the Set is outlined and says “Drop here to add to” its
 name, and a line shows where the tracks will land (above a chapter's heading means the end
-of the chapter before, and the line names the chapter). Rows you can drag have a small grip
-at their left edge; dragging several selected rows shows a label such as “3 tracks”.
-Double-click a row to hear it; its right-click menu also queues it, and opens its
-Similar tracks and its artist's or label's page.
+of the chapter before, and the line names the chapter). Rows in the Set have a small grip
+at their left edge, because dragging them changes the order; rows in the panel have none, because
+dragging them only copies a track in. Dragging several selected rows shows a label such as “3 tracks”.
+Double-click a row to hear it; its right-click menu has the same **Play**, **Play next**, **Add to queue** and
+**More** as the Set's, with **Insert here** under **This page**.
+
+Click a row in either list and Track details shows that track; the list you clicked last wins.
+Each tab keeps its search, sort, scroll and selection while you look at the other.
 
 ## The tempo and key lanes
 
