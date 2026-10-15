@@ -44,12 +44,20 @@
 /* Sub-tabs (T8): no strip, no rule, small and muted; the active one is a panel-alt pill. */
 .cp-tabs--sub {
   width: auto;
+  max-width: 100%;
   padding: 0;
   background: transparent;
   border-bottom: 0;
+  /* One line, always: a tab never drops under the others. Too many for the width scroll
+     sideways (without a bar), rather than wrap or clip. */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .cp-tabs--sub .cp-tabs__tab {
+  padding: 0 var(--space-sm);
+  white-space: nowrap;
   border-bottom: 0;
   font-size: var(--font-size-xs);
   font-weight: var(--control-font-weight);

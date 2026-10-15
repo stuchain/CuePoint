@@ -2,6 +2,11 @@
  * Global search, in its dialog (K8). The results sit under the field inside the dialog's body,
  * which scrolls; the field is its own container so a narrow dialog drops to one column.
  */
+/* The dialog follows the window, up to a limit: a fixed 880px cut titles at 254px even on a 1920 screen. */
+.cp-modal--wide:has(.cp-global-search) {
+  width: min(92vw, max(880px, 70vw), 1500px);
+}
+
 .cp-global-search {
   display: flex;
   flex-direction: column;
@@ -99,7 +104,8 @@
   min-width: 0;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 2fr);
   gap: var(--space-sm);
-  align-items: baseline;
+  /* Centred, as the play button beside it is: with a row taller than its text the text sat at the top. */
+  align-items: center;
   min-height: var(--hit-min);
   padding: var(--space-xs) var(--space-sm);
   cursor: pointer;

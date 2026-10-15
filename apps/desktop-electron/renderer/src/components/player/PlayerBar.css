@@ -124,10 +124,12 @@
 
 .cp-player-bar__title,
 .cp-player-bar__meta {
-  /* One line each: a long title must not grow the bar and reflow the app. The clip
-     margin lets the key button's hit area reach past the line (BAR-5). */
-  overflow: clip;
-  overflow-clip-margin: 8px;
+  /* One line each: a long title must not grow the bar and reflow the app. Clipped sideways
+     only, with a margin for the ring and the key button's hit area (BAR-5); up and down it is
+     never clipped, so the artist link's ring and the key button show whole. */
+  overflow-x: clip;
+  overflow-y: visible;
+  overflow-clip-margin: calc(8px * var(--scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }

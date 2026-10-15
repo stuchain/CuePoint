@@ -22,6 +22,15 @@
    */
   --cp-sidebar-width: min(calc(152px * var(--scale)), 34vw);
 
+  /*
+   * The rail's own height decides how tall a row is, so every page link fits at any size in a
+   * short window (the list is a scroller only as a last resort). A row is as tall as a hit target
+   * until the rail is too short for ten of them plus what is not a row (padding, gaps, the "Pages"
+   * label, the divider), then they share what there is, never under the text's own height. At 2x in
+   * a 735 px window the nominal 96 px entries would have left room for one.
+   */
+  --cp-sidebar-fit: max(calc(22px * var(--scale)), calc((100cqh - 75px * var(--scale)) / 10));
+  container-type: size;
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
@@ -61,7 +70,7 @@
   min-width: 0;
   align-items: center;
   gap: var(--space-xs);
-  min-height: var(--hit-min);
+  min-height: min(var(--hit-min), var(--cp-sidebar-fit));
   padding: var(--space-xs) 0;
   color: var(--fg-primary);
   font-size: var(--font-size-sm);
@@ -117,7 +126,7 @@
   /* Compact: the icon's box and its border, no side padding; the height is still a full hit target. */
   box-sizing: content-box;
   width: var(--icon-size);
-  min-height: var(--hit-min);
+  min-height: min(var(--hit-min), var(--cp-sidebar-fit));
   padding: 0;
   background: var(--bg-panel);
   border: var(--control-border-width) solid var(--border-control);
@@ -147,7 +156,7 @@
 
 /* The page entries get more room each than the pinned Settings row (hit-min stays the floor). */
 .cp-sidebar:not(.cp-sidebar--collapsed) .cp-sidebar__list .cp-sidebar__link {
-  min-height: calc(var(--hit-min) + var(--space-xs));
+  min-height: min(calc(var(--hit-min) + var(--space-xs)), var(--cp-sidebar-fit));
 }
 
 /* The workspace destinations: the one part of the rail that scrolls (R2-9). */
@@ -239,7 +248,7 @@
    * The full hit target height even when collapsed: a rail whose targets shrink
    * with its width would be hardest to hit exactly when it is narrowest.
    */
-  min-height: var(--hit-min);
+  min-height: min(var(--hit-min), var(--cp-sidebar-fit));
   padding: var(--space-xs) var(--space-sm);
   border: var(--hairline) solid transparent;
   color: var(--fg-muted);

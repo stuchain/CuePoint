@@ -169,3 +169,22 @@ body.cp-inspector-resizing {
   font-size: var(--text-body);
   line-height: 1.5;
 }
+
+/*
+ * Track details' sub-tabs share one line at the panel's own width: the Library's sheet lets them
+ * wrap, which at the default width dropped "Yours" under the others. Less padding and no gap, and
+ * the strip scrolls sideways if it ever still does not fit. Focus rings are inset (the strip clips).
+ */
+.cp-inspector .cp-track-detail > .cp-tabs--sub {
+  flex-wrap: nowrap;
+  gap: 0;
+}
+
+.cp-inspector .cp-track-detail > .cp-tabs--sub .cp-tabs__tab {
+  padding: 0 var(--space-xs);
+}
+
+.cp-inspector .cp-tabs--sub .cp-tabs__tab:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}

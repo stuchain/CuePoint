@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   WAVEFORM_DETAIL_DEFAULT,
   SHORT_WINDOW_QUERY,
+  shortWindowQueryFor,
   WAVEFORM_DETAIL_SPAN_STORAGE_KEY,
   WAVEFORM_DETAIL_STORAGE_KEY,
   loadWaveformDetail,
@@ -100,6 +101,9 @@ describe("the short-window default", () => {
     Object.defineProperty(window, "matchMedia", { configurable: true, writable: true, value: matchMedia });
     return {
       matchMedia,
+      set matches(value: boolean) {
+        matches = value;
+      },
       resize(short: boolean) {
         matches = short;
         listeners.forEach((fn) => fn());
@@ -114,6 +118,38 @@ describe("the short-window default", () => {
     loadWaveformDetail();
     expect(media.matchMedia).toHaveBeenCalledTimes(1);
     expect(media.matchMedia).toHaveBeenCalledWith(SHORT_WINDOW_QUERY);
+  });
+
+  it("scales the height it asks about with the size, so a 735 px window at 2x counts as short", () => {
+    expect(shortWindowQueryFor(1)).toBe(SHORT_WINDOW_QUERY);
+    expect(shortWindowQueryFor(1.5)).toBe("(max-height: 1049.98px)");
+    expect(shortWindowQueryFor(2)).toBe("(max-height: 1399.98px)");
+    document.documentElement.dataset.scale = "2";
+    try {
+      const media = fakeMedia(true);
+      expect(loadWaveformDetail()).toBe(false);
+      expect(media.matchMedia).toHaveBeenCalledWith("(max-height: 1399.98px)");
+    } finally {
+      delete document.documentElement.dataset.scale;
+    }
+  });
+
+  it("asks again when the size changes", async () => {
+    const media = fakeMedia(false);
+    const { result } = renderHook(() => useWaveformDetailSetting());
+    expect(media.matchMedia).toHaveBeenLastCalledWith(SHORT_WINDOW_QUERY);
+    expect(result.current[0]).toBe(true);
+    try {
+      media.matches = true;
+      await act(async () => {
+        document.documentElement.dataset.scale = "2";
+        await Promise.resolve();
+      });
+      expect(media.matchMedia).toHaveBeenLastCalledWith("(max-height: 1399.98px)");
+      expect(result.current[0]).toBe(false);
+    } finally {
+      delete document.documentElement.dataset.scale;
+    }
   });
 
   it("is off with no choice in a short window, and on in a tall one", () => {

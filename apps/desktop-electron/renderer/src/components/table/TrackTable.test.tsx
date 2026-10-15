@@ -574,7 +574,7 @@ describe("scale", () => {
 
     const table = screen.getByTestId("track-table");
     expect(table.style.getPropertyValue("--track-table-columns")).toBe(
-      "600px 360px 240px 360px",
+      "600px 360px 240px minmax(360px, 1fr)",
     );
   });
 
@@ -586,7 +586,7 @@ describe("scale", () => {
 
     const table = screen.getByTestId("track-table");
     expect(table.style.getPropertyValue("--track-table-columns")).toBe(
-      "240px 240px 180px 240px",
+      "240px 240px 180px minmax(240px, 1fr)",
     );
   });
 });
@@ -751,7 +751,7 @@ describe("column widths", () => {
     renderTable();
     const table = screen.getByTestId("track-table");
     expect(table.style.getPropertyValue("--track-table-columns")).toBe(
-      "200px 120px 80px 120px",
+      "200px 120px 80px minmax(120px, 1fr)",
     );
   });
 
@@ -759,7 +759,7 @@ describe("column widths", () => {
     renderTable({ widths: { title: 300, artist: 100, bpm: 60, path: 90 } });
     const table = screen.getByTestId("track-table");
     expect(table.style.getPropertyValue("--track-table-columns")).toBe(
-      "300px 100px 60px 90px",
+      "300px 100px 60px minmax(90px, 1fr)",
     );
   });
 
@@ -799,7 +799,7 @@ describe("column widths", () => {
 
     const table = screen.getByTestId("track-table");
     expect(table.style.getPropertyValue("--track-table-columns")).toBe(
-      "240px 120px 80px 120px",
+      "240px 120px 80px minmax(120px, 1fr)",
     );
   });
 
@@ -1210,7 +1210,7 @@ describe("the columns button in the header's corner (K21)", () => {
     renderTable({ onColumns: vi.fn() });
     const table = screen.getByTestId("track-table");
     expect(table.style.getPropertyValue("--track-table-columns")).toBe(
-      "200px 120px 80px 120px var(--track-table-corner)",
+      "200px 120px 80px minmax(120px, 1fr) var(--track-table-corner)",
     );
     expect(table.style.getPropertyValue("--track-table-min-width")).toContain("var(--track-table-corner)");
   });
@@ -1218,7 +1218,7 @@ describe("the columns button in the header's corner (K21)", () => {
   it("leaves the tracks alone when there is no Columns… button", () => {
     renderTable();
     expect(screen.getByTestId("track-table").style.getPropertyValue("--track-table-columns")).toBe(
-      "200px 120px 80px 120px",
+      "200px 120px 80px minmax(120px, 1fr)",
     );
   });
 

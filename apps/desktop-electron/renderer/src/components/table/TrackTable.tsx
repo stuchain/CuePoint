@@ -330,6 +330,9 @@ export function TrackTable<Row>({
   ariaLabel = "Tracks",
 }: TrackTableProps<Row>) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Where the table was last scrolled to sideways, so a header cell taking focus can be told
+  // from the user scrolling (below).
+  const settledLeft = useRef(0);
   const { scale } = useScale();
   // Which header is being dragged, for the cursor and the dimmed cell. The
   // move itself is the layout owner's to decide.
@@ -356,6 +359,7 @@ export function TrackTable<Row>({
     if (!element) return;
     let timer = 0;
     const onScroll = () => {
+      settledLeft.current = element.scrollLeft;
       if (!element.hasAttribute("data-scrolling")) element.setAttribute("data-scrolling", "");
       window.clearTimeout(timer);
       timer = window.setTimeout(() => element.removeAttribute("data-scrolling"), 160);
@@ -663,6 +667,19 @@ export function TrackTable<Row>({
    * another row. Focused here first, the press's own focus finds nothing to
    * do. The keyboard's scrolling (`scrollToIndex`) is untouched.
    */
+  /**
+   * Tab into a header cell never throws the table sideways. A browser centres a focused element
+   * in view, and with the pinned Title over the left edge that moved the whole table; here the
+   * scroll the focus made is undone and the cell is brought in only as far as it needs (nearest),
+   * which is not at all for a cell already in view.
+   */
+  const keepScrollOnHeaderFocus = (event: React.FocusEvent<HTMLElement>) => {
+    const element = scrollRef.current;
+    if (!element || event.target === event.currentTarget) return;
+    if (element.scrollLeft !== settledLeft.current) element.scrollLeft = settledLeft.current;
+    event.target.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  };
+
   const focusWithoutScroll = (event: React.MouseEvent) => {
     if (event.button !== 0) return;
     const element = scrollRef.current;
@@ -737,7 +754,7 @@ export function TrackTable<Row>({
         }}
       >
         {/* Row 1, which is what makes the body rows row 2 onward. */}
-        <div className="track-table__header" role="row" aria-rowindex={1}>
+        <div className="track-table__header" role="row" aria-rowindex={1} onFocus={keepScrollOnHeaderFocus}>
           {columns.map((column, index) => {
             const active = Boolean(column.sortKey && sort?.key === column.sortKey);
             return (

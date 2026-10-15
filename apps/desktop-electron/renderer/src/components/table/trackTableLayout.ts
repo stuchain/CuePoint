@@ -155,8 +155,16 @@ export function orderedWidths<Row>(
   );
 }
 
+/**
+ * The grid's columns. The last one is `minmax(width, 1fr)`: its width is the least it takes, and it
+ * takes what the table has left over, so a table wider than its columns draws no sideways scroll
+ * bar and no empty strip after the last column. A table narrower than its columns is as before.
+ */
 export function gridTemplate(widths: number[]): string {
-  return widths.map((width) => `${Math.round(width)}px`).join(" ");
+  const last = widths.length - 1;
+  return widths
+    .map((width, index) => (index === last ? `minmax(${Math.round(width)}px, 1fr)` : `${Math.round(width)}px`))
+    .join(" ");
 }
 
 export function totalWidth(widths: number[]): number {

@@ -117,8 +117,10 @@ describe("the grid", () => {
     expect(orderedWidths(COLUMNS, {}, 1)).toEqual([200, 120, 60, 120]);
   });
 
-  it("builds a pixel template", () => {
-    expect(gridTemplate([10, 20.4])).toBe("10px 20px");
+  it("builds a pixel template whose last column takes what is left", () => {
+    expect(gridTemplate([10, 20.4])).toBe("10px minmax(20px, 1fr)");
+    expect(gridTemplate([10])).toBe("minmax(10px, 1fr)");
+    expect(gridTemplate([])).toBe("");
   });
 
   it("totals the widths", () => {

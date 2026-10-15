@@ -19,12 +19,29 @@ export const WAVEFORM_DETAIL_STORAGE_KEY = "cuepoint-waveform-detail";
 export const WAVEFORM_DETAIL_DEFAULT = true;
 
 /**
- * Windows with less than 700 px of content height start without the strip. That
- * is the content, not the outer window: the default 1280x800 window is about
- * 740-775 px of content depending on the platform, so it keeps the strip, and a
- * 1280x720 window (about 660 px of content) hides it.
+ * Windows with less than 700 scaled px of content height start without the strip. That is the
+ * content, not the outer window, and in the size's own units: at 1x the default 1280x800 window
+ * (about 740-775 px of content) keeps the strip and a 1280x720 window (about 660) hides it; at
+ * 1.5x or 2x the same rows take 1.5 or 2 times the room, so the window must be that much taller
+ * (a 735 px window at 2x is 367 scaled px, and the strip, the bar and the status line left no
+ * page). The query is rebuilt when the size changes.
  */
-export const SHORT_WINDOW_QUERY = "(max-height: 699.98px)";
+export const SHORT_WINDOW_SCALED_PX = 700;
+
+/** The media query for a window too short for the strip at this size. */
+export function shortWindowQueryFor(scale: number): string {
+  return `(max-height: ${Number((SHORT_WINDOW_SCALED_PX * scale - 0.02).toFixed(2))}px)`;
+}
+
+/** The query at 1x. */
+export const SHORT_WINDOW_QUERY = shortWindowQueryFor(1);
+
+/** The size the page is drawn at: the document's `data-scale` (set with `--scale`), 1 if none. */
+function currentScale(): number {
+  if (typeof document === "undefined") return 1;
+  const value = Number(document.documentElement.dataset.scale);
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
 
 /** What a stored value means: a choice, or null when none was made (or it is unrecognised). */
 export function parseWaveformDetail(raw: string | null): boolean | null {
@@ -40,12 +57,16 @@ export function loadWaveformChoice(): boolean | null {
   }
 }
 
-/** One query list for every read and subscription, made on first use. */
+/** The query list for the size in force, made on first use and again when the size changes. */
 let media: MediaQueryList | null = null;
+let mediaScale = 0;
 
 function shortWindowQuery(): MediaQueryList | null {
+  const scale = currentScale();
+  if (media !== null && mediaScale !== scale) media = null;
   if (media === null && typeof window !== "undefined" && typeof window.matchMedia === "function") {
-    media = window.matchMedia(SHORT_WINDOW_QUERY);
+    media = window.matchMedia(shortWindowQueryFor(scale));
+    mediaScale = scale;
   }
   return media;
 }
@@ -96,12 +117,24 @@ function subscribe(listener: () => void): () => void {
     listener();
   };
   window.addEventListener("storage", onStorage);
-  const query = shortWindowQuery();
+  // The query follows the size: a new size gets a new list, and the listeners move to it.
+  let query = shortWindowQuery();
   query?.addEventListener?.("change", listener);
+  const observer =
+    typeof MutationObserver === "function"
+      ? new MutationObserver(() => {
+          query?.removeEventListener?.("change", listener);
+          query = shortWindowQuery();
+          query?.addEventListener?.("change", listener);
+          listener();
+        })
+      : null;
+  observer?.observe(document.documentElement, { attributes: true, attributeFilter: ["data-scale"] });
   return () => {
     listeners.delete(listener);
     window.removeEventListener("storage", onStorage);
     query?.removeEventListener?.("change", listener);
+    observer?.disconnect();
   };
 }
 
@@ -110,6 +143,7 @@ export function resetWaveformDetailForTests(): void {
   choice = null;
   choiceRead = false;
   media = null;
+  mediaScale = 0;
 }
 
 /** Whether the strip shows, and a way to change it everywhere at once. */

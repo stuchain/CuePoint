@@ -12,6 +12,9 @@
   min-height: 0;
   overflow: hidden;
   border-top: var(--border-width) solid var(--border-outline);
+  /* A table's bottom hairline is the line above this strip too: this border covers it, so the two
+     are one line, not two. Nothing but a hairline of the page is covered when there is no table. */
+  margin-top: calc(-1 * var(--hairline));
   background: var(--bg-panel);
   cursor: pointer;
 }
