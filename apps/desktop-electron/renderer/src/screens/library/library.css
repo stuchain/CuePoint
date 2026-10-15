@@ -187,6 +187,15 @@
   grid-template-columns: clamp(calc(96px * var(--scale)), 24%, calc(176px * var(--scale))) minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
+  /* The three lines both sides share (LibraryScreen measures the right side and writes its real
+     heights into the first two, so a wrapped filter bar or a note moves the pane with it; the
+     values here are what one line of each comes to), so a rule runs straight across the pane and the table
+     (whole pixels: every part is a token or a rounded one). Line 1 is the search row
+     (padding, one control, its rule); line 2 the Play / Organize bar (its padding, one
+     control, its rule); line 3 the table's header (a row and its rule). */
+  --library-line-1: calc(var(--control-height) + 2 * var(--space-sm) + var(--hairline));
+  --library-line-2: calc(var(--control-height) + 2 * round(down, calc(var(--space-xs) / 2), 1px) + var(--hairline));
+  --library-line-3: calc(var(--row-height) + var(--hairline));
 }
 
 /*
@@ -233,6 +242,13 @@
   display: flex;
   min-height: 0;
   min-width: 0;
+}
+
+/* The toolbar above has its rule and the pane its edge, so the table draws neither its top nor
+   its left: each line is drawn once. */
+.library-screen__table .track-table {
+  border-top: 0;
+  border-left: 0;
 }
 
 /* A Set's note (PREP-09): its rows are its tracks once each, not its running

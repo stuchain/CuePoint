@@ -21,7 +21,8 @@
   gap: var(--library-toolbar-row-gap) round(down, calc(var(--space-xs) / 3), 1px);
   padding: round(down, calc(var(--space-xs) / 2), 1px) 0;
   background: var(--bg-toolbar);
-  border-top: var(--hairline) solid var(--border-muted);
+  /* The rule is under the bar, where the pane's Collections heading has its own. */
+  border-bottom: var(--hairline) solid var(--border-muted);
 }
 
 /* The break between the two lines: a full-width item, ordered after the groups

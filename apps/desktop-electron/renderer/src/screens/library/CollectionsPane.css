@@ -203,3 +203,38 @@
   color: var(--fg-primary);
   font: inherit;
 }
+
+/*
+ * Shared lines (library.css): the pane's rows are as high as the right side's, so the dividers
+ * run straight across. "All tracks" is the search row's height, the Collections heading the
+ * Play / Organize bar's, and the "+ New" row the table header's.
+ */
+.cp-library-pane__all {
+  box-sizing: border-box;
+  height: var(--library-line-1, auto);
+  border-bottom: var(--divider);
+}
+
+.cp-library-pane__all .cp-playlist-pane__tree {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding-bottom: 0;
+}
+
+.cp-library-pane__all .cp-playlist-pane__row {
+  flex: 1 1 auto;
+}
+
+.cp-library-pane .cp-collections > .cp-playlist-pane__head {
+  box-sizing: border-box;
+  height: var(--library-line-2, auto);
+  align-items: center;
+  padding-block: 0;
+}
+
+.cp-library-pane .cp-collections__create {
+  box-sizing: border-box;
+  height: var(--library-line-3, auto);
+  border-bottom: var(--divider);
+}

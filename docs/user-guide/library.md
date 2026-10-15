@@ -170,6 +170,9 @@ color, bitrate, comment, the file path, four from
 [Waveforms](waveforms.md#loudness)). Turn them on and off, drag a heading to move
 a column, drag its edge to resize it. CuePoint remembers all of it.
 
+Rows can be dragged anywhere (onto a Collection in the pane, say), but the ⠿ grip
+shows only inside a Collection, where the order of the rows matters.
+
 BPM, genre, label and year show **your** value when you have set one. A
 small mark beside the value says so — **B** when it was applied from Beatport,
 a dot when you typed it — and pointing at the mark, or tabbing to it, says in
@@ -233,8 +236,8 @@ figures as the table.
 | **Beatport ▸** | **Match tracks…** and **Review these matches** open [Clean](clean.md) with the selected tracks; **Use Beatport's values…** opens its dialog right here |
 | **More ▸** | **Similar tracks**, **Artist page** and **Label page** (see [Discover](discover.md#artist-and-label-pages); with several tracks selected they open the first one's), **Edit values…** (its dialog opens right here), **Show in folder** |
 
-Saving values into the audio files is not in a menu: it is the green bar at
-the bottom of the page ([Saving values into your
+The Library has no save bar. Saving values into the audio files is done per
+playlist, on Clean ([Saving values into your
 files](clean.md#saving-values-into-your-files)). Checking that the files are
 still there is on Clean ▸ Missing files.
 
@@ -611,7 +614,7 @@ says so. An undo is itself a change, and can be undone too.
 
 ## Saving to files
 
-**Save to files…**, on the green bar at the bottom of the Library and of Clean, puts your values into the audio files themselves, so
+**Save to files…**, on Clean, puts your values into the audio files themselves, so
 Rekordbox and other software can read them. It is the one thing CuePoint does
 outside its own library, so it always goes in the same order:
 

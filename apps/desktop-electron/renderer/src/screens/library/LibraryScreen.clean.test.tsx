@@ -8,7 +8,7 @@
  * - **Each entry does what it says**: Beatport ▸ opens Clean with the
  *   selected tracks (the match window, Review) rather than running anything
  *   here; Beatport's values and Edit values open their dialogs in
- *   place (K4); More ▸ holds Edit values, and saving into the files is the save bar's (C23).
+ *   place (K4); More ▸ holds Edit values, and syncing into the files is per playlist, on Clean.
  * - **The toolbar row** is one row above the table: the bar (with a selection), the count,
  *   Select all; Columns… is the table header's corner.
  * - **Overridden cells are marked** and name their source, and a copy reads the
@@ -391,7 +391,7 @@ describe("what the entries do", () => {
     },
   );
 
-  it("no longer offers Save changes into the files in More: the save bar does that", async () => {
+  it("does not offer Save changes into the files in More", async () => {
     renderScreen();
     await tableReady();
     await select("Track 1", "Track 2");
@@ -626,24 +626,12 @@ describe("the table", () => {
   });
 });
 
-describe("the save bar on the Library (C23)", () => {
-  it("draws nothing when every value is in the files", async () => {
-    bridge.getUnsavedValues = vi.fn().mockResolvedValue({ tracks: 0, fields: {} });
-    renderScreen();
-    await tableReady();
-    await waitFor(() => expect(mock("getUnsavedValues")).toHaveBeenCalled());
-    await waitFor(() => expect(screen.queryByRole("region", { name: "Save to files" })).toBeNull());
-  });
-
-  it("shows the bar for the unsaved tracks and opens the save window on all of them", async () => {
+describe("no save bar on the Library", () => {
+  it("draws no Save to files bar, even with unsaved tracks (syncing is per playlist, on Clean)", async () => {
     bridge.getUnsavedValues = vi.fn().mockResolvedValue({ tracks: 2, fields: {} });
-    bridge.previewTagWrite = vi.fn(() => new Promise(() => {}));
     renderScreen();
     await tableReady();
-    const bar = await screen.findByRole("region", { name: "Save to files" });
-    await userEvent.click(within(bar).getByRole("button", { name: "Save to files…" }));
-    expect(await screen.findByRole("dialog", { name: "Save 2 tracks to your files" })).toBeInTheDocument();
-    expect(OPEN_MATCH).not.toHaveBeenCalled();
-    expect(mock("applyBatch")).not.toHaveBeenCalled();
+    expect(screen.queryByRole("region", { name: "Save to files" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save to files…" })).toBeNull();
   });
 });

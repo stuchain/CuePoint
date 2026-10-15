@@ -425,7 +425,7 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
 /* The grip says a row can be picked up; the Library table has it too. Out of the column flow, at
    the row's left edge, so a narrow right-aligned first column keeps its content. Empty alt text,
    so a screen reader skips it. */
-.track-table__row--draggable::before {
+.track-table__row--grip::before {
   content: "⠿" / "";
   position: absolute;
   left: var(--space-xs);
@@ -437,6 +437,6 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
   pointer-events: none;
 }
 
-.track-table__row--draggable > .track-table__cell:first-child {
+.track-table__row--grip > .track-table__cell:first-child {
   padding-left: calc(var(--space-xs) + 1.2em);
 }

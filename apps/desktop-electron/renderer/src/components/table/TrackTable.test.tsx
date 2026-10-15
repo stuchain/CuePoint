@@ -1070,6 +1070,16 @@ describe("dragging rows (ORG-11)", () => {
     expect(renderedRows()[1]).not.toHaveClass("track-table__row--draggable");
   });
 
+  it("draws the grip on draggable rows by default, and not when showGrip is off", () => {
+    const { unmount } = renderTable({ onRowDragStart: vi.fn() });
+    expect(renderedRows()[0]).toHaveClass("track-table__row--grip");
+    unmount();
+    renderTable({ onRowDragStart: vi.fn(), showGrip: false });
+    expect(renderedRows()[0]).toHaveClass("track-table__row--draggable");
+    expect(renderedRows()[0]).not.toHaveClass("track-table__row--grip");
+    expect(renderedRows()[0]).toHaveAttribute("draggable", "true");
+  });
+
   it("accepts no drop at all when nobody is listening for one", () => {
     renderTable();
     drag("dragover", renderedRows()[0]!, transfer(), 0);

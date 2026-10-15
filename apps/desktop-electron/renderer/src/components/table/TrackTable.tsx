@@ -221,6 +221,12 @@ export interface TrackTableProps<Row> {
   canDragRow?: (row: Row) => boolean;
 
   /**
+   * Whether a draggable row draws its ⠿ grip. Defaults to true. A table where order does not
+   * matter (the Library outside a Collection) keeps its rows draggable but turns it off.
+   */
+  showGrip?: boolean;
+
+  /**
    * An extra class for a row, for a caller whose rows are of more than one
    * kind (PREP-10's chapter headings). The table gives it no meaning.
    */
@@ -309,6 +315,7 @@ export function TrackTable<Row>({
   onColumns,
   dragActive = false,
   canDragRow,
+  showGrip = true,
   rowClassName,
   isPlayingRow,
   wasPlayedRow,
@@ -842,7 +849,7 @@ export function TrackTable<Row>({
               return (
                 <div
                   key={key}
-                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${playing ? " track-table__row--playing" : ""}${played ? " track-table__row--played" : ""}${selected ? " track-table__row--selected" : ""}${keyboardCursor && cursorRow === item.index ? " track-table__row--cursor" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}${draggable ? " track-table__row--draggable" : ""}${hasEnd ? " track-table__row--end" : ""}${liftedIndex === item.index ? " track-table__row--lifted" : ""}${settledIndex === item.index ? " track-table__row--settled" : ""}`}
+                  className={`track-table__row${row ? "" : " track-table__row--placeholder"}${extra ? ` ${extra}` : ""}${playing ? " track-table__row--playing" : ""}${played ? " track-table__row--played" : ""}${selected ? " track-table__row--selected" : ""}${keyboardCursor && cursorRow === item.index ? " track-table__row--cursor" : ""}${dropIndex === item.index ? " track-table__row--drop-before" : ""}${dropIndex === item.index + 1 ? " track-table__row--drop-after" : ""}${draggable ? " track-table__row--draggable" : ""}${draggable && showGrip ? " track-table__row--grip" : ""}${hasEnd ? " track-table__row--end" : ""}${liftedIndex === item.index ? " track-table__row--lifted" : ""}${settledIndex === item.index ? " track-table__row--settled" : ""}`}
                   style={{
                     transform: `translateY(${item.start}px)`,
                     height: `${item.size}px`,

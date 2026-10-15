@@ -550,9 +550,9 @@ export function TrackDetailPanel({
                   // key's name. Where it came from is said on hover and to screen readers.
                   <span className="cp-track-detail__keyrow" title={sourceWords ? `Key from ${sourceWords}` : undefined}>
                     <KeyChip value={track.effective_key} />
-                    <WheelButton />
                     <span className="cp-track-detail__keymeta">{track.key_name ?? ""}</span>
                     {sourceWords !== null && <span className="cp-visually-hidden">{` \u00b7 ${sourceWords}`}</span>}
+                    <WheelButton />
                   </span>
                 ) : (
                   <span className="cp-track-detail__file">

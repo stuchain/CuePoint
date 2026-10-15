@@ -88,6 +88,7 @@ import {
   type DraggedTracks,
 } from "./collectionDrag";
 import { PickerDialog, type PickerItem } from "./PickerDialog";
+import { useSharedLines } from "./useSharedLines";
 import { SaveSmartDialog, type FolderOption } from "./SaveSmartDialog";
 import { TagManagerDialog } from "./TagManagerDialog";
 import { smartQuery, type SmartAttachment } from "./smartFilter";
@@ -126,8 +127,6 @@ import { revealTrack } from "../clean/revealTrack";
 import { forgetWaveforms } from "../../components/waveform/waveformCache";
 import { useCollectionTree } from "./useCollectionTree";
 import { useScopeFacts } from "./useScopeFacts";
-import { useSaveToFiles } from "../../components/saveToFiles/useSaveToFiles";
-import { usePageActive } from "../../components/shell/pageActive";
 import { useScopeTotal } from "./useScopeTotal";
 import { followJob } from "./followJob";
 import { appliedLine, fileName, jobErrorMessage } from "./libraryFormat";
@@ -298,6 +297,7 @@ export function LibraryScreen({
   const watching = useRef<{ stop: () => void }[]>([]);
   const mounted = useRef(true);
   const searchRef = useRef<HTMLDivElement>(null);
+  const shareLines = useSharedLines(searchRef);
 
   useEffect(() => {
     mounted.current = true;
@@ -535,9 +535,6 @@ export function LibraryScreen({
     return { name: "All tracks", group: null, count: null };
   }, [collections.tree, headerScope.collectionId, headerScope.playlistId, playlists.selected, smart]);
   const { facts: scopeFacts } = useScopeFacts(headerScope, libraryIdentity);
-
-  // The save bar counts the whole library and opens its own window (C23).
-  const save = useSaveToFiles({ active: usePageActive() });
 
   const batch = useLibraryBatch({
     onMessage: (message, tone) => push(message, tone),
@@ -1065,8 +1062,8 @@ export function LibraryScreen({
             onUseBeatport: checking.onApply,
           },
           fix: {
-            // Editing opens in place (K4), drawn into More. Saving into the files is
-            // the save bar's at the bottom of the page (C23).
+            // Editing opens in place (K4), drawn into More. Syncing into the files
+            // is per playlist, on Clean.
             onEdit: checking.onEdit,
           },
           more: {
@@ -1927,7 +1924,7 @@ export function LibraryScreen({
         }
       />
 
-      <div className="library-screen__body">
+      <div className="library-screen__body" ref={shareLines}>
         <LibraryPane
           libraryTrackCount={summary.track_count}
           playlists={playlists}
@@ -2075,6 +2072,9 @@ export function LibraryScreen({
               // A row is picked up as the selection when it belongs to it, and
               // as itself otherwise — the same rule the context menu follows,
               // because they are the same gesture with a different hand.
+              // The grip only where order matters: inside a Collection. Elsewhere rows
+              // still drag, with nothing drawn.
+              showGrip={scopedCollection != null && isCollection(scopedCollection)}
               onRowDragStart={(row, index, transfer) => {
                 const inSelection = row.id != null && isSelected(selection.selection, row.id);
                 if (inSelection && selection.selection.all) {
@@ -2165,8 +2165,6 @@ export function LibraryScreen({
         </div>
       </div>
 
-      {save.bar}
-
       <ColumnPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
@@ -2187,8 +2185,6 @@ export function LibraryScreen({
       />
 
       {exportDialog}
-
-      {save.dialog}
 
       <SaveSmartDialog
         open={saveOpen}
