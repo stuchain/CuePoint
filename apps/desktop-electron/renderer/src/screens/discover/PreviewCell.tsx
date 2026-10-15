@@ -68,20 +68,22 @@ export function PreviewCell({ beatportTrackId, title, kind = "catalog", variant 
       }}
     >
       {round ? (
-        playing || state === "loading" ? (
-          <>
-            <span className="preview-cell__stop" aria-hidden="true" />
-            {playing && (
-              <span className="preview-cell__bars" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-              </span>
+        <>
+          <span className="preview-cell__disc" aria-hidden="true">
+            {playing || state === "loading" ? (
+              <span className="preview-cell__stop" />
+            ) : (
+              <PixelIcon name="play" />
             )}
-          </>
-        ) : (
-          <PixelIcon name="play" />
-        )
+          </span>
+          {playing && (
+            <span className="preview-cell__bars" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+          )}
+        </>
       ) : (
         <PixelIcon name={playing || state === "loading" ? "pause" : "play"} />
       )}
