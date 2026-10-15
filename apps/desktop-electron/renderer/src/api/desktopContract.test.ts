@@ -973,6 +973,18 @@ describe("desktop contract", () => {
     });
   });
 
+  it("types the written-to-files state of a playlist and the sync's comment on both sides", () => {
+    for (const source of [bridgeTypes, engineClient]) {
+      const start = source.indexOf("export interface CleanPlaylistStatus ");
+      const body = source.slice(start, source.indexOf("\n}", start));
+      expect(body).toContain("synced?: boolean");
+      expect(body).toContain("synced_at?: string | null");
+    }
+    // The Sync request carries the comment as the tag writer's own two options.
+    expect(bridgeTypes).toContain("write_comment?: boolean");
+    expect(bridgeTypes).toContain("comment_text?: string");
+  });
+
   describe("the Clean page (CLEAN-12)", () => {
     // One method added and four answers widened. The widening is where a
     // silent gap would be: a field the engine sends and one side never types

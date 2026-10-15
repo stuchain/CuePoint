@@ -27,7 +27,9 @@ from tests.unit.persistence.match_status_support import (
     add_playlist,
     add_track,
     set_state,
+    write_row,
 )
+from cuepoint.persistence.track_metadata_repository import TrackMetadataRepository
 
 TOKEN = "match-status-token"
 TERMINAL = (JobState.SUCCEEDED, JobState.FAILED, JobState.CANCELLED)
@@ -113,12 +115,30 @@ class TestPlaylistsRoute:
         assert status == 200
         assert set(body) == {"playlists", "whole_library"}
         [row] = body["playlists"]
-        assert set(row) == {"id", "name", "path"} | COUNT_KEYS
+        assert set(row) == {"id", "name", "path", "synced", "synced_at"} | COUNT_KEYS
         assert (row["id"], row["name"], row["path"]) == (playlist, "Friday", "Gigs")
         assert (row["track_count"], row["waiting"], row["not_matched"]) == (2, 1, 1)
         assert row["running"] is None
+        assert (row["synced"], row["synced_at"]) == (False, None)
         assert set(body["whole_library"]) == COUNT_KEYS
         assert body["whole_library"]["track_count"] == 2
+
+    def test_written_to_the_files_is_synced_with_its_time(self, engine, library_db):
+        a, b = add_track(library_db, "/m/a.mp3"), add_track(library_db, "/m/b.mp3")
+        write_row(library_db, a, "genre", value="Techno")
+        done = add_playlist(library_db, "Done", [a])
+        partly = add_playlist(library_db, "Partly", [a, b])
+        TrackMetadataRepository(library_db).set_override(b, "genre", "House")
+
+        status, body = get(engine, "/api/v1/clean/playlists")
+
+        assert status == 200
+        rows = {row["id"]: row for row in body["playlists"]}
+        assert rows[done]["synced"] is True
+        assert rows[done]["synced_at"] == "2026-09-15T12:00:00+00:00"
+        # Written, but a value is still waiting to be saved: not in the files.
+        assert rows[partly]["unsaved"] == 1
+        assert (rows[partly]["synced"], rows[partly]["synced_at"]) == (False, None)
 
     def test_a_library_without_playlists(self, engine, library_db):
         add_track(library_db)

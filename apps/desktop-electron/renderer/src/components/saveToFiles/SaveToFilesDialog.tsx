@@ -13,8 +13,10 @@
  * offers Undo this save, which undoes every value, and Done.
  *
  * **The Sync variant** is the same window for a playlist's ticked tracks (the Review tab): its
- * own title, the rows BPM, Genre, Label, Year and Key (no artwork), its own remembered choices,
- * "See every change" and "Sync N tracks". The choice of fields lives only here.
+ * own title, the rows BPM, Genre, Label, Year, Key and Comment (no artwork), its own remembered choices,
+ * "See every change" and "Sync N tracks". The choice of fields lives only here. Its Comment row
+ * writes the text the person types (default "ok") into the file's comment tag; the preview is made
+ * with that text, so changing it reads the files again after a short pause.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -35,11 +37,15 @@ import { NO_VALUE } from "../../words";
 import { Button } from "../Button";
 import { Modal } from "../Modal";
 import { Select } from "../Select";
+import "../TextField.css";
 import {
   KEY_STYLES,
+  MAX_COMMENT_LENGTH,
   SAVE_FIELDS,
   SYNC_FIELDS,
   changeRows,
+  cleanComment,
+  commentText,
   fieldCount,
   fileWords,
   loadSaveChoices,
@@ -59,6 +65,11 @@ import "./SaveToFilesDialog.css";
 
 /** How long a change waits for the next before the footer total is asked for. */
 const COUNT_DELAY_MS = 150;
+/**
+ * How long a typed comment waits for the next letter before the files are read again: the
+ * preview holds the comment it was made with, so a new text needs a new preview.
+ */
+const COMMENT_DELAY_MS = 600;
 /** The engine's code for a preview it no longer holds: a preview is used once. */
 const PREVIEW_GONE = "TAG_WRITE_PREVIEW_NOT_FOUND";
 /** How often a job's progress is read when the bridge has no subscription. */
@@ -140,6 +151,8 @@ export function SaveToFilesDialog({
   const [writeJobId, setWriteJobId] = useState<string | null>(null);
   const alive = useRef(true);
   const previewRun = useRef(0);
+  /** The comment text the preview in hand (or on its way) was made with. */
+  const readText = useRef(commentText(loadSaveChoices(variant)));
   const selectionRef = useRef(selection);
   selectionRef.current = selection;
   const progress = useJobProgress(jobId);
@@ -162,6 +175,7 @@ export function SaveToFilesDialog({
     const bridge = variant === "sync" ? window.cuepoint?.previewSync : window.cuepoint?.previewTagWrite;
     const chosen = selectionRef.current;
     const run = ++previewRun.current;
+    readText.current = commentText(forChoices);
     const current = () => alive.current && run === previewRun.current;
     setPhase("reading");
     setPreview(null);
@@ -260,6 +274,25 @@ export function SaveToFilesDialog({
     // `ticked` stands for the options in `choices` that the count depends on.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, preview, ticked, countTry, reads]);
+
+  // A ticked Comment row with a text the preview was not made with: read the files again once the
+  // typing pauses. The rows stay on screen (so the field keeps its focus), their counts show "…" and
+  // Sync waits.
+  const wanted = commentText(choices);
+  const commentStale =
+    open && variant === "sync" && choices.fields.comment && wanted !== readText.current;
+  useEffect(() => {
+    if (!commentStale) return;
+    if (phase === "ready") {
+      setPhase("reading");
+      setPreview(null);
+      setTotal(null);
+    }
+    const timer = window.setTimeout(() => void readFiles(choices), COMMENT_DELAY_MS);
+    return () => window.clearTimeout(timer);
+    // Only the text asked for starts a new reading; `choices` is read as it is when the timer fires.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [commentStale, wanted]);
 
   const change = (patch: Partial<SaveChoices>) => {
     const next = { ...choices, ...patch };
@@ -403,6 +436,17 @@ export function SaveToFilesDialog({
                       value={choices.key_format}
                       options={KEY_STYLES.map(({ value, label: example }) => ({ value, label: example }))}
                       onChange={(event) => change({ key_format: event.target.value as KeyStyle })}
+                    />
+                  )}
+                  {id === "comment" && (
+                    <input
+                      type="text"
+                      className="cp-field__input save-dialog__comment"
+                      aria-label="Comment text"
+                      value={choices.comment_text}
+                      maxLength={MAX_COMMENT_LENGTH}
+                      disabled={!choices.fields.comment}
+                      onChange={(event) => change({ comment_text: cleanComment(event.target.value) })}
                     />
                   )}
                   <span id={`save-count-${id}`} className="save-dialog__count cp-data">

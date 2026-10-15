@@ -47,6 +47,7 @@ function preview(overrides: Partial<TagWritePreview> = {}): TagWritePreview {
       label: { replace: 6, fill: 18 },
       year: { replace: 3, fill: 25 },
       bpm: { replace: 0, fill: 6 },
+      comment: { replace: 2, fill: 20 },
       artwork: { fill: 9 },
     },
     ...overrides,
@@ -316,9 +317,10 @@ describe("remembered choices", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /^Save to 38 files$/ })).toBeEnabled());
     await userEvent.click(screen.getByRole("button", { name: /^Save to 38 files$/ }));
     expect(JSON.parse(localStorage.getItem(SAVE_CHOICES_KEY)!)).toEqual({
-      fields: { key: true, genre: true, label: true, year: false, bpm: true, artwork: false },
+      fields: { key: true, genre: true, label: true, year: false, bpm: true, artwork: false, comment: false },
       key_format: "short",
       keep_existing: true,
+      comment_text: "ok",
     });
   });
 });
@@ -675,17 +677,84 @@ describe("the Sync window (a playlist's ticked tracks)", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Sync 22 tracks" })).toBeEnabled());
   }
 
-  it("is titled by the playlist and lists BPM, Genre, Label, Year and Key with a count each, and no Artwork", async () => {
+  it("is titled by the playlist and lists BPM, Genre, Label, Year, Key and Comment with a count each, and no Artwork", async () => {
     sync();
     expect(screen.getByRole("dialog", { name: "Sync hJ to your files" })).toBeInTheDocument();
     await syncReady();
     const names = screen
       .getAllByRole("checkbox")
       .map((box) => box.getAttribute("aria-label") ?? box.closest("label")?.textContent);
-    expect(names).toEqual(["BPM", "Genre", "Label", "Year", "Key", "Keep values already in the files"]);
+    expect(names).toEqual(["BPM", "Genre", "Label", "Year", "Key", "Comment", "Keep values already in the files"]);
     expect(within(row("BPM")).getByText("6 files")).toBeInTheDocument();
     expect(within(row("Year")).getByText("25 files")).toBeInTheDocument();
+    // Keep is on, so only the files with no comment yet count.
+    expect(within(row("Comment")).getByText("20 files")).toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: "Artwork" })).toBeNull();
+  });
+
+  it("has a Comment row with a text field that says ok and is ticked", async () => {
+    sync();
+    await syncReady();
+    expect(screen.getByRole("checkbox", { name: "Comment" })).toBeChecked();
+    expect(screen.getByRole("textbox", { name: "Comment text" })).toHaveValue("ok");
+    expect(bridge.previewSync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({ write_comment: true, comment_text: "ok", keep_existing: false }),
+      }),
+    );
+  });
+
+  it("sends the comment typed, and reads the files again with that text once the typing pauses", async () => {
+    sync();
+    await syncReady();
+    expect(bridge.previewSync).toHaveBeenCalledTimes(1);
+    const field = screen.getByRole("textbox", { name: "Comment text" });
+    await userEvent.clear(field);
+    await userEvent.type(field, "seen");
+    // Sync waits while the files are read again, and the field keeps what was typed.
+    expect(screen.getByRole("button", { name: "Sync 22 tracks" })).toBeDisabled();
+    await waitFor(() => expect(bridge.previewSync).toHaveBeenCalledTimes(2));
+    expect(bridge.previewSync).toHaveBeenLastCalledWith(
+      expect.objectContaining({ options: expect.objectContaining({ comment_text: "seen" }) }),
+    );
+    expect(field).toHaveValue("seen");
+    await syncReady();
+    await userEvent.click(screen.getByRole("button", { name: "Sync 22 tracks" }));
+    await waitFor(() => expect(bridge.startSync).toHaveBeenCalled());
+    expect(bridge.startSync).toHaveBeenCalledWith({
+      preview_id: "p-1",
+      options: expect.objectContaining({ write_comment: true, comment_text: "seen" }),
+    });
+    expect(JSON.parse(localStorage.getItem("cuepoint-sync-to-files")!).comment_text).toBe("seen");
+  });
+
+  it("does not write a comment when its row is unticked, and the field is greyed", async () => {
+    sync();
+    await syncReady();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Comment" }));
+    expect(screen.getByRole("textbox", { name: "Comment text" })).toBeDisabled();
+    await syncReady();
+    await userEvent.click(screen.getByRole("button", { name: "Sync 22 tracks" }));
+    await waitFor(() => expect(bridge.startSync).toHaveBeenCalled());
+    expect(bridge.startSync).toHaveBeenCalledWith({
+      preview_id: "p-1",
+      options: expect.objectContaining({ write_comment: false }),
+    });
+  });
+
+  it("holds Sync back when the ticked comment is emptied", async () => {
+    sync();
+    await syncReady();
+    await userEvent.clear(screen.getByRole("textbox", { name: "Comment text" }));
+    expect(screen.getByText("Type the comment, or untick Comment.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sync 22 tracks" })).toBeDisabled();
+  });
+
+  it("never offers a comment in the Save window", async () => {
+    open();
+    await ready();
+    expect(screen.queryByRole("checkbox", { name: "Comment" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Comment text" })).toBeNull();
   });
 
   it("starts with BPM, Genre, Label and Year ticked, Key not, and Keep ticked", async () => {

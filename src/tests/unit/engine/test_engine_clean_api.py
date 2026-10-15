@@ -2364,6 +2364,176 @@ class TestSyncingAReview:
             assert record is None or (record.genre is None and record.bpm is None)
             assert resolve("IMatchRepository").get_match(track_id).decided_by == "auto"
 
+    def comment_sync(
+        self,
+        base: str,
+        store: JobStore,
+        ids: List[int],
+        text: str,
+        *,
+        keep: bool = False,
+        names: tuple = ("genre",),
+    ) -> Job:
+        """A Sync with the Comment row ticked, previewed and sent as the window does."""
+        options = {
+            **self.only(*names, keep=False),
+            "write_comment": True,
+            "comment_text": text,
+        }
+        preview = ok(
+            post(
+                base,
+                "/api/v1/clean/sync-preview",
+                {"selection": ids_selection(*ids), "options": options},
+            )
+        )["preview"]
+        started = ok(
+            post(
+                base,
+                "/api/v1/clean/sync",
+                {
+                    "preview_id": preview["preview_id"],
+                    "options": {**options, "keep_existing": keep},
+                },
+            ),
+            202,
+        )
+        return finished(store, started["job_id"])
+
+    def test_the_comment_is_the_text_typed_and_is_counted_in_the_preview(
+        self, engine, ticked
+    ):
+        ids, _ = ticked
+
+        options = {**self.only("genre"), "write_comment": True, "comment_text": "ok"}
+        preview = ok(
+            post(
+                engine,
+                "/api/v1/clean/sync-preview",
+                {"selection": ids_selection(*ids), "options": options},
+            )
+        )["preview"]
+
+        assert preview["fields"]["comment"] == 2
+        assert preview["field_choices"]["comment"] == {"fill": 2, "replace": 0}
+        assert preview["changes"][0]["fields"]["comment"]["to"] == "ok"
+
+    def test_a_synced_comment_reaches_the_file_but_is_not_a_copied_value(
+        self, engine, store, ticked
+    ):
+        ids, paths = ticked
+
+        job = self.comment_sync(engine, store, ids, "checked")
+
+        assert job.state == JobState.SUCCEEDED, job.error
+        for track_id, path in zip(ids, paths):
+            assert self.file_value(path, "comment") == "checked"
+            assert self.file_value(path, "genre") == "Techno"
+            # The comment is the person's text, not a Beatport value: nothing of it is copied.
+            assert self.layer(track_id).genre == "Techno"
+        assert job.result["synced"]["values"] == 2
+
+    def test_keeping_the_files_values_keeps_a_comment_already_there(
+        self, engine, store, ticked
+    ):
+        from mutagen.id3 import COMM, ID3
+
+        ids, paths = ticked
+        tags = ID3()
+        tags.add(COMM(encoding=3, lang="eng", desc="", text="mine"))
+        tags.save(str(paths[1]))
+
+        job = self.comment_sync(engine, store, ids, "ok", keep=True)
+
+        assert job.state == JobState.SUCCEEDED, job.error
+        assert self.file_value(paths[0], "comment") == "ok"
+        assert self.file_value(paths[1], "comment") == "mine"
+
+    def test_without_keep_a_comment_in_the_file_is_replaced(
+        self, engine, store, ticked
+    ):
+        from mutagen.id3 import COMM, ID3
+
+        ids, paths = ticked
+        tags = ID3()
+        tags.add(COMM(encoding=3, lang="eng", desc="", text="mine"))
+        tags.save(str(paths[1]))
+
+        job = self.comment_sync(engine, store, ids, "ok", keep=False)
+
+        assert job.state == JobState.SUCCEEDED, job.error
+        assert self.file_value(paths[1], "comment") == "ok"
+
+    def test_undoing_the_save_puts_the_comment_back(self, engine, store, ticked):
+        from mutagen.id3 import COMM, ID3
+
+        ids, paths = ticked
+        tags = ID3()
+        tags.add(COMM(encoding=3, lang="eng", desc="", text="mine"))
+        tags.save(str(paths[1]))
+        job = self.comment_sync(engine, store, ids, "ok")
+        assert self.file_value(paths[0], "comment") == "ok"
+
+        undo = ok(post(engine, "/api/v1/clean/tags/restore", {"job_id": job.id}), 202)
+        restored = finished(store, undo["job_id"])
+
+        assert restored.state == JobState.SUCCEEDED, restored.error
+        assert self.file_value(paths[0], "comment") is None
+        assert self.file_value(paths[1], "comment") == "mine"
+
+    def test_a_request_that_does_not_name_the_comment_does_not_write_it(
+        self, engine, store, ticked
+    ):
+        ids, paths = ticked
+        options = {
+            key: value
+            for key, value in self.only("genre").items()
+            if key != "write_comment"
+        }
+        preview = ok(
+            post(
+                engine,
+                "/api/v1/clean/sync-preview",
+                {"selection": ids_selection(*ids), "options": options},
+            )
+        )["preview"]
+        started = ok(
+            post(
+                engine,
+                "/api/v1/clean/sync",
+                {"preview_id": preview["preview_id"], "options": options},
+            ),
+            202,
+        )
+
+        job = finished(store, started["job_id"])
+
+        assert "comment" not in preview["field_choices"]
+        assert job.state == JobState.SUCCEEDED, job.error
+        for path in paths:
+            assert self.file_value(path, "comment") is None
+
+    def test_a_comment_is_one_clean_line_within_the_cap(self, engine, store, ticked):
+        ids, paths = ticked
+
+        job = self.comment_sync(engine, store, ids, "  line one\nline\x00 two\t ")
+
+        assert job.state == JobState.SUCCEEDED, job.error
+        assert self.file_value(paths[0], "comment") == "line one line two"
+        status, body = post(
+            engine,
+            "/api/v1/clean/sync-preview",
+            {
+                "selection": ids_selection(*ids),
+                "options": {
+                    **self.only("genre"),
+                    "write_comment": True,
+                    "comment_text": "x" * 256,
+                },
+            },
+        )
+        assert status == 400, body
+
     def test_a_sync_that_cannot_start_writes_nothing(self, engine, ticked):
         ids, _ = ticked
         refused(

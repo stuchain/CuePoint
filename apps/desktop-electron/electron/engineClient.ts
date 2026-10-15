@@ -1403,6 +1403,10 @@ export interface CleanPlaylistStatus extends CleanPlaylistCounts {
   id: number;
   name: string;
   path: string;
+  /** Always sent by the engine. Written to the files: at least one track's values went in and nothing is left unsaved. */
+  synced?: boolean;
+  /** When the latest such write finished (ISO), or null when the playlist is not synced. */
+  synced_at?: string | null;
 }
 
 export interface CleanPlaylists {

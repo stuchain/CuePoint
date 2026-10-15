@@ -51,6 +51,10 @@ row has a tick, the playlist's folder (muted) and name, how many **Tracks** it
 has and its **Status**. The box above the list narrows it by name or folder,
 which helps when you have hundreds.
 
+A playlist whose values CuePoint has written into your files, with nothing left to
+save, is marked **Synced** with the day it was written. Undoing that save, or a
+value that is waiting to be saved again, takes the mark away.
+
 | Status | Means |
 | --- | --- |
 | **Matching 12 of 24**, with a bar | A match is working on it |
@@ -220,12 +224,17 @@ the Beatport matches' BPM, Genre, Label and Year over what each track shows, in
 memory, and reading your files. **Cancel** just closes it. You choose what goes
 into the files, here and nowhere else:
 
-> ☑ BPM  ☑ Genre  ☑ Label  ☑ Year  ☐ Key [Am / 8A / Amin]
+> ☑ BPM  ☑ Genre  ☑ Label  ☑ Year  ☐ Key [Am / 8A / Amin]  ☑ Comment [ok]
 > ☑ Keep values already in the files
 
 Each value shows how many files it would change. **Key** has a style (**Am**,
-**8A** or **Amin**) and starts unticked. **Keep values already in the files**
-leaves a field alone that the file already holds. **See every change** lists the
+**8A** or **Amin**) and starts unticked. **Comment** writes the text beside it
+(**ok** to start with, up to 255 characters, on one line) into each file's comment
+tag, the one Rekordbox lists as **Comments**, so you can see in Rekordbox which
+files were synced; it is your text, not a Beatport value, so CuePoint keeps no copy
+of it. **Keep values already in the files**
+leaves a field alone that the file already holds, a comment included: only files
+with no comment get yours. **Undo this save** puts a comment back as it was. **See every change** lists the
 before and after of each file. Your choices are remembered for next time.
 
 Pressing **Sync N tracks** does it in one step: the files are written first, with

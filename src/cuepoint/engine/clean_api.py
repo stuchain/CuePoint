@@ -1245,6 +1245,20 @@ def preview_tags(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, A
     return 200, {"preview": preview.to_dict()}
 
 
+def _sync_options(raw: Any) -> Any:
+    """A Sync's options, where a request that does not name the comment does not write it.
+
+    The tag writer's own default writes the comment; Sync is about the values a
+    match found, so a request from before the Sync window had a Comment row
+    (it never named ``write_comment``) keeps meaning what it meant.
+    """
+    if isinstance(raw, dict) and "write_comment" not in raw:
+        return {**raw, "write_comment": False}
+    if raw is None:
+        return {"write_comment": False}
+    return raw
+
+
 def sync_preview(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]]:
     """Say what a Sync would change in the files. Writes nothing, anywhere.
 
@@ -1252,12 +1266,17 @@ def sync_preview(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, A
     track shows, in memory, and the files are read as the Save window's preview
     reads them. The key a track already shows keeps winning. The answer is a
     tag-write preview, kept under its id for :func:`start_sync`.
+
+    ``options.write_comment`` with ``options.comment_text`` also writes the file's
+    comment (the one Rekordbox lists as Comments): text the person typed, not a
+    Beatport value. It is written only when asked, and "Keep values already in
+    the files" (``keep_existing``) leaves a comment the file already holds alone.
     """
     from cuepoint.engine.match_sync import preview_sync
     from cuepoint.services.tag_write_options import TagWriteOptions
 
     _only(data, ("selection", "options"))
-    options = TagWriteOptions.from_request(data.get("options"))
+    options = TagWriteOptions.from_request(_sync_options(data.get("options")))
     preview, job = preview_sync(job_store, _selection(data), options)
     if job is not None:
         return _started(job, {"preview_id": job.id})
@@ -1280,7 +1299,7 @@ def start_sync(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any
     options = (
         None
         if data.get("options") is None
-        else TagWriteOptions.from_request(data["options"])
+        else TagWriteOptions.from_request(_sync_options(data["options"]))
     )
     job = start_sync_job(job_store, preview_id, options)
     return _started(job, {"preview_id": preview_id})
@@ -1499,6 +1518,12 @@ def clean_playlists(params: Dict[str, List[str]], job_store: Any) -> Dict[str, A
                 "name": status.name,
                 "path": status.path,
                 **_counts_to_dict(status.counts, status.running),
+                # In the files: something was written and nothing waits to be.
+                "synced": status.last_written_at is not None
+                and status.counts.unsaved == 0,
+                "synced_at": (
+                    status.last_written_at if status.counts.unsaved == 0 else None
+                ),
             }
             for status in statuses.playlists
         ],

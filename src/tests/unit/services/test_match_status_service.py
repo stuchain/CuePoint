@@ -19,6 +19,7 @@ from tests.unit.persistence.match_status_support import (
     add_playlist,
     add_track,
     set_state,
+    write_row,
 )
 
 
@@ -91,6 +92,29 @@ class TestStatusCounts:
         assert status_of(statuses, first).counts.unsaved == 1
         assert status_of(statuses, second).counts.unsaved == 0
         assert statuses.whole_library.unsaved == 1
+
+    def test_last_written_is_the_latest_standing_write_of_its_tracks(self, db, service):
+        a, b, c = (add_track(db, f"/m/{n}.mp3") for n in "abc")
+        write_row(db, a, "genre", value="Techno")
+        write_row(db, b, "bpm", value="128")
+        write_row(db, b, "bpm", "restored")  # undone: does not count
+        write_row(db, c, "key", "failed")  # never reached the file
+        first = add_playlist(db, "First", [a, b])
+        second = add_playlist(db, "Second", [b, c])
+        third = add_playlist(db, "Third", [c])
+
+        statuses = service.playlists()
+
+        assert status_of(statuses, first).last_written_at == "2026-09-15T12:00:00+00:00"
+        assert status_of(statuses, second).last_written_at is None
+        assert status_of(statuses, third).last_written_at is None
+
+    def test_a_pending_write_is_not_yet_written(self, db, service):
+        a = add_track(db, "/m/a.mp3")
+        write_row(db, a, "genre", value="Techno", pending=1)
+        playlist = add_playlist(db, "P", [a])
+
+        assert status_of(service.playlists(), playlist).last_written_at is None
 
     def test_an_empty_playlist_counts_nothing(self, db, service):
         add_track(db)

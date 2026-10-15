@@ -7,10 +7,13 @@ import type { TagFieldChoices, TagWritePreview } from "../../api/cuepointBridge.
 import {
   DEFAULT_SAVE_CHOICES,
   DEFAULT_SYNC_CHOICES,
+  NO_COMMENT,
   SAVE_CHOICES_KEY,
   SYNC_CHOICES_KEY,
   SYNC_FIELDS,
   changeRows,
+  cleanComment,
+  commentText,
   fieldCount,
   keyIn,
   loadSaveChoices,
@@ -62,17 +65,19 @@ afterEach(() => {
 describe("remembered choices", () => {
   it("start with Key, Genre and Label on, Year, BPM and Artwork off, Am and Keep on", () => {
     expect(loadSaveChoices()).toEqual({
-      fields: { key: true, genre: true, label: true, year: false, bpm: false, artwork: false },
+      fields: { key: true, genre: true, label: true, year: false, bpm: false, artwork: false, comment: false },
       key_format: "normal",
       keep_existing: true,
+      comment_text: "ok",
     });
   });
 
   it("are stored under one key and read back", () => {
     const choices: SaveChoices = {
-      fields: { key: false, genre: true, label: false, year: true, bpm: true, artwork: true },
+      fields: { key: false, genre: true, label: false, year: true, bpm: true, artwork: true, comment: false },
       key_format: "camelot",
       keep_existing: false,
+      comment_text: "ok",
     };
     rememberSaveChoices(choices);
     expect(JSON.parse(localStorage.getItem(SAVE_CHOICES_KEY)!)).toEqual(choices);
@@ -90,7 +95,8 @@ describe("remembered choices", () => {
     expect(read.fields.genre).toBe(true);
     expect(read.key_format).toBe("normal");
     expect(read.keep_existing).toBe(true);
-    expect(Object.keys(read.fields)).not.toContain("comment");
+    // The Save window has no comment row, so a remembered tick for it is never read back on.
+    expect(read.fields.comment).toBe(false);
     localStorage.setItem(SAVE_CHOICES_KEY, "{not json");
     expect(loadSaveChoices()).toEqual(DEFAULT_SAVE_CHOICES);
   });
@@ -169,7 +175,7 @@ describe("what the button says", () => {
   it("is greyed with a reason when nothing is ticked", () => {
     const none: SaveChoices = {
       ...ticked,
-      fields: { key: false, genre: false, label: false, year: false, bpm: false, artwork: false },
+      fields: { key: false, genre: false, label: false, year: false, bpm: false, artwork: false, comment: false },
     };
     expect(noneTicked(none)).toBe(true);
     expect(saveState({ ...base, choices: none })).toMatchObject({ enabled: false, reason: "Tick at least one value." });
@@ -288,30 +294,33 @@ describe("the list of changes", () => {
 });
 
 describe("the Sync window's own choices", () => {
-  it("lists BPM, Genre, Label, Year and Key, and no artwork", () => {
-    expect(SYNC_FIELDS.map((field) => field.id)).toEqual(["bpm", "genre", "label", "year", "key"]);
+  it("lists BPM, Genre, Label, Year, Key and Comment, and no artwork", () => {
+    expect(SYNC_FIELDS.map((field) => field.id)).toEqual(["bpm", "genre", "label", "year", "key", "comment"]);
   });
 
-  it("start with BPM, Genre, Label and Year on and Key off, in Am, keeping what the files hold", () => {
+  it("start with BPM, Genre, Label, Year and Comment on and Key off, in Am, keeping what the files hold", () => {
     expect(loadSaveChoices("sync")).toEqual({
-      fields: { key: false, genre: true, label: true, year: true, bpm: true, artwork: false },
+      fields: { key: false, genre: true, label: true, year: true, bpm: true, artwork: false, comment: true },
       key_format: "normal",
       keep_existing: true,
+      comment_text: "ok",
     });
     expect(DEFAULT_SYNC_CHOICES.fields.artwork).toBe(false);
   });
 
   it("are remembered apart from the save window's", () => {
     const choices: SaveChoices = {
-      fields: { key: true, genre: false, label: true, year: true, bpm: true, artwork: true },
+      fields: { key: true, genre: false, label: true, year: true, bpm: true, artwork: true, comment: true },
       key_format: "camelot",
       keep_existing: false,
+      comment_text: "checked",
     };
     rememberSaveChoices(choices, "sync");
     expect(localStorage.getItem(SAVE_CHOICES_KEY)).toBeNull();
     expect(JSON.parse(localStorage.getItem(SYNC_CHOICES_KEY)!).key_format).toBe("camelot");
     // Artwork is never offered here, so it is never read back on.
     expect(loadSaveChoices("sync").fields.artwork).toBe(false);
+    expect(loadSaveChoices("sync").comment_text).toBe("checked");
     expect(loadSaveChoices()).toEqual(DEFAULT_SAVE_CHOICES);
   });
 
@@ -337,5 +346,50 @@ describe("the Sync window's own choices", () => {
     expect(saveState({ ...base, total: 0 })).toMatchObject({ label: "Sync 22 tracks", enabled: false });
     expect(saveState({ ...base, total: null })).toMatchObject({ label: "Sync 22 tracks", enabled: false });
     expect(saveState({ ...base, count: 1 }).label).toBe("Sync 1 track");
+  });
+});
+
+describe("the Sync window's Comment row", () => {
+  const comment = (text: string): SaveChoices => ({ ...DEFAULT_SYNC_CHOICES, comment_text: text });
+
+  it("is ticked with the text ok, and asks the preview for it in the Sync window only", () => {
+    expect(DEFAULT_SYNC_CHOICES.fields.comment).toBe(true);
+    expect(previewOptions(DEFAULT_SYNC_CHOICES, "sync")).toMatchObject({ write_comment: true, comment_text: "ok" });
+    expect(previewOptions(DEFAULT_SAVE_CHOICES)).toMatchObject({ write_comment: false });
+    expect(tagOptionsFor(DEFAULT_SAVE_CHOICES)).toMatchObject({ write_comment: false });
+  });
+
+  it("sends the ticked state and the typed text, and ok when the text is blank", () => {
+    expect(tagOptionsFor(comment("seen"))).toMatchObject({ write_comment: true, comment_text: "seen" });
+    expect(tagOptionsFor(comment("   "))).toMatchObject({ write_comment: true, comment_text: "ok" });
+    const unticked = { ...comment("seen"), fields: { ...DEFAULT_SYNC_CHOICES.fields, comment: false } };
+    expect(tagOptionsFor(unticked)).toMatchObject({ write_comment: false });
+  });
+
+  it("is one clean line within the engine's cap", () => {
+    expect(cleanComment(["a", "b", "c"].join(String.fromCharCode(10)))).toBe("a b c");
+    expect(cleanComment("a" + String.fromCharCode(0, 27) + "b")).toBe("ab");
+    expect(cleanComment("x".repeat(300))).toHaveLength(255);
+    expect(commentText(comment("  hi  "))).toBe("hi");
+  });
+
+  it("counts the files by the empty ones, plus the held ones when Keep is off", () => {
+    const from: TagFieldChoices = { ...CHOICES, comment: { replace: 4, fill: 20 } };
+    expect(fieldCount("comment", DEFAULT_SYNC_CHOICES, from)).toBe(20);
+    expect(fieldCount("comment", { ...DEFAULT_SYNC_CHOICES, keep_existing: false }, from)).toBe(24);
+    expect(fieldCount("comment", DEFAULT_SYNC_CHOICES, CHOICES)).toBe(0);
+  });
+
+  it("holds Sync back, with a reason, while the ticked comment is empty", () => {
+    const state = saveState({
+      choices: comment("  "),
+      preview: preview(),
+      total: 38,
+      count: 22,
+      variant: "sync",
+    });
+    expect(state).toMatchObject({ enabled: false, reason: NO_COMMENT });
+    const off = { ...comment("  "), fields: { ...DEFAULT_SYNC_CHOICES.fields, comment: false } };
+    expect(saveState({ choices: off, preview: preview(), total: 38, count: 22, variant: "sync" }).enabled).toBe(true);
   });
 });

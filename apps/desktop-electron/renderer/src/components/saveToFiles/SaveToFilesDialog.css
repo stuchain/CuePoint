@@ -63,6 +63,12 @@
   white-space: nowrap;
 }
 
+/* The comment's text sits on its row, between the tick and the count, and takes the room left. */
+.save-dialog__comment {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .save-dialog__count {
   margin-left: auto;
   color: var(--fg-muted);

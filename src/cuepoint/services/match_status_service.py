@@ -39,6 +39,7 @@ class MatchStatusService(IMatchStatusService):
         """Return every playlist's status, in the order Rekordbox lists them."""
         with self._repository.snapshot():
             counts, library = self._repository.counts()
+            written = self._repository.last_written()
             running: Dict[int, Tuple[int, int]] = {}
             whole_running: Optional[RunningMatch] = None
             if running_job_id is not None:
@@ -56,6 +57,7 @@ class MatchStatusService(IMatchStatusService):
                         name=node.name,
                         path=path,
                         counts=counts.get(node.id, StatusCounts()),
+                        last_written_at=written.get(node.id),
                         running=(
                             RunningMatch(running_job_id, progress[0], progress[1])
                             if running_job_id is not None and progress is not None

@@ -25,7 +25,8 @@ export const SAVE_FIELDS = [
 
 /**
  * The rows of the Sync window, in the order it lists them. Artwork is not one: Sync is about the
- * values a match found, and the field choice lives only there.
+ * values a match found, and the field choice lives only there. Comment is the one row that is not
+ * a match's value: it writes the text the person types into the file's comment tag.
  */
 export const SYNC_FIELDS = [
   { id: "bpm", label: "BPM" },
@@ -33,9 +34,11 @@ export const SYNC_FIELDS = [
   { id: "label", label: "Label" },
   { id: "year", label: "Year" },
   { id: "key", label: "Key" },
+  { id: "comment", label: "Comment" },
 ] as const;
 
-export type SaveFieldId = (typeof SAVE_FIELDS)[number]["id"];
+/** The comment is only a row of the Sync window: its text is the person's own, never a Beatport value. */
+export type SaveFieldId = (typeof SAVE_FIELDS)[number]["id"] | "comment";
 /** Which window the choices are for: saving unsaved values (the Library), or syncing a playlist's matches. */
 export type SaveVariant = "save" | "sync";
 export type KeyStyle = DialogTagOptions["key_format"];
@@ -47,24 +50,49 @@ export const KEY_STYLES: ReadonlyArray<{ value: KeyStyle; label: string }> = [
   { value: "short", label: "Amin" },
 ];
 
+/** What the comment says when the person has not changed it. */
+export const DEFAULT_COMMENT = "ok";
+/** The engine refuses a longer comment (`MAX_COMMENT_LENGTH`). */
+export const MAX_COMMENT_LENGTH = 255;
+
+/** A comment as the file may hold it: one line, no control characters, within the cap (the engine cleans the same way). */
+export function cleanComment(text: string): string {
+  let clean = "";
+  for (const char of text) {
+    const code = char.codePointAt(0)!;
+    if (code === 0x2028 || code === 0x2029 || (code >= 9 && code <= 13)) clean += " ";
+    else if (code >= 0x20 && code !== 0x7f && !(code >= 0x80 && code <= 0x9f)) clean += char;
+  }
+  return clean.slice(0, MAX_COMMENT_LENGTH);
+}
+
 export interface SaveChoices {
   fields: Record<SaveFieldId, boolean>;
   key_format: KeyStyle;
   keep_existing: boolean;
+  /** The text of the Comment row (Sync only); what is sent is `commentText(choices)`. */
+  comment_text: string;
+}
+
+/** The comment that is sent: cleaned and trimmed, or "ok" when nothing is left of it. */
+export function commentText(choices: SaveChoices): string {
+  return cleanComment(choices.comment_text).trim() || DEFAULT_COMMENT;
 }
 
 /** What a person who has never chosen sees: Key, Genre and Label, in Am, keeping what the files hold. */
 export const DEFAULT_SAVE_CHOICES: SaveChoices = {
-  fields: { key: true, genre: true, label: true, year: false, bpm: false, artwork: false },
+  fields: { key: true, genre: true, label: true, year: false, bpm: false, artwork: false, comment: false },
   key_format: "normal",
   keep_existing: true,
+  comment_text: DEFAULT_COMMENT,
 };
 
-/** What a Sync starts from: the four values a match brings, and the key only by choice. */
+/** What a Sync starts from: the four values a match brings, the key only by choice, and the comment "ok". */
 export const DEFAULT_SYNC_CHOICES: SaveChoices = {
-  fields: { key: false, genre: true, label: true, year: true, bpm: true, artwork: false },
+  fields: { key: false, genre: true, label: true, year: true, bpm: true, artwork: false, comment: true },
   key_format: "normal",
   keep_existing: true,
+  comment_text: DEFAULT_COMMENT,
 };
 
 export const SAVE_CHOICES_KEY = "cuepoint-save-to-files";
@@ -86,16 +114,19 @@ export function loadSaveChoices(variant: SaveVariant = "save"): SaveChoices {
   const saved =
     record.fields !== null && typeof record.fields === "object" ? (record.fields as Record<string, unknown>) : {};
   const fields = { ...defaults.fields };
-  for (const { id } of SAVE_FIELDS) {
+  for (const { id } of [...SAVE_FIELDS, ...SYNC_FIELDS]) {
     if (typeof saved[id] === "boolean") fields[id] = saved[id] as boolean;
   }
-  // Artwork is not a row of the Sync window, so a remembered tick for it can never be seen or undone there.
+  // Artwork is not a row of the Sync window, so a remembered tick for it can never be seen or undone there;
+  // the comment is not a row of the Save window.
   if (variant === "sync") fields.artwork = false;
+  else fields.comment = false;
   const style = KEY_STYLES.find((entry) => entry.value === record.key_format)?.value;
   return {
     fields,
     key_format: style ?? defaults.key_format,
     keep_existing: typeof record.keep_existing === "boolean" ? record.keep_existing : defaults.keep_existing,
+    comment_text: typeof record.comment_text === "string" ? cleanComment(record.comment_text) : defaults.comment_text,
   };
 }
 
@@ -108,7 +139,7 @@ export function rememberSaveChoices(choices: SaveChoices, variant: SaveVariant =
 }
 
 export function noneTicked(choices: SaveChoices): boolean {
-  return !SAVE_FIELDS.some(({ id }) => choices.fields[id]);
+  return ![...SAVE_FIELDS, ...SYNC_FIELDS].some(({ id }) => choices.fields[id]);
 }
 
 function options(choices: SaveChoices, on: (id: SaveFieldId) => boolean): DialogTagOptions {
@@ -119,9 +150,9 @@ function options(choices: SaveChoices, on: (id: SaveFieldId) => boolean): Dialog
     write_label: on("label"),
     write_year: on("year"),
     write_bpm: on("bpm"),
-    // The comment is not in the window: it is never written from here (Q4, DEC-070).
-    write_comment: false,
-    comment_text: "ok",
+    // The Save window has no comment row: it never writes one (Q4, DEC-070). Sync's row does.
+    write_comment: on("comment"),
+    comment_text: commentText(choices),
     embed_missing_artwork: on("artwork"),
     keep_existing: choices.keep_existing,
   };
@@ -139,7 +170,9 @@ export function tagOptionsFor(choices: SaveChoices): DialogTagOptions {
  * The Sync window has no artwork row, so it never asks for it.
  */
 export function previewOptions(choices: SaveChoices, variant: SaveVariant = "save"): DialogTagOptions {
-  return { ...options(choices, (id) => id !== "artwork" || variant === "save"), keep_existing: false };
+  const asked = (id: SaveFieldId) =>
+    id === "artwork" ? variant === "save" : id === "comment" ? variant === "sync" : true;
+  return { ...options(choices, asked), keep_existing: false };
 }
 
 function counts(choices: SaveChoices, entry: FieldChoiceCounts | undefined): number {
@@ -151,6 +184,7 @@ function counts(choices: SaveChoices, entry: FieldChoiceCounts | undefined): num
 export function fieldCount(id: SaveFieldId, choices: SaveChoices, from: TagFieldChoices): number {
   if (id === "key") return counts(choices, from.key[choices.key_format]);
   if (id === "artwork") return from.artwork?.fill ?? 0;
+  if (id === "comment") return counts(choices, from.comment);
   return counts(choices, from[id]);
 }
 
@@ -217,6 +251,7 @@ export function syncButton(count: number): string {
 }
 
 export const NONE_TICKED = "Tick at least one value.";
+export const NO_COMMENT = "Type the comment, or untick Comment.";
 export const ALREADY_HOLD = "These files already hold these values.";
 export const ALL_WAV = "WAV files are skipped (Rekordbox does not read their tags).";
 
@@ -262,6 +297,9 @@ export function saveState({
     reason,
   });
   if (noneTicked(choices)) return idle(NONE_TICKED);
+  if (sync && choices.fields.comment && cleanComment(choices.comment_text).trim() === "") {
+    return idle(NO_COMMENT);
+  }
   if (total === null) return idle(null);
   if (total > 0) {
     return {

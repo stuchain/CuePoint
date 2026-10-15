@@ -88,6 +88,21 @@ _LIBRARY_MATCH_COUNTS = (
     " FROM track_match"
 )
 
+#: The latest time a value of each playlist's tracks was written into a file by
+#: a write that has not been undone. Per track first (the file_writes track
+#: index), then once per playlist: no track is walked in Python.
+_WRITTEN_BY_PLAYLIST = (
+    "WITH w AS (SELECT fw.track_id AS track_id, MAX(fw.written_at) AS at"
+    " FROM file_writes AS fw"
+    " WHERE fw.outcome = 'written' AND fw.pending = 0 AND fw.track_id IS NOT NULL"
+    " AND NOT EXISTS (SELECT 1 FROM file_writes AS r WHERE r.restore_of = fw.id"
+    " AND r.outcome = 'restored' AND r.pending = 0)"
+    " GROUP BY fw.track_id)"
+    " SELECT pt.playlist_id AS playlist_id, MAX(w.at) AS at"
+    " FROM w JOIN rekordbox_playlist_tracks AS pt ON pt.track_id = w.track_id"
+    " GROUP BY pt.playlist_id"
+)
+
 #: A running job's progress per playlist: the plan's tracks, once per playlist.
 _RUNNING_BY_PLAYLIST = (
     "SELECT playlist_id, COUNT(*) AS total, COALESCE(SUM(done), 0) AS done"
@@ -186,6 +201,18 @@ class MatchStatusRepository(IMatchStatusRepository):
             unsaved=unsaved,
         )
         return playlists, library
+
+    def last_written(self) -> Dict[int, str]:
+        """Return, per playlist, when a value of its tracks last went into a file.
+
+        Only writes still standing count (an undone one does not); a playlist
+        none of whose tracks was written has no entry.
+        """
+        return {
+            int(row["playlist_id"]): str(row["at"])
+            for row in self._db.connect().execute(_WRITTEN_BY_PLAYLIST)
+            if row["at"] is not None
+        }
 
     def running(
         self, job_id: str

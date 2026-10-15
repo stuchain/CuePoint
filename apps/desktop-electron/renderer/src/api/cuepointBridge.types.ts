@@ -50,6 +50,9 @@ export interface QueueItem {
   /** What the player bar and the queue panel show for a DJ (PLAYER-06). */
   key: string | null;
   bpm: number | null;
+  /** The record label and the year, when the track brings them: the facts line is artist, label, key, BPM, year. */
+  label?: string | null;
+  year?: number | null;
   durationSeconds: number | null;
   status: QueueItemStatus;
   /** Why it could not be played, in plain words, while `status` is "failed" (BAR-9). */
@@ -88,6 +91,8 @@ export interface QueueItemInput {
   artist?: string;
   key?: string | null;
   bpm?: number | null;
+  label?: string | null;
+  year?: number | null;
   durationSeconds?: number | null;
 }
 
@@ -1706,6 +1711,10 @@ export interface CleanPlaylistStatus extends CleanPlaylistCounts {
   id: number;
   name: string;
   path: string;
+  /** Always sent by the engine. Written to the files: at least one track's values went in and nothing is left unsaved. */
+  synced?: boolean;
+  /** When the latest such write finished (ISO), or null when the playlist is not synced. */
+  synced_at?: string | null;
 }
 
 export interface CleanPlaylists {

@@ -35,6 +35,7 @@ the shared defaults.
 
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
@@ -46,6 +47,23 @@ KEY_FORMATS = (KEY_FORMAT_NORMAL, KEY_FORMAT_CAMELOT, KEY_FORMAT_SHORT)
 
 #: A comment longer than this is a paste gone wrong, not a comment.
 MAX_COMMENT_LENGTH = 255
+
+
+def clean_comment_text(text: str) -> str:
+    """A comment as a file may hold it: one line, no control characters, trimmed.
+
+    A line break or tab becomes a space (a pasted paragraph stays readable); any
+    other control character (NUL, escape, the C1 range) is dropped, because a
+    tag frame must not carry them and Rekordbox shows them as boxes.
+    """
+    kept = []
+    for char in text:
+        if ord(char) in range(9, 14) or unicodedata.category(char) in ("Zl", "Zp"):
+            kept.append(" ")
+        elif unicodedata.category(char) not in ("Cc", "Cs"):
+            kept.append(char)
+    return "".join(kept).strip()
+
 
 #: Each tag field and the toggle that writes it, in the tag fields' order.
 FIELD_TOGGLES: Tuple[Tuple[str, str], ...] = (
@@ -75,7 +93,7 @@ def normalize_sync_options(raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     key_format = str(opts.get("key_format") or KEY_FORMAT_NORMAL).strip().lower()
     if key_format not in KEY_FORMATS:
         key_format = KEY_FORMAT_NORMAL
-    comment_text = str(opts.get("comment_text") or "ok").strip() or "ok"
+    comment_text = clean_comment_text(str(opts.get("comment_text") or "")) or "ok"
     return {
         "key_format": key_format,
         "write_key": bool(opts.get("write_key", True)),
@@ -123,6 +141,8 @@ class TagWriteOptions:
                 raise ValueError(f"{name} must be true or false")
         if not isinstance(self.comment_text, str) or not self.comment_text.strip():
             raise ValueError("comment_text must be text")
+        if clean_comment_text(self.comment_text) != self.comment_text.strip():
+            raise ValueError("comment_text may not hold control characters")
         if len(self.comment_text) > MAX_COMMENT_LENGTH:
             raise ValueError(
                 f"comment_text may be at most {MAX_COMMENT_LENGTH} characters,"
@@ -215,5 +235,6 @@ __all__ = (
     "KEY_FORMAT_SHORT",
     "MAX_COMMENT_LENGTH",
     "TagWriteOptions",
+    "clean_comment_text",
     "normalize_sync_options",
 )

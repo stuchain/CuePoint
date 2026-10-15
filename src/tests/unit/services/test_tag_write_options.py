@@ -185,3 +185,26 @@ class TestBuiltDirectly:
         from cuepoint.data.tag_fields import TAG_FIELDS
 
         assert tuple(name for name, _ in tag_write_options.FIELD_TOGGLES) == TAG_FIELDS
+
+
+@pytest.mark.unit
+class TestCommentText:
+    def test_a_comment_is_one_line_without_control_characters(self):
+        raw = {"comment_text": "  first\nsecond\x00\x1b third\t"}
+        assert TagWriteOptions.from_request(raw).comment_text == "first second third"
+
+    def test_a_comment_of_only_control_characters_falls_back_to_ok(self):
+        assert (
+            TagWriteOptions.from_request({"comment_text": "\x00\n"}).comment_text
+            == "ok"
+        )
+
+    def test_the_cap_counts_what_is_left_after_cleaning(self):
+        text = "\x00" + "x" * MAX_COMMENT_LENGTH
+        assert TagWriteOptions.from_request({"comment_text": text}).comment_text == (
+            "x" * MAX_COMMENT_LENGTH
+        )
+
+    def test_the_model_refuses_control_characters(self):
+        with pytest.raises(ValueError, match="control characters"):
+            TagWriteOptions(**{**DEFAULTS, "comment_text": "a\x00b"})

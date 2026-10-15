@@ -67,13 +67,18 @@ class PlaylistNode:
 
 @dataclass(frozen=True)
 class PlaylistStatus:
-    """One playlist's name, place and counts."""
+    """One playlist's name, place and counts.
+
+    ``last_written_at`` is when a sync last put a value into one of its tracks'
+    files (ISO text), if one still stands: a write that was undone does not count.
+    """
 
     id: int
     name: str
     path: str
     counts: StatusCounts
     running: Optional[RunningMatch] = None
+    last_written_at: Optional[str] = None
 
 
 @dataclass(frozen=True)

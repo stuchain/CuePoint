@@ -4589,6 +4589,11 @@ class IMatchStatusRepository(ABC):
         ...
 
     @abstractmethod
+    def last_written(self) -> Dict[int, str]:
+        """Return, per playlist, when a value of its tracks last went into a file (ISO)."""
+        ...
+
+    @abstractmethod
     def running(
         self, job_id: str
     ) -> Tuple[Dict[int, Tuple[int, int]], Tuple[int, int]]:
