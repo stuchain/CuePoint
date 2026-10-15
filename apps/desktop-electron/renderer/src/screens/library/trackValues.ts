@@ -4,12 +4,12 @@
  * Kept apart from the column declarations so the Clean helpers that read the
  * same values can use them without importing the columns that use the helpers.
  */
+import { formatLength } from "../../format/durations";
 
-/** Minutes and seconds, the way a deck shows a track length. */
+/** Minutes and seconds, the way a deck shows a track length; seconds floor, so never "2:60". */
 export function formatDuration(seconds: number | null): string {
   if (seconds == null) return "";
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;
+  return formatLength(seconds);
 }
 
 /** The shared BPM format, re-exported so the table's importers stay put. */
