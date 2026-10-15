@@ -918,8 +918,10 @@ describe("the key opens the Camelot wheel (BAR-5, PAGES-10)", () => {
     installBridge(snapshot());
     render(<PlayerBar />);
     const key = await screen.findByRole("button", { name: "Show 8A on the Camelot wheel" });
-    expect(key).toHaveTextContent("8A");
-    // The words around it are as they were.
+    // A small Wheel button (ring and word), named for the key; the key stays in the line's words.
+    expect(key).toHaveTextContent("Wheel");
+    expect(key.querySelectorAll("svg path")).toHaveLength(12);
+    expect(key).toHaveAttribute("title", "Show 8A on the Camelot wheel");
     expect(metaLine()).toHaveTextContent("deadmau5 · 8A · 128 BPM");
 
     fireEvent.click(key);
@@ -948,8 +950,9 @@ describe("the key opens the Camelot wheel (BAR-5, PAGES-10)", () => {
     installBridge(snapshot({ items: [item({ artist: "8A", key: "8A" })] }));
     render(<PlayerBar />);
     const key = await screen.findByRole("button", { name: "Show 8A on the Camelot wheel" });
+    expect(key).toBeInTheDocument();
     expect(metaLine()).toHaveTextContent("8A · 8A · 128 BPM");
-    expect(key.closest(".cp-hint")?.previousSibling?.textContent).toBe("8A · ");
+    expect(metaLine().querySelector("button")).toBeNull();
   });
 });
 
@@ -972,14 +975,6 @@ describe("hover hints on the track line and the seek region (C10)", () => {
     await screen.findByText("Strobe");
     vi.useFakeTimers();
   }
-
-  it("shows the key's words on hover", async () => {
-    await ready({});
-    const key = screen.getByRole("button", { name: "Show 8A on the Camelot wheel" });
-    expect(key).toHaveAttribute("title", "Show this key on the Camelot wheel");
-    expect(await hoverTip(key)).toHaveTextContent("Show this key on the Camelot wheel");
-    expect(key).not.toHaveAttribute("title");
-  });
 
   it("shows the title's words on hover", async () => {
     await ready({ onOpenTrack: () => undefined, onOpenArtist: () => undefined });
@@ -1023,10 +1018,18 @@ describe("the bar's CSS (C7, C9)", () => {
     expect(rule(".cp-player-bar")).toMatch(/user-select:\s*none;/);
   });
 
-  it("sits the key on the text baseline", () => {
-    const key = rule(".cp-player-bar__keybtn");
-    expect(key).toMatch(/vertical-align:\s*baseline;/);
-    expect(key).not.toMatch(/text-align/);
+  it("lets the Wheel button drop its word when the window is short of room", () => {
+    // Not a container: that would make the bar the box its fixed hints are placed in.
+    expect(rule(".cp-player-bar")).not.toMatch(/container-type/);
+    // 640px times the scale, one rule per scale (a query cannot read --scale).
+    for (const [scale, width] of [["1", 640], ["1.25", 800], ["1.5", 960], ["2", 1280], ["3", 1920]] as const) {
+      const at = playerBarCss.indexOf(`@media (max-width: ${width}px) {`);
+      expect(at, `the ${scale}x query`).toBeGreaterThan(-1);
+      const block = playerBarCss.slice(at, playerBarCss.indexOf("\n}\n", at));
+      expect(block).toContain(`:root[data-scale="${scale}"] .cp-player-bar__wheel .cp-wheel-button__word`);
+      expect(block).toMatch(/display:\s*none;/);
+      expect(block).toMatch(/min-width:\s*var\(--control-height\);/);
+    }
   });
 });
 

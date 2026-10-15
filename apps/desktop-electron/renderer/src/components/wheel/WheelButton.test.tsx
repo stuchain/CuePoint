@@ -29,4 +29,12 @@ describe("WheelButton", () => {
     await userEvent.click(button);
     expect(button).toHaveAttribute("aria-expanded", "false");
   });
+
+  it("is named for the playing key on the player bar, with the same ring and word", () => {
+    render(<WheelButton source="player" keyName="10B" />);
+    const button = screen.getByRole("button", { name: "Show 10B on the Camelot wheel" });
+    expect(button).toHaveAttribute("title", "Show 10B on the Camelot wheel");
+    expect(button).toHaveTextContent("Wheel");
+    expect(button.querySelectorAll("svg path")).toHaveLength(12);
+  });
 });

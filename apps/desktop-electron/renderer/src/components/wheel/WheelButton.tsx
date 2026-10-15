@@ -31,19 +31,28 @@ function MiniWheel() {
  * mini coloured ring and the word "Wheel". It is only a button: the popover it opens is the
  * one `WheelPopoverHost` mounts, which the player bar's key opens too (BAR-5).
  */
-export function WheelButton() {
+export function WheelButton({
+  source = "details",
+  keyName,
+}: {
+  /** Which surface opened the wheel; the popover lays itself out by it. */
+  source?: "details" | "player";
+  /** The playing track's key (the player bar): the button is then named for it. */
+  keyName?: string;
+} = {}) {
   const { open } = useWheelState();
+  const name = keyName ? `Show ${keyName} on the Camelot wheel` : "Camelot wheel";
   return (
     <div className="cp-wheel-button">
       <button
         type="button"
         className="cp-wheel-button__button"
         data-wheel-opener=""
-        aria-label="Camelot wheel"
+        aria-label={name}
         aria-haspopup="dialog"
         aria-expanded={open}
-        title="Camelot wheel: see which keys mix with a track"
-        onClick={() => toggleWheel("details")}
+        title={keyName ? name : "Camelot wheel: see which keys mix with a track"}
+        onClick={() => toggleWheel(source)}
       >
         <MiniWheel />
         <span className="cp-wheel-button__word" aria-hidden>

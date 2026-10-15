@@ -335,33 +335,71 @@
   outline-offset: 2px;
 }
 
-/* The key opens the Camelot wheel (BAR-5): text on the line, with a hit area of at
-   least 24 CSS pixels each way. The negative margins cancel the box's extra size,
-   so the line is no taller and does not move. */
-.cp-player-bar__keybtn {
-  --keybtn-size: 24px;
-  --keybtn-pad: var(--space-xs);
-  display: inline-block;
-  box-sizing: border-box;
-  min-inline-size: var(--keybtn-size);
-  min-block-size: var(--keybtn-size);
-  margin: calc(-0.5 * var(--keybtn-size)) calc(-1 * var(--keybtn-pad));
-  padding: 0 var(--keybtn-pad);
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  line-height: var(--keybtn-size);
-  vertical-align: baseline;
-  cursor: pointer;
+/* The key opens the Camelot wheel (BAR-5): Track details' small Wheel button (mini ring and the
+   word), kept whole beside the track text; the bar wraps before it is squeezed. */
+.cp-player-bar__wheel {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
 }
 
-.cp-player-bar__keybtn:hover,
-.cp-player-bar__keybtn:focus-visible {
-  text-decoration: underline;
+/*
+ * Short of room, the Wheel button is just its ring (the word is hidden; the name and title stay):
+ * the seek bar then keeps a usable width. A query cannot read --scale, so each scale has its own
+ * width, 640px times the scale, and the bar spans the window, so the window's width
+ * stands for it (a container here would trap the bar's fixed hints and panels).
+ */
+@media (max-width: 1280px) {
+  :root[data-scale="2"] .cp-player-bar__wheel .cp-wheel-button__word {
+    display: none;
+  }
+
+  :root[data-scale="2"] .cp-player-bar__wheel .cp-wheel-button__button {
+    min-width: var(--control-height);
+    padding: 0;
+  }
 }
 
-.cp-player-bar__keybtn:focus-visible {
-  outline: var(--border-width) solid var(--focus-ring);
-  outline-offset: -2px;
+@media (max-width: 1920px) {
+  :root[data-scale="3"] .cp-player-bar__wheel .cp-wheel-button__word {
+    display: none;
+  }
+
+  :root[data-scale="3"] .cp-player-bar__wheel .cp-wheel-button__button {
+    min-width: var(--control-height);
+    padding: 0;
+  }
+}
+
+@media (max-width: 960px) {
+  :root[data-scale="1.5"] .cp-player-bar__wheel .cp-wheel-button__word {
+    display: none;
+  }
+
+  :root[data-scale="1.5"] .cp-player-bar__wheel .cp-wheel-button__button {
+    min-width: var(--control-height);
+    padding: 0;
+  }
+}
+
+@media (max-width: 800px) {
+  :root[data-scale="1.25"] .cp-player-bar__wheel .cp-wheel-button__word {
+    display: none;
+  }
+
+  :root[data-scale="1.25"] .cp-player-bar__wheel .cp-wheel-button__button {
+    min-width: var(--control-height);
+    padding: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  :root[data-scale="1"] .cp-player-bar__wheel .cp-wheel-button__word {
+    display: none;
+  }
+
+  :root[data-scale="1"] .cp-player-bar__wheel .cp-wheel-button__button {
+    min-width: var(--control-height);
+    padding: 0;
+  }
 }

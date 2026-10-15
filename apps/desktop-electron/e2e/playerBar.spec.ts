@@ -73,17 +73,15 @@ test("the player bar fits the shell at every scale", async () => {
           const r = b.getBoundingClientRect();
           return { w: Math.round(r.width), h: Math.round(r.height) };
         });
-        // The key button's whole box takes the click: inside what its line clips to
-        // (the line's box plus its clip margin, up and down), so no part of the button is cut off.
+        // The Wheel button (BAR-5) sits whole inside the bar, beside the track text.
         const key = bar.querySelector<HTMLElement>("[data-wheel-opener]");
         const kr = key?.getBoundingClientRect();
-        const line = key?.closest(".cp-player-bar__meta")?.getBoundingClientRect();
-        const margin = 8;
         const keyHit =
           kr !== undefined &&
-          line !== undefined &&
-          kr.top >= line.top - margin &&
-          kr.bottom <= line.bottom + margin;
+          kr.top >= rect.top - 1 &&
+          kr.bottom <= rect.bottom + 1 &&
+          kr.right <= rect.right + 1 &&
+          kr.width > 0;
         return {
           scale: s,
           keyHit,
@@ -99,7 +97,7 @@ test("the player bar fits the shell at every scale", async () => {
       }, scale);
       expect(report.docScrollsX, `no horizontal scroll at ${scale}x`).toBe(false);
       expect(report.overflowsRight, `bar within viewport at ${scale}x`).toBe(false);
-      expect(report.keyHit, `the key button is not clipped at ${scale}x`).toBe(true);
+      expect(report.keyHit, `the Wheel button is not clipped at ${scale}x`).toBe(true);
       expect(report.minButton, `hit targets at ${scale}x`).toBeGreaterThanOrEqual(24);
       expect(report.clipped, `nothing clipped at ${scale}x`).toBe(false);
     }
@@ -141,13 +139,13 @@ test("the player bar fits the shell at every scale", async () => {
 });
 
 /**
- * C7: the waveform is centred between the left and right groups. C17: the key
- * sits on the text baseline of the meta line.
+ * C7: the waveform is centred between the left and right groups. BAR-5: the Wheel
+ * button fits the bar.
  *
  * Both are layout, which jsdom cannot measure. Text is measured with a `Range`
  * (the box of the track section is wider than its words).
  */
-test("the waveform is centred and the key sits on the baseline", async () => {
+test("the waveform is centred and the Wheel button fits", async () => {
   test.skip(!hasPlayer, NO_PLAYER);
   const env = { ...process.env, NODE_ENV: "production",
     CUEPOINT_HOME: mkdtempSync(path.join(tmpdir(), "cp-home-")) } as Record<string, string>;
@@ -198,33 +196,20 @@ test("the waveform is centred and the key sits on the baseline", async () => {
           ));
           const sameRow = Math.abs(seek.top - controls.top) < seek.height;
 
-          // C17: the key's text against the neighbouring " · " text.
+          // BAR-5: the Wheel button is whole inside the bar, and the line keeps the key as words.
           const key = bar.querySelector<HTMLElement>("[data-wheel-opener]")!;
-          const textRange = (node: Node) => {
-            const range = document.createRange();
-            range.selectNodeContents(node);
-            return range.getBoundingClientRect();
-          };
-          const keyBox = textRange(key.firstChild!);
-          let dot: DOMRect | null = null;
-          for (const n of key.closest(".cp-player-bar__meta")!.childNodes) {
-            if (n.nodeType === Node.TEXT_NODE && (n.textContent ?? "").includes("·")) {
-              dot = textRange(n);
-              break;
-            }
-          }
-          const meta = bar.querySelector<HTMLElement>(".cp-player-bar__meta")!;
-          const kc = getComputedStyle(key);
-          const mc = getComputedStyle(meta);
+          const kr = rect(key);
+          const br = rect(bar);
+          const wheelWhole = kr.width > 0 && kr.top >= br.top - 1 && kr.bottom <= br.bottom + 1 &&
+            kr.right <= br.right + 1;
+          const metaHasKey = (bar.querySelector(".cp-player-bar__meta")!.textContent ?? "").includes("8A");
           return {
             sameRow,
-            gapLeft: seek.left - textRight,
+            // The left group ends at the Wheel button, which follows the track's words.
+            gapLeft: seek.left - Math.max(textRight, rect(bar.querySelector(".cp-player-bar__wheel")!).right),
             gapRight: controls.left - seek.right,
-            keyBottom: keyBox.bottom,
-            dotBottom: dot?.bottom ?? null,
-            keyHeight: keyBox.height,
-            dotHeight: dot?.height ?? null,
-            sameFont: kc.fontSize === mc.fontSize && kc.fontFamily === mc.fontFamily,
+            wheelWhole,
+            metaHasKey,
           };
         }, scale);
         const at = `${label} at ${scale}x`;
@@ -232,12 +217,8 @@ test("the waveform is centred and the key sits on the baseline", async () => {
         if (r.sameRow) {
           expect(Math.abs(r.gapLeft - r.gapRight), `waveform centred, ${at}`).toBeLessThanOrEqual(2);
         }
-        expect(r.dotBottom, `the meta line has a separator, ${at}`).not.toBeNull();
-        expect(Math.abs(r.keyBottom - (r.dotBottom as number)), `key on the baseline, ${at}`)
-          .toBeLessThanOrEqual(0.5);
-        expect(Math.abs(r.keyHeight - (r.dotHeight as number)), `key text height, ${at}`)
-          .toBeLessThanOrEqual(0.5);
-        expect(r.sameFont, `key font matches the line, ${at}`).toBe(true);
+        expect(r.wheelWhole, `the Wheel button fits the bar, ${at}`).toBe(true);
+        expect(r.metaHasKey, `the line keeps the key as words, ${at}`).toBe(true);
       }
     }
   } finally { await app.close(); }

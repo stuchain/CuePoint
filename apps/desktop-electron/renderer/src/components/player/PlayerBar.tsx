@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Badge } from "../Badge";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
 import { modifierName } from "../shell/platformKeys";
-import { toggleWheel } from "../wheel/wheelStore";
+import { WheelButton } from "../wheel/WheelButton";
 import { waveformEntryWords } from "../waveform/analysisWords";
 import { useWaveform } from "../waveform/useWaveforms";
 import { useWaveformRequest } from "../waveform/useWaveformRequest";
@@ -87,34 +87,6 @@ const REPEAT_TITLES: Record<string, string> = {
   all: "Repeat: all tracks",
   one: "Repeat: one track",
 };
-
-/**
- * The track line with its key as a button that opens the Camelot wheel (BAR-5).
- *
- * The line is joined as text (`formatTrackMeta`), so the key is found in it from
- * `from`, past the artist, rather than rebuilt: an artist named "8A" is not the key.
- */
-function withKeyButton(text: string, from: number, key: string | null): ReactNode {
-  const at = key === null ? -1 : text.indexOf(key, from);
-  if (key === null || at < 0) return text;
-  return (
-    <>
-      {text.slice(0, at)}
-      <Hint inline text="Show this key on the Camelot wheel">
-        <button
-          type="button"
-          className="cp-player-bar__keybtn"
-          data-wheel-opener=""
-          aria-label={`Show ${key} on the Camelot wheel`}
-          onClick={() => toggleWheel("player")}
-        >
-          {key}
-        </button>
-      </Hint>
-      {text.slice(at + key.length)}
-    </>
-  );
-}
 
 export function PlayerBar({
   queueOpen = false,
@@ -327,14 +299,22 @@ export function PlayerBar({
                 {artistText}
               </button>
             </Hint>
-            {withKeyButton(artistSplit, 0, keyText)}
+            {artistSplit}
           </span>
         ) : (
           <span className="cp-player-bar__meta">
-            {withKeyButton(meta, artistText.length, keyText)}
+            {meta}
           </span>
         )}
       </div>
+
+      {/* The key opens the Camelot wheel (BAR-5): the same small button as Track details', named
+          for the key. */}
+      {keyText !== null && (
+        <div className="cp-player-bar__wheel">
+          <WheelButton source="player" keyName={keyText} />
+        </div>
+      )}
 
       {/* Why there is no waveform is the slider's Hint, never the region's
           space, so the bar never shows an empty box (WAVE-06). No title here:
