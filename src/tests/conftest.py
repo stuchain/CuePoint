@@ -461,3 +461,14 @@ def _forget_beatport_genres_failure():
     forget_genres_failure()
     yield
     forget_genres_failure()
+
+
+@pytest.fixture(autouse=True)
+def _forget_discover_picture_misses():
+    """Discover's "no picture for this card" memory is per process and keyed by
+    run id, which every test database starts again from 1: it must not outlive a test."""
+    from cuepoint.services import discovery_service
+
+    discovery_service._ART_MISSES.clear()
+    yield
+    discovery_service._ART_MISSES.clear()
