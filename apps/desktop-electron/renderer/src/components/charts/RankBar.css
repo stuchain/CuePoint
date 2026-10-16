@@ -1,0 +1,12 @@
+/* The one horizontal bar (area 68): flat, --chart-bar-thickness tall, as long as its share. */
+.cp-rank-bar {
+  display: block;
+  width: var(--share, 0%);
+  min-width: var(--hairline);
+  height: var(--chart-bar-thickness);
+  background: var(--bar-color, var(--chart-bar));
+}
+
+.cp-rank-bar[data-empty] {
+  min-width: 0;
+}

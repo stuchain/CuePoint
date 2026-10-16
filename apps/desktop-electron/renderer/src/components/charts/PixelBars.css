@@ -26,12 +26,13 @@
   fill: var(--fg-muted);
 }
 
+/* The one bar mark (tokens.css --chart-bar*): flat, so a ranked list and a range read alike. */
 .cp-pixel-bars__outline {
-  fill: var(--border-outline);
+  fill: var(--chart-bar-outline);
 }
 
 .cp-pixel-bars__fill {
-  fill: var(--accent-primary);
+  fill: var(--chart-bar);
 }
 
 .cp-pixel-bars__hit {
@@ -54,7 +55,7 @@
 
 .cp-pixel-bars__bar--open:hover .cp-pixel-bars__fill,
 .cp-pixel-bars__bar--open:focus-visible .cp-pixel-bars__fill {
-  fill: var(--accent-primary-hover);
+  fill: var(--chart-bar-hover);
 }
 
 .cp-pixel-bars__bar--open:focus-visible {

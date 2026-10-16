@@ -9,10 +9,10 @@ import chipCssRaw from "./KeyChip.css?raw";
 const chipCss = chipCssRaw.replace(/\r\n/g, "\n");
 
 describe("a key chip", () => {
-  it("writes the Camelot code and names the key in its title", () => {
+  it("writes the Camelot code and names the key in its app hint (data-hint)", () => {
     render(<KeyChip value="8A" />);
     const chip = screen.getByText("8A");
-    expect(chip).toHaveAttribute("title", "A minor");
+    expect(chip).toHaveAttribute("data-hint", "A minor");
     expect(chip).toHaveClass("key-chip", "key-chip--8A", "cp-data");
   });
 
@@ -31,7 +31,7 @@ describe("a key chip", () => {
     render(<KeyChip value="loud" />);
     const plain = screen.getByText("loud");
     expect(plain).not.toHaveClass("key-chip");
-    expect(plain).not.toHaveAttribute("title");
+    expect(plain).not.toHaveAttribute("data-hint");
   });
 
   it("draws no key as a dash (DEC-201)", () => {

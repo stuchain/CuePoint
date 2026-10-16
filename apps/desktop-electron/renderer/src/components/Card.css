@@ -1,0 +1,39 @@
+/*
+ * The one card (area 64), as Statistics drew it: a hairline box padded 12, a title row (the title
+ * at the left, the unit or the one link at the far right) and the body 8 below.
+ */
+.cp-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+  padding: var(--space-lg);
+  border: var(--divider);
+}
+
+.cp-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.cp-card__title {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--font-size-section);
+  font-weight: var(--weight-strong);
+  color: var(--fg-primary);
+}
+
+.cp-card__unit {
+  flex: none;
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--control-font-weight);
+}
+
+.cp-card__body {
+  min-width: 0;
+}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useLeaveGhost } from "../tokens/useLeaveGhost";
 import { Hint } from "./Hint";
 import { PixelIcon } from "./PixelIcon";
@@ -38,6 +38,16 @@ export interface TrackContextMenuItem {
   label: string;
   /** What the entry does, for a hover; the label stays the name. */
   title?: string;
+  /**
+   * Why a greyed entry is greyed ("Select one or more tracks"), in the same hover. Only shown while
+   * `disabled`, and then instead of `title`. A greyed entry should always say why (area 81).
+   */
+  reason?: string;
+  /**
+   * A small group title drawn above this entry in the label style (10, bold, muted), after the
+   * divider if there is one ("Add to", "Rate"). It is not an entry: arrows skip it.
+   */
+  groupTitle?: string;
   onSelect: () => void;
   disabled?: boolean;
   /** Draws a divider above this entry. */
@@ -272,23 +282,27 @@ export function TrackContextMenu({ x, y, items, onClose, label, anchor }: TrackC
     }
   };
 
-  const renderList = (list: TrackContextMenuItem[], at: number): React.ReactNode =>
-    list.map((item) => {
-      const enabled = enabledAt(at);
-      const index = enabled.indexOf(item);
-      const parent = hasChildren(item);
-      const showing = parent && path[at] === item.id;
-      return (
-        <div key={item.id} className="cp-track-menu__group">
-          {item.separatorBefore && <div className="cp-track-menu__separator" role="separator" />}
-          <Hint text={item.title}>
+  const menuId = useId();
+
+  const renderItem = (item: TrackContextMenuItem, at: number): React.ReactNode => {
+    const enabled = enabledAt(at);
+    const index = enabled.indexOf(item);
+    const parent = hasChildren(item);
+    const showing = parent && path[at] === item.id;
+    const unavailable = item.disabled === true;
+    const reasonId = unavailable && item.reason ? `${menuId}-${at}-${item.id}-reason` : undefined;
+    return (
+      <div key={item.id} className="cp-track-menu__group">
+        <Hint text={unavailable && item.reason ? item.reason : item.title}>
+          {/* aria-disabled, not `disabled`: the entry stays in the order a reader walks and can say
+              why it is off (aria-describedby); it still cannot be chosen (`choose` returns). */}
           <button
             type="button"
             role={item.checked === undefined ? "menuitem" : "menuitemcheckbox"}
             aria-checked={item.checked}
-            className={`cp-track-menu__item${index === activeAt(at) ? " cp-track-menu__item--active" : ""}${parent ? " cp-track-menu__item--parent" : ""}`}
-            disabled={item.disabled}
-            aria-disabled={item.disabled || undefined}
+            className={`cp-track-menu__item${index === activeAt(at) ? " cp-track-menu__item--active" : ""}${parent ? " cp-track-menu__item--parent" : ""}${showing ? " cp-track-menu__item--open" : ""}`}
+            aria-disabled={unavailable || undefined}
+            aria-describedby={reasonId}
             aria-haspopup={parent ? "menu" : undefined}
             aria-expanded={parent ? showing : undefined}
             onMouseEnter={() => {
@@ -307,15 +321,52 @@ export function TrackContextMenu({ x, y, items, onClose, label, anchor }: TrackC
             {item.label}
             {parent && (
               <span className="cp-track-menu__arrow" aria-hidden="true">
-                <PixelIcon name="chevron-right" />
+                <PixelIcon name="chevron-right" size="sm" />
               </span>
             )}
           </button>
-          </Hint>
-          {showing && <Submenu label={item.label}>{renderList(item.items!, at + 1)}</Submenu>}
-        </div>
+        </Hint>
+        {reasonId && (
+          <span id={reasonId} className="cp-visually-hidden">
+            {item.reason}
+          </span>
+        )}
+        {showing && <Submenu label={item.label}>{renderList(item.items!, at + 1)}</Submenu>}
+      </div>
+    );
+  };
+
+  /**
+   * A list, with each titled group (an entry with `groupTitle` and the entries after it, up to the
+   * next title or divider) wrapped as a `role="group"` named by its title, so a reader hears
+   * "This page, group" and not a loose heading.
+   */
+  const renderList = (list: TrackContextMenuItem[], at: number): React.ReactNode => {
+    const out: React.ReactNode[] = [];
+    let group: { id: string; title: string; rows: React.ReactNode[] } | null = null;
+    const close = () => {
+      if (!group) return;
+      out.push(
+        <div key={`group-${group.id}`} role="group" aria-labelledby={group.id}>
+          <div id={group.id} className="cp-track-menu__heading" role="presentation">
+            {group.title}
+          </div>
+          {group.rows}
+        </div>,
       );
-    });
+      group = null;
+    };
+    for (const item of list) {
+      if (item.separatorBefore || item.groupTitle) close();
+      if (item.separatorBefore) {
+        out.push(<div key={`sep-${item.id}`} className="cp-track-menu__separator" role="separator" />);
+      }
+      if (item.groupTitle) group = { id: `${menuId}-${at}-${item.id}-title`, title: item.groupTitle, rows: [] };
+      (group ? group.rows : out).push(renderItem(item, at));
+    }
+    close();
+    return out;
+  };
 
   return (
     <div

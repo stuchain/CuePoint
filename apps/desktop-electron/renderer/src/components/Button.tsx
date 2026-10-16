@@ -27,6 +27,13 @@ interface ButtonBaseProps extends Omit<ComponentPropsWithRef<"button">, "childre
     loading?: boolean;
     /** `"sm"` is for rows and chips (T12): 80% of the control height. */
     size?: "sm";
+    /**
+     * A button that opens a menu or a list (area 63): its word, then a small chevron-down 8 away
+     * ("Add filter ⌄"). The chevron is the small pixel icon (--icon-size-sm), the same everywhere,
+     * and `aria-haspopup="menu"` is set unless the caller gives its own. A button that goes
+     * somewhere is a LinkButton with its "›" instead.
+     */
+    menu?: boolean;
 }
 
 interface LabelledButtonProps extends ButtonBaseProps {
@@ -51,7 +58,8 @@ function drawIcon(icon: ReactElement | PixelIconName): ReactNode {
         typeof icon === "string" &&
         Object.prototype.hasOwnProperty.call(PIXEL_ICONS, icon)
     ) {
-        return <PixelIcon name={icon as PixelIconName} />;
+        // Always the small size: an icon in a button is as tall as its words, never 24 (area 62).
+        return <PixelIcon name={icon as PixelIconName} size="sm" />;
     }
     return icon;
 }
@@ -62,6 +70,7 @@ export function Button(props: ButtonProps) {
         loading = false,
         size,
         icon,
+        menu = false,
         iconOnly = false,
         children,
         className = "",
@@ -74,6 +83,7 @@ export function Button(props: ButtonProps) {
         "cp-btn",
         `cp-btn--${look}`,
         iconOnly ? "cp-btn--icon" : "",
+        menu && !iconOnly ? "cp-btn--menu" : "",
         size === "sm" ? "cp-btn--sm" : "",
         loading ? "cp-btn--loading" : "",
         className,
@@ -86,12 +96,18 @@ export function Button(props: ButtonProps) {
             className={classes}
             disabled={isDisabled}
             aria-busy={iconOnly && loading ? true : undefined}
+            aria-haspopup={menu ? "menu" : undefined}
             {...rest}
         >
             {icon && <span className="cp-btn__icon">{drawIcon(icon)}</span>}
             {!iconOnly && (
                 <span className="cp-btn__label">
                     {loading ? "…" : children}
+                </span>
+            )}
+            {menu && !iconOnly && (
+                <span className="cp-btn__menu" aria-hidden="true">
+                    <PixelIcon name="chevron-down" size="sm" />
                 </span>
             )}
         </button>

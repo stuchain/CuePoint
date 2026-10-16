@@ -5,3 +5,37 @@
  */
 @import "@fontsource/pixelify-sans/400.css";
 @import "@fontsource/pixelify-sans/700.css";
+
+/*
+ * Figures inside pixel words (area 56). The pixel face draws 2 like 8 and 5 like S, and its dash
+ * like a hyphen, so a chip or a tab that says "Match 23" or "-19 LUFS" would misread. This family
+ * covers only the digits, the signs, the colon and the brackets numbers sit in (unicode-range), not the comma, hyphen or full stop of ordinary words, and is
+ * backed by the same system sans the data face uses; --font-pixel-digits puts it in front of the
+ * pixel face, so the words stay pixel and every figure is the data face. No font file is loaded:
+ * it names fonts already on the machine.
+ */
+@font-face {
+  font-family: "CuePoint Digits";
+  font-weight: 400;
+  src:
+    local("Inter"),
+    local("Inter Regular"),
+    local("Segoe UI Variable Text"),
+    local("Segoe UI"),
+    local("Helvetica Neue"),
+    local("Arial");
+  unicode-range: U+0025, U+0028-0029, U+002B, U+0030-003A, U+2013-2014, U+2212;
+}
+
+@font-face {
+  font-family: "CuePoint Digits";
+  font-weight: 700;
+  src:
+    local("Inter Bold"),
+    local("Inter SemiBold"),
+    local("Segoe UI Bold"),
+    local("Segoe UI Semibold"),
+    local("Helvetica Neue Bold"),
+    local("Arial Bold");
+  unicode-range: U+0025, U+0028-0029, U+002B, U+0030-003A, U+2013-2014, U+2212;
+}

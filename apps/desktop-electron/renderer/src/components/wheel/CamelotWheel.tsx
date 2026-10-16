@@ -147,7 +147,7 @@ export function CamelotWheel({
               aria-current={relation === "same" ? "true" : undefined}
               aria-label={count === null ? nameOf(code, relation) : countedName(code, count, isChosen, relation)}
               aria-pressed={count === null ? undefined : isChosen}
-              title={count === null ? keyHint(code) : `${code}: ${tracksWord(count)}`}
+              data-hint={count === null ? keyHint(code) : `${code}: ${tracksWord(count)}`}
               tabIndex={code === focusCode ? 0 : -1}
               style={
                 {

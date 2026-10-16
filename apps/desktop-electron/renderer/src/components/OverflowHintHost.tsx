@@ -4,12 +4,24 @@ import { HINT_HOVER_DELAY_MS } from "./Hint";
 
 const GAP = 4;
 
-/** The element a pointer is over when it is marked `data-cut-hint` and really is cut short with "…". */
-function cutElement(target: EventTarget | null): HTMLElement | null {
+/**
+ * What a pointer or focus is on that has a hint: an element marked `data-hint="words"` (always
+ * shows its words), or one marked `data-cut-hint` that really is cut short with "…" (shows its
+ * text). The nearest marked element wins, so a cut value inside a cell that has its own
+ * `data-hint` shows its own text, not the cell's words; a mark that is not cut passes to the next
+ * one out.
+ */
+export function hintTarget(target: EventTarget | null): { element: HTMLElement; text: string } | null {
   if (!(target instanceof Element)) return null;
-  const marked = target.closest<HTMLElement>("[data-cut-hint]");
-  if (!marked) return null;
-  return marked.scrollWidth > marked.clientWidth + 1 ? marked : null;
+  for (let node: Element | null = target; node; node = node.parentElement) {
+    if (!(node instanceof HTMLElement)) continue;
+    if (node.hasAttribute("data-cut-hint") && node.scrollWidth > node.clientWidth + 1) {
+      return { element: node, text: node.textContent ?? "" };
+    }
+    const words = node.getAttribute("data-hint");
+    if (words) return { element: node, text: words };
+  }
+  return null;
 }
 
 interface Shown {
@@ -25,6 +37,13 @@ interface Shown {
  * mounted once in the shell and delegated from the document, so a table of thousands of cells
  * adds no per-cell work. Mark the element that carries the ellipsis with `data-cut-hint`; the tip
  * only appears when it really is cut, and shows its text.
+ *
+ * `data-hint="words"` is the same tip for a plain explanation (a key chip's name, a wheel segment's
+ * count): use it instead of a native `title` wherever many small elements repeat (table rows, the
+ * wheel), where a `<Hint>` wrapper per element would cost too much. The element keeps its own
+ * accessible name (text or `aria-label`). Hover and keyboard focus both show the tip, and while it
+ * shows the element carries the words as its `aria-description`, so a screen reader hears what a
+ * pointer user reads.
  */
 export function OverflowHintHost() {
   const [shown, setShown] = useState<Shown | null>(null);
@@ -32,42 +51,82 @@ export function OverflowHintHost() {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     let over: HTMLElement | null = null;
+    /** The element carrying the words as `aria-description`, and what it had before. */
+    let described: { element: HTMLElement; before: string | null } | null = null;
+    const undescribe = () => {
+      if (!described) return;
+      const { element, before } = described;
+      if (before === null) element.removeAttribute("aria-description");
+      else element.setAttribute("aria-description", before);
+      described = null;
+    };
     const hide = () => {
       if (timer !== null) clearTimeout(timer);
       timer = null;
       over = null;
+      undescribe();
       setShown(null);
     };
+    const place = (element: HTMLElement, text: string) => {
+      const box = element.getBoundingClientRect();
+      const room = box.top - GAP > 40;
+      undescribe();
+      described = { element, before: element.getAttribute("aria-description") };
+      element.setAttribute("aria-description", text);
+      setShown({
+        text,
+        left: Math.max(GAP, Math.min(box.left, window.innerWidth - 360)),
+        ...(room ? { bottom: window.innerHeight - box.top + GAP } : { top: box.bottom + GAP }),
+      });
+    };
     const onOver = (event: PointerEvent) => {
-      const element = cutElement(event.target);
+      const found = hintTarget(event.target);
+      const element = found?.element ?? null;
       if (element === over) return;
       hide();
-      if (!element) return;
+      if (!found || !element) return;
       over = element;
       timer = setTimeout(() => {
         timer = null;
-        const box = element.getBoundingClientRect();
-        const room = box.top - GAP > 40;
-        setShown({
-          text: element.textContent ?? "",
-          left: Math.max(GAP, Math.min(box.left, window.innerWidth - 360)),
-          ...(room ? { bottom: window.innerHeight - box.top + GAP } : { top: box.bottom + GAP }),
-        });
+        place(element, found.text);
       }, HINT_HOVER_DELAY_MS);
+    };
+    // The keyboard gets the same tip, at once (there is no pointer to rest): focus moving by key
+    // onto a marked element shows it, and leaving it hides it. A click's focus does not (the
+    // pointer's own hide has just run).
+    const onFocusIn = (event: FocusEvent) => {
+      const found = hintTarget(event.target);
+      if (!found) return;
+      try {
+        if (!found.element.matches(":focus-visible")) return;
+      } catch {
+        // No :focus-visible to ask: treat the focus as the keyboard's.
+      }
+      hide();
+      over = found.element;
+      place(found.element, found.text);
+    };
+    const onFocusOut = (event: FocusEvent) => {
+      if (over && event.target instanceof Node && over.contains(event.target)) hide();
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") hide();
     };
     document.addEventListener("pointerover", onOver);
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
     document.addEventListener("pointerdown", hide, true);
     document.addEventListener("scroll", hide, true);
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("pointerover", onOver);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
       document.removeEventListener("pointerdown", hide, true);
       document.removeEventListener("scroll", hide, true);
       document.removeEventListener("keydown", onKey);
       if (timer !== null) clearTimeout(timer);
+      undescribe();
     };
   }, []);
 

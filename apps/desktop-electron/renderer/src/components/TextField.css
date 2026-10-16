@@ -2,11 +2,26 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+  min-width: 0;
 }
 
+/* Three widths (area 87). Standard is the default, so a field never fills a wide window. */
+.cp-field--short {
+  max-width: var(--field-width-short);
+}
+
+.cp-field--standard {
+  max-width: var(--field-width-standard);
+}
+
+.cp-field--full {
+  max-width: none;
+}
+
+/* The label role: 10, bold, muted, above the box. */
 .cp-field__label {
-  font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
   color: var(--fg-muted);
 }
 
@@ -16,9 +31,15 @@
   border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-primary);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
+}
+
+/* One hover for every control (area 79): a firmer border and a shade. */
+.cp-field__input:hover:not(:disabled):not(:read-only):not(:focus-visible) {
+  border-color: var(--hover-border);
+  background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
 }
 
 .cp-field__input:focus-visible {
@@ -26,7 +47,15 @@
   outline-offset: var(--focus-ring-offset);
 }
 
-.cp-field__input--error {
+.cp-field__input:disabled {
+  color: var(--fg-disabled);
+  background: var(--bg-panel);
+  border-color: var(--border-muted);
+}
+
+/* The error is under the box, and the box says so too. */
+.cp-field__input--error,
+.cp-field__input--error:hover:not(:disabled):not(:read-only):not(:focus-visible) {
   border-color: var(--accent-danger);
 }
 

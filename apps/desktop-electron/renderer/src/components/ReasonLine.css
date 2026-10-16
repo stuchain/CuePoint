@@ -1,0 +1,12 @@
+/* The reason a button is greyed (area 93): one muted line above the buttons it explains. */
+.cp-reason {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--text-body);
+  font-weight: var(--weight-normal);
+  line-height: 1.4;
+}
+
+.cp-reason--end {
+  text-align: right;
+}

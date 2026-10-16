@@ -13,6 +13,9 @@
   border: var(--hairline) solid var(--chip-tone);
   background: color-mix(in srgb, var(--chip-tone) var(--chip-fill-mix), transparent);
   color: color-mix(in srgb, var(--chip-tone) var(--chip-text-mix), var(--fg-primary));
+  /* Words in the pixel face, figures in the data face (area 56): "23 left" never reads "28 left". */
+  font-family: var(--font-pixel-digits);
+  font-variant-numeric: tabular-nums;
   font-size: var(--font-size-xs);
   font-weight: var(--weight-strong);
   line-height: 1;

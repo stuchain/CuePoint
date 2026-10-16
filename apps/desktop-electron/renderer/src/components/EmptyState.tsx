@@ -8,9 +8,21 @@ import "./EmptyState.css";
 export const IMPORT_COLLECTION_LABEL = "Import a Rekordbox file…";
 
 export interface EmptyStateProps {
-  /** The pixel icon above the line: the page's own icon, so the empty state is recognisably this page's. */
+  /**
+   * The pixel icon above the line: the page's own icon, so the empty state is recognisably this
+   * page's. There is always one (area 66): without it the default is the tick for `tone="clear"`
+   * and the stack for an ordinary empty list.
+   */
   icon?: PixelIconName;
-  /** What is missing, in a few words (sm, bold). */
+  /**
+   * `"empty"` (the default) is nothing to show yet; `"clear"` is the all-clear, a check that
+   * found nothing wrong ("No possible duplicates"): the icon is the tick, in the success colour.
+   */
+  tone?: "empty" | "clear";
+  /**
+   * What is missing, in a few words (sm, bold). Written like a label, with no full stop at the
+   * end ("No possible duplicates", not "No possible duplicates."); a reason goes in `description`.
+   */
   headline: string;
   /** One muted line: why, or what to do. */
   description?: ReactNode;
@@ -23,14 +35,13 @@ export interface EmptyStateProps {
  * The one empty state: centred, an icon, one line, and at most one button; never a full-screen
  * splash. `description` is for a second, muted line only when the first needs a reason.
  */
-export function EmptyState({ icon, headline, description, action, className = "" }: EmptyStateProps) {
+export function EmptyState({ icon, tone = "empty", headline, description, action, className = "" }: EmptyStateProps) {
+  const drawn: PixelIconName = icon ?? (tone === "clear" ? "clean" : "collections");
   return (
-    <div className={`cp-empty-state ${className}`.trim()}>
-      {icon && (
-        <span className="cp-empty-state__icon" aria-hidden>
-          <PixelIcon name={icon} />
-        </span>
-      )}
+    <div className={`cp-empty-state${tone === "clear" ? " cp-empty-state--clear" : ""} ${className}`.trim()}>
+      <span className="cp-empty-state__icon" aria-hidden>
+        <PixelIcon name={drawn} />
+      </span>
       <p className="cp-empty-state__headline">{headline}</p>
       {description && <p className="cp-empty-state__description">{description}</p>}
       {action && (

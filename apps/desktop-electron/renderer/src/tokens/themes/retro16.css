@@ -1,4 +1,4 @@
-/* Retro 16-bit — original lab palette */
+/* Retro 16-bit: lab palette with a lavender accent (40+ degrees of hue from warning and danger) */
 :root,
 [data-theme="retro16"] {
   --bg-app: #1a1a2e;
@@ -13,7 +13,7 @@
   --border-light: #e0fbfc;
   --border-muted: #5a7ba6;
   --border-control: #98c1d9;
-  --tab-underline-color: #ee6c4d;
+  --tab-underline-color: #b673f0;
   --bevel-highlight: #98c1d9;
   --bevel-shadow: #0d1b2a;
 
@@ -23,9 +23,9 @@
   --fg-inverse: #0d1b2a;
   --fg-on-status: #000000;
 
-  --accent-primary: #ef785b;
-  --accent-primary-hover: #f2846b;
-  --accent-primary-pressed: #c8553d;
+  --accent-primary: #c77dff;
+  --accent-primary-hover: #d493ff;
+  --accent-primary-pressed: #9a5ad4;
   --accent-secondary: #2d4563;
   --accent-secondary-hover: #4d6a90;
   --accent-success: #4caf50;
@@ -34,10 +34,10 @@
   --accent-info: #48cae4;
 
   /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */
-  --accent-fill: #ee6c4d;
+  --accent-fill: #b673f0;
   --danger-fill: #c62828;
-  --link: #f07b5f;
-  --focus-ring-color: #ee6c4d;
+  --link: #d29bff;
+  --focus-ring-color: #b673f0;
   --color-scheme: dark;
 
   --overlay-header: rgba(0, 0, 0, 0.15);

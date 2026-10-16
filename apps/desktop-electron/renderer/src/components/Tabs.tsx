@@ -36,6 +36,11 @@ export function panelId(idPrefix: string, id: string): string {
   return `${idPrefix}-panel-${id}`;
 }
 
+/** A count or a short word, which can be named in an aria-label. */
+function plain(detail: ReactNode): detail is string | number {
+  return typeof detail === "string" || typeof detail === "number";
+}
+
 export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix }: TabsProps) {
   return (
     <div className={`cp-tabs ${variant === "sub" ? "cp-tabs--sub" : ""}`.trim()} role="tablist">
@@ -48,12 +53,20 @@ export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix }: T
           aria-controls={idPrefix ? panelId(idPrefix, tab.id) : undefined}
           aria-selected={tab.id === activeId}
           className={`cp-tabs__tab ${tab.id === activeId ? "cp-tabs__tab--active" : ""}`}
+          // A plain count is named with its label and a comma ("Missing files, 3"); a chip or other
+          // element is read in its place, after a hidden comma.
+          aria-label={plain(tab.detail) ? `${tab.label}, ${tab.detail}` : undefined}
           disabled={tab.disabled}
           onClick={() => onChange(tab.id)}
         >
           {tab.label}
           {tab.detail !== undefined && tab.detail !== null && (
-            <span className="cp-tabs__detail">{tab.detail}</span>
+            <>
+              {/* Said, not drawn: the name reads "Missing files, 3", not "Missing files3". A plain
+                  count is in the button's aria-label instead. */}
+              {!plain(tab.detail) && <span className="cp-tabs__comma">, </span>}
+              <span className="cp-tabs__detail">{tab.detail}</span>
+            </>
           )}
         </button>
       ))}

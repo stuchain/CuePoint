@@ -44,14 +44,29 @@
 
 /* One highlight for both pointer and keyboard: hovering sets the active item,
    so the menu never shows two "current" rows at once. */
-.cp-track-menu__item--active:not(:disabled) {
+.cp-track-menu__item--active:not([aria-disabled="true"]) {
   background: var(--selected-row-background);
   color: var(--fg-primary);
 }
 
-.cp-track-menu__item:disabled {
+/* A parent whose list is showing keeps the same look while the pointer is in the list (area 81). */
+.cp-track-menu__item--open:not([aria-disabled="true"]) {
+  background: var(--selected-row-background);
+  color: var(--fg-primary);
+}
+
+.cp-track-menu__item[aria-disabled="true"] {
   color: var(--fg-disabled);
   cursor: default;
+}
+
+/* A group title: the label role, set in from the edge like an entry's words (area 81). */
+.cp-track-menu__heading {
+  padding: var(--space-xs) var(--space-md) var(--space-2xs);
+  color: var(--fg-muted);
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
+  white-space: nowrap;
 }
 
 .cp-track-menu__separator {
@@ -111,7 +126,7 @@
   z-index: 61;
   max-height: calc(100vh - 8px);
   overflow-y: auto;
-  min-width: calc(140px * var(--scale));
+  min-width: calc(180px * var(--scale));
   padding: var(--space-xs) 0;
   border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-panel);

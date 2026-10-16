@@ -51,6 +51,18 @@
   --control-height: round(nearest, calc(20px * var(--scale)), 1px);
   --control-font-size: var(--font-size-xs);
   --control-font-weight: 400;
+  /* Hover for every control (area 79): a shade of the text colour, and a firmer border on fields. */
+  --hover-shade: color-mix(in srgb, var(--fg-primary) 14%, transparent);
+  --hover-border: var(--fg-muted);
+  /* The one bar (area 68): horizontal for ranked lists (RankBar), vertical for ranges (PixelBars).
+     Flat accent, no outline, the same hover; a ranked bar is this thick. */
+  --chart-bar: var(--accent-primary);
+  --chart-bar-hover: var(--accent-primary-hover);
+  --chart-bar-outline: transparent;
+  --chart-bar-thickness: round(nearest, calc(8px * var(--scale)), 1px);
+  /* Field widths (area 87): short, standard (the default, at most this), full is the container. */
+  --field-width-short: calc(120px * var(--scale));
+  --field-width-standard: calc(320px * var(--scale));
   --selected-bar-width: max(2px, round(down, calc(2px * var(--scale)), 1px));
   --bg-selected: color-mix(in srgb, var(--accent-primary) 18%, var(--bg-input));
   --selected-row-background: linear-gradient(
@@ -109,6 +121,8 @@
    */
   --font-data: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui,
     -apple-system, "Helvetica Neue", Arial, sans-serif;
+  /* Pixel words with data-face figures (area 56): see tokens/fonts.css. Use through `.cp-digits`. */
+  --font-pixel-digits: "CuePoint Digits", var(--font-pixel);
   --font-size-xs: calc(10px * var(--scale));
   --font-size-sm: calc(12px * var(--scale));
   --font-size-md: calc(14px * var(--scale));
@@ -178,7 +192,8 @@ body,
 body {
   background: var(--bg-app);
   color: var(--fg-primary);
-  font-family: var(--font-pixel);
+  /* Pixel words, data-face figures (area 56). */
+  font-family: var(--font-pixel-digits);
   font-size: var(--text-body);
   /* The pixel font ships an "fi" ligature that draws "Add filter" as "Add Alter". */
   font-variant-ligatures: none;

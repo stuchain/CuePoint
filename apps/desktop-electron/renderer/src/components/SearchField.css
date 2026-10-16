@@ -22,9 +22,15 @@
   border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-primary);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
+}
+
+/* One hover for every control (area 79). */
+.cp-search-field__input:hover:not(:disabled):not(:focus-visible) {
+  border-color: var(--hover-border);
+  background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
 }
 
 .cp-search-field__input::placeholder {

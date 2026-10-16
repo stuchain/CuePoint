@@ -19,6 +19,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { changedMark, useCountChanges } from "../wheel/useCountChanges";
 import { formatCount } from "./formatCount";
+import { trueMinus } from "./trueMinus";
 import { barsLayout, type BarsOrientation, type PixelBucket } from "./pixelBarsGeometry";
 import "./PixelBars.css";
 
@@ -189,7 +190,7 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
                       y={bar.label.y}
                       textAnchor={bar.label.anchor}
                     >
-                      {bar.label.text}
+                      {trueMinus(bar.label.text)}
                     </text>
                   )}
                 </g>
@@ -197,7 +198,7 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
             }
             const opens = openable.includes(bar.index);
             const changed = changedMark(marks, bucket.label);
-            const name = barName(bucket);
+            const name = trueMinus(barName(bucket));
             const interactive = opens
               ? {
                   role: "button" as const,
@@ -274,7 +275,7 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
                     y={bar.label.y}
                     textAnchor={bar.label.anchor}
                   >
-                    {bar.label.text}
+                    {trueMinus(bar.label.text)}
                   </text>
                 )}
               </g>
@@ -282,7 +283,7 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
           })}
         </svg>
       </div>
-      <p className="cp-pixel-bars__caption">{shown ? barName(shown) : ""}</p>
+      <p className="cp-pixel-bars__caption">{shown ? trueMinus(barName(shown)) : ""}</p>
       <table className="cp-pixel-bars__table">
         <caption>{title}</caption>
         <thead>
@@ -295,7 +296,7 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
           {buckets.map((bucket, at) =>
             isGap?.(bucket) ? null : (
               <tr key={at}>
-                <th scope="row">{bucket.label}</th>
+                <th scope="row">{trueMinus(bucket.label)}</th>
                 <td>{formatCount(bucket.count)}</td>
               </tr>
             ),

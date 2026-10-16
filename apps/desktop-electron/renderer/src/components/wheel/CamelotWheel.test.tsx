@@ -407,8 +407,8 @@ describe("clicking a key (DEC-160)", () => {
     install();
     mount();
     await openFromHeader();
-    expect(segment("9A")).toHaveAttribute("title", "9A: show every 9A track in the Library");
-    expect(segment("12B")).toHaveAttribute("title", "12B: show every 12B track in the Library");
+    expect(segment("9A")).toHaveAttribute("data-hint", "9A: show every 9A track in the Library");
+    expect(segment("12B")).toHaveAttribute("data-hint", "12B: show every 12B track in the Library");
   });
 });
 

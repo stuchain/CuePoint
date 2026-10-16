@@ -1,0 +1,11 @@
+/* The multi-line box: TextField's box (TextField.css) with room to write. */
+.cp-textarea {
+  min-height: calc(var(--control-height) * 2);
+  padding: var(--space-sm);
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.cp-textarea::placeholder {
+  color: var(--fg-muted);
+}

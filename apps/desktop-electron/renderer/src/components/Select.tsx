@@ -1,5 +1,7 @@
 import type { SelectHTMLAttributes } from "react";
+import { useId } from "react";
 import { PixelIcon } from "./PixelIcon";
+import { FIELD_WIDTH_CLASS, type FieldWidth } from "./TextField";
 import "./Select.css";
 
 export interface SelectOption {
@@ -19,6 +21,12 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   /** The label stays the accessible name but is not drawn (a select that sits in a row of controls). */
   hideLabel?: boolean;
   options: SelectOption[];
+  /** Muted words below the select. Hidden while there is an error. */
+  hint?: string;
+  /** What is wrong, in red under the select; the select gets a red border and `aria-invalid`. */
+  error?: string;
+  /** `short`, `standard` (the default, at most 320 times the scale) or `full`: see TextField (area 87). */
+  width?: FieldWidth;
 }
 
 /** The options as the runs they are drawn in: one `<optgroup>` per run of a group. */
@@ -35,32 +43,59 @@ function runsOf(options: SelectOption[]): Array<{ group?: string; options: Selec
   return runs;
 }
 
-export function Select({ label, hideLabel = false, options, id, className = "", ...rest }: SelectProps) {
-  const fieldId = id ?? label.toLowerCase().replace(/\s+/g, "-");
+export function Select({
+  label,
+  hideLabel = false,
+  options,
+  hint,
+  error,
+  width = "standard",
+  id,
+  className = "",
+  ...rest
+}: SelectProps) {
+  const generated = useId();
+  const fieldId = id ?? (label.toLowerCase().replace(/\s+/g, "-") || generated);
+  const noteId = `${fieldId}-note`;
+  const note = error ?? hint;
+  const describedBy = [rest["aria-describedby"], note ? noteId : null].filter(Boolean).join(" ") || undefined;
   const drawn = (opt: SelectOption) => (
     <option key={opt.value} value={opt.value} disabled={opt.disabled}>
       {opt.label}
     </option>
   );
   return (
-    <label className={`cp-select ${className}`.trim()} htmlFor={fieldId}>
-      <span className={hideLabel ? "cp-select__label cp-visually-hidden" : "cp-select__label"}>{label}</span>
+    <div className={`cp-select ${FIELD_WIDTH_CLASS[width]} ${className}`.trim()}>
+      <label className={hideLabel ? "cp-select__label cp-visually-hidden" : "cp-select__label"} htmlFor={fieldId}>
+        {label}
+      </label>
       <span className="cp-select__field">
-        <select id={fieldId} className="cp-select__control" {...rest}>
-        {runsOf(options).map((run, index) =>
-          run.group === undefined ? (
-            run.options.map(drawn)
-          ) : (
-            <optgroup key={`${run.group}-${index}`} label={run.group}>
-              {run.options.map(drawn)}
-            </optgroup>
-          ),
-        )}
+        <select
+          id={fieldId}
+          className={`cp-select__control${error ? " cp-select__control--error" : ""}`}
+          {...rest}
+          aria-describedby={describedBy}
+          aria-invalid={error ? true : rest["aria-invalid"]}
+        >
+          {runsOf(options).map((run, index) =>
+            run.group === undefined ? (
+              run.options.map(drawn)
+            ) : (
+              <optgroup key={`${run.group}-${index}`} label={run.group}>
+                {run.options.map(drawn)}
+              </optgroup>
+            ),
+          )}
         </select>
         <span className="cp-select__chevron" aria-hidden="true">
           <PixelIcon name="chevron-down" />
         </span>
       </span>
-    </label>
+      {note && (
+        <span id={noteId} className={error ? "cp-field__error" : "cp-field__hint"}>
+          {note}
+        </span>
+      )}
+    </div>
   );
 }

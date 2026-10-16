@@ -17,7 +17,7 @@
   border-bottom: var(--tab-underline) solid transparent;
   background: transparent;
   color: var(--fg-muted);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
   cursor: pointer;
@@ -74,9 +74,18 @@
   font-weight: var(--control-font-weight);
 }
 
+/* The comma a screen reader hears between a tab's name and its count ("Missing files, 3"): zero
+   size, inline, so it adds no space of its own to the name (a hidden-by-position span does). */
+.cp-tabs__comma {
+  font-size: 0;
+}
+
 /* A count or chip beside a tab's label: muted, and it keeps one line with it. */
 .cp-tabs__detail {
   margin-left: var(--space-sm);
+  /* A count is data: the data face with figures that line up (area 56). */
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
   color: var(--fg-muted);
   font-weight: var(--control-font-weight);
 }

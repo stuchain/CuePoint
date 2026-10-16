@@ -120,6 +120,18 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
     if (!builtIn) return;
     expect(hueGap(t["accent-warning"]!, t["accent-primary"]!)).toBeGreaterThanOrEqual(10);
   });
+
+  it("keeps every accent colour 40 degrees of hue from the warning and the danger colour", () => {
+    // An accent near amber or red reads as a state (a button that looks like an error), so the
+    // accent, its fill, the link, the focus ring and the tab underline all keep their distance.
+    if (!builtIn) return;
+    for (const accent of ["accent-primary", "accent-fill", "link", "focus-ring-color", "tab-underline-color"]) {
+      if (!t[accent]) continue;
+      for (const status of ["accent-warning", "accent-danger", "danger-fill"]) {
+        expect(hueGap(t[accent]!, t[status]!), `${accent} to ${status}`).toBeGreaterThanOrEqual(40);
+      }
+    }
+  });
 });
 
 /** `color-mix(in srgb, <top> <percent>%, <base>)`, as the stylesheets write it. */

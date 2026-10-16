@@ -1,4 +1,4 @@
-/* Muted pro — desaturated slate, warm amber accent */
+/* Muted pro: desaturated slate, soft indigo accent (the accent keeps 40+ degrees of hue from warning and danger) */
 [data-theme="mutedPro"] {
   --bg-app: #1c1f26;
   --bg-panel: #2a3140;
@@ -12,7 +12,7 @@
   --border-light: #9ca3af;
   --border-muted: #4b5568;
   --border-control: #7b8190;
-  --tab-underline-color: #f59e0b;
+  --tab-underline-color: #818cf8;
   --bevel-highlight: #6b7280;
   --bevel-shadow: #111318;
 
@@ -22,9 +22,9 @@
   --fg-inverse: #1c1f26;
   --fg-on-status: #000000;
 
-  --accent-primary: #f59e0b;
-  --accent-primary-hover: #fbbf24;
-  --accent-primary-pressed: #d97706;
+  --accent-primary: #818cf8;
+  --accent-primary-hover: #a5b4fc;
+  --accent-primary-pressed: #6366f1;
   --accent-secondary: #343d4f;
   --accent-secondary-hover: #3d4656;
   --accent-success: #10b981;
@@ -33,10 +33,10 @@
   --accent-info: #38bdf8;
 
   /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */
-  --accent-fill: #f59e0b;
+  --accent-fill: #818cf8;
   --danger-fill: #b91c1c;
-  --link: #f59e0b;
-  --focus-ring-color: #f59e0b;
+  --link: #a5b4fc;
+  --focus-ring-color: #818cf8;
   --color-scheme: dark;
 
   --overlay-header: rgba(0, 0, 0, 0.18);

@@ -25,10 +25,127 @@ select {
   font: inherit;
 }
 
+/*
+ * One square pixel checkbox and radio everywhere (area 80), not the browser's rounded, accent-
+ * coloured control. A hairline box on the input colour; checked, the accent fill with a pixel
+ * tick (a square for a radio, a dash for "some"). Hover is the one control hover (a firmer border
+ * and a shade). A page may set a bigger width/height (a tick column, a card) or its own hit
+ * area; the look follows the size. :where keeps all of it overridable.
+ */
 :where(input[type="checkbox"], input[type="radio"]) {
-  accent-color: var(--accent-primary);
+  appearance: none;
+  box-sizing: border-box;
+  flex: none;
+  display: inline-grid;
+  place-content: center;
   width: var(--font-size-sm);
   height: var(--font-size-sm);
+  margin: 0;
+  border: var(--control-border-width) solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--fg-inverse);
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+:where(input[type="checkbox"], input[type="radio"])::before {
+  content: "";
+  display: none;
+  background: currentColor;
+}
+
+:where(input[type="checkbox"])::before {
+  width: 100%;
+  height: 100%;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='1 2 11 8' shape-rendering='crispEdges'%3E%3Cpath d='M10 2h2v1h-2zM9 3h2v1H9zM8 4h2v1H8zM1 5h2v1H1zM7 5h2v1H7zM1 6h2v1H1zM6 6h2v1H6zM2 7h2v1H2zM4 7h2v1H4zM3 8h4v1H3zM4 9h2v1H4z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+:where(input[type="checkbox"]:indeterminate)::before {
+  display: block;
+  width: 60%;
+  height: 20%;
+  mask: none;
+}
+
+:where(input[type="checkbox"], input[type="radio"]):checked::before {
+  display: block;
+}
+
+:where(input[type="checkbox"], input[type="radio"]):checked,
+:where(input[type="checkbox"]:indeterminate) {
+  border-color: var(--accent-fill);
+  background: var(--accent-fill);
+}
+
+/* A radio is not a smaller checkbox: checked, it keeps the empty box and puts a small accent
+   square in it (a dot, in pixel terms), where a checkbox fills in and draws the tick. */
+:where(input[type="radio"]):checked {
+  background: var(--bg-input);
+  color: var(--accent-fill);
+}
+
+:where(input[type="radio"])::before {
+  width: 40%;
+  height: 40%;
+}
+
+:where(input[type="checkbox"], input[type="radio"]):hover:not(:disabled) {
+  border-color: var(--hover-border);
+  background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
+}
+
+:where(input[type="checkbox"], input[type="radio"]):checked:hover:not(:disabled) {
+  border-color: var(--accent-fill);
+}
+
+:where(input[type="checkbox"], input[type="radio"]):disabled {
+  border-color: var(--border-muted);
+  background: var(--bg-panel);
+  color: var(--fg-disabled);
+  cursor: not-allowed;
+}
+
+:where(input[type="checkbox"], input[type="radio"]):disabled:checked {
+  background: var(--border-muted);
+}
+
+:where(input[type="radio"]):disabled:checked {
+  background: var(--bg-panel);
+  color: var(--fg-disabled);
+}
+
+/* Forced colours (Windows High Contrast) drop backgrounds and masks, which would leave a checked
+   box looking empty: the system colours take over, and the tick or dot is drawn from CanvasText. */
+@media (forced-colors: active) {
+  :where(input[type="checkbox"], input[type="radio"]) {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  :where(input[type="checkbox"], input[type="radio"])::before {
+    background: CanvasText;
+  }
+
+  :where(input[type="checkbox"], input[type="radio"]):checked,
+  :where(input[type="checkbox"]:indeterminate) {
+    border-color: Highlight;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  :where(input[type="checkbox"], input[type="radio"]):disabled,
+  :where(input[type="checkbox"], input[type="radio"]):disabled:checked {
+    border-color: GrayText;
+    background: Canvas;
+    color: GrayText;
+  }
+
+  :where(input[type="checkbox"], input[type="radio"]):disabled::before {
+    background: GrayText;
+  }
 }
 
 fieldset {
@@ -167,6 +284,17 @@ a[href]:where(:not([class])) {
 /* Dense data: the data face with figures that line up (DEC-048, T7). */
 .cp-data {
   font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Words in the pixel face with every figure in the data face (area 56): a chip, a tab with a
+ * count, a fact line. The figures, signs and separators come from the "CuePoint Digits" family,
+ * so "Match 23" and "-19 LUFS" read the same in every theme. Use this when words and figures
+ * share one element; use .cp-data when the whole element is data.
+ */
+.cp-digits {
+  font-family: var(--font-pixel-digits);
   font-variant-numeric: tabular-nums;
 }
 

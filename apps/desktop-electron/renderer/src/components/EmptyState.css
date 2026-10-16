@@ -12,6 +12,10 @@
   color: var(--fg-muted);
 }
 
+.cp-empty-state--clear .cp-empty-state__icon {
+  color: var(--success-text);
+}
+
 .cp-empty-state__headline {
   margin: 0;
   font-size: var(--font-size-sm);

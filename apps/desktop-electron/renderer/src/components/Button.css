@@ -9,7 +9,7 @@
   padding: 0 var(--space-sm);
   border: var(--control-border-width) solid var(--border-control);
   box-shadow: none;
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
   cursor: pointer;
@@ -65,11 +65,11 @@
 .cp-btn--quiet:hover:not(:disabled) {
   color: var(--fg-primary);
   text-decoration: underline;
-  filter: none;
 }
 
-.cp-btn:hover:not(:disabled) {
-  filter: brightness(1.08);
+/* One hover for every control (area 79): a shade of the text colour over whatever the button is. */
+.cp-btn:hover:not(:disabled):not(.cp-btn--loading) {
+  background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
 }
 
 .cp-btn:active:not(:disabled),
@@ -117,4 +117,22 @@
   display: inline-flex;
   font-size: var(--font-size-md);
   line-height: 1;
+}
+
+/* An icon beside words is as tall as the words (area 62), whether named or passed as an element. */
+.cp-btn__icon .cp-pixel-icon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+/* A menu button (area 63): its word, then the small chevron-down 8 away (the gap is 6 already). */
+.cp-btn__menu {
+  display: inline-flex;
+  margin-inline-start: calc(var(--space-md) - var(--space-sm));
+}
+
+.cp-btn__menu .cp-pixel-icon {
+  /* 12 at 1x to 1.75x, 24 at 2x: the chevron stays a small mark, not the --icon-size-sm that grows with the buttons. */
+  width: max(12px, round(down, calc(12px * var(--scale)), 12px));
+  height: max(12px, round(down, calc(12px * var(--scale)), 12px));
 }
