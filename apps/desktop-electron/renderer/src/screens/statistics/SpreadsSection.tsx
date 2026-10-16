@@ -20,10 +20,12 @@ import type {
   StatisticsSpread,
   StatisticsSpreads,
 } from "../../api/cuepointBridge.types";
+import { Card } from "../../components/Card";
 import { LinkButton } from "../../components/LinkButton";
 import { plural } from "../../format/counts";
 import { formatBpmText, formatLufs } from "../../format/units";
 import { PixelBars } from "../../components/charts/PixelBars";
+import { trueMinus } from "../../components/charts/trueMinus";
 import { libraryRulesState } from "../library/libraryLink";
 import { fillBins } from "./spreadBins";
 
@@ -105,8 +107,8 @@ const PANELS: Panel[] = [
     title: "Loudness",
     orientation: "vertical",
     bucketLabel: "Loudness (LUFS)",
-    axis: (value) => String(value),
-    fill: (n) => `${formatLufs(n)} LUFS`,
+    axis: (value) => trueMinus(String(value)),
+    fill: (n) => formatLufs(n),
     unknown: (n) => `${tracksOf(n)} ${is(n)} not measured yet`,
     noFile: (n) => `${tracksOf(n)} ${has(n)} no file to measure`,
     opens: false,
@@ -119,8 +121,8 @@ function itemsOf(panel: Panel, spread: StatisticsSpread): Item[] {
   return buckets.map((bucket) => {
     const gap = "gap" in bucket && bucket.gap === true;
     return {
-      label: panel.axis && !gap ? panel.axis(bucket.value) : bucket.label,
-      name: `${bucket.label}, ${tracksOf(bucket.count)}`,
+      label: trueMinus(panel.axis && !gap ? panel.axis(bucket.value) : bucket.label),
+      name: `${trueMinus(bucket.label)}, ${tracksOf(bucket.count)}`,
       count: bucket.count,
       rules: bucket.rules,
       gap,
@@ -175,15 +177,14 @@ export function SpreadsSection({ spreads, charts }: SpreadsSectionProps) {
         const spread = spreads[panel.id];
         const items = itemsById[panel.id]!;
         return (
-          <div
+          <Card
             key={panel.id}
             className="statistics-panel"
             data-panel={panel.id}
+            title={panel.title}
+            unit={panel.unit}
+            bodyClassName="statistics-panel__body"
           >
-            <h3 className="statistics-panel__title">
-              {panel.title}
-              {panel.unit && <span className="statistics-panel__unit"> {panel.unit}</span>}
-            </h3>
             {items.length > 0 ? (
               <PixelBars<Item>
                 title={panel.title}
@@ -206,7 +207,7 @@ export function SpreadsSection({ spreads, charts }: SpreadsSectionProps) {
             {spread.no_file && panel.noFile && (
               <Line text={panel.noFile(spread.no_file.count)} line={spread.no_file} />
             )}
-          </div>
+          </Card>
         );
       })}
     </>

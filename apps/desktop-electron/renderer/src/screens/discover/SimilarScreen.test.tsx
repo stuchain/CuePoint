@@ -235,7 +235,8 @@ describe("the seed and its suggestions", () => {
     renderAt(similarPath(1));
     await listed();
     const header = document.querySelector(".discover-page__header") as HTMLElement;
-    expect(within(header).getByText("124 BPM · 8A · House")).toBeInTheDocument();
+    // The seed's facts are the page header's facts line.
+    expect(screen.getByText("124 BPM · 8A · House")).toBeInTheDocument();
     expect(within(header).getByText(consideredLine(SIMILAR.value!))).toBeInTheDocument();
     fireEvent.click(within(header).getByRole("button", { name: "Mara Veil" }));
     expect(where()).toBe(entityPath("artist", "bp:301001"));
@@ -252,7 +253,7 @@ describe("the seed and its suggestions", () => {
     mock("getSimilarTracks").mockResolvedValue(pages.similar_none);
     renderAt(similarPath(1));
     expect(
-      await screen.findByText("Nothing in your library is close enough to suggest.", {}, LOADED),
+      await screen.findByText("Nothing in your library is close enough to suggest", {}, LOADED),
     ).toBeInTheDocument();
     expect(screen.getByText("0 tracks")).toBeInTheDocument();
   });

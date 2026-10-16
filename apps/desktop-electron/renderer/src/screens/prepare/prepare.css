@@ -8,6 +8,9 @@
 }
 
 .prepare-screen {
+  /* This page is its own scroller, so its header sticks at the top edge and rests where every
+     other page's does (the page margin is this box's padding). */
+  --screen-header-stick: 0px;
   display: grid;
   flex: 1;
   grid-template-columns: minmax(0, 1fr);
@@ -42,6 +45,7 @@
 .prepare-empty__actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: var(--space-sm);
   margin-top: var(--space-sm);
 }
@@ -625,7 +629,7 @@ body.prepare-resizing {
   box-sizing: border-box;
   min-width: var(--control-height);
   height: calc(100% - 2 * var(--hairline));
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   white-space: nowrap;
 }
 
@@ -768,27 +772,12 @@ body.prepare-resizing {
   gap: calc(2px * var(--scale));
 }
 
-.prepare-entry-zone__times .cp-field__input {
-  width: calc(64px * var(--scale));
+.prepare-entry-zone__times .cp-field {
+  width: calc(88px * var(--scale));
 }
 
 .prepare-entry-zone__times .cp-field__input[aria-invalid="true"] {
   border-color: var(--accent-danger);
-}
-
-.prepare-entry-zone__note {
-  display: flex;
-  flex-direction: column;
-  gap: calc(2px * var(--scale));
-}
-
-.prepare-entry-zone__note textarea,
-.prepare-dialog__notes textarea {
-  resize: vertical;
-  font: inherit;
-  color: var(--fg-primary);
-  background: var(--bg-input);
-  border: var(--control-border-width) solid var(--border-control);
 }
 
 .prepare-entry-zone__warnings {
@@ -828,12 +817,6 @@ body.prepare-resizing {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-lg);
-}
-
-.prepare-dialog__notes {
-  display: flex;
-  flex-direction: column;
-  gap: calc(2px * var(--scale));
 }
 
 .prepare-dialog__note {
@@ -979,7 +962,7 @@ body.prepare-resizing {
 .prepare-source__empty {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm);
 }
@@ -987,6 +970,7 @@ body.prepare-resizing {
 .prepare-source__sides {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: var(--space-xs);
 }
 
@@ -1002,7 +986,7 @@ body.prepare-resizing {
   padding: var(--space-xs) var(--space-sm);
   background: var(--accent-primary);
   color: var(--fg-primary);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
 }
 

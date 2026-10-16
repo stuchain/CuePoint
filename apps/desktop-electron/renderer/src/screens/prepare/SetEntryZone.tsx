@@ -17,6 +17,8 @@ import { useEffect, useId, useState } from "react";
 import type { SetChapterPlan, SetWarning } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { Select } from "../../components/Select";
+import { Textarea } from "../../components/Textarea";
+import { TextField } from "../../components/TextField";
 import { NOTES_MAX_LENGTH } from "../library/trackEdits";
 import { chapterName, type EntryRow } from "./prepareRows";
 import { timeCell } from "./prepareFormat";
@@ -99,32 +101,28 @@ export function SetEntryZone({
       </p>
 
       <div className="prepare-entry-zone__times">
-        <label className="prepare-entry-zone__field" htmlFor={`${ids}-in`}>
-          <span className="cp-field__label">Mix in</span>
-          <input
-            id={`${ids}-in`}
-            className="cp-field__input"
-            value={inText}
-            placeholder="0:00"
-            aria-invalid={timesRefused}
-            onChange={(event) => setInText(event.target.value)}
-            onBlur={() => void saveTimes()}
-            onKeyDown={onTimeKey}
-          />
-        </label>
-        <label className="prepare-entry-zone__field" htmlFor={`${ids}-out`}>
-          <span className="cp-field__label">Mix out</span>
-          <input
-            id={`${ids}-out`}
-            className="cp-field__input"
-            value={outText}
-            placeholder={length == null ? "" : timeCell(length)}
-            aria-invalid={timesRefused}
-            onChange={(event) => setOutText(event.target.value)}
-            onBlur={() => void saveTimes()}
-            onKeyDown={onTimeKey}
-          />
-        </label>
+        <TextField
+          id={`${ids}-in`}
+          label="Mix in"
+          width="short"
+          value={inText}
+          placeholder="e.g. 0:00"
+          aria-invalid={timesRefused}
+          onChange={(event) => setInText(event.target.value)}
+          onBlur={() => void saveTimes()}
+          onKeyDown={onTimeKey}
+        />
+        <TextField
+          id={`${ids}-out`}
+          label="Mix out"
+          width="short"
+          value={outText}
+          placeholder={length == null ? "" : `e.g. ${timeCell(length)}`}
+          aria-invalid={timesRefused}
+          onChange={(event) => setOutText(event.target.value)}
+          onBlur={() => void saveTimes()}
+          onKeyDown={onTimeKey}
+        />
         <p className="prepare-entry-zone__planned" role="status">
           {entry.planned_seconds != null
             ? `Plays for ${timeCell(entry.planned_seconds)}`
@@ -135,18 +133,17 @@ export function SetEntryZone({
         <p className="prepare-entry-zone__refused">Not saved: the times above were refused.</p>
       )}
 
-      <label className="prepare-entry-zone__note" htmlFor={`${ids}-note`}>
-        <span className="cp-field__label">Note</span>
-        <textarea
-          id={`${ids}-note`}
-          rows={2}
-          maxLength={NOTES_MAX_LENGTH}
-          value={note}
-          placeholder="What to do here: a loop, an effect, a word to the crowd"
-          onChange={(event) => setNote(event.target.value)}
-          onBlur={saveNote}
-        />
-      </label>
+      <Textarea
+        id={`${ids}-note`}
+        className="prepare-entry-zone__note"
+        label="Note"
+        rows={2}
+        maxLength={NOTES_MAX_LENGTH}
+        value={note}
+        placeholder="What to do here: a loop, an effect, a word to the crowd"
+        onChange={(event) => setNote(event.target.value)}
+        onBlur={saveNote}
+      />
 
       {chapters.length > 1 && (
         <Select

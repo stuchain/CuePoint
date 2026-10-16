@@ -285,7 +285,7 @@ describe("the transition strip", () => {
 
     await waitFor(() => expect(screen.getByTestId("transition-to")).toHaveTextContent("File missing"));
     expect(screen.getByTestId("transition-from")).toHaveTextContent("Not made yet");
-    expect(screen.getByTestId("transition-to")).toHaveAttribute("title", "File missing");
+    expect(screen.getByTestId("transition-to")).toHaveAttribute("data-hint", "File missing");
     // The times are said in the halves' titles whether or not there is a picture.
     expect(screen.getByText("In 0:01 · Out 0:05")).toBeInTheDocument();
   });
@@ -318,7 +318,7 @@ describe("a waveform that is waiting (PRP-12)", () => {
       ),
     );
     expect(screen.getByTestId("transition-from")).toHaveAttribute(
-      "title",
+      "data-hint",
       "Waveform not made yet — analysis is 312 of 4,000",
     );
     const links = screen.getAllByRole("button", { name: "See progress" });
@@ -346,12 +346,12 @@ describe("the strip's loudness (WAVE-08)", () => {
     render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} />);
 
     // The difference is the caption's title's, not a segment of its line (C15d).
-    await waitFor(() => expect(screen.getByTestId("transition-caption")).toHaveAttribute("title", expect.stringContaining("+2.1 LU")));
+    await waitFor(() => expect(screen.getByTestId("transition-caption")).toHaveAttribute("data-hint", expect.stringContaining("+2.1 LU")));
     expect(screen.queryByTestId("transition-words")).toBeNull();
     const titles = screen.getAllByTestId("transition-loudness").map((each) => each.textContent);
     expect(titles).toEqual([" · −10.5 LUFS", " · −8.4 LUFS"]);
     expect(screen.getByText("Intro").parentElement).toHaveAttribute(
-      "title",
+      "data-hint",
       "Intro, In 0:00 · Out 0:04 · −10.5 LUFS",
     );
     await drawn("from", "to");
@@ -366,16 +366,16 @@ describe("the strip's loudness (WAVE-08)", () => {
     render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} />);
 
     await waitFor(() => expect(screen.getAllByTestId("transition-loudness")).toHaveLength(1));
-    expect(screen.getByTestId("transition-caption").getAttribute("title")).not.toMatch(/means/);
+    expect(screen.getByTestId("transition-caption").getAttribute("data-hint")).not.toMatch(/means/);
     await drawn("from", "to");
   });
 
   it("explains the loudness units in a title (PRP-8)", async () => {
     install((id) => waveform(id, "ready", { loudness: measured(id === 10 ? -10.5 : -8.4) }));
     render(<SetTransition entries={ENTRIES} selectedEntryId={1} onSelect={vi.fn()} />);
-    await waitFor(() => expect(screen.getByTestId("transition-caption").getAttribute("title")).toMatch(/\+2\.1 LU/));
+    await waitFor(() => expect(screen.getByTestId("transition-caption").getAttribute("data-hint")).toMatch(/\+2\.1 LU/));
     expect(screen.getByTestId("transition-caption")).toHaveAttribute(
-      "title",
+      "data-hint",
       "Loudness (LUFS). +2.1 LU means the next track is 2.1 dB louder.",
     );
     await drawn("from", "to");
@@ -433,7 +433,7 @@ describe("the caption and its warning (FLW-19)", () => {
     expect([...words.querySelectorAll(".key-chip")].map((chip) => chip.textContent)).toEqual(["8A", "3B"]);
     // The whole tempos are the title's.
     expect(screen.getByTestId("transition-caption")).toHaveAttribute(
-      "title",
+      "data-hint",
       expect.stringContaining("124 → 126 BPM (+1.6%)"),
     );
     await drawn("from", "to");
@@ -467,7 +467,7 @@ describe("the caption and its warning (FLW-19)", () => {
     const warning = within(caption).getByTestId("transition-warning");
     // A few words on the line, the whole sentence in the title (the strip has no room for it).
     expect(warning).toHaveTextContent(/^Keys clashMark OK$/);
-    expect(within(warning).getByTitle("Keys clash: 8A → 3B")).toBeInTheDocument();
+    expect(within(warning).getByText("Keys clash")).toHaveAttribute("data-hint", "Keys clash: 8A → 3B");
     // The caption still says "keys clash", in the warning colour, as the mockup draws it.
     expect(within(caption).getByTestId("transition-words")).toHaveTextContent(
       /^8A → 3B · keys clash · \+1\.6%$/,
@@ -503,7 +503,7 @@ describe("the caption and its warning (FLW-19)", () => {
     expect(shown).toHaveLength(1);
     expect(shown[0]).toHaveTextContent(/^Keys clashMark OK\+1 more$/);
     const more = within(screen.getByTestId("transition-caption")).getByText("+1 more");
-    expect(more).toHaveAttribute("title", expect.stringContaining(describeSetWarning(jump)));
+    expect(more).toHaveAttribute("data-hint", expect.stringContaining(describeSetWarning(jump)));
     fireEvent.click(within(shown[0]).getByRole("button", { name: "Mark OK" }));
     expect(onAccept).toHaveBeenCalledWith(CLASH, true);
     await drawn("from", "to");
@@ -547,7 +547,7 @@ describe("the caption and its warning (FLW-19)", () => {
     );
     const warning = screen.getByTestId("transition-warning");
     expect(warning).toHaveTextContent(/^Keys clash \(OK\)Undo Mark OK$/);
-    expect(within(warning).getByTitle("Keys clash: 8A → 3B (OK)")).toBeInTheDocument();
+    expect(within(warning).getByText("Keys clash (OK)")).toHaveAttribute("data-hint", "Keys clash: 8A → 3B (OK)");
     fireEvent.click(within(warning).getByRole("button", { name: "Undo Mark OK" }));
     expect(onAccept).toHaveBeenCalledWith({ ...CLASH, acknowledged: true }, false);
     await drawn("from", "to");

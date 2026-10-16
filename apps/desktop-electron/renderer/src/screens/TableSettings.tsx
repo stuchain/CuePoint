@@ -22,6 +22,7 @@ export function TableSettings({ onChange }: { onChange?: () => void } = {}) {
     <Fieldset legend="Tables" className="theme-settings__group">
       <Select
         label="Row density"
+        width="standard"
         value={density}
         onChange={(e) => {
           setDensity(e.target.value as RowDensity);

@@ -12,6 +12,7 @@ import { useEffect, useId, useState } from "react";
 
 import { Modal } from "../../components/Modal";
 import { Notice } from "../../components/Notice";
+import { Textarea } from "../../components/Textarea";
 import { notesToSend } from "./prepareFormat";
 import "./prepare.css";
 
@@ -40,16 +41,14 @@ export function SetNotesDialog({ set, error = null, errorKey = 0, onSave, onClos
       secondaryAction={{ label: "Cancel", onClick: onClose }}
     >
       <div className="prepare-dialog">
-        <label className="prepare-dialog__notes" htmlFor={`${id}-notes`}>
-          <span className="cp-field__label">Notes</span>
-          <textarea
-            id={`${id}-notes`}
-            rows={6}
-            value={notes}
-            placeholder="The venue, the set times, what went down well last time"
-            onChange={(event) => setNotes(event.target.value)}
-          />
-        </label>
+        <Textarea
+          id={`${id}-notes`}
+          label="Notes"
+          rows={6}
+          value={notes}
+          placeholder="The venue, the set times, what went down well last time"
+          onChange={(event) => setNotes(event.target.value)}
+        />
 
         {error && (
           <Notice key={errorKey} kind="field-error">

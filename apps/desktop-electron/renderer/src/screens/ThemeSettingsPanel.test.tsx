@@ -5,7 +5,7 @@
  * the app offers.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ToastProvider } from "../components";
@@ -249,5 +249,35 @@ describe("Tables", () => {
     await userEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(density()).toHaveValue("roomy");
     expect(keys()).not.toBeChecked();
+  });
+});
+
+describe("Create custom theme", () => {
+  it("does not restyle the app when the editor opens, only once a color is changed", async () => {
+    renderPanel();
+    const before = document.documentElement.dataset.theme;
+    await userEvent.click(screen.getByRole("button", { name: "Create custom theme…" }));
+    const dialog = screen.getByRole("dialog", { name: "Create custom theme" });
+    expect(document.documentElement.dataset.theme).toBe(before);
+
+    // The name is not a color.
+    await userEvent.type(within(dialog).getByRole("textbox", { name: "Theme name" }), "Mine");
+    expect(document.documentElement.dataset.theme).toBe(before);
+
+    fireEvent.change(within(dialog).getByLabelText("Accent"), { target: { value: "#ff0000" } });
+    expect(document.documentElement.dataset.theme).toBe("custom:editor-preview");
+
+    // Cancel puts the stored theme back.
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(document.documentElement.dataset.theme).not.toBe("custom:editor-preview");
+  });
+
+  it("draws each color's name above its swatch", async () => {
+    renderPanel();
+    await userEvent.click(screen.getByRole("button", { name: "Create custom theme…" }));
+    const field = within(screen.getByRole("dialog")).getByLabelText("Accent").closest(".theme-color-field")!;
+    const children = Array.from(field.children).map((child) => child.className);
+    expect(children[0]).toBe("theme-color-field__label");
+    expect(children[1]).toBe("theme-color-field__control");
   });
 });

@@ -118,8 +118,8 @@ describe("the Rekordbox export in Settings", () => {
 
     // Nothing starts an export: the buttons are the import and "More about this".
     expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
-      "Import a Rekordbox file…",
       "More about this",
+      "Import a Rekordbox file…",
     ]);
     expect(screen.getByText(/To export, use “Export to Rekordbox…” in the Library/)).toBeInTheDocument();
   });

@@ -25,7 +25,7 @@ CuePoint opens on the wheel and remembers which you chose.
   tracks it holds. Each key's name, such as "8A, A minor, 12 tracks", includes
   its count, for a screen reader.
 - **The list.** The same counts in Camelot order (1A, 1B, 2A, and so on), with a
-  bar for each. **No Beatport key** and its count have a line of their own.
+  bar for each, drawn as the bars of Statistics' ranked lists are. **No Beatport key** and its count have a line of their own.
 
 Every count is written on the page; nothing waits for you to hover.
 

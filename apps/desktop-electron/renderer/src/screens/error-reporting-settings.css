@@ -15,15 +15,6 @@
   color: var(--fg-disabled);
 }
 
-.cp-error-reporting__text {
-  overflow-wrap: anywhere;
-  margin: 0;
-  max-width: 60ch;
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  line-height: 1.5;
-}
-
 .cp-error-reporting__link {
   align-self: flex-start;
   font-size: var(--font-size-xs);

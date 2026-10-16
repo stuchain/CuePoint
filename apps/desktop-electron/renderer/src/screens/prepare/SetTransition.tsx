@@ -121,7 +121,7 @@ function Half({ half, side, onSelect, analysis, onSeeProgress }: HalfProps) {
         data-testid={`transition-${side}`}
         data-entry={half.entryId}
         aria-label={`${half.title}, ${halfTimesWords(half)}`}
-        title={sentence ?? `Select “${half.title}”`}
+        data-hint={sentence ?? `Select “${half.title}”`}
         onClick={() => onSelect(half.entryId)}
       >
         {picture ? (
@@ -159,8 +159,8 @@ function Title({ half, entry }: { half: TransitionHalf; entry: WaveformEntry | u
   const loudness = loudnessShort(track);
   const said = [halfTimesWords(half), loudness].filter(Boolean).join(" · ");
   return (
-    // Its title holds all of it, for a pane too narrow to show it whole.
-    <p className="prepare-transition__title" title={`${half.title}, ${said}`}>
+    // Its hint holds all of it, for a pane too narrow to show it whole.
+    <p className="prepare-transition__title" data-hint={`${half.title}, ${said}`}>
       <span className="prepare-transition__name">{half.title}</span>{" "}
       <span className="prepare-transition__times">
         {halfTimesWords(half)}
@@ -169,7 +169,7 @@ function Title({ half, entry }: { half: TransitionHalf; entry: WaveformEntry | u
           <span
             className="prepare-transition__loudness"
             data-testid="transition-loudness"
-            title={loudnessUnitsTitle(null)}
+            data-hint={loudnessUnitsTitle(null)}
           >
             {` · ${loudness}`}
           </span>
@@ -226,7 +226,7 @@ export function SetTransition({
             analysis={analysis}
             onSeeProgress={onSeeProgress}
           />
-          <div className="prepare-transition__caption" data-testid="transition-caption" title={captionTitle}>
+          <div className="prepare-transition__caption" data-testid="transition-caption" data-hint={captionTitle}>
             {segments.length > 0 && (
               <p className="prepare-transition__words" data-testid="transition-words">
                 {segments.map((segment, index) => (
@@ -235,7 +235,7 @@ export function SetTransition({
                     className={`prepare-transition__piece${segment === KEYS_CLASH ? " prepare-transition__piece--warning" : ""}`}
                   >
                     {index > 0 && <span aria-hidden="true">{" · "}</span>}
-                    <span className="prepare-transition__segment" title={segment === NO_BEATPORT_KEY ? NO_BEATPORT_KEY_DETAIL : segment}>
+                    <span className="prepare-transition__segment" data-hint={segment === NO_BEATPORT_KEY ? NO_BEATPORT_KEY_DETAIL : segment}>
                       {keys && index === 0 ? (
                         <>
                           <KeyChip value={keys.from} />
@@ -255,7 +255,7 @@ export function SetTransition({
                 className={`prepare-transition__warning${shown.acknowledged ? " prepare-transition__warning--accepted" : ""}`}
                 data-testid="transition-warning"
               >
-                <span className="prepare-transition__sentence" title={describeShown(shown)}>
+                <span className="prepare-transition__sentence" data-hint={describeShown(shown)}>
                   {`${stripWarningWords(shown)}${shown.acknowledged ? " (OK)" : ""}`}
                 </span>
                 {onAccept && (
@@ -268,7 +268,7 @@ export function SetTransition({
                   </Button>
                 )}
                 {others.length > 0 && (
-                  <span className="prepare-transition__more" title={others.map(describeShown).join("\n")}>
+                  <span className="prepare-transition__more" data-hint={others.map(describeShown).join(". ")}>
                     {`+${others.length.toLocaleString()} more`}
                   </span>
                 )}

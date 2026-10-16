@@ -273,6 +273,7 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
             </Badge>
           </p>
         }
+        summary={tracksLine(shown.library.tracks)}
       />
       <div className="discover-page__header">
         <MoreAbout>
@@ -285,7 +286,6 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
           </p>
         )}
         <ul className="discover-page__facts" aria-label="In your library">
-          <li>{tracksLine(shown.library.tracks)}</li>
           {years && <li>{years}</li>}
           {genres.length > 0 && (
             <li>Genres: {genres.map(facetValueText).join(", ")}</li>

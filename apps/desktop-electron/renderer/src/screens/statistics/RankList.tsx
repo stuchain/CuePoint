@@ -7,9 +7,11 @@
  * and artists by tracks). Only the first `shown` rows are drawn; the card's one link says how
  * many more it can show ("See top 10 ›") and puts them away again ("Show fewer").
  */
-import { useId, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import type { FilterRuleSet } from "../../api/cuepointBridge.types";
+import { Card } from "../../components/Card";
+import { RankBar } from "../../components/charts/RankBar";
 import { LinkButton } from "../../components/LinkButton";
 import { formatCount } from "../../format/counts";
 
@@ -57,19 +59,12 @@ export function RankList({
   onOpen,
   children,
 }: RankListProps) {
-  const id = useId();
   const [all, setAll] = useState(false);
   const visible = all ? rows : rows.slice(0, shown);
   const top = Math.max(1, ...rows.map((row) => row.weight));
   const more = rows.length > shown;
   return (
-    <section className="statistics-panel rank" aria-labelledby={id}>
-      <div className="rank__head">
-        <h3 className="statistics-panel__title" id={id}>
-          {title}
-        </h3>
-        <span className="rank__unit">{unit}</span>
-      </div>
+    <Card className="statistics-panel rank" title={title} unit={unit} titleClassName="rank__title" bodyClassName="statistics-panel__body" aria-label={title}>
       {rows.length === 0 ? (
         <p className="statistics-note">{empty}</p>
       ) : (
@@ -87,16 +82,13 @@ export function RankList({
               </span>
             ))}
           </div>
-          <ol className="rank__list" aria-labelledby={id}>
+          <ol className="rank__list" aria-label={title}>
             {visible.map((row, index) => (
               <li key={row.id} className="rank__item">
                 <button
                   type="button"
                   className="rank__row"
-                  style={{
-                    ["--rank-columns" as string]: columns.length,
-                    ["--share" as string]: `${Math.max(2, Math.round((row.weight / top) * 100))}%`,
-                  }}
+                  style={{ ["--rank-columns" as string]: columns.length }}
                   aria-label={row.label}
                   onClick={() => onOpen(row.rules)}
                 >
@@ -108,6 +100,7 @@ export function RankList({
                       {row.name}
                       {row.note && <span className="rank__note">{row.note}</span>}
                     </span>
+                    <RankBar share={row.weight / top} />
                   </span>
                   {columns.map((column) => (
                     <span
@@ -130,6 +123,6 @@ export function RankList({
           )}
         </>
       )}
-    </section>
+    </Card>
   );
 }

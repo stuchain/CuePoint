@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, ConfirmDialog, Modal, Panel, Select, TextField } from "../components";
+import { SettingsActions, SettingsHint } from "./SettingsParts";
+import { colorsInUse } from "./themeSeed";
 import { deleteLabel, deleteTitle, opensDialog, quoted } from "../format/words";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import {
   createEmptyCustomTheme,
-  NEO_DARK_EDITOR_COLORS,
   type CustomTheme,
   type CustomThemeColors,
 } from "../tokens/customThemes";
@@ -42,13 +43,16 @@ function ColorField({
   return (
     <label className="theme-color-field">
       <span className="theme-color-field__label">{label}</span>
-      <input
-        type="color"
-        className="theme-color-field__input"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      <span className="theme-color-field__hex">{value}</span>
+      <span className="theme-color-field__control">
+        <input
+          type="color"
+          aria-label={label}
+          className="theme-color-field__input"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <span className="theme-color-field__hex">{value}</span>
+      </span>
     </label>
   );
 }
@@ -96,7 +100,10 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
-  const [draftColors, setDraftColors] = useState<CustomThemeColors>(NEO_DARK_EDITOR_COLORS);
+  const [draftColors, setDraftColors] = useState<CustomThemeColors>(colorsInUse);
+  // The app is previewed in the draft's colors only once one is changed: opening the editor must
+  // not restyle anything.
+  const [edited, setEdited] = useState(false);
 
   const seedFromActive = (): CustomThemeColors => {
     if (isCustomThemeId(activeThemeId)) {
@@ -104,13 +111,15 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
       const found = customThemes.find((t) => t.id === bare);
       if (found) return { ...found.colors };
     }
-    return { ...NEO_DARK_EDITOR_COLORS };
+    // A built-in theme: the colors it is drawn with now, so the draft starts as what is on screen.
+    return colorsInUse();
   };
 
   const openCreate = () => {
     setEditingId(null);
     setDraftName("");
     setDraftColors(seedFromActive());
+    setEdited(false);
     setEditorOpen(true);
   };
 
@@ -118,6 +127,7 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
     setEditingId(theme.id);
     setDraftName(theme.name);
     setDraftColors({ ...theme.colors });
+    setEdited(false);
     setEditorOpen(true);
   };
 
@@ -127,10 +137,11 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
   };
 
   useEffect(() => {
-    if (editorOpen) previewCustomColors(draftColors);
-  }, [draftColors, editorOpen, previewCustomColors]);
+    if (editorOpen && edited) previewCustomColors(draftColors);
+  }, [draftColors, edited, editorOpen, previewCustomColors]);
 
   const updateColor = (key: keyof CustomThemeColors, value: string) => {
+    setEdited(true);
     setDraftColors((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -182,6 +193,7 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
       <div className="theme-settings">
         <Select
           label="Active theme"
+          width="standard"
           value={activeThemeId}
           onChange={(e) => {
             setTheme(e.target.value as ThemeId);
@@ -193,6 +205,7 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
         <Select
           id={SIZE_FIELD_ID}
           label="Size of text and controls"
+          width="standard"
           value={String(scale)}
           onChange={(e) => {
             setScale(Number(e.target.value) as ScaleFactor);
@@ -206,23 +219,13 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
           }))}
         />
         {tooBig.length > 0 ? (
-          <p id={SIZE_HINT_ID} className="theme-settings__hint">
+          <SettingsHint id={SIZE_HINT_ID}>
             {tooBigNames(tooBig.map((size) => size.value))} for this screen: not enough rows would
             fit in the Library.
-          </p>
+          </SettingsHint>
         ) : null}
 
         <TableSettings onChange={markSaved} />
-
-        <div className="theme-settings__actions">
-          <Button variant="primary" onClick={openCreate}>
-            Create custom theme…
-          </Button>
-          <ResetToDefaults
-            section="Appearance"
-            onReset={resetToDefaults}
-          />
-        </div>
 
         {customThemes.length > 0 ? (
           <ul className="theme-settings__list">
@@ -254,10 +257,14 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
             ))}
           </ul>
         ) : (
-          <p className="theme-settings__hint">
-            No custom themes yet. Pick nine colors; borders are made from them.
-          </p>
+          <SettingsHint>No custom themes yet. Pick nine colors; borders are made from them.</SettingsHint>
         )}
+
+        <SettingsActions reset={<ResetToDefaults section="Appearance" onReset={resetToDefaults} />}>
+          <Button variant="secondary" onClick={openCreate}>
+            Create custom theme…
+          </Button>
+        </SettingsActions>
       </div>
 
       <ConfirmDialog
@@ -281,6 +288,7 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
         <div className="theme-editor">
           <TextField
             label="Theme name"
+            width="standard"
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
             placeholder="My theme"
@@ -295,7 +303,7 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
               />
             ))}
           </div>
-          <p className="theme-settings__hint">Changes preview live across the app while this dialog is open.</p>
+          <SettingsHint>Once you change a color, the app previews it live while this dialog is open.</SettingsHint>
         </div>
       </Modal>
     </Panel>

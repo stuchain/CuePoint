@@ -8,7 +8,7 @@ computer. Nothing is sent anywhere.
 
 ## Choosing what to count
 
-The **Scope** picker at the top starts on **Whole library**. Choose a Rekordbox
+The **Scope** picker at the top, on the title row, starts on **Whole library**. Choose a Rekordbox
 playlist, a Collection, a Smart Collection or a Set to count only its tracks.
 Every number on the page, in all three tabs, is for the scope you picked. Under
 the title one line says what is counted ("2,847 tracks · 64 playlists" for the
@@ -23,8 +23,8 @@ cannot be chosen.
 ## The three tabs
 
 The page has three tabs: **Plays**, **Library** and **Health**. **Library**
-shows how many tracks are in the scope, and **Health** shows a chip such as "83
-to fix" when something needs doing. Each tab keeps what you set on it while you
+shows how many tracks are in the scope, and **Health** shows an amber count
+(such as 83) when something needs doing. Each tab keeps what you set on it while you
 look at another one. Each reads on its own. While it is reading it says so; if a
 tab cannot be read it says that in plain words and has its own **Try again**
 button, and the other tabs stay as they were. The page reads again by itself
@@ -134,9 +134,10 @@ after an import or a refresh finishes.
 
 ### Health
 
-**Health** counts how well kept the library is, in four cards. Each count is a
-coloured chip: red for what is broken, yellow for what waits for you, grey for
-the rest. A chip above zero has a link to where it is dealt with. The "to fix"
+**Health** counts how well kept the library is, in four cards. Each card's list is
+its own legend: a coloured square matching the bar, the name, the count and, when
+the count is above zero, a link such as **Open in Clean ›** on the same line. A
+count is red for what is broken, amber for what waits for you, grey for the rest. The "to fix"
 number on the tab adds up the missing and unreadable files, the matches waiting
 for you, the duplicates, the matches that changed since you decided, and the
 analyses that failed.

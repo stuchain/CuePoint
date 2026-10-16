@@ -8,21 +8,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
-  max-width: var(--content-narrow-width);
   width: 100%;
-}
-
-.motion-settings__system {
-  margin: 0;
-  color: var(--fg-muted);
-  font-size: var(--font-size-sm);
-}
-
-.motion-settings__actions {
-  display: flex;
-  /* Wraps: at 3× in a 1,264-wide window the two buttons are wider than the page. */
-  flex-wrap: wrap;
-  gap: var(--space-md);
 }
 
 .motion-settings__modes {
@@ -75,12 +61,6 @@
   min-width: 0;
 }
 
-
-.motion-settings__hint {
-  margin: 0;
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-}
 
 .motion-settings__preview {
   flex: none;

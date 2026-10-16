@@ -165,9 +165,20 @@ describe("the dig bar", () => {
     const panel = await renderPanel();
     const bar = within(panel).getByRole("group", { name: "Start a dig" });
     const summary = bar.querySelector(".discover-new__summary") as HTMLElement;
-    fireEvent.mouseEnter(summary);
-    expect(summary.title).toContain("Look for charts in 0 genres");
+    // Cut with an ellipsis: the app hint shows the whole sentence, so no native title is set.
+    expect(summary).toHaveAttribute("data-cut-hint");
+    expect(summary).not.toHaveAttribute("title");
+    expect(summary.textContent).toContain("Look for charts in 0 genres");
     expect(css).toMatch(/\.discover-new__bar \{[^}]*position: sticky[^}]*bottom: 0/);
+    // Flush with the bottom of the scroller (a sticky bar stops at the scroller's padding edge, so
+    // the body has none), and the page's one panel bar: no accent tint, no raw border.
+    const body = /\.discover-new__body \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(body).toMatch(/padding: 0;/);
+    expect(body).not.toMatch(/padding-bottom|padding: 0 0 var/);
+    const barRule = /\.discover-new__bar \{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(barRule).toContain("background: var(--bg-panel)");
+    expect(barRule).toContain("min-height: var(--toolbar-height)");
+    expect(barRule).not.toMatch(/accent|color-mix|border: 1px/);
     expect(css).toMatch(/\.discover-new__summary \{[^}]*text-overflow: ellipsis[^}]*white-space: nowrap/);
     expect(bar).toContainElement(within(panel).getByLabelText("Releases from the last (days)"));
   });

@@ -409,17 +409,20 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
         )}
 
         {population.status === "unavailable" && (
-          <p className="keys-note keys-page__state">
-            The keys can be counted in the desktop app, once CuePoint has started.
-          </p>
+          <EmptyState
+            className="keys-page__state"
+            icon="keys"
+            headline="Keys are counted in the desktop app"
+            description="Once CuePoint has started"
+          />
         )}
 
         {noKeys && (
           <EmptyState
             className="keys-page__state"
             icon="keys"
-            headline="Keys come from Beatport. Match your tracks in Clean."
-            description={`No Beatport key: ${formatCount(data!.no_key)}`}
+            headline="Keys come from Beatport"
+            description={`Match your tracks in Clean. No Beatport key: ${formatCount(data!.no_key)}`}
             action={{ label: MATCH_ON_BEATPORT, onClick: () => openMatch() }}
           />
         )}
@@ -427,7 +430,8 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
         {emptySources && (
           <EmptyState
             className="keys-page__state"
-            headline={picked.length === 1 ? `This ${emptyNoun(picked[0]!)} is empty.` : "These playlists are empty."}
+            icon="keys"
+            headline={picked.length === 1 ? `This ${emptyNoun(picked[0]!)} is empty` : "These playlists are empty"}
           />
         )}
 
@@ -551,7 +555,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
               <h2 id="keys-tracks-title" className="cp-text-section">
                 Tracks
               </h2>
-              <p className="keys-note">Click a key to list its tracks.</p>
+              <EmptyState icon="keys" headline="Click a key to list its tracks" />
             </>
           )}
         </section>

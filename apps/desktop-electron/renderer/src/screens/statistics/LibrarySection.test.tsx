@@ -154,16 +154,16 @@ describe("the Library tab", () => {
         .getAllByRole("heading", { level: 3 })
         .map((h) => h.textContent)
         .filter((text) => !["Genres", "Labels", "Artists"].includes(text ?? ""));
-    expect(titles()).toEqual(["BPM tracks", "Keys tracks", "Year tracks", "Loudness LUFS"]);
+    expect(titles()).toEqual(["BPM", "Keys", "Year", "Loudness"]);
 
     await user.click(screen.getByRole("button", { name: "More charts: date added, rating" }));
     expect(titles()).toEqual([
-      "BPM tracks",
-      "Keys tracks",
-      "Year tracks",
-      "Loudness LUFS",
-      "Date added tracks",
-      "Rating tracks",
+      "BPM",
+      "Keys",
+      "Year",
+      "Loudness",
+      "Date added",
+      "Rating",
     ]);
     await user.click(screen.getByRole("button", { name: "Fewer charts" }));
     expect(titles()).toHaveLength(4);

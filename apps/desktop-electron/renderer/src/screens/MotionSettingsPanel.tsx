@@ -5,6 +5,7 @@ import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { MOTION_GROUPS, type MotionKindId, type MotionSwitches } from "../tokens/motion";
 import { useMotion } from "../tokens/MotionContext";
 import { ResetToDefaults } from "./ResetToDefaults";
+import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
 import "./motion-settings.css";
 
 type MotionMode = "on" | "off" | "custom";
@@ -94,10 +95,10 @@ export function MotionSettingsPanel() {
   return (
     <Panel title="Motion" badge={<SavedTick signal={saved} />}>
       <div className="motion-settings">
-        <p className="motion-settings__system">
+        <SettingsStatus>
           Motion follows your system&apos;s Reduce motion setting: {systemReduced ? "on" : "off"}
           {systemReduced ? ", so nothing moves" : ""}.
-        </p>
+        </SettingsStatus>
 
         <fieldset className="motion-settings__modes">
           <legend>Motion</legend>
@@ -114,17 +115,6 @@ export function MotionSettingsPanel() {
             </label>
           ))}
         </fieldset>
-
-        <div className="motion-settings__actions">
-          <Button
-            variant="secondary"
-            aria-expanded={listOpen}
-            aria-controls={listId}
-            onClick={() => setListOpen((open) => !open)}
-          >
-            Choose each kind…
-          </Button>
-        </div>
 
         <div id={listId} className="motion-settings__list" hidden={!listOpen}>
           {MOTION_GROUPS.map((group) => (
@@ -153,9 +143,7 @@ export function MotionSettingsPanel() {
                         />
                         <span>{kind.label}</span>
                       </label>
-                      <p id={hintId} className="motion-settings__hint">
-                        {kind.description}
-                      </p>
+                      <SettingsHint id={hintId}>{kind.description}</SettingsHint>
                     </div>
                   </div>
                 );
@@ -164,12 +152,16 @@ export function MotionSettingsPanel() {
           ))}
         </div>
 
-        <div className="motion-settings__actions">
-          <ResetToDefaults
-            section="Motion"
-            onReset={resetToDefaults}
-          />
-        </div>
+        <SettingsActions reset={<ResetToDefaults section="Motion" onReset={resetToDefaults} />}>
+          <Button
+            variant="secondary"
+            aria-expanded={listOpen}
+            aria-controls={listId}
+            onClick={() => setListOpen((open) => !open)}
+          >
+            Choose each kind…
+          </Button>
+        </SettingsActions>
       </div>
     </Panel>
   );

@@ -67,6 +67,7 @@
   padding: 0 var(--space-sm);
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
+  font-weight: var(--weight-strong);
   border-bottom: var(--divider);
 }
 
@@ -112,6 +113,7 @@
 .plays__name,
 .plays__artist {
   min-width: 0;
+  font-family: var(--font-data);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -155,8 +157,20 @@
   min-height: var(--row-height);
 }
 
+.plays__unplayed-label {
+  flex: 1 1 auto;
+}
+
+.plays__unplayed-count {
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
 .plays__unplayed-row > .cp-link {
-  margin-left: auto;
+  min-width: 17ch;
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* Inside a clipping parent the ring is drawn inward. */

@@ -11,7 +11,7 @@
  * The bar behind a name is a share of the top row, drawn by `RankList`. The one motion is
  * `state`: a row whose rank moved when the list was read again steps once.
  */
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type {
@@ -19,8 +19,8 @@ import type {
   StatisticsPlays,
   StatisticsTrack,
 } from "../../api/cuepointBridge.types";
-import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
+import { Card } from "../../components/Card";
 import { Hint } from "../../components/Hint";
 import { LinkButton } from "../../components/LinkButton";
 import { Loading } from "../../components/Loading";
@@ -121,7 +121,6 @@ export function PlaysSection({
   onRetry,
 }: PlaysSectionProps) {
   const navigate = useNavigate();
-  const ids = useId();
   const [message, setMessage] = useState<string | null>(null);
   const [keeping, setKeeping] = useState(false);
   const [kept, setKept] = useState<Kept | null>(null);
@@ -291,13 +290,13 @@ export function PlaysSection({
       {!noRefresh && (
         <div className="plays__columns">
           <div className="plays__column plays__column--main">
-            <section className="statistics-panel plays__tracks" aria-labelledby={`${ids}-tracks`}>
-              <div className="rank__head">
-                <h3 className="statistics-panel__title" id={`${ids}-tracks`}>
-                  Most played tracks
-                </h3>
-                <span className="rank__unit">{`top ${choice.limit}`}</span>
-              </div>
+            <Card
+              className="statistics-panel plays__tracks"
+              title="Most played tracks"
+              unit={`top ${choice.limit}`}
+              bodyClassName="statistics-panel__body"
+              aria-label="Most played tracks"
+            >
               {data.tracks.length === 0 ? (
                 <p className="statistics-note">{emptyWords}</p>
               ) : (
@@ -312,7 +311,7 @@ export function PlaysSection({
                     <span className="rank__number">BPM</span>
                     <span className="rank__number">Plays</span>
                   </div>
-                  <ol className="plays__list" aria-labelledby={`${ids}-tracks`}>
+                  <ol className="plays__list" aria-label="Most played tracks">
                     {data.tracks.map((track, index) => (
                       <li
                         key={track.id}
@@ -403,7 +402,7 @@ export function PlaysSection({
                   )}
                 </p>
               )}
-            </section>
+            </Card>
 
             <RankList
               title="Top genres"
@@ -432,10 +431,12 @@ export function PlaysSection({
               empty="No plays to rank."
               onOpen={open}
             />
-            <section className="statistics-panel plays__unplayed" aria-labelledby={`${ids}-unplayed`}>
-              <h3 className="statistics-panel__title" id={`${ids}-unplayed`}>
-                Not played
-              </h3>
+            <Card
+              className="statistics-panel plays__unplayed"
+              title="Not played"
+              bodyClassName="statistics-panel__body"
+              aria-label="Not played"
+            >
               {(
                 [
                   ["Never played", data.never_played],
@@ -443,8 +444,8 @@ export function PlaysSection({
                 ] as const
               ).map(([label, found]) => (
                 <div key={label} className="plays__unplayed-row">
-                  <span>{label}</span>
-                  <Badge tone="neutral">{count(found.count)}</Badge>
+                  <span className="plays__unplayed-label">{label}</span>
+                  <span className="plays__unplayed-count">{count(found.count)}</span>
                   {found.count > 0 && (
                     <LinkButton
                       go
@@ -456,7 +457,7 @@ export function PlaysSection({
                   )}
                 </div>
               ))}
-            </section>
+            </Card>
           </div>
         </div>
       )}

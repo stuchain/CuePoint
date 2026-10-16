@@ -304,3 +304,16 @@ export function lookingUpLine(toRead: number): string {
   if (toRead <= 0) return "Looking up tracks…";
   return `Looking up ${formatCount(toRead)}…`;
 }
+
+/**
+ * The facts line under the page title: what a dig can look through, from the library. Without
+ * artists or labels it says why a dig has nothing to look by.
+ */
+export function discoverFacts(
+  options: { artists: { total_values: number }; labels: { total_values: number } },
+): string {
+  const artists = options.artists.total_values;
+  const labels = options.labels.total_values;
+  if (artists === 0 && labels === 0) return "No artists or labels in your library yet";
+  return `${pluralize(artists, "artist")} and ${pluralize(labels, "label")} in your library to dig by`;
+}

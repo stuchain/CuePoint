@@ -28,6 +28,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { LIBRARY_PLAYLISTS, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
+import { EmptyState } from "../../components/EmptyState";
 import { Hint } from "../../components/Hint";
 import { LinkButton } from "../../components/LinkButton";
 import { Loading } from "../../components/Loading";
@@ -61,6 +62,7 @@ import {
   type PointWords,
   type PoolValue,
 } from "./prepareSource";
+import { headlineOf } from "./prepareFormat";
 import { SourceTable } from "./SourceTable";
 import {
   SIDE_COLUMN,
@@ -83,8 +85,9 @@ import {
 import { useSetSuggestions } from "./useSetSuggestions";
 
 /** What Suggestions says in an empty Set (DEC-105). */
-export const EMPTY_SET_SUGGESTIONS =
-  "Suggestions need a track to fit against. Add the first one from the Library tab.";
+export const EMPTY_SET_SUGGESTIONS_HEADLINE = "Suggestions need a track to fit against";
+const EMPTY_SET_SUGGESTIONS_HELP = "Add the first one from the Library tab";
+export const EMPTY_SET_SUGGESTIONS = `${EMPTY_SET_SUGGESTIONS_HEADLINE}. ${EMPTY_SET_SUGGESTIONS_HELP}.`;
 
 /** The one line that says what Suggestions are ranked by, the first time they show (PRP-7). */
 export const SUGGESTIONS_RANKING_TITLE =
@@ -125,7 +128,7 @@ interface SourcePanelProps {
 function PointLine({ words, title }: { words: PointWords; title: string }) {
   const where = (chapter: string | null) => (chapter ? `, in ${chapter}` : "");
   return (
-    <p className="prepare-source__point" role="status" aria-label={insertingText(words)} title={title}>
+    <p className="prepare-source__point" role="status" aria-label={insertingText(words)} data-hint={title}>
       Inserting:{" "}
       {words.kind === "empty" && "at the start of the empty Set"}
       {words.kind === "between" && (
@@ -199,7 +202,7 @@ export function SourcePanel(props: SourcePanelProps) {
   // sentence on both tabs, and the neighbors' detail on Suggestions.
   const pointTitle = [pointText(words), tab === "suggestions" ? pointDetail : undefined]
     .filter(Boolean)
-    .join("\n");
+    .join(" ");
   // Suggestions' first showing explains the ranking, once (PRP-7).
   const [explain] = useState(() => !hasSeenSuggestionsNote());
   const explaining = explain && tab === "suggestions" && words.kind !== "empty";
@@ -212,7 +215,7 @@ export function SourcePanel(props: SourcePanelProps) {
   return (
     <section className="prepare-source" aria-label="Add to the Set">
       <PointLine words={words} title={pointTitle} />
-      <Tabs tabs={TABS} activeId={tab} onChange={chooseTab} />
+      <Tabs tabs={TABS} activeId={tab} onChange={chooseTab} variant="sub" />
       <div className="prepare-source__controls">
         <Hint text="Where Suggestions and the search look: the library, a playlist, a Collection or a Set">
           <Select
@@ -378,12 +381,12 @@ function SuggestionsTab({
 
   if (!point.before) {
     return (
-      <div className="prepare-source__empty">
-        <p className="prepare-note">{EMPTY_SET_SUGGESTIONS}</p>
-        <Button variant="secondary" onClick={onOpenLibrary}>
-          Open the Library tab
-        </Button>
-      </div>
+      <EmptyState
+        icon="prepare"
+        headline={EMPTY_SET_SUGGESTIONS_HEADLINE}
+        description={`${EMPTY_SET_SUGGESTIONS_HELP}.`}
+        action={{ label: "Open the Library tab", onClick: onOpenLibrary }}
+      />
     );
   }
 
@@ -409,7 +412,7 @@ function SuggestionsTab({
   } else if (answer.no_fit && point.after) {
     empty = (
       <div className="prepare-source__empty">
-        <p className="prepare-note">{noFitText(answer.no_fit, beforeTitle, afterTitle)}</p>
+        <EmptyState icon="prepare" headline="Nothing bridges this gap" description={noFitText(answer.no_fit, beforeTitle, afterTitle)} />
         <div className="prepare-source__sides">
           <Button variant="secondary" onClick={() => setSide({ gap, against: "before" })}>
             {sideButtonLabel("before", beforeTitle)}
@@ -421,7 +424,7 @@ function SuggestionsTab({
       </div>
     );
   } else {
-    empty = <p className="prepare-note">{emptyAnswerText(answer, poolWords)}</p>;
+    empty = <EmptyState icon="prepare" headline={headlineOf(emptyAnswerText(answer, poolWords))} />;
   }
 
   return (
@@ -433,7 +436,7 @@ function SuggestionsTab({
           <LinkButton onClick={() => setSide(null)}>Fit both sides</LinkButton>
         </p>
       )}
-      {explain && <p className="prepare-source__note prepare-source__note--line" title={SUGGESTIONS_RANKING_TITLE}>
+      {explain && <p className="prepare-source__note prepare-source__note--line" data-hint={SUGGESTIONS_RANKING_TITLE}>
           {SUGGESTIONS_RANKING_NOTE}
         </p>}
       {range && <p className="prepare-source__note">{range}</p>}
@@ -531,14 +534,17 @@ function LibraryTab({
     empty = <Loading what="tracks" />;
   } else if (q) {
     empty = (
-      <div className="prepare-source__empty">
-        <p className="prepare-note">{nothingMatches(q)}</p>
-        <p className="prepare-note">{`Nothing in ${poolWords} fits that. Try another word.`}</p>
-        <LinkButton onClick={() => setText("")}>{CLEAR_SEARCH}</LinkButton>
-      </div>
+      <EmptyState
+        icon="search"
+        headline={headlineOf(nothingMatches(q))}
+        description={`Nothing in ${poolWords} fits that. Try another word.`}
+        action={{ label: CLEAR_SEARCH, onClick: () => setText("") }}
+      />
     );
   } else {
-    empty = <p className="prepare-note">{`${poolWords.charAt(0).toUpperCase()}${poolWords.slice(1)} holds no tracks.`}</p>;
+    empty = (
+      <EmptyState icon="library" headline={`${poolWords.charAt(0).toUpperCase()}${poolWords.slice(1)} holds no tracks`} />
+    );
   }
 
   return (

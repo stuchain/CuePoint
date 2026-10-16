@@ -638,7 +638,7 @@ describe("choosing keys", () => {
   it("lists the tracks in a key when it is clicked, in an ordinary track table", async () => {
     renderKeys();
     await opened();
-    expect(screen.getByText("Click a key to list its tracks.")).toBeInTheDocument();
+    expect(screen.getByText("Click a key to list its tracks")).toBeInTheDocument();
 
     fireEvent.click(rowButton("8A"));
 
@@ -682,7 +682,7 @@ describe("choosing keys", () => {
       // Let go of every key, then pick again with scroll motion on: it eases.
       fireEvent.click(rowButton("8A"), { ctrlKey: true });
       fireEvent.click(rowButton("9A"), { ctrlKey: true });
-      await waitFor(() => expect(screen.getByText("Click a key to list its tracks.")).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText("Click a key to list its tracks")).toBeInTheDocument());
       document.documentElement.setAttribute("data-motion-scroll", "on");
       fireEvent.click(rowButton("8A"));
       await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(2));
@@ -757,7 +757,7 @@ describe("choosing keys", () => {
     expect(none).toHaveAttribute("title", "Every track here has a key");
     fireEvent.click(none);
     expect(none).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByText("Click a key to list its tracks.")).toBeInTheDocument();
+    expect(screen.getByText("Click a key to list its tracks")).toBeInTheDocument();
   });
 
   it("lists the tracks with no key when 'No Beatport key' is chosen", async () => {
@@ -777,7 +777,7 @@ describe("choosing keys", () => {
     await opened();
     showWheel();
     fireEvent.click(within(wheel()).getByRole("button", { name: /^1A,/ }));
-    expect(screen.getByText("Click a key to list its tracks.")).toBeInTheDocument();
+    expect(screen.getByText("Click a key to list its tracks")).toBeInTheDocument();
   });
 
   it("hands the selected track's key to the header's wheel", async () => {
@@ -1059,7 +1059,7 @@ describe("when there is nothing to count", () => {
     });
     renderKeys();
     expect(
-      await screen.findByText("Keys come from Beatport. Match your tracks in Clean."),
+      await screen.findByText("Keys come from Beatport"),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Match on Beatport" }));
     expect(where()).toHaveTextContent("/clean");
@@ -1077,9 +1077,9 @@ describe("when there is nothing to count", () => {
     renderKeys();
     await opened();
     fireEvent.click(await within(sourcesPanel()).findByRole("checkbox", { name: "Warm-up" }, LOADED));
-    expect(await screen.findByText("This playlist is empty.")).toBeInTheDocument();
+    expect(await screen.findByText("This playlist is empty")).toBeInTheDocument();
     fireEvent.click(within(sourcesPanel()).getByRole("checkbox", { name: "Friday" }));
-    expect(await screen.findByText("These playlists are empty.")).toBeInTheDocument();
+    expect(await screen.findByText("These playlists are empty")).toBeInTheDocument();
   });
 
   it("does not call the whole library 'these playlists' when it holds no tracks", async () => {

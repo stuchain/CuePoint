@@ -9,6 +9,7 @@
  */
 import type { DiscoverFacet, DiscoverList } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Card } from "../../components/Card";
 import { LinkButton } from "../../components/LinkButton";
 import { Notice } from "../../components/Notice";
 import { Select } from "../../components/Select";
@@ -48,8 +49,13 @@ export function SavedListField({
   const name = `discover-scope-mode-${noun}`;
   const chosen = lists.find((list) => list.id === listId) ?? null;
   return (
-    <fieldset className="discover-new__scope">
-      <legend className="cp-field__label">{noun === "artist" ? "Artists" : "Labels"}</legend>
+    <Card
+      className="discover-new__scope"
+      bodyClassName="discover-new__card-body"
+      role="group"
+      aria-label={noun === "artist" ? "Artists" : "Labels"}
+      title={noun === "artist" ? "Artists" : "Labels"}
+    >
       <label className="discover-new__choice">
         <input type="radio" name={name} checked={mode === "all"} onChange={() => onMode("all")} />
         Every {noun} in your library ({formatCount(facet.total_values)})
@@ -112,6 +118,6 @@ export function SavedListField({
         <input type="radio" name={name} checked={mode === "none"} onChange={() => onMode("none")} />
         No {noun}s
       </label>
-    </fieldset>
+    </Card>
   );
 }

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import css from "./statistics.css?raw";
+import card from "../../components/Card.css?raw";
 
 describe("Statistics card headings", () => {
   it("use the same size as equal-level section headings elsewhere, the section role (14), not the 18px dialog size", () => {
-    const at = css.indexOf(".statistics-panel__title {");
-    const rule = css.slice(at, css.indexOf("}", at));
+    const at = card.indexOf(".cp-card__title {");
+    const rule = card.slice(at, card.indexOf("}", at));
     expect(rule).toMatch(/font-size:\s*var\(--font-size-section\);/);
   });
 });

@@ -25,6 +25,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
+import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { LinkButton } from "../../components/LinkButton";
 import { formatCount } from "../../format/counts";
@@ -347,7 +348,11 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
 
   return (
     <div className="screen discover-page discover-page--similar">
-      <ScreenHeader title={seed.track.title} crumb={<p className="discover-page__kind">Similar tracks</p>} />
+      <ScreenHeader
+        title={seed.track.title}
+        crumb={<p className="discover-page__kind">Similar tracks</p>}
+        summary={facts || undefined}
+      />
       <div className="discover-page__header">
         <p className="discover-page__credit">
           {seed.credits && seed.credits.artists.length > 0 ? (
@@ -360,7 +365,6 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
             seed.track.artist
           )}
         </p>
-        {facts && <p className="discover-note">{facts}</p>}
         <p className="discover-note">{consideredLine(answer)}</p>
         {unused && <p className="discover-note">{unused}</p>}
         <div className="discover-page__actions">
@@ -418,11 +422,7 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
             onRowContextMenu={(row, index, anchor) => void openMenu(row, index, anchor.x, anchor.y)}
             activeIndex={selection.anchor}
             emptyState={
-              <div className="discover-empty">
-                <p className="discover-empty__headline">
-                  Nothing in your library is close enough to suggest.
-                </p>
-              </div>
+              <EmptyState icon="library" headline="Nothing in your library is close enough to suggest" />
             }
             resetKey={String(seedId)}
             ariaLabel="Similar tracks"

@@ -50,22 +50,22 @@ function unsorted<Row extends LibraryTrackRow>(column: TrackColumnDef<LibraryTra
   return rest as TrackColumnDef<Row>;
 }
 
-/** One side's reasons as a sentence: the hint, the copied text and the title's tooltip. */
+/** One side's reasons as a sentence: the hint, the copied text and the hint. */
 function sideText(side: SetSuggestionSide | null, name: SetSuggestionSideName): string {
   if (!side) return "";
   return side.reasons.length > 0 ? reasonsText(inPlayOrder(side.reasons, name)) : "Nothing in common";
 }
 
-/** One side's reasons as the cell draws them: the token run, the sentence in its title. */
+/** One side's reasons as the cell draws them: the token run, the sentence in its hint. */
 function sideCell(side: SetSuggestionSide | null, name: SetSuggestionSideName) {
   const text = sideText(side, name);
   if (!side || !text) return "";
   const run = tokenRun(reasonTokens(inPlayOrder(side.reasons, name))) || text;
-  return <span title={`${text} (${side.score}/100)`}>{run}</span>;
+  return <span data-hint={`${text} (${side.score}/100)`}>{run}</span>;
 }
 
 /**
- * Everything a suggestion's row says, as its title's tooltip: at the default
+ * Everything a suggestion's row says, as its hint: at the default
  * window the panel is about one column wide, and the reasons are what a
  * suggestion is read for.
  */
@@ -76,7 +76,7 @@ function suggestionSummary(row: SuggestionRow): string {
   if (after) lines.push(`Fits before the one after: ${sideText(after, "after")}`);
   const again = inSetText(inSet);
   if (again) lines.push(again);
-  return lines.join("\n");
+  return lines.join(" · ");
 }
 
 /** The ids of the two reason columns, which a list fitted to one side hides. */
@@ -89,9 +89,9 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
     render: (row) => {
       const inSet = inSetText(row.suggestion.in_set);
       return (
-        <span title={suggestionSummary(row)}>
+        <span data-hint={suggestionSummary(row)}>
           {inSet && (
-            <span className="prepare-source__in-set" title={inSet} aria-label={inSet}>
+            <span className="prepare-source__in-set" data-hint={inSet} aria-label={inSet}>
               <PixelIcon name="repeat-after" className="cp-pixel-icon--text cp-pixel-icon--before" />
             </span>
           )}
@@ -105,8 +105,8 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
     id: SIDE_COLUMN.before,
     header: "Fits after",
     hint: "How well this track follows the one before the gap: tempo, key, genre, label and artist",
-    minWidthPx: 90,
-    defaultWidthPx: 110,
+    minWidthPx: 112,
+    defaultWidthPx: 124,
     render: (row) => sideCell(row.suggestion.before, "before"),
     text: (row) => sideText(row.suggestion.before, "before"),
   },
@@ -114,8 +114,8 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
     id: SIDE_COLUMN.after,
     header: "Fits before",
     hint: "How well this track leads into the one after the gap: tempo, key, genre, label and artist",
-    minWidthPx: 90,
-    defaultWidthPx: 110,
+    minWidthPx: 112,
+    defaultWidthPx: 124,
     render: (row) => sideCell(row.suggestion.after, "after"),
     text: (row) => sideText(row.suggestion.after, "after"),
   },

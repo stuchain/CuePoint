@@ -8,7 +8,7 @@
  * that key's Camelot colour (`--key-8A`, unless Colour keys is off), the links between them stay in the lane's.
  *
  * Clicking a column selects its entry, which moves the insertion point there.
- * Each column's title says what it draws. The table beside it says the same
+ * Each column's hint says what it draws. The table beside it says the same
  * in words, so the lanes are a picture of the running order, never the only
  * place a fact is.
  */
@@ -71,7 +71,7 @@ export function SetLanes({ shape, titles, chapters, selectedEntryId, onSelect }:
           <span className="prepare-lanes__range">{rangeText(layout.tempo.range)}</span>
         </span>
         <span className="prepare-lanes__name" style={{ height: layout.keyHeight, marginTop: layout.keyTop - layout.tempoHeight }}>
-          <span title="Keys on the Camelot wheel: neighbors mix well">Key (Camelot)</span>
+          <span data-hint="Keys on the Camelot wheel: neighbors mix well">Key</span>
         </span>
       </div>
       <div className="prepare-lanes__plot" ref={box}>
@@ -105,9 +105,8 @@ export function SetLanes({ shape, titles, chapters, selectedEntryId, onSelect }:
               width={boundary.width}
               height={boundary.height}
               data-chapter={boundary.chapterId}
-            >
-              <title>{`${names.get(boundary.chapterId) ?? "A chapter"} starts`}</title>
-            </rect>
+              data-hint={`${names.get(boundary.chapterId) ?? "A chapter"} starts`}
+            />
           ))}
           <g className="prepare-lanes__tempo" data-lane="tempo">
             {layout.tempo.steps.map((rect, at) => (
@@ -119,8 +118,7 @@ export function SetLanes({ shape, titles, chapters, selectedEntryId, onSelect }:
           </g>
           <g className="prepare-lanes__key" data-lane="key">
             {layout.key.links.map((link) => (
-              <g key={`link-${link.toEntryId}`} className={LINK_CLASS[link.style]} data-relation={link.style}>
-                <title>{linkWords(link.style)}</title>
+              <g key={`link-${link.toEntryId}`} className={LINK_CLASS[link.style]} data-relation={link.style} data-hint={linkWords(link.style)}>
                 {link.rects.map((rect, at) => (
                   <rect key={at} x={rect.x} y={rect.y} width={rect.width} height={rect.height} />
                 ))}
@@ -151,10 +149,10 @@ export function SetLanes({ shape, titles, chapters, selectedEntryId, onSelect }:
               width={column.width}
               height={layout.height}
               data-entry={column.entryId}
+              aria-label={column.label}
+              data-hint={column.label}
               onClick={() => onSelect(column.entryId)}
-            >
-              <title>{column.label}</title>
-            </rect>
+            />
           ))}
         </svg>
       </div>

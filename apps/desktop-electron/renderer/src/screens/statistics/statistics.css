@@ -14,9 +14,37 @@
   max-width: none;
 }
 
-.statistics-page__scope {
-  min-width: min(calc(220px * var(--scale)), 50cqi);
+.statistics-page__scope-wrap {
+  position: relative;
+  display: inline-flex;
   max-width: 100%;
+}
+
+.statistics-page__scope {
+  min-width: min(calc(260px * var(--scale)), 50cqi);
+  max-width: 100%;
+}
+
+/* "Scope" is inside the picker, at its left, muted; the chosen value follows it. */
+.statistics-page__scope-word {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--space-sm);
+  display: flex;
+  align-items: center;
+  color: var(--fg-muted);
+  font-size: var(--control-font-size);
+  pointer-events: none;
+}
+
+.statistics-page__scope .cp-select__control {
+  padding-left: calc(var(--space-sm) + 6ch + var(--space-md));
+}
+
+/* The Health tab's count: amber, because it is work to do (area 58). */
+.statistics-page__todo {
+  color: var(--accent-warning);
 }
 
 /* A tab's panel: the header leaves 12 under its divider, so the panel adds nothing above. */
@@ -72,31 +100,16 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(380px * var(--scale))), 1fr));
 }
 
-.statistics-panel {
+/* A panel is a Card (the box, the title row and the 12 padding are Card.css's). */
+.statistics-panel__body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: var(--space-md);
-  min-width: 0;
-  /* A panel is padded 12. */
-  padding: var(--space-lg);
-  border: var(--divider);
 }
 
 .statistics-panel > .cp-pixel-bars {
   width: 100%;
-}
-
-.statistics-panel__title {
-  margin: 0;
-  font-size: var(--font-size-section);
-  font-weight: var(--weight-strong);
-}
-
-.statistics-panel__unit {
-  color: var(--fg-muted);
-  font-size: var(--font-size-sm);
-  font-weight: var(--control-font-weight);
 }
 
 .statistics-panel__line {
@@ -104,19 +117,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-xs) var(--space-md);
-}
-
-/* ---- A card's heading: the title at the left, what it counts (or its one link) at the right. */
-.rank__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-md);
-}
-
-.rank__unit {
-  color: var(--fg-muted);
-  font-size: var(--font-size-sm);
 }
 
 /* ---- Ranked lists (top artists, labels and genres; the Library tab's lists). */
@@ -136,11 +136,13 @@
   gap: var(--space-md);
 }
 
+/* Column headings: the pixel face, bold and muted, like a table's. */
 .rank__columns {
   padding: 0 var(--space-sm);
   border-bottom: var(--divider);
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
+  font-weight: var(--weight-strong);
 }
 
 .rank__item {
@@ -179,27 +181,20 @@
   color: var(--fg-primary);
 }
 
-/* The name has a bar behind it as long as its share of the first row. */
+/* The name in the data face like a table's, then the RankBar under it as long as its share. */
 .rank__name {
-  position: relative;
-  display: block;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2xs);
   min-width: 0;
-}
-
-.rank__name::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: var(--share, 0%);
-  border-left: var(--space-2xs) solid var(--accent-primary);
-  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  padding: var(--space-xs) 0;
 }
 
 .rank__text {
-  position: relative;
   display: block;
-  padding: 0 var(--space-sm);
   overflow: hidden;
+  font-family: var(--font-data);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -250,13 +245,16 @@
   color: var(--fg-muted);
 }
 
+/* A figure read at a glance: the pixel face with data-face digits, so 126.7 never reads 186.7. */
 .library-figures__value {
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xl);
   font-weight: var(--weight-strong);
 }
 
 .library-figures__note {
   color: var(--fg-muted);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-sm);
 }
 
@@ -286,13 +284,6 @@
   align-items: center;
   gap: var(--space-md);
   min-height: var(--row-height);
-}
-
-.keys__bar {
-  display: block;
-  width: var(--share, 0%);
-  height: var(--space-md);
-  background: var(--key);
 }
 
 .keys__count {
@@ -325,26 +316,55 @@
   list-style: none;
 }
 
+/* The legend is the list: swatch, label, count and the link on one line. */
 .health-card__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 12ch;
+  grid-template-columns: var(--space-md) minmax(0, 1fr) 6ch minmax(max-content, 17ch);
   align-items: center;
   gap: var(--space-md);
   min-height: var(--row-height);
   border-bottom: var(--divider);
 }
 
-.health-card__open {
-  justify-self: end;
+.health-card__swatch {
+  width: var(--space-md);
+  height: var(--space-md);
+}
+
+.health-card__swatch--none {
+  background: transparent;
+}
+
+.health-card__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .health-card__count {
   justify-self: end;
-  min-width: 5ch;
-  justify-content: center;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.health-card__count--warning {
+  color: var(--accent-warning);
+}
+
+.health-card__count--danger {
+  color: var(--accent-danger);
+}
+
+/* "Open in Library ›" never wraps. */
+.health-card__open {
+  justify-self: end;
+  white-space: nowrap;
 }
 
 .health-card__foot {
+  margin-top: var(--space-md);
   display: flex;
   flex-wrap: wrap;
   align-items: center;

@@ -3,6 +3,9 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { LinkButton, MoreAbout, Notice, Panel } from "../components";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { reportUnexpected, setReportingChoice } from "../reporting/reporting";
+import { ResetToDefaults } from "./ResetToDefaults";
+import { SettingsActions, SettingsHint } from "./SettingsParts";
+import { readExitClearing, saveExitClearing } from "./exitClearing";
 import "./error-reporting-settings.css";
 import { userMessage } from "../api/userMessage";
 
@@ -93,6 +96,19 @@ export function ErrorReportingSettingsPanel({
     }
   };
 
+  // Reset: error reports on, and nothing cleared when CuePoint quits. Undo puts back what was there.
+  const resetToDefaults = () => {
+    const before = { enabled, clearing: readExitClearing() };
+    saveExitClearing({ clearCache: false, clearLogs: false });
+    if (reporting && !enabled) void toggle(true);
+    markSaved();
+    return () => {
+      saveExitClearing(before.clearing);
+      if (reporting && !before.enabled) void toggle(false);
+      markSaved();
+    };
+  };
+
   return (
     <Panel title="Privacy">
       <div className="cp-error-reporting">
@@ -111,27 +127,26 @@ export function ErrorReportingSettingsPanel({
           </label>
           <SavedTick signal={saved} />
         </div>
-        <p id={lineId} className="cp-error-reporting__text">
-          Sends what went wrong, never your track or file names.
-        </p>
+        <SettingsHint id={lineId}>Sends what went wrong, never your track or file names.</SettingsHint>
         </div>
         <MoreAbout describedBy={lineId}>
-          <p className="cp-error-reporting__text">
+          <SettingsHint>
             A report says what went wrong, where in CuePoint&apos;s code, and the steps that led to
             it. It is built not to carry your file, folder, track, artist, label or playlist names,
             your notes, tags or Beatport sign-in: they are removed on your computer before it is sent.
-          </p>
+          </SettingsHint>
           <LinkButton className="cp-error-reporting__link" onClick={() => onOpenPrivacy?.()}>
             Privacy details
           </LinkButton>
         </MoreAbout>
         {!available && (
-          <p className="cp-error-reporting__text">Open CuePoint as a desktop app to change this.</p>
+          <SettingsHint>Open CuePoint as a desktop app to change this.</SettingsHint>
         )}
         {error && (
           <Notice kind="problem">{error}</Notice>
         )}
         {children}
+        <SettingsActions reset={<ResetToDefaults section="Privacy" onReset={resetToDefaults} />} />
       </div>
     </Panel>
   );

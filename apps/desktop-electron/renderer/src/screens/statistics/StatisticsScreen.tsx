@@ -23,7 +23,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import type { CleanJobStarted, LibrarySummary } from "../../api/cuepointBridge.types";
 import { LIBRARY_SUMMARY, useSharedRead } from "../../api/sharedReads";
 import { useToast } from "../../components";
-import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
@@ -202,14 +201,22 @@ export function StatisticsScreen() {
       inset
       beside={
         answered !== null && !libraryEmpty ? (
-          <Select
-            label="Scope"
-            className="statistics-page__scope"
-            value={scope}
-            options={options}
-            disabled={!settled}
-            onChange={(event) => choose(event.target.value)}
-          />
+          // The word "Scope" sits inside the picker, so the title row is one control tall like the
+          // other pages' (area 59); the label stays the select's accessible name.
+          <span className="statistics-page__scope-wrap">
+            <span className="statistics-page__scope-word" aria-hidden="true">
+              Scope
+            </span>
+            <Select
+              label="Scope"
+              hideLabel
+              className="statistics-page__scope"
+              value={scope}
+              options={options}
+              disabled={!settled}
+              onChange={(event) => choose(event.target.value)}
+            />
+          </span>
         ) : undefined
       }
       summary={summaryLine}
@@ -229,8 +236,15 @@ export function StatisticsScreen() {
               {
                 id: "health",
                 label: "Health",
+                // A count after the name, amber because it is work to do (area 58); the word is for
+                // a screen reader.
                 detail:
-                  toFix > 0 ? <Badge tone="warning">{toFix === 1 ? "1 issue" : `${formatCount(toFix)} issues`}</Badge> : undefined,
+                  toFix > 0 ? (
+                    <span className="statistics-page__todo">
+                      {formatCount(toFix)}
+                      <span className="cp-visually-hidden">{toFix === 1 ? " issue" : " issues"}</span>
+                    </span>
+                  ) : undefined,
               },
             ]}
           />

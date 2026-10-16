@@ -165,3 +165,73 @@
     flex-wrap: wrap;
   }
 }
+
+/*
+ * A section's anatomy (area 86): the card holds a status line, the settings, then one action row
+ * (the section's buttons at the left, the quiet "Reset {section}" at the right). Every section's
+ * body is the same column; a field is as wide as its width prop says, never the page.
+ */
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  width: 100%;
+  min-width: 0;
+}
+
+/* The one status line look. */
+.settings-status {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.settings-status:focus {
+  outline: none;
+}
+
+.settings-status--success {
+  color: var(--accent-success);
+  font-weight: var(--weight-strong);
+}
+
+.settings-status--warning {
+  color: var(--accent-warning);
+  font-weight: var(--weight-strong);
+}
+
+.settings-status--danger {
+  color: var(--accent-danger);
+  font-weight: var(--weight-strong);
+}
+
+/* A hint under a setting: one size, one cap. */
+.settings-hint {
+  overflow-wrap: anywhere;
+  margin: 0;
+  max-width: 60ch;
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.settings-actions__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.settings-actions__reset {
+  margin-left: auto;
+}

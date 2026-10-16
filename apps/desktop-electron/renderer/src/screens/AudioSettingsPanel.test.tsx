@@ -1,5 +1,5 @@
 import { Activity } from "react";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render as baseRender, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,6 +9,11 @@ import { resetPlayerStore } from "../components/player/playerStore";
 import { PLAYER_AUDIO_DEVICE_STORAGE_KEY } from "../components/player/playerAudioState";
 import { ScaleProvider } from "../tokens/ScaleContext";
 import { AudioSettingsPanel } from "./AudioSettingsPanel";
+import type { ReactElement } from "react";
+import { ToastProvider } from "../components";
+
+/** The panels' Reset offers Undo in a toast, so they render inside the provider the app has. */
+const render = (ui: ReactElement) => baseRender(ui, { wrapper: ToastProvider });
 
 /**
  * The audio settings panel (PLAYER-11, DEC-055).
@@ -116,7 +121,7 @@ describe("the panel's words", () => {
   it("counts outputs in one line, with the unplug detail under More about this", async () => {
     install();
     renderPanel();
-    expect(await screen.findByText("3 outputs found.")).toBeInTheDocument();
+    expect(await screen.findByText("3 outputs found")).toBeInTheDocument();
     const detail = screen.getByText(
       "If the chosen one is unplugged, CuePoint switches to System default.",
     );
@@ -132,13 +137,13 @@ describe("the panel's words", () => {
   it("shows the last device list at once on a revisit while it asks the player again", async () => {
     const harness = install();
     const first = renderPanel();
-    expect(await screen.findByText("3 outputs found.")).toBeInTheDocument();
+    expect(await screen.findByText("3 outputs found")).toBeInTheDocument();
     first.unmount();
 
     // The player is slow this time: the answer has not come back yet.
     harness.audioDevices.mockReturnValue(new Promise(() => {}));
     renderPanel();
-    expect(screen.getByText("3 outputs found.")).toBeInTheDocument();
+    expect(screen.getByText("3 outputs found")).toBeInTheDocument();
     expect(screen.queryByText("Reading the devices this machine has…")).toBeNull();
     expect(screen.getByRole("option", { name: "Speakers (Focusrite USB Audio)" })).toBeInTheDocument();
     await waitFor(() => expect(harness.audioDevices).toHaveBeenCalledTimes(2));
@@ -154,7 +159,7 @@ describe("the panel's words", () => {
       </ScaleProvider>
     );
     const { rerender } = render(view("visible"));
-    expect(await screen.findByText("3 outputs found.")).toBeInTheDocument();
+    expect(await screen.findByText("3 outputs found")).toBeInTheDocument();
 
     rerender(view("hidden"));
     // The player is slow when the page is shown again: the second answer is still pending.
@@ -162,7 +167,7 @@ describe("the panel's words", () => {
     rerender(view("visible"));
     await waitFor(() => expect(harness.audioDevices).toHaveBeenCalledTimes(2));
     expect(screen.queryByText("Reading the devices this machine has…")).toBeNull();
-    expect(screen.getByText("3 outputs found.")).toBeInTheDocument();
+    expect(screen.getByText("3 outputs found")).toBeInTheDocument();
   });
 
   it("lets only the latest ask set the list, however late an older answer lands", async () => {
@@ -181,12 +186,12 @@ describe("the panel's words", () => {
     rerender(view("hidden"));
     harness.audioDevices.mockResolvedValue({ ok: true, devices: [DEVICES[0]!] });
     rerender(view("visible"));
-    expect(await screen.findByText("1 output found.")).toBeInTheDocument();
+    expect(await screen.findByText("1 output found")).toBeInTheDocument();
 
     // The first ask answers last, with the old three: it must not replace the newer one.
     answerOlder({ ok: true, devices: DEVICES });
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(screen.getByText("1 output found.")).toBeInTheDocument();
+    expect(screen.getByText("1 output found")).toBeInTheDocument();
   });
 
   it("says it is reading the devices the first time, with no list yet", async () => {
@@ -199,7 +204,7 @@ describe("the panel's words", () => {
   it("keeps the singular right", async () => {
     install({ devices: [DEVICES[0]!] });
     renderPanel();
-    expect(await screen.findByText("1 output found.")).toBeInTheDocument();
+    expect(await screen.findByText("1 output found")).toBeInTheDocument();
   });
 
   it("says exclusive output in one line, with the detail under More about this", async () => {

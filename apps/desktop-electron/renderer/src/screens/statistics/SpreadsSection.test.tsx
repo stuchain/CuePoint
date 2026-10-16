@@ -126,7 +126,7 @@ describe("the spreads (STATS-06)", () => {
   it("shows the five charts it is asked for, in the order it is asked", () => {
     renderSection();
     const titles = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
-    expect(titles).toEqual(["BPM tracks", "Year tracks", "Date added tracks", "Rating tracks", "Loudness LUFS"]);
+    expect(titles).toEqual(["BPM", "Year", "Date added", "Rating", "Loudness"]);
   });
 
   it("draws only the charts it is asked for", () => {
@@ -136,8 +136,8 @@ describe("the spreads (STATS-06)", () => {
       </MemoryRouter>,
     );
     expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
-      "Year tracks",
-      "Loudness LUFS",
+      "Year",
+      "Loudness",
     ]);
   });
 
@@ -198,7 +198,16 @@ describe("the spreads (STATS-06)", () => {
     renderSection();
     expect(bars("Loudness")).toEqual([]);
     expect(within(panel("Loudness")).queryAllByRole("button")).toEqual([]);
-    expect(within(panel("Loudness")).getAllByText("-9 LUFS, 55 tracks").length).toBeGreaterThan(0);
+    expect(within(panel("Loudness")).getAllByText("−9 LUFS, 55 tracks").length).toBeGreaterThan(0);
+  });
+
+  it("draws every panel as a Card with its unit at the right, and loudness with a true minus", () => {
+    renderSection();
+    expect(panel("Loudness").classList.contains("cp-card")).toBe(true);
+    expect(panel("Loudness").querySelector(".cp-card__unit")).toHaveTextContent("LUFS");
+    expect(panel("Tempo").querySelector(".cp-card__unit")).toHaveTextContent("tracks");
+    const text = panel("Loudness").textContent ?? "";
+    expect(text).not.toMatch(/(^|\s)-\d/);
   });
 
   it("opens the Library on a bar's rules", async () => {

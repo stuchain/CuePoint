@@ -21,7 +21,6 @@ import type {
   WantlistRow,
   WantlistSort,
 } from "../../api/cuepointBridge.types";
-import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
 import { Loading } from "../../components/Loading";
 import { RETRY, UNDO } from "../../format/words";
@@ -287,46 +286,40 @@ export function WantlistView({ tools }: WantlistViewProps) {
     },
   };
 
-  const emptyState = (
-    <div className="discover-empty">
-      {list.status === "error" ? (
-        <>
-          <p className="discover-empty__headline">The wantlist could not be read.</p>
-          <p className="discover-note">{list.error}</p>
-          <Button variant="secondary" onClick={reload}>
-            {RETRY}
-          </Button>
-        </>
-      ) : list.loading ? (
-        <Loading what="your wantlist" />
-      ) : (page?.entries ?? 0) === 0 ? (
-        <>
-          <p className="discover-empty__headline">{EMPTY_HEADLINE}</p>
-          <p className="discover-note">{EMPTY_DESCRIPTION}</p>
-        </>
-      ) : (
-        <>
-          <p className="discover-empty__headline">No wanted track matches these filters.</p>
-          {filtered && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setOwned("all");
-                setBought("all");
-              }}
-            >
-              Show every wanted track
-            </Button>
-          )}
-        </>
-      )}
-    </div>
-  );
+  const emptyState =
+    list.status === "error" ? (
+      <EmptyState
+        icon="discover"
+        headline="The wantlist could not be read"
+        description={list.error}
+        action={{ label: RETRY, onClick: reload }}
+      />
+    ) : list.loading ? (
+      <Loading what="your wantlist" />
+    ) : (page?.entries ?? 0) === 0 ? (
+      <EmptyState icon="discover" headline={EMPTY_HEADLINE} description={EMPTY_DESCRIPTION} />
+    ) : (
+      <EmptyState
+        icon="discover"
+        headline="No wanted track matches these filters"
+        action={
+          filtered
+            ? {
+                label: "Show every wanted track",
+                onClick: () => {
+                  setOwned("all");
+                  setBought("all");
+                },
+              }
+            : undefined
+        }
+      />
+    );
 
   if (bareEmpty) {
     return (
       <section className="discover-wantlist" aria-label="Wantlist" tabIndex={-1} {...trackFocus}>
-        <EmptyState headline={EMPTY_HEADLINE} description={EMPTY_DESCRIPTION} />
+        <EmptyState icon="discover" headline={EMPTY_HEADLINE} description={EMPTY_DESCRIPTION} />
       </section>
     );
   }
@@ -343,6 +336,12 @@ export function WantlistView({ tools }: WantlistViewProps) {
   return (
     <section className="discover-wantlist" aria-label="Wantlist" {...trackFocus}>
       <div className="discover-toolbar" role="toolbar" aria-label="Wantlist filters">
+        {page && (
+          <span className="discover-toolbar__count" role="status">
+            {pluralize(page.entries, "wanted track")}, {formatCount(page.bought)} bought,{" "}
+            {formatCount(page.owned)} in your library
+          </span>
+        )}
         <Hint text={IN_LIBRARY_EXPLAINER}>
           <Select
             label="In your library"
@@ -359,12 +358,6 @@ export function WantlistView({ tools }: WantlistViewProps) {
           value={bought}
           onChange={(event) => isFilter(event.target.value) && setBought(event.target.value)}
         />
-        {page && (
-          <span className="discover-note" role="status">
-            {pluralize(page.entries, "wanted track")}, {formatCount(page.bought)} bought,{" "}
-            {formatCount(page.owned)} in your library
-          </span>
-        )}
       </div>
 
       <BeatportTable<WantlistRow>

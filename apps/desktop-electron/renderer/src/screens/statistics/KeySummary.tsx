@@ -12,6 +12,8 @@ import { useNavigate } from "react-router-dom";
 
 import type { CollectionNode } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Card } from "../../components/Card";
+import { RankBar } from "../../components/charts/RankBar";
 import { LinkButton } from "../../components/LinkButton";
 import { Loading } from "../../components/Loading";
 import { KeyChip } from "../../components/wheel/KeyChip";
@@ -74,15 +76,15 @@ export function KeySummary({ scope, collections }: KeySummaryProps) {
         {common.length > 0 && (
           <ol className="keys__list" aria-label="Commonest keys">
             {common.map((entry) => (
-              <li
-                key={entry.code}
-                className="keys__row"
-                style={{ ["--share" as string]: `${Math.max(2, Math.round((entry.count / top) * 100))}%` }}
-              >
+              <li key={entry.code} className="keys__row">
                 <span className="keys__chip">
                   <KeyChip value={entry.code} />
                 </span>
-                <span className={`keys__bar key-chip--${entry.code}`} aria-hidden="true" />
+                <RankBar
+                  share={entry.count / top}
+                  color="var(--key)"
+                  className={`key-chip--${entry.code}`}
+                />
                 <span className="keys__count">{formatCount(entry.count)}</span>
               </li>
             ))}
@@ -96,16 +98,17 @@ export function KeySummary({ scope, collections }: KeySummaryProps) {
   }
 
   return (
-    <div className="statistics-panel statistics-panel--keys">
-      <div className="rank__head">
-        <h3 className="statistics-panel__title">
-          Keys<span className="statistics-panel__unit"> tracks</span>
-        </h3>
+    <Card
+      className="statistics-panel statistics-panel--keys"
+      title="Keys"
+      unit={
         <LinkButton go onClick={() => navigate("/keys", { state: keysState(picked) })}>
           Open in Keys
         </LinkButton>
-      </div>
+      }
+      bodyClassName="statistics-panel__body"
+    >
       {body}
-    </div>
+    </Card>
   );
 }

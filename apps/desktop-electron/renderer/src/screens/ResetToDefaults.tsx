@@ -8,7 +8,8 @@ interface ResetToDefaultsProps {
 }
 
 /**
- * A section's "Reset {section}" (SET-11): it resets at once, with no question, and
+ * A section's "Reset {section}" (SET-11, area 86): the quiet button at the right of the section's
+ * action row (`SettingsActions`). It resets at once, with no question, and
  * offers Undo in a toast that puts the previous values back. A reversible action acts
  * and offers Undo rather than asking first.
  */
@@ -21,7 +22,7 @@ export function ResetToDefaults({ section, onReset }: ResetToDefaultsProps) {
   };
 
   return (
-    <Button variant="secondary" onClick={reset}>
+    <Button variant="quiet" onClick={reset}>
       {`Reset ${section}`}
     </Button>
   );

@@ -140,7 +140,7 @@ export function PushDialog({
       }}
     >
       <div className="discover-dialog">
-        <p className="discover-dialog__text">
+        <p className="discover-dialog__text cp-modal__lead">
           {mode === "existing"
             ? `Adds ${whatText} to a playlist you already have on Beatport, in the order shown.`
             : `Makes a new playlist on your Beatport account with ${whatText}, in the order shown. Each time makes another new playlist.`}

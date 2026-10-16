@@ -20,7 +20,7 @@ import type {
   DiscoverRunTracksPage,
   DiscoverSortDirection,
 } from "../../api/cuepointBridge.types";
-import { Button } from "../../components/Button";
+import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { RETRY } from "../../format/words";
 import type { TrackTableSort } from "../../components/table";
@@ -207,45 +207,39 @@ export function RunTracksView({
   const page = tracks.page;
   const sort: TrackTableSort = { key: order.sort, direction: order.dir };
 
-  const emptyState = (
-    <div className="discover-empty">
-      {tracks.status === "error" ? (
-        <>
-          <p className="discover-empty__headline">The dig's tracks could not be read.</p>
-          <p className="discover-note">{tracks.error}</p>
-          <Button variant="secondary" onClick={reload}>
-            {RETRY}
-          </Button>
-        </>
-      ) : tracks.loading ? (
-        <Loading what="the dig's tracks" />
-      ) : (page?.tracks ?? 0) === 0 ? (
-        <p className="discover-empty__headline">
-          {running ? "Nothing found yet." : groups ? "Nothing found here." : "This dig found nothing."}
-        </p>
-      ) : (
-        <>
-          <p className="discover-empty__headline">
-            Every track {groups ? "here" : "this dig found"} is already in your library.
-          </p>
-          <Button variant="secondary" onClick={() => setHiding(false)}>
-            Show them
-          </Button>
-        </>
-      )}
-    </div>
-  );
+  const emptyState =
+    tracks.status === "error" ? (
+      <EmptyState
+        icon="discover"
+        headline="The dig's tracks could not be read"
+        description={tracks.error}
+        action={{ label: RETRY, onClick: reload }}
+      />
+    ) : tracks.loading ? (
+      <Loading what="the dig's tracks" />
+    ) : (page?.tracks ?? 0) === 0 ? (
+      <EmptyState
+        icon="discover"
+        headline={running ? "Nothing found yet" : groups ? "Nothing found here" : "This dig found nothing"}
+      />
+    ) : (
+      <EmptyState
+        icon="discover"
+        headline={`Every track ${groups ? "here" : "this dig found"} is already in your library`}
+        action={{ label: "Show them", onClick: () => setHiding(false) }}
+      />
+    );
 
   return (
     <div className="discover-run__tracks">
       <div className="discover-toolbar" role="toolbar" aria-label={groups ? `${label}: tracks` : "This dig's tracks"}>
         {lead}
-        <HideOwnedSwitch hiding={owned === "hide"} onChange={setHiding} />
         {page && (
-          <span className="discover-note" role="status">
+          <span className="discover-toolbar__count" role="status">
             {foundLine(page.tracks, page.owned, owned === "hide")}
           </span>
         )}
+        <HideOwnedSwitch hiding={owned === "hide"} onChange={setHiding} />
       </div>
 
       <BeatportTable<DiscoverRunTrackRow>

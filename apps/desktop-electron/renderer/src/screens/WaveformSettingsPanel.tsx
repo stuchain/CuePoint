@@ -25,9 +25,10 @@ import {
   WAVEFORM_COLOUR_OPTIONS,
   useWaveformColour,
 } from "../components/waveform/waveformColour";
-import { useWaveformDetailSetting } from "../components/waveform/waveformDetailSetting";
+import { WAVEFORM_DETAIL_DEFAULT, useWaveformDetailSetting } from "../components/waveform/waveformDetailSetting";
 import { useWaveformBox } from "../components/waveform/waveformEnvironment";
 import { ResetToDefaults } from "./ResetToDefaults";
+import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
 import "./waveform-settings.css";
 
 /**
@@ -120,13 +121,15 @@ export function WaveformSettingsPanel() {
     markSaved();
   };
 
-  // SET-11: the color choice is the one setting here that resets.
+  // SET-11: the color choice and the zoomed strip reset; the analysis itself is not a setting.
   const resetColors = () => {
-    const before = mode;
+    const before = { mode, detailOn };
     setMode(WAVEFORM_COLOUR_DEFAULT);
+    setDetailOn(WAVEFORM_DETAIL_DEFAULT);
     markSaved();
     return () => {
-      setMode(before);
+      setMode(before.mode);
+      setDetailOn(before.detailOn);
       markSaved();
     };
   };
@@ -137,29 +140,20 @@ export function WaveformSettingsPanel() {
     <Panel title="Waveforms" badge={<SavedTick signal={saved} />}>
       <div className="cp-waveform-settings">
         {!analysis.supported ? (
-          <p className="cp-waveform-settings__hint">
-            Open CuePoint as a desktop app to analyze waveforms.
-          </p>
+          <SettingsStatus>Open CuePoint as a desktop app to analyze waveforms.</SettingsStatus>
         ) : (
-          <div className="cp-waveform-settings__state">
-            <p className="cp-waveform-settings__status" role="status" data-testid="waveform-analysis-state">
-              {analysis.error ??
-                (nothingToAnalyze ? (
-                  <>
-                    {NOTHING_TO_ANALYZE_WORDS} <Link to="/clean">Check files on the Clean page.</Link>
-                  </>
-                ) : status ? (
-                  analysisWords(status)
-                ) : (
-                  "Reading the analysis…"
-                ))}
-            </p>
-            {action ? (
-              <Button variant="secondary" loading={analysis.busy} onClick={() => void runAction()}>
-                {ACTION_LABELS[action]}
-              </Button>
-            ) : null}
-          </div>
+          <SettingsStatus role="status" data-testid="waveform-analysis-state">
+            {analysis.error ??
+              (nothingToAnalyze ? (
+                <>
+                  {NOTHING_TO_ANALYZE_WORDS} <Link to="/clean">Check files on the Clean page.</Link>
+                </>
+              ) : status ? (
+                analysisWords(status)
+              ) : (
+                "Reading the analysis…"
+              ))}
+          </SettingsStatus>
         )}
 
         <fieldset className="cp-waveform-settings__choice">
@@ -177,17 +171,11 @@ export function WaveformSettingsPanel() {
             </label>
           ))}
           <MoreAbout describedBy={colorsId}>
-            <p className="cp-waveform-settings__hint">
+            <SettingsHint>
               Three bands draws the lows, mids and highs in colors of their own, as Rekordbox does.
               One color draws the whole sound in one.
-            </p>
+            </SettingsHint>
           </MoreAbout>
-          <div className="cp-waveform-settings__reset">
-            <ResetToDefaults
-              section="Waveforms"
-              onReset={resetColors}
-            />
-          </div>
         </fieldset>
 
         <div className="cp-waveform-settings__choice settings-option">
@@ -199,11 +187,11 @@ export function WaveformSettingsPanel() {
             />
             <span>Zoomed waveform above the player</span>
           </label>
-          <p className="cp-waveform-settings__hint">
+          <SettingsHint>
             Shows about 8 seconds either side of the playhead, scrolling as the track plays, with a
             line on every beat and a stronger one on each bar. Beat lines come from the grid
             Rekordbox wrote; a track without one has none.
-          </p>
+          </SettingsHint>
         </div>
 
         <WaveformPreview />
@@ -212,9 +200,7 @@ export function WaveformSettingsPanel() {
           <details className="cp-waveform-settings__disk">
             <summary>Disk space</summary>
             <div className="cp-waveform-settings__delete">
-              <p className="cp-waveform-settings__hint">
-                {status ? `Waveforms take ${sizeWords(status.store_bytes)}.` : null}
-              </p>
+              <SettingsHint>{status ? `Waveforms take ${sizeWords(status.store_bytes)}.` : null}</SettingsHint>
               <Button
                 variant="danger"
                 disabled={analysis.busy || !status}
@@ -229,11 +215,15 @@ export function WaveformSettingsPanel() {
           </details>
         ) : null}
 
-        {message ? (
-          <p className="cp-waveform-settings__message" role="status">
-            {message}
-          </p>
-        ) : null}
+        {message ? <SettingsStatus role="status" className="cp-waveform-settings__message">{message}</SettingsStatus> : null}
+
+        <SettingsActions reset={<ResetToDefaults section="Waveforms" onReset={resetColors} />}>
+          {analysis.supported && action ? (
+            <Button variant="secondary" loading={analysis.busy} onClick={() => void runAction()}>
+              {ACTION_LABELS[action]}
+            </Button>
+          ) : null}
+        </SettingsActions>
       </div>
 
       <Modal

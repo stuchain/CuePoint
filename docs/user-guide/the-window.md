@@ -45,7 +45,7 @@ track's own details. **Statistics** follows Prepare and shows what you play most
 and **inCrate** became Discover; a link to any of them opens the page that
 replaced it. There is no **Tools** group any more: when CuePoint has no page to
 reopen, it opens on the Library. Double-clicking a track there plays it; the bar
-along the bottom of the window is the player, and it appears the first time you
+along the bottom of the window is the player, which reads **Nothing playing** until you
 play something — see [Playing music](player.md).
 
 Collapse the sidebar with the arrow button under the logo (**Collapse sidebar
@@ -144,10 +144,11 @@ developer tools (and **Diagnostics...** and **Log viewer...**); a released build
 The panel on the right shows details for whatever track you have selected. It opens
 when you select a track and folds away when nothing is selected. Drag its left
 edge to resize it, or use the arrow keys once the edge has focus. Close it with
-the **›** button or **Ctrl+I**, or open it with the **Details ‹** button or **Ctrl+I** even with
-nothing selected; the page then keeps your choice until you change it, and other
-pages are not affected. Folded, it is one small **Details ‹** button at the top of
-the right edge, level with the page title, and the page uses the whole width.
+the **×** button, the **Details** button or **Ctrl+I**, and open it with the **Details**
+button or **Ctrl+I** even with nothing selected; the page then keeps your choice until you
+change it, and other pages are not affected. **Details** is the last button in every page's
+header, after a small divider, and looks pressed while the panel is open. Folded, the page
+uses the whole width.
 Discover's search page never opens it by itself, and its Artist, Label and Similar
 tracks pages share one open or closed choice with it.
 
@@ -289,9 +290,18 @@ Short messages (a save, a reset) appear in the bottom-right corner above the pla
 on the left when the window is wide) that scroll to each: **Appearance**,
 **Motion**, **Playback**, **Waveforms**, **Beatport**, **Rekordbox**,
 **Privacy** and **About & updates**. A setting that applies the moment you change
-it shows a small **Saved** beside it for a couple of seconds. **About & updates**
-shows the version and has **Getting started**, which opens the first-run
-walkthrough again.
+it shows a small **Saved** beside it for a couple of seconds. Every section reads
+the same way: a status line first (what stands now), then its settings, then one
+row of buttons with a quiet **Reset** at the right (**Reset Appearance**,
+**Reset Motion**, **Reset Playback**, **Reset Waveforms**, **Reset Beatport**,
+**Reset Privacy**); each acts at once and offers **Undo**. Rekordbox and About &
+updates hold no settings, so they have no Reset. A field is as wide as it needs
+to be, with its name above it. The link for the section you chose stays marked
+until you scroll, even for the last sections that cannot reach the top of the
+page. The line under the title says which version of CuePoint this is. **About &
+updates** shows the version and has **Check for updates**, **What's new** and
+**Getting started**, which opens the first-run walkthrough again; when updates
+cannot be checked, the reason is written above the buttons.
 
 ## Motion
 
@@ -352,7 +362,9 @@ Here is where each kind shows:
 **Settings → Appearance** has two choices, both remembered. **Active theme** is
 **Neo dark**, **Retro 16-bit**, **Classic**, **Club neon** or **Muted**, or a
 custom theme you made: **Create custom theme…** asks for nine colors, and the
-borders are made from them. **Delete** asks first. **Size of text and
+borders are made from them. The editor opens on the colors you are using now and
+changes nothing in the app until you change a color, which then previews live;
+**Cancel** puts everything back. **Delete** asks first. **Size of text and
 controls** is **Small (1×)**, **Compact (1.25×)**, **Medium (1.5×)** (the default),
 **Large (2×)** or **Extra large (3×)**. Table rows follow the size, so
 the text in them is never cut. A size that would leave too little room for the

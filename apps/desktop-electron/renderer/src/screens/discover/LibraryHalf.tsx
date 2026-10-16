@@ -20,7 +20,7 @@ import type {
   LibraryTrackRow,
   TrackCreditLinks,
 } from "../../api/cuepointBridge.types";
-import { Button } from "../../components/Button";
+import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { formatCount } from "../../format/counts";
 import { RETRY } from "../../format/words";
@@ -250,24 +250,17 @@ export function LibraryHalf({
     [groupItems, heldDetail, selectedRows],
   );
 
-  const emptyState = (
-    <div className="discover-empty">
-      {window_.error ? (
-        <>
-          <p className="discover-empty__headline">Your tracks could not be read.</p>
-          <p className="discover-note">{window_.error}</p>
-          <Button variant="secondary" onClick={window_.retry}>
-            {RETRY}
-          </Button>
-        </>
-      ) : window_.loading ? (
-        <Loading what="your tracks" />
-      ) : (
-        <p className="discover-empty__headline">
-          None of your tracks is by this {nounOf(kind)}.
-        </p>
-      )}
-    </div>
+  const emptyState = window_.error ? (
+    <EmptyState
+      icon="library"
+      headline="Your tracks could not be read"
+      description={window_.error}
+      action={{ label: RETRY, onClick: window_.retry }}
+    />
+  ) : window_.loading ? (
+    <Loading what="your tracks" />
+  ) : (
+    <EmptyState icon="library" headline={`None of your tracks is by this ${nounOf(kind)}`} />
   );
 
   return (

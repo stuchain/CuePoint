@@ -5,7 +5,8 @@ import type { BeatportAuth } from "../api/cuepointBridge.types";
 import { NEEDS_DESKTOP } from "../api/userMessage";
 import { useBeatportToken } from "../hooks/useBeatportToken";
 import { useIncludeUserCharts } from "./discover/includeUserCharts";
-import "./beatport-settings.css";
+import { ResetToDefaults } from "./ResetToDefaults";
+import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
 
 interface BeatportSettingsPanelProps {
   /** The token field's id: what Discover's Open Settings link focuses. */
@@ -64,8 +65,8 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
   if (auth === null) {
     return (
       <Panel title="Beatport">
-        <div className="settings-form">
-          <p className="cp-beatport-settings__lead">Checking Beatport…</p>
+        <div className="settings-body">
+          <SettingsStatus>Checking Beatport…</SettingsStatus>
         </div>
       </Panel>
     );
@@ -91,9 +92,9 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
   const settled = (): void => lineRef.current?.focus();
 
   const testResult = testMessage ? (
-    <p
-      className={`cp-beatport-settings__result cp-beatport-settings__result--${testOk ? "accepted" : testReason === "unreachable" ? "unreachable" : "rejected"}`}
+    <SettingsStatus
       role="status"
+      tone={testOk ? "success" : testReason === "unreachable" ? "warning" : "danger"}
     >
       {testOk
         ? "Connected. Beatport let CuePoint in."
@@ -102,78 +103,46 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
           : testReason === "unreachable"
             ? `Could not reach Beatport. ${testMessage}`
             : testMessage}
-    </p>
+    </SettingsStatus>
   ) : null;
+
+  // Reset: the one setting here, the charts by regular users, goes back to off.
+  const resetToDefaults = () => {
+    const before = includeUsers;
+    setIncludeUsers(false);
+    return () => setIncludeUsers(before);
+  };
 
   return (
     <Panel title="Beatport">
-      <div className="settings-form">
-        <p id={lineId} ref={lineRef} tabIndex={-1} className="cp-beatport-settings__lead">
+      <div className="settings-body">
+        <SettingsStatus id={lineId} ref={lineRef} tabIndex={-1}>
           {line}
-        </p>
+        </SettingsStatus>
         {fromConfig ? (
-          <p className="cp-beatport-settings__lead">
+          <SettingsStatus>
             Using the sign-in saved in CuePoint&apos;s config file · {status.masked ?? "••••"}
-          </p>
+          </SettingsStatus>
         ) : null}
         {!env && !auth.secure_storage ? (
-          <p className="cp-beatport-settings__lead">
+          <SettingsStatus>
             This system has no secure key store, so you sign in again each time CuePoint starts.
-          </p>
+          </SettingsStatus>
         ) : null}
-        {noDesktop ? (
-          <p className="cp-beatport-settings__lead">{NEEDS_DESKTOP}</p>
-        ) : null}
-        {signingIn ? (
-          <p className="cp-beatport-settings__lead" role="status">
-            Finish signing in in the Beatport window.
-          </p>
-        ) : null}
+        {noDesktop ? <SettingsStatus>{NEEDS_DESKTOP}</SettingsStatus> : null}
+        {signingIn ? <SettingsStatus role="status">Finish signing in in the Beatport window.</SettingsStatus> : null}
         {authError ? (
           <Notice kind="problem">{authError}</Notice>
         ) : null}
-        <div className="match-actions">
-          {signedIn || env ? (
-            <>
-              <Button
-                variant="secondary"
-                loading={testing}
-                disabled={noDesktop}
-                onClick={() => void test()}
-              >
-                Test connection
-              </Button>
-              {signedIn ? (
-                <Button
-                  variant="secondary"
-                  loading={signingOut}
-                  disabled={noDesktop}
-                  onClick={() => void signOut().then(settled)}
-                >
-                  Sign out
-                </Button>
-              ) : null}
-            </>
-          ) : (
-            <Button
-              variant="primary"
-              disabled={noDesktop || state === "unavailable" || signingIn || signingOut}
-              onClick={() => void signIn().then(settled)}
-            >
-              {signInLabel}
-            </Button>
-          )}
-        </div>
         {!showPaste ? testResult : null}
         {showPaste ? (
           <MoreAbout label="Paste a token instead" describedBy={lineId} defaultOpen={focusToken !== null}>
-            <div className="settings-form">
-              <p className="cp-beatport-settings__lead">
-                Without a sign-in, past digs and wantlist still open.
-              </p>
+            <div className="settings-body">
+              <SettingsHint>Without a sign-in, past digs and wantlist still open.</SettingsHint>
               <TextField
                 label="Beatport token"
                 id={fieldId}
+                width="full"
                 type="password"
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
@@ -185,7 +154,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
                 hint={loading ? "Loading token status…" : tokenHint}
                 disabled={noDesktop || loading}
               />
-              <div className="match-actions">
+              <div className="settings-actions__main">
                 <Button
                   variant="primary"
                   loading={saving}
@@ -219,12 +188,44 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
             />
             <span>Include charts by regular Beatport users</span>
           </label>
-          <p className="cp-beatport-settings__hint">
+          <SettingsHint>
             A Discover dig with no artists chosen reads the charts artists made, as Beatport&apos;s
             genre charts page lists them. Turn this on to read charts by ordinary Beatport users
             too; there are many more, so the dig takes longer.
-          </p>
+          </SettingsHint>
         </div>
+        <SettingsActions reset={<ResetToDefaults section="Beatport" onReset={resetToDefaults} />}>
+          {signedIn || env ? (
+            <>
+              <Button
+                variant="secondary"
+                loading={testing}
+                disabled={noDesktop}
+                onClick={() => void test()}
+              >
+                Test connection
+              </Button>
+              {signedIn ? (
+                <Button
+                  variant="secondary"
+                  loading={signingOut}
+                  disabled={noDesktop}
+                  onClick={() => void signOut().then(settled)}
+                >
+                  Sign out
+                </Button>
+              ) : null}
+            </>
+          ) : (
+            <Button
+              variant="primary"
+              disabled={noDesktop || state === "unavailable" || signingIn || signingOut}
+              onClick={() => void signIn().then(settled)}
+            >
+              {signInLabel}
+            </Button>
+          )}
+        </SettingsActions>
       </div>
     </Panel>
   );

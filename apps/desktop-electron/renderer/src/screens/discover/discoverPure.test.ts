@@ -27,6 +27,7 @@ import { beatportNotice, beatportUsable, refusalState, unusableReason } from "./
 import {
   artistsText,
   chartsLine,
+  discoverFacts,
   discoveryEnded,
   foundLine,
   formatIsoRange,
@@ -377,6 +378,19 @@ describe("the New dig form", () => {
 });
 
 describe("the sentences", () => {
+  it("says what a dig can look through, for the page's facts line", () => {
+    const facet = (total_values: number) => ({ total_values });
+    expect(discoverFacts({ artists: facet(200), labels: facet(121) })).toBe(
+      "200 artists and 121 labels in your library to dig by",
+    );
+    expect(discoverFacts({ artists: facet(1), labels: facet(0) })).toBe(
+      "1 artist and 0 labels in your library to dig by",
+    );
+    expect(discoverFacts({ artists: facet(0), labels: facet(0) })).toBe(
+      "No artists or labels in your library yet",
+    );
+  });
+
   it("names a run's state and how it ended, from the engine's runs", () => {
     expect(runStateLabel(FINISHED)).toBe("Finished");
     expect(runStateLabel(FAILED)).toBe("Failed");

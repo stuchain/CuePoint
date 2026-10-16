@@ -97,7 +97,7 @@ Click, Ctrl-click and Shift-click select rows, **Ctrl+A** (Cmd+A on a Mac) selec
 entry, and **Esc** lets go; the same keys work in the panel beside the Set. Right-click
 selects the row first. The menu is the one every track list has (**Play**, **Play next**,
 **Add to queue**, and **More** with the track's pages, Copy and Show in folder), with the
-Set's own edits in a **This page** block.
+Set's own edits under a small **This page** heading.
 
 The buttons are at the right end of the selected row, so they push nothing down.
 With nothing selected there are none; with several entries selected they are on
@@ -174,7 +174,8 @@ the running order.
   right-click menu, splits the Set there (the first entry, with several
   selected): that track begins a new chapter.
 - A chapter's heading row has **Edit…** (or double-click the heading, or choose
-  **Rename, targets and notes…** on its right-click menu). Its dialog has **Move up**
+  **Edit chapter…** on its right-click menu). The dialog is titled **Edit chapter
+  “Name”**, and a time it cannot read is marked on the **Target length** field itself. Its footer has **Move up**
   and **Move down**, which move the chapter — its entries move with it — and
   **Delete chapter…**, which says which chapter its entries join first. A Set always keeps one chapter, so the last cannot be deleted.
 - A Set with a single unnamed chapter shows no heading at all: it is simply a
@@ -195,7 +196,7 @@ details, as `m:ss` or `h:mm:ss` — `0:30`, `4:30`, `1:02:00`.
 In the table, click the cell (or press Enter or F2 on the selected entry); Enter or
 Tab saves and moves to the next cell (Shift+Tab goes back), Esc drops what you
 typed, and leaving the cell saves it. Double-clicking an entry still plays it.
-In Track details, press Enter or leave the field. The table's columns beyond the
+In Track details, press Enter or leave the field; the empty fields show an example (**e.g. 0:00**), not a value. The table's columns beyond the
 title may need a sideways scroll in a narrow window. A blank **Mix in** means the start of the track; a blank field
 clears a time. A time that cannot be read, an out time before the in time, or an
 out time past the end of the track is refused with the reason, which the line
@@ -291,7 +292,9 @@ and **Fit before “Peak Jump”**, each side's own list. The rule is never loos
 to fill a gap.
 
 An empty Set has nothing to fit against, so Suggestions starts once it has its
-first track; add that one from the Library tab.
+first track; add that one from the Library tab (the empty state has a button that opens it). The
+panel's **Suggestions** and **Library** tabs are the small tabs used inside panels everywhere. Hover anything
+cut short or explained by a tip (a warning, a reason, a lane's column) to see the full words in the app's own tip.
 
 **Putting a track in.** Select one or more rows and choose **Insert here**
 (**Insert 3 here** for three; it reads **Pick tracks** until you select
@@ -313,7 +316,7 @@ Each tab keeps its search, sort, scroll and selection while you look at the othe
 
 - **Tempo**: each entry's BPM as a mark, stepping from one to the next, so a
   jump is a step you can see.
-- **Key (Camelot)**: each entry's place on the Camelot wheel, where neighbors mix well, its mark in that key's colour, joined to the next by a line
+- **Key**: each entry's place on the Camelot wheel, where neighbors mix well, its mark in that key's colour, joined to the next by a line
   that says how the two keys relate — solid for the same key or one step, dashed
   for the relative key, dotted for a clash.
 

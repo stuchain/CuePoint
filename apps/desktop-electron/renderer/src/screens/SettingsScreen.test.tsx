@@ -233,14 +233,14 @@ describe("the Beatport test result", () => {
   it("says Beatport rejected the token only when it did", async () => {
     const result = await runTest({ ok: false, message: "The token is invalid or has expired.", reason: "rejected" });
     expect(result).toHaveTextContent("Beatport refused the sign-in.");
-    expect(result).toHaveClass("cp-beatport-settings__result--rejected");
+    expect(result).toHaveClass("settings-status--danger");
   });
 
   it("says Beatport could not be reached for a network or server failure", async () => {
     const result = await runTest({ ok: false, message: "The request did not go through.", reason: "unreachable" });
     expect(result).toHaveTextContent("Could not reach Beatport.");
     expect(result).not.toHaveTextContent(/rejected/i);
-    expect(result).toHaveClass("cp-beatport-settings__result--unreachable");
+    expect(result).toHaveClass("settings-status--warning");
   });
 });
 
@@ -296,12 +296,22 @@ describe("Reset section", () => {
     expect(within(waveforms).getByRole("radio", { name: "One color" })).toBeChecked();
   });
 
-  it("is offered by Appearance, Motion and Waveforms only", () => {
+  it("is offered by every section that has settings, and by About and Rekordbox never", () => {
     renderSettings();
     const holders = TITLES.filter(
       (title) => within(region(title)).queryByRole("button", { name: `Reset ${title}` }) !== null,
     );
-    expect(holders).toEqual(["Appearance", "Motion", "Waveforms"]);
+    expect(holders).toEqual(expect.arrayContaining(["Appearance", "Motion", "Waveforms", "Privacy"]));
+    expect(holders).not.toContain("Rekordbox");
+    expect(holders).not.toContain("About & updates");
+  });
+
+  it("puts Reset in the section's one action row, at the right, quiet", () => {
+    renderSettings();
+    const reset = within(region("Appearance")).getByRole("button", { name: "Reset Appearance" });
+    expect(reset.closest(".settings-actions__reset")).not.toBeNull();
+    expect(reset.closest(".settings-actions")).not.toBeNull();
+    expect(reset).toHaveClass("cp-btn--quiet");
   });
 });
 

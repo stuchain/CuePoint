@@ -29,12 +29,6 @@
   --keys-cell: round(calc(3px * var(--scale)), 1px);
 }
 
-/* The header keeps its top margin when it sticks: it stops one gutter below the top, and its
-   backdrop (ScreenHeader.css) covers the gutter above it, so rows pass under neither. */
-.keys-page .cp-screen-header {
-  top: var(--page-gutter-top);
-}
-
 /* Sources, wheel and counts share one row at the default size (1.5x in a 1,280-wide window with
    Track details open): the Sources column is narrow, and the wheel's size is the only one that
    is not given up. At the larger sizes the row wraps instead of scrolling sideways. */
@@ -238,6 +232,8 @@
   background: none;
   color: var(--fg-primary);
   font: inherit;
+  /* Words stay pixel, but a figure ("mixes with 8A", "No Beatport key: 12") is read in the data digits. */
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
   text-align: left;
   cursor: pointer;
@@ -284,10 +280,9 @@
   background: var(--bg-panel-alt);
 }
 
-.keys-counts__bar > span {
-  display: block;
+/* The bar itself is the shared RankBar, the track behind it is this row's. */
+.keys-counts__bar > .cp-rank-bar {
   height: 100%;
-  background: var(--accent-primary);
 }
 
 .keys-counts__row[aria-pressed="true"] .keys-counts__bar {

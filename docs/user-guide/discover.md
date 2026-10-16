@@ -15,7 +15,8 @@ reopens on the tab you used last. From any artist or label name in a table you
 can open that [artist's or label's page](#artist-and-label-pages), and from a
 track's details in the Library you can open its
 [Similar tracks](#similar-tracks). Both are part of Discover, so the sidebar
-keeps **Discover** highlighted while you are on them.
+keeps **Discover** highlighted while you are on them. A line under the title says what a
+dig can look through ("200 artists and 121 labels in your library to dig by").
 
 Discover replaces **inCrate**, which used to sit under **Tools** in the sidebar.
 See [Where inCrate went](#where-incrate-went) if you used it.
@@ -25,8 +26,11 @@ See [Where inCrate went](#where-incrate-went) if you used it.
 **New dig** asks what to look for, starting from your defaults. A bar right under the
 form says in a sentence what the dig will cover ("Look for charts in 2 genres,
 releases by 25 artists and 9 labels from the last 30 days."), with **Change the
-window** (**Releases from the last … days**) under it and a large **Start
-looking** button beside it.
+window** (**Releases from the last … days**) beside it and **Start looking** at the
+right. The bar is the same plain 32-high bar the other pages use, and it sits flush
+with the bottom of the page: the form scrolls behind it, never beneath a gap. The
+genre and the artist and label choices are cards; the sentence, when it is cut short,
+shows in full when you rest the pointer on it.
 
 - **Genres for DJ charts.** On Beatport, artists publish charts, which are short
   lists of tracks they play. Which charts CuePoint reads depends on the artists
@@ -119,7 +123,7 @@ its tracks: a table with a preview, key, BPM and **In your library** marks, in
 which you can select tracks to leave some out, and **All results** to go back.
 
 **Tick** cards to act on several at once. A bar appears at the foot: "Ticked:
-Argy, Afterlife · 20 tracks · 3 already in your library". A track on two ticked
+Argy, Afterlife · 20 tracks · 3 already in your library", in the same plain bar. A track on two ticked
 cards is counted once, and tracks your library already has are left out.
 
 - **Add to wantlist** adds those tracks and says how many already in your
@@ -180,14 +184,15 @@ library: No**. Marking a track bought is your own note; it reads as in your
 library once you import the file and Clean matches it. One line counts the
 wanted tracks, how many are marked bought and how many are in your library.
 
-An empty wantlist shows only a short note on how to fill it (use **Add to wantlist** on a dig's results); its filters and table appear once it holds a track.
+An empty wantlist shows its icon and a short note on how to fill it (use **Add to wantlist** on a dig's results); its filters and table appear once it holds a track. Every empty list on the page, and every "could not be read", is drawn the same way: an icon, one line without a full stop, and at most one button.
 
 ## What you can do with Beatport tracks
 
 Select tracks with a click, add to the selection with Ctrl-click (Cmd-click on
 macOS), and extend it with Shift-click, which adds the tracks between your last
 click and this one, as in the Library. Esc lets go of the selection. The bar of
-actions is above the table and says how many tracks are selected once; the actions
+actions is above the table: the count of tracks (or how many are selected) at the left,
+the actions at the right, none of them cut or wrapped; the actions
 that need tracks are grayed out until you select some, and their hint says why. From
 the keyboard, Up and Down move the selection, Shift extends it, Space selects the
 track the keyboard is on, and Ctrl+A selects every track the table has loaded. A
@@ -356,8 +361,9 @@ always says how it knows who it is about:
 The page is titled with the name your library spells most often, or **Unknown
 artist** when no track has one; it is never titled with a number.
 
-The header gives how many of your tracks the page holds, the years they span,
-their genres, and an artist's labels or a label's artists.
+The line under the title says how many of your tracks the page holds. The details
+under it give the years they span, their genres, and an artist's labels or a label's
+artists.
 
 ### Your tracks
 

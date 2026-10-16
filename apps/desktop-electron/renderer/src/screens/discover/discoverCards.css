@@ -13,7 +13,8 @@
   flex-direction: column;
   /* Row to row 16; the header's rule to the first row 12 (ScreenHeader gives the page's own 12). */
   gap: var(--space-xl);
-  padding: var(--space-lg) 0 var(--space-lg);
+  /* No bottom padding: the ticked-cards bar is sticky, and sticks at the padding edge (area 61). */
+  padding: var(--space-lg) 0 0;
 }
 
 .discover-cards__top {
@@ -152,6 +153,8 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  /* A name is data: the data face, like the tables (area 57). */
+  font-family: var(--font-data);
   font-size: var(--font-size-sm);
   font-weight: var(--weight-strong);
   overflow-wrap: anywhere;
@@ -165,6 +168,7 @@
 .discover-card__curator,
 .discover-card__counts {
   color: var(--fg-muted);
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
   white-space: nowrap;
 }
@@ -182,14 +186,19 @@
   cursor: pointer;
 }
 
+/* The tick is the global square checkbox, drawn larger here so it reads over a picture. */
 .discover-card__tick input {
+  width: var(--font-size-md);
+  height: var(--font-size-md);
   margin: 0;
   cursor: pointer;
 }
 
 /* -------------------------------------------------------------- tick bar */
 
-/* Over the cards at the foot of the pane, like the dig bar: what is ticked, and what to do with it. */
+/* Over the cards at the foot of the pane, like the dig bar: the page's one 32-high panel bar (area
+   61), flush with the bottom of what scrolls. What is ticked at the left, in the data face; what
+   to do with it at the right. */
 .discover-cards__bar {
   position: sticky;
   bottom: 0;
@@ -204,13 +213,19 @@
   min-height: var(--toolbar-height);
   padding: var(--toolbar-padding);
   border-top: var(--divider);
-  background: color-mix(in srgb, var(--accent-primary) 14%, var(--bg-panel));
+  background: var(--bg-panel);
+  font-size: var(--text-body);
 }
 
 .discover-cards__bar-text {
   min-width: 0;
-  font-size: var(--font-size-sm);
+  font-family: var(--font-data);
+  font-size: var(--text-body);
   overflow-wrap: anywhere;
+}
+
+.discover-cards__bar .cp-btn {
+  white-space: nowrap;
 }
 
 .discover-cards__bar-actions {
@@ -233,6 +248,7 @@
 .discover-run__card-title {
   align-self: center;
   min-width: 0;
+  font-family: var(--font-data);
   font-size: var(--font-size-sm);
   overflow-wrap: anywhere;
 }

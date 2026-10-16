@@ -2,21 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
-  max-width: var(--content-narrow-width);
   width: 100%;
-}
-
-@container content (max-width: 600px) {
-  .theme-settings {
-    max-width: 100%;
-  }
-}
-
-.theme-settings__actions {
-  display: flex;
-  /* Wraps: at 3× in a 1,264-wide window the two buttons are wider than the page. */
-  flex-wrap: wrap;
-  gap: var(--space-md);
 }
 
 .theme-settings__list {
@@ -61,13 +47,6 @@
   gap: var(--space-md);
 }
 
-.theme-settings__hint {
-  margin: 0;
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  line-height: 1.5;
-}
-
 .theme-editor {
   display: flex;
   flex-direction: column;
@@ -76,25 +55,33 @@
 
 .theme-editor__colors {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: var(--space-md);
+  grid-template-columns: repeat(auto-fill, minmax(calc(160px * var(--scale)), 1fr));
+  gap: var(--space-lg) var(--space-md);
 }
 
+/* A colour: its name above (the label role), the swatch and the hex under it. */
 .theme-color-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+
+.theme-color-field__label {
+  color: var(--fg-muted);
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
+}
+
+.theme-color-field__control {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
 }
 
-.theme-color-field__label {
-  flex: 1;
-  font-size: var(--font-size-xs);
-  color: var(--fg-muted);
-}
-
 .theme-color-field__input {
   width: calc(44px * var(--scale));
-  height: calc(32px * var(--scale));
+  height: var(--control-height);
   padding: 0;
   border: var(--control-border-width) solid var(--border-control);
   cursor: pointer;
@@ -102,8 +89,9 @@
 }
 
 .theme-color-field__hex {
-  font-size: var(--font-size-xs);
   color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
   min-width: calc(64px * var(--scale));
 }
 

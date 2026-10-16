@@ -567,7 +567,7 @@ describe("Results", () => {
         "Stopped because Beatport refused the sign-in, after 0 tracks from 0 charts and 0 releases.",
       ),
     ).toBeInTheDocument();
-    expect(await screen.findByText("This dig found nothing.")).toBeInTheDocument();
+    expect(await screen.findByText("This dig found nothing")).toBeInTheDocument();
   });
 
   it("says there are no searches yet, and opens New dig from there", async () => {
@@ -644,7 +644,7 @@ describe("Results", () => {
     renderDiscover();
     await openRun(1);
     expect(
-      await screen.findByText("Every track this dig found is already in your library."),
+      await screen.findByText("Every track this dig found is already in your library"),
     ).toBeInTheDocument();
   });
 
@@ -1104,9 +1104,8 @@ describe("New dig", () => {
   it("shows the chart window in the legend, and folds the chart dates under More options (DSC-5)", async () => {
     renderDiscover();
     const panel = await openNewSearch();
-    expect(
-      within(panel).getByText(/Genres for DJ charts \(0 chosen\) · last \d+ days/),
-    ).toBeInTheDocument();
+    const genres = within(panel).getByRole("group", { name: "Genres for DJ charts" });
+    expect(within(genres).getByText(/^0 chosen · last \d+ days$/)).toBeInTheDocument();
     expect(within(panel).queryByText(/artists publish charts/)).toBeNull();
     const more = within(panel).getByText("More options").closest("details") as HTMLDetailsElement;
     expect(more.open).toBe(false);
@@ -1303,6 +1302,8 @@ describe("the wantlist", () => {
     install({ getWantlist: vi.fn(async () => asAnswer(fixture.wantlist_empty)) });
     renderDiscover();
     expect(await screen.findByText("Your wantlist is empty")).toBeInTheDocument();
+    // Area 66: an empty list always has its icon.
+    expect(screen.getByText("Your wantlist is empty").closest(".cp-empty-state")?.querySelector("svg")).not.toBeNull();
     expect(
       screen.getByText("Add tracks from a dig's results with Add to wantlist."),
     ).toBeInTheDocument();
@@ -1407,6 +1408,8 @@ describe("the wantlist", () => {
       "A note is at most 1000 characters",
     );
     expect(within(dialog).getByLabelText("Note")).toHaveValue("Ask the shop");
+    // The one text area (area 78): the shared box, not a page style of its own.
+    expect(within(dialog).getByLabelText("Note")).toHaveClass("cp-textarea");
 
     bridge.setWantlistNote!.mockResolvedValue(asAnswer(fixture.wantlist_noted));
     fireEvent.click(within(dialog).getByRole("button", { name: "Save note" }));

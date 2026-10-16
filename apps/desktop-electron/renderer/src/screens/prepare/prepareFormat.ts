@@ -223,9 +223,15 @@ export const WHAT_A_SET_IS = "A Set is a running order of tracks.";
 /** Said in a shell without the Sets bridge: a browser tab, an older shell. */
 export const NO_SETS = NEEDS_DESKTOP;
 
-/** An empty Set's table. */
-export const EMPTY_SET =
-  "This Set is empty. Drag tracks here from the list on the right, or select them and choose Insert here.";
+/** An empty Set's table: the empty state's headline, its line, and both as one sentence. */
+export const EMPTY_SET_HEADLINE = "This Set is empty";
+export const EMPTY_SET_HELP = "Drag tracks here from the list on the right, or select them and choose Insert here";
+export const EMPTY_SET = `${EMPTY_SET_HEADLINE}. ${EMPTY_SET_HELP}.`;
+
+/** A sentence as an empty state's headline, which has no full stop (area 66). */
+export function headlineOf(sentence: string): string {
+  return sentence.trim().replace(/\.$/, "");
+}
 
 /**
  * What deleting a chapter does, before it is done (DEC-103): its entries join

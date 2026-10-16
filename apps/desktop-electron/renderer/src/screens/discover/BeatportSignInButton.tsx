@@ -8,8 +8,8 @@ import { settingsFocusState } from "../settingsLink";
 interface BeatportSignInButtonProps {
   /** "Sign in to Beatport" or "Sign in again". */
   label: string;
-  /** A tooltip for the button (the notice's longer explanation). */
-  title?: string;
+  /** The app hint for the button (the notice's longer explanation). */
+  hint?: string;
   /** Called when the sign-in window has closed, so the page asks Beatport again. */
   onDone: () => void;
 }
@@ -19,7 +19,7 @@ interface BeatportSignInButtonProps {
  * this only asks for it, waits while the window is open, and tells the page when it is over.
  * Without the desktop bridge there is no window to open, so it goes to Settings instead.
  */
-export function BeatportSignInButton({ label, title, onDone }: BeatportSignInButtonProps) {
+export function BeatportSignInButton({ label, hint, onDone }: BeatportSignInButtonProps) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -51,7 +51,7 @@ export function BeatportSignInButton({ label, title, onDone }: BeatportSignInBut
   return (
     <>
       {problem ? <span role="alert">{problem}</span> : null}
-      <Hint text={title}>
+      <Hint text={hint}>
         <Button variant="primary" disabled={busy} onClick={() => void signIn()}>
           {label}
         </Button>

@@ -56,7 +56,7 @@ import {
   SUGGESTIONS,
 } from "./prepareSource.testFixture";
 import { PREPARE_PATH, PREPARE_SET_ROUTE, preparePath } from "./prepareLink";
-import { EMPTY_SET_SUGGESTIONS, SUGGESTIONS_RANKING_NOTE, SUGGESTIONS_RANKING_TITLE } from "./SourcePanel";
+import { EMPTY_SET_SUGGESTIONS, EMPTY_SET_SUGGESTIONS_HEADLINE, SUGGESTIONS_RANKING_NOTE, SUGGESTIONS_RANKING_TITLE } from "./SourcePanel";
 import {
   LANES_STORAGE_KEY,
   SOURCE_POOL_STORAGE_KEY,
@@ -291,9 +291,9 @@ describe("the insertion point", () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
     const sentence = "After “Peak Two”, at the end of the Set, in Peak";
-    expect(point().getAttribute("title")).toContain(sentence);
+    expect(point().getAttribute("data-hint")).toContain(sentence);
     fireEvent.click(within(panel()).getByRole("tab", { name: "Library" }));
-    expect(point()).toHaveAttribute("title", sentence);
+    expect(point()).toHaveAttribute("data-hint", sentence);
   });
 
   it("is the end of the Set with nothing selected, and Suggestions asks for exactly that", async () => {
@@ -339,7 +339,7 @@ describe("the ranking note (PRP-7)", () => {
     const first = renderAt(preparePath(SOURCE_IDS.build));
     await opened();
     const note = await within(panel()).findByText(SUGGESTIONS_RANKING_NOTE);
-    expect(note).toHaveAttribute("title", SUGGESTIONS_RANKING_TITLE);
+    expect(note).toHaveAttribute("data-hint", SUGGESTIONS_RANKING_TITLE);
     expect(localStorage.getItem(SUGGESTIONS_NOTE_STORAGE_KEY)).toBe("1");
     first.unmount();
     renderAt(preparePath(SOURCE_IDS.build));
@@ -390,28 +390,28 @@ describe("Suggestions", () => {
     expect(header("Fits before")).toHaveAttribute("title", expect.stringContaining("the one after"));
     expect(within(screen.getByRole("table", { name: "Suggestions" })).queryByText("Score")).toBeNull();
     // The title says it all again, for a panel too narrow to show the columns.
-    expect(first.querySelector('[data-column="title"] [title]')).toHaveAttribute(
-      "title",
+    expect(first.querySelector('[data-column="title"] [data-hint]')).toHaveAttribute(
+      "data-hint",
       [
         "Bridge Deep · fit 70/100",
         "Fits after the one before: Close tempo: 124 → 125 · Same key: 8A · Same genre: House",
         "Fits before the one after: Close tempo: 125 → 126 · Mixes well (next key): 8A → 9A · Same genre: House",
         "Already in this Set once: inserting it plays it again",
-      ].join("\n"),
+      ].join(" · "),
     );
     const previous = first.querySelector('[data-column="before"]')!;
     const next = first.querySelector('[data-column="after"]')!;
     // Each side is a short run of tokens, with the sentence for its hint (R4-8).
     expect(previous.textContent).toBe("same · +1 BPM · G");
-    expect(previous.querySelector("[title]")).toHaveAttribute(
-      "title",
+    expect(previous.querySelector("[data-hint]")).toHaveAttribute(
+      "data-hint",
       expect.stringContaining("Close tempo: 124 → 125 · Same key: 8A · Same genre: House ("),
     );
     // The side before the track after reads in playing order: the candidate (125, 8A) plays first,
     // then the next track (126, 9A), so the steps go up.
     expect(next.textContent).toBe("+1 · +1 BPM · G");
-    expect(next.querySelector("[title]")).toHaveAttribute(
-      "title",
+    expect(next.querySelector("[data-hint]")).toHaveAttribute(
+      "data-hint",
       expect.stringContaining("Close tempo: 125 → 126 · Mixes well (next key): 8A → 9A"),
     );
   });
@@ -424,7 +424,7 @@ describe("Suggestions", () => {
     const cell = SUGGESTION_COLUMNS.find((column) => column.id === "before")!;
     const { container } = render(<>{cell.render(row)}</>);
     expect(container.textContent).toBe("Nothing in common");
-    expect(container.querySelector("[title]")).toHaveAttribute("title", "Nothing in common (12/100)");
+    expect(container.querySelector("[data-hint]")).toHaveAttribute("data-hint", "Nothing in common (12/100)");
   });
 
   it("marks a track already in the Set, and not one that is not", async () => {
@@ -501,7 +501,7 @@ describe("Suggestions", () => {
     expect(EMPTY_SET_SUGGESTIONS).toBe(
       "Suggestions need a track to fit against. Add the first one from the Library tab.",
     );
-    expect(within(panel()).getByText(EMPTY_SET_SUGGESTIONS)).toBeInTheDocument();
+    expect(within(panel()).getByText(EMPTY_SET_SUGGESTIONS_HEADLINE)).toBeInTheDocument();
     expect(sets.suggestions).not.toHaveBeenCalled();
     fireEvent.click(within(panel()).getByRole("button", { name: "Open the Library tab" }));
     expect(within(panel()).getByRole("tab", { name: "Library" })).toHaveAttribute("aria-selected", "true");
@@ -694,8 +694,9 @@ describe("inserting", () => {
     fireEvent.contextMenu(rows[0]);
     const menu = await screen.findByRole("menu", {}, LOADED);
     const items = within(menu).getAllByRole("menuitem").map((item) => item.textContent);
-    // The base track menu (Play, then More), with Insert here between in "This page".
-    expect(items).toEqual(["Play", "Play next", "Add to queue", "This page", "Insert here", "More"]);
+    // The base track menu (Play, then More), with Insert here between under the group title "This page".
+    expect(items).toEqual(["Play", "Play next", "Add to queue", "Insert here", "More"]);
+    expect(within(menu).getByText("This page")).toBeInTheDocument();
     fireEvent.click(within(menu).getByRole("menuitem", { name: "More" }));
     expect(await screen.findByRole("menuitem", { name: "Similar tracks" })).toBeInTheDocument();
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Insert here" }));
@@ -1028,13 +1029,13 @@ describe("the lanes", () => {
     const { container } = renderAt(preparePath(SOURCE_IDS.shape));
     await opened("Shape");
     const lanes = screen.getByRole("group", { name: "Tempo and key lanes" });
-    expect(within(lanes).getByText("Key (Camelot)")).toHaveAttribute(
-      "title",
+    expect(within(lanes).getByText("Key")).toHaveAttribute(
+      "data-hint",
       "Keys on the Camelot wheel: neighbors mix well",
     );
     expect(lanes).not.toHaveTextContent("1A–12B");
     // A link's own title uses the key words the other pages use.
-    const titles = [...container.querySelectorAll("[data-relation] title")].map((title) => title.textContent);
+    const titles = [...container.querySelectorAll("[data-relation]")].map((link) => link.getAttribute("data-hint"));
     expect(titles).toEqual(["Same key", "Next key", "Relative key", "Keys clash"]);
   });
 
@@ -1067,7 +1068,7 @@ describe("the lanes", () => {
     const { container } = renderAt(preparePath(SOURCE_IDS.build));
     await opened();
     const column = container.querySelector(`[data-entry="${OPEN_TWO}"]`) as SVGElement;
-    expect(column.querySelector("title")?.textContent).toBe("2 · Open Two · 126 BPM · 9A");
+    expect(column.getAttribute("data-hint")).toBe("2 · Open Two · 126 BPM · 9A");
     fireEvent.click(column);
     await waitFor(() => expect(point()).toHaveAccessibleName("Inserting: between “Open Two” and “Bridge Deep”, in Open"));
     expect(setRow(OPEN_TWO)).toHaveAttribute("aria-selected", "true");

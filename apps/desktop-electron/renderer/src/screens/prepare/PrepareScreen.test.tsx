@@ -321,7 +321,7 @@ describe("with no Sets", () => {
     fireEvent.click(await screen.findByRole("button", { name: "New Set…" }, LOADED));
     const dialog = screen.getByRole("dialog", { name: "New Set" });
     fireEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
-    expect(within(dialog).getByRole("alert")).toHaveTextContent("Give it a name");
+    expect(within(dialog).getByText(/Give it a name/)).toBeInTheDocument();
     expect(sets.create).not.toHaveBeenCalled();
   });
 
@@ -333,7 +333,7 @@ describe("with no Sets", () => {
     const dialog = screen.getByRole("dialog", { name: "New Set" });
     fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "X" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Too deep");
+    expect(await within(dialog).findByText(/Too deep/)).toBeInTheDocument();
     expect(where()).toBe(PREPARE_PATH);
   });
 
@@ -341,7 +341,7 @@ describe("with no Sets", () => {
     install(noSets);
     renderAt(PREPARE_PATH);
     fireEvent.click(await screen.findByRole("button", { name: "New Set from…" }, LOADED));
-    const picker = await screen.findByRole("dialog", { name: "New Set from…" });
+    const picker = await screen.findByRole("dialog", { name: "New Set from" });
     // No Collection in this tree: the Rekordbox playlist, not its folder.
     const select = within(picker).getByLabelText("Copy the tracks of") as HTMLSelectElement;
     expect([...select.options].map((option) => option.text)).toEqual(["Sunday"]);
@@ -365,7 +365,7 @@ describe("with no Sets", () => {
     (bridge.getLibraryPlaylists as Fn).mockResolvedValue({ playlists: [], total: 0 });
     renderAt(PREPARE_PATH);
     fireEvent.click(await screen.findByRole("button", { name: "New Set from…" }, LOADED));
-    const picker = await screen.findByRole("dialog", { name: "New Set from…" });
+    const picker = await screen.findByRole("dialog", { name: "New Set from" });
     expect(within(picker).getByText(/There is nothing to copy yet/)).toBeInTheDocument();
     expect(within(picker).getByRole("button", { name: "Continue…" })).toBeDisabled();
   });
@@ -399,7 +399,7 @@ describe("New Set from the header (PRP-1)", () => {
     await opened();
     openSetMenu();
     fireEvent.click(await menuItem("New Set from…"));
-    const picker = await screen.findByRole("dialog", { name: "New Set from…" });
+    const picker = await screen.findByRole("dialog", { name: "New Set from" });
     expect(within(picker).getByText("Copy the tracks of")).toBeInTheDocument();
   });
 });
@@ -521,7 +521,7 @@ describe("which Set opens", () => {
 
   it("says an address that names no Set names none", async () => {
     renderAt("/prepare/friday");
-    expect(await screen.findByText("This address names no Set.", {}, LOADED)).toBeInTheDocument();
+    expect(await screen.findByText("This address names no Set", {}, LOADED)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Open your Sets" }));
     await waitFor(() => expect(where()).toBe(preparePath(IDS.friday)), LOADED);
   });
@@ -607,7 +607,7 @@ describe("the Set", () => {
     const dialog = await screen.findByRole("dialog", { name: "Notes for “Friday”" });
     fireEvent.change(within(dialog).getByLabelText("Notes"), { target: { value: "   " } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("at most 10000 characters");
+    expect(await within(dialog).findByText(/at most 10000 characters/)).toBeInTheDocument();
     expect(sets.setNotes).toHaveBeenCalledWith({ set_id: IDS.friday, notes: null });
   });
 
@@ -699,7 +699,7 @@ describe("playing (DEC-108)", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.doubleClick(rowAt(3));
-    expect(await screen.findByRole("dialog", { name: "Chapter “Peak”" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Edit chapter “Peak”" })).toBeInTheDocument();
     expect(player.playQueue).not.toHaveBeenCalled();
   });
 
@@ -894,8 +894,8 @@ describe("a heading's menu", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.contextMenu(rowAt(0));
-    fireEvent.click(await menuItem("Rename, targets and notes…"));
-    const dialog = await screen.findByRole("dialog", { name: "Chapter “Warm-up”" });
+    fireEvent.click(await menuItem("Edit chapter…"));
+    const dialog = await screen.findByRole("dialog", { name: "Edit chapter “Warm-up”" });
     // What a chapter is, before the fields that set it (PRP-11).
     expect(
       within(dialog).getByText(
@@ -931,22 +931,22 @@ describe("a heading's menu", () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.contextMenu(rowAt(0));
-    fireEvent.click(await menuItem("Rename, targets and notes…"));
-    const dialog = await screen.findByRole("dialog", { name: "Chapter “Warm-up”" });
+    fireEvent.click(await menuItem("Edit chapter…"));
+    const dialog = await screen.findByRole("dialog", { name: "Edit chapter “Warm-up”" });
     fireEvent.change(within(dialog).getByLabelText(/^Target length/), { target: { value: "soon" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Not a time: soon");
+    expect(await within(dialog).findByText("Not a time: soon")).toBeInTheDocument();
   });
 
   it("refuses a BPM that is not one before asking", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.contextMenu(rowAt(0));
-    fireEvent.click(await menuItem("Rename, targets and notes…"));
-    const dialog = await screen.findByRole("dialog", { name: "Chapter “Warm-up”" });
+    fireEvent.click(await menuItem("Edit chapter…"));
+    const dialog = await screen.findByRole("dialog", { name: "Edit chapter “Warm-up”" });
     fireEvent.change(within(dialog).getByLabelText("Lowest BPM"), { target: { value: "slow" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(within(dialog).getByRole("alert")).toHaveTextContent("A BPM is a number above zero");
+    expect(within(dialog).getByText(/A BPM is a number above zero/)).toBeInTheDocument();
     expect(sets.updateChapter).not.toHaveBeenCalled();
   });
 
@@ -983,6 +983,10 @@ describe("the entry's plan in the Inspector", () => {
     const zone = await select(1);
     expect(within(zone).getByLabelText("Mix in")).toHaveValue("0:30");
     expect(within(zone).getByLabelText("Mix out")).toHaveValue("4:30");
+    // A placeholder reads as an example, never as a value already there (area 85).
+    expect(within(zone).getByLabelText("Mix in")).toHaveAttribute("placeholder", "e.g. 0:00");
+    expect(within(zone).getByLabelText("Mix out").getAttribute("placeholder")).toMatch(/^(e\.g\. .+)?$/);
+    expect(within(zone).getByLabelText("Note").tagName).toBe("TEXTAREA");
     expect(within(zone).getByText("Plays for 4:00")).toBeInTheDocument();
     expect(within(zone).getByText(/Entry 1, in Warm-up · starts at 0:00/)).toBeInTheDocument();
     // Above the tabs (Overview, Yours …), which are about the track.
@@ -1149,7 +1153,7 @@ describe("selecting in the Set (area 36)", () => {
     for (const name of ["Set", "View"]) {
       const trigger = screen.getByRole("button", { name });
       expect(trigger).toHaveAttribute("aria-haspopup", "menu");
-      expect(trigger.querySelector('[data-icon="chevron-down"]')).toHaveClass("cp-pixel-icon--text");
+      expect(trigger.querySelector('.cp-btn__menu [data-icon="chevron-down"]')).not.toBeNull();
     }
   });
 });
@@ -1888,7 +1892,7 @@ describe("the Set table's columns (R4-5)", () => {
     expect(dots[2]).toHaveAccessibleName(expect.stringMatching(/^Tempo jumps/));
     expect(dots[2]).not.toHaveAccessibleName(expect.stringMatching(/Keys clash/));
     expect(dots[3]).toHaveAccessibleName(expect.stringMatching(/^Tempo jumps.*\. Keys clash/));
-    expect(dots[3]!.getAttribute("title")).toMatch(/\n/);
+    expect(dots[3]!.getAttribute("data-hint")).toMatch(/Tempo jumps.*\. Keys clash/);
     expect(dots[0]).toHaveAccessibleName("Fits");
   });
 
@@ -1897,7 +1901,7 @@ describe("the Set table's columns (R4-5)", () => {
     await opened();
     const count = within(rowAt(0)).getByRole("img", { name: "2 open warnings in this chapter" });
     expect(count).toHaveTextContent("2");
-    expect(count).toHaveAttribute("title", "2 open warnings in this chapter");
+    expect(count).toHaveAttribute("data-hint", "2 open warnings in this chapter");
     expect(within(rowAt(0)).queryByText(/[●◐○]/)).toBeNull();
   });
 });
@@ -1978,7 +1982,7 @@ describe("the transition strip's caption and Accept (FLW-19)", () => {
     const warning = await screen.findByTestId("transition-warning");
     expect(screen.getAllByTestId("transition-warning")).toHaveLength(1);
     expect(warning).toHaveTextContent(/^Tempo jumpMark OK\+1 more$/);
-    expect(within(warning).getByText("+1 more")).toHaveAttribute("title", "Keys clash: 8A → 3B (OK)");
+    expect(within(warning).getByText("+1 more")).toHaveAttribute("data-hint", "Keys clash: 8A → 3B (OK)");
     fireEvent.click(within(warning).getByRole("button", { name: "Mark OK" }));
     await waitFor(() =>
       expect(sets.acknowledge).toHaveBeenCalledWith({ from_entry_id: E3, to_entry_id: E4, warning: "tempo_jump" }),

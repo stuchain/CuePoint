@@ -364,14 +364,15 @@ describe("the menus", () => {
       "play",
       "play-next",
       "add-to-queue",
-      "this-page",
       "split",
       "repeat",
       "remove",
       "group-more",
     ]);
     expect(items[0].label).toBe("Play");
-    expect(items.find((item) => item.id === "this-page")).toMatchObject({ label: "This page", disabled: true });
+    // "This page" is a group title above the first of the Set's edits, not an entry of its own.
+    expect(items.find((item) => item.id === "split")).toMatchObject({ groupTitle: "This page", separatorBefore: true });
+    expect(items.find((item) => item.id === "repeat")?.groupTitle).toBeUndefined();
     expect(items.find((item) => item.id === "group-more")?.items?.map((item) => item.id)).toEqual(["similar"]);
     expect(items.find((item) => item.id === "split")?.disabled).toBe(false);
     // PRP-11: what a chapter is, where the menu starts one.
@@ -391,9 +392,9 @@ describe("the menus", () => {
       "Play 3 tracks",
       "Play next",
       "Add to queue",
-      "This page",
       "Remove 3 entries from Set",
     ]);
+    expect(items.find((item) => item.label === "Remove 3 entries from Set")?.groupTitle).toBe("This page");
     expect(entryMenuItems({ count: 0, canSplit: true }, handlers)).toEqual([]);
   });
 

@@ -5,20 +5,6 @@
   gap: var(--space-md);
 }
 
-.about-updates p {
-  margin: 0;
-}
-
-.about-updates__words {
-  font-weight: 700;
-}
-
-.about-updates__more,
-.about-updates__percent,
-.about-updates__checked {
-  color: var(--fg-muted);
-}
-
 .about-updates__row {
   display: flex;
   flex-wrap: wrap;

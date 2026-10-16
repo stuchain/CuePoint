@@ -71,3 +71,40 @@ describe("ChapterDialog's place and delete buttons", () => {
     expect(screen.getByRole("textbox", { name: /^Name/ })).toHaveValue("Drop");
   });
 });
+
+describe("ChapterDialog's footer and errors (areas 75, 77, 92)", () => {
+  it("is titled with the action's words and the chapter's name in curly quotes", () => {
+    renderDialog();
+    expect(screen.getByRole("dialog", { name: "Edit chapter “Peak”" })).toBeInTheDocument();
+  });
+
+  it("keeps the place and delete buttons in the footer, beside Save, not in the body", () => {
+    renderDialog();
+    const dialog = screen.getByRole("dialog");
+    const footer = dialog.querySelector(".cp-modal__footer")!;
+    for (const name of ["Move up", "Move down", "Delete chapter…", "Save"]) {
+      expect(footer).toContainElement(screen.getByRole("button", { name }));
+    }
+  });
+
+  it("puts the engine's reason under the target length, on the field", () => {
+    renderDialog({ error: "Not a time: soon" });
+    const field = screen.getByRole("textbox", { name: /^Target length/ });
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field).toHaveAccessibleDescription(/Not a time: soon/);
+  });
+
+  it("puts a BPM that is not a number on that BPM field before asking", () => {
+    const { onSave } = renderDialog();
+    fireEvent.change(screen.getByRole("textbox", { name: "Highest BPM" }), { target: { value: "fast" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.getByRole("textbox", { name: "Highest BPM" })).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("textbox", { name: "Lowest BPM" })).not.toHaveAttribute("aria-invalid", "true");
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("asks for the notes in the one Textarea, with its label above", () => {
+    renderDialog();
+    expect(screen.getByRole("textbox", { name: "Notes" }).tagName).toBe("TEXTAREA");
+  });
+});

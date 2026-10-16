@@ -53,7 +53,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
       if (row.kind === "heading") return "";
       const repeat = row.notices[0];
       return (
-        <span title={repeat ? describeSetNotice(repeat) : undefined}>
+        <span data-hint={repeat ? describeSetNotice(repeat) : undefined}>
           {repeat && (
             <span className="prepare-repeat" aria-label="Played again">
               <PixelIcon name="repeat-after" className="cp-pixel-icon--text cp-pixel-icon--before" />
@@ -89,7 +89,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
           {own.length > 0 && (
             <span
               className="prepare-entry__flag"
-              title={own.map(describeSetWarning).join("\n")}
+              data-hint={own.map(describeSetWarning).join(". ")}
               aria-label={own.map(describeSetWarning).join(". ")}
             >
               ⚠{" "}
@@ -125,7 +125,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     align: "right",
     render: (row) =>
       row.kind === "heading" ? (
-        <span title="The chapter's BPM range">{bpmRangeText(row.chapter)}</span>
+        <span data-hint="The chapter's BPM range">{bpmRangeText(row.chapter)}</span>
       ) : (
         <OverriddenValue row={row.entry.track} field="bpm" />
       ),
@@ -147,7 +147,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
             className="prepare-fit-count"
             role="img"
             aria-label={`${open} open ${open === 1 ? "warning" : "warnings"} in this chapter`}
-            title={`${open} open ${open === 1 ? "warning" : "warnings"} in this chapter`}
+            data-hint={`${open} open ${open === 1 ? "warning" : "warnings"} in this chapter`}
           >
             {open}
           </span>
@@ -160,7 +160,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
         <span
           className={`prepare-fit prepare-fit--${fit.level}`}
           role="img"
-          title={fit.level === "fit" ? "Mixes in fine" : fit.open.map(describeSetWarning).join("\n")}
+          data-hint={fit.level === "fit" ? "Mixes in fine" : fit.open.map(describeSetWarning).join(". ")}
           aria-label={fit.level === "fit" ? "Fits" : fit.open.map(describeSetWarning).join(". ")}
         >
           {FIT_GLYPH[fit.level]}
@@ -217,7 +217,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     align: "right",
     render: (row) =>
       row.kind === "heading" ? (
-        <span title="The chapter's planned time, against its target">
+        <span data-hint="The chapter's planned time, against its target">
           {chapterTimeText(row.chapter)}
         </span>
       ) : (
@@ -244,7 +244,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     defaultWidthPx: 180,
     render: (row) => {
       const note = row.kind === "heading" ? row.chapter.notes : row.entry.note;
-      return note ? <span title={note}>{note}</span> : "";
+      return note ? <span data-hint={note}>{note}</span> : "";
     },
   },
 ];

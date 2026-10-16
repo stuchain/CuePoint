@@ -12,9 +12,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { SetChapterPlan, SetChapterUpdate } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
-import { Notice } from "../../components/Notice";
+import { Textarea } from "../../components/Textarea";
 import { TextField } from "../../components/TextField";
 import { CHAPTER_NAME_MAX_LENGTH, chapterUpdate, readBpm } from "./chapterForm";
+import { dialogTitle } from "../../format/words";
+import { CHAPTER_ACTION } from "./prepareMenus";
 import { chapterName } from "./prepareRows";
 import { formatLength } from "../../format/durations";
 import "./prepare.css";
@@ -27,10 +29,8 @@ interface ChapterDialogProps {
   /** The chapter, or null when the dialog is closed. */
   chapter: SetChapterPlan | null;
   busy?: boolean;
-  /** Why the engine refused the last attempt, in its words. */
+  /** Why the engine refused the last attempt, in its words: shown under the target length. */
   error?: string | null;
-  /** Changes with every refusal, so the same words coming back shake again. */
-  errorKey?: number;
   onSave: (update: SetChapterUpdate) => void;
   onClose: () => void;
   /** Where the chapter stands in the Set (DEC-103): the first cannot go up, the last down. */
@@ -47,7 +47,6 @@ export function ChapterDialog({
   chapter,
   busy = false,
   error = null,
-  errorKey = 0,
   onSave,
   onClose,
   canMoveUp = false,
@@ -61,7 +60,7 @@ export function ChapterDialog({
   const [bpmMin, setBpmMin] = useState("");
   const [bpmMax, setBpmMax] = useState("");
   const [notes, setNotes] = useState("");
-  const [problem, setProblem] = useState<string | null>(null);
+  const [bpmProblem, setBpmProblem] = useState<string | null>(null);
   const ids = useId();
 
   useEffect(() => {
@@ -71,7 +70,7 @@ export function ChapterDialog({
     setBpmMin(chapter.bpm_min == null ? "" : String(chapter.bpm_min));
     setBpmMax(chapter.bpm_max == null ? "" : String(chapter.bpm_max));
     setNotes(chapter.notes ?? "");
-    setProblem(null);
+    setBpmProblem(null);
     // Keyed on the chapter's id: a move changes the chapter under the dialog, and what was typed stays.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapter?.id]);
@@ -96,10 +95,10 @@ export function ChapterDialog({
     const low = readBpm(bpmMin);
     const high = readBpm(bpmMax);
     if (!low.ok || !high.ok) {
-      setProblem("A BPM is a number above zero, or blank for no limit.");
+      setBpmProblem("A BPM is a number above zero, or blank for no limit.");
       return;
     }
-    setProblem(null);
+    setBpmProblem(null);
     onSave(chapterUpdate(chapter.id, { name, target, bpmMin: low.value, bpmMax: high.value, notes }));
   };
 
@@ -113,10 +112,32 @@ export function ChapterDialog({
   return (
     <Modal
       open={chapter !== null}
-      title={chapter ? `Chapter “${chapterName(chapter)}”` : "Chapter"}
+      title={chapter ? dialogTitle(CHAPTER_ACTION, chapterName(chapter)) : dialogTitle(CHAPTER_ACTION)}
       onClose={onClose}
       primaryAction={{ label: "Save", onClick: submit, loading: busy }}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
+      footerExtra={
+        // The chapter's place and its deletion; they act at once, apart from the form.
+        <div
+          className="prepare-dialog__actions-start"
+          ref={moves}
+          onFocus={(event) => {
+            const buttons = Array.from(moves.current?.querySelectorAll("button") ?? []);
+            const at = buttons.findIndex((button) => button.contains(event.target as Node));
+            lastMove.current = at === 0 || at === 1 ? at : null;
+          }}
+        >
+          <Button variant="secondary" disabled={!canMoveUp} onClick={() => onMove?.(-1)}>
+            Move up
+          </Button>
+          <Button variant="secondary" disabled={!canMoveDown} onClick={() => onMove?.(1)}>
+            Move down
+          </Button>
+          <Button variant="secondary" disabled={!canDelete} onClick={() => onDelete?.()}>
+            Delete chapter…
+          </Button>
+        </div>
+      }
     >
       <div className="prepare-dialog">
         <p className="prepare-note">{CHAPTER_LEAD}</p>
@@ -134,8 +155,9 @@ export function ChapterDialog({
           id={`${ids}-target`}
           label="Target length"
           value={target}
-          placeholder="45:00"
+          placeholder="e.g. 45:00"
           hint="As m:ss or h:mm:ss. Blank for none."
+          error={error ?? undefined}
           onChange={(event) => setTarget(event.target.value)}
           onKeyDown={onEnter}
         />
@@ -144,6 +166,8 @@ export function ChapterDialog({
             id={`${ids}-bpm-min`}
             label="Lowest BPM"
             inputMode="decimal"
+            width="short"
+            error={bpmProblem && !readBpm(bpmMin).ok ? bpmProblem : undefined}
             value={bpmMin}
             onChange={(event) => setBpmMin(event.target.value)}
             onKeyDown={onEnter}
@@ -152,47 +176,20 @@ export function ChapterDialog({
             id={`${ids}-bpm-max`}
             label="Highest BPM"
             inputMode="decimal"
+            width="short"
+            error={bpmProblem && readBpm(bpmMin).ok && !readBpm(bpmMax).ok ? bpmProblem : undefined}
             value={bpmMax}
             onChange={(event) => setBpmMax(event.target.value)}
             onKeyDown={onEnter}
           />
         </div>
-        <label className="prepare-dialog__notes" htmlFor={`${ids}-notes`}>
-          <span className="cp-field__label">Notes</span>
-          <textarea
-            id={`${ids}-notes`}
-            rows={3}
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-          />
-        </label>
-
-        {(problem ?? error) && (
-          <Notice key={problem ?? errorKey} kind="field-error">
-            {problem ?? error}
-          </Notice>
-        )}
-
-        <div className="prepare-dialog__actions">
-          {/* The chapter's place and its deletion; they act at once, apart from the form. */}
-          <div className="prepare-dialog__actions-start" ref={moves}
-            onFocus={(event) => {
-              const buttons = Array.from(moves.current?.querySelectorAll("button") ?? []);
-              const at = buttons.findIndex((button) => button.contains(event.target as Node));
-              lastMove.current = at === 0 || at === 1 ? at : null;
-            }}
-          >
-            <Button variant="secondary" disabled={!canMoveUp} onClick={() => onMove?.(-1)}>
-              Move up
-            </Button>
-            <Button variant="secondary" disabled={!canMoveDown} onClick={() => onMove?.(1)}>
-              Move down
-            </Button>
-            <Button variant="secondary" disabled={!canDelete} onClick={() => onDelete?.()}>
-              Delete chapter…
-            </Button>
-          </div>
-        </div>
+        <Textarea
+          id={`${ids}-notes`}
+          label="Notes"
+          rows={3}
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+        />
       </div>
     </Modal>
   );

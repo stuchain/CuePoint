@@ -27,19 +27,24 @@ interface EntryMenuHandlers {
   onRemove: () => void;
 }
 
+/** The one name of the chapter action: the heading button, the menu entry and the dialog it opens. */
+export const CHAPTER_ACTION = "Edit chapter…";
+
 /** The heading of the block of entries only this page has (area 38). */
 export const THIS_PAGE = "This page";
 
 /**
- * A page's own entries as the menu's "This page" block: a muted heading, then the entries. Every
- * track list's menu is the same base (Play, then More) with the page's own entries between.
+ * A page's own entries as the menu's "This page" block: a label-style group title above the first
+ * entry (area 81), then the entries. Every track list's menu is the same base (Play, then More)
+ * with the page's own entries between.
  */
 export function thisPageBlock(items: readonly TrackContextMenuItem[]): TrackContextMenuItem[] {
   if (items.length === 0) return [];
-  return [
-    { id: "this-page", label: THIS_PAGE, onSelect: () => undefined, disabled: true, separatorBefore: true },
-    ...items.map((item) => ({ ...item, separatorBefore: false })),
-  ];
+  return items.map((item, at) =>
+    at === 0
+      ? { ...item, groupTitle: THIS_PAGE, separatorBefore: true }
+      : { ...item, separatorBefore: false },
+  );
 }
 
 /** The base menu's last entry: More, holding the page entries, Copy and Show in folder. */
@@ -135,7 +140,7 @@ export function headingMenuItems(
   handlers: HeadingMenuHandlers,
 ): TrackContextMenuItem[] {
   return [
-    { id: "edit", label: "Rename, targets and notes…", onSelect: handlers.onEdit },
+    { id: "edit", label: CHAPTER_ACTION, onSelect: handlers.onEdit },
     {
       id: "move-up",
       label: "Move chapter up",

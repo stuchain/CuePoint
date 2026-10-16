@@ -4,7 +4,7 @@
  * sign-in is tested on its own.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
+import { act, render as baseRender, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { resetEngineReadsForTests } from "../api/engineReads";
@@ -16,6 +16,11 @@ import {
   INCLUDE_USER_CHARTS_STORAGE_KEY,
   resetIncludeUserChartsForTests,
 } from "./discover/includeUserCharts";
+import type { ReactElement } from "react";
+import { ToastProvider } from "../components";
+
+/** The panels' Reset offers Undo in a toast, so they render inside the provider the app has. */
+const render = (ui: ReactElement) => baseRender(ui, { wrapper: ToastProvider });
 
 const FIELD_ID = "settings-beatport-token";
 

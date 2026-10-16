@@ -108,7 +108,7 @@ export function TimeCell({ row, field }: { row: EntryRow | HeadingRow; field: Ti
       className="prepare-time"
       tabIndex={-1}
       aria-label={`${FIELD_WORDS[field]} for ${row.entry.track.title ?? "the entry"}: ${text || "not set"}`}
-      title={`Type the ${FIELD_WORDS[field]} for this track`}
+      data-hint={`Type the ${FIELD_WORDS[field]} for this track`}
       onClick={() => editing.startTimeEdit(row.entry.entry_id, field)}
     >
       {text}

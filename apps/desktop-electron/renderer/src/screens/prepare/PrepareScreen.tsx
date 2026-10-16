@@ -54,8 +54,8 @@ import { Hint } from "../../components/Hint";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
 import { Modal } from "../../components/Modal";
+import { EmptyState } from "../../components/EmptyState";
 import { Panel } from "../../components/Panel";
-import { PixelIcon } from "../../components/PixelIcon";
 import { Select } from "../../components/Select";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
 import { useToast } from "../../components/Toast";
@@ -99,7 +99,8 @@ import { nextTimeTarget, timeRefusalWords, timeTexts, timesToSave, type TimeFiel
 import { newSetSources } from "./newSetSources";
 import { PREPARE_COLUMNS, PREPARE_TABLE_LAYOUT_KEY } from "./prepareColumns";
 import {
-  EMPTY_SET,
+  EMPTY_SET_HEADLINE,
+  EMPTY_SET_HELP,
   NO_SETS,
   WHAT_A_SET_IS,
   deletionLine,
@@ -370,18 +371,13 @@ export function PrepareScreen({
 
   const [chapterEditing, setChapterEditing] = useState<SetChapterPlan | null>(null);
   const [chapterError, setChapterError] = useState<string | null>(null);
-  // Counts refusals, so the same words coming back shake the dialog's line again.
-  const [chapterRefusals, setChapterRefusals] = useState(0);
   const [chapterDeleting, setChapterDeleting] = useState<SetChapterPlan | null>(null);
 
   const saveChapter = useCallback(
     async (update: SetChapterUpdate) => {
       setChapterError(null);
       const done = await edit((sets) => sets.updateChapter(update), {
-        onRefused: (message) => {
-          setChapterError(message);
-          setChapterRefusals((n) => n + 1);
-        },
+        onRefused: (message) => setChapterError(message),
       });
       if (done) setChapterEditing(null);
     },
@@ -1137,7 +1133,7 @@ export function PrepareScreen({
         <ScreenHeader title="Prepare" />
         {noSets ? (
           <Panel title="Prepare a Set">
-            <p className="prepare-note">{WHAT_A_SET_IS}</p>
+            <EmptyState icon="prepare" headline="No Sets yet" description={WHAT_A_SET_IS} />
             <div className="prepare-empty__actions">
               <Button
                 onClick={() => {
@@ -1176,10 +1172,11 @@ export function PrepareScreen({
         <ScreenHeader title="Prepare" />
         {setId === null ? (
           <Panel>
-            <p className="prepare-note">This address names no Set.</p>
-            <Button variant="secondary" onClick={() => navigate(PREPARE_PATH)}>
-              Open your Sets
-            </Button>
+            <EmptyState
+              icon="prepare"
+              headline="This address names no Set"
+              action={{ label: "Open your Sets", onClick: () => navigate(PREPARE_PATH) }}
+            />
           </Panel>
         ) : prepared.problem ? (
           <Notice
@@ -1306,7 +1303,7 @@ export function PrepareScreen({
           dropLabel={`Drop here to add to “${setName}”`}
           dragActive={trackDragging}
           dropTag={(row) => (row.kind === "heading" ? chapterName(row.chapter) : undefined)}
-          emptyState={<p className="prepare-note">{EMPTY_SET}</p>}
+          emptyState={<EmptyState icon="prepare" headline={EMPTY_SET_HEADLINE} description={`${EMPTY_SET_HELP}.`} />}
           resetKey={String(shown.setId)}
           ariaLabel="Set entries"
         />
@@ -1342,7 +1339,7 @@ export function PrepareScreen({
             </Button>
             <Button
               variant="secondary"
-              aria-haspopup="menu"
+              menu
               aria-expanded={headerSetMenu !== null}
               onClick={(event) => {
                 const rect = event.currentTarget.getBoundingClientRect();
@@ -1350,11 +1347,10 @@ export function PrepareScreen({
               }}
             >
               Set
-              <PixelIcon name="chevron-down" className="cp-pixel-icon--text cp-pixel-icon--after" />
             </Button>
             <Button
               variant="secondary"
-              aria-haspopup="menu"
+              menu
               aria-expanded={viewMenu !== null}
               onClick={(event) => {
                 const rect = event.currentTarget.getBoundingClientRect();
@@ -1362,7 +1358,6 @@ export function PrepareScreen({
               }}
             >
               View
-              <PixelIcon name="chevron-down" className="cp-pixel-icon--text cp-pixel-icon--after" />
             </Button>
           </>
         }
@@ -1517,7 +1512,6 @@ export function PrepareScreen({
       <ChapterDialog
         chapter={editingChapter}
         error={chapterError}
-        errorKey={chapterRefusals}
         onSave={(update) => void saveChapter(update)}
         onClose={() => setChapterEditing(null)}
         canMoveUp={editingChapter !== null && editingChapter.position > 0}

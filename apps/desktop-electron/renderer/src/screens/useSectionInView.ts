@@ -13,8 +13,23 @@ function headerHeight(section: HTMLElement): number {
   return Number.isFinite(px) && px > 0 ? Math.round(px) : 0;
 }
 
-export function useSectionInView(ids: readonly string[]): string | null {
+/** A section a link or the app asked for; `n` is new for each ask, so asking again re-pins it. */
+export interface RequestedSection {
+  id: string;
+  n: number;
+}
+
+/**
+ * The section the side menu marks. By default the first listed section in the top part of the
+ * view. A section the person asked for (`requested`) is the one marked instead, until they scroll
+ * or press a key themselves: the last sections cannot always be scrolled to the top, and the
+ * section above would otherwise stay marked (Help > Privacy marked Rekordbox, About & updates
+ * marked Privacy).
+ */
+export function useSectionInView(ids: readonly string[], requested: RequestedSection | null = null): string | null {
   const [current, setCurrent] = useState<string | null>(null);
+  // The ask that the person scrolled away from; an ask not in this is still pinned.
+  const [released, setReleased] = useState<number | null>(null);
 
   useEffect(() => {
     if (typeof IntersectionObserver !== "function") {
@@ -47,5 +62,35 @@ export function useSectionInView(ids: readonly string[]): string | null {
     return () => observer.disconnect();
   }, [ids]);
 
+  // The person takes over: the wheel, touch, a scroll key or any later scroll ends the pin.
+  const asked = requested?.n ?? null;
+  useEffect(() => {
+    if (asked === null) return;
+    const root = document.getElementById(requested!.id)?.closest(".app-main");
+    if (!root) return;
+    const release = () => setReleased(asked);
+    // The jump the ask itself made (a smooth scroll) is over after a moment; any scroll after that
+    // is the person's, a drag on the scrollbar included.
+    const startedAt = Date.now();
+    const onScroll = () => {
+      if (Date.now() - startedAt > 1000) release();
+    };
+    const onKey = (event: Event) => {
+      const key = (event as KeyboardEvent).key;
+      if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(key)) release();
+    };
+    root.addEventListener("wheel", release, { passive: true });
+    root.addEventListener("touchmove", release, { passive: true });
+    root.addEventListener("keydown", onKey);
+    root.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      root.removeEventListener("scroll", onScroll);
+      root.removeEventListener("wheel", release);
+      root.removeEventListener("touchmove", release);
+      root.removeEventListener("keydown", onKey);
+    };
+  }, [asked, requested]);
+
+  if (requested && requested.n !== released) return requested.id;
   return current;
 }

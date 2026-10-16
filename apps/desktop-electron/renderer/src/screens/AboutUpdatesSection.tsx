@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 
 import type { AppBuildInfo, UpdateState, WhatsNew as WhatsNewNotes } from "../api/cuepointBridge.types";
 import { Button } from "../components/Button";
+import { ReasonLine } from "../components/ReasonLine";
+import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
 import { formatTimeOfDay } from "../format/dates";
 import { WhatsNew } from "../components/updates/WhatsNew";
 import { useRestartFlow } from "../components/updates/useRestartFlow";
@@ -109,7 +111,7 @@ function ReadyActions() {
  * Settings › About & updates (DIST-07): the build, what the updater is doing in words, the time
  * of the last check, and the buttons that act on it.
  */
-export function AboutUpdatesSection() {
+export function AboutUpdatesSection({ actions }: { actions?: ReactNode } = {}) {
   const state = useUpdateState();
   const [build, setBuild] = useState<AppBuildInfo | null>(null);
   const [buildKnown, setBuildKnown] = useState(() => !window.cuepoint?.buildInfo);
@@ -142,32 +144,39 @@ export function AboutUpdatesSection() {
   const version = state?.currentVersion ?? build?.version ?? null;
   const checkable = status !== "idle" || installed === true;
   const busy = status === "checking" || status === "downloading";
+  // Why Check for updates is greyed, in the one reason line above the buttons (area 93).
+  const reasonId = useId();
+  const reason = !checkable && words.main !== "" ? words.main : null;
 
   return (
     <div className="about-updates">
       {(build || isTestVersion(version)) && (
-        <p>
+        <SettingsStatus>
           {build && `Build ${build.dist ?? "not recorded"}`}
           {build && isTestVersion(version) && " · "}
           {isTestVersion(version) && <span>test version</span>}
-        </p>
+        </SettingsStatus>
       )}
       <div className="about-updates__state">
         {/* Announced politely. The percentage is beside the words, so it does not repeat them as it moves. */}
-        <p className="about-updates__words" aria-live="polite">
-          {words.main}
-        </p>
-        {status === "downloading" && state?.progress != null && (
-          <p className="about-updates__percent">{`${Math.round(state.progress)}%`}</p>
+        {reason === null && (
+          <SettingsStatus aria-live="polite" tone={status === "failed" ? "warning" : undefined}>
+            {words.main}
+          </SettingsStatus>
         )}
-        {words.more && <p className="about-updates__more">{words.more}</p>}
+        {status === "downloading" && state?.progress != null && (
+          <SettingsHint>{`${Math.round(state.progress)}%`}</SettingsHint>
+        )}
+        {words.more && <SettingsHint>{words.more}</SettingsHint>}
       </div>
-      <p className="about-updates__checked">{lastCheckedWords(state?.lastCheckedAt ?? null)}</p>
+      <SettingsHint>{lastCheckedWords(state?.lastCheckedAt ?? null)}</SettingsHint>
       {status === "ready" && <ReadyActions />}
-      <div className="about-updates__row">
+      <ReasonLine id={reasonId}>{reason}</ReasonLine>
+      <SettingsActions>
         <Button
           variant="secondary"
           disabled={busy || !checkable}
+          aria-describedby={reason !== null ? reasonId : undefined}
           onClick={() => void bridge?.check().catch(() => undefined)}
         >
           Check for updates
@@ -193,7 +202,8 @@ export function AboutUpdatesSection() {
             What's new
           </Button>
         )}
-      </div>
+        {actions}
+      </SettingsActions>
       {notes && <WhatsNew notes={notes} open={notesOpen} onClose={() => setNotesOpen(false)} />}
     </div>
   );

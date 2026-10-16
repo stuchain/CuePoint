@@ -297,7 +297,6 @@ export function RunCards({
             </Button>
             <Hint text={pushable ? undefined : (unusableReason(tools.beatportState) ?? undefined)}>
               <Button
-                icon="chevron-down"
                 disabled={!pushable || tools.pushing}
                 onClick={() => setPushOpen(true)}
               >

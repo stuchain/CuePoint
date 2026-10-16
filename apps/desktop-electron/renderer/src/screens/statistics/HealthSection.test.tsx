@@ -124,15 +124,13 @@ describe("the Health tab (STATS-07, K3)", () => {
     const files = within(panel("files"));
     expect(files.getByRole("img", { name: /^Files: Present 80, Missing 12, Unreadable 3, Not checked 5$/ })).toBeInTheDocument();
     for (const text of ["Present 80", "Missing 12", "Unreadable 3", "Not checked 5"]) {
-      expect(files.getByText(text)).toBeInTheDocument();
+      expect(panel("files")).toHaveTextContent(text);
     }
-    const beatport = within(panel("beatport"));
     for (const text of ["Confirmed 50", "To review 10", "Rejected 2", "No match 3", "Not matched 35"]) {
-      expect(beatport.getByText(text)).toBeInTheDocument();
+      expect(panel("beatport")).toHaveTextContent(text);
     }
-    const analysis = within(panel("analysis"));
     for (const text of ["Analyzed 40", "Waiting 30", "Failed 2", "No file 28"]) {
-      expect(analysis.getByText(text)).toBeInTheDocument();
+      expect(panel("analysis")).toHaveTextContent(text);
     }
   });
 
@@ -148,19 +146,28 @@ describe("the Health tab (STATS-07, K3)", () => {
     expect(within(panel("files")).getByText("not checked yet")).toBeInTheDocument();
   });
 
-  it("writes each row's count in a chip, tinted by what it is", () => {
+  it("writes each row's count in the data face, amber or red only for work to do", () => {
     renderSection();
-    const chip = (card: string, id: string) =>
-      rowOf(card, id).querySelector(".cp-badge") as HTMLElement;
-    expect(chip("files", "missing")).toHaveTextContent("12");
-    expect(chip("files", "missing")).toHaveClass("cp-badge--danger");
-    expect(chip("files", "not_checked")).toHaveClass("cp-badge--neutral");
-    expect(chip("beatport", "needs_review")).toHaveClass("cp-badge--warning");
-    expect(chip("beatport", "not_synced")).toHaveTextContent("6");
-    expect(chip("beatport", "not_synced")).toHaveClass("cp-badge--accent");
-    expect(chip("other", "duplicates")).toHaveClass("cp-badge--warning");
-    expect(chip("analysis", "failed")).toHaveClass("cp-badge--danger");
-    expect(chip("analysis", "waiting")).toHaveTextContent("30");
+    const count = (card: string, id: string) =>
+      rowOf(card, id).querySelector(".health-card__count") as HTMLElement;
+    expect(count("files", "missing")).toHaveTextContent("12");
+    expect(count("files", "missing")).toHaveClass("health-card__count--danger");
+    expect(count("files", "not_checked")).not.toHaveClass("health-card__count--danger");
+    expect(count("beatport", "needs_review")).toHaveClass("health-card__count--warning");
+    expect(count("beatport", "not_synced")).toHaveTextContent("6");
+    expect(count("other", "duplicates")).toHaveClass("health-card__count--warning");
+    expect(count("analysis", "failed")).toHaveClass("health-card__count--danger");
+    expect(count("analysis", "waiting")).toHaveTextContent("30");
+  });
+
+  it("is its own legend: a swatch, the label, the count and the link on one row", () => {
+    renderSection();
+    const row = rowOf("files", "missing");
+    expect(row.querySelector(".health-card__swatch")).toHaveClass("stacked__part--danger");
+    expect(row.textContent).toContain("Missing");
+    expect(within(row).getByRole("button", { name: /Open in Clean/ })).toHaveClass("health-card__open");
+    // The bar has no second legend under it.
+    expect(document.querySelector(".stacked__legend")).toBeNull();
   });
 
   it("keeps a zero plain and offers nothing to open", () => {
@@ -169,7 +176,7 @@ describe("the Health tab (STATS-07, K3)", () => {
       files: { ...HEALTH.files, missing: count(0, "missing") },
     });
     const missing = rowOf("files", "missing");
-    expect(missing.querySelector(".cp-badge")).toHaveClass("cp-badge--neutral");
+    expect(missing.querySelector(".health-card__count")).not.toHaveClass("health-card__count--danger");
     expect(within(missing).queryByRole("button")).not.toBeInTheDocument();
   });
 

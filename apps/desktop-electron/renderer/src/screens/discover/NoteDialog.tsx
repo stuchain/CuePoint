@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import type { DiscoverRefusal } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components/Modal";
 import { Notice } from "../../components/Notice";
+import { Textarea } from "../../components/Textarea";
 import { refusalText } from "./discoverFormat";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
@@ -66,26 +67,16 @@ export function NoteDialog({ open, track, note, maxLength, onSave, onClose }: No
       }}
     >
       <div className="discover-dialog">
-        <p className="discover-dialog__text">{track}</p>
-        <div className="discover-dialog__field">
-          <label className="cp-field__label" htmlFor="discover-note">
-            Note
-          </label>
-          <textarea
-            id="discover-note"
-            className="cp-field__input discover-dialog__textarea"
-            value={text}
-            rows={4}
-            aria-describedby="discover-note-hint"
-            aria-invalid={tooLong}
-            onChange={(event) => setText(event.target.value)}
-          />
-          <span id="discover-note-hint" className={tooLong ? "cp-field__error" : "cp-field__hint"}>
-            {tooLong
-              ? `A note is at most ${maxLength} characters.`
-              : "Leave it empty to clear the note."}
-          </span>
-        </div>
+        <p className="discover-dialog__text cp-modal__lead">{track}</p>
+        <Textarea
+          id="discover-note"
+          label="Note"
+          rows={4}
+          value={text}
+          hint="Leave it empty to clear the note."
+          error={tooLong ? `A note is at most ${maxLength} characters.` : undefined}
+          onChange={(event) => setText(event.target.value)}
+        />
         {refusal && <Notice>{refusal}</Notice>}
       </div>
     </Modal>

@@ -4,9 +4,10 @@ CuePoint plays your tracks. Not a preview and not a browser's audio player —
 the same playback program the audiophile players use, playing the file on your disk at
 its own sample rate, gaplessly, and out of whichever audio device you choose.
 
-Nothing plays until you ask it to, and until then the player takes no space at
-all. The bar along the bottom appears the first time you play something and
-stays for the rest of the session.
+Nothing plays until you ask it to. The bar along the bottom is always there; until you
+play something it reads **Nothing playing** and its transport buttons are greyed, so the
+page does not jump when the first track starts. In a window under 800 pixels tall it
+becomes one compact line.
 
 ## Playing a track
 
@@ -43,7 +44,8 @@ Along the bottom: what is playing, how far through it is, and the controls.
   captioned "Playing: …".
 - **Every button names itself.** Hover over a button, or Tab to it, and a note
   says what it does and its shortcut, for example "Next track (Ctrl+→)".
-- **Play/pause, previous, next.** Previous within the first few seconds goes
+- **Play/pause, previous, next** are the large buttons; shuffle, repeat, the queue, the
+  zoomed waveform and mute are the standard size. Previous within the first few seconds goes
   back a track; after that it restarts the one playing, which is what you
   meant if you just missed the intro.
 - **The position bar** can be clicked or dragged to seek; the playhead goes

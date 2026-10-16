@@ -5,10 +5,16 @@
  * once, a refusal puts the switch back, and without a bridge it is disabled.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render as baseRender, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ErrorReportingSettingsPanel } from "./ErrorReportingSettingsPanel";
+import { readExitClearing, saveExitClearing } from "./exitClearing";
+import type { ReactElement } from "react";
+import { ToastProvider } from "../components";
+
+/** The panels' Reset offers Undo in a toast, so they render inside the provider the app has. */
+const render = (ui: ReactElement) => baseRender(ui, { wrapper: ToastProvider });
 
 let get: ReturnType<typeof vi.fn>;
 let set: ReturnType<typeof vi.fn>;
@@ -147,5 +153,28 @@ describe("without the desktop bridge", () => {
     render(<ErrorReportingSettingsPanel />);
     expect(screen.getByRole("switch", { name: "Send error reports" })).toBeDisabled();
     expect(screen.getByText("Open CuePoint as a desktop app to change this.")).toBeInTheDocument();
+  });
+});
+
+describe("Reset Privacy", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    install(false);
+  });
+  afterEach(() => localStorage.clear());
+
+  it("turns error reports on and clears nothing on quit, and Undo puts both back", async () => {
+    saveExitClearing({ clearCache: true, clearLogs: true });
+    render(<ErrorReportingSettingsPanel />);
+    const toggle = screen.getByRole("switch", { name: "Send error reports" });
+    await waitFor(() => expect(toggle).toBeEnabled());
+
+    await userEvent.click(screen.getByRole("button", { name: "Reset Privacy" }));
+    await waitFor(() => expect(toggle).toBeChecked());
+    expect(readExitClearing()).toEqual({ clearCache: false, clearLogs: false });
+
+    await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(toggle).not.toBeChecked());
+    expect(readExitClearing()).toEqual({ clearCache: true, clearLogs: true });
   });
 });

@@ -11,6 +11,7 @@ import { useMemo } from "react";
 import type { KeyPopulationEntry } from "../../api/cuepointBridge.types";
 import { countedName, keyName } from "../../components/wheel/camelot";
 import type { PickModifiers } from "../../components/wheel/CamelotWheel";
+import { RankBar } from "../../components/charts/RankBar";
 import { Hint } from "../../components/Hint";
 import { KeyChip } from "../../components/wheel";
 import { formatCount } from "../../format/counts";
@@ -77,7 +78,7 @@ export function KeysCountsList({
                   data-changed={changedMark(marks, entry.code)}
                   data-percent={barPercent(entry.count, biggest)}
                 >
-                  <span style={{ width: `${barPercent(entry.count, biggest)}%` }} />
+                  <RankBar share={barPercent(entry.count, biggest) / 100} />
                 </span>
                 <span className="keys-counts__count" data-changed={changedMark(marks, entry.code)}>
                   {formatCount(entry.count)}

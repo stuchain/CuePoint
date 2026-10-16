@@ -16,7 +16,16 @@ export interface BarPart {
   tone: BarTone;
 }
 
-export function StackedBar({ title, parts }: { title: string; parts: readonly BarPart[] }) {
+export function StackedBar({
+  title,
+  parts,
+  legend = true,
+}: {
+  title: string;
+  parts: readonly BarPart[];
+  /** False when the card's own list is the legend (Health: swatch, label, count on one line). */
+  legend?: boolean;
+}) {
   const total = parts.reduce((sum, part) => sum + part.count, 0);
   const spoken = parts.map((part) => `${part.label} ${formatCount(part.count)}`).join(", ");
   return (
@@ -34,6 +43,7 @@ export function StackedBar({ title, parts }: { title: string; parts: readonly Ba
             ))}
         </div>
       )}
+      {legend && (
       <ul className="stacked__legend">
         {parts.map((part) => (
           <li key={part.id} className="stacked__item">
@@ -42,6 +52,7 @@ export function StackedBar({ title, parts }: { title: string; parts: readonly Ba
           </li>
         ))}
       </ul>
+      )}
     </div>
   );
 }

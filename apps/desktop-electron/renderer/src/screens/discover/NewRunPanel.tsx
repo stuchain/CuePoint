@@ -22,6 +22,7 @@ import type {
   DiscoverRunRequest,
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
+import { Card } from "../../components/Card";
 import { Hint } from "../../components/Hint";
 import { Notice } from "../../components/Notice";
 import { SearchField } from "../../components/SearchField";
@@ -233,11 +234,14 @@ export function NewRunPanel({
         )}
 
         <div className="discover-new__grid">
-          <fieldset className="discover-new__genres">
-            <legend className="cp-field__label">
-              Genres for DJ charts ({formatCount(form.genreIds.length)} chosen) ·{" "}
-              {chartsWindowShort(form, options.defaults)}
-            </legend>
+          <Card
+            className="discover-new__genres"
+            bodyClassName="discover-new__card-body"
+            role="group"
+            aria-label="Genres for DJ charts"
+            title="Genres for DJ charts"
+            unit={`${formatCount(form.genreIds.length)} chosen · ${chartsWindowShort(form, options.defaults)}`}
+          >
             {options.genres.length === 0 ? (
               <p className="discover-note">
                 {signedOut
@@ -295,7 +299,7 @@ export function NewRunPanel({
                 />
               </div>
             </details>
-          </fieldset>
+          </Card>
 
           <div className="discover-new__column">
             <SavedListField
@@ -342,10 +346,8 @@ export function NewRunPanel({
           <div className="discover-new__bar-main">
             <p
               className="discover-new__summary"
-              // Cut short on one line, so the whole sentence is the tooltip.
-              onMouseEnter={(event) => {
-                event.currentTarget.title = event.currentTarget.textContent ?? "";
-              }}
+              // Cut short on one line: the app hint shows the whole sentence when it is cut.
+              data-cut-hint
             >
               {sentence}
             </p>

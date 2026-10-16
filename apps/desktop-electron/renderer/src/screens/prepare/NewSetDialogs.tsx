@@ -13,6 +13,7 @@ import { Modal } from "../../components/Modal";
 import { Notice } from "../../components/Notice";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
+import { dialogTitle } from "../../format/words";
 import type { NewSetSource } from "../library/newSetFrom";
 import type { FolderOption } from "../library/SaveSmartDialog";
 import { SMART_NAME_MAX_LENGTH, checkSmartName } from "../library/smartFilter";
@@ -129,7 +130,7 @@ export function SetSourceDialog({ open, groups, onChoose, onClose }: SetSourceDi
   return (
     <Modal
       open={open}
-      title="New Set from…"
+      title={dialogTitle("New Set from…")}
       onClose={onClose}
       primaryAction={{ label: "Continue…", onClick: () => source && onChoose(source), disabled: !source }}
       secondaryAction={{ label: "Cancel", onClick: onClose }}

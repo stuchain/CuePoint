@@ -84,7 +84,6 @@ describe("the shared page margin", () => {
       ["clean playlists", playlists, ".playlists"],
       ["clean match review", match, ".review"],
       ["clean past searches", match, ".match-past"],
-      ["clean toolbar", clean, ".clean-toolbar"],
       ["clean note", clean, ".clean-note"],
       ["keys top", keys, ".keys-page__top"],
       ["keys actions", keys, ".keys-page__actions"],
@@ -102,7 +101,7 @@ describe("the shared page margin", () => {
 
   it("is backed by the sticky header's backdrop", () => {
     const d = decls(header, ".cp-screen-header::before");
-    expect(d["top"]).toBe("calc(-1 * var(--page-gutter-top))");
+    expect(d["top"]).toBe("calc(-1 * var(--screen-header-stick, var(--page-gutter-top)))");
     expect(d["left"]).toBe("calc(-1 * var(--page-gutter-x))");
     expect(d["right"]).toBe("calc(-1 * var(--page-gutter-x))");
     expect(decls(header, ".cp-screen-header--inset")["padding-inline"]).toBe("0");

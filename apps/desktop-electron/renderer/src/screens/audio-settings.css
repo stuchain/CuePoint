@@ -23,14 +23,5 @@
   color: var(--fg-disabled);
 }
 
-.cp-audio-settings__hint {
-  overflow-wrap: anywhere;
-  margin: 0;
-  max-width: 60ch;
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  line-height: 1.5;
-}
-
 /* The two states worth interrupting the reading order for (what is actually playing is not what
    was asked for, and something went wrong) are Notices. */

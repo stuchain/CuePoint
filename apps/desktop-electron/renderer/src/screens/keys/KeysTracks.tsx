@@ -532,7 +532,7 @@ export function KeysTracks({
   ) : window_.loading ? (
     <Loading what="tracks" centered />
   ) : (
-    <EmptyState headline="No track is in these keys here." />
+    <EmptyState icon="keys" headline="No track is in these keys here" />
   );
 
   return (

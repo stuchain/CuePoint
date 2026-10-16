@@ -617,7 +617,7 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      expect(within(region).getByText("3,120")).toHaveClass("cp-badge");
+      expect(within(region).getByText("3,120")).toHaveClass("plays__unplayed-count");
       await user.click(within(region).getByRole("button", { name: "Open in Library: Never played" }));
       expect(navigated().state).toEqual({ cuepointLibraryRules: rules("play_count", 3120) });
 

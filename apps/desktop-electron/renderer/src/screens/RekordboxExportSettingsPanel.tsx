@@ -13,6 +13,7 @@ import {
   keyFormatLabel,
   rememberedFolderLine,
 } from "./library/rekordboxExport";
+import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
 import "./rekordbox-export-settings.css";
 import { userMessage } from "../api/userMessage";
 
@@ -55,30 +56,8 @@ export function RekordboxExportSettingsPanel() {
   return (
     <Panel title="Rekordbox">
       <div className="cp-export-settings">
-        <p className="cp-export-settings__hint">
-          Read a different Rekordbox file in place of the current one.
-        </p>
-        <div>
-          <Button
-            variant="secondary"
-            onClick={() => navigate("/library", { state: libraryImportState() })}
-          >
-            Import a Rekordbox file…
-          </Button>
-        </div>
-        <p id={lineId} className="cp-export-settings__hint">
-          Remembers your last export.
-        </p>
-        <MoreAbout describedBy={lineId}>
-          <p className="cp-export-settings__hint">
-            To export, use “Export to Rekordbox…” in the Library or on a Collection&apos;s menu.
-          </p>
-        </MoreAbout>
-
         {!available && (
-          <p className="cp-export-settings__hint">
-            Open CuePoint as a desktop app to see where exports go.
-          </p>
+          <SettingsStatus>Open CuePoint as a desktop app to see where exports go.</SettingsStatus>
         )}
 
         {error && (
@@ -93,11 +72,13 @@ export function RekordboxExportSettingsPanel() {
           </Notice>
         )}
 
+        {loading && !history && <SettingsStatus>Reading past exports…</SettingsStatus>}
+
         {remembered && (
           <dl className="cp-export-settings__facts">
             <div>
               <dt>Save dialog opens in</dt>
-              <dd data-testid="export-remembered-folder" title={remembered.folder ?? undefined}>
+              <dd data-testid="export-remembered-folder" data-hint={remembered.folder ?? undefined}>
                 {rememberedFolderLine(remembered)}
               </dd>
             </div>
@@ -110,13 +91,18 @@ export function RekordboxExportSettingsPanel() {
           </dl>
         )}
 
-        {loading && !history && <p className="cp-export-settings__hint">Reading past exports…</p>}
+        <SettingsHint id={lineId}>Remembers your last export.</SettingsHint>
+        <MoreAbout describedBy={lineId}>
+          <SettingsHint>
+            To export, use “Export to Rekordbox…” in the Library or on a Collection&apos;s menu.
+          </SettingsHint>
+        </MoreAbout>
 
         {history && (
           <section aria-label="Recent exports">
             <h3 className="cp-export-settings__heading cp-text-label">Recent exports</h3>
             {history.exports.length === 0 ? (
-              <p className="cp-export-settings__hint">No exports yet.</p>
+              <SettingsHint>No exports yet.</SettingsHint>
             ) : (
               <ul className="cp-export-settings__list">
                 {history.exports.map((record) => (
@@ -126,7 +112,7 @@ export function RekordboxExportSettingsPanel() {
                     className="cp-export-settings__item"
                   >
                     <span className="cp-export-settings__when">{historyWhen(record)}</span>
-                    <span className="cp-export-settings__file" title={record.destination_path}>
+                    <span className="cp-export-settings__file" data-hint={record.destination_path}>
                       {fileName(record.destination_path)}
                     </span>
                     <span className="cp-export-settings__outcome">{historyOutcome(record)}</span>
@@ -136,6 +122,16 @@ export function RekordboxExportSettingsPanel() {
             )}
           </section>
         )}
+
+        <SettingsHint>Read a different Rekordbox file in place of the current one.</SettingsHint>
+        <SettingsActions>
+          <Button
+            variant="secondary"
+            onClick={() => navigate("/library", { state: libraryImportState() })}
+          >
+            Import a Rekordbox file…
+          </Button>
+        </SettingsActions>
       </div>
     </Panel>
   );

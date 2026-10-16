@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import settingsCss from "./settings.css?raw";
@@ -17,9 +17,9 @@ class FakeObserver {
   disconnect() {}
 }
 
-function Probe({ ids }: { ids: readonly string[] }) {
-  const current = useSectionInView(ids);
-  return <output>{current ?? "none"}</output>;
+function Probe({ ids, requested = null }: { ids: readonly string[]; requested?: { id: string; n: number } | null }) {
+  const current = useSectionInView(ids, requested);
+  return <output role="status">{current ?? "none"}</output>;
 }
 
 afterEach(() => vi.unstubAllGlobals());
@@ -49,6 +49,44 @@ describe("the section the side menu marks", () => {
       </div>,
     );
     expect(FakeObserver.last?.options?.rootMargin).toBe("0px 0px -66% 0px");
+  });
+});
+
+describe("a section that was asked for", () => {
+  function setup(requested: { id: string; n: number } | null) {
+    vi.stubGlobal("IntersectionObserver", FakeObserver);
+    const view = render(
+      <div className="app-main" data-testid="scroller">
+        <section id="a" />
+        <section id="b" />
+        <Probe ids={["a", "b"]} requested={requested} />
+      </div>,
+    );
+    // Both are in the band: the page cannot scroll the second to the top.
+    act(() => {
+      FakeObserver.last!.callback(
+        ["a", "b"].map((id) => ({ isIntersecting: true, target: document.getElementById(id)! }) as unknown as IntersectionObserverEntry),
+        FakeObserver.last as unknown as IntersectionObserver,
+      );
+    });
+    return view;
+  }
+
+  it("without an ask, the first section in the band is marked", () => {
+    setup(null);
+    expect(screen.getByRole("status")).toHaveTextContent("a");
+  });
+
+  it("with an ask, that section is marked rather than the first in the band", () => {
+    setup({ id: "b", n: 1 });
+    expect(screen.getByRole("status")).toHaveTextContent("b");
+  });
+
+  it("stays marked until the person scrolls, then the band decides again", () => {
+    setup({ id: "b", n: 1 });
+    expect(screen.getByRole("status")).toHaveTextContent("b");
+    fireEvent.wheel(screen.getByTestId("scroller"));
+    expect(screen.getByRole("status")).toHaveTextContent("a");
   });
 });
 

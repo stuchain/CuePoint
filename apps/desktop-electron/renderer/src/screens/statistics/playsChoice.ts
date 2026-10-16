@@ -9,7 +9,7 @@
  * a daylight-saving change is still its own midnight.
  */
 import type { StatisticsPlaysParams } from "../../api/cuepointBridge.types";
-import { formatDay } from "../../format/dates";
+import { formatDate, formatDay } from "../../format/dates";
 
 export const PLAYS_STORAGE_KEY = "cuepoint-statistics-plays";
 
@@ -140,14 +140,6 @@ export function playsParams(
   return params;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-/** `Sep 1, 2026` from a `YYYY-MM-DD` day. */
-export function dayWords(day: string): string {
-  const [y, m, d] = day.split("-").map(Number) as [number, number, number];
-  return `${MONTHS[m - 1]} ${d}, ${y}`;
-}
-
 /**
  * `Nov 2`, `Nov 2, 2025` in another year, or `Today` / `Yesterday`, from a stored UTC
  * timestamp, in local time (the one date helper).
@@ -209,5 +201,8 @@ export function collectionName(
         ? stampDay(answer.history_from)
         : (answer.since ?? sinceDay(choice.since, now));
   }
-  return day ? `Most played since ${dayWords(day)} ${top}` : `Most played, all time ${top}`;
+  // A Collection's name is an absolute day ("Sep 1, 2026"), never "Today".
+  const [y, m, d] = (day ?? "").split("-").map(Number) as [number, number, number];
+  const named = day ? formatDate(new Date(y, m - 1, d)) : "";
+  return day ? `Most played since ${named} ${top}` : `Most played, all time ${top}`;
 }

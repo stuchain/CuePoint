@@ -7,6 +7,7 @@ import { Button, Panel } from "../components";
 import type { AppBuildInfo } from "../api/cuepointBridge.types";
 import { AboutUpdatesSection } from "./AboutUpdatesSection";
 import { AudioSettingsPanel } from "./AudioSettingsPanel";
+import { SettingsStatus } from "./SettingsParts";
 import { BeatportSettingsPanel } from "./BeatportSettingsPanel";
 import { ErrorReportingSettingsPanel } from "./ErrorReportingSettingsPanel";
 import { ExitClearingSettings } from "./ExitClearingSettings";
@@ -39,12 +40,12 @@ function Section({ id, children }: { id: SettingsSectionId; children: ReactNode 
   );
 }
 
-function AboutSection({ onOpenOnboarding }: { onOpenOnboarding?: () => void }) {
+/** The app's own version comes from Electron main (REPORT-07); an older main has none. */
+function useBuildInfo(): AppBuildInfo | null {
   const [build, setBuild] = useState<AppBuildInfo | null>(null);
 
   useEffect(() => {
     let live = true;
-    // The app's own version comes from Electron main (REPORT-07); an older main has none.
     void window.cuepoint
       ?.buildInfo?.()
       .then((info) => {
@@ -58,17 +59,22 @@ function AboutSection({ onOpenOnboarding }: { onOpenOnboarding?: () => void }) {
     };
   }, []);
 
+  return build;
+}
+
+function AboutSection({ build, onOpenOnboarding }: { build: AppBuildInfo | null; onOpenOnboarding?: () => void }) {
   return (
     <Panel title={titleOf("settings-about")}>
       <div className="settings-page__about">
-        <p data-testid="settings-version">CuePoint version {appVersion(build)}</p>
-        <div>
-          <Button variant="secondary" onClick={() => onOpenOnboarding?.()}>
-            Getting started
-          </Button>
-        </div>
+        <SettingsStatus data-testid="settings-version">CuePoint version {appVersion(build)}</SettingsStatus>
         <div data-slot="updates">
-          <AboutUpdatesSection />
+          <AboutUpdatesSection
+            actions={
+              <Button variant="secondary" onClick={() => onOpenOnboarding?.()}>
+                Getting started
+              </Button>
+            }
+          />
         </div>
       </div>
     </Panel>
@@ -107,6 +113,7 @@ export function SettingsScreen({
     if (!sectionAsked || !sectionToken || scrolledTo.current === sectionToken) return;
     scrolledTo.current = sectionToken;
     document.getElementById(`settings-${sectionAsked}`)?.scrollIntoView?.({ block: "start" });
+    setRequested({ id: `settings-${sectionAsked}`, n: (requests.current += 1) });
   }, [sectionAsked, sectionToken]);
 
   // The links are plain anchors, but a hash router owns the address bar: the
@@ -117,13 +124,20 @@ export function SettingsScreen({
     const section = document.getElementById(id);
     section?.scrollIntoView?.({ block: "start" });
     section?.focus({ preventScroll: true });
+    request(id);
   };
 
-  const inView = useSectionInView(SECTION_IDS);
+  // The section a person just asked for (a link, or Help > Privacy) is the current one even when
+  // the page cannot scroll far enough to bring it to the top, until they scroll themselves.
+  const [requested, setRequested] = useState<{ id: string; n: number } | null>(null);
+  const requests = useRef(0);
+  const request = (id: string) => setRequested({ id, n: (requests.current += 1) });
+  const inView = useSectionInView(SECTION_IDS, requested);
+  const build = useBuildInfo();
 
   return (
     <div className="screen screen--stack screen--scroll settings-page">
-      <ScreenHeader title="Settings" />
+      <ScreenHeader title="Settings" summary={`CuePoint ${appVersion(build)}`} />
 
       <div className="settings-page__layout">
         <nav aria-label="Settings sections" className="settings-page__nav">
@@ -174,7 +188,7 @@ export function SettingsScreen({
           </Section>
 
           <Section id="settings-about">
-            <AboutSection onOpenOnboarding={onOpenOnboarding} />
+            <AboutSection build={build} onOpenOnboarding={onOpenOnboarding} />
           </Section>
         </div>
       </div>

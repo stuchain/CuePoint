@@ -217,7 +217,11 @@ describe("the Statistics page (STATS-04)", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Statistics" })).toBeInTheDocument();
     const tabs = await screen.findAllByRole("tab");
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["Plays", "Library4,000", "Health112 issues"]);
+    expect(tabs.map((tab) => tab.getAttribute("aria-label") ?? tab.textContent)).toEqual([
+      "Plays",
+      "Library, 4,000",
+      "Health, 112 issues",
+    ]);
     expect(screen.getByRole("tab", { name: "Plays" })).toHaveAttribute("aria-selected", "true");
     expect(panel("plays")).toBeVisible();
     expect(panel("library")).not.toBeVisible();
@@ -236,8 +240,8 @@ describe("the Statistics page (STATS-04)", () => {
     renderPage();
 
     // 12 missing + 0 unreadable + 41 to review + 14 duplicates + 5 changed + 3 failed.
-    expect(await screen.findByRole("tab", { name: /^Health 75 issues$/ })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Library 4,000" })).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: (name) => name.replace(/\s+,/g, ",") === "Health, 75 issues" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Library, 4,000" })).toBeInTheDocument();
   });
 
   it("starts the page at the top when another tab is chosen", async () => {

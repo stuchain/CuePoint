@@ -52,6 +52,7 @@ import {
   type DiscoverSection,
 } from "./discoverSections";
 import {
+  discoverFacts,
   discoveryEnded,
   lookingUpLine,
   pushOutcome,
@@ -307,6 +308,7 @@ export function DiscoverScreen() {
       <ScreenHeader
         title="Discover"
         inset
+        summary={discoverFacts(tools.options)}
         tabs={
           <Tabs
             tabs={DISCOVER_SECTIONS.map((entry) => ({ id: entry.id, label: entry.label }))}
@@ -324,7 +326,7 @@ export function DiscoverScreen() {
           {notice.action === "signin" ? (
             <BeatportSignInButton
               label={notice.actionLabel}
-              title={notice.hint || undefined}
+              hint={notice.hint || undefined}
               onDone={reloadOptions}
             />
           ) : (

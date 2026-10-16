@@ -36,6 +36,7 @@ import { DISCOVER_OPTIONS, useReportReadError, useSharedRead } from "../../api/s
 import { Button } from "../../components/Button";
 import { CloseButton } from "../../components/CloseButton";
 import { MISSING_VALUE } from "../../components/MissingValue";
+import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { MATCH_ON_BEATPORT, RETRY } from "../../format/words";
 import { useToast } from "../../components/Toast";
@@ -387,13 +388,12 @@ export function BeatportHalf({
     return (
       <div className="discover-page__beatport-state" role="status">
         {tracks.status === "error" ? (
-          <>
-            <p className="discover-empty__headline">Beatport's half could not be read.</p>
-            <p className="discover-note">{tracks.error}</p>
-            <Button variant="secondary" onClick={reload}>
-              {RETRY}
-            </Button>
-          </>
+          <EmptyState
+            icon="discover"
+            headline="Beatport's half could not be read"
+            description={tracks.error}
+            action={{ label: RETRY, onClick: reload }}
+          />
         ) : (
           <Loading what="Beatport" />
         )}
@@ -462,11 +462,7 @@ export function BeatportHalf({
     <div className="discover-page__beatport">
       {pushBanner}
       <div className="discover-toolbar" role="toolbar" aria-label="Beatport's releases">
-        <HideOwnedSwitch
-          hiding={owned === "hide"}
-          onChange={setHiding}
-        />
-        <span className="discover-note" role="status">
+        <span className="discover-toolbar__count" role="status">
           {half.found_by_name ? "Found by name on Beatport. " : ""}
           {page
             ? `${pluralize(page.tracks, "track")} released since ${formatIsoDay(half.since) || MISSING_VALUE}${
@@ -475,8 +471,12 @@ export function BeatportHalf({
                   : ""
               }`
             : half.message}
+          {freshness ? <span className="discover-toolbar__freshness">{freshness}</span> : null}
         </span>
-        {freshness && <span className="discover-note">{freshness}</span>}
+        <HideOwnedSwitch
+          hiding={owned === "hide"}
+          onChange={setHiding}
+        />
         <Button variant="secondary" onClick={readAgain}>
           Check Beatport again
         </Button>
@@ -499,17 +499,18 @@ export function BeatportHalf({
           label={`Beatport's releases by this ${nounOf(kind)}`}
           summary={pluralize(tracks.total, "track")}
           emptyState={
-            <div className="discover-empty">
-              {tracks.loading ? (
-                <Loading what="Beatport" />
-              ) : (
-                <p className="discover-empty__headline">
-                  {owned === "hide" && (page?.tracks ?? 0) > 0
-                    ? "Every track released in this window is already in your library."
-                    : `Nothing released on Beatport since ${formatIsoDay(half.since) || "then"}.`}
-                </p>
-              )}
-            </div>
+            tracks.loading ? (
+              <Loading what="Beatport" />
+            ) : (
+              <EmptyState
+                icon="discover"
+                headline={
+                  owned === "hide" && (page?.tracks ?? 0) > 0
+                    ? "Every track released in this window is already in your library"
+                    : `Nothing released on Beatport since ${formatIsoDay(half.since) || "then"}`
+                }
+              />
+            )
           }
           resetKey={windowKey}
           busy={working || readingOptions}
