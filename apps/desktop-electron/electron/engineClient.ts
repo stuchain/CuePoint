@@ -1397,8 +1397,10 @@ export interface CleanPlaylistCounts {
   rejected: number;
   no_match: number;
   unsaved: number;
-  /** The match job working on it, if one is. */
+  /** The match job working on this playlist now, if one is; only the playlist being matched. */
   running: { job_id: string; done: number; total: number } | null;
+  /** Started in the running match but not reached yet. */
+  queued?: boolean;
 }
 
 export interface CleanPlaylistStatus extends CleanPlaylistCounts {
@@ -1509,6 +1511,10 @@ export interface StatisticsTrack {
   title: string;
   artist: string;
   plays: number;
+  /** The key the Library shows (Camelot), or null. */
+  key: string | null;
+  /** The BPM the Library shows, or null. */
+  bpm: number | null;
 }
 
 export interface StatisticsArtist {
@@ -1530,6 +1536,31 @@ export interface StatisticsLabel {
   opens_more: boolean;
 }
 
+export interface StatisticsGenre {
+  name: string;
+  genre_key: string;
+  plays: number;
+  tracks: number;
+  rules: FilterRuleSet;
+  opens_more: boolean;
+}
+
+/** An artist and the tracks it has in the scope (the Library tab's list). */
+export interface StatisticsArtistTracks {
+  name: string;
+  name_key: string;
+  tracks: number;
+  rules: FilterRuleSet;
+}
+
+/** A label and the tracks it has in the scope. */
+export interface StatisticsLabelTracks {
+  name: string;
+  label_key: string;
+  tracks: number;
+  rules: FilterRuleSet;
+}
+
 export interface StatisticsPlays {
   since: string | null;
   since_clamped: boolean;
@@ -1540,6 +1571,7 @@ export interface StatisticsPlays {
   tracks: StatisticsTrack[];
   artists: StatisticsArtist[];
   labels: StatisticsLabel[];
+  genres: StatisticsGenre[];
   never_played: StatisticsCount;
   unknown: StatisticsCount;
 }
@@ -1584,6 +1616,14 @@ export interface StatisticsSpread {
 export interface StatisticsSpreads {
   scope: StatisticsScope;
   total: number;
+  /** The scope's lengths added; tracks with no length add none. */
+  total_seconds: number;
+  /** The mean length of the tracks that have one, or null. */
+  average_seconds: number | null;
+  /** The mean of the BPMs above zero (one decimal), or null. */
+  average_bpm: number | null;
+  artists: StatisticsArtistTracks[];
+  labels: StatisticsLabelTracks[];
   genre: StatisticsSpread;
   tempo: StatisticsSpread;
   year: StatisticsSpread;
@@ -1620,6 +1660,8 @@ export interface StatisticsHealth {
   other: Record<StatisticsOtherState, StatisticsCount>;
   /** When the cover art was last read; the library's, not the scope's. */
   artwork_checked_at: string | null;
+  /** Tracks with new values not in their files yet (the Save bar's count). */
+  not_synced: StatisticsCount;
 }
 
 export type ReviewExportFormat = "csv" | "json" | "excel";

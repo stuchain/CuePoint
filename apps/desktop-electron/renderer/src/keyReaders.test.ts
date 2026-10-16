@@ -31,6 +31,7 @@ const ALLOWED: Readonly<Record<string, string>> = {
   "screens/discover/beatportKey.ts": "a Beatport track's own key, read as Camelot",
   "screens/library/PaneTree.tsx": "a tree row's key, not a track's",
   "screens/library/libraryClean.ts": "importedText, the value the mark's tooltip says is not used",
+  "screens/statistics/PlaysSection.tsx": "the plays route's key, which the engine resolved (as the queue's is)",
 };
 
 describe("keyReaders", () => {

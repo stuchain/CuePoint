@@ -89,7 +89,7 @@ describe("the shared page margin", () => {
       ["keys top", keys, ".keys-page__top"],
       ["keys actions", keys, ".keys-page__actions"],
       ["keys tracks", keys, ".keys-page__tracks"],
-      ["statistics section", statistics, ".statistics-section"],
+      ["statistics tab", statistics, ".statistics-tabpanel"],
     ];
     for (const [name, css, selector] of blocks) {
       const padding = decls(css, selector)["padding"];
