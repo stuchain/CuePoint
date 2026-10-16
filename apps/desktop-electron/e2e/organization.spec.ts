@@ -282,7 +282,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       });
 
       await collectionsTree(window).getByText("Openers").click();
-      await expect(window.locator(".library-toolbar__count")).toContainText("3 tracks", {
+      await expect(window.getByTestId("library-track-count")).toContainText("3 tracks", {
         timeout: 30_000,
       });
       // `[data-index]` excludes the header, which carries the same column id.
@@ -408,7 +408,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
 
       // It evaluates live rather than holding rows (DEC-061).
       await collectionsTree(window).getByText("House only").click();
-      await expect(window.locator(".library-toolbar__count")).toContainText("6 tracks", {
+      await expect(window.getByTestId("library-track-count")).toContainText("6 tracks", {
         timeout: 30_000,
       });
 
@@ -547,7 +547,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // And the Smart Collection keeps answering over what is left, while the
       // frozen copy of it does not (DEC-061).
       await collectionsTree(window).getByText("House only", { exact: true }).click();
-      await expect(window.locator(".library-toolbar__count")).toContainText("5 tracks", {
+      await expect(window.getByTestId("library-track-count")).toContainText("5 tracks", {
         timeout: 30_000,
       });
       // --------------------------------------------------------------- 10

@@ -388,7 +388,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       // The loudness difference is the caption's title, and planned times are not in it (C15d, DEC-249).
       await expect(window.getByTestId("transition-words")).toHaveText("Keys not checked");
       await expect(window.getByTestId("transition-caption")).toHaveAttribute(
-        "title",
+        "data-hint",
         /0\.0 LU means the two tracks are equally loud/,
       );
       await expect(strip).toContainText("In 0:01 · Out 0:05 · −3.5 LUFS");

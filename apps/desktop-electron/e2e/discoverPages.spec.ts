@@ -528,7 +528,13 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(row(window, "Library tracks", "Harbour Lights")).toBeVisible({ timeout: 60_000 });
         // What the session made is kept: the wantlist and the search (acceptance 2, 5).
         await nav(window).getByRole("link", { name: "Discover" }).click();
-        // Discover reopens on the tab used last, which was the wantlist.
+        // A fresh start opens Discover on New dig, whatever tab was used last.
+        await expect(window.getByRole("tab", { name: "New dig" })).toHaveAttribute(
+          "aria-selected",
+          "true",
+          { timeout: 30_000 },
+        );
+        await window.getByRole("tab", { name: "Wantlist" }).click();
         await expect(window.getByRole("tab", { name: "Wantlist" })).toHaveAttribute(
           "aria-selected",
           "true",

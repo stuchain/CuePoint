@@ -212,7 +212,7 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       expect(card.pageSpill, "the page does not scroll sideways").toBeLessThanOrEqual(0);
       // A Beatport row is not a library row: Track details says so. It opens by itself only
       // where a selection is a library track (K1, DEC-280), so it is opened from its tab here.
-      await window.getByRole("button", { name: /^Show track details/ }).click();
+      await window.getByRole("button", { name: "Track details", exact: true }).click();
       await expect(window.getByText(/Tracks found on Beatport are not in your library/)).toBeVisible();
       await window.getByRole("button", { name: "Hide track details" }).click();
 

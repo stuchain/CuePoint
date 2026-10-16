@@ -818,7 +818,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     // The heading carries Edit… alone; moving and deleting are in the chapter's dialog.
     await expect(setRow(win, "Peak").getByRole("button")).toHaveCount(1);
     await press("Peak", "Edit chapter");
-    const dialog = win.getByRole("dialog", { name: /^Chapter / });
+    const dialog = win.getByRole("dialog", { name: /^Edit chapter/ });
     await use(win, dialog.getByRole("button", { name: "Move up" }), "Move up");
     await expect.poll(chapterNames, { timeout: 15_000 }).toEqual(["Peak", ""]);
     await use(win, dialog.getByRole("button", { name: "Move down" }), "Move down");
@@ -829,7 +829,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(chapterNames, { timeout: 15_000 }).toEqual(["", "Climb"]);
 
     await press("Climb", "Edit chapter");
-    await use(win, win.getByRole("dialog", { name: /^Chapter / }).getByRole("button", { name: "Delete chapter…" }), "Delete chapter…");
+    await use(win, win.getByRole("dialog", { name: /^Edit chapter/ }).getByRole("button", { name: "Delete chapter…" }), "Delete chapter…");
     const confirm = win.getByRole("dialog", { name: /^Delete the chapter/ });
     await reach(win, confirm.getByRole("button", { name: "Delete chapter" }), "the confirm's Delete chapter");
     await win.keyboard.press("Enter");

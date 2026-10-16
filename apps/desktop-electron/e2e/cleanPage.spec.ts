@@ -162,7 +162,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await expect(missing.getByText("Present One")).toHaveCount(0);
 
       // The tab says how many files are missing, and the one check button is "Check again".
-      await expect(window.getByRole("tab", { name: "Missing files (1)" })).toBeVisible();
+      await expect(window.getByRole("tab", { name: "Missing files, 1" })).toBeVisible();
       await expect(window.getByRole("button", { name: "Check again" })).toBeVisible();
       await expect(window.getByRole("tab", { name: "Health" })).toHaveCount(0);
     } finally {
@@ -188,7 +188,9 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await expect(window.getByRole("checkbox")).toHaveCount(1);
       await expect(window.getByRole("checkbox", { name: "Match Whole library" })).toBeEnabled();
       await expect(window.getByRole("button", { name: "Match playlists" })).toBeDisabled();
-      await expect(window.getByTestId("clean-header").getByRole("button")).toHaveCount(0);
+      // The header has only the Details toggle, the last button of the row.
+      await expect(window.getByTestId("clean-header").getByRole("button")).toHaveCount(1);
+      await expect(window.getByTestId("clean-header").getByRole("button", { name: "Track details", exact: true })).toBeVisible();
     } finally {
       await app.close();
     }
@@ -203,8 +205,9 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await window.getByRole("tab", { name: "Duplicates" }).click();
       await expect(window.getByRole("button", { name: "Find duplicates" }).first()).toBeVisible();
 
+      // A renderer reload in the middle of a session keeps the tab (a fresh start is a new launch).
       await window.reload();
-      await expect(window.getByRole("tab", { name: "Duplicates" })).toHaveAttribute(
+      await expect(window.getByRole("tab", { name: /^Duplicates/ })).toHaveAttribute(
         "aria-selected",
         "true",
       );

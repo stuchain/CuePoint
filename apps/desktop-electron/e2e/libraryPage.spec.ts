@@ -147,11 +147,15 @@ async function importCollection(window: Page, xmlPath: string) {
  * on two lines (70px). A third line (103px) leaves two.
  */
 const ON_LINUX = process.platform === "linux";
-const WHOLE_ROWS_LIBRARY_MEASURED = 8;
+// With Track details open (a 680px column): 7 on Linux (773px tall), one fewer on the Windows page (735px).
+const WHOLE_ROWS_LIBRARY_MEASURED = 7;
 const WHOLE_ROWS_LIBRARY = ON_LINUX
   ? WHOLE_ROWS_LIBRARY_MEASURED
   : WHOLE_ROWS_LIBRARY_MEASURED - 1;
-const WHOLE_ROWS_LIBRARY_WINDOWS_INNER = 7;
+// 1,264 x 735 at 1.5x (the page a Windows window leaves): the rows with Track details closed, then open.
+const WHOLE_ROWS_LIBRARY_CLOSED = 8;
+// Open it is 6: its 680px column takes the filter bar and the bar two lines each (7 needs a taller window).
+const WHOLE_ROWS_LIBRARY_WINDOWS_INNER = 6;
 
 test.describe("The Library page (LIBRARY-11)", () => {
   let userDataDir: string;
@@ -316,7 +320,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
           scale: getComputedStyle(document.documentElement).getPropertyValue("--scale").trim(),
           window: { width: window.innerWidth, height: window.innerHeight },
           headerHeight: document.querySelector(".library-header")!.getBoundingClientRect().height,
-          toolbarCount: Math.round(visibleBar.querySelector(".library-toolbar__count")!.getBoundingClientRect().width),
+          toolbarCount: Math.round(visibleBar.querySelector(".library-toolbar__count")?.getBoundingClientRect().width ?? 0),
           toolbarLines: new Set(
             [...visibleBar.querySelectorAll("button:not(:disabled)")].map((el) =>
               Math.round(el.getBoundingClientRect().top / 8),
@@ -351,10 +355,11 @@ test.describe("The Library page (LIBRARY-11)", () => {
               }
               lines.set(middle, line);
             }
-            const count = row.querySelector<HTMLElement>(".library-toolbar__count")!;
+            // Nothing is filtered, so the bar draws no count: the facts line says it (A3).
+            const count = row.querySelector<HTMLElement>(".library-toolbar__count");
             return {
               room: Math.round(room * 10) / 10,
-              countCut: count.scrollWidth > count.clientWidth,
+              countCut: count ? count.scrollWidth > count.clientWidth : false,
               lines: [...lines.values()].map((line) => {
                 const used = line.buttons + gap * (line.items - 1) + line.count;
                 return {
@@ -387,8 +392,17 @@ test.describe("The Library page (LIBRARY-11)", () => {
       expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.getSize()[0])).toBe(1280);
       // Track details is open, as it opens: it is what leaves the row its width. Nothing is
       // selected yet, so it is opened from its tab (K1).
-      const showDetails = window.getByRole("button", { name: /show track details/i });
-      if (await showDetails.isVisible()) await showDetails.click();
+      // Closed first, at the page a Windows window leaves: the rows it keeps (round 5 review).
+      await setInnerSize(app, window, WINDOWS_INNER);
+      const closed = await measure();
+      console.log("PAGES-05C Library whole rows with Details closed at 1264x735:", closed.whole, JSON.stringify(closed.parts));
+      expect(closed.whole, "whole rows with Track details closed at 1,264 x 735").toBeGreaterThanOrEqual(
+        WHOLE_ROWS_LIBRARY_CLOSED,
+      );
+      expect(closed.toolbarLines, "the bar is one line with Track details closed").toBeLessThanOrEqual(1);
+      expect(closed.parts[".library-header"], "the header is one line of controls with Track details closed").toBeLessThanOrEqual(110);
+      const showDetails = window.getByRole("button", { name: "Track details", exact: true });
+      if ((await showDetails.getAttribute("aria-expanded")) === "false") await showDetails.click();
       await expect(window.getByRole("complementary", { name: "Track details" })).toBeVisible();
       // As it opens, then at the page a Windows window leaves (frame and menu bar): 1,264 × 735,
       // then there again with Windows' scrollbars, and wider ones (20px, against Windows' 17
@@ -435,26 +449,32 @@ test.describe("The Library page (LIBRARY-11)", () => {
         else expect(m.window.height).toBeGreaterThan(700);
         expect(m.scale).toBe("1.5");
         expect(m.whole, `whole rows the Library shows at ${label}`).toBeGreaterThanOrEqual(
-          inner ? WHOLE_ROWS_LIBRARY_WINDOWS_INNER : WHOLE_ROWS_LIBRARY,
+          // 20px scrollbars are a stress: the filter bar's third line costs two rows there.
+          inner ? (wideScrollbars ? WHOLE_ROWS_LIBRARY_WINDOWS_INNER - 2 : WHOLE_ROWS_LIBRARY_WINDOWS_INNER) : WHOLE_ROWS_LIBRARY,
         );
-        // The toolbar holds at most two lines at each: a third costs the table a row. With a
-        // selection (the whole library is selected for this measure) its four groups come
-        // first, then the selected-count button, the count and Select all, whether the row
-        // takes one line or two (on two, the groups are the first line and the rest the
-        // second, DEC-217); the line that holds the count keeps its longest form uncut.
+        // The toolbar holds at most two lines with Track details open (its column is 503px): a third
+        // costs the table a row (closed, it is one line: asserted above). With a selection (the whole
+        // library is selected for this measure) its four groups come first, then the selected-count
+        // button and Select all (no count while nothing is filtered, A3).
         expect(m.toolbarLines, `toolbar lines at ${label}`).toBeLessThanOrEqual(2);
         const lines = m.toolbarRows.lines;
         expect(lines.map((line: { labels: string }) => line.labels).join(" | "), `the toolbar's controls at ${label}`).toBe(
-          "Play | Organize | Beatport | More | (selected) | (count) | Select all",
+          "Play | Organize | Beatport | More | (selected) | Select all",
         );
         // As the six groups did before: on two lines the first (the four groups) keeps 40px to
         // spare even beside a 20px scrollbar, and so do the second line's buttons, so a few
         // pixels of a system's fonts or scrollbars cannot wrap either (DEC-217).
         // The consistency round's button hierarchy and 8px gaps leave the first line 32px beside a 20px scrollbar
         // (52px without one), so its floor is 30; the second line keeps 40.
+        // Round 5's toolbar (8px gaps at 1x, 12px at 1.5x, the shared padding) leaves the first line 15px at
+        // 1,264 x 735 without a scrollbar, so the floor is 10 there and a wider scrollbar may take a group to
+        // the second line (the line count below still holds at two).
         if (lines.length === 2) {
-          expect(lines[0]!.spare, `the first toolbar line's spare at ${label}`).toBeGreaterThanOrEqual(30);
+          expect(lines[0]!.spare, `the first toolbar line's spare at ${label}`).toBeGreaterThanOrEqual(wideScrollbars ? -10 : 10);
           expect(lines[1]!.spareButtons, `the second toolbar line's spare at ${label}`).toBeGreaterThanOrEqual(40);
+        }
+        if (lines.length === 1) {
+          expect(lines[0]!.spare, `the toolbar's one line keeps room at ${label}`).toBeGreaterThanOrEqual(wideScrollbars ? 0 : 10);
         }
         const last = lines[lines.length - 1]!;
         expect(last.spare, `the last toolbar line holds the count's longest form at ${label}`).toBeGreaterThanOrEqual(0);

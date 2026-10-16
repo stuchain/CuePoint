@@ -107,9 +107,9 @@ function analysis(window: Page) {
 async function healthRow(window: Page) {
   // The analysis state and its Resume / Analyze button live in Settings' Waveforms panel.
   await window.getByRole("link", { name: "Settings" }).click();
-  const state = window.locator(".cp-waveform-settings__state");
-  await state.scrollIntoViewIfNeeded();
-  return state;
+  // The status and the button are the Waveforms section's own lines now (SettingsStatus, SettingsActions).
+  await window.getByTestId("waveform-analysis-state").scrollIntoViewIfNeeded();
+  return window.locator("main.app-main");
 }
 
 test.describe("The waveform analysis (WAVE-03)", () => {

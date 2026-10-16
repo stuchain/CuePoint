@@ -34,7 +34,8 @@ test("the player bar fits the shell at every scale", async () => {
     const win: Page = await app.firstWindow({ timeout: 60_000 });
     await expect(win).toHaveTitle(/CuePoint/i, { timeout: 30_000 });
 
-    // Before any play: the region must occupy no space at all (DEC-025/053).
+    // Before any play the bar is drawn all the same and says "Nothing playing" (area 83), so the
+    // page does not jump by its height when something starts.
     await win.waitForSelector(".app-shell", { timeout: 20_000 });
     const empty = await win.evaluate(() => {
       const shell = document.querySelector(".app-shell");
@@ -44,11 +45,10 @@ test("the player bar fits the shell at every scale", async () => {
                children: el ? el.children.length : -1,
                bar: !!document.querySelector(".cp-player-bar") };
     });
-    // The zero-height promise SHELL-06 made and DEC-053 kept.
     expect(empty.exists, "the region exists").toBe(true);
-    expect(empty.height, "and takes no space before the first play").toBe(0);
-    expect(empty.children, "and holds nothing").toBe(0);
-    expect(empty.bar, "so there is no bar yet").toBe(false);
+    expect(empty.height, "and holds the bar before the first play").toBeGreaterThan(0);
+    expect(empty.bar, "so the bar is there, idle").toBe(true);
+    await expect(win.locator(".cp-player-bar")).toContainText("Nothing playing");
 
     // Play something so the bar appears.
     await win.evaluate(async (files) => {
@@ -58,7 +58,11 @@ test("the player bar fits the shell at every scale", async () => {
           artist: "An Artist With A Fairly Long Name", key: "8A", bpm: 128, durationSeconds: 600 })), 0);
       await w.cuepoint.player.pause();
     }, [path.join(AUDIO, "tone.flac"), path.join(AUDIO, "tone.wav")]);
-    await win.waitForSelector(".cp-player-bar", { timeout: 10_000 });
+    // 800px tall: a shorter window draws the compact bar, which has no facts line (area 90).
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.setContentSize(1280, 800);
+    });
+    await expect(win.locator(".cp-player-bar")).toContainText("Some Long Track Title 0", { timeout: 10_000 });
     // The first-run guide sits over the bar and takes the point the click-area check lands on.
     await win.getByRole("dialog", { name: "Getting started" }).getByRole("button", { name: "Skip" }).click();
     await expect(win.getByRole("dialog")).toHaveCount(0);
@@ -209,7 +213,7 @@ test("the waveform is centred and the key chip fits", async () => {
             key: "8A", bpm: 128, durationSeconds: 600 })), 0);
         await w.cuepoint.player.pause();
       }, [files, trackTitle] as const);
-      await win.waitForSelector(".cp-player-bar", { timeout: 10_000 });
+      await expect(win.locator(".cp-player-bar")).toContainText(trackTitle as string, { timeout: 10_000 });
 
       for (const scale of [1, 1.5, 2]) {
         const r = await win.evaluate((s) => {
@@ -249,7 +253,9 @@ test("the waveform is centred and the key chip fits", async () => {
           };
         }, scale);
         const at = `${label} at ${scale}x`;
-        if (scale !== 3) expect(r.sameRow, `seek and controls share a row, ${at}`).toBe(true);
+        // The track takes up to 40% of the bar first (area 83), so a long title may push the seek to a
+        // second row from 2x; a short one never does until 3x.
+        if (scale !== 3 && !(scale === 2 && label === "long title")) expect(r.sameRow, `seek and controls share a row, ${at}`).toBe(true);
         if (r.sameRow) {
           expect(Math.abs(r.gapLeft - r.gapRight), `waveform centred, ${at} (left gap ${r.gapLeft}, right gap ${r.gapRight})`).toBeLessThanOrEqual(2);
         }

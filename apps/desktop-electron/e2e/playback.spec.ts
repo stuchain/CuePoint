@@ -175,7 +175,8 @@ test.describe("Phase 5 end to end", () => {
       await win.evaluate(() => (window as never as Bridge).cuepoint.player.setVolume(0));
 
       // --- the region is empty until the first play (DEC-025, DEC-053) ------
-      expect(await win.locator(".cp-player-bar").count()).toBe(0);
+      // (Area 83: the bar is drawn from the start and says "Nothing playing".)
+      await expect(win.locator(".cp-player-bar")).toContainText("Nothing playing");
 
       // --- double-click plays that row, with the view as the queue (DEC-012)
       const rows = win.locator(".track-table__row");
@@ -361,8 +362,8 @@ test.describe("Phase 5 end to end", () => {
         items: 0,
       });
       expect(after.position).toBeNull();
-      // And the bar is gone with it: this session has played nothing.
-      expect(await win.locator(".cp-player-bar").count()).toBe(0);
+      // And the bar goes back to "Nothing playing": this session has played nothing.
+      await expect(win.locator(".cp-player-bar")).toContainText("Nothing playing");
     } finally {
       await app.close();
     }
@@ -394,8 +395,8 @@ test.describe("Phase 5 end to end", () => {
       expect(result.ok).toBe(false);
       expect(String(result.error)).not.toBe("");
 
-      // The bar never appears, because nothing ever played (DEC-053).
-      expect(await win.locator(".cp-player-bar").count()).toBe(0);
+      // The bar still says "Nothing playing", because nothing ever played.
+      await expect(win.locator(".cp-player-bar")).toContainText("Nothing playing");
       // And the app is still there afterwards: no crash, no white screen.
       await expect(win.getByRole("heading", { name: "Library", level: 1 })).toBeVisible();
     } finally {

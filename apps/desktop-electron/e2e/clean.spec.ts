@@ -329,7 +329,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
       });
 
       await test.step("see the missing-file count on its tab (Health moved to Statistics)", async () => {
-        await expect(window.getByRole("tab", { name: "Missing files (1)" })).toBeVisible({ timeout: 15_000 });
+        await expect(window.getByRole("tab", { name: "Missing files, 1" })).toBeVisible({ timeout: 15_000 });
         await expect(window.getByRole("tab", { name: /^Health/ })).toHaveCount(0);
         await expect(window.getByRole("tab", { name: /^Fix values/ })).toHaveCount(0);
         const table = window.getByRole("table", { name: "Missing files" });

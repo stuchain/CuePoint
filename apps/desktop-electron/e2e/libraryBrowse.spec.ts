@@ -202,7 +202,9 @@ test.describe("Phase 4 end to end (LIBUI-10)", () => {
         .toBe("Track 40");
 
       // --- Track details folds until a track is selected (K1) -----------
-      await expect(window.locator(".cp-inspector--hidden").first()).toBeVisible();
+      // Folded, the panel is gone and the page header's Details toggle opens it.
+      await expect(window.getByRole("button", { name: "Track details", exact: true })).toBeVisible();
+      await expect(window.locator(".cp-inspector")).toHaveCount(0);
 
       // --- scrollbar ----------------------------------------------------
       // The themed bar (tokens/scrollbars.css) only applies while nothing sets the standard

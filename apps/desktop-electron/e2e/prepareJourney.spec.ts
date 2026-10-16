@@ -222,7 +222,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       // --- 1. a Set from the Collection ------------------------------------------
       await win.getByRole("link", { name: "Prepare", exact: true }).click();
       await win.getByRole("button", { name: "New Set from…" }).click();
-      const source = win.getByRole("dialog", { name: "New Set from…" });
+      const source = win.getByRole("dialog", { name: "New Set from" });
       await source.getByRole("combobox", { name: "Copy the tracks of" }).selectOption({ label: "Crate" });
       await source.getByRole("button", { name: "Continue…" }).click();
       const naming = win.getByRole("dialog", { name: "New Set from “Crate”" });
@@ -242,8 +242,8 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await menu(win, "Start a chapter here");
       await expect(row(win, "Chapter 3")).toBeVisible({ timeout: 15_000 });
       await at(win, row(win, "Chapter 1"), "right");
-      await menu(win, "Rename, targets and notes…");
-      const chapter = win.getByRole("dialog", { name: "Chapter “Chapter 1”" });
+      await menu(win, "Edit chapter…");
+      const chapter = win.getByRole("dialog", { name: "Edit chapter “Chapter 1”" });
       await chapter.getByRole("textbox", { name: "Name" }).fill("Warm-up");
       await chapter.getByRole("textbox", { name: "Target length" }).fill("8:00");
       await chapter.getByRole("textbox", { name: "Lowest BPM" }).fill("120");
@@ -400,7 +400,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await expect(caption.getByTestId("transition-words")).toContainText(/→/);
       // One warning is shown, the first still open; the accepted key clash is the "+1 more" (C15d).
       await expect(caption.getByTestId("transition-warning")).toHaveCount(1);
-      await expect(caption.getByText(/^\+\d+ more$/)).toHaveAttribute("title", /Keys clash.*\(OK\)/);
+      await expect(caption.getByText(/^\+\d+ more$/)).toHaveAttribute("data-hint", /Keys clash.*\(OK\)/);
       await expect(caption.getByTestId("transition-warning").getByRole("button", { name: "Mark OK" })).toBeVisible();
       await win.getByRole("button", { name: "View", exact: true }).click();
       await win.getByRole("menuitem", { name: "Hide transition strip" }).click();

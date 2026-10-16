@@ -61,7 +61,9 @@ const ON_LINUX = process.platform === "linux";
  * and as a rail); Windows and macOS hold 15 until measured.
  */
 // Consistency round (26px rows): Windows measures 13, Linux holds one higher until measured.
-const WHOLE_ROWS = ON_LINUX ? 14 : 13;
+// Round 5: the player bar is always drawn (87px at 1.5x, a full bar from 700px of window height up), so the
+// 1,264 x 735 page measures 11 on Windows with it on screen (13 before, when it was not drawn until a first play).
+const WHOLE_ROWS = ON_LINUX ? 12 : 11;
 const FLOOR = 5;
 
 /**
@@ -90,7 +92,8 @@ const WHOLE_ROWS_PLAYING = ON_LINUX ? 9 : 8;
  * (PAGES-14) Linux measures 6 (2 at 2×), held at 5.
  */
 // Consistency round (26px rows, 39px at 1.5×): Windows measures 11 with the lanes, Linux holds one higher.
-const WHOLE_ROWS_LANES = ON_LINUX ? 12 : 11;
+// Round 5 review: measured 8 with the lanes at 1,264 x 735 (the always-drawn bar; 11 before it).
+const WHOLE_ROWS_LANES = ON_LINUX ? 9 : 8;
 
 /**
  * The same with the transition strip open (WAVE-07, DEC-120), sidebar expanded
@@ -104,7 +107,8 @@ const WHOLE_ROWS_LANES = ON_LINUX ? 12 : 11;
  * its own. PAGES-14: Linux measured 5 at 1.5× (1 at 2×), held at 4.
  */
 // Consistency round (26px rows, 39px at 1.5×): Windows measures 10 with the strip, Linux holds one higher.
-const WHOLE_ROWS_TRANSITION = ON_LINUX ? 11 : 10;
+// Round 5 review: measured 8 with the strip at 1,264 x 735 (the always-drawn bar; 10 before it).
+const WHOLE_ROWS_TRANSITION = ON_LINUX ? 9 : 8;
 
 /**
  * The rows the Set keeps under the lanes or the strip whatever else is on

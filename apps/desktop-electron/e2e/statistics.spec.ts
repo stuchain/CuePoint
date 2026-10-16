@@ -377,7 +377,7 @@ test.describe("The Plays section (STATS-05)", () => {
       await window.getByRole("link", { name: "Library" }).click();
       const tree = window.getByRole("tree", { name: "Collections" });
       await tree.getByText(/^Most played since /).click();
-      await expect(window.locator(".library-toolbar__count")).toContainText("3 tracks", {
+      await expect(window.getByTestId("library-track-count")).toContainText("3 tracks", {
         timeout: 30_000,
       });
       await expect

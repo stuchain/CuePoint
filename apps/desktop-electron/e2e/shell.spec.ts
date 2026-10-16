@@ -188,7 +188,7 @@ test.describe("Application shell navigation", () => {
 
       const panel = window.getByRole("complementary", { name: /track details/i });
       // Nothing is selected, so it starts folded (K1): open it from its tab.
-      await window.getByRole("button", { name: /show track details/i }).click({ timeout: 15_000 });
+      await window.getByRole("button", { name: "Track details", exact: true }).click({ timeout: 15_000 });
       await expect(panel).toBeVisible({ timeout: 15_000 });
       // Opening it from the tab slides it in (the entrance motion): measure once it has landed.
       await panel.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
@@ -229,7 +229,7 @@ test.describe("Application shell navigation", () => {
     try {
       const window = await third.firstWindow({ timeout: 60_000 });
       await expect(
-        window.getByRole("button", { name: /show track details/i }),
+        window.getByRole("button", { name: "Track details", exact: true }),
       ).toBeVisible({ timeout: 30_000 });
       await expect(
         window.getByRole("complementary", { name: /track details/i }),
@@ -281,6 +281,8 @@ test.describe("Application shell navigation", () => {
       // than a count: a count had to change with every page a phase enabled
       // (Clean, Discover, Statistics), and a stop still fails on focus lost to
       // the body or a region skipped. Bounded, so a trap fails rather than hangs.
+      // The Details toggle is the page header's last button now, so the page has to be drawn first.
+      await expect(window.getByRole("button", { name: "Track details", exact: true })).toBeVisible({ timeout: 30_000 });
       const reached: string[] = [];
       for (let i = 0; i < 40 && !reached.join("|").includes("Activity"); i += 1) {
         await window.keyboard.press("Tab");
@@ -313,7 +315,7 @@ test.describe("Application shell navigation", () => {
       ).toBeVisible();
       await window.keyboard.press("Control+i");
       await expect(
-        window.getByRole("button", { name: /show track details/i }),
+        window.getByRole("button", { name: "Track details", exact: true }),
       ).toBeVisible();
 
       await window.keyboard.press("Control+k");
