@@ -312,9 +312,19 @@
   border-color: var(--fg-muted);
 }
 
+/* "Search" is never cut: the shortcut chip goes first when the field is tight (see the container query). */
+.cp-sidebar__search--box {
+  container: sidebar-search / inline-size;
+}
+
 .cp-sidebar__search-placeholder {
-  flex: 1;
-  min-width: 0;
+  flex: 1 0 auto;
+}
+
+@container sidebar-search (max-width: 10.5em) {
+  .cp-sidebar__search-keys {
+    display: none;
+  }
 }
 
 /* The shortcut, muted at the field's right edge. */

@@ -33,9 +33,19 @@
 
 .cp-queue__title {
   flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
   margin: 0;
   font-size: var(--font-size-section);
   font-weight: var(--weight-strong);
+}
+
+/* The count after the name, grey and in the data face. */
+.cp-queue__count {
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 400;
 }
 
 /* The gestures, said once under the title (BAR-8). */
@@ -68,12 +78,14 @@
   margin: 0;
   padding: var(--space-lg);
   color: var(--fg-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--text-body);
 }
 
 .cp-queue__scroll {
   flex: 1 1 auto;
   min-height: 0;
+  /* Rows are as wide as the panel: nothing may scroll sideways. */
+  overflow-x: hidden;
   overflow-y: auto;
   position: relative;
   user-select: none;
@@ -146,8 +158,10 @@
   white-space: nowrap;
 }
 
+/* Names are data, in Inter like the tables'. */
 .cp-queue__row-title {
   flex: 0 1 auto;
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
 }
 

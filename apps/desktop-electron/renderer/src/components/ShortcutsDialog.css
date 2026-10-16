@@ -5,15 +5,13 @@
 }
 
 .shortcuts-dialog__table-wrap {
-  max-height: calc(320px * var(--scale));
-  overflow: auto;
   border: var(--divider);
 }
 
 .shortcuts-dialog__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--font-size-xs);
+  font-size: var(--text-body);
 }
 
 .shortcuts-dialog__table th,
@@ -40,11 +38,11 @@
 
 .shortcuts-dialog__group h3 {
   margin: 0;
-  font-size: var(--font-size-xs);
+  font-size: var(--text-body);
 }
 
 .shortcuts-dialog__note {
   margin: 0;
   color: var(--fg-muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--text-body);
 }

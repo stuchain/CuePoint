@@ -140,20 +140,18 @@ function Slot() {
 }
 
 describe("when the bar exists (DEC-053)", () => {
-  it("renders nothing at all before the first play", async () => {
-    // DEC-025 held this region at zero height with a stated reason: the app
-    // never ships controls that do nothing.
+  it("is there before the first play, saying Nothing playing with the transport greyed (area 83)", async () => {
     installBridge(
       snapshot({ playback: { filePath: null }, items: [], currentId: null }),
     );
     const { container } = render(<Slot />);
 
     await waitFor(() => expect(window.cuepoint?.player?.getState).toHaveBeenCalled());
-    // The slot contributes no element at all — not an empty one. Everything
-    // left in the container belongs to the toast stack the wrapper brings.
-    expect(container.querySelector(".cp-player-slot")).toBeNull();
-    expect(screen.queryByRole("region", { name: "Player" })).toBeNull();
-    expect(container.querySelector(".cp-player-bar")).toBeNull();
+    expect(screen.getByRole("region", { name: "Player" })).toBeInTheDocument();
+    expect(container.querySelector(".cp-player-bar")).not.toBeNull();
+    expect(screen.getByText("Nothing playing")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^(Play|Pause)$/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next track" })).toBeDisabled();
   });
 
   it("appears once something is playing", async () => {
@@ -753,7 +751,8 @@ describe("a short window starts without the strip (R2-2)", () => {
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       writable: true,
-      value: () => ({ matches: true, addEventListener: () => undefined, removeEventListener: () => undefined }),
+      // The short-window query matches; the compact bar's (under 700px) does not, or the strip is never drawn.
+      value: (query: string) => ({ matches: query !== "(max-height: 699px)", addEventListener: () => undefined, removeEventListener: () => undefined }),
     });
     installBridge(snapshot());
     const { container } = render(<Slot />);
@@ -1014,9 +1013,9 @@ describe("the bar's CSS (C7, C9)", () => {
     return at < 0 ? "" : playerBarCss.slice(at, playerBarCss.indexOf("}", at));
   };
 
-  it("lets the track grow only to its text, from a zero basis", () => {
+  it("gives the track its room first, up to its text", () => {
     const track = rule(".cp-player-bar__track");
-    expect(track).toMatch(/flex:\s*1 1 0;/);
+    expect(track).toMatch(/flex:\s*1 1 auto;/);
     expect(track).toMatch(/max-inline-size:\s*max-content;/);
   });
 

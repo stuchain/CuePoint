@@ -60,13 +60,6 @@
 .app-shell__inspector {
   grid-area: inspector;
   min-height: 0;
-  /* Hidden, Track details is one button floating at the top of this edge; the column is 0 wide. */
-  position: relative;
-}
-
-/* Hidden, the button stays level with the title row even when the offline banner is above it. */
-.app-shell__inspector:has(.cp-inspector--hidden) {
-  grid-row: 2;
 }
 
 .app-shell__player {

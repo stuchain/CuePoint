@@ -260,6 +260,7 @@ export function PlayerBar({
             type="button"
             className="cp-player-bar__button"
             onClick={() => void bridge()?.previous()}
+            disabled={item === null}
             aria-label="Previous track"
           >
             <PixelIcon name="previous" />
@@ -270,6 +271,7 @@ export function PlayerBar({
             type="button"
             className="cp-player-bar__button cp-player-bar__button--play"
             onClick={() => void bridge()?.toggle()}
+            disabled={item === null}
             aria-label={playing ? "Pause" : "Play"}
             aria-pressed={playing}
           >
@@ -281,6 +283,7 @@ export function PlayerBar({
             type="button"
             className="cp-player-bar__button"
             onClick={() => void bridge()?.next()}
+            disabled={item === null}
             aria-label="Next track"
           >
             <PixelIcon name="next" />
@@ -313,11 +316,13 @@ export function PlayerBar({
                   {part}
                 </Fragment>
               ))}
+              {/* The separator belongs to the lead, so a lead squeezed to nothing leaves none behind. */}
+              {tailParts.length > 0 ? " · " : null}
             </span>
           )}
           {tailParts.map((part, index) => (
             <span key={index} className="cp-player-bar__meta-fixed">
-              {index > 0 || leadParts.length > 0 ? " · " : null}
+              {index > 0 ? " · " : null}
               {part}
             </span>
           ))}
@@ -372,7 +377,7 @@ export function PlayerBar({
         <Hint text={shuffle ? "Shuffle: on" : "Shuffle: off"}>
           <button
             type="button"
-            className={`cp-player-bar__button${shuffle ? " cp-player-bar__button--on" : ""}`}
+            className={`cp-player-bar__button cp-player-bar__button--standard${shuffle ? " cp-player-bar__button--on" : ""}`}
             onClick={() => void toggleShuffle()}
             aria-label={shuffle ? "Shuffle on" : "Shuffle off"}
             aria-pressed={shuffle}
@@ -383,7 +388,7 @@ export function PlayerBar({
         <Hint text={REPEAT_TITLES[repeat]}>
           <button
             type="button"
-            className={`cp-player-bar__button${repeat !== "off" ? " cp-player-bar__button--on" : ""}`}
+            className={`cp-player-bar__button cp-player-bar__button--standard${repeat !== "off" ? " cp-player-bar__button--on" : ""}`}
             onClick={() => void cycleRepeat()}
             aria-label={repeatLabel(repeat)}
             aria-pressed={repeat !== "off"}
@@ -402,7 +407,7 @@ export function PlayerBar({
           <Hint text={queueWords}>
             <button
               type="button"
-              className={`cp-player-bar__button${queueOpen ? " cp-player-bar__button--on" : ""}`}
+              className={`cp-player-bar__button cp-player-bar__button--standard${queueOpen ? " cp-player-bar__button--on" : ""}`}
               onClick={onToggleQueue}
               aria-label={queueWords}
               aria-pressed={queueOpen}
@@ -420,7 +425,7 @@ export function PlayerBar({
         <Hint text={detailHint}>
           <button
             type="button"
-            className={`cp-player-bar__button${detailOn ? " cp-player-bar__button--on" : ""}`}
+            className={`cp-player-bar__button cp-player-bar__button--standard cp-player-bar__button--zoom${detailOn ? " cp-player-bar__button--on" : ""}`}
             onClick={() => setDetailOn(!detailOn)}
             aria-label={detailWords}
             aria-pressed={detailOn}
@@ -434,7 +439,7 @@ export function PlayerBar({
         <Hint text={muted ? "Unmute" : "Mute"}>
           <button
             type="button"
-            className="cp-player-bar__button"
+            className="cp-player-bar__button cp-player-bar__button--standard"
             onClick={() => void bridge()?.setMuted(!muted)}
             aria-label={muted ? "Unmute" : "Mute"}
             aria-pressed={muted}

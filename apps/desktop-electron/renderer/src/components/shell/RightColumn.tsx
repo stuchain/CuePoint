@@ -1,6 +1,7 @@
 import { useCallback, useEffect, type ReactNode } from "react";
 import { QueuePanel } from "../player/QueuePanel";
 import { closeQueue, useQueueOpen } from "../player/queuePanelState";
+import { publishDetails } from "./detailsToggle";
 import { useShellCommand } from "./shellCommands";
 
 interface RightColumnProps {
@@ -29,6 +30,11 @@ export function RightColumn({ children }: RightColumnProps) {
 function QueueDock() {
   const close = useCallback(() => closeQueue(), []);
   useShellCommand("toggle-inspector", close);
+  // The header's Details toggle asks for Track details, which is what closing the queue gives.
+  useEffect(() => {
+    publishDetails({ open: false, toggle: close });
+    return () => publishDetails(null);
+  }, [close]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

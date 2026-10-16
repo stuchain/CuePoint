@@ -14,7 +14,8 @@ const STYLESHEETS = import.meta.glob<string>("/src/**/*.css", { query: "?raw", i
 function ruleDecls(css: string, selector: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const rule of parseRules(stripComments(css))) {
-    if (selectorList(rule.selector).includes(selector)) {
+    // The compact-window rules (a media query) restyle these on purpose; the look is the plain one.
+    if (rule.context === "" && selectorList(rule.selector).includes(selector)) {
       for (const [name, value] of declarations(rule.body)) out[name] = value;
     }
   }
@@ -28,6 +29,18 @@ describe("the player bar keeps its look", () => {
     expect(button["min-width"]).toBe("var(--hit-min)");
     expect(button["min-height"]).toBe("var(--hit-min)");
     expect(button["background"]).toBe("var(--bg-panel)");
+  });
+
+  it("draws the other five buttons at the standard control size, only the transport large", () => {
+    const standard = ruleDecls(playerBar, ".cp-player-bar__button--standard");
+    expect(standard["min-width"]).toBe("max(var(--control-height), 24px)");
+    expect(standard["min-height"]).toBe("max(var(--control-height), 24px)");
+  });
+
+  it("is one compact line in a window under 700px tall", () => {
+    const compact = parseRules(stripComments(playerBar)).filter((rule) => rule.context.includes("max-height: 699px"));
+    expect(compact.find((rule) => rule.selector === ".cp-player-bar")?.body).toMatch(/flex-wrap:\s*nowrap/);
+    expect(compact.some((rule) => rule.selector === ".cp-player-bar__meta")).toBe(true);
   });
 
   it("lets the artist and label shrink while the key chip, BPM and year keep their room", () => {

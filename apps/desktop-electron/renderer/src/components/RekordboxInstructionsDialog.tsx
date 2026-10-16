@@ -20,7 +20,7 @@ export function RekordboxInstructionsDialog({ open, onClose }: RekordboxInstruct
       open={open}
       title="How to get your Rekordbox file"
       onClose={onClose}
-      secondaryAction={{ label: "Close", onClick: onClose }}
+      closeLabel="Close"
     >
       <div className="rekordbox-instructions">
         <p>

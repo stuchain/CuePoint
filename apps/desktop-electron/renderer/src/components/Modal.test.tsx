@@ -8,7 +8,7 @@
  */
 import { useCallback, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { Modal } from "./Modal";
@@ -305,5 +305,40 @@ describe("the title", () => {
     expect(css).not.toMatch(/--border-width/);
     expect(css).toMatch(/border-bottom:\s*var\(--divider\)/);
     expect(css).toMatch(/border-top:\s*var\(--divider\)/);
+  });
+
+  it("has one scroller, the body, which grows with the window (area 76)", () => {
+    const flat = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(flat).toMatch(/\.cp-modal \{[^}]*max-height:\s*100%/);
+    expect(flat).toMatch(/\.cp-modal__body \{[^}]*overflow:\s*auto/);
+    // No dialog size scrolls on its own, and none sets a height cap of its own.
+    expect(flat).not.toMatch(/\.cp-modal--wide[^{]*\{[^}]*(max-height|overflow)/);
+  });
+});
+
+describe("the one footer (area 75)", () => {
+  it("offers a grey Close, never the violet main button, for a dialog that only shows or applies at once", () => {
+    const onClose = vi.fn();
+    render(<Modal open title="Columns" onClose={onClose} closeLabel="Close">body</Modal>);
+    const footer = screen.getByRole("dialog").querySelector<HTMLElement>(".cp-modal__footer")!;
+    const close = within(footer).getByRole("button", { name: "Close" });
+    expect(close).toHaveClass("cp-btn--secondary");
+    expect(footer.querySelector(".cp-btn--primary")).toBeNull();
+    fireEvent.click(close);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("puts extras at the footer's far left and one reason line above it", () => {
+    render(
+      <Modal open title="Edit values" onClose={() => undefined} closeLabel="Close" footerExtra={<span>3 selected</span>} reason="Pick a value first.">
+        body
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+    const footer = dialog.querySelector<HTMLElement>(".cp-modal__footer")!;
+    expect(footer.firstElementChild).toHaveTextContent("3 selected");
+    const reason = dialog.querySelector(".cp-modal__reason")!;
+    expect(reason).toHaveTextContent("Pick a value first.");
+    expect(reason.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

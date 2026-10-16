@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Hint } from "../Hint";
 import { Modal } from "../Modal";
 import { PlayButton } from "../PlayButton";
+import { TrackFactsLine } from "../TrackFactsLine";
 import { SearchField } from "../SearchField";
 import { useShellCommand } from "./shellCommands";
 import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
@@ -16,7 +17,6 @@ import { queryShown } from "./pageActive";
 import {
   MIN_QUERY_LENGTH,
   resultSummary,
-  trackSubtitle,
   useLibrarySearch,
   useSearchInputRef,
 } from "./useLibrarySearch";
@@ -206,9 +206,6 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
                       <span className="cp-global-search__title" data-cut-hint="">
                         {track.title}
                       </span>
-                      <span className="cp-global-search__artist" data-cut-hint="">
-                        {track.artist}
-                      </span>
                       <span className="cp-global-search__meta" data-cut-hint="">
                         {/* Found by its key or tempo rather than its words (FLW-5). */}
                         {matchedLabel(track) && (
@@ -217,7 +214,13 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
                             {" · "}
                           </>
                         )}
-                        {trackSubtitle(track)}
+                        <TrackFactsLine
+                          artist={track.artist}
+                          label={track.effective_label ?? track.label}
+                          keyValue={track.effective_key}
+                          bpm={track.effective_bpm ?? track.bpm}
+                          year={track.effective_year ?? track.year}
+                        />
                       </span>
                     </div>
                     <Hint text={`Play ${track.title}`} portal>

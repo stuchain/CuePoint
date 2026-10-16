@@ -79,6 +79,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
       title="Activity"
       onClose={onClose}
       size="wide"
+      closeLabel="Close"
       extraAction={{ label: "Refresh", onClick: () => load() }}
     >
       <div className="cp-activity">

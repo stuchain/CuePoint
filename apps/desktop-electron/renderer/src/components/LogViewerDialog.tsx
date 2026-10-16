@@ -128,7 +128,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
       title="Log viewer"
       size="wide"
       onClose={onClose}
-      secondaryAction={{ label: "Close", onClick: onClose }}
+      closeLabel="Close"
     >
       <div className="log-viewer-dialog">
         <div className="log-viewer-dialog__controls">

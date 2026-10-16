@@ -31,3 +31,15 @@ describe("words", () => {
     }
   });
 });
+
+describe("dialogTitle", () => {
+  it("repeats the opener without its ellipsis", () => {
+    expect(words.dialogTitle("Edit…")).toBe("Edit");
+    expect(words.dialogTitle("Rename, targets and notes...")).toBe("Rename, targets and notes");
+    expect(words.dialogTitle("New Set from…")).toBe("New Set from");
+  });
+
+  it("puts a user's name in curly quotes", () => {
+    expect(words.dialogTitle("Edit…", "Build")).toBe("Edit “Build”");
+  });
+});

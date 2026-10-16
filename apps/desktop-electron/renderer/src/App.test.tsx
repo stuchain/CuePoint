@@ -123,7 +123,7 @@ describe("App shell", () => {
   it("renders the inspector region", () => {
     const { container } = render(<App />);
 
-    expect(container.querySelector(".app-shell__inspector .cp-inspector")).not.toBeNull();
+    expect(container.querySelector(".app-shell__inspector")).not.toBeNull();
   });
 
   it("keeps the inspector mounted across navigation (DEC-018)", async () => {
@@ -132,12 +132,12 @@ describe("App shell", () => {
     // selections survive navigation because of this, not in spite of it.
     const user = userEvent.setup();
     const { container } = render(<App />);
-    const before = container.querySelector(".app-shell__inspector .cp-inspector");
+    const before = container.querySelector(".app-shell__inspector");
 
     await user.click(navLink("Settings"));
     await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED);
 
-    expect(container.querySelector(".app-shell__inspector .cp-inspector")).toBe(before);
+    expect(container.querySelector(".app-shell__inspector")).toBe(before);
   });
 
   it("keeps the window title as CuePoint on every page", async () => {
@@ -149,14 +149,26 @@ describe("App shell", () => {
     expect(document.title).not.toContain("—");
   });
 
-  it("mounts the player boundary without giving it any content (DEC-025)", () => {
-    // The region exists so Phase 5 fills it by editing PlayerRegion alone, and
-    // is empty so it occupies no space until then.
+  it("shows the player bar before anything has played, as Nothing playing (area 83)", () => {
     const { container } = render(<App />);
 
     const player = container.querySelector(".app-shell__player");
     expect(player).not.toBeNull();
-    expect(player).toBeEmptyDOMElement();
+    expect(player).toHaveTextContent("Nothing playing");
+  });
+
+  it("puts the Details toggle in the page header and opens Track details with it", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(navLink("Settings"));
+    await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED);
+
+    const header = screen.getByRole("heading", { level: 1, name: "Settings" }).closest(".cp-screen-header")!;
+    const toggle = within(header as HTMLElement).getByRole("button", { name: "Track details" });
+    expect(toggle).toHaveTextContent("Details");
+    await user.click(toggle);
+    expect(screen.getByRole("complementary", { name: "Track details" })).toBeInTheDocument();
+    expect(within(header as HTMLElement).getByRole("button", { name: "Track details" })).toHaveAttribute("aria-expanded", "true");
   });
 
   it("opens the playing track in the Library, and its artist in Discover, from the bar (BAR-4)", async () => {

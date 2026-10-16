@@ -77,3 +77,15 @@ export const LOST_TOUCH_PARTWAY =
 
 /** The waveform analysis cannot run in this version of the app. */
 export const WAVEFORMS_UNAVAILABLE = "Waveforms are not available in this version of CuePoint.";
+
+// ---------------------------------------------------------------- dialog titles
+
+/**
+ * The title of the dialog an action opens: the opener's own words without its "…", and a name
+ * the user typed in curly quotes. `dialogTitle("Rename…", "Build")` is `Rename “Build”`;
+ * `dialogTitle("New Set from…")` is `New Set from`. A title repeats the button that opened it.
+ */
+export function dialogTitle(opener: string, name?: string): string {
+  const words = opener.replace(/(…|\.{3})\s*$/, "").trim();
+  return name === undefined || name === "" ? words : `${words} ${quoted(name)}`;
+}

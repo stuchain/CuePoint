@@ -1,20 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { PlayerRegion } from "../shell/PlayerRegion";
 import { PlayerAnnouncer } from "./PlayerAnnouncer";
 import { PlayerBar } from "./PlayerBar";
 import { WaveformDetailStrip } from "../waveform/WaveformDetailStrip";
 import { useWaveformPrefetch } from "../waveform/useWaveformPrefetch";
 import { useWaveformDetailSetting } from "../waveform/waveformDetailSetting";
-import { selectHasPlayed } from "./playerFormat";
 import { markPlayed, selectCurrentTrackId } from "./playedTracks";
 import { usePlayerValue } from "./playerStore";
 import { toggleQueue, useQueueOpen } from "./queuePanelState";
+import { useCompactBar } from "./useCompactBar";
 import { usePlayerNotices } from "./usePlayerNotices";
 import { usePlayerShortcuts } from "./usePlayerShortcuts";
 import "./PlayerSlot.css";
 
 /**
- * When the player bar exists, and what the bar's queue button shows (PLAYER-06,
+ * The player bar is always there (area 83, amending DEC-053: it used to wait for the first play
+ * and the page jumped by its height). Before anything has played it reads "Nothing playing" with
+ * its controls greyed.
+ *
+ * Earlier text, kept for the history: when the player bar exists, and what the bar's queue button shows (PLAYER-06,
  * PLAYER-08, DEC-053).
  *
  * DEC-025 held this region at zero height through Phase 2 with a stated
@@ -55,18 +59,15 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
   // work from the moment there is something to play, and a screen reader user
   // needs to be told about that first track too (PLAYER-12).
   usePlayerShortcuts();
-  const hasPlayed = usePlayerValue(selectHasPlayed);
-  const [everPlayed, setEverPlayed] = useState(false);
   const queueOpen = useQueueOpen();
   const [detailOn] = useWaveformDetailSetting();
   // The zoomed waveform of the selected and the next track, made before they play; above the
   // early return, since a selection is made before anything has played.
-  useWaveformPrefetch({ enabled: detailOn });
+  // Not in the compact bar (a window under 700px tall): the strip is not drawn there, so nothing is made for it.
+  const compact = useCompactBar();
+  const stripOn = detailOn && !compact;
+  useWaveformPrefetch({ enabled: stripOn });
   const trackId = usePlayerValue(selectCurrentTrackId);
-
-  useEffect(() => {
-    if (hasPlayed) setEverPlayed(true);
-  }, [hasPlayed]);
 
   // Above the early return, like the rest: a track that is played is played whether or not the
   // bar has been drawn yet (R4-6).
@@ -74,19 +75,13 @@ export function PlayerSlot({ onOpenTrack, onOpenArtist }: PlayerSlotProps = {}) 
     if (trackId !== null) markPlayed(trackId);
   }, [trackId]);
 
-  // `PlayerRegion` returns null when it has no children, so this renders no
-  // element at all until the first play — the zero-height promise SHELL-06
-  // made, kept by the component that made it rather than re-implemented here.
-  // DEC-025's promise, kept literally: nothing here, not even an empty element.
-  // The announcer arrives with the bar, which is also the first moment there is
-  // anything to announce.
-  if (!everPlayed) return <PlayerRegion />;
-
+  // Always drawn (area 83): before the first play the bar says "Nothing playing", so the page
+  // never jumps by the bar's height when something starts.
   return (
     <PlayerRegion>
       <div className="cp-player-slot">
         <PlayerAnnouncer />
-        {detailOn && trackId !== null ? <WaveformDetailStrip key={trackId} trackId={trackId} /> : null}
+        {stripOn && trackId !== null ? <WaveformDetailStrip key={trackId} trackId={trackId} /> : null}
         <PlayerBar
           queueOpen={queueOpen}
           onToggleQueue={toggleQueue}

@@ -21,7 +21,7 @@
   display: flex;
   gap: var(--space-xs);
   align-items: center;
-  font-size: var(--font-size-sm);
+  font-size: var(--text-body);
   color: var(--fg-primary);
 }
 
@@ -34,13 +34,11 @@
 
 .log-viewer-dialog__output {
   margin: 0;
-  max-height: calc(420px * var(--scale));
-  overflow: auto;
   padding: var(--space-sm);
   border: var(--divider);
   background: var(--bg-app);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: var(--font-size-xs);
+  font-size: var(--text-body);
   line-height: 1.4;
   white-space: pre-wrap;
 }

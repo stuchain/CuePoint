@@ -22,8 +22,6 @@
 
 .cp-global-search__panel {
   width: 100%;
-  max-height: 60vh;
-  overflow-y: auto;
   /* No padding of its own: the field, the summary and the rows share one left edge. */
   padding: 0;
   background: var(--bg-panel);
@@ -34,7 +32,7 @@
   margin: 0;
   padding: var(--space-sm);
   color: var(--fg-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--text-body);
 }
 
 .cp-global-search__note--error {
@@ -72,7 +70,7 @@
   display: grid;
   flex: 1 1 auto;
   min-width: 0;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   gap: var(--space-sm);
   /* Centred, as the play button beside it is: with a row taller than its text the text sat at the top. */
   align-items: center;
@@ -93,13 +91,14 @@
   margin-inline-end: var(--space-sm);
 }
 
+/* Names are data, in Inter like the tables'. */
 .cp-global-search__title {
   color: var(--fg-primary);
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
   font-weight: 700;
 }
 
-.cp-global-search__artist,
 .cp-global-search__meta {
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
@@ -111,7 +110,6 @@
 }
 
 .cp-global-search__title,
-.cp-global-search__artist,
 .cp-global-search__meta {
   overflow: hidden;
   text-overflow: ellipsis;

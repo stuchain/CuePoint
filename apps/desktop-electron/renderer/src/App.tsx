@@ -85,6 +85,7 @@ import { useNavigationBreadcrumbs, usePageTiming } from "./reporting";
 import { Phase14Note } from "./components/Phase14Note";
 import { WhatsNew } from "./components/updates/WhatsNew";
 import { phase14NoteDue, shouldShowOnboarding } from "./components/firstRunMemory";
+import { applyFreshStart } from "./freshStart";
 import "./App.css";
 // After every component stylesheet, so a rule here wins a tie with one (PAGES-12).
 import "./motion.css";
@@ -446,6 +447,8 @@ export default function App() {
   // Before the router mounts, not after: see `applyLaunchDestination` for why
   // restoring from an effect leaves the URL and the screen disagreeing.
   useState(applyLaunchDestination);
+  // Clean on Match → Playlists and Discover on New dig, once per start (a session keeps its tabs).
+  useState(applyFreshStart);
 
   return (
     <HashRouter>

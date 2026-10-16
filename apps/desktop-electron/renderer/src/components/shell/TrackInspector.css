@@ -16,49 +16,6 @@
   border-left: var(--divider);
 }
 
-/*
- * Hidden, Track details is one small "Details" button at the top of the right edge, level with
- * the page title row. The region itself takes no width (it is a zero-width anchor), so the page
- * uses the whole window. The button is flush with the window's right edge, its right border
- * open, like a tab pulled out of the edge; the page header keeps clear of it through
- * --inspector-handle-room. `max-content` because the anchor is 0 wide: shrink-to-fit would
- * wrap the label onto two lines.
- */
-.cp-inspector--hidden {
-  position: absolute;
-  top: var(--page-gutter-top);
-  right: 0;
-  z-index: 6;
-  width: max-content;
-  height: auto;
-  overflow: visible;
-  background: transparent;
-  border-left: none;
-}
-
-.cp-inspector--hidden .cp-inspector__reveal {
-  border-right: 0;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-.cp-inspector__reveal {
-  gap: var(--space-xs);
-  white-space: nowrap;
-}
-
-/* The label and its arrow on one line: the button's own label box is a block by default. */
-.cp-inspector__reveal .cp-btn__label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  white-space: nowrap;
-}
-
-.cp-inspector__reveal-name {
-  white-space: nowrap;
-}
-
 .cp-inspector__handle:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset-inset);
@@ -128,6 +85,8 @@ body.cp-inspector-resizing {
 .cp-inspector__body {
   flex: 1;
   min-height: 0;
+  /* Only down: a stray horizontal scrollbar here (Track details, area bug) shortens the panel. */
+  overflow-x: hidden;
   overflow-y: auto;
   padding: var(--space-md);
 }

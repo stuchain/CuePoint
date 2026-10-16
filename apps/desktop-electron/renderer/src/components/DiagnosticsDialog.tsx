@@ -33,7 +33,7 @@ export function DiagnosticsDialog({ open, onClose }: DiagnosticsDialogProps) {
       title="Diagnostics"
       size="wide"
       onClose={onClose}
-      secondaryAction={{ label: "Close", onClick: onClose }}
+      closeLabel="Close"
     >
       <div className="diagnostics-dialog__output">{lines.join("\n")}</div>
     </Modal>

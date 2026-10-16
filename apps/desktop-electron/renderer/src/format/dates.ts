@@ -60,6 +60,13 @@ export function formatDay(value: DateInput, options: DateOptions = {}): string {
   return dayText(date, now, options.locale);
 }
 
+/** "Oct 15, 2026": an absolute day for a name or a file (never "Today"); the year is left off only when `year: false`. */
+export function formatDate(value: DateInput, options: DateOptions & { year?: boolean } = {}): string {
+  const date = toDate(value);
+  if (!date) return "";
+  return dayText(date, options.now ?? new Date(), options.locale, options.year ?? true);
+}
+
 /** "Oct 15, 5:35 PM": the day (never "Today") and the time on the computer's clock. */
 export function formatDayTime(value: DateInput, options: DateOptions = {}): string {
   const date = toDate(value);

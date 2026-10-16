@@ -35,7 +35,7 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
   }, [open]);
 
   return (
-    <Modal open={open} title="About CuePoint" onClose={onClose} secondaryAction={{ label: "Close", onClick: onClose }}>
+    <Modal open={open} title="About CuePoint" onClose={onClose} closeLabel="Close">
       <div className="about-dialog">
         <p>
           <strong>CuePoint</strong> — Rekordbox ↔ Beatport matching and discovery.

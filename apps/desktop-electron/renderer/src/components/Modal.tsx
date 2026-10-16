@@ -2,6 +2,7 @@ import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { usePresence } from "../tokens/usePresence";
 import { Button } from "./Button";
 import { CloseButton } from "./CloseButton";
+import { ReasonLine } from "./ReasonLine";
 import "./Modal.css";
 
 interface ModalProps {
@@ -36,6 +37,22 @@ interface ModalProps {
    * rather than absent on the first screen, for the same reason.
    */
   backAction?: { label: string; onClick: () => void; disabled?: boolean };
+  /**
+   * A dialog that only shows something, or applies each change at once (columns, tags, a log,
+   * activity), ends in one grey button, `closeLabel` (usually "Close"), which calls `onClose`.
+   * It sits last, where the main button would; with a `primaryAction` it is not drawn.
+   */
+  closeLabel?: string;
+  /**
+   * Anything extra for the footer's far left (a count, a link-style button): the body no longer
+   * carries its own button row.
+   */
+  footerExtra?: ReactNode;
+  /**
+   * One muted line just above the footer: why the main button is greyed, or the one note about
+   * the buttons. A greyed `primaryAction.disabledReason` is shown the same way when this is absent.
+   */
+  reason?: string;
   /**
    * Three widths, all scaled with the text: `"narrow"` for a question (a confirmation), the
    * default for a form, `"wide"` for content that is a table or a log rather than a message
@@ -83,6 +100,9 @@ export function Modal({
   secondaryAction,
   extraAction,
   backAction,
+  closeLabel,
+  footerExtra,
+  reason: reasonProp,
   size = "default",
   variant = "default",
   closeOnBackdrop = true,
@@ -167,7 +187,7 @@ export function Modal({
   const presence = usePresence<HTMLDivElement>(open);
   if (!presence.present) return null;
 
-  const reason = primaryAction?.disabled ? primaryAction.disabledReason : undefined;
+  const reason = reasonProp ?? (primaryAction?.disabled ? primaryAction.disabledReason : undefined);
 
   return (
     <div
@@ -196,13 +216,13 @@ export function Modal({
           <CloseButton onClick={onClose} />
         </header>
         <div className="cp-modal__body">{children}</div>
-        {reason && (
-          <p id={reasonId} className="cp-modal__reason">
-            {reason}
-          </p>
-        )}
-        {(primaryAction || secondaryAction || extraAction || backAction) && (
+        {/* The one reason line, directly above the footer (area 93). */}
+        <ReasonLine id={reasonId} align="end" className="cp-modal__reason">
+          {reason}
+        </ReasonLine>
+        {(primaryAction || secondaryAction || extraAction || backAction || closeLabel || footerExtra) && (
           <footer className="cp-modal__footer">
+            {footerExtra && <div className="cp-modal__footer-extra">{footerExtra}</div>}
             {extraAction && (
               <Button variant="secondary" className="cp-modal__extra" onClick={extraAction.onClick}>
                 {extraAction.label}
@@ -216,6 +236,11 @@ export function Modal({
             {backAction && (
               <Button variant="secondary" onClick={backAction.onClick} disabled={backAction.disabled}>
                 {backAction.label}
+              </Button>
+            )}
+            {closeLabel && !primaryAction && (
+              <Button variant="secondary" onClick={onClose}>
+                {closeLabel}
               </Button>
             )}
             {primaryAction && (

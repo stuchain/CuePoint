@@ -10,10 +10,9 @@ import {
   type InspectorState,
 } from "./inspectorState";
 import { useInspectorAutoOpen } from "./inspectorSlot";
-import { Button } from "../Button";
+import { DETAILS_PANEL_ID, focusDetailsToggle, publishDetails } from "./detailsToggle";
 import { CloseButton } from "../CloseButton";
 import { Hint } from "../Hint";
-import { PixelIcon } from "../PixelIcon";
 import { findOwningDestination } from "./navRegistry";
 import { useMotion } from "../../tokens/MotionContext";
 import { useScaleFactor } from "../../tokens/ScaleContext";
@@ -43,8 +42,8 @@ interface TrackInspectorProps {
  *
  * Whether it shows is the page's stored choice, else whether a track is selected there on
  * a page that lets a selection open it (K1, DEC-280, amending DEC-018 and DEC-024).
- * Hidden, it is one small "Details" button at the top of the right edge, in the title row;
- * it takes no column, so the page uses the full width.
+ * Hidden, it renders nothing and takes no column, so the page uses the full width; the
+ * Details toggle is the last button of the page header (detailsToggle.tsx).
  *
  * It holds no track data of its own: each page puts its content in the slot
  * (LIBUI-10). Wiring it to the old Results screen's selection was rejected in
@@ -93,7 +92,6 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   visibleRef.current = visible;
   const panelRef = useRef<HTMLElement>(null);
   const hideRef = useRef<HTMLButtonElement>(null);
-  const revealRef = useRef<HTMLButtonElement>(null);
   // Only move focus when the user toggled, never on the initial render nor when the
   // selection opens or folds the panel by itself: an app that steals focus on launch is
   // worse than one that never moves it.
@@ -129,14 +127,13 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     setState((prev) => withInspectorChoice(prev, page, !visibleRef.current));
   }, [moves, page]);
 
-  // The control the user pressed disappears when the panel toggles, and focus
-  // would land on <body> — a keyboard user would be back at the top of the tab
-  // order with no idea where they are. Move it to the control that replaced it.
+  // Hiding removes the panel's own close button: focus goes to the header's Details toggle,
+  // which opens it again. Opening moves focus to the panel's close button, as before.
   useEffect(() => {
     if (!toggled.current) return;
     toggled.current = false;
-    const next = visible ? hideRef.current : revealRef.current;
-    next?.focus();
+    if (visible) hideRef.current?.focus();
+    else focusDetailsToggle();
   }, [visible]);
 
   // Only a toggle plays the entrance: a panel the selection opens just appears (K1).
@@ -144,36 +141,11 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     if (!visible) setEntering(false);
   }, [visible]);
 
-  // Hidden, the button sits at the window's right edge at title-row height: tell the page header
-  // how much room to leave so its own buttons are not under it. Measured again once the fonts
-  // are in (the label's width changes) and whenever the button resizes.
+  // The page header draws the Details toggle (detailsToggle.tsx); this tells it the state.
   useEffect(() => {
-    const root = document.documentElement;
-    const button = revealRef.current;
-    if (visible || !button) {
-      root.style.removeProperty("--inspector-handle-room");
-      return;
-    }
-    let live = true;
-    const measure = () => {
-      if (!live) return;
-      root.style.setProperty(
-        "--inspector-handle-room",
-        `${Math.ceil(button.offsetWidth + 8 * scale)}px`,
-      );
-    };
-    measure();
-    void document.fonts?.ready?.then(measure);
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
-    observer?.observe(button);
-    window.addEventListener("resize", measure);
-    return () => {
-      live = false;
-      observer?.disconnect();
-      window.removeEventListener("resize", measure);
-      root.style.removeProperty("--inspector-handle-room");
-    };
-  }, [visible, scale]);
+    publishDetails({ open: visible, toggle });
+  }, [visible, toggle]);
+  useEffect(() => () => publishDetails(null), []);
 
   // View → Track details in the menu.
   useShellCommand("toggle-inspector", toggle);
@@ -238,29 +210,12 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     [scale],
   );
 
-  if (!visible) {
-    return (
-      <div className="cp-inspector cp-inspector--hidden">
-        <Hint text="Show track details" shortcut="Mod+I">
-          <Button
-            ref={revealRef}
-            variant="secondary"
-            className="cp-inspector__reveal"
-            onClick={toggle}
-            aria-expanded={false}
-            aria-label="Show track details"
-          >
-            <span className="cp-inspector__reveal-name">Details</span>
-            <PixelIcon name="chevron-left" size="sm" />
-          </Button>
-        </Hint>
-      </div>
-    );
-  }
+  if (!visible) return null;
 
   return (
     <aside
       ref={panelRef}
+      id={DETAILS_PANEL_ID}
       className="cp-inspector"
       data-entering={entering ? "" : undefined}
       style={{ width: `${width}px` }}

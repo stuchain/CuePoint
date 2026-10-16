@@ -1,7 +1,8 @@
 /* The shared page header (G6 T4). One divider under everything in it. */
 .cp-screen-header {
   position: sticky;
-  top: 0;
+  /* One page margin from the top when it sticks, as it sits at rest; the backdrop below covers the margin. */
+  top: var(--screen-header-stick, var(--page-gutter-top));
   z-index: 5;
   display: flex;
   flex-direction: column;
@@ -25,7 +26,7 @@
   content: "";
   position: absolute;
   z-index: -1;
-  top: calc(-1 * var(--page-gutter-top));
+  top: calc(-1 * var(--screen-header-stick, var(--page-gutter-top)));
   right: calc(-1 * var(--page-gutter-x));
   bottom: 0;
   left: calc(-1 * var(--page-gutter-x));
@@ -39,19 +40,19 @@
 
 .cp-screen-header__main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) fit-content(100%);
+  /* Top-aligned: what sits beside the title never moves it. */
+  align-items: start;
   gap: var(--space-md);
-  /* Hidden Track details is a button flush with the window edge, at this row's right end: leave
-     it room beyond the page gutter, which the header already keeps. */
-  padding-right: max(0px, calc(var(--inspector-handle-room, 0px) - var(--page-gutter-x)));
 }
 
+/* The title row is one control high, so the title's baseline is the same on every page. */
 .cp-screen-header__title-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-md);
   min-width: 0;
+  min-height: var(--toolbar-height);
 }
 
 .cp-screen-header__title:where(:not(.cp-visually-hidden)),
@@ -63,6 +64,7 @@
 .cp-screen-header__display {
   font-size: var(--font-size-xl);
   font-weight: 700;
+  line-height: var(--toolbar-height);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -72,12 +74,42 @@
 .cp-screen-header__status,
 .cp-screen-header__beside {
   flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  /* Level with the title: the row's first line is one control high. */
+  min-height: var(--toolbar-height);
 }
 
 .cp-screen-header__actions {
   display: flex;
   align-items: center;
+  /* At the largest sizes the buttons do not fit one line: they wrap, never past the page. */
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--space-md);
+  min-height: var(--toolbar-height);
+}
+
+/* The small divider before the Details toggle, one button high at most. */
+.cp-details-divider {
+  align-self: center;
+  width: var(--hairline);
+  height: 60%;
+  background: var(--border-control);
+}
+
+.cp-details-toggle {
+  gap: var(--space-xs);
+  white-space: nowrap;
+}
+
+/* Open: the pressed look, in the same place. */
+.cp-details-toggle--open,
+.cp-details-toggle--open:hover {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--fg-inverse);
 }
 
 .cp-screen-header__summary {

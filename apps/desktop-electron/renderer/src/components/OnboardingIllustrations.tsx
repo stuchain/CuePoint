@@ -6,6 +6,7 @@
  * 11-unit text is drawn at about 11px, larger than the app's own label size.
  */
 import type { ReactNode } from "react";
+import appIcon from "../assets/cuepoint-icon.png";
 import "./OnboardingIllustrations.css";
 
 function Window({ title, children }: { title: string; children: ReactNode }) {
@@ -127,6 +128,69 @@ function BackHere() {
       </text>
       <Lines x={50} y={90} count={2} />
     </Window>
+  );
+}
+
+/** Step 1: the app's own window, logo and the four pages. */
+function WelcomeArt() {
+  return (
+    <Window title="CuePoint">
+      <rect className="ob-menu" x="8" y="22" width="34" height="90" />
+      <rect className="ob-hl" x="12" y="32" width="26" height="6" />
+      <rect className="ob-line" x="12" y="46" width="22" height="4" />
+      <rect className="ob-line" x="12" y="58" width="18" height="4" />
+      <rect className="ob-line" x="12" y="70" width="22" height="4" />
+      <image className="ob-logo" href={appIcon} x="82" y="24" width="48" height="48" />
+      <text className="ob-fg" x="106" y="90" textAnchor="middle">
+        Clean · Discover · Prepare
+      </text>
+    </Window>
+  );
+}
+
+/** Step 3: a list with the Match button. */
+function MatchArt() {
+  return (
+    <Window title="CuePoint">
+      <rect className="ob-menu" x="8" y="22" width="34" height="90" />
+      <rect className="ob-line" x="12" y="32" width="26" height="4" />
+      <rect className="ob-hl" x="12" y="44" width="26" height="6" />
+      <rect className="ob-line" x="12" y="58" width="18" height="4" />
+      <Lines x={50} y={30} count={3} wide={104} />
+      <rect className="ob-hl" x="50" y="68" width="107" height="34" />
+      <text className="ob-on" x="103.5" y="82" textAnchor="middle">
+        Match on Beatport
+      </text>
+      <text className="ob-on" x="103.5" y="95" textAnchor="middle">
+        keys, genres, labels
+      </text>
+    </Window>
+  );
+}
+
+/** Step 4: a sign-in field and button. */
+function SignInArt() {
+  return (
+    <Window title="Beatport">
+      <text className="ob-fg" x="82.5" y="38" textAnchor="middle">
+        Sign in to Beatport
+      </text>
+      <rect className="ob-field" x="22" y="50" width="121" height="16" />
+      <rect className="ob-field" x="22" y="72" width="121" height="16" />
+      <rect className="ob-hl" x="52" y="96" width="61" height="16" />
+      <text className="ob-on" x="82.5" y="107.5" textAnchor="middle">
+        Sign in
+      </text>
+    </Window>
+  );
+}
+
+/** One drawing, in the same window style as the four of step 2. */
+export function OnboardingArt({ id }: { id: "welcome" | "match" | "sign-in" }) {
+  return (
+    <div className="onboarding-dialog__single" aria-hidden="true">
+      {id === "welcome" ? <WelcomeArt /> : id === "match" ? <MatchArt /> : <SignInArt />}
+    </div>
   );
 }
 

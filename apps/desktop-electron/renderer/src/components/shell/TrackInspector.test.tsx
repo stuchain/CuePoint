@@ -19,6 +19,7 @@ import { InspectorSlotProvider, useInspectorSlot } from "./inspectorSlot";
 import { PageActiveContext } from "./pageActive";
 import { useReportSelectedTrack } from "./useReportSelectedTrack";
 import { INSPECTOR_AUTO_OPEN_DELAY_MS, TrackInspector } from "./TrackInspector";
+import { ScreenHeader } from "./ScreenHeader";
 import { setSelectedTrack } from "./selectedTrack";
 import { INSPECTOR_STORAGE_KEY } from "./inspectorState";
 
@@ -28,7 +29,7 @@ const MIN_PX = 221;
 
 const panel = () => screen.getByRole("complementary", { name: /track details/i });
 const hide = () => screen.getByRole("button", { name: /hide track details/i });
-const reveal = () => screen.getByRole("button", { name: /show track details/i });
+const reveal = () => screen.getByRole("button", { name: /^track details$/i });
 const handle = () => screen.getByRole("separator", { name: /resize track details/i });
 
 const SELECTED = { id: 12, key: "8A", title: "Strobe" };
@@ -37,7 +38,11 @@ const SELECTED = { id: 12, key: "8A", title: "Strobe" };
 function render(ui: ReactElement, path = "/library") {
   const result = rtlRender(
     <MemoryRouter initialEntries={[path]}>
-      <InspectorSlotProvider>{ui}</InspectorSlotProvider>
+      <InspectorSlotProvider>
+        {/* The page header draws the Details toggle. */}
+        <ScreenHeader title="Page" />
+        {ui}
+      </InspectorSlotProvider>
     </MemoryRouter>,
   );
   settle();
@@ -119,7 +124,7 @@ describe("TrackInspector", () => {
     });
   });
 
-  describe("hidden, it is one small Details button", () => {
+  describe("hidden, the page header's Details toggle opens it", () => {
     const hideIt = async () => {
       choose({ library: "closed" });
       const user = userEvent.setup();
@@ -133,29 +138,22 @@ describe("TrackInspector", () => {
       expect(tab).toHaveTextContent("Details");
       expect(tab).toHaveAttribute("title", "Show track details (Ctrl+I)");
       expect(tab).toHaveClass("cp-btn");
+      expect(tab).toHaveAttribute("aria-expanded", "false");
     });
 
     it("keeps one name whatever is selected", async () => {
       await hideIt();
-      expect(reveal()).toHaveAccessibleName("Show track details");
+      expect(reveal()).toHaveAccessibleName("Track details");
       act(() => setSelectedTrack({ id: 13, key: null, title: "Ride" }));
-      expect(reveal()).toHaveAccessibleName("Show track details");
+      expect(reveal()).toHaveAccessibleName("Track details");
       expect(reveal()).not.toHaveTextContent("Ride");
     });
 
-    it("is flush with the right edge on one line, level with the title row under the offline banner", () => {
-      // Regression: the zero-width anchor made the button shrink-to-fit and wrap to two lines.
-      expect(css).toMatch(/\.cp-inspector--hidden \{[^}]*right: 0[^}]*width: max-content/);
-      expect(css).toMatch(/\.cp-inspector--hidden \.cp-inspector__reveal \{[^}]*border-right: 0/);
-      expect(css).toMatch(/\.cp-inspector__reveal \.cp-btn__label \{[^}]*white-space: nowrap/);
-      expect(shell).toMatch(/\.app-shell__inspector:has\(\.cp-inspector--hidden\) \{[^}]*grid-row: 2/);
-    });
-
-    it("tells the page header how much room to leave, and stops when open", async () => {
-      const user = await hideIt();
-      expect(document.documentElement.style.getPropertyValue("--inspector-handle-room")).not.toBe("");
-      await user.click(reveal());
+    it("leaves no floating handle and no room reserved for one", async () => {
+      await hideIt();
+      expect(css).not.toMatch(/inspector--hidden|inspector__reveal/);
       expect(document.documentElement.style.getPropertyValue("--inspector-handle-room")).toBe("");
+      expect(shell).not.toMatch(/inspector--hidden/);
     });
 
     it("comes back with one click", async () => {
@@ -184,7 +182,7 @@ describe("TrackInspector", () => {
 
       await user.click(hide());
 
-      expect(container.querySelector(".cp-inspector--hidden")).not.toBeNull();
+      expect(container.querySelector(".cp-inspector")).toBeNull();
       expect(container.querySelector(".cp-inspector__body")).toBeNull();
     });
 
@@ -233,6 +231,7 @@ describe("TrackInspector", () => {
       const user = userEvent.setup();
       render(<TrackInspector />);
 
+      await user.tab(); // the header's Details toggle comes first
       await user.tab();
 
       expect(handle()).toHaveFocus();
@@ -365,7 +364,7 @@ describe("TrackInspector", () => {
 });
 
 describe("TrackInspector follows the selection, page by page (K1, DEC-280)", () => {
-  const tab = () => screen.getByRole("button", { name: /show track details/i });
+  const tab = () => screen.getByRole("button", { name: /^track details$/i });
   const noPanel = () => expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
 
   /** A page that fills the slot and says whether a selection may open the panel. */
@@ -392,7 +391,7 @@ describe("TrackInspector follows the selection, page by page (K1, DEC-280)", () 
     render(<TrackInspector />);
     noPanel();
     expect(tab()).toHaveTextContent("Details");
-    expect(tab()).toHaveAccessibleName("Show track details");
+    expect(tab()).toHaveAccessibleName("Track details");
   });
 
   it("opens when a selection appears and folds when it clears", () => {

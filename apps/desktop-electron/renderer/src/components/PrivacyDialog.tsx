@@ -108,7 +108,7 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
       open={open}
       title="Privacy"
       onClose={onClose}
-      secondaryAction={{ label: "Close", onClick: onClose }}
+      closeLabel="Close"
     >
       <div className="privacy-dialog">
         <pre className="privacy-dialog__text">{PRIVACY_TEXT}</pre>

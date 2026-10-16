@@ -19,3 +19,4 @@
 .ob-muted { fill: var(--fg-muted); }
 .ob-fg { fill: var(--fg-primary); }
 .ob-on { fill: var(--fg-inverse); }
+.ob-logo { image-rendering: pixelated; }

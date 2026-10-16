@@ -203,7 +203,10 @@ describe("what it shows", () => {
   it("counts the queue in its heading", async () => {
     install(42);
     render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
-    expect(await screen.findByText(/Queue · 42/)).toBeInTheDocument();
+    // The name, then its count apart in grey (area 58): no "Queue · 42".
+    const heading = await screen.findByRole("heading", { name: /Queue/ });
+    expect(heading.querySelector(".cp-queue__count")).toHaveTextContent("42");
+    expect(heading).not.toHaveTextContent("·");
   });
 
   it("closes when asked", async () => {

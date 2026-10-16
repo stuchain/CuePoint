@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { DetailsToggle } from "./detailsToggle";
 import "./ScreenHeader.css";
 
 export interface ScreenHeaderProps {
@@ -12,11 +13,19 @@ export interface ScreenHeaderProps {
   display?: ReactNode;
   /** Where this is inside the page, drawn above the title. */
   crumb?: ReactNode;
-  /** Beside the title on the left (Prepare's Set picker). */
+  /**
+   * Beside the title, aligned to the title row (Prepare's Set picker, Statistics' scope picker):
+   * whatever its height, it never moves the title, which sits at the same place on every page.
+   * `beside` is the older name for the same slot.
+   */
+  extras?: ReactNode;
   beside?: ReactNode;
-  /** One muted line under the title; ellipsized. */
+  /** The facts line: one muted line under the title; ellipsized. */
   summary?: ReactNode;
-  /** The page's buttons, at the right. */
+  /**
+   * The page's buttons, at the right. The header adds the Details toggle after them, behind a
+   * small divider (no page passes it); a page without actions gets it alone on the title row.
+   */
   actions?: ReactNode;
   /** The page's tab strip, in its own row below. */
   tabs?: ReactNode;
@@ -32,6 +41,11 @@ export interface ScreenHeaderProps {
   attached?: boolean;
 }
 
+/** What the page reserves for its sticky header, in px: its height and the gap above it (NaN reads as none). */
+export function headerHeightPx(offsetHeight: number, top: number): number {
+  return Math.round(offsetHeight + (Number.isFinite(top) ? top : 0));
+}
+
 /**
  * The one header every page uses (G6 T4): a grid of `title + beside | actions`, a summary
  * line, a tabs row and a single divider under all of it. It sticks to the top of a
@@ -41,6 +55,7 @@ export function ScreenHeader({
   title,
   display,
   crumb,
+  extras,
   beside,
   summary,
   actions,
@@ -56,7 +71,12 @@ export function ScreenHeader({
     const header = root.current;
     const host = header?.parentElement;
     if (!header || !host) return;
-    const measure = () => host.style.setProperty("--screen-header-height", `${header.offsetHeight}px`);
+    // A plain pixel number, so a script can read it (`useSectionInView`): the header's height
+    // plus the gap it keeps above itself when it sticks.
+    const measure = () => {
+      const top = Number.parseFloat(getComputedStyle(header).top);
+      host.style.setProperty("--screen-header-height", `${headerHeightPx(header.offsetHeight, top)}px`);
+    };
     measure();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
     observer?.observe(header);
@@ -83,9 +103,17 @@ export function ScreenHeader({
             </div>
           )}
           {status && <div className="cp-screen-header__status">{status}</div>}
-          {beside && <div className="cp-screen-header__beside">{beside}</div>}
+          {(extras || beside) && (
+            <div className="cp-screen-header__beside">
+              {beside}
+              {extras}
+            </div>
+          )}
         </div>
-        {actions && <div className="cp-screen-header__actions">{actions}</div>}
+        <div className="cp-screen-header__actions">
+          {actions}
+          <DetailsToggle divided={Boolean(actions)} />
+        </div>
       </div>
       {summary && <p className="cp-screen-header__summary">{summary}</p>}
       {tabs && <div className="cp-screen-header__tabs">{tabs}</div>}

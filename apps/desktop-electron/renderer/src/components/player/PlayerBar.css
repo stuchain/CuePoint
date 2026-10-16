@@ -56,7 +56,10 @@
  * stays zero, so wrapping is decided exactly as above.
  */
 .cp-player-bar__track {
-  flex: 1 1 0;
+  /* The track gets its room first: its own text up to 40% of the bar, never less than a readable
+     width, and what is left goes to the position. */
+  flex: 1 1 auto;
+  max-width: 40%;
   max-inline-size: max-content;
 }
 
@@ -76,7 +79,8 @@
 }
 
 .cp-player-bar__seek {
-  flex: 2 1 0;
+  flex: 1 1 0;
+  min-width: calc(40px * var(--scale));
 }
 
 /* Order and volume travel together: half a control group on each row would be
@@ -130,6 +134,21 @@
   min-width: calc(var(--hit-min) * 1.25);
 }
 
+/* The other five (shuffle, repeat, queue, zoomed waveform, mute) are the standard control size;
+   only previous, play and next are large. */
+.cp-player-bar__button--standard {
+  /* The standard control, never under the 24px target floor at 1x (WCAG 2.5.8). */
+  min-width: max(var(--control-height), 24px);
+  min-height: max(var(--control-height), 24px);
+  padding: 0 var(--space-xs);
+}
+
+/* Their icons are the medium size, not the large one the transport uses. */
+.cp-player-bar__button--standard .cp-pixel-icon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+}
+
 .cp-player-bar__track {
   display: flex;
   flex-direction: column;
@@ -170,7 +189,6 @@
   /* The row's height, for the waveform (WAVE-06); it adds none. */
   align-self: stretch;
   gap: var(--space-sm);
-  min-width: 0;
 }
 
 .cp-player-bar__time {
@@ -282,15 +300,15 @@
 
 .cp-player-bar__slider--volume {
   flex: 0 0 auto;
-  /* Follows the size, but never wider than the bar had room for at 3x before (R2-4). */
-  width: min(calc(56px * var(--scale)), 80px);
+  /* Follows the size: not capped to a few pixels at the larger sizes. */
+  width: calc(56px * var(--scale));
 }
 
 /* Narrow windows: the track text gives way first, then volume. The transport
    and the position never disappear — they are why the bar exists. */
 @media (max-width: 900px) {
   .cp-player-bar__slider--volume {
-    width: min(calc(40px * var(--scale)), 56px);
+    width: calc(40px * var(--scale));
   }
 }
 
@@ -307,9 +325,10 @@
 }
 
 .cp-player-bar__count {
-  position: absolute;
-  top: calc(var(--border-width) * -1);
-  right: calc(var(--border-width) * -1);
+  /* Beside the icon, never on it: the button grows by the count's width. */
+  position: static;
+  flex: none;
+  margin-inline-start: var(--space-xs);
   padding: 0 var(--space-xs);
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
@@ -356,4 +375,41 @@
 /* The key in the facts line is the clickable chip that opens the Camelot wheel (BAR-5): no separate button. */
 .cp-player-bar__meta .cp-wheel-button {
   vertical-align: baseline;
+}
+
+/*
+ * A window under 700px tall (area 90): the bar is one compact line, so the page keeps its rows.
+ * Every button takes the standard control size with the medium icon, the facts line goes (the
+ * title stays), and the zoomed waveform strip and its toggle are not drawn. A window of 700 or
+ * more (the 1264x735 laptop at 1.5x) keeps the strip.
+ */
+@media (max-height: 699px) {
+  .cp-player-bar {
+    flex-wrap: nowrap;
+    padding: var(--space-xs) var(--space-md);
+  }
+
+  .cp-player-bar__button,
+  .cp-player-bar__button--play,
+  .cp-player-bar__button--standard {
+    min-width: max(var(--control-height), 24px);
+    min-height: max(var(--control-height), 24px);
+  }
+
+  .cp-player-bar__button .cp-pixel-icon {
+    width: var(--icon-size-md);
+    height: var(--icon-size-md);
+  }
+
+  .cp-player-bar__meta {
+    display: none;
+  }
+
+  .cp-player-bar__button--zoom {
+    display: none;
+  }
+
+  .cp-player-slot .cp-detail-strip {
+    display: none;
+  }
 }

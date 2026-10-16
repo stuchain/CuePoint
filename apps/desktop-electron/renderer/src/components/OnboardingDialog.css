@@ -7,40 +7,33 @@
 .onboarding-dialog__body {
   margin: 0 0 var(--space-lg);
   color: var(--fg-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--text-body);
   line-height: 1.5;
 }
 
 .about-dialog p {
   margin: 0 0 var(--space-md);
-  font-size: var(--font-size-sm);
+  font-size: var(--text-body);
   line-height: 1.5;
 }
 
 .about-dialog ul {
   margin: 0;
   padding-left: var(--space-md);
-  font-size: var(--font-size-xs);
+  font-size: var(--text-body);
   color: var(--fg-muted);
 }
 
-.onboarding-dialog__picture {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-md);
-  margin: 0 0 var(--space-md);
-  padding: var(--space-md);
-  background: var(--bg-input);
-  border: var(--hairline) solid var(--border-muted);
-  color: var(--accent-primary);
+/* Every step is the same size: the wide dialog, and a body as tall as the tallest step. */
+.onboarding-dialog {
+  min-height: calc(250px * var(--scale));
 }
 
-.onboarding-dialog__icon {
-  /* Twice the icon size keeps a grid cell a whole number of pixels at every scale. */
-  width: calc(var(--icon-size) * 2);
-  height: calc(var(--icon-size) * 2);
+/* A single drawing, the width of one of step 2's four tiles, centred. */
+.onboarding-dialog__single {
+  width: min(100%, calc(25% - var(--space-sm)));
+  min-width: calc(168px * var(--scale));
+  margin: 0 auto var(--space-md);
 }
 
 .onboarding-dialog__foot {
@@ -60,7 +53,7 @@
 
 .phase14-note__line p {
   margin: 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--text-body);
   line-height: 1.5;
 }
 
@@ -73,8 +66,8 @@
 
 .onboarding-dialog__done {
   margin: 0 0 var(--space-md);
-  color: var(--accent-success);
-  font-size: var(--font-size-sm);
+  color: var(--success-text);
+  font-size: var(--text-body);
 }
 
 .onboarding-dialog__dots {
@@ -92,14 +85,6 @@
 .onboarding-dialog__dot[data-current="true"] {
   background: var(--accent-primary);
   border-color: var(--accent-primary);
-}
-
-.onboarding-dialog__logo {
-  display: block;
-  /* The 64-pixel art at whole multiples of the text scale: crisp, not smoothed. */
-  width: round(nearest, calc(64px * var(--scale)), 1px);
-  height: round(nearest, calc(64px * var(--scale)), 1px);
-  image-rendering: pixelated;
 }
 
 .onboarding-dialog__steps {
@@ -125,12 +110,12 @@
   margin: 0;
   /* The body font, whose numerals read as numerals: the pixel font's 2 and 3 look like 8. */
   font-family: var(--font-data);
-  font-size: var(--font-size-sm);
+  font-size: var(--text-body);
   line-height: 1.4;
 }
 
 .onboarding-dialog__needs {
   margin: 0 0 var(--space-md);
   color: var(--fg-muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--text-body);
 }

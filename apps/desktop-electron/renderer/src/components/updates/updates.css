@@ -1,6 +1,5 @@
 /* Release notes and the update panels (DIST-07). Only tokens, so every theme and size reads right. */
 .cp-release-notes {
-  max-height: calc(320px * var(--scale));
   overflow-y: auto;
   overflow-wrap: anywhere;
   line-height: 1.5;

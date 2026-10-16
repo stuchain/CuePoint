@@ -7,8 +7,6 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: calc(360px * var(--scale));
-  overflow-y: auto;
 }
 
 .cp-column-picker__row {
@@ -26,7 +24,7 @@
   align-items: center;
   gap: var(--space-sm);
   min-width: 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--text-body);
   cursor: pointer;
 }
 

@@ -54,6 +54,7 @@ const TRACK: LibraryTrackRow = {
   comment: null,
   bitrate: null,
   file_path: "/music/strobe.mp3",
+  effective_key: "6A",
   effective_rating: null,
   rating_source: null,
   favorite: false,
@@ -189,8 +190,12 @@ describe("GlobalSearch", () => {
     await type("strobe");
 
     expect(await screen.findByText("Strobe")).toBeInTheDocument();
-    expect(screen.getByText("deadmau5")).toBeInTheDocument();
-    expect(screen.getByText(/mau5trap/)).toBeInTheDocument();
+    // One facts line, in the one order: artist · label · key · BPM · year; the title not repeated.
+    const facts = document.querySelector(".cp-global-search__meta")!;
+    expect(facts).toHaveTextContent("deadmau5 · mau5trap · 6A · 128 BPM · 2009");
+    expect(facts.querySelector(".key-chip")).not.toBeNull();
+    expect(facts).not.toHaveTextContent("Strobe");
+    expect(facts).not.toHaveTextContent("For Lack of a Better Name");
   });
 
   it("reports how many of the matches are shown", async () => {

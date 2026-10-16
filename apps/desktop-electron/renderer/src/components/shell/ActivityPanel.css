@@ -15,14 +15,13 @@
   gap: var(--space-sm);
   width: 100%;
   min-width: 0;
-  max-height: 60vh;
 }
 
 .cp-activity__note {
   margin: 0;
   padding: var(--space-md) var(--space-sm);
   color: var(--fg-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--text-body);
   line-height: 1.5;
 }
 
@@ -41,7 +40,6 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  overflow-y: auto;
   border: var(--divider);
 }
 
@@ -53,7 +51,7 @@
   align-items: baseline;
   padding: var(--space-xs) var(--space-sm);
   border-bottom: var(--divider);
-  font-size: var(--font-size-sm);
+  font-size: var(--text-body);
 }
 
 .cp-activity__rows > .cp-activity__row:last-child {

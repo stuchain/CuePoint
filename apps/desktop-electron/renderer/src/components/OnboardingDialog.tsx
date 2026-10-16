@@ -2,11 +2,8 @@ import { useId, useState } from "react";
 import { formatCount, pluralize } from "../screens/library/libraryFormat";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
-import appIcon from "../assets/cuepoint-icon.png";
 import { MATCH_ON_BEATPORT } from "../format/words";
-import { OnboardingDrawings } from "./OnboardingIllustrations";
-import { PixelIcon } from "./PixelIcon";
-import type { PixelIconName } from "./pixelIcons";
+import { OnboardingArt, OnboardingDrawings } from "./OnboardingIllustrations";
 import { markOnboardingDone, markPhase14NoteSeen } from "./firstRunMemory";
 import { useFirstRunProgress, type FirstRunProgress } from "./useFirstRunProgress";
 import "./OnboardingDialog.css";
@@ -16,15 +13,17 @@ type Action = "import" | "match" | "sign-in";
 interface Screen {
   title: string;
   body: string;
-  /** The picture, drawn from pixel icons so a theme change cannot leave it stale. */
-  picture?: PixelIconName[];
-  /** The real CuePoint logo, drawn crisp, in place of the icon picture. */
-  logo?: boolean;
-  /** The four drawings of the export, side by side (step 2); the dialog is wide for them. */
+  /**
+   * The picture: one drawing in the same window style as step 2's four, from the theme's own
+   * colours so a theme change cannot leave it stale.
+   */
+  art?: "welcome" | "match" | "sign-in";
+  /** The four drawings of the export, side by side (step 2). */
   steps?: boolean;
   /** Why the action cannot be used yet, while it cannot. */
   needs?: (progress: FirstRunProgress) => string | null;
-  action?: { id: Action; label: string; primary?: boolean };
+  /** Always grey: the dialog's own Next is the one violet button of a step. */
+  action?: { id: Action; label: string };
   /** The line that says this step is already done; null until it is. */
   done?: (progress: FirstRunProgress) => string | null;
 }
@@ -33,20 +32,20 @@ const SCREENS: Screen[] = [
   {
     title: "Welcome to CuePoint",
     body: "Tidies your Rekordbox library, finds new music, plans sets. Rekordbox is never changed until you export.",
-    logo: true,
+    art: "welcome",
   },
   {
     title: "Bring in your Rekordbox file",
     body: "Export your collection from Rekordbox, then import that file here. Nothing in Rekordbox is changed.",
     steps: true,
-    action: { id: "import", label: "Import a Rekordbox file…", primary: true },
+    action: { id: "import", label: "Import a Rekordbox file…" },
     done: ({ trackCount }) =>
       trackCount !== null && trackCount > 0 ? `✓ ${pluralize(trackCount, "track")} imported` : null,
   },
   {
     title: "Match your tracks on Beatport",
     body: "After importing: keys, genres and labels come from Beatport.",
-    picture: ["clean", "chevron-right", "match"],
+    art: "match",
     action: { id: "match", label: `${MATCH_ON_BEATPORT}…` },
     // Only a library known to be empty holds it back; while the count is unknown the button works.
     needs: ({ trackCount }) => (trackCount === 0 ? "Import a Rekordbox file first (step 2)." : null),
@@ -56,7 +55,7 @@ const SCREENS: Screen[] = [
   {
     title: "Sign in to Beatport (optional)",
     body: "Discover uses it to find new music.",
-    picture: ["discover"],
+    art: "sign-in",
     action: { id: "sign-in", label: "Sign in to Beatport" },
     done: ({ signedIn }) => (signedIn ? "✓ Signed in" : null),
   },
@@ -124,7 +123,7 @@ export function OnboardingDialog({
     <Modal
       open={open && !covered}
       title="Getting started"
-      size={screen.steps ? "wide" : "default"}
+      size="wide"
       // Escape and the close button leave without marking it done; a click on the
       // backdrop does nothing (RUN-1, RUN-2).
       onClose={onComplete}
@@ -137,18 +136,7 @@ export function OnboardingDialog({
       backAction={{ label: "Back", onClick: () => setStep((s) => s - 1), disabled: step === 0 }}
     >
       <div className="onboarding-dialog">
-        {screen.logo && (
-          <div className="onboarding-dialog__picture" aria-hidden="true">
-            <img src={appIcon} alt="" className="onboarding-dialog__logo" />
-          </div>
-        )}
-        {screen.picture && (
-          <div className="onboarding-dialog__picture" aria-hidden="true">
-            {screen.picture.map((name, index) => (
-              <PixelIcon key={`${name}-${index}`} name={name} className="onboarding-dialog__icon" />
-            ))}
-          </div>
-        )}
+        {screen.art && <OnboardingArt id={screen.art} />}
         <h3 className="onboarding-dialog__title">{screen.title}</h3>
         <p className="onboarding-dialog__body">{screen.body}</p>
         {screen.steps && <OnboardingDrawings />}
@@ -156,7 +144,7 @@ export function OnboardingDialog({
         {screen.action && !(screen.action.id === "sign-in" && progress.signedIn) && (
           <div className="onboarding-dialog__actions">
             <Button
-              variant={screen.action.primary ? "primary" : "secondary"}
+              variant="secondary"
               disabled={Boolean(needsLine)}
               aria-describedby={needsLine ? needsId : undefined}
               onClick={() => act(screen.action!.id)}

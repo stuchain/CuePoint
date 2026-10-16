@@ -6,7 +6,7 @@
  * message has to say what will appear rather than leaving a blank box.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { ActivityPanel } from "./ActivityPanel";
@@ -174,7 +174,9 @@ describe("ActivityPanel", () => {
     const user = userEvent.setup();
     render(<ActivityPanel open onClose={onClose} />);
 
-    await user.click(screen.getByRole("button", { name: "Close" }));
+    // The footer's grey Close (the title bar has its own ×).
+    const footer = screen.getByRole("dialog").querySelector<HTMLElement>(".cp-modal__footer")!;
+    await user.click(within(footer).getByRole("button", { name: "Close" }));
 
     expect(onClose).toHaveBeenCalled();
   });

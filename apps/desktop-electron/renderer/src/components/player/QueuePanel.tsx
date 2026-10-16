@@ -9,7 +9,8 @@ import { useToast } from "../Toast";
 import { UNDO } from "../../format/words";
 import { PixelIcon } from "../PixelIcon";
 import { useRowHeight } from "../table/trackTableLayout";
-import { formatTime, formatTrackMeta } from "./playerFormat";
+import { TrackFactsLine } from "../TrackFactsLine";
+import { formatTime } from "./playerFormat";
 import { useQueueWindow } from "./useQueueWindow";
 import "./QueuePanel.css";
 
@@ -155,7 +156,9 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
     <aside className="cp-queue" aria-label="Playback queue">
       <header className="cp-queue__header">
         <h2 className="cp-queue__title">
-          Queue{total > 0 ? ` · ${total.toLocaleString()}` : ""}
+          Queue
+          {/* The name, then its count in grey (area 58): never joined to it with a dot. */}
+          {total > 0 && <span className="cp-queue__count cp-data">{total.toLocaleString()}</span>}
         </h2>
         {total > 1 && (
           <Button variant="danger" size="sm" onClick={() => setConfirmingClear(true)}>
@@ -252,7 +255,13 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
                       </span>
                     ) : (
                       <span className="cp-queue__row-meta" data-cut-hint="">
-                        {formatTrackMeta(item)}
+                        <TrackFactsLine
+                          artist={item.artist}
+                          label={item.label}
+                          keyValue={item.key}
+                          bpm={item.bpm}
+                          year={item.year}
+                        />
                       </span>
                     )}
                   </span>

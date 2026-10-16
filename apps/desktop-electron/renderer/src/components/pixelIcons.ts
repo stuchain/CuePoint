@@ -737,6 +737,22 @@ const repeatAfter = [
   "............",
 ];
 
+// The Details toggle: a window with its right-hand panel filled.
+const panelRight = [
+  "............",
+  ".##########.",
+  ".#......###.",
+  ".#......###.",
+  ".#......###.",
+  ".#......###.",
+  ".#......###.",
+  ".#......###.",
+  ".#......###.",
+  ".#......###.",
+  ".##########.",
+  "............",
+];
+
 export const PIXEL_ICONS = {
   play,
   pause,
@@ -785,6 +801,7 @@ export const PIXEL_ICONS = {
   remove,
   move,
   "repeat-after": repeatAfter,
+  "panel-right": panelRight,
   logo,
   // K8: the sidebar's Search button.
   search,

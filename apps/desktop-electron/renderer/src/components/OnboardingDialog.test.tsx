@@ -131,12 +131,12 @@ describe("the four screens", () => {
     expect(within(dialog).queryByText(/The strip at the bottom/)).toBeNull();
   });
 
-  it("draws a picture on every screen: the real logo, the export drawings, pixel icons", async () => {
+  it("draws one picture on every screen, all in the same window style", async () => {
     mount();
-    const picture = () => screen.getByRole("dialog").querySelector(".onboarding-dialog__picture");
-    // 1: the logo image, not the pixel icon.
-    expect(picture()!.querySelector("img.onboarding-dialog__logo")).not.toBeNull();
-    expect(picture()!.querySelector("svg[data-icon]")).toBeNull();
+    const single = () => screen.getByRole("dialog").querySelector(".onboarding-dialog__single");
+    // 1: the app window with the logo.
+    expect(single()!.querySelectorAll("svg.ob-art")).toHaveLength(1);
+    expect(single()!.querySelector("image.ob-logo")).not.toBeNull();
     // 2: four drawings side by side, each with a caption.
     await next();
     const drawings = screen.getByRole("list", { name: "How to export from Rekordbox" });
@@ -144,20 +144,22 @@ describe("the four screens", () => {
     expect(drawings.querySelectorAll("svg.ob-art")).toHaveLength(4);
     expect(drawings).toHaveTextContent("Export Collection in xml format");
     expect(drawings).toHaveTextContent("Import a Rekordbox file");
-    // 3 and 4: pixel icons.
+    // 3 and 4: one drawing each, never a pixel icon.
     for (let step = 3; step <= 4; step += 1) {
       await next();
-      expect(picture()!.querySelectorAll("svg[data-icon]").length).toBeGreaterThan(0);
+      expect(single()!.querySelectorAll("svg.ob-art")).toHaveLength(1);
+      expect(screen.getByRole("dialog").querySelector(".cp-modal__body svg[data-icon]")).toBeNull();
     }
   });
 
-  it("is the wide dialog for the four drawings only", async () => {
+  it("is one dialog size on every step, with one violet button", async () => {
     mount();
-    expect(screen.getByRole("dialog").className).not.toMatch(/wide/);
-    await next();
-    expect(screen.getByRole("dialog").className).toMatch(/wide/);
-    await next();
-    expect(screen.getByRole("dialog").className).not.toMatch(/wide/);
+    for (let step = 1; step <= 4; step += 1) {
+      expect(screen.getByRole("dialog").className).toMatch(/cp-modal--wide/);
+      const violet = within(screen.getByRole("dialog")).queryAllByRole("button").filter((b) => b.className.includes("cp-btn--primary"));
+      expect(violet).toHaveLength(1);
+      if (step < 4) await next();
+    }
   });
 
   it("shows where it is as dots, named for a screen reader", async () => {

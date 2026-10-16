@@ -7,7 +7,7 @@
 
 .get-help-dialog__lead {
   margin: 0;
-  color: var(--fg-primary);
+  color: var(--fg-muted);
 }
 
 .get-help-dialog__field {
@@ -34,7 +34,7 @@
 .get-help-dialog__note,
 .get-help-dialog__done {
   margin: 0;
-  font-size: var(--font-size-xs);
+  font-size: var(--text-body);
   line-height: 1.5;
 }
 
@@ -47,7 +47,7 @@
   padding: 0;
   list-style: none;
   color: var(--fg-muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--text-body);
 }
 
 .get-help-dialog__file {

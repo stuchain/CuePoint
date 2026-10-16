@@ -15,6 +15,12 @@
   background: var(--bg-panel);
   border: var(--divider);
   box-shadow: var(--shadow-dialog);
+  /* One scroller per dialog, the body: the dialog grows with its content up to the window's
+     height, and title and buttons stay on screen. Nothing inside sets a max-height of its own. */
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 /* Focus starts on the dialog itself (Modal.tsx), so it draws no ring; nothing shows until the first Tab. */
@@ -30,10 +36,6 @@
 /* For rows rather than sentences: a log at the normal width clips every line. */
 .cp-modal--wide {
   width: min(var(--modal-width-wide), 92vw);
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
 .cp-modal__header {
@@ -55,8 +57,22 @@
 }
 
 .cp-modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
   padding: var(--space-lg);
+  /* Every dialog's body text is this one size; a summary or lead is never larger. */
   font-size: var(--text-body);
+}
+
+/* The lead line (what the dialog is for) is grey; the rest is the primary colour. */
+.cp-modal__lead {
+  color: var(--fg-muted);
+}
+
+/* A summary line in a dialog (Export's counts, a result): body size, 14 at most. */
+.cp-modal__summary {
+  font-size: min(var(--text-body), calc(14px * var(--scale)));
 }
 
 /* Paragraphs in a body are blocks 12 apart (the default <p> margin put 22 between text and edge). */
@@ -68,15 +84,9 @@
   margin-bottom: 0;
 }
 
-/* A tall dialog scrolls its body, so the title and the buttons stay on screen. */
-.cp-modal--wide > .cp-modal__body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-}
-
-.cp-modal--wide > .cp-modal__header,
-.cp-modal--wide > .cp-modal__footer {
+.cp-modal > .cp-modal__header,
+.cp-modal > .cp-modal__footer,
+.cp-modal > .cp-modal__reason {
   flex: none;
 }
 
@@ -85,7 +95,7 @@
   margin: 0;
   padding: 0 var(--space-lg) var(--space-sm);
   color: var(--fg-muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--text-body);
   text-align: right;
 }
 
@@ -101,4 +111,13 @@
    before Cancel and the main button. */
 .cp-modal__footer > .cp-modal__extra {
   margin-right: auto;
+}
+
+/* Extras (a count, a secondary link) at the footer's far left. */
+.cp-modal__footer > .cp-modal__footer-extra {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-right: auto;
+  min-width: 0;
 }

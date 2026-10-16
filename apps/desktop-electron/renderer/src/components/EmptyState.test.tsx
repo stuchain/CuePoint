@@ -16,6 +16,16 @@ describe("EmptyState", () => {
     expect(screen.getByText("Import a collection to begin.")).toBeInTheDocument();
   });
 
+  it("always draws an icon: the tick for an all-clear, the stack otherwise (area 66)", () => {
+    const { container, rerender } = render(<EmptyState headline="Nothing here" />);
+    expect(container.querySelector('.cp-empty-state__icon svg[data-icon="collections"]')).not.toBeNull();
+    rerender(<EmptyState tone="clear" headline="No possible duplicates" />);
+    expect(container.querySelector('.cp-empty-state__icon svg[data-icon="clean"]')).not.toBeNull();
+    expect(container.firstElementChild).toHaveClass("cp-empty-state--clear");
+    rerender(<EmptyState icon="keys" headline="No keys" />);
+    expect(container.querySelector('svg[data-icon="keys"]')).not.toBeNull();
+  });
+
   it("draws no button without an action", () => {
     render(<EmptyState headline="Nothing here" />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();

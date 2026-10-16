@@ -1,7 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ScreenHeader } from "./ScreenHeader";
+import { publishDetails } from "./detailsToggle";
 import rawCss from "./ScreenHeader.css?raw";
 import { stripComments } from "../../test/cssRules";
 
@@ -71,5 +73,58 @@ describe("ScreenHeader", () => {
     expect(root).toMatch(/border-bottom:\s*var\(--divider\)/);
     expect((css.match(/var\(--divider\)/g) ?? []).length).toBe(1);
     expect(css).toMatch(/\.cp-screen-header__title,[\s\S]*?font-size:\s*var\(--font-size-xl\)/);
+  });
+
+  it("keeps its top margin when it sticks, like the Keys page did", () => {
+    expect(/\.cp-screen-header\s*\{([^}]*)\}/.exec(css)![1]).toMatch(/top:\s*var\(--screen-header-stick,\s*var\(--page-gutter-top\)\)/);
+  });
+
+  it("keeps the title at the same place whatever sits beside it: extras share the title row", () => {
+    const { container } = render(<ScreenHeader title="Statistics" extras={<span>Scope picker</span>} />);
+    const row = container.querySelector<HTMLElement>(".cp-screen-header__title-row")!;
+    expect(within(row).getByText("Scope picker")).toBeInTheDocument();
+    expect(css).toMatch(/\.cp-screen-header__main \{[^}]*align-items:\s*start/);
+    expect(css).toMatch(/\.cp-screen-header__title-row \{[^}]*min-height:\s*var\(--toolbar-height\)/);
+  });
+
+  describe("the Details toggle", () => {
+    afterEach(() => act(() => publishDetails(null)));
+
+    it("is drawn only when the shell has published Track details", () => {
+      render(<ScreenHeader title="Keys" />);
+      expect(screen.queryByRole("button", { name: /track details/i })).toBeNull();
+    });
+
+    it("is the last button of the actions, after a divider", () => {
+      act(() => publishDetails({ open: false, toggle: () => undefined }));
+      const { container } = render(<ScreenHeader title="Library" actions={<button type="button">Export</button>} />);
+      const actions = container.querySelector(".cp-screen-header__actions")!;
+      const items = [...actions.children];
+      expect(items[0]).toHaveTextContent("Export");
+      expect(items[1]).toHaveClass("cp-details-divider");
+      const last = within(actions as HTMLElement).getAllByRole("button").pop()!;
+      expect(last).toHaveTextContent("Details");
+      expect(last).toHaveAccessibleName("Track details");
+    });
+
+    it("sits alone on the title row, with no divider, on a page without actions", () => {
+      act(() => publishDetails({ open: false, toggle: () => undefined }));
+      const { container } = render(<ScreenHeader title="Discover" />);
+      const actions = container.querySelector(".cp-screen-header__actions")!;
+      expect(actions.querySelector(".cp-details-divider")).toBeNull();
+      expect(within(actions as HTMLElement).getByRole("button", { name: "Track details" })).toBeInTheDocument();
+    });
+
+    it("looks pressed while the panel is open, and toggles it", async () => {
+      const toggle = vi.fn();
+      act(() => publishDetails({ open: true, toggle }));
+      render(<ScreenHeader title="Library" />);
+      const button = screen.getByRole("button", { name: "Track details" });
+      expect(button).toHaveClass("cp-details-toggle--open");
+      expect(button).toHaveAttribute("aria-expanded", "true");
+      await userEvent.click(button);
+      expect(toggle).toHaveBeenCalledTimes(1);
+      expect(css).toMatch(/\.cp-details-toggle--open[^{]*\{[^}]*background:\s*var\(--accent-primary\)/);
+    });
   });
 });

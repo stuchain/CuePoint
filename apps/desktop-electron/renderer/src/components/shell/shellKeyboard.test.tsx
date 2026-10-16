@@ -13,6 +13,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import { ToastProvider } from "../Toast";
 import { Sidebar } from "./Sidebar";
+import { ScreenHeader } from "./ScreenHeader";
 import { INSPECTOR_AUTO_OPEN_DELAY_MS, TrackInspector } from "./TrackInspector";
 import { setSelectedTrack } from "./selectedTrack";
 import { StatusStrip } from "./StatusStrip";
@@ -95,13 +96,14 @@ describe("inspector focus", () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
       <MemoryRouter>
+        <ScreenHeader title="Page" />
         <TrackInspector />
       </MemoryRouter>,
     );
 
     await user.click(screen.getByRole("button", { name: /hide track details/i }));
 
-    expect(screen.getByRole("button", { name: /show track details/i })).toHaveFocus();
+    expect(screen.getByRole("button", { name: /^track details$/i })).toHaveFocus();
     expect(document.activeElement).not.toBe(document.body);
   });
 
@@ -109,12 +111,13 @@ describe("inspector focus", () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
       <MemoryRouter>
+        <ScreenHeader title="Page" />
         <TrackInspector />
       </MemoryRouter>,
     );
     await user.click(screen.getByRole("button", { name: /hide track details/i }));
 
-    await user.click(screen.getByRole("button", { name: /show track details/i }));
+    await user.click(screen.getByRole("button", { name: /^track details$/i }));
 
     expect(screen.getByRole("button", { name: /hide track details/i })).toHaveFocus();
   });
@@ -123,6 +126,7 @@ describe("inspector focus", () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
       <MemoryRouter>
+        <ScreenHeader title="Page" />
         <TrackInspector />
       </MemoryRouter>,
     );
@@ -130,7 +134,7 @@ describe("inspector focus", () => {
     await user.keyboard("{Control>}i{/Control}");
 
     expect(document.activeElement).not.toBe(document.body);
-    expect(screen.getByRole("button", { name: /show track details/i })).toHaveFocus();
+    expect(screen.getByRole("button", { name: /^track details$/i })).toHaveFocus();
   });
 
   it("does not steal focus on first render", () => {
@@ -138,6 +142,7 @@ describe("inspector focus", () => {
     render(
       <MemoryRouter>
         <button type="button">elsewhere</button>
+        <ScreenHeader title="Page" />
         <TrackInspector />
       </MemoryRouter>,
     );
