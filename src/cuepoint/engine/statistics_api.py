@@ -4,8 +4,8 @@
 """Statistics over the wire (STATS-02, Phase 15).
 
 - ``GET /api/v1/statistics/plays?limit=&since=&tz=&since_read=&scope=``: the top
-  tracks, artists and labels, with never played and unknown counted, each with the
-  rules that open it in the Library.
+  tracks (with the key and BPM the Library shows), artists, labels and genres, with
+  never played and unknown counted, each with the rules that open it in the Library.
 
   - ``limit``: 10, 25, 50, 100 or 200 rows in each list; 10 when absent.
   - ``since=YYYY-MM-DD`` with ``tz=±HH:MM``: count plays from the start of that
@@ -19,13 +19,16 @@
 - ``GET /api/v1/statistics/spreads?scope=`` (STATS-03): how the scope's tracks
   spread by genre, tempo, year, date added, rating and loudness, each as buckets
   (with the rules that open them where a rule can say it), an unknown line and a
-  total. Loudness adds a ``no_file`` line and has no rules.
+  total. Loudness adds a ``no_file`` line and has no rules. It also carries the
+  scope's ``total_seconds``, ``average_seconds`` and ``average_bpm``, and its
+  ``artists`` and ``labels`` with the most tracks (each with the rules that open it).
 - ``GET /api/v1/statistics/health?scope=`` (STATS-03): the scope's tracks by file
   state and Beatport match (each with its rules), by analysis (counts only), and
   when the files were last checked. ``other`` adds Clean's duplicate, changed-
   since-decided and no-artwork counts over the scope (with their rules), and
   ``artwork_checked_at`` when the cover art was last read, which is the library's
-  and not the scope's. It takes the same ``scope``.
+  and not the scope's. ``not_synced`` counts the tracks whose CuePoint values are not
+  yet in their files (with its rules). It takes the same ``scope``.
 
 Every handler validates and delegates: what is counted, and what each number opens,
 is ``services/statistics_service.py``'s. A query parameter the route does not take

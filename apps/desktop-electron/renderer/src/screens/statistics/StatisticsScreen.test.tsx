@@ -1,13 +1,13 @@
 /**
  * The Statistics page's frame (STATS-04, DEC-162).
  *
- * The page against a faked bridge: its three sections and their loading
+ * The page against a faked bridge: its three tabs and their loading
  * state, the empty states (no library, no history), a failed read with Try
  * again, and the scope picker: remembered, falling back to the whole library
  * when what it named is gone, and reading again when it changes.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
@@ -60,6 +60,7 @@ function plays(overrides: Partial<StatisticsPlays> = {}): StatisticsPlays {
     tracks: [],
     artists: [],
     labels: [],
+    genres: [],
     never_played: count(3120),
     unknown: count(41),
     ...overrides,
@@ -76,6 +77,11 @@ function spreads(total = 4000): StatisticsSpreads {
   return {
     scope: "library",
     total,
+    total_seconds: 0,
+    average_seconds: null,
+    average_bpm: null,
+    artists: [],
+    labels: [],
     genre: SPREAD,
     tempo: SPREAD,
     year: SPREAD,
@@ -106,6 +112,7 @@ function health(total = 4000): StatisticsHealth {
     checked_at: "2026-10-08T12:00:00Z",
     other: { duplicates: count(0), disputed: count(0), no_artwork: count(0) },
     artwork_checked_at: null,
+    not_synced: count(0),
   };
 }
 
@@ -188,6 +195,10 @@ function renderPage(entry: string | { pathname: string; state: unknown } = "/sta
   );
 }
 
+/** A tab's panel, whichever tab is showing (the three are mounted once and hidden). */
+const panel = (id: "plays" | "library" | "health") =>
+  document.querySelector<HTMLElement>(`[data-panel-of="${id}"]`) as HTMLElement;
+
 const never = () => new Promise<never>(() => {});
 
 describe("the Statistics page (STATS-04)", () => {
@@ -201,13 +212,76 @@ describe("the Statistics page (STATS-04)", () => {
     vi.clearAllMocks();
   });
 
-  it("has the title and three sections, Plays, Your library and Health", async () => {
+  it("has the title and three tabs, Plays, Library and Health, opening on Plays", async () => {
     renderPage();
 
     expect(screen.getByRole("heading", { level: 1, name: "Statistics" })).toBeInTheDocument();
-    await screen.findByRole("heading", { level: 2, name: "Plays" });
-    const names = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
-    expect(names).toEqual(["Plays", "Your library", "Health"]);
+    const tabs = await screen.findAllByRole("tab");
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Plays", "Library4,000", "Health112 issues"]);
+    expect(screen.getByRole("tab", { name: "Plays" })).toHaveAttribute("aria-selected", "true");
+    expect(panel("plays")).toBeVisible();
+    expect(panel("library")).not.toBeVisible();
+    expect(panel("health")).not.toBeVisible();
+  });
+
+  it("carries the track count on Library and what needs fixing on Health", async () => {
+    install({
+      getStatisticsHealth: vi.fn().mockResolvedValue({
+        ...health(),
+        beatport: { ...health().beatport, needs_review: count(41) },
+        analyzed: { analyzed: 10, failed: 3, waiting: 5, no_file: 12 },
+        other: { duplicates: count(14), disputed: count(5), no_artwork: count(63) },
+      }),
+    });
+    renderPage();
+
+    // 12 missing + 0 unreadable + 41 to review + 14 duplicates + 5 changed + 3 failed.
+    expect(await screen.findByRole("tab", { name: /^Health 75 issues$/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Library 4,000" })).toBeInTheDocument();
+  });
+
+  it("starts the page at the top when another tab is chosen", async () => {
+    const scrollTo = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollTo", { configurable: true, value: scrollTo });
+    try {
+      renderPage();
+      const tab = await screen.findByRole("tab", { name: /^Health/ });
+      scrollTo.mockClear();
+      fireEvent.click(tab);
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+    } finally {
+      delete (HTMLElement.prototype as unknown as { scrollTo?: unknown }).scrollTo;
+    }
+  });
+
+  it("shows no fix chip when nothing needs fixing", async () => {
+    install({
+      getStatisticsHealth: vi.fn().mockResolvedValue({
+        ...health(),
+        files: { present: count(4000), missing: count(0), unreadable: count(0), not_checked: count(0) },
+        beatport: { ...health().beatport, needs_review: count(0) },
+      }),
+    });
+    renderPage();
+
+    await within(panel("health")).findByRole("heading", { level: 3, name: "Files", hidden: true });
+    expect(screen.getByRole("tab", { name: "Health" })).toBeInTheDocument();
+    expect(screen.queryByText(/issues/)).not.toBeInTheDocument();
+  });
+
+  it("keeps each tab's state while another is shown", async () => {
+    renderPage();
+    const since = await within(panel("plays")).findByRole("combobox", { name: "Since" });
+    await userEvent.selectOptions(since, "30d");
+
+    await userEvent.click(screen.getByRole("tab", { name: /^Library/ }));
+    expect(panel("library")).toBeVisible();
+    expect(panel("plays")).not.toBeVisible();
+    await userEvent.click(screen.getByRole("tab", { name: "Plays" }));
+
+    // The same select, with the choice still in it (the panel was hidden, not rebuilt).
+    expect(within(panel("plays")).getByRole("combobox", { name: "Since" })).toBe(since);
+    expect(since).toHaveValue("30d");
   });
 
   it("puts the scope picker beside the title and says what is counted in one summary line", async () => {
@@ -219,7 +293,7 @@ describe("the Statistics page (STATS-04)", () => {
     expect(header.querySelector(".cp-screen-header__summary")).not.toBeNull();
   });
 
-  it("shows each section reading while its answer is on the way", async () => {
+  it("shows each tab reading while its answer is on the way", async () => {
     install({
       getStatisticsPlays: vi.fn(never),
       getStatisticsSpreads: vi.fn(never),
@@ -227,27 +301,25 @@ describe("the Statistics page (STATS-04)", () => {
     });
     renderPage();
 
-    const plays = await screen.findByRole("region", { name: "Plays" });
-    expect(within(plays).getByRole("status")).toHaveTextContent("Loading plays");
-    expect(
-      within(screen.getByRole("region", { name: "Your library" })).getByRole("status"),
-    ).toHaveTextContent("Loading your library");
-    expect(
-      within(screen.getByRole("region", { name: "Health" })).getByRole("status"),
-    ).toHaveTextContent("Loading health");
+    await screen.findByRole("tab", { name: "Plays" });
+    const reading = (id: "plays" | "library" | "health") =>
+      within(panel(id)).getByRole("status", { hidden: true });
+    expect(reading("plays")).toHaveTextContent("Loading plays");
+    expect(reading("library")).toHaveTextContent("Loading your library");
+    expect(reading("health")).toHaveTextContent("Loading health");
   });
 
-  it("fills each section with what was read, and invents nothing", async () => {
+  it("fills each tab with what was read, and invents nothing", async () => {
     renderPage();
 
-    const plays = await screen.findByRole("region", { name: "Plays" });
-    await waitFor(() => expect(within(plays).getByText(/Never played: 3,120/)).toBeInTheDocument());
-    expect(within(plays).getByText(/Plays unknown: 41/)).toBeInTheDocument();
+    const plays = await panel("plays");
+    await waitFor(() => expect(within(plays).getByText("3,120")).toBeInTheDocument());
+    expect(within(plays).getByText("41")).toBeInTheDocument();
     expect(
-      within(screen.getByRole("region", { name: "Your library" })).getByRole("heading", { level: 3, name: "Genre" }),
+      within(panel("library")).getByRole("heading", { level: 3, name: "Genres", hidden: true }),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole("region", { name: "Health" })).getByText(`Last checked ${formatDayTime("2026-10-08T12:00:00Z")}`),
+      within(panel("health")).getByText(`checked ${formatDayTime("2026-10-08T12:00:00Z")}`),
     ).toBeInTheDocument();
     // The whole library is the scope until the picker says otherwise.
     expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "library" });
@@ -262,7 +334,7 @@ describe("the Statistics page (STATS-04)", () => {
     renderPage();
 
     expect(await screen.findByText("There is no library to count yet.")).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Plays" })).not.toBeInTheDocument();
+    expect(panel("plays")).not.toBeInTheDocument();
     expect(mock("getStatisticsPlays")).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole("button", { name: "Import a library" }));
@@ -276,15 +348,15 @@ describe("the Statistics page (STATS-04)", () => {
     });
     renderPage();
 
-    const section = await screen.findByRole("region", { name: "Plays" });
+    const section = await panel("plays");
     expect(await within(section).findByText("Play history starts at your next refresh")).toBeInTheDocument();
     // All-time counts are still the section's content.
-    expect(within(section).getByText(/Never played: 3,120/)).toBeInTheDocument();
+    expect(within(section).getByText("3,120")).toBeInTheDocument();
   });
 
   it("leaves the note out once there is history", async () => {
     renderPage();
-    const section = await screen.findByRole("region", { name: "Plays" });
+    const section = await panel("plays");
     await within(section).findByText(/Never played/);
     expect(screen.queryByText("Play history starts at your next refresh")).not.toBeInTheDocument();
   });
@@ -297,12 +369,12 @@ describe("the Statistics page (STATS-04)", () => {
     install({ getStatisticsPlays: read });
     renderPage();
 
-    const section = await screen.findByRole("region", { name: "Plays" });
+    const section = await panel("plays");
     expect(await within(section).findByText("Plays could not be read.")).toBeInTheDocument();
     expect(section).not.toHaveTextContent(/engine said no/);
     expect(reportUnexpected).toHaveBeenCalled();
     // The other sections are not taken down with it.
-    await within(screen.getByRole("region", { name: "Health" })).findByText(`Last checked ${formatDayTime("2026-10-08T12:00:00Z")}`);
+    await within(panel("health")).findByText(`checked ${formatDayTime("2026-10-08T12:00:00Z")}`);
 
     await userEvent.click(within(section).getByRole("button", { name: "Try again" }));
 
@@ -312,7 +384,7 @@ describe("the Statistics page (STATS-04)", () => {
 
   it("uses none of the words the app keeps out of its text", async () => {
     renderPage();
-    const section = await screen.findByRole("region", { name: "Plays" });
+    const section = await panel("plays");
     await within(section).findByText(/Never played/);
 
     expect(document.body.textContent).not.toMatch(/\b(engine|jobs?|quer(y|ies))\b/i);
@@ -480,12 +552,12 @@ describe("the Statistics page (STATS-04)", () => {
       await waitFor(() => expect(picker).toBeEnabled());
       await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
       await userEvent.selectOptions(picker, "playlist:2");
-      const section = screen.getByRole("region", { name: "Plays" });
-      await within(section).findByText(/Never played: 222/);
+      const section = panel("plays");
+      await within(section).findByText("222");
 
       await act(async () => late(plays({ never_played: count(111) })));
 
-      expect(within(section).getByText(/Never played: 222/)).toBeInTheDocument();
+      expect(within(section).getByText("222")).toBeInTheDocument();
       expect(section).not.toHaveTextContent("111");
     });
 
@@ -551,7 +623,7 @@ describe("the Statistics page (STATS-04)", () => {
             expect.objectContaining({ scope: "collection:10" }),
           ),
         );
-        await screen.findByText(/Never played: 3,120/);
+        await screen.findByText("3,120");
         // From here the dead scope is refused, as the engine does.
         mock("getStatisticsPlays").mockImplementation((params: { scope: string }) =>
           params.scope === "collection:10" ? Promise.reject(gone()) : Promise.resolve(plays()),
@@ -699,97 +771,67 @@ describe("the Statistics page (STATS-04)", () => {
     (window as unknown as { cuepoint: unknown }).cuepoint = {};
     renderPage();
 
-    const section = await screen.findByRole("region", { name: "Plays" });
+    const section = await panel("plays");
     await waitFor(() => expect(section).toHaveTextContent(/desktop app/i));
   });
 });
 
-describe("a link to the Health section (K3)", () => {
-  const scrolled = vi.fn();
-  const original = Element.prototype.scrollIntoView;
-
+describe("a link to the Health tab (K3)", () => {
   beforeEach(() => {
     window.localStorage.clear();
     install();
-    scrolled.mockReset();
-    Element.prototype.scrollIntoView = function (this: Element, ...args: unknown[]) {
-      scrolled(this, ...args);
-    } as typeof Element.prototype.scrollIntoView;
   });
 
   afterEach(() => {
-    Element.prototype.scrollIntoView = original;
     delete (window as unknown as { cuepoint?: unknown }).cuepoint;
     vi.clearAllMocks();
   });
 
-  const healthSection = () => screen.getByRole("region", { name: "Health" });
+  const healthTab = () => screen.getByRole("tab", { name: /^Health/ });
 
-  it("scrolls Health into view once its content is there, when the state asks", async () => {
+  it("opens the Health tab when the state asks", async () => {
     renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
 
-    await within(healthSection()).findByRole("heading", { level: 3, name: "Files" });
-    await waitFor(() => expect(scrolled).toHaveBeenCalledTimes(1));
-    expect(scrolled.mock.calls[0]![0]).toBe(healthSection());
+    await within(panel("health")).findByRole("heading", { level: 3, name: "Files" });
+    expect(healthTab()).toHaveAttribute("aria-selected", "true");
+    expect(panel("health")).toBeVisible();
+    expect(panel("plays")).not.toBeVisible();
   });
 
   it("does so for ?section=health too", async () => {
     renderPage("/statistics?section=health");
 
-    await within(healthSection()).findByRole("heading", { level: 3, name: "Files" });
-    await waitFor(() => expect(scrolled).toHaveBeenCalledTimes(1));
-    expect(scrolled.mock.calls[0]![0]).toBe(healthSection());
+    await within(panel("health")).findByRole("heading", { level: 3, name: "Files" });
+    expect(healthTab()).toHaveAttribute("aria-selected", "true");
   });
 
-  it("does not scroll while Health is still being read", async () => {
+  it("opens the tab at once, while Health is still being read", async () => {
     install({ getStatisticsHealth: vi.fn(never) });
     renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
 
-    await screen.findByRole("heading", { level: 2, name: "Plays" });
-    await within(healthSection()).findByRole("status");
-    expect(scrolled).not.toHaveBeenCalled();
+    await within(panel("health")).findByRole("status");
+    expect(healthTab()).toHaveAttribute("aria-selected", "true");
   });
 
-  it("scrolls once per navigation, not again when health is read again", async () => {
+  it("opens it once per navigation: choosing another tab stays, and a re-read does not bring it back", async () => {
     renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
-    await waitFor(() => expect(scrolled).toHaveBeenCalledTimes(1));
+    await within(panel("health")).findByRole("heading", { level: 3, name: "Files" });
 
+    await userEvent.click(screen.getByRole("tab", { name: "Plays" }));
     act(() => announceLibraryChange());
     await waitFor(() => expect(mock("getStatisticsHealth")).toHaveBeenCalledTimes(2));
-    await within(healthSection()).findByRole("heading", { level: 3, name: "Files" });
-    expect(scrolled).toHaveBeenCalledTimes(1);
+    await within(panel("health")).findByRole("heading", { level: 3, name: "Files", hidden: true });
+
+    expect(screen.getByRole("tab", { name: "Plays" })).toHaveAttribute("aria-selected", "true");
+    expect(panel("plays")).toBeVisible();
   });
 
-  it("waits for Plays and Your library too, which sit above Health", async () => {
-    let finishPlays: (value: StatisticsPlays) => void = () => {};
-    install({
-      getStatisticsPlays: vi.fn(
-        () => new Promise<StatisticsPlays>((resolve) => (finishPlays = resolve)),
-      ),
-    });
-    renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
-
-    await within(healthSection()).findByRole("heading", { level: 3, name: "Files" });
-    expect(scrolled).not.toHaveBeenCalled();
-
-    await act(async () => finishPlays(plays()));
-    await waitFor(() => expect(scrolled).toHaveBeenCalledTimes(1));
-    expect(scrolled.mock.calls[0]![0]).toBe(healthSection());
-  });
-
-  it("scrolls once Plays has failed, since a failure is as tall as it will get", async () => {
-    install({ getStatisticsPlays: vi.fn().mockRejectedValue(new Error("no")) });
-    renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
-
-    await waitFor(() => expect(scrolled).toHaveBeenCalledTimes(1));
-    expect(scrolled.mock.calls[0]![0]).toBe(healthSection());
-  });
-
-  it("does not scroll on an ordinary visit", async () => {
+  it("opens on Plays for an ordinary visit", async () => {
     renderPage();
 
-    await within(healthSection()).findByRole("heading", { level: 3, name: "Files" });
-    expect(scrolled).not.toHaveBeenCalled();
+    await within(panel("plays")).findByText("3,120");
+    expect(screen.getByRole("tab", { name: "Plays" })).toHaveAttribute("aria-selected", "true");
+    expect(panel("health")).not.toBeVisible();
   });
 });
 
@@ -812,7 +854,7 @@ describe("reading cover art from Health", () => {
 
   it("shows the button busy and disabled while the scan starts", async () => {
     startArtworkScan.mockReturnValue(new Promise(() => {}));
-    renderPage();
+    renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
     await userEvent.click(await screen.findByRole("button", { name: "Read cover art" }));
 
     const busy = await screen.findByRole("button", { name: "…" });
@@ -823,7 +865,7 @@ describe("reading cover art from Health", () => {
 
   it("reads health again and says it finished when the scan ends", async () => {
     startArtworkScan.mockResolvedValue({ job_id: "j1", id: "j1", state: "queued" });
-    renderPage();
+    renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
     await userEvent.click(await screen.findByRole("button", { name: "Read cover art" }));
     await waitFor(() => expect(jobEnds).not.toBeNull());
     expect(screen.getByRole("button", { name: "…" })).toBeDisabled();
@@ -838,7 +880,7 @@ describe("reading cover art from Health", () => {
 
   it("still reads health again and shows the toast when Health unmounts mid-scan", async () => {
     startArtworkScan.mockResolvedValue({ job_id: "j1", id: "j1", state: "queued" });
-    renderPage();
+    renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
     await userEvent.click(await screen.findByRole("button", { name: "Read cover art" }));
     await waitFor(() => expect(jobEnds).not.toBeNull());
 
@@ -850,7 +892,7 @@ describe("reading cover art from Health", () => {
     const picker = screen.getByRole("combobox", { name: "Scope" });
     await waitFor(() => expect(within(picker).getAllByRole("option").length).toBeGreaterThan(1));
     await userEvent.selectOptions(picker, "playlist:2");
-    await within(screen.getByRole("region", { name: "Health" })).findByRole("status");
+    await within(panel("health")).findByRole("status");
     expect(screen.queryByRole("button", { name: "Read cover art" })).not.toBeInTheDocument();
     const reads = mock("getStatisticsHealth").mock.calls.length;
 
@@ -879,11 +921,11 @@ describe("revisiting the page (C19d)", () => {
 
   it("revisit shows the old value immediately and refetches after an announce", async () => {
     const first = renderPage();
-    const plays = await screen.findByRole("region", { name: "Plays" });
-    await waitFor(() => expect(within(plays).getByText(/Never played: 3,120/)).toBeInTheDocument());
+    const plays = await panel("plays");
+    await waitFor(() => expect(within(plays).getByText("3,120")).toBeInTheDocument());
     await waitFor(() =>
       expect(
-        within(screen.getByRole("region", { name: "Health" })).getByText(/Last checked/),
+        within(panel("health")).getByText(/^checked /),
       ).toBeInTheDocument(),
     );
     first.unmount();
@@ -901,13 +943,13 @@ describe("revisiting the page (C19d)", () => {
     renderPage();
     // The first render: no section is reading, the numbers are already there.
     expect(screen.queryAllByRole("status")).toEqual([]);
-    expect(screen.getByText(/Never played: 3,120/)).toBeInTheDocument();
+    expect(screen.getByText("3,120")).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(reads()).toEqual(before);
 
     mock("getStatisticsPlays").mockResolvedValue(plays_(3121));
     act(() => announceLibraryChange());
-    expect(await screen.findByText(/Never played: 3,121/)).toBeInTheDocument();
+    expect(await screen.findByText("3,121")).toBeInTheDocument();
     await waitFor(() =>
       expect(reads()).toEqual({
         summary: before.summary + 1,

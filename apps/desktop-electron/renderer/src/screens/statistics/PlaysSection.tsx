@@ -1,26 +1,25 @@
 /**
- * The Plays section of the Statistics page (STATS-05, DEC-166, DEC-167).
+ * The Plays tab of the Statistics page (STATS-05, DEC-166, DEC-167).
  *
- * Most played tracks with a length and a "since" choice, the top artists and labels, the
- * counts of never played and plays unknown, and a button that keeps the list as a Collection.
+ * A "since" choice, then cards: the most played tracks (with their key and BPM, a play button
+ * at each row's end, and a button that keeps the list as a Collection), the top artists, labels
+ * and genres, and the counts of never played and plays unknown.
  * Every number is the route's; every click opens exactly the tracks the number counted (a
- * since-a-date artist or label says it opens more). The page's frame, loading and failed
- * states stay in `StatisticsScreen.tsx`; this is the body of its Plays section.
+ * since-a-date artist, label or genre says it opens more). The page's frame, loading and failed
+ * states stay in `StatisticsScreen.tsx`; this is the body of its Plays tab.
  *
- * The bar on a row is whole blocks of the interface unit (`PixelBars` draws a sized chart in an
- * SVG, which does not fit a list row), so it scales and themes with everything else. The one
- * motion is `state`: a row whose rank moved when the list was read again steps once.
+ * The bar behind a name is a share of the top row, drawn by `RankList`. The one motion is
+ * `state`: a row whose rank moved when the list was read again steps once.
  */
 import { useId, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type {
   FilterRuleSet,
-  StatisticsArtist,
-  StatisticsLabel,
   StatisticsPlays,
   StatisticsTrack,
 } from "../../api/cuepointBridge.types";
+import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
 import { LinkButton } from "../../components/LinkButton";
@@ -29,15 +28,17 @@ import { Notice } from "../../components/Notice";
 import { PlayButton } from "../../components/PlayButton";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
+import { KeyChip } from "../../components/wheel/KeyChip";
 import { changedMark, useCountChanges } from "../../components/wheel/useCountChanges";
 import { isEngineRefusal } from "../../api/bridgeError";
 import { reportUnexpected } from "../../reporting/reporting";
 import { formatCount, plural } from "../../format/counts";
 import { RETRY } from "../../format/words";
+import { formatBpm } from "../../format/units";
 import { libraryRulesState, libraryTrackState } from "../library/libraryLink";
 import { runQueueAction } from "../library/trackDetailsActions";
+import { RankList, type RankRow } from "./RankList";
 import {
-  PLAYS_LIMITS,
   SINCE_OPTIONS,
   collectionName,
   FIRST_YEAR,
@@ -48,7 +49,6 @@ import {
   savePlaysChoice,
   sinceStamp,
   type PlaysChoice,
-  type PlaysLimit,
   type PlaysSince,
 } from "./playsChoice";
 import "./PlaysSection.css";
@@ -90,11 +90,6 @@ function SinceDate({ saved, onDate }: { saved: string; onDate: (day: string) => 
     </div>
   );
 }
-
-/** How many artists and labels are listed. */
-const TOP_ROWS = 10;
-/** The longest bar, in blocks. */
-const BAR_BLOCKS = 24;
 
 const count = (n: number): string => formatCount(n);
 const playsWord = (n: number): string => plural(n, "play");
@@ -150,7 +145,6 @@ export function PlaysSection({
   );
   const marks = useCountChanges(ranks);
 
-  const topPlays = data.tracks[0]?.plays ?? 0;
   const windowed = choice.since !== "all" && !(dateChosen && choice.since === "date:");
   const noHistory = data.history_from === null;
   const open = (rules: FilterRuleSet) => navigate("/library", { state: libraryRulesState(rules) });
@@ -216,17 +210,28 @@ export function PlaysSection({
       ? "No plays were recorded in that time."
       : "None of these tracks has been played yet.";
 
+  /** A row of a ranked list: the name's plays, tracks and what opens them. */
+  function rankRow(
+    id: string,
+    row: { name: string; plays: number; tracks: number; rules: FilterRuleSet; opens_more: boolean },
+  ): RankRow {
+    return {
+      id,
+      name: row.name,
+      plays: row.plays,
+      tracks: row.tracks,
+      weight: row.plays,
+      rules: row.rules,
+      note: row.opens_more ? "opens all its played tracks" : undefined,
+      label: `${row.name}, ${playsWord(row.plays)}, ${tracksWord(row.tracks)}${row.opens_more ? `. Shows all of ${row.name}'s played tracks` : ""}`,
+    };
+  }
+
+  const biggerList = choice.limit === 10;
+
   return (
     <div className={`plays${stale ? " plays--stale" : ""}`} aria-busy={stale || undefined}>
       <div className="plays__controls">
-        <Select
-          label="Top"
-          value={String(choice.limit)}
-          options={PLAYS_LIMITS.map((n) => ({ value: String(n), label: `Top ${n}` }))}
-          onChange={(event) =>
-            change({ ...choice, limit: Number(event.target.value) as PlaysLimit })
-          }
-        />
         <Select
           label="Since"
           value={sinceValue}
@@ -247,6 +252,7 @@ export function PlaysSection({
             onDate={(day) => change({ ...choice, since: `date:${day}` })}
           />
         )}
+        <p className="statistics-note plays__footer">{footer(data)}</p>
       </div>
 
       {stale && <Loading what="plays" />}
@@ -278,216 +284,190 @@ export function PlaysSection({
 
       {noRefresh && (
         <p className="statistics-note">
-          There is no refresh to count from yet. Choose another
-          time, or refresh from Rekordbox.
+          There is no refresh to count from yet. Choose another time, or refresh from Rekordbox.
         </p>
       )}
 
       {!noRefresh && (
-      <>
-      <h3 className="plays__title cp-text-section" id={`${ids}-tracks`}>
-        Most played
-      </h3>
-      {data.tracks.length === 0 ? (
-        <p className="statistics-note">{emptyWords}</p>
-      ) : (
-        <ol className="plays__list" aria-labelledby={`${ids}-tracks`}>
-          {data.tracks.map((track, index) => {
-            const blocks = Math.max(1, Math.round((track.plays / Math.max(1, topPlays)) * BAR_BLOCKS));
-            return (
-              <li
-                key={track.id}
-                className="plays__item"
-                data-changed={changedMark(marks, String(track.id))}
-              >
-                <button
-                  type="button"
-                  className="plays__row"
-                  aria-label={`${index + 1}. ${track.title} by ${track.artist}, ${playsWord(track.plays)}`}
-                  onClick={() => navigate("/library", { state: libraryTrackState(track.id) })}
-                >
-                  <span className="plays__rank" aria-hidden="true">
-                    {index + 1}
-                  </span>
-                  <span className="plays__what" aria-hidden="true">
-                    <span className="plays__name">{track.title}</span>
-                    <span className="plays__artist">{track.artist}</span>
-                  </span>
-                  <span className="plays__bar" aria-hidden="true">
-                    <span className="plays__fill" style={{ ["--blocks" as string]: blocks }} />
-                  </span>
-                  <span className="plays__count" aria-hidden="true">
-                    {count(track.plays)}
-                  </span>
-                </button>
-                {canPreview && (
-                  <Hint text="Play">
-                    <PlayButton
-                      className="plays__play"
-                      aria-label={`Play ${track.title} by ${track.artist}`}
-                      onClick={() => void preview(track)}
-                    />
-                  </Hint>
+        <div className="plays__columns">
+          <div className="plays__column plays__column--main">
+            <section className="statistics-panel plays__tracks" aria-labelledby={`${ids}-tracks`}>
+              <div className="rank__head">
+                <h3 className="statistics-panel__title" id={`${ids}-tracks`}>
+                  Most played tracks
+                </h3>
+                <span className="rank__unit">{`top ${choice.limit}`}</span>
+              </div>
+              {data.tracks.length === 0 ? (
+                <p className="statistics-note">{emptyWords}</p>
+              ) : (
+                <>
+                  <div
+                    className={`plays__columns-head${canPreview ? " plays__columns-head--play" : ""}`}
+                    aria-hidden="true"
+                  >
+                    <span className="rank__hash">#</span>
+                    <span>Title</span>
+                    <span>Key</span>
+                    <span className="rank__number">BPM</span>
+                    <span className="rank__number">Plays</span>
+                  </div>
+                  <ol className="plays__list" aria-labelledby={`${ids}-tracks`}>
+                    {data.tracks.map((track, index) => (
+                      <li
+                        key={track.id}
+                        className="plays__item"
+                        data-changed={changedMark(marks, String(track.id))}
+                      >
+                        <button
+                          type="button"
+                          className="plays__row"
+                          aria-label={`${index + 1}. ${track.title} by ${track.artist}, ${playsWord(track.plays)}`}
+                          onClick={() => navigate("/library", { state: libraryTrackState(track.id) })}
+                        >
+                          <span className="rank__hash" aria-hidden="true">
+                            {index + 1}
+                          </span>
+                          <span className="plays__what" aria-hidden="true">
+                            <span className="plays__name">{track.title}</span>
+                            <span className="plays__artist">{track.artist}</span>
+                          </span>
+                          <span className="plays__key" aria-hidden="true">
+                            <KeyChip value={track.key} />
+                          </span>
+                          <span className="rank__number" aria-hidden="true">
+                            {formatBpm(track.bpm)}
+                          </span>
+                          <span className="rank__number rank__number--main" aria-hidden="true">
+                            {count(track.plays)}
+                          </span>
+                        </button>
+                        {canPreview && (
+                          <Hint text="Play">
+                            <PlayButton
+                              className="plays__play"
+                              aria-label={`Play ${track.title} by ${track.artist}`}
+                              onClick={() => void preview(track)}
+                            />
+                          </Hint>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </>
+              )}
+              {message && (
+                <p className="statistics-note" role="status">
+                  {message}
+                </p>
+              )}
+
+              <div className="plays__keep">
+                {canKeep && (
+                  <Button
+                    variant="secondary"
+                    disabled={data.tracks.length === 0 || keeping || stale}
+                    loading={keeping}
+                    onClick={() => void keep()}
+                  >
+                    Keep as Collection
+                  </Button>
                 )}
-              </li>
-            );
-          })}
-        </ol>
-      )}
-      {message && (
-        <p className="statistics-note" role="status">
-          {message}
-        </p>
-      )}
+                {canKeep && data.tracks.length > 0 && (
+                  <span className="statistics-note">Will be named “{name}”.</span>
+                )}
+                {(biggerList || choice.limit > 10) && (
+                  <LinkButton
+                    go={biggerList}
+                    className="plays__more"
+                    onClick={() => change({ ...choice, limit: biggerList ? 25 : 10 })}
+                  >
+                    {biggerList ? "See top 25" : "Show top 10"}
+                  </LinkButton>
+                )}
+              </div>
+              {kept && (
+                <p className="statistics-note" role="status">
+                  Kept {tracksWord(kept.tracks)} in rank order as “{kept.name}”, in Collections in
+                  the Library.{" "}
+                  <LinkButton go onClick={() => openKept(kept)}>
+                    Open it in the Library
+                  </LinkButton>
+                </p>
+              )}
+              {keepFailed && (
+                <p className="statistics-note" role="alert">
+                  {keepFailed}{" "}
+                  {staleList && onRetry && (
+                    <LinkButton onClick={onRetry}>Read the list again</LinkButton>
+                  )}
+                </p>
+              )}
+            </section>
 
-      {canKeep && (
-      <div className="plays__keep">
-        <Button
-          variant="secondary"
-          disabled={data.tracks.length === 0 || keeping || stale}
-          loading={keeping}
-          onClick={() => void keep()}
-        >
-          Keep as Collection
-        </Button>
-        {data.tracks.length > 0 && (
-          <span className="statistics-note">Will be named “{name}”.</span>
-        )}
-      </div>
-      )}
-      {kept && (
-        <p className="statistics-note" role="status">
-          Kept {tracksWord(kept.tracks)} in rank order as “{kept.name}”, in Collections in the
-          Library.{" "}
-          <LinkButton go onClick={() => openKept(kept)}>
-            Open it in the Library
-          </LinkButton>
-        </p>
-      )}
-      {keepFailed && (
-        <p className="statistics-note" role="alert">
-          {keepFailed}{" "}
-          {staleList && onRetry && (
-            <LinkButton onClick={onRetry}>
-              Read the list again
-            </LinkButton>
-          )}
-        </p>
-      )}
+            <RankList
+              title="Top genres"
+              unit="plays"
+              columns={["plays"]}
+              rows={data.genres.map((row) => rankRow(row.genre_key, row))}
+              empty="No plays to rank."
+              onOpen={open}
+            />
+          </div>
 
-      <div className="plays__pair">
-        <Ranking
-          title="Top artists"
-          rows={data.artists.slice(0, TOP_ROWS).map((a: StatisticsArtist) => ({
-            id: a.name_key,
-            name: a.name,
-            plays: a.plays,
-            tracks: a.tracks,
-            rules: a.rules,
-            opensMore: a.opens_more,
-          }))}
-          onOpen={open}
-        />
-        <Ranking
-          title="Top labels"
-          rows={data.labels.slice(0, TOP_ROWS).map((l: StatisticsLabel) => ({
-            id: l.label_key,
-            name: l.name,
-            plays: l.plays,
-            tracks: l.tracks,
-            rules: l.rules,
-            opensMore: l.opens_more,
-          }))}
-          onOpen={open}
-        />
-      </div>
-
-      <div className="plays__unplayed">
-        <Button
-          variant="secondary"
-          disabled={data.never_played.count === 0}
-          onClick={() => open(data.never_played.rules)}
-        >
-          {`Never played: ${count(data.never_played.count)}`}
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={data.unknown.count === 0}
-          onClick={() => open(data.unknown.rules)}
-        >
-          {`Plays unknown: ${count(data.unknown.count)}`}
-        </Button>
-      </div>
-      </>
+          <div className="plays__column">
+            <RankList
+              title="Top artists"
+              unit="plays · tracks"
+              columns={["tracks", "plays"]}
+              rows={data.artists.map((row) => rankRow(row.name_key, row))}
+              empty="No plays to rank."
+              onOpen={open}
+            />
+            <RankList
+              title="Top labels"
+              unit="plays · tracks"
+              columns={["tracks", "plays"]}
+              rows={data.labels.map((row) => rankRow(row.label_key, row))}
+              empty="No plays to rank."
+              onOpen={open}
+            />
+            <section className="statistics-panel plays__unplayed" aria-labelledby={`${ids}-unplayed`}>
+              <h3 className="statistics-panel__title" id={`${ids}-unplayed`}>
+                Not played
+              </h3>
+              {(
+                [
+                  ["Never played", data.never_played],
+                  ["Plays unknown", data.unknown],
+                ] as const
+              ).map(([label, found]) => (
+                <div key={label} className="plays__unplayed-row">
+                  <span>{label}</span>
+                  <Badge tone="neutral">{count(found.count)}</Badge>
+                  {found.count > 0 && (
+                    <LinkButton
+                      go
+                      aria-label={`Open in Library: ${label}`}
+                      onClick={() => open(found.rules)}
+                    >
+                      Open in Library
+                    </LinkButton>
+                  )}
+                </div>
+              ))}
+            </section>
+          </div>
+        </div>
       )}
-
-      <p className="statistics-note plays__footer">{footer(data)}</p>
     </div>
   );
 }
 
-/** "Counts from your refresh on Nov 2. History since Oct 8." */
+/** "From your Rekordbox play counts · history since Mar 3, 2026 · last refresh Oct 14". */
 function footer(data: StatisticsPlays): string {
   if (!data.last_read || !data.history_from) {
-    return "No refresh has been recorded yet. The counts are the ones in your library.";
+    return "From your Rekordbox play counts · no refresh recorded yet";
   }
-  return `Counts from your refresh ${onStamp(data.last_read)}. History since ${sinceStamp(data.history_from)}.`;
-}
-
-interface RankingRow {
-  id: string;
-  name: string;
-  plays: number;
-  tracks: number;
-  rules: FilterRuleSet;
-  opensMore: boolean;
-}
-
-function Ranking({
-  title,
-  rows,
-  onOpen,
-}: {
-  title: string;
-  rows: RankingRow[];
-  onOpen: (rules: FilterRuleSet) => void;
-}) {
-  const id = useId();
-  return (
-    <div className="plays__ranking">
-      <h3 className="plays__title cp-text-section" id={id}>
-        {title}
-      </h3>
-      {rows.length === 0 ? (
-        <p className="statistics-note">No plays to rank.</p>
-      ) : (
-        <ol className="plays__list" aria-labelledby={id}>
-          {rows.map((row, index) => (
-            <li key={row.id} className="plays__item plays__item--stack">
-              <button
-                type="button"
-                className="plays__row"
-                aria-label={`${index + 1}. ${row.name}, ${playsWord(row.plays)}, ${tracksWord(row.tracks)}${row.opensMore ? `. Shows all of ${row.name}'s played tracks` : ""}`}
-                onClick={() => onOpen(row.rules)}
-              >
-                <span className="plays__rank" aria-hidden="true">
-                  {index + 1}
-                </span>
-                <span className="plays__what" aria-hidden="true">
-                  <span className="plays__name">{row.name}</span>
-                  <span className="plays__artist">
-                    {tracksWord(row.tracks)}
-                    {row.opensMore ? ` · Shows all of ${row.name}'s played tracks` : ""}
-                  </span>
-                </span>
-                <span className="plays__count" aria-hidden="true">
-                  {count(row.plays)}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ol>
-      )}
-    </div>
-  );
+  return `From your Rekordbox play counts · history since ${sinceStamp(data.history_from)} · last refresh ${sinceStamp(data.last_read)}`;
 }

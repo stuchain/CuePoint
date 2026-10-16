@@ -50,6 +50,7 @@ ANSWER_KEYS = {
     "tracks",
     "artists",
     "labels",
+    "genres",
     "never_played",
     "unknown",
 }
@@ -135,7 +136,14 @@ class TestTheAnswer:
 
         assert status == 200
         assert set(payload) == ANSWER_KEYS
-        assert set(payload["tracks"][0]) == {"id", "title", "artist", "plays"}
+        assert set(payload["tracks"][0]) == {
+            "id",
+            "title",
+            "artist",
+            "plays",
+            "key",
+            "bpm",
+        }
         assert set(payload["artists"][0]) == {
             "name",
             "name_key",
@@ -387,6 +395,11 @@ class TestSpreadsAndHealth:
         assert set(payload) == {
             "scope",
             "total",
+            "total_seconds",
+            "average_seconds",
+            "average_bpm",
+            "artists",
+            "labels",
             "genre",
             "tempo",
             "year",
@@ -419,6 +432,7 @@ class TestSpreadsAndHealth:
             "checked_at",
             "other",
             "artwork_checked_at",
+            "not_synced",
         }
         assert payload["files"]["present"]["count"] == 5
         assert payload["analyzed"]["analyzed"] == 2

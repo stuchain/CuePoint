@@ -1,8 +1,12 @@
+import type { ReactNode } from "react";
+
 import "./Tabs.css";
 
 interface TabItem {
   id: string;
   label: string;
+  /** Beside the label, in the same button: a count or a chip (Statistics' "Library 2,847"). */
+  detail?: ReactNode;
   disabled?: boolean;
 }
 
@@ -48,6 +52,9 @@ export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix }: T
           onClick={() => onChange(tab.id)}
         >
           {tab.label}
+          {tab.detail !== undefined && tab.detail !== null && (
+            <span className="cp-tabs__detail">{tab.detail}</span>
+          )}
         </button>
       ))}
     </div>

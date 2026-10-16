@@ -3,7 +3,7 @@
  * and Open in Keys carrying the scope as ticked sources.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
@@ -91,27 +91,28 @@ afterEach(() => {
 });
 
 describe("the key summary (STATS-06)", () => {
-  it("says how many tracks have a key, the three commonest and those with none", async () => {
+  it("lists the commonest keys with their counts, and says how many have a key and how many none", async () => {
     renderSummary("library");
+    expect(await screen.findByText("1,840 with a key · 372 with none")).toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "Commonest keys" });
     expect(
-      await screen.findByText(
-        "1,840 of 2,212 tracks have a Beatport key · most common 8A (142), 9A (131), 7A (118) · No Beatport key: 372",
-      ),
-    ).toBeInTheDocument();
+      within(list)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["8A142", "9A131", "7A118", "1A5"]);
     expect(population).toHaveBeenCalledWith({ sources: [{ kind: "all" }] });
   });
 
-  it("says 'No Beatport key: 0' and names no commonest key when none is held", async () => {
+  it("draws no list and says '0 with a key' when none is held", async () => {
     renderSummary("library", { total: 4, no_key: 4, keys: [] });
-    expect(
-      await screen.findByText("0 of 4 tracks have a Beatport key · No Beatport key: 4"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("0 with a key · 4 with none")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Commonest keys" })).toBeNull();
   });
 
   it("opens Keys on the whole library from the whole library", async () => {
     const user = userEvent.setup();
     renderSummary("library");
-    await screen.findByText(/have a Beatport key/);
+    await screen.findByText(/with a key/);
     await user.click(screen.getByRole("button", { name: "Open in Keys" }));
     expect(screen.getByTestId("where")).toHaveTextContent("/keys");
     expect(ticked()).toEqual([]);
@@ -120,7 +121,7 @@ describe("the key summary (STATS-06)", () => {
   it("counts, and opens Keys on, a playlist", async () => {
     const user = userEvent.setup();
     renderSummary("playlist:7");
-    await screen.findByText(/have a Beatport key/);
+    await screen.findByText(/with a key/);
     expect(population).toHaveBeenCalledWith({ sources: [{ kind: "playlist", id: 7 }] });
     await user.click(screen.getByRole("button", { name: "Open in Keys" }));
     expect(ticked()).toEqual([{ kind: "playlist", id: 7 }]);
@@ -129,21 +130,21 @@ describe("the key summary (STATS-06)", () => {
   it("counts, and opens Keys on, a Collection and a Set by their own kind", async () => {
     const user = userEvent.setup();
     const { unmount } = renderSummary("collection:10");
-    await screen.findByText(/have a Beatport key/);
+    await screen.findByText(/with a key/);
     expect(population).toHaveBeenCalledWith({ sources: [{ kind: "collection", id: 10 }] });
     await user.click(screen.getByRole("button", { name: "Open in Keys" }));
     expect(ticked()).toEqual([{ kind: "collection", id: 10 }]);
     unmount();
 
     renderSummary("collection:11");
-    await screen.findByText(/have a Beatport key/);
+    await screen.findByText(/with a key/);
     expect(population).toHaveBeenCalledWith({ sources: [{ kind: "set", id: 11 }] });
   });
 
   it("ticks a Smart Collection's own places when its rules are only places", async () => {
     const user = userEvent.setup();
     renderSummary("collection:13");
-    await screen.findByText(/have a Beatport key/);
+    await screen.findByText(/with a key/);
     expect(population).toHaveBeenCalledWith({ sources: [{ kind: "playlist", id: 4 }] });
     await user.click(screen.getByRole("button", { name: "Open in Keys" }));
     expect(ticked()).toEqual([{ kind: "playlist", id: 4 }]);
@@ -154,7 +155,7 @@ describe("the key summary (STATS-06)", () => {
     renderSummary("collection:12");
     expect(await screen.findByText(/not a Smart Collection's rules, so it opens on your whole library/)).toBeInTheDocument();
     expect(population).not.toHaveBeenCalled();
-    expect(screen.queryByText(/have a Beatport key/)).toBeNull();
+    expect(screen.queryByText(/with a key/)).toBeNull();
     await user.click(screen.getByRole("button", { name: "Open in Keys" }));
     expect(screen.getByTestId("where")).toHaveTextContent("/keys");
     expect(ticked()).toEqual([]);
@@ -180,11 +181,11 @@ describe("the key summary (STATS-06)", () => {
 
   it("keeps the last numbers on screen while the same scope is read again", async () => {
     renderSummary("library");
-    await screen.findByText(/have a Beatport key/);
+    await screen.findByText(/with a key/);
     population.mockReturnValue(new Promise(() => {}));
     act(() => announceLibraryChange());
     await waitFor(() => expect(population).toHaveBeenCalledTimes(2));
-    expect(screen.getByText(/have a Beatport key/)).toBeInTheDocument();
+    expect(screen.getByText(/with a key/)).toBeInTheDocument();
     expect(screen.queryByText("Reading keys…")).toBeNull();
   });
 

@@ -73,3 +73,14 @@
   color: var(--fg-primary);
   font-weight: var(--control-font-weight);
 }
+
+/* A count or chip beside a tab's label: muted, and it keeps one line with it. */
+.cp-tabs__detail {
+  margin-left: var(--space-sm);
+  color: var(--fg-muted);
+  font-weight: var(--control-font-weight);
+}
+
+.cp-tabs__tab--active .cp-tabs__detail {
+  color: var(--fg-muted);
+}

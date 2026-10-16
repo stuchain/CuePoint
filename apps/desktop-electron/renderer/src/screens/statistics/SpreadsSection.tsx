@@ -1,11 +1,13 @@
 /**
- * The spreads of "Your library" (STATS-06): six panels, each a PixelBars chart of what the
- * engine counted, with a line for the tracks it cannot place ("41 tracks have no tempo").
+ * The charts of the Library tab (STATS-06): BPM, Year and Loudness, and behind "More charts"
+ * Date added and Rating. Each is a PixelBars chart of what the engine counted, with a line for
+ * the tracks it cannot place ("41 tracks have no tempo"). Genre is a list now (`LibrarySection`),
+ * and Keys is drawn by `KeySummary`.
  *
- * Genre and Rating are named buckets (horizontal); Tempo, Year, Date added and Loudness are
- * ordered ones (vertical). A bar whose bucket has rules opens the Library on them (the engine
- * has already put the scope's own rules in); a bucket without rules, and every loudness bar,
- * is drawn and opens nothing. A line that has rules gets a visible **Open in Library** button.
+ * Rating is a named bucket chart (horizontal); the rest are ordered ones (vertical). A bar whose
+ * bucket has rules opens the Library on them (the engine has already put the scope's own rules
+ * in); a bucket without rules, and every loudness bar, is drawn and opens nothing. A line that
+ * has rules gets a visible **Open in Library** link.
  * Tempo, Year and Loudness are numeric axes, so the integers the engine did not send are drawn as
  * empty bins and a long empty stretch as one ⋯ break (`fillBins`). Every number is the engine's.
  */
@@ -18,7 +20,7 @@ import type {
   StatisticsSpread,
   StatisticsSpreads,
 } from "../../api/cuepointBridge.types";
-import { Button } from "../../components/Button";
+import { LinkButton } from "../../components/LinkButton";
 import { plural } from "../../format/counts";
 import { formatBpmText, formatLufs } from "../../format/units";
 import { PixelBars } from "../../components/charts/PixelBars";
@@ -36,8 +38,10 @@ interface Item {
   gap: boolean;
 }
 
+export type ChartId = "tempo" | "year" | "date_added" | "rating" | "loudness";
+
 interface Panel {
-  id: "genre" | "tempo" | "year" | "date_added" | "rating" | "loudness";
+  id: ChartId;
   title: string;
   orientation: "horizontal" | "vertical";
   bucketLabel: string;
@@ -58,23 +62,15 @@ const is = (n: number) => (n === 1 ? "is" : "are");
 
 const PANELS: Panel[] = [
   {
-    id: "genre",
-    title: "Genre",
-    orientation: "horizontal",
-    bucketLabel: "Genre",
-    unknown: (n) => `${tracksOf(n)} ${has(n)} no genre`,
-    opens: true,
-  },
-  {
     id: "tempo",
-    title: "Tempo",
+    title: "BPM",
     orientation: "vertical",
     bucketLabel: "Tempo (BPM)",
     axis: (value) => String(value),
     fill: (n) => formatBpmText(n),
-    unknown: (n) => `${tracksOf(n)} ${has(n)} no tempo`,
+    unknown: (n) => `${tracksOf(n)} ${has(n)} no BPM`,
     opens: true,
-    unit: "BPM",
+    unit: "tracks",
   },
   {
     id: "year",
@@ -84,6 +80,7 @@ const PANELS: Panel[] = [
     fill: String,
     unknown: (n) => `${tracksOf(n)} ${has(n)} no year`,
     opens: true,
+    unit: "tracks",
   },
   {
     id: "date_added",
@@ -92,6 +89,7 @@ const PANELS: Panel[] = [
     bucketLabel: "Month",
     unknown: (n) => `${tracksOf(n)} ${has(n)} an unknown date added`,
     opens: true,
+    unit: "tracks",
   },
   {
     id: "rating",
@@ -100,6 +98,7 @@ const PANELS: Panel[] = [
     bucketLabel: "Rating",
     unknown: (n) => `${tracksOf(n)} ${is(n)} unrated`,
     opens: true,
+    unit: "tracks",
   },
   {
     id: "loudness",
@@ -143,19 +142,25 @@ function Line({ text, line, onOpen }: LineProps) {
     <p className="statistics-note statistics-panel__line">
       {text}
       {onOpen && rules && (
-        <Button
-          variant="secondary"
+        <LinkButton
+          go
           aria-label={`Open in Library: ${line.label}`}
           onClick={() => onOpen(rules)}
         >
           Open in Library
-        </Button>
+        </LinkButton>
       )}
     </p>
   );
 }
 
-export function SpreadsSection({ spreads }: { spreads: StatisticsSpreads }) {
+interface SpreadsSectionProps {
+  spreads: StatisticsSpreads;
+  /** Which charts to draw, in this order. */
+  charts: readonly ChartId[];
+}
+
+export function SpreadsSection({ spreads, charts }: SpreadsSectionProps) {
   const navigate = useNavigate();
   const openRules = (rules: FilterRuleSet) =>
     navigate("/library", { state: libraryRulesState(rules) });
@@ -166,7 +171,7 @@ export function SpreadsSection({ spreads }: { spreads: StatisticsSpreads }) {
 
   return (
     <>
-      {PANELS.map((panel) => {
+      {charts.map((id) => PANELS.find((panel) => panel.id === id)!).map((panel) => {
         const spread = spreads[panel.id];
         const items = itemsById[panel.id]!;
         return (
@@ -177,7 +182,7 @@ export function SpreadsSection({ spreads }: { spreads: StatisticsSpreads }) {
           >
             <h3 className="statistics-panel__title">
               {panel.title}
-              {panel.unit && <span className="statistics-panel__unit"> ({panel.unit})</span>}
+              {panel.unit && <span className="statistics-panel__unit"> {panel.unit}</span>}
             </h3>
             {items.length > 0 ? (
               <PixelBars<Item>

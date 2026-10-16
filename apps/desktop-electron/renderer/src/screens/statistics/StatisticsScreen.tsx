@@ -1,18 +1,20 @@
 /**
  * The Statistics page (STATS-04, DEC-138, DEC-162).
  *
- * What you play most and how the library is made up, in three sections: Plays, Your library
- * and Health. This step is the frame: the page header with its scope picker, each section's
- * heading with its loading, failed and empty states, and a plain count of what was read.
- * STATS-05 to STATS-07 fill the sections; nothing here is drawn from numbers the engine did
- * not send.
+ * What you play most, how the library is made up and what needs fixing, as three tabs: Plays,
+ * Library and Health. The page is the frame: the header with its scope picker and a summary line
+ * of what is counted, the tab strip (Library carries the track count, Health a "N issues" chip),
+ * and each tab's loading, failed and empty states. Nothing here is drawn from numbers the
+ * engine did not send.
  *
  * Every number is the engine's, for the scope picked: the whole library, a Rekordbox
- * playlist, or one of CuePoint's Collections or Sets. One read per section, so one failing
- * leaves the other two as they were, and every failure has its own **Try again**.
+ * playlist, or one of CuePoint's Collections or Sets. One read per tab, so one failing
+ * leaves the other two as they were, and every failure has its own **Try again**. The three
+ * tabs are mounted once and hidden when not shown, so each keeps its choices (the Plays "since",
+ * a list opened to more rows, the extra charts) while another is looked at.
  *
- * A link can ask for the Health section (`statisticsLink.ts`), because library health lives
- * here now: the page scrolls to it once its content is in, once per navigation.
+ * A link can ask for the Health tab (`statisticsLink.ts`), because library health lives here
+ * now: the page opens it, once per navigation.
  */
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -21,18 +23,20 @@ import { useLocation, useNavigate } from "react-router-dom";
 import type { CleanJobStarted, LibrarySummary } from "../../api/cuepointBridge.types";
 import { LIBRARY_SUMMARY, useSharedRead } from "../../api/sharedReads";
 import { useToast } from "../../components";
+import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
-import { plural } from "../../format/counts";
+import { Tabs, panelId, tabId } from "../../components/Tabs";
+import { formatCount, plural } from "../../format/counts";
 import { RETRY } from "../../format/words";
 import { Select } from "../../components/Select";
 import { useCleanJob, type CleanMessageTone } from "../clean/useCleanJob";
 import { libraryImportState } from "../library/libraryLink";
 import { HealthSection } from "./HealthSection";
-import { KeySummary } from "./KeySummary";
-import { SpreadsSection } from "./SpreadsSection";
+import { healthToFix } from "./healthCount";
+import { LibrarySection } from "./LibrarySection";
 import { PlaysSection } from "./PlaysSection";
 import { loadPlaysChoice } from "./playsChoice";
 import { statisticsFocus } from "./statisticsLink";
@@ -56,9 +60,11 @@ import "./statistics.css";
 
 const NOT_HERE = "Statistics can be read in the desktop app, once CuePoint has started.";
 
-interface SectionProps {
-  id: string;
-  title: string;
+type TabId = "plays" | "library" | "health";
+
+interface TabPanelProps {
+  id: TabId;
+  active: boolean;
   status: "loading" | "ready" | "error" | "unavailable";
   loading: string;
   failed: string;
@@ -66,13 +72,17 @@ interface SectionProps {
   children: ReactNode;
 }
 
-/** One section: its heading, then what it is doing (reading, failed, or its body). */
-function Section({ id, title, status, loading, failed, onRetry, children }: SectionProps) {
+/** One tab's panel: what it is doing (reading, failed, or its body). Hidden, not unmounted. */
+function TabPanel({ id, active, status, loading, failed, onRetry, children }: TabPanelProps) {
   return (
-    <section className="statistics-section" aria-labelledby={`statistics-${id}`}>
-      <h2 id={`statistics-${id}`} className="statistics-section__title">
-        {title}
-      </h2>
+    <div
+      role="tabpanel"
+      id={panelId("statistics", id)}
+      aria-labelledby={tabId("statistics", id)}
+      className="statistics-tabpanel"
+      hidden={!active}
+      data-panel-of={id}
+    >
       {status === "loading" && <Loading what={loading} />}
       {status === "unavailable" && <p className="statistics-note">{NOT_HERE}</p>}
       {status === "error" && (
@@ -87,7 +97,7 @@ function Section({ id, title, status, loading, failed, onRetry, children }: Sect
         </Notice>
       )}
       {status === "ready" && children}
-    </section>
+    </div>
   );
 }
 
@@ -144,30 +154,32 @@ export function StatisticsScreen() {
     });
   }, [runJob, push, retryHealth]);
 
-  // A link that is about health lands on the Health section, not the top of the page. Its
-  // content has to be there first or the section is a heading with a spinner under it; and
-  // once per navigation, so a read that comes round again does not scroll the person back.
+  // A link that is about health opens the Health tab, once per navigation, so choosing another
+  // tab afterwards (or a read coming round again) does not send the person back.
   const location = useLocation();
   const asked = statisticsFocus(location);
-  // Plays and Your library sit above Health: while either is still loading, its spinner is
-  // shorter than its content and the scroll would land short of Health once they fill in.
-  const above = plays.status !== "loading" && spreads.status !== "loading";
-  const focusToken =
-    asked?.focus === "health" && health.status === "ready" && above ? asked.token : null;
-  const scrolledTo = useRef<string | null>(null);
+  const [tab, setTab] = useState<TabId>("plays");
+  const openedFor = useRef<string | null>(null);
+  const focusToken = asked?.focus === "health" ? asked.token : null;
   useEffect(() => {
-    if (!focusToken || scrolledTo.current === focusToken) return;
-    scrolledTo.current = focusToken;
-    document
-      .querySelector('section[aria-labelledby="statistics-health"]')
-      ?.scrollIntoView?.({ block: "start" });
+    if (!focusToken || openedFor.current === focusToken) return;
+    openedFor.current = focusToken;
+    setTab("health");
   }, [focusToken]);
+
+  // Another tab, or a link to Health, starts at the top: the page is one scroll shared by all three.
+  const pageRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    pageRef.current?.scrollTo?.({ top: 0 });
+  }, [tab, focusToken]);
 
   const choose = (value: string) => {
     const form = rememberedForm(value, trees.playlists);
     setRemembered(form);
     saveScope(form);
   };
+
+  const toFix = health.data ? healthToFix(health.data) : 0;
 
   // The page summary line: what is being counted, as a facts line.
   const summaryValue = answered?.summary ?? null;
@@ -201,13 +213,36 @@ export function StatisticsScreen() {
         ) : undefined
       }
       summary={summaryLine}
+      tabs={
+        answered !== null && !libraryEmpty ? (
+          <Tabs
+            idPrefix="statistics"
+            activeId={tab}
+            onChange={(id) => setTab(id as TabId)}
+            tabs={[
+              { id: "plays", label: "Plays" },
+              {
+                id: "library",
+                label: "Library",
+                detail: spreads.data ? formatCount(spreads.data.total) : undefined,
+              },
+              {
+                id: "health",
+                label: "Health",
+                detail:
+                  toFix > 0 ? <Badge tone="warning">{toFix === 1 ? "1 issue" : `${formatCount(toFix)} issues`}</Badge> : undefined,
+              },
+            ]}
+          />
+        ) : undefined
+      }
     />
   );
 
   if (libraryEmpty) {
     const empty = noLibraryState();
     return (
-      <div className="screen screen--scroll statistics-page">
+      <div ref={pageRef} className="screen screen--scroll statistics-page">
         {header}
         <EmptyState
           icon="statistics"
@@ -229,12 +264,12 @@ export function StatisticsScreen() {
   const noHistory = plays.data ? noHistoryState(plays.data.history_from) : null;
 
   return (
-    <div className="screen screen--scroll statistics-page">
+    <div ref={pageRef} className="screen screen--scroll statistics-page">
       {header}
 
-      <Section
+      <TabPanel
         id="plays"
-        title="Plays"
+        active={tab === "plays"}
         status={plays.status}
         loading="plays"
         failed="Plays could not be read."
@@ -258,27 +293,32 @@ export function StatisticsScreen() {
             />
           </>
         )}
-      </Section>
+      </TabPanel>
 
-      <Section
+      <TabPanel
         id="library"
-        title="Your library"
+        active={tab === "library"}
         status={spreads.status}
         loading="your library"
         failed="Your library could not be read."
         onRetry={spreads.retry}
       >
         {spreads.data && (
-          <div className="statistics-panels">
-            <SpreadsSection spreads={spreads.data} />
-            <KeySummary scope={spreads.data.scope} collections={trees.collections} />
-          </div>
+          <LibrarySection
+            spreads={spreads.data}
+            collections={trees.collections}
+            playlistCount={
+              spreads.data.scope === "library" && typeof summaryValue?.playlist_count === "number"
+                ? summaryValue.playlist_count
+                : null
+            }
+          />
         )}
-      </Section>
+      </TabPanel>
 
-      <Section
+      <TabPanel
         id="health"
-        title="Health"
+        active={tab === "health"}
         status={health.status}
         loading="health"
         failed="Health could not be read."
@@ -291,7 +331,7 @@ export function StatisticsScreen() {
             onReadCoverArt={readCoverArt}
           />
         )}
-      </Section>
+      </TabPanel>
     </div>
   );
 }

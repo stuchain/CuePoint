@@ -2,7 +2,7 @@
 
 Counts are of distinct tracks; ``waiting`` is the Match tab's number (needs
 review plus changed since decided); a running match job is shared by every
-playlist that holds a track of its plan.
+playlist the match was started for.
 """
 
 from __future__ import annotations
@@ -237,22 +237,74 @@ class TestRunning:
         assert statuses.playlists[0].running is None
         assert statuses.whole_library_running is None
 
-    def test_a_job_shared_by_two_playlists_reports_to_both(self, db, service):
+    def test_only_the_playlist_the_match_was_started_for_is_running(self, db, service):
+        # Regression: a track shared with other playlists made every one of them
+        # say "Matching x of y" while one playlist was matched.
         a, b, c = (add_track(db, f"/m/{i}.mp3") for i in range(3))
         one = add_playlist(db, "One", [a, b])
         two = add_playlist(db, "Two", [b, c])
         other = add_playlist(db, "Other", [c])
         add_job_plan(db, "job-1", {a: True, b: False})
 
-        statuses = service.playlists("job-1")
+        statuses = service.playlists("job-1", [one])
 
         first = status_of(statuses, one).running
-        second = status_of(statuses, two).running
         assert (first.job_id, first.done, first.total) == ("job-1", 1, 2)
-        assert (second.job_id, second.done, second.total) == ("job-1", 0, 1)
+        assert status_of(statuses, two).running is None
+        assert not status_of(statuses, two).queued
         assert status_of(statuses, other).running is None
-        whole = statuses.whole_library_running
-        assert (whole.done, whole.total) == (1, 2)
+        # a run for chosen playlists is not the whole library's
+        assert statuses.whole_library_running is None
+
+    def test_a_whole_library_or_unknown_scope_runs_no_playlist(self, db, service):
+        a = add_track(db)
+        playlist = add_playlist(db, "P", [a])
+        add_job_plan(db, "job-1", {a: False})
+        statuses = service.playlists("job-1")
+        assert status_of(statuses, playlist).running is None
+        assert statuses.whole_library_running.total == 1
+
+    def test_a_whole_library_run_shows_on_the_library_row_only(self, db, service):
+        a = add_track(db)
+        add_playlist(db, "P", [a])
+        add_job_plan(db, "job-1", {a: False})
+        assert service.playlists("job-1", []).whole_library_running.total == 1
+        assert service.playlists("job-1", [999]).whole_library_running is None
+
+    def test_playlists_are_put_in_tree_order(self, db, service):
+        a = add_track(db)
+        one = add_playlist(db, "One", [a])
+        two = add_playlist(db, "Two", [a])
+        assert service.in_tree_order([two, one, two]) == (one, two)
+
+    def test_ticked_playlists_wait_their_turn_and_counts_are_their_own(
+        self, db, service
+    ):
+        a, b, c, d = (add_track(db, f"/m/{i}.mp3") for i in range(4))
+        one = add_playlist(db, "One", [a, b])
+        two = add_playlist(db, "Two", [b, c, d])
+        add_job_plan(db, "job-1", {a: True, b: False, c: False, d: False})
+
+        statuses = service.playlists("job-1", [one, two])
+
+        first = status_of(statuses, one)
+        second = status_of(statuses, two)
+        assert (first.running.done, first.running.total) == (1, 2)
+        assert not first.queued
+        assert second.running is None
+        assert second.queued
+
+    def test_a_finished_playlist_of_the_job_stops_running(self, db, service):
+        a, b = (add_track(db, f"/m/{i}.mp3") for i in range(2))
+        one = add_playlist(db, "One", [a])
+        two = add_playlist(db, "Two", [b])
+        add_job_plan(db, "job-1", {a: True, b: False})
+
+        statuses = service.playlists("job-1", [one, two])
+
+        assert status_of(statuses, one).running is None
+        assert not status_of(statuses, one).queued
+        assert status_of(statuses, two).running.total == 1
 
     def test_another_job_s_plan_is_not_counted(self, db, service):
         a = add_track(db)

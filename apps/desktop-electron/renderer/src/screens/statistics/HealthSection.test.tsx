@@ -1,7 +1,7 @@
 /**
- * The Health section (STATS-07, K3): four groups with their bars, purposes and names, one button
- * each to where it is dealt with, the not-checked lines, a bar's navigation, the waveform bars
- * that open nothing, and Read cover art starting the scan.
+ * The Health tab (STATS-07, K3): four cards with their stacked bars and legends, a tinted count
+ * chip on each thing to fix and where it opens ("Open in Clean"), the not-checked lines, and Read
+ * cover art starting the scan.
  */
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -19,6 +19,7 @@ import { rulesFromLocationState } from "../library/libraryLink";
 import { settingsFocus } from "../settingsLink";
 import { formatDayTime } from "../../format/dates";
 import { HealthSection } from "./HealthSection";
+import { healthToFix } from "./healthCount";
 
 const rules = (field: string, value: unknown): FilterRuleSet => ({
   match: "all",
@@ -50,6 +51,7 @@ const HEALTH: StatisticsHealth = {
     no_artwork: count(9, "no_artwork"),
   },
   artwork_checked_at: "2026-09-05T12:00:00Z",
+  not_synced: count(6, "unsaved_values"),
 };
 
 function Where() {
@@ -85,16 +87,8 @@ function renderSection(
 }
 
 const panel = (id: string) => document.querySelector<HTMLElement>(`[data-panel="${id}"]`)!;
-const titleOf = (el: Element) => el.querySelector(":scope > title")?.textContent ?? null;
-const bars = (id: string) =>
-  within(panel(id))
-    .queryAllByRole("button")
-    .filter((el) => el.tagName.toLowerCase() === "g")
-    .map(titleOf);
-const bar = (id: string, name: string) =>
-  within(panel(id))
-    .getAllByRole("button")
-    .find((el) => titleOf(el) === name)!;
+const rowOf = (card: string, id: string) =>
+  panel(card).querySelector<HTMLElement>(`[data-row="${id}"]`)!;
 /** An instant as the page writes it (the day and the time, on this computer), so the tests hold in any time zone. */
 const whenOf = (iso: string) => formatDayTime(iso);
 const where = () => screen.getByTestId("where");
@@ -109,193 +103,133 @@ afterEach(() => {
   delete (window as unknown as { cuepoint?: unknown }).cuepoint;
 });
 
-describe("the Health section (STATS-07, K3)", () => {
-  it("shows four groups: files, Beatport, waveforms and other", () => {
+describe("the Health tab (STATS-07, K3)", () => {
+  it("shows four cards: Files, Other, Beatport and Analysis", () => {
     renderSection();
     expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
       "Files",
-      "Beatport",
-      "Waveforms",
       "Other",
+      "Beatport",
+      "Analysis",
     ]);
   });
 
-  it("gives each group a line saying what it is for", () => {
-    renderSection();
-    expect(within(panel("files")).getByText("Looks for tracks whose file has moved or been deleted.")).toBeInTheDocument();
-    expect(
-      within(panel("beatport")).getByText(
-        "How your tracks stand against Beatport: matched, waiting for you, or not matched yet.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(panel("waveforms")).getByText(
-        "Draws each track's waveform so you can see its shape before you play it.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(panel("other")).getByText(
-        "Duplicate tracks, matches Beatport changed after you decided, and the cover pictures stored inside your audio files.",
-      ),
-    ).toBeInTheDocument();
+  it("counts what needs fixing: missing, unreadable, to review, duplicates, changed, failed", () => {
+    // 12 + 3 + 10 + 7 + 4 + 2
+    expect(healthToFix(HEALTH)).toBe(38);
   });
 
-  it("has exactly one button in each group", () => {
+  it("draws a stacked bar and a legend with every state's count in each of the three bar cards", () => {
     renderSection();
-    for (const id of ["files", "beatport", "waveforms", "other"]) {
-      const buttons = within(panel(id))
-        .getAllByRole("button")
-        .filter((el) => el.tagName.toLowerCase() === "button");
-      expect(buttons, id).toHaveLength(1);
+    const files = within(panel("files"));
+    expect(files.getByRole("img", { name: /^Files: Present 80, Missing 12, Unreadable 3, Not checked 5$/ })).toBeInTheDocument();
+    for (const text of ["Present 80", "Missing 12", "Unreadable 3", "Not checked 5"]) {
+      expect(files.getByText(text)).toBeInTheDocument();
+    }
+    const beatport = within(panel("beatport"));
+    for (const text of ["Confirmed 50", "To review 10", "Rejected 2", "No match 3", "Not matched 35"]) {
+      expect(beatport.getByText(text)).toBeInTheDocument();
+    }
+    const analysis = within(panel("analysis"));
+    for (const text of ["Analyzed 40", "Waiting 30", "Failed 2", "No file 28"]) {
+      expect(analysis.getByText(text)).toBeInTheDocument();
     }
   });
 
-  it("draws the four file states with their counts", () => {
+  it("says how many tracks are matched, and when the files were checked", () => {
     renderSection();
-    expect(bars("files")).toEqual([
-      "Present, 80 tracks",
-      "Missing, 12 tracks",
-      "Unreadable, 3 tracks",
-      "Not checked, 5 tracks",
-    ]);
-  });
-
-  it("draws the five Beatport states in the words the rest of the app uses", () => {
-    renderSection();
-    expect(bars("beatport")).toEqual([
-      "Confirmed, 50 tracks",
-      "Waiting for you, 10 tracks",
-      "Rejected, 2 tracks",
-      "No match, 3 tracks",
-      "Not matched, 35 tracks",
-    ]);
-  });
-
-  it("draws the three Other counts in Clean's words", () => {
-    renderSection();
-    expect(bars("other")).toEqual([
-      "Duplicates, 7 tracks",
-      "Changed since you decided, 4 tracks",
-      "No artwork, 9 tracks",
-    ]);
-  });
-
-  it("draws the waveform counts and none of them is a button", () => {
-    renderSection();
-    expect(bars("waveforms")).toEqual([]);
-    const names = Array.from(panel("waveforms").querySelectorAll("svg g > title")).map(
-      (t) => t.textContent,
-    );
-    expect(names).toEqual([
-      "Analyzed, 40 tracks",
-      "Failed, 2 tracks",
-      "Waiting, 30 tracks",
-      "No file, 28 tracks",
-    ]);
-  });
-
-  it("says when the files were last checked, with the time on the computer's clock", () => {
-    renderSection();
-    expect(within(panel("files")).getByText(`Last checked ${whenOf("2026-09-03T12:00:00Z")}`)).toBeInTheDocument();
-  });
-
-  it("reads a time with an explicit offset the same way", () => {
-    renderSection({ ...HEALTH, checked_at: "2026-09-03T12:00:00+00:00" });
-    expect(within(panel("files")).getByText(`Last checked ${whenOf("2026-09-03T12:00:00Z")}`)).toBeInTheDocument();
+    expect(within(panel("beatport")).getByText("50 of 100 matched")).toBeInTheDocument();
+    expect(within(panel("files")).getByText(`checked ${whenOf(HEALTH.checked_at!)}`)).toBeInTheDocument();
+    expect(within(panel("analysis")).getByText("waveforms and loudness")).toBeInTheDocument();
   });
 
   it("says the files have not been checked yet when no check is recorded", () => {
     renderSection({ ...HEALTH, checked_at: null });
-    expect(within(panel("files")).getByText("Files have not been checked yet")).toBeInTheDocument();
+    expect(within(panel("files")).getByText("not checked yet")).toBeInTheDocument();
   });
 
-  it("says when the cover art was last read", () => {
+  it("writes each row's count in a chip, tinted by what it is", () => {
     renderSection();
-    expect(
-      within(panel("other")).getByText(`Cover art last read ${whenOf("2026-09-05T12:00:00Z")}`),
-    ).toBeInTheDocument();
+    const chip = (card: string, id: string) =>
+      rowOf(card, id).querySelector(".cp-badge") as HTMLElement;
+    expect(chip("files", "missing")).toHaveTextContent("12");
+    expect(chip("files", "missing")).toHaveClass("cp-badge--danger");
+    expect(chip("files", "not_checked")).toHaveClass("cp-badge--neutral");
+    expect(chip("beatport", "needs_review")).toHaveClass("cp-badge--warning");
+    expect(chip("beatport", "not_synced")).toHaveTextContent("6");
+    expect(chip("beatport", "not_synced")).toHaveClass("cp-badge--accent");
+    expect(chip("other", "duplicates")).toHaveClass("cp-badge--warning");
+    expect(chip("analysis", "failed")).toHaveClass("cp-badge--danger");
+    expect(chip("analysis", "waiting")).toHaveTextContent("30");
   });
 
-  it("says the cover art has not been read yet when it never was", () => {
-    renderSection({ ...HEALTH, artwork_checked_at: null });
-    expect(within(panel("other")).getByText("Cover art has not been read yet")).toBeInTheDocument();
-  });
-
-  it("opens the Library on a file bar's own rules", async () => {
-    renderSection();
-    await userEvent.click(bar("files", "Missing, 12 tracks"));
-    expect(where()).toHaveTextContent("/library");
-    expect(JSON.parse(where().dataset.rules!)).toEqual(HEALTH.files.missing.rules);
-  });
-
-  it("opens the Library on a Beatport bar's own rules", async () => {
-    renderSection();
-    await userEvent.click(
-      bar("beatport", "Waiting for you, 10 tracks"),
-    );
-    expect(where()).toHaveTextContent("/library");
-    expect(JSON.parse(where().dataset.rules!)).toEqual(HEALTH.beatport.needs_review.rules);
-  });
-
-  it("opens Clean's Duplicates tab from the Duplicates bar", async () => {
-    renderSection();
-    await userEvent.click(bar("other", "Duplicates, 7 tracks"));
-    expect(where()).toHaveTextContent("/clean");
-    expect(where().dataset.section).toBe("duplicates");
-  });
-
-  it("opens the Library on the other two Other bars' own rules", async () => {
-    renderSection();
-    await userEvent.click(bar("other", "Changed since you decided, 4 tracks"));
-    expect(where()).toHaveTextContent("/library");
-    expect(JSON.parse(where().dataset.rules!)).toEqual(HEALTH.other.disputed.rules);
-  });
-
-  it("opens the Library on No artwork's rules", async () => {
-    renderSection();
-    await userEvent.click(bar("other", "No artwork, 9 tracks"));
-    expect(where()).toHaveTextContent("/library");
-    expect(JSON.parse(where().dataset.rules!)).toEqual(HEALTH.other.no_artwork.rules);
-  });
-
-  it("does not open anything from a waveform bar", async () => {
-    renderSection();
-    const slot = Array.from(panel("waveforms").querySelectorAll("svg g[data-bar-slot]"))[0]!;
-    await userEvent.click(slot);
-    expect(where()).toHaveTextContent("/statistics");
-  });
-
-  it("draws an empty bar without making it a button", () => {
+  it("keeps a zero plain and offers nothing to open", () => {
     renderSection({
       ...HEALTH,
-      files: { ...HEALTH.files, unreadable: count(0, "unreadable") },
+      files: { ...HEALTH.files, missing: count(0, "missing") },
     });
-    expect(bars("files")).not.toContain("Unreadable, 0 tracks");
-    const drawn = Array.from(panel("files").querySelectorAll("svg g > title")).map(
-      (t) => t.textContent,
-    );
-    expect(drawn).toContain("Unreadable, 0 tracks");
+    const missing = rowOf("files", "missing");
+    expect(missing.querySelector(".cp-badge")).toHaveClass("cp-badge--neutral");
+    expect(within(missing).queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("sends Files' button to Clean's Missing files tab", async () => {
+  it("offers a link on a row only where something can be done about it", () => {
     renderSection();
-    await userEvent.click(within(panel("files")).getByRole("button", { name: "Open in Clean" }));
+    expect(within(rowOf("files", "not_checked")).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(rowOf("analysis", "waiting")).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(rowOf("files", "missing")).getByRole("button", { name: /Open in Clean/ })).toBeInTheDocument();
+  });
+
+  it("opens Clean's Missing files tab from Missing and Unreadable", async () => {
+    renderSection();
+    await userEvent.click(within(rowOf("files", "missing")).getByRole("button"));
     expect(where()).toHaveTextContent("/clean");
     expect(where().dataset.section).toBe("missing");
   });
 
-  it("sends Beatport's button to Clean's Match tab", async () => {
+  it("opens Clean's Match tab from To review, Not matched yet and No match found", async () => {
+    for (const id of ["needs_review", "not_matched", "no_match"]) {
+      const { unmount } = renderSection();
+      await userEvent.click(within(rowOf("beatport", id)).getByRole("button"));
+      expect(where().dataset.section).toBe("review");
+      unmount();
+    }
+  });
+
+  it("opens Clean's Duplicates tab from Duplicates, and Match from Changed since you decided", async () => {
+    const first = renderSection();
+    await userEvent.click(within(rowOf("other", "duplicates")).getByRole("button"));
+    expect(where().dataset.section).toBe("duplicates");
+    first.unmount();
     renderSection();
-    await userEvent.click(within(panel("beatport")).getByRole("button", { name: "Open in Clean" }));
-    expect(where()).toHaveTextContent("/clean");
+    await userEvent.click(within(rowOf("other", "disputed")).getByRole("button"));
     expect(where().dataset.section).toBe("review");
   });
 
-  it("sends Waveforms' button to Settings on Waveforms", async () => {
+  it("opens the Library on the engine's own rules for Not synced to files and No cover art", async () => {
+    const first = renderSection();
+    await userEvent.click(within(rowOf("beatport", "not_synced")).getByRole("button", { name: /Open in Library/ }));
+    expect(where()).toHaveTextContent("/library");
+    expect(JSON.parse(where().dataset.rules!)).toEqual(HEALTH.not_synced.rules);
+    first.unmount();
     renderSection();
-    await userEvent.click(within(panel("waveforms")).getByRole("button", { name: "Open in Settings" }));
+    await userEvent.click(within(rowOf("other", "no_artwork")).getByRole("button", { name: /Open in Library/ }));
+    expect(JSON.parse(where().dataset.rules!)).toEqual(HEALTH.other.no_artwork.rules);
+  });
+
+  it("opens Settings on Waveforms from Failed", async () => {
+    renderSection();
+    await userEvent.click(within(rowOf("analysis", "failed")).getByRole("button", { name: /Open in Settings/ }));
     expect(where()).toHaveTextContent("/settings");
     expect(where().dataset.settings).toBe("waveforms");
+  });
+
+  it("says when the cover art was last read, and when it never was", () => {
+    const first = renderSection();
+    expect(within(panel("other")).getByText(`Cover art last read ${whenOf(HEALTH.artwork_checked_at!)}`)).toBeInTheDocument();
+    first.unmount();
+    renderSection({ ...HEALTH, artwork_checked_at: null });
+    expect(within(panel("other")).getByText("Cover art has not been read yet")).toBeInTheDocument();
   });
 
   it("asks the page to read the cover art when Read cover art is pressed", async () => {
@@ -315,7 +249,7 @@ describe("the Health section (STATS-07, K3)", () => {
     expect(onReadCoverArt).not.toHaveBeenCalled();
   });
 
-  it("no longer offers All health checks or any way into Clean's Health tab", async () => {
+  it("no longer offers All health checks or any way into Clean's Health tab", () => {
     renderSection();
     expect(screen.queryByRole("button", { name: "All health checks" })).not.toBeInTheDocument();
     for (const name of ["Check files", "Match", "Analyze"]) {

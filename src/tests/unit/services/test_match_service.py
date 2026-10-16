@@ -328,6 +328,29 @@ class TestThePlan:
         assert list(by_query.track_ids) == matching
         assert by_query.planned == 10
 
+    def test_playlists_are_worked_one_after_another_in_playlist_position(
+        self, container, service, ids
+    ):
+        # Regression: the plan followed the Library's sort, so "the first
+        # unfinished playlist is running, the rest wait" was not true of the job.
+        from tests.unit.persistence.match_status_support import add_playlist
+
+        database = container.resolve(IDatabaseService)
+        first = add_playlist(database, "First", [ids[7], ids[2], ids[9]])
+        second = add_playlist(database, "Second", [ids[5], ids[2], ids[1]])
+
+        draft = service.prepare(
+            BatchSelection.of_ids(ids[:10]), playlist_order=[first, second]
+        )
+
+        # a track in both belongs to the first; others follow, in plan order
+        assert list(draft.track_ids)[:5] == [ids[7], ids[2], ids[9], ids[5], ids[1]]
+        assert list(draft.track_ids)[5:] == [ids[0], ids[3], ids[4], ids[6], ids[8]]
+        reverse = service.prepare(
+            BatchSelection.of_ids(ids[:10]), playlist_order=[second, first]
+        )
+        assert list(reverse.track_ids)[:5] == [ids[5], ids[2], ids[1], ids[7], ids[9]]
+
     def test_a_query_selection_less_the_tracks_taken_back_out(self, service, ids):
         draft = service.prepare(
             BatchSelection.matching(BrowseQuery(sort="title"), exclude=ids[:5])

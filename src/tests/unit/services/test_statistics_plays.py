@@ -187,6 +187,13 @@ def build_world(tmp_path: Path, *, with_history: bool = True) -> World:
     with db.transaction() as conn:
         # Juliet (10) carries a CuePoint label override over the imported one.
         TrackMetadataRepository(db).set_override(ids[10], "label", "Override Rec")
+        # Genres for the plays-by-genre list: two spellings of one genre, and one more.
+        TrackMetadataRepository(db).set_override(ids[1], "genre", "Tech House")
+        TrackMetadataRepository(db).set_override(ids[2], "genre", "tech house")
+        TrackMetadataRepository(db).set_override(ids[5], "genre", "House")
+        # What the most played list shows beside Alpha.
+        TrackMetadataRepository(db).set_override(ids[1], "key", "9A")
+        TrackMetadataRepository(db).set_override(ids[1], "bpm", 128)
     playlist_id = int(
         connection.execute(
             "SELECT id FROM rekordbox_playlists WHERE name = 'Warm'"
@@ -277,7 +284,12 @@ class TestAllTime:
             "title": "Alpha",
             "artist": "B",
             "plays": 20,
+            "key": "9A",
+            "bpm": 128.0,
         }
+        second = answer["tracks"][1]
+        assert second["title"] == "Bravo"
+        assert (second["key"], second["bpm"]) == (None, None)
 
     def test_ties_sort_by_title_case_blind_then_by_id(self, world):
         tracks = world.plays()["tracks"]

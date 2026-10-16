@@ -54,7 +54,13 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from cuepoint.models.file_status import FILE_PRESENT
-from cuepoint.models.filter_rule import FILES_ALIAS, RuleSet, field_spec
+from cuepoint.models.filter_rule import (
+    FILES_ALIAS,
+    KEY_JOINS,
+    KEY_SQL,
+    RuleSet,
+    field_spec,
+)
 from cuepoint.persistence.track_query import BrowseQuery, build_select_scoped
 from cuepoint.services.interfaces import IDatabaseService, IStatisticsRepository
 
@@ -67,6 +73,10 @@ class PlayedTrack:
     title: str
     artist: str
     plays: int
+    #: The key the Library shows (a Camelot code), or ``None`` when it has none.
+    key: Optional[str] = None
+    #: The BPM the Library shows, or ``None`` when it has none.
+    bpm: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -77,7 +87,8 @@ class PlayedName:
         key: The identity plays were grouped by (a ``name_key`` or ``label_key``).
         name: The first spelling of it alphabetically.
         plays: The plays of its tracks.
-        tracks: How many of its tracks had at least one play.
+        tracks: How many of its tracks had at least one play (or, from the
+            ``*_by_tracks`` reads, how many tracks it has).
     """
 
     key: str
@@ -167,8 +178,37 @@ class StatisticsRepository(IStatisticsRepository):
             " t.id ASC LIMIT ?",
             limit,
         )
-        rows = self._db.connect().execute(sql, params)
-        return [PlayedTrack(int(r[0]), str(r[1]), str(r[2]), int(r[3])) for r in rows]
+        rows = self._db.connect().execute(sql, params).fetchall()
+        shown = self._shown_key_and_bpm([int(r[0]) for r in rows])
+        return [
+            PlayedTrack(
+                int(r[0]),
+                str(r[1]),
+                str(r[2]),
+                int(r[3]),
+                *shown.get(int(r[0]), (None, None)),
+            )
+            for r in rows
+        ]
+
+    def _shown_key_and_bpm(
+        self, ids: List[int]
+    ) -> Dict[int, Tuple[Optional[str], Optional[float]]]:
+        """``{track id: (key, bpm)}`` as the Library shows them, for these tracks."""
+        if not ids:
+            return {}
+        sql, params = build_select_scoped(
+            BrowseQuery(rules=RuleSet()),
+            f"tracks.id AS id, {KEY_SQL} AS key, {_BPM} AS bpm",
+            condition=f"tracks.id IN ({', '.join('?' for _ in ids)})",
+            params=tuple(ids),
+            joins=(*KEY_JOINS, "meta"),
+        )
+        found: Dict[int, Tuple[Optional[str], Optional[float]]] = {}
+        for row in self._db.connect().execute(sql, params):
+            bpm = None if row[2] is None or float(row[2]) <= 0 else float(row[2])
+            found[int(row[0])] = (None if row[1] is None else str(row[1]), bpm)
+        return found
 
     def top_artists(
         self, scope: RuleSet, limit: int, from_read: Optional[int]
@@ -220,6 +260,99 @@ class StatisticsRepository(IStatisticsRepository):
             tail_ctes=True,
         )
         return self._names(sql, params)
+
+    def top_genres(
+        self, scope: RuleSet, limit: int, from_read: Optional[int]
+    ) -> List[PlayedName]:
+        """The ``limit`` genres with the most plays, by effective genre.
+
+        Grouped without case, as the filter's ``is`` matches them, and named by
+        their smallest spelling; the key is the name folded to one case.
+        """
+        sql, params = self._statement(
+            scope,
+            from_read,
+            "genred AS (SELECT p.plays AS plays, "
+            f"{_GENRE} AS genre FROM plays p"
+            " JOIN tracks ON tracks.id = p.track_id"
+            " LEFT JOIN track_metadata AS meta ON meta.track_id = tracks.id"
+            f" WHERE {_GENRE} IS NOT NULL AND {_GENRE} <> ''),"
+            " ranked AS (SELECT MIN(genre) AS name, SUM(plays) AS plays,"
+            " COUNT(*) AS tracks FROM genred GROUP BY genre COLLATE NOCASE"
+            " ORDER BY plays DESC, LOWER(MIN(genre)) ASC LIMIT ?)"
+            " SELECT LOWER(name), name, plays, tracks FROM ranked"
+            " ORDER BY plays DESC, LOWER(name) ASC",
+            limit,
+            tail_ctes=True,
+        )
+        return self._names(sql, params)
+
+    def top_artists_by_tracks(self, scope: RuleSet, limit: int) -> List[PlayedName]:
+        """The ``limit`` artists with the most tracks in the scope, plays not asked.
+
+        Over artist and remixer credits, a track counted once per name. The
+        ``plays`` of each row is 0. Ties sort by key.
+        """
+        scope_sql, params = self._scope(scope)
+        prefix = f"WITH scoped AS ({scope_sql}) " if scope_sql else ""
+        where = " WHERE c.track_id IN (SELECT id FROM scoped)" if scope_sql else ""
+        rows = self._db.connect().execute(
+            f"{prefix}SELECT r.name_key,"
+            " (SELECT min(name) FROM track_credits WHERE name_key = r.name_key),"
+            " 0, r.tracks FROM ("
+            "SELECT c.name_key AS name_key, COUNT(DISTINCT c.track_id) AS tracks"
+            f" FROM track_credits c{where} GROUP BY c.name_key"
+            " ORDER BY tracks DESC, c.name_key ASC LIMIT ?) r"
+            " ORDER BY r.tracks DESC, r.name_key ASC",
+            (*params, int(limit)),
+        )
+        return [PlayedName(str(r[0]), str(r[1]).strip(), 0, int(r[3])) for r in rows]
+
+    def top_labels_by_tracks(self, scope: RuleSet, limit: int) -> List[PlayedName]:
+        """The ``limit`` labels with the most tracks in the scope, by effective label."""
+        scope_sql, params = self._scope(scope)
+        scoped = f"scoped AS ({scope_sql}), " if scope_sql else ""
+        where = " AND t.id IN (SELECT id FROM scoped)" if scope_sql else ""
+        effective_key = "COALESCE(m.label_key, t.label_key)"
+        rows = self._db.connect().execute(
+            f"WITH {scoped}ranked AS (SELECT {effective_key} AS label_key,"
+            " COUNT(*) AS tracks FROM tracks t"
+            " LEFT JOIN track_metadata m ON m.track_id = t.id"
+            f" WHERE {effective_key} IS NOT NULL{where}"
+            " GROUP BY 1 ORDER BY tracks DESC, label_key ASC LIMIT ?),"
+            f" named AS (SELECT {effective_key} AS label_key,"
+            " min(CASE WHEN m.label_key IS NOT NULL THEN m.label ELSE t.label END)"
+            " AS name FROM tracks t LEFT JOIN track_metadata m ON m.track_id = t.id"
+            f" WHERE {effective_key} IN (SELECT label_key FROM ranked) GROUP BY 1)"
+            " SELECT r.label_key, n.name, 0, r.tracks FROM ranked r"
+            " JOIN named n ON n.label_key = r.label_key"
+            " ORDER BY r.tracks DESC, r.label_key ASC",
+            (*params, int(limit)),
+        )
+        return [PlayedName(str(r[0]), str(r[1]).strip(), 0, int(r[3])) for r in rows]
+
+    def library_totals(self, scope: RuleSet) -> Tuple[int, int, Optional[float]]:
+        """``(total seconds, tracks with a length, average BPM)`` over the scope.
+
+        The length is ``tracks.duration_seconds``; the BPM is the effective one,
+        and a BPM of zero or less is no BPM. The average is ``None`` with none.
+        """
+        sql, params = build_select_scoped(
+            BrowseQuery(rules=scope),
+            f"tracks.duration_seconds AS length, {_BPM} AS bpm",
+            joins=("meta",),
+        )
+        row = (
+            self._db.connect()
+            .execute(
+                "SELECT COALESCE(SUM(CASE WHEN length > 0 THEN length END), 0),"
+                " COUNT(CASE WHEN length > 0 THEN 1 END),"
+                f" AVG(CASE WHEN bpm > 0 THEN bpm END) FROM ({sql})",
+                params,
+            )
+            .fetchone()
+        )
+        return int(row[0]), int(row[1]), None if row[2] is None else float(row[2])
 
     def unplayed(self, scope: RuleSet) -> Tuple[int, int]:
         """``(never played, unknown)`` among the scope's tracks."""

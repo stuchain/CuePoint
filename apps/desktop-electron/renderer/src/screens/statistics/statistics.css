@@ -1,7 +1,7 @@
 /*
- * The Statistics page (STATS-04): a header with the title and the scope picker, then three
- * sections stacked. Theme tokens only, so every theme and scale draws it; the header wraps
- * rather than scrolling sideways.
+ * The Statistics page (STATS-04): a header with the title, the scope picker and the tab strip,
+ * then the three tabs' panels (mounted once, hidden when not shown). Theme tokens only, so every
+ * theme and scale draws it; the header wraps rather than scrolling sideways.
  */
 .statistics-page {
   flex: none;
@@ -19,31 +19,21 @@
   max-width: 100%;
 }
 
-.statistics-section {
-  scroll-margin-top: var(--screen-header-height, 0);
+/* A tab's panel: the header leaves 12 under its divider, so the panel adds nothing above. */
+.statistics-tabpanel {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  /* Heading to its body: 8. Module to module: 16. The header leaves 12 under its divider, so the
-     first section adds nothing above itself. */
-  gap: var(--space-md);
-  padding: var(--space-xl) 0;
-  border-bottom: var(--divider);
+  align-items: stretch;
+  gap: var(--space-lg);
+  padding: 0 0 var(--space-xl);
 }
 
-.statistics-section:first-of-type {
-  padding-top: 0;
+.statistics-tabpanel[hidden] {
+  display: none;
 }
 
-.statistics-section > .cp-notice {
+.statistics-tabpanel > .cp-notice {
   align-self: stretch;
-}
-
-/* The section role: 14, bold. */
-.statistics-section__title {
-  margin: 0;
-  font-size: var(--font-size-section);
-  font-weight: var(--weight-strong);
 }
 
 .statistics-note {
@@ -67,9 +57,8 @@
 }
 
 /*
- * Your library (STATS-06). The `.statistics-panel*` classes are shared: STATS-05 and STATS-07 draw
- * their panels with them too. The six spreads and the key summary sit in a wrapping grid.
- * A chart longer than its panel scrolls inside the panel, never the page.
+ * Cards. The `.statistics-panel*` classes are shared by all three tabs. A chart longer than its
+ * card scrolls inside the card, never the page.
  */
 .statistics-panels {
   display: grid;
@@ -78,10 +67,15 @@
   width: 100%;
 }
 
+/* The charts: two to a row (BPM and Keys, Year and Loudness), one on a narrow window. */
+.statistics-panels--charts {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(380px * var(--scale))), 1fr));
+}
+
 .statistics-panel {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: var(--space-md);
   min-width: 0;
   /* A panel is padded 12. */
@@ -102,6 +96,7 @@
 .statistics-panel__unit {
   color: var(--fg-muted);
   font-size: var(--font-size-sm);
+  font-weight: var(--control-font-weight);
 }
 
 .statistics-panel__line {
@@ -111,9 +106,312 @@
   gap: var(--space-xs) var(--space-md);
 }
 
-/* The one line under a Health group's title that says what the group is for (K3). */
-.statistics-panel__purpose {
-  margin: 0;
+/* ---- A card's heading: the title at the left, what it counts (or its one link) at the right. */
+.rank__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.rank__unit {
   color: var(--fg-muted);
   font-size: var(--font-size-sm);
+}
+
+/* ---- Ranked lists (top artists, labels and genres; the Library tab's lists). */
+.rank__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rank__columns,
+.rank__row {
+  display: grid;
+  grid-template-columns: 3ch minmax(0, 1fr) repeat(var(--rank-columns, 1), 8ch);
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.rank__columns {
+  padding: 0 var(--space-sm);
+  border-bottom: var(--divider);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.rank__item {
+  border-bottom: var(--divider);
+}
+
+.rank__item:hover {
+  background: var(--bg-panel-alt);
+}
+
+.rank__row {
+  width: 100%;
+  min-height: var(--row-height);
+  padding: 0 var(--space-sm);
+  border: 0;
+  background: transparent;
+  color: var(--fg-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rank__row:focus-visible {
+  outline-offset: var(--focus-ring-offset-inset);
+}
+
+.rank__hash,
+.rank__number {
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-sm);
+  text-align: right;
+}
+
+.rank__number--main {
+  color: var(--fg-primary);
+}
+
+/* The name has a bar behind it as long as its share of the first row. */
+.rank__name {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.rank__name::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--share, 0%);
+  border-left: var(--space-2xs) solid var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+}
+
+.rank__text {
+  position: relative;
+  display: block;
+  padding: 0 var(--space-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank__note {
+  margin-left: var(--space-md);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
+.rank__more {
+  align-self: flex-end;
+}
+
+/* ---- The Library tab. */
+.library-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* Four numbers in one bordered strip. */
+.library-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(160px * var(--scale)), 1fr));
+  margin: 0;
+  border: var(--divider);
+}
+
+.library-figures__cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-lg);
+  border-left: var(--divider);
+}
+
+.library-figures__cell:first-child {
+  border-left: 0;
+}
+
+.library-figures dt,
+.library-figures dd {
+  margin: 0;
+}
+
+.library-figures dt {
+  color: var(--fg-muted);
+}
+
+.library-figures__value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--weight-strong);
+}
+
+.library-figures__note {
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+}
+
+.library-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(280px * var(--scale))), 1fr));
+  gap: var(--space-lg);
+}
+
+.library-tab__more {
+  align-self: flex-end;
+}
+
+/* The Keys chart: the key's own chip, a bar in its colour, and the count. */
+.keys__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.keys__row {
+  display: grid;
+  grid-template-columns: 5ch minmax(0, 1fr) 6ch;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: var(--row-height);
+}
+
+.keys__bar {
+  display: block;
+  width: var(--share, 0%);
+  height: var(--space-md);
+  background: var(--key);
+}
+
+.keys__count {
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-sm);
+  text-align: right;
+}
+
+/* ---- The Health tab: two columns of cards. */
+.health-tab {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(260px * var(--scale))), 1fr));
+  align-items: start;
+  gap: var(--space-lg);
+}
+
+.health-tab__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+.health-card__rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.health-card__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 12ch;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: var(--row-height);
+  border-bottom: var(--divider);
+}
+
+.health-card__open {
+  justify-self: end;
+}
+
+.health-card__count {
+  justify-self: end;
+  min-width: 5ch;
+  justify-content: center;
+}
+
+.health-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* The stacked bar: parts in the width of their counts, then the legend. */
+.stacked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.stacked__bar {
+  display: flex;
+  width: 100%;
+  height: var(--space-lg);
+  overflow: hidden;
+}
+
+.stacked__part {
+  min-width: var(--hairline);
+}
+
+.stacked__part--success {
+  background: var(--accent-success);
+}
+
+.stacked__part--warning {
+  background: var(--accent-warning);
+}
+
+.stacked__part--danger {
+  background: var(--accent-danger);
+}
+
+.stacked__part--accent {
+  background: var(--accent-primary);
+}
+
+.stacked__part--neutral {
+  background: var(--fg-muted);
+}
+
+.stacked__part--muted {
+  background: var(--border-muted);
+}
+
+.stacked__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-lg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--fg-muted);
+  font-size: var(--font-size-sm);
+}
+
+.stacked__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.stacked__swatch {
+  display: inline-block;
+  width: var(--space-md);
+  height: var(--space-md);
 }

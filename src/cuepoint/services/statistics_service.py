@@ -103,6 +103,9 @@ DEFAULT_LIMIT = 10
 #: Genres a spread names before the rest are one **Other** bucket.
 GENRE_LIMIT = 20
 
+#: Artists and labels the spreads name by their tracks (the Library tab lists; it shows five and expands to all).
+NAMES_LIMIT = 10
+
 #: Stars a rating spread always shows, even where a scale step has no track.
 RATING_STARS = (0, 1, 2, 3, 4, 5)
 
@@ -200,6 +203,32 @@ class PlaysRow:
 
 
 @dataclass(frozen=True)
+class TrackCountRow:
+    """An artist or a label and the tracks it has in the scope.
+
+    Attributes:
+        name: The first spelling alphabetically.
+        key: The identity tracks were grouped by.
+        tracks: Its tracks in the scope.
+        rules: What opens exactly those tracks in the Library.
+    """
+
+    name: str
+    key: str
+    tracks: int
+    rules: RuleSet
+
+    def to_dict(self, key_field: str) -> Dict[str, Any]:
+        """Serialize for the API; the identity is ``name_key`` or ``label_key``."""
+        return {
+            "name": self.name,
+            key_field: self.key,
+            "tracks": self.tracks,
+            "rules": self.rules.to_dict(),
+        }
+
+
+@dataclass(frozen=True)
 class PlaysReport:
     """The answer to the plays route.
 
@@ -212,6 +241,7 @@ class PlaysReport:
         tracks: The most played tracks.
         artists: The artists with the most plays.
         labels: The labels with the most plays.
+        genres: The genres with the most plays.
         never_played: Tracks whose count is zero.
         unknown: Tracks with no count.
     """
@@ -224,6 +254,7 @@ class PlaysReport:
     tracks: List[PlayedTrack]
     artists: List[PlaysRow]
     labels: List[PlaysRow]
+    genres: List[PlaysRow]
     never_played: PlaysCount
     unknown: PlaysCount
 
@@ -236,11 +267,19 @@ class PlaysReport:
             "last_read": self.last_read,
             "last_read_id": self.last_read_id,
             "tracks": [
-                {"id": t.id, "title": t.title, "artist": t.artist, "plays": t.plays}
+                {
+                    "id": t.id,
+                    "title": t.title,
+                    "artist": t.artist,
+                    "plays": t.plays,
+                    "key": t.key,
+                    "bpm": t.bpm,
+                }
                 for t in self.tracks
             ],
             "artists": [row.to_dict("name_key") for row in self.artists],
             "labels": [row.to_dict("label_key") for row in self.labels],
+            "genres": [row.to_dict("genre_key") for row in self.genres],
             "never_played": self.never_played.to_dict(),
             "unknown": self.unknown.to_dict(),
         }
@@ -328,10 +367,26 @@ class Spread:
 
 @dataclass(frozen=True)
 class SpreadsReport:
-    """The answer to the spreads route: six fields over one scope."""
+    """The answer to the spreads route: six fields over one scope.
+
+    Beside the six fields it carries the scope's totals and its most common
+    artists and labels by tracks (the Library tab's numbers and lists).
+
+    Attributes:
+        total_seconds: The scope's lengths added; tracks with no length add none.
+        average_seconds: The mean of the tracks that have a length, or ``None``.
+        average_bpm: The mean of the BPMs above zero, to one decimal, or ``None``.
+        artists: The artists with the most tracks, most first.
+        labels: The labels with the most tracks, most first.
+    """
 
     scope: str
     total: int
+    total_seconds: int
+    average_seconds: Optional[int]
+    average_bpm: Optional[float]
+    artists: List[TrackCountRow]
+    labels: List[TrackCountRow]
     genre: Spread
     tempo: Spread
     year: Spread
@@ -344,6 +399,11 @@ class SpreadsReport:
         return {
             "scope": self.scope,
             "total": self.total,
+            "total_seconds": self.total_seconds,
+            "average_seconds": self.average_seconds,
+            "average_bpm": self.average_bpm,
+            "artists": [row.to_dict("name_key") for row in self.artists],
+            "labels": [row.to_dict("label_key") for row in self.labels],
             "genre": self.genre.to_dict(),
             "tempo": self.tempo.to_dict(),
             "year": self.year.to_dict(),
@@ -370,6 +430,8 @@ class StatisticsHealth:
             parts of the total.
         artwork_checked_at: When the cover-art scan last ran, or ``None`` if it
             never has. Library-wide: the scan is not run per scope.
+        not_synced: Tracks with a value CuePoint holds that their files do not
+            yet (the Save bar's count), with the rules that open them.
     """
 
     scope: str
@@ -380,6 +442,7 @@ class StatisticsHealth:
     checked_at: Optional[str]
     other: Dict[str, PlaysCount]
     artwork_checked_at: Optional[str]
+    not_synced: PlaysCount
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize for the API. A public shape; extend rather than rename."""
@@ -392,6 +455,7 @@ class StatisticsHealth:
             "checked_at": self.checked_at,
             "other": {name: row.to_dict() for name, row in self.other.items()},
             "artwork_checked_at": self.artwork_checked_at,
+            "not_synced": self.not_synced.to_dict(),
         }
 
 
@@ -501,6 +565,7 @@ class StatisticsService(IStatisticsService):
         tracks: List[PlayedTrack] = []
         artists: List[PlaysRow] = []
         labels: List[PlaysRow] = []
+        genres: List[PlaysRow] = []
         if counted:
             tracks = self._repository.top_tracks(rules, limit, from_read)
             artists = self._rows(
@@ -515,6 +580,12 @@ class StatisticsService(IStatisticsService):
                 "label_name",
                 windowed,
             )
+            genres = self._rows(
+                self._repository.top_genres(rules, limit, from_read),
+                rules,
+                "genre",
+                windowed,
+            )
         never, unknown = self._repository.unplayed(rules)
         return PlaysReport(
             since=since.isoformat() if since is not None else None,
@@ -525,6 +596,7 @@ class StatisticsService(IStatisticsService):
             tracks=tracks,
             artists=artists,
             labels=labels,
+            genres=genres,
             never_played=PlaysCount(
                 never, self._with(rules, FilterRule("play_count", OP_IS, 0))
             ),
@@ -547,9 +619,23 @@ class StatisticsService(IStatisticsService):
         # One snapshot, so the total and every field count the same library.
         with self._repository.snapshot():
             total = self._repository.total(rules)
+            seconds, with_length, bpm = self._repository.library_totals(rules)
             return SpreadsReport(
                 scope=scope_name(asked),
                 total=total,
+                total_seconds=seconds,
+                average_seconds=round(seconds / with_length) if with_length else None,
+                average_bpm=None if bpm is None else round(bpm, 1),
+                artists=self._by_tracks(
+                    self._repository.top_artists_by_tracks(rules, NAMES_LIMIT),
+                    rules,
+                    "artist_name",
+                ),
+                labels=self._by_tracks(
+                    self._repository.top_labels_by_tracks(rules, NAMES_LIMIT),
+                    rules,
+                    "label_name",
+                ),
                 genre=self._genre(rules),
                 tempo=self._tempo(rules),
                 year=self._year(rules),
@@ -735,6 +821,7 @@ class StatisticsService(IStatisticsService):
                 checked_at=self._repository.last_checked(rules),
                 other=self._other(rules),
                 artwork_checked_at=self._artwork_checked_at(),
+                not_synced=self._not_synced(rules),
             )
 
     def _other(self, scope: RuleSet) -> Dict[str, PlaysCount]:
@@ -744,6 +831,11 @@ class StatisticsService(IStatisticsService):
             rules = self._with(scope, *_HEALTH_RULES_BY_ID[name].rules.rules)
             found[name] = PlaysCount(self._repository.total(rules), rules)
         return found
+
+    def _not_synced(self, scope: RuleSet) -> PlaysCount:
+        """Tracks with new values not in their files yet, over the scope."""
+        rules = self._with(scope, FilterRule("unsaved_values", OP_IS, True))
+        return PlaysCount(self._repository.total(rules), rules)
 
     def _artwork_checked_at(self) -> Optional[str]:
         """When the cover-art scan last ran, as Clean's Health reads it.
@@ -828,6 +920,19 @@ class StatisticsService(IStatisticsService):
     def _with(scope: RuleSet, *clauses: FilterRule) -> RuleSet:
         """The scope's rules, then the bucket's: what opens the bucket in the scope."""
         return RuleSet(rules=(*scope.rules, *clauses)).validated()
+
+    def _by_tracks(
+        self, found: List[PlayedName], scope: RuleSet, field: str
+    ) -> List[TrackCountRow]:
+        return [
+            TrackCountRow(
+                name=row.name,
+                key=row.key,
+                tracks=row.tracks,
+                rules=self._with(scope, FilterRule(field, OP_IS, row.name)),
+            )
+            for row in found
+        ]
 
     def _rows(
         self, found: List[PlayedName], scope: RuleSet, field: str, windowed: bool

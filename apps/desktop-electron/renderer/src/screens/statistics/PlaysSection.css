@@ -1,12 +1,12 @@
 /*
- * The Plays section (STATS-05): theme tokens only. Rows are buttons in real lists; the bar is
- * whole blocks of the interface unit. The one motion is the `state` kind, behind its switch.
+ * The Plays tab (STATS-05): theme tokens only. Rows are buttons in real lists. The one motion
+ * is the `state` kind, behind its switch.
  */
 .plays {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: var(--space-md);
+  gap: var(--space-lg);
   width: 100%;
   min-width: 0;
 }
@@ -18,11 +18,30 @@
   gap: var(--space-md);
 }
 
-/* The section role (14, bold) over its list: 8 under it. */
-.plays__title {
-  margin: 0;
-  font-size: var(--font-size-section);
-  font-weight: var(--weight-strong);
+/* The source line sits beside the Since choice, on its baseline. */
+.plays__footer {
+  align-self: center;
+}
+
+/* Two columns of cards: tracks and genres, then artists, labels and what is not played. */
+.plays__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: start;
+  gap: var(--space-lg);
+}
+
+@container (max-width: 900px) {
+  .plays__columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.plays__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
 }
 
 /* One row height for every track list; no boxes, no gaps between rows. */
@@ -33,6 +52,27 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  width: 100%;
+}
+
+.plays__columns-head,
+.plays__row {
+  display: grid;
+  grid-template-columns: 3ch minmax(0, 1fr) 6ch 7ch 6ch;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.plays__columns-head {
+  padding: 0 var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  border-bottom: var(--divider);
+}
+
+/* The play button's room, so the headings line up with the rows. */
+.plays__columns-head--play {
+  margin-right: calc(var(--space-md) + var(--space-sm) + round(nearest, calc(16px * var(--scale)), 1px));
 }
 
 .plays__item {
@@ -41,6 +81,7 @@
   gap: var(--space-md);
   min-width: 0;
   min-height: var(--row-height);
+  border-bottom: var(--divider);
 }
 
 .plays__item:hover {
@@ -48,11 +89,7 @@
 }
 
 .plays__row {
-  display: grid;
   flex: 1 1 auto;
-  grid-template-columns: 3ch minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: var(--space-md);
   min-width: 0;
   min-height: var(--row-height);
   padding: 0 var(--space-sm);
@@ -62,23 +99,6 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-}
-
-.plays__item--stack .plays__row {
-  grid-template-columns: 3ch minmax(0, 1fr) auto;
-}
-
-.plays__rank,
-.plays__count {
-  color: var(--fg-muted);
-  font-family: var(--font-data);
-  font-size: var(--font-size-sm);
-  text-align: right;
-}
-
-.plays__count {
-  color: var(--fg-primary);
-  min-width: 4ch;
 }
 
 /* Title and artist on one line, so the row keeps the one row height. */
@@ -106,18 +126,8 @@
   font-size: var(--font-size-xs);
 }
 
-.plays__bar {
-  display: block;
-  width: calc(var(--unit) * 24);
-  max-width: 30vw;
-  overflow: hidden;
-}
-
-.plays__fill {
-  display: block;
-  width: calc(var(--unit) * var(--blocks, 1));
-  height: var(--unit);
-  background: var(--accent-primary);
+.plays__key {
+  display: flex;
 }
 
 /* The row's play button is the shared PlayButton, at the row's right end. */
@@ -126,25 +136,27 @@
   margin-right: var(--space-sm);
 }
 
-.plays__keep,
-.plays__unplayed {
+.plays__keep {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-md);
 }
 
-.plays__pair {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(calc(var(--unit) * 70), 1fr));
-  gap: var(--space-lg);
+/* The link that widens the list sits at the card's right end. */
+.plays__more {
+  margin-left: auto;
 }
 
-.plays__ranking {
+.plays__unplayed-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--space-md);
-  min-width: 0;
+  min-height: var(--row-height);
+}
+
+.plays__unplayed-row > .cp-link {
+  margin-left: auto;
 }
 
 /* Inside a clipping parent the ring is drawn inward. */
@@ -167,7 +179,7 @@
 }
 
 .plays--stale .plays__list,
-.plays--stale .plays__pair {
+.plays--stale .plays__columns {
   /* Out of date, not disabled: the muted-out look, not a see-through one. */
   color: var(--fg-disabled);
 }

@@ -56,9 +56,9 @@ function plays(overrides: Partial<StatisticsPlays> = {}): StatisticsPlays {
     last_read: LAST_READ,
     last_read_id: 7,
     tracks: [
-      { id: 812, title: "Alpha", artist: "B", plays: 14 },
-      { id: 90, title: "Bravo", artist: "C", plays: 7 },
-      { id: 4, title: "Charlie", artist: "B", plays: 1 },
+      { id: 812, title: "Alpha", artist: "B", plays: 14, key: null, bpm: null },
+      { id: 90, title: "Bravo", artist: "C", plays: 7, key: null, bpm: null },
+      { id: 4, title: "Charlie", artist: "B", plays: 1, key: null, bpm: null },
     ],
     artists: [
       {
@@ -77,6 +77,16 @@ function plays(overrides: Partial<StatisticsPlays> = {}): StatisticsPlays {
         plays: 21,
         tracks: 2,
         rules: rules("label_name", "Warm"),
+        opens_more: false,
+      },
+    ],
+    genres: [
+      {
+        name: "House",
+        genre_key: "house",
+        plays: 18,
+        tracks: 2,
+        rules: rules("genre", "House"),
         opens_more: false,
       },
     ],
@@ -104,6 +114,11 @@ function install(overrides: Record<string, unknown> = {}) {
     getStatisticsSpreads: vi.fn().mockResolvedValue({
       scope: "library",
       total: 0,
+      total_seconds: 0,
+      average_seconds: null,
+      average_bpm: null,
+      artists: [],
+      labels: [],
       genre: SPREAD,
       tempo: SPREAD,
       year: SPREAD,
@@ -132,6 +147,7 @@ function install(overrides: Record<string, unknown> = {}) {
       checked_at: null,
       other: { duplicates: count(0), disputed: count(0), no_artwork: count(0) },
       artwork_checked_at: null,
+      not_synced: count(0),
     }),
     ...overrides,
   };
@@ -149,10 +165,13 @@ function renderPage() {
   );
 }
 
+/** The Plays tab's panel. */
+const panel = (id: "plays" | "library" | "health") =>
+  document.querySelector<HTMLElement>(`[data-panel-of="${id}"]`) as HTMLElement;
+
 async function section() {
-  const region = await screen.findByRole("region", { name: "Plays" });
-  await within(region).findByRole("list", { name: "Most played" });
-  return region;
+  await screen.findByRole("list", { name: "Most played tracks" });
+  return panel("plays");
 }
 
 const lastAsked = () => {
@@ -179,16 +198,30 @@ describe("the Plays section (STATS-05)", () => {
   });
 
   describe("the length of the list", () => {
-    it.each([10, 25, 50, 100, 200])("asks the route for the top %i and remembers it", async (n) => {
+    it("opens on the top 10, and offers the top 25", async () => {
+      renderPage();
+      const region = await section();
+
+      expect(lastAsked()).toMatchObject({ limit: 10, scope: "library" });
+      expect(within(region).getByText("top 10")).toBeInTheDocument();
+      expect(within(region).getByRole("button", { name: "See top 25" })).toBeInTheDocument();
+    });
+
+    it("asks the route for the top 25 from that link, remembers it, and offers to go back", async () => {
       const user = userEvent.setup();
       renderPage();
       const region = await section();
 
-      if (n !== 10) await user.selectOptions(within(region).getByLabelText("Top"), `Top ${n}`);
+      await user.click(within(region).getByRole("button", { name: "See top 25" }));
 
-      await waitFor(() => expect(lastAsked()).toMatchObject({ limit: n, scope: "library" }));
-      expect(JSON.parse(window.localStorage.getItem(PLAYS_STORAGE_KEY) ?? "{}")).toEqual(
-        n === 10 ? {} : { limit: n, since: "all" },
+      await waitFor(() => expect(lastAsked()).toMatchObject({ limit: 25, scope: "library" }));
+      expect(JSON.parse(window.localStorage.getItem(PLAYS_STORAGE_KEY) ?? "{}")).toEqual({
+        limit: 25,
+        since: "all",
+      });
+      await user.click(await within(region).findByRole("button", { name: "Show top 10" }));
+      await waitFor(() =>
+        expect(JSON.parse(window.localStorage.getItem(PLAYS_STORAGE_KEY) ?? "{}")).toEqual({ limit: 10, since: "all" }),
       );
     });
 
@@ -197,7 +230,7 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      expect(within(region).getByLabelText("Top")).toHaveValue("50");
+      expect(within(region).getByText("top 50")).toBeInTheDocument();
       expect(within(region).getByLabelText("Since")).toHaveValue("30d");
       expect(lastAsked()).toMatchObject({ limit: 50, since: "2026-10-21", scope: "library" });
     });
@@ -243,8 +276,8 @@ describe("the Plays section (STATS-05)", () => {
 
     it("asks again with the newest read when a refresh has happened since", async () => {
       window.localStorage.setItem(PLAYS_STORAGE_KEY, JSON.stringify({ limit: 10, since: "refresh" }));
-      const window7 = [{ id: 1, title: "Window seven", artist: "A", plays: 3 }];
-      const window8 = [{ id: 2, title: "Window eight", artist: "A", plays: 2 }];
+      const window7 = [{ id: 1, title: "Window seven", artist: "A", plays: 3, key: null, bpm: null }];
+      const window8 = [{ id: 2, title: "Window eight", artist: "A", plays: 2, key: null, bpm: null }];
       let refreshed = false;
       const read = vi.fn((params: { sinceRead?: string }) => {
         // The route's newest read is 7 until a refresh happens, then 8. Asked about a read
@@ -280,8 +313,8 @@ describe("the Plays section (STATS-05)", () => {
 
     it("learns again when the answer by id names a newer read than the one it asked by", async () => {
       window.localStorage.setItem(PLAYS_STORAGE_KEY, JSON.stringify({ limit: 10, since: "refresh" }));
-      const window7 = [{ id: 1, title: "Window seven", artist: "A", plays: 3 }];
-      const window8 = [{ id: 2, title: "Window eight", artist: "A", plays: 2 }];
+      const window7 = [{ id: 1, title: "Window seven", artist: "A", plays: 3, key: null, bpm: null }];
+      const window8 = [{ id: 2, title: "Window eight", artist: "A", plays: 2, key: null, bpm: null }];
       let refreshed = false;
       const read = vi.fn((params: { sinceRead?: string }) => {
         if (params.sinceRead === undefined) {
@@ -409,7 +442,7 @@ describe("the Plays section (STATS-05)", () => {
     it("lists the tracks in order as buttons named for what they say", async () => {
       renderPage();
       const region = await section();
-      const list = within(region).getByRole("list", { name: "Most played" });
+      const list = within(region).getByRole("list", { name: "Most played tracks" });
 
       expect(within(list).getAllByRole("listitem")).toHaveLength(3);
       expect(
@@ -481,19 +514,20 @@ describe("the Plays section (STATS-05)", () => {
       const region = await section();
 
       const artists = within(region).getByRole("list", { name: "Top artists" });
-      await user.click(within(artists).getByRole("button", { name: "1. B, 15 plays, 2 tracks" }));
+      await user.click(within(artists).getByRole("button", { name: "B, 15 plays, 2 tracks" }));
       expect(navigated().state).toEqual({
         cuepointLibraryRules: rules("artist_name", "B"),
       });
 
       const labels = within(region).getByRole("list", { name: "Top labels" });
-      await user.click(within(labels).getByRole("button", { name: "1. Warm, 21 plays, 2 tracks" }));
+      await user.click(within(labels).getByRole("button", { name: "Warm, 21 plays, 2 tracks" }));
       expect(navigated().state).toEqual({
         cuepointLibraryRules: rules("label_name", "Warm"),
       });
     });
 
-    it("lists no more than ten artists", async () => {
+    it("lists five artists, and the rest behind See top N", async () => {
+      const user = userEvent.setup();
       const many = Array.from({ length: 14 }, (_, i) => ({
         name: `Artist ${i}`,
         name_key: `artist ${i}`,
@@ -507,7 +541,41 @@ describe("the Plays section (STATS-05)", () => {
       const region = await section();
 
       const list = within(region).getByRole("list", { name: "Top artists" });
-      expect(within(list).getAllByRole("listitem")).toHaveLength(10);
+      expect(within(list).getAllByRole("listitem")).toHaveLength(5);
+      const card = list.closest("section")!;
+      await user.click(within(card).getByRole("button", { name: "See top 14" }));
+      expect(within(list).getAllByRole("listitem")).toHaveLength(14);
+      await user.click(within(card).getByRole("button", { name: "Show fewer" }));
+      expect(within(list).getAllByRole("listitem")).toHaveLength(5);
+    });
+
+    it("lists the top genres by plays, and opens their tracks", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      const region = await section();
+
+      const genres = within(region).getByRole("list", { name: "Top genres" });
+      await user.click(within(genres).getByRole("button", { name: "House, 18 plays, 2 tracks" }));
+      expect(navigated().state).toEqual({ cuepointLibraryRules: rules("genre", "House") });
+    });
+
+    it("shows each track's key and BPM", async () => {
+      install({
+        getStatisticsPlays: vi.fn().mockResolvedValue(
+          plays({
+            tracks: [
+              { id: 812, title: "Alpha", artist: "B", plays: 14, key: "9A", bpm: 128 },
+              { id: 90, title: "Bravo", artist: "C", plays: 7, key: null, bpm: null },
+            ],
+          }),
+        ),
+      });
+      renderPage();
+      const region = await section();
+
+      const first = within(region).getByRole("button", { name: /^1\. Alpha/ });
+      expect(within(first).getByText("9A")).toHaveClass("key-chip");
+      expect(within(first).getByText("128")).toBeInTheDocument();
     });
 
     it("says a since-a-date artist or label opens all of its played tracks", async () => {
@@ -526,8 +594,13 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      expect(within(region).getByText(/Shows all of B's played tracks/)).toBeVisible();
-      expect(within(region).getByText(/Shows all of Warm's played tracks/)).toBeVisible();
+      expect(
+        within(region).getByRole("button", { name: /Shows all of B's played tracks/ }),
+      ).toBeVisible();
+      expect(
+        within(region).getByRole("button", { name: /Shows all of Warm's played tracks/ }),
+      ).toBeVisible();
+      expect(within(region).getAllByText("opens all its played tracks")).toHaveLength(2);
     });
 
     it("says nothing of the sort all time", async () => {
@@ -544,10 +617,11 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.click(within(region).getByRole("button", { name: "Never played: 3,120" }));
+      expect(within(region).getByText("3,120")).toHaveClass("cp-badge");
+      await user.click(within(region).getByRole("button", { name: "Open in Library: Never played" }));
       expect(navigated().state).toEqual({ cuepointLibraryRules: rules("play_count", 3120) });
 
-      await user.click(within(region).getByRole("button", { name: "Plays unknown: 41" }));
+      await user.click(within(region).getByRole("button", { name: "Open in Library: Plays unknown" }));
       expect(navigated().state).toEqual({ cuepointLibraryRules: rules("play_count", 41) });
     });
 
@@ -560,31 +634,31 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      expect(within(region).getByRole("button", { name: "Never played: 0" })).toBeDisabled();
-      expect(within(region).getByRole("button", { name: "Plays unknown: 0" })).toBeDisabled();
+      expect(within(region).getAllByText("0")).toHaveLength(2);
+      expect(within(region).queryByRole("button", { name: /^Open in Library/ })).toBeNull();
     });
   });
 
   describe("empty and no-history states", () => {
     it("says so when nothing has been played in the library", async () => {
       install({
-        getStatisticsPlays: vi.fn().mockResolvedValue(plays({ tracks: [], artists: [], labels: [] })),
+        getStatisticsPlays: vi.fn().mockResolvedValue(plays({ tracks: [], artists: [], labels: [], genres: [] })),
       });
       renderPage();
-      const region = await screen.findByRole("region", { name: "Plays" });
+      const region = await panel("plays");
 
       expect(await within(region).findByText("None of these tracks has been played yet.")).toBeVisible();
       expect(within(region).getByRole("button", { name: "Keep as Collection" })).toBeDisabled();
-      expect(within(region).getAllByText("No plays to rank.")).toHaveLength(2);
+      expect(within(region).getAllByText("No plays to rank.")).toHaveLength(3);
     });
 
     it("says so when nothing was played in the time chosen", async () => {
       window.localStorage.setItem(PLAYS_STORAGE_KEY, JSON.stringify({ limit: 10, since: "7d" }));
       install({
-        getStatisticsPlays: vi.fn().mockResolvedValue(plays({ tracks: [], artists: [], labels: [] })),
+        getStatisticsPlays: vi.fn().mockResolvedValue(plays({ tracks: [], artists: [], labels: [], genres: [] })),
       });
       renderPage();
-      const region = await screen.findByRole("region", { name: "Plays" });
+      const region = await panel("plays");
 
       expect(await within(region).findByText("No plays were recorded in that time.")).toBeVisible();
     });
@@ -600,7 +674,7 @@ describe("the Plays section (STATS-05)", () => {
 
       expect(within(region).getByText("Play history starts at your next refresh")).toBeVisible();
       expect(within(region).getByRole("button", { name: "1. Alpha by B, 14 plays" })).toBeVisible();
-      expect(within(region).getByText(/No refresh has been recorded yet/)).toBeVisible();
+      expect(within(region).getByText(/no refresh recorded yet/)).toBeVisible();
     });
 
     it("says no refresh has happened when the last refresh is the import", async () => {
@@ -613,7 +687,7 @@ describe("the Plays section (STATS-05)", () => {
           ),
       });
       renderPage();
-      const region = await screen.findByRole("region", { name: "Plays" });
+      const region = await panel("plays");
 
       expect(await within(region).findByText(/no refresh since the import/)).toBeVisible();
     });
@@ -625,7 +699,9 @@ describe("the Plays section (STATS-05)", () => {
       const region = await section();
 
       expect(
-        within(region).getByText("Counts from your refresh on Nov 2. History since Oct 8."),
+        within(region).getByText(
+          "From your Rekordbox play counts · history since Oct 8 · last refresh Nov 2",
+        ),
       ).toBeVisible();
     });
 
@@ -639,7 +715,9 @@ describe("the Plays section (STATS-05)", () => {
       const region = await section();
 
       expect(
-        within(region).getByText("Counts from your refresh on Nov 2. History since Oct 8, 2025."),
+        within(region).getByText(
+          "From your Rekordbox play counts · history since Oct 8, 2025 · last refresh Nov 2",
+        ),
       ).toBeVisible();
     });
   });
@@ -754,15 +832,15 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.selectOptions(within(region).getByLabelText("Top"), "Top 25");
+      await user.click(within(region).getByRole("button", { name: "See top 25" }));
 
-      const control = within(region).getByLabelText("Top");
-      expect(control).toHaveValue("25");
+      const control = within(region).getByRole("button", { name: "Show top 10" });
+      expect(within(region).getByText("top 25")).toBeInTheDocument();
       expect(within(region).getByRole("button", { name: "1. Alpha by B, 14 plays" })).toBeVisible();
       expect(within(region).getByRole("button", { name: "Keep as Collection" })).toBeDisabled();
-      release(plays({ tracks: [{ id: 90, title: "Bravo", artist: "C", plays: 9 }] }));
+      release(plays({ tracks: [{ id: 90, title: "Bravo", artist: "C", plays: 9, key: null, bpm: null }] }));
       expect(await within(region).findByRole("button", { name: "1. Bravo by C, 9 plays" })).toBeVisible();
-      expect(within(region).getByLabelText("Top")).toBe(control);
+      expect(within(region).getByRole("button", { name: "Show top 10" })).toBe(control);
     });
   });
 
@@ -822,7 +900,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       expect(JSON.parse(window.localStorage.getItem(PLAYS_STORAGE_KEY) ?? "{}").since).toBe("date:");
       // The section, with its controls, is still there.
       expect(within(region).getByLabelText("Since date")).toBeVisible();
-      expect(within(region).getByRole("list", { name: "Most played" })).toBeVisible();
+      expect(within(region).getByRole("list", { name: "Most played tracks" })).toBeVisible();
     });
 
     it("says so when what is typed cannot be a date from the range", async () => {
@@ -901,12 +979,12 @@ describe("the Plays section, after review (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.selectOptions(within(region).getByLabelText("Top"), "Top 25");
+      await user.click(within(region).getByRole("button", { name: "See top 25" }));
 
       expect(await within(region).findByRole("alert")).toHaveTextContent(
         "These plays could not be read",
       );
-      expect(within(region).getByLabelText("Top")).toHaveValue("25");
+      expect(within(region).getByText("top 25")).toBeInTheDocument();
       expect(within(region).getByRole("button", { name: "1. Alpha by B, 14 plays" })).toBeVisible();
       expect(screen.queryByText("Plays could not be read.")).toBeNull();
       // A refusal is not a bug to report.
@@ -924,7 +1002,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.selectOptions(within(region).getByLabelText("Top"), "Top 25");
+      await user.click(within(region).getByRole("button", { name: "See top 25" }));
 
       await within(region).findByRole("alert");
       expect(reportUnexpected).toHaveBeenCalledTimes(1);
@@ -944,7 +1022,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       const region = await section();
       expect(within(region).queryByText("Loading plays…")).toBeNull();
 
-      await user.selectOptions(within(region).getByLabelText("Top"), "Top 25");
+      await user.click(within(region).getByRole("button", { name: "See top 25" }));
 
       expect(await within(region).findByText("Loading plays…")).toBeVisible();
       expect(region.querySelector(".plays--stale")).not.toBeNull();
@@ -963,10 +1041,10 @@ describe("the Plays section, after review (STATS-05)", () => {
           .mockResolvedValue(plays({ history_from: null, last_read: null, last_read_id: null })),
       });
       renderPage();
-      const region = await screen.findByRole("region", { name: "Plays" });
+      const region = await panel("plays");
 
       expect(await within(region).findByText(/no refresh to count from yet/)).toBeVisible();
-      expect(within(region).queryByRole("list", { name: "Most played" })).toBeNull();
+      expect(within(region).queryByRole("list", { name: "Most played tracks" })).toBeNull();
       expect(within(region).queryByRole("button", { name: /Alpha/ })).toBeNull();
       expect(within(region).queryByRole("button", { name: "Keep as Collection" })).toBeNull();
       // The controls stay, so another choice can be made.

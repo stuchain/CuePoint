@@ -645,7 +645,16 @@ def test_every_bucket_with_rules_opens_exactly_what_it_counted(world, kind):
 def test_every_scope_answers_the_same_six_fields(world, kind):
     report = world.spreads(kind)
 
-    assert set(report) == {"scope", "total", *FIELDS}
+    assert set(report) == {
+        "scope",
+        "total",
+        "total_seconds",
+        "average_seconds",
+        "average_bpm",
+        "artists",
+        "labels",
+        *FIELDS,
+    }
     for name in FIELDS:
         expected = {"buckets", "unknown", "total"} | (
             {"no_file"} if name == "loudness" else set()

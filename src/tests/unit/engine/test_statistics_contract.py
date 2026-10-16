@@ -43,10 +43,12 @@ ANSWER = {
     "tracks",
     "artists",
     "labels",
+    "genres",
     "never_played",
     "unknown",
 }
-TRACK = {"id", "title", "artist", "plays"}
+TRACK = {"id", "title", "artist", "plays", "key", "bpm"}
+GENRE = {"name", "genre_key", "plays", "tracks", "rules", "opens_more"}
 ARTIST = {"name", "name_key", "plays", "tracks", "rules", "opens_more"}
 LABEL = {"name", "label_key", "plays", "tracks", "rules", "opens_more"}
 COUNT = {"count", "rules"}
@@ -78,6 +80,8 @@ def test_every_answer_carries_exactly_the_documented_fields(world):
             assert set(row) == ARTIST
         for row in answer["labels"]:
             assert set(row) == LABEL
+        for row in answer["genres"]:
+            assert set(row) == GENRE
         assert set(answer["never_played"]) == COUNT
         assert set(answer["unknown"]) == COUNT
 
@@ -180,6 +184,7 @@ def test_the_client_declares_every_field_of_the_answer(world):
     assert _fields("StatisticsTrack") == set(answer["tracks"][0])
     assert _fields("StatisticsArtist") == set(answer["artists"][0])
     assert _fields("StatisticsLabel") == set(answer["labels"][0])
+    assert _fields("StatisticsGenre") == set(answer["genres"][0])
     assert _fields("StatisticsCount") == set(answer["never_played"])
     text = _client()
     assert f'"{api.PLAYS_PATH}' in text or f"`{api.PLAYS_PATH}" in text
@@ -187,6 +192,7 @@ def test_the_client_declares_every_field_of_the_answer(world):
     _check_members("StatisticsTrack", answer["tracks"][0])
     _check_members("StatisticsArtist", answer["artists"][0])
     _check_members("StatisticsLabel", answer["labels"][0])
+    _check_members("StatisticsGenre", answer["genres"][0])
     _check_members("StatisticsCount", answer["never_played"])
     # A window with no history answers null where an all-time one answers text.
     empty = world.plays(limit=10, **midnight("2026-03-11"))
@@ -197,7 +203,16 @@ def test_the_client_declares_every_field_of_the_answer(world):
 
 # ---------------------------------------------------------------- STATS-03
 
-SPREADS = {"scope", "total", *FIELDS}
+SPREADS = {
+    "scope",
+    "total",
+    "total_seconds",
+    "average_seconds",
+    "average_bpm",
+    "artists",
+    "labels",
+    *FIELDS,
+}
 SPREAD = {"buckets", "unknown", "total"}
 BUCKET = {"label", "value", "count", "rules"}
 LINE = {"label", "count", "rules"}
@@ -210,6 +225,7 @@ HEALTH = {
     "checked_at",
     "other",
     "artwork_checked_at",
+    "not_synced",
 }
 OTHER_STATES = {"duplicates", "disputed", "no_artwork"}
 FILE_STATES = {"present", "missing", "unreadable", "not_checked"}
@@ -314,6 +330,18 @@ def test_the_client_declares_every_field_of_the_spreads_and_health(spread_world)
     assert _fields("StatisticsBucket") == set(spreads["genre"]["buckets"][0])
     assert _fields("StatisticsLine") == set(spreads["genre"]["unknown"])
     assert _fields("StatisticsHealth") == set(health)
+    assert _fields("StatisticsArtistTracks") == {
+        "name",
+        "name_key",
+        "tracks",
+        "rules",
+    }
+    assert _fields("StatisticsLabelTracks") == {
+        "name",
+        "label_key",
+        "tracks",
+        "rules",
+    }
     text = _client()
     for path in (api.SPREADS_PATH, api.HEALTH_PATH):
         assert f'"{path}' in text or f"`{path}" in text

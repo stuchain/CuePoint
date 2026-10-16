@@ -1,7 +1,8 @@
 /**
- * The key summary (STATS-06, DEC-206): how many tracks have a Beatport key, the three commonest
- * keys, and how many have none. It draws no wheel; the Keys page is the one place a key spread
- * is drawn, and **Open in Keys** goes there with the same scope ticked.
+ * The Keys chart of the Library tab (STATS-06, DEC-206): the commonest keys as Camelot-coloured
+ * bars with their counts, and how many tracks have a key and how many have none. It draws no
+ * wheel; the Keys page is the one place a key spread is drawn, and **Open in Keys** goes there
+ * with the same scope ticked.
  *
  * The numbers are the Keys page's own: `POST /api/v1/library/keys/population` over the scope as
  * its sources, so the two pages cannot disagree.
@@ -13,6 +14,7 @@ import type { CollectionNode } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { LinkButton } from "../../components/LinkButton";
 import { Loading } from "../../components/Loading";
+import { KeyChip } from "../../components/wheel/KeyChip";
 import { formatCount } from "../../format/counts";
 import { RETRY, needsDesktopApp } from "../../format/words";
 import { keysState } from "../keys/keysLink";
@@ -20,7 +22,7 @@ import { requestSources } from "../keys/keysSources";
 import { useKeysPopulation } from "../keys/useKeysPopulation";
 import { keysScopeFor } from "./statisticsKeys";
 
-const TOP = 3;
+const TOP = 6;
 
 const noSourceGone = () => false;
 
@@ -66,23 +68,44 @@ export function KeySummary({ scope, collections }: KeySummaryProps) {
       .filter((entry) => entry.count > 0)
       .sort((a, b) => b.count - a.count)
       .slice(0, TOP);
-    const commonest = common.map((entry) => `${entry.code} (${formatCount(entry.count)})`).join(", ");
+    const top = Math.max(1, ...common.map((entry) => entry.count));
     body = (
-      <p className="statistics-note">
-        {`${formatCount(total - no_key)} of ${formatCount(total)} tracks have a Beatport key`}
-        {commonest !== "" && ` · most common ${commonest}`}
-        {` · No Beatport key: ${formatCount(no_key)}`}
-      </p>
+      <>
+        {common.length > 0 && (
+          <ol className="keys__list" aria-label="Commonest keys">
+            {common.map((entry) => (
+              <li
+                key={entry.code}
+                className="keys__row"
+                style={{ ["--share" as string]: `${Math.max(2, Math.round((entry.count / top) * 100))}%` }}
+              >
+                <span className="keys__chip">
+                  <KeyChip value={entry.code} />
+                </span>
+                <span className={`keys__bar key-chip--${entry.code}`} aria-hidden="true" />
+                <span className="keys__count">{formatCount(entry.count)}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+        <p className="statistics-note">
+          {`${formatCount(total - no_key)} with a key · ${formatCount(no_key)} with none`}
+        </p>
+      </>
     );
   }
 
   return (
     <div className="statistics-panel statistics-panel--keys">
-      <h3 className="statistics-panel__title">Keys</h3>
+      <div className="rank__head">
+        <h3 className="statistics-panel__title">
+          Keys<span className="statistics-panel__unit"> tracks</span>
+        </h3>
+        <LinkButton go onClick={() => navigate("/keys", { state: keysState(picked) })}>
+          Open in Keys
+        </LinkButton>
+      </div>
       {body}
-      <LinkButton go onClick={() => navigate("/keys", { state: keysState(picked) })}>
-        Open in Keys
-      </LinkButton>
     </div>
   );
 }

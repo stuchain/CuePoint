@@ -143,8 +143,14 @@ def test_the_playlist_list_costs_a_few_reads_of_the_memberships(tmp_path, capsys
                 best = min(best, time.perf_counter() - started)
             return best, result
 
-        timed(lambda: service.playlists("running"))  # warm the page cache
-        best, statuses = timed(lambda: service.playlists("running"))
+        scope = [
+            int(row["id"])
+            for row in connection.execute(
+                "SELECT id FROM rekordbox_playlists WHERE kind = 'playlist' LIMIT 3"
+            )
+        ]
+        timed(lambda: service.playlists("running", scope))  # warm the page cache
+        best, statuses = timed(lambda: service.playlists("running", scope))
         reference, _ = timed(lambda: connection.execute(reference_sql).fetchone())
 
         with capsys.disabled():

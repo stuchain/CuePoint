@@ -63,6 +63,7 @@ def test_the_answer_has_exactly_the_documented_fields(world):
         "checked_at",
         "other",
         "artwork_checked_at",
+        "not_synced",
     }
     assert answer["scope"] == "library"
     assert list(answer["other"]) == list(OTHER)

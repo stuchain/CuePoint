@@ -2318,6 +2318,11 @@ class IMatchJobRepository(ABC):
         ...
 
     @abstractmethod
+    def playlist_order(self, playlist_ids: Sequence[int]) -> List[int]:
+        """Return these playlists' tracks, playlist by playlist, once each."""
+        ...
+
+    @abstractmethod
     def settled(self, track_ids: Iterable[int]) -> Set[int]:
         """Return the tracks a match that is not a re-match leaves out."""
         ...
@@ -2411,8 +2416,13 @@ class IMatchService(ABC):
         selection: "BatchSelection",
         rematch: bool = False,
         label: Optional[str] = None,
+        playlist_order: Sequence[int] = (),
     ) -> "MatchDraft":
-        """Resolve a selection into the tracks a match job will cover."""
+        """Resolve a selection into the tracks a match job will cover.
+
+        ``playlist_order`` lists playlists in the order to work them: their
+        tracks come first, playlist by playlist, in playlist position.
+        """
         ...
 
     @abstractmethod
@@ -4244,6 +4254,28 @@ class IStatisticsRepository(ABC):
         ...
 
     @abstractmethod
+    def top_genres(
+        self, scope: "RuleSet", limit: int, from_read: Optional[int]
+    ) -> List["PlayedName"]:
+        """The genres with the most plays, by effective genre."""
+        ...
+
+    @abstractmethod
+    def top_artists_by_tracks(self, scope: "RuleSet", limit: int) -> List["PlayedName"]:
+        """The artists with the most tracks in the scope."""
+        ...
+
+    @abstractmethod
+    def top_labels_by_tracks(self, scope: "RuleSet", limit: int) -> List["PlayedName"]:
+        """The labels with the most tracks in the scope."""
+        ...
+
+    @abstractmethod
+    def library_totals(self, scope: "RuleSet") -> Tuple[int, int, Optional[float]]:
+        """``(total seconds, tracks with a length, average BPM)`` over the scope."""
+        ...
+
+    @abstractmethod
     def unplayed(self, scope: "RuleSet") -> Tuple[int, int]:
         """``(never played, unknown)`` among the scope's tracks."""
         ...
@@ -4605,11 +4637,25 @@ class IMatchStatusService(ABC):
     """Interface for the playlist list and the Save bar's count (G4 2.1, 2.2)."""
 
     @abstractmethod
-    def playlists(self, running_job_id: Optional[str] = None) -> "PlaylistStatuses":
+    def playlists(
+        self,
+        running_job_id: Optional[str] = None,
+        scope_playlist_ids: Optional[Sequence[int]] = None,
+    ) -> "PlaylistStatuses":
         """Return every playlist's status, and the whole library's.
 
         Args:
-            running_job_id: The active match job, if any; its progress is
-                reported against each playlist it covers.
+            running_job_id: The active match job, if any.
+            scope_playlist_ids: The playlists the job was started for, in the
+                order the job works them (the tree order); None or empty when it
+                was started for the whole library or for something else. Only
+                these are reported as running (the first not finished) or
+                queued (the rest), and the whole library is reported as
+                running only when there are none.
         """
+        ...
+
+    @abstractmethod
+    def in_tree_order(self, playlist_ids: Sequence[int]) -> Tuple[int, ...]:
+        """Return these playlists in the order the tree lists them, once each."""
         ...

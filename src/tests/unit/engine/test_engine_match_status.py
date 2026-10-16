@@ -99,6 +99,7 @@ COUNT_KEYS = {
     "no_match",
     "unsaved",
     "running",
+    "queued",
 }
 
 
@@ -165,7 +166,7 @@ class TestPlaylistsRoute:
         status, body = get(engine, "/api/v1/clean/playlists")
         assert (status, body["playlists"]) == (200, [])
 
-    def test_a_running_match_job_is_shared_by_the_playlists_it_covers(
+    def test_a_running_match_job_runs_only_the_playlist_it_was_started_for(
         self, engine, library_db, store
     ):
         a, b = add_track(library_db, "/m/a.mp3"), add_track(library_db, "/m/b.mp3")
@@ -177,17 +178,18 @@ class TestPlaylistsRoute:
         )
         try:
             add_job_plan(library_db, job.id, {a: True, b: False})
+            from cuepoint.engine import clean_api
+
+            clean_api._remember_match_scope(job.id, (one,))
 
             _, body = get(engine, "/api/v1/clean/playlists")
 
             rows = {row["id"]: row for row in body["playlists"]}
             assert rows[one]["running"] == {"job_id": job.id, "done": 1, "total": 2}
-            assert rows[two]["running"] == {"job_id": job.id, "done": 0, "total": 1}
-            assert body["whole_library"]["running"] == {
-                "job_id": job.id,
-                "done": 1,
-                "total": 2,
-            }
+            # b is in both playlists, but only One was started
+            assert rows[two]["running"] is None
+            # the run belongs to the playlist, not to the whole library row
+            assert body["whole_library"]["running"] is None
         finally:
             release.set()
             for _ in range(500):
@@ -216,6 +218,20 @@ class TestPlaylistsRoute:
 
 
 @pytest.mark.unit
+def test_the_playlists_a_selection_names_are_its_scope():
+    from cuepoint.engine.clean_api import _playlist_scope
+
+    def selection(*sources):
+        rule = {"field": "in_playlist", "operator": "any_of", "value": list(sources)}
+        return {"query": {"filters": {"match": "all", "rules": [rule]}}}
+
+    one, two = {"kind": "playlist", "id": 4}, {"kind": "playlist", "id": 9}
+    assert _playlist_scope(selection(one, two, one)) == (4, 9)
+    assert _playlist_scope(selection({"kind": "folder", "id": 3})) == ()
+    assert _playlist_scope({"query": {}}) == ()
+    assert _playlist_scope({"track_ids": [1]}) == ()
+
+
 def test_the_routes_are_listed_for_the_contract():
     from cuepoint.engine.clean_api import GET_PATHS, handles_get
 
