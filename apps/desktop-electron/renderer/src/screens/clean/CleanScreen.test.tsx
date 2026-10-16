@@ -391,9 +391,9 @@ describe("the page", () => {
     renderClean();
     const tabs = await screen.findAllByRole("tab");
     await waitFor(() =>
-      expect(tabs.map((tab) => tab.textContent)).toEqual([
-        "Match (42)",
-        "Missing files (3)",
+      expect(tabs.map((tab) => tab.getAttribute("aria-label") ?? tab.textContent)).toEqual([
+        "Match, 42",
+        "Missing files, 3",
         "Duplicates",
         "Playlists",
         "Past searches",
@@ -728,7 +728,7 @@ describe("missing files", () => {
       fixture.untouched.missing_files as LibrarySearchResponse,
     );
     renderClean("missing");
-    expect(await screen.findByText("Files have not been checked yet.")).toBeInTheDocument();
+    expect(await screen.findByText("Files have not been checked yet")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Check every file" }));
     await waitFor(() =>
       expect(bridge.startFileCheck).toHaveBeenCalledWith({ selection: { query: {} } }),
@@ -833,7 +833,7 @@ describe("duplicates", () => {
     bridge.getLibraryHealth!.mockResolvedValue(UNTOUCHED);
     bridge.getDuplicateGroups!.mockResolvedValue(fixture.untouched.duplicates);
     renderClean("duplicates");
-    expect(await screen.findByText("Duplicates have not been looked for yet.")).toBeInTheDocument();
+    expect(await screen.findByText("Duplicates have not been looked for yet")).toBeInTheDocument();
     const offers = screen.getAllByRole("button", { name: "Find duplicates" });
     fireEvent.click(offers[offers.length - 1]!);
     await waitFor(() => expect(bridge.startDuplicateScan).toHaveBeenCalledWith({}));
@@ -844,7 +844,7 @@ describe("duplicates", () => {
     bridge.getLibraryHealth!.mockResolvedValue(fixture.scanned.health as LibraryHealth);
     bridge.getDuplicateGroups!.mockResolvedValue(fixture.scanned.duplicates);
     renderClean("duplicates");
-    expect(await screen.findByText("No possible duplicates.")).toBeInTheDocument();
+    expect(await screen.findByText("No possible duplicates")).toBeInTheDocument();
   });
 });
 

@@ -123,7 +123,7 @@ describe("the list", () => {
     expect(screen.queryByText("Warmup")).toBeNull();
     expect(screen.getByText("Whole library")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Filter playlists"), { target: { value: "zzz" } });
-    expect(screen.getByText("Nothing matches \u201czzz\u201d.")).toBeInTheDocument();
+    expect(screen.getByText("Nothing matches \u201czzz\u201d")).toBeInTheDocument();
   });
 
   it("gives only the running playlist a bar, its count, the time left and a Stop; a queued one says Waiting", () => {

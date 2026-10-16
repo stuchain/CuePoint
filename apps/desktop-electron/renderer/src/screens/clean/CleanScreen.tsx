@@ -51,6 +51,7 @@ import { libraryImportState } from "../library/libraryLink";
 import { entityPath } from "../discover/discoverLinks";
 import {
   CLEAN_SECTIONS,
+  factsLine,
   loadCleanSection,
   sectionCounts,
   saveCleanSection,
@@ -250,16 +251,20 @@ export function CleanScreen({
         <ScreenHeader
           title="Clean"
           inset
+          summary={factsLine(cleanHealth.health?.track_count ?? null, counts)}
           tabs={
             <Tabs
               tabs={CLEAN_SECTIONS.map((entry) => {
                 const waiting = counts[entry.id];
                 return {
                   id: entry.id,
-                  label:
-                    waiting === undefined
-                      ? entry.label
-                      : `${entry.label} (${waiting.toLocaleString()})`,
+                  label: entry.label,
+                  // The count after the name, in the page's one count style: a grey figure,
+                  // amber when it is work waiting (area 58).
+                  detail:
+                    waiting === undefined ? undefined : (
+                      <span className="clean-tab-count">{waiting.toLocaleString()}</span>
+                    ),
                 };
               })}
               activeId={section}

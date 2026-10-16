@@ -40,6 +40,7 @@ import { openOnBeatport } from "../../discover/openOnBeatport";
 import { toQueueItem } from "../../library/useLibraryPlayback";
 import { attemptLabel } from "../cleanFormat";
 import { SCORE_ROWS, scoreLine } from "../comparison";
+import { useCandidateArtwork } from "../useCandidateArtwork";
 import { useTrackArtwork } from "../useTrackArtwork";
 import { useTrackMatches } from "../useTrackMatches";
 import { statusLabel, statusTone } from "./reviewList";
@@ -142,8 +143,14 @@ function CandidateRow({
   const preview = useBeatportPreview({ kind: "candidate", id: candidate.id });
   const playing = preview.state === "playing";
   const label = [candidate.title, candidate.artists].filter(Boolean).join(" by ");
+  const cover = useCandidateArtwork(candidate.id, "row");
   return (
     <li className={`review-candidate${inUse ? " review-candidate--in-use" : ""}`}>
+      {cover ? (
+        <img className="review-candidate__cover" src={cover} alt="" />
+      ) : (
+        <ArtworkPlaceholder className="review-candidate__cover" label="No artwork" />
+      )}
       <div className="review-candidate__facts">
         <p className="review-candidate__title">
           {titleParts(candidate).map((part, index) => (

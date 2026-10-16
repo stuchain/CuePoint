@@ -116,7 +116,7 @@ describe("the check button (K4)", () => {
     install([]);
     bridge.browseLibrary!.mockResolvedValue(fixture.untouched.missing_files as LibrarySearchResponse);
     renderView(UNTOUCHED);
-    await screen.findByText("Files have not been checked yet.");
+    await screen.findByText("Files have not been checked yet");
 
     expect(checkButtons()).toEqual(["Check every file"]);
     fireEvent.click(screen.getByRole("button", { name: "Check every file" }));
@@ -166,16 +166,17 @@ describe("nothing missing (K13)", () => {
     return screen.findByText(/^All 3 files found/);
   }
 
-  it("is one line: all found, when it was checked, and Check again", async () => {
+  it("is a bar with the count and Check again, over the all-clear", async () => {
     const line = await nothingMissing();
-    expect(line).toHaveTextContent(/^All 3 files found · checked .*\d/);
+    // No separator, so no stray trailing dot before the button (area 67).
+    expect(line.textContent).toBe("All 3 files found");
     expect(screen.getByRole("button", { name: "Check again" })).toBeInTheDocument();
+    expect(screen.getByText("No missing files")).toBeInTheDocument();
   });
 
-  it("words the time short, and hides the separators from a screen reader", async () => {
-    const line = await nothingMissing();
-    expect(line).toHaveTextContent(/checked [A-Z][a-z]{2} \d{1,2} \d{1,2}:\d{2}/);
-    expect(line.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThanOrEqual(2);
+  it("words the time in the one date wording (day, comma, clock)", async () => {
+    await nothingMissing();
+    expect(screen.getByText(/last checked, [A-Z][a-z]{2} \d{1,2}(, \d{4})?, \d{1,2}:\d{2}/)).toBeInTheDocument();
   });
 
   it("decides from the loaded list: a missing file the Health count has not caught up with shows the table", async () => {
@@ -215,7 +216,7 @@ describe("nothing missing (K13)", () => {
     install([]);
     bridge.browseLibrary!.mockResolvedValue(fixture.untouched.missing_files as LibrarySearchResponse);
     renderView(UNTOUCHED);
-    await screen.findByText("Files have not been checked yet.");
+    await screen.findByText("Files have not been checked yet");
     expect(checkButtons()).toEqual(["Check every file"]);
     expect(screen.queryByText(/files found/)).toBeNull();
   });

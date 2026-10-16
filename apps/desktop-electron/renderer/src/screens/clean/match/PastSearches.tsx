@@ -12,13 +12,15 @@
 import { useEffect, useState } from "react";
 
 import type { MatchRun } from "../../../api/cuepointBridge.types";
+import { formatDayTime } from "../../../format/dates";
+import { EmptyState } from "../../../components/EmptyState";
 import { Badge, type BadgeVariant } from "../../../components/Badge";
 import { Button } from "../../../components/Button";
 import { Notice } from "../../../components/Notice";
 import { SearchField } from "../../../components/SearchField";
 import { formatCount } from "../../../format/counts";
 import { nothingMatches } from "../../../format/words";
-import { canResume, resultParts, statusOf, whatLine, whenLabel, type StatusTone } from "./pastSearchWords";
+import { canResume, resultParts, statusOf, whatLine, type StatusTone } from "./pastSearchWords";
 import { ReviewListSave } from "./ReviewListSave";
 import { useMatchJobs } from "./useMatchJobs";
 import { NEEDS_DESKTOP } from "../../../api/userMessage";
@@ -79,9 +81,10 @@ export function PastSearches({
         <p className="match-past__empty">{NEEDS_DESKTOP}</p>
       )}
       {jobs.available && !jobs.error && jobs.runs.length === 0 && !jobs.loading && (
-        <p className="match-past__empty">
-          {query.trim() ? nothingMatches(query.trim()) : "Nothing has been matched on Beatport yet."}
-        </p>
+        <EmptyState
+          icon="match"
+          headline={query.trim() ? nothingMatches(query.trim()).replace(/[.]$/, "") : "Nothing has been matched on Beatport yet"}
+        />
       )}
 
       {jobs.runs.length > 0 && (
@@ -108,7 +111,7 @@ export function PastSearches({
                 const what = whatLine(run);
                 return (
                   <tr key={run.job_id} data-open={run.job_id === openId ? "true" : undefined}>
-                    <td>{whenLabel(run.created_at, now)}</td>
+                    <td>{formatDayTime(run.created_at, { now }) || run.created_at || ""}</td>
                     <td>{what}</td>
                     <td className="match-past__number">{formatCount(run.planned)}</td>
                     <td>

@@ -166,12 +166,12 @@ describe("the table", () => {
     expect(rowOf(2)).not.toHaveClass("review-row--off");
   });
 
-  it("names the playlist, the tracks and the ticked ones, and what has no match, with ‹ Playlists going back", async () => {
+  it("names the playlist, the tracks and the ticked ones, and what has no match, with a small chevron closing the review", async () => {
     const { props } = renderTab();
     await loaded();
     expect(screen.getByText("hJ · 5 tracks · 2 ticked to sync")).toBeInTheDocument();
     expect(screen.getByText("1 not found · 1 search failed")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Playlists" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close review" }));
     expect(props.onBack).toHaveBeenCalledTimes(1);
   });
 

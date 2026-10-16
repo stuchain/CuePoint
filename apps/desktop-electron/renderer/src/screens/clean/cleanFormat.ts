@@ -148,17 +148,6 @@ export function fileStatusHint(status: FileStatus | null | undefined): string {
   }
 }
 
-/**
- * A recorded time, as a person reads one.
- *
- * Anything that is not a time is shown as it came, rather than as "Invalid
- * Date": the engine said something, and saying it is more use than hiding it.
- */
-export function formatWhen(iso: string | null | undefined): string {
-  if (!iso) return "";
-  return formatDayTime(iso) || iso;
-}
-
 /** A match that started, and what it left out (DEC-065). */
 export function matchStartedLine(started: Pick<MatchStarted, "planned" | "excluded">): string {
   const head = `Matching ${count(started.planned, "track")} on Beatport.`;
@@ -190,7 +179,7 @@ export function attemptLabel(
   const notes = [index === 0 ? "latest" : null, attempt.id === decidedOn ? "decided" : null]
     .filter(Boolean)
     .join(", ");
-  return `${formatWhen(attempt.finished_at)} — ${outcome}${notes ? ` (${notes})` : ""}`;
+  return `${(attempt.finished_at && (formatDayTime(attempt.finished_at) || attempt.finished_at)) || ""} — ${outcome}${notes ? ` (${notes})` : ""}`;
 }
 
 export function exportedLine(count_: number, filePath: string): string {

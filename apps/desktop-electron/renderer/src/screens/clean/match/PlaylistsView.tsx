@@ -261,12 +261,13 @@ export function PlaylistsView({ data, error = null, loading = false, matching = 
         </table>
         {data.playlists.length === 0 && (
           <EmptyState
+            icon="playlist"
             headline="No playlists yet"
             description="Playlists from your Rekordbox file show here. Import it in the Library first."
           />
         )}
         {data.playlists.length > 0 && text && shown.length === 0 && (
-          <p className="playlists__empty">{nothingMatches(filter.trim())}</p>
+          <EmptyState icon="search" headline={nothingMatches(filter.trim()).replace(/[.]$/, "")} />
         )}
       </div>
       <div className="playlists__footer">

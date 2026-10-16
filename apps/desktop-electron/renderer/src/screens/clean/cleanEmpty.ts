@@ -13,7 +13,7 @@
  * responses the real engine gave (`cleanEmpty.fixture.json`).
  */
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
-import { formatWhen } from "./cleanFormat";
+import { formatDayTime } from "../../format/dates";
 
 /** The one thing an empty state offers to do about itself, when there is one. */
 type CleanEmptyOffer = "check_files" | "find_duplicates";
@@ -46,14 +46,15 @@ export function missingEmptyState(
   if (error) return view(error);
   if (health && lastRun(health, "files") === null) {
     return view(
-      "Files have not been checked yet.",
+      "Files have not been checked yet",
       "Check files to find tracks whose files are missing or cannot be read.",
       "check_files",
     );
   }
-  const when = health ? formatWhen(lastRun(health, "files")) : "";
+  const lastChecked = health ? lastRun(health, "files") : null;
+  const when = lastChecked ? formatDayTime(lastChecked) || lastChecked : "";
   return view(
-    "No missing files.",
+    "No missing files",
     when ? `Every file was there when CuePoint last checked, ${when}.` : null,
   );
 }
@@ -67,14 +68,14 @@ export function duplicatesEmptyState(
   if (error) return view(error);
   if (health && lastRun(health, "duplicates") === null) {
     return view(
-      "Duplicates have not been looked for yet.",
+      "Duplicates have not been looked for yet",
       "Find duplicates to group tracks that share a file, a Beatport track, or " +
         "an artist, title and length.",
       "find_duplicates",
     );
   }
   return view(
-    "No possible duplicates.",
+    "No possible duplicates",
     showingDismissed
       ? "Nothing was found, and nothing is marked as not duplicates."
       : "Nothing was found the last time CuePoint looked.",

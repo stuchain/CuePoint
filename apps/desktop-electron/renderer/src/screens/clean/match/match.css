@@ -69,6 +69,11 @@
 
 .match-past__scroll {
   overflow-x: auto;
+  border: var(--control-border-width) solid var(--border-muted);
+}
+
+.match-past__table tbody tr:last-child td {
+  border-bottom: 0;
 }
 
 .match-past__table {
@@ -172,11 +177,18 @@
   font-size: var(--control-font-size);
 }
 
+/* The review's bar is the page's one action bar (area 61): panel, 32 high, the count in Inter,
+   the Sync button at the right. */
 .review__bar {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
+  box-sizing: border-box;
   gap: var(--space-md);
+  min-height: var(--toolbar-height);
+  padding: var(--toolbar-padding);
+  border: var(--control-border-width) solid var(--border-muted);
+  background: var(--bg-panel);
 }
 
 /* The name gives way before the Sync button does: the button never drops to its own line. */
@@ -193,6 +205,7 @@
 }
 
 .review__name {
+  font-family: var(--font-data);
   font-weight: var(--weight-strong);
 }
 
@@ -212,11 +225,17 @@
   display: none;
 }
 
+/* Said to a screen reader as each tick and choice is made; never a band of its own (it took 42). */
 .review__live {
-  min-height: 1lh;
-  margin: 0;
-  color: var(--fg-muted);
-  font-size: var(--control-font-size);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .review__body {
@@ -232,6 +251,8 @@
   flex: 1;
   min-width: 0;
   overflow: auto;
+  /* Every table is boxed (area 65). */
+  border: var(--control-border-width) solid var(--border-muted);
 }
 
 .review__more {
@@ -306,6 +327,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-md);
+  box-sizing: border-box;
   min-height: var(--toolbar-height);
   padding: var(--toolbar-padding);
   border: var(--control-border-width) solid var(--border-muted);
@@ -314,7 +336,7 @@
 
 .review__selected-count {
   margin-inline-end: auto;
-  font-weight: var(--weight-strong);
+  font-family: var(--font-data);
 }
 
 /* A decision a newer search disagrees with: said in words beside its Check. */
@@ -482,6 +504,16 @@
 .review-candidate--in-use {
   border-left-color: var(--accent-success);
   background: color-mix(in srgb, var(--accent-success) 10%, var(--bg-panel));
+}
+
+/* The candidate's cover: a whole-pixel square at the row's left. */
+.review-candidate__cover {
+  flex: none;
+  box-sizing: border-box;
+  width: calc(36px * var(--scale));
+  height: calc(36px * var(--scale));
+  object-fit: cover;
+  border: var(--control-border-width) solid var(--border-control);
 }
 
 .review-candidate__facts {

@@ -7,22 +7,9 @@
  */
 import type { MatchRun } from "../../../api/cuepointBridge.types";
 import { plural } from "../../../format/counts";
-import { formatDay, formatTimeOfDay } from "../../../format/dates";
 
 function tracks(count: number): string {
   return plural(count, "track");
-}
-
-/**
- * When a run happened, short, in the one date wording and the computer's clock: "Today 1:42 PM",
- * "Yesterday 10:10 PM", "Oct 10 6:31 PM". What is not a time is shown as it came, as `formatWhen`
- * does.
- */
-export function whenLabel(iso: string | null | undefined, now: Date = new Date()): string {
-  if (!iso) return "";
-  const when = new Date(iso);
-  if (Number.isNaN(when.getTime())) return iso;
-  return `${formatDay(when, { now })} ${formatTimeOfDay(when)}`;
 }
 
 /** What was matched: the label the window gave it, else how many tracks. */

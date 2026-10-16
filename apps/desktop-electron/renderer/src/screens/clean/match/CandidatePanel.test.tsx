@@ -79,6 +79,39 @@ describe("the candidates", () => {
     expect(list.getAllByRole("button", { name: /Play the Beatport preview/ })).toHaveLength(2);
   });
 
+  it("draws each candidate's cover from the guarded route, a placeholder when it has none, and releases it", async () => {
+    const get = vi.fn(async ({ candidateId }: { candidateId: number }) => (candidateId === 1001 ? "blob:cover-1001" : null));
+    const release = vi.fn();
+    bridge.getCandidateArtwork = get;
+    bridge.releaseTrackArtwork = release;
+    (window.cuepoint as unknown as Record<string, unknown>).getCandidateArtwork = get;
+    (window.cuepoint as unknown as Record<string, unknown>).releaseTrackArtwork = release;
+    const { unmount } = render(
+      <ScaleProvider>
+        <CandidatePanel
+          row={reviewTrack(1, "to_check")}
+          position={1}
+          total={5}
+          version={0}
+          busy={false}
+          matching={false}
+          onClose={vi.fn()}
+          onUse={vi.fn()}
+          onLeaveOut={vi.fn()}
+          onMessage={vi.fn()}
+        />
+      </ScaleProvider>,
+    );
+    const list = await candidates();
+    await waitFor(() => expect(list.getAllByRole("listitem")[0]!.querySelector("img.review-candidate__cover")).not.toBeNull());
+    expect(get).toHaveBeenCalledWith({ candidateId: 1001, size: "row" });
+    // The second candidate has no picture: the placeholder holds its place.
+    expect(list.getAllByRole("listitem")[1]!.querySelector(".review-candidate__cover")).not.toBeNull();
+    expect(list.getAllByRole("listitem")[1]!.querySelector("img")).toBeNull();
+    unmount();
+    expect(release).toHaveBeenCalledWith("blob:cover-1001");
+  });
+
   it("names the status with a chip and closes with the shared Close button", () => {
     renderPanel({ row: reviewTrack(1, "to_check") });
     expect(screen.getByText("Check")).toHaveClass("cp-badge--warning");

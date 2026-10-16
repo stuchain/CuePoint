@@ -168,7 +168,7 @@ describe("Review on a row", () => {
     renderArea();
     fireEvent.click(screen.getByRole("button", { name: "Review Peak time" }));
     await screen.findByRole("table", { name: /Every track of this playlist/ }, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: "Playlists" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close review" }));
     expect(tabNames()).toEqual(["Playlists", "Past searches"]);
     expect(screen.getByRole("tab", { name: "Playlists" })).toHaveAttribute("aria-selected", "true");
   });
@@ -199,7 +199,7 @@ describe("a review opened from the page", () => {
     expect(screen.getByRole("tab", { name: "Review Peak time" })).toHaveAttribute("aria-selected", "true");
     expect(onReviewOpened).toHaveBeenCalledTimes(1);
     // Used once: coming back to the area does not open them again.
-    fireEvent.click(await screen.findByRole("button", { name: "Playlists" }, LOADED));
+    fireEvent.click(await screen.findByRole("button", { name: "Close review" }, LOADED));
     update({ reviewOpening: opening });
     expect(tabNames()).toEqual(["Playlists", "Review Closing", "Past searches"]);
     await waitFor(() => expect(onReviewOpened).toHaveBeenCalledTimes(1));

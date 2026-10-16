@@ -6,8 +6,8 @@
   flex-direction: column;
   gap: var(--space-md);
   min-height: 0;
-  padding: var(--space-md) 0;
-  overflow-y: auto;
+  /* No bottom padding: the bar under the list is flush with the bottom of the area (area 61). */
+  padding: var(--space-md) 0 0;
 }
 
 /* 1 Tick the playlists to match -> 2 Review -> 3 Sync to files: a map, with this list lit. */
@@ -51,8 +51,11 @@
   max-width: calc(320px * var(--scale));
 }
 
+/* The boxed list scrolls on its own: its header stays in view and the bar below it stays put. */
 .playlists__scroll {
-  overflow-x: auto;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   border: var(--control-border-width) solid var(--border-muted);
 }
 
@@ -64,10 +67,28 @@
 
 .playlists__table th,
 .playlists__table td {
-  padding: var(--space-md);
+  padding: 0 var(--space-md);
   border-bottom: var(--control-border-width) solid var(--border-muted);
   text-align: left;
   vertical-align: middle;
+}
+
+/* A row is 26 (39 at 1.5x): the Library's density, not the old roomy 59. */
+.playlists__table tbody tr {
+  height: calc(26px * var(--scale));
+}
+
+/* Names are data: Inter, as in the tables. */
+.playlists__table td {
+  font-family: var(--font-data);
+}
+
+.playlists__table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: calc(26px * var(--scale));
+  background: var(--bg-panel);
 }
 
 .playlists__table tbody tr:last-child td {
@@ -140,23 +161,29 @@
 
 /* The tick column: a bigger tick, easier to hit down a long list. */
 .playlists__tick {
-  width: calc(44px * var(--scale));
+  width: calc(32px * var(--scale));
 }
 
 .playlists__tick input[type="checkbox"] {
-  width: calc(20px * var(--scale));
-  height: calc(20px * var(--scale));
+  width: calc(16px * var(--scale));
+  height: calc(16px * var(--scale));
   margin: 0;
+  vertical-align: middle;
 }
 
 /* The bar under the list: what is ticked on the left, Match on the right. */
 .playlists__footer {
   display: flex;
+  flex: none;
   flex-wrap: wrap;
   align-items: center;
+  box-sizing: border-box;
   gap: var(--space-md);
-  padding: var(--space-md);
+  min-height: var(--toolbar-height);
+  padding: var(--toolbar-padding);
   border: var(--control-border-width) solid var(--border-muted);
+  background: var(--bg-panel);
+  font-family: var(--font-data);
 }
 
 .playlists__footer > .cp-btn {

@@ -52,11 +52,18 @@ export function reviewMenuItems(state: ReviewMenuState, handlers: ReviewMenuHand
       disabled: count !== 1 || handlers.onReveal === null,
       onSelect: () => handlers.onReveal?.(),
     },
-    // The block for this page: a heading that does nothing, then what Review adds.
-    { id: "page-heading", label: "This page", disabled: true, onSelect: () => undefined, separatorBefore: true },
-    { id: "tick", label: "Tick to sync", disabled: !state.canTick, onSelect: handlers.onTick },
-    { id: "leave-out", label: "Leave out", disabled: !state.canLeaveOut, onSelect: handlers.onLeaveOut },
-    { id: "choose", label: "Choose a match…", disabled: count !== 1, onSelect: handlers.onChoose },
+    // The block for this page: a label-style heading over its first entry, then what Review adds.
+    {
+      id: "tick",
+      label: "Tick to sync",
+      disabled: !state.canTick,
+      reason: "Every one of them is ticked or has no match",
+      onSelect: handlers.onTick,
+      groupTitle: "This page",
+      separatorBefore: true,
+    },
+    { id: "leave-out", label: "Leave out", disabled: !state.canLeaveOut, reason: "None of them is ticked", onSelect: handlers.onLeaveOut },
+    { id: "choose", label: "Choose a match…", disabled: count !== 1, reason: "Choose one track at a time", onSelect: handlers.onChoose },
   ];
   return items;
 }

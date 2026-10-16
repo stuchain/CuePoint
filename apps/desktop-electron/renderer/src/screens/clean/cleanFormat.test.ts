@@ -8,7 +8,6 @@ import {
   exportedLine,
   fileStatusHint,
   fileStatusLabel,
-  formatWhen,
   matchStartedLine,
   matchStateLabel,
   rejectReasonText,
@@ -125,11 +124,5 @@ describe("sentences about what was done", () => {
       "<recorded> — found nothing",
     );
     expect(attemptLabel({ ...attempt, outcome: "error" }, 2, null)).toBe("<recorded> — failed");
-  });
-
-  it("shows a time it cannot read as it came", () => {
-    expect(formatWhen("<recorded>")).toBe("<recorded>");
-    expect(formatWhen(null)).toBe("");
-    expect(formatWhen("2026-09-15T10:00:00Z")).not.toBe("2026-09-15T10:00:00Z");
   });
 });

@@ -50,14 +50,35 @@
   border: 0;
 }
 
+/* The one action bar (area 61): a 32 panel bar, the count at the left in Inter, the actions at
+   the right. The Playlists footer and the Review bars share this look (playlists.css, match.css). */
 .clean-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  box-sizing: border-box;
   gap: var(--space-md);
   min-height: var(--toolbar-height);
-  padding: var(--space-sm) 0;
-  border-bottom: var(--divider);
+  padding: var(--toolbar-padding);
+  border: var(--control-border-width) solid var(--border-muted);
+  background: var(--bg-panel);
+}
+
+/* A tab's count after its name: grey, amber when it is work waiting (area 58). */
+.clean-tab-count {
+  color: var(--warning-text);
+}
+
+/* Tab toolbar lines are laid out one way (area 67): the count, its options, the actions at the right. */
+.clean-toolbar__check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+}
+
+.clean-toolbar__check input[type="checkbox"] {
+  margin: 0;
 }
 
 .clean-toolbar__spacer {
@@ -66,6 +87,7 @@
 
 .clean-toolbar__count {
   align-self: center;
+  font-family: var(--font-data);
   font-size: var(--font-size-sm);
 }
 
@@ -106,9 +128,21 @@
 .clean-missing {
   display: grid;
   grid-template-rows: auto auto minmax(calc(140px * var(--scale)), 1fr) auto;
+  row-gap: var(--space-md);
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+
+/* Nothing missing: the bar, then the all-clear, centred in what is left. */
+.clean-missing--clear {
+  display: flex;
+  flex-direction: column;
+}
+
+.clean-missing--clear > .cp-empty-state {
+  flex: 1;
+  justify-content: center;
 }
 
 .clean-missing__table {
@@ -122,9 +156,12 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
   gap: var(--space-md);
+  min-height: var(--toolbar-height);
   padding: var(--toolbar-padding);
-  border-top: var(--hairline) solid var(--border-muted);
+  border: var(--control-border-width) solid var(--border-muted);
+  background: var(--bg-panel);
 }
 
 /* ------------------------------------------------------------ duplicates */
@@ -155,29 +192,24 @@
   list-style: none;
 }
 
+.clean-group-item {
+  list-style: none;
+}
+
+/* The group is a Card; its body stacks the reason, the tracks and the actions. */
 .clean-group {
+  background: var(--bg-panel);
+}
+
+.clean-group__body {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  padding: var(--space-lg);
-  border: var(--divider);
-  background: var(--bg-panel);
 }
 
 /* A group marked not duplicates recedes in words, not in opacity. */
 .clean-group--dismissed {
   color: var(--fg-muted);
-}
-
-.clean-group__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-.clean-group__title {
-  margin: 0;
 }
 
 .clean-group__why {
@@ -209,16 +241,19 @@
 
 .clean-group__track {
   grid-area: track;
+  font-family: var(--font-data);
   font-size: var(--text-body);
   overflow-wrap: anywhere;
 }
 
 .clean-group__name {
+  font-family: var(--font-data);
   font-weight: var(--weight-strong);
 }
 
 .clean-group__facts {
   grid-area: facts;
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
   color: var(--fg-muted);
 }

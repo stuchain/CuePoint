@@ -6,9 +6,11 @@ missing and possible duplicates. It works on the library you imported on the
 [Library](library.md) page, so import a collection first.
 
 Clean has three tabs: **Match**, **Missing files** and **Duplicates**. It
-reopens on the tab you used last. The tabs show where work waits: **Match (42)**
-counts the tracks waiting for you plus those that changed since you decided,
-**Missing files (3)** and **Duplicates (5)** count what the last check found;
+reopens on the tab you used last. A line under the title gives the facts (the
+tracks in your library and what waits in each tab). The tabs show where work
+waits, with a count after the name, in amber: **Match 42** counts the tracks
+waiting for you plus those that changed since you decided, **Missing files 3**
+and **Duplicates 5** count what the last check found;
 Duplicates counts the tracks in duplicate groups, not the groups. A tab shows no
 number when nothing is waiting, or when that check has never run. Values go into
 your files from a playlist's Review: see [Saving values into your
@@ -49,7 +51,9 @@ A line at the top shows the three steps: **1 Tick the playlists to match**,
 **2 Review**, **3 Sync to files**, with the first lit, because this list is step 1.
 
 One row for every Rekordbox playlist, and a first row, **Whole library**. Each
-row has a large tick, the playlist's folder (muted) and name, how many **Tracks**
+row is one compact line with a square tick, and the list is boxed with its
+heading kept in view while you scroll; the bar under it (what is ticked and
+**Match**) stays at the bottom. Each row has the playlist's folder (muted) and name, how many **Tracks**
 it has and **In your files**. The box above the list narrows it by name or folder,
 which helps when you have hundreds.
 
@@ -144,8 +148,9 @@ turned down, so you can pick another one later.
 
 Every track of one playlist, in one plain table: what Beatport found for it, and
 a tick that says whether its values go into your files. Each playlist you match or
-open has its own **Review <name>** tab; the whole library has only its own. **‹
-Playlists** closes the tab and goes back.
+open has its own **Review <name>** tab; the whole library has only its own. The small
+**‹** button at the left of the bar closes the review and goes back to the **Playlists**
+tab.
 
 Above the table: the name, how many tracks and how many are **ticked to sync**,
 what was **not found**, and a big green **Sync hJ to files…**. A very long
@@ -174,7 +179,7 @@ straight on the Beatport candidates:
 - **Your track · from your library** at the top: its art, a big title, its
   artists, then its label, key, BPM, length and year, and a ▶ to play it.
 - **Found on Beatport · pick the right one**: every candidate the matcher scored,
-  each with its title (the words that differ from yours in orange), its artists
+  each with its cover (a grey square when Beatport has none), its title (the words that differ from yours in orange), its artists
   (orange when they differ), a line of label, key, BPM and year, a ▶ and **Use
   this**. The one the track is matched with is tinted green and marked **in use**.
   A candidate that was ruled out says why.
@@ -268,8 +273,9 @@ check runs on its own after every import and refresh. One check button shows at
 a time: **Check every file** before any check has been run, then **Check again**
 for the whole library, or **Check 12 again** when you have selected rows.
 
-When nothing is missing the tab is one line: "All 306 files found · checked today
-07:54 · **Check again**". The steps and the table below appear only when something
+When nothing is missing the tab is a bar, "All 306 files found" with **Check again**
+at its right, over an all-clear, "No missing files", saying when the last check
+was ("Oct 16, 7:54 AM"). The steps and the table below appear only when something
 is missing.
 
 A drive that is not connected is reported once, not as thousands of missing

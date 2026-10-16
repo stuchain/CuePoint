@@ -6,6 +6,7 @@ import * as sections from "./cleanSections";
 import {
   CLEAN_SECTIONS,
   CLEAN_SECTION_STORAGE_KEY,
+  factsLine,
   sectionCounts,
   loadCleanSection,
   saveCleanSection,
@@ -115,5 +116,18 @@ describe("the parts have no intro lines (C15b)", () => {
 
   it("says nothing under the title: the tab names and the buttons are enough", () => {
     expect(sections).not.toHaveProperty("CLEAN_INTROS");
+  });
+});
+
+describe("the facts line under the title (area 59)", () => {
+  it("says the tracks and what waits in each part", () => {
+    expect(factsLine(1204, { review: 42, missing: 3, duplicates: 1 })).toBe(
+      "1,204 tracks · 42 to review · 3 missing · 1 possible duplicate",
+    );
+  });
+
+  it("says nothing waits, and nothing at all with no tracks", () => {
+    expect(factsLine(1204, {})).toBe("1,204 tracks · nothing waiting");
+    expect(factsLine(null, {})).toBeUndefined();
   });
 });

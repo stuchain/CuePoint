@@ -440,9 +440,11 @@ export function ReviewTab({
   return (
     <section className="review" aria-label={`Review ${name}`}>
       <div className="review__bar" role="group" aria-label="Review">
-        <Button variant="secondary" icon="chevron-left" onClick={onBack}>
-          Playlists
-        </Button>
+        {/* The Playlists tab above already says where this goes back to (area 62): the button
+            only closes this review, as a small chevron. */}
+        <Hint text="Close this review">
+          <Button variant="secondary" iconOnly icon="chevron-left" aria-label="Close review" onClick={onBack} />
+        </Hint>
         <strong className="review__name" data-cut-hint>
           {name} · {summaryWords(total, ticked)}
         </strong>

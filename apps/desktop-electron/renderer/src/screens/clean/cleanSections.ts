@@ -12,6 +12,7 @@
  */
 
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
+import { plural } from "../../format/counts";
 
 export type CleanSection = "review" | "missing" | "duplicates";
 
@@ -75,4 +76,19 @@ export function sectionCounts(
   if (ran("files") && count("missing_files") > 0) counts.missing = count("missing_files");
   if (ran("duplicates") && count("duplicates") > 0) counts.duplicates = count("duplicates");
   return counts;
+}
+
+/** The facts line under the title: how many tracks, and what waits in each part. */
+export function factsLine(
+  tracks: number | null,
+  counts: Partial<Record<CleanSection, number>>,
+): string | undefined {
+  const parts: string[] = [];
+  if (tracks !== null && tracks > 0) parts.push(plural(tracks, "track"));
+  if (counts.review) parts.push(`${counts.review.toLocaleString()} to review`);
+  if (counts.missing) parts.push(`${counts.missing.toLocaleString()} missing`);
+  if (counts.duplicates) parts.push(`${plural(counts.duplicates, "possible duplicate")}`);
+  if (parts.length === 0) return undefined;
+  if (parts.length === 1 && tracks !== null && tracks > 0) parts.push("nothing waiting");
+  return parts.join(" · ");
 }

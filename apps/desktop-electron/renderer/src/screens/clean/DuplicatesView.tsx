@@ -21,7 +21,7 @@ import type {
   TagUsage,
 } from "../../api/cuepointBridge.types";
 import { Badge } from "../../components/Badge";
-import { Button, EmptyState, Loading, Modal, useToast } from "../../components";
+import { Button, Card, EmptyState, Loading, Modal, useToast } from "../../components";
 import { formatCount, plural } from "../../format/counts";
 import { UNDO } from "../../format/words";
 import { COLLECTIONS, TAGS, useSharedRead } from "../../api/sharedReads";
@@ -55,18 +55,15 @@ interface GroupCardProps {
 }
 
 function GroupCard({ group, busy, onAnswer, onTag, onCollect, onReveal }: GroupCardProps) {
-  const headingId = `clean-group-${group.id}`;
+  const heading = `${signalLabel(group.signal)} · ${trackCount(group.track_ids.length)}`;
   return (
-    <li
-      className={`clean-group${group.dismissed ? " clean-group--dismissed" : ""}`}
-      aria-labelledby={headingId}
-    >
-      <div className="clean-group__head">
-        <h3 id={headingId} className="clean-group__title cp-text-section">
-          {signalLabel(group.signal)} · {trackCount(group.track_ids.length)}
-        </h3>
-        {group.dismissed && <Badge>Marked not duplicates</Badge>}
-      </div>
+    <li className="clean-group-item" aria-label={heading}>
+      <Card
+        className={`clean-group${group.dismissed ? " clean-group--dismissed" : ""}`}
+        title={heading}
+        unit={group.dismissed ? <Badge>Marked not duplicates</Badge> : undefined}
+        bodyClassName="clean-group__body"
+      >
       <p className="clean-group__why">{signalExplanation(group.signal)}</p>
       <ul className="clean-group__members">
         {group.members.map((member) => (
@@ -111,6 +108,7 @@ function GroupCard({ group, busy, onAnswer, onTag, onCollect, onReveal }: GroupC
           Add to a Collection…
         </Button>
       </div>
+      </Card>
     </li>
   );
 }
@@ -370,7 +368,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
   return (
     <div className="clean-duplicates">
       <div className="clean-toolbar" role="toolbar" aria-label="Duplicates">
-        <span className="clean-toolbar__count">
+        <span className="clean-toolbar__count cp-data" role="status">
           {plural(total, "group")}
         </span>
         <label className="clean-toolbar__check">
@@ -397,6 +395,8 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
           <Loading what="possible duplicates" />
         ) : groups.length === 0 ? (
           <EmptyState
+            icon="clean"
+            tone={empty.offer === null && !error ? "clear" : "empty"}
             headline={empty.headline}
             description={empty.hint ?? undefined}
             action={
