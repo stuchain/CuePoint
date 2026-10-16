@@ -20,6 +20,7 @@ import type {
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import fixture from "./discoverPage.fixture.json";
 import { NewRunPanel } from "./NewRunPanel";
+import css from "./discover.css?raw";
 import { resetIncludeUserChartsForTests, saveIncludeUserCharts } from "./includeUserCharts";
 
 const OPTIONS = fixture.options_ok.value as unknown as DiscoverOptions;
@@ -144,14 +145,46 @@ describe("charts by regular Beatport users", () => {
 });
 
 describe("the dig bar", () => {
-  it("sits inside the panel, at the foot, saying what the dig covers", async () => {
+  it("sits under the form, saying in a sentence what the dig covers", async () => {
     install([]);
     const panel = await renderPanel();
     const bar = within(panel).getByRole("group", { name: "Start a dig" });
-    expect(bar).toHaveTextContent("0 genres · 3 artists · 2 labels");
+    expect(bar).toHaveTextContent(
+      "Look for charts in 0 genres, releases by 3 artists and 2 labels from the last 30 days.",
+    );
+    expect(bar).toHaveTextContent("Change the window");
     expect(bar).toContainElement(within(panel).getByRole("button", { name: "Start looking" }));
-    // The panel's last child: the form scrolls above it.
-    expect(panel.lastElementChild).toBe(bar);
+    // Not pinned to the window's foot: it follows the form inside the scrolling body.
+    expect(panel.lastElementChild).not.toBe(bar);
+    const grid = panel.querySelector(".discover-new__grid");
+    expect(grid?.compareDocumentPosition(bar)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("is one line pinned at the foot of the form: the sentence cut short, the days and Start", async () => {
+    install([]);
+    const panel = await renderPanel();
+    const bar = within(panel).getByRole("group", { name: "Start a dig" });
+    const summary = bar.querySelector(".discover-new__summary") as HTMLElement;
+    fireEvent.mouseEnter(summary);
+    expect(summary.title).toContain("Look for charts in 0 genres");
+    expect(css).toMatch(/\.discover-new__bar \{[^}]*position: sticky[^}]*bottom: 0/);
+    expect(css).toMatch(/\.discover-new__summary \{[^}]*text-overflow: ellipsis[^}]*white-space: nowrap/);
+    expect(bar).toContainElement(within(panel).getByLabelText("Releases from the last (days)"));
+  });
+
+  it("leaves out the releases it will not look for, and follows the days field", async () => {
+    install([]);
+    const panel = await renderPanel();
+    const bar = within(panel).getByRole("group", { name: "Start a dig" });
+    fireEvent.click(within(panel).getByRole("radio", { name: "No artists" }));
+    expect(bar).toHaveTextContent("Look for charts in 0 genres, releases by 2 labels from the last 30 days.");
+    fireEvent.click(within(panel).getByRole("radio", { name: "No labels" }));
+    expect(bar).toHaveTextContent(/^Look for charts in 0 genres\.Change the window/);
+    fireEvent.click(within(panel).getByRole("radio", { name: "Every label in your library (2)" }));
+    fireEvent.change(within(panel).getByLabelText("Releases from the last (days)"), {
+      target: { value: "1" },
+    });
+    expect(bar).toHaveTextContent("from the last 1 day.");
   });
 
   it("counts a genre as the box is ticked, and says one in the singular", async () => {
@@ -159,7 +192,7 @@ describe("the dig bar", () => {
     const panel = await renderPanel();
     fireEvent.click(within(panel).getByRole("checkbox", { name: "House" }));
     expect(within(panel).getByRole("group", { name: "Start a dig" })).toHaveTextContent(
-      "1 genre · 3 artists · 2 labels",
+      "Look for charts in 1 genre, releases by 3 artists and 2 labels",
     );
   });
 
@@ -250,7 +283,7 @@ describe("saved lists in the scope fields", () => {
     await waitFor(() => expect(within(artists).getByRole("combobox")).toBeEnabled());
     fireEvent.click(within(artists).getByRole("radio", { name: "A saved list:" }));
     expect(within(panel).getByRole("group", { name: "Start a dig" })).toHaveTextContent(
-      "0 genres · 2 artists · 2 labels",
+      "Look for charts in 0 genres, releases by 2 artists and 2 labels",
     );
     fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
     await waitFor(() =>
@@ -283,7 +316,7 @@ describe("saved lists in the scope fields", () => {
     install([]);
     const panel = await renderPanel();
     fireEvent.click(within(group(panel, "Artists")).getByRole("radio", { name: "No artists" }));
-    expect(within(panel).getByRole("group", { name: "Start a dig" })).toHaveTextContent("0 artists");
+    expect(within(panel).getByRole("group", { name: "Start a dig" })).toHaveTextContent("releases by 2 labels");
     fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
     await waitFor(() => expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ artists: [] })));
   });

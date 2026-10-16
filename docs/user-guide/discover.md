@@ -22,10 +22,11 @@ See [Where inCrate went](#where-incrate-went) if you used it.
 
 ## New dig
 
-**New dig** asks what to look for, starting from your defaults. A bar at the
-bottom says what the dig will cover ("2 genres · 25 artists · 9 labels") and
-holds **Releases from the last … days** and **Start looking**, which stay in
-view however long the form is.
+**New dig** asks what to look for, starting from your defaults. A bar right under the
+form says in a sentence what the dig will cover ("Look for charts in 2 genres,
+releases by 25 artists and 9 labels from the last 30 days."), with **Change the
+window** (**Releases from the last … days**) under it and a large **Start
+looking** button beside it.
 
 - **Genres for DJ charts.** On Beatport, artists publish charts, which are short
   lists of tracks they play. Which charts CuePoint reads depends on the artists
@@ -44,7 +45,7 @@ view however long the form is.
 - **Artists** and **Labels.** Each is every artist or label in your library
   (with how many), **a saved list** of them, or none. A saved list is picked
   from the drop-down beside it, which says how many names each list holds.
-- **Releases from the last … days** (in the bottom bar). New releases on your
+- **Releases from the last … days** (under the sentence in the bar). New releases on your
   labels, and on the artists you chose from a saved list, in that many days. When
   you ticked genres, only releases in those genres count.
 

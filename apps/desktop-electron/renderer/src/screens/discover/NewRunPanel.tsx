@@ -187,11 +187,31 @@ export function NewRunPanel({
     }
   };
 
-  const bar = [
-    pluralize(form.genreIds.length, "genre"),
-    pluralize(scopeCount(form.artists, options.artists.total_values, members.artists), "artist"),
-    pluralize(scopeCount(form.labels, options.labels.total_values, members.labels), "label"),
-  ].join(" · ");
+  const artistCount = scopeCount(form.artists, options.artists.total_values, members.artists);
+  const labelCount = scopeCount(form.labels, options.labels.total_values, members.labels);
+  const dayCount = Number(form.days);
+  const windowText =
+    form.days.trim() !== "" && Number.isInteger(dayCount) && dayCount >= 1
+      ? pluralize(dayCount, "day")
+      : "… days";
+  // "Look for charts in 2 genres, releases by 200 artists and 121 labels from the last 30 days."
+  const releaseParts = [
+    artistCount > 0 ? <strong key="a">{pluralize(artistCount, "artist")}</strong> : null,
+    labelCount > 0 ? <strong key="l">{pluralize(labelCount, "label")}</strong> : null,
+  ].filter((part) => part !== null);
+  const sentence = (
+    <>
+      Look for charts in <strong>{pluralize(form.genreIds.length, "genre")}</strong>
+      {releaseParts.length > 0 && (
+        <>
+          , releases by {releaseParts[0]}
+          {releaseParts.length > 1 && <> and {releaseParts[1]}</>} from the last{" "}
+          <strong>{windowText}</strong>
+        </>
+      )}
+      .
+    </>
+  );
 
   return (
     <section className="discover-new" aria-label="New dig">
@@ -317,32 +337,40 @@ export function NewRunPanel({
         {refusal && (
           <Notice>{refusal}</Notice>
         )}
-      </div>
 
-      <div className="discover-new__bar" role="group" aria-label="Start a dig">
-        <div className="discover-new__summary">
-          <span>{bar}</span>
-          {!usable && unusableReason && <span className="discover-note">{unusableReason}</span>}
-          {usable && busy && !starting && (
-            <span className="discover-note">A dig is already running.</span>
-          )}
-        </div>
-        <div className="discover-new__bar-actions">
-          <label className="discover-new__days">
-            <span>Releases from the last</span>
-            <input
-              type="number"
-              className="cp-field__input discover-new__days-input"
-              aria-label="Releases from the last (days)"
-              min={1}
-              max={options.limits.max_window_days}
-              value={form.days}
-              onChange={(event) => change({ days: event.target.value })}
-            />
-            <span>days</span>
-          </label>
+        <div className="discover-new__bar" role="group" aria-label="Start a dig">
+          <div className="discover-new__bar-main">
+            <p
+              className="discover-new__summary"
+              // Cut short on one line, so the whole sentence is the tooltip.
+              onMouseEnter={(event) => {
+                event.currentTarget.title = event.currentTarget.textContent ?? "";
+              }}
+            >
+              {sentence}
+            </p>
+            <label className="discover-new__days">
+              <span className="cp-visually-hidden">Change the window</span>
+              <span className="discover-new__days-label">Releases from the last</span>
+              <input
+                type="number"
+                className="cp-field__input discover-new__days-input"
+                aria-label="Releases from the last (days)"
+                min={1}
+                max={options.limits.max_window_days}
+                value={form.days}
+                onChange={(event) => change({ days: event.target.value })}
+              />
+              <span>days</span>
+            </label>
+            {!usable && unusableReason && <span className="discover-note">{unusableReason}</span>}
+            {usable && busy && !starting && (
+              <span className="discover-note">A dig is already running.</span>
+            )}
+          </div>
           <Hint text={usable ? undefined : (unusableReason ?? undefined)}>
             <Button
+              className="discover-new__start"
               onClick={() => void start()}
               loading={starting}
               disabled={!usable || busy || problems.length > 0}
