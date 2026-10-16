@@ -567,8 +567,8 @@ export function CollectionsPane({
           <Button
             variant="secondary"
             size="sm"
+            menu
             className="cp-collections__new"
-            aria-haspopup="menu"
             aria-expanded={newMenu !== null}
             onClick={(event) => {
               const rect = event.currentTarget.getBoundingClientRect();
@@ -576,7 +576,6 @@ export function CollectionsPane({
             }}
           >
             + New
-            <PixelIcon name="chevron-down" className="cp-pixel-icon--text" />
           </Button>
         </div>
       )}

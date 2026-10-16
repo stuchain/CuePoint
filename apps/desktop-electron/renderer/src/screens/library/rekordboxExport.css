@@ -76,10 +76,9 @@
 .rekordbox-export__choose {
   display: flex;
   flex-direction: column;
-  max-height: calc(160px * var(--scale));
+  /* No height of its own: the dialog's body is the one scroller. */
   margin: 0;
   padding: var(--space-xs) var(--space-sm);
-  overflow-y: auto;
   border: var(--divider);
 }
 
@@ -156,7 +155,6 @@
 /* The summary leads the dialog; Details holds the rest (DEC-247). */
 .rekordbox-export__summary {
   margin: 0;
-  font-size: var(--font-size-lg);
   font-weight: 700;
   overflow-wrap: anywhere;
 }

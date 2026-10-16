@@ -159,7 +159,7 @@ export function RowWaveform({ row }: { row: LibraryTrackRow }) {
     <span
       ref={box}
       className="library-cell__waveform"
-      title={picture ? undefined : (waveformEntryWords(entry) ?? undefined)}
+      data-hint={picture ? undefined : (waveformEntryWords(entry) ?? undefined)}
     >
       {picture && track ? (
         <WaveformCanvas data={picture} durationMs={track.duration_ms ?? 0} cueLabels={false} />
@@ -189,7 +189,7 @@ export function RowLoudness({ row }: { row: LibraryTrackRow }) {
   return (
     <span
       className={`library-cell__loudness${cell.value ? "" : " library-cell__loudness--word"}`}
-      title={cell.title ?? waveformEntryWords(entry) ?? undefined}
+      data-hint={cell.title ?? waveformEntryWords(entry) ?? undefined}
     >
       {cell.text}
     </span>

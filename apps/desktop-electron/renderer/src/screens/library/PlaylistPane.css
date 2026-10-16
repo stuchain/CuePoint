@@ -92,7 +92,7 @@
   border: none;
   background: transparent;
   color: var(--fg-muted);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
   cursor: pointer;
 }
@@ -110,6 +110,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Names are data, in Inter like a table's (area 57). */
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
 }
 

@@ -645,7 +645,7 @@ describe("a Set a refresh emptied (DEC-011, PREP-02)", () => {
     await waitFor(() => expect(bridge.startLibraryRefreshApply).toHaveBeenCalled());
 
     await userEvent.click(within(treeRow("Friday", "set")).getByText("Friday"));
-    expect(await screen.findByText("This Set is empty.")).toBeInTheDocument();
+    expect(await screen.findByText("This Set is empty")).toBeInTheDocument();
     expect(screen.getByText(/no longer in your Rekordbox file/)).toBeInTheDocument();
     expect(screen.queryByText(/Drop tracks onto it/)).toBeNull();
   });

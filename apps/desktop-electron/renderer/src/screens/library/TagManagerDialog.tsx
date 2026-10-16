@@ -139,7 +139,7 @@ export function TagManagerDialog({
   };
 
   return (
-    <Modal open={open} title="Tags" onClose={onClose}>
+    <Modal open={open} title="Tags" onClose={onClose} closeLabel="Close">
       <div className="cp-tag-manager">
         <ul className="cp-tag-manager__list" aria-label="Tags">
           {ordered.length === 0 && (

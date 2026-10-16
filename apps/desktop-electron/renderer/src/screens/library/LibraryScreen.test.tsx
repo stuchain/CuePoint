@@ -1316,17 +1316,17 @@ describe("nothing to show (LIBUI-10)", () => {
   it("says the library is empty when nothing is asked of it", async () => {
     renderScreen();
 
-    expect(await screen.findByText("This Rekordbox file has no tracks in it.")).toBeInTheDocument();
+    expect(await screen.findByText("This Rekordbox file has no tracks in it")).toBeInTheDocument();
   });
 
   it("says the playlist is empty when one is in scope", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox file has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it");
 
     const tree = await screen.findByRole("tree", { name: "Playlists" });
     await userEvent.click(within(tree).getByText("Friday"));
 
-    expect(await screen.findByText("This playlist is empty.")).toBeInTheDocument();
+    expect(await screen.findByText("This playlist is empty")).toBeInTheDocument();
   });
 
   it("blames the search, not the playlist, when both are in play", async () => {
@@ -1335,25 +1335,25 @@ describe("nothing to show (LIBUI-10)", () => {
     // and "this playlist is empty" would send a user to look at the wrong
     // thing. Without this the two branches could be in either order.
     renderScreen();
-    await screen.findByText("This Rekordbox file has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it");
 
     const tree = await screen.findByRole("tree", { name: "Playlists" });
     await userEvent.click(within(tree).getByText("Friday"));
-    await screen.findByText("This playlist is empty.");
+    await screen.findByText("This playlist is empty");
 
     await userEvent.type(await screen.findByLabelText("Search"), "zz");
 
-    expect(await screen.findByText("No tracks match this search.")).toBeInTheDocument();
-    expect(screen.queryByText("This playlist is empty.")).toBeNull();
+    expect(await screen.findByText("No tracks match this search")).toBeInTheDocument();
+    expect(screen.queryByText("This playlist is empty")).toBeNull();
   });
 
   it("says nothing matched when there is a search to blame", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox file has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it");
 
     await userEvent.type(await screen.findByLabelText("Search"), "zz");
 
-    expect(await screen.findByText("No tracks match this search.")).toBeInTheDocument();
+    expect(await screen.findByText("No tracks match this search")).toBeInTheDocument();
   });
 
   /*
@@ -1362,7 +1362,7 @@ describe("nothing to show (LIBUI-10)", () => {
 
   it("offers to import another file when the export itself is empty", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox file has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it");
     expect(
       screen.getByText("Export again from Rekordbox and import that file."),
     ).toBeInTheDocument();
@@ -1375,10 +1375,10 @@ describe("nothing to show (LIBUI-10)", () => {
 
   it("offers to check Rekordbox from an empty playlist", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox file has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it");
     const tree = await screen.findByRole("tree", { name: "Playlists" });
     await userEvent.click(within(tree).getByText("Friday"));
-    await screen.findByText("This playlist is empty.");
+    await screen.findByText("This playlist is empty");
     expect(
       screen.getByText(
         "Playlists come from Rekordbox. Add tracks to it there, then Check for changes.",
@@ -1395,43 +1395,43 @@ describe("nothing to show (LIBUI-10)", () => {
 
   it("clears the search from the empty table that the search emptied", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox file has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it");
     const search = await screen.findByLabelText("Search");
     await userEvent.type(search, "zz");
-    await screen.findByText("No tracks match this search.");
+    await screen.findByText("No tracks match this search");
     expect(screen.getByText("Try fewer words, or clear the search.")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Clear the search" }));
 
     expect(search).toHaveValue("");
     expect(
-      await screen.findByText("This Rekordbox file has no tracks in it."),
+      await screen.findByText("This Rekordbox file has no tracks in it"),
     ).toBeInTheDocument();
   });
 
   it("clears every filter from the empty table the filters emptied", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox file has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it");
     await userEvent.click(await screen.findByRole("button", { name: "Add filter" }));
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "House" } });
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
-    await screen.findByText("No tracks match these filters.");
+    await screen.findByText("No tracks match these filters");
 
     const table = screen.getByRole("table", { name: "Library tracks" });
     await userEvent.click(within(table).getByRole("button", { name: "Clear all filters" }));
 
     expect(
-      await screen.findByText("This Rekordbox file has no tracks in it."),
+      await screen.findByText("This Rekordbox file has no tracks in it"),
     ).toBeInTheDocument();
     expect(lastBrowse().filters ?? null).toBeNull();
   });
 
   it("opens Add filter from an empty Smart Collection's Edit the rules", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox file has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it");
     const tree = await screen.findByRole("tree", { name: "Collections" });
     await userEvent.click(within(tree).getByText("Recent techno"));
-    await screen.findByText("Nothing matches these rules right now.");
+    await screen.findByText("Nothing matches these rules right now");
 
     await userEvent.click(screen.getByRole("button", { name: "Edit the rules" }));
 
@@ -1440,17 +1440,17 @@ describe("nothing to show (LIBUI-10)", () => {
 
   it("sends an empty Collection back to the whole library to pick tracks", async () => {
     renderScreen();
-    await screen.findByText("This Rekordbox file has no tracks in it.");
+    await screen.findByText("This Rekordbox file has no tracks in it");
     const tree = await screen.findByRole("tree", { name: "Collections" });
     await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
     await userEvent.click(within(tree).getByText("Warmups"));
-    await screen.findByText("This Collection is empty.");
+    await screen.findByText("This Collection is empty");
 
     await userEvent.click(screen.getByRole("button", { name: "Browse the whole library" }));
 
     await waitFor(() => expect(lastBrowse().collectionId ?? null).toBeNull());
     expect(
-      await screen.findByText("This Rekordbox file has no tracks in it."),
+      await screen.findByText("This Rekordbox file has no tracks in it"),
     ).toBeInTheDocument();
   });
 });
@@ -1723,7 +1723,7 @@ describe("the track context menu (PLAYER-09, DEC-013, DEC-045)", () => {
 
     await selectAllThree();
     await openMenu("Track 2");
-    expect((await menuItem("Show in folder"))).toBeDisabled();
+    expect((await menuItem("Show in folder"))).toHaveAttribute("aria-disabled", "true");
   });
 
   it("closes on Escape without letting go of the selection", async () => {
@@ -3174,7 +3174,7 @@ describe("a question the engine refused (ORG-12)", () => {
 
     const said = await screen.findAllByText(/Genre cannot be filtered/);
     expect(said.length).toBeGreaterThan(0);
-    expect(screen.queryByText("No tracks match this search.")).not.toBeInTheDocument();
+    expect(screen.queryByText("No tracks match this search")).not.toBeInTheDocument();
   });
 
   it("puts the refusal in the table rather than a sentence about matching", async () => {
@@ -3194,7 +3194,7 @@ describe("a question the engine refused (ORG-12)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
     await waitFor(() =>
-      expect(screen.queryByText("No tracks match this search.")).not.toBeInTheDocument(),
+      expect(screen.queryByText("No tracks match this search")).not.toBeInTheDocument(),
     );
     expect(screen.getAllByText(/Genre cannot be filtered/).length).toBeGreaterThan(1);
   });
@@ -3350,7 +3350,7 @@ describe("the table's empty state (ORG-13)", () => {
     await userEvent.click(within(tree).getByText("Recent techno"));
 
     expect(
-      await screen.findByText("Nothing matches these rules right now."),
+      await screen.findByText("Nothing matches these rules right now"),
     ).toBeInTheDocument();
     // The clause itself, in the words ORG-12 writes it in.
     const rules = await screen.findByRole("list", { name: "The rules being asked" });
@@ -3377,7 +3377,7 @@ describe("the table's empty state (ORG-13)", () => {
     await userEvent.click(within(tree).getByRole("button", { name: "Expand Sets" }));
     await userEvent.click(within(tree).getByText("Warmups"));
 
-    expect(await screen.findByText("This Collection is empty.")).toBeInTheDocument();
+    expect(await screen.findByText("This Collection is empty")).toBeInTheDocument();
     expect(screen.getByText(/Drop tracks onto it/)).toBeInTheDocument();
   });
 

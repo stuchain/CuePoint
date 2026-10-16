@@ -141,7 +141,7 @@ describe("a row's loudness", () => {
     expect(waveforms.get).toHaveBeenCalledTimes(1);
     expect(waveforms.get).toHaveBeenCalledWith({ track_ids: [1, 2, 3], marks: false, data: false });
     expect(cell(1)).toHaveTextContent("−8.4");
-    expect(cell(1)).toHaveAttribute("title", "Loudness −8.4 LUFS · Peak −0.3 dBFS");
+    expect(cell(1)).toHaveAttribute("data-hint", "Loudness −8.4 LUFS · Peak −0.3 dBFS");
     expect(cell(1)).not.toHaveClass("library-cell__loudness--word");
   });
 
@@ -152,7 +152,7 @@ describe("a row's loudness", () => {
 
     expect(cell(1)).toHaveTextContent("Silent");
     expect(cell(1)).toHaveClass("library-cell__loudness--word");
-    expect(cell(1)).toHaveAttribute("title", LOUDNESS_SILENT_WORDS);
+    expect(cell(1)).toHaveAttribute("data-hint", LOUDNESS_SILENT_WORDS);
   });
 
   it("is empty while its loudness or its waveform waits, its title saying why", async () => {
@@ -161,8 +161,8 @@ describe("a row's loudness", () => {
     await pass(SETTLE_MS);
 
     expect(cell(1)).toHaveTextContent("");
-    expect(cell(1)).toHaveAttribute("title", LOUDNESS_PENDING_WORDS);
-    expect(cell(2)).toHaveAttribute("title", "Waveform not drawn yet");
+    expect(cell(1)).toHaveAttribute("data-hint", LOUDNESS_PENDING_WORDS);
+    expect(cell(2)).toHaveAttribute("data-hint", "Waveform not drawn yet");
   });
 
   it("never puts a track first in the analysis", async () => {

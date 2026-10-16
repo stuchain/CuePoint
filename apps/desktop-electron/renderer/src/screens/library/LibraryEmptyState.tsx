@@ -5,7 +5,7 @@
  * The words come from `libraryEmpty.ts`; what each button does is the page's,
  * handed in as `onAction`.
  */
-import { Button } from "../../components";
+import { EmptyState } from "../../components/EmptyState";
 import type { EmptyActionId, EmptyStateView } from "./libraryEmpty";
 
 interface LibraryEmptyStateProps {
@@ -15,22 +15,28 @@ interface LibraryEmptyStateProps {
 
 export function LibraryEmptyState({ view, onAction }: LibraryEmptyStateProps) {
   const { action } = view;
+  const rules =
+    view.rules.length > 0 ? (
+      <ul className="library-screen__empty-rules" aria-label="The rules being asked">
+        {view.rules.map((rule, index) => (
+          <li key={`${rule}-${index}`}>{rule}</li>
+        ))}
+      </ul>
+    ) : null;
   return (
-    <div className="library-screen__empty-state">
-      <p className="library-screen__empty-headline">{view.title}</p>
-      {view.rules.length > 0 && (
-        <ul className="library-screen__empty-rules" aria-label="The rules being asked">
-          {view.rules.map((rule, index) => (
-            <li key={`${rule}-${index}`}>{rule}</li>
-          ))}
-        </ul>
-      )}
-      {view.hint && <p className="library-screen__empty-hint">{view.hint}</p>}
-      {action && (
-        <Button variant="secondary" onClick={() => onAction(action.id)}>
-          {action.label}
-        </Button>
-      )}
-    </div>
+    <EmptyState
+      icon="library"
+      // A headline is a label: no full stop (area 66); the reason is the description.
+      headline={view.title.replace(/\.$/, "")}
+      description={
+        rules || view.hint ? (
+          <>
+            {rules}
+            {view.hint}
+          </>
+        ) : undefined
+      }
+      action={action ? { label: action.label, onClick: () => onAction(action.id) } : undefined}
+    />
   );
 }

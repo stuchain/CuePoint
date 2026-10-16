@@ -110,6 +110,10 @@ function revealItem(
     // One track, one file: revealing five folders at once is not a thing
     // anyone asked for, so it is offered as a button that means one.
     disabled: !context.revealable || onReveal === null,
+    reason:
+      context.count !== 1
+        ? "Select one track to show its file"
+        : "This track's file is not on this computer",
     onSelect: () => onReveal?.(),
   };
 }

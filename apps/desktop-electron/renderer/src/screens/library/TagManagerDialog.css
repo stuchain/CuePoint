@@ -9,10 +9,10 @@
 
 .cp-tag-manager__list {
   flex: 0 0 calc(240px * var(--scale));
-  max-height: calc(320px * var(--scale));
+  /* No height of its own: the dialog's body is the one scroller. */
+  align-self: flex-start;
   margin: 0;
   padding: 0;
-  overflow-y: auto;
   list-style: none;
   background: var(--bg-input);
   border: var(--hairline) solid var(--border-outline);

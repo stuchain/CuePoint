@@ -41,9 +41,9 @@ Beside the title is the file the library came from, as its name and a badge:
 yet**. Point at the name for the full path and when CuePoint last read the
 file. Two buttons sit on the right: **Check for changes** (it turns
 primary when the file changed or went missing) and **Export to Rekordbox…** —
-see [Exporting to Rekordbox](rekordbox-export.md). In a narrow window or at a
-large size they read **Check** and **Export…**; their full names are
-what a screen reader hears.
+see [Exporting to Rekordbox](rekordbox-export.md). Their words are never cut:
+in a narrow window or at a large size the badge and the First steps chip
+beside the title go first, and the title row wraps before a button shrinks.
 
 To switch to a different Rekordbox file, use **Import a Rekordbox
 file…** in **Settings → Rekordbox**, or **File → Import a Rekordbox
@@ -242,8 +242,9 @@ files](clean.md#saving-values-into-your-files)). Checking that the files are
 still there is on Clean ▸ Missing files.
 
 A track's right-click menu is the same on every page: **Play**, **Play next** and
-**Add to queue** on its first lines, then a **This page** block with **Organize ▸** and
-**Beatport ▸** (what only the Library does), and **More ▸** last. Use the Tab
+**Add to queue** on its first lines, then **Organize ▸** and **Beatport ▸**
+under a small **This page** heading (what only the Library does), and **More ▸** last.
+Entries that are greyed say why when you point at them. Use the Tab
 key once to reach the toolbar, then the arrow keys to move between its buttons.
 
 **Copy** (in Organize) puts the visible columns, in the order you have them, ready to paste
@@ -255,9 +256,9 @@ Mara Veil", offers **Open page**.
 
 ### Track details
 
-Selecting one track opens Track details, and clearing the selection folds it to a
-**Details** tab on the right edge. Closing it yourself on the Library keeps it closed
-there until you open it again (**Ctrl+I**, or the tab). From the top:
+Selecting one track opens Track details, and clearing the selection folds it away. The **Details** button, last in the page header, shows or hides it, as
+does **Ctrl+I**; closing it yourself on the Library keeps it closed
+there until you open it again. From the top:
 
 - **A small cover**, or *No artwork* when it has none, beside the title, the
   artists and the label. Each artist in the credit, and the label, is a link to
@@ -296,11 +297,15 @@ The panel remembers the tab you last chose and opens on **Overview** the first t
 - **Where** — the Collections, Sets and playlists the track is in. Click one to
   jump to it. A track in no Collection says so.
 - **Yours** — what you have added in CuePoint: your rating, favorite (the heart
-  beside the stars), notes and tags, and **Edit values…** for your key, BPM, genre,
-  label and year. See [Organizing your library](organization.md) and
+  beside the stars), notes, tags (the **Add a tag** label sits above its field
+  and **Add** button), and **Edit values…**, a standard button, for your key, BPM,
+  genre, label and year. See [Organizing your library](organization.md) and
   [Your own values](#your-own-values). Under it, **History** — every change to the
   track, and who made it; it starts folded and its heading counts the changes
   ("History · 4 changes").
+
+The facts on Overview, the Beatport tab's fields and History share one grid:
+a short label on the left and its value in the same type as the table.
 
 With several tracks selected, the panel shows the last one you clicked, and
 **Edit values for 4 tracks…** opens the editor for all of them, right here.

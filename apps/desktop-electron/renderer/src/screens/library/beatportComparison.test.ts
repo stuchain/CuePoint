@@ -83,6 +83,10 @@ describe("the words", () => {
     expect(
       releaseLine({ title: "Don't Make Me", mix: "Original Mix", artists: "Blackloud", label: "ISOLATE", release_name: "Rel" }),
     ).toBe("Blackloud – Don't Make Me (Original Mix) · ISOLATE");
+    // A title that already carries the mix is not given it twice.
+    expect(
+      releaseLine({ title: "Strobe (Extended Mix)", mix: "Extended Mix", artists: "deadmau5", label: "mau5trap", release_name: "Rel" }),
+    ).toBe("deadmau5 – Strobe (Extended Mix) · mau5trap");
     expect(releaseLine({ title: "T", mix: null, artists: null, label: null, release_name: "Rel" })).toBe("T · Rel");
   });
   it("words the score", () => {

@@ -16,6 +16,7 @@
  */
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 
+import { Button } from "../../components/Button";
 import { PixelIcon } from "../../components/PixelIcon";
 import { SuggestInput } from "../../components/SuggestInput";
 import type { LibraryTrackRow, TrackMetadata } from "../../api/cuepointBridge.types";
@@ -32,6 +33,7 @@ import { TrackEditedValues } from "./TrackEditedValues";
 import { useTrackMetadata } from "./useTrackMetadata";
 import { useTrackTags, type TrackTag } from "./useTrackTags";
 import { Hint } from "../../components/Hint";
+import { Textarea } from "../../components/Textarea";
 
 interface TrackYoursProps {
   trackId: number;
@@ -156,7 +158,7 @@ export function TrackYours({
             role="radiogroup"
             aria-labelledby={ratingId}
             // Which layer is showing (DEC-057) is said on hover, not as a line (DEC-246).
-            title={describeRatingSource(record)}
+            data-hint={describeRatingSource(record)}
             onKeyDown={onStarKeys}
           >
             {STARS.map((star) => (
@@ -203,12 +205,10 @@ export function TrackYours({
       </div>
 
       <div className="cp-track-yours__field">
-        <label className="cp-track-yours__label" htmlFor={notesId}>
-          Your notes
-        </label>
-        <textarea
+        <Textarea
           id={notesId}
-          className="cp-track-yours__notes"
+          label="Your notes"
+          width="full"
           rows={3}
           maxLength={NOTES_MAX_LENGTH}
           value={editor.notes}
@@ -246,10 +246,10 @@ export function TrackYours({
             <li className="cp-track-yours__tag-empty">No tags yet</li>
           )}
         </ul>
+        <label className="cp-track-yours__label" htmlFor={tagId}>
+          Add a tag
+        </label>
         <div className="cp-track-yours__add">
-          <label className="cp-track-yours__label" htmlFor={tagId}>
-            Add a tag
-          </label>
           {/* Suggestions only, in an in-app list rather than a native <datalist> (macOS
               crashed on that popup). Whether a typed name is a new tag or one that
               already exists in another capitalization is the engine's answer,
@@ -271,14 +271,9 @@ export function TrackYours({
               }
             }}
           />
-          <button
-            type="button"
-            className="cp-track-yours__tag-add"
-            onClick={addTag}
-            disabled={draftTag.trim() === ""}
-          >
+          <Button variant="secondary" onClick={addTag} disabled={draftTag.trim() === ""}>
             Add
-          </button>
+          </Button>
         </div>
       </div>
 

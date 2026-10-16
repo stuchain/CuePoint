@@ -62,7 +62,7 @@ describe("the Inspector's credits as links", () => {
   it("links the label, by its Beatport id when the track is resolved", () => {
     const open = vi.fn();
     render(<TrackDetailPanel detail={RESOLVED} onOpenEntity={open} />);
-    const label = header().querySelector("p.cp-track-detail__label") as HTMLElement;
+    const label = header().querySelector("p.cp-track-detail__labelname") as HTMLElement;
     fireEvent.click(within(label).getByRole("button", { name: "Nightfall Audio" }));
     expect(open).toHaveBeenCalledWith("label", "bp:40211");
   });
@@ -75,7 +75,7 @@ describe("the Inspector's credits as links", () => {
     const remixer = screen.getByText("Remixer").closest(".cp-track-detail__row") as HTMLElement;
     fireEvent.click(within(remixer).getByRole("button", { name: "DJEFF" }));
     fireEvent.click(
-      within(header().querySelector("p.cp-track-detail__label") as HTMLElement).getByRole(
+      within(header().querySelector("p.cp-track-detail__labelname") as HTMLElement).getByRole(
         "button",
         { name: "Cold Room" },
       ),
@@ -97,7 +97,7 @@ describe("the Inspector's credits as links", () => {
     render(<TrackDetailPanel detail={RESOLVED} />);
     expect(within(header()).queryByRole("button", { name: "Mara Veil" })).toBeNull();
     expect(header()).toHaveTextContent("Mara Veil, Kiko");
-    expect(header().querySelector("p.cp-track-detail__label")).toBeNull();
+    expect(header().querySelector("p.cp-track-detail__labelname")).toBeNull();
   });
 
   it("is text from an engine that sends no credits", () => {
@@ -115,6 +115,6 @@ describe("the Inspector's credits as links", () => {
     };
     render(<TrackDetailPanel detail={bare} onOpenEntity={vi.fn()} />);
     expect(creditButtons()).toHaveLength(0);
-    expect(header().querySelector("p.cp-track-detail__label")).toBeNull();
+    expect(header().querySelector("p.cp-track-detail__labelname")).toBeNull();
   });
 });

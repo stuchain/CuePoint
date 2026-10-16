@@ -21,10 +21,9 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  max-height: calc(260px * var(--scale));
+  /* No height of its own: the dialog's body is the one scroller. */
   margin: 0;
   padding: 0;
-  overflow-y: auto;
   list-style: none;
   border: var(--divider);
   background: var(--bg-panel-alt);
@@ -45,10 +44,10 @@
   cursor: pointer;
 }
 
-/* One highlight for pointer and keyboard, as the context menu does it. */
+/* One highlight for pointer and keyboard, the menus' tint (area 81). */
 .cp-picker__item--active:not(:disabled) {
-  background: var(--accent-primary);
-  color: var(--fg-inverse);
+  background: var(--selected-row-background);
+  color: var(--fg-primary);
 }
 
 .cp-picker__item:disabled {
@@ -64,6 +63,7 @@
 
 .cp-picker__label {
   flex: 1 1 auto;
+  font-family: var(--font-data);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -77,34 +77,8 @@
   font-size: var(--font-size-xs);
 }
 
-.cp-picker__item--active .cp-picker__hint {
-  color: var(--fg-inverse);
-}
-
 .cp-picker__empty {
   padding: var(--space-sm);
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
-}
-
-.cp-picker__create {
-  align-self: flex-start;
-  min-height: var(--control-height);
-  padding: 0 var(--space-sm);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-input);
-  color: var(--fg-primary);
-  font-family: var(--font-pixel);
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-  cursor: pointer;
-}
-
-.cp-picker__create:hover {
-  border-color: var(--accent-primary);
-}
-
-.cp-picker__create:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--hairline);
 }

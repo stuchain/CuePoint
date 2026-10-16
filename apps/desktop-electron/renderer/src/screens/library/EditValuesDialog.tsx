@@ -144,7 +144,7 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
       }
     >
       <div className="clean-dialog">
-        <p className="clean-dialog__lead">
+        <p className="cp-modal__lead">
           Changes are kept in CuePoint and can be undone. Rekordbox&rsquo;s own values are not
           touched.
         </p>
@@ -163,41 +163,50 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
             const problem = problems[field];
             return (
               <div key={field} className="clean-dialog__field">
-                <Select
-                  id={`edit-${field}-mode`}
-                  label={label}
-                  className="clean-dialog__select"
-                  value={entry.mode}
-                  onChange={(event) => change(field, { mode: event.target.value as EditMode })}
-                  options={MODES.map((mode) => ({ value: mode.value, label: mode.label }))}
-                />
-                <input
-                  className="clean-dialog__input"
-                  aria-label={`${label} value`}
-                  aria-invalid={problem ? true : undefined}
-                  // Typing chooses "Set to"; only clearing leaves nothing to type.
-                  disabled={entry.mode === "clear"}
-                  value={entry.text}
-                  inputMode={field === "bpm" || field === "year" ? "decimal" : undefined}
-                  placeholder={field === "key" ? "8A, Am or Amin" : undefined}
-                  onChange={(event) =>
-                    change(field, {
-                      text: event.target.value,
-                      // Typing chooses "Set to", and emptying the box again
-                      // takes the choice back rather than asking for a value.
-                      mode: event.target.value.trim() === "" ? "keep" : "set",
-                    })
-                  }
-                />
-                {current && (
-                  <p className="clean-dialog__hint">
-                    {`Now: ${current[field] || NOT_SET}`}
-                  </p>
-                )}
-                {problem && (
+                {/* The name above, then what to do and the value on one line (area 77). The
+                    select keeps the name for a screen reader; the drawn one is this heading. */}
+                <span className="cp-field__label" aria-hidden="true">
+                  {label}
+                </span>
+                <div className="clean-dialog__field-row">
+                  <Select
+                    id={`edit-${field}-mode`}
+                    label={label}
+                    hideLabel
+                    width="short"
+                    value={entry.mode}
+                    onChange={(event) => change(field, { mode: event.target.value as EditMode })}
+                    options={MODES.map((mode) => ({ value: mode.value, label: mode.label }))}
+                  />
+                  <input
+                    className={`cp-field__input clean-dialog__input${problem ? " cp-field__input--error" : ""}`}
+                    aria-label={`${label} value`}
+                    aria-invalid={problem ? true : undefined}
+                    // Typing chooses "Set to"; only clearing leaves nothing to type.
+                    disabled={entry.mode === "clear"}
+                    value={entry.text}
+                    inputMode={field === "bpm" || field === "year" ? "decimal" : undefined}
+                    placeholder={field === "key" ? "e.g. 8A, Am or Amin" : undefined}
+                    onChange={(event) =>
+                      change(field, {
+                        text: event.target.value,
+                        // Typing chooses "Set to", and emptying the box again
+                        // takes the choice back rather than asking for a value.
+                        mode: event.target.value.trim() === "" ? "keep" : "set",
+                      })
+                    }
+                  />
+                </div>
+                {problem ? (
                   <p className="clean-dialog__problem" role="alert">
                     {problem}
                   </p>
+                ) : (
+                  current && (
+                    <p className="clean-dialog__hint">
+                      {`Now: ${current[field] || NOT_SET}`}
+                    </p>
+                  )
                 )}
               </div>
             );

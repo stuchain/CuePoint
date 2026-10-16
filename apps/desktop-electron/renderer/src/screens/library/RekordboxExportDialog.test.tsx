@@ -683,7 +683,7 @@ describe("confirming", () => {
 
     expect(confirmButton()).toHaveTextContent("Export 4 tracks and 4 playlists");
     expect(confirmButton()).toBeDisabled();
-    expect(within(dialog()).getByTestId("export-blocker")).toHaveTextContent(
+    expect(within(dialog()).getByRole("note")).toHaveTextContent(
       "Choose where to save the file.",
     );
   });
@@ -810,7 +810,7 @@ describe("refusals (DEC-082, DEC-083)", () => {
     expect(refused).toBeVisible();
     expect(refused).toHaveTextContent(words);
     expect(confirmButton()).toBeDisabled();
-    expect(within(dialog()).getByTestId("export-blocker")).toHaveTextContent("problem above");
+    expect(within(dialog()).getByRole("note")).toHaveTextContent("problem above");
     expect(within(dialog()).queryByRole("region", { name: "Tracks" })).toBeNull();
 
     await user.click(within(refused).getByRole("button", { name: "Import a Rekordbox file…" }));

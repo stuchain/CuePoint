@@ -13,6 +13,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
 import { PixelIcon } from "../../components/PixelIcon";
 import type { PixelIconName } from "../../components/pixelIcons";
@@ -127,7 +128,21 @@ export function PickerDialog({
   };
 
   return (
-    <Modal open={open} title={title} onClose={onClose}>
+    <Modal
+      open={open}
+      title={title}
+      onClose={onClose}
+      // Choosing ends the dialog, so the footer is the way out; making a tag from the typed
+      // name sits at its far left.
+      closeLabel="Cancel"
+      footerExtra={
+        canCreate ? (
+          <Button variant="secondary" onClick={() => onCreate!(typed)}>
+            Create “{typed}”
+          </Button>
+        ) : undefined
+      }
+    >
       <div className="cp-picker" onKeyDown={onKeyDown}>
         <SearchField
           ref={inputRef}
@@ -169,15 +184,6 @@ export function PickerDialog({
           )}
         </ul>
 
-        {canCreate && (
-          <button
-            type="button"
-            className="cp-picker__create"
-            onClick={() => onCreate!(typed)}
-          >
-            Create “{typed}”
-          </button>
-        )}
       </div>
     </Modal>
   );

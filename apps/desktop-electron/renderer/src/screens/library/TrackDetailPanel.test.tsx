@@ -302,7 +302,7 @@ describe("the editable zone (ORG-10)", () => {
       "true",
     );
     expect(screen.getByRole("radiogroup", { name: "Your rating" })).toHaveAttribute(
-      "title",
+      "data-hint",
       "From Rekordbox",
     );
     expect(screen.queryByText("From Rekordbox")).not.toBeInTheDocument();

@@ -194,8 +194,9 @@
      (whole pixels: every part is a token or a rounded one). Line 1 is the search row
      (padding, one control, its rule); line 2 the Play / Organize bar (its padding, one
      control, its rule); line 3 the table's header (a row and its rule). */
-  --library-line-1: calc(var(--control-height) + 2 * var(--space-sm) + var(--hairline));
-  --library-line-2: calc(var(--control-height) + 2 * round(down, calc(var(--space-xs) / 2), 1px) + var(--hairline));
+  --library-module: round(nearest, calc(12px * var(--scale)), 1px);
+  --library-line-1: var(--toolbar-height);
+  --library-line-2: var(--toolbar-height);
   --library-line-3: calc(var(--row-height) + var(--hairline));
 }
 
@@ -288,27 +289,10 @@
   text-decoration: underline;
 }
 
-/* The table's empty state, which is a small paragraph rather than a line
-   (ORG-13). A Smart Collection that matches nothing shows the rules it is
-   asking, because the answer to "why is this empty" is the question. */
-.library-screen__empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-xs);
-  max-width: 52ch;
-  font-size: var(--text-body);
-  text-align: center;
-}
-
-.library-screen__empty-headline {
-  margin: 0;
-  font-size: var(--text-heading);
-  font-weight: 700;
-}
-
+/* The rules a Smart Collection is asking, listed in the empty state's description (ORG-13):
+   the answer to "why is this empty" is the question. */
 .library-screen__empty-rules {
-  margin: 0;
+  margin: 0 0 var(--space-xs);
   padding: 0;
   list-style: none;
   display: flex;
@@ -316,11 +300,6 @@
   gap: 2px;
   font-family: var(--font-data);
   color: var(--fg-primary);
-}
-
-.library-screen__empty-hint {
-  margin: 0;
-  color: var(--fg-muted);
 }
 
 /* An overridden value and its marker (CLEAN-13). The marker's tooltip names

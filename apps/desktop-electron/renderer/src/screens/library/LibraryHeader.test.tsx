@@ -5,8 +5,7 @@
  * holds, and gives the source as a short line. Two buttons, never a menu:
  * **Check for changes** and **Export to Rekordbox…**. Before the
  * first import there is one, **Import a Rekordbox file…**. Where the
- * two do not fit the visible labels shorten and the full names stay as the
- * buttons' accessible names.
+ * two do not fit the chips beside the title go; the buttons' words are never cut.
  *
  * jsdom lays nothing out, so the two widths the header compares (its own and
  * the hidden copy of the full labels) are supplied here by `data-slot`, and the
@@ -16,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 
 import type { LibraryQuickFacets, LibrarySummary } from "../../api/cuepointBridge.types";
-import { LibraryHeader } from "./LibraryHeader";
+import { LibraryHeader, fitsOneLine, leanLevel } from "./LibraryHeader";
 
 const SUMMARY: LibrarySummary = {
   track_count: 3880,
@@ -77,9 +76,29 @@ function renderHeader(
   return handlers;
 }
 
-/** The widths each measured part reports; a missing slot reports nothing. */
+/**
+ * The widths each measured part reports, by the class it carries; a part with none reports nothing.
+ * `row` is the header's line, `title` the scope's name uncut, `beside` the source line and chips,
+ * `button` each button of the actions (and the Details toggle and its divider).
+ */
 let widths: Record<string, number> = {};
 let observers: Array<() => void> = [];
+
+const BY_CLASS: Record<string, string> = {
+  "cp-screen-header__main": "row",
+  "cp-screen-header__display": "title",
+  "cp-screen-header__beside": "beside",
+  "cp-btn": "button",
+  "cp-details-divider": "divider",
+  "library-header__source": "source",
+};
+
+function widthOf(element: HTMLElement): number {
+  for (const [name, key] of Object.entries(BY_CLASS)) {
+    if (element.classList.contains(name)) return widths[key] ?? 0;
+  }
+  return 0;
+}
 
 beforeEach(() => {
   widths = {};
@@ -92,19 +111,20 @@ beforeEach(() => {
     unobserve() {}
     disconnect() {}
   } as unknown as typeof ResizeObserver;
-  for (const name of ["offsetWidth", "clientWidth"] as const) {
+  for (const name of ["offsetWidth", "clientWidth", "scrollWidth"] as const) {
     Object.defineProperty(HTMLElement.prototype, name, {
       configurable: true,
       get(this: HTMLElement) {
-        return widths[this.dataset.slot ?? ""] ?? 0;
+        return widthOf(this);
       },
     });
   }
 });
 
 afterEach(() => {
-  Reflect.deleteProperty(HTMLElement.prototype, "offsetWidth");
-  Reflect.deleteProperty(HTMLElement.prototype, "clientWidth");
+  for (const name of ["offsetWidth", "clientWidth", "scrollWidth"]) {
+    Reflect.deleteProperty(HTMLElement.prototype, name);
+  }
   Reflect.deleteProperty(globalThis, "ResizeObserver");
 });
 
@@ -170,50 +190,68 @@ describe("after an import", () => {
   });
 
   it("shows the full names while they fit", () => {
-    widths = { "library-header": 1000, "library-header-measure": 400 };
+    widths = { row: 1000, title: 120, beside: 200, button: 160 };
     renderHeader();
 
     expect(screen.getByText("Check for changes")).toBeVisible();
     expect(screen.queryByText("Export…")).toBeNull();
   });
 
-  it("shortens the labels where they do not fit, and keeps the full names", () => {
-    widths = { "library-header": 500, "library-header-measure": 400 };
-    renderHeader();
+  it("never cuts a button's words: the chips beside the title go first", () => {
+    widths = { row: 500, title: 120, beside: 200, button: 160 };
+    renderHeader({ extra: <button type="button">First steps 1/4</button> });
 
     const check = screen.getByRole("button", { name: "Check for changes" });
     const exported = screen.getByRole("button", { name: "Export to Rekordbox…" });
-    expect(check).toHaveTextContent("Check");
-    expect(exported).toHaveTextContent("Export…");
-    // The full name is the accessible name, not only a tooltip.
-    expect(check).toHaveAttribute("aria-label", "Check for changes");
-    expect(exported).toHaveAttribute("aria-label", "Export to Rekordbox…");
+    expect(check).toHaveTextContent("Check for changes");
+    expect(exported).toHaveTextContent("Export to Rekordbox…");
+    expect(screen.queryByRole("button", { name: "First steps 1/4" })).toBeNull();
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
-  it("goes back to the full names when the window grows", () => {
-    widths = { "library-header": 500, "library-header-measure": 400 };
-    renderHeader();
-    expect(screen.getByText("Export…")).toBeInTheDocument();
+  it("drops the chips when a long scope name, the chips and the buttons together do not fit one line", () => {
+    // 1000 wide would fit a short name; this name is 500 wide, and 500 + 200 + 2 x 160 > 1000.
+    widths = { row: 1000, title: 500, beside: 200, button: 160 };
+    renderHeader({ extra: <button type="button">First steps 1/4</button> });
+    expect(screen.queryByRole("button", { name: "First steps 1/4" })).toBeNull();
+  });
 
-    widths["library-header"] = 1000;
+  it("moves the file and its state to the facts line when they do not fit beside the title", () => {
+    // 300 + 50 + 2 x 160 = 670 > 600: the name goes from beside the title to the end of the facts.
+    widths = { row: 600, title: 300, beside: 200, source: 50, button: 160 };
+    renderHeader();
+    expect(document.querySelector(".cp-screen-header__beside")).toBeNull();
+    expect(document.querySelector(".cp-screen-header__summary .library-header__file")).not.toBeNull();
+    expect(document.querySelector(".cp-screen-header__summary .cp-badge")).not.toBeNull();
+  });
+
+  it("keeps the file and its state beside the title when only the First steps chip must go", () => {
+    widths = { row: 700, title: 300, beside: 200, source: 50, button: 160 };
+    renderHeader({ extra: <button type="button">First steps 1/4</button> });
+    expect(document.querySelector(".cp-screen-header__beside .library-header__file")).not.toBeNull();
+    expect(document.querySelector(".cp-screen-header__beside .cp-badge")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "First steps 1/4" })).toBeNull();
+  });
+
+  it("brings the chips back when the window grows", () => {
+    widths = { row: 500, title: 120, beside: 200, button: 160 };
+    renderHeader({ extra: <button type="button">First steps 1/4</button> });
+    expect(screen.queryByRole("button", { name: "First steps 1/4" })).toBeNull();
+
+    widths.row = 1000;
     act(() => observers.forEach((notify) => notify()));
 
-    expect(screen.queryByText("Export…")).toBeNull();
+    expect(screen.getByRole("button", { name: "First steps 1/4" })).toBeInTheDocument();
     expect(screen.getByText("Export to Rekordbox…")).toBeInTheDocument();
   });
 
   it("draws the chip beside the heading, outside the actions", () => {
-    widths = { "library-header": 1000, "library-header-measure": 400 };
+    widths = { row: 1000, title: 120, beside: 200, button: 160 };
     renderHeader({ extra: <button type="button">First steps 1/4</button> });
 
     const chip = screen.getByRole("button", { name: "First steps 1/4" });
     expect(chip.closest(".cp-screen-header__title-row")).not.toBeNull();
     expect(chip.closest(".cp-screen-header__actions")).toBeNull();
-    expect(
-      document.querySelector('[data-slot="library-header-measure"]'),
-    ).not.toContainElement(chip);
-    // Same room, same labels: the chip does not push them into their short form.
     expect(screen.getByText("Export to Rekordbox…")).toBeInTheDocument();
   });
 
@@ -383,5 +421,40 @@ describe("before the first import", () => {
   it("says importing on its button while it works", () => {
     renderHeader({ summary: null, busy: "importing", busyLabel: "Importing…" });
     expect(screen.getByRole("button", { name: "Importing…" })).toBeDisabled();
+  });
+});
+
+describe("fitsOneLine (A1)", () => {
+  const base = { title: 200, beside: 300, actions: 400, gap: 10, available: 1000 };
+
+  it("counts the title, the chips, the buttons and a gap between each", () => {
+    expect(fitsOneLine(base)).toBe(true); // 200 + 300 + 400 + 20 = 920
+    expect(fitsOneLine({ ...base, title: 281 })).toBe(false); // 1001
+    expect(fitsOneLine({ ...base, title: 280 })).toBe(true); // 1000
+  });
+
+  it("needs one gap, not two, when nothing sits beside the title", () => {
+    expect(fitsOneLine({ ...base, beside: 0, title: 590 })).toBe(true); // 590 + 400 + 10
+    expect(fitsOneLine({ ...base, beside: 0, title: 591 })).toBe(false);
+  });
+
+  it("reads a header with no layout as fitting", () => {
+    expect(fitsOneLine({ ...base, available: 0 })).toBe(true);
+  });
+});
+
+describe("leanLevel (A1)", () => {
+  const base = { title: 200, whole: 300, source: 90, actions: 400, gap: 10, available: 1000 };
+
+  it("keeps everything beside the title while it fits", () => {
+    expect(leanLevel(base)).toBe(0);
+  });
+
+  it("drops the First steps chip first, keeping the file and its state", () => {
+    expect(leanLevel({ ...base, available: 720 })).toBe(1); // 200 + 90 + 400 + 20 = 710
+  });
+
+  it("moves the file and its state to the facts line when even they do not fit beside the title", () => {
+    expect(leanLevel({ ...base, available: 650 })).toBe(2);
   });
 });

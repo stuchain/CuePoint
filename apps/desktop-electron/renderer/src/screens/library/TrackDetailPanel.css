@@ -6,6 +6,9 @@
  */
 
 .cp-track-detail {
+  /* One facts grid (area 84): the label column every row, Beatport field and history entry
+     shares; values are Inter (--font-data) like a table's. */
+  --facts-label: minmax(0, round(nearest, calc(53.33px * var(--scale)), 1px));
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
@@ -47,7 +50,8 @@
   font-size: var(--font-size-xs);
 }
 
-.cp-track-detail__label {
+/* The track's label name under the artist (a Label page opens from it). */
+.cp-track-detail__labelname {
   margin: 0;
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
@@ -113,6 +117,7 @@
 .cp-track-detail__factvalue {
   margin: 0;
   min-width: 0;
+  font-family: var(--font-data);
   overflow-wrap: anywhere;
 }
 
@@ -120,6 +125,7 @@
    four of them share a row where they can. */
 .cp-track-detail > .cp-tabs {
   flex-wrap: wrap;
+  gap: var(--space-xs);
 }
 
 .cp-track-detail > .cp-tabs .cp-tabs__tab {
@@ -146,10 +152,12 @@
   min-width: 0;
 }
 
-.cp-track-detail__row {
+.cp-track-detail__row,
+.cp-track-beatport__field,
+.cp-track-history__entry {
   display: grid;
-  grid-template-columns: minmax(0, round(nearest, calc(53.33px * var(--scale)), 1px)) minmax(0, 1fr);
-  gap: var(--space-sm);
+  grid-template-columns: var(--facts-label) minmax(0, 1fr);
+  gap: var(--space-xs) var(--space-sm);
   align-items: baseline;
 }
 
@@ -161,6 +169,7 @@
 .cp-track-detail__value {
   margin: 0;
   min-width: 0;
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
   word-break: break-word;
 }
@@ -191,7 +200,7 @@
   border: none;
   background: transparent;
   color: var(--accent-info);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
   text-align: left;
   cursor: pointer;
@@ -366,8 +375,7 @@
 .cp-track-yours__star:focus-visible,
 .cp-track-yours__clear:focus-visible,
 .cp-track-yours__favorite:focus-visible,
-.cp-track-yours__tag-remove:focus-visible,
-.cp-track-yours__tag-add:focus-visible {
+.cp-track-yours__tag-remove:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--hairline);
 }
@@ -378,7 +386,7 @@
   border: none;
   background: transparent;
   color: var(--accent-info);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
   cursor: pointer;
 }
@@ -406,7 +414,7 @@
   border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-muted);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
   line-height: 1;
@@ -424,19 +432,6 @@
   gap: calc(2px * var(--scale));
 }
 
-.cp-track-yours__notes {
-  width: 100%;
-  box-sizing: border-box;
-  padding: var(--space-xs);
-  border: var(--hairline) solid var(--border-muted);
-  background: var(--bg-input);
-  color: var(--fg-primary);
-  font-family: var(--font-data);
-  font-size: var(--font-size-xs);
-  resize: vertical;
-}
-
-.cp-track-yours__notes:focus-visible,
 .cp-track-yours__tag-input:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 0;
@@ -480,7 +475,7 @@
   border: none;
   background: transparent;
   color: var(--fg-muted);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
   line-height: 1;
   cursor: pointer;
@@ -495,12 +490,11 @@
   font-size: var(--font-size-xs);
 }
 
+/* The label above (a .cp-track-yours__label), then the field and its button on one line. */
 .cp-track-yours__add {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-xs);
-  margin-top: var(--space-xs);
 }
 
 .cp-track-yours__tag-field {
@@ -516,21 +510,6 @@
   color: var(--fg-primary);
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
-}
-
-.cp-track-yours__tag-add {
-  padding: var(--space-xs) var(--space-sm);
-  border: var(--hairline) solid var(--border-muted);
-  background: var(--bg-input);
-  color: var(--fg-primary);
-  font-family: var(--font-pixel);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-}
-
-.cp-track-yours__tag-add:disabled {
-  color: var(--fg-disabled);
-  cursor: default;
 }
 
 /*
@@ -558,10 +537,6 @@
 }
 
 .cp-track-history__entry {
-  display: grid;
-  grid-template-columns: minmax(0, round(nearest, calc(53.33px * var(--scale)), 1px)) minmax(0, 1fr);
-  gap: var(--space-xs);
-  align-items: baseline;
   padding: calc(2px * var(--scale)) 0;
   border-left: round(down, calc(2px * var(--scale)), 1px) solid transparent;
   padding-left: var(--space-xs);
@@ -662,13 +637,6 @@
   margin: 0;
 }
 
-.cp-track-beatport__field {
-  display: grid;
-  grid-template-columns: minmax(0, round(nearest, calc(37.33px * var(--scale)), 1px)) minmax(0, 1fr);
-  gap: var(--space-xs);
-  align-items: baseline;
-}
-
 .cp-track-beatport__values {
   display: flex;
   flex-direction: column;
@@ -702,7 +670,7 @@
   border: none;
   background: transparent;
   color: var(--accent-info);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
   cursor: pointer;
 }
@@ -767,7 +735,7 @@
   border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-primary);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
   line-height: 1.2;
@@ -784,8 +752,7 @@
 }
 
 .cp-track-actions__button:focus-visible,
-.cp-track-section__toggle:focus-visible,
-.cp-track-values__edit:focus-visible {
+.cp-track-section__toggle:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--hairline);
 }
@@ -866,16 +833,6 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-xs);
-}
-
-.cp-track-values__edit {
-  padding: var(--space-xs) var(--space-sm);
-  border: var(--hairline) solid var(--border-muted);
-  background: var(--bg-input);
-  color: var(--accent-info);
-  font-family: var(--font-pixel);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
 }
 
 .cp-track-values .cp-track-section {

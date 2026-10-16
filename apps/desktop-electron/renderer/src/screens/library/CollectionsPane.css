@@ -38,7 +38,13 @@
 
 .cp-library-pane .cp-playlist-pane__tree {
   flex: 0 0 auto;
-  overflow: visible;
+  /* Clipped, not visible: a name too long for a narrow pane ends in "…" and the count never
+     paints over it (the rows below are as wide as the pane, never wider). */
+  overflow: clip;
+}
+
+.cp-library-pane .cp-playlist-pane__row {
+  min-width: 0;
 }
 
 /* The count is the last thing a row gives up: the name's floor yields first. */
@@ -134,10 +140,9 @@
   padding: 0 var(--space-xs);
 }
 
-/* A name keeps a floor (ORG-13): it is the only flexible item in the row, and a row
-   with no name on it is a worse loss than a clipped count. */
+/* A name is the only flexible item in the row: it shrinks to "…" before the count is touched. */
 .cp-collections .cp-playlist-pane__name {
-  min-width: 3ch;
+  min-width: 0;
 }
 
 /* A Smart Collection whose saved rules cannot be run (ORG-06). */
@@ -202,17 +207,22 @@
   padding-bottom: 0;
 }
 
+/* One row height: the band's spare room sits under the row, outside it, so the row's own
+   hover and selection are a row high like every other row. */
 .cp-library-pane__all .cp-playlist-pane__row {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  align-self: center;
+  height: var(--row-height);
   /* Shrink to the pane: the name ellipsises, the count (flex: none) stays whole. */
   min-width: 0;
 }
 
 .cp-library-pane .cp-collections > .cp-playlist-pane__head {
   box-sizing: border-box;
-  height: var(--library-line-2, auto);
+  /* The toolbar and the module above it (library.css): the heading sits in the toolbar's part. */
+  height: calc(var(--library-line-2, auto) + var(--library-module));
   align-items: center;
-  padding-block: 0;
+  padding-block: var(--library-module) 0;
 }
 
 .cp-library-pane .cp-collections__create {

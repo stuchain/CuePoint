@@ -202,7 +202,7 @@ describe("the Inspector's waveform", () => {
     render(<TrackWaveform trackId={7} />);
     await drawn();
 
-    expect(box()).toHaveAttribute("title", INSPECTOR_PICTURE_TITLE);
+    expect(box()).toHaveAttribute("data-hint", INSPECTOR_PICTURE_TITLE);
     expect(fills.some((fill) => fill.colour === "#fafafa")).toBe(false);
     fireEvent.click(box(), { clientX: 250 });
 
@@ -216,7 +216,7 @@ describe("the Inspector's waveform", () => {
     render(<TrackWaveform trackId={7} />);
     await drawn();
 
-    expect(box()).toHaveAttribute("title", INSPECTOR_SEEK_TITLE);
+    expect(box()).toHaveAttribute("data-hint", INSPECTOR_SEEK_TITLE);
     expect(box()).toHaveAttribute("data-playing", "true");
     // Three seconds of six: the playhead in column 75.
     const unit = 2 * (window.devicePixelRatio || 1);
@@ -244,7 +244,7 @@ describe("the Inspector's waveform", () => {
     render(<TrackWaveform trackId={7} />);
     await drawn();
 
-    expect(box()).toHaveAttribute("title", INSPECTOR_PICTURE_TITLE);
+    expect(box()).toHaveAttribute("data-hint", INSPECTOR_PICTURE_TITLE);
     fireEvent.click(box(), { clientX: 200 });
     expect(player.seek).not.toHaveBeenCalled();
   });
@@ -269,7 +269,7 @@ describe("the Inspector's waveform", () => {
     render(<TrackWaveform trackId={7} />);
 
     expect(await within(box()).findByText(words)).toBeInTheDocument();
-    expect(box()).toHaveAttribute("title", words);
+    expect(box()).toHaveAttribute("data-hint", words);
     expect(box().querySelector("canvas")).toBeNull();
   });
 

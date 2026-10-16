@@ -230,7 +230,7 @@ describe("the empty table, drawn (LIB-5)", () => {
     const onAction = vi.fn();
     render(<LibraryEmptyState view={emptyStateFor(NARROWED)} onAction={onAction} />);
 
-    expect(screen.getByText("No tracks match this search.")).toBeInTheDocument();
+    expect(screen.getByText("No tracks match this search")).toBeInTheDocument();
     expect(
       screen.getByText("Try fewer words, or clear the search and filters."),
     ).toBeInTheDocument();

@@ -163,12 +163,11 @@ describe("one list behind both surfaces", () => {
     const play = groups.find((group) => group.id === "play")!;
     const rest = groups.filter((group) => group.id !== "play");
 
-    // Top level: Play's three entries, a "This page" block holding the Library's own groups,
+    // Top level: Play's three entries, a "This page" block (a group title, not an entry) holding the Library's own groups,
     // then More last (the base menu every list has is Play, then More).
     const page = rest.filter((group) => group.id !== "more");
     expect(labels(menu)).toEqual([
       ...labels(play.items),
-      "This page",
       ...page.map((group) => group.label),
       "More",
     ]);
@@ -193,7 +192,9 @@ describe("one list behind both surfaces", () => {
   it("puts a divider above the first parent, and none above the first line", () => {
     const menu = menuFromGroups(trackActionGroups(IN_COLLECTION, handlers()));
     expect(menu[0]!.separatorBefore).toBeFalsy();
-    expect(menu.find((item) => item.id === "this-page")!.separatorBefore).toBe(true);
+    const first = menu.find((item) => item.id === groupMenuId("organize"))!;
+    expect(first.separatorBefore).toBe(true);
+    expect(first.groupTitle).toBe("This page");
     expect(menu.find((item) => item.id === groupMenuId("more"))!.separatorBefore).toBe(true);
   });
 
@@ -205,14 +206,14 @@ describe("one list behind both surfaces", () => {
         { organization: partial.organization, more: { onCopy: vi.fn(), onReveal: null } },
       ),
     );
-    expect(labels(menu)).toEqual(["This page", "Organize", "More"]);
+    expect(labels(menu)).toEqual(["Organize", "More"]);
   });
 
   it("is built by the same function for one track, a few and many", () => {
     for (const count of [1, 2, 40_000]) {
       const groups = trackActionGroups({ ...IN_COLLECTION, count }, handlers());
       const menu = menuFromGroups(groups);
-      expect(leaves(menu).map((item) => item.id).filter((id) => id !== "this-page")).toEqual(
+      expect(leaves(menu).map((item) => item.id)).toEqual(
         leaves(groups.flatMap((group) => group.items)).map((item) => item.id),
       );
     }

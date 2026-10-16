@@ -108,7 +108,7 @@ describe("the Key cell", () => {
     const { container } = render(<OverriddenValue row={row({ effective_key: "8A", overridden: [] })} field="key" />);
     const chip = container.querySelector(".key-chip--8A");
     expect(chip).toHaveTextContent("8A");
-    expect(chip).toHaveAttribute("title", "A minor");
+    expect(chip).toHaveAttribute("data-hint", "A minor");
   });
 
   it("keeps the chip inside the marked cell too", () => {

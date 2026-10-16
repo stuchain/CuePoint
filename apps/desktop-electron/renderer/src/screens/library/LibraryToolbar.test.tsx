@@ -131,9 +131,9 @@ describe("the selection bar", () => {
       />,
     );
     const none = document.querySelector<HTMLElement>(".library-toolbar")!.style.minHeight;
-    // One line of controls plus the row's padding and rule, border-box.
-    expect(none).toContain("var(--control-height)");
-    expect(none).toContain("var(--hairline)");
+    // The height is the stylesheet's --toolbar-height (libraryLines.test.ts), not an inline value,
+    // so the bar with and without buttons is the one shape.
+    expect(none).toBe("");
     unmount();
     renderBar();
     expect(document.querySelector<HTMLElement>(".library-toolbar")!.style.minHeight).toBe(none);
@@ -333,5 +333,24 @@ describe("the two lines (DEC-217, 2026-10-09)", () => {
     const row = document.querySelector(".library-toolbar")!;
     expect(row).toHaveClass("library-toolbar--one-line");
     expect(row).not.toHaveClass("library-toolbar--two-lines");
+  });
+});
+
+describe("the count (A3)", () => {
+  it("is left to the facts line when nothing is filtered and the Library asks for that", () => {
+    renderBar({ selected: 0, count: "filtered", scopeTotal: 1204 });
+    expect(document.querySelector(".library-toolbar__count")).toBeNull();
+    expect(screen.queryByText(/1,204 tracks/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Select all" })).toBeInTheDocument();
+  });
+
+  it("is drawn while a search or filter narrows the view", () => {
+    renderBar({ selected: 0, count: "filtered", total: 240, scopeTotal: 12000 });
+    expect(screen.getByText("Showing 240 of 12,000 tracks")).toBeInTheDocument();
+  });
+
+  it("is always drawn by default, for the pages that have no facts line", () => {
+    renderBar({ selected: 0 });
+    expect(screen.getByText("1,204 tracks")).toBeInTheDocument();
   });
 });

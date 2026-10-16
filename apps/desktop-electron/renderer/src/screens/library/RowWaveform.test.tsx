@@ -245,7 +245,7 @@ describe("a row's waveform", () => {
 
     const shown = screen.getByText(word);
     expect(shown).toHaveClass("library-cell__waveform-word");
-    expect(shown.parentElement).toHaveAttribute("title", sentence);
+    expect(shown.parentElement).toHaveAttribute("data-hint", sentence);
     expect(document.querySelector("canvas")).toBeNull();
   });
 
@@ -258,6 +258,6 @@ describe("a row's waveform", () => {
     expect(cell.textContent).toBe("");
     await pass(SETTLE_MS);
     expect(cell.textContent).toBe("");
-    expect(cell).not.toHaveAttribute("title");
+    expect(cell).not.toHaveAttribute("data-hint");
   });
 });

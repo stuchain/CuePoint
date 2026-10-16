@@ -86,7 +86,11 @@ export function agreeLine(agree: readonly string[]): string {
 export function releaseLine(
   candidate: Pick<MatchCandidate, "title" | "mix" | "artists" | "label" | "release_name">,
 ): string {
-  const title = candidate.title ? `${candidate.title}${candidate.mix ? ` (${candidate.mix})` : ""}` : "";
+  // Beatport's title often carries the mix already ("Strobe (Extended Mix)" with mix "Extended Mix"):
+  // it is added only when the title does not say it, so it is never drawn twice.
+  const mix = candidate.mix?.trim() ?? "";
+  const says = mix !== "" && (candidate.title ?? "").toLowerCase().includes(`(${mix.toLowerCase()})`);
+  const title = candidate.title ? `${candidate.title}${mix && !says ? ` (${mix})` : ""}` : "";
   const named = [candidate.artists, title].filter(Boolean).join(" – ");
   return [named, candidate.label || candidate.release_name].filter(Boolean).join(" · ");
 }

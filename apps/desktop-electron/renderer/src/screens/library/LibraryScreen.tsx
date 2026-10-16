@@ -2035,6 +2035,7 @@ export function LibraryScreen({
             groups={barGroups}
             total={window_.total}
             scopeTotal={scopeTotal}
+            count="filtered"
             selected={selection.count}
             describedByQuery={selection.selection.all}
             openGroup={menu?.kind === "selection" ? menu.group : null}

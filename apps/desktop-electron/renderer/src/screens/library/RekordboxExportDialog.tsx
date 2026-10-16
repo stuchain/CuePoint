@@ -384,6 +384,8 @@ export function RekordboxExportDialog({
       title="Export to Rekordbox"
       onClose={phase === "exporting" ? () => undefined : onClose}
       size="wide"
+      // Why Export is greyed: one line above the footer, not a note in the body (area 93).
+      reason={blocker && !previewing ? blocker : undefined}
       primaryAction={primary}
       secondaryAction={
         phase === "exporting"
@@ -480,7 +482,7 @@ export function RekordboxExportDialog({
 
             {/* 2. The answer in one line, then what must be seen before anything is written. */}
             {preview && (
-              <p className="rekordbox-export__summary" data-testid="export-summary" role="status">
+              <p className="cp-modal__summary rekordbox-export__summary" data-testid="export-summary" role="status">
                 {exportSummaryLine(preview, keyFormat)}
               </p>
             )}
@@ -634,11 +636,6 @@ export function RekordboxExportDialog({
               <p className="clean-dialog__note" role="status">
                 Exporting{destination ? ` to ${fileName(destination)}` : ""}… the file appears
                 only once it is complete.
-              </p>
-            )}
-            {blocker && !previewing && (
-              <p className="clean-dialog__hint" data-testid="export-blocker">
-                {blocker}
               </p>
             )}
           </>

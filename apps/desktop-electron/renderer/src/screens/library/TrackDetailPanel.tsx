@@ -70,7 +70,6 @@ import { useTrackWrites } from "./useTrackWrites";
 import { reportUnexpected } from "../../reporting/reporting";
 import "./TrackDetailPanel.css";
 import { userMessage } from "../../api/userMessage";
-import { NO_VALUE } from "../../words";
 import { formatLength } from "../../format/durations";
 import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
@@ -447,7 +446,7 @@ export function TrackDetailPanel({
                 is why it is here beside the artist rather than in the imported
                 record below, whose Label row stays what Rekordbox sent. */}
             {onOpenEntity && credits?.label && (
-              <p className="cp-track-detail__label">
+              <p className="cp-track-detail__labelname">
                 {credited(credits.label.name, [credits.label], onOpenEntity)}
               </p>
             )}
@@ -491,7 +490,7 @@ export function TrackDetailPanel({
               variant="secondary"
               className="cp-track-actions__button"
               aria-label="Queue"
-              aria-haspopup="menu"
+              menu
               aria-expanded={queueMenu !== null}
               disabled={acting !== null}
               onClick={(event) => {
@@ -499,7 +498,7 @@ export function TrackDetailPanel({
                 setQueueMenu({ x: rect.left, y: rect.bottom });
               }}
             >
-              Queue<PixelIcon name="chevron-down" className="cp-pixel-icon--text cp-pixel-icon--after" />
+              Queue
             </Button>
           )}
           {track.id != null && (
@@ -558,8 +557,9 @@ export function TrackDetailPanel({
                     {sourceWords !== null && <span className="cp-visually-hidden">{` \u00b7 ${sourceWords}`}</span>}
                   </span>
                 ) : (
+                  // The wheel's button draws the one dash itself (a track with no key shows a muted
+                  // dash in the same button); a second "—" beside it read as an empty chip.
                   <span className="cp-track-detail__file">
-                    <span>{NO_VALUE}</span>
                     <WheelButton />
                     {keyMatchOffered && track.id != null && <MatchOnBeatport trackId={track.id} />}
                   </span>

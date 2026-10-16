@@ -73,12 +73,12 @@ describe("the + New menu over the tree", () => {
     );
   });
 
-  it("keeps the label and a text-sized chevron on one line", () => {
+  it("is a menu button: the word, then the small chevron, on one line", () => {
     paneWith(null);
     const button = screen.getByRole("button", { name: "+ New" });
     expect(button).toHaveClass("cp-collections__new");
-    const icon = button.querySelector(".cp-pixel-icon");
-    expect(icon).toHaveClass("cp-pixel-icon--text");
+    expect(button).toHaveClass("cp-btn--menu");
+    expect(button.querySelector(".cp-btn__menu .cp-pixel-icon")).not.toBeNull();
   });
 
   it("makes a node in the selected folder, as before", async () => {

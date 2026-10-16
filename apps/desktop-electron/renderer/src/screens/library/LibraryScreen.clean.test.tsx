@@ -301,7 +301,6 @@ describe("the operations list", () => {
       "Play",
       "Play next",
       "Add to queue",
-      "This page",
       "Organize",
       "Beatport",
       "More",
@@ -490,7 +489,8 @@ describe("the toolbar row", () => {
     expect(row.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(row).queryByRole("button", { name: "Columns…" })).toBeNull();
     expect(within(table).getByRole("button", { name: "Columns…" })).toBeInTheDocument();
-    expect(within(row).getByRole("status")).toHaveTextContent("3 tracks");
+    // The facts line says "3 tracks"; the bar repeats it only while a filter narrows the view (A3).
+    expect(within(row).queryByRole("status")).toBeNull();
     expect(within(row).getByRole("button", { name: "Select all" })).toBeInTheDocument();
     expect(row.nextElementSibling?.contains(table)).toBe(true);
   });
@@ -509,7 +509,6 @@ describe("the toolbar row", () => {
       expect(within(bar).getByRole("button", { name })).not.toHaveAttribute("aria-disabled");
     }
     expect(within(bar).getByRole("button", { name: "Clear selection, 1 selected" })).toHaveTextContent("1 selected");
-    expect(screen.getByRole("status", { name: "" })).toHaveTextContent(/^3 tracks, 1 track selected$/);
   });
 
   it("clears the selection with the 2 selected button", async () => {

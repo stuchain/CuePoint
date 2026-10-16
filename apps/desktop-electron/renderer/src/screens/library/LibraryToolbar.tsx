@@ -54,6 +54,12 @@ interface LibraryToolbarProps {
    * before a button wraps: the narrower bars on Discover and Similar.
    */
   oneLine?: boolean;
+  /**
+   * `"filtered"`: draw the count only while a search or filter narrows the view ("Showing 240 of
+   * 12,000 tracks"). The Library says the plain count in its facts line above, so the bar does not
+   * repeat it and keeps the room for its buttons. Default `"always"`.
+   */
+  count?: "always" | "filtered";
 }
 
 /** Why Select all is disabled once every track is. */
@@ -111,6 +117,7 @@ export function LibraryToolbar({
   onClear,
   onSelectAll,
   oneLine = false,
+  count = "always",
 }: LibraryToolbarProps) {
   const keys = useToolbarKeys(groups.length + 1);
   const none = selected === 0;
@@ -139,6 +146,7 @@ export function LibraryToolbar({
     onOpenGroup(group.id, { x: rect.left, y: rect.bottom });
   };
 
+  const showCount = count === "always" || scopeTotal > total;
   const countText =
     scopeTotal > total
       ? `Showing ${total.toLocaleString()} of ${scopeTotal.toLocaleString()} tracks`
@@ -152,11 +160,7 @@ export function LibraryToolbar({
   return (
     <div
       ref={lines.ref}
-      // One line of controls, padding and rule included, with or without the buttons (DEC-112).
-      style={{
-        minHeight:
-          "calc(var(--control-height) + 2 * round(down, calc(var(--space-xs) / 2), 1px) + var(--hairline))",
-      }}
+      // One toolbar high with or without the buttons (DEC-112): min-height is --toolbar-height in CSS.
       className={
         oneLine
           ? "library-toolbar library-toolbar--one-line"
@@ -164,6 +168,7 @@ export function LibraryToolbar({
             ? "library-toolbar library-toolbar--two-lines"
             : "library-toolbar"
       }
+      data-count={showCount ? undefined : "hidden"}
     >
       {/* The buttons as they are with a selection, drawn invisibly and out of the flow, so the
           row's lines are measured the same whether or not they show. Their words are drawn from
@@ -173,12 +178,12 @@ export function LibraryToolbar({
           <Button
             key={group.id}
             variant="secondary"
+            menu
             className="library-toolbar__button"
             tabIndex={-1}
             disabled
           >
             <span className="library-toolbar__ghost" data-text={group.label} />
-            <span className="library-toolbar__arrow" />
           </Button>
         ))}
         <Button variant="secondary" className="library-toolbar__button" tabIndex={-1} disabled>
@@ -201,8 +206,8 @@ export function LibraryToolbar({
             <Hint key={group.id} text={group.disabledReason ?? undefined}>
               <Button
                 variant="secondary"
+                menu
                 className="library-toolbar__button"
-                aria-haspopup="menu"
                 aria-expanded={openGroup === group.id}
                 aria-disabled={group.disabledReason ? true : undefined}
                 {...keys.buttonProps(index)}
@@ -213,7 +218,6 @@ export function LibraryToolbar({
                 }}
               >
                 {group.label}
-                <span className="library-toolbar__arrow" aria-hidden />
               </Button>
             </Hint>
           ))}
@@ -241,18 +245,20 @@ export function LibraryToolbar({
             cell (drawn from an attribute, so it is no text a reader or a query finds), so the row
             is measured with it and, where its line is shorter, the count is cut with an ellipsis,
             never a button wrapped (N2-1). */}
-        <span className="library-toolbar__count-box">
-          <span className="library-toolbar__count-reserve" aria-hidden data-reserve={countText} />
-          <span className="library-toolbar__count cp-data" role="status">
-            {countText}
-            {selected > 0 && (
-              // Said for a screen reader, not drawn: the selected-count button shows it.
-              <span className="library-toolbar__sr">
-                , {selected.toLocaleString()} {selected === 1 ? "track" : "tracks"} selected
-              </span>
-            )}
+        {showCount && (
+          <span className="library-toolbar__count-box">
+            <span className="library-toolbar__count-reserve" aria-hidden data-reserve={countText} />
+            <span className="library-toolbar__count cp-data" role="status">
+              {countText}
+              {selected > 0 && (
+                // Said for a screen reader, not drawn: the selected-count button shows it.
+                <span className="library-toolbar__sr">
+                  , {selected.toLocaleString()} {selected === 1 ? "track" : "tracks"} selected
+                </span>
+              )}
+            </span>
           </span>
-        </span>
+        )}
         {/* Always there once there is anything to select, disabled when all is. */}
         {total > 0 && (
           <Hint text={selected >= total ? EVERYTHING_SELECTED : undefined}>

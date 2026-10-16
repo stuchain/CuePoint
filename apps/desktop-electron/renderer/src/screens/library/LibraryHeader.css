@@ -1,13 +1,27 @@
 /* The library's scope, source and two actions, on the shared header (LIBUI-10, DEC-039, FLW-11, K9). */
 
-/* ScreenHeader brings its own background and divider; this only anchors the measure copy. */
+/* ScreenHeader brings its own background and divider. */
 .library-header {
   position: relative;
+  /* The page is a grid: without this the header's one-line facts (the file's name at the end of
+     them) would set the column's width at the largest sizes. */
+  min-width: 0;
+}
+
+/* The First steps chip's slot: measured with the source line, and gone with the chip. */
+.library-header__chip-slot {
+  display: inline-flex;
+  align-items: center;
+}
+
+.library-header__chip-slot:empty {
+  display: none;
 }
 
 /* Wide enough, one line: the title, then the file and its state, then the buttons at the
-   right. Too narrow (a big text size, Track details open), the line wraps: the title keeps its
-   own words and what follows it goes to a second line, rather than the title being cut. */
+   right. Too narrow (a big text size, Track details open), the First steps chip goes first, then
+   the file and its state move to the facts line (LibraryHeader measures it); only past that does
+   the line wrap, the title keeping its own words rather than being cut. */
 .library-header .cp-screen-header__main {
   display: flex;
   flex-wrap: wrap;
@@ -33,7 +47,9 @@
 }
 
 .library-header .cp-screen-header__actions {
-  flex: none;
+  /* Shrinks and wraps before it would run past the page (3x). */
+  flex: 0 1 auto;
+  max-width: 100%;
   margin-inline-start: auto;
 }
 
@@ -95,25 +111,4 @@
 .library-header__applied {
   margin: 0;
   color: var(--fg-muted);
-}
-
-/* The full labels, laid out and never seen: what the header measures to decide
-   whether the visible ones must shorten. */
-.library-header__measure {
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: var(--space-sm);
-  width: max-content;
-  height: 0;
-  overflow: hidden;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.library-header__measure-label::after {
-  content: attr(data-text);
-  white-space: nowrap;
 }

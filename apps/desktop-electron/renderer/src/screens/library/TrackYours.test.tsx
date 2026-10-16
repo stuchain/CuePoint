@@ -170,7 +170,7 @@ describe("the rating", () => {
   it("says which layer it is showing", () => {
     draw({ rekordbox_rating: 4, effective_rating: 4, rating_source: "rekordbox" });
     // On hover, not as a line of text (DEC-246).
-    expect(screen.getByRole("radiogroup", { name: "Your rating" })).toHaveAttribute("title", "From Rekordbox");
+    expect(screen.getByRole("radiogroup", { name: "Your rating" })).toHaveAttribute("data-hint", "From Rekordbox");
     expect(screen.queryByText("From Rekordbox")).not.toBeInTheDocument();
   });
 
@@ -206,7 +206,7 @@ describe("the rating", () => {
     fireEvent.click(screen.getByRole("button", { name: "Use Rekordbox's ★★★★" }));
 
     await waitFor(() =>
-      expect(screen.getByRole("radiogroup", { name: "Your rating" })).toHaveAttribute("title", "From Rekordbox"),
+      expect(screen.getByRole("radiogroup", { name: "Your rating" })).toHaveAttribute("data-hint", "From Rekordbox"),
     );
     expect(star(4)).toHaveAttribute("aria-checked", "true");
   });

@@ -9,6 +9,7 @@
  */
 import { useState } from "react";
 
+import { Button } from "../../components/Button";
 import type { LibraryTrackRow, OverrideField } from "../../api/cuepointBridge.types";
 import { APPLY_FIELD_LABELS } from "../clean/comparison";
 import { DisclosureSection } from "./DisclosureSection";
@@ -82,9 +83,9 @@ export function TrackEditedValues({ track, beatportKey, onSaved, onError }: Trac
 
   return (
     <div className="cp-track-values">
-      <button type="button" className="cp-track-values__edit" onClick={() => setEditing(true)}>
+      <Button variant="secondary" onClick={() => setEditing(true)}>
         Edit values…
-      </button>
+      </Button>
       {/* A track's own state: it opens itself when a value is edited, and
           nothing is remembered about it. */}
       <DisclosureSection

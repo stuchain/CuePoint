@@ -23,7 +23,7 @@
   background: var(--bg-input);
   border: var(--control-border-width) solid var(--border-control);
   color: var(--fg-primary);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
   white-space: nowrap;

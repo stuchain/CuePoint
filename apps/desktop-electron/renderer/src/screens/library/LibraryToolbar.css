@@ -6,21 +6,19 @@
 .library-toolbar {
   position: relative;
   box-sizing: border-box;
-  --library-toolbar-row-gap: round(down, calc(var(--space-xs) / 2), 1px);
+  /* One toolbar shape with the filter bar above it: 8·scale between controls, and the
+     module (12·scale) between the two bars (library.css --library-module). */
+  --library-toolbar-row-gap: round(nearest, calc(8px * var(--scale)), 1px);
+  min-height: var(--toolbar-height);
+  margin-top: var(--library-module);
 
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  /* Tight across the line, on purpose: at 1.5× in a 1,264 × 735 window (a Windows
-     frame and menu bar inside 1,280 × 800) with Track details open the row has
-     535px, less the page's scrollbar when it shows one (17px on Windows). The groups
-     take 470 of it with these 2px gaps and no side padding (the buttons
-     line up with the table's edges instead), 40px or more to spare with a 20px
-     scrollbar; at the old 4px gaps, 6px sides and a word space before each ▸
-     they took 513 and the row went to three lines on Windows (a table row lost). */
-  gap: var(--library-toolbar-row-gap) round(down, calc(var(--space-xs) / 3), 1px);
-  /* A hair of room at the left, so the pane's rule never touches the first button. */
-  padding: round(down, calc(var(--space-xs) / 2), 1px) round(down, calc(var(--space-xs) / 3), 1px);
+  /* Between the buttons of one line: 6·scale, so the four groups keep their line beside a page scrollbar
+     (8·scale left 15px at 1,264 x 735 and 1.5x, and a 20px scrollbar wrapped the last group). */
+  gap: var(--library-toolbar-row-gap) round(nearest, calc(6px * var(--scale)), 1px);
+  padding: var(--toolbar-padding);
   background: var(--bg-toolbar);
   /* The rule is under the bar, where the pane's Collections heading has its own. */
   border-bottom: var(--hairline) solid var(--border-muted);
@@ -49,6 +47,7 @@
 }
 
 .library-toolbar--two-lines .library-toolbar__clear,
+.library-toolbar--two-lines .cp-hint:has(> .library-toolbar__clear),
 .library-toolbar--two-lines .library-toolbar__end > * {
   order: 2;
 }
@@ -118,6 +117,11 @@
   text-overflow: ellipsis;
 }
 
+/* Without the count, Select all keeps the right edge on its own. */
+.library-toolbar[data-count="hidden"] .library-toolbar__select-all {
+  margin-inline-start: auto;
+}
+
 .library-toolbar__button {
   flex: none;
   white-space: nowrap;
@@ -137,23 +141,6 @@
   min-height: var(--control-height);
   font-size: var(--font-size-xs);
   line-height: 1.2;
-}
-
-/* The ▸ is drawn, not set: the pixel font has no such glyph, so each system took
-   it from a fallback font of its own, at its own width (Windows' wider than
-   Linux's), and the row measured differently on each. A 3 × 6 triangle at 1.5×,
-   2px from the name, is the same everywhere. The text stays for the tests and
-   is drawn at no size; the span is hidden from assistive technology. */
-.library-toolbar__arrow {
-  display: inline-block;
-  vertical-align: middle;
-  width: round(nearest, calc(var(--unit) / 2), 1px);
-  height: var(--unit);
-  margin-left: round(down, calc(var(--unit) / 3), 1px);
-  overflow: hidden;
-  font-size: 0;
-  background: currentColor;
-  clip-path: polygon(0 0, 100% 50%, 0 100%);
 }
 
 /* aria-disabled rather than disabled, so the bar's keys still land on it and

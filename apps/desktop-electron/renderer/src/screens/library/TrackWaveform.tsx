@@ -98,7 +98,7 @@ export function TrackWaveform({
         className={`cp-track-waveform${playing && picture ? " cp-track-waveform--seekable" : ""}`}
         data-testid="inspector-waveform"
         data-playing={playing ? "true" : undefined}
-        title={picture ? (playing ? INSPECTOR_SEEK_TITLE : INSPECTOR_PICTURE_TITLE) : (words ?? undefined)}
+        data-hint={picture ? (playing ? INSPECTOR_SEEK_TITLE : INSPECTOR_PICTURE_TITLE) : (words ?? undefined)}
         onClick={seek}
       >
         {picture ? (

@@ -17,13 +17,10 @@
  * **Export to Rekordbox…** are the library's relationship with its file and
  * the look at what moved, and each is one click. Import a Rekordbox file moved to
  * Settings and the File menu (K9). Check is the primary button only when the
- * file changed or went missing; otherwise it is a secondary like Export. Where
- * the two do not fit with the title the visible labels shorten to "Check
- * Rekordbox" and "Export…" and the full names stay as the buttons' accessible
- * names (each short label is part of its full name, WCAG 2.5.3). The widths are
- * measured, not guessed: ScreenHeader's actions never wrap, and the title and
- * source line need room beside them, so a hidden copy of the full labels is
- * compared with a share of the header's width.
+ * file changed or went missing; otherwise it is a secondary like Export. The
+ * labels never shorten. Where the title, the source line with its chips and the buttons
+ * (with the Details toggle) do not fit one line, the source badge and the First steps chip
+ * go, so the header stays one line. The widths are measured, not guessed (`fitsOneLine`).
  *
  * Before the first import there is one button, **Import your Rekordbox
  * collection…**: nothing to check and nothing to export yet.
@@ -66,14 +63,11 @@ interface LibraryHeaderProps {
   extra?: ReactNode;
 }
 
-/** The full names, and the shorter ones that stand in where the full ones do not fit. */
+/** The buttons' words, always whole. */
 const LABELS = {
-  check: { full: "Check for changes", short: "Check" },
-  export: { full: "Export to Rekordbox…", short: "Export…" },
+  check: "Check for changes",
+  export: "Export to Rekordbox…",
 } as const;
-
-/** The share of the header the two buttons may take before the labels shorten. */
-const ACTIONS_SHARE = 0.6;
 
 /** A computed length in pixels, or 0 where there is none to read (no layout). */
 function pixels(value: string): number {
@@ -81,38 +75,107 @@ function pixels(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+/** The widths of the three things that must share the header's one line, and the room there is. */
+export interface HeaderWidths {
+  /** The scope's name at its natural width, not cut. */
+  title: number;
+  /** The source line and the chips after the title; 0 when there are none. */
+  beside: number;
+  /** The buttons, the divider and the Details toggle, with their gaps, at their full labels. */
+  actions: number;
+  /** Between two of the three. */
+  gap: number;
+  /** The inner width of the header's row. */
+  available: number;
+}
+
 /**
- * True when the full labels would take more of the header than they may.
- *
- * Measured from a hidden copy of the full labels against the header's inner
- * width. A header with no layout (a test DOM, a window not yet drawn) reports
- * nothing, and nothing is read as "fits": the full names are the default.
+ * True when the title, what sits beside it and the buttons fit one line together. A header with no
+ * layout (a test DOM, a window not yet drawn) has no room to measure and nothing is read as "fits".
  */
-function useShortLabels(enabled: boolean) {
+export function fitsOneLine({ title, beside, actions, gap, available }: HeaderWidths): boolean {
+  if (available <= 0) return true;
+  const gaps = gap * (beside > 0 ? 2 : 1);
+  return title + beside + actions + gaps <= available;
+}
+
+/** The sum of a row's children and the gaps between them. */
+function rowWidth(row: Element, gap: number): number {
+  const widths = [...row.children].map((child) => (child as HTMLElement).offsetWidth);
+  return widths.reduce((sum, width) => sum + width, 0) + gap * Math.max(0, widths.length - 1);
+}
+
+/**
+ * How much of what sits beside the title goes so the buttons never wrap (A1, round 5):
+ * 0 keeps the file's name, its state and the First steps chip; 1 drops the First steps chip;
+ * 2 moves the file's name and its state to the end of the facts line, so nothing about the source
+ * is lost, only moved.
+ */
+export type LeanLevel = 0 | 1 | 2;
+
+export function leanLevel(
+  widths: Omit<HeaderWidths, "beside"> & { whole: number; source: number },
+): LeanLevel {
+  const { whole, source, ...rest } = widths;
+  if (fitsOneLine({ ...rest, beside: whole })) return 0;
+  if (fitsOneLine({ ...rest, beside: source })) return 1;
+  return 2;
+}
+
+/**
+ * The level at which the title, the source line with its chips, and the buttons share one line.
+ *
+ * Measured, not guessed: the scope's name at its natural width (a cut name still reports the whole
+ * of it), the real buttons at their full words (the labels never shorten), and what sits beside
+ * the title the last time it was drawn whole, since it is the thing that goes.
+ */
+function useLean(enabled: boolean) {
   const header = useRef<HTMLDivElement>(null);
-  const [short, setShort] = useState(false);
+  const [level, setLevel] = useState<LeanLevel>(0);
+  const kept = useRef({ whole: 0, source: 0 });
 
   useLayoutEffect(() => {
     const box = header.current;
     if (!enabled || !box || typeof ResizeObserver === "undefined") return;
-    const hidden = box.querySelector<HTMLElement>('[data-slot="library-header-measure"]');
-    if (!hidden) return;
+    const main = box.querySelector<HTMLElement>(".cp-screen-header__main");
+    const display = box.querySelector<HTMLElement>(".cp-screen-header__display");
+    const actions = box.querySelector<HTMLElement>(".cp-screen-header__actions");
+    if (!main || !display || !actions) return;
 
     const measure = () => {
-      const style = getComputedStyle(box);
+      const style = getComputedStyle(main);
       const available =
-        box.clientWidth - pixels(style.paddingLeft) - pixels(style.paddingRight);
-      setShort(available > 0 && hidden.offsetWidth > available * ACTIONS_SHARE);
+        main.clientWidth - pixels(style.paddingLeft) - pixels(style.paddingRight);
+      const gap = pixels(style.columnGap);
+      const beside = box.querySelector<HTMLElement>(".cp-screen-header__beside");
+      const source = box.querySelector<HTMLElement>(".library-header__source");
+      // Drawn whole, the widths are the ones to keep; once parts went, the kept widths stand.
+      if (beside && source && box.querySelector(".library-header__chip-slot")) {
+        kept.current = { whole: beside.offsetWidth, source: source.offsetWidth };
+      } else if (beside && source && kept.current.whole === 0) {
+        kept.current = { whole: beside.offsetWidth, source: source.offsetWidth };
+      }
+      setLevel(
+        leanLevel({
+          title: display.scrollWidth,
+          whole: kept.current.whole,
+          source: kept.current.source,
+          actions: rowWidth(actions, pixels(getComputedStyle(actions).columnGap)),
+          gap,
+          available,
+        }),
+      );
     };
 
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(box);
-    observer.observe(hidden);
+    observer.observe(main);
+    observer.observe(display);
+    observer.observe(actions);
     return () => observer.disconnect();
   }, [enabled]);
 
-  return { header, short };
+  return { header, level };
 }
 
 export function LibraryHeader({
@@ -131,7 +194,7 @@ export function LibraryHeader({
 }: LibraryHeaderProps) {
   const source = summary?.source ?? null;
   const disabled = busy !== null;
-  const { header, short } = useShortLabels(summary !== null && source !== null);
+  const { header, level } = useLean(summary !== null && source !== null);
 
   // Before the first import: the title, and the one button.
   if (!summary || !source) {
@@ -149,20 +212,29 @@ export function LibraryHeader({
     );
   }
 
-  /** What a button shows, and the name it keeps whatever it shows. */
+  /** What a button shows: its own words, or the busy words while it works. */
   const label = (button: keyof typeof LABELS, working: boolean) => {
-    const name = working && busyLabel ? busyLabel : LABELS[button].full;
-    return { name, text: working && busyLabel ? busyLabel : short ? LABELS[button].short : name };
+    const name = working && busyLabel ? busyLabel : LABELS[button];
+    return { name, text: name };
   };
   const state = sourceState(source);
   const needsLook = state === "changed" || state === "missing";
   const check = label("check", busy === "checking" || busy === "applying");
   const exporting = label("export", false);
-  // What the measure copy draws: the full names, with a working button's busy
-  // words in place of its own, since those are what the line must hold then.
-  const measured = [check.name, exporting.name];
-
   const parts = scopeFactsLine(facts, fallbackCount);
+  // The file's name, with the whole path in its hint, and the file's state.
+  const sourceLine = (
+    <span className="library-header__source">
+      <Hint text={`${source.xml_path} · last read ${formatWhen(source.imported_at)}`} inline>
+        <span className="library-header__file cp-data" tabIndex={0}>
+          {fileName(source.xml_path)}
+        </span>
+      </Hint>
+      <Badge variant={needsLook ? "warning" : state === "unknown" ? "default" : "success"}>
+        {sourceBadge(state)}
+      </Badge>
+    </span>
+  );
 
   return (
     <div className="library-header" ref={header} data-slot="library-header">
@@ -171,24 +243,12 @@ export function LibraryHeader({
         display={scopeName}
         crumb={scopeGroup}
         beside={
-          <>
-            <span className="library-header__source">
-              <Hint
-                text={`${source.xml_path} · last read ${formatWhen(source.imported_at)}`}
-                inline
-              >
-                <span className="library-header__file cp-data" tabIndex={0}>
-                  {fileName(source.xml_path)}
-                </span>
-              </Hint>
-              <Badge
-                variant={needsLook ? "warning" : state === "unknown" ? "default" : "success"}
-              >
-                {sourceBadge(state)}
-              </Badge>
-            </span>
-            {extra}
-          </>
+          level >= 2 ? undefined : (
+            <>
+              {sourceLine}
+              {level === 0 && <span className="library-header__chip-slot">{extra}</span>}
+            </>
+          )
         }
         summary={[
           <span key="scope" className="library-header__sr-only">
@@ -205,6 +265,14 @@ export function LibraryHeader({
             </span>
           </span>
           )),
+          // Where the title and the buttons leave no room beside the title, the file and its state
+          // are here, on the facts line.
+          level >= 2 ? (
+            <span key="source">
+              <span className="library-header__sep"> · </span>
+              {sourceLine}
+            </span>
+          ) : null,
         ]}
         actions={
           <>
@@ -246,15 +314,6 @@ export function LibraryHeader({
           )
         }
       />
-
-      {/* The full labels, drawn and hidden, so their width can be read whatever the
-          visible ones say. The text is a pseudo-element's, so it is not on the page
-          for a reader, a search or a test to find twice. */}
-      <div className="library-header__measure" aria-hidden="true" data-slot="library-header-measure">
-        {measured.map((text, index) => (
-          <span key={index} className="cp-btn library-header__measure-label" data-text={text} />
-        ))}
-      </div>
     </div>
   );
 }

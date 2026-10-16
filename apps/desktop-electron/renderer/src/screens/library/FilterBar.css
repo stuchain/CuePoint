@@ -3,8 +3,11 @@
 .cp-filter-bar {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  padding: var(--space-sm);
+  box-sizing: border-box;
+  /* One toolbar (--toolbar-height, --toolbar-padding), 8·scale between controls. */
+  min-height: var(--toolbar-height);
+  gap: round(nearest, calc(8px * var(--scale)), 1px);
+  padding: var(--toolbar-padding);
   background: var(--bg-toolbar);
   border-bottom: var(--divider);
 }
@@ -14,7 +17,7 @@
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;
-  gap: var(--space-sm);
+  gap: round(nearest, calc(8px * var(--scale)), 1px);
 }
 
 .cp-filter-bar__builder {
@@ -66,7 +69,7 @@
   border: none;
   background: transparent;
   color: var(--fg-muted);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-sm);
   cursor: pointer;
 }
@@ -189,7 +192,8 @@
 
 /* The shared search field, at the width the text box had. */
 .cp-filter-bar__row > .cp-search-field {
-  width: calc(240px * var(--scale));
+  flex: 1 1 calc(120px * var(--scale));
+  max-width: calc(240px * var(--scale));
 }
 
 /* The search box is named by its placeholder and its label; the word "Search"
