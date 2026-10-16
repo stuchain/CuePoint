@@ -95,6 +95,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Sequence,
     Tuple,
     TypeVar,
 )
@@ -396,8 +397,13 @@ class MatchService(IMatchService):
         selection: "BatchSelection",
         rematch: bool = False,
         label: Optional[str] = None,
+        playlist_order: Sequence[int] = (),
     ) -> MatchDraft:
         """Resolve a selection into the tracks a match job will cover.
+
+        ``playlist_order`` puts the tracks of those playlists first, playlist by
+        playlist (a shared track under the first), each in playlist position,
+        so the playlist list can say which one the job is working on.
 
         Raises:
             ValueError: If the selection names no library tracks, or every one
@@ -418,6 +424,15 @@ class MatchService(IMatchService):
                 " up: matched, waiting for you, or decided. Choose “Look up tracks"
                 " that already have a match again” to search Beatport again."
             )
+        if playlist_order:
+            rank = {
+                track_id: index
+                for index, track_id in enumerate(
+                    self._jobs.playlist_order(playlist_order)
+                )
+            }
+            # Stable: tracks no playlist holds keep their order, after the rest.
+            wanted = tuple(sorted(wanted, key=lambda t: rank.get(t, len(rank))))
         return MatchDraft(
             track_ids=wanted,
             selected=len(named),

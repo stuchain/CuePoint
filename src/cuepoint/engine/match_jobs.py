@@ -42,7 +42,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from cuepoint.compat.gui_types import ProgressInfo
 from cuepoint.engine.jobs import Job, JobState, JobStore, _ensure_services
@@ -238,8 +238,11 @@ def start_match_job(
     selection: BatchSelection,
     rematch: bool = False,
     label: Optional[str] = None,
+    playlist_order: Sequence[int] = (),
 ) -> StartedMatch:
     """Start matching a selection on Beatport.
+
+    ``playlist_order`` makes the job work those playlists one after another.
 
     Raises:
         ValueError: If the selection names no library tracks, or only tracks
@@ -248,7 +251,7 @@ def start_match_job(
         JobTypeBusyError: If a match job is running or a refresh is applying.
     """
     service = _match_service()
-    draft = service.prepare(selection, rematch, label)
+    draft = service.prepare(selection, rematch, label, playlist_order)
 
     def runner(job: Job) -> None:
         run_match_job(job, store, lambda svc: svc.write_plan(job.id, draft))

@@ -18,6 +18,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import type { CandidateDifferences, MatchCandidate, MatchSearchAnswer, ReviewTrack } from "../../../api/cuepointBridge.types";
+import { orderCandidates } from "./candidateOrder";
 import { bridgeErrorFields } from "../../../api/bridgeError";
 import { userMessage } from "../../../api/userMessage";
 import { ArtworkPlaceholder } from "../../../components/ArtworkPlaceholder";
@@ -253,7 +254,7 @@ export function CandidatePanel({
   const inUseId = row.candidate?.id ?? null;
   // Results the person searched for replace the ones the last match found.
   const listed = found ? found.candidates : matches.candidates;
-  const shown = useMemo(() => [...listed].sort((a, b) => a.rank - b.rank), [listed]);
+  const shown = useMemo(() => orderCandidates(listed, inUseId), [listed, inUseId]);
   const scoredCandidate = shown.find((entry) => entry.id === (scored ?? inUseId)) ?? shown[0] ?? null;
 
   const playFile = () => {

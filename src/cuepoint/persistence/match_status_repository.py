@@ -113,7 +113,9 @@ _WRITTEN_BY_PLAYLIST = (
     " HAVING COUNT(w.track_id) = COUNT(*)"
 )
 
-#: A running job's progress per playlist: the plan's tracks, once per playlist.
+#: A running job's progress per playlist: the plan's tracks that sit in it, once each.
+#: Every playlist holding a planned track has a row; the service keeps only the
+#: ones the match was started for.
 _RUNNING_BY_PLAYLIST = (
     "SELECT playlist_id, COUNT(*) AS total, COALESCE(SUM(done), 0) AS done"
     " FROM (SELECT DISTINCT pt.playlist_id AS playlist_id, j.track_id AS track_id,"

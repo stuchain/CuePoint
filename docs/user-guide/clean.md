@@ -38,12 +38,10 @@ playlist you matched or opened (**Review hJ**) and **Past searches**. It opens o
 **Playlists**; after that it reopens on **Playlists** or **Past searches**,
 whichever you used last.
 
-While a match runs, a line at the top of Clean, above every tab, says what it is
-doing: **Matching hJ**, **11 of 24** and **about 2 minutes left** (once a few
-tracks are done). It is words only: the bar and **Stop** are on the status strip,
-so progress is shown once. It is read from the match that is running, so it is
-right when you come back to Clean from another page too, and whichever tab you
-are on.
+While a match runs, the status strip shows the bar and **Stop**, and the
+**Playlists** list shows the same progress on the playlist being matched (see
+below). Both are read from the match that is running, so they are right when you
+come back to Clean from another page too.
 
 ### Playlists
 
@@ -61,8 +59,11 @@ it was written. Any other playlist shows nothing there. Undoing that save, or a
 value that is waiting to be saved again, takes the mark away. Where a playlist
 stands with Beatport (matched, not found) is not on this list: that is what
 **Review** is for, and a playlist with something to review has a **Review**
-button. A playlist being matched says "Matching 12 of 24", and an empty playlist
-cannot be ticked.
+button. Only the playlist being matched shows progress: a thin bar under its name and,
+in the "In your files" column, "16 of 24 · about 1 minute left" with a **Stop**
+button. Playlists you ticked in the same match that are still to come say
+"Waiting"; other playlists, even ones sharing tracks with it, stay as they are.
+An empty playlist cannot be ticked.
 
 The bar under the list says what is ticked: **Tick one or more playlists** while
 nothing is, then, for example, **2 playlists · 203 tracks** with **Match 2
@@ -75,7 +76,7 @@ playlists (they are in it) and matches only the collection. A playlist with
 nothing left to look up is looked up again. One match runs at a time, so **Match**
 waits until the running one ends, and says why.
 
-Matching runs in the background; a row being matched says "Matching 12 of 24",
+Matching runs in the background; the playlist being matched shows its own bar and count,
 and the status strip shows **Matching on Beatport** with the bar and **Stop**. A track already
 matched or decided is skipped, so matching a playlist twice does not look anything
 up twice. A tick or untick you made is kept either way.

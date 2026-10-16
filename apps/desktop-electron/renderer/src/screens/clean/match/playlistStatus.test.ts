@@ -22,8 +22,18 @@ describe("playlistStatus", () => {
   it("says how far a running match is, with its job, and cannot be ticked or reviewed", () => {
     expect(playlistStatus(counts({ running: { job_id: "j", done: 108, total: 1800 } }))).toMatchObject({
       kind: "running",
-      text: "Matching 108 of 1,800",
+      text: "108 of 1,800",
       running: { jobId: "j", done: 108, total: 1800 },
+      canReview: false,
+      canTick: false,
+    });
+  });
+
+  it("says a playlist started in the same match but not reached yet is waiting, and cannot be ticked", () => {
+    expect(playlistStatus(counts({ queued: true }))).toMatchObject({
+      kind: "queued",
+      text: "Waiting",
+      running: null,
       canReview: false,
       canTick: false,
     });

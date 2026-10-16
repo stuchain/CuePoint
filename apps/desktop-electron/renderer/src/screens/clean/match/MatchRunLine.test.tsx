@@ -5,34 +5,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import { MatchRunningLine, NothingFoundNote } from "./MatchRunLine";
-
-describe("MatchRunningLine", () => {
-  it("says what is matched, how far and about how long is left, in words only", () => {
-    render(<MatchRunningLine name="hJ" progress={{ done: 11, total: 24 }} secondsLeft={130} />);
-    const line = screen.getByRole("region", { name: "Matching" });
-    expect(line).toHaveTextContent("Matching hJ");
-    expect(line).toHaveTextContent("11 of 24");
-    expect(line).toHaveTextContent("about 2 minutes left");
-    // The bar and Stop are on the status strip: progress is drawn once.
-    expect(screen.queryByRole("progressbar")).toBeNull();
-    expect(screen.queryByRole("button", { name: /Stop/ })).toBeNull();
-  });
-
-  it("leaves out the time before it can be said, and the name when it is not known", () => {
-    render(<MatchRunningLine name={null} progress={{ done: 1, total: 24 }} secondsLeft={null} />);
-    const line = screen.getByRole("region", { name: "Matching" });
-    expect(line).toHaveTextContent("Matching");
-    expect(line).not.toHaveTextContent("Matching hJ");
-    expect(line).toHaveTextContent("1 of 24");
-    expect(line).not.toHaveTextContent("left");
-  });
-
-  it("says only Matching before the job has said how far it is", () => {
-    render(<MatchRunningLine name="hJ" progress={null} secondsLeft={null} />);
-    expect(screen.getByRole("region", { name: "Matching" })).toHaveTextContent("Matching hJ…");
-  });
-});
+import { NothingFoundNote } from "./MatchRunLine";
 
 describe("NothingFoundNote", () => {
   it("is red, says how many and why that is usually not the tracks, and offers to see them", () => {

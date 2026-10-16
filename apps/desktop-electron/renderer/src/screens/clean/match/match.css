@@ -133,28 +133,6 @@
 
 /* ------------------------------------------------------- the lines at the top of Clean */
 
-/* While a match runs, on every tab: what and how far, in words. The bar and Stop are on the
-   status strip, so progress is drawn once. */
-.match-run-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-md);
-  margin: 0 0 var(--space-md);
-  padding: var(--space-md) var(--space-lg);
-  border: var(--control-border-width) solid var(--accent-primary);
-  background: var(--bg-panel);
-}
-
-.match-run-line__name {
-  font-weight: var(--weight-strong);
-}
-
-.match-run-line__count {
-  flex: 1;
-  color: var(--fg-muted);
-}
-
 /* A run that ended finding nothing: red, with the number and the way to see them. */
 .match-nothing {
   display: flex;

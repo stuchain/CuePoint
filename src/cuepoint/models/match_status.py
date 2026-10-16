@@ -72,6 +72,8 @@ class PlaylistStatus:
     ``last_written_at`` is when a Clean sync last wrote the playlist (ISO text):
     set only when it has accepted matches and every one has a standing sync
     write, so a track written by another playlist's sync does not count for it.
+    ``running`` is set only for the playlist the match job is working on now;
+    ``queued`` for a playlist started in the same job that is still to come.
     """
 
     id: int
@@ -80,6 +82,7 @@ class PlaylistStatus:
     counts: StatusCounts
     running: Optional[RunningMatch] = None
     last_written_at: Optional[str] = None
+    queued: bool = False
 
 
 @dataclass(frozen=True)

@@ -109,6 +109,31 @@
   color: var(--fg-primary);
 }
 
+.playlists__waiting {
+  color: var(--fg-muted);
+}
+
+/* The status strip's bar, across the name cell under the playlist's name. */
+.playlists__progress {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: calc(6px * var(--scale));
+  margin-top: var(--space-xs);
+  border: var(--divider);
+  background: var(--bg-app);
+  border-radius: 0;
+  appearance: none;
+}
+
+.playlists__progress::-webkit-progress-bar {
+  background: var(--bg-app);
+}
+
+.playlists__progress::-webkit-progress-value {
+  background: var(--accent-primary);
+}
+
 .playlists__synced {
   gap: var(--space-xs);
 }

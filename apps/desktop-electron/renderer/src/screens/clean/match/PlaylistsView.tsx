@@ -9,7 +9,8 @@
  * button. A filter box narrows by name or folder, because a library has hundreds of playlists.
  *
  * The view draws and reports: matching and Review belong to the page. Stop and the progress bar are on the
- * strip at the top of Clean while a match runs, so a row only says it is matching. The bar under
+ * strip at the top of Clean while a match runs; the playlist being matched also shows its own bar,
+ * "16 of 24 · about 1 minute left" and a Stop, and one started with it but not reached says Waiting. The bar under
  * the rows says what is ticked and holds the Match button.
  */
 import { useMemo, useState } from "react";
@@ -23,6 +24,7 @@ import { PixelIcon } from "../../../components/PixelIcon";
 import { SearchField } from "../../../components/SearchField";
 import { formatCount, plural } from "../../../format/counts";
 import { formatDay } from "../../../format/dates";
+import { aboutDuration } from "../../../components/shell/useActiveJob";
 import { nothingMatches, SYNC_TO_FILES } from "../../../format/words";
 import { displayFolderPath, matchButtonLabel, type MatchChoice } from "./matchPlaylists";
 import { playlistStatus } from "./playlistStatus";
@@ -40,6 +42,25 @@ interface PlaylistsViewProps {
   onMatch: (choice: MatchChoice) => void;
   /** Review: open the review of this playlist's tracks; null is the whole library. */
   onReview: (playlist: CleanPlaylistStatus | null) => void;
+  /** About how many seconds the running match has left, once that can be said. */
+  secondsLeft?: number | null;
+  /** How far the whole running match is; a row's time left is its share of the job's. */
+  progress?: { done: number; total: number } | null;
+  /** Stop the running match. */
+  onStop?: (jobId: string) => void;
+}
+
+/** A running playlist's share of the job's time left: by tracks left in it and in the job. */
+export function rowTimeLeft(
+  secondsLeft: number | null,
+  job: { done: number; total: number } | null,
+  row: { done: number; total: number } | null | undefined,
+): number | null {
+  if (secondsLeft === null || !job || !row) return null;
+  const jobLeft = job.total - job.done;
+  if (jobLeft <= 0) return null;
+  const rowLeft = Math.max(0, Math.min(row.total - row.done, jobLeft));
+  return Math.round((secondsLeft * rowLeft) / jobLeft);
 }
 
 /** The folder path before a name, "Techno / ", or nothing for a playlist at the top. */
@@ -90,7 +111,7 @@ function StepLine() {
 
 const WHOLE = "whole";
 
-export function PlaylistsView({ data, error = null, loading = false, matching = false, onMatch, onReview }: PlaylistsViewProps) {
+export function PlaylistsView({ data, error = null, loading = false, matching = false, onMatch, onReview, secondsLeft = null, progress = null, onStop }: PlaylistsViewProps) {
   const [filter, setFilter] = useState("");
   // What is ticked: the whole library, or some playlists by id. Never both.
   const [ticked, setTicked] = useState<ReadonlySet<number | typeof WHOLE>>(new Set());
@@ -151,6 +172,8 @@ export function PlaylistsView({ data, error = null, loading = false, matching = 
   ) => {
     const status = playlistStatus(counts);
     // The playlists are part of the whole library: while it is ticked they cannot be chosen too.
+    // The job's time left covers every playlist it was started for: this row has its share.
+    const rowSecondsLeft = rowTimeLeft(secondsLeft, progress, status.running);
     const disabled = !status.canTick || (tick !== WHOLE && wholeTicked);
     return (
       <tr key={key} data-status={status.kind} data-ticked={ticked.has(tick) ? "true" : undefined}>
@@ -166,17 +189,35 @@ export function PlaylistsView({ data, error = null, loading = false, matching = 
         <td>
           {prefix && <span className="playlists__path">{prefix}</span>}
           <span className="playlists__name">{name}</span>
+          {status.running && (
+            // The app's own bar (the status strip's): a progress element, so it reports its value.
+            <progress
+              className="playlists__progress"
+              value={status.running.done}
+              max={Math.max(1, status.running.total)}
+              aria-label={`Matching ${name}`}
+            />
+          )}
         </td>
         <td className="playlists__number cp-data">{formatCount(counts.track_count)}</td>
         <td>
           {status.running ? (
-            // How far the run is lives once, in the status strip; the row only says it is matching.
-            <span className="playlists__matching">{status.text}</span>
+            <span className="playlists__matching">
+              {status.text}
+              {rowSecondsLeft !== null && ` · ${aboutDuration(rowSecondsLeft)} left`}
+            </span>
+          ) : status.kind === "queued" ? (
+            <span className="playlists__waiting">{status.text}</span>
           ) : (
             playlist?.synced && <SyncedBadge at={playlist.synced_at} />
           )}
         </td>
         <td>
+          {status.running && onStop && (
+            <Button size="sm" variant="secondary" aria-label={`Stop matching ${name}`} onClick={() => onStop(status.running!.jobId)}>
+              Stop
+            </Button>
+          )}
           {status.canReview && (
             <Button size="sm" variant="secondary" aria-label={`Review ${name}`} onClick={() => onReview(playlist)}>
               Review

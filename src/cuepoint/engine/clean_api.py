@@ -40,6 +40,7 @@ Work small enough to do on the request's thread answers **200** with its result.
 from __future__ import annotations
 
 import re
+import threading
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
@@ -368,13 +369,71 @@ def start_match(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, An
     from cuepoint.engine.match_jobs import start_match_job
 
     _only(data, ("selection", "rematch", "label"))
+    # The playlists are worked one after another in the tree order the person
+    # sees, so "the first one unfinished is running, the rest wait" is true.
+    scope = _playlist_scope(data.get("selection"))
+    if scope:
+        scope = _service("IMatchStatusService").in_tree_order(scope)
     started = start_match_job(
         job_store,
         _selection(data),
         rematch=_optional_bool(data, "rematch"),
         label=_label(data),
+        playlist_order=scope,
     )
+    _remember_match_scope(str(started.job.id), scope)
     return _started(started.job, started.to_dict())
+
+
+#: The playlists each recent match job was started for, in the order the job
+#: works them: the tree order (empty for the whole library or any other selection). The job's plan
+#: holds tracks only, and a track sits in many playlists, so the playlist list
+#: cannot tell from the plan which playlists the person asked for. A job lives
+#: as long as the engine process does, so this is not persisted.
+_MATCH_SCOPES: Dict[str, Tuple[int, ...]] = {}
+_MATCH_SCOPES_KEPT = 50
+#: Requests run on server threads, and a match starts while the list is read.
+_MATCH_SCOPES_LOCK = threading.Lock()
+
+
+def _remember_match_scope(job_id: str, playlist_ids: Tuple[int, ...]) -> None:
+    with _MATCH_SCOPES_LOCK:
+        _MATCH_SCOPES[job_id] = playlist_ids
+        while len(_MATCH_SCOPES) > _MATCH_SCOPES_KEPT:
+            del _MATCH_SCOPES[next(iter(_MATCH_SCOPES))]
+
+
+def _match_scope(job_id: str) -> Tuple[int, ...]:
+    with _MATCH_SCOPES_LOCK:
+        return _MATCH_SCOPES.get(job_id, ())
+
+
+def _playlist_scope(selection: Any) -> Tuple[int, ...]:
+    """The playlist ids an "in playlist" selection names; none for anything else."""
+    if not isinstance(selection, dict):
+        return ()
+    query = selection.get("query")
+    filters = query.get("filters") if isinstance(query, dict) else None
+    rules = filters.get("rules") if isinstance(filters, dict) else None
+    if not isinstance(rules, list):
+        return ()
+    ids: List[int] = []
+    for rule in rules:
+        if (
+            not isinstance(rule, dict)
+            or rule.get("field") != "in_playlist"
+            or not isinstance(rule.get("value"), list)
+        ):
+            continue
+        for source in rule["value"]:
+            if (
+                isinstance(source, dict)
+                and source.get("kind") == "playlist"
+                and isinstance(source.get("id"), int)
+                and source["id"] not in ids
+            ):
+                ids.append(source["id"])
+    return tuple(ids)
 
 
 def _label(data: Dict[str, Any]) -> Optional[str]:
@@ -394,7 +453,9 @@ def resume_match(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, A
     from cuepoint.engine.match_jobs import resume_match_job
 
     _only(data, ("job_id",))
-    started = resume_match_job(job_store, _require_str(data, "job_id"))
+    resumed_from = _require_str(data, "job_id")
+    started = resume_match_job(job_store, resumed_from)
+    _remember_match_scope(str(started.job.id), _match_scope(resumed_from))
     return _started(started.job, started.to_dict())
 
 
@@ -1472,8 +1533,9 @@ def export_review(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, 
 # ---------------------------------------------------------------------------
 
 
-def _counts_to_dict(counts: Any, running: Any) -> Dict[str, Any]:
+def _counts_to_dict(counts: Any, running: Any, queued: bool = False) -> Dict[str, Any]:
     return {
+        "queued": queued,
         "track_count": counts.track_count,
         "not_matched": counts.not_matched,
         "waiting": counts.waiting,
@@ -1508,8 +1570,9 @@ def _active_match_job_id(job_store: Any) -> Optional[str]:
 
 def clean_playlists(params: Dict[str, List[str]], job_store: Any) -> Dict[str, Any]:
     """Every playlist with what it needs next, and the whole library's counts."""
+    job_id = _active_match_job_id(job_store)
     statuses = _service("IMatchStatusService").playlists(
-        _active_match_job_id(job_store)
+        job_id, _match_scope(job_id) if job_id is not None else None
     )
     return {
         "playlists": [
@@ -1517,7 +1580,7 @@ def clean_playlists(params: Dict[str, List[str]], job_store: Any) -> Dict[str, A
                 "id": status.id,
                 "name": status.name,
                 "path": status.path,
-                **_counts_to_dict(status.counts, status.running),
+                **_counts_to_dict(status.counts, status.running, status.queued),
                 # In the files: every accepted track was written by a sync (the
                 # repository decides) and nothing waits to be saved.
                 "synced": status.last_written_at is not None

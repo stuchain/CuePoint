@@ -517,8 +517,8 @@ describe("the Match tab", () => {
     await waitFor(() => expect(bridge.getCleanPlaylists!.mock.calls.length).toBeGreaterThan(playlists));
   });
 
-  it("says a running match in one line, with its name, on every tab, with Stop (CLN-7, C22)", async () => {
-    // The job never ends until released, so the line can be read while it runs.
+  it("shows a running match in the playlist's row, not in a line above the tabs (CLN-7, C22)", async () => {
+    // The job never ends until released, so the row can be read while it runs.
     const releases: Array<() => void> = [];
     bridge.getJob!.mockImplementation(
       () =>
@@ -529,23 +529,11 @@ describe("the Match tab", () => {
     bridge.cancelJob = vi.fn().mockResolvedValue({ id: "job-match", state: "cancelled" });
     renderClean(undefined, "playlists");
     await screen.findByText("Peak time");
-    expect(screen.queryByRole("region", { name: "Matching" })).toBeNull();
     await startMatching("Peak time");
 
-    // At the top of Clean, above the tabs: on the rows, and on every other tab.
-    const line = await screen.findByRole("region", { name: "Matching" });
-    expect(line).toHaveTextContent("Matching Peak time");
-    expect(screen.getByTestId("clean-header").compareDocumentPosition(line)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-    fireEvent.click(screen.getByRole("tab", { name: "Past searches" }));
-    expect(screen.getByRole("region", { name: "Matching" })).toHaveTextContent("Matching Peak time");
-    fireEvent.click(screen.getByRole("tab", { name: "Missing files" }));
-    expect(screen.getByRole("region", { name: "Matching" })).toHaveTextContent("Matching Peak time");
-
     await waitFor(() => expect(releases.length).toBeGreaterThan(1));
+    expect(screen.queryByRole("region", { name: "Matching" })).toBeNull();
     act(() => releases.forEach((release) => release()));
-    await waitFor(() => expect(screen.queryByRole("region", { name: "Matching" })).toBeNull());
   });
 
   it("says how far a match already running has got, and for what, when the page is opened (CLN-7, C22)", async () => {
@@ -568,16 +556,15 @@ describe("the Match tab", () => {
       ),
     });
     renderClean(undefined, "past");
-    const line = await screen.findByRole("region", { name: "Matching" });
-    await waitFor(() => expect(line).toHaveTextContent("Matching hj"));
-    expect(line).toHaveTextContent("11 of 24");
-    expect(line).toHaveTextContent("about 2 minutes left");
-    // The bar and Stop are on the status strip: this line is words only.
-    expect(within(line).queryByRole("progressbar")).toBeNull();
-    expect(within(line).queryByRole("button", { name: /Stop/ })).toBeNull();
+    // Progress is in the hj row (its own bar, count and time left), not in a line above the tabs.
+    fireEvent.click(await screen.findByRole("tab", { name: "Playlists" }));
+    const row = (await screen.findByText("hj")).closest("tr")!;
+    await waitFor(() => expect(row).toHaveTextContent("11 of 24"));
+    expect(row).toHaveTextContent("about 2 minutes left");
+    expect(within(row).getByRole("button", { name: "Stop matching hj" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Matching" })).toBeNull();
 
     // One run at a time: on the rows every Match waits for it, and says why.
-    fireEvent.click(screen.getByRole("tab", { name: "Playlists" }));
     fireEvent.click(await screen.findByRole("checkbox", { name: "Match Peak time" }));
     expect(screen.getByRole("button", { name: "Match 1 playlist" })).toBeDisabled();
     expect(screen.getByText("One match at a time: wait for the one that is running.")).toBeInTheDocument();
@@ -1005,7 +992,7 @@ describe("matching what is ticked (C22)", () => {
     await waitFor(() => expect(bridge.getCleanPlaylists!.mock.calls.length).toBeGreaterThan(reads));
   });
 
-  it("says a running row is matching, with no bar or Stop of its own", async () => {
+  it("gives the running row its own bar, count and Stop", async () => {
     bridge.getCleanPlaylists!.mockResolvedValue({
       ...PLAYLISTS,
       playlists: PLAYLISTS.playlists.map((playlist) =>
@@ -1013,9 +1000,9 @@ describe("matching what is ticked (C22)", () => {
       ),
     });
     renderClean(undefined, "playlists");
-    expect(await screen.findByText("Matching 12 of 24")).toBeInTheDocument();
-    expect(screen.queryByRole("progressbar", { name: "hj progress" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Stop matching hj" })).toBeNull();
+    expect(await screen.findByText(/12 of 24/)).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Matching hj" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Stop matching hj" })).toBeInTheDocument();
   });
 
   it("opens Review on that playlist's tracks, all of them, in a tab named for it", async () => {
@@ -1274,7 +1261,7 @@ describe("after leaving the page and coming back", () => {
     localStorage.setItem(MATCH_TAB_STORAGE_KEY, "playlists");
     const view = render(page("visible"));
     await startMatching("Peak time");
-    expect(await screen.findByRole("region", { name: "Matching" })).toBeInTheDocument();
+    expect(await screen.findByText(/One match at a time/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("checkbox", { name: "Match Warmup" }));
     expect(screen.getByRole("button", { name: "Match 1 playlist" })).toBeDisabled();
 
@@ -1282,7 +1269,7 @@ describe("after leaving the page and coming back", () => {
     view.rerender(page("hidden"));
     view.rerender(page("visible"));
 
-    await waitFor(() => expect(screen.queryByRole("region", { name: "Matching" })).toBeNull());
+    await waitFor(() => expect(screen.queryAllByText(/One match at a time/)).toHaveLength(0));
     expect(await screen.findByRole("button", { name: "Match 1 playlist" })).toBeEnabled();
     expect(screen.queryAllByText(/One match at a time/)).toHaveLength(0);
   });

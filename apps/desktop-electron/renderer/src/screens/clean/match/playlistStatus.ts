@@ -9,13 +9,13 @@
  */
 import type { CleanPlaylistCounts } from "../../../api/cuepointBridge.types";
 
-export type PlaylistStatusKind = "running" | "empty" | "not_matched" | "matched";
+export type PlaylistStatusKind = "running" | "queued" | "empty" | "not_matched" | "matched";
 
 export interface PlaylistStatus {
   kind: PlaylistStatusKind;
-  /** How far a running match is; the row says "Matching 12 of 24" (the page's status strip draws the bar). */
+  /** How far a running match is on this playlist's own tracks; the row draws the bar and "12 of 24". */
   running: { jobId: string; done: number; total: number } | null;
-  /** The running line's words. */
+  /** The row's words while it runs ("12 of 24") or waits ("Waiting"). */
   text: string;
   /** Whether the row has something to review: some track has been looked up. */
   canReview: boolean;
@@ -24,10 +24,10 @@ export interface PlaylistStatus {
 }
 
 export function playlistStatus(counts: CleanPlaylistCounts): PlaylistStatus {
-  const { running, accepted, waiting, rejected, no_match: noMatch, track_count: tracks } = counts;
+  const { running, queued, accepted, waiting, rejected, no_match: noMatch, track_count: tracks } = counts;
   const base = { running: null, text: "", canReview: false, canTick: true };
   if (running) {
-    const text = `Matching ${running.done.toLocaleString()} of ${running.total.toLocaleString()}`;
+    const text = `${running.done.toLocaleString()} of ${running.total.toLocaleString()}`;
     return {
       ...base,
       kind: "running",
@@ -35,6 +35,9 @@ export function playlistStatus(counts: CleanPlaylistCounts): PlaylistStatus {
       running: { jobId: running.job_id, done: running.done, total: running.total },
       canTick: false,
     };
+  }
+  if (queued) {
+    return { ...base, kind: "queued", text: "Waiting", canTick: false };
   }
   if (tracks === 0) {
     return { ...base, kind: "empty", canTick: false };

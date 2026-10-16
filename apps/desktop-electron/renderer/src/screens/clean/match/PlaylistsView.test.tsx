@@ -7,7 +7,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 
 import type { CleanPlaylistCounts, CleanPlaylists } from "../../../api/cuepointBridge.types";
-import { PlaylistsView } from "./PlaylistsView";
+import { PlaylistsView, rowTimeLeft } from "./PlaylistsView";
 import css from "./playlists.css?raw";
 
 type Props = ComponentProps<typeof PlaylistsView>;
@@ -32,6 +32,7 @@ const DATA: CleanPlaylists = {
     { id: 2, name: "Warmup", path: "", ...COUNTS, not_matched: 40, accepted: 0, ...NOT_SYNCED },
     { id: 3, name: "all", path: "", ...COUNTS, waiting: 18, accepted: 22, ...NOT_SYNCED },
     { id: 5, name: "hj", path: "", ...COUNTS, running: { job_id: "j", done: 108, total: 180 }, ...NOT_SYNCED },
+    { id: 8, name: "Queued one", path: "", ...COUNTS, queued: true, ...NOT_SYNCED },
     { id: 6, name: "Spare", path: "", ...COUNTS, track_count: 0, ...NOT_SYNCED },
     { id: 7, name: "Found nothing", path: "", ...COUNTS, track_count: 24, accepted: 0, no_match: 24, ...NOT_SYNCED },
   ],
@@ -54,7 +55,7 @@ describe("the list", () => {
   it("lists the whole library first, then the playlists, each with its tracks", () => {
     renderView();
     const rows = bodyRows();
-    expect(rows).toHaveLength(7);
+    expect(rows).toHaveLength(8);
     expect(within(rows[0]!).getByText("Whole library")).toBeInTheDocument();
     expect(within(rows[0]!).getByText("1,234")).toBeInTheDocument();
     const peak = rows[1]!;
@@ -125,12 +126,34 @@ describe("the list", () => {
     expect(screen.getByText("Nothing matches \u201czzz\u201d.")).toBeInTheDocument();
   });
 
-  it("says a running playlist is matching, with no bar of its own, and it cannot be ticked", () => {
-    renderView();
-    expect(screen.getByText("Matching 108 of 180")).toBeInTheDocument();
-    expect(screen.queryByRole("progressbar")).toBeNull();
+  it("gives only the running playlist a bar, its count, the time left and a Stop; a queued one says Waiting", () => {
+    const onStop = vi.fn();
+    // The job has twice the running playlist's 72 tracks left, so the row has half its time.
+    renderView({ secondsLeft: 120, progress: { done: 108, total: 252 }, onStop });
+    const row = screen.getByText("hj").closest("tr")!;
+    expect(within(row).getByText(/108 of 180 · about 1 minute left/)).toBeInTheDocument();
+    expect(screen.getAllByRole("progressbar")).toHaveLength(1);
+    expect(within(row).getByRole("progressbar")).toHaveAttribute("value", "108");
+    fireEvent.click(within(row).getByRole("button", { name: "Stop matching hj" }));
+    expect(onStop).toHaveBeenCalledWith("j");
+    const queued = screen.getByText("Queued one").closest("tr")!;
+    expect(within(queued).getByText("Waiting")).toBeInTheDocument();
+    expect(within(queued).queryByRole("progressbar")).toBeNull();
+    expect(within(queued).queryByRole("button", { name: /Stop/ })).toBeNull();
+    expect(screen.getByRole("checkbox", { name: "Match Queued one" })).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "Match hj" })).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "Match Spare" })).toBeDisabled();
+  });
+});
+
+describe("a playlist's time left", () => {
+  it("is its share of the job's by tracks left, never more than the job's", () => {
+    expect(rowTimeLeft(300, { done: 0, total: 100 }, { done: 0, total: 25 })).toBe(75);
+    expect(rowTimeLeft(300, { done: 50, total: 100 }, { done: 10, total: 20 })).toBe(60);
+    expect(rowTimeLeft(300, { done: 90, total: 100 }, { done: 0, total: 50 })).toBe(300);
+    expect(rowTimeLeft(null, { done: 0, total: 100 }, { done: 0, total: 25 })).toBeNull();
+    expect(rowTimeLeft(300, null, { done: 0, total: 25 })).toBeNull();
+    expect(rowTimeLeft(300, { done: 100, total: 100 }, { done: 0, total: 25 })).toBeNull();
   });
 });
 

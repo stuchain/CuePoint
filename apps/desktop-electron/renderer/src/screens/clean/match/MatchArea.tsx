@@ -216,6 +216,9 @@ export function MatchArea({
               matching={match.matching}
               onMatch={onMatch}
               onReview={reviewPlaylist}
+              secondsLeft={match.secondsLeft}
+              progress={match.progress}
+              onStop={match.stop}
             />
           </Activity>
         )}

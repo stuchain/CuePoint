@@ -29,7 +29,7 @@
 import { Activity, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import type { CleanPlaylistStatus, EntityKind, LibrarySummary, MatchRun } from "../../api/cuepointBridge.types";
+import type { EntityKind, LibrarySummary, MatchRun } from "../../api/cuepointBridge.types";
 import { LIBRARY_SUMMARY, useSharedRead } from "../../api/sharedReads";
 import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
@@ -39,7 +39,7 @@ import { DuplicatesView } from "./DuplicatesView";
 import { MatchWindow } from "./MatchWindow";
 import { MissingFilesView } from "./MissingFilesView";
 import { MatchArea, type ReviewOpening, type ReviewTarget } from "./match/MatchArea";
-import { MatchRunningLine, NothingFoundNote } from "./match/MatchRunLine";
+import { NothingFoundNote } from "./match/MatchRunLine";
 import { usePageActive } from "../../components/shell/pageActive";
 import { WHOLE_LIBRARY_NAME, useCleanPlaylists } from "./match/useCleanPlaylists";
 import { matchRequest, type MatchChoice } from "./match/matchPlaylists";
@@ -85,19 +85,6 @@ function targetsOf(choice: MatchChoice): ReviewTarget[] {
   return choice.whole
     ? [{ playlistId: null, name: WHOLE_LIBRARY_NAME }]
     : choice.playlists.map((playlist) => ({ playlistId: playlist.id, name: playlist.name }));
-}
-
-/** The name of the running match: what it was started under, else the row the engine puts it on. */
-function runNameOf(
-  started: string | null,
-  jobId: string | null,
-  data: { playlists: CleanPlaylistStatus[]; whole_library: { running: { job_id: string } | null } } | null,
-): string | null {
-  if (started) return started;
-  if (!jobId || !data) return null;
-  const row = data.playlists.find((entry) => entry.running?.job_id === jobId);
-  if (row) return row.name;
-  return data.whole_library.running?.job_id === jobId ? WHOLE_LIBRARY_NAME : null;
 }
 
 export function CleanScreen({
@@ -257,10 +244,6 @@ export function CleanScreen({
 
   const label = CLEAN_SECTIONS.find((entry) => entry.id === section)?.label ?? "";
   const counts = sectionCounts(cleanHealth.health);
-  // What is being matched, in the playlist or library name: the name a run started here was given,
-  // else the row the engine says the running job is on (right after coming back too).
-  const runName = match.matching ? runNameOf(match.label, match.jobId, playlists.data) : null;
-
   return (
     <div className="screen clean-screen">
       <div data-testid="clean-header">
@@ -285,13 +268,6 @@ export function CleanScreen({
           }
         />
       </div>
-      {match.matching && (
-        <MatchRunningLine
-          name={runName}
-          progress={match.progress}
-          secondsLeft={match.secondsLeft}
-        />
-      )}
       {!match.matching && nothingFound && (
         <NothingFoundNote
           name={nothingFound.name}

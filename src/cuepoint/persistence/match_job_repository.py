@@ -175,6 +175,27 @@ class MatchJobRepository(IMatchJobRepository):
             )
         return [track_id for track_id in wanted if track_id in found]
 
+    def playlist_order(self, playlist_ids: Sequence[int]) -> List[int]:
+        """Return the tracks of these playlists: each playlist in the order given.
+
+        A playlist's tracks come in playlist position, and a track in several
+        playlists is listed once, under the first one that holds it.
+        """
+        ordered: List[int] = []
+        seen: Set[int] = set()
+        connection = self._db.connect()
+        for playlist_id in playlist_ids:
+            for row in connection.execute(
+                "SELECT track_id FROM rekordbox_playlist_tracks"
+                " WHERE playlist_id = ? ORDER BY position",
+                (int(playlist_id),),
+            ):
+                track_id = int(row["track_id"])
+                if track_id not in seen:
+                    seen.add(track_id)
+                    ordered.append(track_id)
+        return ordered
+
     def settled(self, track_ids: Iterable[int]) -> Set[int]:
         """Return the tracks a match that is not a re-match leaves out.
 
