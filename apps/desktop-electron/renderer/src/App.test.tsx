@@ -140,13 +140,13 @@ describe("App shell", () => {
     expect(container.querySelector(".app-shell__inspector .cp-inspector")).toBe(before);
   });
 
-  it("names the page in the window title (Area 51)", async () => {
+  it("keeps the window title as CuePoint on every page", async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(navLink("Settings"));
     await screen.findByRole("heading", { level: 1, name: "Settings" }, LOADED);
 
-    expect(document.title).toBe("Settings — CuePoint");
+    expect(document.title).not.toContain("—");
   });
 
   it("mounts the player boundary without giving it any content (DEC-025)", () => {

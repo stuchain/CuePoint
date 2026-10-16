@@ -1,0 +1,21 @@
+/* The step-2 drawings: theme colours only, so a theme change cannot leave them stale. */
+.ob-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-size: 11px;
+  font-family: var(--font-data);
+}
+
+.ob-win { fill: var(--bg-panel); stroke: var(--border-muted); }
+.ob-bar { fill: var(--bg-toolbar); }
+.ob-dot--a { fill: var(--accent-danger); }
+.ob-dot--b { fill: var(--accent-warning); }
+.ob-menu { fill: var(--bg-input); stroke: var(--border-muted); }
+.ob-field { fill: var(--bg-input); stroke: var(--accent-fill); }
+.ob-line { fill: var(--border-muted); }
+.ob-hl { fill: var(--accent-fill); }
+.ob-title { fill: var(--fg-muted); font-size: 10px; }
+.ob-muted { fill: var(--fg-muted); }
+.ob-fg { fill: var(--fg-primary); }
+.ob-on { fill: var(--fg-inverse); }

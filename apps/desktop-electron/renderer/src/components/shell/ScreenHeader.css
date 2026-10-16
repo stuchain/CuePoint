@@ -42,6 +42,9 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-md);
+  /* Hidden Track details is a button flush with the window edge, at this row's right end: leave
+     it room beyond the page gutter, which the header already keeps. */
+  padding-right: max(0px, calc(var(--inspector-handle-room, 0px) - var(--page-gutter-x)));
 }
 
 .cp-screen-header__title-row {
@@ -88,6 +91,17 @@
 
 .cp-screen-header__tabs {
   margin-top: var(--space-xs);
+}
+
+/* An underline tab strip in the header: the header's own divider is its underline, so the strip
+   draws none of its own and the header has no space under it (one rule, not two). */
+.cp-screen-header__tabs .cp-tabs:not(.cp-tabs--sub) {
+  border-bottom: 0;
+  background: transparent;
+}
+
+.cp-screen-header:has(.cp-screen-header__tabs .cp-tabs:not(.cp-tabs--sub)) {
+  padding-bottom: 0;
 }
 
 /* Kept for callers that still pass `inset`: the page margin now comes from .screen, so there is

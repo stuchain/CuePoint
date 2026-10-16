@@ -115,9 +115,9 @@ describe("the list", () => {
     const steps = within(screen.getByRole("list", { name: "First steps" })).getAllByRole("listitem");
     expect(steps.map((li) => li.querySelector(".first-steps__label")?.textContent)).toEqual([
       "Import a Rekordbox file",
-      "Match your tracks",
+      "Match your tracks on Beatport",
       "Play a track",
-      "Sign in to Beatport",
+      "Sign in to Beatport (optional)",
     ]);
     await waitFor(() => expect(screen.getByRole("button", { name: "Sign in to Beatport…" })).toBeEnabled());
     for (const li of steps) expect(li).toHaveAttribute("data-done", "false");
@@ -128,7 +128,7 @@ describe("the list", () => {
     mount();
     expect(screen.getByText(/Discover uses it to find new music/)).toBeInTheDocument();
     expect(screen.getByText(/Double-click a track to play it/)).toBeInTheDocument();
-    expect(screen.getByText(/Keys, genres and labels come from Beatport/)).toBeInTheDocument();
+    expect(screen.getByText(/After importing: keys, genres and labels come from Beatport/)).toBeInTheDocument();
   });
 });
 
@@ -168,24 +168,24 @@ describe("ticking from real state", () => {
     await waitFor(() => expect(done("Import a Rekordbox file")).toBe("true"));
   });
 
-  it("ticks Match your tracks once some track has been looked up", async () => {
+  it("ticks Match your tracks on Beatport once some track has been looked up", async () => {
     install({ health: health(10, 7) });
     mount({ imported: true });
-    await waitFor(() => expect(done("Match your tracks")).toBe("true"));
+    await waitFor(() => expect(done("Match your tracks on Beatport")).toBe("true"));
   });
 
   it("leaves Match your tracks open while every track is still not looked up", async () => {
     install({ health: health(10, 10) });
     mount({ imported: true });
     await waitFor(() => expect(window.cuepoint!.getLibraryHealth).toHaveBeenCalled());
-    expect(done("Match your tracks")).toBe("false");
+    expect(done("Match your tracks on Beatport")).toBe("false");
   });
 
   it("leaves Match your tracks open on an empty library", async () => {
     install({ health: health(0, 0) });
     mount({ imported: false });
     await waitFor(() => expect(window.cuepoint!.getLibraryHealth).toHaveBeenCalled());
-    expect(done("Match your tracks")).toBe("false");
+    expect(done("Match your tracks on Beatport")).toBe("false");
   });
 
   it("ticks Play a track when the player has been given one, and when it starts later", async () => {
@@ -199,7 +199,7 @@ describe("ticking from real state", () => {
   it("ticks Sign in to Beatport when signed in", async () => {
     install({ signedIn: true });
     mount();
-    await waitFor(() => expect(done("Sign in to Beatport")).toBe("true"));
+    await waitFor(() => expect(done("Sign in to Beatport (optional)")).toBe("true"));
   });
 
   it("does not tick the sign-in when its state cannot be read", async () => {
@@ -209,7 +209,7 @@ describe("ticking from real state", () => {
       .mockRejectedValue(new Error("not ready"));
     mount();
     await waitFor(() => expect(window.cuepoint!.getBeatportAuth).toHaveBeenCalled());
-    expect(done("Sign in to Beatport")).toBe("false");
+    expect(done("Sign in to Beatport (optional)")).toBe("false");
   });
 
   it("ticks the sign-in when main announces it, and for a pasted or environment token", async () => {
@@ -223,12 +223,12 @@ describe("ticking from real state", () => {
     );
     mount();
     await waitFor(() => expect(announce).toBeDefined());
-    expect(done("Sign in to Beatport")).toBe("false");
+    expect(done("Sign in to Beatport (optional)")).toBe("false");
     for (const state of ["pasted", "env"]) {
       act(() => announce?.({ state: "signed_out" }));
-      await waitFor(() => expect(done("Sign in to Beatport")).toBe("false"));
+      await waitFor(() => expect(done("Sign in to Beatport (optional)")).toBe("false"));
       act(() => announce?.({ state }));
-      await waitFor(() => expect(done("Sign in to Beatport")).toBe("true"));
+      await waitFor(() => expect(done("Sign in to Beatport (optional)")).toBe("true"));
     }
   });
 });
@@ -244,7 +244,7 @@ describe("hiding", () => {
   it("stays while any one is open", async () => {
     install({ signedIn: true, played: true, health: health(10, 10) });
     mount({ imported: true });
-    await waitFor(() => expect(done("Sign in to Beatport")).toBe("true"));
+    await waitFor(() => expect(done("Sign in to Beatport (optional)")).toBe("true"));
     expect(screen.getByRole("list", { name: "First steps" })).toBeInTheDocument();
   });
 });
@@ -269,7 +269,7 @@ describe("the buttons", () => {
   it("takes a ticked step's button away", async () => {
     install({ signedIn: true });
     mount();
-    await waitFor(() => expect(done("Sign in to Beatport")).toBe("true"));
+    await waitFor(() => expect(done("Sign in to Beatport (optional)")).toBe("true"));
     expect(screen.queryByRole("button", { name: "Sign in to Beatport…" })).toBeNull();
   });
 
@@ -292,7 +292,7 @@ describe("after the import (RUN-3)", () => {
     mount({ imported: true });
     await waitFor(() => expect(window.cuepoint!.getLibraryHealth).toHaveBeenCalled());
     expect(done("Import a Rekordbox file")).toBe("true");
-    expect(done("Match your tracks")).toBe("false");
+    expect(done("Match your tracks on Beatport")).toBe("false");
   });
 
   it("ticks Match when a library change is announced after a match finishes", async () => {
@@ -301,7 +301,7 @@ describe("after the import (RUN-3)", () => {
     await waitFor(() => expect(window.cuepoint!.getLibraryHealth).toHaveBeenCalledTimes(1));
     (window.cuepoint!.getLibraryHealth as ReturnType<typeof vi.fn>).mockResolvedValue(health(10, 6));
     act(() => announceLibraryChange());
-    await waitFor(() => expect(done("Match your tracks")).toBe("true"));
+    await waitFor(() => expect(done("Match your tracks on Beatport")).toBe("true"));
   });
 
   it("reads Health again when the window gets focus back", async () => {
@@ -312,7 +312,7 @@ describe("after the import (RUN-3)", () => {
     act(() => {
       window.dispatchEvent(new Event("focus"));
     });
-    await waitFor(() => expect(done("Match your tracks")).toBe("true"));
+    await waitFor(() => expect(done("Match your tracks on Beatport")).toBe("true"));
   });
 
   it("remembers that a track was played, in a later session", async () => {

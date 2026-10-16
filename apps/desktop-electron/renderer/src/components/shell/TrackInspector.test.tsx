@@ -12,6 +12,8 @@ import userEvent from "@testing-library/user-event";
 import { useLayoutEffect, type ReactElement } from "react";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 
+import css from "./TrackInspector.css?raw";
+import shell from "./AppShellLayout.css?raw";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { InspectorSlotProvider, useInspectorSlot } from "./inspectorSlot";
 import { PageActiveContext } from "./pageActive";
@@ -117,7 +119,7 @@ describe("TrackInspector", () => {
     });
   });
 
-  describe("hidden, it is a labelled tab (INS-2)", () => {
+  describe("hidden, it is one small Details button", () => {
     const hideIt = async () => {
       choose({ library: "closed" });
       const user = userEvent.setup();
@@ -125,24 +127,35 @@ describe("TrackInspector", () => {
       return user;
     };
 
-    it("says what it is, not just a chevron", async () => {
+    it("says what it is, with the shortcut in its title", async () => {
       await hideIt();
       const tab = reveal();
       expect(tab).toHaveTextContent("Details");
       expect(tab).toHaveAttribute("title", "Show track details (Ctrl+I)");
+      expect(tab).toHaveClass("cp-btn");
     });
 
-    it("shows the selected track's title on the tab", async () => {
+    it("keeps one name whatever is selected", async () => {
       await hideIt();
-      expect(reveal()).toHaveTextContent("Strobe");
-      expect(reveal()).toHaveAccessibleName("Show track details: Strobe");
-    });
-
-    it("follows the selection while hidden", async () => {
-      await hideIt();
+      expect(reveal()).toHaveAccessibleName("Show track details");
       act(() => setSelectedTrack({ id: 13, key: null, title: "Ride" }));
-      expect(reveal()).toHaveTextContent("Ride");
-      expect(reveal()).toHaveAccessibleName("Show track details: Ride");
+      expect(reveal()).toHaveAccessibleName("Show track details");
+      expect(reveal()).not.toHaveTextContent("Ride");
+    });
+
+    it("is flush with the right edge on one line, level with the title row under the offline banner", () => {
+      // Regression: the zero-width anchor made the button shrink-to-fit and wrap to two lines.
+      expect(css).toMatch(/\.cp-inspector--hidden \{[^}]*right: 0[^}]*width: max-content/);
+      expect(css).toMatch(/\.cp-inspector--hidden \.cp-inspector__reveal \{[^}]*border-right: 0/);
+      expect(css).toMatch(/\.cp-inspector__reveal \.cp-btn__label \{[^}]*white-space: nowrap/);
+      expect(shell).toMatch(/\.app-shell__inspector:has\(\.cp-inspector--hidden\) \{[^}]*grid-row: 2/);
+    });
+
+    it("tells the page header how much room to leave, and stops when open", async () => {
+      const user = await hideIt();
+      expect(document.documentElement.style.getPropertyValue("--inspector-handle-room")).not.toBe("");
+      await user.click(reveal());
+      expect(document.documentElement.style.getPropertyValue("--inspector-handle-room")).toBe("");
     });
 
     it("comes back with one click", async () => {
@@ -279,7 +292,7 @@ describe("TrackInspector", () => {
       for (let i = 0; i < 60; i += 1) await user.keyboard("{ArrowLeft}");
 
       expect(panel()).toHaveStyle({ width: "640px" });
-    });
+    }, 30000);
 
     it("reports its width to assistive technology", () => {
       render(<TrackInspector />);

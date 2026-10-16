@@ -144,10 +144,10 @@ developer tools (and **Diagnostics...** and **Log viewer...**); a released build
 The panel on the right shows details for whatever track you have selected. It opens
 when you select a track and folds away when nothing is selected. Drag its left
 edge to resize it, or use the arrow keys once the edge has focus. Close it with
-the **›** button or **Ctrl+I**, or open it with the tab or **Ctrl+I** even with
+the **›** button or **Ctrl+I**, or open it with the **Details ‹** button or **Ctrl+I** even with
 nothing selected; the page then keeps your choice until you change it, and other
-pages are not affected. Folded, it becomes a tab down the right edge that reads
-**Details**, the title of the selected track, then **‹**; one click opens it.
+pages are not affected. Folded, it is one small **Details ‹** button at the top of
+the right edge, level with the page title, and the page uses the whole width.
 Discover's search page never opens it by itself, and its Artist, Label and Similar
 tracks pages share one open or closed choice with it.
 

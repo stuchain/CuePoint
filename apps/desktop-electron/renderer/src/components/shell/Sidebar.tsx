@@ -42,7 +42,7 @@ function DestinationLink({ destination, collapsed, dimmed, reasonId }: {
 }) {
   const { hint } = destination;
   return (
-    <Hint text={collapsed ? `${destination.label}: ${hint}` : hint} portal>
+    <Hint text={collapsed ? `${destination.label}: ${hint}` : hint} portal placement="right">
       <NavLink
         to={destination.path}
         className={({ isActive }) =>
@@ -74,7 +74,7 @@ function DestinationLink({ destination, collapsed, dimmed, reasonId }: {
 /** The brand (HDR-6): the pixel logo and the name, or the logo alone when the rail is closed. */
 function Brand({ collapsed }: { collapsed: boolean }) {
   return (
-    <Hint text={collapsed ? "CuePoint" : undefined} portal>
+    <Hint text={collapsed ? "CuePoint" : undefined} portal placement="right">
       <Link to={homeDestination().path} className="cp-sidebar__brand" aria-label="CuePoint">
         <span className="cp-sidebar__icon cp-sidebar__logo" aria-hidden>
           <img className="cp-sidebar__logo-img" src={appIcon} alt="" draggable={false} />
@@ -93,7 +93,7 @@ function Brand({ collapsed }: { collapsed: boolean }) {
  */
 function SearchButton({ collapsed, onOpen }: { collapsed: boolean; onOpen: () => void }) {
   return (
-    <Hint text="Search" shortcut="Mod+K" portal>
+    <Hint text="Search" shortcut="Mod+K" portal placement="right">
       <button
         type="button"
         className={`cp-sidebar__link cp-sidebar__search${collapsed ? "" : " cp-sidebar__search--box"}`}
@@ -163,7 +163,7 @@ export function Sidebar() {
     : undefined;
 
   const toggleButton = (
-    <Hint text={`${collapsed ? "Expand" : "Collapse"} sidebar`} shortcut="Mod+B" portal>
+    <Hint text={`${collapsed ? "Expand" : "Collapse"} sidebar`} shortcut="Mod+B" portal placement="right">
       <button
         ref={toggleRef}
         type="button"

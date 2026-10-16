@@ -79,7 +79,9 @@ describe("a fresh install", () => {
   it("Match tracks… opens Clean", async () => {
     render(<App />);
     await toScreen(3);
-    await userEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
+    const match = screen.getByRole("button", { name: "Match on Beatport…" });
+    await waitFor(() => expect(match).toBeEnabled());
+    await userEvent.click(match);
     expect(guide()).toBeNull();
     await waitFor(() => expect(window.location.hash).toBe("#/clean"));
   });

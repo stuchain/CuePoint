@@ -114,10 +114,10 @@ describe("the four screens", () => {
     ).toBeInTheDocument();
     await next();
     expect(
-      screen.getByText("In Rekordbox: File → Export Collection in xml format. Then import that file."),
+      screen.getByText("Export your collection from Rekordbox, then import that file here. Nothing in Rekordbox is changed."),
     ).toBeInTheDocument();
     await next();
-    expect(screen.getByText("Keys, genres and labels come from Beatport.")).toBeInTheDocument();
+    expect(screen.getByText("After importing: keys, genres and labels come from Beatport.")).toBeInTheDocument();
     await next();
     expect(screen.getByText("Discover uses it to find new music.")).toBeInTheDocument();
   });
@@ -131,19 +131,32 @@ describe("the four screens", () => {
     expect(within(dialog).queryByText(/The strip at the bottom/)).toBeNull();
   });
 
-  it("draws a picture on every screen with pixel icons, not an image", async () => {
+  it("draws a picture on every screen: the real logo, the export drawings, pixel icons", async () => {
     mount();
-    for (let step = 1; step <= 4; step += 1) {
-      const picture = screen.getByRole("dialog").querySelector(".onboarding-dialog__picture");
-      expect(picture, `screen ${step}`).not.toBeNull();
-      expect(picture!.querySelectorAll("svg[data-icon]").length).toBeGreaterThan(0);
-      expect(picture!.querySelector("img")).toBeNull();
-      if (step < 4) await next();
+    const picture = () => screen.getByRole("dialog").querySelector(".onboarding-dialog__picture");
+    // 1: the logo image, not the pixel icon.
+    expect(picture()!.querySelector("img.onboarding-dialog__logo")).not.toBeNull();
+    expect(picture()!.querySelector("svg[data-icon]")).toBeNull();
+    // 2: four drawings side by side, each with a caption.
+    await next();
+    const drawings = screen.getByRole("list", { name: "How to export from Rekordbox" });
+    expect(drawings.querySelectorAll("li")).toHaveLength(4);
+    expect(drawings.querySelectorAll("svg.ob-art")).toHaveLength(4);
+    expect(drawings).toHaveTextContent("Export Collection in xml format");
+    expect(drawings).toHaveTextContent("Import a Rekordbox file");
+    // 3 and 4: pixel icons.
+    for (let step = 3; step <= 4; step += 1) {
+      await next();
+      expect(picture()!.querySelectorAll("svg[data-icon]").length).toBeGreaterThan(0);
     }
   });
 
-  it("sizes to its content: not the wide dialog", () => {
+  it("is the wide dialog for the four drawings only", async () => {
     mount();
+    expect(screen.getByRole("dialog").className).not.toMatch(/wide/);
+    await next();
+    expect(screen.getByRole("dialog").className).toMatch(/wide/);
+    await next();
     expect(screen.getByRole("dialog").className).not.toMatch(/wide/);
   });
 
@@ -373,13 +386,40 @@ describe("the actions on its screens", () => {
     expect(localStorage.getItem(DONE)).toBe("1");
   });
 
-  it("Match tracks… closes the guide and opens Clean's match window", async () => {
+  it("Match on Beatport… closes the guide and opens Clean's match window once a library is in", async () => {
+    install({ trackCount: 10 });
     const { onMatch, onComplete } = mount();
     await goTo(3);
-    await userEvent.click(screen.getByRole("button", { name: "Match tracks…" }));
+    const button = screen.getByRole("button", { name: "Match on Beatport…" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
     expect(onMatch).toHaveBeenCalledTimes(1);
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(localStorage.getItem(DONE)).toBe("1");
+  });
+
+  it("keeps Match on Beatport… off until a library is imported, and says why", async () => {
+    install({ trackCount: 0 });
+    const { onMatch } = mount();
+    await goTo(3);
+    await waitFor(() => expect(window.cuepoint!.getLibraryHealth).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: "Match on Beatport…" })).toBeDisabled();
+    expect(screen.getByText("Import a Rekordbox file first (step 2).")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Match on Beatport…" })).toHaveAccessibleDescription(
+      "Import a Rekordbox file first (step 2).",
+    );
+    expect(onMatch).not.toHaveBeenCalled();
+  });
+
+  it("does not hold Match on Beatport… back while the library count is still unknown", async () => {
+    // No bridge: the count never arrives, and unknown is not empty.
+    const { onMatch } = mount();
+    await goTo(3);
+    const button = screen.getByRole("button", { name: "Match on Beatport…" });
+    expect(button).toBeEnabled();
+    expect(screen.queryByText("Import a Rekordbox file first (step 2).")).not.toBeInTheDocument();
+    await userEvent.click(button);
+    expect(onMatch).toHaveBeenCalledTimes(1);
   });
 
   it("Sign in to Beatport asks for the sign-in and leaves the guide open", async () => {

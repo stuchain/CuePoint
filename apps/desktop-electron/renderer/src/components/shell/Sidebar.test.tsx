@@ -238,6 +238,16 @@ describe("Sidebar", () => {
       }
     });
 
+    it("puts the tooltip beside the item, not over the one below it", async () => {
+      renderSidebar();
+      const discover = within(nav()).getByRole("link", { name: "Discover" });
+      discover.focus();
+      const tip = await screen.findByRole("tooltip");
+      // Placed by its vertical middle at the item's right edge, never above or below it.
+      expect(tip.style.top).not.toBe("");
+      expect(tip.style.bottom).toBe("");
+    });
+
     it("prefixes the label in the tooltip when collapsed", async () => {
       const user = userEvent.setup();
       renderSidebar();

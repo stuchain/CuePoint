@@ -253,6 +253,32 @@ describe("Hint on hover", () => {
     expect(tip.style.bottom).toBe("");
   });
 
+  it("sits to the right of the control, level with its middle, when asked to", async () => {
+    const user = setup();
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const isTip = this.getAttribute("role") === "tooltip";
+      const box = isTip
+        ? { top: 0, bottom: 20, left: 0, right: 100, width: 100, height: 20 }
+        : { top: 100, bottom: 130, left: 10, right: 60, width: 50, height: 30 };
+      return { ...box, x: box.left, y: box.top, toJSON: () => ({}) } as DOMRect;
+    });
+    render(
+      <Hint text="Opens the log" placement="right">
+        <button type="button">Activity</button>
+      </Hint>,
+    );
+    await user.hover(button());
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    const tip = screen.getByRole("tooltip");
+    expect(tip.style.left).toBe("64px");
+    expect(tip.style.top).toBe("105px");
+    expect(tip.style.bottom).toBe("");
+  });
+
   it("stays above when there is room", async () => {
     const user = setup();
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (

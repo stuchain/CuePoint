@@ -10,6 +10,7 @@ import {
   type InspectorState,
 } from "./inspectorState";
 import { useInspectorAutoOpen } from "./inspectorSlot";
+import { Button } from "../Button";
 import { CloseButton } from "../CloseButton";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
@@ -42,7 +43,8 @@ interface TrackInspectorProps {
  *
  * Whether it shows is the page's stored choice, else whether a track is selected there on
  * a page that lets a selection open it (K1, DEC-280, amending DEC-018 and DEC-024).
- * Hidden, it stays as the slim "Details" tab.
+ * Hidden, it is one small "Details" button at the top of the right edge, in the title row;
+ * it takes no column, so the page uses the full width.
  *
  * It holds no track data of its own: each page puts its content in the slot
  * (LIBUI-10). Wiring it to the old Results screen's selection was rejected in
@@ -58,9 +60,7 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   const scale = useScaleFactor();
   const [state, setState] = useState<InspectorState>(() => loadInspectorState(scale));
   const [dragging, setDragging] = useState(false);
-  // Hidden, the tab names the selected track so the panel can be found (INS-2).
   const selected = useSelectedTrack();
-  const selectedTitle = selected?.title?.trim() || null;
   // The page is the destination the location belongs to (K1); Discover's sub-pages share it.
   const page = findOwningDestination(useLocation().pathname)?.id ?? "other";
   const autoOpen = useInspectorAutoOpen();
@@ -144,6 +144,37 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     if (!visible) setEntering(false);
   }, [visible]);
 
+  // Hidden, the button sits at the window's right edge at title-row height: tell the page header
+  // how much room to leave so its own buttons are not under it. Measured again once the fonts
+  // are in (the label's width changes) and whenever the button resizes.
+  useEffect(() => {
+    const root = document.documentElement;
+    const button = revealRef.current;
+    if (visible || !button) {
+      root.style.removeProperty("--inspector-handle-room");
+      return;
+    }
+    let live = true;
+    const measure = () => {
+      if (!live) return;
+      root.style.setProperty(
+        "--inspector-handle-room",
+        `${Math.ceil(button.offsetWidth + 8 * scale)}px`,
+      );
+    };
+    measure();
+    void document.fonts?.ready?.then(measure);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(button);
+    window.addEventListener("resize", measure);
+    return () => {
+      live = false;
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+      root.style.removeProperty("--inspector-handle-room");
+    };
+  }, [visible, scale]);
+
   // View → Track details in the menu.
   useShellCommand("toggle-inspector", toggle);
 
@@ -211,20 +242,17 @@ export function TrackInspector({ children }: TrackInspectorProps) {
     return (
       <div className="cp-inspector cp-inspector--hidden">
         <Hint text="Show track details" shortcut="Mod+I">
-          <button
+          <Button
             ref={revealRef}
-            type="button"
+            variant="secondary"
             className="cp-inspector__reveal"
             onClick={toggle}
             aria-expanded={false}
-            aria-label={selectedTitle ? `Show track details: ${selectedTitle}` : "Show track details"}
+            aria-label="Show track details"
           >
             <span className="cp-inspector__reveal-name">Details</span>
-            {selectedTitle && <span className="cp-inspector__reveal-title">{selectedTitle}</span>}
-            <span aria-hidden className="cp-inspector__reveal-chevron">
-              <PixelIcon name="chevron-left" size="sm" />
-            </span>
-          </button>
+            <PixelIcon name="chevron-left" size="sm" />
+          </Button>
         </Hint>
       </div>
     );

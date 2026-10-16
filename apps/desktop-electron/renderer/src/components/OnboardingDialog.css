@@ -93,3 +93,44 @@
   background: var(--accent-primary);
   border-color: var(--accent-primary);
 }
+
+.onboarding-dialog__logo {
+  display: block;
+  /* The 64-pixel art at whole multiples of the text scale: crisp, not smoothed. */
+  width: round(nearest, calc(64px * var(--scale)), 1px);
+  height: round(nearest, calc(64px * var(--scale)), 1px);
+  image-rendering: pixelated;
+}
+
+.onboarding-dialog__steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-sm);
+  margin: 0 0 var(--space-md);
+  padding: 0;
+  list-style: none;
+}
+
+.onboarding-dialog__step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+  padding: var(--space-xs);
+  background: var(--bg-input);
+  border: var(--hairline) solid var(--border-muted);
+}
+
+.onboarding-dialog__caption {
+  margin: 0;
+  /* The body font, whose numerals read as numerals: the pixel font's 2 and 3 look like 8. */
+  font-family: var(--font-data);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.onboarding-dialog__needs {
+  margin: 0 0 var(--space-md);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}

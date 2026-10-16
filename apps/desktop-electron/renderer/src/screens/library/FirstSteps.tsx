@@ -84,8 +84,8 @@ function useFirstSteps(imported: boolean, { onMatch, onAddToken, onImport, onHow
     },
     {
       id: "match",
-      label: "Match your tracks",
-      hint: "Keys, genres and labels come from Beatport: match your tracks in Clean.",
+      label: "Match your tracks on Beatport",
+      hint: "After importing: keys, genres and labels come from Beatport.",
       done: matched,
       action: imported ? { label: "Match on Beatport…", onClick: onMatch } : undefined,
     },
@@ -97,7 +97,7 @@ function useFirstSteps(imported: boolean, { onMatch, onAddToken, onImport, onHow
     },
     {
       id: "token",
-      label: "Sign in to Beatport",
+      label: "Sign in to Beatport (optional)",
       hint: "Discover uses it to find new music.",
       done: signedIn,
       action: { label: "Sign in to Beatport…", onClick: onAddToken },

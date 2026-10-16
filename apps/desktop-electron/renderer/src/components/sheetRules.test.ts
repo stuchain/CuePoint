@@ -5,7 +5,7 @@ import layout from "../tokens/layout.css?raw";
 import motionSettings from "../screens/motion-settings.css?raw";
 import settings from "../screens/settings.css?raw";
 import motion from "../motion.css?raw";
-import plays from "../screens/statistics/PlaysSection.css?raw";
+import statistics from "../screens/statistics/statistics.css?raw";
 import inspector from "./shell/TrackInspector.css?raw";
 import library from "../screens/library/library.css?raw";
 import logViewer from "./LogViewerDialog.css?raw";
@@ -27,7 +27,7 @@ describe("type roles (T1, N2)", () => {
     expect(rule(tokens, "body")).toContain("font-size: var(--text-body);");
   });
   it("sets the statistics title to the heading role", () => {
-    expect(rule(plays, ".plays__title")).toContain("font-size: var(--font-size-section);");
+    expect(rule(statistics, ".statistics-panel__title")).toContain("font-size: var(--font-size-section);");
   });
   it("gives both empty states the body role", () => {
     expect(rule(inspector, ".cp-inspector__empty")).toContain("font-size: var(--text-body);");

@@ -33,6 +33,12 @@ interface HintProps {
    * that ancestor and cut by it. The tip is tied to the control with `aria-describedby` all the same.
    */
   portal?: boolean;
+  /**
+   * Where the tip goes. `"above"` (the default) sits over the control and flips below it; `"right"`
+   * sits beside it, level with its middle: for a control in a column of controls (the sidebar),
+   * where a tip above or below would cover the neighbour.
+   */
+  placement?: "above" | "right";
 }
 
 /** How long the pointer rests on a control before the tip shows. */
@@ -47,6 +53,8 @@ interface Place {
   bottom?: number;
   /** Flipped below the control: distance from the viewport top. */
   top?: number;
+  /** Beside the control: the vertical middle the tip centres on (viewport px). */
+  middle?: number;
   /** Measured and placed once; never moved again for the same showing. */
   settled?: true;
 }
@@ -79,7 +87,7 @@ function focusIsVisible(target: EventTarget & Element): boolean {
  * The tooltip is positioned in the viewport, not inside the wrapper: the status
  * strip it was first made for clips anything that overflows it.
  */
-export function Hint({ text, shortcut, children, inline = false, portal = false }: HintProps) {
+export function Hint({ text, shortcut, children, inline = false, portal = false, placement = "above" }: HintProps) {
   const id = useId();
   const wrapper = useRef<HTMLSpanElement | null>(null);
   const tip = useRef<HTMLSpanElement | null>(null);
@@ -117,11 +125,15 @@ export function Hint({ text, shortcut, children, inline = false, portal = false 
     if (reason.current === null) reason.current = why;
     const box = wrapper.current?.getBoundingClientRect();
     if (!box) return;
+    if (placement === "right") {
+      setPlace({ left: box.right + GAP, middle: box.top + box.height / 2 });
+      return;
+    }
     setPlace({
       left: Math.max(GAP, box.left),
       bottom: Math.max(GAP, window.innerHeight - box.top + GAP),
     });
-  }, []);
+  }, [placement]);
 
   // Once the tip is drawn it can be measured: flip it below when it would
   // leave the top of the viewport, and pull it in from the right edge. Once
@@ -133,6 +145,12 @@ export function Hint({ text, shortcut, children, inline = false, portal = false 
     const box = wrapper.current?.getBoundingClientRect();
     const size = tip.current?.getBoundingClientRect();
     if (!box || !size) return;
+    if (place.middle !== undefined) {
+      const top = Math.max(GAP, Math.min(place.middle - size.height / 2, window.innerHeight - size.height - GAP));
+      const left = Math.max(GAP, Math.min(place.left, window.innerWidth - size.width - GAP));
+      setPlace({ left, top, settled: true });
+      return;
+    }
     const left = Math.max(GAP, Math.min(place.left, window.innerWidth - size.width - GAP));
     if (box.top - GAP - size.height < GAP) {
       setPlace({ left, top: box.bottom + GAP, settled: true });
