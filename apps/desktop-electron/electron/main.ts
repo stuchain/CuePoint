@@ -459,6 +459,7 @@ const updater = new Updater({
       fetchImpl: netFetch,
       parseYaml: (text) => (requireFromHere("js-yaml") as { load: (text: string) => unknown }).load(text),
       run: runProgram,
+      systemVersion: process.getSystemVersion(),
     }),
   installMac: (options) =>
     startInstall({

@@ -27,15 +27,36 @@ function touch(rel: string, exec = false) {
   }
 }
 
-function context(platform = "darwin") {
+/** electron-builder's `Arch.arm64` and `Arch.x64`. */
+const ARM64 = 3;
+const X64 = 1;
+
+function context(platform = "darwin", arch = ARM64) {
   return {
     electronPlatformName: platform,
+    arch,
     appOutDir: root,
     packager: { appInfo: { productFilename: "CuePoint" } },
   };
 }
 
+/** The shape of the Info.plist electron-builder leaves: XML, Electron's own minimum already in it. */
+const ELECTRON_PLIST = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>CuePoint</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>11.0</string>
+</dict>
+</plist>
+`;
+
 const APP = () => path.join(root, "CuePoint.app");
+const plist = () => fs.readFileSync(path.join(APP(), "Contents", "Info.plist"), "utf8");
+/** Every `LSMinimumSystemVersion` value in the app's Info.plist. */
+const minimums = () => [...plist().matchAll(/<key>LSMinimumSystemVersion<\/key>\s*<string>([^<]*)<\/string>/g)].map((m) => m[1]);
 /** A signed path with forward slashes, so the suffix checks read the same on Windows. */
 const slashed = (p: string) => p.split(path.sep).join("/");
 
@@ -51,6 +72,7 @@ beforeEach(() => {
     }) as typeof fs.statSync);
   }
   touch("CuePoint.app/Contents/MacOS/CuePoint", true);
+  fs.writeFileSync(path.join(root, "CuePoint.app/Contents/Info.plist"), ELECTRON_PLIST);
   touch("CuePoint.app/Contents/Resources/engine/cuepoint-engine", true);
   touch("CuePoint.app/Contents/Resources/engine/data.txt");
   touch("CuePoint.app/Contents/Resources/player/mpv.app/Contents/MacOS/mpv", true);
@@ -163,5 +185,65 @@ describe("notarization without credentials", () => {
       if (key.startsWith("APPLE_")) delete process.env[key];
     }
     await expect(notarize.default(context())).resolves.toBeUndefined();
+  });
+});
+
+describe("the oldest macOS the app opens on (ELECTRON-5, PYTHON-1E, DEC-296)", () => {
+  const exec = () => undefined;
+
+  it("is the bundled mpv's own minimum for each chip, read from the pinned manifest", () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(__dirname, "../../../scripts/player_sidecar_manifest.json"), "utf8"),
+    );
+    // mpv's builds: macos-14-arm runs on 14 and newer, macos-15-intel on 15 and newer.
+    expect(hook.macMinimumFor("arm64", manifest)).toBe("14.0");
+    expect(hook.macMinimumFor("x64", manifest)).toBe("15.0");
+  });
+
+  it("follows a re-pinned asset", () => {
+    const manifest = { targets: { "darwin-x64": { asset: "mpv-v1-123-macos-13-intel.zip" } } };
+    expect(hook.macMinimumFor("x64", manifest)).toBe("13.0");
+  });
+
+  it.each([
+    ["no target for the chip", { targets: {} }, "x64"],
+    ["an asset with no macOS in its name", { targets: { "darwin-x64": { asset: "mpv.zip" } } }, "x64"],
+    ["a universal build", { targets: {} }, "universal"],
+  ])("refuses to guess with %s", (_label, manifest, arch) => {
+    expect(() => hook.macMinimumFor(arch, manifest)).toThrow(/oldest macOS/);
+  });
+
+  it.each([
+    [ARM64, "14.0"],
+    [X64, "15.0"],
+  ])("writes it into the app's Info.plist before signing (arch %s)", async (arch, expected) => {
+    await hook.default(context("darwin", arch), { exec });
+    expect(minimums()).toEqual([expected]);
+    expect(plist()).toContain("<key>CFBundleName</key>");
+  });
+
+  it("adds the entry when Electron's is missing", () => {
+    fs.writeFileSync(path.join(APP(), "Contents", "Info.plist"), ELECTRON_PLIST.replace(/\s*<key>LSMinimumSystemVersion<\/key>\s*<string>11.0<\/string>/, ""));
+    hook.setMacMinimum(APP(), "15.0");
+    expect(minimums()).toEqual(["15.0"]);
+  });
+
+  it("hands a binary Info.plist to plutil rather than editing it as text", () => {
+    const file = path.join(APP(), "Contents", "Info.plist");
+    fs.writeFileSync(file, "bplist00...");
+    const calls: [string, string[]][] = [];
+    hook.setMacMinimum(APP(), "15.0", (command: string, args: string[]) => calls.push([command, args]));
+    expect(calls).toEqual([["plutil", ["-replace", "LSMinimumSystemVersion", "-string", "15.0", file]]]);
+    expect(fs.readFileSync(file, "utf8")).toBe("bplist00...");
+  });
+
+  it("is written with an identity too, and not at all off macOS", async () => {
+    process.env.CSC_NAME = "Developer ID Application: Test";
+    await hook.default(context("darwin", X64), { exec });
+    expect(minimums()).toEqual(["15.0"]);
+
+    fs.writeFileSync(path.join(APP(), "Contents", "Info.plist"), ELECTRON_PLIST);
+    await hook.default(context("win32", X64), { exec });
+    expect(minimums()).toEqual(["11.0"]);
   });
 });

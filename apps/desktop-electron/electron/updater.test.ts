@@ -650,6 +650,24 @@ describe("macOS (DEC-170)", () => {
     expect(s.report).not.toHaveBeenCalled();
   });
 
+  it("is manual, unreported, when the new build needs a newer macOS, and does not download it again (DEC-296)", async () => {
+    const s = setup({ target: "mac-x64" });
+    s.prepareMac.mockRejectedValue(new MacUpdateError("os", "The app needs macOS 15.0; this Mac has 13.7.8."));
+    await settle(s.updater);
+    expect(s.updater.getState()).toMatchObject({
+      status: "manual",
+      manualReason: "needs-newer-macos",
+      version: "1.5.0",
+      error: null,
+    });
+    expect(s.report).not.toHaveBeenCalled();
+    expect(fs.readFileSync(path.join(s.updatesDir, "1.5.0", "notes.md"), "utf8")).toBe("Notes for 1.5.0");
+
+    await s.updater.check();
+    expect(s.prepareMac).toHaveBeenCalledTimes(1);
+    expect(s.updater.getState()).toMatchObject({ status: "manual", manualReason: "needs-newer-macos" });
+  });
+
   it("a second restart while the first is quitting does nothing", async () => {
     const s = setup();
     await settle(s.updater);

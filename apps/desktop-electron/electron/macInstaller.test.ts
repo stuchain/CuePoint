@@ -12,9 +12,11 @@ import {
   locateBundle,
   machOChips,
   manifestEntry,
+  plistMinimumSystem,
   plistShortVersion,
   prepareMacUpdate,
   startInstall,
+  systemAtLeast,
   writeInstallScript,
   type RunProgram,
 } from "./macInstaller";
@@ -139,9 +141,10 @@ const BASE = `https://github.com/stuchain/CuePoint/releases/download/v${VERSION}
 const ZIP_BYTES = Buffer.from("pretend this is a zip");
 const ZIP_SHA = createHash("sha512").update(ZIP_BYTES).digest("base64");
 
-function xmlPlist(version: string): Buffer {
+function xmlPlist(version: string, minimum?: string): Buffer {
+  const needs = minimum === undefined ? "" : `<key>LSMinimumSystemVersion</key>\n\t<string>${minimum}</string>\n`;
   return Buffer.from(
-    `<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict>\n<key>CFBundleName</key><string>CuePoint</string>\n<key>CFBundleShortVersionString</key>\n\t<string>${version}</string>\n<key>CFBundleVersion</key><string>9</string></dict></plist>`,
+    `<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict>\n<key>CFBundleName</key><string>CuePoint</string>\n<key>CFBundleShortVersionString</key>\n\t<string>${version}</string>\n${needs}<key>CFBundleVersion</key><string>9</string></dict></plist>`,
   );
 }
 
@@ -323,6 +326,28 @@ describe("preparing an update", () => {
     expect(fs.existsSync(path.join(s.updatesDir, VERSION))).toBe(false);
   });
 
+  it("refuses, and deletes, a build that needs a newer macOS than this Mac has (DEC-296)", async () => {
+    // ELECTRON-5: installing it would replace a working app with one macOS will not open.
+    const s = scenario({ plist: xmlPlist(VERSION, "15.0") });
+    const error = await failure(prepareMacUpdate({ ...s.options, systemVersion: "13.7.8" }));
+    expect(error.kind).toBe("os");
+    expect(error.message).toBe("The app needs macOS 15.0; this Mac has 13.7.8.");
+    expect(fs.existsSync(path.join(s.updatesDir, VERSION))).toBe(false);
+  });
+
+  it.each([
+    ["the same macOS", "15.0"],
+    ["a newer macOS", "26.1"],
+  ])("accepts a build this Mac can run: %s", async (_label, system) => {
+    const s = scenario({ plist: xmlPlist(VERSION, "15.0") });
+    await expect(prepareMacUpdate({ ...s.options, systemVersion: system })).resolves.toBeDefined();
+  });
+
+  it("does not check the macOS when the build names none, or this Mac's is not given", async () => {
+    await expect(prepareMacUpdate({ ...scenario().options, systemVersion: "11.0" })).resolves.toBeDefined();
+    await expect(prepareMacUpdate(scenario({ plist: xmlPlist(VERSION, "15.0") }).options)).resolves.toBeDefined();
+  });
+
   it("accepts a universal app for either chip", async () => {
     const s = scenario({ executable: fat(["x86_64", "arm64"]) });
     await expect(prepareMacUpdate(s.options)).resolves.toBeDefined();
@@ -441,6 +466,26 @@ describe("reading Info.plist", () => {
   it("refuses a binary plist and a plist without the key", () => {
     expect(plistShortVersion(Buffer.from("bplist00xxxx"))).toBeNull();
     expect(plistShortVersion(Buffer.from("<plist><dict></dict></plist>"))).toBeNull();
+  });
+  it("finds the oldest macOS the app opens on, or none", () => {
+    expect(plistMinimumSystem(xmlPlist("1.5.0", "14.0"))).toBe("14.0");
+    expect(plistMinimumSystem(xmlPlist("1.5.0"))).toBeNull();
+    expect(plistMinimumSystem(Buffer.from("bplist00xxxx"))).toBeNull();
+  });
+});
+
+describe("comparing macOS versions", () => {
+  it.each([
+    ["13.7.8", "15.0", false],
+    ["14.8", "15.0", false],
+    ["15.0", "15.0", true],
+    ["15", "15.0", true],
+    ["15.0.1", "15.0", true],
+    ["26.0.1", "15.0", true],
+    ["14.10", "14.9", true],
+    ["11.7", "12.0.1", false],
+  ])("%s against %s is %s", (system, minimum, expected) => {
+    expect(systemAtLeast(system, minimum)).toBe(expected);
   });
 });
 

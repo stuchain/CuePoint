@@ -46,7 +46,9 @@ function stateWords(state: UpdateState | null, installed: boolean | null): { mai
         more:
           state.manualReason === "linux"
             ? "Updates on Linux are installed by hand."
-            : "CuePoint cannot replace itself from where it is installed. Download the new version.",
+            : state.manualReason === "needs-newer-macos"
+              ? "It needs a newer version of macOS than this Mac has, so CuePoint stays on this version."
+              : "CuePoint cannot replace itself from where it is installed. Download the new version.",
       };
     case "failed":
       return {

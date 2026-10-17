@@ -15,7 +15,7 @@ For detailed triage and escalation procedures, see [Support SLA](../policy/suppo
 ## Supported Platforms
 
 - **Windows**: Windows 10+ (x64)
-- **macOS**: macOS 12+ (Apple Silicon and Intel)
+- **macOS**: macOS 14+ on Apple Silicon, macOS 15+ on Intel. The bundled mpv player runs on nothing older, so the app does not open there (DEC-296).
 - **Linux**: Experimental. CI builds an AppImage and the community tests it. It ships without the bundled player (no mpv binary is pinned for Linux). Report issues, but they are not guaranteed a fix.
 
 A platform is **supported** when CI tests it and it is recommended for everyday use. It is **experimental** when it may work but is not guaranteed. Anything else is unsupported: not tested, use at your own risk.

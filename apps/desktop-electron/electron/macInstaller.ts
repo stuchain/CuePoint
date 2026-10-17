@@ -94,7 +94,9 @@ export type MacUpdateErrorKind =
   | "size"
   | "version"
   | "chip"
-  | "bundle";
+  | "bundle"
+  /** The new build needs a newer macOS than this Mac runs (DEC-296). */
+  | "os";
 
 export class MacUpdateError extends Error {
   constructor(
@@ -158,6 +160,27 @@ export function plistShortVersion(plist: Buffer): string | null {
   return match ? match[1]!.trim() : null;
 }
 
+/** `LSMinimumSystemVersion` of an XML `Info.plist`, or null (absent, or a binary plist). */
+export function plistMinimumSystem(plist: Buffer): string | null {
+  if (plist.subarray(0, 6).toString("latin1") === "bplist") return null;
+  const text = plist.toString("utf8");
+  const match = /<key>\s*LSMinimumSystemVersion\s*<\/key>\s*<string>([^<]*)<\/string>/.exec(text);
+  return match ? match[1]!.trim() : null;
+}
+
+/** True when macOS `system` ("13.7.8") is `minimum` ("15.0") or newer; missing parts count as 0. */
+export function systemAtLeast(system: string, minimum: string): boolean {
+  const parts = (v: string) => v.split(".").map((p) => Number.parseInt(p, 10) || 0);
+  const have = parts(system);
+  const need = parts(minimum);
+  for (let i = 0; i < Math.max(have.length, need.length); i += 1) {
+    const a = have[i] ?? 0;
+    const b = need[i] ?? 0;
+    if (a !== b) return a > b;
+  }
+  return true;
+}
+
 function readHeader(file: string, bytes: number): Buffer {
   const handle = fs.openSync(file, "r");
   try {
@@ -183,6 +206,11 @@ export interface PrepareMacUpdateOptions {
   run: RunProgram;
   /** True only for the test feed (`http` on this computer). */
   allowLocalHttp?: boolean;
+  /**
+   * This Mac's macOS (`process.getSystemVersion()`). A build whose Info.plist needs a newer one is
+   * refused, since the install would replace a working app with one macOS will not open.
+   */
+  systemVersion?: string;
   onProgress?: (percent: number) => void;
   /** How long the manifest may take. */
   manifestTimeoutMs?: number;
@@ -370,12 +398,13 @@ export async function prepareMacUpdate(options: PrepareMacUpdateOptions): Promis
       throw new MacUpdateError("bundle", "CuePoint.app in the download is not a folder.");
     }
 
-    let found: string | null;
+    let plist: Buffer | null;
     try {
-      found = plistShortVersion(fs.readFileSync(path.join(newApp, "Contents", "Info.plist")));
+      plist = fs.readFileSync(path.join(newApp, "Contents", "Info.plist"));
     } catch {
-      found = null;
+      plist = null;
     }
+    const found = plist === null ? null : plistShortVersion(plist);
     if (found === null) {
       throw new MacUpdateError("bundle", "The app's Info.plist could not be read as an XML property list.");
     }
@@ -390,6 +419,10 @@ export async function prepareMacUpdate(options: PrepareMacUpdateOptions): Promis
     }
     if (!archs.includes(chip)) {
       throw new MacUpdateError("chip", `The app is for ${archs.join(" ") || "no known chip"}, not ${chip}.`);
+    }
+    const minimum = plist === null ? null : plistMinimumSystem(plist);
+    if (options.systemVersion && minimum !== null && !systemAtLeast(options.systemVersion, minimum)) {
+      throw new MacUpdateError("os", `The app needs macOS ${minimum}; this Mac has ${options.systemVersion}.`);
     }
     return { newApp };
   } catch (error) {

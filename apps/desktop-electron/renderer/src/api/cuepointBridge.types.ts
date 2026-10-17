@@ -3607,7 +3607,7 @@ export interface UpdateState {
   /** The release's page on GitHub; open it with `openReleasePage`. */
   releaseUrl: string | null;
   /** Why the person must fetch the update themselves; set with `manual`. */
-  manualReason: "linux" | "cannot-replace" | null;
+  manualReason: "linux" | "cannot-replace" | "needs-newer-macos" | null;
   /** Set with `failed`. `could-not-check` is offline, rate limited or timed out and is not an error report. */
   error: "could-not-check" | "download-failed" | "install-failed" | null;
   /** When a check last finished, as an ISO date; null before the first. */

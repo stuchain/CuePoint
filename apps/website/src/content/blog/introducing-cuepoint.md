@@ -38,6 +38,6 @@ It will not delete, move or rename your tracks. It will not write to your audio 
 
 ## Try it
 
-CuePoint is free. It runs on Windows 10 or newer, and on macOS 12 or newer on Apple Silicon (an Intel build is planned). The site does not offer a download yet: 1.0 is coming, and test builds are on [GitHub Releases](https://github.com/stuchain/CuePoint/releases) for anyone who wants to try one early. The [changelog](../../changelog/) will list what changed in each version.
+CuePoint is free. It runs on Windows 10 or newer, and on macOS 14 or newer on Apple Silicon (macOS 15 or newer on Intel Macs). The site does not offer a download yet: 1.0 is coming, and test builds are on [GitHub Releases](https://github.com/stuchain/CuePoint/releases) for anyone who wants to try one early. The [changelog](../../changelog/) will list what changed in each version.
 
 Start with one playlist, so you can see how matching behaves on your own music. Questions and ideas are welcome as [issues on GitHub](https://github.com/stuchain/CuePoint/issues).

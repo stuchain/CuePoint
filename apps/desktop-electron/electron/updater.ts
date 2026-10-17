@@ -48,7 +48,8 @@ export const RECHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 export const UPDATE_FEED_ENV = "CUEPOINT_UPDATE_FEED";
 
 export type UpdateStatus = "idle" | "checking" | "up-to-date" | "downloading" | "ready" | "manual" | "failed";
-export type ManualReason = "linux" | "cannot-replace";
+/** `needs-newer-macos`: the new Mac build needs a newer macOS than this Mac has (DEC-296). */
+export type ManualReason = "linux" | "cannot-replace" | "needs-newer-macos";
 export type UpdateError = "could-not-check" | "download-failed" | "install-failed";
 
 /** What the page is sent (`updates:state`) and asked for (`updates:getState`). */
@@ -444,6 +445,11 @@ export class Updater {
       return;
     }
 
+    // This Mac cannot run that version: it was downloaded and refused once, and is not again.
+    if (this.state.status === "manual" && this.state.manualReason === "needs-newer-macos" && this.state.version === version) {
+      return;
+    }
+
     if (target === "linux-x64") {
       this.set({ ...this.found(chosen, version), status: "manual", manualReason: "linux", progress: null });
       writeNotes(this.deps.updatesDir, version, chosen.notes);
@@ -603,6 +609,12 @@ export class Updater {
       });
       this.markReady(release, version, prepared.newApp);
     } catch (error) {
+      if (error instanceof MacUpdateError && error.kind === "os") {
+        // Not a failure to report or retry: the person keeps this version (DEC-296).
+        this.set({ ...this.found(release, version), status: "manual", manualReason: "needs-newer-macos", progress: null });
+        writeNotes(this.deps.updatesDir, version, release.notes);
+        return;
+      }
       throw new StepFailed("download-failed", error instanceof Error ? error.message : String(error), error);
     }
   }

@@ -35,6 +35,18 @@ export function UpdateReadyPanel({ open, state, onClose, flow }: UpdateReadyPane
   const version = state.version ?? "";
   const title = `CuePoint ${version} is ${manual ? "out" : "ready"}`;
 
+  if (manual && state.manualReason === "needs-newer-macos") {
+    // Downloading it would not help: macOS will not open it on this Mac (DEC-296).
+    return (
+      <Modal open={open} title={title} onClose={onClose} closeLabel="Close">
+        <p className="cp-update-panel__note">
+          It needs a newer version of macOS than this Mac has, so CuePoint stays on this version.
+        </p>
+        <ReleaseNotesView notes={state.notes} />
+      </Modal>
+    );
+  }
+
   if (manual || !flow) {
     return (
       <Modal

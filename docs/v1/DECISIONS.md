@@ -8176,3 +8176,26 @@ import). Missing values read "none", "empty", "No value" or "(not used)".
 - Check for changes with nothing changed shows a message ("rekordbox.xml has no changes.") and no dialog.
 
 **Decided with**: User (R3-3, wish list round 2, "apply ALL") · **Date**: 2026-10-13
+
+## DEC-296 — The Mac App Needs the Bundled mpv's macOS: 14 on Apple Silicon, 15 on Intel
+
+**Status**: Accepted · **Related**: DEC-148, DEC-170, PLAYER-01, Sentry ELECTRON-5 and PYTHON-1E
+
+**Context**: A tester on macOS 13.7 (Intel) had the player abort 38 ms after starting and every waveform
+fail with `WAVEFORM_DECODER_UNAVAILABLE`. The pinned mpv builds (`...-macos-14-arm`, `...-macos-15-intel`)
+are linked for macOS 14.0 and 15.0 (`LC_BUILD_VERSION` minos of the `mpv` binary), and waveforms decode
+through the same mpv. The site and support policy said macOS 12 or newer.
+
+**Decision**:
+- The afterPack hook writes `LSMinimumSystemVersion` into the app's Info.plist before signing, read from
+  the pinned asset's name for that chip (`macos-<N>-`), so macOS refuses to open the app on older
+  systems instead of opening it without playback. A re-pin moves the minimum with it; an asset name with
+  no macOS version fails the build.
+- The site (Download, FAQ, first blog post) and `support-policy.md` say macOS 14+ on Apple Silicon and
+  macOS 15+ on Intel. Building our own mpv for older macOS was the alternative, not taken for now.
+- The Mac updater reads the new build's `LSMinimumSystemVersion` before installing. When this Mac is
+  older it does not install (that would swap a working app for one macOS will not open): the update
+  shows as out, with "It needs a newer version of macOS than this Mac has, so CuePoint stays on this
+  version." and no Download button; it is not reported and that version is not downloaded again.
+
+**Decided with**: User (decision card, "Raise minimum") · **Date**: 2026-10-17

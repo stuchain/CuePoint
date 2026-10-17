@@ -281,3 +281,29 @@ describe("a version that is out but has to be fetched by hand", () => {
     expect(screen.getByRole("button", { name: "CuePoint 1.0.1 is out" })).toBeInTheDocument();
   });
 });
+
+describe("a version this Mac's macOS is too old for (DEC-296)", () => {
+  const TOO_NEW = {
+    status: "manual" as const,
+    manualReason: "needs-newer-macos" as const,
+    version: "1.0.1",
+    notes: "- A fix",
+    releaseUrl: "https://github.com/stuchain/CuePoint/releases/tag/v1.0.1",
+  };
+
+  it("says why it stays on this version and offers no Download or Restart", async () => {
+    setup(updateState(TOO_NEW));
+    await userEvent.click(await screen.findByRole("button", { name: "CuePoint 1.0.1 is out" }));
+    const dialog = await screen.findByRole("dialog", { name: "CuePoint 1.0.1 is out" });
+    expect(
+      within(dialog).getByText("It needs a newer version of macOS than this Mac has, so CuePoint stays on this version."),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText("A fix")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Download" })).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: "Restart now" })).toBeNull();
+    // The footer's Close, after the title bar's.
+    await userEvent.click(within(dialog).getAllByRole("button", { name: "Close" }).at(-1)!);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(fake.bridge.openReleasePage).not.toHaveBeenCalled();
+  });
+});

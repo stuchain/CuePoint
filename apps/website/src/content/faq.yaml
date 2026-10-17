@@ -47,8 +47,8 @@
   order: 4
   question: What do I need to run CuePoint?
   answer: >-
-    A collection exported from Rekordbox as XML, and a computer running Windows 10 or newer (64-bit) or macOS 12
-    or newer. Linux is experimental and has no built-in player. Discover, which finds new music on Beatport, also
+    A collection exported from Rekordbox as XML, and a computer running Windows 10 or newer (64-bit), or a Mac
+    running macOS 14 or newer (Apple Silicon) or macOS 15 or newer (Intel). Linux is experimental and has no built-in player. Discover, which finds new music on Beatport, also
     needs you to sign in to Beatport in Settings.
   links:
     - page: support-policy

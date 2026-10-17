@@ -97,6 +97,10 @@ describe("the state in words", () => {
       { status: "manual", manualReason: "cannot-replace", version: "1.0.1" },
       "CuePoint cannot replace itself from where it is installed. Download the new version.",
     ],
+    [
+      { status: "manual", manualReason: "needs-newer-macos", version: "1.0.1" },
+      "It needs a newer version of macOS than this Mac has, so CuePoint stays on this version.",
+    ],
   ] as [Partial<UpdateState>, string][])("%j reads %s", async (state, words) => {
     setup(state);
     expect(await screen.findByText(words)).toBeInTheDocument();

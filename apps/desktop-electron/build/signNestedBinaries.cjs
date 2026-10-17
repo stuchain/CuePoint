@@ -90,7 +90,45 @@ function adHocPlan(appPath, sidecarRoots) {
   return plan;
 }
 
-/** `deps.exec` is for tests; electron-builder calls this with the context only. */
+/** electron-builder's `Arch` numbers, as `context.arch` gives them. */
+const ARCH_NAMES = { 0: "ia32", 1: "x64", 2: "armv7l", 3: "arm64", 4: "universal" };
+
+/**
+ * The oldest macOS the bundled mpv runs on for this chip, read from the pinned
+ * asset's name (`...-macos-15-intel.zip`, `...-macos-14-arm.zip`).
+ *
+ * mpv's builds are made on, and only run on, that macOS or newer: on macOS 13
+ * the player aborted 38 ms after starting and waveforms could not decode
+ * (ELECTRON-5, PYTHON-1E). The app says so up front instead (DEC-296).
+ */
+function macMinimumFor(arch, manifest) {
+  const target = manifest && manifest.targets && manifest.targets[`darwin-${arch}`];
+  const match = target && /-macos-(\d+)-/.exec(String(target.asset || ""));
+  if (!match) {
+    throw new Error(`No pinned mpv for darwin-${arch}, so the oldest macOS it runs on is unknown`);
+  }
+  return `${match[1]}.0`;
+}
+
+/**
+ * Sets `LSMinimumSystemVersion` in the app's Info.plist; macOS then refuses to open it on older
+ * systems. electron-builder writes the plist as XML; any other form goes through `plutil`.
+ */
+function setMacMinimum(appPath, version, exec = execFileSync) {
+  const plist = path.join(appPath, "Contents", "Info.plist");
+  const text = fs.readFileSync(plist, "utf8");
+  if (!text.startsWith("<?xml")) {
+    exec("plutil", ["-replace", "LSMinimumSystemVersion", "-string", version, plist], { stdio: "inherit" });
+    return;
+  }
+  const entry = /(<key>LSMinimumSystemVersion<\/key>\s*<string>)[^<]*(<\/string>)/;
+  const updated = entry.test(text)
+    ? text.replace(entry, `$1${version}$2`)
+    : text.replace(/<dict>/, `<dict>\n\t<key>LSMinimumSystemVersion</key>\n\t<string>${version}</string>`);
+  fs.writeFileSync(plist, updated);
+}
+
+/** `deps.exec` and `deps.manifest` are for tests; electron-builder calls this with the context only. */
 exports.default = async function signNestedBinaries(context, deps = {}) {
   if (context.electronPlatformName !== "darwin") return;
   const exec = deps.exec || execFileSync;
@@ -100,6 +138,14 @@ exports.default = async function signNestedBinaries(context, deps = {}) {
   const appName = `${context.packager.appInfo.productFilename}.app`;
   const appPath = path.join(context.appOutDir, appName);
   const resources = path.join(appPath, "Contents", "Resources");
+
+  // Before any signing, so the signature covers it.
+  const manifest =
+    deps.manifest ||
+    JSON.parse(fs.readFileSync(path.join(__dirname, "../../../scripts/player_sidecar_manifest.json"), "utf8"));
+  const minimum = macMinimumFor(ARCH_NAMES[context.arch], manifest);
+  setMacMinimum(appPath, minimum, exec);
+  console.log(`  • needs macOS ${minimum} or newer (the bundled mpv's own minimum)`);
 
   const roots = ["player", "engine"]
     .map((name) => path.join(resources, name))
@@ -136,3 +182,5 @@ exports.default = async function signNestedBinaries(context, deps = {}) {
 };
 
 exports.adHocPlan = adHocPlan;
+exports.macMinimumFor = macMinimumFor;
+exports.setMacMinimum = setMacMinimum;
