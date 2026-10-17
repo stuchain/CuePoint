@@ -135,6 +135,54 @@ class TestStoring:
         ]
         assert cache.get(key("a"), 108) is None
 
+    def test_a_rename_windows_refuses_briefly_is_tried_again(self, cache, monkeypatch):
+        # ELECTRON-4: "[WinError 5] Access is denied" renaming the .part file
+        # while the thumbnail was open elsewhere.
+        real_replace = os.replace
+        refusals = []
+
+        def refuse_twice(source, target):
+            if len(refusals) < 2:
+                refusals.append(target)
+                raise PermissionError(5, "Access is denied")
+            real_replace(source, target)
+
+        monkeypatch.setattr(module, "REPLACE_RETRY_SECONDS", 0)
+        monkeypatch.setattr(module.os, "replace", refuse_twice)
+        cache.put(key("a"), 108, b"x" * 10)
+
+        assert len(refusals) == 2
+        assert cache.get(key("a"), 108) == b"x" * 10
+        assert not list(cache.directory.rglob("*.part"))
+
+    def test_a_refused_rename_keeps_the_copy_already_in_place(self, cache, monkeypatch):
+        cache.put(key("a"), 108, b"x" * 10)
+
+        def refuse(*_args):
+            raise PermissionError(5, "Access is denied")
+
+        monkeypatch.setattr(module, "REPLACE_RETRY_SECONDS", 0)
+        monkeypatch.setattr(module.os, "replace", refuse)
+        cache.put(key("a"), 108, b"x" * 10)
+
+        assert cache.get(key("a"), 108) == b"x" * 10
+        assert cache.total_bytes() == 10
+        assert not list(cache.directory.rglob("*.part"))
+
+    def test_a_refused_rename_with_nothing_in_place_still_fails(
+        self, cache, monkeypatch
+    ):
+        def refuse(*_args):
+            raise PermissionError(5, "Access is denied")
+
+        monkeypatch.setattr(module, "REPLACE_RETRY_SECONDS", 0)
+        monkeypatch.setattr(module.os, "replace", refuse)
+        with pytest.raises(PermissionError):
+            cache.put(key("a"), 108, b"x" * 10)
+
+        assert cache.get(key("a"), 108) is None
+        assert not list(cache.directory.rglob("*.part"))
+
     def test_no_temporary_file_is_left_by_a_write(self, cache):
         cache.put(key("a"), 108, b"x")
 

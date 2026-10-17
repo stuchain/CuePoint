@@ -36,6 +36,7 @@ import re
 import shutil
 import tempfile
 import threading
+import time
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -48,6 +49,10 @@ ARTWORK_CACHE_MAX_BYTES = 512 * 1024 * 1024
 
 #: How far below the cap an eviction goes.
 EVICT_TO_FRACTION = 0.9
+
+#: How often, and how far apart, a rename Windows refused is tried again.
+REPLACE_ATTEMPTS = 5
+REPLACE_RETRY_SECONDS = 0.05
 
 _KEY = re.compile(r"[0-9a-f]{64}")
 _SUFFIX = ".jpg"
@@ -128,13 +133,15 @@ class ArtworkCache:
         try:
             with os.fdopen(handle, "wb") as out:
                 out.write(data)
-            os.replace(temporary, path)
+            replaced = _replace(temporary, path)
         except BaseException:
-            try:
-                os.remove(temporary)
-            except OSError:
-                pass
+            _discard(temporary)
             raise
+        if not replaced:
+            # Another writer's copy of the same thumbnail is in place: the key is
+            # the image's source, so it holds these bytes. Keep it.
+            _discard(temporary)
+            return
         with self._lock:
             if self._total is not None:
                 self._total += len(data) - previous
@@ -195,6 +202,40 @@ class ArtworkCache:
                 continue
             found.append((path, int(stat.st_size), float(stat.st_mtime)))
         return found
+
+
+def _replace(temporary: str, path: Path) -> bool:
+    """Rename ``temporary`` over ``path``; False when a copy already there stays.
+
+    Windows refuses the rename with "Access is denied" while the thumbnail is
+    open (a reader, the virus scanner) or another thread is renaming its copy of
+    the same image into place (ELECTRON-4). That is brief, so it is tried again;
+    if it still refuses and a thumbnail is in place, that one is kept.
+
+    Raises:
+        PermissionError: If the rename is still refused and nothing is in place.
+    """
+    for attempt in range(REPLACE_ATTEMPTS):
+        try:
+            os.replace(temporary, path)
+            return True
+        except PermissionError:
+            if attempt + 1 < REPLACE_ATTEMPTS:
+                time.sleep(REPLACE_RETRY_SECONDS)
+                continue
+            if path.is_file():
+                _logger.info("[artwork] kept the thumbnail already at %s", path.name)
+                return False
+            raise
+    return False  # pragma: no cover - the loop always returns or raises
+
+
+def _discard(temporary: str) -> None:
+    """Delete a temporary file, if it is still there."""
+    try:
+        os.remove(temporary)
+    except OSError:
+        pass
 
 
 def clear_artwork_cache() -> None:
