@@ -114,6 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Check for changes with nothing new shows a toast.** When the Rekordbox file has not changed, "rekordbox.xml has no changes" appears instead of a dialog to dismiss (R3-11).
 
 ### Fixed
+- **A Mac update this Mac cannot run is set aside cleanly.** When a new version needs a newer macOS, CuePoint now says so and keeps the version you have, instead of reporting a failed download and fetching it again at every check. Its download folder, and an installed update's leftover copy, are deleted again: inside the app they could not be, because the delete stopped at the app's `app.asar` archive.
 - **Sidebar:** hovering a page link no longer shows a sideways scrollbar.
 - **Prepare:** Track details follows a track you click or play in the Library or Suggestions picker, not only the Set table. Ctrl+A and Esc work in the Set, and headings that cannot sort no longer look clickable.
 - **Keys:** the 10A and 10B chips no longer run into the key's name.

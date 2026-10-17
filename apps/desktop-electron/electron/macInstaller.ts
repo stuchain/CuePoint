@@ -35,6 +35,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
+import { removeTree } from "./removeTree";
 import { targetFileName, type UpdateTarget } from "./updateRule";
 
 /** The chips a Mac build is for, as `lipo -archs` names them. */
@@ -368,7 +369,7 @@ export async function prepareMacUpdate(options: PrepareMacUpdateOptions): Promis
     const entry = manifestEntry(manifestText, zipName, parseYaml);
 
     // Whatever an earlier try left is not trusted.
-    fs.rmSync(versionDir, { recursive: true, force: true });
+    removeTree(versionDir);
     fs.mkdirSync(versionDir, { recursive: true });
     const zipPath = path.join(versionDir, zipName);
     const zipUrl = assertSecureUrl(`${base}${encodeURIComponent(zipName)}`, allowLocalHttp);
@@ -426,7 +427,7 @@ export async function prepareMacUpdate(options: PrepareMacUpdateOptions): Promis
     }
     return { newApp };
   } catch (error) {
-    fs.rmSync(versionDir, { recursive: true, force: true });
+    removeTree(versionDir);
     throw error;
   }
 }

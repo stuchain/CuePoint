@@ -21,6 +21,7 @@ import path from "node:path";
 
 import { releaseNoteLinkUrl } from "./externalLinks";
 import { RELEASES_REPOSITORY } from "./releaseList";
+import { removeTree } from "./removeTree";
 import { compareVersions, parseVersion, tagVersion, type Release } from "./updateRule";
 
 /** What the page is shown for a version's release. */
@@ -127,7 +128,7 @@ export function pruneInstalledUpdates(
     const folder = path.join(updatesDir, entry.name);
     try {
       for (const name of fs.readdirSync(folder)) {
-        if (name !== "notes.md") fs.rmSync(path.join(folder, name), { recursive: true, force: true });
+        if (name !== "notes.md") removeTree(path.join(folder, name));
       }
     } catch {
       // Left for the next launch.
