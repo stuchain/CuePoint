@@ -598,10 +598,12 @@ class TestTheIndexes:
             " WHERE track_id = tracks.id AND name_key = ?)",
             ("mara veil",),
         )
-        assert (
-            "SEARCH track_credits USING COVERING INDEX idx_track_credits_name"
-            " (name_key=? AND track_id=?)"
-        ) in detail, detail
+        # Newer SQLite names the subquery's kind ("SEARCH track_credits EXISTS USING ...").
+        assert re.search(
+            r"SEARCH track_credits (EXISTS )?USING COVERING INDEX idx_track_credits_name"
+            r" \(name_key=\? AND track_id=\?\)",
+            detail,
+        ), detail
 
     def test_tracks_by_a_credited_name_use_the_name_index(self, db):
         detail = plan(
