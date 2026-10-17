@@ -331,10 +331,11 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
 
       // --- a click at the second section's start seeks there -----------------
       const columns = await barColumns(window);
+      const duration = await playerDuration(window);
       const box = (await window.getByTestId("player-waveform").boundingBox())!;
-      await window.mouse.click(box.x + (box.width * HOT_CUE_SECONDS) / 6, box.y + box.height / 2);
-      // The click lands on the seek slider, which snaps to its 0.5 s step: 2.0 s exactly.
-      const column = 6 / columns;
+      await window.mouse.click(box.x + (box.width * HOT_CUE_SECONDS) / duration, box.y + box.height / 2);
+      // The click lands on the seek slider, which takes any position (no step): within a column of it.
+      const column = duration / columns;
       await expect
         .poll(async () => Math.abs(((await playerState(window)).position ?? -1) - HOT_CUE_SECONDS) <= column, {
           timeout: 10_000,

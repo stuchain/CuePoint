@@ -21,6 +21,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { setInnerSize } from "./windowSizes";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -232,6 +233,21 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
         .toEqual(["Track 21", "Track 07"]);
 
       // --- below the last row: the dead space under the rows takes a drop too -------
+      // The fourteen rows overflow the Set's table once the player bar is always shown, so
+      // the window grows until there is space under the last row to drop on.
+      const setScroll = win.getByRole("table", { name: "Set entries" });
+      const spaceBelow = () =>
+        setScroll.evaluate((element) => {
+          const rows = element.querySelectorAll(".track-table__row");
+          const last = rows[rows.length - 1]!.getBoundingClientRect();
+          return element.getBoundingClientRect().bottom - (last.bottom - element.scrollTop);
+        });
+      const space = await spaceBelow();
+      if (space < 40) {
+        const inner = await win.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
+        await setInnerSize(app, win, { width: inner.width, height: Math.ceil(inner.height + 60 - space) });
+      }
+      await expect.poll(spaceBelow).toBeGreaterThanOrEqual(40);
       await panel.getByRole("searchbox", { name: "Search" }).fill("Track 22");
       await expect(libraryRows).toHaveCount(1, { timeout: 30_000 });
       const below = rowTitled(win, "Library tracks to add", "Track 22");
