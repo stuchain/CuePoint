@@ -34,3 +34,28 @@ export function isOwnPage(target: unknown, own: OwnPages): boolean {
   url.search = "";
   return url.href === own.indexUrl;
 }
+
+/**
+ * Loads the app's page, where a load another navigation cut short is not a failure.
+ *
+ * `loadFile` and `loadURL` reject with `ERR_ABORTED` (-3) when a newer navigation of the same
+ * window replaces the one they started: a reload (Ctrl+R, the error screen's Reload, a test's
+ * `window.reload()`) pressed before the first load finished. The newer load shows the page, so
+ * nothing went wrong, but the rejection reached Sentry as an unhandled one (ELECTRON-2). Any
+ * other failure still rejects.
+ */
+export async function loadOwnPage(load: () => Promise<void>): Promise<void> {
+  try {
+    await load();
+  } catch (error) {
+    if (isAbortedLoad(error)) return;
+    throw error;
+  }
+}
+
+/** True for Electron's `ERR_ABORTED` load failure. */
+export function isAbortedLoad(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const { code, errno } = error as { code?: unknown; errno?: unknown };
+  return code === "ERR_ABORTED" || errno === -3;
+}

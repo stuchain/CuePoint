@@ -9,6 +9,14 @@ import { defineConfig } from "@playwright/test";
  */
 process.env.CUEPOINT_E2E_DISPLAY ??= "left";
 
+/**
+ * A test run reports nothing to Sentry. A packaged app sends to the built-in
+ * DSN, and the suite's own reloads and engine kills filled the Electron project
+ * with errors no user saw (ELECTRON-2, ELECTRON-3). The reporting specs set
+ * their own DSN for each launch.
+ */
+process.env.CUEPOINT_SENTRY_DSN ??= "off";
+
 export default defineConfig({
   testDir: "./",
   testMatch: "**/*.spec.ts",

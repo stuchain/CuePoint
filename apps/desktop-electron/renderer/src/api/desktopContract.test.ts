@@ -2484,7 +2484,9 @@ describe("desktop contract", () => {
     });
 
     it("keeps the window on the app's own page: no new windows, no navigation away", () => {
-      expect(main).toContain('import { isOwnPage } from "./navigationGuard";');
+      expect(main).toMatch(/import \{[^}]*\bisOwnPage\b[^}]*\} from "\.\/navigationGuard";/);
+      // A reload that cuts the first load short is not an unhandled failure (ELECTRON-2).
+      expect(main).toMatch(/loadOwnPage\(\(\) => win\.loadFile\(/);
       expect(main).toContain('setWindowOpenHandler(() => ({ action: "deny" }))');
       expect(main).toMatch(/on\("will-navigate", keepToOwnPages\)/);
       expect(main).toMatch(/on\("will-redirect", keepToOwnPages\)/);

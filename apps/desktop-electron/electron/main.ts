@@ -23,7 +23,7 @@ import { PlaybackController } from "./playbackController";
 import { queueTruncationMessage, resolveQueueFromView } from "./queueResolver";
 import { chooseRekordboxExportDestination } from "./rekordboxExportDialog";
 import { currentBuildInfo } from "./buildInfo";
-import { isOwnPage } from "./navigationGuard";
+import { isOwnPage, loadOwnPage } from "./navigationGuard";
 import { ErrorReportingChoice } from "./errorReporting";
 import {
   addReportingToken,
@@ -1515,10 +1515,10 @@ async function createWindow(): Promise<void> {
     // read by nothing — searched before removing — and carrying them was the
     // only reason the window had to wait for the engine at all. The renderer
     // asks the bridge, which is the answer that stays right afterwards.
-    await win.loadURL(DEV_URL);
+    await loadOwnPage(() => win.loadURL(DEV_URL));
     win.webContents.openDevTools({ mode: "detach" });
   } else {
-    await win.loadFile(path.join(__dirname, "../renderer/dist/index.html"));
+    await loadOwnPage(() => win.loadFile(path.join(__dirname, "../renderer/dist/index.html")));
   }
 }
 
