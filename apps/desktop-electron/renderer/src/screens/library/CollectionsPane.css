@@ -19,6 +19,8 @@
  * apart is the layout a user cannot aim at.
  */
 .cp-library-pane {
+  /* The tree steps in less when the pane is narrow (Track details open), see PlaylistPane.css. */
+  container: library-pane / inline-size;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -89,14 +91,19 @@
   padding: 0 round(down, calc(var(--space-xs) / 3), 1px);
   /* Text only and never broken. */
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* The bar for the selected node: always drawn, at the foot of the whole pane, so nothing jumps
    when a row is picked (DEC-245). aria-disabled marks a refusal such as Duplicate on a plain
    Collection, or no selection at all, so the arrow keys still land on it. */
 .cp-collections__bar {
-  display: flex;
-  flex-wrap: wrap;
+  /* Two to a line in every width, so the bar is never four lines tall in a narrow pane (Track
+     details open); a label that does not fit ends in "…" and keeps its full name. */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: round(down, calc(var(--space-xs) / 2), 1px);
   /* Side padding is a quarter step, in whole pixels (1px at 1.5×, where 1.5px
      would blur): Rename and Duplicate share a line in the ~156px a 1,264-wide

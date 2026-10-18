@@ -11,6 +11,15 @@
   --tree-step: calc(20px * var(--scale));
 }
 
+/* In a narrow pane (Track details open, a small window) a full twisty per level leaves a nested
+   name only its first letter: each level then steps in by the chevron's own width. */
+@container library-pane (max-width: 260px) {
+  .cp-playlist-pane,
+  .cp-playlist-pane__tree {
+    --tree-step: calc(12px * var(--scale));
+  }
+}
+
 .cp-playlist-pane {
   display: flex;
   flex-direction: column;

@@ -83,3 +83,11 @@ describe("a long name never runs under its count (Q2)", () => {
     expect(rule(".cp-playlist-pane__count")).toContain("margin-left: auto");
   });
 });
+
+describe("a narrow pane", () => {
+  // Regression: with Track details open the pane is ~180px, and a 20px step per level left a
+  // nested playlist only "D…" of its name.
+  it("steps each level in by the chevron's width, not a whole twisty", () => {
+    expect(css).toMatch(/@container library-pane \(max-width: 260px\)\s*\{[^}]*--tree-step: calc\(12px \* var\(--scale\)\)/);
+  });
+});
