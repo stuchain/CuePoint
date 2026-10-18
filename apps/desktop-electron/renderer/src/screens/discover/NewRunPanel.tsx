@@ -171,9 +171,6 @@ export function NewRunPanel({
         : [...form.genreIds, id],
     });
 
-  const emptyLibrary =
-    options.artists.total_values === 0 && options.labels.total_values === 0;
-
   const start = async () => {
     setStarting(true);
     setRefusal(null);
@@ -217,16 +214,6 @@ export function NewRunPanel({
   return (
     <section className="discover-new" aria-label="New dig">
       <div className="discover-new__body">
-        <header className="discover-new__header">
-          <h2 className="discover-section__title">New dig</h2>
-        </header>
-
-        {emptyLibrary && (
-          <Notice kind="warning">
-            Your library has no artists or labels yet. Import a Rekordbox file in the Library
-            first: a dig looks for music by them.
-          </Notice>
-        )}
         {!options.index_current && (
           <p className="discover-note">
             CuePoint is still indexing your artists and labels, so the lists below may be short.

@@ -11,7 +11,6 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { DiscoverGroupCard, DiscoverRunHeader } from "../../api/cuepointBridge.types";
-import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
@@ -24,10 +23,7 @@ import {
   releasesLine,
   runScopeLine,
   runOutcome,
-  runStateLabel,
-  runStateTone,
   scopeLine,
-  searchTitle,
 } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
 import { cardCounts, cardRef } from "./groupCards";
@@ -46,13 +42,6 @@ interface RunDetailProps {
 
 /** What the results area shows: the cards (or, with none, everything), one card, or everything. */
 type View = { kind: "auto" } | { kind: "everything" } | { kind: "card"; card: DiscoverGroupCard };
-
-const BADGE: Record<ReturnType<typeof runStateTone>, "info" | "success" | "warning" | "danger"> = {
-  info: "info",
-  success: "success",
-  warning: "warning",
-  error: "danger",
-};
 
 /** The names a run's scope resolved to, folded away when there are many. */
 function ScopeNames({ names, noun }: { names: DiscoverRunHeader["artists"]; noun: string }) {
@@ -191,10 +180,7 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
           <Loading what="the dig" />
         ) : (
           <>
-            <div className="discover-run__title-row">
-              <h2 className="discover-section__title">{searchTitle(run.started_at)}</h2>
-              <Badge variant={BADGE[runStateTone(run)]}>{runStateLabel(run)}</Badge>
-            </div>
+            {/* No title of its own: the open dig's card in the list is the heading. */}
             <p className="discover-run__outcome">{runOutcome(run)}</p>
             <details className="discover-run__scope">
               <summary>{runScopeLine(run, tools.options.genres)}</summary>

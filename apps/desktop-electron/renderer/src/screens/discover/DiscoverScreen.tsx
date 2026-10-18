@@ -19,6 +19,7 @@
  * describe a row it does not.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import type {
   BeatportPlaylistRequest,
@@ -29,9 +30,10 @@ import type {
   DiscoverRunRequest,
   DiscoveryRunResult,
 } from "../../api/cuepointBridge.types";
-import { DISCOVER_OPTIONS, useReportReadError, useSharedRead } from "../../api/sharedReads";
+import { DISCOVER_OPTIONS, LIBRARY_SUMMARY, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
 import { CloseButton } from "../../components/CloseButton";
+import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
 import { Hint } from "../../components/Hint";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
@@ -41,6 +43,7 @@ import { useActiveJob } from "../../components/shell/useActiveJob";
 import { useToast } from "../../components/Toast";
 import { MATCH_ON_BEATPORT, RETRY } from "../../format/words";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
+import { libraryImportState } from "../library/libraryLink";
 import { NewRunPanel } from "./NewRunPanel";
 import { RunsView } from "./RunsView";
 import { WantlistView } from "./WantlistView";
@@ -88,6 +91,7 @@ interface PushNotice {
 
 export function DiscoverScreen() {
   const { push: toast } = useToast();
+  const navigate = useNavigate();
   const [section, setSection] = useState<DiscoverSection>(loadDiscoverSection);
   // A refusal a start met, which is newer than what `options` said.
   const [refused, setRefused] = useState<{
@@ -105,6 +109,11 @@ export function DiscoverScreen() {
   // them at once, and they are read again when a lookup or a sign-in ends.
   const optionsRead = useSharedRead(DISCOVER_OPTIONS);
   useReportReadError(optionsRead.error);
+  // Whether the library itself is empty (nothing imported), which the facets alone cannot say:
+  // a library of tracks with no artist or label names is not "no library".
+  const summaryRead = useSharedRead(LIBRARY_SUMMARY);
+  const libraryEmpty =
+    (summaryRead.value as { library_empty?: boolean } | undefined)?.library_empty === true;
   const answer = optionsRead.value;
   // A refusal does not take away the options already shown: the last good ones stay.
   const lastOptions = useRef<DiscoverOptions | null>(null);
@@ -301,6 +310,8 @@ export function DiscoverScreen() {
   }
 
   const toRead = tools.options.resolve.to_read;
+  // Nothing imported yet: nothing for a dig to look by, so New dig says so instead of a form.
+  const noLibrary = libraryEmpty;
   const looking = resolve.jobId !== null;
 
   return (
@@ -383,6 +394,19 @@ export function DiscoverScreen() {
             hidden={section !== "new"}
             className="discover-screen__panel"
           >
+            {/* With no library the shared empty block leads, and the form stays below it: a dig of
+                genre charts needs no library (DISCOVER-10). */}
+            {noLibrary && (
+              <EmptyState
+                icon="discover"
+                headline="No library yet"
+                description="Discover looks for new music by the artists and labels in your library. Genre charts work without one."
+                action={{
+                  label: IMPORT_COLLECTION_LABEL,
+                  onClick: () => navigate("/library", { state: libraryImportState() }),
+                }}
+              />
+            )}
             <NewRunPanel
               options={tools.options}
               usable={beatportUsable(state)}

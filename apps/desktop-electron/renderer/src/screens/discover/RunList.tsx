@@ -72,6 +72,7 @@ function RunMenu({ run, onDelete }: { run: DiscoverRun; onDelete: (run: Discover
             {
               id: "delete",
               label: "Delete this dig…",
+              danger: true,
               onSelect: () => onDelete(run),
             },
           ]}

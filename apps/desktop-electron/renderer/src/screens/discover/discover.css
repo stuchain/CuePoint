@@ -42,6 +42,8 @@
 /* ---------------------------------------------------------------- notices */
 
 .discover-banner {
+  /* The usual 12 px under the tabs (and between banners). */
+  margin-top: var(--space-md);
   display: flex;
   align-items: center;
   gap: var(--space-md);
@@ -228,13 +230,6 @@
   border-bottom: var(--divider);
 }
 
-.discover-run__title-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-xs) var(--space-md);
-}
-
 .discover-run__outcome {
   margin: 0;
   font-size: var(--font-size-sm);
@@ -264,6 +259,8 @@
 /* ---------------------------------------------------------------- new run */
 
 .discover-new {
+  /* 12 from the tabs (or the banner under them) to the form; the heading that used to sit here is gone. */
+  padding-top: var(--space-md);
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -275,19 +272,13 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  /* Module to module 16; the header gives the page its own 12 above. */
+  /* Module to module 16. */
   gap: var(--space-xl);
   min-height: 0;
   overflow-y: auto;
   /* No bottom padding: a sticky bar stops at the scroller's padding edge, so any padding here
      would leave the bar floating above the bottom with the form's text showing beneath it. */
   padding: 0;
-}
-
-.discover-new__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
 }
 
 .discover-new__grid {

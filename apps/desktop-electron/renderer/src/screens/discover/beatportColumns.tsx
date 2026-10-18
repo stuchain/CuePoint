@@ -134,8 +134,9 @@ export const RUN_COLUMNS: readonly TrackColumnDef<DiscoverRunTrackRow>[] = [
     id: "position",
     header: "#",
     sortKey: "position",
-    minWidthPx: 44,
-    defaultWidthPx: 44,
+    // Room for the "#" and the sort arrow beside it: at 44 the arrow squeezed the "#" down to a ":".
+    minWidthPx: 64,
+    defaultWidthPx: 64,
     align: "right",
     // The order the run found it in, from 1, as a person counts.
     render: (row) => String(row.position + 1),

@@ -90,20 +90,3 @@ export function tempoDeltaText(tempo: ReasonTokens["tempo"]): string {
   if (tempo.delta === 0) return "±0";
   return tempo.delta > 0 ? `+${tempo.delta}` : `${MINUS}${Math.abs(tempo.delta)}`;
 }
-
-function tempoToken(tempo: NonNullable<ReasonTokens["tempo"]>): string {
-  const text = tempoDeltaText(tempo);
-  // The unit keeps a tempo change from reading as a key step: "+1 · +1 BPM".
-  return typeof tempo === "string" ? text : `${text} BPM`;
-}
-
-/** The compact cell text: "+1 · −2 BPM · G · A". Empty when nothing is in common. */
-export function tokenRun(tokens: ReasonTokens): string {
-  const parts: string[] = [];
-  if (tokens.key) parts.push(tokens.key);
-  if (tokens.tempo) parts.push(tempoToken(tokens.tempo));
-  if (tokens.genre) parts.push("G");
-  if (tokens.label) parts.push("L");
-  if (tokens.artist) parts.push("A");
-  return parts.join(" · ");
-}

@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import fixture from "./similarReasons.fixture.json";
-import { reasonTokens, tempoDeltaText, tokenRun } from "./reasonTokens";
+import { reasonTokens, tempoDeltaText } from "./reasonTokens";
 import type { SimilarReason } from "./similarReasons";
 
 const REASONS = fixture.reasons as SimilarReason[];
@@ -50,22 +50,13 @@ describe("every reason the engine gives", () => {
           expect(tokens.artist).toBe(true);
           break;
       }
-      expect(tokenRun(tokens)).not.toBe("");
-      expect(tokenRun(tokens)).not.toMatch(/undefined|NaN|\[object/);
     },
   );
-
-  it("reads all ten together as one run", () => {
-    // The fixture holds both a same and a close tempo and three key relations: the last of a
-    // component wins, so the run is the whole fixture's final word on each.
-    expect(tokenRun(reasonTokens(REASONS))).toMatch(/ · G · L · A$/);
-  });
 });
 
 describe("reasonTokens", () => {
   it("reads no reasons as nothing", () => {
     expect(reasonTokens([])).toEqual({ key: null, tempo: null, genre: false, label: false, artist: false });
-    expect(tokenRun(reasonTokens([]))).toBe("");
   });
 
   it("reads a key", () => {
@@ -103,36 +94,6 @@ describe("reasonTokens", () => {
       { component: "artist", detail: "shared", points: 1, names: ["Âme"] },
     ]);
     expect(tokens).toMatchObject({ genre: true, label: false, artist: true });
-  });
-});
-
-describe("tokenRun", () => {
-  it("orders key, tempo, then G, L, A", () => {
-    const reasons: SimilarReason[] = [
-      { component: "artist", detail: "shared", points: 1, names: ["Âme"] },
-      { component: "label", detail: "same", points: 1, name: "Innervisions" },
-      { component: "genre", detail: "same", points: 1, name: "House" },
-      tempo("close", 126, 124),
-      key("adjacent", "9A", "8A"),
-    ];
-    expect(tokenRun(reasonTokens(reasons))).toBe("−1 · −2 BPM · G · L · A");
-  });
-
-  it("writes each tempo token", () => {
-    const run = (r: SimilarReason) => tokenRun(reasonTokens([r]));
-    expect(run(tempo("same", 124, 124))).toBe("±0 BPM");
-    expect(run(tempo("close", 124, 126))).toBe("+2 BPM");
-    expect(run(tempo("close", 126, 124))).toBe("−2 BPM");
-    expect(run(tempo("half", 124, 62))).toBe("0.5×");
-    expect(run(tempo("double", 124, 248))).toBe("2×");
-  });
-
-  it("writes each key token", () => {
-    const run = (r: SimilarReason) => tokenRun(reasonTokens([r]));
-    expect(run(key("same", "8A"))).toBe("same");
-    expect(run(key("relative", "8A", "8B"))).toBe("rel.");
-    expect(run(key("adjacent", "8A", "9A"))).toBe("+1");
-    expect(run(key("adjacent", "?", "?"))).toBe("next");
   });
 });
 

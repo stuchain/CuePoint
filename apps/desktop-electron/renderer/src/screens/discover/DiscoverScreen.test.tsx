@@ -163,7 +163,9 @@ function Settings() {
 /** Opens a card's ⋯ menu and chooses Delete this dig…. */
 async function openDelete(card: HTMLElement) {
   fireEvent.click(within(card).getByRole("button", { name: /^More for / }));
-  fireEvent.click(await screen.findByRole("menuitem", { name: "Delete this dig…" }));
+  const item = await screen.findByRole("menuitem", { name: "Delete this dig…" });
+  expect(item).toHaveClass("cp-track-menu__item--danger");
+  fireEvent.click(item);
 }
 
 function renderDiscover() {
@@ -175,6 +177,7 @@ function renderDiscover() {
             <Routes>
               <Route path="/discover" element={<DiscoverScreen />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/library" element={<Settings />} />
               <Route path="/discover/*" element={<Settings />} />
             </Routes>
           </MemoryRouter>
@@ -1093,6 +1096,50 @@ describe("Results", () => {
 describe("New dig", () => {
   beforeEach(() => {
     install({ listDiscoveryRuns: vi.fn(async () => asAnswer(fixture.runs_empty)) });
+  });
+
+  it("has no repeated New dig heading: the tab is the heading (Q11)", async () => {
+    renderDiscover();
+    const panel = await openNewSearch();
+    expect(within(panel).queryByRole("heading", { name: "New dig" })).toBeNull();
+  });
+
+  it("with no library shows the shared empty block above the form, not a second banner (Q10, Q11)", async () => {
+    const empty = {
+      ...OPTIONS,
+      artists: { ...OPTIONS.artists, total_values: 0 },
+      labels: { ...OPTIONS.labels, total_values: 0 },
+    };
+    install({
+      listDiscoveryRuns: vi.fn(async () => asAnswer(fixture.runs_empty)),
+      getDiscoverOptions: vi.fn(async () => value(empty)),
+      getLibrarySummary: vi.fn(async () => ({ track_count: 0, playlist_count: 0, playlist_entry_count: 0, library_empty: true, source: null })),
+    });
+    renderDiscover();
+    fireEvent.click(await screen.findByRole("tab", { name: "New dig" }));
+    expect(await screen.findByText("No library yet")).toBeInTheDocument();
+    expect(screen.queryByText(/Your library has no artists or labels yet/)).toBeNull();
+    // Genre charts need no library, so the form stays below the block (DISCOVER-10).
+    expect(screen.getByRole("region", { name: "New dig" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Import a Rekordbox file…" }));
+    expect(await screen.findByTestId("where")).toHaveTextContent("/library");
+  });
+
+  it("keeps the dig form when the library has tracks but no artist or label names", async () => {
+    const bare = {
+      ...OPTIONS,
+      artists: { ...OPTIONS.artists, total_values: 0 },
+      labels: { ...OPTIONS.labels, total_values: 0 },
+    };
+    install({
+      listDiscoveryRuns: vi.fn(async () => asAnswer(fixture.runs_empty)),
+      getDiscoverOptions: vi.fn(async () => value(bare)),
+      getLibrarySummary: vi.fn(async () => ({ track_count: 40, playlist_count: 1, playlist_entry_count: 40, library_empty: false, source: null })),
+    });
+    renderDiscover();
+    fireEvent.click(await screen.findByRole("tab", { name: "New dig" }));
+    await screen.findByRole("tabpanel", { name: "New dig" });
+    expect(screen.queryByText("No library yet")).toBeNull();
   });
 
   it("has no instruction line under the title (C15a)", async () => {

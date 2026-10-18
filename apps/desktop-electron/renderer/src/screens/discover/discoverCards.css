@@ -115,6 +115,11 @@
   background: color-mix(in srgb, var(--accent-primary) 22%, var(--bg-panel-alt));
 }
 
+/* The shared placeholder fills the tile in the theme's panel colour. */
+.discover-card__art--placeholder {
+  background: transparent;
+}
+
 .discover-card__art img {
   display: block;
   width: 100%;

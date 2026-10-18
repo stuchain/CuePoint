@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from "react";
 
+import { ArtworkPlaceholder } from "../../components/ArtworkPlaceholder";
 import type { DiscoverGroupKind } from "../../api/cuepointBridge.types";
 
 interface GroupArtProps {
@@ -51,6 +52,15 @@ export function GroupArt({ runId, kind, cardKey, name, hasArt }: GroupArtProps) 
   }, [cardKey, hasArt, kind, runId]);
 
   const initial = Array.from(name.trim())[0]?.toLocaleUpperCase() ?? "";
+  // A chart without a cover is the shared placeholder, as in Clean and Track details; the card's
+  // title is the name under it.
+  if (!url && kind === "chart") {
+    return (
+      <span className="discover-card__art discover-card__art--placeholder" aria-hidden="true">
+        <ArtworkPlaceholder label="" />
+      </span>
+    );
+  }
   return (
     <span className={`discover-card__art discover-card__art--${kind}`} aria-hidden="true">
       {url ? <img src={url} alt="" draggable={false} /> : <span className="discover-card__initial">{initial}</span>}
