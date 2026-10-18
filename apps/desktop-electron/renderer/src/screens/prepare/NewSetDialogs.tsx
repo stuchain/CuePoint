@@ -131,6 +131,7 @@ export function SetSourceDialog({ open, groups, onChoose, onClose }: SetSourceDi
     <Modal
       open={open}
       title={dialogTitle("New Set from…")}
+      size="small"
       onClose={onClose}
       primaryAction={{ label: "Continue…", onClick: () => source && onChoose(source), disabled: !source }}
       secondaryAction={{ label: "Cancel", onClick: onClose }}

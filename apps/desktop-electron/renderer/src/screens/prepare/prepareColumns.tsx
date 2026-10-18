@@ -72,7 +72,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     // Pinned and roomy by default: Mix in and Mix out are hidden until View ▸
     // Show times, so the title no longer shares the first screen with them, and a
     // chapter heading's buttons keep their room.
-    defaultWidthPx: 200,
+    defaultWidthPx: 170,
     sticky: true,
     render: (row) => {
       if (row.kind === "heading") {
@@ -100,13 +100,6 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
       );
     },
     text: (row) => (row.kind === "heading" ? chapterName(row.chapter) : row.entry.track.title),
-  },
-  {
-    id: "artist",
-    header: "Artist",
-    minWidthPx: 100,
-    defaultWidthPx: 150,
-    render: (row) => (row.kind === "entry" ? row.entry.track.artist : ""),
   },
   {
     id: "key",
@@ -175,6 +168,13 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
       if (fit.tempoOff) return "Tempo off";
       return "Fits";
     },
+  },
+  {
+    id: "artist",
+    header: "Artist",
+    minWidthPx: 100,
+    defaultWidthPx: 150,
+    render: (row) => (row.kind === "entry" ? row.entry.track.artist : ""),
   },
   {
     id: "in",

@@ -117,25 +117,28 @@ export function ChapterDialog({
       primaryAction={{ label: "Save", onClick: submit, loading: busy }}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
       footerExtra={
-        // The chapter's place and its deletion; they act at once, apart from the form.
-        <div
-          className="prepare-dialog__actions-start"
-          ref={moves}
-          onFocus={(event) => {
-            const buttons = Array.from(moves.current?.querySelectorAll("button") ?? []);
-            const at = buttons.findIndex((button) => button.contains(event.target as Node));
-            lastMove.current = at === 0 || at === 1 ? at : null;
-          }}
-        >
-          <Button variant="secondary" disabled={!canMoveUp} onClick={() => onMove?.(-1)}>
-            Move up
-          </Button>
-          <Button variant="secondary" disabled={!canMoveDown} onClick={() => onMove?.(1)}>
-            Move down
-          </Button>
-          <Button variant="secondary" disabled={!canDelete} onClick={() => onDelete?.()}>
+        // Delete alone at the far left, in red; the chapter's place (Move up, Move down) sits at the
+        // other end of the extras, next to Cancel and Save's side. Both act at once, apart from the form.
+        <div className="prepare-dialog__footer">
+          <Button variant="danger" disabled={!canDelete} onClick={() => onDelete?.()}>
             Delete chapter…
           </Button>
+          <div
+            className="prepare-dialog__actions-start"
+            ref={moves}
+            onFocus={(event) => {
+              const buttons = Array.from(moves.current?.querySelectorAll("button") ?? []);
+              const at = buttons.findIndex((button) => button.contains(event.target as Node));
+              lastMove.current = at === 0 || at === 1 ? at : null;
+            }}
+          >
+            <Button variant="secondary" disabled={!canMoveUp} onClick={() => onMove?.(-1)}>
+              Move up
+            </Button>
+            <Button variant="secondary" disabled={!canMoveDown} onClick={() => onMove?.(1)}>
+              Move down
+            </Button>
+          </div>
         </div>
       }
     >

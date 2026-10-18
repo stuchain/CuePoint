@@ -1,32 +1,29 @@
 /**
  * The source panel's columns (PREP-11).
  *
- * The panel is narrow at the default window size, so a suggestion's reasons
- * sit straight after its title, where they are read without scrolling, as
- * Similar Tracks puts them (DISCOVER-11).
+ * The panel is narrow at the default window size, so Suggestions has two
+ * columns and never scrolls sideways.
  *
  * A suggestion and a library row are library rows, so title, artist, BPM and
  * key are the Library's own cells, effective values and override marks
  * included: a track reads the same in the panel as in the Set beside it.
  *
- * **Suggestions** add the fit, out of 100, drawn as a bar, and each side's
- * reasons as short tokens, "+1 · −2 · G" (R4-8; DEC-105 lists them per side,
- * so a list that suits one neighbour better says so), and mark a track already
- * in the Set. Both cells read in playing order: on "Fits before" the
- * candidate plays first, so its key and tempo are turned round from the
- * engine's neighbour-to-candidate (`inPlayOrder`). The sentence a token run stands for, from
- * `describeSimilarReason`, is the cell's hint, and the copied text keeps it
- * too. The engine's order is kept: nothing sorts it (DISCOVER-11's rule).
+ * **Suggestions** are Title and one short Fit column (the tempo step and the
+ * track's key chip, "±0 BPM · 8A"); the reasons for each side, in playing
+ * order (`inPlayOrder`), and the score out of 100 are the Fit cell's hover
+ * hint, and a track already in the Set is marked on its title. The engine's
+ * order is kept: nothing sorts it (DISCOVER-11's rule).
  *
  * **Library** rows sort by any column the engine sorts by, as the Library's
  * table does (LIBUI-01).
  */
 import type { LibraryTrackRow, SetSuggestion, SetSuggestionSide, SetSuggestionSideName } from "../../api/cuepointBridge.types";
 import { PixelIcon } from "../../components/PixelIcon";
+import { KeyChip } from "../../components/wheel/KeyChip";
 import type { TrackColumnDef } from "../../components/table";
-import { FitBar } from "../../components/charts/FitBar";
-import { reasonTokens, tokenRun } from "../discover/reasonTokens";
+import { reasonTokens, tempoDeltaText } from "../discover/reasonTokens";
 import { reasonsText } from "../discover/similarColumns";
+import { effectiveText } from "../library/libraryClean";
 import { LIBRARY_COLUMNS } from "../library/libraryColumns";
 import { fitText, inPlayOrder, inSetText } from "./prepareSource";
 
@@ -36,7 +33,8 @@ export type SuggestionRow = LibraryTrackRow & { id: number; suggestion: SetSugge
 /** A library row with the id every row the engine sends has. */
 type SourceLibraryRow = LibraryTrackRow;
 
-export const SUGGESTION_TABLE_LAYOUT_KEY = "cuepoint-prepare-suggestions-layout";
+// The second layout: Title and Fit only. A layout saved under the first key lists columns that are gone.
+export const SUGGESTION_TABLE_LAYOUT_KEY = "cuepoint-prepare-suggestions-layout-2";
 export const SOURCE_LIBRARY_TABLE_LAYOUT_KEY = "cuepoint-prepare-library-layout";
 
 function libraryColumn(id: string): TrackColumnDef<LibraryTrackRow> {
@@ -56,14 +54,6 @@ function sideText(side: SetSuggestionSide | null, name: SetSuggestionSideName): 
   return side.reasons.length > 0 ? reasonsText(inPlayOrder(side.reasons, name)) : "Nothing in common";
 }
 
-/** One side's reasons as the cell draws them: the token run, the sentence in its hint. */
-function sideCell(side: SetSuggestionSide | null, name: SetSuggestionSideName) {
-  const text = sideText(side, name);
-  if (!side || !text) return "";
-  const run = tokenRun(reasonTokens(inPlayOrder(side.reasons, name))) || text;
-  return <span data-hint={`${text} (${side.score}/100)`}>{run}</span>;
-}
-
 /**
  * Everything a suggestion's row says, as its hint: at the default
  * window the panel is about one column wide, and the reasons are what a
@@ -79,12 +69,35 @@ function suggestionSummary(row: SuggestionRow): string {
   return lines.join(" · ");
 }
 
-/** The ids of the two reason columns, which a list fitted to one side hides. */
-export const SIDE_COLUMN = { before: "before", after: "after" } as const;
+/** The tempo step a suggestion makes, from the side the list is fitted to ("±0 BPM"), or "". */
+function tempoStep(row: SuggestionRow): string {
+  const { before, after } = row.suggestion;
+  const side = before ?? after;
+  if (!side) return "";
+  const name: SetSuggestionSideName = before ? "before" : "after";
+  const { tempo } = reasonTokens(inPlayOrder(side.reasons, name));
+  if (tempo === null) return "";
+  return typeof tempo === "string" ? tempoDeltaText(tempo) : `${tempoDeltaText(tempo)} BPM`;
+}
 
+/** The full reason behind the Fit cell: the score and each side's reasons, as its hover hint. */
+function fitHint(row: SuggestionRow): string {
+  const { before, after, score } = row.suggestion;
+  const lines = [`Fit ${fitText(score)}`];
+  if (before) lines.push(`Fits after the one before: ${sideText(before, "before")} (${before.score}/100)`);
+  if (after) lines.push(`Fits before the one after: ${sideText(after, "after")} (${after.score}/100)`);
+  return lines.join(" · ");
+}
+
+/**
+ * Suggestions are Title and one short Fit: the tempo step and the track's own key as the usual key
+ * chip. The panel is a narrow column, so the reasons (and the other columns) live in the hover
+ * hint and the Title's summary; nothing scrolls sideways.
+ */
 export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
   {
     ...unsorted<SuggestionRow>(libraryColumn("title")),
+    minWidthPx: 80,
     defaultWidthPx: 150,
     render: (row) => {
       const inSet = inSetText(row.suggestion.in_set);
@@ -102,45 +115,23 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
     text: (row) => row.title,
   },
   {
-    id: SIDE_COLUMN.before,
-    header: "Fits after",
-    hint: "How well this track follows the one before the gap: tempo, key, genre, label and artist",
-    minWidthPx: 112,
-    defaultWidthPx: 124,
-    render: (row) => sideCell(row.suggestion.before, "before"),
-    text: (row) => sideText(row.suggestion.before, "before"),
-  },
-  {
-    id: SIDE_COLUMN.after,
-    header: "Fits before",
-    hint: "How well this track leads into the one after the gap: tempo, key, genre, label and artist",
-    minWidthPx: 112,
-    defaultWidthPx: 124,
-    render: (row) => sideCell(row.suggestion.after, "after"),
-    text: (row) => sideText(row.suggestion.after, "after"),
-  },
-  {
-    id: "score",
+    id: "fit",
     header: "Fit",
-    hint: "How well this track fits the gap, out of 100. With a track on each side it is the mean of how well it fits after one and before the other.",
-    minWidthPx: 56,
-    defaultWidthPx: 68,
-    align: "right",
+    hint: "How well this track fits the gap: the tempo step and its key. Hover a row for the reasons and the score out of 100.",
+    minWidthPx: 96,
+    defaultWidthPx: 112,
     render: (row) => {
-      const sides = [row.suggestion.before, row.suggestion.after].filter(
-        (side): side is SetSuggestionSide => side !== null,
+      const step = tempoStep(row);
+      return (
+        <span className="prepare-source__fit" data-hint={fitHint(row)}>
+          {step}
+          {step && " · "}
+          <KeyChip value={effectiveText(row, "key")} />
+        </span>
       );
-      const title =
-        sides.length === 2
-          ? `${fitText(row.suggestion.score)}: the mean of ${sides[0].score} and ${sides[1].score}`
-          : fitText(row.suggestion.score);
-      return <FitBar score={row.suggestion.score} title={title} />;
     },
-    text: (row) => fitText(row.suggestion.score),
+    text: (row) => [tempoStep(row), effectiveText(row, "key")].filter(Boolean).join(" · "),
   },
-  unsorted<SuggestionRow>(libraryColumn("bpm")),
-  unsorted<SuggestionRow>(libraryColumn("key")),
-  unsorted<SuggestionRow>(libraryColumn("artist")),
 ];
 
 export const SOURCE_LIBRARY_COLUMNS: readonly TrackColumnDef<SourceLibraryRow>[] = [

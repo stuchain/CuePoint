@@ -65,7 +65,6 @@ import {
 import { headlineOf } from "./prepareFormat";
 import { SourceTable } from "./SourceTable";
 import {
-  SIDE_COLUMN,
   SOURCE_LIBRARY_COLUMNS,
   SOURCE_LIBRARY_TABLE_LAYOUT_KEY,
   SUGGESTION_COLUMNS,
@@ -359,15 +358,7 @@ function SuggestionsTab({
   const source = useMemo(() => inMemorySource(rows), [rows]);
   const loadedRows = useCallback(() => rows.map((row, index) => ({ row, index })), [rows]);
   const layout = useColumnLayout<SuggestionRow>(SUGGESTION_TABLE_LAYOUT_KEY, SUGGESTION_COLUMNS);
-  // A list fitted to one side has no reasons for the other.
-  const columns = useMemo(() => {
-    const sides = answer?.sides ?? ["before", "after"];
-    return layout.visible.filter(
-      (column) =>
-        (column.id !== SIDE_COLUMN.before || sides.includes("before")) &&
-        (column.id !== SIDE_COLUMN.after || sides.includes("after")),
-    );
-  }, [answer, layout.visible]);
+  const columns = layout.visible;
   const { play, queue } = useQueueActions(onMessage);
   const [picking, setPicking] = useState(false);
 

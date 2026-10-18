@@ -209,11 +209,11 @@ function showTimesInStorage() {
     PREPARE_TABLE_LAYOUT_KEY,
     JSON.stringify([
       shown("position", 48),
-      shown("title", 200),
-      shown("artist", 150),
+      shown("title", 170),
       shown("key", 60),
       shown("bpm", 72),
       shown("fit", 48),
+      shown("artist", 150),
       shown("in", 60),
       shown("out", 60),
       shown("starts_at", 72),
@@ -299,6 +299,17 @@ describe("with no Sets", () => {
     expect(await screen.findByText(WHAT_A_SET_IS, {}, LOADED)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New Set…" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New Set from…" })).toBeInTheDocument();
+  });
+
+  it("is the shared empty state, with no frame and no card title, and one violet button", async () => {
+    install(noSets);
+    const { container } = renderAt(PREPARE_PATH);
+    await screen.findByText("No Sets yet", {}, LOADED);
+    expect(screen.queryByText("Prepare a Set")).toBeNull();
+    expect(container.querySelector(".cp-empty-state")).not.toBeNull();
+    expect(container.querySelector(".cp-panel")).toBeNull();
+    expect(screen.getByRole("button", { name: "New Set…" }).className).toMatch(/primary/);
+    expect(screen.getByRole("button", { name: "New Set from…" }).className).toMatch(/secondary/);
   });
 
   it("makes a Set where it is asked, and opens it", async () => {
@@ -1814,7 +1825,8 @@ describe("the Set table's columns (R4-5)", () => {
   it("leads with Key, BPM and Fit, and keeps the times and notes out of the way", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    expect(headers()).toEqual(["#", "Title", "Artist", "Key", "BPM", "Fit", "Starts at", "Plays for"]);
+    // Artist follows Fit, so at the default window the edge cuts the Artist text, never the Key chip (Round 7, 19).
+    expect(headers()).toEqual(["#", "Title", "Key", "BPM", "Fit", "Artist", "Starts at", "Plays for"]);
   });
 
   it("opens the column picker from the button in the table's header corner, not from View", async () => {

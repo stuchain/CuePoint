@@ -87,6 +87,18 @@ describe("ChapterDialog's footer and errors (areas 75, 77, 92)", () => {
     }
   });
 
+  it("draws Delete chapter as the red button, alone at the left of the footer, apart from the moves", () => {
+    renderDialog();
+    const del = screen.getByRole("button", { name: "Delete chapter…" });
+    expect(del).toHaveClass("cp-btn--danger");
+    const moves = screen.getByRole("button", { name: "Move up" }).parentElement!;
+    expect(moves).not.toContainElement(del);
+    expect(moves).toContainElement(screen.getByRole("button", { name: "Move down" }));
+    const footer = screen.getByRole("dialog").querySelector(".cp-modal__footer")!;
+    const order = Array.from(footer.querySelectorAll("button")).map((b) => b.textContent);
+    expect(order[0]).toBe("Delete chapter…");
+  });
+
   it("puts the engine's reason under the target length, on the field", () => {
     renderDialog({ error: "Not a time: soon" });
     const field = screen.getByRole("textbox", { name: /^Target length/ });

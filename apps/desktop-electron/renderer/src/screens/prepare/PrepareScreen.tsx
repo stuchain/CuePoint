@@ -1132,7 +1132,7 @@ export function PrepareScreen({
       <div className="screen screen--stack screen--scroll prepare-screen--waiting">
         <ScreenHeader title="Prepare" />
         {noSets ? (
-          <Panel title="Prepare a Set">
+          <>
             <EmptyState icon="prepare" headline="No Sets yet" description={WHAT_A_SET_IS} />
             <div className="prepare-empty__actions">
               <Button
@@ -1147,7 +1147,7 @@ export function PrepareScreen({
                 New Set from…
               </Button>
             </div>
-          </Panel>
+          </>
         ) : tree.status === "error" ? (
           <Notice
             action={
@@ -1529,7 +1529,7 @@ export function PrepareScreen({
         title={chapterDeleting ? `Delete the chapter “${chapterName(chapterDeleting)}”?` : "Delete chapter"}
         onClose={() => setChapterDeleting(null)}
         variant="danger"
-        size="narrow"
+        size="small"
         primaryAction={{
           label: "Delete chapter",
           onClick: () => chapterDeleting && void deleteChapter(chapterDeleting),

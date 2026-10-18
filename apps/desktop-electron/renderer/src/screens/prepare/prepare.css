@@ -55,8 +55,22 @@
 /* The Set picker beside the title: its label is only for assistive tech, and it reads as a
    control, a control tall (DEC-112). */
 .prepare-header__picker {
-  min-width: calc(80px * var(--scale));
-  max-width: calc(320px * var(--scale));
+  /* It gives way first on a narrow page: down to a few letters and an ellipsis, never over the
+     title or the buttons. */
+  min-width: 0;
+  width: auto;
+  max-width: min(calc(320px * var(--scale)), 100%);
+}
+
+/* The slot that holds it shrinks too (the title and the buttons keep their room). */
+.prepare-screen .cp-screen-header__beside {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.prepare-screen .cp-screen-header__beside > .prepare-header__picker .cp-select__field,
+.prepare-screen .cp-screen-header__beside > .prepare-header__picker {
+  min-width: 0;
 }
 
 .prepare-header__picker .cp-select__control {
@@ -568,8 +582,11 @@ body.prepare-resizing {
   min-width: 0;
 }
 
+/* The name takes only what it needs, so Edit… follows it and is always in view (a name that is
+   too long gives way with an ellipsis); a button parked at the far end of a wide cell was
+   scrolled to when focused, which moved the table sideways. */
 .prepare-heading__name {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -831,6 +848,20 @@ body.prepare-resizing {
   gap: var(--space-md);
 }
 
+/* The footer's extras: Delete alone at the left, the chapter's place at the right of the free space. */
+.cp-modal__footer-extra:has(> .prepare-dialog__footer) {
+  flex: 1 1 auto;
+}
+
+.prepare-dialog__footer {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
 .prepare-dialog__actions-start {
   display: flex;
   flex-wrap: wrap;
@@ -913,13 +944,23 @@ body.prepare-resizing {
   pointer-events: none;
 }
 
+/* The line wraps to two lines, and only a longer one is cut (its full text is the hint). */
 .prepare-source__point {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  flex: none;
   min-width: 0;
   margin: 0;
   overflow: hidden;
   color: var(--fg-primary);
   font-size: var(--font-size-xs);
+  overflow-wrap: anywhere;
   text-overflow: ellipsis;
+}
+
+/* A Suggestions row's Fit: the tempo step and the key chip on one line. */
+.prepare-source__fit {
   white-space: nowrap;
 }
 

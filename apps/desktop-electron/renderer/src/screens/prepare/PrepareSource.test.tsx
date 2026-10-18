@@ -369,7 +369,7 @@ describe("Suggestions", () => {
 
   it("draws a suggestion's Key as a Camelot chip (R4-2)", async () => {
     const rows = await between();
-    expect(rows[0].querySelector('[data-column="key"] .key-chip')).toHaveTextContent(/^\d{1,2}[AB]$/);
+    expect(rows[0].querySelector('[data-column="fit"] .key-chip')).toHaveTextContent(/^\d{1,2}[AB]$/);
   });
 
   it("lists what fits both sides, best first, with each side's reasons and the score", async () => {
@@ -377,19 +377,27 @@ describe("Suggestions", () => {
     expect(rows.map(titleOf)).toEqual(SUGGESTIONS.both.suggestions.map((s) => s.track.title));
     const first = rows[0];
     const [best] = SUGGESTIONS.both.suggestions;
-    // The fit is out of 100 and the column explains itself (PRP-7).
-    // ...and is drawn as a bar: five blocks, the number in its name, the mean in its title.
-    expect(within(first).getByRole("img", { name: `Fit ${Math.round(best.score)} out of 100` })).toHaveAttribute(
-      "title",
-      `${fitText(best.score)}: the mean of ${best.before!.score} and ${best.after!.score}`,
-    );
-    const header = (name: string) =>
-      within(screen.getByRole("table", { name: "Suggestions" })).getByText(name).closest<HTMLElement>(".track-table__header-cell")!;
+    // Title and one short Fit column: the tempo step and the key chip, nothing else (Round 7, 19).
+    const table = screen.getByRole("table", { name: "Suggestions" });
+    const headers = Array.from(table.querySelectorAll(".track-table__header-cell")).map((cell) => cell.textContent?.trim());
+    expect(headers).toEqual(["Title", "Fit"]);
+    const header = (name: string) => within(table).getByText(name).closest<HTMLElement>(".track-table__header-cell")!;
     expect(header("Fit")).toHaveAttribute("title", expect.stringContaining("out of 100"));
-    expect(header("Fits after")).toHaveAttribute("title", expect.stringContaining("the one before"));
-    expect(header("Fits before")).toHaveAttribute("title", expect.stringContaining("the one after"));
-    expect(within(screen.getByRole("table", { name: "Suggestions" })).queryByText("Score")).toBeNull();
-    // The title says it all again, for a panel too narrow to show the columns.
+    for (const gone of ["before", "after", "score", "bpm", "key", "artist"]) {
+      expect(table.querySelector(`[data-column="${gone}"]`)).toBeNull();
+    }
+    const fit = first.querySelector('[data-column="fit"]')!;
+    expect(fit.textContent).toMatch(/^\+1 BPM · \d{1,2}[AB]$/);
+    // The full reason stays in the hover hint: each side in playing order, with the score.
+    expect(fit.querySelector("[data-hint]")).toHaveAttribute(
+      "data-hint",
+      [
+        `Fit ${fitText(best.score)}`,
+        `Fits after the one before: Close tempo: 124 → 125 · Same key: 8A · Same genre: House (${best.before!.score}/100)`,
+        `Fits before the one after: Close tempo: 125 → 126 · Mixes well (next key): 8A → 9A · Same genre: House (${best.after!.score}/100)`,
+      ].join(" · "),
+    );
+    // The title says it all again, with the track's other facts.
     expect(first.querySelector('[data-column="title"] [data-hint]')).toHaveAttribute(
       "data-hint",
       [
@@ -399,32 +407,20 @@ describe("Suggestions", () => {
         "Already in this Set once: inserting it plays it again",
       ].join(" · "),
     );
-    const previous = first.querySelector('[data-column="before"]')!;
-    const next = first.querySelector('[data-column="after"]')!;
-    // Each side is a short run of tokens, with the sentence for its hint (R4-8).
-    expect(previous.textContent).toBe("same · +1 BPM · G");
-    expect(previous.querySelector("[data-hint]")).toHaveAttribute(
-      "data-hint",
-      expect.stringContaining("Close tempo: 124 → 125 · Same key: 8A · Same genre: House ("),
-    );
-    // The side before the track after reads in playing order: the candidate (125, 8A) plays first,
-    // then the next track (126, 9A), so the steps go up.
-    expect(next.textContent).toBe("+1 · +1 BPM · G");
-    expect(next.querySelector("[data-hint]")).toHaveAttribute(
-      "data-hint",
-      expect.stringContaining("Close tempo: 125 → 126 · Mixes well (next key): 8A → 9A"),
-    );
   });
 
-  it("says a side with no reasons has nothing in common, and keeps its score in the title", () => {
-    const row = suggestionRow({
-      ...SUGGESTIONS.both.suggestions[0],
-      before: { score: 12, reasons: [] },
-    })!;
-    const cell = SUGGESTION_COLUMNS.find((column) => column.id === "before")!;
-    const { container } = render(<>{cell.render(row)}</>);
-    expect(container.textContent).toBe("Nothing in common");
-    expect(container.querySelector("[data-hint]")).toHaveAttribute("data-hint", "Nothing in common (12/100)");
+  it("takes the Fit's tempo step from the side a list is fitted to, and says nothing in common", () => {
+    const fitColumn = SUGGESTION_COLUMNS.find((column) => column.id === "fit")!;
+    const base = SUGGESTIONS.both.suggestions[0];
+    const oneSide = suggestionRow({ ...base, before: null })!;
+    expect(fitColumn.text!(oneSide)).toMatch(/^\+1 BPM · /);
+    const none = suggestionRow({ ...base, before: { score: 12, reasons: [] }, after: null })!;
+    expect(fitColumn.text!(none)).not.toMatch(/BPM/);
+    const { container } = render(<>{fitColumn.render(none)}</>);
+    expect(container.querySelector("[data-hint]")).toHaveAttribute(
+      "data-hint",
+      expect.stringContaining("Nothing in common (12/100)"),
+    );
   });
 
   it("marks a track already in the Set, and not one that is not", async () => {
@@ -439,9 +435,7 @@ describe("Suggestions", () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
     expect(await within(panel()).findByText("Only tracks inside Peak's range, 140–150 BPM.", {}, LOADED)).toBeInTheDocument();
-    // One side fitted: no column for the other.
     await suggestionRows();
-    expect(screen.getByRole("table", { name: "Suggestions" }).querySelector('[data-column="after"]')).toBeNull();
   });
 
   it("says when nothing bridges a gap, and offers each side's own list", async () => {
@@ -456,7 +450,6 @@ describe("Suggestions", () => {
     await waitFor(() => expect(lastRequest()).toMatchObject({ before_entry_id: BRIDGE, against: "after" }));
     expect(await within(panel()).findByText("Fitting before “Peak Loud” only", { exact: false }, LOADED)).toBeInTheDocument();
     await waitFor(() => expect(rowsOf("Suggestions").map(titleOf)).toContain("Fast Lane"));
-    expect(screen.getByRole("table", { name: "Suggestions" }).querySelector('[data-column="before"]')).toBeNull();
 
     fireEvent.click(within(panel()).getByRole("button", { name: "Fit both sides" }));
     await waitFor(() => expect(lastRequest()).toMatchObject({ against: null }));

@@ -3,7 +3,7 @@
  * Library's tree, PREP-11 on the Prepare page).
  *
  * The saved line says what the engine's `set_list.saved` activity event says,
- * "Saved “Friday” as a CSV set list — 4 entries, 1 file missing, 2 untimed", so
+ * "Saved “Friday” as a CSV set list, 4 entries, 1 file missing, 2 untimed", so
  * the toast and Activity never tell two stories about one file. An M3U8 holds
  * no times (DEC-110), so it does not count the entries it has none for.
  *
@@ -33,7 +33,7 @@ export function setListSavedLine(setName: string, saved: SetListSaved): string {
   if (saved.untimed > 0 && saved.format !== "m3u8") {
     parts.push(`${saved.untimed.toLocaleString()} untimed`);
   }
-  return `Saved “${setName}” as ${FORM_WORDS[saved.format]} set list — ${parts.join(", ")}.`;
+  return `Saved “${setName}” as ${FORM_WORDS[saved.format]} set list, ${parts.join(", ")}.`;
 }
 
 /** What a copy put on the clipboard. */
