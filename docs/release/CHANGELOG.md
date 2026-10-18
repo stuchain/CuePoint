@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-test.4] - 2026-10-18
+
 ### Added
 - **Round 5 review fixes.** The Library header stays one line at 1,264 x 735 (the First steps chip goes first, then the file and its state move to the facts line), the action bar draws no count while nothing is filtered, the search field shares the filters' line, and menu chevrons are 12px at 1x to 1.75x. The player bar's other buttons are the standard size, the compact bar starts under 700px of window height (the zoomed waveform strip stays at 735) and its queue count sits beside the icon. Details has one name, **Track details**, with its state in `aria-expanded`; tab counts read "Missing files, 3"; context-menu groups and disabled entries are named for a screen reader; square tick boxes and radios have a forced-colors fallback and a radio is a dot, not a tick; hints show on keyboard focus; and a renderer reload keeps the tabs.
 - **One look across every page.** Cards, empty states, reason lines, text areas, track facts lines (artist, label, key, BPM, year in one order), dialog footers, bar charts and tooltips are now single shared pieces, so Statistics, Settings, Clean, Discover, Prepare, Keys and the Library share the same boxes, spacing and wording. Settings sections are the same cards as Statistics.
