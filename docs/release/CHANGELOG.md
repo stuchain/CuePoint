@@ -133,6 +133,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The engine banner says what restarted.** When CuePoint's background part stops, the top banner reads "CuePoint stopped working in the background. Starting it again (1 of 3)…" with "Library loaded at 5:17 PM" after it, and the status strip stays quiet while it shows.
 
 ### Fixed
+- **Export to Rekordbox takes the first click.** The Export button no longer greys out for a moment when CuePoint rereads your Collections in the background, which could swallow a click right after choosing where to save.
 - **A Mac update this Mac cannot run is set aside cleanly.** When a new version needs a newer macOS, CuePoint now says so and keeps the version you have, instead of reporting a failed download and fetching it again at every check. Its download folder, and an installed update's leftover copy, are deleted again: inside the app they could not be, because the delete stopped at the app's `app.asar` archive.
 - **The "Matching 18 tracks on Beatport." message closes by itself** when the match ends, instead of staying in the corner until you close it.
 - **The Tags window with no tags** shows one empty message instead of a cut-off second column and a sideways scrollbar.

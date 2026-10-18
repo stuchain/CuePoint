@@ -195,11 +195,14 @@ export function RekordboxExportDialog({
 
   const choice = useMemo(() => exportChoice(tree, ticked), [tree, ticked]);
   const covered = useMemo(() => coveredByFolder(tree, ticked), [tree, ticked]);
-  const requestKey = `${choice.join(",")}|${keyFormat}|${asked}`;
+  const choiceKey = choice.join(",");
+  const requestKey = `${choiceKey}|${keyFormat}|${asked}`;
 
   // The preview answers the choices on screen. Asked again whenever they
   // change, after a short settle, and a late answer to an older question is
-  // dropped rather than drawn.
+  // dropped rather than drawn. Keyed by what is asked, not by the tree's
+  // identity: a background re-read of the same tree is not a new question, and
+  // asking again would grey Export for the settle and swallow a click on it.
   useEffect(() => {
     if (!open || !ready || phase !== "choosing") return;
     const preview = rekordboxExportBridge()?.previewRekordboxExport;
@@ -213,7 +216,8 @@ export function RekordboxExportDialog({
       previous?.code === "REKORDBOX_EXPORT_DESTINATION_REFUSED" ? previous : null,
     );
     const timer = window.setTimeout(() => {
-      preview({ collection_ids: choice, key_format: keyFormat })
+      const ids = choiceKey ? choiceKey.split(",").map(Number) : [];
+      preview({ collection_ids: ids, key_format: keyFormat })
         .then((outcome) => {
           if (!current || !alive.current) return;
           setProblem(null);
@@ -234,7 +238,7 @@ export function RekordboxExportDialog({
       window.clearTimeout(timer);
       setPreviewing(false);
     };
-  }, [open, ready, phase, requestKey, choice, keyFormat]);
+  }, [open, ready, phase, requestKey, choiceKey, keyFormat]);
 
   const refusal = startRefusal ?? answer?.refusal ?? null;
 

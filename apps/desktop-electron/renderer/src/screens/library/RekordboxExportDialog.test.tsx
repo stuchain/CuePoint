@@ -253,6 +253,37 @@ describe("choosing what to send", () => {
     );
   });
 
+  it("keeps Export enabled when the same tree is read again, so a click on it is not lost", async () => {
+    // Regression (EXPORT-07 e2e on Linux CI): a background re-read of the
+    // Collections tree hands the dialog a new array with the same nodes. That
+    // is not a new question: asking the preview again greyed Export for the
+    // settle, and a click landing then did nothing.
+    const user = userEvent.setup();
+    const handlers = {
+      onClose: vi.fn(),
+      onRefreshFirst: vi.fn(),
+      onImport: vi.fn(),
+      onOpenMissingFiles: vi.fn(),
+    };
+    const { rerender } = render(
+      <RekordboxExportDialog open initialIds={[7]} tree={TREE} {...handlers} />,
+    );
+    await previewed();
+    await chooseDestination(user);
+    await waitFor(() => expect(confirmButton()).toBeEnabled());
+    const asked = bridge.previewRekordboxExport.mock.calls.length;
+
+    const reread = TREE.map((entry) => ({ ...entry }));
+    rerender(<RekordboxExportDialog open initialIds={[7]} tree={reread} {...handlers} />);
+
+    expect(confirmButton()).toBeEnabled();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    });
+    expect(bridge.previewRekordboxExport).toHaveBeenCalledTimes(asked);
+    expect(confirmButton()).toBeEnabled();
+  });
+
   it("offers no tick for a broken Smart Collection, and says why", async () => {
     renderDialog();
     await previewed();
