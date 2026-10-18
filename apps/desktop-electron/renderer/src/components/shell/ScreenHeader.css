@@ -39,15 +39,22 @@
 }
 
 .cp-screen-header__main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) fit-content(100%);
+  /* The title row, then the buttons at the right. When they do not fit one line the buttons
+     wrap to a second line under the title, never past the page and never over the title. */
+  display: flex;
+  flex-wrap: wrap;
   /* Top-aligned: what sits beside the title never moves it. */
   align-items: start;
-  gap: var(--space-md);
+  gap: var(--space-xs) var(--space-md);
+  min-width: 0;
 }
 
 /* The title row is one control high, so the title's baseline is the same on every page. */
 .cp-screen-header__title-row {
+  /* Takes the line's room; its own width is the title and what is beside it, so the buttons
+     wrap under it as soon as both do not fit. Past a whole line it shrinks (see `beside`). */
+  flex: 1 1 auto;
+  max-width: 100%;
   display: flex;
   align-items: flex-start;
   gap: var(--space-md);
@@ -71,6 +78,11 @@
   white-space: nowrap;
 }
 
+/* The page name always shows in full; whatever shrinks, shrinks beside it. */
+.cp-screen-header__title:where(:not(.cp-visually-hidden)) {
+  flex: none;
+}
+
 .cp-screen-header__status,
 .cp-screen-header__beside {
   flex: none;
@@ -89,6 +101,32 @@
   justify-content: flex-end;
   gap: var(--space-md);
   min-height: var(--toolbar-height);
+  flex: 0 1 auto;
+  max-width: 100%;
+  margin-inline-start: auto;
+}
+
+/* A picker beside the title is the one thing that gives: it shrinks below its content and cuts
+   its text with an ellipsis (a Set's or scope's name), so the title never leaves and the page
+   never scrolls sideways. */
+.cp-screen-header__beside {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cp-screen-header__beside > *,
+.cp-screen-header__beside .cp-select,
+.cp-screen-header__beside .cp-select__field {
+  min-width: 0;
+}
+
+.cp-screen-header__beside .cp-select__control {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The small divider before the Details toggle, one button high at most. */

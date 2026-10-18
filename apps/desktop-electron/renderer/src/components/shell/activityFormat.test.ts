@@ -41,10 +41,24 @@ describe("formatEventTime", () => {
     expect(formatted).not.toMatch(/Sep|Aug/);
   });
 
+  it("writes the time as the rest of the app does, with no leading zero", () => {
+    // Local 4:58 PM, whatever the zone the tests run in.
+    const evening = new Date(2026, 8, 2, 16, 58).toISOString();
+    expect(formatEventTime(evening)).toBe("4:58 PM");
+    expect(formatEventTime(new Date(2026, 8, 2, 9, 5).toISOString())).toBe("9:05 AM");
+  });
+
   it("shows an unparseable timestamp verbatim", () => {
     // The raw value says what actually happened; "Invalid Date" hides it.
     expect(formatEventTime("not a date")).toBe("not a date");
     expect(formatEventTime("")).toBe("");
+  });
+});
+
+describe("formatEventDetail for a Set", () => {
+  it("does not repeat the Set's name after a sentence that already says it", () => {
+    const summary = "Made the Set “Friday warm-up” from the Rekordbox playlist “Friday warm-up”, 32 tracks";
+    expect(formatEventDetail({ set_name: "Friday warm-up", tracks: 32 }, summary)).toBe("");
   });
 });
 

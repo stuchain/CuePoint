@@ -92,15 +92,13 @@ describe("engine state", () => {
     expect(screen.queryByText(/1\.0\.0/)).not.toBeInTheDocument();
   });
 
-  it("says Stopped in the danger colour, with the raw reason only in a title", async () => {
+  it("stays quiet when stopped: the banner above the page says it", async () => {
     getEngineStatus.mockResolvedValue({ connected: false, error: "Engine not running" });
 
-    render(<StatusStrip />);
+    const { container } = render(<StatusStrip />);
 
-    const text = await screen.findByText("Stopped");
-    expect(text).toHaveAttribute("title", "Engine not running");
-    expect(text).toHaveClass("cp-status__engine--error");
-    expect(text).not.toHaveClass("cp-visually-hidden");
+    await waitFor(() => expect(container.querySelector(".cp-status__engine")).toHaveTextContent(""));
+    expect(screen.queryByText(/Stopped|Starting again|Ready/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Engine not running/)).not.toBeInTheDocument();
   });
 
@@ -130,27 +128,28 @@ describe("engine state", () => {
     expect(screen.queryByText("Starting up…")).not.toBeInTheDocument();
   });
 
-  it("says Stopped when a failed call noted an outage, before the poll notices", async () => {
-    render(<StatusStrip />);
+  it("goes quiet when a failed call noted an outage, before the poll notices", async () => {
+    const { container } = render(<StatusStrip />);
     await screen.findByText("Ready");
 
     getEngineStatus.mockResolvedValue({ connected: false, error: "Engine not running" });
     noteOutage();
 
-    expect(await screen.findByText("Stopped")).toBeInTheDocument();
-    expect(screen.queryByText("Ready")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Ready")).not.toBeInTheDocument());
+    expect(container.querySelector(".cp-status__engine")).toHaveTextContent("");
   });
 
-  it("says Starting again… when it comes back after being up, as the banner does", async () => {
-    render(<StatusStrip />);
+  it("does not say Starting up when it comes back after being up: the banner does", async () => {
+    const { container } = render(<StatusStrip />);
     await screen.findByText("Ready");
 
     // The person's own restart: starting, not reconnecting.
     getEngineStatus.mockResolvedValue({ connected: false, starting: true, error: "Starting" });
     await vi.advanceTimersByTimeAsync(4100);
 
-    expect(await screen.findByText("Starting again…")).toBeInTheDocument();
-    expect(screen.queryByText("Starting up…")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Ready")).not.toBeInTheDocument());
+    expect(container.querySelector(".cp-status__engine")).toHaveTextContent("");
+    expect(screen.queryByText(/Starting/)).not.toBeInTheDocument();
   });
 
   it("goes from starting to connected without a remount", async () => {
@@ -174,13 +173,13 @@ describe("engine state", () => {
     getEngineStatus.mockResolvedValue({ connected: false, error: "Engine not running" });
     await vi.advanceTimersByTimeAsync(4100);
 
-    await waitFor(() => expect(screen.getByText("Stopped")).toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Ready")).not.toBeInTheDocument());
   });
 
   it("notices the engine coming back without a remount", async () => {
     getEngineStatus.mockResolvedValue({ connected: false, error: "Engine not running" });
     render(<StatusStrip />);
-    await screen.findByText("Stopped");
+    await waitFor(() => expect(getEngineStatus).toHaveBeenCalled());
 
     getEngineStatus.mockResolvedValue({ connected: true, version: "1.0.0" });
     await vi.advanceTimersByTimeAsync(4100);
@@ -191,9 +190,11 @@ describe("engine state", () => {
   it("treats a failed status read as the engine being unreachable", async () => {
     getEngineStatus.mockRejectedValue(new Error("ipc gone"));
 
-    render(<StatusStrip />);
+    const { container } = render(<StatusStrip />);
 
-    expect(await screen.findByText("Stopped")).toBeInTheDocument();
+    await waitFor(() => expect(getEngineStatus).toHaveBeenCalled());
+    await waitFor(() => expect(container.querySelector(".cp-status__engine")).toHaveTextContent(""));
+    expect(screen.queryByText("Connecting…")).not.toBeInTheDocument();
   });
 
   it("says the state is unknown when there is no bridge at all", () => {
@@ -206,8 +207,7 @@ describe("engine state", () => {
 });
 
 describe("engine recovery (DEC-028)", () => {
-  it("says it is starting again rather than stopped while restarts are in flight", async () => {
-    // The two mean different things to someone deciding whether to act.
+  it("says nothing while restarts are in flight: the banner shows the attempt", async () => {
     getEngineStatus.mockResolvedValue({
       connected: false,
       reconnecting: true,
@@ -215,24 +215,11 @@ describe("engine recovery (DEC-028)", () => {
       error: "Reconnecting",
     });
 
-    render(<StatusStrip />);
+    const { container } = render(<StatusStrip />);
 
-    expect(
-      await screen.findByText("Starting again… (2 of 3)"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Stopped/)).not.toBeInTheDocument();
-  });
-
-  it("shows how many attempts have been made", async () => {
-    getEngineStatus.mockResolvedValue({
-      connected: false,
-      reconnecting: true,
-      restartAttempts: 2,
-    });
-
-    render(<StatusStrip />);
-
-    expect(await screen.findByText(/\(2 of 3\)/)).toBeInTheDocument();
+    await waitFor(() => expect(getEngineStatus).toHaveBeenCalled());
+    await waitFor(() => expect(container.querySelector(".cp-status__engine")).toHaveTextContent(""));
+    expect(screen.queryByText(/Starting again|2 of 3|Stopped/)).not.toBeInTheDocument();
   });
 
   it("has no restart button: the banner owns restarting", async () => {
@@ -240,7 +227,7 @@ describe("engine recovery (DEC-028)", () => {
     getEngineStatus.mockResolvedValue({ connected: false, error: "Engine not running" });
 
     render(<StatusStrip />);
-    await screen.findByText("Stopped");
+    await waitFor(() => expect(getEngineStatus).toHaveBeenCalled());
 
     expect(screen.queryByRole("button", { name: /restart|start it again/i })).not.toBeInTheDocument();
   });

@@ -78,7 +78,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
       open={open}
       title="Activity"
       onClose={onClose}
-      size="wide"
+      size="large"
       closeLabel="Close"
       extraAction={{ label: "Refresh", onClick: () => load() }}
     >

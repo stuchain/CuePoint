@@ -6,6 +6,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { refreshEngineStatus, resetEngineOnlineForTests } from "../../api/engineOnline";
+import { formatTimeOfDay } from "../../format/dates";
 import { OfflineBanner } from "./OfflineBanner";
 
 let getEngineStatus: ReturnType<typeof vi.fn>;
@@ -60,7 +61,7 @@ describe("OfflineBanner", () => {
     expect(screen.queryByRole("button", { name: "Start it again" })).not.toBeInTheDocument();
   });
 
-  it("names when the page was last loaded, in 24 hours", async () => {
+  it("names when the library was loaded, in the app's time of day", async () => {
     const connectedAt = new Date(2026, 9, 13, 9, 5).getTime();
     vi.spyOn(Date, "now").mockReturnValue(connectedAt);
     render(<OfflineBanner />);
@@ -71,14 +72,15 @@ describe("OfflineBanner", () => {
     const { noteOutage } = await import("../../api/engineOnline");
     act(() => noteOutage());
 
-    expect(await screen.findByText("Last loaded 09:05")).toBeInTheDocument();
+    expect(await screen.findByText(`Library loaded at ${formatTimeOfDay(connectedAt)}`)).toBeInTheDocument();
+    expect(screen.queryByText(/Last loaded|09:05/)).not.toBeInTheDocument();
   });
 
   it("omits the time when nothing was ever loaded", async () => {
     getEngineStatus.mockResolvedValue(STOPPED);
     render(<OfflineBanner />);
     await screen.findByRole("alert");
-    expect(screen.queryByText(/Last loaded/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Library loaded/)).not.toBeInTheDocument();
   });
 
   it("says it is starting again while the supervisor restarts, with the attempt", async () => {
@@ -86,7 +88,7 @@ describe("OfflineBanner", () => {
     bridge({ restartEngine: vi.fn() });
     render(<OfflineBanner />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Starting it again… (2 of 3)");
+    expect(await screen.findByRole("alert")).toHaveTextContent("CuePoint stopped working in the background. Starting it again (2 of 3)…");
     expect(screen.queryByRole("button", { name: "Start it again" })).not.toBeInTheDocument();
   });
 
@@ -94,7 +96,7 @@ describe("OfflineBanner", () => {
     getEngineStatus.mockResolvedValue({ connected: false, reconnecting: true });
     render(<OfflineBanner />);
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Starting it again…");
+    expect(alert).toHaveTextContent("CuePoint stopped working in the background. Starting it again…");
     expect(alert).not.toHaveTextContent("of 3");
   });
 
@@ -107,7 +109,7 @@ describe("OfflineBanner", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: "Start it again" }));
     expect(restartEngine).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("alert")).toHaveTextContent("Starting it again…");
+    expect(screen.getByRole("alert")).toHaveTextContent("CuePoint stopped working in the background. Starting it again…");
 
     getEngineStatus.mockResolvedValue({ connected: true });
     await act(async () => finish({ connected: true }));
@@ -122,7 +124,7 @@ describe("OfflineBanner", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Start it again" }));
 
     // The store has not yet seen it connected: no flash of the "stopped" words.
-    expect(screen.getByRole("alert")).toHaveTextContent("Starting it again…");
+    expect(screen.getByRole("alert")).toHaveTextContent("CuePoint stopped working in the background. Starting it again…");
     expect(screen.queryByRole("button", { name: "Start it again" })).not.toBeInTheDocument();
 
     getEngineStatus.mockResolvedValue({ connected: true });
@@ -143,7 +145,7 @@ describe("OfflineBanner", () => {
       refreshEngineStatus();
     });
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Starting it again… (1 of 3)");
+    expect(await screen.findByRole("alert")).toHaveTextContent("CuePoint stopped working in the background. Starting it again (1 of 3)…");
   });
 
   it("says it could not start when the restart came back still stopped", async () => {
@@ -155,7 +157,7 @@ describe("OfflineBanner", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Start it again" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "CuePoint couldn't start its background process. Quit and open CuePoint again.",
+      "CuePoint couldn't start in the background. Quit and open CuePoint again.",
     );
     await userEvent.click(screen.getByRole("button", { name: "Get help…" }));
     expect(onGetHelp).toHaveBeenCalledTimes(1);

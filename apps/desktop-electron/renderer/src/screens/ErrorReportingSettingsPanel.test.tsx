@@ -156,7 +156,7 @@ describe("without the desktop bridge", () => {
   });
 });
 
-describe("Reset Privacy", () => {
+describe("Reset privacy", () => {
   beforeEach(() => {
     localStorage.clear();
     install(false);
@@ -169,7 +169,7 @@ describe("Reset Privacy", () => {
     const toggle = screen.getByRole("switch", { name: "Send error reports" });
     await waitFor(() => expect(toggle).toBeEnabled());
 
-    await userEvent.click(screen.getByRole("button", { name: "Reset Privacy" }));
+    await userEvent.click(screen.getByRole("button", { name: "Reset privacy" }));
     await waitFor(() => expect(toggle).toBeChecked());
     expect(readExitClearing()).toEqual({ clearCache: false, clearLogs: false });
 

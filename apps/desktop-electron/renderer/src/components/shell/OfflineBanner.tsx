@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { refreshEngineStatus, useEngineOnline } from "../../api/engineOnline";
+import { formatTimeOfDay } from "../../format/dates";
 import { Button } from "../Button";
 import "./OfflineBanner.css";
 
 /** How many times the supervisor restarts the process by itself before it gives up. */
 const AUTO_RESTARTS = 3;
+
+const STOPPED = "CuePoint stopped working in the background.";
 
 /** How long the banner draws the eye after a blocked click. */
 const PULSE_MS = 600;
@@ -14,12 +17,6 @@ interface OfflineBannerProps {
   onGetHelp?: () => void;
   /** Goes up by one each time a click on the dimmed page was stopped. */
   pulse?: number;
-}
-
-/** "09:05", local time, 24 hours. */
-function clock(at: number): string {
-  const date = new Date(at);
-  return [date.getHours(), date.getMinutes()].map((n) => String(n).padStart(2, "0")).join(":");
 }
 
 /**
@@ -81,12 +78,12 @@ export function OfflineBanner({ onGetHelp, pulse = 0 }: OfflineBannerProps) {
   let text: string;
   let action: "restart" | "help" | null = null;
   if (starting) {
-    text = `Starting it again…${attempt ? ` (${attempt} of ${AUTO_RESTARTS})` : ""}`;
+    text = `${STOPPED} Starting it again${attempt ? ` (${attempt} of ${AUTO_RESTARTS})` : ""}…`;
   } else if (failed) {
-    text = "CuePoint couldn't start its background process. Quit and open CuePoint again.";
+    text = "CuePoint couldn't start in the background. Quit and open CuePoint again.";
     action = onGetHelp ? "help" : null;
   } else {
-    text = "CuePoint stopped working in the background. Your library and files are safe.";
+    text = `${STOPPED} Your library and files are safe.`;
     action = restart ? "restart" : null;
   }
 
@@ -94,7 +91,7 @@ export function OfflineBanner({ onGetHelp, pulse = 0 }: OfflineBannerProps) {
     <div className="cp-offline" data-pulse={pulsing ? "" : undefined}>
       <div className="cp-offline__text" role="alert">
         <span>{text}</span>
-        {lastOkAt !== null && <span className="cp-offline__time">Last loaded {clock(lastOkAt)}</span>}
+        {lastOkAt !== null && <span className="cp-offline__time">Library loaded at {formatTimeOfDay(lastOkAt)}</span>}
       </div>
       {action === "restart" && (
         <Button size="sm" onClick={() => void startAgain()}>

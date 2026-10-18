@@ -263,11 +263,11 @@ describe("the system line", () => {
   });
 });
 
-describe("Reset Motion", () => {
+describe("Reset motion", () => {
   it("resets at once, with no question, and Undo puts the switches back", async () => {
     renderPanel();
     await userEvent.click(mode("Off"));
-    await userEvent.click(screen.getByRole("button", { name: "Reset Motion" }));
+    await userEvent.click(screen.getByRole("button", { name: "Reset motion" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(mode("On")).toBeChecked();
     expect(localStorage.getItem(MOTION_STORAGE_KEY)).toBeNull();

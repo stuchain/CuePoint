@@ -230,7 +230,7 @@ export function WaveformSettingsPanel() {
         open={confirming}
         title="Delete waveform data?"
         variant="danger"
-        size="narrow"
+        size="small"
         onClose={() => setConfirming(false)}
         primaryAction={{
           label: "Delete waveform data",

@@ -156,24 +156,19 @@ export function StatusStrip() {
   const { offline } = useEngineOnline();
   // A failed call can know before the poll does: offline overrides a stale "Ready".
   const connected = status?.connected === true && !offline;
-  const reconnecting = status?.reconnecting === true;
   // Starting is a third state, not a flavour of offline: it ends by itself.
   const starting = status?.starting === true;
-  // Back after being up is "again", whoever started it; only a first launch is "up".
-  const startingAgain = reconnecting || (starting && offline);
-  // The banner above the page owns restarting; the strip only reports.
-  const engineText =
-    status === null
+  // While the banner above the page is up (`offline`: stopped, restarting, or gave up) it says
+  // so in full; the strip stays quiet rather than repeat it in other words.
+  const engineText = offline
+    ? ""
+    : status === null
       ? "Connecting…"
       : connected
         ? "Ready"
-        : startingAgain
-          ? `Starting again…${status.restartAttempts ? ` (${status.restartAttempts} of 3)` : ""}`
-          : starting
-            ? shouldShowOnboarding()
-              ? "Getting ready…"
-              : "Starting up…"
-            : "Stopped";
+        : shouldShowOnboarding()
+          ? "Getting ready…"
+          : "Starting up…";
 
   /**
    * Stopping the work the strip is reporting (ORG-13).
@@ -230,22 +225,17 @@ export function StatusStrip() {
       <div className="cp-status" data-finished={finished > 0 ? finished % 2 : undefined}>
         <span className="cp-status__live" role="status" aria-live="polite">
         {/* Ready is not drawn (the strip is quiet when all is well); a screen reader still hears it. */}
-        <Hint text={engineText === "Stopped" ? status?.error : undefined} portal>
         <span
           className={`cp-status__engine ${
             connected
               ? "cp-status__engine--ok cp-visually-hidden"
-              : reconnecting || starting
+              : starting
                 ? "cp-status__engine--reconnecting"
                 : "cp-status__engine--error"
           }`}
-          // The raw reason is for the hover and Diagnostics, never the strip's
-          // text (DEC-155).
-          tabIndex={engineText === "Stopped" && status?.error ? 0 : undefined}
         >
           {engineText}
         </span>
-        </Hint>
 
         {/*
           The player speaks only when it was in use and broke (PLAYER-03).

@@ -240,7 +240,7 @@ describe("Tables", () => {
     expect(document.documentElement.dataset.rowDensity).toBe("roomy");
     expect(document.documentElement.dataset.keyColours).toBe("off");
 
-    await userEvent.click(screen.getByRole("button", { name: "Reset Appearance" }));
+    await userEvent.click(screen.getByRole("button", { name: "Reset appearance" }));
     expect(density()).toHaveValue("compact");
     expect(keys()).toBeChecked();
     expect(document.documentElement.dataset.rowDensity).toBeUndefined();

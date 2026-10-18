@@ -1,4 +1,5 @@
 import type { ActivityEvent } from "../../api/cuepointBridge.types";
+import { formatTimeOfDay } from "../../format/dates";
 
 /**
  * Presentation rules for the activity feed, as pure functions.
@@ -10,7 +11,7 @@ import type { ActivityEvent } from "../../api/cuepointBridge.types";
  */
 
 /**
- * The time of day a person can read, in their own locale.
+ * The time of day, written as the rest of the app writes it ("4:58 PM", no leading zero).
  *
  * The date is the day heading's (`formatDayHeading`), so a row carries only the
  * time. The engine stores ISO-8601 UTC. Anything unparseable is shown verbatim:
@@ -20,7 +21,7 @@ import type { ActivityEvent } from "../../api/cuepointBridge.types";
 export function formatEventTime(iso: string): string {
   const when = new Date(iso);
   if (Number.isNaN(when.getTime())) return iso;
-  return when.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return formatTimeOfDay(when);
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -130,7 +131,6 @@ const DETAIL_LABELS: Record<string, string> = {
   missing: "Missing",
   playlist: "Playlist",
   playlist_name: "Playlist",
-  set_name: "Set",
   collection_name: "Collection",
   smart_collection_name: "Smart Collection",
   file: "File",

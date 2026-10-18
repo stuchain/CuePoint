@@ -127,4 +127,22 @@ describe("ScreenHeader", () => {
       expect(css).toMatch(/\.cp-details-toggle--open[^{]*\{[^}]*background:\s*var\(--accent-primary\)/);
     });
   });
+
+  describe("a narrow page", () => {
+    const rule = (selector: string) =>
+      css.split("}").find((block) => block.trim().startsWith(selector))?.split("{")[1] ?? "";
+
+    it("wraps the buttons under the title instead of squeezing the title", () => {
+      expect(rule(".cp-screen-header__main")).toMatch(/display:\s*flex/);
+      expect(rule(".cp-screen-header__main")).toMatch(/flex-wrap:\s*wrap/);
+      expect(rule(".cp-screen-header__actions")).toMatch(/max-width:\s*100%/);
+    });
+
+    it("keeps the page name whole and lets a picker beside it shrink and cut with an ellipsis", () => {
+      expect(css).toMatch(/\.cp-screen-header__title:where\(:not\(\.cp-visually-hidden\)\)\s*\{\s*flex:\s*none/);
+      expect(rule(".cp-screen-header__beside {")).toMatch(/min-width:\s*0/);
+      expect(rule(".cp-screen-header__beside .cp-select__control")).toMatch(/text-overflow:\s*ellipsis/);
+      expect(css).toMatch(/\.cp-screen-header__beside \.cp-select\b[^{]*\{\s*min-width:\s*0/);
+    });
+  });
 });

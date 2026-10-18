@@ -302,7 +302,7 @@ export function SearchDialogHost() {
   }, []);
 
   return (
-    <Modal open={open} title="Search" onClose={() => close()} size="wide" restoreFocus={!navigated}>
+    <Modal open={open} title="Search" onClose={() => close()} size="large" restoreFocus={!navigated}>
       <SearchBody onDone={close} />
     </Modal>
   );

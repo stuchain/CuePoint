@@ -3,8 +3,8 @@
  * which scrolls; the field is its own container so a narrow dialog drops to one column.
  */
 /* The dialog follows the window, up to a limit: a fixed width cut titles even on a 1920 screen. */
-.cp-modal--wide:has(.cp-global-search) {
-  width: min(92vw, max(var(--modal-width-wide), 70vw), 1500px);
+.cp-modal--large:has(.cp-global-search) {
+  width: min(92vw, max(var(--modal-width-large), 70vw), 1500px);
 }
 
 .cp-global-search {

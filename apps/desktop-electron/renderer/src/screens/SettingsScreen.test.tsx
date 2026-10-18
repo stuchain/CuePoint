@@ -271,7 +271,7 @@ describe("Reset section", () => {
     await userEvent.selectOptions(theme(), "retro16");
     await userEvent.selectOptions(size(), "3");
 
-    await userEvent.click(within(region("Appearance")).getByRole("button", { name: "Reset Appearance" }));
+    await userEvent.click(within(region("Appearance")).getByRole("button", { name: "Reset appearance" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByText("Appearance reset")).toBeInTheDocument();
     expect(theme()).toHaveValue("neoDark");
@@ -288,7 +288,7 @@ describe("Reset section", () => {
     await userEvent.click(within(waveforms).getByRole("radio", { name: "One color" }));
     expect(within(waveforms).getByRole("radio", { name: "One color" })).toBeChecked();
 
-    await userEvent.click(within(waveforms).getByRole("button", { name: "Reset Waveforms" }));
+    await userEvent.click(within(waveforms).getByRole("button", { name: "Reset waveforms" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(within(waveforms).getByRole("radio", { name: "Three bands" })).toBeChecked();
 
@@ -299,7 +299,7 @@ describe("Reset section", () => {
   it("is offered by every section that has settings, and by About and Rekordbox never", () => {
     renderSettings();
     const holders = TITLES.filter(
-      (title) => within(region(title)).queryByRole("button", { name: `Reset ${title}` }) !== null,
+      (title) => within(region(title)).queryByRole("button", { name: `Reset ${title === "Beatport" ? title : title.toLowerCase()}` }) !== null,
     );
     expect(holders).toEqual(expect.arrayContaining(["Appearance", "Motion", "Waveforms", "Privacy"]));
     expect(holders).not.toContain("Rekordbox");
@@ -308,7 +308,7 @@ describe("Reset section", () => {
 
   it("puts Reset in the section's one action row, at the right, quiet", () => {
     renderSettings();
-    const reset = within(region("Appearance")).getByRole("button", { name: "Reset Appearance" });
+    const reset = within(region("Appearance")).getByRole("button", { name: "Reset appearance" });
     expect(reset.closest(".settings-actions__reset")).not.toBeNull();
     expect(reset.closest(".settings-actions")).not.toBeNull();
     expect(reset).toHaveClass("cp-btn--quiet");
