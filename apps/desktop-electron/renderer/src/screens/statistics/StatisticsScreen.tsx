@@ -17,7 +17,7 @@
  * now: the page opens it, once per navigation.
  */
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import type { CleanJobStarted, LibrarySummary } from "../../api/cuepointBridge.types";
@@ -159,18 +159,54 @@ export function StatisticsScreen() {
   const asked = statisticsFocus(location);
   const [tab, setTab] = useState<TabId>("plays");
   const openedFor = useRef<string | null>(null);
+  const leaveRef = useRef<() => void>(() => {});
   const focusToken = asked?.focus === "health" ? asked.token : null;
   useEffect(() => {
     if (!focusToken || openedFor.current === focusToken) return;
     openedFor.current = focusToken;
+    leaveRef.current();
     setTab("health");
   }, [focusToken]);
 
-  // Another tab, or a link to Health, starts at the top: the page is one scroll shared by all three.
+  // Each tab keeps its own place in the page's one scroll (the `.app-main` region holds it): a tab
+  // not opened yet starts at the top, one come back to is where it was left. A link that asks for
+  // Health is a new ask, so it starts at the top.
   const pageRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    pageRef.current?.scrollTo?.({ top: 0 });
+  const places = useRef<Partial<Record<TabId, number>>>({});
+  const shown = useRef<TabId>(tab);
+  const lastFocus = useRef<string | null>(null);
+  const scroller = () => pageRef.current?.closest<HTMLElement>(".app-main") ?? pageRef.current;
+  // A layout effect, so the page never paints one frame at the old place. A tab whose data has
+  // not come yet is too short to scroll down to its place (the browser clamps it to 0), so the
+  // place is asked for again once that data first arrives.
+  const tabLoaded = tab === "plays" ? !!plays.data : tab === "library" ? !!spreads.data : !!health.data;
+  const waitingFor = useRef<{ tab: TabId; top: number } | null>(null);
+  useLayoutEffect(() => {
+    shown.current = tab;
+    const fresh = focusToken !== null && lastFocus.current !== focusToken;
+    lastFocus.current = focusToken;
+    const top = fresh ? 0 : (places.current[tab] ?? 0);
+    scroller()?.scrollTo?.({ top });
+    waitingFor.current = top > 0 && !tabLoaded ? { tab, top } : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, focusToken]);
+  useLayoutEffect(() => {
+    const wanted = waitingFor.current;
+    if (!tabLoaded || !wanted || wanted.tab !== tab) return;
+    waitingFor.current = null;
+    scroller()?.scrollTo?.({ top: wanted.top });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabLoaded, tab]);
+  const leave = () => {
+    const region = scroller();
+    if (region) places.current[shown.current] = region.scrollTop;
+  };
+  leaveRef.current = leave;
+  const chooseTab = (next: TabId) => {
+    if (next === tab) return;
+    leave();
+    setTab(next);
+  };
 
   const choose = (value: string) => {
     const form = rememberedForm(value, trees.playlists);
@@ -225,7 +261,7 @@ export function StatisticsScreen() {
           <Tabs
             idPrefix="statistics"
             activeId={tab}
-            onChange={(id) => setTab(id as TabId)}
+            onChange={(id) => chooseTab(id as TabId)}
             tabs={[
               { id: "plays", label: "Plays" },
               {

@@ -124,17 +124,20 @@
   display: flex;
   /* Wide enough for a playlist's name on a line or two at any text size; it shrinks only
      to its floor, and the row wraps before going under it. */
-  flex: 0 1 calc(140px * var(--scale));
+  flex: 0 1 calc(180px * var(--scale));
   flex-direction: column;
   gap: var(--space-md);
-  min-width: min(calc(110px * var(--scale)), 100%);
+  min-width: min(calc(140px * var(--scale)), 100%);
 }
 
 .keys-sources__body {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  max-height: var(--keys-wheel);
+  /* As tall as the wheel beside it; the rows scroll inside. */
+  height: var(--keys-wheel);
+  /* The Library tree's step, so the rows nest as its rows do. */
+  --tree-step: calc(20px * var(--scale));
   /* A dense side panel: 8 inside. */
   padding: var(--space-md);
   overflow-y: auto;
@@ -148,14 +151,21 @@
   width: 100%;
 }
 
-/* Even 24px rows, the box 6 from its text. */
+/* The Library tree's rows (PlaylistPane.css), with the tick box in front of the icon. */
 .keys-sources__row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  min-height: calc(24px * var(--scale));
-  font-size: var(--font-size-xs);
-  cursor: pointer;
+  gap: var(--space-xs);
+  padding-right: var(--space-xs);
+}
+
+.keys-sources__row input[type="checkbox"],
+.keys-sources__no-box {
+  flex-shrink: 0;
+}
+
+/* A folder that is only a place has no box; this holds the box's room so its icon lines up. */
+.keys-sources__no-box {
+  width: var(--font-size-sm);
+  height: var(--font-size-sm);
 }
 
 .keys-sources__row--whole {
@@ -181,14 +191,12 @@
 }
 
 .keys-sources__item {
-  padding-left: calc(var(--keys-depth, 0) * var(--space-md));
   min-width: 0;
-  overflow-wrap: anywhere;
 }
 
 .keys-sources__place {
   color: var(--fg-muted);
-  font-size: var(--font-size-xs);
+  cursor: default;
 }
 
 /* ------------------------------------------------------------ counts list */

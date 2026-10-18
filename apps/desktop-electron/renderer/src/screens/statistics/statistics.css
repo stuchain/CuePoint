@@ -17,12 +17,21 @@
 .statistics-page__scope-wrap {
   position: relative;
   display: inline-flex;
+  min-width: 0;
   max-width: 100%;
 }
 
+/* Sized like Prepare's Set picker (.prepare-header__picker): to its content up to a limit, the
+   text at the left, long names cut with an ellipsis rather than stretching across the header. */
 .statistics-page__scope {
-  min-width: min(calc(260px * var(--scale)), 50cqi);
-  max-width: 100%;
+  min-width: 0;
+  max-width: calc(320px * var(--scale));
+}
+
+.statistics-page__scope .cp-select__control {
+  min-width: 0;
+  text-align: left;
+  text-overflow: ellipsis;
 }
 
 /* "Scope" is inside the picker, at its left, muted; the chosen value follows it. */
@@ -181,6 +190,18 @@
   color: var(--fg-primary);
 }
 
+/* A column heading is one small header style whatever its column: the "#", BPM, Plays and
+   Tracks headings share the row classes (right-aligned) but not the figures' size or face. */
+.rank__columns > .rank__hash,
+.rank__columns > .rank__number,
+.plays__columns-head > .rank__hash,
+.plays__columns-head > .rank__number {
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
 /* The name in the data face like a table's, then the RankBar under it as long as its share. */
 .rank__name {
   display: flex;
@@ -332,6 +353,14 @@
 }
 
 .health-card__swatch--none {
+  background: transparent;
+}
+
+/* Not in the bar: outlined in the colour of what writes to your files, because it counts what is
+   not written yet. */
+.health-card__swatch--write {
+  box-sizing: border-box;
+  border: var(--control-border-width) solid var(--accent-success);
   background: transparent;
 }
 

@@ -25,6 +25,7 @@ import { StatisticsScreen } from "./StatisticsScreen";
 import { statisticsFocusState } from "./statisticsLink";
 import { PLAYS_STORAGE_KEY } from "./playsChoice";
 import { formatDayTime } from "../../format/dates";
+import css from "./statistics.css?raw";
 import { STATISTICS_SCOPE_STORAGE_KEY } from "./statisticsScope";
 import { useLibraryJobsFinished } from "./useStatistics";
 
@@ -258,6 +259,57 @@ describe("the Statistics page (STATS-04)", () => {
     }
   });
 
+  it("keeps each tab's own scroll position: new tabs at the top, a tab come back to where it was left", async () => {
+    renderPage();
+    const plays = await screen.findByRole("tab", { name: /^Plays/ });
+    const region = plays.closest(".statistics-page")!.parentElement!;
+    region.classList.add("app-main");
+    let top = 0;
+    Object.defineProperty(region, "scrollTop", { configurable: true, get: () => top, set: (v) => (top = v) });
+    const scrollTo = vi.fn((arg: { top: number }) => {
+      top = arg.top;
+    });
+    Object.defineProperty(region, "scrollTo", { configurable: true, value: scrollTo });
+
+    top = 420; // read down Plays
+    fireEvent.click(screen.getByRole("tab", { name: /^Health/ }));
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 0 });
+    top = 90; // a little way down Health
+    fireEvent.click(screen.getByRole("tab", { name: /^Plays/ }));
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 420 });
+    fireEvent.click(screen.getByRole("tab", { name: /^Health/ }));
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 90 });
+    fireEvent.click(screen.getByRole("tab", { name: /^Library/ }));
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 0 });
+  });
+
+  it("asks for a tab's place again when its data first arrives, and never paints at the old place", async () => {
+    let release: (value: unknown) => void = () => {};
+    install({ getStatisticsHealth: vi.fn(() => new Promise((resolve) => (release = resolve))) });
+    renderPage();
+    const plays = await screen.findByRole("tab", { name: /^Plays/ });
+    const region = plays.closest(".statistics-page")!.parentElement!;
+    region.classList.add("app-main");
+    let top = 0;
+    Object.defineProperty(region, "scrollTop", { configurable: true, get: () => top, set: (v) => (top = v) });
+    const scrollTo = vi.fn((arg: { top: number }) => {
+      top = arg.top;
+    });
+    Object.defineProperty(region, "scrollTo", { configurable: true, value: scrollTo });
+
+    fireEvent.click(screen.getByRole("tab", { name: /^Health/ }));
+    top = 300; // read down Health's placeholder
+    fireEvent.click(screen.getByRole("tab", { name: /^Plays/ }));
+    scrollTo.mockClear();
+    fireEvent.click(screen.getByRole("tab", { name: /^Health/ }));
+    // Asked for at once (the layout effect), before any paint ...
+    expect(scrollTo).toHaveBeenCalledWith({ top: 300 });
+    scrollTo.mockClear();
+    // ... and again once the data has made the page long enough to reach it.
+    release(health());
+    await waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ top: 300 }));
+  });
+
   it("shows no fix chip when nothing needs fixing", async () => {
     install({
       getStatisticsHealth: vi.fn().mockResolvedValue({
@@ -295,6 +347,31 @@ describe("the Statistics page (STATS-04)", () => {
     expect(header).toContainElement(picker);
     expect(picker.closest(".cp-screen-header__beside")).not.toBeNull();
     expect(header.querySelector(".cp-screen-header__summary")).not.toBeNull();
+  });
+
+  it("sizes the scope picker like Prepare's Set picker: to content up to a limit, text at the left (Q17)", () => {
+    const wrap = /\.statistics-page__scope\s*\{([^}]*)\}/.exec(css)![1]!;
+    // It shrinks with the header (the shared header cuts its text with an ellipsis).
+    expect(wrap).toMatch(/min-width:\s*0/);
+    expect(wrap).toMatch(/max-width:\s*calc\(320px/);
+    expect(wrap).not.toMatch(/cqi|100%/);
+    const control = /\.statistics-page__scope \.cp-select__control\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(control).toMatch(/text-align:\s*left/);
+  });
+
+  it("gives every table column heading the one small header style (Q16)", () => {
+    const rule = /\.rank__columns > \.rank__hash,[^{]*\.plays__columns-head > \.rank__number\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(rule).toMatch(/font-size:\s*inherit/);
+    expect(rule).toMatch(/font-family:\s*inherit/);
+    expect(css).toMatch(/\.rank__columns\s*\{[^}]*font-size:\s*var\(--font-size-xs\)/);
+  });
+
+  it("with no library says the one empty block (Q10, Q8)", async () => {
+    install({ getLibrarySummary: vi.fn().mockResolvedValue({ library_empty: true, track_count: 0 }) });
+    renderPage();
+    expect(await screen.findByText("No library yet")).toBeInTheDocument();
+    expect(screen.queryByText(/no library to count/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Import a library" })).toBeNull();
   });
 
   it("shows each tab reading while its answer is on the way", async () => {
@@ -337,11 +414,11 @@ describe("the Statistics page (STATS-04)", () => {
     });
     renderPage();
 
-    expect(await screen.findByText("There is no library to count yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No library yet")).toBeInTheDocument();
     expect(panel("plays")).not.toBeInTheDocument();
     expect(mock("getStatisticsPlays")).not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByRole("button", { name: "Import a library" }));
+    await userEvent.click(screen.getByRole("button", { name: "Import a Rekordbox file…" }));
     expect(screen.getByTestId("where")).toHaveTextContent("/library");
     expect(JSON.parse(screen.getByTestId("where").dataset.state!)).not.toBeNull();
   });

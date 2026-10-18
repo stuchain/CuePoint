@@ -43,6 +43,11 @@ interface Row {
   count: number;
   /** The bar part this row names; a row the bar does not draw has no swatch. */
   swatch?: BarTone;
+  /**
+   * A mark that is not in the bar: a square outlined in the colour of what writes to the
+   * user's files (green), for a count of what is not written yet.
+   */
+  outline?: "write";
   /** The count's colour while it is above zero and means work to do; otherwise plain. */
   todo?: "warning" | "danger";
   /** Where it is dealt with, or nothing to open. */
@@ -85,7 +90,13 @@ function HealthCard({ id, title, note, bar = false, rows, onOpen, children }: Ca
         {rows.map((row) => (
           <li key={row.id} className="health-card__row" data-row={row.id}>
             <span
-              className={`health-card__swatch${row.swatch ? ` stacked__part--${row.swatch}` : " health-card__swatch--none"}`}
+              className={`health-card__swatch${
+                row.swatch
+                  ? ` stacked__part--${row.swatch}`
+                  : row.outline
+                    ? ` health-card__swatch--${row.outline}`
+                    : " health-card__swatch--none"
+              }`}
               aria-hidden="true"
             />
             <span className="health-card__label">{row.label}</span>{" "}
@@ -186,7 +197,7 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
             { id: "rejected", label: "Rejected", count: beatport.rejected.count, swatch: "danger" },
             { id: "no_match", label: "No match", count: beatport.no_match.count, swatch: "neutral", place: clean("review") },
             { id: "not_matched", label: "Not matched", count: beatport.not_matched.count, swatch: "muted", place: clean("review") },
-            { id: "not_synced", label: "Not synced to files", count: health.not_synced.count, place: { page: "Library", rules: health.not_synced.rules } },
+            { id: "not_synced", label: "Not synced to files", count: health.not_synced.count, outline: "write", place: { page: "Library", rules: health.not_synced.rules } },
           ]}
         />
         <HealthCard

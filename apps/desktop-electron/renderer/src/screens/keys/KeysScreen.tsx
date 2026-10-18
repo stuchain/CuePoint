@@ -21,7 +21,7 @@ import { useNavigate } from "react-router-dom";
 
 import type { EntityKind, FilterRuleSet, LibraryPlaylistNode } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
-import { EmptyState } from "../../components/EmptyState";
+import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
 import { Hint } from "../../components/Hint";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
@@ -363,10 +363,10 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
         {header}
         <EmptyState
           icon="keys"
-          headline="Import a Rekordbox file first"
-          description="The Keys page counts the keys of the tracks in your library."
+          headline="No library yet"
+          description="Keys counts the keys of the tracks in your library."
           action={{
-            label: "Import a Rekordbox file…",
+            label: IMPORT_COLLECTION_LABEL,
             onClick: () => navigate("/library", { state: libraryImportState() }),
           }}
         />
@@ -388,6 +388,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
         <KeysSourcePicker
           playlists={playlistTree}
           collections={collections.tree}
+          libraryTrackCount={summaryRead.value?.track_count ?? null}
           picked={picked}
           onToggle={(source) => update(toggleSource(picked, source))}
           onClear={() => update([])}

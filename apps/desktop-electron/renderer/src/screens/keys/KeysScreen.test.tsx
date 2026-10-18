@@ -322,6 +322,13 @@ afterEach(() => {
 });
 
 describe("the source picker", () => {
+  it("shows the library's track count on the Whole library row", async () => {
+    renderKeys();
+    await opened();
+    const row = within(sourcesPanel()).getByRole("checkbox", { name: "Whole library" }).closest("label")!;
+    await waitFor(() => expect(within(row).getByText("1,500")).toHaveClass("cp-playlist-pane__count"));
+  });
+
   it("starts on the whole library and asks for its keys", async () => {
     renderKeys();
     await opened();
@@ -1049,7 +1056,7 @@ describe("when there is nothing to count", () => {
       getKeysPopulation: vi.fn().mockResolvedValue({ total: 0, keys: [], no_key: 0 }),
     });
     renderKeys();
-    expect(await screen.findByText("Import a Rekordbox file first")).toBeInTheDocument();
+    expect(await screen.findByText("No library yet")).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Keys in these sources" })).toBeNull();
   });
 
@@ -1104,7 +1111,7 @@ describe("when there is nothing to count", () => {
     renderKeys();
     await waitFor(() => expect(mock("getKeysPopulation")).toHaveBeenCalled());
     answer({ library_empty: true, track_count: 0 });
-    expect(await screen.findByText("Import a Rekordbox file first")).toBeInTheDocument();
+    expect(await screen.findByText("No library yet")).toBeInTheDocument();
     expect(screen.queryByText(/playlists are empty/)).toBeNull();
   });
 

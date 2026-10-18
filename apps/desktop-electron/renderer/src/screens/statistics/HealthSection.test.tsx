@@ -263,4 +263,12 @@ describe("the Health tab (STATS-07, K3)", () => {
       expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
     }
   });
+
+  it("marks Not synced to files with a green-outlined square, the rest keeping their bar colours", () => {
+    renderSection();
+    const swatch = (id: string) => rowOf("beatport", id).querySelector(".health-card__swatch")!;
+    expect(swatch("not_synced")).toHaveClass("health-card__swatch--write");
+    expect(swatch("not_synced")).not.toHaveClass("health-card__swatch--none");
+    expect(swatch("accepted")).toHaveClass("stacked__part--success");
+  });
 });

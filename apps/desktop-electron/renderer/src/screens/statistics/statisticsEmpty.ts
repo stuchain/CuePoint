@@ -19,9 +19,9 @@ export interface StatisticsEmptyState {
 /** No library has been imported: nothing to count, and one thing to do about it. */
 export function noLibraryState(): StatisticsEmptyState {
   return {
-    title: "There is no library to count yet.",
-    hint: "Statistics count the tracks in your Rekordbox library. Import it and they appear here.",
-    action: { id: "import", label: "Import a library" },
+    title: "No library yet",
+    hint: "Statistics counts the plays, keys and health of the tracks in your library.",
+    action: { id: "import", label: "Import a Rekordbox file…" },
   };
 }
 
