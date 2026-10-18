@@ -651,7 +651,7 @@ class RevertService(IRevertService):
             notes.append(f"{result.failed} could not be undone")
         if result.cancelled:
             notes.append(f"cancelled after {result.completed} of {result.total}")
-        return f"{head} — {', '.join(notes)}" if notes else head
+        return f"{head}: {', '.join(notes)}" if notes else head
 
 
 # ---------------------------------------------------------------------------

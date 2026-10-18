@@ -821,7 +821,7 @@ class TestProgressAndSummary:
             references=NO_REFERENCES,
             duration_seconds=0.1,
         )
-        assert summary.summary_line() == "Library refreshed — 3 updated, 3 tracks now"
+        assert summary.summary_line() == "Library refreshed: 3 updated, 3 tracks now"
 
 
 @pytest.mark.unit

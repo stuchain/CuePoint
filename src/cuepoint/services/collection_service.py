@@ -912,12 +912,12 @@ class CollectionService(ICollectionService):
         if result.source_kind == SOURCE_SELECTION:
             origin = "a selection"
         elif result.source_kind == SOURCE_PLAYLIST:
-            origin = f"the Rekordbox playlist {result.source_name!r}"
+            origin = f"the Rekordbox playlist “{result.source_name}”"
         else:
-            origin = repr(result.source_name)
+            origin = f"“{result.source_name}”"
         self._activity.record_event(
             EVENT_SET_CREATED_FROM,
-            f"Made the Set {result.set.name!r} from {origin} — {counted}",
+            f"Made the Set “{result.set.name}” from {origin}, {counted}",
             {
                 "set_id": result.set.id,
                 "set_name": result.set.name,
@@ -1107,7 +1107,7 @@ class CollectionService(ICollectionService):
         plural = "" if tracks == 1 else "s"
         self._activity.record_event(
             EVENT_COLLECTION_FROZEN,
-            f"Froze {result.source_name!r} into {result.collection.name!r} — "
+            f"Froze “{result.source_name}” into “{result.collection.name}”, "
             f"{tracks} track{plural}",
             {
                 "collection_id": result.collection.id,

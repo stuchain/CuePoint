@@ -194,7 +194,7 @@ class ImportSummary:
             parts.append(f"{self.playlists.playlists} playlists")
         if self.marks.skipped:
             parts.append(_skipped_phrase(self.marks.skipped))
-        return "Library imported — " + ", ".join(parts)
+        return "Library imported: " + ", ".join(parts)
 
 
 @dataclass(frozen=True)
@@ -271,7 +271,7 @@ class RefreshSummary:
         parts.append(f"{self.track_count} tracks now")
         if self.marks.skipped:
             parts.append(_skipped_phrase(self.marks.skipped))
-        return "Library refreshed — " + ", ".join(parts)
+        return "Library refreshed: " + ", ".join(parts)
 
 
 def _kinds_of_work(references: ReferenceSummary) -> str:

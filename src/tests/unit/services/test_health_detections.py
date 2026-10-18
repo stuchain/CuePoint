@@ -157,9 +157,9 @@ class TestUnavailableRoots:
             ("/Volumes/USB", 1),
             ("\\\\nas\\music\\", 1),
         ]
-        assert roots[0].summary == "2 tracks on E:\\ — the drive is not connected"
+        assert roots[0].summary == "2 tracks on E:\\, and the drive is not connected"
         assert roots[2].summary == (
-            "1 track on \\\\nas\\music\\ — the network location cannot be reached"
+            "1 track on \\\\nas\\music\\, and the network location cannot be reached"
         )
 
     def test_a_path_with_no_root_is_left_out(self):
@@ -173,6 +173,6 @@ class TestUnavailableRoots:
             {
                 "root": "E:\\",
                 "tracks": 2,
-                "summary": "2 tracks on E:\\ — the drive is not connected",
+                "summary": "2 tracks on E:\\, and the drive is not connected",
             }
         ]

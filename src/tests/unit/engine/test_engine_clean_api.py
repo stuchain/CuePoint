@@ -2854,7 +2854,7 @@ class TestHealth:
             {
                 "root": "E:\\",
                 "tracks": 2,
-                "summary": "2 tracks on E:\\ — the drive is not connected",
+                "summary": "2 tracks on E:\\, and the drive is not connected",
             }
         ]
 

@@ -311,12 +311,12 @@ def describe(result: MatchJobResult) -> str:
 
     if result.search_unavailable:
         sentence += (
-            f" — stopped because Beatport returned nothing for"
+            f". Stopped because Beatport returned nothing for"
             f" {SEARCH_OUTAGE_STREAK} tracks in a row; {result.remaining} left to"
             " resume"
         )
     elif result.cancelled:
-        sentence += f" — cancelled, {result.remaining} left to resume"
+        sentence += f". Cancelled, {result.remaining} left to resume"
     if result.in_progress and (result.cancelled or result.search_unavailable):
         sentence += f" (finishing {result.in_progress} in progress)"
     return sentence
@@ -720,7 +720,7 @@ class MatchService(IMatchService):
         """
         summary = describe(result)
         if failed:
-            summary += " — stopped by an error"
+            summary += ". Stopped by an error"
         detail = result.to_dict()
         detail["failed"] = failed
         try:

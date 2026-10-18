@@ -25,7 +25,7 @@ network share, a macOS volume, a Linux media mount. The first time a check meets
 a root it asks whether the root exists. When it does not, every file under it
 is missing by definition, so each is recorded ``missing`` with the reason
 ``root_unavailable`` without touching its path, and the check reports one line —
-"4,812 tracks on E:\\ — the drive is not connected" — rather than 4,812.
+"4,812 tracks on E:\\, and the drive is not connected", rather than 4,812.
 
 The specification triggered this on a fraction of a chunk going missing. Asking
 the root first is stricter and cheaper, for two reasons. A root that does not
@@ -280,7 +280,7 @@ def describe_unavailable(root: str, tracks: int) -> str:
         if _UNC.match(root)
         else "the drive is not connected"
     )
-    return f"{_count(tracks, 'track')} on {root} — {what}"
+    return f"{_count(tracks, 'track')} on {root}, and {what}"
 
 
 def _count(number: int, noun: str) -> str:

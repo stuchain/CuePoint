@@ -332,7 +332,7 @@ class SetListService(ISetListService):
         counted = ", ".join([entries, *extras])
         self._activity.record_event(
             EVENT_SET_LIST_SAVED,
-            f"Saved {set_list.name!r} as {FORM_WORDS[saved.form]} — {counted}",
+            f"Saved “{set_list.name}” as {FORM_WORDS[saved.form]}, {counted}",
             {
                 "set_id": saved.set_id,
                 "set_name": set_list.name,

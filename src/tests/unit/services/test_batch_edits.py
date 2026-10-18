@@ -905,7 +905,7 @@ class TestTheActivityEvent:
         service.apply_batch(
             BatchSelection.of_ids(ids[:5]), BatchOperation(OPERATION_ADD_TAG, peak.id)
         )
-        assert batch_events(activity)[0].summary == "Tagged 5 tracks as 'Peak time'"
+        assert batch_events(activity)[0].summary == "Tagged 5 tracks as “Peak time”"
 
     def test_the_summary_counts_one_track_as_one_track(
         self, service, activity, ids, warmups
@@ -914,7 +914,7 @@ class TestTheActivityEvent:
             BatchSelection.of_ids(ids[:1]),
             BatchOperation(OPERATION_ADD_TO_COLLECTION, warmups.id),
         )
-        assert batch_events(activity)[0].summary.endswith("1 track to 'Warmups'")
+        assert batch_events(activity)[0].summary.endswith("1 track to “Warmups”")
 
     def test_the_summary_counts_what_changed_not_what_was_selected(
         self, service, activity, ids
@@ -932,7 +932,7 @@ class TestTheActivityEvent:
             BatchSelection.of_ids(ids[:5]), BatchOperation(OPERATION_SET_RATING, 4)
         )
         assert (
-            batch_events(activity)[0].summary == "Rated 0 tracks 4 stars — 5 unchanged"
+            batch_events(activity)[0].summary == "Rated 0 tracks 4 stars: 5 unchanged"
         )
 
     def test_the_summary_says_what_it_did_not_change(self, service, activity, ids):
@@ -978,7 +978,7 @@ class TestTheActivityEvent:
             BatchSelection.of_ids(ids[:3]),
             BatchOperation(OPERATION_REMOVE_TAG, peak.id),
         )
-        assert batch_events(activity)[0].summary == "Removed 'Peak time' from 3 tracks"
+        assert batch_events(activity)[0].summary == "Removed “Peak time” from 3 tracks"
 
     def test_a_removal_from_a_collection_names_it(
         self, service, activity, collections, ids, warmups
@@ -988,7 +988,7 @@ class TestTheActivityEvent:
             BatchSelection.of_ids(ids[:3]),
             BatchOperation(OPERATION_REMOVE_FROM_COLLECTION, warmups.id),
         )
-        assert batch_events(activity)[0].summary == "Removed 3 tracks from 'Warmups'"
+        assert batch_events(activity)[0].summary == "Removed 3 tracks from “Warmups”"
 
     def test_a_batch_that_changed_nothing_still_says_it_happened(
         self, service, activity, ids

@@ -366,7 +366,7 @@ class TestNewSetFrom:
         service.add_tracks(crate.id, ids[:3])
         made = service.create_set_from(SetSource.collection(crate.id), "Friday")
         (event,) = events(activity)
-        assert event.summary == "Made the Set 'Friday' from 'Crate' — 3 tracks"
+        assert event.summary == "Made the Set “Friday” from “Crate”, 3 tracks"
         assert event.detail == {
             "set_id": made.set.id,
             "set_name": "Friday",
@@ -377,7 +377,7 @@ class TestNewSetFrom:
         }
         service.create_set_from(SetSource.selection(ids[:1]), "One")
         assert events(activity)[0].summary == (
-            "Made the Set 'One' from a selection — 1 track"
+            "Made the Set “One” from a selection, 1 track"
         )
 
     @pytest.mark.parametrize("kind", ["folder", "set"])

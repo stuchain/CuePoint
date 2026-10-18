@@ -748,8 +748,8 @@ class _Tagging(_Applier):
     def describe(self, result: BatchResult) -> str:
         tracks = _tracks(result.changed)
         if self._adding:
-            return f"Tagged {tracks} as {result.target!r}"
-        return f"Removed {result.target!r} from {tracks}"
+            return f"Tagged {tracks} as “{result.target}”"
+        return f"Removed “{result.target}” from {tracks}"
 
 
 class _AddToCollection(_Applier):
@@ -775,7 +775,7 @@ class _AddToCollection(_Applier):
         return self._collections.add_tracks(self._collection_id, track_ids).added
 
     def describe(self, result: BatchResult) -> str:
-        return f"Added {_tracks(result.changed)} to {result.target!r}"
+        return f"Added {_tracks(result.changed)} to “{result.target}”"
 
 
 class _RemoveFromCollection(_Applier):
@@ -816,7 +816,7 @@ class _RemoveFromCollection(_Applier):
         return len(holding)
 
     def describe(self, result: BatchResult) -> str:
-        return f"Removed {_tracks(result.changed)} from {result.target!r}"
+        return f"Removed {_tracks(result.changed)} from “{result.target}”"
 
 
 class _DecideMatch(_Applier):
@@ -1103,7 +1103,7 @@ def _summarize(sentence: str, result: BatchResult) -> str:
         notes.append(f"cancelled after {result.completed} of {result.total}")
     if not notes:
         return sentence
-    return f"{sentence} — {', '.join(notes)}"
+    return f"{sentence}: {', '.join(notes)}"
 
 
 def _report(

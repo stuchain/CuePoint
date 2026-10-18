@@ -661,7 +661,7 @@ class TestCancelAndResume:
             0
         ] * 30
         assert_stored_matches_done(container, ["job-1"])
-        assert "cancelled, 30 left to resume" in describe(result)
+        assert "Cancelled, 30 left to resume" in describe(result)
 
     def test_resume_finishes_the_thirty_and_matches_nothing_twice(
         self, container, service, processor, ids
@@ -938,7 +938,7 @@ class TestOneTransactionPerTrack:
         assert service.check_resumable("job-1").remaining == 10
         recorded = events(container)
         assert len(recorded) == 1 and recorded[0].detail["failed"] is True
-        assert recorded[0].summary.endswith("stopped by an error")
+        assert recorded[0].summary.endswith("Stopped by an error")
 
 
 # -------------------------------------------------------------------- wording
@@ -971,7 +971,7 @@ class TestWording:
 
     def test_a_cancel_still_finishing_says_so(self):
         text = describe(result(cancelled=True, in_progress=3))
-        assert text.endswith("cancelled, 30 left to resume (finishing 3 in progress)")
+        assert text.endswith("Cancelled, 30 left to resume (finishing 3 in progress)")
 
     def test_a_finished_job_says_how_many_it_matched_with_zero_parts_dropped(self):
         text = describe(

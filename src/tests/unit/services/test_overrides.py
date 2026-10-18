@@ -511,7 +511,7 @@ class TestBatchHandEdits:
             BatchOperation(OPERATION_SET_OVERRIDE, {"field": "label", "value": None}),
         )
         (event,) = activity.recent_events(event_type=EVENT_BATCH_APPLIED)
-        assert event.summary == "Cleared the label override on 1 track — 1 unchanged"
+        assert event.summary == "Cleared the label override on 1 track: 1 unchanged"
         assert metadata.get(ids["1"]).label is None
 
     def test_setting_in_batch_and_its_sentence(self, batch, activity, ids):

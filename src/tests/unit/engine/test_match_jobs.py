@@ -398,7 +398,7 @@ class TestEndings:
         assert job.result["cancelled"] is True
         remaining = job.result["remaining"]
         assert remaining > 0
-        assert f"cancelled, {remaining} left to resume" in job.error["message"]
+        assert f"Cancelled, {remaining} left to resume" in job.error["message"]
         assert attempt_tracks(container) == done_tracks(container)
 
     def test_empty_searches_fail_the_job_with_a_code_that_says_why(

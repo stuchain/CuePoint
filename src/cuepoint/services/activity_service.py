@@ -11,7 +11,7 @@ Two jobs, per DEC-008 and the activity feed:
 - **Revert.** A single field can be restored to a previous value. The revert is
   itself recorded as a new change; nothing in the log is ever rewritten.
 
-Activity events are user-readable ("Rekordbox refresh — 42 added"). Debug logs
+Activity events are user-readable ("Rekordbox refresh: 42 added"). Debug logs
 stay in files and are a separate concern.
 """
 

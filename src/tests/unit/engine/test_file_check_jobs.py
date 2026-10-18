@@ -334,7 +334,7 @@ class TestAfterAnImport:
         finished(store, checks_of(store)[0])
 
         assert [event["summary"] for event in events(EVENT_ROOT_UNAVAILABLE)] == [
-            f"300 tracks on {volume} — the drive is not connected"
+            f"300 tracks on {volume}, and the drive is not connected"
         ]
         [counts] = events(EVENT_FILES_CHECKED)
         assert counts["detail"]["unavailable"] == 300

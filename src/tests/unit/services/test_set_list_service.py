@@ -300,7 +300,7 @@ class TestSave:
         [(kind, summary, detail)] = lib.events()
         assert kind == EVENT_SET_LIST_SAVED
         assert summary == (
-            "Saved 'Friday' as a CSV set list — 4 entries, 1 file missing, 2 untimed"
+            "Saved “Friday” as a CSV set list, 4 entries, 1 file missing, 2 untimed"
         )
         assert json.loads(detail) == {
             "set_id": set_id,
@@ -317,7 +317,7 @@ class TestSave:
         set_id = lib.make_set([track])
         lib.sets.set_entry_times(lib.entries(set_id)[0], None, "3:00")
         lib.service.save(set_id, str(tmp_path / "s.m3u8"))
-        assert lib.events()[0][1] == "Saved 'Friday' as an M3U8 playlist — 1 entry"
+        assert lib.events()[0][1] == "Saved “Friday” as an M3U8 playlist, 1 entry"
 
     def test_the_m3u8_lists_a_missing_file_and_every_repeat(
         self, lib, friday, tmp_path

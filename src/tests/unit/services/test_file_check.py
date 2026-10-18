@@ -324,15 +324,15 @@ class TestRoots:
     def test_an_unavailable_root_is_one_line(self):
         assert (
             describe_unavailable("E:\\", 4812)
-            == "4,812 tracks on E:\\ — the drive is not connected"
+            == "4,812 tracks on E:\\, and the drive is not connected"
         )
         assert (
             describe_unavailable("/Volumes/USB", 1)
-            == "1 track on /Volumes/USB — the drive is not connected"
+            == "1 track on /Volumes/USB, and the drive is not connected"
         )
         assert (
             describe_unavailable("\\\\nas\\music\\", 2)
-            == "2 tracks on \\\\nas\\music\\ — the network location cannot be reached"
+            == "2 tracks on \\\\nas\\music\\, and the network location cannot be reached"
         )
 
 
@@ -564,7 +564,9 @@ class TestADisconnectedDrive:
         assert {rows[track]["reason"] for track in ids[4812:]} == {None}
 
         [finding] = events(db, EVENT_ROOT_UNAVAILABLE)
-        assert finding["summary"] == "4,812 tracks on E:\\ — the drive is not connected"
+        assert (
+            finding["summary"] == "4,812 tracks on E:\\, and the drive is not connected"
+        )
         assert len(events(db, EVENT_FILES_CHECKED)) == 1
 
     def test_a_real_volume_that_is_not_mounted_is_one_finding(
@@ -579,7 +581,8 @@ class TestADisconnectedDrive:
         assert result.present == 1
         [finding] = events(db, EVENT_ROOT_UNAVAILABLE)
         assert (
-            finding["summary"] == f"2 tracks on {volume} — the drive is not connected"
+            finding["summary"]
+            == f"2 tracks on {volume}, and the drive is not connected"
         )
 
     def test_a_drive_unplugged_during_the_check_explains_the_chunk_it_went_in(
@@ -644,8 +647,8 @@ class TestADisconnectedDrive:
             UnavailableRoot("F:\\", 2),
         )
         assert [row["summary"] for row in events(db, EVENT_ROOT_UNAVAILABLE)] == [
-            "1 track on E:\\ — the drive is not connected",
-            "2 tracks on F:\\ — the drive is not connected",
+            "1 track on E:\\, and the drive is not connected",
+            "2 tracks on F:\\, and the drive is not connected",
         ]
 
 
@@ -866,7 +869,7 @@ class TestTheResult:
                 {
                     "root": "E:\\",
                     "tracks": 2,
-                    "summary": "2 tracks on E:\\ — the drive is not connected",
+                    "summary": "2 tracks on E:\\, and the drive is not connected",
                 }
             ],
             "duration_seconds": 1.235,
