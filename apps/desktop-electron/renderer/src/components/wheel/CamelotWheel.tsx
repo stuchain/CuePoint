@@ -1,6 +1,7 @@
 import { Fragment, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 
 import { keyHint } from "./wheelLink";
+import { useKeyColours } from "./keyColourSetting";
 import { changedMark, useCountChanges } from "./useCountChanges";
 import {
   CAMELOT_CODES,
@@ -86,6 +87,8 @@ export function CamelotWheel({
   // Which key has focus or the pointer: drawn as an outline round its wedge, never a fill.
   const [focused, setFocused] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  // Settings › Color keys: on, every wedge is its key's own colour; off, the wheel is violet.
+  const [coloured] = useKeyColours();
   const marks = useCountChanges(counts ?? NO_COUNTS);
   const biggest = counts ? Math.max(0, ...counts.values()) : 0;
 
@@ -103,7 +106,7 @@ export function CamelotWheel({
   const levelOf = (code: string) => (counts ? countLevel(counts.get(code) ?? 0, biggest) : 0);
 
   return (
-    <div className={`cp-wheel${counts ? "" : " cp-wheel--keys"}`} role="group" aria-label="Keys" onKeyDown={onKeyDown}>
+    <div className={`cp-wheel${counts ? " cp-wheel--counts" : " cp-wheel--keys"}${coloured ? " cp-wheel--coloured" : ""}`} role="group" aria-label="Keys" onKeyDown={onKeyDown}>
       <svg className="cp-wheel__art" viewBox={`0 0 ${GRID_CELLS} ${GRID_CELLS}`} aria-hidden="true">
         {CAMELOT_CODES.map((code) => (
           <path
@@ -174,6 +177,7 @@ export function CamelotWheel({
               aria-hidden="true"
               data-label-for={code}
               data-counted={count === null ? undefined : "true"}
+              data-level={levelOf(code) || undefined}
               style={{ "--wheel-x": `${shape.label.x}%`, "--wheel-y": `${shape.label.y}%` } as CSSProperties}
             >
               {code}

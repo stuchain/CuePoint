@@ -236,6 +236,14 @@ export function segmentShape(code: string): SegmentShape {
 export const COUNT_LEVEL_MIX = [0, 12, 22, 31, 40] as const;
 
 /**
+ * The same levels with Settings › Color keys on (round 9): how much of the key's own colour each
+ * level mixes into the panel's fill. The first four stay light enough for the text colour at 4.5:1
+ * in every theme; the last is nearly the full colour and its label turns to the dark outline colour,
+ * which reads at 4.5:1 on it. wheelContrast.test.ts holds both.
+ */
+export const COUNT_COLOUR_MIX = [8, 14, 20, 25, 88] as const;
+
+/**
  * The level a count draws at, from 0 (nothing) to the last: darker for more, relative to
  * the biggest count on the wheel. Any key with a track is at least level 1, so it never
  * reads as empty.

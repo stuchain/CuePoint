@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "../Button";
 import { CamelotWheel } from "./CamelotWheel";
 import { parseCode } from "./camelot";
+import { placeWheel } from "./wheelPlacement";
 import { keyRulesState, openMatching } from "./wheelLink";
 import { closeWheel, type WheelSource } from "./wheelStore";
 import { useCompatibleKeys, useWheelSubject } from "./useWheelSubject";
@@ -19,16 +20,13 @@ interface WheelPopoverProps {
   presenceRef?: RefObject<HTMLDivElement | null>;
 }
 
-/** Space left under the popover when it is as tall as the window allows, in CSS pixels. */
-const FIT_MARGIN = 8;
-
 /** The first key to land on: the track's own, else 8A, the middle of the wheel's range. */
 function startingCode(key: string | null): string {
   return key !== null && parseCode(key) !== null ? key : "8A";
 }
 
 /**
- * The Camelot wheel as a popover under its button (PAGES-10, DEC-133, K8).
+ * The Camelot wheel as a popover next to its button (PAGES-10, DEC-133, K8).
  *
  * Fixed to the window and placed from the button, so the page below never reflows and the
  * scrolling Track details panel the button sits in cannot clip it. It
@@ -54,23 +52,27 @@ export function WheelPopover({ source, anchor, leaving = false, presenceRef }: W
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Place it under the button, right edges level and kept inside the window, then fit the
-  // window: the room from the popover's top to the window's bottom edge.
+  // Place it next to the button that opened it (see wheelPlacement.ts), kept inside the window.
   useLayoutEffect(() => {
-    const fit = () => {
+    const fit = (event?: Event) => {
       const root = rootRef.current;
       if (!root) return;
-      const width = root.offsetWidth;
-      // Under the opener, right edges level; with none known, the window's top right.
-      const box = anchor?.isConnected ? anchor.getBoundingClientRect() : null;
-      const left = Math.min((box ? box.right : window.innerWidth) - width, window.innerWidth - width - FIT_MARGIN);
-      // Under the opener when half the window is free below it; otherwise (the player bar's key at
-      // the foot, or Track details' key line low or scrolled out at the largest size) from the top.
-      const below = box ? window.innerHeight - box.bottom : 0;
-      root.style.top = `${box && below >= window.innerHeight / 2 ? box.bottom : FIT_MARGIN}px`;
-      root.style.left = `${Math.max(left, FIT_MARGIN)}px`;
-      const room = window.innerHeight - root.getBoundingClientRect().top - FIT_MARGIN;
-      root.style.maxHeight = `${Math.max(room, 0)}px`;
+      // The popover's own scroll is the person reading it: refitting would be a no-op at best.
+      if (event?.type === "scroll" && event.target instanceof Node && root.contains(event.target)) return;
+      const connected = anchor?.isConnected ? anchor : null;
+      const bar = connected?.closest(".cp-player-bar");
+      const at = placeWheel({
+        source: source === "player" ? "player" : "details",
+        anchor: connected ? connected.getBoundingClientRect() : null,
+        bar: bar ? bar.getBoundingClientRect() : null,
+        // The natural height, read from the content so the current cap (and the scroll position
+        // it keeps) never has to be taken off to measure.
+        size: { width: root.offsetWidth, height: root.scrollHeight + (root.offsetHeight - root.clientHeight) },
+        win: { width: window.innerWidth, height: window.innerHeight },
+      });
+      root.style.top = `${at.top}px`;
+      root.style.left = `${at.left}px`;
+      root.style.maxHeight = `${at.maxHeight}px`;
     };
     fit();
     // Scrolling anything (Track details, the page) moves the opener under it: follow it.
@@ -80,7 +82,7 @@ export function WheelPopover({ source, anchor, leaving = false, presenceRef }: W
       window.removeEventListener("resize", fit);
       window.removeEventListener("scroll", fit, true);
     };
-  }, [anchor]);
+  }, [anchor, source]);
 
   const pick = useCallback(
     (code: string) => {

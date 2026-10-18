@@ -176,7 +176,7 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
       <Modal
         open={confirmingClear}
         title="Clear queue?"
-        size="narrow"
+        size="small"
         variant="danger"
         onClose={() => setConfirmingClear(false)}
         primaryAction={{ label: "Clear queue", onClick: () => void clear() }}

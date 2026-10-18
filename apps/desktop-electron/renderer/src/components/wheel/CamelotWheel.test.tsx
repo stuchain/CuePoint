@@ -20,6 +20,7 @@ import { resetPlayerStore } from "../player/playerStore";
 import { declarations, parseRules, stripComments } from "../../test/cssRules";
 import { CamelotWheel } from "./CamelotWheel";
 import wheelCss from "./CamelotWheel.css?raw";
+import { saveKeyColours } from "./keyColourSetting";
 import { WheelButton } from "./WheelButton";
 import { WheelPopoverHost } from "./WheelPopoverHost";
 import { closeWheel, openWheel, toggleWheel } from "./wheelStore";
@@ -191,7 +192,7 @@ describe("the Track details button (K8)", () => {
     expect(dialog().style.left).not.toBe("");
   });
 
-  it("opens from the player bar's key with no Track details button mounted, under that key", async () => {
+  it("opens from the player bar's key with no Track details button mounted, just above that key, not in the window's corner", async () => {
     install({ playing: item({ title: "Strobe", key: "8A" }) });
     render(
       <MemoryRouter>
@@ -202,12 +203,16 @@ describe("the Track details button (K8)", () => {
       </MemoryRouter>,
     );
     const opener = screen.getByRole("button", { name: "player key" });
-    opener.getBoundingClientRect = () => ({ left: 0, top: 10, right: 300, bottom: 40, width: 300, height: 30, x: 0, y: 10, toJSON() {} });
+    // The foot of the window, where the player bar's key is.
+    opener.getBoundingClientRect = () => ({ left: 300, top: 700, right: 330, bottom: 720, width: 30, height: 20, x: 300, y: 700, toJSON() {} });
 
     await userEvent.click(opener);
 
     expect(await screen.findByRole("dialog", { name: "Camelot wheel" })).toBeInTheDocument();
-    expect(dialog().style.top).toBe("40px");
+    // Regression: it opened at the window's top left, over the logo. Now it ends just above the key
+    // (jsdom lays nothing out, so it is 0 high) and starts level with the key's left edge.
+    expect(dialog().style.top).toBe("692px");
+    expect(dialog().style.left).toBe("300px");
     expect(within(dialog()).getByText("Playing: Strobe · 8A")).toBeInTheDocument();
   });
 
@@ -215,15 +220,16 @@ describe("the Track details button (K8)", () => {
     install();
     mount();
     const button = screen.getByRole("button", { name: "Camelot wheel" });
-    let bottom = 40;
-    button.getBoundingClientRect = () => ({ left: 0, top: 10, right: 300, bottom, width: 300, height: 30, x: 0, y: 10, toJSON() {} });
+    let top = 100;
+    button.getBoundingClientRect = () => ({ left: 900, top, right: 930, bottom: top + 20, width: 30, height: 20, x: 900, y: top, toJSON() {} });
     await openFromHeader();
-    expect(dialog().style.top).toBe("40px");
+    // Beside the key, level with its top.
+    expect(dialog().style.top).toBe("100px");
 
-    bottom = 12;
+    top = 60;
     fireEvent.scroll(document.body);
 
-    expect(dialog().style.top).toBe("12px");
+    expect(dialog().style.top).toBe("60px");
   });
 
   it("closes with Escape, an outside click and the button, and gives focus back", async () => {
@@ -559,6 +565,30 @@ describe("the wheel in counts mode (PAGES-16)", () => {
     expect(screen.getByRole("button", { name: "8A, A minor" })).toBeInTheDocument();
     expect(document.querySelector('[data-label-for="8A"]')).toHaveTextContent(/^8A$/);
     expect(document.querySelector('[data-shape="8A"]')).not.toHaveAttribute("data-level");
+  });
+
+  it("colours the wedges in their key colours with Color keys on, and not with it off", () => {
+    const wheel = () => document.querySelector(".cp-wheel");
+    const props = { lit: new Map(), focusCode: "8A", onFocusCode: () => undefined, onPick: () => undefined };
+    const { unmount } = render(<CamelotWheel {...props} counts={new Map([["8A", 5]])} />);
+    expect(wheel()).toHaveClass("cp-wheel--coloured", "cp-wheel--counts");
+    unmount();
+    render(<CamelotWheel {...props} />);
+    expect(wheel()).toHaveClass("cp-wheel--coloured", "cp-wheel--keys");
+  });
+
+  it("is violet on both wheels with Color keys off", () => {
+    saveKeyColours(false);
+    try {
+      const props = { lit: new Map(), focusCode: "8A", onFocusCode: () => undefined, onPick: () => undefined };
+      const { unmount } = render(<CamelotWheel {...props} counts={new Map([["8A", 5]])} />);
+      expect(document.querySelector(".cp-wheel")).not.toHaveClass("cp-wheel--coloured");
+      unmount();
+      render(<CamelotWheel {...props} />);
+      expect(document.querySelector(".cp-wheel")).not.toHaveClass("cp-wheel--coloured");
+    } finally {
+      saveKeyColours(true);
+    }
   });
 
   it("cuts each key's button to its smooth wedge", () => {

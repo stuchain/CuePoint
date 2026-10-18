@@ -7,7 +7,7 @@ import qtEvolved from "../../tokens/themes/qtEvolved.css?raw";
 import retro16 from "../../tokens/themes/retro16.css?raw";
 import { contrastRatio } from "../../tokens/themeDerivation";
 import wheelCss from "./CamelotWheel.css?raw";
-import { COUNT_LEVEL_MIX } from "./camelot";
+import { COUNT_COLOUR_MIX, COUNT_LEVEL_MIX } from "./camelot";
 
 /**
  * The wheel's colors in every built-in theme (PAGES-10): each label at 4.5:1 or
@@ -134,7 +134,31 @@ describe.each(Object.entries(THEMES))("the key-coloured wheel in %s", (name, css
   });
 
   it("styles the wedges from the key colour, not the green and violet of old", () => {
-    expect(wheelCss).toMatch(/\.cp-wheel--keys \.cp-wheel__shape\s*\{[^}]*var\(--wheel-key\) 22%/);
-    expect(wheelCss).toMatch(/\.cp-wheel--keys \.cp-wheel__shape\[data-lit\]\s*\{[^}]*fill:\s*var\(--wheel-key\)/);
+    expect(wheelCss).toMatch(/\.cp-wheel--coloured \.cp-wheel__shape\s*\{[^}]*var\(--wheel-key\) 22%/);
+    expect(wheelCss).toMatch(/\.cp-wheel--coloured \.cp-wheel__shape\[data-lit\]\s*\{[^}]*fill:\s*var\(--wheel-key\)/);
+  });
+
+  it("colours the counts by how much of the key's own colour each level mixes, from the same numbers", () => {
+    COUNT_COLOUR_MIX.forEach((percent, level) => {
+      if (level === 0) {
+        expect(wheelCss).toMatch(
+          new RegExp(`\\.cp-wheel--coloured\\.cp-wheel--counts \\.cp-wheel__shape\\s*\\{[^}]*--wheel-key\\)\\s*${percent}%`),
+        );
+        return;
+      }
+      expect(wheelCss).toMatch(
+        new RegExp(`\\.cp-wheel--coloured \\.cp-wheel__shape\\[data-level="${level}"\\]\\s*\\{[^}]*--wheel-key\\)\\s*${percent}%`),
+      );
+    });
+  });
+
+  it("reads each count at 4.5:1 on every key's level fill: the text colour while light, the dark colour on the fullest", () => {
+    COUNT_COLOUR_MIX.forEach((percent, level) => {
+      const label = level === COUNT_COLOUR_MIX.length - 1 ? t["border-outline"]! : t["fg-primary"]!;
+      for (const [code, colour] of Object.entries(keys)) {
+        const fill = mix(colour, t["bg-panel-alt"]!, percent);
+        expect(contrastRatio(label, fill), `${code} at level ${level}`).toBeGreaterThanOrEqual(4.5);
+      }
+    });
   });
 });
