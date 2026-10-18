@@ -16,7 +16,8 @@ function Window({ title, children }: { title: string; children: ReactNode }) {
       <rect className="ob-bar" x="1" y="1" width="163" height="16" />
       <rect className="ob-dot ob-dot--a" x="6" y="6" width="5" height="5" />
       <rect className="ob-dot ob-dot--b" x="14" y="6" width="5" height="5" />
-      <text className="ob-title" x="140" y="12.5" textAnchor="end">
+      <rect className="ob-dot ob-dot--c" x="22" y="6" width="5" height="5" />
+      <text className="ob-title" x="158" y="12.5" textAnchor="end">
         {title}
       </text>
       {children}
@@ -37,14 +38,14 @@ function Lines({ x, y, count, wide = 100 }: { x: number; y: number; count: numbe
 
 function OpenApp() {
   return (
-    <Window title="DJ app">
+    <Window title="Rekordbox">
       <Lines x={10} y={30} count={7} />
       <rect className="ob-hl" x="40" y="42" width="85" height="34" />
       <text className="ob-on" x="82.5" y="57" textAnchor="middle">
         Open
       </text>
       <text className="ob-on" x="82.5" y="70" textAnchor="middle">
-        your DJ app
+        Rekordbox
       </text>
     </Window>
   );
@@ -52,7 +53,7 @@ function OpenApp() {
 
 function ExportMenu() {
   return (
-    <Window title="DJ app">
+    <Window title="Rekordbox">
       <rect className="ob-hl" x="8" y="19" width="26" height="14" />
       <text className="ob-on" x="21" y="29.5" textAnchor="middle">
         File
@@ -141,8 +142,11 @@ function WelcomeArt() {
       <rect className="ob-line" x="12" y="58" width="18" height="4" />
       <rect className="ob-line" x="12" y="70" width="22" height="4" />
       <image className="ob-logo" href={appIcon} x="82" y="24" width="48" height="48" />
-      <text className="ob-fg" x="106" y="90" textAnchor="middle">
-        Clean · Discover · Prepare
+      <text className="ob-fg" x="106" y="86" textAnchor="middle">
+        Clean · Discover
+      </text>
+      <text className="ob-fg" x="106" y="99" textAnchor="middle">
+        Prepare
       </text>
     </Window>
   );

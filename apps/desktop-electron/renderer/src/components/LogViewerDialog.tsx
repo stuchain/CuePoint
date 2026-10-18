@@ -126,7 +126,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
     <Modal
       open={open}
       title="Log viewer"
-      size="wide"
+      size="large"
       onClose={onClose}
       closeLabel="Close"
     >

@@ -31,7 +31,7 @@ export function DiagnosticsDialog({ open, onClose }: DiagnosticsDialogProps) {
     <Modal
       open={open}
       title="Diagnostics"
-      size="wide"
+      size="large"
       onClose={onClose}
       closeLabel="Close"
     >

@@ -55,6 +55,12 @@
   color: var(--fg-primary);
 }
 
+/* A destructive entry keeps the danger colour, also while highlighted. */
+.cp-track-menu__item--danger:not([aria-disabled="true"]),
+.cp-track-menu__item--danger.cp-track-menu__item--active:not([aria-disabled="true"]) {
+  color: var(--danger-text);
+}
+
 .cp-track-menu__item[aria-disabled="true"] {
   color: var(--fg-disabled);
   cursor: default;

@@ -10,8 +10,8 @@
 }
 
 .cp-modal {
-  /* Normal; --narrow and --wide are the other two. All scale with the text. */
-  width: min(var(--modal-width-normal), 100%);
+  /* Medium, a form; --small and --large are the other two. All scale with the text. */
+  width: min(var(--modal-width-medium), 100%);
   background: var(--bg-panel);
   border: var(--divider);
   box-shadow: var(--shadow-dialog);
@@ -29,13 +29,17 @@
 }
 
 /* A question (a confirmation) needs no more than this. */
-.cp-modal--narrow {
-  width: min(var(--modal-width-narrow), 100%);
+.cp-modal--small {
+  width: min(var(--modal-width-small), 100%);
 }
 
-/* For rows rather than sentences: a log at the normal width clips every line. */
-.cp-modal--wide {
-  width: min(var(--modal-width-wide), 92vw);
+.cp-modal--medium {
+  width: min(var(--modal-width-medium), 100%);
+}
+
+/* For tables and lists rather than sentences: a log at the medium width clips every line. */
+.cp-modal--large {
+  width: min(var(--modal-width-large), 92vw);
 }
 
 .cp-modal__header {

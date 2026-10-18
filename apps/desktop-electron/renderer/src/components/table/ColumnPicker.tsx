@@ -43,6 +43,7 @@ export function ColumnPicker<Row>({
 
   return (
     <Modal
+      size="large"
       open={open}
       onClose={onClose}
       title="Columns"
@@ -75,8 +76,8 @@ export function ColumnPicker<Row>({
                   variant="secondary"
                   size="sm"
                   iconOnly
-                  icon="chevron-left"
-                  aria-label={`Move ${column.header} left`}
+                  icon="arrow-up"
+                  aria-label={`Move ${column.header} up`}
                   disabled={!canMove(columns, layout, entry.id, -1)}
                   onClick={() => onNudge(entry.id, -1)}
                 />
@@ -84,8 +85,8 @@ export function ColumnPicker<Row>({
                   variant="secondary"
                   size="sm"
                   iconOnly
-                  icon="chevron-right"
-                  aria-label={`Move ${column.header} right`}
+                  icon="arrow-down"
+                  aria-label={`Move ${column.header} down`}
                   disabled={!canMove(columns, layout, entry.id, 1)}
                   onClick={() => onNudge(entry.id, 1)}
                 />

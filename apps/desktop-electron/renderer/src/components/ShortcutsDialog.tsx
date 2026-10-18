@@ -33,10 +33,9 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
   }, [query]);
 
   return (
-    <Modal open={open} title="Keyboard shortcuts" onClose={onClose} closeLabel="Close">
+    <Modal size="large" open={open} title="Keyboard shortcuts" onClose={onClose} closeLabel="Close">
       <div className="shortcuts-dialog">
         <SearchField thing="shortcuts" label="Search" value={query} onValueChange={setQuery} />
-        <p className="shortcuts-dialog__note">On a Mac, use Cmd where a shortcut says Ctrl.</p>
         <div className="shortcuts-dialog__table-wrap">
           <table className="shortcuts-dialog__table">
             <thead>

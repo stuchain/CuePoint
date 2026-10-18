@@ -37,6 +37,8 @@ interface ToastMessage {
 
 interface ToastContextValue {
   push: (message: string, variant?: ToastVariant, action?: ToastAction, options?: ToastOptions) => void;
+  /** Close the toast pushed with this key, if it is still showing. */
+  dismissKey: (key: string) => void;
 }
 
 export interface ToastOptions {
@@ -94,7 +96,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const value = useMemo(() => ({ push }), [push]);
+  const dismissKey = useCallback((key: string) => {
+    setToasts((prev) => prev.map((t) => (t.dedupeKey === key && !t.closing ? { ...t, closing: true } : t)));
+  }, []);
+
+  const value = useMemo(() => ({ push, dismissKey }), [push, dismissKey]);
 
   return (
     <ToastContext.Provider value={value}>

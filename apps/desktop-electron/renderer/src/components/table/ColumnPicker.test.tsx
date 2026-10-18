@@ -120,36 +120,43 @@ describe("hiding and showing", () => {
 });
 
 describe("moving", () => {
-  it("asks to move a column left", () => {
+  it("orders the vertical list with up and down arrows, not left and right", () => {
+    show();
+    expect(screen.queryByRole("button", { name: /Move .* (left|right)$/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Move BPM up" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Move BPM down" })).toBeInTheDocument();
+  });
+
+  it("asks to move a column up", () => {
     const handlers = show();
 
-    fireEvent.click(screen.getByRole("button", { name: "Move BPM left" }));
+    fireEvent.click(screen.getByRole("button", { name: "Move BPM up" }));
 
     expect(handlers.onNudge).toHaveBeenCalledWith("bpm", -1);
   });
 
-  it("asks to move a column right", () => {
+  it("asks to move a column down", () => {
     const handlers = show();
 
-    fireEvent.click(screen.getByRole("button", { name: "Move Artist right" }));
+    fireEvent.click(screen.getByRole("button", { name: "Move Artist down" }));
 
     expect(handlers.onNudge).toHaveBeenCalledWith("artist", 1);
   });
 
   it("does not offer a move past the pinned column", () => {
     show();
-    expect(screen.getByRole("button", { name: "Move Artist left" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move Artist up" })).toBeDisabled();
   });
 
   it("does not offer a move past the end", () => {
     show();
-    expect(screen.getByRole("button", { name: "Move BPM right" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move BPM down" })).toBeDisabled();
   });
 
   it("does not offer to move the only pinned column", () => {
     show();
-    expect(screen.getByRole("button", { name: "Move Title left" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Move Title right" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move Title up" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move Title down" })).toBeDisabled();
   });
 });
 

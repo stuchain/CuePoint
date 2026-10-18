@@ -63,6 +63,8 @@ export interface TrackContextMenuItem {
    * runs `onSelect` and leaves the menu open so several can be toggled.
    */
   checked?: boolean;
+  /** A destructive entry (Delete this dig…): drawn in the theme's danger colour. */
+  danger?: boolean;
 }
 
 interface TrackContextMenuProps {
@@ -300,7 +302,7 @@ export function TrackContextMenu({ x, y, items, onClose, label, anchor }: TrackC
             type="button"
             role={item.checked === undefined ? "menuitem" : "menuitemcheckbox"}
             aria-checked={item.checked}
-            className={`cp-track-menu__item${index === activeAt(at) ? " cp-track-menu__item--active" : ""}${parent ? " cp-track-menu__item--parent" : ""}${showing ? " cp-track-menu__item--open" : ""}`}
+            className={`cp-track-menu__item${index === activeAt(at) ? " cp-track-menu__item--active" : ""}${parent ? " cp-track-menu__item--parent" : ""}${showing ? " cp-track-menu__item--open" : ""}${item.danger ? " cp-track-menu__item--danger" : ""}`}
             aria-disabled={unavailable || undefined}
             aria-describedby={reasonId}
             aria-haspopup={parent ? "menu" : undefined}

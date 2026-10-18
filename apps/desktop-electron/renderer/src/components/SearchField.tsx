@@ -1,4 +1,5 @@
-import { forwardRef, type InputHTMLAttributes } from "react";
+import { forwardRef, useImperativeHandle, useRef, type InputHTMLAttributes } from "react";
+import { useFitPlaceholder } from "./fitPlaceholder";
 import { PixelIcon } from "./PixelIcon";
 import "./SearchField.css";
 
@@ -13,6 +14,13 @@ interface SearchFieldProps
   onClear?: () => void;
   /** Overrides the accessible name; it is "Search <thing>" otherwise. */
   label?: string;
+  /** Overrides the placeholder; it is "Search <thing>…" otherwise. The accessible name does not change. */
+  placeholder?: string;
+  /**
+   * Shortens the placeholder to "Search…" when the box is too narrow for the full hint, so it is
+   * never cut mid-word (the hint is `placeholder` or "Search <thing>…").
+   */
+  fitPlaceholder?: boolean;
 }
 
 /** The placeholder of every search field: "Search <thing>…". */
@@ -26,9 +34,13 @@ export function searchPlaceholder(thing: string): string {
  * clears the same way). Escape inside the field also clears it.
  */
 export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(function SearchField(
-  { thing, value, onValueChange, onClear, label, className = "", onKeyDown, ...rest },
+  { thing, value, onValueChange, onClear, label, placeholder, fitPlaceholder = false, className = "", onKeyDown, ...rest },
   ref,
 ) {
+  const input = useRef<HTMLInputElement>(null);
+  useImperativeHandle(ref, () => input.current as HTMLInputElement);
+  const hint = placeholder ?? searchPlaceholder(thing);
+  useFitPlaceholder(input, hint, fitPlaceholder);
   const clear = () => {
     onValueChange("");
     onClear?.();
@@ -39,11 +51,11 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
         <PixelIcon name="search" size="sm" />
       </span>
       <input
-        ref={ref}
+        ref={input}
         type="search"
         className="cp-search-field__input"
         aria-label={label ?? `Search ${thing}`}
-        placeholder={searchPlaceholder(thing)}
+        placeholder={hint}
         value={value}
         autoComplete="off"
         spellCheck={false}

@@ -55,6 +55,13 @@ describe("the menu", () => {
     expect(screen.getByRole("menu")).toHaveFocus();
   });
 
+  it("draws a danger entry in the danger colour", () => {
+    open({ items: items([{}, {}, { danger: true }]) });
+    expect(screen.getByRole("menuitem", { name: "Add to queue" })).toHaveClass("cp-track-menu__item--danger");
+    expect(screen.getByRole("menuitem", { name: "Play" })).not.toHaveClass("cp-track-menu__item--danger");
+    expect(css).toMatch(/\.cp-track-menu__item--danger[^{]*\{[^}]*var\(--danger-text\)/);
+  });
+
   it("runs an entry and closes", async () => {
     const chosen = vi.fn();
     const { onClose } = open({ items: items([{ onSelect: chosen }]) });

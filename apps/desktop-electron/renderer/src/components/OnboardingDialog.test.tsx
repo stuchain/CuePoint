@@ -8,6 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import illustrationsCss from "./OnboardingIllustrations.css?raw";
 
 import { OnboardingDialog } from "./OnboardingDialog";
 
@@ -152,10 +153,48 @@ describe("the four screens", () => {
     }
   });
 
+  it("lays every single-picture step out the same: words left, one picture right", async () => {
+    mount();
+    for (let step = 1; step <= 4; step += 1) {
+      if (step > 1) await next();
+      if (step === 2) continue;
+      const body = screen.getByRole("dialog").querySelector(".onboarding-dialog")!;
+      expect(body.querySelector(".onboarding-dialog__text .onboarding-dialog__title")).not.toBeNull();
+      expect(body.querySelector(".onboarding-dialog__text .onboarding-dialog__body")).not.toBeNull();
+      expect(body.querySelectorAll(".onboarding-dialog__single")).toHaveLength(1);
+      expect(body.querySelector(".onboarding-dialog__text")!.nextElementSibling).toBe(
+        body.querySelector(".onboarding-dialog__single"),
+      );
+    }
+  });
+
+  it("says Rekordbox, not DJ app, in the pictures, and draws three window dots", async () => {
+    mount();
+    await next();
+    const drawings = screen.getByRole("list", { name: "How to export from Rekordbox" });
+    expect(drawings.textContent).not.toMatch(/DJ app/);
+    expect(drawings).toHaveTextContent("Open Rekordbox");
+    expect(drawings).toHaveTextContent("Rekordbox");
+    for (const svg of drawings.querySelectorAll("svg.ob-art")) {
+      expect(svg.querySelectorAll(".ob-dot")).toHaveLength(3);
+    }
+  });
+
+  it("draws the pictures in the app's pixel font and lets step 1's line wrap", () => {
+    const css = illustrationsCss;
+    expect(css).toMatch(/\.ob-art\s*{[^}]*font-family:\s*var\(--font-pixel\)/);
+    mount();
+    const art = screen.getByRole("dialog").querySelector(".onboarding-dialog__single")!;
+    // Two lines, never one cut one.
+    expect(art).toHaveTextContent("Clean · Discover");
+    expect(art).toHaveTextContent("Prepare");
+    expect(art.textContent).not.toContain("Clean · Discover · Prepare");
+  });
+
   it("is one dialog size on every step, with one violet button", async () => {
     mount();
     for (let step = 1; step <= 4; step += 1) {
-      expect(screen.getByRole("dialog").className).toMatch(/cp-modal--wide/);
+      expect(screen.getByRole("dialog").className).toMatch(/cp-modal--large/);
       const violet = within(screen.getByRole("dialog")).queryAllByRole("button").filter((b) => b.className.includes("cp-btn--primary"));
       expect(violet).toHaveLength(1);
       if (step < 4) await next();
@@ -195,13 +234,22 @@ describe("the four screens", () => {
     }
   });
 
-  it("ends on Done, with no Skip and no Next", async () => {
+  it("keeps Skip on the last screen, dimmed, so Back and Done do not move", async () => {
     mount();
     await goTo(4);
     const footer = screen.getByRole("dialog").querySelector(".cp-modal__footer")!;
-    expect([...footer.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["Back", "Done"]);
-    expect(screen.queryByRole("button", { name: "Skip" })).toBeNull();
+    expect([...footer.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["Skip", "Back", "Done"]);
+    expect(screen.getByRole("button", { name: "Skip" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+  });
+
+  it("puts the step dots in the footer, between Skip and Back", async () => {
+    mount();
+    const footer = screen.getByRole("dialog").querySelector(".cp-modal__footer")!;
+    const dots = screen.getByRole("img", { name: "Step 1 of 4" });
+    expect(footer.contains(dots)).toBe(true);
+    const order = [...footer.querySelectorAll("button, [role='img']")].map((e) => e.textContent || e.getAttribute("aria-label"));
+    expect(order).toEqual(["Skip", "Step 1 of 4", "Back", "Next"]);
   });
 
   it("goes back one screen at a time", async () => {
@@ -369,10 +417,10 @@ describe("storage that throws", () => {
 });
 
 describe("the actions on its screens", () => {
-  it("How? opens the Rekordbox instructions and leaves the guide where it is", async () => {
+  it("How do I get one? opens the Rekordbox instructions and leaves the guide where it is", async () => {
     const { onShowExport, onComplete } = mount();
     await goTo(2);
-    await userEvent.click(screen.getByRole("button", { name: "How?" }));
+    await userEvent.click(screen.getByRole("button", { name: "How do I get one?" }));
     expect(onShowExport).toHaveBeenCalledTimes(1);
     expect(onComplete).not.toHaveBeenCalled();
     expect(localStorage.getItem(DONE)).toBeNull();
@@ -435,7 +483,7 @@ describe("the actions on its screens", () => {
 
   it("puts each action on its own screen only", async () => {
     mount();
-    expect(screen.queryByRole("button", { name: "How?" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "How do I get one?" })).toBeNull();
     await next();
     expect(screen.queryByRole("button", { name: "Match tracks…" })).toBeNull();
     await next();

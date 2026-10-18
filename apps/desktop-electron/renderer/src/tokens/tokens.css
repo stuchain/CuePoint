@@ -159,10 +159,10 @@
   /* Chips and badges: the fill is the tone's colour at 20% over the panel, the line the colour. */
   --chip-fill-mix: 20%;
   --chip-text-mix: 35%;
-  /* Modal widths: narrow (a question), normal (a form), wide (rows, logs, search). */
-  --modal-width-narrow: calc(340px * var(--scale));
-  --modal-width-normal: calc(420px * var(--scale));
-  --modal-width-wide: calc(720px * var(--scale));
+  /* Modal widths: small (a question), medium (a form), large (a table or a list). */
+  --modal-width-small: calc(400px * var(--scale));
+  --modal-width-medium: calc(560px * var(--scale));
+  --modal-width-large: calc(720px * var(--scale));
   /* The close button every panel, dialog, toast and inspector shares. */
   --close-size: var(--control-height);
 

@@ -5,6 +5,8 @@ import { CloseButton } from "./CloseButton";
 import { ReasonLine } from "./ReasonLine";
 import "./Modal.css";
 
+export type ModalSize = "small" | "medium" | "large";
+
 interface ModalProps {
   open: boolean;
   title: string;
@@ -54,11 +56,11 @@ interface ModalProps {
    */
   reason?: string;
   /**
-   * Three widths, all scaled with the text: `"narrow"` for a question (a confirmation), the
-   * default for a form, `"wide"` for content that is a table or a log rather than a message
-   * or a form (the log viewer, search).
+   * Three widths, all scaled with the text: `"small"` for a question (a confirmation), `"medium"`
+   * (the default) for a form, `"large"` only for a table or a list (columns, shortcuts, activity,
+   * the log viewer, search). `"narrow"`, `"default"` and `"wide"` are the old names of the same three.
    */
-  size?: "narrow" | "default" | "wide";
+  size?: ModalSize;
   /**
    * `"danger"` is a delete confirmation: the main button is red (the one place a red fill is
    * used). Title it "Delete <thing>?", say what is lost in the body, offer Cancel and
@@ -103,7 +105,7 @@ export function Modal({
   closeLabel,
   footerExtra,
   reason: reasonProp,
-  size = "default",
+  size = "medium",
   variant = "default",
   closeOnBackdrop = true,
   restoreFocus = true,
@@ -200,7 +202,7 @@ export function Modal({
     >
       <div
         ref={dialogRef}
-        className={`cp-modal${size === "wide" ? " cp-modal--wide" : ""}${size === "narrow" ? " cp-modal--narrow" : ""}${variant === "danger" ? " cp-modal--danger" : ""}`}
+        className={`cp-modal${` cp-modal--${size}`}${variant === "danger" ? " cp-modal--danger" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

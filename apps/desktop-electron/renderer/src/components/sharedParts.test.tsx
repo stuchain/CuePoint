@@ -297,7 +297,7 @@ describe("ConfirmDialog and the newest dialog", () => {
       </ConfirmDialog>,
     );
     const dialog = screen.getByRole("dialog", { name: "Clear logs?" });
-    expect(dialog).toHaveClass("cp-modal--narrow", "cp-modal--danger");
+    expect(dialog).toHaveClass("cp-modal--small", "cp-modal--danger");
     const confirm = within(dialog).getByRole("button", { name: "Clear logs" });
     expect(confirm).toHaveClass("cp-btn--danger-confirm");
     await userEvent.click(confirm);
@@ -324,19 +324,19 @@ describe("ConfirmDialog and the newest dialog", () => {
     expect(outer).not.toHaveBeenCalled();
   });
 
-  it("has three widths: narrow, normal (the default) and wide", () => {
+  it("has three widths: small, medium (the default) and large", () => {
     const { rerender } = render(
-      <Modal open title="W" size="wide" onClose={() => undefined}>
+      <Modal open title="W" size="large" onClose={() => undefined}>
         <p>x</p>
       </Modal>,
     );
-    expect(screen.getByRole("dialog")).toHaveClass("cp-modal--wide");
+    expect(screen.getByRole("dialog")).toHaveClass("cp-modal--large");
     rerender(
       <Modal open title="W" onClose={() => undefined}>
         <p>x</p>
       </Modal>,
     );
-    expect(screen.getByRole("dialog")).not.toHaveClass("cp-modal--wide", "cp-modal--narrow");
+    expect(screen.getByRole("dialog")).toHaveClass("cp-modal--medium");
   });
 });
 

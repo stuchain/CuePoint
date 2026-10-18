@@ -25,7 +25,7 @@ export function ConfirmDialog({ open, title, children, confirmLabel, onConfirm, 
     <Modal
       open={open}
       title={title}
-      size="narrow"
+      size="small"
       variant={danger ? "danger" : "default"}
       onClose={onCancel}
       primaryAction={{ label: confirmLabel, onClick: onConfirm }}

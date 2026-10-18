@@ -123,7 +123,7 @@ export function OnboardingDialog({
     <Modal
       open={open && !covered}
       title="Getting started"
-      size="wide"
+      size="large"
       // Escape and the close button leave without marking it done; a click on the
       // backdrop does nothing (RUN-1, RUN-2).
       onClose={onComplete}
@@ -132,36 +132,14 @@ export function OnboardingDialog({
         label: isLast ? "Done" : "Next",
         onClick: () => (isLast ? finish() : setStep((s) => s + 1)),
       }}
-      extraAction={isLast ? undefined : { label: "Skip", onClick: finish }}
       backAction={{ label: "Back", onClick: () => setStep((s) => s - 1), disabled: step === 0 }}
-    >
-      <div className="onboarding-dialog">
-        {screen.art && <OnboardingArt id={screen.art} />}
-        <h3 className="onboarding-dialog__title">{screen.title}</h3>
-        <p className="onboarding-dialog__body">{screen.body}</p>
-        {screen.steps && <OnboardingDrawings />}
-        {doneLine && <p className="onboarding-dialog__done">{doneLine}</p>}
-        {screen.action && !(screen.action.id === "sign-in" && progress.signedIn) && (
-          <div className="onboarding-dialog__actions">
-            <Button
-              variant="secondary"
-              disabled={Boolean(needsLine)}
-              aria-describedby={needsLine ? needsId : undefined}
-              onClick={() => act(screen.action!.id)}
-            >
-              {screen.action.label}
-            </Button>
-            {screen.action.id === "import" && (
-              <Button variant="secondary" size="sm" onClick={onShowExport}>
-                How?
-              </Button>
-            )}
-          </div>
-        )}
-        {needsLine && screen.action && <p id={needsId} className="onboarding-dialog__needs">
-            {needsLine}
-          </p>}
+      // Skip stays on every step (dimmed on the last) so Back and Next never move; the dots sit
+      // between it and Back, centred in the space that is left.
+      footerExtra={
         <div className="onboarding-dialog__foot">
+          <Button variant="secondary" disabled={isLast} onClick={finish}>
+            Skip
+          </Button>
           <div className="onboarding-dialog__dots" role="img" aria-label={`Step ${step + 1} of ${SCREENS.length}`}>
             {SCREENS.map((item, index) => (
               <span
@@ -172,6 +150,38 @@ export function OnboardingDialog({
             ))}
           </div>
         </div>
+      }
+    >
+      <div className={`onboarding-dialog${screen.art ? " onboarding-dialog--split" : ""}`}>
+        <div className="onboarding-dialog__text">
+          <h3 className="onboarding-dialog__title">{screen.title}</h3>
+          <p className="onboarding-dialog__body">{screen.body}</p>
+          {screen.steps && <OnboardingDrawings />}
+          {doneLine && <p className="onboarding-dialog__done">{doneLine}</p>}
+          {screen.action && !(screen.action.id === "sign-in" && progress.signedIn) && (
+            <div className="onboarding-dialog__actions">
+              <Button
+                variant="secondary"
+                disabled={Boolean(needsLine)}
+                aria-describedby={needsLine ? needsId : undefined}
+                onClick={() => act(screen.action!.id)}
+              >
+                {screen.action.label}
+              </Button>
+              {screen.action.id === "import" && (
+                <Button variant="secondary" size="sm" onClick={onShowExport}>
+                  How do I get one?
+                </Button>
+              )}
+            </div>
+          )}
+          {needsLine && screen.action && (
+            <p id={needsId} className="onboarding-dialog__needs">
+              {needsLine}
+            </p>
+          )}
+        </div>
+        {screen.art && <OnboardingArt id={screen.art} />}
       </div>
     </Modal>
   );

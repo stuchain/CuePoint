@@ -12,6 +12,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { Modal } from "./Modal";
+import tokens from "../tokens/tokens.css?raw";
 import css from "./Modal.css?raw";
 
 function open(props: Partial<Parameters<typeof Modal>[0]> = {}) {
@@ -131,15 +132,25 @@ describe("Modal", () => {
     expect(opener).toHaveFocus();
   });
 
-  it("renders a wide dialog when asked", () => {
-    open({ size: "wide" });
-    expect(screen.getByRole("dialog")).toHaveClass("cp-modal--wide");
+  it.each(["small", "medium", "large"] as const)("draws a %s dialog at its own width", (size) => {
+    open({ size });
+    expect(screen.getByRole("dialog")).toHaveClass(`cp-modal--${size}`);
+    expect(css).toMatch(
+      new RegExp(`\\.cp-modal--${size}\\s*\\{[^}]*var\\(--modal-width-${size}\\)`),
+    );
   });
 
-  it("is a default-width dialog otherwise", () => {
+  it("is a medium dialog (a form) unless told otherwise", () => {
     open();
-    expect(screen.getByRole("dialog")).not.toHaveClass("cp-modal--wide");
+    expect(screen.getByRole("dialog")).toHaveClass("cp-modal--medium");
   });
+
+  it("keeps the three widths in order, each scaled with the text", () => {
+    const px = (name: string) => Number(new RegExp(`--modal-width-${name}:\\s*calc\\((\\d+)px \\* var\\(--scale\\)\\)`).exec(tokens)![1]);
+    expect(px("small")).toBeLessThan(px("medium"));
+    expect(px("medium")).toBeLessThan(px("large"));
+  });
+
 });
 
 describe("nested dialogs", () => {
@@ -312,7 +323,7 @@ describe("the title", () => {
     expect(flat).toMatch(/\.cp-modal \{[^}]*max-height:\s*100%/);
     expect(flat).toMatch(/\.cp-modal__body \{[^}]*overflow:\s*auto/);
     // No dialog size scrolls on its own, and none sets a height cap of its own.
-    expect(flat).not.toMatch(/\.cp-modal--wide[^{]*\{[^}]*(max-height|overflow)/);
+    expect(flat).not.toMatch(/\.cp-modal--large[^{]*\{[^}]*(max-height|overflow)/);
   });
 });
 

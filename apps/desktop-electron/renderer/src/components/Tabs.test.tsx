@@ -37,14 +37,23 @@ describe("Tabs", () => {
     expect(screen.getByRole("tablist")).not.toHaveClass("cp-tabs--sub");
   });
 
-  it("draws the sub variant without a strip or a rule (T8)", () => {
+  it("draws the sub variant as one framed strip of equal parts, the picked one filled", () => {
     render(<Tabs variant="sub" tabs={TABS} activeId="a" onChange={() => {}} />);
     expect(screen.getByRole("tablist")).toHaveClass("cp-tabs", "cp-tabs--sub");
     const sub = /\.cp-tabs--sub\s*\{([^}]*)\}/.exec(css)![1]!;
-    expect(sub).toMatch(/border-bottom:\s*0/);
-    expect(sub).toMatch(/background:\s*transparent/);
+    expect(sub).toMatch(/border:\s*var\(--control-border-width\) solid var\(--border-control\)/);
+    expect(sub).not.toMatch(/border-bottom:\s*0/);
+    expect(sub).toMatch(/width:\s*fit-content/);
+    // A hairline between the parts, so neighbours never run together.
+    expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab \+ \.cp-tabs__tab\s*\{[^}]*border-left:/);
+    expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab\s*\{[^}]*padding:\s*0 var\(--space-md\)/);
     expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab--active\s*\{[^}]*background:\s*var\(--bg-panel-alt\)/);
     expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab\s*\{[^}]*font-size:\s*var\(--font-size-xs\)/);
+  });
+
+  it("leaves the main variant underlined", () => {
+    expect(css).toMatch(/\.cp-tabs__tab--active\s*\{[^}]*border-bottom-color/);
+    expect(/\.cp-tabs\s*\{([^}]*)\}/.exec(css)![1]!).toMatch(/border-bottom:/);
   });
 
   it("has no hard-coded white wash on hover", () => {

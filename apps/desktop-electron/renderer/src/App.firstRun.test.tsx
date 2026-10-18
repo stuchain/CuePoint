@@ -112,10 +112,10 @@ describe("a fresh install", () => {
     await waitFor(() => expect(window.location.hash).toBe("#/settings"));
   });
 
-  it("How? opens the Rekordbox instructions over the guide, which comes back where it was", async () => {
+  it("How do I get one? opens the Rekordbox instructions over the guide, which comes back where it was", async () => {
     render(<App />);
     await toScreen(2);
-    await userEvent.click(screen.getByRole("button", { name: "How?" }));
+    await userEvent.click(within(guide()!).getByRole("button", { name: "How do I get one?" }));
     expect(await screen.findByRole("dialog", { name: "How to get your Rekordbox file" })).toBeInTheDocument();
     expect(guide()).toBeNull();
     await userEvent.keyboard("{Escape}");
