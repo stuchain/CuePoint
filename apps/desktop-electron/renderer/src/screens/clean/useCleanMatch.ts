@@ -83,9 +83,16 @@ export function secondsLeftOf(
   return Math.round((elapsed / progress.done) * (progress.total - progress.done));
 }
 
+/** The key of the "Matching N tracks on Beatport." toast, closed when the match ends. */
+const MATCH_STARTED_TOAST = "clean-match-started";
+
 export function useCleanMatch(onEnded: () => void): CleanMatch {
-  const { push } = useToast();
-  const message = useCallback((text: string, tone: CleanMessageTone) => push(text, tone), [push]);
+  const { push, dismissKey } = useToast();
+  const message = useCallback(
+    (text: string, tone: CleanMessageTone, key?: string) =>
+      push(text, tone, undefined, key === undefined ? undefined : { key }),
+    [push],
+  );
   const jobs = useCleanJob(message);
   const active = useActiveJob().jobs.find((job) => job.type === "clean_match") ?? null;
   // What the run was started with, for the note's one line; a match found already running has none.
@@ -123,15 +130,18 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
           onStarted?.(answer);
           return matchStartedLine(answer);
         },
+        startedKey: MATCH_STARTED_TOAST,
         // A run that has its own notice (a playlist's row) does not also say "finished".
         succeeded: announced ? undefined : "Matching finished.",
         onEnded: () => {
+          // "Matching 18 tracks on Beatport." is only true while it runs.
+          dismissKey(MATCH_STARTED_TOAST);
           setNamed(null);
           setEnded((count) => count + 1);
           latestEnded.current();
         },
       }),
-    [jobs],
+    [jobs, dismissKey],
   );
 
   const start = useCallback(

@@ -204,3 +204,8 @@
 .playlists__arrow {
   color: var(--fg-muted);
 }
+
+/* "In your files" for a playlist no sync has written yet. */
+.playlists__not-yet {
+  color: var(--fg-muted);
+}

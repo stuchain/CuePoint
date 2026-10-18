@@ -31,7 +31,6 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { Button, EmptyState, Notice, useToast } from "../../components";
 import { formatCount, plural } from "../../format/counts";
-import { formatDayTime } from "../../format/dates";
 import { couldNot } from "../../format/words";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { useInspectorSlot } from "../../components/shell";
@@ -48,7 +47,7 @@ import { useTrackSelection } from "../library/useTrackSelection";
 import { useTrackWindow } from "../library/useTrackWindow";
 import { MISSING_COLUMNS, MISSING_TABLE_LAYOUT_KEY } from "./cleanColumns";
 import { trackCount } from "./cleanFormat";
-import { lastRun, missingEmptyState } from "./cleanEmpty";
+import { checkedLine, lastRun, missingEmptyState } from "./cleanEmpty";
 import { MISSING_FILES_RULES, WHOLE_LIBRARY, cleanQuery } from "./cleanRules";
 import { revealTrack } from "./revealTrack";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
@@ -219,13 +218,13 @@ export function MissingFilesView({
   if (!neverChecked && !window_.error && (!window_.answered || window_.total === 0)) {
     const found = health?.track_count ?? 0;
     const lastChecked = health ? lastRun(health, "files") : undefined;
-    const checkedAt = lastChecked ? formatDayTime(lastChecked) || lastChecked : "";
+    const checkedBar = lastChecked ? checkedLine(lastChecked) : "";
     return (
       <div className="clean-missing clean-missing--clear">
         <div className="clean-toolbar" role="toolbar" aria-label="Missing files">
-          {window_.answered && (
-            <span className="clean-toolbar__count cp-data" role="status">
-              {`All ${plural(found, "file")} found`}
+          {window_.answered && checkedBar && (
+            <span className="clean-toolbar__count" role="status">
+              {checkedBar}
             </span>
           )}
           <span className="clean-toolbar__spacer" />
@@ -236,7 +235,7 @@ export function MissingFilesView({
             tone="clear"
             icon="clean"
             headline="No missing files"
-            description={checkedAt ? `Every file was there when CuePoint last checked, ${checkedAt}.` : undefined}
+            description={`All ${plural(found, "file")} ${found === 1 ? "was" : "were"} where your library says.`}
           />
         )}
       </div>
@@ -274,7 +273,7 @@ export function MissingFilesView({
       </div>
 
       <div className="clean-toolbar" role="toolbar" aria-label="Missing files">
-        <span className="clean-toolbar__count cp-data" role="status">
+        <span className="clean-toolbar__count" role="status">
           {plural(window_.total, "file")} missing
         </span>
         <span className="clean-toolbar__spacer" />

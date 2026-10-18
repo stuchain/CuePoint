@@ -174,7 +174,11 @@ export function ReviewTable({
               Status
             </th>
             <th scope="col">Your track</th>
-            <th scope="col">Beatport match</th>
+            <th scope="col">
+              <Hint text="Beatport match" portal>
+                <span>Beatport</span>
+              </Hint>
+            </th>
             <th scope="col" className="review-col--preview">
               <span className="match-visually-hidden">Preview</span>
             </th>

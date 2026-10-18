@@ -151,7 +151,13 @@ describe("the list", () => {
   it("says nothing has been matched yet, and that a search found nothing", async () => {
     world.runs = [];
     const { unmount } = renderPast();
-    expect(await screen.findByText("Nothing has been matched on Beatport yet", undefined, LOADED)).toBeInTheDocument();
+    expect(await screen.findByText("No searches yet", undefined, LOADED)).toBeInTheDocument();
+    expect(screen.getByText("Each Match on Beatport is kept here, so you can see what it found.")).toBeInTheDocument();
+    // Nothing to search yet: no search box.
+    expect(screen.queryByLabelText("Search")).toBeNull();
+    // The button goes to the Playlists sub-tab.
+    fireEvent.click(screen.getByRole("button", { name: "Go to Playlists" }));
+    expect(screen.getByRole("tab", { name: "Playlists" })).toHaveAttribute("aria-selected", "true");
     unmount();
 
     world.runs = RUNS;

@@ -15,6 +15,7 @@ import { ToastProvider } from "../../components";
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { browseAnswer, track } from "../../test/matchFixtures";
 import fixture from "./cleanEmpty.fixture.json";
+import css from "./clean.css?raw";
 import { MissingFilesView } from "./MissingFilesView";
 
 type Fn = ReturnType<typeof vi.fn>;
@@ -153,7 +154,7 @@ describe("the check button (K4)", () => {
     install([]);
     bridge.browseLibrary!.mockResolvedValue(fixture.checked.missing_files as LibrarySearchResponse);
     renderView(CHECKED);
-    await screen.findByText(/^All 3 files found/);
+    await screen.findByText(/^Checked /);
     expect(checkButtons()).toEqual(["Check again"]);
   });
 });
@@ -163,20 +164,30 @@ describe("nothing missing (K13)", () => {
     install([]);
     bridge.browseLibrary!.mockResolvedValue(fixture.checked.missing_files as LibrarySearchResponse);
     renderView(CHECKED);
-    return screen.findByText(/^All 3 files found/);
+    return screen.findByText(/^Checked /);
   }
 
-  it("is a bar with the count and Check again, over the all-clear", async () => {
+  it("is a bar saying when it last checked, and Check again, over the all-clear (Q15)", async () => {
     const line = await nothingMissing();
-    // No separator, so no stray trailing dot before the button (area 67).
-    expect(line.textContent).toBe("All 3 files found");
+    // No separator, so no stray trailing dot before the button (area 67); the count is not
+    // said twice: the bar says when, the empty block says all files were found.
+    expect(line.textContent).toMatch(/^Checked [A-Z][a-z]{2} \d{1,2}(, \d{4})?, \d{1,2}:\d{2}\s[AP]M$/);
+    expect(screen.queryByText(/files found/)).toBeNull();
+    expect(screen.getByText(/^All 3 files were where your library says/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Check again" })).toBeInTheDocument();
     expect(screen.getByText("No missing files")).toBeInTheDocument();
   });
 
-  it("words the time in the one date wording (day, comma, clock)", async () => {
-    await nothingMissing();
-    expect(screen.getByText(/last checked, [A-Z][a-z]{2} \d{1,2}(, \d{4})?, \d{1,2}:\d{2}/)).toBeInTheDocument();
+  it("draws the bars' count in the app's UI font at bar size, not the data face (Q15)", () => {
+    const rule = /\.clean-toolbar__count\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(rule).not.toMatch(/font-family/);
+    expect(rule).toMatch(/font-size:\s*var\(--control-font-size\)/);
+  });
+
+  it("puts the all-clear near the top under the bar, centred, like Duplicates (Q15)", () => {
+    const rule = /\.clean-missing--clear\s*>\s*\.cp-empty-state\s*\{([^}]*)\}/.exec(css);
+    expect(rule?.[1] ?? "").not.toMatch(/justify-content:\s*center|flex:\s*1/);
+    expect(css).toMatch(/\.clean-duplicates__list\s*>\s*\.cp-empty-state\s*\{[^}]*align-self:\s*stretch/);
   });
 
   it("decides from the loaded list: a missing file the Health count has not caught up with shows the table", async () => {

@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import type { DuplicateGroupList, LibraryHealth } from "../../api/cuepointBridge.types";
 import fixture from "./cleanEmpty.fixture.json";
-import { duplicatesEmptyState, missingEmptyState } from "./cleanEmpty";
+import { checkedLine, duplicatesEmptyState, missingEmptyState } from "./cleanEmpty";
 
 const UNTOUCHED = fixture.untouched.health as LibraryHealth;
 const CHECKED = fixture.checked.health as LibraryHealth;
@@ -54,5 +54,18 @@ describe("duplicates with none found", () => {
 
   it("mentions dismissed groups when they are being shown", () => {
     expect(duplicatesEmptyState(SCANNED, null, true).hint).toMatch(/not duplicates/);
+  });
+});
+
+describe("the Missing files bar's last-checked line (Q15)", () => {
+  const now = new Date(2026, 9, 17, 18, 0);
+  it("says today and yesterday in words, and any other day by its date", () => {
+    const at = (day: number) => new Date(2026, 9, day, 16, 42).toISOString();
+    expect(checkedLine(at(17), { now })).toMatch(/^Checked today, 4:42\sPM$/);
+    expect(checkedLine(at(16), { now })).toMatch(/^Checked yesterday, 4:42\sPM$/);
+    expect(checkedLine(at(3), { now })).toMatch(/^Checked Oct 3, 4:42\sPM$/);
+  });
+  it("is empty for a time that cannot be read", () => {
+    expect(checkedLine("not a time", { now })).toBe("");
   });
 });

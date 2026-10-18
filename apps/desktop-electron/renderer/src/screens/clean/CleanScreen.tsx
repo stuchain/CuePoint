@@ -207,8 +207,9 @@ export function CleanScreen({
       <div className="screen screen--stack screen--scroll clean-screen--waiting">
         <ScreenHeader title="Clean" inset />
         <EmptyState
-          headline="No collection imported yet"
-          description="Clean works on your library. Import a Rekordbox file in the Library first."
+          icon="clean"
+          headline="No library yet"
+          description="Clean matches your tracks, finds missing files and spots duplicates in your library."
           action={{ label: IMPORT_COLLECTION_LABEL, onClick: () => navigate("/library", { state: libraryImportState() }) }}
         />
       </div>

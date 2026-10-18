@@ -334,6 +334,17 @@ describe("when Save is greyed", () => {
     expect(screen.getByRole("button", { name: /^Save to/ })).toBeDisabled();
   });
 
+  it("puts the reason line above the footer, not under its buttons", async () => {
+    open();
+    await ready();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Genre" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Label" }));
+    const reason = await screen.findByRole("status");
+    const footer = screen.getByRole("dialog").querySelector("footer")!;
+    expect(reason.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(footer.contains(reason)).toBe(false);
+  });
+
   it("says WAV files are skipped when every file is one", async () => {
     bridge.previewTagWrite.mockResolvedValue({
       preview: preview({ total: 5, files: 0, skipped: { wav: { count: 5, examples: [] } } }),
@@ -674,7 +685,7 @@ describe("the Sync window (a playlist's ticked tracks)", () => {
     return open({ variant: "sync", title: "Sync hJ to your files", count: 22, onChanged: vi.fn(), ...overrides });
   }
   async function syncReady() {
-    await waitFor(() => expect(screen.getByRole("button", { name: "Sync 22 tracks" })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Write 38 files" })).toBeEnabled());
   }
 
   it("is titled by the playlist and lists BPM, Genre, Label, Year, Key and Comment with a count each, and no Artwork", async () => {
@@ -712,14 +723,14 @@ describe("the Sync window (a playlist's ticked tracks)", () => {
     await userEvent.clear(field);
     await userEvent.type(field, "seen");
     // Sync waits while the files are read again, and the field keeps what was typed.
-    expect(screen.getByRole("button", { name: "Sync 22 tracks" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Write files" })).toBeDisabled();
     await waitFor(() => expect(bridge.previewSync).toHaveBeenCalledTimes(2));
     expect(bridge.previewSync).toHaveBeenLastCalledWith(
       expect.objectContaining({ options: expect.objectContaining({ comment_text: "seen" }) }),
     );
     expect(field).toHaveValue("seen");
     await syncReady();
-    await userEvent.click(screen.getByRole("button", { name: "Sync 22 tracks" }));
+    await userEvent.click(screen.getByRole("button", { name: "Write 38 files" }));
     await waitFor(() => expect(bridge.startSync).toHaveBeenCalled());
     expect(bridge.startSync).toHaveBeenCalledWith({
       preview_id: "p-1",
@@ -734,7 +745,7 @@ describe("the Sync window (a playlist's ticked tracks)", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Comment" }));
     expect(screen.getByRole("textbox", { name: "Comment text" })).toBeDisabled();
     await syncReady();
-    await userEvent.click(screen.getByRole("button", { name: "Sync 22 tracks" }));
+    await userEvent.click(screen.getByRole("button", { name: "Write 38 files" }));
     await waitFor(() => expect(bridge.startSync).toHaveBeenCalled());
     expect(bridge.startSync).toHaveBeenCalledWith({
       preview_id: "p-1",
@@ -747,7 +758,7 @@ describe("the Sync window (a playlist's ticked tracks)", () => {
     await syncReady();
     await userEvent.clear(screen.getByRole("textbox", { name: "Comment text" }));
     expect(screen.getByText("Type the comment, or untick Comment.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sync 22 tracks" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Write 38 files" })).toBeDisabled();
   });
 
   it("never offers a comment in the Save window", async () => {
@@ -785,12 +796,12 @@ describe("the Sync window (a playlist's ticked tracks)", () => {
     expect([...buttons.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
       "See every change",
       "Cancel",
-      "Sync 22 tracks",
+      "Write 38 files",
     ]);
     expect(screen.getByRole("button", { name: "See every change" })).toHaveClass("save-dialog__extra");
     await userEvent.click(screen.getByRole("checkbox", { name: "Key" }));
     await syncReady();
-    await userEvent.click(screen.getByRole("button", { name: "Sync 22 tracks" }));
+    await userEvent.click(screen.getByRole("button", { name: "Write 38 files" }));
     await waitFor(() => expect(bridge.startSync).toHaveBeenCalled());
     expect(bridge.startTagWrite).not.toHaveBeenCalled();
     expect(bridge.startSync).toHaveBeenCalledWith({
@@ -809,7 +820,7 @@ describe("the Sync window (a playlist's ticked tracks)", () => {
     await syncReady();
     await userEvent.click(screen.getByRole("checkbox", { name: "Year" }));
     await syncReady();
-    await userEvent.click(screen.getByRole("button", { name: "Sync 22 tracks" }));
+    await userEvent.click(screen.getByRole("button", { name: "Write 38 files" }));
     await waitFor(() => expect(bridge.startSync).toHaveBeenCalled());
     expect(localStorage.getItem("cuepoint-save-to-files")).toBeNull();
     expect(JSON.parse(localStorage.getItem("cuepoint-sync-to-files")!).fields.year).toBe(false);
@@ -819,14 +830,32 @@ describe("the Sync window (a playlist's ticked tracks)", () => {
     bridge.countTagPreview.mockResolvedValue({ files: 0, fields: {} });
     sync();
     await waitFor(() => expect(screen.getByText("These files already hold these values.")).toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Sync 22 tracks" })).toBeDisabled();
+    // The button says so too, and is dimmed.
+    expect(screen.getByRole("button", { name: "Nothing to write" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: /Mark/ })).toBeNull();
+  });
+
+  it("reads 0 files on every row, says why and dims the button for a playlist of WAV files", async () => {
+    const zero = { replace: 0, fill: 0 };
+    bridge.previewSync.mockResolvedValue({
+      preview: preview({
+        files: 0,
+        skipped: { wav: { count: 17, examples: [] } },
+        field_choices: { key: { normal: zero, camelot: zero, short: zero }, year: zero, bpm: zero, label: zero, genre: zero, comment: zero },
+      }),
+    });
+    // The engine's union total must not override what the rows say.
+    bridge.countTagPreview.mockResolvedValue({ files: 17, fields: {} });
+    sync();
+    await waitFor(() => expect(screen.getByText(/WAV files are skipped/)).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Nothing to write" })).toBeDisabled();
+    expect(screen.getAllByText("0 files").length).toBeGreaterThanOrEqual(5);
   });
 
   it("says that Undo puts back the matches and values it recorded", async () => {
     sync();
     await syncReady();
-    await userEvent.click(screen.getByRole("button", { name: "Sync 22 tracks" }));
+    await userEvent.click(screen.getByRole("button", { name: "Write 38 files" }));
     expect(await screen.findByText(/takes back the matches and values this sync recorded/)).toBeInTheDocument();
   });
 

@@ -87,8 +87,8 @@
 
 .clean-toolbar__count {
   align-self: center;
-  font-family: var(--font-data);
-  font-size: var(--font-size-sm);
+  /* The app's UI font at bar size, like every other bar (not the data face). */
+  font-size: var(--control-font-size);
 }
 
 .clean-note {
@@ -134,15 +134,15 @@
   overflow-y: auto;
 }
 
-/* Nothing missing: the bar, then the all-clear, centred in what is left. */
+/* Nothing missing: the bar, then the all-clear block near the top under it, as Duplicates has. */
 .clean-missing--clear {
   display: flex;
   flex-direction: column;
+  gap: var(--space-md);
 }
 
 .clean-missing--clear > .cp-empty-state {
-  flex: 1;
-  justify-content: center;
+  align-self: stretch;
 }
 
 .clean-missing__table {
@@ -180,6 +180,11 @@
   align-items: flex-start;
   gap: var(--space-lg);
   padding: var(--space-md) 0;
+}
+
+/* Its empty block is centred under the bar, the same as Missing files'. */
+.clean-duplicates__list > .cp-empty-state {
+  align-self: stretch;
 }
 
 .clean-groups {

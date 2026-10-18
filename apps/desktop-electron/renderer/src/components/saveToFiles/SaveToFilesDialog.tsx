@@ -303,7 +303,7 @@ export function SaveToFilesDialog({
 
   const state = preview
     ? saveState({ choices, preview, total, count, variant })
-    : { label: variant === "sync" ? syncButton(count) : "Save to files", enabled: false, reason: null };
+    : { label: variant === "sync" ? syncButton(null) : "Save to files", enabled: false, reason: null };
 
   const runSave = async () => {
     // Sync is one job: the files, then the decisions and the values each file got.
@@ -412,7 +412,7 @@ export function SaveToFilesDialog({
       open={open}
       title={title ?? saveTitle(count)}
       onClose={busy ? () => undefined : requestClose}
-      size={list ? "wide" : "default"}
+      size={list ? "large" : "medium"}
     >
       <div className="save-dialog">
         {choosing && !list && (
@@ -583,6 +583,10 @@ export function SaveToFilesDialog({
           </p>
         )}
 
+        <p className="save-dialog__reason" role="status" aria-live="polite">
+          {phase === "ready" ? state.reason : null}
+        </p>
+
         <footer ref={footerRef} className="save-dialog__footer">
           <div className="save-dialog__buttons">
             {finished ? (
@@ -632,9 +636,6 @@ export function SaveToFilesDialog({
               </>
             )}
           </div>
-          <p className="save-dialog__reason" role="status" aria-live="polite">
-            {phase === "ready" ? state.reason : null}
-          </p>
         </footer>
       </div>
     </Modal>

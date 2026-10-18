@@ -445,10 +445,15 @@ export function ReviewTab({
         <Hint text="Close this review">
           <Button variant="secondary" iconOnly icon="chevron-left" aria-label="Close review" onClick={onBack} />
         </Hint>
-        <strong className="review__name" data-cut-hint>
-          {name} · {summaryWords(total, ticked)}
-        </strong>
-        {leftOut && <span className="review__left-out">{leftOut}</span>}
+        <div className="review__title">
+          <strong className="review__name" data-cut-hint>
+            {name}
+          </strong>
+          <span className="review__facts">
+            <span>{summaryWords(total, ticked)}</span>
+            {leftOut && <span className="review__left-out">{leftOut}</span>}
+          </span>
+        </div>
         <span className="review__spacer" />
         <Hint text={ticked === 0 ? "Tick at least one track to sync." : undefined}>
           <Button variant="write" className="review__sync" disabled={ticked === 0} onClick={() => setSyncOpen(true)}>

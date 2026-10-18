@@ -140,7 +140,7 @@ describe("the table", () => {
   it("is a table with named columns, and a tick named for each track", async () => {
     renderTab();
     await loaded();
-    expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["", "Status", "Your track", "Beatport match", "Preview"]);
+    expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["", "Status", "Your track", "Beatport", "Preview"]);
     expect(screen.getByRole("checkbox", { name: "Sync Track 1 · Artist 1" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Tick every track with a match" })).toBeInTheDocument();
   });
@@ -169,7 +169,9 @@ describe("the table", () => {
   it("names the playlist, the tracks and the ticked ones, and what has no match, with a small chevron closing the review", async () => {
     const { props } = renderTab();
     await loaded();
-    expect(screen.getByText("hJ · 5 tracks · 2 ticked to sync")).toBeInTheDocument();
+    // The title is the name alone, so it is never cut; the counts are the facts line under it.
+    expect(screen.getByText("hJ")).toBeInTheDocument();
+    expect(screen.getByText("5 tracks · 2 ticked to sync")).toBeInTheDocument();
     expect(screen.getByText("1 not found · 1 search failed")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Close review" }));
     expect(props.onBack).toHaveBeenCalledTimes(1);
@@ -206,7 +208,7 @@ describe("ticking", () => {
     expect(screen.getByRole("checkbox", { name: "Sync Track 2 · Artist 2" })).not.toBeChecked();
     expect(bridge.setMatchTicks).toHaveBeenCalledWith({ ticked: false, track_ids: [2] });
     expect(rowOf(2)).toHaveClass("review-row--off");
-    expect(screen.getByText("hJ · 5 tracks · 1 ticked to sync")).toBeInTheDocument();
+    expect(screen.getByText("5 tracks · 1 ticked to sync")).toBeInTheDocument();
     expect(live()).toHaveTextContent("Unticked “Track 2”: it will be left out.");
     await waitFor(() => expect(props.onChanged).toHaveBeenCalled());
     // The tick is the engine's: a table read again says the same.
@@ -228,7 +230,7 @@ describe("ticking", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Sync Track 2 · Artist 2" }));
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "Sync Track 2 · Artist 2" })).toBeChecked());
     expect(await screen.findByText("The library is busy")).toBeInTheDocument();
-    expect(screen.getByText("hJ · 5 tracks · 2 ticked to sync")).toBeInTheDocument();
+    expect(screen.getByText("5 tracks · 2 ticked to sync")).toBeInTheDocument();
   });
 
   it("keeps the ticks out of the tab order: one tab stop for the table, the row, and Space on it ticks", async () => {
@@ -289,7 +291,7 @@ describe("ticking", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Tick every track with a match" }));
     expect(bridge.setMatchTicks).toHaveBeenCalledWith({ ticked: false, scope: { job_id: "job-1" } });
     await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalled());
-    await waitFor(() => expect(screen.getByText("hJ · 5 tracks · 0 ticked to sync")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("5 tracks · 0 ticked to sync")).toBeInTheDocument());
     expect(live()).toHaveTextContent("Unticked 3 tracks: they will be left out.");
     expect(screen.getByRole("button", { name: "Sync hJ to files…" })).toBeDisabled();
   });
@@ -302,7 +304,7 @@ describe("ticking", () => {
     expect(header.checked).toBe(false);
     await userEvent.click(header);
     expect(bridge.setMatchTicks).toHaveBeenCalledWith({ ticked: true, scope: { playlist_id: 7 } });
-    await waitFor(() => expect(screen.getByText("hJ · 5 tracks · 3 ticked to sync")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("5 tracks · 3 ticked to sync")).toBeInTheDocument());
     expect((screen.getByRole("checkbox", { name: "Tick every track with a match" }) as HTMLInputElement).checked).toBe(true);
   });
 
@@ -450,7 +452,7 @@ describe("a long review", () => {
     world.review = Array.from({ length: 5000 }, (_, index) => reviewTrack(index + 1, "matched"));
     renderTab();
     await loaded();
-    expect(screen.getByText("hJ · 5,000 tracks · 5,000 ticked to sync")).toBeInTheDocument();
+    expect(screen.getByText("5,000 tracks · 5,000 ticked to sync")).toBeInTheDocument();
     expect(order().length).toBeLessThan(100);
     // A page of 2,000 is read, and the rest on request: the table says how many it holds.
     expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "2001");

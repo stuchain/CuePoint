@@ -13,7 +13,7 @@
  * responses the real engine gave (`cleanEmpty.fixture.json`).
  */
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
-import { formatDayTime } from "../../format/dates";
+import { formatDay, formatDayTime, formatTimeOfDay, type DateOptions } from "../../format/dates";
 
 /** The one thing an empty state offers to do about itself, when there is one. */
 type CleanEmptyOffer = "check_files" | "find_duplicates";
@@ -80,4 +80,17 @@ export function duplicatesEmptyState(
       ? "Nothing was found, and nothing is marked as not duplicates."
       : "Nothing was found the last time CuePoint looked.",
   );
+}
+
+/**
+ * Missing files' bar when the last check found nothing: "Checked today, 4:42 PM", "Checked
+ * yesterday, 9:05 AM", "Checked Oct 15, 4:42 PM", in the app's date wording. Empty when the time
+ * cannot be read, so the bar never says a made-up moment.
+ */
+export function checkedLine(when: string, options: DateOptions = {}): string {
+  const day = formatDay(when, options);
+  const time = formatTimeOfDay(when, options);
+  if (!day || !time) return "";
+  const word = day === "Today" || day === "Yesterday" ? day.toLowerCase() : day;
+  return `Checked ${word}, ${time}`;
 }

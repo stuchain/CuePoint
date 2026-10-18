@@ -459,7 +459,7 @@ describe("the page", () => {
     });
     const { container } = renderClean();
     // The shared empty state, with the one label for filling an empty Library.
-    await screen.findByText("No collection imported yet");
+    await screen.findByText("No library yet");
     expect(container.querySelector(".cp-empty-state")).not.toBeNull();
     expect(screen.queryByRole("tab")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: IMPORT_COLLECTION_LABEL }));
@@ -500,11 +500,9 @@ describe("the Match tab", () => {
         label: "Whole library",
       }),
     );
-    expect(
-      await screen.findByText(
-        "Matching 2 tracks on Beatport. 1 already matched or decided is left out.",
-      ),
-    ).toBeInTheDocument();
+    // The started message ("Matching 2 tracks on Beatport. 1 …left out.", see cleanFormat.test.ts) is
+    // closed as the match ends, which here is at once.
+    await waitFor(() => expect(screen.queryByText(/^Matching 2 tracks on Beatport/)).toBeNull());
   });
 
   it("reads Health and the playlists again once a match ends", async () => {
@@ -607,8 +605,9 @@ describe("the Match tab", () => {
       expect(bridge.resumeCleanMatch).toHaveBeenCalledWith({ job_id: "job-old-2" }),
     );
     expect(bridge.startCleanMatch).not.toHaveBeenCalled();
-    expect(await screen.findByText("Matching 2 tracks on Beatport.")).toBeInTheDocument();
     await screen.findByText("Matching finished.");
+    // The started message goes by itself when the match ends (it used to stay until closed).
+    await waitFor(() => expect(screen.queryByText("Matching 2 tracks on Beatport.")).toBeNull());
   });
 
   it("matches a past search again, under its own name", async () => {
@@ -741,7 +740,8 @@ describe("missing files", () => {
       fixture.checked.missing_files as LibrarySearchResponse,
     );
     renderClean("missing");
-    expect(await screen.findByText(/^All 3 files found/)).toBeInTheDocument();
+    expect(await screen.findByText("No missing files")).toBeInTheDocument();
+    expect(screen.getByText(/^All 3 files were where your library says/)).toBeInTheDocument();
   });
 });
 
@@ -912,7 +912,7 @@ describe("matching what is ticked (C22)", () => {
       rematch: false,
       label: "Peak time",
     });
-    expect(await screen.findByText(/^Matching 2 tracks on Beatport/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/^Matching 2 tracks on Beatport/)).toBeNull());
   });
 
   it("starts one run over several ticked playlists, named by how many", async () => {
@@ -1010,7 +1010,7 @@ describe("matching what is ticked (C22)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Review all" }));
     expect(await screen.findByRole("tab", { name: "Review all" })).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalledWith({ playlistId: 14, limit: 2000 }));
-    expect(await screen.findByRole("region", { name: "Review all" })).toHaveTextContent("all · 3 tracks");
+    expect(await screen.findByRole("region", { name: "Review all" })).toHaveTextContent(/all.*3 tracks/);
     // Every track, not only the ones to check.
     expect(await screen.findByText("Track 3 · Artist 3")).toBeInTheDocument();
   });

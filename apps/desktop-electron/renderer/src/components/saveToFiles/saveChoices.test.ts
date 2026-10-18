@@ -334,19 +334,69 @@ describe("the Sync window's own choices", () => {
     expect(previewOptions(DEFAULT_SYNC_CHOICES).embed_missing_artwork).toBe(true);
   });
 
-  it("say Sync N tracks on the button, never a count of files", () => {
+  it("say Write N files on the button, and Nothing to write when no ticked row changes a file", () => {
     const base = {
       choices: DEFAULT_SYNC_CHOICES,
       preview: preview(),
-      total: 38,
+      total: 17,
       count: 22,
       variant: "sync" as const,
     };
-    expect(saveState(base)).toEqual({ label: "Sync 22 tracks", enabled: true, reason: null });
-    expect(saveState({ ...base, total: 0 })).toMatchObject({ label: "Sync 22 tracks", enabled: false });
-    expect(saveState({ ...base, total: null })).toMatchObject({ label: "Sync 22 tracks", enabled: false });
-    expect(saveState({ ...base, count: 1 }).label).toBe("Sync 1 track");
+    expect(saveState(base)).toEqual({ label: "Write 17 files", enabled: true, reason: null });
+    expect(saveState({ ...base, total: 1 }).label).toBe("Write 1 file");
+    expect(saveState({ ...base, total: 0 })).toMatchObject({ label: "Nothing to write", enabled: false });
+    expect(saveState({ ...base, total: null })).toMatchObject({ label: "Write files", enabled: false });
   });
+
+  describe("when every ticked row reads 0 files", () => {
+    const zero = { replace: 0, fill: 0 };
+    const empty: TagFieldChoices = {
+      key: { normal: zero, camelot: zero, short: zero },
+      year: zero,
+      bpm: zero,
+      label: zero,
+      genre: zero,
+      comment: zero,
+    };
+    const base = {
+      choices: DEFAULT_SYNC_CHOICES,
+      count: 17,
+      variant: "sync" as const,
+    };
+
+    it("says Nothing to write and why, for a playlist of WAV files, even before or against the engine's total", () => {
+      const wav = preview({ total: 17, files: 0, field_choices: empty, skipped: { wav: { count: 17, examples: [] } } });
+      for (const total of [0, null, 17]) {
+        expect(saveState({ ...base, preview: wav, total })).toEqual({
+          label: "Nothing to write",
+          enabled: false,
+          reason: "WAV files are skipped (Rekordbox does not read their tags).",
+        });
+      }
+    });
+
+    it("says Nothing to write when Keep leaves every row at 0", () => {
+      const onlyReplace: TagFieldChoices = {
+        ...empty,
+        genre: { replace: 9, fill: 0 },
+        label: { replace: 9, fill: 0 },
+        year: { replace: 9, fill: 0 },
+        bpm: { replace: 9, fill: 0 },
+        comment: { replace: 9, fill: 0 },
+      };
+      const held = preview({ field_choices: onlyReplace });
+      expect(saveState({ ...base, preview: held, total: 17 })).toMatchObject({
+        label: "Nothing to write",
+        enabled: false,
+        reason: "These files already hold these values.",
+      });
+      expect(saveState({ ...base, preview: held, total: 17, choices: { ...DEFAULT_SYNC_CHOICES, keep_existing: false } })).toMatchObject({
+        label: "Write 17 files",
+        enabled: true,
+      });
+    });
+  });
+
 });
 
 describe("the Sync window's Comment row", () => {

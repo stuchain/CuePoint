@@ -23,6 +23,8 @@ export type CleanMessageTone = "info" | "success" | "warning";
 interface CleanJobOptions<Answer> {
   /** What to say once the engine has started it, from its answer. */
   started?: (answer: Answer) => string | null;
+  /** The key the started line is said under, so whoever closes it when the job ends can find it. */
+  startedKey?: string;
   /** What to say when it succeeds. */
   succeeded?: string;
   /** Called however it ended, once it has. */
@@ -40,7 +42,7 @@ interface CleanJobs {
 }
 
 export function useCleanJob(
-  onMessage: (message: string, tone: CleanMessageTone) => void,
+  onMessage: (message: string, tone: CleanMessageTone, key?: string) => void,
 ): CleanJobs {
   const [running, setRunning] = useState<string | null>(null);
   const alive = useRef(true);
@@ -83,7 +85,7 @@ export function useCleanJob(
         return false;
       }
       const line = options.started?.(answer);
-      if (line) onMessage(line, "info");
+      if (line) onMessage(line, "info", options.startedKey);
 
       const handle = followJob(jobId);
       following.current.push(handle);

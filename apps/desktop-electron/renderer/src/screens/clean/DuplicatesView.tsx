@@ -368,7 +368,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
   return (
     <div className="clean-duplicates">
       <div className="clean-toolbar" role="toolbar" aria-label="Duplicates">
-        <span className="clean-toolbar__count cp-data" role="status">
+        <span className="clean-toolbar__count" role="status">
           {plural(total, "group")}
         </span>
         <label className="clean-toolbar__check">
@@ -444,6 +444,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
       <Modal
         open={batch.pending !== null}
         title={confirmWords.title}
+        size="small"
         onClose={batch.cancel}
         primaryAction={{
           label: confirmWords.button,

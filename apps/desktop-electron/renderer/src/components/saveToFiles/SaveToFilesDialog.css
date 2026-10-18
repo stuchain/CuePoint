@@ -186,9 +186,8 @@
   margin: 0;
   color: var(--fg-muted);
   font-size: var(--text-body);
-  text-align: right;
 }
 
 .save-dialog__reason:not(:empty) {
-  margin-top: var(--space-xs);
+  margin-top: var(--space-md);
 }

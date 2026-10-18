@@ -247,6 +247,7 @@ export function MatchArea({
               onOpen={openRun}
               onResume={resumeRun}
               onMatchAgain={matchAgain}
+              onGoToPlaylists={() => chooseTab("playlists")}
             />
           </Activity>
         )}

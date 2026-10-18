@@ -41,6 +41,8 @@ interface PastSearchesProps {
   onOpen: (run: MatchRun) => void;
   onResume: (run: MatchRun) => void;
   onMatchAgain: (run: MatchRun) => void;
+  /** The empty state's button: back to the Playlists sub-tab, where a match is started. */
+  onGoToPlaylists: () => void;
 }
 
 export function PastSearches({
@@ -50,6 +52,7 @@ export function PastSearches({
   onOpen,
   onResume,
   onMatchAgain,
+  onGoToPlaylists,
 }: PastSearchesProps) {
   const [typed, setTyped] = useState("");
   const [query, setQuery] = useState("");
@@ -63,18 +66,23 @@ export function PastSearches({
   const jobs = useMatchJobs(query, version);
   const canResumeHere = Boolean(window.cuepoint?.resumeCleanMatch);
   const now = new Date();
+  // The box is for a list with something in it; a search that found nothing keeps it, to be cleared.
+  const searchable = typed.trim() !== "" || query.trim() !== "" || jobs.runs.length > 0 || jobs.loading;
+  const searching = query.trim() !== "";
 
   return (
     <section className="match-past" aria-label="Past searches">
-      <div className="match-past__bar">
-        <SearchField
-          thing="past searches"
-          label="Search"
-          className="match-past__search"
-          value={typed}
-          onValueChange={setTyped}
-        />
-      </div>
+      {searchable && (
+        <div className="match-past__bar">
+          <SearchField
+            thing="past searches"
+            label="Search"
+            className="match-past__search"
+            value={typed}
+            onValueChange={setTyped}
+          />
+        </div>
+      )}
 
       {jobs.error && <Notice kind="problem">{jobs.error}</Notice>}
       {!jobs.available && (
@@ -82,8 +90,10 @@ export function PastSearches({
       )}
       {jobs.available && !jobs.error && jobs.runs.length === 0 && !jobs.loading && (
         <EmptyState
-          icon="match"
-          headline={query.trim() ? nothingMatches(query.trim()).replace(/[.]$/, "") : "Nothing has been matched on Beatport yet"}
+          icon="clean"
+          headline={searching ? nothingMatches(query.trim()).replace(/[.]$/, "") : "No searches yet"}
+          description={searching ? undefined : "Each Match on Beatport is kept here, so you can see what it found."}
+          action={searching ? undefined : { label: "Go to Playlists", onClick: onGoToPlaylists }}
         />
       )}
 

@@ -185,7 +185,7 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
     <Modal
       open={open}
       title={MATCH_ON_BEATPORT}
-      size="wide"
+      size="large"
       onClose={onClose}
       primaryAction={{
         label: primaryLabel,

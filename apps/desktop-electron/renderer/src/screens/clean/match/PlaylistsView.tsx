@@ -209,7 +209,8 @@ export function PlaylistsView({ data, error = null, loading = false, matching = 
           ) : status.kind === "queued" ? (
             <span className="playlists__waiting">{status.text}</span>
           ) : (
-            playlist?.synced && <SyncedBadge at={playlist.synced_at} />
+            playlist &&
+            (playlist.synced ? <SyncedBadge at={playlist.synced_at} /> : <span className="playlists__not-yet">Not yet</span>)
           )}
         </td>
         <td>

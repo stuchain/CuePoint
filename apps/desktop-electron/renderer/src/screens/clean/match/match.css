@@ -196,9 +196,16 @@
   flex: none;
 }
 
-.review__bar > .review__name {
+/* The title is the name over a facts line: the name is never cut by the counts. */
+.review__bar > .review__title {
   flex: 1 1 calc(12ch);
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.review__title > .review__name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -209,12 +216,15 @@
   font-weight: var(--weight-strong);
 }
 
-.review__bar > .review__left-out {
-  flex: 0 1 auto;
+.review__facts {
+  display: flex;
+  gap: var(--space-sm);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--fg-muted);
+  font-size: var(--control-font-size);
 }
 
 .review__left-out {

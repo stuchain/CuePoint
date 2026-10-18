@@ -77,6 +77,16 @@ describe("the list", () => {
     expect(screen.getAllByText(/^Synced /)).toHaveLength(1);
   });
 
+  it("says a muted 'Not yet' for a playlist no sync has written, and nothing for the whole library", () => {
+    renderView();
+    const rows = bodyRows();
+    expect(within(rows[1]!).queryByText("Not yet")).toBeNull();
+    const notYet = screen.getAllByText("Not yet");
+    expect(notYet.length).toBeGreaterThan(0);
+    expect(notYet[0]).toHaveClass("playlists__not-yet");
+    expect(within(rows[0]!).queryByText("Not yet")).toBeNull();
+  });
+
   it("says Synced alone when a playlist is synced but no date came", () => {
     renderView({
       data: { whole_library: COUNTS, playlists: [{ id: 9, name: "x", path: "", ...COUNTS, synced: true, synced_at: null }] },

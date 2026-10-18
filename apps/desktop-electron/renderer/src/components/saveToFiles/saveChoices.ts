@@ -246,10 +246,13 @@ export function saveTitle(count: number): string {
   return `Save ${trackWords(count)} to your files`;
 }
 
-/** The Sync button's words: it names the tracks, not the files, because the person ticked tracks. */
-export function syncButton(count: number): string {
-  return `Sync ${trackWords(count)}`;
+/** The Sync window's button: the files that get written, "Write 17 files", or why not. */
+export function syncButton(total: number | null): string {
+  if (total === null) return "Write files";
+  return total === 0 ? NOTHING_TO_WRITE : `Write ${fileWords(total)}`;
 }
+
+export const NOTHING_TO_WRITE = "Nothing to write";
 
 export const NONE_TICKED = "Tick at least one value.";
 export const NO_COMMENT = "Type the comment, or untick Comment.";
@@ -268,9 +271,9 @@ interface SaveStateInput {
   preview: TagWritePreview;
   /** The files a Save would change, from the engine; null while it is being counted. */
   total: number | null;
-  /** The tracks the window was opened for. */
-  count: number;
-  /** Sync's button names the tracks ("Sync 22 tracks"), not a count of files. */
+  /** The tracks the window was opened for (no longer named on a button). */
+  count?: number;
+  /** Sync's button counts the files written ("Write 17 files"). */
   variant?: SaveVariant;
 }
 
@@ -288,12 +291,11 @@ export function saveState({
   choices,
   preview,
   total,
-  count,
   variant = "save",
 }: SaveStateInput): SaveState {
   const sync = variant === "sync";
-  const idle = (reason: string | null): SaveState => ({
-    label: sync ? syncButton(count) : total === null ? "Save to files" : `Save to ${fileWords(total)}`,
+  const idle = (reason: string | null, nothing = false): SaveState => ({
+    label: nothing ? (sync ? NOTHING_TO_WRITE : "Save to 0 files") : sync ? syncButton(noneTicked(choices) ? 0 : total) : total === null ? "Save to files" : `Save to ${fileWords(total)}`,
     enabled: false,
     reason,
   });
@@ -301,23 +303,33 @@ export function saveState({
   if (sync && choices.fields.comment && cleanComment(choices.comment_text).trim() === "") {
     return idle(NO_COMMENT);
   }
-  if (total === null) return idle(null);
-  if (total > 0) {
+  // The rows are what the person reads: when every ticked row says 0 files there is nothing to write,
+  // whatever the engine's union total says (and without waiting for it).
+  const rowsChange = [...SAVE_FIELDS, ...SYNC_FIELDS].some(
+    ({ id }) =>
+      choices.fields[id] &&
+      (id !== "artwork" || !sync) &&
+      (id !== "comment" || sync) &&
+      fieldCount(id, choices, preview.field_choices) > 0,
+  );
+  if (rowsChange && total === null) return idle(null);
+  if (rowsChange && total !== null && total > 0) {
     return {
-      label: sync ? syncButton(count) : `Save to ${fileWords(total)}`,
+      label: sync ? syncButton(total) : `Save to ${fileWords(total)}`,
       enabled: true,
       reason: null,
     };
   }
-  // Nothing would change. That means the values are already in the files only when the files the
-  // preview could read cover the whole selection; otherwise say what held the others back.
+  // Nothing would change (the rows all read 0, or the engine counted 0). That means the values are already in
+  // the files only when the files the preview could read cover the whole selection; otherwise say what held the others back.
   const skip = mainSkip(preview);
   if (skip) {
     return idle(
       skip.reason === "wav" ? ALL_WAV : `${fileWords(skip.count)} skipped: ${fileSkipText(skip.reason)}`,
+      true,
     );
   }
-  return idle(ALREADY_HOLD);
+  return idle(ALREADY_HOLD, true);
 }
 
 export interface ChangeRow {
