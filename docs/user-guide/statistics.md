@@ -2,8 +2,8 @@
 
 **Statistics** shows what you play most, what is in your library and what needs
 fixing. It works on the library you imported on the [Library](library.md) page,
-so import a collection first; until then the page says so and offers **Import a
-library**. Everything on it is a count of your own tracks, worked out on your
+so import a collection first; until then the page shows **No library yet**, a
+line on what Statistics does with it, and **Import a Rekordbox file…**. Everything on it is a count of your own tracks, worked out on your
 computer. Nothing is sent anywhere.
 
 ## Choosing what to count
@@ -24,8 +24,8 @@ cannot be chosen.
 
 The page has three tabs: **Plays**, **Library** and **Health**. **Library**
 shows how many tracks are in the scope, and **Health** shows an amber count
-(such as 83) when something needs doing. Each tab keeps what you set on it while you
-look at another one. Each reads on its own. While it is reading it says so; if a
+(such as 83) when something needs doing. Each tab keeps what you set on it, and its own scroll place, while you
+look at another one; a tab you have not opened yet starts at the top. Each reads on its own. While it is reading it says so; if a
 tab cannot be read it says that in plain words and has its own **Try again**
 button, and the other tabs stay as they were. The page reads again by itself
 after an import or a refresh finishes.

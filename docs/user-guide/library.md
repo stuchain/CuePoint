@@ -12,13 +12,13 @@ Open **Library** in the sidebar.
 
 Until something is imported, the Library shows only its header and **First
 steps**, a short checklist. Its first step, **Import a Rekordbox
-file**, has **Import…** and **How do I get one?** beside it, and the
+file**, has **Import a Rekordbox file…** and **How do I get one?** beside it, and the
 hint under it says: in Rekordbox choose File → Export Collection in xml format,
 then import that file; nothing in Rekordbox is changed. The steps are:
 
 1. In Rekordbox, use **File → Export Collection in xml format** and save the
    file somewhere you will find it again. Downloads is fine.
-2. In CuePoint, open **Library** and click **Import…** in the first step.
+2. In CuePoint, open **Library** and click **Import a Rekordbox file…** in the first step.
 3. Pick the file. CuePoint reads it in the background — you can keep using the
    rest of the app, and the strip along the bottom shows how far it has got.
    Nothing in Rekordbox is changed.
@@ -29,8 +29,10 @@ from. **It remembers that file**, so checking for changes later takes one click.
 ### The Library header
 
 The header says what the table below is showing. Its title is the playlist,
-Collection, Set or Smart Collection you opened, with the group it is in above
-it, or **All tracks**. Under the title, one line gives what that holds: the
+Collection, Set or Smart Collection you opened, or **All tracks**. A line above
+it is always there and names where it lives (*Library*, *Playlists › Gigs 2026 ›
+Summer* or *Collections › Gigs › October*), so the page does not move when you
+pick something. Under the title, one line gives what that holds: the
 number of tracks, their running time, the BPM range and the number of keys,
 for example *306 tracks · 21h 4m · 120–134 BPM · 14 keys*. The search and the
 filters do not change that line; the toolbar above the table counts what they
@@ -78,8 +80,9 @@ Nothing here changes your music. The Library page reads.
 
 ### Finding tracks
 
-- **Click a playlist** on the left to look at just that playlist. Folders show
-  everything underneath them. **All tracks** goes back to the whole library.
+- **Click a playlist** on the left to look at just that playlist. A folder is not a
+  playlist: picking one says *Gigs 2026 is a folder* and asks you to pick one of
+  its playlists (an empty folder says *This folder is empty*). **All tracks** goes back to the whole library.
 - **Type in the search box** to narrow to matching titles, artists, albums and
   labels. It also understands keys and tempos: "8A" finds the tracks in 8A (so
   does "A minor"), and "124" finds the tracks at 124 BPM, from 123.5 up to 124.5
@@ -151,6 +154,7 @@ An empty table says why and offers the next step as a button:
 | **No tracks match this search.** | **Clear the search** (or **Clear all filters**, or **Clear search and filters**, whichever is narrowing the view) |
 | **Nothing matches these rules right now.** (a Smart Collection) | **Edit the rules**, which opens **Add filter** |
 | **This playlist is empty.** Playlists come from Rekordbox, so add tracks there | **Check for changes** |
+| **Gigs 2026 is a folder.** Pick one of its 4 playlists in the list (or **This folder is empty.**) | none |
 | **This Collection is empty.** (or Set) Drop tracks onto it, or use **Add to Collection** | **Browse the whole library** |
 | **This Rekordbox file has no tracks in it.** | **Import a Rekordbox file…** |
 
@@ -312,7 +316,7 @@ With several tracks selected, the panel shows the last one you clicked, and
 
 Track details and the Collections list on the left grow and shrink with the text size
 (**Settings > Appearance** or **View > Size**), so a bigger size does not squeeze them.
-Ctrl+I hides Track details if you would rather have the width. Double-clicking a
+The left pane narrows a little when Track details opens, and a name that no longer fits ends in “…” (hover for the whole name). Ctrl+I hides Track details if you would rather have the width. Double-clicking a
 track plays it; see [The player](player.md).
 
 ### Large collections
@@ -424,7 +428,7 @@ Each track ends up with a **File status** you can filter by in the Library:
 
 **An unplugged drive is one line, not thousands.** If every track on a drive is
 missing because the drive itself is not there, the Activity panel says so once —
-for example *4,812 tracks on E:\ — the drive is not connected* — and CuePoint
+for example *4,812 tracks on E:\, and the drive is not connected*, and CuePoint
 does not look for each file on it. Plug the drive in and refresh, and the next
 check finds them.
 

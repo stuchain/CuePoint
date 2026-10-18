@@ -23,7 +23,7 @@ See [Where inCrate went](#where-incrate-went) if you used it.
 
 ## New dig
 
-**New dig** asks what to look for, starting from your defaults. A bar right under the
+**New dig** asks what to look for, starting from your defaults. The tab is the heading; when you are not signed in, the sign-in banner sits under the tabs, and with no library the same **No library yet** block as the other pages sits above the form (a dig of genre charts works without one). A bar right under the
 form says in a sentence what the dig will cover ("Look for charts in 2 genres,
 releases by 25 artists and 9 labels from the last 30 days."), with **Change the
 window** (**Releases from the last … days**) beside it and **Start looking** at the
@@ -89,7 +89,7 @@ filled in while you look at another tab.
 
 **Results** lists every dig you have made, newest first, each titled "Dig
 of" its date, with how it ended, what it looked for and how many tracks it found.
-Choose a dig to open it beside the list; when the page is narrow, the list
+Choose a dig to open it beside the list; its card stays highlighted and is the heading, so the dig's name is not repeated under it; when the page is narrow, the list
 sits above it instead. With no dig yet it says so and offers **New dig**.
 
 An open dig shows how it ended, including why, if Beatport stopped it, and
@@ -162,7 +162,7 @@ match that track in Clean.
 
 Sort by title, artists, release date, or the order the dig found them, by
 clicking a column's header. The **Columns…** icon in the table header's right
-corner chooses which columns to show, and the table remembers its layout.
+corner chooses which columns to show, and the table remembers its layout. The first column is headed **#**, as in every other table, and a chart with no cover shows the app's usual cover placeholder.
 
 **Delete this dig…**, in the ⋯ menu at the corner of the dig's card in the list, removes a dig and
 its list of tracks after asking. Tracks you added to the wantlist from it stay

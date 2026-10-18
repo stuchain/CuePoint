@@ -173,11 +173,11 @@ the running order.
 - **Start a chapter here**, on the line under the header or on an entry's
   right-click menu, splits the Set there (the first entry, with several
   selected): that track begins a new chapter.
-- A chapter's heading row has **Edit…** (or double-click the heading, or choose
+- A chapter's heading row has **Edit…**, right after the chapter's name (or double-click the heading, or choose
   **Edit chapter…** on its right-click menu). The dialog is titled **Edit chapter
   “Name”**, and a time it cannot read is marked on the **Target length** field itself. Its footer has **Move up**
   and **Move down**, which move the chapter — its entries move with it — and
-  **Delete chapter…**, which says which chapter its entries join first. A Set always keeps one chapter, so the last cannot be deleted.
+  **Delete chapter…** (red, alone on the left), which says which chapter its entries join first. A Set always keeps one chapter, so the last cannot be deleted.
 - A Set with a single unnamed chapter shows no heading at all: it is simply a
   list.
 
@@ -261,7 +261,7 @@ The panel beside the Set fills it from two places, on two tabs:
 **The insertion point** is where a track from either tab goes: the gap after
 the entry selected in the Set, between it and the next one — or the end of the
 Set with nothing selected. A line at the top of the panel, above the tabs, names it:
-"Inserting: between “Warm Two” and “Warm One”, in Warm-up". A track inserted there joins the chapter
+"Inserting: between “Warm Two” and “Warm One”, in Warm-up" (it wraps to a second line when the panel is narrow). A track inserted there joins the chapter
 of the entry before it.
 
 **From** chooses where both tabs look: your whole library, a Rekordbox playlist
@@ -269,21 +269,19 @@ or folder, a Collection, a Smart Collection or a Set. The page remembers the
 choice.
 
 **Suggestions are scored against both neighbors.** A suggestion must fit the
-track before the gap and the track after it, and each side's reasons are shown
-in their own column, **Fits after** (how well the track follows the one before
-the gap) and **Fits before** (how well it leads into the one after): the tempo,
-the key's relation on the wheel ("Same key", "Next key", "Relative key"), and a
-shared genre, label or artist. **Fit** is out of 100, "72/100"; with a track on
-each side it is the mean of the two. It uses the same rule as the warnings, so a track
+track before the gap and the track after it. The panel shows two columns,
+**Title** and **Fit**. **Fit** is the short version: the tempo step the track makes
+(such as "±0 BPM") and its own key as the usual key chip. Hover a row or its **Fit**
+cell for the full reason: the score out of 100 ("72/100"; with a track on each
+side it is the mean of the two), and, for each side, how well the track follows
+the one before the gap and how well it leads into the one after: the tempo, the
+key's relation on the wheel ("Same key", "Next key", "Relative key"), and a
+shared genre, label or artist. It uses the same rule as the warnings, so a track
 suggested for a gap never has a tempo warning there. Key only adds points, so a
 suggestion can still clash in key, and its reasons say so. A track already in
-the Set is marked: "Already in this Set once: inserting it plays it again".
-The same library gives the same list every time.
-
-Each side's cell is a short run of tokens in playing order: the key step
-(**+1**, **−1**, **same** or **rel.**), the tempo change (**+2 BPM**), and **G**,
-**L** or **A** for a shared genre, label or artist. Hover a cell for the full
-sentence. The **Fit** column is a five-block bar rather than a number.
+the Set is marked with a small repeat icon: "Already in this Set once: inserting
+it plays it again". The same library gives the same list every time. Nothing in
+the panel scrolls sideways.
 
 When nothing fits both sides, the panel says so: "Nothing fits between “Build”
 and “Peak Jump”", with each track's BPM, how far apart they are, that no tempo is

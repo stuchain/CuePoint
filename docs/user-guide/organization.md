@@ -28,12 +28,15 @@ hold tracks.
   **Alt+Up** or **Alt+Down**. A Collection opens in the order you arranged, not
   alphabetically, and that order is saved.
 - **Move and file** Collections by dragging them between folders.
-- **Act on the one you selected** with the bar under the tree: **Rename**,
+- **Act on the one you selected** with the bar at the bottom of the pane: **Rename**,
   **Duplicate** (a Smart Collection or a Set), **Freeze…** (a Smart Collection),
   **Delete** and **Export…** (it opens Export to Rekordbox, and its hover text
   says so), which every Collection, Smart Collection, Set and folder has except
-  where noted. The bar appears when you select one; with nothing selected it is
-  not shown. Rows carry no buttons of their own. F2 and Delete work on a row too.
+  where noted. The bar is always there, so nothing jumps; with
+  nothing selected it is dimmed and says why. Collections and Playlists have the
+  same header (a fold arrow and title, with **+ New** or *from Rekordbox* on the
+  right), folders step in one arrow width per level, and counts sit in a column
+  on the right. Rows carry no buttons of their own. F2 and Delete work on a row too.
 - **Right-click** a Collection, Smart Collection or folder — or press the menu
   key or Shift+F10 — for the same actions, plus the few that have no button on the bar:
   **New Set from…**, and **Copy set list** on a Set.
@@ -59,7 +62,7 @@ beside **Add to Collection…**.
 Selecting a Set scopes the table as a Collection does, listing each of its
 tracks once; the running order itself, with chapters, planned times, repeats and
 warnings, is edited on the [Prepare](prepare.md) page, which **Open in Prepare**
-opens. With a Set selected, the bar under the tree adds **Prepare** (opens it in Prepare) and
+opens. With a Set selected, the bar at the bottom of the pane adds **Prepare** (opens it in Prepare) and
 **Set list…** (saves the set list); its right-click menu also copies the set list. Everything else here — folders, drag, rename, delete, the refresh
 warning, rules that name a Collection — treats a Set as it treats a Collection,
 and says "Set" when it means one. See [Prepare](prepare.md).
@@ -96,7 +99,9 @@ filter by. A track can carry as many as you like.
 - **Filter by one** in the filter bar: choose Tag, and pick from the tags your
   library actually uses, with the number of tracks beside each.
 - **Tend the vocabulary** with the **Tags…** button beside the filter bar:
-  rename, recolor, give a category, merge two into one, or delete.
+  rename, recolor, give a category, merge two into one, or delete. With no tags
+  yet the window shows only **No tags yet** and says to tag a track in Track
+  details › Yours.
 
 Every tag shows how many tracks carry it, and both destructive actions say so
 before they happen: deleting Peak-time is one thing when three tracks have it

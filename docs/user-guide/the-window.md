@@ -78,7 +78,7 @@ you.** They are deliberately different keys, because they do different things.
 
 ## The Camelot wheel
 
-The **Wheel** button after the key's name in Track details (a small ring in the key colours) opens a wheel of the 24 keys, drawn as two rings of
+The key chip in Track details, or the wheel button in the player bar, opens a wheel (from the player bar it opens just above the bar, lined up with its button; from Track details, beside the key) of the 24 keys, drawn as two rings of
 wedges: the minor keys (A) in the inner ring and the major keys (B) in the outer one,
 12 at the top like a clock. It lights the key of the track you have selected, or, with
 nothing selected, the track that is playing, and the keys that mix with it: one step
@@ -171,23 +171,22 @@ The strip along the bottom is empty when all is well, and shows text only while 
 is starting, when work is running, or when something stops. While
 it starts it says **Starting up…**, or **Getting ready…** the first time you open
 CuePoint, before you have been through the guide. If CuePoint's background process
-stops and CuePoint is starting it again, it says **Starting again… (1 of 3)**. The
-version number is in **Help > About CuePoint** and in Settings → About & updates.
+stops, the banner above the page says so and the strip stays quiet rather than repeat
+it (see below). The version number is in **Help > About CuePoint** and in Settings → About & updates.
 
 If the background process stops, CuePoint starts it again for you. After three
-failed attempts it stops trying and the strip says **Stopped** in red, rather than
-retrying forever and hiding a real fault. Hover over the word for the technical
-reason. Every start is listed in Activity, so a process that keeps stopping is
+failed attempts it stops trying and the banner above the page says so, rather than
+retrying forever and hiding a real fault. Every start is listed in Activity, so a process that keeps stopping is
 visible rather than silently patched over.
 
 ### When CuePoint stops in the background
 
 One banner appears above the page, not above the sidebar: **CuePoint stopped working
 in the background. Your library and files are safe.** Beside it is **Start it
-again**, and **Last loaded** is the time CuePoint last heard from its background process, so you know how old what you see on the page is. While it
-starts again the banner says **Starting it again… (1 of 3)**. If that does not
-work it says **CuePoint couldn't start its background process. Quit and open
-CuePoint again.** and offers **Get help…**.
+again**, and **Library loaded at 5:17 PM** is the time CuePoint last heard from its background process, so you know how old what you see on the page is. While it
+starts again the banner says **CuePoint stopped working in the background. Starting
+it again (1 of 3)…** If that does not work it says **CuePoint couldn't start in the
+background. Quit and open CuePoint again.** and offers **Get help…**.
 
 While the banner is up the page is dimmed and its buttons and links do nothing,
 so nothing fails one click at a time. Clicking one points you to the banner. You can
@@ -220,7 +219,7 @@ what CuePoint has done, newest first and grouped by day (**Today**, **Yesterday*
 then dates such as **Oct 3**): backups, app starts, imports and refreshes, file
 checks, matches, edits to many tracks at once, and tags written to files. Each
 entry has a short word for its kind and the counts and names that matter; the
-rest of what was recorded is behind its **Details**.
+rest of what was recorded is behind its **Details**. Times read like the rest of the app ("4:58 PM"), and names are in curly quotes.
 
 Some entries can be acted on where they are listed. A change to many tracks
 offers **Undo this batch**, and a save to files offers **Undo**; each asks once
@@ -233,7 +232,7 @@ matches only the tracks it had not reached. See [Clean](clean.md#match).
 
 ## Keyboard shortcuts
 
-To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**. The dialog lists them by context (Global, Library, Tables, Prepare, Clean, Player). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys, and every key it lists does something. On a Mac, use **Cmd** where it says **Ctrl**.
+To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**. The dialog lists them by context (Global, Library, Tables, Prepare, Clean, Player). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys, and every key it lists does something. On a Mac the list shows the Mac keys (⌘) itself.
 
 | Shortcut | Does |
 | --- | --- |
@@ -292,9 +291,9 @@ on the left when the window is wide) that scroll to each: **Appearance**,
 **Privacy** and **About & updates**. A setting that applies the moment you change
 it shows a small **Saved** beside it for a couple of seconds. Every section reads
 the same way: a status line first (what stands now), then its settings, then one
-row of buttons with a quiet **Reset** at the right (**Reset Appearance**,
-**Reset Motion**, **Reset Playback**, **Reset Waveforms**, **Reset Beatport**,
-**Reset Privacy**); each acts at once and offers **Undo**. Rekordbox and About &
+row of buttons with a quiet **Reset** at the right (**Reset appearance**,
+**Reset motion**, **Reset playback**, **Reset waveforms**, **Reset Beatport**,
+**Reset privacy**); each acts at once and offers **Undo**. Rekordbox and About &
 updates hold no settings, so they have no Reset. A field is as wide as it needs
 to be, with its name above it. The link for the section you chose stays marked
 until you scroll, even for the last sections that cannot reach the top of the
@@ -316,7 +315,7 @@ drag and drop** and **Hover and keyboard focus**. **When things change**:
 page**, **Moving between views** and **Alerts and confirmations**. **While you
 wait or scroll**: **Loading** and **Scrolling**. Each switch has a line saying
 what moves, and a small square beside it that moves once when you turn the
-switch on. **Reset Motion** (which acts at once, and offers **Undo**) turns
+switch on. **Reset motion** (which acts at once, and offers **Undo**) turns
 them all back on.
 
 The first line says whether your system's Reduce motion setting is on. While it
@@ -381,7 +380,7 @@ Medium if you never chose one.
 Library shows many more tracks than before. **Color keys** (on) draws each key
 as a chip in its Camelot color; off, keys are plain text.
 
-**Reset Appearance** sets Neo dark at the default size, Compact rows and colored keys at once, and the
+**Reset appearance** sets Neo dark at the default size, Compact rows and colored keys at once, and the
 message that follows has **Undo**. Your custom themes are kept.
 
 ## Privacy and error reports

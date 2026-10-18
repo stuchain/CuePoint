@@ -59,7 +59,7 @@ which helps when you have hundreds.
 
 **In your files** says one thing: a playlist whose values CuePoint has written
 into your files, with nothing left to save, shows a green **Synced** with the day
-it was written. Any other playlist shows nothing there. Undoing that save, or a
+it was written. Any other playlist shows a muted **Not yet**. Undoing that save, or a
 value that is waiting to be saved again, takes the mark away. Where a playlist
 stands with Beatport (matched, not found) is not on this list: that is what
 **Review** is for, and a playlist with something to review has a **Review**
@@ -213,7 +213,7 @@ art and the preview are simply missing, and the rest works.
 
 ### Past searches
 
-Every search you ran, newest first: **When**, **What was matched** (a playlist's
+With nothing matched yet this tab shows **No searches yet**, a line on what is kept here and a **Go to Playlists** button; its search box appears once there is something to search. Otherwise it lists every search you ran, newest first: **When**, **What was matched** (a playlist's
 name, or "N tracks"), how many **Tracks**, a **Results** line ("131 found · 42
 waiting for you · 6 not found", with "· 2 rejected" and "· 4 not reached" when
 there are some) and a status of **Done**, **Stopped at 120** or **Running**. The
@@ -250,7 +250,11 @@ leaves a field alone that the file already holds, a comment included: only files
 with no comment get yours. **Undo this save** puts a comment back as it was. **See every change** lists the
 before and after of each file. Your choices are remembered for next time.
 
-Pressing **Sync N tracks** does it in one step: the files are written first, with
+Each ticked row shows how many files that value will change, and the button
+reads how many files get written, such as **Write 17 files**; when every ticked row
+is 0 it is dimmed and reads **Nothing to write**, with the reason beside it. A note
+such as "WAV files are skipped (Rekordbox does not read their tags)." sits just
+above the buttons. Pressing **Write N files** does it in one step: the files are written first, with
 each old value recorded before it is replaced. Then, for the values each file
 actually received, CuePoint accepts the ticked matches and copies those values
 into its own, as one recorded batch. A value a file already held, or kept under
@@ -273,9 +277,10 @@ check runs on its own after every import and refresh. One check button shows at
 a time: **Check every file** before any check has been run, then **Check again**
 for the whole library, or **Check 12 again** when you have selected rows.
 
-When nothing is missing the tab is a bar, "All 306 files found" with **Check again**
-at its right, over an all-clear, "No missing files", saying when the last check
-was ("Oct 16, 7:54 AM"). The steps and the table below appear only when something
+When nothing is missing the tab is a bar saying when the last check ran
+("Checked today, 4:42 PM") with **Check again** at its right, over an all-clear,
+"No missing files" ("All 306 files were where your library says"), the same
+empty block Duplicates uses. The steps and the table below appear only when something
 is missing.
 
 A drive that is not connected is reported once, not as thousands of missing

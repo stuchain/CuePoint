@@ -13,7 +13,7 @@ counts as **No Beatport key**. See [Clean](clean.md) to match tracks on Beatport
 
 The list on the left is **Sources**. It starts on your whole library. Tick any
 playlists, Collections or Sets to count only those; a track that is in several
-of them is counted once. CuePoint remembers your choice for next time.
+of them is counted once. The list is as tall as the wheel and uses the Library's tree (the same steps, icons and counts) with a tick box in front of each row. CuePoint remembers your choice for next time.
 
 ## Reading the counts
 
@@ -21,8 +21,8 @@ A **Wheel | List** switch above the counts shows one of the two at a time.
 CuePoint opens on the wheel and remembers which you chose.
 
 - **The wheel.** The 24 keys as two rings, minor (A) inside and major (B)
-  outside, each with its track count written on it. The darker a key, the more
-  tracks it holds. Each key's name, such as "8A, A minor, 12 tracks", includes
+  outside, each with its track count written on it. With **Color keys** on, each key is drawn in its Camelot color, brighter
+  the more tracks it holds (with it off, the wheel is violet, darker for more tracks). Each key's name, such as "8A, A minor, 12 tracks", includes
   its count, for a screen reader.
 - **The list.** The same counts in Camelot order (1A, 1B, 2A, and so on), with a
   bar for each, drawn as the bars of Statistics' ranked lists are. **No Beatport key** and its count have a line of their own.
@@ -53,7 +53,7 @@ Smart Collection, whose filters, not a place, decide its tracks.
 
 ## When there is nothing to show
 
-- Before your first import, Keys asks you to import a Rekordbox file.
+- Before your first import, Keys shows **No library yet**, a line on what the page does with it, and **Import a Rekordbox file…**.
 - If none of the tracks in your sources has a Beatport key, Keys says so and
   offers **Match on Beatport**, which opens Clean.
 - A playlist, Collection or Set with no tracks says it is empty.
