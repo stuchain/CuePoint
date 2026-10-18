@@ -140,7 +140,7 @@ describe("the import step (K16)", () => {
     expect(first).toHaveTextContent(
       "In Rekordbox choose File → Export Collection in xml format, then import that file. Nothing in Rekordbox is changed.",
     );
-    await userEvent.click(within(first).getByRole("button", { name: "Import…" }));
+    await userEvent.click(within(first).getByRole("button", { name: "Import a Rekordbox file…" }));
     expect(onImport).toHaveBeenCalledTimes(1);
     await userEvent.click(within(first).getByRole("button", { name: "How do I get one?" }));
     expect(onHowToExport).toHaveBeenCalledTimes(1);
@@ -150,13 +150,13 @@ describe("the import step (K16)", () => {
     install();
     mount({ withHelp: false });
     expect(screen.queryByRole("button", { name: "How do I get one?" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Import…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Import a Rekordbox file…" })).toBeInTheDocument();
   });
 
   it("hides both buttons once imported", () => {
     install();
     mount({ imported: true });
-    expect(screen.queryByRole("button", { name: "Import…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Import a Rekordbox file…" })).toBeNull();
     expect(screen.queryByRole("button", { name: "How do I get one?" })).toBeNull();
   });
 });
@@ -254,8 +254,8 @@ describe("the buttons", () => {
     install();
     mount();
     expect(screen.getByRole("button", { name: "Sign in to Beatport…" })).toBeInTheDocument();
-    // The Library's own header has the import button, and there is nothing to match yet.
-    expect(screen.queryByRole("button", { name: "Import a Rekordbox file…" })).toBeNull();
+    // The first step's own import button is the one violet button (R7-8, R7-9); nothing to match yet.
+    expect(screen.getByRole("button", { name: "Import a Rekordbox file…" })).toHaveClass("cp-btn--primary");
     expect(screen.queryByRole("button", { name: "Match on Beatport…" })).toBeNull();
     expect(within(item("Play a track")).queryByRole("button")).toBeNull();
   });

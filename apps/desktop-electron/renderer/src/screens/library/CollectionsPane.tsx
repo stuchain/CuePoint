@@ -38,6 +38,7 @@
  * the page passes its handler, so a build without them draws none.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
@@ -136,6 +137,12 @@ interface CollectionsPaneProps {
    * there.
    */
   onOpenInPrepare?: (node: CollectionNode) => void;
+  /**
+   * Where the bar of the selected node is drawn. Absent, it follows the tree (the pane used
+   * alone); an element puts it there, at the foot of the whole Library pane; `null` is "not
+   * there yet" (the host's own ref has not mounted), and draws nothing for that moment.
+   */
+  barHost?: HTMLElement | null;
   /** A Set's "Duplicate": chapters, times, notes and all (PREP-02). */
   onDuplicateSet?: (id: number) => Promise<{ ok: boolean; error?: string }>;
   /** A Set's "Save set list…" and "Copy set list" (DEC-110). */
@@ -189,6 +196,7 @@ export function CollectionsPane({
   onExport,
   onOpenInPrepare,
   onDuplicateSet,
+  barHost,
   onSaveSetList,
   onCopySetList,
   onNewSetFrom,
@@ -231,7 +239,7 @@ export function CollectionsPane({
     const root = rootRef.current;
     const target =
       root?.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]') ??
-      root?.querySelector<HTMLElement>(".cp-collections__fold");
+      root?.querySelector<HTMLElement>(".cp-playlist-pane__fold");
     target?.focus();
   }, [deletedId, selected]);
 
@@ -417,7 +425,7 @@ export function CollectionsPane({
     }
     items.push(
       { id: "rename", label: "Rename", onSelect: () => setRenamingId(node.id) },
-      { id: "delete", label: "Delete…", onSelect: () => void askToDelete(node) },
+      { id: "delete", label: "Delete…", danger: true, onSelect: () => void askToDelete(node) },
     );
     if (isSet(node) && onSaveSetList) {
       items.push({
@@ -449,8 +457,18 @@ export function CollectionsPane({
   /** The bar under the tree: one list, so the toolbar's keys and its buttons agree. */
   const barButtons = ((): BarButton[] => {
     const node = selected;
-    // No selection, no bar; the hook below still runs, with a count of zero.
-    if (node === null) return [];
+    // The bar is always there, so nothing jumps when a row is picked: with nothing selected the
+    // same buttons are drawn dimmed, each saying why.
+    if (node === null) {
+      const reason = "Select a Collection, folder or Set first";
+      const ids: [string, string, string?][] = [
+        ["rename", "Rename"],
+        ["duplicate", "Duplicate"],
+        ["delete", "Delete"],
+        ...(onExport ? [["export", "Export to Rekordbox…", "Export…"] as [string, string, string]] : []),
+      ];
+      return ids.map(([id, label, short]) => ({ id, label, short, reason, run: () => {} }));
+    }
     const buttons: BarButton[] = [
       {
         id: "rename",
@@ -516,6 +534,39 @@ export function CollectionsPane({
   })();
   const barKeys = useToolbarKeys(barButtons.length);
 
+  // What can be done to the selected node, always drawn (DEC-245): at the foot of the whole
+  // pane when the page gives it a place (`barHost`), under the tree otherwise. "Copy set list"
+  // and "New Set from…" stay on the right-click menu.
+  const bar = (
+    <div
+      ref={barKeys.ref}
+      className="cp-collections__bar"
+      role="toolbar"
+      aria-label="Selected Collection or Set"
+      onKeyDown={barKeys.onKeyDown}
+    >
+      {barButtons.map((button, index) => (
+        <Hint
+          key={button.id}
+          text={button.reason ?? (button.short ? button.label : undefined)}
+        >
+          <Button
+            variant={button.id === "delete" ? "danger" : "secondary"}
+            className="cp-collections__bar-button"
+            aria-label={button.short ? button.label : undefined}
+            aria-disabled={button.reason ? true : undefined}
+            {...barKeys.buttonProps(index)}
+            onClick={() => {
+              if (!button.reason) button.run();
+            }}
+          >
+            {button.short ?? button.label}
+          </Button>
+        </Hint>
+      ))}
+    </div>
+  );
+
   const treeRows: PaneTreeRow[] = rows.map((row) => ({
     key: String(row.node.id),
     name: row.node.name,
@@ -551,34 +602,35 @@ export function CollectionsPane({
       <div className="cp-playlist-pane__head">
         <button
           type="button"
-          className="cp-collections__fold"
+          className="cp-playlist-pane__fold"
           aria-expanded={!collapsed}
           onClick={() => onToggleSection?.(!collapsed)}
         >
           <span aria-hidden>{collapsed ? <PixelIcon name="chevron-right" className="cp-pixel-icon--text" /> : <PixelIcon name="chevron-down" className="cp-pixel-icon--text" />}</span>
           <span className="cp-playlist-pane__title">Collections</span>
         </button>
-      </div>
 
-      {/* The three ways to make something, as one menu (FLW-10, K14). Made inside the
-          selected folder when one is selected, straight into the new row's name. */}
-      {!collapsed && (
-        <div className="cp-collections__create" role="group" aria-label="Make something new">
-          <Button
-            variant="secondary"
-            size="sm"
-            menu
-            className="cp-collections__new"
-            aria-expanded={newMenu !== null}
-            onClick={(event) => {
-              const rect = event.currentTarget.getBoundingClientRect();
-              setNewMenu({ x: rect.left, y: rect.bottom });
-            }}
-          >
-            + New
-          </Button>
-        </div>
-      )}
+        {/* The three ways to make something, as one menu (FLW-10, K14). Made inside the
+            selected folder when one is selected, straight into the new row's name. It sits in
+            the heading, as Playlists' "from Rekordbox" does: one small item on the right. */}
+        {!collapsed && (
+          <div className="cp-collections__create" role="group" aria-label="Make something new">
+            <Button
+              variant="secondary"
+              size="sm"
+              menu
+              className="cp-collections__new"
+              aria-expanded={newMenu !== null}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setNewMenu({ x: rect.left, y: rect.bottom });
+              }}
+            >
+              + New
+            </Button>
+          </div>
+        )}
+      </div>
 
       {!collapsed && status === "error" && (
         <p className="cp-playlist-pane__note cp-playlist-pane__note--error" role="alert">
@@ -651,38 +703,7 @@ export function CollectionsPane({
         />
       )}
 
-      {/* What can be done to the selected node, shown while a node is selected
-          (DEC-245). "Copy set list" and "New Set from…" stay on the right-click
-          menu. */}
-      {!collapsed && selected !== null && (
-        <div
-          ref={barKeys.ref}
-          className="cp-collections__bar"
-          role="toolbar"
-          aria-label="Selected Collection or Set"
-          onKeyDown={barKeys.onKeyDown}
-        >
-          {barButtons.map((button, index) => (
-            <Hint
-              key={button.id}
-              text={button.reason ?? (button.short ? button.label : undefined)}
-            >
-              <Button
-                variant="secondary"
-                className="cp-collections__bar-button"
-                aria-label={button.short ? button.label : undefined}
-                aria-disabled={button.reason ? true : undefined}
-                {...barKeys.buttonProps(index)}
-                onClick={() => {
-                  if (!button.reason) button.run();
-                }}
-              >
-                {button.short ?? button.label}
-              </Button>
-            </Hint>
-          ))}
-        </div>
-      )}
+      {barHost === undefined ? bar : barHost ? createPortal(bar, barHost) : null}
 
       {newMenu && (
         <TrackContextMenu
@@ -714,6 +735,7 @@ export function CollectionsPane({
         open={freezing !== null}
         title={`Freeze ${freezing?.name ?? ""}?`}
         onClose={() => setFreezing(null)}
+        size="small"
         primaryAction={{
           label: "Freeze it",
           onClick: () => void confirmFreeze(),
@@ -733,6 +755,7 @@ export function CollectionsPane({
         open={pending !== null}
         title={deleteTitle(pending?.node.name ?? "")}
         variant="danger"
+        size="small"
         onClose={() => setPending(null)}
         primaryAction={{
           label: deleteLabel(pending?.node.name ?? ""),

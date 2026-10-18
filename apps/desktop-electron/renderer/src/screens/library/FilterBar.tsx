@@ -493,6 +493,7 @@ export function FilterBar({
       <div className="cp-filter-bar__row">
         <SearchField
           thing="these tracks"
+          fitPlaceholder
           label="Search"
           value={query}
           onValueChange={onQueryChange}

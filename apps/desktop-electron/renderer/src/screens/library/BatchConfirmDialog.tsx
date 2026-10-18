@@ -25,6 +25,7 @@ export function BatchConfirmDialog({ batch }: BatchConfirmDialogProps) {
       open={pending !== null}
       title={pending ? `${verb} ${many}?` : "Change tracks?"}
       onClose={batch.cancel}
+      size="small"
       primaryAction={{
         label: `${verb} ${many}`,
         onClick: () => void batch.confirm(),

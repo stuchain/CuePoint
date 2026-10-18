@@ -17,6 +17,8 @@
  * which is what a keyboard user expects of two trees, and what ARIA says they
  * are.
  */
+import { useCallback, useState } from "react";
+
 import { PixelIcon } from "../../components/PixelIcon";
 import type { CollectionNode } from "../../api/cuepointBridge.types";
 import { CollectionsPane } from "./CollectionsPane";
@@ -69,6 +71,28 @@ interface LibraryPaneProps {
   canMakeSets?: boolean;
 }
 
+export const PLAYLISTS_FOLD_STORAGE_KEY = "cuepoint.library.playlistsFolded";
+
+/** Whether the Rekordbox Playlists section is folded, remembered like the Collections fold. */
+export function usePlaylistsFold(): [boolean, (collapsed: boolean) => void] {
+  const [collapsed, setState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(PLAYLISTS_FOLD_STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const set = useCallback((next: boolean) => {
+    setState(next);
+    try {
+      localStorage.setItem(PLAYLISTS_FOLD_STORAGE_KEY, next ? "1" : "0");
+    } catch {
+      // Site data blocked: the fold still works for this session.
+    }
+  }, []);
+  return [collapsed, set];
+}
+
 export function LibraryPane({
   libraryTrackCount,
   playlists,
@@ -85,8 +109,13 @@ export function LibraryPane({
   onNewSetFrom,
   canMakeSets = false,
 }: LibraryPaneProps) {
+  // The foot of the pane, where the selected node's bar is drawn (a state, not a ref: the bar
+  // is portalled into it, so it must be known to render).
+  const [barHost, setBarHost] = useState<HTMLDivElement | null>(null);
+  const [playlistsFolded, setPlaylistsFolded] = usePlaylistsFold();
   return (
     <div className="cp-library-pane">
+      <div className="cp-library-pane__scroll">
       <div className="cp-playlist-pane cp-library-pane__all">
         <div className="cp-playlist-pane__tree" role="tree" aria-label="Everything">
           <div
@@ -139,6 +168,7 @@ export function LibraryPane({
         onOpenInPrepare={onOpenInPrepare}
         onDuplicateSet={canMakeSets ? collections.duplicateSet : undefined}
         canMakeSets={canMakeSets}
+        barHost={barHost}
         onSaveSetList={onSaveSetList}
         onCopySetList={onCopySetList}
         onNewSetFrom={onNewSetFrom}
@@ -154,9 +184,13 @@ export function LibraryPane({
         status={playlists.status}
         error={playlists.error}
         showAllTracks={false}
+        collapsed={playlistsFolded}
+        onToggleSection={setPlaylistsFolded}
         onRefuseDrop={(message) => onNotify?.(message, "warning")}
         onNewSetFrom={onNewSetFrom}
       />
+      </div>
+      <div ref={setBarHost} className="cp-library-pane__bar" />
     </div>
   );
 }

@@ -79,7 +79,7 @@ function useFirstSteps(imported: boolean, { onMatch, onAddToken, onImport, onHow
       label: "Import a Rekordbox file",
       hint: "In Rekordbox choose File → Export Collection in xml format, then import that file. Nothing in Rekordbox is changed.",
       done: imported,
-      action: onImport ? { label: "Import…", onClick: onImport, primary: true } : undefined,
+      action: onImport ? { label: "Import a Rekordbox file…", onClick: onImport, primary: true } : undefined,
       secondary: onHowToExport ? { label: "How do I get one?", onClick: onHowToExport } : undefined,
     },
     {

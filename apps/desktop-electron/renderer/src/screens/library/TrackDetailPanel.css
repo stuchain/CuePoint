@@ -329,9 +329,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  padding: var(--space-sm);
-  border: var(--hairline) solid var(--border-muted);
-  background: var(--bg-panel-alt);
+  min-width: 0;
 }
 
 .cp-track-yours__label {
@@ -339,10 +337,12 @@
   font-size: var(--font-size-xs);
 }
 
+/* The rating is a labelled row like Overview's: the label in the shared column, the stars after it. */
 .cp-track-yours__rating {
-  display: flex;
-  flex-direction: column;
-  gap: calc(2px * var(--scale));
+  display: grid;
+  grid-template-columns: var(--facts-label) minmax(0, 1fr);
+  gap: var(--space-xs) var(--space-sm);
+  align-items: center;
 }
 
 .cp-track-yours__stars {
@@ -426,10 +426,20 @@
   color: var(--accent-primary);
 }
 
-.cp-track-yours__field {
+/* Notes, Tags and Add a tag are labelled rows like Overview's: the label in the shared column,
+   the control after it. */
+.cp-track-yours__row {
+  display: grid;
+  grid-template-columns: var(--facts-label) minmax(0, 1fr);
+  gap: var(--space-xs) var(--space-sm);
+  align-items: start;
+}
+
+.cp-track-yours__control {
   display: flex;
   flex-direction: column;
   gap: calc(2px * var(--scale));
+  min-width: 0;
 }
 
 .cp-track-yours__tag-input:focus-visible {
@@ -596,8 +606,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding: var(--space-sm);
-  border: var(--hairline) solid var(--border-muted);
+  min-width: 0;
 }
 
 .cp-track-beatport__state,
@@ -708,50 +717,15 @@
  */
 
 /* One row of three buttons (K5, was five short names in DEC-246), sized to their
-   content. They are the Library toolbar's compact control height (DEC-217), not
-   --hit-min, and share the row's width. */
+   content: the standard grey Button, Play, Queue and Similar side by side (round 8). */
 .cp-track-actions {
   display: flex;
-  gap: var(--space-md);
+  flex-wrap: wrap;
+  gap: var(--space-sm);
   margin-top: var(--space-xs);
+  min-width: 0;
 }
 
-/* Three short words (K5): the buttons size to their content and never wrap or cut,
-   so Play, Queue ▾ and Similar show whole at a 320 px panel and at 1.5x. */
-.cp-track-actions > .cp-hint {
-  flex: 1 0 auto;
-}
-
-.cp-track-actions .cp-track-actions__button {
-  width: 100%;
-}
-
-.cp-track-actions__button {
-  flex: 1 0 auto;
-  min-width: min-content;
-  min-height: var(--control-height);
-  padding: 0 var(--space-xs);
-  white-space: nowrap;
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-input);
-  color: var(--fg-primary);
-  font-family: var(--font-pixel-digits);
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-  line-height: 1.2;
-  cursor: pointer;
-}
-
-.cp-track-actions__button:hover:not(:disabled) {
-  border-color: var(--accent-primary);
-}
-
-.cp-track-actions__button:disabled {
-  color: var(--fg-disabled);
-  cursor: default;
-}
-
-.cp-track-actions__button:focus-visible,
 .cp-track-section__toggle:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--hairline);

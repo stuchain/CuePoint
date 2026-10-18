@@ -543,7 +543,7 @@ describe("a Set's menu in the tree", () => {
       currentPath: null,
     });
     expect(
-      await screen.findByText("Saved “Friday” as a CSV set list — 6 entries, 6 untimed."),
+      await screen.findByText("Saved “Friday” as a CSV set list, 6 entries, 6 untimed."),
     ).toBeInTheDocument();
   });
 

@@ -96,9 +96,33 @@ describe("the + New menu over the tree", () => {
 });
 
 describe("the bar under the tree", () => {
-  it("is not drawn while nothing is selected", () => {
+  it("is always there, dimmed while nothing is selected, so nothing jumps (Q3)", async () => {
+    const props = paneWith(null);
+    expect(bar()).toBeInTheDocument();
+    for (const name of ["Rename", "Duplicate", "Delete", "Export to Rekordbox…"]) {
+      const button = within(bar()).getByRole("button", { name });
+      expect(button).toHaveAttribute("aria-disabled", "true");
+      await userEvent.click(button);
+    }
+    expect(props.onDelete).not.toHaveBeenCalled();
+    expect(props.onExport).not.toHaveBeenCalled();
+  });
+
+  it("draws Delete as the red destructive button and the rest grey (round 8)", () => {
     paneWith(null);
-    expect(screen.queryByRole("toolbar", { name: "Selected Collection or Set" })).toBeNull();
+    const grey = within(bar()).getByRole("button", { name: "Rename" }).className;
+    const red = within(bar()).getByRole("button", { name: "Delete" }).className;
+    expect(red).not.toBe(grey);
+    expect(red).toMatch(/danger/);
+    expect(within(bar()).getByRole("button", { name: "Duplicate" }).className).toBe(grey);
+  });
+
+  it("is drawn in the host it is given, at the foot of the whole pane", () => {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    paneWith(null, { barHost: host });
+    expect(within(host).getByRole("toolbar", { name: "Selected Collection or Set" })).toBeInTheDocument();
+    host.remove();
   });
 
   it("appears when a node is selected, with Rename, Duplicate, Delete and Export", () => {
@@ -150,9 +174,9 @@ describe("the bar under the tree", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: `Delete ${WARMUP.name}` }));
     expect(props.onDelete).toHaveBeenCalledWith(WARMUP.id);
 
-    // The parent deselects the deleted node, so the bar unmounts.
+    // The parent deselects the deleted node, so the bar goes dim (it stays).
     rerender(<CollectionsPane {...props} selected={null} />);
-    expect(screen.queryByRole("toolbar", { name: "Selected Collection or Set" })).toBeNull();
+    expect(within(bar()).getByRole("button", { name: "Delete" })).toHaveAttribute("aria-disabled", "true");
     const stop = document.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
     expect(stop).not.toBeNull();
     expect(stop).toHaveFocus();

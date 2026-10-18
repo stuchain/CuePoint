@@ -4,11 +4,12 @@
 .cp-tag-manager {
   display: flex;
   gap: var(--space-md);
-  min-width: calc(520px * var(--scale));
+  min-width: 0;
 }
 
 .cp-tag-manager__list {
   flex: 0 0 calc(240px * var(--scale));
+  min-width: 0;
   /* No height of its own: the dialog's body is the one scroller. */
   align-self: flex-start;
   margin: 0;
@@ -62,7 +63,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.cp-tag-manager__empty,
 .cp-tag-manager__note {
   padding: var(--space-sm);
   margin: 0;
@@ -75,6 +75,7 @@
   flex: 1 1 auto;
   flex-direction: column;
   gap: var(--space-sm);
+  min-width: 0;
 }
 
 .cp-tag-manager__actions,

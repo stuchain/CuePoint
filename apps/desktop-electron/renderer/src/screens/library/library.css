@@ -183,21 +183,16 @@
      its bar one to a line (PAGES-05C); the table keeps what its toolbar needs.
      The bounds are in 1× pixels times the scale, so they grow with the text (R2-4);
      112 and 220 draw 168 and 330 at the default 1.5× size, so a name and its count
-     fit at any text size; the floor never takes more than 45% of the body, so the
-     table keeps its share in a narrow window. */
+     fit at any text size (a longer name ends in "…"); the floor never takes more than 45% of
+     the body, so the table keeps its share in a narrow window. A 200 floor was tried (round 8)
+     and cost the table two rows with Track details open. */
   grid-template-columns: clamp(min(calc(112px * var(--scale)), 45%), 26%, calc(220px * var(--scale))) minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
-  /* The three lines both sides share (LibraryScreen measures the right side and writes its real
-     heights into the first two, so a wrapped filter bar or a note moves the pane with it; the
-     values here are what one line of each comes to), so a rule runs straight across the pane and the table
-     (whole pixels: every part is a token or a rounded one). Line 1 is the search row
-     (padding, one control, its rule); line 2 the Play / Organize bar (its padding, one
-     control, its rule); line 3 the table's header (a row and its rule). */
+  /* The pane is its own column from its own top. The only line it shares with the right side is
+     the table header's, set by useSharedLines as --library-collections-min when the pane can hold
+     it; --library-module is the 12 between the search/filter bar and the toolbar. */
   --library-module: round(nearest, calc(12px * var(--scale)), 1px);
-  --library-line-1: var(--toolbar-height);
-  --library-line-2: var(--toolbar-height);
-  --library-line-3: calc(var(--row-height) + var(--hairline));
 }
 
 /*

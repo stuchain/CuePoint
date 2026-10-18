@@ -23,9 +23,9 @@
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  /* Never sideways: a row's name is ellipsised and its count kept, so the pane has nothing to scroll. */
-  overflow-x: hidden;
-  overflow-y: auto;
+  /* The sections scroll inside (.cp-library-pane__scroll); the bar of the selected node stays put.
+     Never sideways: a row's name is ellipsised and its count kept, so the pane has nothing to scroll. */
+  overflow: hidden;
   border-right: var(--divider);
   background: var(--bg-panel);
 }
@@ -61,29 +61,10 @@
   border-bottom: var(--divider);
 }
 
-/* The whole section folds from its heading, which is also the heading. */
-.cp-collections__fold {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.cp-collections__fold:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-/* The one "+ New" menu button over the tree (FLW-10, K14). */
+/* The one "+ New" menu button, at the right of the heading (FLW-10, K14). */
 .cp-collections__create {
   display: flex;
   align-items: center;
-  padding: round(down, calc(var(--space-xs) / 2), 1px) var(--space-xs);
 }
 
 /* One line: the label and its text-sized chevron never wrap apart. */
@@ -99,6 +80,7 @@
    it gives up 2 × (var(--space-sm) - var(--space-xs) / 2) = 12px at 1.5×. */
 .cp-collections .cp-playlist-pane__head {
   padding-block: round(down, calc(var(--space-xs) / 2), 1px);
+  align-items: center;
 }
 
 /* The bar's buttons are the standard .cp-btn; they carry whole words ("Duplicate"), so they
@@ -109,9 +91,9 @@
   white-space: nowrap;
 }
 
-/* The bar for the selected node: drawn only while a node is selected (DEC-245).
-   aria-disabled marks a refusal such as Duplicate on a plain Collection, so the arrow
-   keys still land on it. */
+/* The bar for the selected node: always drawn, at the foot of the whole pane, so nothing jumps
+   when a row is picked (DEC-245). aria-disabled marks a refusal such as Duplicate on a plain
+   Collection, or no selection at all, so the arrow keys still land on it. */
 .cp-collections__bar {
   display: flex;
   flex-wrap: wrap;
@@ -190,43 +172,53 @@
 }
 
 /*
- * Shared lines (library.css): the pane's rows are as high as the right side's, so the dividers
- * run straight across. "All tracks" is the search row's height, the Collections heading the
- * Play / Organize bar's, and the "+ New" row the table header's.
+ * The pane starts at its own top with "All tracks" and is as tall as its content: nothing in it
+ * is sized by the toolbar on the right (a blank band there pushed the pane down by up to 170px).
+ * The one line it shares is the table header's: when the pane has room, the Collections section
+ * is given --library-collections-min (useSharedLines) so its closing divider runs across to the
+ * header's rule; the spare room sits at the foot of the section, under its rows.
  */
 .cp-library-pane__all {
   box-sizing: border-box;
-  height: var(--library-line-1, auto);
   border-bottom: var(--divider);
 }
 
 .cp-library-pane__all .cp-playlist-pane__tree {
-  display: flex;
-  align-items: center;
-  height: 100%;
   padding-bottom: 0;
 }
 
-/* One row height: the band's spare room sits under the row, outside it, so the row's own
-   hover and selection are a row high like every other row. */
 .cp-library-pane__all .cp-playlist-pane__row {
-  flex: 1 1 0;
-  align-self: center;
-  height: var(--row-height);
   /* Shrink to the pane: the name ellipsises, the count (flex: none) stays whole. */
   min-width: 0;
 }
 
-.cp-library-pane .cp-collections > .cp-playlist-pane__head {
+.cp-library-pane .cp-collections {
   box-sizing: border-box;
-  /* The toolbar and the module above it (library.css): the heading sits in the toolbar's part. */
-  height: calc(var(--library-line-2, auto) + var(--library-module));
-  align-items: center;
-  padding-block: var(--library-module) 0;
+  min-height: var(--library-collections-min, 0);
 }
 
-.cp-library-pane .cp-collections__create {
+.cp-library-pane .cp-playlist-pane > .cp-playlist-pane__head {
   box-sizing: border-box;
-  height: var(--library-line-3, auto);
-  border-bottom: var(--divider);
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+/* "from Rekordbox" gives way (to "...") before the title does, in a narrow pane. */
+.cp-library-pane .cp-playlist-pane__source {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The pane is a column of two parts: the sections scroll, the bar of the selected node stays. */
+.cp-library-pane__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.cp-library-pane__bar {
+  flex: 0 0 auto;
+  background: var(--bg-panel);
 }

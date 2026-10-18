@@ -5,6 +5,12 @@
  * select, and nothing offers a handle, a rename field or a drop target.
  */
 
+.cp-playlist-pane,
+.cp-playlist-pane__tree {
+  /* One level of nesting: the width of a twisty, so a child's icon sits under its parent's name. */
+  --tree-step: calc(20px * var(--scale));
+}
+
 .cp-playlist-pane {
   display: flex;
   flex-direction: column;
@@ -29,6 +35,24 @@
 .cp-playlist-pane__title {
   font-size: var(--font-size-sm);
   font-weight: 700;
+}
+
+/* Both sections' headings fold from their title: a fold arrow, the title, one small item at the right. */
+.cp-playlist-pane__fold {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cp-playlist-pane__fold:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .cp-playlist-pane__source {
@@ -57,6 +81,7 @@
 }
 
 .cp-playlist-pane__row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-xs);
@@ -86,7 +111,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: calc(14px * var(--scale));
+  width: var(--tree-step);
   height: calc(14px * var(--scale));
   padding: 0;
   border: none;
@@ -104,8 +129,26 @@
   color: var(--fg-muted);
 }
 
+/* A folder's guide: a faint line down the rows inside it. */
+.cp-playlist-pane__guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--hairline);
+  background: var(--border-muted);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* The hover hint wraps the name (Hint is an inline-flex box): it is the row's shrinking item, so
+   a long name ends in "..." before it reaches the count. */
+.cp-playlist-pane__row > .cp-hint {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 .cp-playlist-pane__name {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -115,7 +158,20 @@
   font-size: var(--font-size-xs);
 }
 
+/* Folders read as folders: a shade brighter and bold (700: the only weight besides 400 the app bundles), over names that are a shade softer. */
+.cp-playlist-pane__row[data-kind="folder"] .cp-playlist-pane__name {
+  color: var(--fg-primary);
+  font-weight: 700;
+}
+
+.cp-playlist-pane__row:not([data-kind="folder"]) .cp-playlist-pane__name {
+  color: color-mix(in srgb, var(--fg-primary) 85%, var(--fg-muted));
+}
+
+/* Every count in one right-hand column, as the All tracks row has it. */
 .cp-playlist-pane__count {
+  margin-left: auto;
+  padding-left: var(--space-xs);
   flex-shrink: 0;
   color: var(--fg-muted);
   font-family: var(--font-data);

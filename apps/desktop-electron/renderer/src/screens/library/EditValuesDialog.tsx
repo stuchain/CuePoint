@@ -128,7 +128,7 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
     <Modal
       open={open}
       title="Edit values"
-      size="wide"
+      size="medium"
       onClose={onClose}
       primaryAction={{
         label: `Change ${many}`,

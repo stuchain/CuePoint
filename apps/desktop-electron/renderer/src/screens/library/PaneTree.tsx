@@ -226,7 +226,7 @@ export function PaneTree({
             data-kind={row.kind}
             tabIndex={tabStop === row.key ? 0 : -1}
             draggable={row.draggable === true}
-            style={{ paddingLeft: `calc(var(--space-sm) + ${row.depth} * var(--space-md))` }}
+            style={{ paddingLeft: `calc(var(--space-sm) + ${row.depth} * var(--tree-step))` }}
             className={classes}
             onClick={() => {
               setFocusKey(row.key);
@@ -248,6 +248,19 @@ export function PaneTree({
             onDragLeave={onDragLeave ? (event) => onDragLeave(row.key, event) : undefined}
             onDrop={onDrop ? (event) => onDrop(row.key, event) : undefined}
           >
+            {/* One faint line per open ancestor, down the middle of its twisty: a folder's
+                children are the rows it runs beside, so where it stops is where the folder ends. */}
+            {Array.from({ length: row.depth }, (_, level) => (
+              <span
+                key={level}
+                className="cp-playlist-pane__guide"
+                aria-hidden
+                style={{
+                  left: `calc(var(--space-sm) + ${level} * var(--tree-step) + var(--tree-step) / 2)`,
+                }}
+              />
+            ))}
+
             {row.hasChildren ? (
               <button
                 type="button"
@@ -273,7 +286,7 @@ export function PaneTree({
                 onCancel={() => onRenameCancel?.()}
               />
             ) : (
-              <Hint text={row.title ?? row.name} inline>
+              <Hint text={row.title ?? row.name}>
                 <span className="cp-playlist-pane__name">{row.name}</span>
               </Hint>
             )}

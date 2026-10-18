@@ -78,7 +78,13 @@ describe("the vocabulary", () => {
 
   it("says so when there are none, rather than showing an empty box", () => {
     show({ tags: [] });
-    expect(screen.getByText(/No tags yet/)).toBeInTheDocument();
+    expect(screen.getByText("No tags yet")).toBeInTheDocument();
+    expect(
+      screen.getByText("Tag a track in Track details › Yours and it appears here."),
+    ).toBeInTheDocument();
+    // One column, not the list-plus-editor pair that was too wide for the dialog.
+    expect(screen.queryByRole("list", { name: "Tags" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Choose a tag/)).not.toBeInTheDocument();
   });
 
   it("asks for a tag before it offers fields to edit", () => {

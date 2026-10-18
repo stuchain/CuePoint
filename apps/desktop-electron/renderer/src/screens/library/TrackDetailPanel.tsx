@@ -481,14 +481,13 @@ export function TrackDetailPanel({
             keep the full names. Show in folder lives in the row's menus. */}
         <div className="cp-track-actions" role="group" aria-label="Actions for this track">
           {queue.play && (
-            <Button variant="secondary" className="cp-track-actions__button" disabled={acting !== null} onClick={() => void act("play")}>
+            <Button variant="secondary" disabled={acting !== null} onClick={() => void act("play")}>
               Play
             </Button>
           )}
           {(queue.next || queue.end) && (
             <Button
               variant="secondary"
-              className="cp-track-actions__button"
               aria-label="Queue"
               menu
               aria-expanded={queueMenu !== null}
@@ -504,7 +503,6 @@ export function TrackDetailPanel({
           {track.id != null && (
             <RouteButton
               to={selectionCount > 1 && gatherSelectedRows ? similarTarget : similarPath(track.id)}
-              className="cp-track-actions__button"
               aria-label="Similar tracks"
               title="Similar tracks"
               variant="secondary"

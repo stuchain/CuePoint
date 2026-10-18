@@ -567,3 +567,21 @@ describe("a drop is refused, visibly (DEC-031, ORG-09)", () => {
     }
   });
 });
+
+describe("its heading matches Collections' (Q3)", () => {
+  it("has a fold arrow, the title and the 'from Rekordbox' note", () => {
+    paneWith();
+    const fold = screen.getByRole("button", { name: "Playlists" });
+    expect(fold).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("from Rekordbox")).toBeInTheDocument();
+  });
+
+  it("folds the tree away and back", () => {
+    paneWith();
+    fireEvent.click(screen.getByRole("button", { name: "Playlists" }));
+    expect(screen.queryByRole("tree", { name: "Playlists" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Playlists" })).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Playlists" }));
+    expect(screen.getByRole("tree", { name: "Playlists" })).toBeInTheDocument();
+  });
+});

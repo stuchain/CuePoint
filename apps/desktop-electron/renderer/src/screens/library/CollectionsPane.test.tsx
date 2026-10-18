@@ -1106,6 +1106,12 @@ describe("a row's context menu (EXPORT-07, DEC-087)", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
+  it("shows Delete… in the danger colour in the right-click menu (N7)", () => {
+    paneWith(NODES, [1], { onExport: vi.fn() });
+    fireEvent.contextMenu(rowFor("Warmups"));
+    expect(within(menu()).getByRole("menuitem", { name: "Delete…" })).toHaveClass("cp-track-menu__item--danger");
+  });
+
   it("does the row's own actions from the menu too", async () => {
     const user = userEvent.setup();
     const { onPreviewDelete, onFreezeSmart } = paneWith(NODES, [1], { onExport: vi.fn() });

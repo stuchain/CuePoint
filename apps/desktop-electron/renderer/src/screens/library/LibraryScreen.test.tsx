@@ -593,7 +593,7 @@ describe("the empty state", () => {
     renderScreen();
 
     expect(await screen.findByText(/Export Collection in xml format/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Import a Rekordbox file/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Import a Rekordbox file/i })[0]).toBeInTheDocument();
     // Zeroes would read as "your library is empty", which is a different
     // problem from "you have not imported anything".
     expect(screen.queryByTestId("library-track-count")).not.toBeInTheDocument();
@@ -620,16 +620,20 @@ describe("the empty state", () => {
     expect(first).toHaveTextContent(
       "In Rekordbox choose File → Export Collection in xml format, then import that file. Nothing in Rekordbox is changed.",
     );
-    expect(within(first).getByRole("button", { name: "Import…" })).toBeInTheDocument();
+    expect(within(first).getByRole("button", { name: "Import a Rekordbox file…" })).toBeInTheDocument();
     expect(within(first).getByRole("button", { name: "How do I get one?" })).toBeInTheDocument();
-    // The header keeps its own import button.
-    expect(screen.getAllByRole("button", { name: /Import a Rekordbox file/ })).toHaveLength(1);
+    // The header keeps its own import button, grey; First steps' is the one violet one (R7-9).
+    const imports = screen.getAllByRole("button", { name: "Import a Rekordbox file…" });
+    expect(imports).toHaveLength(2);
+    expect(within(first).getByRole("button", { name: "Import a Rekordbox file…" })).toHaveClass("cp-btn--primary");
+    const header = imports.find((button) => !first.contains(button))!;
+    expect(header).toHaveClass("cp-btn--secondary");
   });
 
   it("the first step's Import… runs the import", async () => {
     renderScreen();
     const steps = await screen.findByRole("list", { name: "First steps" });
-    await userEvent.click(within(steps).getByRole("button", { name: "Import…" }));
+    await userEvent.click(within(steps).getByRole("button", { name: "Import a Rekordbox file…" }));
     expect(bridge.openXmlFileDialog).toHaveBeenCalledTimes(1);
   });
 
@@ -658,7 +662,7 @@ describe("importing", () => {
       .mockResolvedValue(loadedSummary());
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Import a Rekordbox file/i }));
+    await userEvent.click((await screen.findAllByRole("button", { name: /Import a Rekordbox file/i }))[0]!);
 
     await waitFor(() => expect(bridge.startLibraryImport).toHaveBeenCalled());
     expect(bridge.startLibraryImport).toHaveBeenCalledWith({
@@ -673,7 +677,7 @@ describe("importing", () => {
     bridge.openXmlFileDialog.mockResolvedValue({ canceled: true });
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Import a Rekordbox file/i }));
+    await userEvent.click((await screen.findAllByRole("button", { name: /Import a Rekordbox file/i }))[0]!);
 
     expect(bridge.startLibraryImport).not.toHaveBeenCalled();
   });
@@ -686,7 +690,7 @@ describe("importing", () => {
     });
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Import a Rekordbox file/i }));
+    await userEvent.click((await screen.findAllByRole("button", { name: /Import a Rekordbox file/i }))[0]!);
 
     expect(await screen.findByText(/That file has no collection in it/i)).toBeInTheDocument();
   });
@@ -695,7 +699,7 @@ describe("importing", () => {
     bridge.startLibraryImport.mockRejectedValue(new Error("No such file: /gone.xml"));
     renderScreen();
 
-    await userEvent.click(await screen.findByRole("button", { name: /Import a Rekordbox file/i }));
+    await userEvent.click((await screen.findAllByRole("button", { name: /Import a Rekordbox file/i }))[0]!);
 
     expect(await screen.findByText(/No such file/i)).toBeInTheDocument();
   });
@@ -911,7 +915,7 @@ describe("an imported library", () => {
 
     const display = () => container.querySelector(".cp-screen-header__display");
     expect(display()).toHaveTextContent("All tracks");
-    expect(container.querySelector(".cp-screen-header__crumb")).toBeNull();
+    expect(container.querySelector(".cp-screen-header__crumb")).toHaveTextContent("Library");
     expect(screen.getByRole("heading", { level: 1, name: "Library" })).toBeInTheDocument();
 
     const tree = await screen.findByRole("tree", { name: "Playlists" });
@@ -1222,7 +1226,7 @@ describe("without an engine", () => {
     // way to work on this page.
     expect(await screen.findByText(/Export Collection in xml format/i)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /Import a Rekordbox file/i }));
+    await userEvent.click(screen.getAllByRole("button", { name: /Import a Rekordbox file/i })[0]!);
     expect(await screen.findByText(/needs the CuePoint desktop app/i)).toBeInTheDocument();
   });
 });
@@ -1327,6 +1331,38 @@ describe("nothing to show (LIBUI-10)", () => {
     await userEvent.click(within(tree).getByText("Friday"));
 
     expect(await screen.findByText("This playlist is empty")).toBeInTheDocument();
+  });
+
+  it("says a selected folder is a folder, not an empty playlist (R7-5)", async () => {
+    const node = (id: number, parent: number | null, name: string, kind: "folder" | "playlist", path: string) => ({
+      id,
+      parent_id: parent,
+      name,
+      kind,
+      depth: parent === null ? 0 : 1,
+      position: id,
+      path,
+      track_count: 0,
+    });
+    const folderTree = [
+      node(20, null, "Gigs 2026", "folder", "Gigs 2026"),
+      node(21, 20, "Summer", "playlist", "Gigs 2026/Summer"),
+      node(22, 20, "Autumn", "playlist", "Gigs 2026/Autumn"),
+    ];
+    bridge.getLibraryPlaylists.mockResolvedValue({ playlists: folderTree, total: 3 });
+    const { container } = renderScreen();
+    await screen.findByText("This Rekordbox file has no tracks in it");
+
+    const tree = await screen.findByRole("tree", { name: "Playlists" });
+    await userEvent.click(within(tree).getByText("Gigs 2026"));
+
+    expect(await screen.findByText("Gigs 2026 is a folder")).toBeInTheDocument();
+    expect(screen.getByText("Pick one of its 2 playlists in the list.")).toBeInTheDocument();
+    expect(screen.queryByText("This playlist is empty")).toBeNull();
+    const table = screen.getByRole("table", { name: "Library tracks" });
+    expect(within(table).queryByRole("button", { name: "Check for changes" })).toBeNull();
+    expect(container.querySelector(".cp-screen-header__summary")).toHaveTextContent("Folder · 2 playlists");
+    expect(container.querySelector(".cp-screen-header__summary")).not.toHaveTextContent("0 tracks");
   });
 
   it("blames the search, not the playlist, when both are in play", async () => {

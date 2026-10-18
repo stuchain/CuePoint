@@ -383,7 +383,7 @@ export function RekordboxExportDialog({
       open={open}
       title="Export to Rekordbox"
       onClose={phase === "exporting" ? () => undefined : onClose}
-      size="wide"
+      size="medium"
       // Why Export is greyed: one line above the footer, not a note in the body (area 93).
       reason={blocker && !previewing ? blocker : undefined}
       primaryAction={primary}

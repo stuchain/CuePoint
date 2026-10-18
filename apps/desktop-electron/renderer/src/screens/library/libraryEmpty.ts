@@ -49,6 +49,11 @@ export interface EmptyStateInput {
    * filled from here.
    */
   isSet?: boolean;
+  /**
+   * A folder is selected (R7-5): it holds playlists or Collections, not tracks, so it gets its own
+   * words and no "Check for changes". `count` is the playlists or Collections inside it, nested ones included.
+   */
+  folder?: { name: string; count: number; kind: "playlist" | "collection" } | null;
 }
 
 /** The next step an empty table offers; the page decides what each one does. */
@@ -103,6 +108,26 @@ export function emptyStateFor(input: EmptyStateInput): EmptyStateView {
       rules: [],
       hint: null,
       action: input.filtered ? CLEAR_ALL : { id: "retry", label: "Ask again" },
+    };
+  }
+
+  if (input.folder) {
+    const { name, count, kind } = input.folder;
+    const noun = kind === "playlist" ? "playlist" : "Collection";
+    if (count === 0) {
+      return {
+        title: "This folder is empty.",
+        rules: [],
+        hint:
+          kind === "playlist"
+            ? "Folders and their playlists come from Rekordbox."
+            : "Folders hold your Collections; make one inside it.",
+      };
+    }
+    return {
+      title: `${name} is a folder.`,
+      rules: [],
+      hint: `Pick one of its ${count} ${count === 1 ? noun : `${noun}s`} in the list.`,
     };
   }
 

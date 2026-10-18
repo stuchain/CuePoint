@@ -55,7 +55,8 @@ import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
 import { LibraryToolbar } from "./LibraryToolbar";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "./useLibraryPlayback";
 import { TrackDetailPanel } from "./TrackDetailPanel";
-import { defaultSortForScope, findByPath, type PlaylistTreeNode } from "./playlistTree";
+import { defaultSortForScope, findByPath, flatten, type PlaylistTreeNode } from "./playlistTree";
+import { scopePath } from "./scopePath";
 import {
   canReorder,
   defaultSortForCollection,
@@ -96,6 +97,7 @@ import { deletedLine, mergedLine, type TagPatch } from "./tagManager";
 import { describeRule, type ValueNames } from "./filterText";
 import { emptyStateFor, type EmptyActionId } from "./libraryEmpty";
 import { FirstSteps, FirstStepsNote } from "./FirstSteps";
+import { firstStepsDone } from "../../components/firstRunMemory";
 import { LibraryEmptyState } from "./LibraryEmptyState";
 import { LibraryKeyNote } from "./LibraryKeyNote";
 import { LibraryNoKeyNote } from "./LibraryNoKeyNote";
@@ -298,7 +300,7 @@ export function LibraryScreen({
   const watching = useRef<{ stop: () => void }[]>([]);
   const mounted = useRef(true);
   const searchRef = useRef<HTMLDivElement>(null);
-  const shareLines = useSharedLines(searchRef);
+  const shareLines = useSharedLines();
 
   useEffect(() => {
     mounted.current = true;
@@ -523,18 +525,31 @@ export function LibraryScreen({
    * size the page already knows while the scope's facts are being read.
    */
   const scopeLabel = useMemo(() => {
+    type Label = {
+      name: string;
+      group: string | null;
+      count: number | null;
+      folder: { count: number; noun: "playlist" | "Collection" } | null;
+    };
     if (headerScope.collectionId != null) {
       const node = findCollection(collections.tree, headerScope.collectionId);
+      const path = (id: number | null) => scopePath("Collections", flattenCollections(collections.tree), id);
       if (node) {
-        return { name: node.name, group: "Collections", count: node.track_count };
+        return { name: node.name, group: path(node.id), count: node.track_count, folder: null } as Label;
       }
-      if (smart) return { name: smart.name, group: "Collections", count: null };
+      if (smart) return { name: smart.name, group: path(null), count: null, folder: null } as Label;
     }
     if (headerScope.playlistId != null && playlists.selected?.id === headerScope.playlistId) {
-      return { name: playlists.selected.name, group: "Playlists", count: playlists.selected.track_count };
+      const node = playlists.selected;
+      const group = scopePath("Playlists", flatten(playlists.tree), node.id);
+      const folder =
+        node.kind === "folder"
+          ? { count: flatten(node.children).filter((child) => child.kind === "playlist").length, noun: "playlist" as const }
+          : null;
+      return { name: node.name, group, count: node.track_count, folder } as Label;
     }
-    return { name: "All tracks", group: null, count: null };
-  }, [collections.tree, headerScope.collectionId, headerScope.playlistId, playlists.selected, smart]);
+    return { name: "All tracks", group: null, count: null, folder: null } as Label;
+  }, [collections.tree, headerScope.collectionId, headerScope.playlistId, playlists.selected, playlists.tree, smart]);
   const { facts: scopeFacts } = useScopeFacts(headerScope, libraryIdentity);
 
   const batch = useLibraryBatch({
@@ -1788,6 +1803,9 @@ export function LibraryScreen({
         filtering,
         scope: query.scope,
         playlistId: query.playlistId,
+        folder: scopeLabel.folder
+          ? { name: scopeLabel.name, count: scopeLabel.folder.count, kind: "playlist" }
+          : null,
         smartName: smart?.name ?? null,
         rules: (barRules?.rules ?? []).map((rule) =>
           describeRule(vocabulary, rule, ruleNames),
@@ -1805,6 +1823,7 @@ export function LibraryScreen({
       query.playlistId,
       query.scope,
       ruleNames,
+      scopeLabel,
       scopedSet,
       searching,
       smart,
@@ -1877,6 +1896,7 @@ export function LibraryScreen({
       <div className="screen screen--stack screen--scroll library-screen">
         <LibraryHeader
           summary={summary}
+          importQuiet={!firstStepsDone()}
           busy={busy}
           busyLabel={busy ? BUSY_LABEL[busy] : null}
           onCheck={() => void handleCheck()}
@@ -1907,6 +1927,7 @@ export function LibraryScreen({
         summary={summary}
         scopeName={scopeLabel.name}
         scopeGroup={scopeLabel.group}
+        folder={scopeLabel.folder}
         facts={scopeFacts}
         fallbackCount={
           scopeLabel.count ??

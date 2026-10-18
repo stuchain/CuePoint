@@ -157,6 +157,40 @@ describe("a search that matched nothing", () => {
   });
 });
 
+describe("a folder (R7-5)", () => {
+  const folder = { name: "Gigs 2026", count: 4, kind: "playlist" as const };
+
+  it("says it is a folder and how many playlists to pick from, with no Check for changes", () => {
+    const answer = view({ playlistId: 3, folder });
+    expect(answer.title).toBe("Gigs 2026 is a folder.");
+    expect(answer.hint).toBe("Pick one of its 4 playlists in the list.");
+    expect(answer.action).toBeUndefined();
+  });
+
+  it("says one playlist in the singular", () => {
+    expect(view({ playlistId: 3, folder: { ...folder, count: 1 } }).hint).toBe(
+      "Pick one of its 1 playlist in the list.",
+    );
+  });
+
+  it("says an empty folder is empty, and where its playlists come from", () => {
+    const answer = view({ playlistId: 3, folder: { ...folder, count: 0 } });
+    expect(answer.title).toBe("This folder is empty.");
+    expect(answer.hint).toBe("Folders and their playlists come from Rekordbox.");
+    expect(answer.action).toBeUndefined();
+  });
+
+  it("is not called an empty playlist", () => {
+    expect(view({ playlistId: 3, folder }).title).not.toMatch(/playlist is empty/);
+  });
+
+  it("has its own words for a Collections folder", () => {
+    const answer = view({ folder: { name: "Gigs", count: 2, kind: "collection" } });
+    expect(answer.title).toBe("Gigs is a folder.");
+    expect(answer.hint).toBe("Pick one of its 2 Collections in the list.");
+  });
+});
+
 describe("an empty playlist", () => {
   it("says so, where playlists come from, and offers the check (LIB-5, DEC-208)", () => {
     const empty = view({ playlistId: 3 });

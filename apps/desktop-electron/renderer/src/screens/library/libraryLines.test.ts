@@ -1,7 +1,6 @@
 /**
- * The Library's pane and its table share three lines, so the dividers run straight across:
- * the search row and "All tracks", the Play / Organize bar and the Collections heading, the
- * table header and the "+ New" row. They share tokens, and every part is a whole pixel.
+ * The Library's pane starts at its own top. It shares one line with the table (the header's rule)
+ * and only when it has room; the toolbar's rules are the right side's alone.
  */
 import { describe, expect, it } from "vitest";
 import library from "./library.css?raw";
@@ -19,14 +18,19 @@ function rule(css: string, selector: string): string {
 }
 
 describe("the Library's shared lines", () => {
-  it("defines the three lines once, from shared tokens and no hand-scaled pixels", () => {
-    const body = rule(library, ".library-screen__body");
-    for (const name of ["--library-line-1", "--library-line-2", "--library-line-3"]) {
-      expect(body).toContain(`${name}:`);
-    }
-    expect(body).toMatch(/--library-line-3:\s*calc\(var\(--row-height\) \+ var\(--hairline\)\)/);
-    const tokens = body.split("--library-line-").slice(1);
-    expect(tokens.join("")).not.toMatch(/\d+px\s*\*/);
+  it("defines no band: the pane's rows are not sized by the right side's lines", () => {
+    // Regression (round 8): --library-line-1/2 made "All tracks" and the Collections heading as tall
+    // as the toolbar above the table, a blank band of up to 170px.
+    expect(strip(library)).not.toContain("--library-line-");
+    expect(strip(pane)).not.toContain("--library-line-");
+    expect(rule(pane, ".cp-library-pane__all")).not.toMatch(/height:/);
+    expect(rule(pane, ".cp-library-pane .cp-playlist-pane > .cp-playlist-pane__head")).not.toMatch(/\bheight:/);
+  });
+
+  it("shares only the table header's line, as a floor under the Collections section", () => {
+    expect(rule(pane, ".cp-library-pane .cp-collections")).toContain(
+      "min-height: var(--library-collections-min, 0)",
+    );
   });
 
   it("draws each rule once: the toolbar's is its bottom, and the table has no top or left border", () => {
@@ -36,17 +40,8 @@ describe("the Library's shared lines", () => {
     expect(table).toContain("border-left: 0");
   });
 
-  it("gives the pane's rows the same heights, each closed by a divider", () => {
-    const all = rule(pane, ".cp-library-pane__all");
-    expect(all).toContain("height: var(--library-line-1");
-    expect(all).toContain("border-bottom: var(--divider)");
-    // The heading is the toolbar's height plus the module above the toolbar.
-    expect(rule(pane, ".cp-library-pane .cp-collections > .cp-playlist-pane__head")).toContain(
-      "height: calc(var(--library-line-2",
-    );
-    const create = rule(pane, ".cp-library-pane .cp-collections__create");
-    expect(create).toContain("height: var(--library-line-3");
-    expect(create).toContain("border-bottom: var(--divider)");
+  it("closes the All tracks row with a divider", () => {
+    expect(rule(pane, ".cp-library-pane__all")).toContain("border-bottom: var(--divider)");
   });
 
   it("lays both bars out as one toolbar, 8 between controls and one module between the bars", () => {
@@ -64,5 +59,12 @@ describe("the Library's shared lines", () => {
   it("keeps one divider: only the pane has a right edge, the main column has no left one", () => {
     expect(strip(library)).not.toMatch(/library-screen__main[^{]*\{[^}]*border-left/);
     expect(rule(pane, ".cp-library-pane")).toContain("border-right: var(--divider)");
+  });
+
+  it("keeps the pane's floor at 112px times the scale, capped at 45% of the body", () => {
+    // A 200px floor (round 8) cost the table two rows with Track details open; names that do not
+    // fit end in "…" (PaneTree), so the table keeps its width.
+    const columns = rule(library, ".library-screen__body");
+    expect(columns).toMatch(/clamp\(min\(calc\(112px \* var\(--scale\)\), 45%\)/);
   });
 });

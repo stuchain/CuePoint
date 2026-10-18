@@ -204,10 +204,15 @@ export function TrackYours({
         </div>
       </div>
 
-      <div className="cp-track-yours__field">
+      <div className="cp-track-yours__row">
+        <span className="cp-track-yours__label" aria-hidden="true">
+          Your notes
+        </span>
+        <div className="cp-track-yours__control">
         <Textarea
           id={notesId}
           label="Your notes"
+          hideLabel
           width="full"
           rows={3}
           maxLength={NOTES_MAX_LENGTH}
@@ -223,9 +228,10 @@ export function TrackYours({
           {editor.notesState === "saving" ? "Saving…" : ""}
           {editor.notesState === "saved" ? "Saved" : ""}
         </p>
+        </div>
       </div>
 
-      <div className="cp-track-yours__field">
+      <div className="cp-track-yours__row">
         <span className="cp-track-yours__label">Tags</span>
         <ul className="cp-track-yours__tags">
           {tagging.tags.map((tag) => (
@@ -246,6 +252,9 @@ export function TrackYours({
             <li className="cp-track-yours__tag-empty">No tags yet</li>
           )}
         </ul>
+      </div>
+
+      <div className="cp-track-yours__row">
         <label className="cp-track-yours__label" htmlFor={tagId}>
           Add a tag
         </label>

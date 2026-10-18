@@ -24,6 +24,7 @@
  */
 import { useState } from "react";
 
+import { PixelIcon } from "../../components/PixelIcon";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
 import type { PlaylistTreeNode, VisibleRow } from "./playlistTree";
 import { PaneTree, type PaneTreeRow } from "./PaneTree";
@@ -56,6 +57,9 @@ interface PlaylistPaneProps {
   onRefuseDrop?: (message: string) => void;
   /** "New Set from…" a playlist (DEC-104). Absent, rows have no menu. */
   onNewSetFrom?: (node: PlaylistTreeNode) => void;
+  /** Whether the section is folded away. Absent, the section keeps its own fold. */
+  collapsed?: boolean;
+  onToggleSection?: (collapsed: boolean) => void;
 }
 
 const ALL_TRACKS_KEY = "__all__";
@@ -76,7 +80,15 @@ export function PlaylistPane({
   showAllTracks = true,
   onRefuseDrop,
   onNewSetFrom,
+  collapsed: collapsedProp,
+  onToggleSection,
 }: PlaylistPaneProps) {
+  const [ownCollapsed, setOwnCollapsed] = useState(false);
+  const collapsed = collapsedProp ?? ownCollapsed;
+  const toggleSection = (next: boolean) => {
+    setOwnCollapsed(next);
+    onToggleSection?.(next);
+  };
   const [refusing, setRefusing] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ node: PlaylistTreeNode; x: number; y: number } | null>(
     null,
@@ -102,30 +114,44 @@ export function PlaylistPane({
   return (
     <nav className="cp-playlist-pane" aria-label="Playlists">
       <div className="cp-playlist-pane__head">
-        <span className="cp-playlist-pane__title">Playlists</span>
+        <button
+          type="button"
+          className="cp-playlist-pane__fold"
+          aria-expanded={!collapsed}
+          onClick={() => toggleSection(!collapsed)}
+        >
+          <span aria-hidden>
+            <PixelIcon
+              name={collapsed ? "chevron-right" : "chevron-down"}
+              className="cp-pixel-icon--text"
+            />
+          </span>
+          <span className="cp-playlist-pane__title">Playlists</span>
+        </button>
         <Hint text="Mirrored from your Rekordbox file" inline>
           <span className="cp-playlist-pane__source">from Rekordbox</span>
         </Hint>
       </div>
 
-      {selectionFellBack && (
+      {!collapsed && selectionFellBack && (
         <p className="cp-playlist-pane__note" role="status">
           That playlist is no longer in your collection. Showing all tracks.
         </p>
       )}
 
-      {status === "error" && (
+      {!collapsed && status === "error" && (
         <p className="cp-playlist-pane__note cp-playlist-pane__note--error" role="alert">
           {error ?? "Could not read your playlists"}
         </p>
       )}
 
-      {refusing && (
+      {!collapsed && refusing && (
         <p className="cp-playlist-pane__note cp-playlist-pane__note--error" role="alert">
           {refusing}
         </p>
       )}
 
+      {!collapsed && (
       <PaneTree
         label="Playlists"
         rows={treeRows}
@@ -174,6 +200,7 @@ export function PlaylistPane({
           <p className="cp-playlist-pane__note">Your Rekordbox file has no playlists in it.</p>
         )}
       </PaneTree>
+      )}
 
       {menu && onNewSetFrom && (
         <TrackContextMenu

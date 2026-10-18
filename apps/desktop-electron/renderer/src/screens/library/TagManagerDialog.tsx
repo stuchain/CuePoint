@@ -17,6 +17,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "../../components/Button";
+import { EmptyState } from "../../components/EmptyState";
 import { Modal } from "../../components/Modal";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
@@ -139,14 +140,22 @@ export function TagManagerDialog({
   };
 
   return (
-    <Modal open={open} title="Tags" onClose={onClose} closeLabel="Close">
+    <Modal
+      open={open}
+      title="Tags"
+      onClose={onClose}
+      closeLabel="Close"
+      size={ordered.length === 0 ? "medium" : "large"}
+    >
+      {ordered.length === 0 ? (
+        <EmptyState
+          icon="tag"
+          headline="No tags yet"
+          description="Tag a track in Track details › Yours and it appears here."
+        />
+      ) : (
       <div className="cp-tag-manager">
         <ul className="cp-tag-manager__list" aria-label="Tags">
-          {ordered.length === 0 && (
-            <li className="cp-tag-manager__empty">
-              No tags yet. Tag a track and it appears here.
-            </li>
-          )}
           {ordered.map((tag) => (
             <li key={tag.id}>
               <button
@@ -256,6 +265,7 @@ export function TagManagerDialog({
           )}
         </div>
       </div>
+      )}
 
       {pending && (
         <div

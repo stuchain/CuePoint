@@ -33,6 +33,7 @@ import type { LibraryQuickFacets, LibrarySummary } from "../../api/cuepointBridg
 import {
   fileName,
   formatWhen,
+  pluralize,
   scopeFactsLine,
   sourceBadge,
   sourceState,
@@ -45,8 +46,12 @@ interface LibraryHeaderProps {
   summary: LibrarySummary | null;
   /** The scope's name: "All tracks", or the playlist's, Collection's or Set's. */
   scopeName?: string;
-  /** What the left pane calls the group the scope is in; null for All tracks. */
+  /** The path above the title ("Playlists › Gigs 2026"); null on All tracks, which is "Library". */
   scopeGroup?: string | null;
+  /** A folder is selected: its facts line says what it holds instead of "0 tracks" (R7-5). */
+  folder?: { count: number; noun: "playlist" | "Collection" } | null;
+  /** First steps is showing its own violet Import, so this one is grey (R7-9). */
+  importQuiet?: boolean;
   /** What the scope holds; null while it is being read. */
   facts?: LibraryQuickFacets | null;
   /** The scope's track count as far as the page already knows it. */
@@ -182,6 +187,8 @@ export function LibraryHeader({
   summary,
   scopeName = "All tracks",
   scopeGroup = null,
+  folder = null,
+  importQuiet = false,
   facts = null,
   fallbackCount = 0,
   busy,
@@ -203,7 +210,7 @@ export function LibraryHeader({
         <ScreenHeader
           title="Library"
           actions={
-            <Button variant="primary" onClick={onImport} disabled={disabled}>
+            <Button variant={importQuiet ? "secondary" : "primary"} onClick={onImport} disabled={disabled}>
               {busy === "importing" ? busyLabel : "Import a Rekordbox file…"}
             </Button>
           }
@@ -221,7 +228,9 @@ export function LibraryHeader({
   const needsLook = state === "changed" || state === "missing";
   const check = label("check", busy === "checking" || busy === "applying");
   const exporting = label("export", false);
-  const parts = scopeFactsLine(facts, fallbackCount);
+  const parts = folder
+    ? ["Folder", pluralize(folder.count, folder.noun)]
+    : scopeFactsLine(facts, fallbackCount);
   // The file's name, with the whole path in its hint, and the file's state.
   const sourceLine = (
     <span className="library-header__source">
@@ -241,7 +250,7 @@ export function LibraryHeader({
       <ScreenHeader
         title="Library"
         display={scopeName}
-        crumb={scopeGroup}
+        crumb={scopeGroup ?? "Library"}
         beside={
           level >= 2 ? undefined : (
             <>

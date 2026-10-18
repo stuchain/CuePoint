@@ -61,7 +61,7 @@ export function RefreshPreviewDialog({
     <Modal
       open={open}
       title={diff.is_empty ? "Nothing has changed" : "Review this refresh"}
-      size="wide"
+      size="large"
       onClose={onCancel}
       secondaryAction={
         diff.is_empty

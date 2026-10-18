@@ -275,7 +275,7 @@ describe("after an import", () => {
 });
 
 describe("the scope (R4-4)", () => {
-  it("names All tracks, with the page still headed Library and no crumb", () => {
+  it("names All tracks, with the page still headed Library and Library as the line above", () => {
     const { container } = render(
       <LibraryHeader
         summary={SUMMARY}
@@ -291,7 +291,7 @@ describe("the scope (R4-4)", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1, name: "Library" })).toBeInTheDocument();
     expect(container.querySelector(".cp-screen-header__display")).toHaveTextContent("All tracks");
-    expect(container.querySelector(".cp-screen-header__crumb")).toBeNull();
+    expect(container.querySelector(".cp-screen-header__crumb")).toHaveTextContent("Library");
   });
 
   it("names a playlist, with the group it is in above it", () => {
@@ -310,6 +310,37 @@ describe("the scope (R4-4)", () => {
     expect(container.querySelector(".cp-screen-header__display")).toHaveTextContent("Friday warm-up");
     expect(container.querySelector(".cp-screen-header__crumb")).toHaveTextContent("Playlists");
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Library");
+  });
+});
+
+describe("the path and folders (R7-4, R7-5)", () => {
+  it("shows the full path above the title", () => {
+    const { container } = render(
+      <LibraryHeader
+        summary={SUMMARY}
+        scopeName="Sunset"
+        scopeGroup="Playlists › Gigs 2026 › Summer"
+        facts={FACTS}
+        fallbackCount={1}
+        busy={null}
+        busyLabel={null}
+        {...HANDLERS()}
+      />,
+    );
+    expect(container.querySelector(".cp-screen-header__crumb")).toHaveTextContent(
+      "Playlists › Gigs 2026 › Summer",
+    );
+  });
+
+  it("says Folder and its playlists instead of 0 tracks", () => {
+    renderHeader({
+      scopeName: "Gigs 2026",
+      scopeGroup: "Playlists",
+      folder: { count: 4, noun: "playlist" },
+    });
+    expect(screen.getByTestId("library-track-count")).toHaveTextContent("Folder");
+    expect(document.querySelector(".cp-screen-header__summary")).toHaveTextContent("Folder · 4 playlists");
+    expect(document.querySelector(".cp-screen-header__summary")).not.toHaveTextContent("0 tracks");
   });
 });
 
@@ -389,6 +420,16 @@ describe("the source line (K9)", () => {
     expect(screen.getByRole("button", { name: "Check for changes" })).toHaveClass(
       "cp-btn--secondary",
     );
+  });
+
+  it("is the one violet Import before the first import, grey while First steps has its own (R7-9)", () => {
+    const { unmount } = render(
+      <LibraryHeader summary={null} busy={null} busyLabel={null} {...HANDLERS()} />,
+    );
+    expect(screen.getByRole("button", { name: "Import a Rekordbox file…" })).toHaveClass("cp-btn--primary");
+    unmount();
+    render(<LibraryHeader summary={null} importQuiet busy={null} busyLabel={null} {...HANDLERS()} />);
+    expect(screen.getByRole("button", { name: "Import a Rekordbox file…" })).toHaveClass("cp-btn--secondary");
   });
 
   it("never calls the Rekordbox export a collection", () => {
