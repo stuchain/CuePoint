@@ -13,6 +13,11 @@
  * backed by the same system sans the data face uses; --font-pixel-digits puts it in front of the
  * pixel face, so the words stay pixel and every figure is the data face. No font file is loaded:
  * it names fonts already on the machine.
+ *
+ * The two key signs are the exception: Pixelify Sans has no flat (U+266D) or sharp (U+266F), so
+ * "A♭ minor" fell back to another font and the sign floated. Two small pixel-drawn files carry just
+ * those two characters, in the same family so --font-pixel-digits reaches them at 400 and 700. They
+ * are written by scripts/build_key_signs_font.py; do not edit them by hand.
  */
 @font-face {
   font-family: "CuePoint Digits";
@@ -38,4 +43,18 @@
     local("Helvetica Neue Bold"),
     local("Arial Bold");
   unicode-range: U+0025, U+0028-0029, U+002B, U+0030-003A, U+2013-2014, U+2212;
+}
+
+@font-face {
+  font-family: "CuePoint Digits";
+  font-weight: 400;
+  src: url("../assets/fonts/cuepoint-key-signs-400.woff2") format("woff2");
+  unicode-range: U+266D, U+266F;
+}
+
+@font-face {
+  font-family: "CuePoint Digits";
+  font-weight: 700;
+  src: url("../assets/fonts/cuepoint-key-signs-700.woff2") format("woff2");
+  unicode-range: U+266D, U+266F;
 }

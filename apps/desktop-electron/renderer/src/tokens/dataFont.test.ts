@@ -84,4 +84,17 @@ describe("the data font", () => {
     expect(source("./tokens.css")).toMatch(/color: var\(--fg-primary\);\s*\/\*[^*]*\*\/\s*font-family: var\(--font-pixel-digits\)/);
     expect(ruleBody(source("../index.css"), ".cp-digits")).toContain("var(--font-pixel-digits)");
   });
+
+  it("draws the flat and sharp signs in pixel style, at both weights (B12)", () => {
+    // Pixelify Sans has neither, so "A♭ minor" fell back to another font and the sign floated.
+    const fonts = source("./fonts.css");
+    for (const weight of ["400", "700"]) {
+      const face = fonts.match(
+        new RegExp(`@font-face\\s*\\{[^}]*font-weight:\\s*${weight};[^}]*key-signs-${weight}\\.woff2[^}]*\\}`),
+      );
+      expect(face, `key signs ${weight}`).not.toBeNull();
+      expect(face?.[0]).toContain('font-family: "CuePoint Digits"');
+      expect(face?.[0]).toMatch(/unicode-range:\s*U\+266D,\s*U\+266F;/);
+    }
+  });
 });

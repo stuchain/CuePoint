@@ -58,3 +58,16 @@ describe("bundled pixel font", () => {
     expect(bundled).toBe(pixel);
   });
 });
+
+describe("key signs font", () => {
+  it("covers exactly the flat and sharp signs, from files bundled with the app", () => {
+    const css = stripComments(sheet("fonts.css"));
+    const faces = css.match(/@font-face\s*\{[^}]*key-signs[^}]*\}/g) ?? [];
+    expect(faces).toHaveLength(2);
+    for (const face of faces) {
+      expect(face).toMatch(/unicode-range:\s*U\+266D,\s*U\+266F;/);
+      expect(face).toMatch(/url\("\.\.\/assets\/fonts\/cuepoint-key-signs-\d+\.woff2"\)/);
+      expect(face).not.toMatch(/https?:/);
+    }
+  });
+});
