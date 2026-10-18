@@ -149,24 +149,29 @@ async function trackIdsByTitle(window: Page): Promise<Map<string, number>> {
   return new Map(rows.map((row) => [row.title, row.id]));
 }
 
-/** Put one track in the player, silent and paused at its start (a seek before it loads is refused). */
 /**
  * Loads one file into the player, paused.
  *
- * `playQueue` starts playing, and the tone fixtures last 0.26 s: with a fast
- * audio output the track can end before the pause lands, which leaves the
- * player idle with no duration. Such a load is tried again.
+ * `playQueue` starts playing, and the tone fixtures last 0.26 s: on a slow
+ * machine (Linux CI, whose PulseAudio null sink plays in real time) every
+ * attempt's track ended before its pause landed, which leaves the player idle
+ * with no duration. So the queue holds the same file `LOAD_COPIES` times: each
+ * copy is preloaded gaplessly behind the one playing, the same file stays
+ * loaded for seconds, and the pause lands on it. Such a load is still tried
+ * again if it did not.
  */
+const LOAD_COPIES = 20;
 async function load(window: Page, file: string, trackId: number | null, title: string): Promise<void> {
   for (let attempt = 1; ; attempt++) {
     await window.evaluate(
-      async ({ file, trackId, title }) => {
+      async ({ file, trackId, title, copies }) => {
         const player = (window as never as { cuepoint: Record<string, any> }).cuepoint.player;
         await player.setVolume(0);
-        await player.playQueue([{ trackId, filePath: file, title, artist: "Fixture" }], 0);
+        const item = { trackId, filePath: file, title, artist: "Fixture" };
+        await player.playQueue(Array.from({ length: copies }, () => ({ ...item })), 0);
         await player.pause();
       },
-      { file, trackId, title },
+      { file, trackId, title, copies: LOAD_COPIES },
     );
     const deadline = Date.now() + 5_000;
     while (Date.now() < deadline) {
@@ -184,14 +189,14 @@ async function playerState(window: Page): Promise<{ duration: number | null; pos
   });
 }
 
-/** The player's duration, once it knows it. */
-async function playerDuration(window: Page): Promise<number> {
+/** The player's duration, once it knows it; `what` names the file in a failure. */
+async function playerDuration(window: Page, what = "the loaded track"): Promise<number> {
   let duration = 0;
   await expect
     .poll(async () => {
       duration = (await playerState(window)).duration ?? 0;
       return duration > 0;
-    }, { timeout: 20_000 })
+    }, { timeout: 20_000, message: `the player knows the duration of ${what}` })
     .toBe(true);
   return duration;
 }
@@ -290,7 +295,7 @@ test.describe("Waveforms in the bar, the Inspector and the Library (WAVE-06)", (
         const title = index === 0 ? "Bands" : `Tone ${format}`;
         const trackId = ids.get(title)!;
         await load(window, files[index]!, trackId, title);
-        const player = await playerDuration(window);
+        const player = await playerDuration(window, format);
         await expect(window.locator(BAR_CANVAS)).toBeVisible({ timeout: 20_000 });
         const columns = await barColumns(window);
         const answer = await window.evaluate(

@@ -1,5 +1,5 @@
 /** The Keys page's Sources box: the Library tree's rows with a tick box in front (Q18, Q20). */
-import css from "./keys.css?raw";
+import rawCss from "./keys.css?raw";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -7,6 +7,9 @@ import type { CollectionNode } from "../../api/cuepointBridge.types";
 import { buildCollectionTree } from "../library/collectionTree";
 import { buildTree } from "../library/playlistTree";
 import { KeysSourcePicker } from "./KeysSourcePicker";
+
+// A Windows checkout reads the stylesheet with CRLF line ends.
+const css = rawCss.replace(/\r\n/g, "\n");
 
 const PLAYLISTS = buildTree([
   { id: 1, parent_id: null, name: "Gigs 2026", kind: "folder", depth: 0, position: 0, path: "Gigs 2026", track_count: 0 },

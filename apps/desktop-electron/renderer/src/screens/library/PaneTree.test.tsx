@@ -1,9 +1,12 @@
 /** The tree both Library sections share: nesting, folders, and names that never run under counts (Q1, Q2). */
-import css from "./PlaylistPane.css?raw";
+import rawCss from "./PlaylistPane.css?raw";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { PaneTree, type PaneTreeRow } from "./PaneTree";
+
+// A Windows checkout reads the stylesheet with CRLF line ends.
+const css = rawCss.replace(/\r\n/g, "\n");
 
 function rule(selector: string): string {
   const start = css.indexOf(`${selector} {`);

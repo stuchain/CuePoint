@@ -135,27 +135,21 @@ async function importCollection(window: Page, xmlPath: string) {
  * costs the 4th row's margin (DEC-217). Windows and macOS are owed a measure and hold one
  * row lower until then.
  *
- * R4-1: rows now follow the text (29px at 1.5×, was 50), so Linux measures 12 at 1,280 × 773
- * and 11 at the 1,264 × 735 inner size; Windows and macOS hold one lower (11 and 10) until
- * measured.
+ * R4-1: rows now follow the text (29px at 1.5×, was 50); every open measure is at the
+ * 1,264 × 735 inner size (the closed measure sets it first), on Linux and macOS alike.
  *
  * Consistency round: every track list has 26px rows at 1× (39px at 1.5×, was 29), and the page margin is 12px,
- * so Windows measures 7 at the 1,264 × 735 inner size; Linux holds one higher (8) until measured.
+ * so the 1,264 × 735 inner size measures 7 with Track details closed and 5 open (round 7 on, with
+ * the path line above the title; CI measures the same on Linux and macOS).
  *
- * The 1,264 × 735 page a Windows window leaves (1,280 × 800 outside, less the frame and the
- * menu bar) is 38px shorter than the Linux one: three whole rows there, with the toolbar
- * on two lines (70px). A third line (103px) leaves two.
+ * The 1,264 × 735 page is the one a Windows window leaves (1,280 × 800 outside, less the frame
+ * and the menu bar); 20px scrollbars there may push the bar to a third line, which costs two rows.
  */
-const ON_LINUX = process.platform === "linux";
-// With Track details open (a 680px column): 6 on Linux (773px tall), one fewer on the Windows page (735px).
-// One fewer than before round 7: the path line above the title is always shown (question 4).
-const WHOLE_ROWS_LIBRARY_MEASURED = 6;
-const WHOLE_ROWS_LIBRARY = ON_LINUX
-  ? WHOLE_ROWS_LIBRARY_MEASURED
-  : WHOLE_ROWS_LIBRARY_MEASURED - 1;
-// 1,264 x 735 at 1.5x (the page a Windows window leaves): the rows with Track details closed, then open.
-// 7, not 8, since the path line above the title is always shown (round 7, question 4): it keeps
-// the title from moving and costs the one line.
+// 1,264 x 735 at 1.5x (the page a Windows window leaves), measured on Linux and macOS alike:
+// the rows with Track details closed, then open. The closed measure sets that size first, so the
+// open runs below all measure at 1,264 x 735 on every platform (none at a taller opening size).
+// 7 closed, not 8, since the path line above the title is always shown (round 7, question 4): it
+// keeps the title from moving and costs the one line.
 const WHOLE_ROWS_LIBRARY_CLOSED = 7;
 // Open it is 5: its 680px column takes the filter bar and the bar two lines each, and the path
 // line above the title is always shown (round 7, question 4).
@@ -412,8 +406,9 @@ test.describe("The Library page (LIBRARY-11)", () => {
       const showDetails = window.getByRole("button", { name: "Track details", exact: true });
       if ((await showDetails.getAttribute("aria-expanded")) === "false") await showDetails.click();
       await expect(window.getByRole("complementary", { name: "Track details" })).toBeVisible();
-      // As it opens, then at the page a Windows window leaves (frame and menu bar): 1,264 × 735,
-      // then there again with Windows' scrollbars, and wider ones (20px, against Windows' 17
+      // As it opens (still at the 1,264 × 735 the closed measure set, on every platform), then with
+      // the size set again (the page a Windows window leaves: frame and menu bar), then there again
+      // with Windows' scrollbars, and wider ones (20px, against Windows' 17
       // and Linux's 15) on every pane that scrolls: CI on Linux catches a row that fits only
       // by Linux's scrollbars.
       const runs = [
@@ -458,7 +453,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
         expect(m.scale).toBe("1.5");
         expect(m.whole, `whole rows the Library shows at ${label}`).toBeGreaterThanOrEqual(
           // 20px scrollbars are a stress: the filter bar's third line costs two rows there.
-          inner ? (wideScrollbars ? WHOLE_ROWS_LIBRARY_WINDOWS_INNER - 2 : WHOLE_ROWS_LIBRARY_WINDOWS_INNER) : WHOLE_ROWS_LIBRARY,
+          inner ? (wideScrollbars ? WHOLE_ROWS_LIBRARY_WINDOWS_INNER - 2 : WHOLE_ROWS_LIBRARY_WINDOWS_INNER) : WHOLE_ROWS_LIBRARY_WINDOWS_INNER,
         );
         // The toolbar holds at most two lines with Track details open (its column is 503px): a third
         // costs the table a row (closed, it is one line: asserted above). With a selection (the whole

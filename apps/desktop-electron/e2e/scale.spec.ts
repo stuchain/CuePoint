@@ -255,7 +255,8 @@ test.describe("the sizes (PAGES-14)", () => {
       await openAt(win, 3);
       await win.getByRole("link", { name: "Settings", exact: true }).click();
       await expect(win.getByLabel("Size of text and controls")).toBeVisible({ timeout: 30_000 });
-      const error = win.locator(".cp-audio-settings__error");
+      // The Playback panel says the player is missing in its problem notice (an alert).
+      const error = win.locator(".cp-audio-settings").getByRole("alert").filter({ hasText: "No audio player found" });
       await error.scrollIntoViewIfNeeded();
       await expect(error).toBeVisible({ timeout: 30_000 });
       await expect(error).toContainText("No audio player found");
