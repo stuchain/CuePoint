@@ -1,9 +1,9 @@
 /**
- * The Library's pane and its table share their lines (R3): "All tracks" ends where the search row
- * does, the Collections heading where the Play / Organize bar does, and the "+ New" row where the
- * table's header does, so each divider runs straight across the page and the vertical one is
- * unbroken. Measured in the running app, at 1x and 1.5x, in the 1,264 x 735 page a Windows window
- * leaves, where the filter bar and the toolbar may wrap onto a second line.
+ * The Library's pane starts at its own top (with "All tracks") and waits for nothing on the right.
+ * The one line it still shares is the table header's: the Collections section ends on the divider
+ * that runs straight across to the header's bottom edge, when the window is tall enough to hold it.
+ * Otherwise (a small window) the pane is just its content. Measured in the running app, at 1x and
+ * 1.5x, in the 1,264 x 735 page a Windows window leaves.
  */
 import {
   test,
@@ -98,20 +98,19 @@ async function importCollection(window: Page, xmlPath: string) {
 }
 
 
-/** Where each line of the pane and of the table ends, in page pixels, or null when absent. */
-async function lineBottoms(win: Page) {
+/** Where the pane's parts sit, in page pixels, or null when absent. */
+async function lines(win: Page) {
   return win.evaluate(() => {
-    const bottom = (selector: string) => {
-      const el = document.querySelector(selector);
-      return el ? el.getBoundingClientRect().bottom : null;
-    };
+    const rect = (selector: string) => document.querySelector(selector)?.getBoundingClientRect() ?? null;
+    const pane = rect(".cp-library-pane");
+    const all = rect(".cp-library-pane__all");
+    const collections = rect(".cp-library-pane .cp-collections");
+    const header = rect(".track-table__header");
     return {
-      paneAll: bottom(".cp-library-pane__all"),
-      searchEnd: bottom(".library-screen__main > div:first-child"),
-      paneCollections: bottom(".cp-collections > .cp-playlist-pane__head"),
-      toolbarEnd: bottom(".library-toolbar"),
-      paneNew: bottom(".cp-collections__create"),
-      headerEnd: bottom(".track-table__header"),
+      allGapFromPaneTop: pane && all ? all.top - pane.top : null,
+      collectionsBottom: collections ? collections.bottom : null,
+      headerBottom: header ? header.bottom : null,
+      sharedVar: document.querySelector('[style*="--library-collections-min"]') !== null,
     };
   });
 }
@@ -135,7 +134,7 @@ test.describe("The Library's shared lines", () => {
     }
   });
 
-  test("the pane's lines end where the table side's do, at 1x and 1.5x", async () => {
+  test("All tracks starts at the pane's top and Collections ends on the table header's line, at 1x and 1.5x", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
@@ -151,21 +150,19 @@ test.describe("The Library's shared lines", () => {
           .poll(() => window.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--scale").trim()))
           .toBe(scale);
 
-        // The observer writes the right side's heights on a frame after layout, so poll.
+        // The observer writes the Collections height on a frame after layout, so poll.
         await expect
           .poll(
             async () => {
-              const b = await lineBottoms(window);
-              if (Object.values(b).some((v) => v == null)) return "missing " + JSON.stringify(b);
-              return [
-                Math.abs(b.paneAll! - b.searchEnd!),
-                Math.abs(b.paneCollections! - b.toolbarEnd!),
-                Math.abs(b.paneNew! - b.headerEnd!),
-              ].every((gap) => gap <= 0.5)
+              const b = await lines(window);
+              if (b.allGapFromPaneTop == null || b.collectionsBottom == null || b.headerBottom == null) {
+                return "missing " + JSON.stringify(b);
+              }
+              return Math.abs(b.allGapFromPaneTop) <= 1 && Math.abs(b.collectionsBottom - b.headerBottom) <= 0.5
                 ? "aligned"
                 : JSON.stringify(b);
             },
-            { message: `the lines match at ${scale}x`, timeout: 15_000 },
+            { message: `All tracks starts at the top and Collections ends on the header's line at ${scale}x`, timeout: 15_000 },
           )
           .toBe("aligned");
 
@@ -175,6 +172,22 @@ test.describe("The Library's shared lines", () => {
         );
         expect(left).toBe("0px");
       }
+    } finally {
+      await app.close();
+    }
+  });
+
+  test("in a small window the pane starts at its top and the Playlists heading stays in view", async () => {
+    const app = await launch(userDataDir, cuepointHome);
+    try {
+      const window = await ready(app);
+      await importCollection(window, writeExport(workspace, [1, 2, 3, 4, 5]));
+      await setInnerSize(app, window, { width: 1024, height: 640 });
+      await expect(window.locator(".track-table__row").first()).toBeVisible({ timeout: 30_000 });
+      // The shared height is held only while the pane can still show the Playlists heading under
+      // it (useSharedLines); either way nothing sits above All tracks.
+      expect((await lines(window)).allGapFromPaneTop).toBeLessThanOrEqual(1);
+      await expect(window.getByRole("heading", { name: "Playlists" }).or(window.locator(".cp-playlist-pane__head").last())).toBeInViewport();
     } finally {
       await app.close();
     }

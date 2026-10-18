@@ -121,7 +121,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
     try {
       const window = await ready(app);
       await window.getByRole("link", { name: "Clean" }).click();
-      await expect(window.getByText("No collection imported yet")).toBeVisible();
+      await expect(window.getByText("No library yet")).toBeVisible();
       // The button goes to the Library and asks it to import; the file chooser is the system's,
       // so it is answered with a cancel.
       await app.evaluate(({ dialog }) => {

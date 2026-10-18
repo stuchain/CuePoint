@@ -173,7 +173,7 @@ async function chooseNew(window: Page, item: "Collection" | "Set" | "Folder") {
   await window.getByRole("menuitem", { name: item, exact: true }).click();
 }
 
-/** The bar under the tree, shown while a node is selected (DEC-245). */
+/** The bar at the pane's foot, always drawn (DEC-245); its buttons are dimmed until a node is selected. */
 function treeBar(window: Page) {
   return window.getByRole("toolbar", { name: "Selected Collection or Set" });
 }
@@ -623,7 +623,8 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await collectionsTree(window).getByText("Openers").click();
 
       const measure = () => window.evaluate(() => {
-        const pane = document.querySelector<HTMLElement>(".cp-library-pane")!;
+        // The bar sits outside the scroll area, at the pane's foot: nodes are counted against the scroll area.
+        const pane = document.querySelector<HTMLElement>(".cp-library-pane__scroll")!;
         const box = pane.getBoundingClientRect();
         const tree = document.querySelector<HTMLElement>('[role="tree"][aria-label="Collections"]')!;
         const whole = (el: Element) => {

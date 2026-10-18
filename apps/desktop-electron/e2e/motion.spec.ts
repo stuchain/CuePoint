@@ -64,7 +64,7 @@ test.describe("Motion switches and the system setting", () => {
   /** The Motion section's own Reset: it acts at once and says so in a toast, with Undo (DEC-267). */
   async function motionReset(window: Page): Promise<string> {
     const section = window.getByRole("region", { name: "Motion" });
-    await section.getByRole("button", { name: "Reset Motion" }).click();
+    await section.getByRole("button", { name: "Reset motion" }).click();
     const toast = window.locator(".cp-toast").first();
     await expect(toast).toBeVisible();
     return toast.evaluate((el) => getComputedStyle(el).animationName);
@@ -106,7 +106,7 @@ test.describe("Motion switches and the system setting", () => {
       await window.getByRole("button", { name: "Choose each kind…" }).click();
       await window.getByRole("checkbox", { name: "Opening and closing panels and dialogs" }).uncheck();
       // Motion's own Reset would turn the switch back on, so the toast comes from Appearance's.
-      await window.getByRole("button", { name: "Reset Appearance" }).click();
+      await window.getByRole("button", { name: "Reset appearance" }).click();
       const toast = window.locator(".cp-toast").first();
       await expect(toast).toBeVisible();
       expect(await toast.evaluate((el) => getComputedStyle(el).animationName)).toBe("none");

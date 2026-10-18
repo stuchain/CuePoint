@@ -225,6 +225,8 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         await expect(window.getByRole("tab", { name: "Review Journey" })).toHaveAttribute("aria-selected", "true", {
           timeout: 90_000,
         });
+        // The "Matching N tracks" toast is only true while the match runs: it closes when it ends.
+        await expect(window.getByText("Matching 3 tracks on Beatport.", { exact: true })).toHaveCount(0);
         await idle(window);
         await expect(reviewRow(window, "Tone Two")).toContainText("Check", { timeout: 15_000 });
       });
@@ -287,7 +289,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         await window.getByRole("button", { name: "Sync Journey to files…" }).click();
         const dialog = window.getByRole("dialog", { name: "Sync Journey to your files" });
         await dialog.getByRole("checkbox", { name: "Key" }).check({ timeout: 60_000 });
-        const sync = dialog.getByRole("button", { name: /^Sync \d[\d,]* tracks?$/ });
+        const sync = dialog.getByRole("button", { name: /^(Write \d[\d,]* files?|Nothing to write)$/ });
         await expect(sync).toBeEnabled({ timeout: 30_000 });
         expect(readFileSync(library.files[1]!).equals(before)).toBe(true);
         await sync.click();

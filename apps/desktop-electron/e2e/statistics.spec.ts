@@ -108,8 +108,8 @@ test.describe("The Statistics page (STATS-04)", () => {
       const window = await ready(app);
       await window.getByRole("link", { name: "Statistics" }).click();
       await expect(window.getByRole("heading", { name: "Statistics", level: 1 })).toBeVisible();
-      await expect(window.getByText("There is no library to count yet.")).toBeVisible();
-      await window.getByRole("button", { name: "Import a library" }).click();
+      await expect(window.getByText("No library yet")).toBeVisible();
+      await window.getByRole("button", { name: "Import a Rekordbox file…" }).click();
       await expect(window.getByRole("heading", { name: "Library", level: 1 })).toBeVisible();
     } finally {
       await app.close();

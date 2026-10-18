@@ -598,8 +598,13 @@ test.describe("FLW-1: every action in the table has a visible place that works f
       win.evaluate(async () => (await (window as never as Bridge).cuepoint.getCollections()).collections.map((n: { name: string }) => n.name) as string[]);
     const node = (name: string) => treeNode(win, name);
 
-    // With nothing selected there is no bar (DEC-245); it appears with a selection.
-    await expect(treeBar(win)).toHaveCount(0);
+    // The bar is always drawn (DEC-245): with nothing selected its buttons are dimmed and say why.
+    await expect(treeBar(win)).toBeVisible();
+    for (const name of ["Rename", "Duplicate", "Delete"]) {
+      await expect(treeBar(win).getByRole("button", { name, exact: true })).toHaveAttribute("aria-disabled", "true");
+    }
+    await treeBar(win).getByRole("button", { name: "Rename", exact: true }).hover();
+    await expect(win.getByText("Select a Collection, folder or Set first").first()).toBeVisible();
 
     await chooseNode(win, node("Bar crate"), "the Bar crate node");
     await use(win, treeBar(win).getByRole("button", { name: "Rename", exact: true }), "Rename");

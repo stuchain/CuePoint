@@ -147,15 +147,19 @@ async function importCollection(window: Page, xmlPath: string) {
  * on two lines (70px). A third line (103px) leaves two.
  */
 const ON_LINUX = process.platform === "linux";
-// With Track details open (a 680px column): 7 on Linux (773px tall), one fewer on the Windows page (735px).
-const WHOLE_ROWS_LIBRARY_MEASURED = 7;
+// With Track details open (a 680px column): 6 on Linux (773px tall), one fewer on the Windows page (735px).
+// One fewer than before round 7: the path line above the title is always shown (question 4).
+const WHOLE_ROWS_LIBRARY_MEASURED = 6;
 const WHOLE_ROWS_LIBRARY = ON_LINUX
   ? WHOLE_ROWS_LIBRARY_MEASURED
   : WHOLE_ROWS_LIBRARY_MEASURED - 1;
 // 1,264 x 735 at 1.5x (the page a Windows window leaves): the rows with Track details closed, then open.
-const WHOLE_ROWS_LIBRARY_CLOSED = 8;
-// Open it is 6: its 680px column takes the filter bar and the bar two lines each (7 needs a taller window).
-const WHOLE_ROWS_LIBRARY_WINDOWS_INNER = 6;
+// 7, not 8, since the path line above the title is always shown (round 7, question 4): it keeps
+// the title from moving and costs the one line.
+const WHOLE_ROWS_LIBRARY_CLOSED = 7;
+// Open it is 5: its 680px column takes the filter bar and the bar two lines each, and the path
+// line above the title is always shown (round 7, question 4).
+const WHOLE_ROWS_LIBRARY_WINDOWS_INNER = 5;
 
 test.describe("The Library page (LIBRARY-11)", () => {
   let userDataDir: string;
@@ -183,10 +187,13 @@ test.describe("The Library page (LIBRARY-11)", () => {
       await openLibrary(window);
 
       await expect(window.getByText(/Export Collection in xml format/i)).toBeVisible();
+      // Two buttons carry the name now: the header's and the First steps list's.
       await expect(
-        window.getByRole("button", { name: /Import a Rekordbox file/i }),
+        window.getByRole("list", { name: "First steps" }).getByRole("button", { name: "Import a Rekordbox file…" }),
       ).toBeVisible();
-      await expect(window.getByRole("button", { name: "Import…", exact: true })).toBeVisible();
+      await expect(
+        window.locator(".library-header").getByRole("button", { name: "Import a Rekordbox file…" }),
+      ).toBeVisible();
       await expect(window.getByRole("button", { name: "How do I get one?" })).toBeVisible();
     } finally {
       await app.close();
@@ -400,7 +407,8 @@ test.describe("The Library page (LIBRARY-11)", () => {
         WHOLE_ROWS_LIBRARY_CLOSED,
       );
       expect(closed.toolbarLines, "the bar is one line with Track details closed").toBeLessThanOrEqual(1);
-      expect(closed.parts[".library-header"], "the header is one line of controls with Track details closed").toBeLessThanOrEqual(110);
+      // 110 plus the path line above the title, which is always shown (round 7, question 4).
+      expect(closed.parts[".library-header"], "the header is one line of controls with Track details closed").toBeLessThanOrEqual(134);
       const showDetails = window.getByRole("button", { name: "Track details", exact: true });
       if ((await showDetails.getAttribute("aria-expanded")) === "false") await showDetails.click();
       await expect(window.getByRole("complementary", { name: "Track details" })).toBeVisible();
