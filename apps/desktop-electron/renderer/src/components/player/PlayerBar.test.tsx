@@ -724,7 +724,8 @@ describe("the waveform button (C30)", () => {
     render(<PlayerBar />);
     await screen.findByText("Strobe");
 
-    expect(screen.getByRole("button", { name: "Show the zoomed waveform · only for tracks in your Library" })).toHaveAttribute(
+    // The name stays short; the tip says why besides (N3).
+    expect(screen.getByRole("button", { name: "Show the zoomed waveform" })).toHaveAttribute(
       "title",
       "Show the zoomed waveform · only for tracks in your Library",
     );
@@ -735,7 +736,7 @@ describe("the waveform button (C30)", () => {
     render(<PlayerBar />);
     await screen.findByText("Strobe");
 
-    const button = screen.getByRole("button", { name: "Hide the zoomed waveform · only for tracks in your Library" });
+    const button = screen.getByRole("button", { name: "Hide the zoomed waveform" });
     expect(button).toHaveAttribute("title", "Hide the zoomed waveform · only for tracks in your Library");
     fireEvent.click(button);
     expect(localStorage.getItem(WAVEFORM_DETAIL_STORAGE_KEY)).toBe("off");
@@ -817,11 +818,13 @@ describe("every control names itself (BAR-1)", () => {
     render(<PlayerBar onToggleQueue={() => undefined} />);
     await screen.findByText("Strobe");
 
+    // The tip starts with the spoken name; a reason may follow after " · " (N3).
     for (const control of screen.getAllByRole("button")) {
       const label = control.getAttribute("aria-label");
       const title = control.getAttribute("title");
       if (!label || !title) continue;
-      expect(title.replace(/ \((Space|Ctrl\+[^)]+)\)$/, ""), label).toBe(label);
+      const words = title.replace(/ \((Space|Ctrl\+[^)]+)\)$/, "");
+      expect(words === label || words.startsWith(`${label} · `), label).toBe(true);
     }
   });
 

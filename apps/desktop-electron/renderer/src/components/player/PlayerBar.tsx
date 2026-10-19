@@ -427,7 +427,7 @@ export function PlayerBar({
             type="button"
             className={`cp-player-bar__button cp-player-bar__button--standard cp-player-bar__button--zoom${detailOn ? " cp-player-bar__button--on" : ""}`}
             onClick={() => setDetailOn(!detailOn)}
-            aria-label={detailHint}
+            aria-label={detailWords}
             aria-pressed={detailOn}
           >
             <PixelIcon name="waveform" />
