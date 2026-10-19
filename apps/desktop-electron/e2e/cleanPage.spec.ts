@@ -185,9 +185,9 @@ test.describe("The Clean page (CLEAN-12)", () => {
       // The export has no playlists: the view says so in one line. Only the whole library has a tick,
       // one Match button under the list starts a match, and there is no button in the header (C22).
       await expect(window.locator("p:visible", { hasText: "No playlists yet" })).toBeVisible();
-      await expect(window.getByRole("checkbox")).toHaveCount(1);
+      await expect(window.getByRole("checkbox", { name: /^Match / })).toHaveCount(1);
       await expect(window.getByRole("checkbox", { name: "Match Whole library" })).toBeEnabled();
-      await expect(window.getByRole("button", { name: "Match playlists" })).toBeDisabled();
+      await expect(window.getByRole("button", { name: "Match ticked playlists" })).toBeDisabled();
       // The header has only the Details toggle, the last button of the row.
       await expect(window.getByTestId("clean-header").getByRole("button")).toHaveCount(1);
       await expect(window.getByTestId("clean-header").getByRole("button", { name: "Track details", exact: true })).toBeVisible();

@@ -175,7 +175,7 @@ function detailsPanel(window: Page) {
 async function openDetails(window: Page, title: string) {
   await reviewRow(window, title).locator("td.review-row__yours").click();
   const panel = detailsPanel(window);
-  await expect(panel.locator(".review-panel__title")).toHaveText(title, { timeout: 15_000 });
+  await expect(panel.locator(".review-card__title")).toHaveText(title, { timeout: 15_000 });
   return panel;
 }
 
@@ -219,23 +219,23 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         const journey = window.getByRole("row").filter({ hasText: "Journey" });
         await expect(journey).toHaveAttribute("data-status", "not_matched", { timeout: 15_000 });
         await window.getByRole("checkbox", { name: "Match Journey" }).check();
-        await window.getByRole("button", { name: "Match 1 playlist" }).click();
-        await expect(window.getByText("Matching 3 tracks on Beatport.", { exact: true })).toBeVisible({ timeout: 30_000 });
+        await window.getByRole("button", { name: "Match ticked playlists" }).click();
+        await expect(window.getByText("Matching 3 tracks on Beatport", { exact: true })).toBeVisible({ timeout: 30_000 });
         // The run lands on its Review when it ends: every track, with where each stands and a tick.
-        await expect(window.getByRole("tab", { name: "Review Journey" })).toHaveAttribute("aria-selected", "true", {
-          timeout: 90_000,
-        });
+        // There is no Review tab (D13): the area's row keeps its two sub-tabs and offers a way back.
+        await expect(window.getByRole("region", { name: "Review Journey" })).toBeVisible({ timeout: 90_000 });
+        await expect(window.getByRole("button", { name: "Playlists", exact: true })).toBeVisible();
         // The "Matching N tracks" toast is only true while the match runs: it closes when it ends.
-        await expect(window.getByText("Matching 3 tracks on Beatport.", { exact: true })).toHaveCount(0);
+        await expect(window.getByText("Matching 3 tracks on Beatport", { exact: true })).toHaveCount(0);
         await idle(window);
-        await expect(reviewRow(window, "Tone Two")).toContainText("Check", { timeout: 15_000 });
+        await expect(reviewRow(window, "Tone Two")).toContainText("To check", { timeout: 15_000 });
       });
 
       await test.step("see what was accepted and what needs review", async () => {
-        // One plain table: the sure match is Matched and ticked, the proposal is Check.
-        await expect(reviewRow(window, "Tone One")).toContainText("Matched", { timeout: 15_000 });
+        // One plain table: the sure match is Confirmed and ticked, the proposal is To check.
+        await expect(reviewRow(window, "Tone One")).toContainText("Confirmed", { timeout: 15_000 });
         await expect(window.getByRole("checkbox", { name: /^Sync Tone One/ })).toBeChecked();
-        await expect(reviewRow(window, "Tone Two")).toContainText("Check");
+        await expect(reviewRow(window, "Tone Two")).toContainText("To check");
 
         // Beatport's artwork for the accepted track, decoded into a thumbnail
         // by the engine's guarded decoder — in a packaged build, Pillow's.
@@ -263,11 +263,13 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
         const panel = await openDetails(window, "Tone Two");
         const candidates = panel.getByRole("list", { name: "Beatport candidates" });
         await expect(candidates).toBeVisible({ timeout: 15_000 });
-        // The other result is the one in E minor (9A): Use this confirms it and ticks the track.
-        await candidates.getByRole("listitem").filter({ hasText: "9A" }).getByRole("button", { name: /^Use / }).click();
+        // The other result is the one in E minor (9A): pick it, and Use this match (pinned at the
+        // panel's foot) confirms it and ticks the track.
+        await candidates.getByRole("listitem").filter({ hasText: "9A" }).getByRole("radio").check();
+        await panel.getByRole("button", { name: "Use this match" }).click();
         await window.keyboard.press("Escape");
         const row = reviewRow(window, "Tone Two");
-        await expect(row).toContainText("Matched", { timeout: 15_000 });
+        await expect(row).toContainText("Confirmed", { timeout: 15_000 });
         await expect(window.getByRole("checkbox", { name: /^Sync Tone Two/ })).toBeChecked();
         // And the engine holds the second result, the one chosen.
         const decided = await window.evaluate(async () => {
@@ -286,8 +288,8 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
 
         // Sync: the green button opens one window for the ticked tracks; the choice of values is made there.
         const before = readFileSync(library.files[1]!);
-        await window.getByRole("button", { name: "Sync Journey to files…" }).click();
-        const dialog = window.getByRole("dialog", { name: "Sync Journey to your files" });
+        await window.getByRole("button", { name: "Sync to files…" }).click();
+        const dialog = window.getByRole("dialog", { name: /^Sync .* to your files$/ });
         await dialog.getByRole("checkbox", { name: "Key" }).check({ timeout: 60_000 });
         const sync = dialog.getByRole("button", { name: /^(Write \d[\d,]* files?|Nothing to write)$/ });
         await expect(sync).toBeEnabled({ timeout: 30_000 });

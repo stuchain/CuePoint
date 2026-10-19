@@ -321,7 +321,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.keyboard.press("Escape");
       await expect(row(window, "Gone")).toContainText("Missing");
       await expect(row(window, "Tone One")).toContainText("Present");
-      await expect(row(window, "Tone One")).toContainText("Not matched");
+      await expect(row(window, "Tone One")).toContainText("Not looked up yet");
 
       // A fixed-value field is a choice, and its chip reads the name.
       await window.getByRole("button", { name: "Add filter" }).click();
@@ -400,11 +400,12 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await zone.getByRole("button", { name: /^Compare all on the Clean page/ }).click();
       // It opens Match, on the library's review, with the track's details beside the list.
       await expect(window.getByRole("tab", { name: /^Match/, selected: true })).toBeVisible({ timeout: 15_000 });
-      await expect(window.getByRole("tab", { name: "Review Whole library", selected: true })).toBeVisible({
+      // No Review tab (D13): the review fills the body, with a way back in the row above it.
+      await expect(window.getByRole("region", { name: "Review Whole library" })).toBeVisible({
         timeout: 15_000,
       });
       const details = window.getByRole("complementary", { name: /^Candidates for / });
-      await expect(details.locator(".review-panel__title")).toHaveText("Tone One", { timeout: 15_000 });
+      await expect(details.locator(".review-card__title")).toHaveText("Tone One", { timeout: 15_000 });
 
       // With the cards and the Inspector both full, the window itself
       // never scrolls: each part scrolls on its own.
