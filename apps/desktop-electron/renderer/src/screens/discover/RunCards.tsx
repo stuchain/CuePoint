@@ -31,7 +31,7 @@ import { Notice } from "../../components/Notice";
 import { opensDialog } from "../../format/words";
 import { LinkButton } from "../../components/LinkButton";
 import { PixelIcon } from "../../components/PixelIcon";
-import { formatCount, pluralize } from "../library/libraryFormat";
+import { countNoun, formatCount } from "../../format/counts";
 import { GroupArt } from "./GroupArt";
 import { PushDialog, type PushTarget } from "./PushDialog";
 import { beatportUsable, unusableReason } from "./beatportState";
@@ -261,7 +261,7 @@ export function RunCards({
     <div className="discover-cards">
       <div className="discover-cards__top">
         <Button variant="secondary" onClick={onEverything}>
-          {`Everything · ${pluralize(groups.tracks, "track")}`}
+          {`Everything · ${countNoun(groups.tracks, "track")}`}
         </Button>
         <span className="discover-note">Duplicates are merged.</span>
       </div>
@@ -314,7 +314,7 @@ export function RunCards({
           // The owned ones are skipped unless they are asked for: say what will go.
           const all = summary?.tracks ?? 0;
           const going = includeOwned ? all : Math.max(0, all - (summary?.owned ?? 0));
-          return `the ${pluralize(going, "track")} on the ticked ${chosen.length === 1 ? "card" : "cards"}`;
+          return `the ${countNoun(going, "track")} on the ticked ${chosen.length === 1 ? "card" : "cards"}`;
         }}
         defaultName={tools.options.defaults.playlist_name}
         maxNameLength={tools.options.limits.max_playlist_name_length}

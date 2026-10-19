@@ -190,9 +190,12 @@ describe("the seed and its suggestions", () => {
       "Mixes well (next key): 8A → 9A",
     );
     expect(cell(first, "bpm_delta")).toHaveTextContent("±0");
+    // A drawn check mark, not a typed one (C138).
+    expect(cell(first, "genre_shared").querySelector('[data-icon="check"]')).not.toBeNull();
+    expect(cell(first, "genre_shared").textContent).not.toContain("✓");
     expect(within(cell(first, "genre_shared")).getByText("Same genre")).toHaveClass("track-table__sr-only");
     expect(within(cell(first, "label_shared")).getByText("Same label")).toHaveClass("track-table__sr-only");
-    expect(within(cell(first, "artist_shared")).getByText("Shared artist")).toHaveClass("track-table__sr-only");
+    expect(within(cell(first, "artist_shared")).getByText("Same artist")).toHaveClass("track-table__sr-only");
     expect(within(first).getByRole("img", { name: `Fit ${best.score} out of 100` })).toHaveAttribute(
       "title",
       `Strong: Score ${best.score} out of 100`,
@@ -207,7 +210,7 @@ describe("the seed and its suggestions", () => {
     // Nothing shared is the dash every empty cell shows (C73).
     expect(cell(second, "genre_shared")).toHaveTextContent(/^—$/);
     expect(cell(second, "label_shared")).toHaveTextContent(/^—$/);
-    expect(within(cell(second, "artist_shared")).getByText("Shared artist")).toBeInTheDocument();
+    expect(within(cell(second, "artist_shared")).getByText("Same artist")).toBeInTheDocument();
 
     expect(cell(rowOf(TITLES[2]), "key")).toHaveTextContent(/^8B.*rel\.$/);
     expect(cell(rowOf(TITLES[2]), "bpm_delta")).toHaveTextContent("+4");
@@ -221,7 +224,11 @@ describe("the seed and its suggestions", () => {
     const headers = [...table().querySelectorAll('[role="columnheader"]')].map(
       (cell) => cell.textContent,
     );
-    expect(headers).toEqual(expect.arrayContaining(["Key", "BPM Δ", "G", "L", "A", "Fit"]));
+    // Spelled out, with check marks (C79, C138); Title and Artist lead, then Key, BPM and Genre (C70).
+    expect(headers.slice(0, 5)).toEqual(["Title", "Artist", "Key", "BPM", "Genre"]);
+    expect(headers).toEqual(
+      expect.arrayContaining(["BPM Δ", "Same genre", "Same label", "Same artist", "Fit"]),
+    );
     expect(headers).not.toContain("Reasons");
     expect(headers).not.toContain("Match");
     expect(headers).not.toContain("Score");
@@ -237,7 +244,7 @@ describe("the seed and its suggestions", () => {
     await listed();
     const header = document.querySelector(".discover-page__header") as HTMLElement;
     // The seed's facts are the page header's facts line.
-    expect(screen.getByText("124 BPM · 8A · House")).toBeInTheDocument();
+    expect(screen.getByText(/ similar tracks? · 124 BPM · 8A · House$/)).toBeInTheDocument();
     expect(within(header).getByText(consideredLine(SIMILAR.value!))).toBeInTheDocument();
     fireEvent.click(within(header).getByRole("button", { name: "Mara Veil" }));
     expect(where()).toBe(entityPath("artist", "bp:301001"));
@@ -256,7 +263,7 @@ describe("the seed and its suggestions", () => {
     expect(
       await screen.findByText("Nothing in your library is close enough to suggest", {}, LOADED),
     ).toBeInTheDocument();
-    expect(screen.getByText("0 tracks")).toBeInTheDocument();
+    expect(screen.getByText(/^0 similar tracks/)).toBeInTheDocument();
   });
 
   it("says when the index is still being built", async () => {
@@ -289,7 +296,7 @@ describe("the seed and its suggestions", () => {
     renderAt(similarPath(1));
     await listed();
     expect(within(table()).queryByText(TITLES[1])).toBeNull();
-    expect(screen.getByText(`${TITLES.length - 1} tracks`)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`^${TITLES.length - 1} similar tracks`))).toBeInTheDocument();
   });
 });
 
@@ -302,6 +309,38 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
     await listed();
     fireEvent.doubleClick(within(table()).getByText(TITLES[2]));
     await waitFor(() => expect(player.playQueue).toHaveBeenCalledWith(items(), 2));
+  });
+
+  it("sorts in the table, and plays from the row it shows, with the sorted list behind it (C193)", async () => {
+    renderAt(similarPath(1));
+    await listed();
+    fireEvent.click(within(table()).getByRole("button", { name: "Title" }));
+    const byTitle = [...items()].sort((a, b) =>
+      String(a.title).localeCompare(String(b.title), undefined, { numeric: true, sensitivity: "base" }),
+    );
+    const shown = [...table().querySelectorAll('[role="row"][data-index]')].map(
+      (row) => row.querySelector('[data-column="title"]')?.textContent,
+    );
+    expect(shown.slice(0, 3)).toEqual(byTitle.slice(0, 3).map((item) => item.title));
+    fireEvent.doubleClick(within(table()).getByText(String(byTitle[1]!.title)));
+    await waitFor(() => expect(player.playQueue).toHaveBeenCalledWith(byTitle, 1));
+    // The sort is remembered with the layout, and never an engine key.
+    expect(JSON.parse(localStorage.getItem("cuepoint-discover-similar-layout-v2") ?? "{}").sort).toEqual({
+      key: "title",
+      direction: "asc",
+    });
+  });
+
+  it("names Discover in the crumb by default, and opens the Library from the header (C221, C11)", async () => {
+    renderAt(similarPath(1));
+    await listed();
+    const crumb = screen.getByRole("navigation", { name: "Where this page was opened from" });
+    expect(crumb).toHaveTextContent("Discover");
+    expect(crumb).toHaveTextContent("Similar tracks");
+    const header = screen.getByRole("heading", { level: 1 }).closest("header") as HTMLElement;
+    expect(within(header).getByRole("button", { name: "Open in Library" })).toBeInTheDocument();
+    fireEvent.click(within(crumb).getByRole("button", { name: "Discover" }));
+    expect(where()).toBe("/discover");
   });
 
   it("queues from the menu without interrupting", async () => {
@@ -329,12 +368,13 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
   it("shows the selection bar only with a selection: Play, More and the selected-count button (DEC-209)", async () => {
     renderAt(similarPath(1));
     await listed();
-    expect(screen.queryByRole("toolbar", { name: "Selected tracks" })).toBeNull();
+    expect(screen.queryByRole("toolbar", { name: "Selection" })).toBeNull();
     fireEvent.click(within(table()).getByText(TITLES[0]));
-    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
+    const bar = screen.getByRole("toolbar", { name: "Selection" });
     // Play and More only: Organize is the Library's, Beatport is Clean's.
     const names = within(bar).getAllByRole("button").map((button) => button.textContent);
-    expect(names).toEqual(["Play", "More", "1 selected"]);
+    expect(names).toEqual(["", "Play", "More"]);
+    expect(bar).toHaveTextContent("1 selected");
     expect(screen.queryByRole("button", { name: "Actions…" })).toBeNull();
     expect(within(bar).getByRole("button", { name: "Play" })).not.toHaveAttribute("aria-disabled");
   });
@@ -344,7 +384,7 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
     await listed();
     fireEvent.click(within(table()).getByText(TITLES[0]));
     fireEvent.click(within(table()).getByText(TITLES[3]), { ctrlKey: true });
-    fireEvent.click(within(screen.getByRole("toolbar", { name: "Selected tracks" })).getByRole("button", { name: "Play" }));
+    fireEvent.click(within(screen.getByRole("toolbar", { name: "Selection" })).getByRole("button", { name: "Play" }));
     const menu = await screen.findByRole("menu", {}, LOADED);
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Play 2 tracks" }));
     await waitFor(() =>
@@ -388,7 +428,7 @@ describe("the selected track (DEC-157)", () => {
     fireEvent.click(within(table()).getByText(TITLES[1]));
     const track = DETAILS[String(SIMILAR.value!.suggestions[1].track_id)].track;
     expect(getSelectedTrack()).toEqual({ id: track.id, key: track.effective_key });
-    fireEvent.click(screen.getByRole("button", { name: "Clear selection, 1 selected" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
     expect(getSelectedTrack()).toBeNull();
   });
 
@@ -420,8 +460,11 @@ describe("the Inspector on Similar tracks", () => {
     renderAt(similarPath(1));
     await listed();
     fireEvent.click(within(table()).getByText(TITLES[1]));
-    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
-    const barNames = within(bar).getAllByRole("button").map((button) => button.textContent!.replace(" ▸", ""));
+    const bar = screen.getByRole("toolbar", { name: "Selection" });
+    const barNames = within(bar)
+      .getAllByRole("button")
+      .filter((button) => button.textContent)
+      .map((button) => button.textContent!.replace(" ▸", ""));
     const entriesOf = (menu: HTMLElement) => within(menu).getAllByRole("menuitem").map((item) => item.textContent!);
 
     for (const picked of [[0], [0, 3]]) {
@@ -443,7 +486,7 @@ describe("the Inspector on Similar tracks", () => {
 
       // Each bar button opens the same entries.
       for (const group of ["Play", ...groups]) {
-        fireEvent.click(within(screen.getByRole("toolbar", { name: "Selected tracks" })).getByRole("button", { name: group }));
+        fireEvent.click(within(screen.getByRole("toolbar", { name: "Selection" })).getByRole("button", { name: group }));
         const opened = await screen.findByRole("menu", { name: group }, LOADED);
         expect(entriesOf(opened)).toEqual(inMenu[group]);
         closeMenus();

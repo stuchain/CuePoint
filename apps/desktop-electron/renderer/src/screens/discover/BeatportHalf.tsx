@@ -20,7 +20,6 @@
  * chosen lights the wheel with Beatport's own key (DEC-157).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import type {
   BeatportPlaylistResult,
@@ -50,8 +49,9 @@ import { TOKEN_STATES } from "./beatportState";
 import { beatportRowKey } from "./beatportKey";
 import { beatportSelectedId, useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { runActions, type BeatportActionId } from "./beatportActions";
-import { ENTITY_COLUMNS, ENTITY_TABLE_LAYOUT_KEY } from "./beatportColumns";
-import { entityPath } from "./discoverLinks";
+import { ENTITY_COLUMNS, ENTITY_PREVIOUS_DEFAULT_ORDER, ENTITY_TABLE_LAYOUT_KEY } from "./beatportColumns";
+import type { PageOrigin } from "./discoverLinks";
+import { useOpenPage } from "./useOpenPage";
 import { formatIsoDay, pushOutcome, refusalText, resolveOutcome } from "./discoverFormat";
 import { NO_ENGINE } from "./discoverTools";
 import { beatportHeadline, freshnessLine, nounOf } from "./entityFormat";
@@ -86,6 +86,8 @@ interface BeatportHalfProps {
   onActivate: () => void;
   /** A resolve finished: the page may now be known by an id. */
   onResolved: () => void;
+  /** Where the page was opened from; the pages this one opens keep it (C221). */
+  origin?: PageOrigin;
 }
 
 export function BeatportHalf({
@@ -95,8 +97,9 @@ export function BeatportHalf({
   active,
   onActivate,
   onResolved,
+  origin = "discover",
 }: BeatportHalfProps) {
-  const navigate = useNavigate();
+  const openPage = useOpenPage(origin);
   const { push: notify } = useToast();
   const [owned, setHiding] = useHideOwned();
   const [working, setWorking] = useState(false);
@@ -400,7 +403,7 @@ export function BeatportHalf({
           <ul className="discover-page__links" aria-label={`Beatport ${nounOf(kind)}s with this name`}>
             {links.map((link) => (
               <li key={link.ref}>
-                <Button variant="secondary" onClick={() => navigate(entityPath(kind, link.ref))}>
+                <Button variant="secondary" onClick={() => openPage(kind, link.ref)}>
                   {link.name ?? `Beatport ${nounOf(kind)} ${link.beatport_id}`}
                 </Button>
                 <span className="discover-note">
@@ -469,6 +472,8 @@ export function BeatportHalf({
             </>
           }
           columns={ENTITY_COLUMNS}
+          previousDefaultOrder={ENTITY_PREVIOUS_DEFAULT_ORDER}
+          onOpenPage={openPage}
           layoutKey={ENTITY_TABLE_LAYOUT_KEY}
           source={tracks.source}
           selection={selection}

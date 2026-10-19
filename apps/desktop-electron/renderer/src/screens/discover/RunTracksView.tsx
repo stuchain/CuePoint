@@ -28,7 +28,8 @@ import { countNoun } from "../../format/counts";
 import { BeatportTable } from "./BeatportTable";
 import { PushDialog, type PushTarget } from "./PushDialog";
 import { runActions, type BeatportActionId } from "./beatportActions";
-import { RUN_COLUMNS, RUN_TABLE_LAYOUT_KEY } from "./beatportColumns";
+import { RUN_COLUMNS, RUN_PREVIOUS_DEFAULT_ORDER, RUN_TABLE_LAYOUT_KEY } from "./beatportColumns";
+import { useOpenPage } from "./useOpenPage";
 import { beatportUsable, unusableReason } from "./beatportState";
 import { foundLine, refusalText } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
@@ -74,6 +75,7 @@ export function RunTracksView({
   running,
 }: RunTracksViewProps) {
   const [owned, setHiding] = useHideOwned();
+  const openPage = useOpenPage();
   const [order, setOrder] = useState<{ sort: DiscoverRunSort; dir: DiscoverSortDirection }>({
     sort: "position",
     dir: "asc",
@@ -236,6 +238,8 @@ export function RunTracksView({
         lead={lead}
         filters={<HideOwnedSwitch hiding={owned === "hide"} onChange={setHiding} />}
         columns={RUN_COLUMNS}
+        previousDefaultOrder={RUN_PREVIOUS_DEFAULT_ORDER}
+        onOpenPage={openPage}
         layoutKey={RUN_TABLE_LAYOUT_KEY}
         source={tracks.source}
         selection={selection}

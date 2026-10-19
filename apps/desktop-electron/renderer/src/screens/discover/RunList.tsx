@@ -13,7 +13,7 @@ import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
-import { pluralize } from "../library/libraryFormat";
+import { countNoun } from "../../format/counts";
 import {
   canContinueRun,
   runStateLabel,
@@ -126,7 +126,7 @@ export function RunList({
                 {runSummary(run, genres)}
               </span>
               <span className="discover-runs__found">
-                {pluralize(run.tracks_found, "track")} found
+                {countNoun(run.tracks_found, "track")} found
               </span>
             </button>
             {run.running && (

@@ -33,7 +33,12 @@ import { IN_LIBRARY_EXPLAINER } from "./HideOwnedSwitch";
 import { NoteDialog } from "./NoteDialog";
 import { PushDialog } from "./PushDialog";
 import { wantlistActions, type BeatportActionId } from "./beatportActions";
-import { WANTLIST_COLUMNS, WANTLIST_TABLE_LAYOUT_KEY } from "./beatportColumns";
+import {
+  WANTLIST_COLUMNS,
+  WANTLIST_PREVIOUS_DEFAULT_ORDER,
+  WANTLIST_TABLE_LAYOUT_KEY,
+} from "./beatportColumns";
+import { useOpenPage } from "./useOpenPage";
 import { beatportUsable, unusableReason } from "./beatportState";
 import { refusalText, trackName } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
@@ -69,6 +74,7 @@ function isFilter(value: string): value is DiscoverOwnedFilter {
 }
 
 export function WantlistView({ tools }: WantlistViewProps) {
+  const openPage = useOpenPage();
   const [owned, setOwned] = useState<DiscoverOwnedFilter>("all");
   const [bought, setBought] = useState<DiscoverOwnedFilter>("all");
   const [order, setOrder] = useState<{ sort: WantlistSort; dir: DiscoverSortDirection }>({
@@ -359,6 +365,8 @@ export function WantlistView({ tools }: WantlistViewProps) {
           </>
         }
         columns={WANTLIST_COLUMNS}
+        previousDefaultOrder={WANTLIST_PREVIOUS_DEFAULT_ORDER}
+        onOpenPage={openPage}
         layoutKey={WANTLIST_TABLE_LAYOUT_KEY}
         source={list.source}
         selection={selection}

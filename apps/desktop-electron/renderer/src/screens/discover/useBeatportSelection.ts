@@ -42,7 +42,17 @@ export interface BeatportSelection<Row> {
   anchorRow: Row | null;
   /** The row a Shift-click extends from, for the table's keyboard menu. */
   anchor: number | null;
-  onRowClick: (row: Row, index: number, event: SelectModifiers) => void;
+  /**
+   * `rowAt` is the row at a displayed position, when the table shows the rows in another order
+   * than the source holds them (a sort the table made itself, C193): a Shift range is then the
+   * rows between the two displayed positions.
+   */
+  onRowClick: (
+    row: Row,
+    index: number,
+    event: SelectModifiers,
+    rowAt?: (index: number) => Row | undefined,
+  ) => void;
   /** A right-click on a row outside the selection selects that row first. */
   onRowMenu: (row: Row, index: number) => void;
   /** Select this one row, as a plain click would, from outside the table. */
@@ -101,7 +111,7 @@ export function useBeatportSelection<Row>({
   }, [idOf, loadedRows]);
 
   const onRowClick = useCallback(
-    (row: Row, index: number, event: SelectModifiers) => {
+    (row: Row, index: number, event: SelectModifiers, rowAt: (index: number) => Row | undefined = getRow) => {
       const id = idOf(row);
       setState((previous) => {
         if (event.shiftKey) {
@@ -112,7 +122,7 @@ export function useBeatportSelection<Row>({
           const [from, to] = rangeBetween(previous.anchor, index);
           const picked = new Map(previous.picked);
           for (let at = from; at <= to; at += 1) {
-            const inRange = getRow(at);
+            const inRange = rowAt(at);
             if (inRange) picked.set(idOf(inRange), { row: inRange, index: at });
           }
           return { picked, anchor: previous.anchor, last: index };

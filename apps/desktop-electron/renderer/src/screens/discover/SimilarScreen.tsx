@@ -15,7 +15,7 @@
  */
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import type {
   EntityKind,
@@ -28,8 +28,8 @@ import { Hint } from "../../components/Hint";
 import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { LinkButton } from "../../components/LinkButton";
-import { formatCount } from "../../format/counts";
-import { RETRY } from "../../format/words";
+import { countNoun, formatCount } from "../../format/counts";
+import { goTo, RETRY } from "../../format/words";
 import { Notice } from "../../components/Notice";
 import { TrackContextMenu, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { useToast } from "../../components/Toast";
@@ -42,15 +42,23 @@ import {
 } from "../../components/table";
 import { CreditLinks } from "../library/CreditLinks";
 import { creditsFor, discoverMenuItems } from "../library/libraryDiscover";
-import { pluralize } from "../library/libraryFormat";
 import { playItems, type TrackActionGroupId } from "../library/trackActions";
 import { TrackDetailPanel } from "../library/TrackDetailPanel";
 import { toQueueItem } from "../library/useLibraryPlayback";
 import { useTrackDetail } from "../library/useTrackDetail";
-import { entityPath, similarLibraryState, similarPath, trackIdFromRoute } from "./discoverLinks";
+import {
+  entityPath,
+  originState,
+  pageOrigin,
+  similarLibraryState,
+  similarPath,
+  trackIdFromRoute,
+} from "./discoverLinks";
+import { sortedRows } from "./clientSort";
+import { PageCrumb } from "./PageCrumb";
 import { refusalText } from "./discoverFormat";
 import { NO_ENGINE } from "./discoverTools";
-import { consideredLine, seedFacts, SIMILAR_INDEX_BUILDING } from "./entityFormat";
+import { consideredLine, seedFactParts, SIMILAR_INDEX_BUILDING } from "./entityFormat";
 import { DiscoverSelectionBar } from "./DiscoverSelectionBar";
 import { libraryRowMenu } from "./libraryRowMenu";
 import {
@@ -121,6 +129,9 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
   const { trackId: param } = useParams();
   const seedId = trackIdFromRoute(param);
   const navigate = useNavigate();
+  const location = useLocation();
+  // Where this page was opened from: the pages it opens keep it (C221).
+  const origin = pageOrigin(location.state);
   const { push } = useToast();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -162,7 +173,14 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
 
   // Only the seed this address names is drawn, never the previous one's list.
   const shown = loaded && loaded.seed.track.id === seedId ? loaded : null;
-  const rows = useMemo(() => shown?.rows ?? [], [shown]);
+  const given = useMemo(() => shown?.rows ?? [], [shown]);
+  const columns = useColumnLayout<SimilarRow>(SIMILAR_TABLE_LAYOUT_KEY, SIMILAR_COLUMNS, {
+    previousDefaultOrder: SIMILAR_PREVIOUS_DEFAULT_ORDER,
+  });
+  // The suggestions in the order the table shows them: the engine's (best first) until a heading
+  // sorts them (C193). Playing from a row, a Shift range and the menu all read this order, because
+  // the table reports the displayed position.
+  const rows = useMemo(() => sortedRows(given, SIMILAR_COLUMNS, columns.sort), [columns.sort, given]);
   const source = useMemo(() => inMemorySource(rows), [rows]);
   const loadedRows = useCallback(() => rows.map((row, index) => ({ row, index })), [rows]);
   const selection = useBeatportSelection<SimilarRow>({
@@ -184,15 +202,14 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
         : null,
     [rows, selection.rows, shown],
   );
-  const columns = useColumnLayout<SimilarRow>(SIMILAR_TABLE_LAYOUT_KEY, SIMILAR_COLUMNS, {
-    previousDefaultOrder: SIMILAR_PREVIOUS_DEFAULT_ORDER,
-  });
-
   const openEntity = useCallback(
-    (kind: EntityKind, ref: string) => navigate(entityPath(kind, ref)),
-    [navigate],
+    (kind: EntityKind, ref: string) => navigate(entityPath(kind, ref), { state: originState(origin) }),
+    [navigate, origin],
   );
-  const openSimilar = useCallback((trackId: number) => navigate(similarPath(trackId)), [navigate]);
+  const openSimilar = useCallback(
+    (trackId: number) => navigate(similarPath(trackId), { state: originState(origin) }),
+    [navigate, origin],
+  );
 
   // The Inspector: the suggestion last clicked, or the seed.
   const lastSelected = selection.anchorRow;
@@ -246,7 +263,7 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
       const send = where === "next" ? player?.playNext : player?.addToQueue;
       if (!send || chosen.length === 0) return;
       await send(chosen.map(toQueueItem));
-      const tracks = pluralize(chosen.length, "track");
+      const tracks = countNoun(chosen.length, "track");
       push(where === "next" ? `${tracks} queued to play next` : `${tracks} added to the queue`, "info");
     },
     [player, push],
@@ -344,14 +361,24 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
 
   const { seed, answer } = shown;
   const unused = describeUnused(answer.unused);
-  const facts = seedFacts(seed.track);
 
   return (
     <div className="screen discover-page discover-page--similar">
       <ScreenHeader
         title={seed.track.title}
-        crumb={<p className="discover-page__kind">Similar tracks</p>}
-        summary={facts || undefined}
+        crumb={<PageCrumb current="Similar tracks" />}
+        facts={{ count: rows.length, noun: "similar track", facts: seedFactParts(seed.track) }}
+        pageActions={
+          <Hint text={openInLibrary?.title}>
+            <LinkButton
+              go
+              disabled={seed.track.id == null}
+              onClick={() => openInLibrary && navigate("/library", { state: openInLibrary.state })}
+            >
+              {goTo("Library")}
+            </LinkButton>
+          </Hint>
+        }
       />
       <div className="discover-page__header">
         <p className="discover-page__credit">
@@ -367,17 +394,6 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
         </p>
         <p className="discover-note">{consideredLine(answer)}</p>
         {unused && <p className="discover-note">{unused}</p>}
-        <div className="discover-page__actions">
-          <Hint text={openInLibrary?.title}>
-            <LinkButton
-              go
-              disabled={seed.track.id == null}
-              onClick={() => openInLibrary && navigate("/library", { state: openInLibrary.state })}
-            >
-              Open in Library
-            </LinkButton>
-          </Hint>
-        </div>
         {!answer.index_current && (
           <p className="discover-note discover-note--warning" role="status">
             {SIMILAR_INDEX_BUILDING}
@@ -389,11 +405,9 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
         <div className="discover-page__library-actions">
           <DiscoverSelectionBar
             groups={GROUPS}
-            total={rows.length}
             selected={selection.count}
             itemsFor={itemsFor}
             onClear={selection.clear}
-            onSelectAll={selection.selectAll}
           />
         </div>
         <div
@@ -412,6 +426,8 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
             widths={columns.widths}
             onWidthsChange={columns.setWidths}
             onColumnMove={columns.move}
+            sort={columns.sort}
+            onSortChange={columns.setSort}
             selectedKeys={selection.keys}
             getRowKey={idOf}
             {...playMarks}

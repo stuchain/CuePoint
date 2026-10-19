@@ -9,7 +9,7 @@
  * - the wantlist's filters;
  * - every Beatport token state, and the lookup prompt;
  * - the actions, always shown, and what each does;
- * - artist and label names as links (FLW-16);
+ * - artist and label names as plain text, their pages in the row menu (C196);
  * - rows from Beatport are not library rows: double-click does nothing and the
  *   Inspector shows its empty state.
  */
@@ -677,9 +677,11 @@ describe("Results", () => {
         expect.objectContaining({ sort: "release_date", dir: "asc" }),
       ),
     );
-    // A column the engine cannot order by is plain text, not a button that pretends to.
-    expect(within(table("Tracks this dig found")).queryByRole("button", { name: "Label" })).toBeNull();
-    expect(within(table("Tracks this dig found")).getByText("Label")).toBeInTheDocument();
+    // A column neither the engine nor the table can order by is plain text, not a button that
+    // pretends to; Label, Key and BPM sort in the table over the rows it holds (C193).
+    expect(within(table("Tracks this dig found")).queryByRole("button", { name: "From" })).toBeNull();
+    expect(within(table("Tracks this dig found")).getByText("From")).toBeInTheDocument();
+    expect(within(table("Tracks this dig found")).getByRole("button", { name: "BPM" })).toBeInTheDocument();
   });
 
   it("shows the actions always, those that need rows disabled with their reason until rows are selected (DEC-209)", async () => {
@@ -753,31 +755,39 @@ describe("Results", () => {
     expect(getSelectedTrack()).toBeNull();
   });
 
-  it("links the artist and label names to their pages, without selecting the row (FLW-16)", async () => {
+  it("draws the artist and label names as plain text, and opens their pages from the row menu (C196)", async () => {
     renderDiscover();
     await openRun(1);
     await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
     const row = rowsOf("Tracks this dig found")[0]!;
     const artist = HIDDEN.rows[0]!.artists[0]!;
-    const artistLink = within(row).getByRole("button", { name: artist });
-    fireEvent.click(artistLink);
+    // Neither name is a link or a Tab stop, so a click on one is a click on the row.
+    expect(within(row).queryByRole("button", { name: artist })).toBeNull();
+    expect(within(row).queryByRole("button", { name: HIDDEN.rows[0]!.label_name! })).toBeNull();
+    fireEvent.contextMenu(row, { clientX: 10, clientY: 10 });
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: "Open label page" })).toBeInTheDocument();
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Open artist page" }));
     expect(await screen.findByTestId("where")).toHaveTextContent(
       `/discover/artist/${encodeURIComponent(`name:${artist}`)}`,
     );
   });
 
-  it("reaches the links by Tab inside the row, and a click on one selects nothing", async () => {
+  it("opens the label's page by its Beatport id from the row menu, and offers no page entries for several rows", async () => {
     renderDiscover();
     await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
-    const row = rowsOf("Tracks this dig found")[0]!;
-    const links = within(row).getAllByRole("button");
-    expect(links.length).toBeGreaterThanOrEqual(2);
-    for (const link of links) expect(link).not.toHaveAttribute("tabindex", "-1");
-    const label = within(row).getByRole("button", { name: HIDDEN.rows[0]!.label_name! });
-    const bar = actionsBar("Tracks this dig found");
-    fireEvent.click(label);
-    expect(bar).not.toHaveTextContent("selected");
+    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(1), LOADED);
+    const [first, second] = rowsOf("Tracks this dig found");
+    fireEvent.click(first!);
+    fireEvent.click(second!, { ctrlKey: true });
+    fireEvent.contextMenu(first!, { clientX: 10, clientY: 10 });
+    const several = await screen.findByRole("menu");
+    expect(within(several).queryByRole("menuitem", { name: "Open label page" })).toBeNull();
+    fireEvent.keyDown(several, { key: "Escape" });
+    fireEvent.click(first!);
+    fireEvent.contextMenu(first!, { clientX: 10, clientY: 10 });
+    const menu = await screen.findByRole("menu");
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Open label page" }));
     expect(await screen.findByTestId("where")).toHaveTextContent(
       `/discover/label/${encodeURIComponent(`bp:${HIDDEN.rows[0]!.label_id}`)}`,
     );
@@ -826,17 +836,6 @@ describe("Results", () => {
     // Ctrl+A selects every track the table has loaded.
     await user.keyboard("{Control>}a{/Control}");
     expect(bar).toHaveTextContent(`${HIDDEN.rows.length} selected`);
-  });
-
-  it("keeps Enter on a name link its own: it opens the page and selects nothing", async () => {
-    const user = userEvent.setup();
-    renderDiscover();
-    await openRun(1);
-    await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
-    const artist = HIDDEN.rows[0]!.artists[0]!;
-    within(rowsOf("Tracks this dig found")[0]!).getByRole("button", { name: artist }).focus();
-    await user.keyboard("{Enter}");
-    expect(await screen.findByTestId("where")).toHaveTextContent("/discover/artist/");
   });
 
   it("remembers the hide switch and explains the library column on its header", async () => {
@@ -910,6 +909,9 @@ describe("Results", () => {
       "Add to wantlist",
       "Add to a Beatport playlist…",
       "Open on Beatport",
+      // For one track, the way to its artist's and label's pages (C196).
+      "Open artist page",
+      "Open label page",
     ]);
     expect(actionsBar("Tracks this dig found")).toHaveTextContent("1 selected");
   });
@@ -1356,11 +1358,13 @@ describe("the wantlist", () => {
     }
   });
 
-  it("links the artist and label names to their pages here too (FLW-16)", async () => {
+  it("opens a wanted track's artist page from its row menu (C196)", async () => {
     renderDiscover();
     await waitFor(() => expect(rowsOf("Wantlist")).toHaveLength(WANTED.total), LOADED);
     const row = rowsOf("Wantlist")[0]!;
-    fireEvent.click(within(row).getByRole("button", { name: WANTED.rows[0]!.artists[0]! }));
+    expect(within(row).queryByRole("button", { name: WANTED.rows[0]!.artists[0]! })).toBeNull();
+    fireEvent.contextMenu(row, { clientX: 10, clientY: 10 });
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Open artist page" }));
     expect(await screen.findByTestId("where")).toHaveTextContent("/discover/artist/");
   });
 

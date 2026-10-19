@@ -141,7 +141,8 @@ describe("a dig's table", () => {
         .map(([, , body = ""]) => body)
         .join(" ");
     const half = ruleWith(".discover-page__half > .discover-table");
-    expect(half).toMatch(/height:\s*calc\(360px/);
+    // The height follows the rows the list holds, up to ten (C253), not a fixed box.
+    expect(half).toMatch(/height:\s*calc\(\(var\(--discover-rows, 10\) \+ 1\) \* var\(--row-height\)\)/);
     expect(half).not.toMatch(/display:\s*flex/);
     // Nothing later turns the .discover-table itself into a flex box.
     expect(ruleWith(".discover-table")).not.toMatch(/display:\s*flex/);

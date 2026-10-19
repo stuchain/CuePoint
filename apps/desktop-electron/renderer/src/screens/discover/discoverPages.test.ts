@@ -47,8 +47,9 @@ import {
   redirectedLine,
   relatedKind,
   relatedTitle,
+  seedFactParts,
   seedFacts,
-  tracksLine,
+  entityFacts,
   yearsText,
 } from "./entityFormat";
 import { SIMILAR_COLUMNS, reasonsText } from "./similarColumns";
@@ -173,8 +174,18 @@ describe("what a page says (DEC-095: it says which identity it is)", () => {
   });
 
   it("says the header's facts", () => {
-    expect(tracksLine(1)).toBe("1 track in your library");
-    expect(tracksLine(page("page_artist_id").library.tracks)).toBe("2 tracks in your library");
+    // The typed facts line (C150, C233): the count, then the identity and the years, no badge.
+    const artist = page("page_artist_id");
+    expect(entityFacts(artist)).toEqual({
+      count: artist.library.tracks,
+      noun: "track",
+      facts: [identityLabel(artist), ...(yearsText(artist.library.years) ? [yearsText(artist.library.years)!] : [])],
+    });
+    expect(entityFacts({ ...artist, library: { ...artist.library, tracks: 1, years: { first: null, last: null } } })).toEqual({
+      count: 1,
+      noun: "track",
+      facts: [identityLabel(artist)],
+    });
     expect(yearsText({ first: 2024, last: 2025 })).toBe("2024–2025");
     expect(yearsText({ first: 2020, last: 2020 })).toBe("2020");
     expect(yearsText({ first: null, last: 2020 })).toBe("2020");
@@ -219,6 +230,7 @@ describe("what a page says (DEC-095: it says which identity it is)", () => {
 
   it("describes a seed and what its suggestions were compared with", () => {
     const seed = { ...detail("detail_resolved").track, effective_key: "8A" };
+    expect(seedFactParts(seed)).toEqual(["124 BPM", "8A", "House"]);
     expect(seedFacts(seed)).toBe("124 BPM · 8A · House");
     expect(seedFacts({ ...seed, effective_bpm: 126 })).toBe("126 BPM · 8A · House");
     // Rekordbox's key is never the fallback (DEC-201).
@@ -422,7 +434,7 @@ describe("the pages' columns", () => {
     expect(col("bpm_delta").text!(all)).toBe("−2");
     expect(col("genre_shared").text!(all)).toBe("Same genre");
     expect(col("label_shared").text!(all)).toBe("");
-    expect(col("artist_shared").text!(all)).toBe("Shared artist");
+    expect(col("artist_shared").text!(all)).toBe("Same artist");
     expect(col("score").text!(all)).toBe("Strong (80%)");
     const none = row([]);
     const noKey = { ...(none as object), effective_key: "" } as never;
@@ -436,18 +448,25 @@ describe("the pages' columns", () => {
     expect(col("bpm_delta").text!(none)).toBe("");
   });
 
-  it("orders suggestions as the engine did: no column sorts them", () => {
-    // The reasons beside the title, where a narrow pane still shows them.
-    expect(SIMILAR_COLUMNS.slice(0, 7).map((column) => column.id)).toEqual([
+  it("orders suggestions as the engine did until a heading sorts them in the table (C70, C193)", () => {
+    // Title and Artist, then Key, BPM and Genre, then the reasons.
+    expect(SIMILAR_COLUMNS.slice(0, 10).map((column) => column.id)).toEqual([
       "title",
+      "artist",
       "key",
+      "bpm",
+      "genre",
       "bpm_delta",
       "genre_shared",
       "label_shared",
       "artist_shared",
       "score",
     ]);
+    // None asks the engine (a suggestion list is not read through it); the others sort here.
     expect(SIMILAR_COLUMNS.filter((column) => column.sortKey)).toEqual([]);
+    for (const id of ["title", "artist", "key", "bpm", "genre", "score"]) {
+      expect(SIMILAR_COLUMNS.find((column) => column.id === id)!.accessor).toBeTypeOf("function");
+    }
     const similar = (pages.similar as { value: unknown }).value as SimilarTracks;
     const score = SIMILAR_COLUMNS.find((column) => column.id === "score")!;
     expect(score.header).toBe("Fit");
@@ -463,6 +482,19 @@ describe("the pages' columns", () => {
       ),
     ]);
     expect(ENTITY_COLUMNS.filter((column) => column.sortKey)).toEqual([]);
+    // Every heading sorts in the table, since the engine orders the page itself (C193).
+    expect(ENTITY_COLUMNS.filter((column) => !column.accessor).map((column) => column.id)).toEqual([
+      "owned",
+      "on_wantlist",
+    ]);
+    // Title and Artist, then Key, BPM and Genre (C70), with one heading for one field (C79).
+    expect(ENTITY_COLUMNS.slice(0, 5).map((column) => column.header)).toEqual([
+      "Title",
+      "Artist",
+      "Key",
+      "BPM",
+      "Genre",
+    ]);
     const row = half("half_label_ok").page!.rows[0];
     const owned = ENTITY_COLUMNS.find((column) => column.id === "owned")!;
     expect(owned.header).toBe("In your library");

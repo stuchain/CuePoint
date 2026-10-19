@@ -11,7 +11,7 @@
  * (DEC-012), and Play next and Add to queue append without interrupting
  * (DEC-013). One track leads on to its Similar tracks and its pages.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 
 import type {
   EntityKind,
@@ -22,7 +22,8 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
-import { formatCount } from "../../format/counts";
+import { SelectAllButton } from "../../components/SelectionBar";
+import { countNoun, formatCount } from "../../format/counts";
 import { RETRY } from "../../format/words";
 import { TrackContextMenu, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { useToast } from "../../components/Toast";
@@ -51,7 +52,14 @@ const PAGE_LIBRARY_LAYOUT_KEY = "cuepoint-discover-page-library-layout";
 /** Newest first: what a page about someone is usually read for. */
 const PAGE_ORDER = { sort: "year", dir: "desc" as const };
 
+/** Rows the half's table makes room for before it scrolls (C253); a short list is not padded to more. */
+const MAX_ROWS_SHOWN = 10;
+/** The fewest rows it makes room for, so the empty and loading states fit. */
+const MIN_ROWS_SHOWN = 3;
+
 interface LibraryHalfProps {
+  /** The section's heading, which this half draws with its Select all and count (C215). */
+  heading: { id: string; text: string };
   kind: EntityKind;
   /** The engine's rule set for the page, handed to the browse unchanged. */
   rules: FilterRuleSet;
@@ -86,6 +94,7 @@ type Target = Pick<MenuState, "rows" | "index" | "credits">;
 const GROUPS: readonly TrackActionGroupId[] = ["play", "more"];
 
 export function LibraryHalf({
+  heading,
   kind,
   rules,
   active,
@@ -264,19 +273,35 @@ export function LibraryHalf({
   );
 
   return (
-    <div className="discover-table discover-page__library">
-      <div className="discover-page__library-actions">
-        <DiscoverSelectionBar
-          groups={GROUPS}
-          total={window_.total}
-          selected={selection.count}
-          describedByQuery={selection.selection.all}
-          itemsFor={itemsFor}
-          onClear={selection.clear}
+    <>
+    <div className="discover-section__head">
+      <h2 id={heading.id} className="discover-section__title">
+        {heading.text}
+      </h2>
+      <span className="discover-section__tools">
+        <SelectAllButton
+          disabled={window_.total === 0}
           onSelectAll={() => {
             onActivate();
             selection.selectAllMatching();
           }}
+        />
+        <span className="cp-count" role="status">
+          {countNoun(window_.total, "track")}
+        </span>
+      </span>
+    </div>
+    <div
+      className="discover-table discover-page__library"
+      data-selecting={selection.count > 0 ? "" : undefined}
+      style={{ "--discover-rows": Math.min(MAX_ROWS_SHOWN, Math.max(MIN_ROWS_SHOWN, window_.total)) } as CSSProperties}
+    >
+      <div className="discover-page__library-actions">
+        <DiscoverSelectionBar
+          groups={GROUPS}
+          selected={selection.count}
+          itemsFor={itemsFor}
+          onClear={selection.clear}
         />
       </div>
 
@@ -346,5 +371,6 @@ export function LibraryHalf({
         onRestore={columns.restore}
       />
     </div>
+    </>
   );
 }

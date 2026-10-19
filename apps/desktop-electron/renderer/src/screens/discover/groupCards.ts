@@ -12,7 +12,7 @@ import type {
   DiscoverGroupRef,
   DiscoverGroupRowId,
 } from "../../api/cuepointBridge.types";
-import { formatCount, pluralize } from "../library/libraryFormat";
+import { countNoun, formatCount } from "../../format/counts";
 
 export const ROW_TITLES: Record<DiscoverGroupRowId, string> = {
   charts: "Your artists' charts",
@@ -60,11 +60,11 @@ export function cardCounts(
   card: DiscoverGroupCard,
   mode: DiscoverChartsMode | null = null,
 ): string {
-  if (card.kind === "chart") return pluralize(card.tracks, "track");
+  if (card.kind === "chart") return countNoun(card.tracks, "track");
   if (card.kind === "label") return `${formatCount(card.new)} new`;
   // Where no new releases were looked up, "0 new" would be a claim nobody checked.
-  if (mode === "library") return pluralize(card.charts, "chart");
-  return `${pluralize(card.charts, "chart")} · ${formatCount(card.new)} new`;
+  if (mode === "library") return countNoun(card.charts, "chart");
+  return `${countNoun(card.charts, "chart")} · ${formatCount(card.new)} new`;
 }
 
 /** The accessible name of a card's button: what it is called, and what it holds. */
@@ -112,7 +112,7 @@ export function tickedLine(
 ): string {
   const head = `Ticked: ${tickedNames(cards)}`;
   if (!summary) return head;
-  const tracks = pluralize(summary.tracks, "track");
+  const tracks = countNoun(summary.tracks, "track");
   if (summary.owned <= 0) return `${head} · ${tracks}`;
   return `${head} · ${tracks} · ${formatCount(summary.owned)} already in your library`;
 }
@@ -120,5 +120,5 @@ export function tickedLine(
 /** What adding ticked cards to the wantlist did, with the owned ones said to be left out. */
 export function wantlistLine(message: string, owned: number): string {
   if (owned <= 0) return message;
-  return `${message} ${pluralize(owned, "track")} already in your library ${owned === 1 ? "was" : "were"} left out.`;
+  return `${message} ${countNoun(owned, "track")} already in your library ${owned === 1 ? "was" : "were"} left out.`;
 }

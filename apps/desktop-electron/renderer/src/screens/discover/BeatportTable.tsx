@@ -16,12 +16,13 @@
  * The bar of actions is above the table, like the Library's, and says how many tracks are
  * selected once, there.
  */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import type { BeatportTrackRow, EntityKind } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { CloseButton } from "../../components/CloseButton";
 import { Hint } from "../../components/Hint";
-import { TrackContextMenu } from "../../components/TrackContextMenu";
+import { TrackContextMenu, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import {
   ColumnPicker,
   TrackTable,
@@ -34,6 +35,8 @@ import { stopAllPreviews } from "../../components/preview/useBeatportPreview";
 import { countNoun, formatCount } from "../../format/counts";
 import { PreviewButton } from "./PreviewButton";
 import { trackName } from "./discoverFormat";
+import { sortedRows } from "./clientSort";
+import { beatportPageItems } from "./libraryRowMenu";
 import type { BeatportAction, BeatportActionId } from "./beatportActions";
 import type { BeatportSelection } from "./useBeatportSelection";
 
@@ -61,12 +64,19 @@ interface BeatportTableProps<Row> {
   /** The table's filters, after the lead and before the actions (C234). */
   filters?: ReactNode;
   emptyState: ReactNode;
+  /**
+   * Opens an artist's or label's page: the row menu then offers "Open artist page" and "Open
+   * label page" for one track (C196). Names in the table are plain text.
+   */
+  onOpenPage?: (kind: EntityKind, ref: string) => void;
+  /** The column order before the last reorder, so a saved layout is moved once (C70). */
+  previousDefaultOrder?: readonly string[];
   resetKey: string;
   /** Anything the toolbar shows before the actions: a filter, a toggle. */
   busy?: boolean;
 }
 
-export function BeatportTable<Row extends { beatport_track_id: number; title: string; mix_name: string | null }>({
+export function BeatportTable<Row extends BeatportTrackRow>({
   columns,
   layoutKey,
   source,
@@ -81,22 +91,45 @@ export function BeatportTable<Row extends { beatport_track_id: number; title: st
   lead,
   filters,
   emptyState,
+  onOpenPage,
+  previousDefaultOrder,
   resetKey,
   busy = false,
 }: BeatportTableProps<Row>) {
-  const layout = useColumnLayout<Row>(layoutKey, columns);
+  const layout = useColumnLayout<Row>(layoutKey, columns, { previousDefaultOrder });
+  // A column with no engine key sorts here, over the rows the table holds (C70, C193); the last
+  // such sort is remembered with the layout. An engine sort is the page's, and forgets it.
+  const [clientSort, setClientSort] = useState(layout.sort);
+  const shownSort = clientSort ?? sort;
+  const changeSort = (next: TrackTableSort) => {
+    const mine = columns.some((column) => !column.sortKey && column.accessor && column.id === next.key);
+    layout.setSort(mine ? next : null);
+    setClientSort(mine ? next : null);
+    if (!mine) onSortChange?.(next);
+  };
+  // The rows as the table shows them while it sorts them itself, so a Shift range and the keys
+  // see the displayed positions.
+  const displayed = useMemo(() => {
+    if (!clientSort) return null;
+    const rows: Row[] = [];
+    for (let at = 0; at < source.total; at += 1) {
+      const row = source.getRow(at);
+      if (!row) return null;
+      rows.push(row);
+    }
+    return sortedRows(rows, columns, clientSort);
+  }, [clientSort, columns, source]);
   // Preview cells scroll in and out of a virtualised table, so a sample belongs
   // to the table's lifetime, not its cell's (DEC-269).
   useEffect(() => stopAllPreviews, []);
   const [picking, setPicking] = useState(false);
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; row: Row } | null>(null);
 
   /**
    * The keyboard's way through the rows: the table is the one tab stop. The
    * table itself moves the selection (the arrows, Home/End, Page Up/Down, Ctrl+Space,
    * Ctrl+A) and Enter plays; what is left here is plain Space selecting the keyboard's row
-   * alone, and Escape letting the selection go. A key pressed on a name link inside a row
-   * is the link's, not the table's.
+   * alone, and Escape letting the selection go.
    */
   // The last row a click or key reported: a Shift range keeps the anchor where it began, but
   // Enter and Space belong to the row the keyboard is on. A new anchor means a new start.
@@ -114,12 +147,12 @@ export function BeatportTable<Row extends { beatport_track_id: number; title: st
       selection.clear();
       return;
     }
-    const total = source.total;
-    if (total === 0) return;
+    if (source.total === 0) return;
     const active = selection.anchor === null ? null : (reported.current ?? selection.anchor);
     if (event.key !== " " || active === null) return;
     if (event.ctrlKey || event.metaKey) return;
-    const row = source.getRow(active);
+    // The row at the displayed position (a sort the table made itself changes the order).
+    const row = displayed ? displayed[active] : source.getRow(active);
     event.preventDefault();
     if (!row) return;
     // Plain Space selects the active row alone.
@@ -135,6 +168,19 @@ export function BeatportTable<Row extends { beatport_track_id: number; title: st
     const state = button?.dataset.state;
     if (!button || state === "playing" || state === "loading" || state === "none") return;
     button.click();
+  };
+
+  /** The actions, then (for one track) the way to its artist's and label's pages (C196). */
+  const menuItems = (row: Row): TrackContextMenuItem[] => {
+    const items: TrackContextMenuItem[] = actions.map((action) => ({
+      id: action.id,
+      label: action.label,
+      disabled: action.disabled || busy,
+      onSelect: () => run(action.id),
+    }));
+    if (!onOpenPage || selection.count > 1) return items;
+    const [first, ...rest] = beatportPageItems(row, onOpenPage);
+    return [...items, { ...first!, separatorBefore: true }, ...rest];
   };
 
   const run = (id: BeatportActionId) => {
@@ -176,13 +222,13 @@ export function BeatportTable<Row extends { beatport_track_id: number; title: st
           widths={layout.widths}
           onWidthsChange={layout.setWidths}
           onColumnMove={layout.move}
-          sort={sort}
-          onSortChange={onSortChange}
+          sort={shownSort}
+          onSortChange={changeSort}
           selectedKeys={selection.keys}
           getRowKey={(row) => idOf(row)}
           onSelect={(row, index, modifiers) => {
             reported.current = index;
-            selection.onRowClick(row, index, modifiers);
+            selection.onRowClick(row, index, modifiers, displayed ? (at) => displayed[at] : undefined);
           }}
           onSelectAll={selection.selectAll}
           onRowActivate={(_row, index) => playFrom(index)}
@@ -191,7 +237,7 @@ export function BeatportTable<Row extends { beatport_track_id: number; title: st
           )}
           onRowContextMenu={(row, index, anchor) => {
             selection.onRowMenu(row, index);
-            setMenu(anchor);
+            setMenu({ ...anchor, row });
           }}
           activeIndex={selection.anchor}
           emptyState={emptyState}
@@ -206,12 +252,7 @@ export function BeatportTable<Row extends { beatport_track_id: number; title: st
           x={menu.x}
           y={menu.y}
           label={`${countNoun(Math.max(selection.count, 1), "track")} from Beatport`}
-          items={actions.map((action) => ({
-            id: action.id,
-            label: action.label,
-            disabled: action.disabled || busy,
-            onSelect: () => run(action.id),
-          }))}
+          items={menuItems(menu.row)}
           onClose={() => setMenu(null)}
         />
       )}

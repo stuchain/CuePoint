@@ -210,12 +210,12 @@ function where(): string {
   return screen.getByTestId("where").textContent ?? "";
 }
 
-function renderAt(path: string) {
+function renderAt(path: string, state?: unknown) {
   return render(
     <ScaleProvider>
       <ToastProvider>
         <InspectorSlotProvider>
-          <MemoryRouter initialEntries={[path]}>
+          <MemoryRouter initialEntries={[{ pathname: path, state }]}>
             <Routes>
               <Route path={ARTIST_PAGE_ROUTE} element={<EntityScreen kind="artist" />} />
               <Route path={LABEL_PAGE_ROUTE} element={<EntityScreen kind="label" />} />
@@ -282,14 +282,14 @@ describe("a page's identity (DEC-095)", () => {
     await opened("Kiko");
     // The name as typed is replaced with the page's own reference.
     await waitFor(() => expect(where()).toBe(entityPath("artist", "name:kiko")));
-    expect(screen.getByText("Your tracks by this name")).toBeInTheDocument();
+    // The identity is a fact in the header's line, not a badge (C150, C233).
+    expect(screen.getByText(/^3 tracks · Your tracks by this name/)).toBeInTheDocument();
     // The rest is behind "More about this", closed on load.
     expect(screen.getByRole("button", { name: "More about this" })).toHaveAttribute(
       "aria-expanded",
       "false",
     );
     expect(screen.getByText(/has not linked this artist to Beatport yet/)).not.toBeVisible();
-    expect(screen.getByText("3 tracks in your library")).toBeInTheDocument();
     for (const title of ["Harbour Lights", "Night Bus", "Untimed"]) {
       expect(await within(yourTracks()).findByText(title, {}, LOADED)).toBeInTheDocument();
     }
@@ -303,7 +303,7 @@ describe("a page's identity (DEC-095)", () => {
     renderAt(entityPath("artist", "name:Mara Veil"));
     await opened("Mara Veil");
     await waitFor(() => expect(where()).toBe(entityPath("artist", "bp:301001")));
-    expect(screen.getByText("Linked to Beatport")).toBeInTheDocument();
+    expect(screen.getByText(/· Linked to Beatport/)).toBeInTheDocument();
     expect(screen.getByText(/Opened by name/)).toBeInTheDocument();
     expect(screen.getByText(/credited as Mara Veil/)).toBeInTheDocument();
     // The page answered for the id is not asked for again at the id's address.
@@ -314,12 +314,12 @@ describe("a page's identity (DEC-095)", () => {
   it("draws a label page in both identities", async () => {
     const view = renderAt(entityPath("label", "bp:40211"));
     await opened("Nightfall Audio");
-    expect(screen.getByText("Linked to Beatport")).toBeInTheDocument();
+    expect(screen.getByText(/· Linked to Beatport/)).toBeInTheDocument();
     expect(screen.getByText(/Artists:/)).toBeInTheDocument();
     view.unmount();
     renderAt(entityPath("label", "name:Cold Room"));
     await opened("Cold Room");
-    expect(screen.getByText("Your tracks by this name")).toBeInTheDocument();
+    expect(screen.getByText(/· Your tracks by this name/)).toBeInTheDocument();
     expect(screen.getByText(/whose label spells this name/)).toBeInTheDocument();
   });
 
@@ -347,7 +347,8 @@ describe("a page's identity (DEC-095)", () => {
     await opened("Mara Veil");
     const facts = screen.getByRole("list", { name: "In your library" });
     expect(within(facts).getByText("Genres: House (2)")).toBeInTheDocument();
-    expect(within(facts).getByText("2024–2025")).toBeInTheDocument();
+    // The years are a fact of the header's line now, not a list entry.
+    expect(screen.getByText(/· 2024–2025$/)).toBeInTheDocument();
     fireEvent.click(within(facts).getByRole("button", { name: "Nightfall Audio" }));
     expect(where()).toBe(entityPath("label", "name:Nightfall Audio"));
   });
@@ -554,13 +555,35 @@ describe("the Beatport half, in every state", () => {
     );
   });
 
-  it("links the artist and label names in its table to their pages (FLW-16)", async () => {
+  it("draws the artist and label names as plain text, and opens their pages from the row menu (C196)", async () => {
     renderAt(entityPath("label", "bp:40211"));
     const table = await beatportRows(/Beatport's releases/);
     await within(table).findByText("Track 9 (Original Mix)", {}, LOADED);
     const row = rowOf("Track 9 (Original Mix)");
-    fireEvent.click(within(row).getByRole("button", { name: "Mara Veil" }));
+    // No link: the same column in the Library does nothing on a click either.
+    expect(within(row).queryByRole("button", { name: "Mara Veil" })).toBeNull();
+    expect(within(row).getByText("Mara Veil")).toBeInTheDocument();
+    fireEvent.contextMenu(row, { clientX: 10, clientY: 10 });
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: "Open label page" })).toBeInTheDocument();
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Open artist page" }));
     expect(where()).toBe(entityPath("artist", "name:Mara Veil"));
+    expect(JSON.parse(screen.getByTestId("where").dataset.state ?? "null")).toEqual({ from: "discover" });
+  });
+
+  it("sorts its table by Key and BPM in the screen, and remembers the sort (C70, C193)", async () => {
+    renderAt(entityPath("label", "bp:40211"));
+    const table = await beatportRows(/Beatport's releases/);
+    await within(table).findByText("Track 9 (Original Mix)", {}, LOADED);
+    const headings = within(table)
+      .getAllByRole("columnheader")
+      .map((heading) => heading.textContent?.trim());
+    // Title and Artist, then Key, BPM and Genre, before the label and the date.
+    expect(headings.slice(0, 5)).toEqual(["Title", "Artist", "Key", "BPM", "Genre"]);
+    fireEvent.click(within(table).getByRole("button", { name: "BPM" }));
+    expect(
+      JSON.parse(localStorage.getItem("cuepoint-discover-page-beatport-layout") ?? "{}").sort,
+    ).toEqual({ key: "bpm", direction: "asc" });
   });
 
   it("says a label was found by name on Beatport", async () => {
@@ -761,12 +784,13 @@ describe("the library half: library rows", () => {
     await opened("Mara Veil");
     fireEvent.click(await within(yourTracks()).findByText("Low Tide", {}, LOADED));
     const library = screen.getByRole("region", { name: "Your tracks" });
-    const bar = within(library).getByRole("toolbar", { name: "Selected tracks" });
-    expect(within(bar).getAllByRole("button").map((button) => button.textContent)).toEqual([
-      "Play",
-      "More",
-      "1 selected",
-    ]);
+    const bar = within(library).getByRole("toolbar", { name: "Selection" });
+    expect(bar).toHaveTextContent("1 selected");
+    expect(
+      within(bar)
+        .getAllByRole("button")
+        .map((button) => button.textContent || button.getAttribute("aria-label")),
+    ).toEqual(["Clear selection", "Play", "More"]);
     fireEvent.click(within(bar).getByRole("button", { name: "Play" }));
     const menu = await screen.findByRole("menu", {}, LOADED);
     // Taken from the table, not gathered by reading it all again.
@@ -781,7 +805,7 @@ describe("the library half: library rows", () => {
     await opened("Mara Veil");
     fireEvent.click(await within(yourTracks()).findByText("Harbour Lights", {}, LOADED));
     const bar = within(screen.getByRole("region", { name: "Your tracks" })).getByRole("toolbar", {
-      name: "Selected tracks",
+      name: "Selection",
     });
     const entriesOf = (menu: HTMLElement) => within(menu).getAllByRole("menuitem").map((item) => item.textContent!);
     const closeMenus = () => {
@@ -835,6 +859,48 @@ describe("the library half: library rows", () => {
       "Harbour Lights",
       "Low Tide",
     ]);
+  });
+});
+
+describe("the page header (C11, C216, C221)", () => {
+  it("holds Open in Library and Save as Smart Collection among the header's actions", async () => {
+    renderAt(entityPath("artist", "bp:301001"));
+    const title = await opened("Mara Veil");
+    const header = title.closest("header") as HTMLElement;
+    expect(within(header).getByRole("button", { name: "Open in Library" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "Save as Smart Collection…" })).toBeInTheDocument();
+    // Not a second row of buttons under the facts.
+    expect(header.nextElementSibling?.querySelector(".discover-page__actions")).toBeNull();
+  });
+
+  it("names where it was opened from in a crumb that leads back, Discover when nothing says (C221)", async () => {
+    const view = renderAt(entityPath("artist", "bp:301001"));
+    await opened("Mara Veil");
+    const crumb = screen.getByRole("navigation", { name: "Where this page was opened from" });
+    expect(crumb).toHaveTextContent("Discover");
+    expect(crumb).toHaveTextContent("Artist");
+    expect(within(crumb).getByRole("button", { name: "Discover" })).toHaveClass("cp-link--go");
+    fireEvent.click(within(crumb).getByRole("button", { name: "Discover" }));
+    expect(where()).toBe("/discover");
+    view.unmount();
+    renderAt(entityPath("label", "bp:40211"), { from: "library" });
+    await opened("Nightfall Audio");
+    const fromLibrary = screen.getByRole("navigation", { name: "Where this page was opened from" });
+    expect(fromLibrary).toHaveTextContent("Label");
+    fireEvent.click(within(fromLibrary).getByRole("button", { name: "Library" }));
+    expect(where()).toBe("/library");
+  });
+
+  it("keeps the origin on the pages it opens", async () => {
+    renderAt(entityPath("artist", "bp:301001"), { from: "library" });
+    await opened("Mara Veil");
+    fireEvent.click(await within(yourTracks()).findByText("Low Tide", {}, LOADED));
+    fireEvent.contextMenu(rowOf("Low Tide"), { clientX: 10, clientY: 10 });
+    const menu = await screen.findByRole("menu");
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "More" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Similar tracks" }));
+    expect(where()).toMatch(/^\/discover\/similar\//);
+    expect(JSON.parse(screen.getByTestId("where").dataset.state ?? "null")).toEqual({ from: "library" });
   });
 });
 

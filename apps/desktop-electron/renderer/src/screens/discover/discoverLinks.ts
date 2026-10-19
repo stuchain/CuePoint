@@ -12,7 +12,7 @@
  * page has one address however it was reached.
  */
 import type { EntityKind, FilterRule } from "../../api/cuepointBridge.types";
-import { pluralize } from "../library/libraryFormat";
+import { countNoun } from "../../format/counts";
 import { libraryTracksState } from "../library/libraryLink";
 
 /** The route patterns, for `App.tsx`. */
@@ -123,11 +123,11 @@ export function similarLibraryState(
 ): { state: Record<string, unknown>; title: string } {
   const picked = selected.length > 0;
   const ids = [...new Set([seed.id, ...(picked ? selected : shown)])];
-  const label = `Similar to “${seed.title}” (${pluralize(ids.length, "track")})`;
+  const label = `Similar to “${seed.title}” (${countNoun(ids.length, "track")})`;
   const title = !picked && ids.length === 1
     ? `Opens “${seed.title}” in the Library`
     : picked
-    ? `Opens the ${pluralize(selected.length, "selected track")} and “${seed.title}” in the Library`
-    : `Opens these ${pluralize(ids.length, "track")} in the Library`;
+    ? `Opens the ${countNoun(selected.length, "selected track")} and “${seed.title}” in the Library`
+    : `Opens these ${countNoun(ids.length, "track")} in the Library`;
   return { state: libraryTracksState(ids, label), title };
 }

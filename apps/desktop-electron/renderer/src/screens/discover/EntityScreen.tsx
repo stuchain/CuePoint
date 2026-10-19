@@ -21,18 +21,17 @@
  */
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import type {
   EntityKind,
   EntityPage,
   FilterRuleSet,
 } from "../../api/cuepointBridge.types";
-import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { LinkButton } from "../../components/LinkButton";
 import { formatCount } from "../../format/counts";
-import { RETRY } from "../../format/words";
+import { goTo, opensDialog, RETRY } from "../../format/words";
 import { MoreAbout } from "../../components/MoreAbout";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
@@ -48,21 +47,20 @@ import { useFilterVocabulary } from "../library/useFilterVocabulary";
 import { useTrackDetail } from "../library/useTrackDetail";
 import { BeatportHalf } from "./BeatportHalf";
 import { LibraryHalf } from "./LibraryHalf";
-import { entityPath, nameRef, similarPath } from "./discoverLinks";
+import { entityPath, nameRef, originState, pageOrigin, similarPath } from "./discoverLinks";
+import { PageCrumb } from "./PageCrumb";
 import { refusalText } from "./discoverFormat";
 import { NO_ENGINE } from "./discoverTools";
 import {
   facetValueText,
   identityDetail,
-  identityLabel,
+  entityFacts,
   INDEX_BUILDING,
   kindTitle,
   pageTitle,
   redirectedLine,
   relatedKind,
   relatedTitle,
-  tracksLine,
-  yearsText,
 } from "./entityFormat";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -99,6 +97,9 @@ interface EntityScreenProps {
 export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
   const { ref: routeRef = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Where this page was opened from: the pages it opens keep it (C221).
+  const origin = pageOrigin(location.state);
   const { push } = useToast();
   const [page, setPage] = useState<EntityPage | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -142,7 +143,7 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
         // The page's own address: a name linked since to an id, or a name as
         // typed, is replaced — not pushed — so Back leaves the page.
         if (answer.value.ref !== routeRef) {
-          navigate(entityPath(kind, answer.value.ref), { replace: true });
+          navigate(entityPath(kind, answer.value.ref), { replace: true, state: location.state });
         }
       })
       .catch((cause: unknown) => {
@@ -152,7 +153,7 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
     return () => {
       current = false;
     };
-  }, [kind, navigate, routeRef, version]);
+  }, [kind, location.state, navigate, routeRef, version]);
 
   // Only the page this address names is drawn: another's, while it is asked
   // for, would be a header over the wrong tracks.
@@ -176,10 +177,13 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
     [],
   );
   const openEntity = useCallback(
-    (to: EntityKind, ref: string) => navigate(entityPath(to, ref)),
-    [navigate],
+    (to: EntityKind, ref: string) => navigate(entityPath(to, ref), { state: originState(origin) }),
+    [navigate, origin],
   );
-  const openSimilar = useCallback((trackId: number) => navigate(similarPath(trackId)), [navigate]);
+  const openSimilar = useCallback(
+    (trackId: number) => navigate(similarPath(trackId), { state: originState(origin) }),
+    [navigate, origin],
+  );
 
   useInspectorSlot(
     focus === "beatport" ? (
@@ -257,7 +261,6 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
     );
   }
 
-  const years = yearsText(shown.library.years);
   const related = shown.library.related.values;
   const genres = shown.library.genres.values;
 
@@ -265,15 +268,28 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
     <div className="screen screen--scroll discover-page">
       <ScreenHeader
         title={pageTitle(shown)}
-        crumb={
-          <p className="discover-page__kind">
-            {kindTitle(kind)}
-            <Badge variant={shown.identity === "beatport" ? "info" : "default"}>
-              {identityLabel(shown)}
-            </Badge>
-          </p>
+        crumb={<PageCrumb current={kindTitle(kind)} />}
+        facts={entityFacts(shown)}
+        pageActions={
+          <>
+            <LinkButton
+              go
+              onClick={() => navigate("/library", { state: libraryRulesState(shown.rules, names) })}
+            >
+              {goTo("Library")}
+            </LinkButton>
+            <Button
+              variant="secondary"
+              disabled={!window.cuepoint?.saveSmartCollection}
+              onClick={() => {
+                setSaveError(null);
+                setSaving("open");
+              }}
+            >
+              {opensDialog("Save as Smart Collection")}
+            </Button>
+          </>
         }
-        summary={tracksLine(shown.library.tracks)}
       />
       <div className="discover-page__header">
         <MoreAbout>
@@ -286,7 +302,6 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
           </p>
         )}
         <ul className="discover-page__facts" aria-label="In your library">
-          {years && <li>{years}</li>}
           {genres.length > 0 && (
             <li>Genres: {genres.map(facetValueText).join(", ")}</li>
           )}
@@ -309,31 +324,11 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
             </li>
           )}
         </ul>
-        <div className="discover-page__actions">
-          <LinkButton
-            go
-            onClick={() => navigate("/library", { state: libraryRulesState(shown.rules, names) })}
-          >
-            Open in Library
-          </LinkButton>
-          <Button
-            variant="secondary"
-            disabled={!window.cuepoint?.saveSmartCollection}
-            onClick={() => {
-              setSaveError(null);
-              setSaving("open");
-            }}
-          >
-            Save as Smart Collection…
-          </Button>
-        </div>
       </div>
 
       <section className="discover-page__half" aria-labelledby="discover-page-library">
-        <h2 id="discover-page-library" className="discover-section__title">
-          Your tracks
-        </h2>
         <LibraryHalf
+          heading={{ id: "discover-page-library", text: "Your tracks" }}
           kind={kind}
           rules={shown.rules}
           active={focus === "library"}
@@ -358,6 +353,7 @@ export function EntityScreen({ kind, onOpenInClean }: EntityScreenProps) {
             active={focus === "beatport"}
             onActivate={() => setFocus("beatport")}
             onResolved={() => setVersion((value) => value + 1)}
+            origin={origin}
           />
         )}
       </section>

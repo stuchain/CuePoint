@@ -26,7 +26,7 @@ import { Card } from "../../components/Card";
 import { Hint } from "../../components/Hint";
 import { Notice } from "../../components/Notice";
 import { SearchField } from "../../components/SearchField";
-import { formatCount, pluralize } from "../library/libraryFormat";
+import { countNoun, formatCount } from "../../format/counts";
 import { useIncludeUserCharts } from "./includeUserCharts";
 import { SavedListField } from "./SavedListField";
 import { ScopeDialog } from "./ScopeDialog";
@@ -188,12 +188,12 @@ export function NewRunPanel({
   const labelCount = scopeCount(form.labels, options.labels.total_values, members.labels);
   // "Look for charts in 2 genres, releases by 200 artists and 121 labels from the last 30 days."
   const releaseParts = [
-    artistCount > 0 ? <strong key="a">{pluralize(artistCount, "artist")}</strong> : null,
-    labelCount > 0 ? <strong key="l">{pluralize(labelCount, "label")}</strong> : null,
+    artistCount > 0 ? <strong key="a">{countNoun(artistCount, "artist")}</strong> : null,
+    labelCount > 0 ? <strong key="l">{countNoun(labelCount, "label")}</strong> : null,
   ].filter((part) => part !== null);
   const sentence = (
     <>
-      Look for charts in <strong>{pluralize(form.genreIds.length, "genre")}</strong>
+      Look for charts in <strong>{countNoun(form.genreIds.length, "genre")}</strong>
       {releaseParts.length > 0 && (
         <>
           , releases by {releaseParts[0]}

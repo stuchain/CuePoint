@@ -21,7 +21,6 @@ import type {
 import type { TrackColumnDef } from "../../components/table";
 import { KeyChip } from "../../components/wheel/KeyChip";
 import { formatBpm } from "../library/trackValues";
-import { ArtistLinks, LabelLink } from "./BeatportNameLinks";
 import { beatportRowKey } from "./beatportKey";
 import { IN_LIBRARY_EXPLAINER } from "./HideOwnedSwitch";
 import { artistsText, formatIsoDay, formatWhen, sourcesText, trackName } from "./discoverFormat";
@@ -30,13 +29,45 @@ export const RUN_TABLE_LAYOUT_KEY = "cuepoint-discover-run-table-layout";
 export const WANTLIST_TABLE_LAYOUT_KEY = "cuepoint-discover-wantlist-table-layout";
 export const ENTITY_TABLE_LAYOUT_KEY = "cuepoint-discover-page-beatport-layout";
 
-/** The columns every Beatport table has, over any row that is one. */
+/**
+ * The order the shared columns had before Key, BPM and Genre moved up beside Title and Artist
+ * (C70): a layout saved in it is moved once, as the Library's are.
+ */
+const PREVIOUS_SHARED_ORDER = ["title", "artists", "label", "release_date", "bpm", "key", "genre", "release"];
+export const RUN_PREVIOUS_DEFAULT_ORDER: readonly string[] = [
+  "position",
+  ...PREVIOUS_SHARED_ORDER,
+  "sources",
+  "owned",
+  "on_wantlist",
+];
+export const WANTLIST_PREVIOUS_DEFAULT_ORDER: readonly string[] = [
+  ...PREVIOUS_SHARED_ORDER,
+  "note",
+  "added_at",
+  "bought",
+  "owned",
+];
+export const ENTITY_PREVIOUS_DEFAULT_ORDER: readonly string[] = [
+  ...PREVIOUS_SHARED_ORDER,
+  "owned",
+  "on_wantlist",
+];
+
+/**
+ * The columns every Beatport table has, over any row that is one. Title and Artist come first,
+ * then Key, BPM and Genre, as in the Library (C70); the label, date and release follow. Every
+ * column has an `accessor`, so a heading with no engine key (Key, BPM, Genre, Label, and every
+ * heading on a page the engine orders itself) sorts in the table over the rows it holds (C193).
+ * Names are plain text, as in the Library (C196): the row menu opens an artist's or label's page.
+ */
 function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
   return [
     {
       id: "title",
       header: "Title",
       sortKey: "title",
+      accessor: (row) => trackName(row),
       minWidthPx: 120,
       defaultWidthPx: 210,
       sticky: true,
@@ -44,40 +75,18 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
     },
     {
       id: "artists",
-      header: "Artists",
+      header: "Artist",
       sortKey: "artist",
+      accessor: (row) => artistsText(row),
       minWidthPx: 100,
       defaultWidthPx: 170,
-      render: (row) => <ArtistLinks row={row} />,
+      render: (row) => artistsText(row),
       text: (row) => artistsText(row),
-    },
-    {
-      id: "label",
-      header: "Label",
-      minWidthPx: 90,
-      defaultWidthPx: 130,
-      render: (row) => <LabelLink row={row} />,
-      text: (row) => row.label_name ?? "",
-    },
-    {
-      id: "release_date",
-      header: "Released",
-      sortKey: "release_date",
-      minWidthPx: 90,
-      defaultWidthPx: 96,
-      render: (row) => formatIsoDay(row.release_date),
-    },
-    {
-      id: "bpm",
-      header: "BPM",
-      minWidthPx: 56,
-      defaultWidthPx: 60,
-      align: "right",
-      render: (row) => formatBpm(row.bpm),
     },
     {
       id: "key",
       header: "Key",
+      accessor: (row) => beatportRowKey(row),
       minWidthPx: 56,
       defaultWidthPx: 60,
       // Camelot, as every key in the app is shown (DEC-201), as the Library's chip (R4-2,
@@ -86,15 +95,44 @@ function sharedColumns<Row extends BeatportTrackRow>(): TrackColumnDef<Row>[] {
       text: (row) => beatportRowKey(row) ?? "",
     },
     {
+      id: "bpm",
+      header: "BPM",
+      accessor: (row) => row.bpm,
+      minWidthPx: 56,
+      defaultWidthPx: 60,
+      align: "right",
+      render: (row) => formatBpm(row.bpm),
+    },
+    {
       id: "genre",
       header: "Genre",
+      accessor: (row) => row.genre_name,
       minWidthPx: 90,
       defaultWidthPx: 100,
       render: (row) => row.genre_name ?? "",
     },
     {
+      id: "label",
+      header: "Label",
+      accessor: (row) => row.label_name,
+      minWidthPx: 90,
+      defaultWidthPx: 130,
+      render: (row) => row.label_name ?? "",
+      text: (row) => row.label_name ?? "",
+    },
+    {
+      id: "release_date",
+      header: "Released",
+      sortKey: "release_date",
+      accessor: (row) => row.release_date,
+      minWidthPx: 90,
+      defaultWidthPx: 96,
+      render: (row) => formatIsoDay(row.release_date),
+    },
+    {
       id: "release",
       header: "Release",
+      accessor: (row) => row.release_name,
       hiddenByDefault: true,
       minWidthPx: 100,
       defaultWidthPx: 170,
@@ -158,7 +196,7 @@ export const RUN_COLUMNS: readonly TrackColumnDef<DiscoverRunTrackRow>[] = [
  * it newest release first and takes no other order, so no column sorts it.
  */
 export const ENTITY_COLUMNS: readonly TrackColumnDef<BeatportTrackRow>[] = [
-  ...sharedColumns<BeatportTrackRow>().map(({ sortKey: _unsorted, ...column }) => column),
+  ...sharedColumns<BeatportTrackRow>().map(({ sortKey: _engineOrder, ...column }) => column),
   ownedColumn<BeatportTrackRow>(),
   wantedColumn<BeatportTrackRow>(),
 ];

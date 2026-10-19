@@ -18,6 +18,8 @@ import type {
   DiscoverRunList,
   DiscoverRunTracksPage,
 } from "../../api/cuepointBridge.types";
+import { MemoryRouter } from "react-router-dom";
+
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import { RunDetail } from "./RunDetail";
 import type { DiscoverTools } from "./discoverTools";
@@ -80,7 +82,9 @@ function install(overrides: Record<string, Fn> = {}) {
 function renderRun(onGone = () => {}) {
   return render(
     <ScaleProvider>
-      <RunDetail runId={1} tools={tools} version={0} onGone={onGone} />
+      <MemoryRouter>
+        <RunDetail runId={1} tools={tools} version={0} onGone={onGone} />
+      </MemoryRouter>
     </ScaleProvider>,
   );
 }

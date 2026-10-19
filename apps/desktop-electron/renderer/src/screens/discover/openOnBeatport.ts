@@ -6,7 +6,7 @@
  * website and refuses anything else. The answer is a sentence only when
  * something did not open, so a click that worked says nothing.
  */
-import { pluralize } from "../library/libraryFormat";
+import { countNoun } from "../../format/counts";
 
 export async function openOnBeatport(urls: readonly string[]): Promise<string | null> {
   const open = window.cuepoint?.openBeatportPage;
@@ -20,5 +20,5 @@ export async function openOnBeatport(urls: readonly string[]): Promise<string | 
     }
   }
   if (refused === 0) return null;
-  return `${pluralize(refused, "page")} could not be opened: CuePoint opens only pages on beatport.com.`;
+  return `${countNoun(refused, "page")} could not be opened: CuePoint opens only pages on beatport.com.`;
 }

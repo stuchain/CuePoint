@@ -73,6 +73,20 @@
   font-weight: var(--weight-strong);
 }
 
+/* A section's heading row: the title at the left; Select all and the count at the right end (C215). */
+.discover-section__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.discover-section__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-inline-start: auto;
+}
+
 /* ------------------------------------------------------------------- runs */
 
 .discover-runs-view {
@@ -585,6 +599,16 @@
   border-bottom: var(--divider);
 }
 
+/* The crumb over a page opened from another (C221): the origin as a link, then what this is. */
+.discover-crumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+}
+
 .discover-page__kind {
   display: flex;
   flex-wrap: wrap;
@@ -632,7 +656,13 @@
  */
 .discover-page__half > .discover-table {
   flex: none;
-  height: calc(360px * var(--scale));
+  /* The heading row and the rows it holds, up to ten, then it scrolls (C253): a short list is
+     not padded out to a tall box. The selection bar takes its own height while it is drawn. */
+  height: calc((var(--discover-rows, 10) + 1) * var(--row-height));
+}
+
+.discover-page__half > .discover-table[data-selecting] {
+  height: calc((var(--discover-rows, 10) + 1) * var(--row-height) + 42px * var(--scale));
 }
 
 .discover-page__beatport-table {

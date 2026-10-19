@@ -13,20 +13,32 @@ vi.mock("../../reporting/reporting", async (importOriginal) => ({
   reportUnexpected: vi.fn(() => null),
 }));
 
-function bar(itemsFor: () => Promise<{ id: string; label: string; onSelect: () => void }[]>) {
+function bar(
+  itemsFor: () => Promise<{ id: string; label: string; onSelect: () => void }[]>,
+  selected = 1,
+  onClear = vi.fn(),
+) {
   return (
-    <DiscoverSelectionBar
-      groups={["play", "more"]}
-      total={5}
-      selected={1}
-      itemsFor={itemsFor}
-      onClear={vi.fn()}
-      onSelectAll={vi.fn()}
-    />
+    <DiscoverSelectionBar groups={["play", "more"]} selected={selected} itemsFor={itemsFor} onClear={onClear} />
   );
 }
 
 describe("DiscoverSelectionBar", () => {
+  it("draws nothing while nothing is selected, so no empty band sits above the list (C215)", () => {
+    const { container } = render(bar(async () => [], 0));
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("says how many are selected, the Library's way, with a close button that clears them (C9)", () => {
+    const onClear = vi.fn();
+    render(bar(async () => [], 3, onClear));
+    expect(screen.getByRole("toolbar", { name: "Selection" })).toHaveTextContent("3 selected");
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+    expect(onClear).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "More" })).toBeInTheDocument();
+  });
+
   it("opens a group's entries as a menu named for the group", async () => {
     render(bar(async () => [{ id: "play", label: "Play", onSelect: vi.fn() }]));
     fireEvent.click(screen.getByRole("button", { name: "Play" }));

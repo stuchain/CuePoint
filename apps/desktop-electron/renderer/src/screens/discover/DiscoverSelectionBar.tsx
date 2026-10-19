@@ -1,45 +1,34 @@
 /**
- * The Library's selection bar on the pages that list library tracks outside the
- * Library: an artist's or label's library half, and Similar tracks (FLW-8, DEC-209).
+ * The selection bar on the pages that list library tracks outside the Library: an artist's or
+ * label's library half, and Similar tracks (FLW-8, DEC-209, C9, C215).
  *
- * It is the Library's `LibraryToolbar`, drawn from the same list of groups
- * (`trackActions.ts`): with nothing selected it shows the count and Select all, with a
- * selection the group buttons and "3 selected ×". It holds only the groups that make sense
+ * It is the shared `SelectionBar`: "3 selected ×" on the left, the group buttons on the right,
+ * and nothing at all while nothing is selected, so a list has no empty band above it. The groups
+ * come from the same list the Library uses (`trackActions.ts`), but only those that make sense
  * here: Play and More (the page entries and, where the page can copy and show a file, those
  * too). Organize is the Library's (tagging and collecting from a page would be a second
  * Library; Open in Library is one click away), and Beatport is Clean's. Each page builds a
  * group's entries when the button is pressed, because what they act on may have to be
  * gathered first, and the page's right-click menu is made of the same builder
- * (`libraryRowMenu.ts`).
+ * (`libraryRowMenu.ts`). Select all is the page's: a quiet button in the filter row.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Button } from "../../components/Button";
+import { SelectionBar } from "../../components/SelectionBar";
 import { TrackContextMenu, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { reportUnexpected } from "../../reporting/reporting";
-import { LibraryToolbar } from "../library/LibraryToolbar";
-import { ACTION_GROUPS, barGroups, type TrackActionGroupId } from "../library/trackActions";
+import { ACTION_GROUPS, type TrackActionGroupId } from "../library/trackActions";
 
 interface DiscoverSelectionBarProps {
   groups: readonly TrackActionGroupId[];
-  /** Tracks in the list. */
-  total: number;
   selected: number;
-  describedByQuery?: boolean;
   /** The entries of a group, for the selection as it is now. */
   itemsFor: (group: TrackActionGroupId) => Promise<TrackContextMenuItem[]>;
   onClear: () => void;
-  onSelectAll: () => void;
 }
 
-export function DiscoverSelectionBar({
-  groups,
-  total,
-  selected,
-  describedByQuery = false,
-  itemsFor,
-  onClear,
-  onSelectAll,
-}: DiscoverSelectionBarProps) {
+export function DiscoverSelectionBar({ groups, selected, itemsFor, onClear }: DiscoverSelectionBarProps) {
   const [menu, setMenu] = useState<{
     x: number;
     y: number;
@@ -68,19 +57,27 @@ export function DiscoverSelectionBar({
     [itemsFor],
   );
 
+  const shown = ACTION_GROUPS.filter((group) => groups.includes(group.id));
+
   return (
     <>
-      <LibraryToolbar
-        groups={barGroups(selected, groups)}
-        total={total}
-        selected={selected}
-        describedByQuery={describedByQuery}
-        oneLine
-        openGroup={menu?.group ?? null}
-        onOpenGroup={(id, anchor) => void open(id, anchor)}
-        onClear={onClear}
-        onSelectAll={onSelectAll}
-      />
+      <SelectionBar count={selected} onClear={onClear}>
+        {shown.map((group) => (
+          <Button
+            key={group.id}
+            variant="secondary"
+            menu
+            aria-haspopup="menu"
+            aria-expanded={menu?.group === group.id}
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              void open(group.id, { x: rect.left, y: rect.bottom });
+            }}
+          >
+            {group.label}
+          </Button>
+        ))}
+      </SelectionBar>
       {menu && (
         <TrackContextMenu
           x={menu.x}

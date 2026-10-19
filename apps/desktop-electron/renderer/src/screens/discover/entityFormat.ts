@@ -14,7 +14,8 @@ import type {
   SimilarTracks,
 } from "../../api/cuepointBridge.types";
 import { formatBpm } from "../../components/format/bpm";
-import { formatCount, pluralize } from "../library/libraryFormat";
+import { countNoun, formatCount } from "../../format/counts";
+import type { HeaderFacts } from "../../components/shell/ScreenHeader";
 import { beatportNotice } from "./beatportState";
 
 /** "artist" or "label", for sentences. */
@@ -71,9 +72,17 @@ export function yearsText(years: EntityYears): string | null {
   return `${first}–${last}`;
 }
 
-/** "12 tracks in your library". */
-export function tracksLine(tracks: number): string {
-  return `${pluralize(tracks, "track")} in your library`;
+/**
+ * The page header's facts line (C150, C233): "12 tracks · Linked to Beatport · 2014–2024". The
+ * identity is a fact in the line, not a badge beside the crumb.
+ */
+export function entityFacts(page: Pick<EntityPage, "kind" | "identity" | "library">): HeaderFacts {
+  const years = yearsText(page.library.years);
+  return {
+    count: page.library.tracks,
+    noun: "track",
+    facts: years ? [identityLabel(page), years] : [identityLabel(page)],
+  };
 }
 
 /** The header's facet of the related kind: an artist's labels, a label's artists. */
@@ -119,26 +128,28 @@ export function freshnessLine(half: Pick<EntityBeatportHalf, "from_cache" | "fet
 }
 
 /** A seed's header facts: "128 BPM · 8A · House". */
-export function seedFacts(
-  track: Pick<
-    LibraryTrackRow,
-    "bpm" | "genre" | "effective_bpm" | "effective_key" | "effective_genre"
-  >,
-): string {
+export function seedFacts(track: SeedTrack): string {
+  return seedFactParts(track).join(" · ");
+}
+
+type SeedTrack = Pick<LibraryTrackRow, "bpm" | "genre" | "effective_bpm" | "effective_key" | "effective_genre">;
+
+/** The same facts one by one, for the header's typed facts line. */
+export function seedFactParts(track: SeedTrack): string[] {
   const bpm = track.effective_bpm ?? track.bpm;
   const key = track.effective_key;
   const genre = track.effective_genre ?? track.genre;
   const tempo = formatBpm(bpm);
-  return [tempo ? `${tempo} BPM` : null, key || null, genre || null]
-    .filter((part): part is string => part !== null)
-    .join(" · ");
+  return [tempo ? `${tempo} BPM` : null, key || null, genre || null].filter(
+    (part): part is string => part !== null,
+  );
 }
 
 /** What a suggestion list was compared against, in a sentence. */
 export function consideredLine(answer: Pick<SimilarTracks, "considered" | "duplicates_excluded">): string {
-  const compared = `Compared with ${pluralize(answer.considered, "track")} in your library.`;
+  const compared = `Compared with ${countNoun(answer.considered, "track")} in your library.`;
   if (answer.duplicates_excluded === 0) return compared;
-  return `${compared} ${pluralize(answer.duplicates_excluded, "copy", "copies")} of this track left out.`;
+  return `${compared} ${countNoun(answer.duplicates_excluded, "copy", "copies")} of this track left out.`;
 }
 
 /** Said when shared artists may be missing because the index is still building. */

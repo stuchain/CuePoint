@@ -14,7 +14,7 @@ import { LinkButton } from "../../components/LinkButton";
 import { Notice } from "../../components/Notice";
 import { Select } from "../../components/Select";
 import { opensDialog } from "../../format/words";
-import { formatCount } from "../library/libraryFormat";
+import { formatCount } from "../../format/counts";
 import type { ScopeMode } from "./newRun";
 
 interface SavedListFieldProps {
