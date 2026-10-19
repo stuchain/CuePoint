@@ -84,9 +84,9 @@
   --accent-text: color-mix(in srgb, var(--accent-primary) 50%, var(--fg-primary));
   --chip-fill-mix: 20%;
   --chip-text-mix: 35%;
-  --modal-width-narrow: 26.5625rem;
-  --modal-width-normal: 32.8125rem;
-  --modal-width-wide: 56.25rem;
+  --modal-width-small: 31.25rem;
+  --modal-width-medium: 43.75rem;
+  --modal-width-large: 56.25rem;
   --close-size: var(--control-height);
   --hit-min: 3.4375rem;
   --icon-size: var(--icon-size-lg);

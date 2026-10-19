@@ -148,7 +148,7 @@ turned down, so you can pick another one later.
 
 Every track of one playlist, in one plain table: what Beatport found for it, and
 a tick that says whether its values go into your files. Each playlist you match or
-open has its own **Review <name>** tab; the whole library has only its own. The small
+open has its own **Review \<name\>** tab; the whole library has only its own. The small
 **‹** button at the left of the bar closes the review and goes back to the **Playlists**
 tab.
 
