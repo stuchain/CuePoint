@@ -865,7 +865,7 @@ export function LibraryScreen({
                     // refresh waits for the page to still be there.
                     if (outcome === "failed") push(couldNot("restore", collection.name), "error");
                     else if (outcome === "appended" && positions) {
-                      push(couldNot("restore the order of", collection.name), "warning");
+                      push(couldNot("keep the original order of", collection.name), "warning");
                     }
                     if (outcome !== "failed" && mounted.current) window_.reload();
                   });
