@@ -191,6 +191,16 @@ describe("the four screens", () => {
     expect(art.textContent).not.toContain("Clean · Discover · Prepare");
   });
 
+  it("is as tall as its tallest step and no taller, and its sentences are Inter (C108, C55)", async () => {
+    const css = (await import("./OnboardingDialog.css?raw")).default;
+    // Step 2, the tallest, measures 267 at 1x with its done line; 352 left every step half empty.
+    expect(css).toMatch(/\.onboarding-dialog\s*\{[^}]*height:\s*calc\(272px \* var\(--scale\)\)/);
+    for (const selector of [".onboarding-dialog__body", ".onboarding-dialog__needs", ".onboarding-dialog__done"]) {
+      const escaped = selector.replace(/[.]/g, "\\.");
+      expect(css).toMatch(new RegExp(`${escaped}\\s*\\{[^}]*font-family:\\s*var\\(--font-data\\)`));
+    }
+  });
+
   it("is one dialog size on every step, with one violet button", async () => {
     mount();
     for (let step = 1; step <= 4; step += 1) {

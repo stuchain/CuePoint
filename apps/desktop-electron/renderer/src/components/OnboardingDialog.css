@@ -4,15 +4,18 @@
   font-weight: var(--weight-strong);
 }
 
+/* The guide's sentences are Inter (D5, C55); its step titles stay in the pixel face. */
 .onboarding-dialog__body {
   margin: 0 0 var(--space-lg);
   color: var(--fg-muted);
+  font-family: var(--font-data);
   font-size: var(--text-body);
   line-height: 1.5;
 }
 
 .about-dialog p {
   margin: 0 0 var(--space-md);
+  font-family: var(--font-data);
   font-size: var(--text-body);
   line-height: 1.5;
 }
@@ -20,13 +23,15 @@
 .about-dialog ul {
   margin: 0;
   padding-left: var(--space-md);
+  font-family: var(--font-data);
   font-size: var(--text-body);
   color: var(--fg-muted);
 }
 
-/* Every step is the same size: the wide dialog, and a body as tall as the tallest step (2). */
+/* Every step is the same size: the dialog's body as tall as the tallest step (2, with its done
+   line) and no taller, so no step is left mostly empty (C108). */
 .onboarding-dialog {
-  height: calc(352px * var(--scale));
+  height: calc(272px * var(--scale));
 }
 
 /* Steps 1, 3 and 4: the words on the left, one picture of a fixed size on the right. */
@@ -74,6 +79,7 @@
 
 .phase14-note__line p {
   margin: 0;
+  font-family: var(--font-data);
   font-size: var(--text-body);
   line-height: 1.5;
 }
@@ -92,6 +98,7 @@
   min-height: var(--row-height);
   margin: 0 0 var(--space-md);
   color: var(--success-text);
+  font-family: var(--font-data);
   font-size: var(--text-body);
 }
 
@@ -142,5 +149,6 @@
 .onboarding-dialog__needs {
   margin: 0 0 var(--space-md);
   color: var(--fg-muted);
+  font-family: var(--font-data);
   font-size: var(--text-body);
 }
