@@ -56,7 +56,7 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Prepare", action: "Resize the source panel (focus its divider first)", shortcut: "Left / Right" },
   { context: "Prepare", action: "Play from here", shortcut: "Enter" },
   { context: "Prepare", action: "Edit mix-in time", shortcut: "F2" },
-  { context: "Prepare", action: "Save a typed time", shortcut: "Enter" },
+  { context: "Prepare", action: "Save a typed time", shortcut: "Enter (while typing)" },
   { context: "Prepare", action: "Save a typed time and go to the next", shortcut: "Tab" },
   { context: "Prepare", action: "Drop a typed time", shortcut: "Esc" },
   { context: "Prepare", action: "Move the selected entries", shortcut: "Alt+Up / Alt+Down" },

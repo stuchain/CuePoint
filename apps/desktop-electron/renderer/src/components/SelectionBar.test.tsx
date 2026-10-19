@@ -38,7 +38,8 @@ describe("SelectionBar (C9, C215)", () => {
   });
 
   it("is 42 high at 1x and scales, on the toolbar colour, with no border of its own", () => {
-    expect(css).toMatch(/\.cp-selection-bar\s*\{[^}]*min-height:\s*round\(nearest, calc\(42px \* var\(--scale\)\), 1px\)/);
+    expect(css).toMatch(/--selection-bar-height:\s*round\(nearest, calc\(42px \* var\(--scale\)\), 1px\)/);
+    expect(css).toMatch(/\.cp-selection-bar\s*\{[^}]*min-height:\s*var\(--selection-bar-height\)/);
     expect(css).toMatch(/\.cp-selection-bar\s*\{[^}]*background:\s*var\(--bg-toolbar\)/);
   });
 });
