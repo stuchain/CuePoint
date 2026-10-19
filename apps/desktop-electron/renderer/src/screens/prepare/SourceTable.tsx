@@ -29,7 +29,7 @@ import {
 import { useBeatportSelection, type Picked } from "../discover/useBeatportSelection";
 import { setDraggedTrackIds } from "../library/collectionDrag";
 import { creditsFor } from "../library/libraryDiscover";
-import { pluralize } from "../library/libraryFormat";
+import { countNoun } from "../../format/counts";
 import { playItems } from "../library/trackActions";
 import { moreEntries, moreSubmenu, thisPageBlock } from "./prepareMenus";
 import { copyTrackRows, revealOne } from "./prepareTrackActions";
@@ -156,7 +156,7 @@ export function SourceTable<Row extends LibraryTrackRow>({
       ...thisPageBlock([
         {
           id: "insert-here",
-          label: rows.length > 1 ? `${INSERT_HERE}: ${pluralize(rows.length, "track")}` : INSERT_HERE,
+          label: rows.length > 1 ? `${INSERT_HERE}: ${countNoun(rows.length, "track")}` : INSERT_HERE,
           onSelect: () => onInsert(rows),
         },
       ]),
@@ -211,7 +211,7 @@ export function SourceTable<Row extends LibraryTrackRow>({
             setDraggedTrackIds(transfer, ids);
             // A copy: the track stays where it is and goes into the Set too.
             transfer.effectAllowed = "copy";
-            if (ids.length > 1) dragChip(transfer, pluralize(ids.length, "track"));
+            if (ids.length > 1) dragChip(transfer, countNoun(ids.length, "track"));
           }}
           emptyState={emptyState}
           resetKey={resetKey}
@@ -224,7 +224,7 @@ export function SourceTable<Row extends LibraryTrackRow>({
           y={menu.y}
           items={items}
           onClose={() => setMenu(null)}
-          label={menu.rows.length > 1 ? `Actions for ${menu.rows.length.toLocaleString()} tracks` : "Track actions"}
+          label={menu.rows.length > 1 ? `Actions for ${countNoun(menu.rows.length, "track")}` : "Track actions"}
         />
       )}
     </div>

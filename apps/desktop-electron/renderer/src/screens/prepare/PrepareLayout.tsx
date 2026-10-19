@@ -15,6 +15,7 @@
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
+import { useScaleFactor } from "../../tokens/ScaleContext";
 import {
   SOURCE_NUDGE,
   clampSourceWidth,
@@ -26,10 +27,25 @@ interface PrepareLayoutProps {
   set: ReactNode;
   /** PREP-11's source panel. Absent, the Set takes the width. */
   source?: ReactNode;
+  /**
+   * Track details are open (C226): the source panel stays mounted, so what was picked in it
+   * survives, but is out of sight, with no divider. One right-hand panel shows at a time.
+   */
+  sourceHidden?: boolean;
 }
 
-export function PrepareLayout({ set, source }: PrepareLayoutProps) {
-  const [stored, setStored] = useState(loadSourceWidth);
+export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayoutProps) {
+  const scale = useScaleFactor();
+  // Held in 1x units; drawn as 1x width * scale (C209).
+  const [stored, setStoredState] = useState(() => loadSourceWidth(scale));
+  const setStored = useCallback(
+    (pixels: number) => {
+      const next = pixels / scale;
+      setStoredState(next);
+      saveSourceWidth(next);
+    },
+    [scale],
+  );
   const box = useRef<HTMLDivElement>(null);
   // The two panes' width: the layout's own once it is measured, the window's
   // until then (and in a test's document, where nothing has a size).
@@ -50,11 +66,9 @@ export function PrepareLayout({ set, source }: PrepareLayoutProps) {
       window.removeEventListener("resize", measure);
       observer?.disconnect();
     };
-  }, [hasSource]);
+  }, [hasSource, sourceHidden]);
 
-  useEffect(() => saveSourceWidth(stored), [stored]);
-
-  const width = clampSourceWidth(stored, paneWidth);
+  const width = clampSourceWidth(stored * scale, paneWidth);
 
   const startResize = useCallback(
     (startX: number) => {
@@ -74,20 +88,21 @@ export function PrepareLayout({ set, source }: PrepareLayoutProps) {
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [paneWidth, width],
+    [paneWidth, setStored, width],
   );
 
   if (!source) {
     return <div className="prepare-layout prepare-layout--single">{set}</div>;
   }
-
   return (
     <div
       ref={box}
-      className="prepare-layout"
+      className={`prepare-layout${sourceHidden ? " prepare-layout--single" : ""}`}
       style={{ ["--prepare-source-width" as string]: `${width}px` }}
     >
       <div className="prepare-layout__set">{set}</div>
+      {/* The same three slots whether the source shows or not, so hiding it keeps its state. */}
+      {sourceHidden ? null : (
       <div
         className={`prepare-layout__divider${dragging ? " prepare-layout__divider--active" : ""}`}
         role="separator"
@@ -102,11 +117,14 @@ export function PrepareLayout({ set, source }: PrepareLayoutProps) {
         onKeyDown={(event) => {
           if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
           event.preventDefault();
-          const delta = event.key === "ArrowLeft" ? SOURCE_NUDGE : -SOURCE_NUDGE;
+          const delta = (event.key === "ArrowLeft" ? SOURCE_NUDGE : -SOURCE_NUDGE) * scale;
           setStored(clampSourceWidth(width + delta, paneWidth));
         }}
       />
-      <div className="prepare-layout__source">{source}</div>
+      )}
+      <div className="prepare-layout__source" hidden={sourceHidden}>
+        {source}
+      </div>
     </div>
   );
 }

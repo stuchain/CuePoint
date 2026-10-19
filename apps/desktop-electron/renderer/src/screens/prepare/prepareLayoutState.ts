@@ -17,19 +17,34 @@ export function clampSourceWidth(width: number, paneWidth: number): number {
   return Math.min(max, Math.max(SOURCE_MIN_WIDTH, Math.round(width)));
 }
 
-export function loadSourceWidth(): number {
+/**
+ * The remembered width in 1x units (C209), so a size change keeps the share of the page.
+ * A width saved as pixels by an older version is read as the current scale's pixels;
+ * it is converted in memory and never written back on load.
+ */
+export function loadSourceWidth(scale: number = 1): number {
   try {
     const raw = localStorage.getItem(SOURCE_WIDTH_STORAGE_KEY);
-    const value = raw === null ? NaN : Number(raw);
-    return Number.isFinite(value) && value > 0 ? value : SOURCE_DEFAULT_WIDTH;
+    if (raw === null) return SOURCE_DEFAULT_WIDTH;
+    if (raw.trim().startsWith("{")) {
+      const parsed = JSON.parse(raw) as { unit?: unknown; width?: unknown };
+      const width = Number(parsed.width);
+      return parsed.unit === "1x" && Number.isFinite(width) && width > 0 ? width : SOURCE_DEFAULT_WIDTH;
+    }
+    const pixels = Number(raw);
+    return Number.isFinite(pixels) && pixels > 0 ? pixels / scale : SOURCE_DEFAULT_WIDTH;
   } catch {
     return SOURCE_DEFAULT_WIDTH;
   }
 }
 
-export function saveSourceWidth(width: number): void {
+/** Writes a width in 1x units, only when the person changes it. */
+export function saveSourceWidth(width1x: number): void {
   try {
-    localStorage.setItem(SOURCE_WIDTH_STORAGE_KEY, String(Math.round(width)));
+    localStorage.setItem(
+      SOURCE_WIDTH_STORAGE_KEY,
+      JSON.stringify({ unit: "1x", width: Math.round(width1x) }),
+    );
   } catch {
     // A forgotten width is not worth breaking the drag over.
   }

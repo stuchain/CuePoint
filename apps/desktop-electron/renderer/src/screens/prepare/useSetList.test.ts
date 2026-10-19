@@ -37,27 +37,27 @@ const TARGET = { id: FRIDAY.id, name: FRIDAY.name };
 describe("the words", () => {
   it("says what the engine's activity event says, from its answer", () => {
     expect(setListSavedLine("Friday", SET_LIST_SAVED.saved)).toBe(
-      "Saved “Friday” as a CSV set list, 6 entries, 6 untimed",
+      "Saved “Friday” as a CSV set list, 6 entries, 6 untimed.",
     );
   });
 
   it("counts missing files and names each form", () => {
     const saved: SetListSaved = { ...SET_LIST_SAVED.saved, format: "text", missing_files: 1, untimed: 0 };
     expect(setListSavedLine("Friday", saved)).toBe(
-      "Saved “Friday” as a text set list, 6 entries, 1 file missing",
+      "Saved “Friday” as a text set list, 6 entries, 1 file missing.",
     );
     expect(setListSavedLine("One", { ...saved, entries: 1, missing_files: 2 })).toBe(
-      "Saved “One” as a text set list, 1 entry, 2 files missing",
+      "Saved “One” as a text set list, 1 entry, 2 files missing.",
     );
   });
 
   it("does not count untimed entries in an M3U8, which holds no times", () => {
     const saved: SetListSaved = { ...SET_LIST_SAVED.saved, format: "m3u8" };
-    expect(setListSavedLine("Friday", saved)).toBe("Saved “Friday” as an M3U8 set list, 6 entries");
+    expect(setListSavedLine("Friday", saved)).toBe("Saved “Friday” as an M3U8 set list, 6 entries.");
   });
 
   it("says a copy was made", () => {
-    expect(setListCopiedLine("Friday")).toBe("Copied the set list for “Friday”");
+    expect(setListCopiedLine("Friday")).toBe("Copied the set list for “Friday”.");
   });
 
   it("reopens the dialog for a place refused, and for nothing else", () => {
@@ -113,7 +113,7 @@ describe("the hook", () => {
       destination_path: "/music/set lists/Friday.csv",
     });
     expect(onMessage).toHaveBeenCalledWith(
-      "Saved “Friday” as a CSV set list, 6 entries, 6 untimed",
+      "Saved “Friday” as a CSV set list, 6 entries, 6 untimed.",
       "success",
     );
   });
@@ -143,7 +143,7 @@ describe("the hook", () => {
     });
     expect(onMessage.mock.calls).toEqual([
       ["A set list is saved as a .txt, .csv or .m3u8 file: '/music/set lists/Friday.mp3'", "warning"],
-      ["Saved “Friday” as a CSV set list, 6 entries, 6 untimed", "success"],
+      ["Saved “Friday” as a CSV set list, 6 entries, 6 untimed.", "success"],
     ]);
   });
 
@@ -202,7 +202,7 @@ describe("the hook", () => {
     expect(sets.setListText).toHaveBeenCalledWith({ set_id: FRIDAY.id });
     expect(writeText).toHaveBeenCalledWith(SET_LIST_TEXT.text);
     expect(SET_LIST_TEXT.text).toMatch(/^Friday\n/);
-    expect(onMessage).toHaveBeenCalledWith("Copied the set list for “Friday”", "success");
+    expect(onMessage).toHaveBeenCalledWith("Copied the set list for “Friday”.", "success");
   });
 
   it("says the clipboard refused rather than claiming a copy", async () => {

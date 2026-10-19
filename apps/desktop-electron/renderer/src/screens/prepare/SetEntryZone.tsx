@@ -106,7 +106,7 @@ export function SetEntryZone({
           label="Mix in"
           width="short"
           value={inText}
-          placeholder="e.g. 0:00"
+          placeholder="0:00"
           aria-invalid={timesRefused}
           onChange={(event) => setInText(event.target.value)}
           onBlur={() => void saveTimes()}
@@ -117,7 +117,7 @@ export function SetEntryZone({
           label="Mix out"
           width="short"
           value={outText}
-          placeholder={length == null ? "" : `e.g. ${timeCell(length)}`}
+          placeholder={length == null ? "" : timeCell(length)}
           aria-invalid={timesRefused}
           onChange={(event) => setOutText(event.target.value)}
           onBlur={() => void saveTimes()}

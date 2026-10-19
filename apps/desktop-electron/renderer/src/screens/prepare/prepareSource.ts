@@ -28,6 +28,8 @@ import type {
 import { WHOLE_LIBRARY, parseScope } from "../clean/cleanRules";
 import { formatBpm, formatBpmRange } from "../../components/format/bpm";
 import { KEY_WORDS } from "../discover/similarReasons";
+import { countNoun, formatCount } from "../../format/counts";
+import { quoted } from "../../format/words";
 import { chapterName, showsHeadings } from "./prepareRows";
 
 // ------------------------------------------------------------ the point
@@ -331,7 +333,7 @@ export function fitText(score: number): string {
 /** "In this Set" for a suggestion already played, with how often. */
 export function inSetText(count: number): string | null {
   if (count <= 0) return null;
-  const times = count === 1 ? "once" : count === 2 ? "twice" : `${count.toLocaleString()} times`;
+  const times = count === 1 ? "once" : count === 2 ? "twice" : `${formatCount(count)} times`;
   return `Already in this Set ${times}: inserting it plays it again`;
 }
 
@@ -347,8 +349,8 @@ export function inSetText(count: number): string | null {
 export function roomFor(count: number, current: number, limit: number): string | null {
   if (current + count <= limit) return null;
   return (
-    `A Set holds at most ${limit.toLocaleString()} entries. This one has ` +
-    `${current.toLocaleString()}, so ${count.toLocaleString()} more will not fit.`
+    `A Set holds at most ${formatCount(limit)} entries. This one has ` +
+    `${formatCount(current)}, so ${formatCount(count)} more will not fit.`
   );
 }
 
@@ -358,12 +360,12 @@ export function roomFor(count: number, current: number, limit: number): string |
  */
 export function insertLabel(count: number): string {
   if (count <= 0) return "Pick tracks";
-  return count > 1 ? `Insert ${count.toLocaleString()} here` : "Insert here";
+  return count > 1 ? `Insert ${formatCount(count)} here` : "Insert here";
 }
 
 /** What an insert says afterwards: the track by name when it is one, known. */
 export function insertedLine(titles: readonly (string | null)[], setName: string): string {
-  if (titles.length === 1 && titles[0]) return `Inserted “${titles[0]}” into “${setName}”.`;
-  const count = titles.length === 1 ? "1 track" : `${titles.length.toLocaleString()} tracks`;
-  return `Inserted ${count} into “${setName}”.`;
+  // A toast is a phrase without a full stop (C163).
+  if (titles.length === 1 && titles[0]) return `Inserted ${quoted(titles[0])} into ${quoted(setName)}`;
+  return `Inserted ${countNoun(titles.length, "track")} into ${quoted(setName)}`;
 }

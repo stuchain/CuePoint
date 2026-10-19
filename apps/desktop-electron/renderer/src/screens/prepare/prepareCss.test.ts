@@ -1,0 +1,52 @@
+/**
+ * Prepare's stylesheet decisions that a DOM test cannot see (jsdom draws no layout): each is
+ * read from the rule itself, so a later edit that drops one fails here.
+ */
+import { describe, expect, it } from "vitest";
+
+import css from "./prepare.css?raw";
+
+/** The declarations of the first rule whose selector list is exactly `selector`. */
+function rule(selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`(?:^|\\})\\s*(?:/\\*[\\s\\S]*?\\*/\\s*)*${escaped}\\s*\\{([^}]*)\\}`, "m").exec(css);
+  expect(match, `a rule for ${selector}`).not.toBeNull();
+  return match![1]!;
+}
+
+describe("the strips above the Set (C251, C49, C259)", () => {
+  it("gives the lanes and the transition strip the same top padding, so the lanes' BPM is not clipped", () => {
+    expect(rule(".prepare-lanes")).toMatch(/padding-top:\s*var\(--prepare-strip-pad\)/);
+    expect(rule(".prepare-transition")).toMatch(/padding-top:\s*var\(--prepare-strip-pad\)/);
+    expect(rule(".prepare-set")).toMatch(/--prepare-strip-pad:\s*var\(--space-xs\)/);
+  });
+
+  it("insets the right waveform by 8 at 1x (--space-md)", () => {
+    expect(rule(".prepare-transition")).toMatch(/padding-right:\s*var\(--space-md\)/);
+  });
+});
+
+describe("a chapter's band (C250)", () => {
+  it("is the panel-alt band in the pixel face with no row divider, so it does not read as a data row", () => {
+    const band = rule(".track-table__row.prepare-heading");
+    expect(band).toMatch(/background:\s*var\(--bg-panel-alt\)/);
+    expect(band).toMatch(/box-shadow:\s*none/);
+    expect(band).toMatch(/font-family:\s*var\(--font-pixel\)/);
+  });
+});
+
+describe("the source panel and its divider (C48, C149, C28)", () => {
+  it("starts its content one --space-lg down in every state, level with the Set table's first row", () => {
+    expect(rule(".prepare-source")).toMatch(/padding:\s*var\(--space-lg\) var\(--space-md\) var\(--space-md\)/);
+  });
+
+  it("colours the divider's hover with the shared resizer token", () => {
+    const hover = /\.prepare-layout__divider:hover,[^{]*\{([^}]*)\}/.exec(css)![1]!;
+    expect(hover).toMatch(/background:\s*var\(--resizer-hover\)/);
+  });
+
+  it("puts buttons in a row --space-md apart", () => {
+    expect(rule(".prepare-source__sides")).toMatch(/gap:\s*var\(--space-md\)/);
+    expect(rule(".prepare-heading__buttons")).toMatch(/gap:\s*var\(--space-md\)/);
+  });
+});

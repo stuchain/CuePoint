@@ -206,10 +206,16 @@
   background: var(--border-muted);
 }
 
+/* Hidden while Track details are open (C226): the flex display above would show it anyway. */
+.prepare-layout__source[hidden] {
+  display: none;
+}
+
+/* The resizer's shared hover colour (C149). */
 .prepare-layout__divider:hover,
 .prepare-layout__divider:focus-visible,
 .prepare-layout__divider--active {
-  background: var(--accent-primary);
+  background: var(--resizer-hover);
   outline: none;
 }
 
@@ -223,6 +229,8 @@ body.prepare-resizing {
 /* The lanes and the transition strip, when open, sit above the rows, which
    keep the height left. */
 .prepare-set {
+  /* The lanes and the transition strip start their content the same distance down (C251). */
+  --prepare-strip-pad: var(--space-xs);
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -266,7 +274,9 @@ body.prepare-resizing {
 .prepare-lanes {
   display: flex;
   min-width: 0;
-  padding: calc(2px * var(--scale)) var(--space-sm);
+  padding: var(--space-sm);
+  padding-top: var(--prepare-strip-pad);
+  padding-bottom: calc(2px * var(--scale));
   border-bottom: var(--control-border-width) solid var(--border-muted);
   background: var(--bg-panel-alt);
 }
@@ -358,7 +368,11 @@ body.prepare-resizing {
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.4fr) minmax(0, 1.3fr);
   column-gap: var(--space-sm);
   min-width: 0;
-  padding: 0 var(--space-sm) calc(2px * var(--scale));
+  padding: var(--space-sm);
+  padding-top: var(--prepare-strip-pad);
+  padding-bottom: calc(2px * var(--scale));
+  /* The right waveform stops 8 (at 1x) short of the pane's edge (C49). */
+  padding-right: var(--space-md);
   border-bottom: var(--control-border-width) solid var(--border-muted);
   background: var(--bg-panel-alt);
 }
@@ -562,6 +576,9 @@ body.prepare-resizing {
 /* A chapter's heading is a row of the table (DEC-103), drawn as a band. */
 .track-table__row.prepare-heading {
   background: var(--bg-panel-alt);
+  /* No row divider and the pixel face, so a band is not read as one more data row (C250). */
+  box-shadow: none;
+  font-family: var(--font-pixel);
   font-weight: var(--font-weight-bold);
   cursor: default;
 }
@@ -589,7 +606,7 @@ body.prepare-resizing {
 .prepare-heading__buttons {
   display: inline-flex;
   flex: none;
-  gap: var(--space-xs);
+  gap: var(--space-md);
 }
 
 /* The selected entries' buttons, at the right end of the focused row (DEC-249): the shared small
@@ -668,6 +685,17 @@ body.prepare-resizing {
   display: inline-block;
   font-size: calc(10px * var(--scale));
   line-height: 1;
+}
+
+/* The "both off" dot: a ring, as there is no ring icon. Sized as the pixel dots are (12 units, 1.5 px a unit). */
+.prepare-fit__ring {
+  display: inline-block;
+  box-sizing: border-box;
+  width: calc(12px * var(--scale));
+  height: calc(12px * var(--scale));
+  border: calc(2px * var(--scale)) solid currentColor;
+  border-radius: 50%;
+  vertical-align: middle;
 }
 
 .prepare-fit--fit {
@@ -816,7 +844,8 @@ body.prepare-resizing {
   gap: var(--space-md);
   min-width: 0;
   min-height: 0;
-  padding: var(--space-md);
+  /* One top offset in every state, level with the Set table's first row (C48). */
+  padding: var(--space-lg) var(--space-md) var(--space-md);
   overflow: hidden;
 }
 
@@ -835,11 +864,13 @@ body.prepare-resizing {
 /* The pool, and the panel's one action at the end of its line: the select
    gives way, so the button always shows whole. */
 .prepare-source__controls {
-  display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-md);
   min-width: 0;
+}
+
+/* The bar above the list (C217, .cp-toolbar) runs the panel's full width, its own 8 at the sides. */
+.prepare-source > .prepare-source__controls {
+  margin-inline: calc(-1 * var(--space-md));
 }
 
 .prepare-source__search {
@@ -952,7 +983,7 @@ body.prepare-resizing {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--space-xs);
+  gap: var(--space-md);
 }
 
 .prepare-source__in-set {

@@ -26,7 +26,7 @@ import { keyRelationWords } from "./prepareSource";
 import { formatLength } from "../../format/durations";
 
 /** What the strip says with no entry selected. */
-export const NO_SELECTION_WORDS = "Select an entry to see its transition";
+export const NO_SELECTION_WORDS = "Select a row to see the transition";
 
 /** The second half when the last entry is selected. */
 export const END_OF_SET = "End of Set";

@@ -38,6 +38,7 @@ import type {
 import { Button } from "../../components/Button";
 import { KeyChip } from "../../components/wheel/KeyChip";
 import { useRowHeight } from "../../components/table/trackTableLayout";
+import { formatCount } from "../../format/counts";
 import {
   WAVEFORM_LOADING_WORDS,
   waitingWaveformShort,
@@ -212,7 +213,12 @@ export function SetTransition({
     <section
       className="prepare-transition"
       aria-label="Transition"
-      style={{ gridTemplateRows: `max(${rowHeight}px, calc(2.3 * var(--font-size-xs))) ${rowHeight * 2}px` }}
+      style={{
+        // One line until a row is selected (C259), then the titles and two rows of waveform.
+        gridTemplateRows: transition
+          ? `max(${rowHeight}px, calc(2.3 * var(--font-size-xs))) ${rowHeight * 2}px`
+          : `max(${rowHeight}px, calc(2.3 * var(--font-size-xs)))`,
+      }}
     >
       {transition ? (
         <>
@@ -269,7 +275,7 @@ export function SetTransition({
                 )}
                 {others.length > 0 && (
                   <span className="prepare-transition__more" data-hint={others.map(describeShown).join(". ")}>
-                    {`+${others.length.toLocaleString()} more`}
+                    {`+${formatCount(others.length)} more`}
                   </span>
                 )}
               </p>

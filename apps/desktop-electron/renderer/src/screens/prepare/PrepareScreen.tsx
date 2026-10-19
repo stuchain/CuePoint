@@ -67,7 +67,7 @@ import { useRowHeight } from "../../components/table/trackTableLayout";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { formatLength } from "../../format/durations";
 import { countNoun } from "../../format/counts";
-import { NO_SETS, RETRY, UNDO, couldNot, deleteLead, deleteTitle, opensDialog, removedFrom } from "../../format/words";
+import { NO_SETS, RETRY, UNDO, couldNot, deleteLead, deleteTitle, opensDialog, quoted, removedFrom } from "../../format/words";
 import { cleanSectionState } from "../clean/cleanLink";
 import { entityPath, similarPath } from "../discover/discoverLinks";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
@@ -95,6 +95,7 @@ import { SetNotesDialog } from "./SetNotesDialog";
 import { SetTransition } from "./SetTransition";
 import { useSetAreaFloor } from "./setAreaFloor";
 import { SourcePanel } from "./SourcePanel";
+import { useDetailsPanelOpen } from "./useDetailsPanelOpen";
 import { entryButtonDomId, entryButtons, stepMoves, type EntryButton } from "./entryActions";
 import { nextTimeTarget, timeRefusalWords, timeTexts, timesToSave, type TimeField, type TimeTarget, type TimeTexts } from "./timeEditing";
 import { newSetSources } from "./newSetSources";
@@ -260,11 +261,11 @@ export function PrepareScreen({
     loadedRows,
   });
   const columns = useColumnLayout<PrepareRow>(PREPARE_TABLE_LAYOUT_KEY, PREPARE_COLUMNS);
-  // Mix in and Mix out go together (R4-5). If either shows, both hide; the two
-  // can be out of step after Columns…, so they are set, not each flipped.
-  const timesShown = columns.layout.some(
-    (entry) => (entry.id === "in" || entry.id === "out") && !entry.hidden,
-  );
+  // Mix in and Mix out go together (R4-5). The item is ticked when both show; ticked, it hides both,
+  // else it shows both. The two can be out of step (Mix in alone is the default, C246, or after
+  // Columns…), so they are set, not each flipped.
+  const timeEntries = columns.layout.filter((entry) => entry.id === "in" || entry.id === "out");
+  const timesShown = timeEntries.length === 2 && timeEntries.every((entry) => !entry.hidden);
   const toggleTimes = () => {
     for (const entry of columns.layout) {
       if ((entry.id === "in" || entry.id === "out") && entry.hidden === !timesShown) {
@@ -464,8 +465,8 @@ export function PrepareScreen({
       if (failed > 0) {
         push(
           failed === saved.length
-            ? couldNot("restore", setName)
-            : `${couldNot(`restore ${failed} of ${countNoun(saved.length, "track")}`)} The rest are back.`,
+            ? couldNot("undo the removal from", setName)
+            : `${couldNot(`undo the removal of ${failed} of ${countNoun(saved.length, "track")}`)} The rest are back.`,
           "error",
         );
       }
@@ -851,7 +852,11 @@ export function PrepareScreen({
       onOpenInClean={onOpenInClean}
       onOpenEntity={openEntity}
     />,
+    // Picking a row is picking: Track details open from the Details button (C226), so the source
+    // panel does not vanish under a click, and one right-hand panel shows at a time.
+    { autoOpen: false },
   );
+  const detailsOpen = useDetailsPanelOpen();
 
   // --- menus
 
@@ -1046,7 +1051,7 @@ export function PrepareScreen({
         return;
       }
       setCreating(false);
-      push(`Made the Set “${made.node.name}”.`, "success");
+      push(`Made the Set ${quoted(made.node.name)}`, "success");
       navigate(preparePath(made.node.id));
     },
     [navigate, push, tree],
@@ -1413,6 +1418,7 @@ export function PrepareScreen({
 
       <PrepareLayout
         set={table}
+        sourceHidden={detailsOpen}
         source={
           point && (
             <SourcePanel

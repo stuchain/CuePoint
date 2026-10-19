@@ -237,6 +237,11 @@ describe("the transition strip", () => {
     render(<SetTransition entries={ENTRIES} selectedEntryId={null} onSelect={vi.fn()} />);
 
     expect(screen.getByRole("region", { name: "Transition" })).toHaveTextContent(NO_SELECTION_WORDS);
+    expect(NO_SELECTION_WORDS).toBe("Select a row to see the transition");
+    // Collapsed to the one line until a row is selected (C259), not the title row and two of waveform.
+    expect(screen.getByRole("region", { name: "Transition" }).style.gridTemplateRows).toBe(
+      `max(${ROW_HEIGHT_FALLBACK}px, calc(2.3 * var(--font-size-xs)))`,
+    );
     expect(screen.queryAllByRole("button")).toHaveLength(0);
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(waveforms.get).not.toHaveBeenCalled();

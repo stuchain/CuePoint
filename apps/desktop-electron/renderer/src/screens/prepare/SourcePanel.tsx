@@ -200,7 +200,7 @@ export function SourcePanel(props: SourcePanelProps) {
     <section className="prepare-source" aria-label="Add to the Set">
       <PointLine words={words} title={pointTitle} />
       <Tabs tabs={TABS} activeId={tab} onChange={chooseTab} variant="sub" />
-      <div className="prepare-source__controls">
+      <div className="cp-toolbar prepare-source__controls">
         <Hint text="Where Suggestions and the search look: the library, a playlist, a Collection or a Set">
           <Select
             id={`${selectId}-from`}
@@ -355,6 +355,7 @@ function SuggestionsTab({
   if (!point.before) {
     return (
       <EmptyState
+        compact
         icon="prepare"
         headline={EMPTY_SET_SUGGESTIONS_HEADLINE}
         description={`${EMPTY_SET_SUGGESTIONS_HELP}.`}
@@ -385,7 +386,7 @@ function SuggestionsTab({
   } else if (answer.no_fit && point.after) {
     empty = (
       <div className="prepare-source__empty">
-        <EmptyState icon="prepare" headline="Nothing bridges this gap" description={noFitText(answer.no_fit, beforeTitle, afterTitle)} />
+        <EmptyState compact icon="prepare" headline="Nothing bridges this gap" description={noFitText(answer.no_fit, beforeTitle, afterTitle)} />
         <div className="prepare-source__sides">
           <Button variant="secondary" onClick={() => setSide({ gap, against: "before" })}>
             {sideButtonLabel("before", beforeTitle)}
@@ -397,7 +398,7 @@ function SuggestionsTab({
       </div>
     );
   } else {
-    empty = <EmptyState icon="prepare" headline={headlineOf(emptyAnswerText(answer, poolWords))} />;
+    empty = <EmptyState compact icon="prepare" headline={headlineOf(emptyAnswerText(answer, poolWords))} />;
   }
 
   return (
@@ -508,6 +509,7 @@ function LibraryTab({
   } else if (q) {
     empty = (
       <EmptyState
+        compact
         icon="search"
         headline={headlineOf(nothingMatches(q))}
         description={`Nothing in ${poolWords} fits that. Try another word.`}
@@ -516,7 +518,7 @@ function LibraryTab({
     );
   } else {
     empty = (
-      <EmptyState icon="library" headline={`${poolWords.charAt(0).toUpperCase()}${poolWords.slice(1)} holds no tracks`} />
+      <EmptyState compact icon="library" headline={`${poolWords.charAt(0).toUpperCase()}${poolWords.slice(1)} holds no tracks`} />
     );
   }
 

@@ -656,7 +656,7 @@ describe("inserting", () => {
       position: 1,
       chapter_id: OPEN,
     });
-    expect(await screen.findByText("Inserted “Deep Spare” into “Build”.", {}, LOADED)).toBeInTheDocument();
+    expect(await screen.findByText("Inserted “Deep Spare” into “Build”", {}, LOADED)).toBeInTheDocument();
     await waitFor(() => expect(sets.plan.mock.calls.length).toBeGreaterThan(reads));
   });
 
@@ -675,7 +675,7 @@ describe("inserting", () => {
       [ids[0], 1],
       [ids[2], 2],
     ]);
-    expect(await screen.findByText("Inserted 2 tracks into “Build”.", {}, LOADED)).toBeInTheDocument();
+    expect(await screen.findByText("Inserted 2 tracks into “Build”", {}, LOADED)).toBeInTheDocument();
   });
 
   it("selects the entry an insert made, so the next gap is after it", async () => {
@@ -803,7 +803,7 @@ describe("inserting", () => {
       [5, 1, OPEN],
       [6, 2, OPEN],
     ]);
-    expect(await screen.findByText("Inserted 2 tracks into “Build”.", {}, LOADED)).toBeInTheDocument();
+    expect(await screen.findByText("Inserted 2 tracks into “Build”", {}, LOADED)).toBeInTheDocument();
   });
 
   it("an empty Set takes a drop anywhere in its table", async () => {
@@ -1002,7 +1002,7 @@ describe("the Library tab", () => {
     await waitFor(() =>
       expect(bridge.insertTrackInCollection).toHaveBeenCalledWith(expect.objectContaining({ position: 2, chapter_id: OPEN })),
     );
-    expect(await screen.findByText(`Inserted “${title}” into “Build”.`, {}, LOADED)).toBeInTheDocument();
+    expect(await screen.findByText(`Inserted “${title}” into “Build”`, {}, LOADED)).toBeInTheDocument();
   });
 
   it("scopes to the pool, sorts by a header, and plays the view from a row (DEC-012)", async () => {

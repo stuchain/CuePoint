@@ -219,14 +219,14 @@ function showTimesInStorage() {
     JSON.stringify([
       shown("position", 48),
       shown("title", 170),
+      shown("artist", 150),
       shown("key", 60),
       shown("bpm", 72),
-      shown("fit", 48),
-      shown("artist", 150),
+      shown("planned", 84),
       shown("in", 60),
       shown("out", 60),
+      shown("fit", 48),
       shown("starts_at", 72),
-      shown("planned", 84),
       shown("transition", 160),
       shown("note", 180),
     ]),
@@ -332,7 +332,7 @@ describe("with no Sets", () => {
 
     await waitFor(() => expect(where()).toBe(preparePath(50)), LOADED);
     expect(sets.create).toHaveBeenCalledWith({ name: "Friday II", parent_id: IDS.gigs });
-    expect(await screen.findByText("Made the Set “Friday II”.")).toBeInTheDocument();
+    expect(await screen.findByText("Made the Set “Friday II”")).toBeInTheDocument();
   });
 
   it("refuses a Set with no name before asking the engine", async () => {
@@ -601,7 +601,7 @@ describe("the Set", () => {
     fireEvent.click(screen.getByRole("button", { name: "View" }));
     const items = within(screen.getByRole("menu")).getAllByRole("menuitemcheckbox");
     expect(items.map((item) => item.textContent)).toEqual(["Tempo lane", "Transition strip", "Mix in and Mix out"]);
-    // Ticked on and off, not "Show" and "Hide" (C126); none is on in a fresh layout.
+    // Ticked on and off, not "Show" and "Hide" (C126); the strips are off in a fresh layout, and the times item stands for both columns (C246).
     expect(items.map((item) => item.getAttribute("aria-checked"))).toEqual(["false", "false", "false"]);
   });
 
@@ -683,7 +683,9 @@ describe("the Set", () => {
     expect(first.querySelector('[data-column="position"]')).toHaveTextContent("1");
     expect(first.querySelector('[data-column="position"] [data-icon="repeat-after"]')).not.toBeNull();
     const peakTwo = rowAt(5);
-    expect(peakTwo.querySelector('[data-column="transition"]')).toHaveTextContent("⚠ +9.4% tempo");
+    expect(peakTwo.querySelector('[data-column="transition"]')).toHaveTextContent("+9.4% tempo");
+    // The warning mark is drawn, not typed (C138).
+    expect(peakTwo.querySelector('[data-column="transition"] [data-icon="warning"]')).not.toBeNull();
     expect(rowAt(4).querySelector('[data-column="note"]')).toHaveTextContent("Let the break run");
     expect(peakTwo).toHaveAttribute("draggable", "true");
   });
@@ -890,11 +892,11 @@ describe("an entry's menu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(insert).toHaveBeenCalledTimes(2));
     expect(
-      await screen.findByText("Could not restore 1 of 2 tracks. The rest are back."),
+      await screen.findByText("Could not undo the removal of 1 of 2 tracks. The rest are back."),
     ).toBeInTheDocument();
   });
 
-  it("says in a danger toast that Undo could not restore the Set's entries when none comes back (SB2)", async () => {
+  it("says in a danger toast that Undo could not bring the Set's entries back when none comes back (SB2)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.contextMenu(rowAt(2));
@@ -904,7 +906,7 @@ describe("an entry's menu", () => {
     insert.mockClear();
     insert.mockRejectedValueOnce(new Error("gone"));
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    const failed = await screen.findByText("Could not restore “Friday”.");
+    const failed = await screen.findByText("Could not undo the removal from “Friday”.");
     expect(failed.closest(".cp-toast")).toHaveClass("cp-toast--error");
   });
 
@@ -1030,8 +1032,8 @@ describe("the entry's plan in the Inspector", () => {
     expect(within(zone).getByLabelText("Mix in")).toHaveValue("0:30");
     expect(within(zone).getByLabelText("Mix out")).toHaveValue("4:30");
     // A placeholder reads as an example, never as a value already there (area 85).
-    expect(within(zone).getByLabelText("Mix in")).toHaveAttribute("placeholder", "e.g. 0:00");
-    expect(within(zone).getByLabelText("Mix out").getAttribute("placeholder")).toMatch(/^(e\.g\. .+)?$/);
+    expect(within(zone).getByLabelText("Mix in")).toHaveAttribute("placeholder", "0:00");
+    expect(within(zone).getByLabelText("Mix out").getAttribute("placeholder")).toMatch(/^(\d+:\d{2})?$/);
     expect(within(zone).getByLabelText("Note").tagName).toBe("TEXTAREA");
     expect(within(zone).getByText("Plays for 4:00")).toBeInTheDocument();
     expect(within(zone).getByText(/Entry 1, in Warm-up · starts at 0:00/)).toBeInTheDocument();
@@ -1618,7 +1620,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
   it("leave Delete to a field being typed in", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    showTimes();
+    // Mix in shows by default (C246).
     fireEvent.click(rowAt(1));
     fireEvent.click(within(rowAt(1)).getByRole("button", { name: /Mix in/ }));
     fireEvent.keyDown(await within(rowAt(1)).findByRole("textbox"), { key: "Delete" });
@@ -1896,11 +1898,12 @@ describe("In and Out in the table (FLW-18)", () => {
 // ------------------------------------------------------------------ FLW-19
 
 describe("the Set table's columns (R4-5)", () => {
-  it("leads with Key, BPM and Fit, and keeps the times and notes out of the way", async () => {
+  it("shows #, Title, Artist, Key, BPM, Plays for and Mix in, and keeps the rest out of the way (C246)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    // Artist follows Fit, so at the default window the edge cuts the Artist text, never the Key chip (Round 7, 19).
-    expect(headers()).toEqual(["#", "Title", "Key", "BPM", "Fit", "Artist", "Starts at", "Plays for"]);
+    // Seven columns that fit beside Details at the default size; Fit, Mix out, Starts at, Transition
+    // and Note are in the column picker.
+    expect(headers()).toEqual(["#", "Title", "Artist", "Key", "BPM", "Plays for", "Mix in"]);
   });
 
   it("opens the column picker from the button in the table's header corner, not from View", async () => {
@@ -1908,7 +1911,8 @@ describe("the Set table's columns (R4-5)", () => {
     await opened();
     fireEvent.click(within(table()).getByRole("button", { name: "Columns…" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("checkbox", { name: "Mix in" })).not.toBeChecked();
+    expect(within(dialog).getByRole("checkbox", { name: "Mix out" })).not.toBeChecked();
+    expect(within(dialog).getByRole("checkbox", { name: "Mix in" })).toBeChecked();
   });
 
   it("draws the Key cell as a Camelot chip", async () => {
@@ -1922,6 +1926,10 @@ describe("the Set table's columns (R4-5)", () => {
   it("ticks both time columns on from View ▸ Mix in and Mix out, and off again, with the menu left open (C126)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
+    // Only Mix in shows by default (C246), so the item, which stands for both, is not ticked.
+    expect(headers()).toContain("Mix in");
+    expect(headers()).not.toContain("Mix out");
+    expect(viewItem("Mix in and Mix out")).toHaveAttribute("aria-checked", "false");
     showTimes();
     expect(headers()).toEqual(expect.arrayContaining(["Mix in", "Mix out"]));
     // The menu is still open, and the item is ticked.
@@ -1932,14 +1940,21 @@ describe("the Set table's columns (R4-5)", () => {
     expect(viewItem("Mix in and Mix out")).toHaveAttribute("aria-checked", "false");
   });
 
-  it("hides both when only one is showing, rather than swapping them", async () => {
-    localStorage.setItem(PREPARE_TABLE_LAYOUT_KEY, JSON.stringify([{ id: "out", width: 60, hidden: false }]));
+  it("shows both when only one is showing, rather than swapping them", async () => {
+    localStorage.setItem(
+      PREPARE_TABLE_LAYOUT_KEY,
+      JSON.stringify([
+        { id: "in", width: 60, hidden: true },
+        { id: "out", width: 60, hidden: false },
+      ]),
+    );
     renderAt(preparePath(IDS.friday));
     await opened();
     expect(headers()).toContain("Mix out");
     expect(headers()).not.toContain("Mix in");
+    expect(viewItem("Mix in and Mix out")).toHaveAttribute("aria-checked", "false");
     fireEvent.click(viewItem("Mix in and Mix out"));
-    expect(headers()).not.toContain("Mix out");
+    expect(headers()).toEqual(expect.arrayContaining(["Mix in", "Mix out"]));
   });
 
   it("respects a layout saved under the new key", async () => {
@@ -1950,17 +1965,17 @@ describe("the Set table's columns (R4-5)", () => {
   });
 
   it("starts afresh for a layout saved under the old key", async () => {
-    localStorage.setItem(
-      "cuepoint-prepare-set-layout",
-      JSON.stringify([{ id: "in", width: 60, hidden: false }]),
-    );
+    for (const old of ["cuepoint-prepare-set-layout", "cuepoint-prepare-set-layout-2"]) {
+      localStorage.setItem(old, JSON.stringify([{ id: "note", width: 180, hidden: false }]));
+    }
     renderAt(preparePath(IDS.friday));
     await opened();
-    expect(headers()).not.toContain("Mix in");
-    expect(PREPARE_TABLE_LAYOUT_KEY).toBe("cuepoint-prepare-set-layout-2");
+    expect(headers()).not.toContain("Note");
+    expect(PREPARE_TABLE_LAYOUT_KEY).toBe("cuepoint-prepare-set-layout-3");
   });
 
-  it("draws a dot for how each track mixes in: ● fits, ◐ one side off, ○ both off", async () => {
+  it("draws a dot for how each track mixes in: filled fits, half one side off, a ring both off", async () => {
+    showTimesInStorage();
     renderAt(preparePath(IDS.friday));
     await opened();
     const dots = within(table()).getAllByRole("img", { name: /^Fits$|Tempo jumps|Keys clash|BPM to compare/ });
@@ -1972,7 +1987,15 @@ describe("the Set table's columns (R4-5)", () => {
       "both",
       "fit",
     ]);
-    expect(dots.map((dot) => dot.textContent)).toEqual(["●", "●", "◐", "○", "●"]);
+    // Drawn with the pixel dots and a ring, not typed (C138).
+    expect(dots.map((dot) => dot.querySelector("[data-icon]")?.getAttribute("data-icon") ?? "ring")).toEqual([
+      "dot-filled",
+      "dot-filled",
+      "dot-half",
+      "ring",
+      "dot-filled",
+    ]);
+    expect(dots.every((dot) => !/[●◐○]/.test(dot.textContent ?? ""))).toBe(true);
     // One side off: the tempo jump is open, the key clash was accepted.
     expect(dots[2]).toHaveAccessibleName(expect.stringMatching(/^Tempo jumps/));
     expect(dots[2]).not.toHaveAccessibleName(expect.stringMatching(/Keys clash/));
@@ -1982,12 +2005,13 @@ describe("the Set table's columns (R4-5)", () => {
   });
 
   it("counts a chapter's open warnings on its heading instead of a dot", async () => {
+    showTimesInStorage();
     renderAt(preparePath(IDS.friday));
     await opened();
     const count = within(rowAt(0)).getByRole("img", { name: "2 open warnings in this chapter" });
     expect(count).toHaveTextContent("2");
     expect(count).toHaveAttribute("data-hint", "2 open warnings in this chapter");
-    expect(within(rowAt(0)).queryByText(/[●◐○]/)).toBeNull();
+    expect(rowAt(0).querySelector(".prepare-fit")).toBeNull();
   });
 });
 

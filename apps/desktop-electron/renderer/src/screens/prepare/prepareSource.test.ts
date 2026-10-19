@@ -259,9 +259,9 @@ describe("inserting", () => {
   });
 
   it("says what went in", () => {
-    expect(insertedLine(["Deep Spare"], "Build")).toBe("Inserted “Deep Spare” into “Build”.");
-    expect(insertedLine([null], "Build")).toBe("Inserted 1 track into “Build”.");
-    expect(insertedLine(["A", "B"], "Build")).toBe("Inserted 2 tracks into “Build”.");
+    expect(insertedLine(["Deep Spare"], "Build")).toBe("Inserted “Deep Spare” into “Build”");
+    expect(insertedLine([null], "Build")).toBe("Inserted 1 track into “Build”");
+    expect(insertedLine(["A", "B"], "Build")).toBe("Inserted 2 tracks into “Build”");
   });
 });
 

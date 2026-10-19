@@ -11,12 +11,11 @@
  * under Plays for, its BPM range under BPM, its warning count under Fit, its
  * own warnings under Transition and its notes under Note. Nothing sorts: the order is the Set.
  *
- * The table leads with what a DJ weighs first (R4-5): Key, BPM and Fit, a dot
- * for whether the track mixes in from the one before. Mix in, Mix out,
- * Transition and Note are hidden until asked for (View ▸ Show times, Columns…).
- * Shown, the two times sit right after Fit, before Starts at: well left of the
- * selected row's buttons, which stick to the right edge and would cover a time
- * cell at the end of the row.
+ * The table opens on #, Title, Artist, Key, BPM, Plays for and Mix in (C246). Fit (a dot
+ * for whether the track mixes in from the one before), Mix out, Starts at, Transition and
+ * Note are hidden until asked for (View, Columns…). The two times sit together, well left
+ * of the selected row's buttons, which stick to the right edge and would cover a time cell
+ * at the end of the row.
  *
  * Mix in and Mix out are typed in place and a heading carries its chapter's
  * buttons (FLW-17, FLW-18): both through `prepareEditing`'s context.
@@ -28,16 +27,13 @@ import { effectiveText } from "../library/libraryClean";
 import { describeSetNotice, describeSetWarning, fitOf } from "./setWarnings";
 import { bpmRangeText, chapterTimeText, summarizeWarnings, timeCell } from "./prepareFormat";
 import { ChapterButtons, TimeCell } from "./prepareEditing";
-import { WarningCell } from "./WarningCell";
+import { FitDot, WarningCell } from "./WarningCell";
 import { chapterName, type PrepareRow } from "./prepareRows";
 
-// The second layout: the table now leads with Key, BPM and Fit and hides the
-// times, and a layout saved under the first key would keep the old order and
-// get Fit tacked on the end. Everyone is reset once; nothing reads the old key.
-export const PREPARE_TABLE_LAYOUT_KEY = "cuepoint-prepare-set-layout-2";
-
-/** The dot's shape as well as its colour, so it reads without telling reds from greens. */
-const FIT_GLYPH = { fit: "●", one: "◐", both: "○" } as const;
+// The third layout (C246): #, Title, Artist, Key, BPM, Plays for and Mix in, which fit beside
+// Details at the default size; a layout saved under the second key would keep its old order
+// and its columns. Everyone is reset once; nothing reads the old key.
+export const PREPARE_TABLE_LAYOUT_KEY = "cuepoint-prepare-set-layout-3";
 
 export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
   {
@@ -92,7 +88,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
               data-hint={own.map(describeSetWarning).join(". ")}
               aria-label={own.map(describeSetWarning).join(". ")}
             >
-              ⚠{" "}
+              <PixelIcon name="warning" size="sm" className="cp-pixel-icon--before" />
             </span>
           )}
           {row.entry.track.title}
@@ -100,6 +96,13 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
       );
     },
     text: (row) => (row.kind === "heading" ? chapterName(row.chapter) : row.entry.track.title),
+  },
+  {
+    id: "artist",
+    header: "Artist",
+    minWidthPx: 100,
+    defaultWidthPx: 150,
+    render: (row) => (row.kind === "entry" ? row.entry.track.artist : ""),
   },
   {
     id: "key",
@@ -126,7 +129,45 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
       row.kind === "heading" ? bpmRangeText(row.chapter) : effectiveText(row.entry.track, "bpm"),
   },
   {
+    id: "planned",
+    header: "Plays for",
+    hint: "How long this track plays in the Set, from its Mix in to its Mix out",
+    minWidthPx: 72,
+    defaultWidthPx: 84,
+    align: "right",
+    render: (row) =>
+      row.kind === "heading" ? (
+        <span data-hint="The chapter's planned time, against its target">
+          {chapterTimeText(row.chapter)}
+        </span>
+      ) : (
+        timeCell(row.entry.planned_seconds)
+      ),
+  },
+  {
+    id: "in",
+    header: "Mix in",
+    hint: "When you plan to bring this track in, as m:ss into the track",
+    minWidthPx: 48,
+    defaultWidthPx: 60,
+    align: "right",
+    render: (row) => <TimeCell row={row} field="in" />,
+    text: (row) => (row.kind === "entry" ? timeCell(row.entry.in_seconds) : ""),
+  },
+  {
+    id: "out",
+    header: "Mix out",
+    hint: "When you plan to take this track out, as m:ss into the track",
+    hiddenByDefault: true,
+    minWidthPx: 48,
+    defaultWidthPx: 60,
+    align: "right",
+    render: (row) => <TimeCell row={row} field="out" />,
+    text: (row) => (row.kind === "entry" ? timeCell(row.entry.out_seconds) : ""),
+  },
+  {
     id: "fit",
+    hiddenByDefault: true,
     header: "Fit",
     hint: "Whether this track mixes in from the one before: key and tempo",
     minWidthPx: 40,
@@ -156,7 +197,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
           data-hint={fit.level === "fit" ? "Mixes in fine" : fit.open.map(describeSetWarning).join(". ")}
           aria-label={fit.level === "fit" ? "Fits" : fit.open.map(describeSetWarning).join(". ")}
         >
-          {FIT_GLYPH[fit.level]}
+          <FitDot level={fit.level} />
         </span>
       );
     },
@@ -170,36 +211,8 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     },
   },
   {
-    id: "artist",
-    header: "Artist",
-    minWidthPx: 100,
-    defaultWidthPx: 150,
-    render: (row) => (row.kind === "entry" ? row.entry.track.artist : ""),
-  },
-  {
-    id: "in",
-    header: "Mix in",
-    hint: "When you plan to bring this track in, as m:ss into the track",
-    hiddenByDefault: true,
-    minWidthPx: 48,
-    defaultWidthPx: 60,
-    align: "right",
-    render: (row) => <TimeCell row={row} field="in" />,
-    text: (row) => (row.kind === "entry" ? timeCell(row.entry.in_seconds) : ""),
-  },
-  {
-    id: "out",
-    header: "Mix out",
-    hint: "When you plan to take this track out, as m:ss into the track",
-    hiddenByDefault: true,
-    minWidthPx: 48,
-    defaultWidthPx: 60,
-    align: "right",
-    render: (row) => <TimeCell row={row} field="out" />,
-    text: (row) => (row.kind === "entry" ? timeCell(row.entry.out_seconds) : ""),
-  },
-  {
     id: "starts_at",
+    hiddenByDefault: true,
     header: "Starts at",
     hint: "When this track starts if every planned time holds, counted from the start of the Set",
     minWidthPx: 56,
@@ -207,22 +220,6 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     align: "right",
     render: (row) =>
       timeCell(row.kind === "heading" ? row.chapter.starts_at : row.entry.starts_at),
-  },
-  {
-    id: "planned",
-    header: "Plays for",
-    hint: "How long this track plays in the Set, from its Mix in to its Mix out",
-    minWidthPx: 72,
-    defaultWidthPx: 84,
-    align: "right",
-    render: (row) =>
-      row.kind === "heading" ? (
-        <span data-hint="The chapter's planned time, against its target">
-          {chapterTimeText(row.chapter)}
-        </span>
-      ) : (
-        timeCell(row.entry.planned_seconds)
-      ),
   },
   {
     id: "transition",
