@@ -407,10 +407,18 @@
   padding: var(--space-xs) var(--space-lg);
 }
 
+/* One size for all of them, the transport keys and the rest alike: no side padding on either, so a
+   utility button is never wider than Previous or Next (C207). */
 :root[data-short-window] .cp-player-bar__button,
 :root[data-short-window] .cp-player-bar__button--standard {
   min-width: max(var(--control-height), 24px);
   min-height: max(var(--control-height), 24px);
+  padding: 0;
+}
+
+/* A button with words beside its icon (the queue's count, Repeat's state) keeps room round them. */
+:root[data-short-window] .cp-player-bar__button:has(.cp-player-bar__count, .cp-player-bar__repeat-label) {
+  padding: 0 var(--space-xs);
 }
 
 :root[data-short-window] .cp-player-bar__button--play {

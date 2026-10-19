@@ -59,6 +59,13 @@ describe("useCompactBar", () => {
     expect(playerBarCss).toContain(":root[data-short-window]");
   });
 
+  it("gives the transport keys and the utility buttons one size in the compact bar (C207)", () => {
+    const rule = playerBarCss.match(
+      /:root\[data-short-window\] \.cp-player-bar__button,\s*:root\[data-short-window\] \.cp-player-bar__button--standard \{([^}]*)\}/,
+    );
+    expect(rule?.[1]).toMatch(/padding:\s*0;/);
+  });
+
   it("reads a platform without matchMedia as tall", () => {
     // @ts-expect-error removing it is the point
     window.matchMedia = undefined;
