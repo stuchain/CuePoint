@@ -5,11 +5,11 @@
  *
  * Files carries missing, unreadable and not checked; Beatport the match states plus the tracks
  * with values not yet in their files; Other duplicates, matches Beatport changed after you
- * decided and tracks with no cover art; Analysis the waveforms and loudness. Every number is the
+ * decided and tracks with no artwork; Analysis the waveforms and loudness. Every number is the
  * engine's; the Library opens on the engine's own rules where Clean has no place for a count
- * (not synced, no cover art). Failed analysis opens Settings, where waveforms are managed.
+ * (not synced, no artwork). Failed analysis opens Settings, where waveforms are managed.
  *
- * Health lives here now, and Clean's Health tab is gone. The cover-art read is run by the page
+ * Health lives here now, and Clean's Health tab is gone. The artwork read is run by the page
  * (`useCleanJob` in StatisticsScreen), not here, so it outlives this tab when a scope change
  * or a failed re-read swaps it for a spinner; this tab only shows its state.
  */
@@ -22,6 +22,7 @@ import { Card } from "../../components/Card";
 import { LinkButton } from "../../components/LinkButton";
 import { formatCount } from "../../format/counts";
 import { formatDayTime } from "../../format/dates";
+import { MATCH_STATE, goTo } from "../../format/words";
 import { cleanSectionState } from "../clean/cleanLink";
 import type { CleanSection } from "../clean/cleanSections";
 import { libraryRulesState } from "../library/libraryLink";
@@ -43,21 +44,16 @@ interface Row {
   count: number;
   /** The bar part this row names; a row the bar does not draw has no swatch. */
   swatch?: BarTone;
-  /**
-   * A mark that is not in the bar: a square outlined in the colour of what writes to the
-   * user's files (green), for a count of what is not written yet.
-   */
-  outline?: "write";
   /** The count's colour while it is above zero and means work to do; otherwise plain. */
   todo?: "warning" | "danger";
   /** Where it is dealt with, or nothing to open. */
   place?: Place | null;
 }
 
-/** "Cover art last read Sep 3, 2026, 1:04 PM", or the plain fact that it has not been. */
+/** "Artwork last read Sep 3, 2026, 1:04 PM", or the plain fact that it has not been. */
 function artworkLine(checkedAt: string | null): string {
-  if (!checkedAt) return "Cover art has not been read yet";
-  return `Cover art last read ${formatDayTime(checkedAt) || checkedAt}`;
+  if (!checkedAt) return "Artwork has not been read yet";
+  return `Artwork last read ${formatDayTime(checkedAt) || checkedAt}`;
 }
 
 interface CardProps {
@@ -91,17 +87,19 @@ function HealthCard({ id, title, note, bar = false, rows, onOpen, children }: Ca
           <li key={row.id} className="health-card__row" data-row={row.id}>
             <span
               className={`health-card__swatch${
-                row.swatch
-                  ? ` stacked__part--${row.swatch}`
-                  : row.outline
-                    ? ` health-card__swatch--${row.outline}`
-                    : " health-card__swatch--none"
+                row.swatch && row.count > 0 ? ` stacked__part--${row.swatch}` : " health-card__swatch--none"
               }`}
               aria-hidden="true"
             />
             <span className="health-card__label">{row.label}</span>{" "}
             <span
-              className={`health-card__count${row.todo && row.count > 0 ? ` health-card__count--${row.todo}` : ""}`}
+              className={`health-card__count statistics-figure${
+                row.todo && row.count > 0
+                  ? ` health-card__count--${row.todo}`
+                  : row.swatch === "success"
+                    ? " health-card__count--ok"
+                    : ""
+              }`}
             >
               {formatCount(row.count)}
             </span>
@@ -109,10 +107,10 @@ function HealthCard({ id, title, note, bar = false, rows, onOpen, children }: Ca
               <LinkButton
                 go
                 className="health-card__open"
-                aria-label={`Open in ${row.place.page}: ${row.label}`}
+                aria-label={`${goTo(row.place.page)}: ${row.label}`}
                 onClick={() => onOpen(row.place!)}
               >
-                {`Open in ${row.place.page}`}
+                {goTo(row.place.page)}
               </LinkButton>
             ) : (
               <span className="health-card__open" aria-hidden="true" />
@@ -127,9 +125,9 @@ function HealthCard({ id, title, note, bar = false, rows, onOpen, children }: Ca
 
 interface HealthSectionProps {
   health: StatisticsHealth;
-  /** True while the page's cover-art read is running. */
+  /** True while the page's artwork read is running. */
   coverArtRunning: boolean;
-  /** Starts the cover-art read (the page owns it, so it survives this tab unmounting). */
+  /** Starts the artwork read (the page owns it, so it survives this tab unmounting). */
   onReadCoverArt: () => void;
 }
 
@@ -166,7 +164,7 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
         rows={[
           { id: "duplicates", label: "Duplicates", count: other.duplicates.count, todo: "warning", place: clean("duplicates") },
           { id: "disputed", label: "Changed since you decided", count: other.disputed.count, todo: "warning", place: clean("review") },
-          { id: "no_artwork", label: "No cover art", count: other.no_artwork.count, place: { page: "Library", rules: other.no_artwork.rules } },
+          { id: "no_artwork", label: "No artwork", count: other.no_artwork.count, place: { page: "Library", rules: other.no_artwork.rules } },
         ]}
       >
         <div className="health-card__foot">
@@ -176,7 +174,7 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
             disabled={coverArtRunning}
             loading={coverArtRunning}
           >
-            Read cover art
+            Read artwork
           </Button>
           <span className="statistics-note">{artworkLine(health.artwork_checked_at)}</span>
         </div>
@@ -188,12 +186,12 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
         bar
         onOpen={open}
         rows={[
-          { id: "accepted", label: "Confirmed", count: beatport.accepted.count, swatch: "success" },
-          { id: "needs_review", label: "To review", count: beatport.needs_review.count, swatch: "warning", todo: "warning", place: clean("review") },
-          { id: "rejected", label: "Rejected", count: beatport.rejected.count, swatch: "danger" },
-          { id: "no_match", label: "No match", count: beatport.no_match.count, swatch: "neutral", place: clean("review") },
-          { id: "not_matched", label: "Not matched", count: beatport.not_matched.count, swatch: "muted", place: clean("review") },
-          { id: "not_synced", label: "Not synced to files", count: health.not_synced.count, outline: "write", place: { page: "Library", rules: health.not_synced.rules } },
+          { id: "accepted", label: MATCH_STATE.confirmed, count: beatport.accepted.count, swatch: "success" },
+          { id: "needs_review", label: MATCH_STATE.toCheck, count: beatport.needs_review.count, swatch: "warning", todo: "warning", place: clean("review") },
+          { id: "rejected", label: MATCH_STATE.rejected, count: beatport.rejected.count, swatch: "danger" },
+          { id: "no_match", label: MATCH_STATE.noMatch, count: beatport.no_match.count, swatch: "neutral", place: clean("review") },
+          { id: "not_matched", label: MATCH_STATE.notLookedUp, count: beatport.not_matched.count, swatch: "muted", place: clean("review") },
+          { id: "not_synced", label: "Not synced to files", count: health.not_synced.count, place: { page: "Library", rules: health.not_synced.rules } },
         ]}
       />
       <HealthCard

@@ -961,7 +961,7 @@ describe("a link to the Health tab (K3)", () => {
   });
 });
 
-describe("reading cover art from Health", () => {
+describe("reading artwork from Health", () => {
   const startArtworkScan = vi.fn();
 
   beforeEach(() => {
@@ -976,14 +976,14 @@ describe("reading cover art from Health", () => {
     vi.clearAllMocks();
   });
 
-  const readButton = () => screen.getByRole("button", { name: "Read cover art" });
+  const readButton = () => screen.getByRole("button", { name: "Read artwork" });
 
   it("shows the button busy and disabled while the scan starts", async () => {
     startArtworkScan.mockReturnValue(new Promise(() => {}));
     renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
-    await userEvent.click(await screen.findByRole("button", { name: "Read cover art" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Read artwork" }));
 
-    const busy = await screen.findByRole("button", { name: "Read cover art" });
+    const busy = await screen.findByRole("button", { name: "Read artwork" });
     expect(busy).toBeDisabled();
     expect(busy).toHaveClass("cp-btn--loading");
     expect(startArtworkScan).toHaveBeenCalledWith({ selection: { query: {} } });
@@ -992,22 +992,22 @@ describe("reading cover art from Health", () => {
   it("reads health again and says it finished when the scan ends", async () => {
     startArtworkScan.mockResolvedValue({ job_id: "j1", id: "j1", state: "queued" });
     renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
-    await userEvent.click(await screen.findByRole("button", { name: "Read cover art" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Read artwork" }));
     await waitFor(() => expect(jobEnds).not.toBeNull());
-    expect(screen.getByRole("button", { name: "Read cover art" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Read artwork" })).toBeDisabled();
     const reads = mock("getStatisticsHealth").mock.calls.length;
 
     await act(async () => jobEnds!({ state: "succeeded" }));
 
     await waitFor(() => expect(mock("getStatisticsHealth")).toHaveBeenCalledTimes(reads + 1));
-    expect(await screen.findByText("Finished reading cover art.")).toBeInTheDocument();
+    expect(await screen.findByText("Finished reading artwork")).toBeInTheDocument();
     expect(readButton()).toBeEnabled();
   });
 
   it("still reads health again and shows the toast when Health unmounts mid-scan", async () => {
     startArtworkScan.mockResolvedValue({ job_id: "j1", id: "j1", state: "queued" });
     renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
-    await userEvent.click(await screen.findByRole("button", { name: "Read cover art" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Read artwork" }));
     await waitFor(() => expect(jobEnds).not.toBeNull());
 
     // The next health read is slow, so changing scope swaps Health for its spinner.
@@ -1019,7 +1019,7 @@ describe("reading cover art from Health", () => {
     await waitFor(() => expect(within(picker).getAllByRole("option").length).toBeGreaterThan(1));
     await userEvent.selectOptions(picker, "playlist:2");
     await within(panel("health")).findByRole("status");
-    expect(screen.queryByRole("button", { name: "Read cover art" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Read artwork" })).not.toBeInTheDocument();
     const reads = mock("getStatisticsHealth").mock.calls.length;
 
     mock("getStatisticsHealth").mockResolvedValue(health());
@@ -1029,8 +1029,8 @@ describe("reading cover art from Health", () => {
     await act(async () => answerSlow(health()));
 
     await waitFor(() => expect(mock("getStatisticsHealth")).toHaveBeenCalledTimes(reads + 1));
-    expect(await screen.findByText("Finished reading cover art.")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Read cover art" })).toBeEnabled();
+    expect(await screen.findByText("Finished reading artwork")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Read artwork" })).toBeEnabled();
   });
 });
 

@@ -19,13 +19,16 @@ import { Loading } from "../../components/Loading";
 import { KeyChip } from "../../components/wheel/KeyChip";
 import { formatCount } from "../../format/counts";
 import { needsDesktopApp } from "../../api/userMessage";
-import { RETRY } from "../../format/words";
+import { RETRY, goTo } from "../../format/words";
 import { keysState } from "../keys/keysLink";
 import { requestSources } from "../keys/keysSources";
 import { useKeysPopulation } from "../keys/useKeysPopulation";
 import { keysScopeFor } from "./statisticsKeys";
 
 const TOP = 6;
+
+/** A key's bar is its chip's tint (C100), not the solid neon of the key colour itself. */
+const KEY_BAR_TINT = "color-mix(in srgb, var(--key) 35%, transparent)";
 
 const noSourceGone = () => false;
 
@@ -83,10 +86,10 @@ export function KeySummary({ scope, collections }: KeySummaryProps) {
                 </span>
                 <RankBar
                   share={entry.count / top}
-                  color="var(--key)"
+                  color={KEY_BAR_TINT}
                   className={`key-chip--${entry.code}`}
                 />
-                <span className="keys__count">{formatCount(entry.count)}</span>
+                <span className="keys__count statistics-figure">{formatCount(entry.count)}</span>
               </li>
             ))}
           </ol>
@@ -102,14 +105,17 @@ export function KeySummary({ scope, collections }: KeySummaryProps) {
     <Card
       className="statistics-panel statistics-panel--keys"
       title="Keys"
-      unit={
-        <LinkButton go onClick={() => navigate("/keys", { state: keysState(picked) })}>
-          Open in Keys
-        </LinkButton>
-      }
+      unit="tracks"
       bodyClassName="statistics-panel__body"
     >
       {body}
+      <LinkButton
+        go
+        className="statistics-panel__link"
+        onClick={() => navigate("/keys", { state: keysState(picked) })}
+      >
+        {goTo("Keys")}
+      </LinkButton>
     </Card>
   );
 }

@@ -32,7 +32,7 @@ interface Figure {
   id: string;
   label: string;
   value: string;
-  note: string | null;
+  note: string;
 }
 
 /** Tracks added in `year`, from the date-added months (`YYYY-MM`). */
@@ -59,21 +59,25 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
       id: "tracks",
       label: "Tracks",
       value: formatCount(spreads.total),
-      note: playlistCount === null ? null : plural(playlistCount, "playlist"),
+      note: playlistCount === null ? "in this scope" : plural(playlistCount, "playlist"),
     },
     {
       id: "time",
       label: "Total time",
       value: formatTotal(spreads.total_seconds),
       note:
-        spreads.average_seconds === null ? null : `avg ${formatLength(spreads.average_seconds)}`,
+        spreads.average_seconds === null
+          ? "no lengths known"
+          : `avg ${formatLength(spreads.average_seconds)}`,
     },
     {
       id: "bpm",
       label: "Average BPM",
       value: spreads.average_bpm === null ? "—" : formatBpm(spreads.average_bpm),
       note:
-        spreads.tempo.unknown.count > 0 ? `${spreads.tempo.unknown.count} with no BPM` : null,
+        spreads.tempo.unknown.count > 0
+          ? `${formatCount(spreads.tempo.unknown.count)} with no BPM`
+          : "every track has a BPM",
     },
     {
       id: "added",
@@ -123,7 +127,7 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
           <div key={figure.id} className="library-figures__cell" data-figure={figure.id}>
             <dt className="cp-text-label">{figure.label}</dt>
             <dd className="library-figures__value">{figure.value}</dd>
-            {figure.note && <dd className="library-figures__note">{figure.note}</dd>}
+            <dd className="library-figures__note">{figure.note}</dd>
           </div>
         ))}
       </dl>

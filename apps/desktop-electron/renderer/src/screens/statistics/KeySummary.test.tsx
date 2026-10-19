@@ -11,6 +11,7 @@ import type { CollectionNode, KeysPopulation } from "../../api/cuepointBridge.ty
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { keysOpening } from "../keys/keysLink";
 import { KeySummary } from "./KeySummary";
+import css from "./statistics.css?raw";
 import { keysScopeFor } from "./statisticsKeys";
 
 const POPULATION: KeysPopulation = {
@@ -101,6 +102,29 @@ describe("the key summary (STATS-06)", () => {
         .map((item) => item.textContent),
     ).toEqual(["8A142", "9A131", "7A118", "1A5"]);
     expect(population).toHaveBeenCalledWith({ sources: [{ kind: "all" }] });
+  });
+
+  it("tints each bar with the key's chip colour, never a solid neon one (C100)", async () => {
+    renderSummary("library");
+    const list = await screen.findByRole("list", { name: "Commonest keys" });
+    const bars = list.querySelectorAll<HTMLElement>(".cp-rank-bar");
+    expect(bars).toHaveLength(4);
+    for (const bar of bars) {
+      expect(bar.style.getPropertyValue("--bar-color")).toBe("color-mix(in srgb, var(--key) 35%, transparent)");
+      expect(bar.className).toMatch(/key-chip--[0-9]+[AB]/);
+    }
+  });
+
+  it("draws the counts as every other figure on the page, and the link at the card's bottom right (C62, C256)", async () => {
+    renderSummary("library");
+    const list = await screen.findByRole("list", { name: "Commonest keys" });
+    for (const count of list.querySelectorAll(".keys__count")) expect(count).toHaveClass("statistics-figure");
+    const card = list.closest("section")!;
+    expect(card.querySelector(".cp-card__head")).not.toHaveTextContent("Open in Keys");
+    const link = within(card).getByRole("button", { name: "Open in Keys" });
+    expect(link).toHaveClass("statistics-panel__link");
+    expect(card.querySelector(".cp-card__body")).toContainElement(link);
+    expect(/\.statistics-panel__link\s*\{([^}]*)\}/.exec(css)![1]).toContain("align-self: flex-end;");
   });
 
   it("draws no list and says '0 with a key' when none is held", async () => {

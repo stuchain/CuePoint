@@ -129,7 +129,7 @@ export function StatisticsScreen() {
   const spreads = useStatisticsSpreads(reading, trees.refreshing);
   const health = useStatisticsHealth(reading, trees.refreshing);
 
-  // The cover-art read is run here, not in HealthSection: a scope change or a failed re-read
+  // The artwork read is run here, not in HealthSection: a scope change or a failed re-read
   // swaps that section for a spinner, and a follower living in it would be dropped mid-scan
   // (no toast, no re-read, the button free again while the job runs).
   const { push } = useToast();
@@ -148,7 +148,7 @@ export function StatisticsScreen() {
       return;
     }
     void runJob<CleanJobStarted>("artwork_scan", () => begin({ selection: { query: {} } }), {
-      succeeded: "Finished reading cover art.",
+      succeeded: "Finished reading artwork",
       onEnded: retryHealth,
     });
   }, [runJob, push, retryHealth]);

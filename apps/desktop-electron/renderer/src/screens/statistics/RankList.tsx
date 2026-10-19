@@ -5,14 +5,14 @@
  *
  * Shared by the Plays tab (top artists, labels and genres) and the Library tab (genres, labels
  * and artists by tracks). Only the first `shown` rows are drawn; the card's one link says how
- * many more it can show ("See top 10 ›") and puts them away again ("Show fewer").
+ * many more it can show ("Show all 10") and puts them away again ("Show less").
  */
 import { useState, type ReactNode } from "react";
 
 import type { FilterRuleSet } from "../../api/cuepointBridge.types";
 import { Card } from "../../components/Card";
 import { RankBar } from "../../components/charts/RankBar";
-import { LinkButton } from "../../components/LinkButton";
+import { ShowMore } from "../../components/ShowMore";
 import { formatCount } from "../../format/counts";
 
 export interface RankRow {
@@ -33,7 +33,7 @@ export interface RankRow {
 
 interface RankListProps {
   title: string;
-  /** What the card counts, at the heading's right: "plays · tracks". */
+  /** What the card counts, at the heading's right, in the order of its columns: "tracks · plays". */
   unit: string;
   rows: readonly RankRow[];
   /** The numeric columns, in order. */
@@ -92,7 +92,7 @@ export function RankList({
                   aria-label={row.label}
                   onClick={() => onOpen(row.rules)}
                 >
-                  <span className="rank__hash" aria-hidden="true">
+                  <span className="rank__hash statistics-figure" aria-hidden="true">
                     {index + 1}
                   </span>
                   <span className="rank__name" aria-hidden="true">
@@ -105,7 +105,7 @@ export function RankList({
                   {columns.map((column) => (
                     <span
                       key={column}
-                      className={`rank__number${column === columns[columns.length - 1] ? " rank__number--main" : ""}`}
+                      className={`rank__number statistics-figure${column === columns[columns.length - 1] ? " rank__number--main" : ""}`}
                       aria-hidden="true"
                     >
                       {formatCount(row[column] ?? 0)}
@@ -117,9 +117,9 @@ export function RankList({
           </ol>
           {children}
           {more && (
-            <LinkButton go={!all} className="rank__more" onClick={() => setAll((open) => !open)}>
-              {all ? "Show fewer" : `See top ${rows.length}`}
-            </LinkButton>
+            <div className="statistics-panel__foot">
+              <ShowMore total={rows.length} expanded={all} onToggle={() => setAll((open) => !open)} />
+            </div>
           )}
         </>
       )}

@@ -22,6 +22,7 @@ import type {
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { LinkButton } from "../../components/LinkButton";
+import { ShowMore } from "../../components/ShowMore";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
 import { PlayButton } from "../../components/PlayButton";
@@ -32,7 +33,7 @@ import { changedMark, useCountChanges } from "../../components/wheel/useCountCha
 import { isEngineRefusal } from "../../api/bridgeError";
 import { reportUnexpected } from "../../reporting/reporting";
 import { formatCount, plural } from "../../format/counts";
-import { RETRY } from "../../format/words";
+import { RETRY, goTo } from "../../format/words";
 import { formatBpm } from "../../format/units";
 import { libraryRulesState, libraryTrackState } from "../library/libraryLink";
 import { runQueueAction } from "../library/trackDetailsActions";
@@ -147,15 +148,26 @@ export function PlaysSection({
   const noHistory = data.history_from === null;
   const open = (rules: FilterRuleSet) => navigate("/library", { state: libraryRulesState(rules) });
 
-  const preview = async (track: StatisticsTrack) => {
+  // Playing a row queues the rest of the list from it, that row first, as the Library does for the
+  // view it plays from (C192). A later track that cannot be read is left out of the queue; the
+  // clicked one failing is said.
+  const preview = async (from: number) => {
     setMessage(null);
+    const read = window.cuepoint?.getLibraryTrack;
     try {
-      const detail = await window.cuepoint?.getLibraryTrack?.({ trackId: track.id });
-      if (!detail) {
+      const reads = await Promise.allSettled(
+        data.tracks.slice(from).map((track: StatisticsTrack) => read?.({ trackId: track.id })),
+      );
+      const [clicked] = reads;
+      if (clicked?.status === "rejected") throw clicked.reason;
+      if (!clicked?.value) {
         setMessage("That track could not be read.");
         return;
       }
-      const outcome = await runQueueAction("play", [detail.track]);
+      const rows = reads.flatMap((result) =>
+        result.status === "fulfilled" && result.value ? [result.value.track] : [],
+      );
+      const outcome = await runQueueAction("play", rows);
       if (outcome) setMessage(outcome.message);
     } catch (cause) {
       if (!isEngineRefusal(cause)) reportUnexpected(cause);
@@ -322,7 +334,7 @@ export function PlaysSection({
                           aria-label={`${index + 1}. ${track.title} by ${track.artist}, ${playsWord(track.plays)}`}
                           onClick={() => navigate("/library", { state: libraryTrackState(track.id) })}
                         >
-                          <span className="rank__hash" aria-hidden="true">
+                          <span className="rank__hash statistics-figure" aria-hidden="true">
                             {index + 1}
                           </span>
                           <span className="plays__what" aria-hidden="true">
@@ -332,10 +344,13 @@ export function PlaysSection({
                           <span className="plays__key" aria-hidden="true">
                             <KeyChip value={track.key} />
                           </span>
-                          <span className="rank__number" aria-hidden="true">
+                          <span className="rank__number statistics-figure" aria-hidden="true">
                             {formatBpm(track.bpm)}
                           </span>
-                          <span className="rank__number rank__number--main" aria-hidden="true">
+                          <span
+                            className="rank__number rank__number--main statistics-figure"
+                            aria-hidden="true"
+                          >
                             {count(track.plays)}
                           </span>
                         </button>
@@ -343,7 +358,7 @@ export function PlaysSection({
                           <PlayButton
                             className="plays__play"
                             aria-label={`Play ${track.title} by ${track.artist}`}
-                            onClick={() => void preview(track)}
+                            onClick={() => void preview(index)}
                           />
                         )}
                       </li>
@@ -372,13 +387,13 @@ export function PlaysSection({
                   <span className="statistics-note">Will be named “{name}”.</span>
                 )}
                 {(biggerList || choice.limit > 10) && (
-                  <LinkButton
-                    go={biggerList}
-                    className="plays__more"
-                    onClick={() => change({ ...choice, limit: biggerList ? 25 : 10 })}
-                  >
-                    {biggerList ? "See top 25" : "Show top 10"}
-                  </LinkButton>
+                  <span className="plays__more">
+                    <ShowMore
+                      total={25}
+                      expanded={!biggerList}
+                      onToggle={() => change({ ...choice, limit: biggerList ? 25 : 10 })}
+                    />
+                  </span>
                 )}
               </div>
               {kept && (
@@ -438,15 +453,18 @@ export function PlaysSection({
               ).map(([label, found]) => (
                 <div key={label} className="plays__unplayed-row">
                   <span className="plays__unplayed-label">{label}</span>
-                  <span className="plays__unplayed-count">{count(found.count)}</span>
-                  {found.count > 0 && (
+                  <span className="plays__unplayed-count statistics-figure">{count(found.count)}</span>
+                  {found.count > 0 ? (
                     <LinkButton
                       go
-                      aria-label={`Open in Library: ${label}`}
+                      className="plays__unplayed-open"
+                      aria-label={`${goTo("Library")}: ${label}`}
                       onClick={() => open(found.rules)}
                     >
-                      Open in Library
+                      {goTo("Library")}
                     </LinkButton>
+                  ) : (
+                    <span className="plays__unplayed-open" aria-hidden="true" />
                   )}
                 </div>
               ))}

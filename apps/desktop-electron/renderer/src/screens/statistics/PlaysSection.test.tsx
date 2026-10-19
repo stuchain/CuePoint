@@ -27,6 +27,8 @@ import {
   playsParams,
 } from "./playsChoice";
 import { StatisticsScreen } from "./StatisticsScreen";
+import playsCss from "./PlaysSection.css?raw";
+import css from "./statistics.css?raw";
 
 vi.mock("../../reporting/reporting", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../reporting/reporting")>()),
@@ -204,7 +206,7 @@ describe("the Plays section (STATS-05)", () => {
 
       expect(lastAsked()).toMatchObject({ limit: 10, scope: "library" });
       expect(within(region).getByText("top 10")).toBeInTheDocument();
-      expect(within(region).getByRole("button", { name: "See top 25" })).toBeInTheDocument();
+      expect(within(region).getByRole("button", { name: "Show all 25" })).toBeInTheDocument();
     });
 
     it("asks the route for the top 25 from that link, remembers it, and offers to go back", async () => {
@@ -212,14 +214,14 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.click(within(region).getByRole("button", { name: "See top 25" }));
+      await user.click(within(region).getByRole("button", { name: "Show all 25" }));
 
       await waitFor(() => expect(lastAsked()).toMatchObject({ limit: 25, scope: "library" }));
       expect(JSON.parse(window.localStorage.getItem(PLAYS_STORAGE_KEY) ?? "{}")).toEqual({
         limit: 25,
         since: "all",
       });
-      await user.click(await within(region).findByRole("button", { name: "Show top 10" }));
+      await user.click(await within(region).findByRole("button", { name: "Show less" }));
       await waitFor(() =>
         expect(JSON.parse(window.localStorage.getItem(PLAYS_STORAGE_KEY) ?? "{}")).toEqual({ limit: 10, since: "all" }),
       );
@@ -526,7 +528,7 @@ describe("the Plays section (STATS-05)", () => {
       });
     });
 
-    it("lists five artists, and the rest behind See top N", async () => {
+    it("lists five artists, and the rest behind Show all N", async () => {
       const user = userEvent.setup();
       const many = Array.from({ length: 14 }, (_, i) => ({
         name: `Artist ${i}`,
@@ -543,9 +545,9 @@ describe("the Plays section (STATS-05)", () => {
       const list = within(region).getByRole("list", { name: "Top artists" });
       expect(within(list).getAllByRole("listitem")).toHaveLength(5);
       const card = list.closest("section")!;
-      await user.click(within(card).getByRole("button", { name: "See top 14" }));
+      await user.click(within(card).getByRole("button", { name: "Show all 14" }));
       expect(within(list).getAllByRole("listitem")).toHaveLength(14);
-      await user.click(within(card).getByRole("button", { name: "Show fewer" }));
+      await user.click(within(card).getByRole("button", { name: "Show less" }));
       expect(within(list).getAllByRole("listitem")).toHaveLength(5);
     });
 
@@ -832,15 +834,15 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.click(within(region).getByRole("button", { name: "See top 25" }));
+      await user.click(within(region).getByRole("button", { name: "Show all 25" }));
 
-      const control = within(region).getByRole("button", { name: "Show top 10" });
+      const control = within(region).getByRole("button", { name: "Show less" });
       expect(within(region).getByText("top 25")).toBeInTheDocument();
       expect(within(region).getByRole("button", { name: "1. Alpha by B, 14 plays" })).toBeVisible();
       expect(within(region).getByRole("button", { name: "Keep as Collection" })).toBeDisabled();
       release(plays({ tracks: [{ id: 90, title: "Bravo", artist: "C", plays: 9, key: null, bpm: null }] }));
       expect(await within(region).findByRole("button", { name: "1. Bravo by C, 9 plays" })).toBeVisible();
-      expect(within(region).getByRole("button", { name: "Show top 10" })).toBe(control);
+      expect(within(region).getByRole("button", { name: "Show less" })).toBe(control);
     });
   });
 
@@ -979,7 +981,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.click(within(region).getByRole("button", { name: "See top 25" }));
+      await user.click(within(region).getByRole("button", { name: "Show all 25" }));
 
       expect(await within(region).findByRole("alert")).toHaveTextContent(
         "These plays could not be read",
@@ -1002,7 +1004,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      await user.click(within(region).getByRole("button", { name: "See top 25" }));
+      await user.click(within(region).getByRole("button", { name: "Show all 25" }));
 
       await within(region).findByRole("alert");
       expect(reportUnexpected).toHaveBeenCalledTimes(1);
@@ -1022,7 +1024,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       const region = await section();
       expect(within(region).queryByText("Loading plays…")).toBeNull();
 
-      await user.click(within(region).getByRole("button", { name: "See top 25" }));
+      await user.click(within(region).getByRole("button", { name: "Show all 25" }));
 
       expect(await within(region).findByText("Loading plays…")).toBeVisible();
       expect(region.querySelector(".plays--stale")).not.toBeNull();
@@ -1079,6 +1081,112 @@ describe("the Plays section, after review (STATS-05)", () => {
       await waitFor(() =>
         expect(mock("getStatisticsPlays").mock.calls.length).toBeGreaterThan(reads),
       );
+    });
+  });
+
+  describe("playing from Most played (C192)", () => {
+    const rowFor = (id: number) => ({ id, title: `T${id}`, artist: "B", file_path: `/m/${id}.mp3` });
+
+    it("queues the rest of the list from the clicked row, that row first", async () => {
+      const playQueue = vi.fn().mockResolvedValue({ ok: true });
+      install({
+        player: { playQueue },
+        getLibraryTrack: vi.fn(({ trackId }: { trackId: number }) => Promise.resolve({ track: rowFor(trackId) })),
+      });
+      const user = userEvent.setup();
+      renderPage();
+      const region = await section();
+
+      await user.click(within(region).getByRole("button", { name: "Play Bravo by C" }));
+
+      await waitFor(() => expect(playQueue).toHaveBeenCalledTimes(1));
+      const [items, start] = playQueue.mock.calls[0]!;
+      expect(items.map((item: { trackId: number }) => item.trackId)).toEqual([90, 4]);
+      expect(start).toBe(0);
+      // The rows above the clicked one are not read at all.
+      expect(mock("getLibraryTrack")).not.toHaveBeenCalledWith({ trackId: 812 });
+    });
+
+    it("skips a later track that cannot be read and still plays the clicked one", async () => {
+      const playQueue = vi.fn().mockResolvedValue({ ok: true });
+      install({
+        player: { playQueue },
+        getLibraryTrack: vi.fn(({ trackId }: { trackId: number }) =>
+          trackId === 90 ? Promise.reject(new Error("gone")) : Promise.resolve({ track: rowFor(trackId) }),
+        ),
+      });
+      const user = userEvent.setup();
+      renderPage();
+      const region = await section();
+
+      await user.click(within(region).getByRole("button", { name: "Play Alpha by B" }));
+
+      await waitFor(() => expect(playQueue).toHaveBeenCalledTimes(1));
+      expect(playQueue.mock.calls[0]![0].map((item: { trackId: number }) => item.trackId)).toEqual([812, 4]);
+    });
+
+    it("says so, and plays nothing, when the clicked track itself cannot be read", async () => {
+      const playQueue = vi.fn().mockResolvedValue({ ok: true });
+      install({
+        player: { playQueue },
+        getLibraryTrack: vi.fn(({ trackId }: { trackId: number }) =>
+          trackId === 90 ? Promise.reject(new Error("gone")) : Promise.resolve({ track: rowFor(trackId) }),
+        ),
+      });
+      const user = userEvent.setup();
+      renderPage();
+      const region = await section();
+
+      await user.click(within(region).getByRole("button", { name: "Play Bravo by C" }));
+
+      expect(await within(region).findByText("That track could not be read.")).toBeVisible();
+      expect(playQueue).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("the number columns and the play column (C38, C54, C62)", () => {
+    it("gives Not played a fixed number column, with an empty link cell when there is nothing to open", async () => {
+      install({
+        getStatisticsPlays: vi.fn().mockResolvedValue(plays({ never_played: count(84), unknown: count(0) })),
+      });
+      renderPage();
+      const region = await section();
+
+      const rows = region.querySelectorAll(".plays__unplayed-row");
+      expect(rows).toHaveLength(2);
+      for (const row of rows) {
+        expect(row.children).toHaveLength(3);
+        expect(row.children[1]).toHaveClass("plays__unplayed-count");
+      }
+      expect(rows[1]!.children[2]).toBeEmptyDOMElement();
+      const rule = /\.plays__unplayed-row\s*\{([^}]*)\}/.exec(playsCss)![1]!;
+      expect(rule).toContain("display: grid;");
+      expect(rule).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\) 6ch minmax\(max-content, 17ch\);/);
+    });
+
+    it("keeps the play buttons in a fixed column and cuts a long title short", () => {
+      const item = /\.plays__item\s*\{([^}]*)\}/.exec(playsCss)![1]!;
+      expect(item).toContain("display: grid;");
+      expect(item).toContain("grid-template-columns: minmax(0, 1fr) var(--plays-play-column);");
+      expect(playsCss).toMatch(/--plays-play-column:\s*round\(nearest, calc\(16px \* var\(--scale\)\), 1px\)/);
+      expect(playsCss).toMatch(/\.plays__row\s*\{\s*min-width:\s*0;/);
+      const name = /\.plays__name,\s*\.plays__artist\s*\{([^}]*)\}/.exec(playsCss)![1]!;
+      expect(name).toContain("text-overflow: ellipsis;");
+    });
+
+    it("draws every figure one way: the data face, tabular, at the size of the names", () => {
+      const figure = /\.statistics-figure[^{]*\{([^}]*)\}/.exec(css)![1]!;
+      expect(figure).toContain("font-family: var(--font-data);");
+      expect(figure).toContain("font-variant-numeric: tabular-nums;");
+      expect(figure).not.toMatch(/font-size/);
+    });
+
+    it("marks the ranked numbers and the Not played count as figures", async () => {
+      renderPage();
+      const region = await section();
+      for (const cell of region.querySelectorAll(".rank__row .rank__number, .plays__unplayed-count, .plays__row .rank__number")) {
+        expect(cell).toHaveClass("statistics-figure");
+      }
     });
   });
 

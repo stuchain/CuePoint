@@ -55,8 +55,15 @@
   margin-right: calc(var(--space-md) + var(--space-sm) + round(nearest, calc(16px * var(--scale)), 1px));
 }
 
+/* The row, then the play button in a column of its own that is always as wide as the button, so a
+   long title never pushes it out of line (C54). */
+.plays__list {
+  --plays-play-column: round(nearest, calc(16px * var(--scale)), 1px);
+}
+
 .plays__item {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--plays-play-column);
   align-items: center;
   gap: var(--space-md);
   min-width: 0;
@@ -65,11 +72,10 @@
 }
 
 .plays__item:hover {
-  background: var(--bg-panel-alt);
+  background: var(--hover-fill);
 }
 
 .plays__row {
-  flex: 1 1 auto;
   min-width: 0;
   min-height: var(--row-height);
   padding: 0 var(--space-sm);
@@ -111,9 +117,8 @@
   display: flex;
 }
 
-/* The row's play button is the shared PlayButton, at the row's right end. */
+/* The row's play button is the shared PlayButton, in the list's last column. */
 .plays__play {
-  flex: none;
   margin-right: var(--space-sm);
 }
 
@@ -129,26 +134,22 @@
   margin-left: auto;
 }
 
+/* The Health › Other pattern: label, a fixed number column, then the link's column, so the two
+   counts line up whether or not there is anything to open (C38). */
 .plays__unplayed-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6ch minmax(max-content, 17ch);
   align-items: center;
   gap: var(--space-md);
   min-height: var(--row-height);
 }
 
-.plays__unplayed-label {
-  flex: 1 1 auto;
-}
-
 .plays__unplayed-count {
   color: var(--fg-muted);
-  font-family: var(--font-data);
-  font-variant-numeric: tabular-nums;
 }
 
-.plays__unplayed-row > .cp-link {
-  min-width: 17ch;
-  text-align: right;
+.plays__unplayed-open {
+  justify-self: end;
   white-space: nowrap;
 }
 

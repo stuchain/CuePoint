@@ -52,21 +52,18 @@
 .statistics-note {
   margin: 0;
   color: var(--fg-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
 }
 
-.statistics-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-xs);
-  max-width: 56ch;
-}
-
-.statistics-empty__title {
-  margin: 0;
-  font-size: var(--text-heading);
-  font-weight: var(--weight-strong);
+/*
+ * Every number in a column (C62): the data face, even-width digits, at the size of the names
+ * beside it (no size of its own), right-aligned. Ranked lists, the Keys counts, Health's counts
+ * and Not played all use it, so a figure looks the same wherever it is.
+ */
+.statistics-figure {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 /*
@@ -104,6 +101,20 @@
   gap: var(--space-xs) var(--space-md);
 }
 
+/* A card's link, or its "Show all" button, sits at the bottom right inside the card (C256). */
+.statistics-panel__link {
+  align-self: flex-end;
+}
+
+.statistics-panel__foot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.statistics-panel__line > .cp-link {
+  margin-left: auto;
+}
+
 /* ---- Ranked lists (top artists, labels and genres; the Library tab's lists). */
 .rank__list {
   display: flex;
@@ -135,7 +146,7 @@
 }
 
 .rank__item:hover {
-  background: var(--bg-panel-alt);
+  background: var(--hover-fill);
 }
 
 .rank__row {
@@ -157,8 +168,6 @@
 .rank__hash,
 .rank__number {
   color: var(--fg-muted);
-  font-family: var(--font-data);
-  font-size: var(--font-size-sm);
   text-align: right;
 }
 
@@ -167,7 +176,7 @@
 }
 
 /* A column heading is one small header style whatever its column: the "#", BPM, Plays and
-   Tracks headings share the row classes (right-aligned) but not the figures' size or face. */
+   Tracks headings share the row classes (right-aligned) but not the figures' colour. */
 .rank__columns > .rank__hash,
 .rank__columns > .rank__number,
 .plays__columns-head > .rank__hash,
@@ -200,10 +209,6 @@
   margin-left: var(--space-md);
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
-}
-
-.rank__more {
-  align-self: flex-end;
 }
 
 /* ---- The Library tab. */
@@ -252,7 +257,7 @@
 .library-figures__note {
   color: var(--fg-muted);
   font-family: var(--font-pixel-digits);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
 }
 
 /* The Keys chart: the key's own chip, a bar in its colour, and the count. */
@@ -275,9 +280,6 @@
 
 .keys__count {
   color: var(--fg-muted);
-  font-family: var(--font-data);
-  font-size: var(--font-size-sm);
-  text-align: right;
 }
 
 /* ---- The Health tab: its four cards sit in the page's one grid. */
@@ -308,14 +310,6 @@
   background: transparent;
 }
 
-/* Not in the bar: outlined in the colour of what writes to your files, because it counts what is
-   not written yet. */
-.health-card__swatch--write {
-  box-sizing: border-box;
-  border: var(--control-border-width) solid var(--accent-success);
-  background: transparent;
-}
-
 .health-card__label {
   min-width: 0;
   overflow: hidden;
@@ -326,8 +320,11 @@
 .health-card__count {
   justify-self: end;
   color: var(--fg-muted);
-  font-family: var(--font-data);
-  font-variant-numeric: tabular-nums;
+}
+
+/* All is well is quiet (C99, D14): the count is the muted text colour, as the bar's segment is grey. */
+.health-card__count--ok {
+  color: var(--fg-muted);
 }
 
 .health-card__count--warning {
@@ -371,7 +368,7 @@
 }
 
 .stacked__part--success {
-  background: var(--accent-success);
+  background: var(--health-ok);
 }
 
 .stacked__part--warning {
@@ -390,8 +387,9 @@
   background: var(--fg-muted);
 }
 
+/* Not looked at yet: the muted text colour, softened, never the divider colour (C98). */
 .stacked__part--muted {
-  background: var(--border-muted);
+  background: color-mix(in srgb, var(--fg-muted) 55%, transparent);
 }
 
 .stacked__legend {

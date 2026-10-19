@@ -1,6 +1,6 @@
 /**
  * The Library tab: four numbers, Genres, Labels and Artists by track count (five rows, the rest
- * behind "See top N"), and the charts, with Date added and Rating behind "More charts".
+ * behind "Show all N"), and the charts, with Date added and Rating behind "More charts".
  */
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -15,6 +15,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { rulesFromLocationState } from "../library/libraryLink";
 import { LibrarySection } from "./LibrarySection";
+import css from "./statistics.css?raw";
 
 const rules = (field: string, value: unknown): FilterRuleSet => ({
   match: "all",
@@ -114,11 +115,36 @@ describe("the Library tab", () => {
     expect(figure("added")).toHaveTextContent("Added this year4122026");
   });
 
-  it("leaves out what it cannot say: no playlist count for a scope, no average with no lengths", () => {
+  it("gives every tile a second line, even when it cannot say the usual one (C257)", () => {
     renderTab(spreads({ average_seconds: null, average_bpm: null, total_seconds: 0 }), null);
-    expect(figure("tracks")).toHaveTextContent(/^Tracks2,847$/);
+    expect(figure("tracks")).toHaveTextContent(/^Tracks2,847in this scope$/);
     expect(figure("time")).not.toHaveTextContent("avg");
+    expect(figure("time")).toHaveTextContent("no lengths known");
     expect(figure("bpm")).toHaveTextContent(/^Average BPM—/);
+    for (const cell of document.querySelectorAll(".library-figures__cell")) {
+      expect(cell.querySelectorAll(".library-figures__note")).toHaveLength(1);
+    }
+  });
+
+  it("says every track has a BPM when none lacks one", () => {
+    renderTab(spreads({ tempo: { ...spreads().tempo, unknown: { label: "No tempo", count: 0, rules: null } } }));
+    expect(figure("bpm")).toHaveTextContent("Average BPM126.4every track has a BPM");
+  });
+
+  it("does not repeat the track count in the tab, and keeps the figure notes quiet and small (C59, C257)", () => {
+    const note = /\.library-figures__note\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(note).toContain("font-size: var(--font-size-xs);");
+    const quiet = /\.statistics-note\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(quiet).toContain("font-size: var(--font-size-xs);");
+  });
+
+  it("puts More charts at the bottom right inside the last card, not floating outside any card (C256)", async () => {
+    const user = userEvent.setup();
+    renderTab();
+    const link = screen.getByRole("button", { name: "More charts: date added, rating" });
+    expect(link.closest("section")).toHaveAttribute("data-panel", "loudness");
+    await user.click(link);
+    expect(screen.getByRole("button", { name: "Fewer charts" }).closest("section")).toHaveAttribute("data-panel", "rating");
   });
 
   it("lists Genres, Labels and Artists by tracks, five genres first", async () => {
@@ -128,7 +154,7 @@ describe("the Library tab", () => {
     expect(within(genres).getAllByRole("listitem")).toHaveLength(5);
     expect(within(genres).getByRole("button", { name: "Tech House, 900 tracks" })).toBeInTheDocument();
     // The seven named genres; Other is a rest, not a genre.
-    await user.click(within(genres.closest("section")!).getByRole("button", { name: "See top 7" }));
+    await user.click(within(genres.closest("section")!).getByRole("button", { name: "Show all 7" }));
     expect(within(genres).getAllByRole("listitem")).toHaveLength(7);
     expect(within(genres).queryByRole("button", { name: /^Other/ })).toBeNull();
 

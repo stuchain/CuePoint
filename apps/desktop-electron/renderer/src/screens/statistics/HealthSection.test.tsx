@@ -1,7 +1,7 @@
 /**
  * The Health tab (STATS-07, K3): four cards with their stacked bars and legends, a tinted count
  * chip on each thing to fix and where it opens ("Open in Clean"), the not-checked lines, and Read
- * cover art starting the scan.
+ * artwork starting the scan.
  */
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -18,8 +18,10 @@ import { cleanSectionOpening } from "../clean/cleanLink";
 import { rulesFromLocationState } from "../library/libraryLink";
 import { settingsFocus } from "../settingsLink";
 import { formatDayTime } from "../../format/dates";
+import css from "./statistics.css?raw";
 import { HealthSection } from "./HealthSection";
 import { healthToFix } from "./healthCount";
+import { MATCH_STATE } from "../../format/words";
 
 const rules = (field: string, value: unknown): FilterRuleSet => ({
   match: "all",
@@ -126,7 +128,7 @@ describe("the Health tab (STATS-07, K3)", () => {
     for (const text of ["Present 80", "Missing 12", "Unreadable 3", "Not checked 5"]) {
       expect(panel("files")).toHaveTextContent(text);
     }
-    for (const text of ["Confirmed 50", "To review 10", "Rejected 2", "No match 3", "Not matched 35"]) {
+    for (const text of ["Confirmed 50", "To check 10", "Rejected 2", "No match 3", "Not looked up yet 35"]) {
       expect(panel("beatport")).toHaveTextContent(text);
     }
     for (const text of ["Analyzed 40", "Waiting 30", "Failed 2", "No file 28"]) {
@@ -213,7 +215,7 @@ describe("the Health tab (STATS-07, K3)", () => {
     expect(where().dataset.section).toBe("review");
   });
 
-  it("opens the Library on the engine's own rules for Not synced to files and No cover art", async () => {
+  it("opens the Library on the engine's own rules for Not synced to files and No artwork", async () => {
     const first = renderSection();
     await userEvent.click(within(rowOf("beatport", "not_synced")).getByRole("button", { name: /Open in Library/ }));
     expect(where()).toHaveTextContent("/library");
@@ -231,25 +233,25 @@ describe("the Health tab (STATS-07, K3)", () => {
     expect(where().dataset.settings).toBe("waveforms");
   });
 
-  it("says when the cover art was last read, and when it never was", () => {
+  it("says when the artwork was last read, and when it never was", () => {
     const first = renderSection();
-    expect(within(panel("other")).getByText(`Cover art last read ${whenOf(HEALTH.artwork_checked_at!)}`)).toBeInTheDocument();
+    expect(within(panel("other")).getByText(`Artwork last read ${whenOf(HEALTH.artwork_checked_at!)}`)).toBeInTheDocument();
     first.unmount();
     renderSection({ ...HEALTH, artwork_checked_at: null });
-    expect(within(panel("other")).getByText("Cover art has not been read yet")).toBeInTheDocument();
+    expect(within(panel("other")).getByText("Artwork has not been read yet")).toBeInTheDocument();
   });
 
-  it("asks the page to read the cover art when Read cover art is pressed", async () => {
+  it("asks the page to read the artwork when Read artwork is pressed", async () => {
     const onReadCoverArt = vi.fn();
     renderSection(HEALTH, { onReadCoverArt });
-    await userEvent.click(within(panel("other")).getByRole("button", { name: "Read cover art" }));
+    await userEvent.click(within(panel("other")).getByRole("button", { name: "Read artwork" }));
     expect(onReadCoverArt).toHaveBeenCalledTimes(1);
   });
 
-  it("disables Read cover art and shows it busy while the read runs", async () => {
+  it("disables Read artwork and shows it busy while the read runs", async () => {
     const onReadCoverArt = vi.fn();
     renderSection(HEALTH, { coverArtRunning: true, onReadCoverArt });
-    const button = within(panel("other")).getByRole("button", { name: "Read cover art" });
+    const button = within(panel("other")).getByRole("button", { name: "Read artwork" });
     expect(button).toBeDisabled();
     expect(button).toHaveClass("cp-btn--loading");
     await userEvent.click(button);
@@ -264,11 +266,50 @@ describe("the Health tab (STATS-07, K3)", () => {
     }
   });
 
-  it("marks Not synced to files with a green-outlined square, the rest keeping their bar colours", () => {
+  it("draws a swatch only for a state that has a segment in the bar (C98)", () => {
+    renderSection({ ...HEALTH, files: { ...HEALTH.files, not_checked: count(0, "not_checked") } });
+    const swatch = (card: string, id: string) => rowOf(card, id).querySelector(".health-card__swatch")!;
+    // Not synced is a count beside the bar, not a part of it: no hollow square promising a colour.
+    expect(swatch("beatport", "not_synced")).toHaveClass("health-card__swatch--none");
+    expect(swatch("beatport", "not_synced")).not.toHaveClass("health-card__swatch--write");
+    // A state with nothing in it has no segment, so no swatch.
+    expect(swatch("files", "not_checked")).toHaveClass("health-card__swatch--none");
+    expect(swatch("beatport", "accepted")).toHaveClass("stacked__part--success");
+    expect(css).not.toContain("health-card__swatch--write");
+  });
+
+  it("names the match states with the shared words (C152)", () => {
     renderSection();
-    const swatch = (id: string) => rowOf("beatport", id).querySelector(".health-card__swatch")!;
-    expect(swatch("not_synced")).toHaveClass("health-card__swatch--write");
-    expect(swatch("not_synced")).not.toHaveClass("health-card__swatch--none");
-    expect(swatch("accepted")).toHaveClass("stacked__part--success");
+    const label = (id: string) => rowOf("beatport", id).querySelector(".health-card__label")!.textContent;
+    expect([label("accepted"), label("needs_review"), label("no_match"), label("not_matched"), label("rejected")]).toEqual([
+      MATCH_STATE.confirmed,
+      MATCH_STATE.toCheck,
+      MATCH_STATE.noMatch,
+      MATCH_STATE.notLookedUp,
+      MATCH_STATE.rejected,
+    ]);
+    expect(panel("beatport")).not.toHaveTextContent(/To review|Not matched/);
+  });
+
+  it("draws what is healthy quietly: the grey --health-ok segment and a muted OK count (C99, D14)", () => {
+    renderSection();
+    const success = /\.stacked__part--success\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(success).toContain("background: var(--health-ok);");
+    for (const [card, id] of [["files", "present"], ["beatport", "accepted"], ["analysis", "analyzed"]] as const) {
+      const figure = rowOf(card, id).querySelector(".health-card__count")!;
+      expect(figure).toHaveClass("health-card__count--ok");
+      expect(figure).not.toHaveClass("health-card__count--warning", "health-card__count--danger");
+    }
+    const ok = /\.health-card__count--ok\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(ok).toContain("color: var(--fg-muted);");
+    // A problem still shows in its own colour.
+    expect(rowOf("files", "missing").querySelector(".health-card__count")).toHaveClass("health-card__count--danger");
+  });
+
+  it("draws the states nobody has looked at in --fg-muted and not the divider colour (C98)", () => {
+    const muted = /\.stacked__part--muted\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(muted).toContain("var(--fg-muted)");
+    expect(muted).not.toContain("--border-muted");
+    expect(css).not.toContain("var(--border-muted)");
   });
 });
