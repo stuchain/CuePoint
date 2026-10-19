@@ -141,6 +141,26 @@ export function Modal({
   initialFocusRef.current = initialFocus;
   const primaryRef = useRef(primaryAction);
   primaryRef.current = primaryAction;
+  const meRef = useRef({});
+
+  // Enter runs in the bubble phase, after the field's own handler. A capture listener on the
+  // window fired first, so a field that submits itself (NewSetDialogs, ChapterDialog) submitted
+  // twice. A handler that already took the key calls preventDefault, and this then does nothing.
+  const onDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter" || event.defaultPrevented || event.nativeEvent.isComposing) return;
+    if (openDialogs[openDialogs.length - 1] !== meRef.current) return;
+    // Enter in a text field presses the one main button, if it can be pressed. A button, a
+    // link, a multi-line box or a list keeps its own Enter.
+    const target = event.target;
+    const main = primaryRef.current;
+    if (main && !main.disabled && !main.loading && target instanceof HTMLInputElement) {
+      const type = target.type;
+      if (type !== "button" && type !== "submit" && type !== "checkbox" && type !== "radio") {
+        event.preventDefault();
+        main.onClick();
+      }
+    }
+  };
 
   // Layout effects, not passive ones: the dialog is on screen from this commit, and
   // a passive effect runs after the paint, so an Escape pressed as it appeared (or
@@ -164,27 +184,13 @@ export function Modal({
 
   useLayoutEffect(() => {
     if (!open) return;
-    const me = {};
+    const me = meRef.current;
     openDialogs.push(me);
     const onKeyDown = (event: KeyboardEvent) => {
       if (openDialogs[openDialogs.length - 1] !== me) return;
       if (event.key === "Escape") {
         event.stopPropagation();
         if (!closeDisabledRef.current) onCloseRef.current();
-        return;
-      }
-      if (event.key === "Enter" && !event.defaultPrevented) {
-        // Enter in a text field presses the one main button, if it can be pressed. A button, a
-        // link, a multi-line box or a list keeps its own Enter.
-        const target = event.target as HTMLElement | null;
-        const main = primaryRef.current;
-        if (main && !main.disabled && !main.loading && target instanceof HTMLInputElement && dialogRef.current?.contains(target)) {
-          const type = target.type;
-          if (type !== "button" && type !== "submit" && type !== "checkbox" && type !== "radio") {
-            event.preventDefault();
-            main.onClick();
-          }
-        }
         return;
       }
       if (event.key !== "Tab") return;
@@ -248,6 +254,7 @@ export function Modal({
         // focus rather than leaving it behind the backdrop.
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={onDialogKeyDown}
       >
         <header className="cp-modal__header">
           <h2 id={titleId} className="cp-modal__title">

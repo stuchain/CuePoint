@@ -422,6 +422,38 @@ describe("Enter submits (C111)", () => {
     expect(go).toHaveBeenCalledTimes(1);
   });
 
+  it("submits once when the field has its own Enter handler (B1)", async () => {
+    // NewSetDialogs and ChapterDialog submit from the field and also name the main button.
+    const go = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Modal open title="New Set" onClose={() => {}} primaryAction={{ label: "Make", onClick: go }}>
+        <input
+          aria-label="Name"
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              go();
+            }
+          }}
+        />
+      </Modal>,
+    );
+    await user.type(screen.getByRole("textbox", { name: "Name" }), "x{Enter}");
+    expect(go).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores Enter that confirms an IME composition (B1)", () => {
+    const go = vi.fn();
+    render(
+      <Modal open title="Rename" onClose={() => {}} primaryAction={{ label: "Rename", onClick: go }}>
+        <input aria-label="Name" />
+      </Modal>,
+    );
+    fireEvent.keyDown(screen.getByRole("textbox", { name: "Name" }), { key: "Enter", isComposing: true });
+    expect(go).not.toHaveBeenCalled();
+  });
+
   it("does nothing when the main button is greyed", async () => {
     const go = vi.fn();
     const user = userEvent.setup();
