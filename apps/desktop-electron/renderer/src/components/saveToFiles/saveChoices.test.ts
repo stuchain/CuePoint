@@ -168,8 +168,8 @@ describe("what the button says", () => {
   const base = { choices: ticked, preview: preview(), total: 38, count: 47 };
 
   it("counts the files it will save", () => {
-    expect(saveState(base)).toEqual({ label: "Save to 38 files", enabled: true, reason: null });
-    expect(saveState({ ...base, total: 1 }).label).toBe("Save to 1 file");
+    expect(saveState(base)).toEqual({ label: "Sync 38 files", enabled: true, reason: null });
+    expect(saveState({ ...base, total: 1 }).label).toBe("Sync 1 file");
   });
 
   it("is greyed with a reason when nothing is ticked", () => {
@@ -334,7 +334,7 @@ describe("the Sync window's own choices", () => {
     expect(previewOptions(DEFAULT_SYNC_CHOICES).embed_missing_artwork).toBe(true);
   });
 
-  it("say Write N files on the button, and Nothing to write when no ticked row changes a file", () => {
+  it("say Sync N files on the button, and Nothing to sync when no ticked row changes a file", () => {
     const base = {
       choices: DEFAULT_SYNC_CHOICES,
       preview: preview(),
@@ -342,10 +342,10 @@ describe("the Sync window's own choices", () => {
       count: 22,
       variant: "sync" as const,
     };
-    expect(saveState(base)).toEqual({ label: "Write 17 files", enabled: true, reason: null });
-    expect(saveState({ ...base, total: 1 }).label).toBe("Write 1 file");
-    expect(saveState({ ...base, total: 0 })).toMatchObject({ label: "Nothing to write", enabled: false });
-    expect(saveState({ ...base, total: null })).toMatchObject({ label: "Write files", enabled: false });
+    expect(saveState(base)).toEqual({ label: "Sync 17 files", enabled: true, reason: null });
+    expect(saveState({ ...base, total: 1 }).label).toBe("Sync 1 file");
+    expect(saveState({ ...base, total: 0 })).toMatchObject({ label: "Nothing to sync", enabled: false });
+    expect(saveState({ ...base, total: null })).toMatchObject({ label: "Sync files", enabled: false });
   });
 
   describe("when every ticked row reads 0 files", () => {
@@ -364,18 +364,18 @@ describe("the Sync window's own choices", () => {
       variant: "sync" as const,
     };
 
-    it("says Nothing to write and why, for a playlist of WAV files, even before or against the engine's total", () => {
+    it("says Nothing to sync and why, for a playlist of WAV files, even before or against the engine's total", () => {
       const wav = preview({ total: 17, files: 0, field_choices: empty, skipped: { wav: { count: 17, examples: [] } } });
       for (const total of [0, null, 17]) {
         expect(saveState({ ...base, preview: wav, total })).toEqual({
-          label: "Nothing to write",
+          label: "Nothing to sync",
           enabled: false,
           reason: "WAV files are skipped (Rekordbox does not read their tags).",
         });
       }
     });
 
-    it("says Nothing to write when Keep leaves every row at 0", () => {
+    it("says Nothing to sync when Keep leaves every row at 0", () => {
       const onlyReplace: TagFieldChoices = {
         ...empty,
         genre: { replace: 9, fill: 0 },
@@ -386,12 +386,12 @@ describe("the Sync window's own choices", () => {
       };
       const held = preview({ field_choices: onlyReplace });
       expect(saveState({ ...base, preview: held, total: 17 })).toMatchObject({
-        label: "Nothing to write",
+        label: "Nothing to sync",
         enabled: false,
         reason: "These files already hold these values.",
       });
       expect(saveState({ ...base, preview: held, total: 17, choices: { ...DEFAULT_SYNC_CHOICES, keep_existing: false } })).toMatchObject({
-        label: "Write 17 files",
+        label: "Sync 17 files",
         enabled: true,
       });
     });

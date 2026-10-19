@@ -83,7 +83,7 @@ export function RekordboxExportSettingsPanel() {
               </dd>
             </div>
             <div>
-              <dt>Keys written as</dt>
+              <dt>Key notation</dt>
               <dd data-testid="export-remembered-notation">
                 {keyFormatLabel(remembered.key_format)}
               </dd>

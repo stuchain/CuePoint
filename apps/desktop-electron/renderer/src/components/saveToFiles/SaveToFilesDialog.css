@@ -22,8 +22,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  min-height: var(--control-height);
-  padding: var(--space-xs) 0;
+  min-height: var(--row-height);
+  padding: 0;
   border-bottom: var(--divider);
   font-size: var(--text-body);
 }
@@ -38,9 +38,6 @@
 }
 
 .save-dialog__tick {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
   cursor: pointer;
 }
 
@@ -67,6 +64,7 @@
 .save-dialog__comment {
   flex: 1 1 0;
   min-width: 0;
+  max-width: calc(240px * var(--scale));
 }
 
 .save-dialog__count {
@@ -81,12 +79,6 @@
 
 .save-dialog__back {
   align-self: flex-start;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: var(--text-body);
-  cursor: pointer;
 }
 
 .save-dialog__changes {
@@ -116,6 +108,12 @@
   color: var(--fg-muted);
 }
 
+.save-dialog__progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
 .save-dialog__note {
   margin: 0;
   color: var(--fg-muted);
@@ -126,12 +124,6 @@
 .save-dialog__headline {
   margin: 0;
   font-weight: var(--font-weight-bold);
-}
-
-.save-dialog__problem {
-  margin: 0;
-  color: var(--danger-text);
-  font-size: var(--text-body);
 }
 
 .save-dialog__answer {
@@ -174,7 +166,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 /* The extra action ("See every change") is on the far left; the space is before Cancel. */

@@ -65,9 +65,9 @@ describe("a finished write and restore", () => {
   };
 
   it("counts failures apart from writes", () => {
-    expect(writeHeadline(written)).toBe("Wrote 4 files, 1 could not be written, 1 skipped.");
+    expect(writeHeadline(written)).toBe("Synced 4 files, 1 could not be synced, 1 skipped.");
     expect(writeHeadline({ ...written, failed: 0, skipped: {}, cancelled: true, written: 1 })).toBe(
-      "Stopped early. Wrote 1 file.",
+      "Stopped early. Synced 1 file.",
     );
   });
 

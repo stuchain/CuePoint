@@ -70,10 +70,10 @@ describe("the Rekordbox export in Settings", () => {
     expect(where).toBeVisible();
   });
 
-  it("calls the notation Keys written as", async () => {
+  it("calls the notation Key notation", async () => {
     renderPanel();
-    expect(await screen.findByText("Keys written as")).toBeInTheDocument();
-    expect(screen.queryByText("Key notation")).toBeNull();
+    expect(await screen.findByText("Key notation")).toBeInTheDocument();
+    expect(screen.queryByText("Keys written as")).toBeNull();
   });
 
   it("shows the folder and notation the last written export used", async () => {
@@ -107,7 +107,7 @@ describe("the Rekordbox export in Settings", () => {
       "Nothing exported yet",
     );
     expect(screen.getByTestId("export-remembered-notation")).toHaveTextContent(
-      "As Rekordbox writes it (Am, C#)",
+      "Rekordbox's own (Am, C#)",
     );
     expect(screen.getByText("No exports yet.")).toBeInTheDocument();
   });

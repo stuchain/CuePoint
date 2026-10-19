@@ -452,7 +452,7 @@ describe("the summary and Details (DEC-247)", () => {
     renderDialog({ initialIds: [7] });
     await previewed();
     expect(within(dialog()).getByTestId("export-summary")).toHaveTextContent(
-      /Keys written as Camelot \(8A\)\.$/,
+      /Key notation: Camelot \(8A\)\.$/,
     );
 
     await openDetails(user);
@@ -661,7 +661,7 @@ describe("the key notation (DEC-089)", () => {
       .getAllByRole("option")
       .map((option) => option.textContent);
     expect(options).toEqual([
-      "As Rekordbox writes it (Am, C#)",
+      "Rekordbox's own (Am, C#)",
       "Camelot (8A, 12B)",
       "Short (Amin, Gmaj)",
     ]);
@@ -955,14 +955,14 @@ describe("opening it again (C19d)", () => {
       <RekordboxExportDialog open initialIds={[7]} tree={TREE} onClose={closed} onRefreshFirst={vi.fn()} onImport={vi.fn()} onOpenMissingFiles={vi.fn()} />,
     );
     await previewed();
-    expect(within(dialog()).getByTestId("export-summary")).toHaveTextContent(/Keys written as Camelot \(8A\)\.$/);
+    expect(within(dialog()).getByTestId("export-summary")).toHaveTextContent(/Key notation: Camelot \(8A\)\.$/);
     view.unmount();
     const before = bridge.getRekordboxExportHistory.mock.calls.length;
 
     renderDialog({ initialIds: [7] });
     await previewed();
     // The remembered notation came from the kept answer: nothing was asked again.
-    expect(within(dialog()).getByTestId("export-summary")).toHaveTextContent(/Keys written as Camelot \(8A\)\.$/);
+    expect(within(dialog()).getByTestId("export-summary")).toHaveTextContent(/Key notation: Camelot \(8A\)\.$/);
     expect(bridge.getRekordboxExportHistory.mock.calls.length).toBe(before);
 
     bridge.getRekordboxExportHistory.mockResolvedValue(HISTORY_EMPTY);

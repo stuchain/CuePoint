@@ -136,9 +136,9 @@ describe("the key notation (DEC-089)", () => {
   });
 
   it("names each notation inside a sentence", () => {
-    expect(keyFormatName("normal")).toBe("classic (Am)");
+    expect(keyFormatName("normal")).toBe("Rekordbox's own (Am)");
     expect(keyFormatName("camelot")).toBe("Camelot (8A)");
-    expect(keyFormatName("short")).toBe("short (Amin)");
+    expect(keyFormatName("short")).toBe("Short (Amin)");
   });
 
   it("is what the engine rewrote the keys in", () => {
@@ -236,13 +236,13 @@ describe("the summary line", () => {
       "4 tracks, 2 with changed values, and 4 playlists.",
     );
     expect(exportSummaryLine(CHOSEN, "camelot")).toBe(
-      "4 tracks, 2 with changed values, and 4 playlists. Keys written as Camelot (8A).",
+      "4 tracks, 2 with changed values, and 4 playlists. Key notation: Camelot (8A).",
     );
     expect(exportSummaryLine(CHOSEN, "short")).toBe(
-      "4 tracks, 2 with changed values, and 4 playlists. Keys written as short (Amin).",
+      "4 tracks, 2 with changed values, and 4 playlists. Key notation: Short (Amin).",
     );
     expect(exportSummaryLine(WHOLE, "camelot")).toBe(
-      "4 tracks, an exact copy: nothing changed, no playlists. Keys written as Camelot (8A).",
+      "4 tracks, an exact copy: nothing changed, no playlists. Key notation: Camelot (8A).",
     );
   });
 

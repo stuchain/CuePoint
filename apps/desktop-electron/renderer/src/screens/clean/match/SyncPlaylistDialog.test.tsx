@@ -23,7 +23,7 @@ vi.mock("../../../components/saveToFiles/SaveToFilesDialog", () => ({
   SaveToFilesDialog: (props: DialogProps) =>
     props.open ? (
       <div role="dialog" aria-label="Sync window">
-        <p>{props.title}</p>
+        <p>{props.title ?? "default title"}</p>
         <p>{`${props.count} tracks, ${(props.selection?.track_ids ?? []).join(",")}, ${props.variant}`}</p>
         <button type="button" onClick={props.onChanged}>
           files written
@@ -36,6 +36,11 @@ vi.mock("../../../components/saveToFiles/SaveToFilesDialog", () => ({
 }));
 
 import { SyncPlaylistDialog } from "./SyncPlaylistDialog";
+
+/** The grey Close of the footer; the title bar has a close button of the same name. */
+function footerClose(): HTMLElement {
+  return screen.getAllByRole("button", { name: "Close" }).find((b) => b.classList.contains("cp-btn--secondary"))!;
+}
 
 type Fn = ReturnType<typeof vi.fn>;
 let bridge: Record<string, Fn>;
@@ -83,7 +88,8 @@ describe("opening it", () => {
     await screen.findByRole("dialog", { name: "Sync window" });
     expect(bridge.getMatchReview).toHaveBeenCalledWith({ playlistId: 7, tickedIds: true });
     expect(screen.getByText("3 tracks, 3,5,8, sync")).toBeInTheDocument();
-    expect(screen.getByText("Sync hJ to your files")).toBeInTheDocument();
+    // The window names the tracks itself: "Sync 3 tracks to your files".
+    expect(screen.getByText("default title")).toBeInTheDocument();
     nothingWritten();
   });
 
@@ -101,7 +107,7 @@ describe("opening it", () => {
     let finish: (value: unknown) => void = () => undefined;
     bridge.getMatchReview.mockImplementation(() => new Promise((resolve) => (finish = resolve)));
     dialog();
-    expect(await screen.findByText(/Reading what is ticked/)).toBeInTheDocument();
+    expect(await screen.findByText(/Loading the ticked tracks/)).toBeInTheDocument();
     expect(screen.getByText(/Nothing is written to your files/)).toBeInTheDocument();
     finish({ ids: [1], tracks: [], total: 1, ticked: 1 });
     await screen.findByRole("dialog", { name: "Sync window" });
@@ -141,11 +147,11 @@ describe("closing", () => {
 });
 
 describe("when it cannot be done", () => {
-  it("says why the ticked tracks could not be read, and offers OK", async () => {
+  it("says why the ticked tracks could not be read, and offers Close", async () => {
     bridge.getMatchReview.mockRejectedValue(new Error("The library is busy"));
     const { props } = dialog();
     expect(await screen.findByRole("alert")).toHaveTextContent("The library is busy");
-    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    await userEvent.click(footerClose());
     expect(props.onClose).toHaveBeenCalled();
   });
 
@@ -159,5 +165,21 @@ describe("when it cannot be done", () => {
     dialog({ open: false });
     expect(bridge.getMatchReview).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("the words of the questions (C107, C141, C164)", () => {
+  it("names the playlist in curly quotes while it reads", async () => {
+    bridge.getMatchReview.mockImplementation(() => new Promise(() => undefined));
+    dialog();
+    expect(await screen.findByRole("dialog", { name: "Sync “hJ” to your files" })).toBeInTheDocument();
+  });
+
+  it("ends in one grey Close once it has nothing to ask", async () => {
+    bridge.getMatchReview.mockResolvedValue({ ids: [], tracks: [], total: 9, ticked: 0 });
+    dialog();
+    await screen.findByText(/Nothing is ticked/);
+    expect(footerClose()).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "OK" })).toBeNull();
   });
 });

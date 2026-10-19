@@ -26,7 +26,8 @@ import type {
 } from "../../api/cuepointBridge.types";
 import type { CollectionTreeNode } from "./collectionTree";
 import { formatFileSize } from "../../format/units";
-import { fileName, formatCount, formatWhen, pluralize } from "./libraryFormat";
+import { countNoun, formatCount } from "../../format/counts";
+import { fileName, formatWhen } from "./libraryFormat";
 import { KEY_FORMATS } from "../../components/saveToFiles/tagWriting";
 
 // ------------------------------------------------------------------ notation
@@ -48,9 +49,9 @@ export function keyFormatName(format: RekordboxKeyFormat): string {
     case "camelot":
       return "Camelot (8A)";
     case "short":
-      return "short (Amin)";
+      return "Short (Amin)";
     default:
-      return "classic (Am)";
+      return "Rekordbox's own (Am)";
   }
 }
 
@@ -124,7 +125,7 @@ export function unknownTracksLine(preview: RekordboxExportPreview): string | nul
   const count = preview.unknown_track_count;
   if (count <= 0) return null;
   return (
-    `${pluralize(count, "track")} in the file ${count === 1 ? "is" : "are"} not in your CuePoint ` +
+    `${countNoun(count, "track")} in the file ${count === 1 ? "is" : "are"} not in your CuePoint ` +
     `library. ${count === 1 ? "It is" : "They are"} exported exactly as ${count === 1 ? "it is" : "they are"}.`
   );
 }
@@ -141,11 +142,11 @@ export function exportSummaryLine(
   preview: RekordboxExportPreview,
   keyFormat: RekordboxKeyFormat = DEFAULT_EXPORT_KEY_FORMAT,
 ): string {
-  const tracks = pluralize(preview.track_count, "track");
+  const tracks = countNoun(preview.track_count, "track");
   // The notation is remembered from the last export and chosen under Details,
   // so a non-default one is named here rather than left out of sight.
   const keys =
-    keyFormat === DEFAULT_EXPORT_KEY_FORMAT ? "" : ` Keys written as ${keyFormatName(keyFormat)}.`;
+    keyFormat === DEFAULT_EXPORT_KEY_FORMAT ? "" : ` Key notation: ${keyFormatName(keyFormat)}.`;
   if (preview.changes_nothing) {
     return `${tracks}, an exact copy: nothing changed, no playlists.${keys}`;
   }
@@ -153,7 +154,7 @@ export function exportSummaryLine(
   const playlists = preview.playlists.length;
   return (
     `${tracks}, ${changed === 0 ? "none" : formatCount(changed)} with changed values, and ` +
-    `${playlists === 0 ? "no playlists" : pluralize(playlists, "playlist")}.${keys}`
+    `${playlists === 0 ? "no playlists" : countNoun(playlists, "playlist")}.${keys}`
   );
 }
 
@@ -171,7 +172,7 @@ const EXPORT_FIELDS: ReadonlyArray<{ field: RekordboxExportField; label: string 
 
 /** How many tracks the exported file holds: the source's own count. */
 export function trackCountLine(preview: RekordboxExportPreview): string {
-  return `${pluralize(preview.track_count, "track")} in the exported file`;
+  return `${countNoun(preview.track_count, "track")} in the exported file`;
 }
 
 /** How many of them carry a CuePoint value, or that none does. */
@@ -180,13 +181,13 @@ export function changeLine(preview: RekordboxExportPreview): string {
   if (changed === 0) {
     return "No track has a CuePoint value that differs from the file, so none is rewritten.";
   }
-  return `${pluralize(changed, "track")} rewritten with CuePoint's values`;
+  return `${countNoun(changed, "track")} rewritten with CuePoint's values`;
 }
 
 /** The per-field breakdown, one line per field that changes, in order. */
 export function fieldLines(preview: RekordboxExportPreview): string[] {
   return EXPORT_FIELDS.filter(({ field }) => (preview.fields_changed[field] ?? 0) > 0).map(
-    ({ field, label }) => `${label}: ${pluralize(preview.fields_changed[field] ?? 0, "track")}`,
+    ({ field, label }) => `${label}: ${countNoun(preview.fields_changed[field] ?? 0, "track")}`,
   );
 }
 
@@ -213,7 +214,7 @@ export function copyLine(preview: RekordboxExportPreview): string | null {
 export function playlistHeadline(preview: RekordboxExportPreview, chosen: number): string {
   const count = preview.playlists.length;
   if (count > 0) {
-    return `${pluralize(count, "playlist")} added, in a folder called “${preview.playlist_folder}”`;
+    return `${countNoun(count, "playlist")} added, in a folder called “${preview.playlist_folder}”`;
   }
   // A Set exports as one playlist as a Collection does (DEC-109), so both are
   // named: with Sets in the tree, "tick a Collection" is half the answer.
@@ -225,7 +226,7 @@ export function playlistHeadline(preview: RekordboxExportPreview, chosen: number
 
 /** One playlist's count: what is written, and what the file cannot hold. */
 export function playlistCount(playlist: RekordboxExportPlaylistPreview): string {
-  const written = pluralize(playlist.entry_count, "track");
+  const written = countNoun(playlist.entry_count, "track");
   if (playlist.dropped_count === 0) return written;
   return `${written} of ${playlist.requested_count.toLocaleString()}`;
 }
@@ -268,13 +269,13 @@ export function exportWarnings(preview: RekordboxExportPreview): ExportWarning[]
   const absent = preview.absent_track_count;
   if (absent > 0) {
     const dropped = preview.dropped_reference_count;
-    const who = `${pluralize(absent, "track")} in your library ${absent === 1 ? "is" : "are"} not in this file`;
+    const who = `${countNoun(absent, "track")} in your library ${absent === 1 ? "is" : "are"} not in this file`;
     warnings.push({
       key: "absent",
       tone: dropped > 0 ? "warning" : "note",
       text:
         dropped > 0
-          ? `${who}, so ${pluralize(dropped, "playlist entry", "playlist entries")} pointing at ${
+          ? `${who}, so ${countNoun(dropped, "playlist entry", "playlist entries")} pointing at ${
               absent === 1 ? "it" : "them"
             } ${dropped === 1 ? "is" : "are"} left out. Each playlist's count, under Details, is what is left.`
           : `${who}. None of the playlists above holds ${absent === 1 ? "it" : "them"}.`,
@@ -293,7 +294,7 @@ export function exportWarnings(preview: RekordboxExportPreview): ExportWarning[]
       key: "missing",
       tone: "warning",
       text:
-        `${pluralize(missing, "track")} ${missing === 1 ? "has its" : "have their"} audio file missing. ` +
+        `${countNoun(missing, "track")} ${missing === 1 ? "has its" : "have their"} audio file missing. ` +
         `${missing === 1 ? "It is" : "They are"} exported unchanged, and Rekordbox will show ` +
         `${missing === 1 ? "it" : "them"} as missing too.`,
     });
@@ -318,10 +319,10 @@ export function exportWarnings(preview: RekordboxExportPreview): ExportWarning[]
 /** What the confirm button says it will do — never "OK". */
 export function confirmLabel(preview: RekordboxExportPreview | null): string {
   if (!preview) return "Export";
-  const tracks = pluralize(preview.track_count, "track");
+  const tracks = countNoun(preview.track_count, "track");
   const playlists = preview.playlists.length;
   return playlists > 0
-    ? `Export ${tracks} and ${pluralize(playlists, "playlist")}`
+    ? `Export ${tracks} and ${countNoun(playlists, "playlist")}`
     : `Export ${tracks}`;
 }
 
@@ -436,9 +437,9 @@ export function resultHeadline(result: RekordboxExportResult): string {
   if (result.outcome === "failed") {
     return `The export failed: ${result.error ?? "no reason was given"}.`;
   }
-  const parts = [pluralize(result.track_count, "track")];
+  const parts = [countNoun(result.track_count, "track")];
   parts.push(`${result.changed_track_count.toLocaleString()} rewritten`);
-  parts.push(`${pluralize(result.playlist_count, "playlist")} added`);
+  parts.push(`${countNoun(result.playlist_count, "playlist")} added`);
   return `Exported to ${name}: ${parts.join(", ")}.`;
 }
 
@@ -535,9 +536,9 @@ export function historyOutcome(record: RekordboxExportRecord): string {
   switch (record.outcome) {
     case "written":
       return [
-        pluralize(record.track_count, "track"),
+        countNoun(record.track_count, "track"),
         `${record.changed_track_count.toLocaleString()} with new tags`,
-        pluralize(record.playlists.length, "playlist"),
+        countNoun(record.playlists.length, "playlist"),
         keyFormatName(record.key_format),
       ].join(" · ");
     case "cancelled":

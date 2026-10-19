@@ -9,12 +9,14 @@
  *
  * Pressing **Sync N tracks** is one engine job: it writes the files, then, for what each file
  * actually got, accepts the ticked tracks and copies those values into CuePoint's own, as one
- * recorded batch. **Undo this save** restores the files and takes that batch back. Cancelling the
+ * recorded batch. **Undo this sync** restores the files and takes that batch back. Cancelling the
  * window has nothing to take back, because nothing was done.
  */
 import { useEffect, useRef, useState } from "react";
 
 import { NEEDS_DESKTOP, userMessage } from "../../../api/userMessage";
+import { quoted } from "../../../format/words";
+import { Loading } from "../../../components/Loading";
 import { Modal } from "../../../components/Modal";
 import { Notice } from "../../../components/Notice";
 import { SaveToFilesDialog } from "../../../components/saveToFiles/SaveToFilesDialog";
@@ -79,25 +81,27 @@ export function SyncPlaylistDialog({ open, name, source, onClose, onChanged }: S
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const title = `Sync ${name} to your files`;
-
   return (
     <>
       <Modal
         open={open && phase !== "ready"}
-        title={title}
+        title={`Sync ${quoted(name)} to your files`}
         onClose={onClose}
-        secondaryAction={{ label: phase === "reading" ? "Cancel" : "OK", onClick: onClose }}
+        closeLabel={phase === "reading" ? "Cancel" : "Close"}
       >
-        {phase === "reading" && <p role="status">Reading what is ticked… Nothing is written to your files.</p>}
+        {phase === "reading" && (
+          <>
+            <Loading what="the ticked tracks" />
+            <p className="cp-modal__lead">Nothing is written to your files.</p>
+          </>
+        )}
         {phase === "empty" && <p role="status">Nothing is ticked, so there is nothing to sync.</p>}
-        {phase === "failed" && <Notice kind="problem">{problem}</Notice>}
+        {phase === "failed" && <Notice kind="danger">{problem}</Notice>}
       </Modal>
       <SaveToFilesDialog
         key={opening}
         open={open && phase === "ready"}
         variant="sync"
-        title={title}
         selection={{ track_ids: ids }}
         count={ids.length}
         onClose={onClose}

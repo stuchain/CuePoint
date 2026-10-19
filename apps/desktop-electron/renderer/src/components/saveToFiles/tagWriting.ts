@@ -6,6 +6,7 @@
  * will be skipped and why, and that nothing is written until a preview has
  * answered. The engine counts; this names what it counted.
  */
+import { countNoun, formatCount } from "../../format/counts";
 import type {
   TagRestoreResult,
   TagWriteOptions,
@@ -26,14 +27,10 @@ export const TAG_FIELDS = [
 export type DialogTagOptions = Required<TagWriteOptions>;
 
 export const KEY_FORMATS: ReadonlyArray<{ value: DialogTagOptions["key_format"]; label: string }> = [
-  { value: "normal", label: "As Rekordbox writes it (Am, C#)" },
+  { value: "normal", label: "Rekordbox's own (Am, C#)" },
   { value: "camelot", label: "Camelot (8A, 12B)" },
   { value: "short", label: "Short (Amin, Gmaj)" },
 ];
-
-function count(number: number, noun: string): string {
-  return `${number.toLocaleString()} ${noun}${number === 1 ? "" : "s"}`;
-}
 
 /** Why a whole file is skipped, in words (CLEAN-10's reasons). */
 export function fileSkipText(reason: string): string {
@@ -91,22 +88,22 @@ export function fieldSkipText(reason: string): string {
 
 /** What a finished write says. Failures are counted, never folded into "written". */
 export function writeHeadline(result: TagWriteResult): string {
-  const parts = [`Wrote ${count(result.written, "file")}`];
-  if (result.failed > 0) parts.push(`${result.failed.toLocaleString()} could not be written`);
+  const parts = [`Synced ${countNoun(result.written, "file")}`];
+  if (result.failed > 0) parts.push(`${formatCount(result.failed)} could not be synced`);
   const skipped = Object.values(result.skipped).reduce((sum, value) => sum + value, 0);
-  if (skipped > 0) parts.push(`${skipped.toLocaleString()} skipped`);
+  if (skipped > 0) parts.push(`${formatCount(skipped)} skipped`);
   const line = `${parts.join(", ")}.`;
   return result.cancelled ? `Stopped early. ${line}` : line;
 }
 
 /** What a finished restore says. */
 export function restoreHeadline(result: TagRestoreResult): string {
-  const parts = [`Undid ${count(result.files, "file")}`];
-  if (result.already > 0) parts.push(`${count(result.already, "value")} already back`);
+  const parts = [`Undid ${countNoun(result.files, "file")}`];
+  if (result.already > 0) parts.push(`${countNoun(result.already, "value")} already back`);
   if (result.skipped > 0) {
-    parts.push(`${count(result.skipped, "value")} left alone because the file changed since`);
+    parts.push(`${countNoun(result.skipped, "value")} left alone because the file changed since`);
   }
-  if (result.failed > 0) parts.push(`${result.failed.toLocaleString()} could not be undone`);
+  if (result.failed > 0) parts.push(`${formatCount(result.failed)} could not be undone`);
   const line = `${parts.join(", ")}.`;
   return result.cancelled ? `Stopped early. ${line}` : line;
 }

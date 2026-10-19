@@ -11,6 +11,8 @@ import type {
   TagFieldChoices,
   TagWritePreview,
 } from "../../api/cuepointBridge.types";
+import { countNoun } from "../../format/counts";
+import { SYNC } from "../../format/words";
 import { fieldName, fileSkipText, type DialogTagOptions } from "./tagWriting";
 
 /** The rows of the window, in the order it lists them. */
@@ -234,25 +236,20 @@ export function keyIn(key: string, style: KeyStyle): string {
   return `${minor ? classic.slice(0, -1) : classic}${minor ? "min" : "maj"}`;
 }
 
-export function trackWords(count: number): string {
-  return `${count.toLocaleString()} ${count === 1 ? "track" : "tracks"}`;
-}
-
 export function fileWords(count: number): string {
-  return `${count.toLocaleString()} ${count === 1 ? "file" : "files"}`;
+  return countNoun(count, "file");
 }
 
+/** The window's title: "Sync 17 tracks to your files". */
 export function saveTitle(count: number): string {
-  return `Save ${trackWords(count)} to your files`;
+  return SYNC.title(count);
 }
 
-/** The Sync window's button: the files that get written, "Write 17 files", or why not. */
+/** The main button: the files that get synced, "Sync 17 files", "Nothing to sync", or "Sync files" while they are counted. */
 export function syncButton(total: number | null): string {
-  if (total === null) return "Write files";
-  return total === 0 ? NOTHING_TO_WRITE : `Write ${fileWords(total)}`;
+  if (total === null) return "Sync files";
+  return total === 0 ? SYNC.empty : SYNC.button(total);
 }
-
-export const NOTHING_TO_WRITE = "Nothing to write";
 
 export const NONE_TICKED = "Tick at least one value.";
 export const NO_COMMENT = "Type the comment, or untick Comment.";
@@ -295,7 +292,7 @@ export function saveState({
 }: SaveStateInput): SaveState {
   const sync = variant === "sync";
   const idle = (reason: string | null, nothing = false): SaveState => ({
-    label: nothing ? (sync ? NOTHING_TO_WRITE : "Save to 0 files") : sync ? syncButton(noneTicked(choices) ? 0 : total) : total === null ? "Save to files" : `Save to ${fileWords(total)}`,
+    label: syncButton(nothing || noneTicked(choices) ? 0 : total),
     enabled: false,
     reason,
   });
@@ -315,7 +312,7 @@ export function saveState({
   if (rowsChange && total === null) return idle(null);
   if (rowsChange && total !== null && total > 0) {
     return {
-      label: sync ? syncButton(total) : `Save to ${fileWords(total)}`,
+      label: syncButton(total),
       enabled: true,
       reason: null,
     };

@@ -1,5 +1,5 @@
 /**
- * "Save N tracks to your files" (G4 step 4, DEC-262, mockup option S1).
+ * "Sync N tracks to your files" (G4 step 4, DEC-262, mockup option S1).
  *
  * The one control in the app that writes outside CuePoint's database. It still
  * follows DEC-070's order, but the preview no longer waits for a button: on opening
@@ -9,8 +9,8 @@
  * whichever rows are ticked, is asked of the engine (debounced).
  *
  * A preview or a save large enough to be a job is followed like every job: it shows
- * "Reading 412 of 1,200 files…" and waits for its answer. After a save the window
- * offers Undo this save, which undoes every value, and Done.
+ * "Loading 412 of 1,200 files…" and waits for its answer. After a save the window
+ * offers Undo this sync, which undoes every value, and Done.
  *
  * **The Sync variant** is the same window for a playlist's ticked tracks (the Review tab): its
  * own title, the rows BPM, Genre, Label, Year, Key and Comment (no artwork), its own remembered choices,
@@ -34,8 +34,12 @@ import { reportUnexpected } from "../../reporting/reporting";
 import { jobResult } from "./jobResult";
 import { RELOAD_TAG_REMINDER, restoreHeadline, writeHeadline } from "./tagWriting";
 import { NO_VALUE } from "../../words";
+import { formatCount } from "../../format/counts";
+import { BACK, RETRY, SYNC } from "../../format/words";
 import { Button } from "../Button";
+import { Loading } from "../Loading";
 import { Modal } from "../Modal";
+import { Notice } from "../Notice";
 import { Select } from "../Select";
 import "../TextField.css";
 import {
@@ -120,6 +124,16 @@ function useJobProgress(jobId: string | null): { done: number; total: number } |
     };
   }, [jobId]);
   return progress;
+}
+
+/** The job's words and the one progress bar (C148). */
+function JobProgress({ words, progress }: { words: string; progress: { done: number; total: number } }) {
+  return (
+    <div className="save-dialog__progress" role="status">
+      <progress className="cp-progress" value={progress.done} max={Math.max(1, progress.total)} aria-label={words} />
+      <span className="save-dialog__note">{words}</span>
+    </div>
+  );
 }
 
 export function SaveToFilesDialog({
@@ -412,7 +426,7 @@ export function SaveToFilesDialog({
       open={open}
       title={title ?? saveTitle(count)}
       onClose={busy ? () => undefined : requestClose}
-      size={list ? "large" : "medium"}
+      size="large"
       noFooter
     >
       <div className="save-dialog">
@@ -421,7 +435,7 @@ export function SaveToFilesDialog({
             <ul className="save-dialog__rows">
               {(variant === "sync" ? SYNC_FIELDS : SAVE_FIELDS).map(({ id, label }) => (
                 <li key={id} className="save-dialog__row" data-ticked={choices.fields[id]}>
-                  <label className="save-dialog__tick">
+                  <label className="save-dialog__tick cp-check">
                     <input
                       type="checkbox"
                       aria-describedby={`save-count-${id}`}
@@ -432,7 +446,8 @@ export function SaveToFilesDialog({
                   </label>
                   {id === "key" && (
                     <Select
-                      label="Key style"
+                      label="Key notation"
+                      disabled={!choices.fields.key}
                       className="save-dialog__style"
                       value={choices.key_format}
                       options={KEY_STYLES.map(({ value, label: example }) => ({ value, label: example }))}
@@ -456,7 +471,7 @@ export function SaveToFilesDialog({
                 </li>
               ))}
             </ul>
-            <label className="save-dialog__tick save-dialog__keep">
+            <label className="save-dialog__tick save-dialog__keep cp-check">
               <input
                 type="checkbox"
                 checked={choices.keep_existing}
@@ -469,14 +484,15 @@ export function SaveToFilesDialog({
 
         {list && (
           <>
-            <button
+            <Button
               ref={backRef}
-              type="button"
-              className="cp-link save-dialog__back"
+              variant="quiet"
+              icon="chevron-left"
+              className="save-dialog__back"
               onClick={() => setView("choices")}
             >
-              ‹ Back
-            </button>
+              {BACK}
+            </Button>
             {preview && rows.length > 0 && (
               <table className="save-dialog__changes">
                 <thead>
@@ -520,32 +536,38 @@ export function SaveToFilesDialog({
             {preview && rows.length === 0 && (
               <p className="save-dialog__note">Nothing to show for the values ticked.</p>
             )}
-            {more > 0 && <p className="save-dialog__note">+{more.toLocaleString()} more</p>}
+            {more > 0 && <p className="save-dialog__note">+{formatCount(more)} more</p>}
           </>
         )}
 
-        {reading && (
-          <p className="save-dialog__note" role="status">
-            {progress
-              ? `Reading ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()} files…`
-              : "Reading the files… nothing is being changed."}
-          </p>
-        )}
+        {reading &&
+          (progress ? (
+            <JobProgress words={`Loading ${formatCount(progress.done)} of ${formatCount(progress.total)} files…`} progress={progress} />
+          ) : (
+            <Loading what="files" />
+          ))}
 
         {phase === "saving" && (
-          <p className="save-dialog__note" role="status">
-            {progress
-              ? `Saving ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()} files…`
-              : "Saving… each value is recorded before its file is touched."}
-          </p>
+          <>
+            {progress ? (
+              <JobProgress
+                words={`Syncing ${formatCount(progress.done)} of ${formatCount(progress.total)} files…`}
+                progress={progress}
+              />
+            ) : (
+              <p className="save-dialog__note" role="status">
+                {SYNC.running}… each value is recorded before its file is touched.
+              </p>
+            )}
+          </>
         )}
 
         {writeJobId && finished && (
-          <section className="save-dialog__answer" aria-label="Saved">
+          <section className="save-dialog__answer" aria-label="Synced">
             <p ref={headlineRef} tabIndex={-1} className="save-dialog__headline" role="status">
               {written
                 ? writeHeadline(written)
-                : "The save did not finish. Some files may have been changed; undoing the save sets them back as they were."}
+                : "The sync did not finish. Some files may have been changed; undoing the sync sets them back as they were."}
             </p>
             {written && written.problems.length > 0 && (
               <ul className="save-dialog__lines">
@@ -560,12 +582,12 @@ export function SaveToFilesDialog({
             {phase !== "restored" && (
               <div className="save-dialog__restore">
                 <Button variant="secondary" loading={phase === "restoring"} onClick={() => void runRestore()}>
-                  Undo this save
+                  Undo this sync
                 </Button>
                 <span className="save-dialog__note">
                   {variant === "sync"
                     ? "Puts the files back and takes back the matches and values this sync recorded. It is also offered in Activity."
-                    : "Undoes every value this save replaced. It is also offered in Activity."}
+                    : "Undoes every value this sync replaced. It is also offered in Activity."}
                 </span>
               </div>
             )}
@@ -578,11 +600,7 @@ export function SaveToFilesDialog({
           </p>
         )}
 
-        {problem && (
-          <p className="save-dialog__problem" role="alert">
-            {problem}
-          </p>
-        )}
+        {problem && <Notice kind="danger">{problem}</Notice>}
 
         <p className="save-dialog__reason" role="status" aria-live="polite">
           {phase === "ready" ? state.reason : null}
@@ -622,11 +640,11 @@ export function SaveToFilesDialog({
                       }
                     }}
                   >
-                    Try again
+                    {RETRY}
                   </Button>
                 ) : (
                   <Button
-                    variant="primary"
+                    variant="write"
                     loading={phase === "saving"}
                     disabled={phase !== "ready" || !state.enabled}
                     onClick={() => void runSave()}
