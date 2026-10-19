@@ -54,7 +54,7 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   // the table (FLW-18) and the entry keys are the queue's (FLW-17), answered while the Set
   // table has focus. Plain Enter and the arrows are the field's and the divider's own.
   { context: "Prepare", action: "Resize the source panel (focus its divider first)", shortcut: "Left / Right" },
-  { context: "Prepare", action: "Play from here (in a Mix in or Mix out field, save it)", shortcut: "Enter" },
+  { context: "Prepare", action: "Play from here", shortcut: "Enter" },
   { context: "Prepare", action: "Edit mix-in time", shortcut: "F2" },
   { context: "Prepare", action: "Save a typed time and go to the next", shortcut: "Enter or Tab" },
   { context: "Prepare", action: "Drop a typed time", shortcut: "Esc" },
