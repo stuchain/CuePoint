@@ -191,12 +191,12 @@ describe("A5: the player bar controls", () => {
     expect(decl(playerBarCss, ".cp-player-bar__count", "position")).toBe("static");
   });
 
-  it("goes compact only under 700px, with the transport at the control height and no zoom toggle", () => {
-    const query = "@media (max-height: 699px)";
-    expect(decl(playerBarCss, ".cp-player-bar__button--play", "min-height", query)).toBe("max(var(--control-height), 24px)");
-    expect(decl(playerBarCss, ".cp-player-bar__button--zoom", "display", query)).toBe("none");
-    expect(decl(playerBarCss, ".cp-player-slot .cp-detail-strip", "display", query)).toBe("none");
-    expect(playerBarCss).not.toMatch(/max-height:\s*799px/);
+  it("goes compact only in a short window (C207), with the transport at the control height and no zoom toggle", () => {
+    const flag = ":root[data-short-window] ";
+    expect(decl(playerBarCss, `${flag}.cp-player-bar__button--play`, "min-height")).toBe("max(var(--control-height), 24px)");
+    expect(decl(playerBarCss, `${flag}.cp-player-bar__button--zoom`, "display")).toBe("none");
+    expect(decl(playerBarCss, `${flag}.cp-player-slot .cp-detail-strip`, "display")).toBe("none");
+    expect(playerBarCss).not.toMatch(/max-height:\s*\d+px/);
   });
 });
 

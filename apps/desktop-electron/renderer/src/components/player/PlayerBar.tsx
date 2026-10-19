@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Badge } from "../Badge";
+import { countNoun, formatCount } from "../../format/counts";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
 import { WheelButton } from "../wheel/WheelButton";
@@ -78,14 +79,13 @@ interface PlayerBarProps {
   onOpenArtist?: (artist: string) => void;
 }
 
+/**
+ * One wording per control (C175): each button's tip is its spoken name, so the two are written
+ * once. A shortcut is the Hint's `shortcut`, drawn after the words.
+ */
+
 /** What the repeat button's short label says beside its icon (BAR-3). */
 const REPEAT_SHORT: Record<string, string> = { all: "All", one: "One" };
-
-const REPEAT_TITLES: Record<string, string> = {
-  off: "Repeat: off",
-  all: "Repeat: all tracks",
-  one: "Repeat: one track",
-};
 
 export function PlayerBar({
   queueOpen = false,
@@ -245,7 +245,7 @@ export function PlayerBar({
 
   const queueWords = queueOpen
     ? "Hide the queue"
-    : `Show the queue (${queueLength} ${queueLength === 1 ? "track" : "tracks"})`;
+    : `Show the queue (${countNoun(queueLength, "track")})`;
 
   // The strip needs a library track (`PlayerSlot`); the button still keeps the choice.
   const detailWords = `${detailOn ? "Hide" : "Show"} the zoomed waveform`;
@@ -374,7 +374,7 @@ export function PlayerBar({
 
       <div className="cp-player-bar__controls">
       <div className="cp-player-bar__order">
-        <Hint text={shuffle ? "Shuffle: on" : "Shuffle: off"}>
+        <Hint text={shuffle ? "Shuffle on" : "Shuffle off"}>
           <button
             type="button"
             className={`cp-player-bar__button cp-player-bar__button--standard${shuffle ? " cp-player-bar__button--on" : ""}`}
@@ -385,7 +385,7 @@ export function PlayerBar({
             <PixelIcon name="shuffle" />
           </button>
         </Hint>
-        <Hint text={REPEAT_TITLES[repeat]}>
+        <Hint text={repeatLabel(repeat)}>
           <button
             type="button"
             className={`cp-player-bar__button cp-player-bar__button--standard${repeat !== "off" ? " cp-player-bar__button--on" : ""}`}
@@ -416,7 +416,7 @@ export function PlayerBar({
               <PixelIcon name="queue" />
               {queueLength > 0 && (
                 <Badge className="cp-badge--player cp-player-bar__count" aria-hidden="true">
-                  {queueLength.toLocaleString()}
+                  {formatCount(queueLength)}
                 </Badge>
               )}
             </button>
@@ -427,7 +427,7 @@ export function PlayerBar({
             type="button"
             className={`cp-player-bar__button cp-player-bar__button--standard cp-player-bar__button--zoom${detailOn ? " cp-player-bar__button--on" : ""}`}
             onClick={() => setDetailOn(!detailOn)}
-            aria-label={detailWords}
+            aria-label={detailHint}
             aria-pressed={detailOn}
           >
             <PixelIcon name="waveform" />

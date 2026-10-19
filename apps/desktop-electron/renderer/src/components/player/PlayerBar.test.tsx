@@ -724,7 +724,7 @@ describe("the waveform button (C30)", () => {
     render(<PlayerBar />);
     await screen.findByText("Strobe");
 
-    expect(screen.getByRole("button", { name: "Show the zoomed waveform" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Show the zoomed waveform · only for tracks in your Library" })).toHaveAttribute(
       "title",
       "Show the zoomed waveform · only for tracks in your Library",
     );
@@ -735,37 +735,34 @@ describe("the waveform button (C30)", () => {
     render(<PlayerBar />);
     await screen.findByText("Strobe");
 
-    const button = screen.getByRole("button", { name: "Hide the zoomed waveform" });
+    const button = screen.getByRole("button", { name: "Hide the zoomed waveform · only for tracks in your Library" });
     expect(button).toHaveAttribute("title", "Hide the zoomed waveform · only for tracks in your Library");
     fireEvent.click(button);
     expect(localStorage.getItem(WAVEFORM_DETAIL_STORAGE_KEY)).toBe("off");
   });
 });
 
-describe("a short window starts without the strip (R2-2)", () => {
+describe("a short window starts without the strip (R2-2, C207)", () => {
   afterEach(() => {
     Reflect.deleteProperty(window, "matchMedia");
   });
 
-  it("shows no strip until the bar's button is clicked", async () => {
+  it("draws no strip while the window is short, whatever was chosen: one threshold for the bar and the strip", async () => {
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       writable: true,
-      // The short-window query matches; the compact bar's (under 700px) does not, or the strip is never drawn.
-      value: (query: string) => ({ matches: query !== "(max-height: 699px)", addEventListener: () => undefined, removeEventListener: () => undefined }),
+      value: () => ({ matches: true, addEventListener: () => undefined, removeEventListener: () => undefined }),
     });
     installBridge(snapshot());
     const { container } = render(<Slot />);
     await screen.findByText("Strobe");
     expect(container.querySelector(".cp-detail-strip")).toBeNull();
 
+    // The toggle is hidden by the stylesheet in a short window; pressing it anyway keeps the choice
+    // for when the window is tall, and draws nothing now.
     fireEvent.click(screen.getByRole("button", { name: "Show the zoomed waveform" }));
 
-    expect(container.querySelector(".cp-detail-strip")).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Hide the zoomed waveform" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(container.querySelector(".cp-detail-strip")).toBeNull();
   });
 });
 
@@ -781,8 +778,8 @@ describe("every control names itself (BAR-1)", () => {
     expect(titleOf("Previous track")).toBe("Previous track (Ctrl+←)");
     expect(titleOf("Pause")).toBe("Pause (Space)");
     expect(titleOf("Next track")).toBe("Next track (Ctrl+→)");
-    expect(titleOf("Shuffle off")).toBe("Shuffle: off");
-    expect(titleOf("Repeat off")).toBe("Repeat: off");
+    expect(titleOf("Shuffle off")).toBe("Shuffle off");
+    expect(titleOf("Repeat off")).toBe("Repeat off");
     expect(titleOf("Show the queue (3 tracks)")).toBe("Show the queue (3 tracks)");
     expect(titleOf("Hide the zoomed waveform")).toBe("Hide the zoomed waveform");
     expect(titleOf("Mute")).toBe("Mute");
@@ -804,15 +801,28 @@ describe("every control names itself (BAR-1)", () => {
     );
     rerender(<PlayerBar queueOpen onToggleQueue={() => undefined} />);
     expect(await screen.findByRole("button", { name: "Play" })).toHaveAttribute("title", "Play (Space)");
-    expect(titleOf("Shuffle on")).toBe("Shuffle: on");
-    expect(titleOf("Repeat all")).toBe("Repeat: all tracks");
+    expect(titleOf("Shuffle on")).toBe("Shuffle on");
+    expect(titleOf("Repeat all")).toBe("Repeat all");
     expect(titleOf("Unmute")).toBe("Unmute");
 
     harness.push(snapshot({ repeat: "one" }));
     expect(await screen.findByRole("button", { name: "Repeat one" })).toHaveAttribute(
       "title",
-      "Repeat: one track",
+      "Repeat one",
     );
+  });
+
+  it("has one wording per control: the tip is the spoken name, shortcut aside (C175)", async () => {
+    installBridge(snapshot({ items: [item({ trackId: null }), item({ id: "q2" })], shuffle: true, repeat: "one" }));
+    render(<PlayerBar onToggleQueue={() => undefined} />);
+    await screen.findByText("Strobe");
+
+    for (const control of screen.getAllByRole("button")) {
+      const label = control.getAttribute("aria-label");
+      const title = control.getAttribute("title");
+      if (!label || !title) continue;
+      expect(title.replace(/ \((Space|Ctrl\+[^)]+)\)$/, ""), label).toBe(label);
+    }
   });
 
   it("shows the name on keyboard focus too, through Hint", async () => {

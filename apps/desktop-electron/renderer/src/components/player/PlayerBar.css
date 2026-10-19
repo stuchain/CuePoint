@@ -28,7 +28,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
+  /* The shell inset (C46): the same on both sides, and the same as the page's edge, the Track
+     details close mark and the Activity button. Padding only; the bar's shape is untouched (C16c). */
+  padding: var(--space-sm) var(--space-lg);
   border-top: var(--border-width) solid var(--border-outline);
   background: var(--bg-panel);
   min-width: 0;
@@ -116,7 +118,7 @@
 }
 
 .cp-player-bar__button:hover:not(:disabled) {
-  background: var(--bg-panel-alt);
+  background: var(--hover-fill);
 }
 
 .cp-player-bar__button:active:not(:disabled) {
@@ -282,14 +284,16 @@
 }
 
 /* An engaged toggle is filled, not merely outlined: at a glance across a dark
-   room the difference has to survive, and colour alone would not. */
+   room the difference has to survive, and colour alone would not. The fill is the one "on" fill
+   (C4), with the on-accent text on it. */
 .cp-player-bar__button--on {
-  background: var(--accent-primary);
+  background: var(--accent-fill);
   color: var(--fg-on-accent);
 }
 
 .cp-player-bar__button--on:hover:not(:disabled) {
-  background: var(--accent-primary-hover);
+  background: var(--accent-fill);
+  background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
 }
 
 .cp-player-bar__volume {
@@ -333,6 +337,19 @@
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
+  /* Readable on the bar: the accent fill with the on-accent text (C89), at least 4.5:1 in every
+     theme. Colour only; the badge keeps its box and its shadow (C16c). */
+  --chip-tone: var(--accent-fill);
+  --chip-text: var(--fg-on-accent);
+  background: var(--accent-fill);
+}
+
+/* On an engaged toggle the button is already the accent fill: the badge swaps the pair so it stays
+   a different colour from what it sits on. */
+.cp-player-bar__button--on .cp-player-bar__count {
+  --chip-tone: var(--fg-on-accent);
+  --chip-text: var(--accent-fill);
+  background: var(--fg-on-accent);
 }
 
 /* Repeat's state in words beside its icon (BAR-3). */
@@ -378,38 +395,42 @@
 }
 
 /*
- * A window under 700px tall (area 90): the bar is one compact line, so the page keeps its rows.
- * Every button takes the standard control size with the medium icon, the facts line goes (the
- * title stays), and the zoomed waveform strip and its toggle are not drawn. A window of 700 or
- * more (the 1264x735 laptop at 1.5x) keeps the strip.
+ * A short window (area 90, C207): the bar is one compact line, so the page keeps its rows. The
+ * window is short under 700 pixels of content height in the text size's own units, the same
+ * threshold the zoomed strip uses; `useShortWindowFlag` puts `data-short-window` on the page.
+ * Every button takes the standard control size with the medium icon (Play stays a quarter wider),
+ * the facts line goes (the title stays), and the zoomed waveform strip and its toggle are not
+ * drawn.
  */
-@media (max-height: 699px) {
-  .cp-player-bar {
-    flex-wrap: nowrap;
-    padding: var(--space-xs) var(--space-md);
-  }
+:root[data-short-window] .cp-player-bar {
+  flex-wrap: nowrap;
+  padding: var(--space-xs) var(--space-lg);
+}
 
-  .cp-player-bar__button,
-  .cp-player-bar__button--play,
-  .cp-player-bar__button--standard {
-    min-width: max(var(--control-height), 24px);
-    min-height: max(var(--control-height), 24px);
-  }
+:root[data-short-window] .cp-player-bar__button,
+:root[data-short-window] .cp-player-bar__button--standard {
+  min-width: max(var(--control-height), 24px);
+  min-height: max(var(--control-height), 24px);
+}
 
-  .cp-player-bar__button .cp-pixel-icon {
-    width: var(--icon-size-md);
-    height: var(--icon-size-md);
-  }
+:root[data-short-window] .cp-player-bar__button--play {
+  min-width: calc(var(--control-height) * 1.25);
+  min-height: max(var(--control-height), 24px);
+}
 
-  .cp-player-bar__meta {
-    display: none;
-  }
+:root[data-short-window] .cp-player-bar__button .cp-pixel-icon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+}
 
-  .cp-player-bar__button--zoom {
-    display: none;
-  }
+:root[data-short-window] .cp-player-bar__meta {
+  display: none;
+}
 
-  .cp-player-slot .cp-detail-strip {
-    display: none;
-  }
+:root[data-short-window] .cp-player-bar__button--zoom {
+  display: none;
+}
+
+:root[data-short-window] .cp-player-slot .cp-detail-strip {
+  display: none;
 }

@@ -33,6 +33,7 @@ import { WheelPopoverHost } from "./components/wheel";
 import { PlayerSlot } from "./components/player/PlayerSlot";
 import { useRestorePlayerAudio } from "./components/player/playerAudioState";
 import { useRestorePlayerOrder } from "./components/player/playerOrderState";
+import { useShortWindowFlag } from "./components/waveform/waveformDetailSetting";
 import {
   CleanScreen,
   DiscoverScreen,
@@ -215,6 +216,9 @@ function AppShell() {
   useRestorePlayerOrder();
   // The output device the user chose, before the first track plays (PLAYER-11).
   useRestorePlayerAudio();
+  // One short-window threshold for the compact player bar and the zoomed strip (C207): the page
+  // carries it as `data-short-window`, which PlayerBar.css reads.
+  useShortWindowFlag();
 
   /**
    * Maps a destination id to the screen that renders it.

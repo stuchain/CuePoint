@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { declarations, parseRules, selectorList, stripComments } from "../../test/cssRules";
+import { THEMES, themeTokens } from "../../test/themeFixtures";
+import { contrastRatio } from "../../tokens/themeDerivation";
 
 import playerBar from "./PlayerBar.css?raw";
 import tokensCss from "../../tokens/tokens.css?raw";
@@ -37,10 +39,49 @@ describe("the player bar keeps its look", () => {
     expect(standard["min-height"]).toBe("max(var(--control-height), 24px)");
   });
 
-  it("is one compact line in a window under 700px tall", () => {
-    const compact = parseRules(stripComments(playerBar)).filter((rule) => rule.context.includes("max-height: 699px"));
-    expect(compact.find((rule) => rule.selector === ".cp-player-bar")?.body).toMatch(/flex-wrap:\s*nowrap/);
-    expect(compact.some((rule) => rule.selector === ".cp-player-bar__meta")).toBe(true);
+  it("is one compact line in a short window, which the page flag says (C207)", () => {
+    const rules = parseRules(stripComments(playerBar));
+    const compact = (selector: string) =>
+      rules.find((rule) => rule.selector === `:root[data-short-window] ${selector}`);
+    expect(compact(".cp-player-bar")?.body).toMatch(/flex-wrap:\s*nowrap/);
+    expect(compact(".cp-player-bar__meta")).toBeDefined();
+    expect(rules.some((rule) => rule.context.includes("max-height"))).toBe(false);
+  });
+
+  it("insets the bar the same on both sides, as the status strip and the panels do (C46)", () => {
+    const bar = ruleDecls(playerBar, ".cp-player-bar");
+    expect(bar["padding"]).toBe("var(--space-sm) var(--space-lg)");
+  });
+
+  it("fills a hovered button with the shared hover fill (R3-14)", () => {
+    const hover = parseRules(stripComments(playerBar)).find(
+      (rule) => rule.selector === ".cp-player-bar__button:hover:not(:disabled)",
+    );
+    expect(Object.fromEntries(declarations(hover!.body))["background"]).toBe("var(--hover-fill)");
+  });
+
+  it("turns a toggle on with the accent fill and the on-accent text, and nothing else (C4)", () => {
+    const on = ruleDecls(playerBar, ".cp-player-bar__button--on");
+    expect(on["background"]).toBe("var(--accent-fill)");
+    expect(on["color"]).toBe("var(--fg-on-accent)");
+    expect(on["border"]).toBeUndefined();
+    expect(on["box-shadow"]).toBeUndefined();
+  });
+
+  it("draws the queue count in the accent fill with the on-accent text, and keeps its box (C89, C16c)", () => {
+    const count = ruleDecls(playerBar, ".cp-player-bar__count");
+    expect(count["background"]).toBe("var(--accent-fill)");
+    expect(count["--chip-text"]).toBe("var(--fg-on-accent)");
+    expect(count["border"]).toBeUndefined();
+    expect(count["box-shadow"]).toBeUndefined();
+    expect(ruleDecls(badgeCss, ".cp-badge--player")["border"]).toBe("var(--border-width) solid var(--border-outline)");
+  });
+
+  it("holds the badge pair at 4.5:1 in every theme", () => {
+    for (const [name, css] of Object.entries(THEMES)) {
+      const theme = themeTokens(css);
+      expect(contrastRatio(theme["fg-on-accent"]!, theme["accent-fill"]!), `${name} badge`).toBeGreaterThanOrEqual(4.5);
+    }
   });
 
   it("lets the artist and label shrink while the key chip, BPM and year keep their room", () => {
