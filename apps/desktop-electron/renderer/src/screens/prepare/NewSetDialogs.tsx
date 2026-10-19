@@ -34,7 +34,7 @@ export function NewSetDialog({ open, folders, busy = false, error = null, errorK
       open={open}
       title="New Set"
       folders={folders}
-      submitLabel="Make the Set"
+      submitLabel="Create the Set"
       busy={busy}
       error={error}
       errorKey={errorKey}

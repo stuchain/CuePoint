@@ -115,7 +115,7 @@ describe("saving a filter", () => {
     const { onSave } = show();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent("Give it a name");
+    expect(screen.getByRole("textbox", { name: "Name" })).toHaveAccessibleDescription(/Give it a name/);
   });
 
   it("does not let a name longer than the engine takes be typed", () => {
@@ -164,7 +164,7 @@ describe("what cannot be saved", () => {
 describe("when the engine refuses", () => {
   it("shows what it said rather than closing as though it worked", () => {
     show({ error: "A Collection here is already called “Openers”" });
-    expect(screen.getByRole("alert")).toHaveTextContent("already called");
+    expect(screen.getByRole("textbox", { name: "Name" })).toHaveAccessibleDescription(/already called/);
   });
 
   it("says it is working while it works", () => {

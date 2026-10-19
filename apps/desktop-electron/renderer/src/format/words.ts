@@ -33,7 +33,7 @@ export const SYNC = {
 } as const;
 /** The header state of a library whose files match its data (it was "In sync"). */
 export const UP_TO_DATE = "Up to date";
-export const OPEN_LOG_FOLDER = "Open log folder";
+export const OPEN_LOG_FOLDER = "Open logs folder";
 /** The retry button everywhere (it was "Try again" in about 30 places, plus other wordings). */
 export const RETRY = "Try again";
 export const TRY_AGAIN = RETRY;

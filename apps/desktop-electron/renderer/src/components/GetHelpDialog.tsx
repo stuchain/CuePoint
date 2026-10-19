@@ -4,10 +4,9 @@ import { Button } from "./Button";
 import { MoreAbout } from "./MoreAbout";
 import { Notice } from "./Notice";
 import { DESKTOP_ENGINE_VERSION, versionWords } from "./AboutDialog";
-import { OPEN_LOGS_FOLDER } from "./LogViewerDialog";
 import { Textarea } from "./Textarea";
 import type { AppBuildInfo } from "../api/cuepointBridge.types";
-import { couldNot } from "../format/words";
+import { OPEN_LOG_FOLDER, couldNot } from "../format/words";
 import { userMessage } from "../api/userMessage";
 import { lastReportId, reportingSetUp, sendProblemReport, setReportingChoice } from "../reporting/reporting";
 import { shortReportId } from "../reporting/ErrorScreen";
@@ -238,7 +237,7 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
               ) : null}
               {canOpenFolder ? (
                 <Button variant="secondary" onClick={() => void openLogFolder()}>
-                  {OPEN_LOGS_FOLDER}
+                  {OPEN_LOG_FOLDER}
                 </Button>
               ) : null}
             </div>

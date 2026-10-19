@@ -9,10 +9,8 @@ import { Select } from "./Select";
 import { reportUnexpected } from "../reporting/reporting";
 import "./LogViewerDialog.css";
 import { userMessage } from "../api/userMessage";
-import { couldNot } from "../format/words";
+import { OPEN_LOG_FOLDER, couldNot } from "../format/words";
 
-/** The folder button's words, shared with Get help. */
-export const OPEN_LOGS_FOLDER = "Open logs folder";
 
 const LEVEL_OPTIONS = ["All", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] as const;
 
@@ -164,10 +162,10 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
             Refresh
           </Button>
           <Button variant="secondary" disabled={loading} onClick={handleExport}>
-            Export
+            Export…
           </Button>
           <Button variant="secondary" disabled={loading} onClick={() => void handleOpenLogsFolder()}>
-            {OPEN_LOGS_FOLDER}
+            {OPEN_LOG_FOLDER}
           </Button>
           {/* The one red button goes last, after a gap (C123). */}
           <Button

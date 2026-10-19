@@ -245,7 +245,7 @@ function lineFor(state: BeatportAuth["state"], masked: string | null): string {
     case "expired":
       return "Beatport sign-in ended";
     case "env":
-      return "Using the Beatport sign-in from your system settings";
+      return "Using a Beatport sign-in set outside CuePoint";
     case "unavailable":
       return "Signing in to Beatport is not available on this system.";
     case "signed_out":

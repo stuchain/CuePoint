@@ -561,7 +561,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await choose(win, "New Set from these…");
     const dialog = win.getByRole("dialog", { name: "New Set from the 2 selected tracks" });
     await dialog.getByRole("textbox", { name: "Name" }).fill("From the bar");
-    await reach(win, dialog.getByRole("button", { name: "Make the Set" }), "Make the Set");
+    await reach(win, dialog.getByRole("button", { name: "Create the Set" }), "Create the Set");
     await win.keyboard.press("Enter");
     await expect(win.getByText("Made the Set “From the bar” with 2 entries.")).toBeVisible({ timeout: 15_000 });
   });

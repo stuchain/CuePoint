@@ -41,7 +41,7 @@ export function NewSetFromDialog({
       initialName={source?.name ?? ""}
       initialParentId={source?.parentId ?? null}
       folders={folders}
-      submitLabel="Make the Set"
+      submitLabel="Create the Set"
       busy={busy}
       error={error}
       onSubmit={onCreate}

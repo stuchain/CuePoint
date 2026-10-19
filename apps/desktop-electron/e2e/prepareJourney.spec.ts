@@ -252,7 +252,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const naming = win.getByRole("dialog", { name: "New Set from “Crate”" });
       await naming.getByRole("textbox", { name: "Name" }).fill("Friday");
       await naming.getByRole("combobox", { name: "In" }).selectOption({ label: "Gigs" });
-      await naming.getByRole("button", { name: "Make the Set" }).click();
+      await naming.getByRole("button", { name: "Create the Set" }).click();
       await expect(win).toHaveURL(/#\/prepare\/\d+$/, { timeout: 30_000 });
       const setId = Number(/#\/prepare\/(\d+)$/.exec(win.url())![1]);
       await expect(row(win, "Close")).toBeVisible({ timeout: 30_000 });
@@ -556,7 +556,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const dialog = win.getByRole("dialog", { name: "New Set from the 3 selected tracks" });
       await expect(dialog.getByRole("textbox", { name: "Name" })).toHaveValue("New Set");
       await dialog.getByRole("textbox", { name: "Name" }).fill("Picked");
-      await dialog.getByRole("button", { name: "Make the Set" }).click();
+      await dialog.getByRole("button", { name: "Create the Set" }).click();
       await expect(win.getByText("Made the Set “Picked” with 3 entries.")).toBeVisible({ timeout: 15_000 });
 
       const made = await win.evaluate(async () => {

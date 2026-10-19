@@ -91,7 +91,7 @@ export function RefreshPreviewDialog({
         ) : (
           <>
             {removalNote && (
-              <Notice kind="danger">{removalNote}</Notice>
+              <Notice kind="warning">{removalNote}</Notice>
             )}
 
             {referenceNote && (

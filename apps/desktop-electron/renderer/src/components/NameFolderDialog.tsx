@@ -1,6 +1,5 @@
 import { useId, useLayoutEffect, useMemo, useState, type ReactNode, type RefObject } from "react";
 import { Modal } from "./Modal";
-import { Notice } from "./Notice";
 import { Select } from "./Select";
 import { TextField } from "./TextField";
 import { SMART_NAME_MAX_LENGTH, checkSmartName } from "../screens/library/smartFilter";
@@ -41,12 +40,12 @@ interface NameFolderDialogProps {
   /** The folder chosen when it opens; null is the top level. */
   initialParentId?: number | null;
   folders: readonly FolderOption[];
-  /** The main button: "Save", "Make the Set". */
+  /** The main button: "Save", "Create the Set". */
   submitLabel: string;
   busy?: boolean;
   /** Why the engine refused the last attempt, shown under the name field. */
   error?: string | null;
-  /** Changes with every refusal, so the same words coming back shake again. */
+  /** Callers still pass it; the refusal is now the field's own error, linked by aria-describedby. */
   errorKey?: number;
   placeholder?: string;
   /** The fields and the main button are greyed (there is nothing to name yet). */
@@ -76,7 +75,6 @@ export function NameFolderDialog({
   submitLabel,
   busy = false,
   error = null,
-  errorKey = 0,
   placeholder,
   disabled = false,
   disabledReason,
@@ -130,14 +128,9 @@ export function NameFolderDialog({
           maxLength={SMART_NAME_MAX_LENGTH}
           placeholder={placeholder}
           disabled={disabled}
-          aria-invalid={refusal ? true : undefined}
+          error={refusal ?? undefined}
           onChange={(event) => setName(event.target.value)}
         />
-        {refusal ? (
-          <Notice key={problem ?? errorKey} kind="field-error">
-            {refusal}
-          </Notice>
-        ) : null}
       </div>
       <Select
         label="In"

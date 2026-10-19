@@ -328,7 +328,7 @@ describe("with no Sets", () => {
     const dialog = screen.getByRole("dialog", { name: "New Set" });
     fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Friday II" } });
     fireEvent.change(within(dialog).getByLabelText("In"), { target: { value: String(IDS.gigs) } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
 
     await waitFor(() => expect(where()).toBe(preparePath(50)), LOADED);
     expect(sets.create).toHaveBeenCalledWith({ name: "Friday II", parent_id: IDS.gigs });
@@ -340,7 +340,7 @@ describe("with no Sets", () => {
     renderAt(PREPARE_PATH);
     fireEvent.click(await screen.findByRole("button", { name: "New Set…" }, LOADED));
     const dialog = screen.getByRole("dialog", { name: "New Set" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
     expect(within(dialog).getByText(/Give it a name/)).toBeInTheDocument();
     expect(sets.create).not.toHaveBeenCalled();
   });
@@ -352,7 +352,7 @@ describe("with no Sets", () => {
     fireEvent.click(await screen.findByRole("button", { name: "New Set…" }, LOADED));
     const dialog = screen.getByRole("dialog", { name: "New Set" });
     fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "X" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
     expect(await within(dialog).findByText(/Too deep/)).toBeInTheDocument();
     expect(where()).toBe(PREPARE_PATH);
   });
@@ -369,7 +369,7 @@ describe("with no Sets", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "New Set from “Sunday”" });
     expect(within(dialog).getByText(/Rekordbox playlist “Sunday”/)).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
 
     await waitFor(() => expect(where()).toBe(preparePath(51)), LOADED);
     expect(sets.createFrom).toHaveBeenCalledWith({
@@ -408,7 +408,7 @@ describe("New Set from the header (PRP-1)", () => {
     fireEvent.click(await menuItem("New Set…"));
     const dialog = await screen.findByRole("dialog", { name: "New Set" });
     fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Saturday" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
     await waitFor(() => expect(where()).toBe(preparePath(50)), LOADED);
     expect(sets.create).toHaveBeenCalledWith({ name: "Saturday", parent_id: null });
   });

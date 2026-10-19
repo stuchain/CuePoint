@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { LogViewerDialog, OPEN_LOGS_FOLDER } from "./LogViewerDialog";
+import { OPEN_LOG_FOLDER } from "../format/words";
+import { LogViewerDialog } from "./LogViewerDialog";
 
 function installBridge(overrides: Record<string, unknown> = {}) {
   (window as unknown as { cuepoint: unknown }).cuepoint = {
@@ -38,13 +39,13 @@ describe("LogViewerDialog", () => {
     const row = clear.parentElement!;
     expect(row).toHaveClass("cp-button-row");
     expect(row.lastElementChild).toBe(clear);
-    expect(screen.getByRole("button", { name: OPEN_LOGS_FOLDER })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: OPEN_LOG_FOLDER })).toBeInTheDocument();
   });
 
-  it("calls Export a plain Export, since it opens no dialog", async () => {
+  it("keeps the ellipsis on Export, since it opens the native Save dialog", async () => {
     installBridge();
     render(<LogViewerDialog open onClose={() => {}} />);
-    expect(await screen.findByRole("button", { name: "Export" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Export…" })).toBeInTheDocument();
   });
 
   it("names the thing in an error, without Failed to", async () => {

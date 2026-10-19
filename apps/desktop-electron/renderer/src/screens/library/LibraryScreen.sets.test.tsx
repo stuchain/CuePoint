@@ -408,7 +408,7 @@ describe("New Set from… (DEC-104)", () => {
     );
     const dialog = await screen.findByRole("dialog", { name: "New Set from “Warm-up”" });
     expect(dialog).toHaveTextContent(/in its order and with any repeats/);
-    await userEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
 
     expect(sets!.createFrom).toHaveBeenCalledWith({
       source: { kind: "collection", id: WARMUP.id },
@@ -437,7 +437,7 @@ describe("New Set from… (DEC-104)", () => {
     const dialog = await screen.findByRole("dialog", { name: "New Set from “Sunday”" });
     expect(dialog).toHaveTextContent(/refreshing from Rekordbox never changes the Set/);
     await userEvent.selectOptions(within(dialog).getByRole("combobox", { name: "In" }), String(GIGS.id));
-    await userEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
     expect(sets!.createFrom).toHaveBeenCalledWith({
       source: { kind: "playlist", id: 2 },
       name: "Sunday",
@@ -462,7 +462,7 @@ describe("New Set from… (DEC-104)", () => {
     expect(name).toHaveValue("New Set");
     await userEvent.clear(name);
     await userEvent.type(name, "Picked");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
 
     const inTableOrder = TRACKS.filter((row) => row.title === "Warm One" || row.title === "Close").map(
       (row) => row.id,
@@ -483,7 +483,7 @@ describe("New Set from… (DEC-104)", () => {
       (await menuItem("New Set from these…", await rowMenu("Close"))),
     );
     const dialog = await screen.findByRole("dialog", { name: "New Set from the 1 selected track" });
-    await userEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
     expect(sets!.createFrom).toHaveBeenCalledWith({
       source: { kind: "selection", track_ids: [5] },
       name: "New Set",
@@ -521,7 +521,7 @@ describe("New Set from… (DEC-104)", () => {
       within(await screen.findByRole("menu")).getByRole("menuitem", { name: "New Set from…" }),
     );
     const dialog = await screen.findByRole("dialog", { name: "New Set from “Warm-up”" });
-    await userEvent.click(within(dialog).getByRole("button", { name: "Make the Set" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(/a Set holds at most 1,000/);
   });
 });

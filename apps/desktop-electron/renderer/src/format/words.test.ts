@@ -4,7 +4,7 @@ import * as words from "./words";
 describe("words", () => {
   it("names the shared actions once", () => {
     expect(words.MATCH_ON_BEATPORT).toBe("Match on Beatport");
-    expect(words.OPEN_LOG_FOLDER).toBe("Open log folder");
+    expect(words.OPEN_LOG_FOLDER).toBe("Open logs folder");
     expect(words.UNDO).toBe("Undo");
   });
   it("adds the ellipsis to a dialog opener once", () => {

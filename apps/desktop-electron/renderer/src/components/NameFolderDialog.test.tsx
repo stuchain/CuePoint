@@ -21,7 +21,7 @@ function show(props: Partial<React.ComponentProps<typeof NameFolderDialog>> = {}
       open
       title="New Set"
       folders={FOLDERS}
-      submitLabel="Make the Set"
+      submitLabel="Create the Set"
       onSubmit={onSubmit}
       onClose={onClose}
       {...props}
@@ -37,7 +37,7 @@ describe("the shape", () => {
     expect(dialog).toHaveClass("cp-modal--medium");
     const footer = dialog.querySelector(".cp-modal__footer") as HTMLElement;
     expect(within(footer).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
-    expect(within(footer).getByRole("button", { name: "Make the Set" })).toBeInTheDocument();
+    expect(within(footer).getByRole("button", { name: "Create the Set" })).toBeInTheDocument();
   });
 
   it("puts a muted lead above the fields", () => {
@@ -55,7 +55,7 @@ describe("naming", () => {
   it("makes it under the trimmed name at the top level", async () => {
     const { onSubmit } = show();
     await userEvent.type(screen.getByRole("textbox", { name: "Name" }), "  Friday  ");
-    await userEvent.click(screen.getByRole("button", { name: "Make the Set" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create the Set" }));
     expect(onSubmit).toHaveBeenCalledWith("Friday", null);
   });
 
@@ -63,7 +63,7 @@ describe("naming", () => {
     const { onSubmit } = show({ initialName: "Warm-up", initialParentId: 2 });
     expect(screen.getByRole("combobox", { name: "In" })).toHaveValue("2");
     fireEvent.change(screen.getByRole("combobox", { name: "In" }), { target: { value: "5" } });
-    await userEvent.click(screen.getByRole("button", { name: "Make the Set" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create the Set" }));
     expect(onSubmit).toHaveBeenCalledWith("Warm-up", 5);
   });
 
@@ -75,15 +75,16 @@ describe("naming", () => {
 
   it("refuses a blank name under the field", async () => {
     const { onSubmit } = show();
-    await userEvent.click(screen.getByRole("button", { name: "Make the Set" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create the Set" }));
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent("Give it a name");
-    expect(screen.getByRole("textbox", { name: "Name" })).toHaveAttribute("aria-invalid", "true");
+    const field = screen.getByRole("textbox", { name: "Name" });
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field).toHaveAccessibleDescription(/Give it a name/);
   });
 
   it("shows the engine's refusal in the same place", () => {
     show({ error: "A Set here is already called “Friday”" });
-    expect(screen.getByRole("alert")).toHaveTextContent("already called");
+    expect(screen.getByRole("textbox", { name: "Name" })).toHaveAccessibleDescription(/already called/);
   });
 });
 
@@ -92,12 +93,12 @@ describe("working and greyed", () => {
     show({ disabled: true, disabledReason: "Add a filter first" });
     expect(screen.getByRole("textbox", { name: "Name" })).toBeDisabled();
     expect(screen.getByRole("combobox", { name: "In" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Make the Set" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create the Set" })).toBeDisabled();
     expect(screen.getByText("Add a filter first")).toBeInTheDocument();
   });
 
   it("shows the button working while it works", () => {
     show({ busy: true });
-    expect(screen.getByRole("button", { name: "Make the Set" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create the Set" })).toBeDisabled();
   });
 });

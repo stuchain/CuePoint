@@ -376,7 +376,7 @@ describe("a token from the environment", () => {
   it("says so and offers no sign-in", async () => {
     install({ state: "env", masked: null, expires_at: null, secure_storage: true });
     renderPanel();
-    expect(await screen.findByText("Using the Beatport sign-in from your system settings")).toBeInTheDocument();
+    expect(await screen.findByText("Using a Beatport sign-in set outside CuePoint")).toBeInTheDocument();
     expect(within(panel()).queryByRole("button", { name: "Sign in to Beatport" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Paste a token instead" })).toBeNull();
     expect(within(panel()).getByRole("button", { name: "Test connection" })).toBeEnabled();
