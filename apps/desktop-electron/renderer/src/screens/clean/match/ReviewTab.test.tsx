@@ -207,6 +207,17 @@ describe("the table", () => {
   });
 });
 
+describe("the selected row's look (C82)", () => {
+  it("is the Library's tint and bar: a selected row draws no outline, and the keyboard's row is dashed", async () => {
+    const css = (await import("./match.css?raw")).default;
+    const ring = /\.review-row:focus-visible\s*\{([^}]*)\}/.exec(css);
+    expect(ring, "a full focus outline on every focused row").toBeNull();
+    const cursor = /\.review-row:focus-visible:not\(\[aria-selected="true"\]\)\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(cursor).toMatch(/outline:\s*var\(--focus-ring-width\) dashed var\(--focus-ring\)/);
+    expect(css).toMatch(/\.review-row:focus-visible\[aria-selected="true"\]\s*\{[^}]*outline:\s*none/);
+  });
+});
+
 describe("ticking", () => {
   it("unticks a track at once and tells the engine, which keeps it", async () => {
     const { props } = renderTab();

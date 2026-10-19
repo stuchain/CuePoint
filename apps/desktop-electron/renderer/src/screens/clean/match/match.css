@@ -277,8 +277,15 @@
   user-select: none;
 }
 
-.review-row:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
+/* Selected is the Library's look, the tint and the bar on the left, never an outline (C82). A
+   focused row that is not selected (the keyboard's place) is marked as the Library marks it: a
+   dashed ring inset from the edge. */
+.review-row:focus-visible[aria-selected="true"] {
+  outline: none;
+}
+
+.review-row:focus-visible:not([aria-selected="true"]) {
+  outline: var(--focus-ring-width) dashed var(--focus-ring);
   outline-offset: var(--focus-ring-offset-inset);
 }
 
