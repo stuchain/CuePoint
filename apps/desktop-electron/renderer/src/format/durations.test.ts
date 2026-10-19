@@ -44,13 +44,19 @@ describe("formatSetLength (C173)", () => {
 });
 
 describe("aboutDuration (C173)", () => {
-  it("writes a long total in hours and minutes", () => {
-    expect(aboutDuration(33 * 3600 + 11 * 60 + 5, "en-US")).toBe("33 h 11 min");
-    expect(aboutDuration(2 * 3600)).toBe("2 h");
+  it.each([
+    [20, "under a minute"],
+    [60, "about 1 minute"],
+    [45 * 60, "about 45 minutes"],
+    [90 * 60, "about 2 hours"],
+    [3600, "about 1 hour"],
+    [6 * 3600, "about 6 hours"],
+    [26 * 3600, "about 26 hours"],
+  ])("rounds %s seconds to %s, ready to sit in a sentence", (seconds, words) => {
+    expect(aboutDuration(seconds)).toBe(words);
   });
-  it("writes a short wait in minutes and a very short one as under a minute", () => {
-    expect(aboutDuration(5 * 60 + 30)).toBe("5 min");
-    expect(aboutDuration(20)).toBe("Under a minute");
+  it("is a dash for an unknown or negative span", () => {
     expect(aboutDuration(undefined)).toBe("—");
+    expect(aboutDuration(-5)).toBe("—");
   });
 });

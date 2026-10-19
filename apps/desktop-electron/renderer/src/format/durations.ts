@@ -55,9 +55,17 @@ export function formatSetLength(seconds: number | null | undefined): string {
 }
 
 /**
- * An approximate span in one style, for a long total or a time left: "33 h 11 min", "5 min",
- * "Under a minute". It is `formatTotal` under the name the call site reads best.
+ * An approximate span for a sentence, rounded: "about 6 hours", "about 2 minutes", "under a
+ * minute". It rounds where `formatTotal` floors, because "left" and "takes" are estimates.
+ * Unknown or negative is "—".
  */
-export function aboutDuration(seconds: number | null | undefined, locale?: string): string {
-  return formatTotal(seconds, locale);
+export function aboutDuration(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined || !Number.isFinite(seconds) || seconds < 0) {
+    return NO_LENGTH;
+  }
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 1) return "under a minute";
+  if (minutes < 60) return `about ${minutes} minute${minutes === 1 ? "" : "s"}`;
+  const hours = Math.round(minutes / 60);
+  return `about ${hours} hour${hours === 1 ? "" : "s"}`;
 }

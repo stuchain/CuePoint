@@ -238,7 +238,7 @@ describe("the waveform analysis on the strip", () => {
       analysis({ completed_tracks: 1234, total_tracks: 50000, eta_seconds: 6 * 3600 }),
     );
     expect(title).toBe(
-      `${JOB_EXPLAINERS.waveform_analysis} About 8,128 an hour · 6 h left`,
+      `${JOB_EXPLAINERS.waveform_analysis} About 8,128 an hour · about 6 hours left`,
     );
   });
 

@@ -53,7 +53,7 @@ describe("analysisWords", () => {
       analysisWords(
         status({ state: "running", analysed: 1200, failed: 34, eta_seconds: 6 * 3600 }),
       ),
-    ).toBe("Analyzing · 1,234 of 50,000 · 6 h left");
+    ).toBe("Analyzing · 1,234 of 50,000 · about 6 hours left");
   });
 
   it("leaves the time out until there is a rate", () => {
@@ -165,7 +165,7 @@ describe("what Delete waveform data asks first", () => {
       status({ state: "running", present: 50_000, rate_per_hour: 8_000, store_bytes: 1 }),
     );
     expect(lines[1]).toBe(
-      "The whole library will be analyzed again, which takes 6 h 15 min at the current rate.",
+      "The whole library will be analyzed again, which takes about 6 hours at the current rate.",
     );
   });
 

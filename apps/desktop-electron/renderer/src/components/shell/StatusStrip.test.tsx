@@ -457,7 +457,7 @@ describe("stopping a job", () => {
     expect(pause).toHaveTextContent("Pause");
     expect(label).toHaveAttribute(
       "title",
-      expect.stringContaining("About 8,128 an hour · 6 h left"),
+      expect.stringContaining("About 8,128 an hour · about 6 hours left"),
     );
     pause.click();
 
