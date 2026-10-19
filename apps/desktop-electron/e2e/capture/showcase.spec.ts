@@ -569,7 +569,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         await window.getByRole("region", { name: /^Review / }).locator("tr.review-row").first().locator("td.review-row__yours").click();
         const panel = window.getByRole("complementary", { name: "Track details" });
         const yours = panel.getByRole("region", { name: "Your file" });
-        const candidates = panel.getByRole("list", { name: "Beatport candidates" });
+        const candidates = panel.getByRole("radiogroup", { name: "Beatport candidates" });
         await expect(candidates).toBeVisible({ timeout: 30_000 });
         await expect(panel.getByRole("button", { name: "None of these — leave it out" })).toBeVisible();
         // your cover, decoded by the app from the fixture

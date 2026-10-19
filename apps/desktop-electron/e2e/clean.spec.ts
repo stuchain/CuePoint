@@ -261,7 +261,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
       await test.step("choose the second-best result from the side panel, then sync the playlist", async () => {
         // A click on the row opens the panel straight on the candidates.
         const panel = await openDetails(window, "Tone Two");
-        const candidates = panel.getByRole("list", { name: "Beatport candidates" });
+        const candidates = panel.getByRole("radiogroup", { name: "Beatport candidates" });
         await expect(candidates).toBeVisible({ timeout: 15_000 });
         // The other result is the one in E minor (9A): pick it, and Use this match (pinned at the
         // panel's foot) confirms it and ticks the track.

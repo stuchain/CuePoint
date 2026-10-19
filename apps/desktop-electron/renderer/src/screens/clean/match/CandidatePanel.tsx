@@ -24,7 +24,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "rea
 import type { CandidateDifferences, MatchCandidate, MatchSearchAnswer, ReviewTrack } from "../../../api/cuepointBridge.types";
 import { orderCandidates } from "./candidateOrder";
 import { bridgeErrorFields } from "../../../api/bridgeError";
-import { userMessage } from "../../../api/userMessage";
+import { needsDesktopApp, userMessage } from "../../../api/userMessage";
 import { ArtworkPlaceholder } from "../../../components/ArtworkPlaceholder";
 import { Badge } from "../../../components/Badge";
 import { Button } from "../../../components/Button";
@@ -39,7 +39,7 @@ import { Select } from "../../../components/Select";
 import { TextField } from "../../../components/TextField";
 import { useBeatportPreview } from "../../../components/preview/useBeatportPreview";
 import { formatCount } from "../../../format/counts";
-import { USE_MATCH, couldNot } from "../../../format/words";
+import { RETRY, USE_MATCH, couldNot } from "../../../format/words";
 import { formatLength } from "../../../format/durations";
 import { FACTS_SEPARATOR, trackFactParts } from "../../../format/trackFacts";
 import { formatMatchScore } from "../../../format/units";
@@ -269,10 +269,18 @@ export function CandidatePanel({
   // The candidate the foot's Use this match takes: the one picked, else the best one not in use yet.
   const [picked, setPicked] = useState<number | null>(null);
   useEffect(() => setPicked(null), [trackId]);
+  // An unticked track starts on the match it has, so Use this match never silently takes another.
+  const inUseShown = inUseId !== null && shown.some((entry) => entry.id === inUseId) ? inUseId : null;
+  const otherId =
+    shown.find((entry) => entry.id !== inUseId && entry.guard_ok)?.id ??
+    shown.find((entry) => entry.id !== inUseId)?.id ??
+    null;
   const pickedId =
     picked !== null && shown.some((entry) => entry.id === picked)
       ? picked
-      : (shown.find((entry) => entry.id !== inUseId && entry.guard_ok)?.id ?? shown.find((entry) => entry.id !== inUseId)?.id ?? null);
+      : row.ticked
+        ? (otherId ?? inUseShown)
+        : (inUseShown ?? otherId);
   const pickedInUse = pickedId !== null && row.ticked && pickedId === inUseId;
 
   const playFile = () => {
@@ -354,7 +362,8 @@ export function CandidatePanel({
       onKeyDown={(event) => {
         // Esc closes the panel from inside it too (C29); a field keeps its own Esc.
         if (event.key !== "Escape" || event.defaultPrevented) return;
-        if ((event.target as HTMLElement).closest("input, textarea, select")) return;
+        // A radio or a tick is not a text field: Esc from a candidate's radio closes the panel.
+        if ((event.target as HTMLElement).closest("textarea, select, input:not([type=radio]):not([type=checkbox])")) return;
         event.preventDefault();
         onClose();
       }}
@@ -395,11 +404,24 @@ export function CandidatePanel({
         </section>
 
         <h3 className="cp-text-label review-panel__eyebrow">Found on Beatport · pick the right one</h3>
-        {matches.error && <Notice kind="danger">{matches.error}</Notice>}
+        {matches.error && (
+          <Notice
+            kind="danger"
+            action={
+              matches.error === needsDesktopApp() ? undefined : (
+                <Button variant="secondary" onClick={matches.reload}>
+                  {RETRY}
+                </Button>
+              )
+            }
+          >
+            {matches.error}
+          </Notice>
+        )}
         {matches.loading && shown.length === 0 && <Loading what="its candidates" />}
         {nothingNote && <EmptyState compact headline={nothingNote.headline} description={nothingNote.description} />}
         {shown.length > 0 && (
-          <ul className="review-candidates" aria-label="Beatport candidates">
+          <ul className="review-candidates" role="radiogroup" aria-label="Beatport candidates">
             {shown.map((candidate) => (
               <CandidateRow
                 key={candidate.id}

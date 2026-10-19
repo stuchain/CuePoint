@@ -43,7 +43,7 @@ function renderPanel(overrides: Partial<Props> = {}) {
 }
 
 async function candidates() {
-  return within(await screen.findByRole("list", { name: "Beatport candidates" }));
+  return within(await screen.findByRole("radiogroup", { name: "Beatport candidates" }));
 }
 
 beforeEach(() => {
@@ -156,6 +156,27 @@ describe("the candidates", () => {
     renderPanel();
     const list = await candidates();
     expect(list.getAllByText(/./, { selector: ".review-candidate__why" })).toHaveLength(1);
+  });
+
+  it("starts an unticked row on the match it already has, so Use this match never takes another unasked", async () => {
+    const props = renderPanel({ row: reviewTrack(1, "matched", { ticked: false }) });
+    const list = await candidates();
+    const own = list.getAllByRole("radio").find((radio) => (radio as HTMLInputElement).checked)!;
+    expect(own).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Use this match" }));
+    expect(props.onUse).toHaveBeenCalledWith(1001);
+  });
+
+  it("says the match is already in use when it is the only candidate", async () => {
+    const real = bridge.getMatchCandidates.getMockImplementation()!;
+    bridge.getMatchCandidates.mockImplementation(async (...args: unknown[]) => {
+      const answer = await (real as (...a: unknown[]) => Promise<{ candidates: unknown[] }>)(...args);
+      return { ...answer, candidates: answer.candidates.slice(0, 1), total: 1 };
+    });
+    renderPanel();
+    const list = await candidates();
+    expect(list.getAllByRole("radio")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Use this match" })).toBeDisabled();
   });
 
   it("marks nothing in use on an unticked row, and offers its own candidate again", async () => {

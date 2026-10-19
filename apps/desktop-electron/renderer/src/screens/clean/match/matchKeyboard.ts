@@ -1,5 +1,5 @@
 /**
- * Moving along the review from the keyboard (the Review tab).
+ * Moving along the review from the keyboard.
  *
  * Checking thousands of tracks is a keyboard job, so the table and its side panel answer three
  * keys: Up and Down move to the previous or next track (the panel follows), Home and End go to the
@@ -9,7 +9,9 @@
  * shell (SHELL-10's shortcuts are all modified). A key pressed inside a widget that moves with
  * keys of its own, the player's queue list, a tree, a menu, belongs to that widget.
  *
- * **Space is not here.** It is the player's (`usePlayerShortcuts`) except on a tick.
+ * Enter plays the row and Space ticks it; both are bound on the table's row (`ReviewTable`), not
+ * here. **Space is not here.** It is the player's (`usePlayerShortcuts`) except on a tick.
+ * A candidate's radio group owns its arrows: they change the pick, not the track.
  */
 
 export type MatchCommand = "previous-track" | "next-track" | "first-track" | "last-track" | "close";
@@ -36,7 +38,7 @@ export const MATCH_KEYS: Record<"previous-track" | "next-track" | "first-track" 
 /** Inputs that take no typed text: a tick or a radio is not a field. */
 const NOT_TEXT_INPUTS = ["checkbox", "radio", "button", "submit", "reset", "range", "color", "file"];
 
-const OWN_KEYS = '[role="dialog"], [role="menu"], [role="listbox"], [role="tree"]';
+const OWN_KEYS = '[role="dialog"], [role="menu"], [role="listbox"], [role="tree"], [role="radiogroup"]';
 
 function inTheWay(target: EventTarget | null): boolean {
   if (typeof HTMLElement === "undefined" || !(target instanceof HTMLElement)) return false;

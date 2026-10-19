@@ -68,6 +68,19 @@ describe("matchCommand", () => {
     expect(isSelectAll(press("a", { ctrlKey: true, target: document.createElement("input") }))).toBe(false);
   });
 
+  it("leaves the arrows to a candidate's radio group, which moves the pick (not the track)", () => {
+    const group = document.createElement("ul");
+    group.setAttribute("role", "radiogroup");
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    group.append(radio);
+    document.body.append(group);
+    expect(matchCommand(press("ArrowDown", { target: radio }))).toBeNull();
+    expect(matchCommand(press("ArrowUp", { target: radio }))).toBeNull();
+    group.remove();
+    expect(matchCommand(press("ArrowDown", { target: document.body }))).toBe("next-track");
+  });
+
   it("names the keys for the shortcuts dialog", () => {
     expect(MATCH_KEYS).toEqual({
       "previous-track": "Up",
