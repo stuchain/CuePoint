@@ -75,7 +75,7 @@ describe("the results line", () => {
 });
 
 describe("status", () => {
-  it("is Running, Done, Stopped or Search failed, as Discover's runs say them (C153)", () => {
+  it("is Running, Done or Stopped as Discover's runs say them, or Search failed when every search failed (C153)", () => {
     expect(statusOf(run())).toEqual({ label: "Done", tone: "done" });
     expect(statusOf(run({ status: "running" }))).toEqual({ label: "Running", tone: "running" });
     expect(statusOf(run({ status: "stopped", done: 1040 }))).toEqual({ label: "Stopped", tone: "stopped" });

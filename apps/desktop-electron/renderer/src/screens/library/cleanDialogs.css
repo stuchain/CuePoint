@@ -86,7 +86,7 @@
   grid-column: 1 / -1;
 }
 
-/* Use Beatport's values: ticks on roomier rows, each with its count on the right. */
+/* Copy Beatport values: ticks on roomier rows, each with its count on the right. */
 .clean-dialog__group--ticks {
   gap: var(--space-sm);
 }

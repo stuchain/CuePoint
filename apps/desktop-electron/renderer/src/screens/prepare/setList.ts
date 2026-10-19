@@ -13,7 +13,7 @@
 import type { SetListFormat, SetListSaved, SetRefusal } from "../../api/cuepointBridge.types";
 import { needsDesktopApp } from "../../api/userMessage";
 import { countNoun, formatCount } from "../../format/counts";
-import { quoted } from "../../format/words";
+import { couldNot, quoted } from "../../format/words";
 
 /** Each form, as the sentence names it: "as a CSV set list". */
 const FORM_WORDS: Record<SetListFormat, string> = {
@@ -31,16 +31,16 @@ export function setListSavedLine(setName: string, saved: SetListSaved): string {
   if (saved.untimed > 0 && saved.format !== "m3u8") {
     parts.push(`${formatCount(saved.untimed)} untimed`);
   }
-  return `Saved ${quoted(setName)} as ${FORM_WORDS[saved.format]} set list, ${parts.join(", ")}.`;
+  return `Saved ${quoted(setName)} as ${FORM_WORDS[saved.format]} set list, ${parts.join(", ")}`;
 }
 
 /** What a copy put on the clipboard. */
 export function setListCopiedLine(setName: string): string {
-  return `Copied the set list for ${quoted(setName)}.`;
+  return `Copied the set list for ${quoted(setName)}`;
 }
 
 /** Said when the clipboard refuses, which the web API does without a reason. */
-export const CLIPBOARD_REFUSED = "Could not copy to the clipboard.";
+export const CLIPBOARD_REFUSED = couldNot("copy to the clipboard");
 
 /** Said when the shell has no `sets` namespace: a browser tab, an older shell. */
 export const NO_SET_LISTS = needsDesktopApp();

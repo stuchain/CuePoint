@@ -1,5 +1,5 @@
 /**
- * "Use Beatport's values…" over a selection (CLEAN-13, DEC-068, PAGES-07B).
+ * "Copy Beatport values…" over a selection (CLEAN-13, DEC-068, PAGES-07B).
  *
  * Accepting a match writes nothing; applying copies the chosen fields from
  * each track's accepted match into CuePoint's layer, as one batch. A track

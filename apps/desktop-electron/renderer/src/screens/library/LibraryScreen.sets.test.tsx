@@ -541,7 +541,7 @@ describe("a Set's menu in the tree", () => {
       currentPath: null,
     });
     expect(
-      await screen.findByText("Saved “Friday” as a CSV set list, 6 entries, 6 untimed."),
+      await screen.findByText("Saved “Friday” as a CSV set list, 6 entries, 6 untimed"),
     ).toBeInTheDocument();
   });
 
@@ -549,7 +549,7 @@ describe("a Set's menu in the tree", () => {
     renderScreen();
     await ready();
     await fromMenu("Copy set list");
-    expect(await screen.findByText("Copied the set list for “Friday”.")).toBeInTheDocument();
+    expect(await screen.findByText("Copied the set list for “Friday”")).toBeInTheDocument();
     expect(writeText).toHaveBeenCalledWith(SET_LIST_TEXT.text);
   });
 

@@ -22,13 +22,11 @@ interface NewSetDialogProps {
   folders: readonly FolderOption[];
   busy?: boolean;
   error?: string | null;
-  /** Changes with every refusal, so the same words coming back shake again. */
-  errorKey?: number;
   onCreate: (name: string, parentId: number | null) => void;
   onClose: () => void;
 }
 
-export function NewSetDialog({ open, folders, busy = false, error = null, errorKey = 0, onCreate, onClose }: NewSetDialogProps) {
+export function NewSetDialog({ open, folders, busy = false, error = null, onCreate, onClose }: NewSetDialogProps) {
   return (
     <NameFolderDialog
       open={open}
@@ -37,7 +35,6 @@ export function NewSetDialog({ open, folders, busy = false, error = null, errorK
       submitLabel="Create the Set"
       busy={busy}
       error={error}
-      errorKey={errorKey}
       placeholder="Friday at the Warehouse"
       onSubmit={onCreate}
       onClose={onClose}

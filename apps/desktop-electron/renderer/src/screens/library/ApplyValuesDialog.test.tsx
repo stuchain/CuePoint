@@ -1,5 +1,5 @@
 /**
- * "Use Beatport's values": the button says how many tracks it will change, once the engine
+ * "Copy Beatport values": the button says how many tracks it will change, once the engine
  * has counted them, and says why it is greyed (G7 step 7).
  */
 import { describe, expect, it, vi } from "vitest";

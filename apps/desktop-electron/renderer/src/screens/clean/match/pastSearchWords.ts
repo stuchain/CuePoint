@@ -59,8 +59,9 @@ export interface RunStatus {
 }
 
 /**
- * The run's status in the words Discover's runs use: Running, Done, Stopped and Search failed. A
- * finished run whose every search failed is the last, because nothing is known about its tracks.
+ * The run's status in the three words Discover's runs use: Running, Done and Stopped. "Search failed"
+ * is not one of them; it is Clean's own match state (`MATCH_STATE.searchFailed`), which a finished run
+ * whose every search failed takes, because nothing is known about its tracks.
  */
 export function statusOf(
   run: Pick<MatchRun, "status" | "found" | "waiting" | "not_found" | "rejected" | "search_failed">,

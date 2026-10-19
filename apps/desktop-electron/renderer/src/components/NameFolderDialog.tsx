@@ -45,8 +45,6 @@ interface NameFolderDialogProps {
   busy?: boolean;
   /** Why the engine refused the last attempt, shown under the name field. */
   error?: string | null;
-  /** Callers still pass it; the refusal is now the field's own error, linked by aria-describedby. */
-  errorKey?: number;
   placeholder?: string;
   /** The fields and the main button are greyed (there is nothing to name yet). */
   disabled?: boolean;

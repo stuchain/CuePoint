@@ -1039,7 +1039,6 @@ export function PrepareScreen({
   );
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [createRefusals, setCreateRefusals] = useState(0);
   const [choosingSource, setChoosingSource] = useState(false);
   // The Rekordbox playlists the "copy from" dialog offers: read through the
   // shared cache from the first time the dialog is asked for (not on every
@@ -1058,7 +1057,6 @@ export function PrepareScreen({
       setBusy(false);
       if (!made.ok || !made.node) {
         setCreateError(made.error ?? "The Set could not be made.");
-        setCreateRefusals((n) => n + 1);
         return;
       }
       setCreating(false);
@@ -1090,7 +1088,6 @@ export function PrepareScreen({
       setBusy(false);
       if (!made.ok || !made.node) {
         setCreateError(made.error ?? "The Set could not be made.");
-        setCreateRefusals((n) => n + 1);
         return;
       }
       setCopying(null);
@@ -1107,7 +1104,6 @@ export function PrepareScreen({
         folders={folders}
         busy={busy}
         error={createError}
-        errorKey={createRefusals}
         onCreate={(name, parentId) => void makeSet(name, parentId)}
         onClose={() => setCreating(false)}
       />
