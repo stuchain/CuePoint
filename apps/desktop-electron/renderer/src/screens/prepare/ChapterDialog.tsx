@@ -12,6 +12,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { SetChapterPlan, SetChapterUpdate } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
+import { focusById } from "../../components/NameFolderDialog";
 import { Textarea } from "../../components/Textarea";
 import { TextField } from "../../components/TextField";
 import { CHAPTER_NAME_MAX_LENGTH, chapterUpdate, readBpm } from "./chapterForm";
@@ -114,6 +115,7 @@ export function ChapterDialog({
       open={chapter !== null}
       title={chapter ? dialogTitle(CHAPTER_ACTION, chapterName(chapter)) : dialogTitle(CHAPTER_ACTION)}
       onClose={onClose}
+      initialFocus={focusById(`${ids}-name`)}
       primaryAction={{ label: "Save", onClick: submit, loading: busy }}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
       footerExtra={

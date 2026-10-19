@@ -21,6 +21,7 @@ import type { DiscoverFacet } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Modal } from "../../components/Modal";
+import { focusById } from "../../components/NameFolderDialog";
 import { Notice } from "../../components/Notice";
 import { SearchField } from "../../components/SearchField";
 import { deleteLabel, deleteTitle, nothingMatches } from "../../format/words";
@@ -105,6 +106,7 @@ export function ScopeDialog({
       open={open}
       title={list ? `Edit ${noun} list` : `New ${noun} list`}
       onClose={onClose}
+      initialFocus={focusById(`discover-list-name-${noun}`)}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
       primaryAction={{
         label: "Save",

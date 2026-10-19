@@ -14,9 +14,6 @@ function Window({ title, children }: { title: string; children: ReactNode }) {
     <svg className="ob-art" viewBox="0 0 165 120" aria-hidden="true" focusable="false">
       <rect className="ob-win" x="1" y="1" width="163" height="118" />
       <rect className="ob-bar" x="1" y="1" width="163" height="16" />
-      <rect className="ob-dot ob-dot--a" x="6" y="6" width="5" height="5" />
-      <rect className="ob-dot ob-dot--b" x="14" y="6" width="5" height="5" />
-      <rect className="ob-dot ob-dot--c" x="22" y="6" width="5" height="5" />
       <text className="ob-title" x="158" y="12.5" textAnchor="end">
         {title}
       </text>

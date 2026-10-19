@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 
 import type { DiscoverRefusal } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components/Modal";
+import { focusById } from "../../components/NameFolderDialog";
 import { Notice } from "../../components/Notice";
 import { Textarea } from "../../components/Textarea";
 import { refusalText } from "./discoverFormat";
@@ -58,6 +59,7 @@ export function NoteDialog({ open, track, note, maxLength, onSave, onClose }: No
       open={open}
       title="Wantlist note"
       onClose={onClose}
+      initialFocus={focusById("discover-note")}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
       primaryAction={{
         label: "Save note",

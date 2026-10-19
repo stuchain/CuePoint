@@ -80,9 +80,6 @@ export function PickerDialog({
     if (!open) return;
     setText("");
     setActive(0);
-    // The filter box, not the dialog: typing is the whole point of this one,
-    // and a user who has to Tab to it first will not type.
-    inputRef.current?.focus();
   }, [open]);
 
   const shown = useMemo(() => {
@@ -135,6 +132,7 @@ export function PickerDialog({
       // Choosing ends the dialog, so the footer is the way out; making a tag from the typed
       // name sits at its far left.
       closeLabel="Cancel"
+      initialFocus={inputRef}
       footerExtra={
         canCreate ? (
           <Button variant="secondary" onClick={() => onCreate!(typed)}>

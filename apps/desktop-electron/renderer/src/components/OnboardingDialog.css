@@ -86,6 +86,10 @@
 }
 
 .onboarding-dialog__done {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--row-height);
   margin: 0 0 var(--space-md);
   color: var(--success-text);
   font-size: var(--text-body);

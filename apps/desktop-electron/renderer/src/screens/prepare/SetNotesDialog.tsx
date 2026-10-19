@@ -11,6 +11,7 @@
 import { useEffect, useId, useState } from "react";
 
 import { Modal } from "../../components/Modal";
+import { focusById } from "../../components/NameFolderDialog";
 import { Notice } from "../../components/Notice";
 import { Textarea } from "../../components/Textarea";
 import { notesToSend } from "./prepareFormat";
@@ -37,6 +38,7 @@ export function SetNotesDialog({ set, error = null, errorKey = 0, onSave, onClos
 
   return (
     <Modal open={set !== null} title={set ? `Notes for “${set.name}”` : "Notes"} onClose={onClose}
+      initialFocus={focusById(`${id}-notes`)}
       primaryAction={{ label: "Save", onClick: () => onSave(notesToSend(notes)) }}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
     >

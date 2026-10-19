@@ -168,7 +168,7 @@ describe("the four screens", () => {
     }
   });
 
-  it("says Rekordbox, not DJ app, in the pictures, and draws three window dots", async () => {
+  it("says Rekordbox, not DJ app, in the pictures, and draws no macOS window dots", async () => {
     mount();
     await next();
     const drawings = screen.getByRole("list", { name: "How to export from Rekordbox" });
@@ -176,7 +176,7 @@ describe("the four screens", () => {
     expect(drawings).toHaveTextContent("Open Rekordbox");
     expect(drawings).toHaveTextContent("Rekordbox");
     for (const svg of drawings.querySelectorAll("svg.ob-art")) {
-      expect(svg.querySelectorAll(".ob-dot")).toHaveLength(3);
+      expect(svg.querySelectorAll(".ob-dot")).toHaveLength(0);
     }
   });
 
@@ -194,7 +194,7 @@ describe("the four screens", () => {
   it("is one dialog size on every step, with one violet button", async () => {
     mount();
     for (let step = 1; step <= 4; step += 1) {
-      expect(screen.getByRole("dialog").className).toMatch(/cp-modal--large/);
+      expect(screen.getByRole("dialog").className).toMatch(/cp-modal--medium/);
       const violet = within(screen.getByRole("dialog")).queryAllByRole("button").filter((b) => b.className.includes("cp-btn--primary"));
       expect(violet).toHaveLength(1);
       if (step < 4) await next();
@@ -274,14 +274,14 @@ describe("ticking what is done", () => {
     install({ trackCount: 306 });
     mount();
     await next();
-    expect(await screen.findByText("✓ 306 tracks imported")).toBeInTheDocument();
+    expect(await screen.findByText("306 tracks imported")).toBeInTheDocument();
   });
 
   it("says 1 track imported for one", async () => {
     install({ trackCount: 1 });
     mount();
     await next();
-    expect(await screen.findByText("✓ 1 track imported")).toBeInTheDocument();
+    expect(await screen.findByText("1 track imported")).toBeInTheDocument();
   });
 
   it("shows no done line on an empty library or without a bridge", async () => {
@@ -296,7 +296,7 @@ describe("ticking what is done", () => {
     install({ trackCount: 300, notMatched: 64 });
     mount();
     await goTo(3);
-    expect(await screen.findByText("✓ 236 matched")).toBeInTheDocument();
+    expect(await screen.findByText("236 matched")).toBeInTheDocument();
   });
 
   it("shows no matched line while every track is still not matched", async () => {
@@ -312,7 +312,7 @@ describe("ticking what is done", () => {
       install({ auth });
       mount();
       await goTo(4);
-      expect(await screen.findByText("✓ Signed in")).toBeInTheDocument();
+      expect(await screen.findByText("Signed in")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Sign in to Beatport" })).toBeNull();
       cleanup();
     }
@@ -323,9 +323,9 @@ describe("ticking what is done", () => {
     mount();
     await goTo(4);
     await waitFor(() => expect(window.cuepoint!.getBeatportAuth).toHaveBeenCalled());
-    expect(screen.queryByText("✓ Signed in")).toBeNull();
+    expect(screen.queryByText("Signed in")).toBeNull();
     bridge.announce("signed_in");
-    expect(await screen.findByText("✓ Signed in")).toBeInTheDocument();
+    expect(await screen.findByText("Signed in")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sign in to Beatport" })).toBeNull();
   });
 });

@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 
 import type { BeatportPlaylistChoice, DiscoverRefusal } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components/Modal";
+import { focusById } from "../../components/NameFolderDialog";
 import { Notice } from "../../components/Notice";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
@@ -131,6 +132,7 @@ export function PushDialog({
       open={open}
       title={mode === "existing" ? "Add to a playlist on Beatport" : "Make a playlist on Beatport"}
       onClose={onClose}
+      initialFocus={focusById(mode === "new" ? "discover-push-name" : "discover-push-playlist")}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
       primaryAction={{
         label: mode === "existing" ? "Add to playlist" : "Make playlist",

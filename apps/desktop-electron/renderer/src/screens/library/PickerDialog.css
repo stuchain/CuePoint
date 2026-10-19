@@ -34,7 +34,7 @@
   align-items: center;
   gap: var(--space-xs);
   width: 100%;
-  min-height: calc(var(--hit-min) * 0.7);
+  min-height: var(--row-height);
   padding: var(--space-xs) var(--space-sm);
   border: 0;
   background: transparent;

@@ -1,7 +1,8 @@
 import { useId, useState } from "react";
-import { formatCount, pluralize } from "../screens/library/libraryFormat";
+import { countNoun, formatCount } from "../format/counts";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
+import { PixelIcon } from "./PixelIcon";
 import { MATCH_ON_BEATPORT } from "../format/words";
 import { OnboardingArt, OnboardingDrawings } from "./OnboardingIllustrations";
 import { markOnboardingDone, markPhase14NoteSeen } from "./firstRunMemory";
@@ -40,7 +41,7 @@ const SCREENS: Screen[] = [
     steps: true,
     action: { id: "import", label: "Import a Rekordbox file…" },
     done: ({ trackCount }) =>
-      trackCount !== null && trackCount > 0 ? `✓ ${pluralize(trackCount, "track")} imported` : null,
+      trackCount !== null && trackCount > 0 ? `${countNoun(trackCount, "track")} imported` : null,
   },
   {
     title: "Match your tracks on Beatport",
@@ -50,14 +51,14 @@ const SCREENS: Screen[] = [
     // Only a library known to be empty holds it back; while the count is unknown the button works.
     needs: ({ trackCount }) => (trackCount === 0 ? "Import a Rekordbox file first (step 2)." : null),
     done: ({ matchedCount }) =>
-      matchedCount !== null && matchedCount > 0 ? `✓ ${formatCount(matchedCount)} matched` : null,
+      matchedCount !== null && matchedCount > 0 ? `${formatCount(matchedCount)} matched` : null,
   },
   {
     title: "Sign in to Beatport (optional)",
     body: "Discover uses it to find new music.",
     art: "sign-in",
     action: { id: "sign-in", label: "Sign in to Beatport" },
-    done: ({ signedIn }) => (signedIn ? "✓ Signed in" : null),
+    done: ({ signedIn }) => (signedIn ? "Signed in" : null),
   },
 ];
 
@@ -123,7 +124,7 @@ export function OnboardingDialog({
     <Modal
       open={open && !covered}
       title="Getting started"
-      size="large"
+      size="medium"
       // Escape and the close button leave without marking it done; a click on the
       // backdrop does nothing (RUN-1, RUN-2).
       onClose={onComplete}
@@ -157,7 +158,17 @@ export function OnboardingDialog({
           <h3 className="onboarding-dialog__title">{screen.title}</h3>
           <p className="onboarding-dialog__body">{screen.body}</p>
           {screen.steps && <OnboardingDrawings />}
-          {doneLine && <p className="onboarding-dialog__done">{doneLine}</p>}
+          {/* Steps 2 to 4 keep a line for what is done, so the three read alike (C116). */}
+          {screen.done && (
+            <p className="onboarding-dialog__done" role="status">
+              {doneLine && (
+                <>
+                  <PixelIcon name="check" size="sm" />
+                  <span>{doneLine}</span>
+                </>
+              )}
+            </p>
+          )}
           {screen.action && !(screen.action.id === "sign-in" && progress.signedIn) && (
             <div className="onboarding-dialog__actions">
               <Button
