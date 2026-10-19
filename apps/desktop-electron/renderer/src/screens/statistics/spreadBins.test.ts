@@ -123,6 +123,30 @@ describe("groupTempo (2-BPM bins)", () => {
     expect(first!.rules!.rules).toHaveLength(3);
   });
 
+  it("rewrites only its own (last) bpm clauses, not a Smart scope's own bpm range", () => {
+    const own = (n: number): StatisticsBucket => ({
+      label: `${n} BPM`,
+      value: n,
+      count: 1,
+      rules: {
+        match: "all",
+        rules: [
+          { field: "bpm", operator: "gte", value: 120 },
+          { field: "bpm", operator: "lt", value: 130 },
+          { field: "bpm", operator: "gte", value: n - 0.5 },
+          { field: "bpm", operator: "lt", value: n + 0.5 },
+        ],
+      },
+    });
+    const [first] = groupTempo([own(122), own(123)]);
+    expect(first!.rules!.rules).toEqual([
+      { field: "bpm", operator: "gte", value: 120 },
+      { field: "bpm", operator: "lt", value: 130 },
+      { field: "bpm", operator: "gte", value: 121.5 },
+      { field: "bpm", operator: "lt", value: 123.5 },
+    ]);
+  });
+
   it("leaves a break alone and has no rules for a bin it cannot describe", () => {
     const gap = { gap: true, label: "⋯", value: null, count: 0, rules: null };
     const out = groupTempo([bin(122), gap, bin(170)]);

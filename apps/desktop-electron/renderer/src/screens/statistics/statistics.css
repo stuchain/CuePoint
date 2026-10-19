@@ -326,11 +326,6 @@
   color: var(--fg-muted);
 }
 
-/* All is well is quiet (C99, D14): the count is the muted text colour, as the bar's segment is grey. */
-.health-card__count--ok {
-  color: var(--fg-muted);
-}
-
 .health-card__count--warning {
   color: var(--warning-text);
 }
@@ -395,7 +390,7 @@
 
 /* Not looked at yet: the muted text colour, softened, never the divider colour (C98). */
 .stacked__part--muted {
-  background: color-mix(in srgb, var(--fg-muted) 55%, transparent);
+  background: color-mix(in srgb, var(--fg-muted) 25%, transparent);
 }
 
 .stacked__legend {

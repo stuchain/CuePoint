@@ -94,11 +94,7 @@ function HealthCard({ id, title, note, bar = false, rows, onOpen, children }: Ca
             <span className="health-card__label">{row.label}</span>{" "}
             <span
               className={`health-card__count statistics-figure${
-                row.todo && row.count > 0
-                  ? ` health-card__count--${row.todo}`
-                  : row.swatch === "success"
-                    ? " health-card__count--ok"
-                    : ""
+                row.todo && row.count > 0 ? ` health-card__count--${row.todo}` : ""
               }`}
             >
               {formatCount(row.count)}

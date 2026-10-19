@@ -62,10 +62,16 @@ function pairRules(members: readonly SpreadBin[], from: number, to: number): Fil
   if (!template) return null;
   const isLow = (r: FilterRule) => r.field === "bpm" && r.operator === "gte";
   const isHigh = (r: FilterRule) => r.field === "bpm" && r.operator === "lt";
-  if (!template.rules.some(isLow) || !template.rules.some(isHigh)) return null;
+  // The bucket's own clauses are the engine's last ones (it appends them to the scope's rules), so a
+  // scope that holds a bpm range of its own is left as it was.
+  const low = template.rules.findLastIndex(isLow);
+  const high = template.rules.findLastIndex(isHigh);
+  if (low < 0 || high < 0) return null;
   return {
     match: template.match,
-    rules: template.rules.map((r) => (isLow(r) ? { ...r, value: from - 0.5 } : isHigh(r) ? { ...r, value: to + 0.5 } : r)),
+    rules: template.rules.map((r, at) =>
+      at === low ? { ...r, value: from - 0.5 } : at === high ? { ...r, value: to + 0.5 } : r,
+    ),
   };
 }
 

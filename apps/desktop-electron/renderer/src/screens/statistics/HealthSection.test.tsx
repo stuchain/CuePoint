@@ -196,7 +196,7 @@ describe("the Health tab (STATS-07, K3)", () => {
     expect(where().dataset.section).toBe("missing");
   });
 
-  it("opens Clean's Match tab from To review, Not matched yet and No match found", async () => {
+  it("opens Clean's Match tab from To check, Not looked up yet and No match", async () => {
     for (const id of ["needs_review", "not_matched", "no_match"]) {
       const { unmount } = renderSection();
       await userEvent.click(within(rowOf("beatport", id)).getByRole("button"));
@@ -306,18 +306,22 @@ describe("the Health tab (STATS-07, K3)", () => {
     expect(success).toContain("background: var(--health-ok);");
     for (const [card, id] of [["files", "present"], ["beatport", "accepted"], ["analysis", "analyzed"]] as const) {
       const figure = rowOf(card, id).querySelector(".health-card__count")!;
-      expect(figure).toHaveClass("health-card__count--ok");
       expect(figure).not.toHaveClass("health-card__count--warning", "health-card__count--danger");
     }
-    const ok = /\.health-card__count--ok\s*\{([^}]*)\}/.exec(css)![1]!;
-    expect(ok).toContain("color: var(--fg-muted);");
+    expect(css).not.toContain("health-card__count--ok");
+    const count = /\.health-card__count\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(count).toContain("color: var(--fg-muted);");
     // A problem still shows in its own colour.
     expect(rowOf("files", "missing").querySelector(".health-card__count")).toHaveClass("health-card__count--danger");
   });
 
   it("draws the states nobody has looked at in --fg-muted and not the divider colour (C98)", () => {
     const muted = /\.stacked__part--muted\s*\{([^}]*)\}/.exec(css)![1]!;
+    const ok = /\.stacked__part--success\s*\{([^}]*)\}/.exec(css)![1]!;
     expect(muted).toContain("var(--fg-muted)");
     expect(muted).not.toContain("--border-muted");
+    // Not the same grey as the healthy segment, or Present and Not checked read alike.
+    expect(muted).toContain("25%");
+    expect(muted.match(/background:[^;]*;/)![0]).not.toBe(ok.match(/background:[^;]*;/)![0]);
   });
 });

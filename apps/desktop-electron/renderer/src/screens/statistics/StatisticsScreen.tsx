@@ -16,7 +16,7 @@
  * A link can ask for the Health tab (`statisticsLink.ts`), because library health lives here
  * now: the page opens it, once per navigation.
  */
-import { ScreenHeader } from "../../components/shell/ScreenHeader";
+import { ScreenHeader, type HeaderFacts } from "../../components/shell/ScreenHeader";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -28,7 +28,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
 import { Tabs, panelId, tabId } from "../../components/Tabs";
-import { countNoun, formatCount } from "../../format/counts";
+import { countNoun, formatCount, pluralWord } from "../../format/counts";
 import { RETRY } from "../../format/words";
 import { Select } from "../../components/Select";
 import { useCleanJob, type CleanMessageTone } from "../clean/useCleanJob";
@@ -217,21 +217,23 @@ export function StatisticsScreen() {
   // The page summary line: what is being counted, as a facts line.
   const summaryValue = answered?.summary ?? null;
   const scopeLabel = options.find((option) => option.value === scope)?.label ?? null;
-  const summaryLine =
+  const facts: HeaderFacts | undefined =
     !settled || libraryEmpty || summaryValue === null
       ? undefined
       : scope === "library"
-        ? [
-            typeof summaryValue.track_count === "number" ? countNoun(summaryValue.track_count, "track") : null,
-            typeof summaryValue.playlist_count === "number" ? countNoun(summaryValue.playlist_count, "playlist") : null,
-          ]
-            .filter((part): part is string => part !== null)
-            .join(" · ") || undefined
-        : scopeLabel === null
+        ? typeof summaryValue.track_count === "number"
+          ? {
+              count: summaryValue.track_count,
+              noun: "track",
+              facts:
+                typeof summaryValue.playlist_count === "number"
+                  ? [countNoun(summaryValue.playlist_count, "playlist")]
+                  : [],
+            }
+          : undefined
+        : scopeLabel === null || spreads.data?.scope !== scope
           ? undefined
-          : spreads.data?.scope === scope
-            ? `${countNoun(spreads.data.total, "track")} · ${scopeLabel}`
-            : scopeLabel;
+          : { count: spreads.data.total, noun: "track", facts: [scopeLabel] };
 
   const header = (
     <ScreenHeader
@@ -252,7 +254,7 @@ export function StatisticsScreen() {
           />
         ) : undefined
       }
-      summary={summaryLine}
+      facts={facts}
       tabs={
         answered !== null && !libraryEmpty ? (
           <Tabs
@@ -272,7 +274,7 @@ export function StatisticsScreen() {
                   toFix > 0 ? (
                     <span className="statistics-page__todo">
                       {formatCount(toFix)}
-                      <span className="cp-visually-hidden">{toFix === 1 ? " issue" : " issues"}</span>
+                      <span className="cp-visually-hidden">{` ${pluralWord(toFix, "issue")}`}</span>
                     </span>
                   ) : undefined,
               },
