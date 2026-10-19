@@ -109,7 +109,8 @@ import type { CleanTracks } from "../clean/cleanTracks";
 import { LibraryReadyNote } from "./LibraryReadyNote";
 import { isReadyNoteOpen, readImportedAt, rememberImport } from "./libraryNoticeMemory";
 import type { LibraryOpening, TrackOpening } from "./libraryLink";
-import { batchSelection, batchSummary, type BatchAction } from "./libraryBatch";
+import { batchSelection, batchSummary, withShortfall, type BatchAction } from "./libraryBatch";
+import { readPositions, restoreTracks } from "./collectionUndo";
 import { cleanCapLine, cleanTracksFor } from "./libraryClean";
 import { creditsFor } from "./libraryDiscover";
 import {
@@ -822,14 +823,15 @@ export function LibraryScreen({
    * Take tracks out of the open Collection at once, and offer the way back (SB2, C21).
    *
    * No question first: the toast says what happened and carries an Undo, which puts the same
-   * tracks back. The ids are read before the removal, because "everything matching" is a question
-   * that has a different answer once they are gone. Undo adds them again at the end: the engine
-   * appends, so a manual order inside the Collection is not restored.
+   * tracks back where they were. The ids and their places are read before the removal, because
+   * "everything matching" is a question that has a different answer once they are gone. Undo adds
+   * them again and moves each to its old position (the engine itself only appends).
    */
   const removeFromCollection = useCallback(
     async (collection: { id: number; name: string }, target: BatchTarget) => {
       const ids =
         target.selection.track_ids ?? (await selection.gatherIds(Number.POSITIVE_INFINITY));
+      const positions = await readPositions(window.cuepoint?.getCollectionEntries, collection.id, ids);
       const action: BatchAction = {
         kind: "remove_from_collection",
         value: collection.id,
@@ -843,16 +845,33 @@ export function LibraryScreen({
               push(batchSummary(action, result), "success");
               return;
             }
-            push(removedFrom(result.changed, collection.name), "success", {
-              label: UNDO,
-              onClick: () => {
-                void collections.addTracks(collection.id, ids).then((outcome) => {
-                  if (!mounted.current) return;
-                  if (outcome.ok) window_.reload();
-                  else push(couldNot("restore", collection.name), "warning");
-                });
+            // The tracks are gone from the table, so the rows that were selected are too.
+            selection.clear();
+            push(
+              withShortfall(removedFrom(result.changed, collection.name), action, result),
+              "success",
+              {
+                label: UNDO,
+                onClick: () => {
+                  void restoreTracks({
+                    collectionId: collection.id,
+                    trackIds: ids,
+                    positions,
+                    add: collections.addTracks,
+                    read: window.cuepoint?.getCollectionEntries,
+                    move: window.cuepoint?.reorderCollectionEntry,
+                  }).then((outcome) => {
+                    // The failure is told wherever the person is now; only the page's own
+                    // refresh waits for the page to still be there.
+                    if (outcome === "failed") push(couldNot("restore", collection.name), "error");
+                    else if (outcome === "appended" && positions) {
+                      push(couldNot("restore the order of", collection.name), "warning");
+                    }
+                    if (outcome !== "failed" && mounted.current) window_.reload();
+                  });
+                },
               },
-            });
+            );
           },
         },
       );
@@ -2023,7 +2042,7 @@ export function LibraryScreen({
               />
             )}
             <FilterBar
-            searchInputRef={searchInput}
+              searchInputRef={searchInput}
               vocabulary={vocabulary}
               // The bar's rules, not the query's: a Smart Collection that is
               // still what it saved resolves on the engine's side, so the
@@ -2119,7 +2138,9 @@ export function LibraryScreen({
               // Delete takes the selection out of the open Collection, with an Undo on the
               // toast. In "All tracks", a playlist or a Set it does nothing at all: it must never
               // be a way to lose a track from the library.
-              if (event.key !== "Delete" || event.defaultPrevented) return;
+              if (event.key !== "Delete" || event.defaultPrevented || event.repeat) return;
+              // One removal at a time: a second press while a batch runs would remove again.
+              if (batch.busy) return;
               if (event.target instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName)) return;
               if (!scopedCollection || scopedSet || selection.count === 0) return;
               event.preventDefault();

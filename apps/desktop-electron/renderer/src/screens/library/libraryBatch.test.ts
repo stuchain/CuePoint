@@ -16,6 +16,7 @@ import {
   batchSelection,
   batchSummary,
   describeBatch,
+  withShortfall,
   type BatchAction,
 } from "./libraryBatch";
 import { DEFAULT_LIBRARY_QUERY, type LibraryQuery } from "./libraryQuery";
@@ -190,6 +191,18 @@ describe("what it says afterwards", () => {
     expect(batchSummary(tag, result({ total: 3, changed: 3 }))).toContain(
       "Tagged 3 tracks “Peak-time”.",
     );
+  });
+
+  it("adds a partial result's failures and early stop to any other opening line", () => {
+    const remove: BatchAction = { kind: "remove_from_collection", value: 2, target: "Closers" };
+    const line = "Removed 6 tracks from “Closers”";
+    expect(withShortfall(line, remove, result({ total: 6, changed: 6 }))).toBe(line);
+    expect(
+      withShortfall(line, remove, result({ total: 10, changed: 6, unchanged: 1, failed: 3 })),
+    ).toBe(`${line} — 1 were not in it, 3 could not be changed.`);
+    expect(
+      withShortfall(line, remove, result({ total: 10, changed: 6, cancelled: true })),
+    ).toBe(`Stopped early. ${line}`);
   });
 
   it("reports the tracks it could not touch", () => {

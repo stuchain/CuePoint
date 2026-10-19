@@ -244,24 +244,37 @@ function destination(action: BatchAction): string {
 }
 
 /**
+ * An opening line with what fell short of the whole: the tracks that were already so or not
+ * there, the ones that could not be changed, and an early stop. A whole result leaves the line
+ * as it is. `alwaysStop` writes the full stop even then (the summary's own sentence).
+ */
+export function withShortfall(
+  line: string,
+  action: BatchAction,
+  result: BatchResult,
+  alwaysStop = false,
+): string {
+  const parts: string[] = [];
+  if (result.unchanged > 0) {
+    parts.push(`${formatCount(result.unchanged)} ${alreadyWere(action)}`);
+  }
+  if (result.failed > 0) {
+    parts.push(`${formatCount(result.failed)} could not be changed`);
+  }
+  const sentence =
+    parts.length > 0 ? `${line} — ${parts.join(", ")}.` : alwaysStop ? `${line}.` : line;
+  return result.cancelled ? `Stopped early. ${sentence}` : sentence;
+}
+
+/**
  * What happened, in the counts the result carries (ORG-07).
  *
  * `changed` and `unchanged` are different sentences on purpose: "tagged 40
  * tracks (12 already had it)" is true and "tagged 52 tracks" is not.
  */
 export function batchSummary(action: BatchAction, result: BatchResult): string {
-  const parts: string[] = [];
-  if (result.unchanged > 0) {
-    parts.push(`${formatCount(result.unchanged)} ${alreadyWere(action)}`);
-  }
-  if (result.failed > 0) {
-    parts.push(
-      `${formatCount(result.failed)} could not be changed`,
-    );
-  }
   const head = `${pastTense(action)} ${tracks(result.changed)}${destination(action)}`;
-  const line = parts.length === 0 ? `${head}.` : `${head} — ${parts.join(", ")}.`;
-  const opened = result.cancelled ? `Stopped early. ${line}` : line;
+  const opened = withShortfall(head, action, result, true);
   // A batch can be reverted as one since CLEAN-13 drew the control for it, so the toast says
   // where. Collection membership records no History and says nothing: a removal has its own
   // Undo on the toast the page shows, and an addition is undone by removing.

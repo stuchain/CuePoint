@@ -2378,6 +2378,177 @@ describe("organizing a selection (ORG-11)", () => {
       expect(await screen.findByText("Could not restore “Warmups”.")).toBeInTheDocument();
     });
 
+    it("puts the tracks back where they were: re-adds, then moves each to its old position (SB2)", async () => {
+      // The Collection holds [3, 1, 2]; tracks 1 and 3 are removed from positions 1 and 0.
+      type Entry = { id: number; collection_id: number; track_id: number; position: number; added_at: string };
+      let entries: Entry[] = [
+        { id: 500, collection_id: 12, track_id: 3, position: 0, added_at: "" },
+        { id: 501, collection_id: 12, track_id: 1, position: 1, added_at: "" },
+        { id: 502, collection_id: 12, track_id: 2, position: 2, added_at: "" },
+      ];
+      bridge.getCollectionEntries.mockImplementation(
+        async ({ offset = 0, limit = 50 }: { offset?: number; limit?: number }) => ({
+          collection_id: 12,
+          entries: entries.slice(offset, offset + limit),
+          entry_count: entries.length,
+          track_count: entries.length,
+          offset,
+        }),
+      );
+      bridge.addTracksToCollection.mockImplementation(
+        async ({ track_ids }: { track_ids: number[] }) => {
+          // The engine appends, in the order given.
+          entries = [
+            ...entries,
+            ...track_ids.map((track_id, at) => ({
+              id: 600 + at,
+              collection_id: 12,
+              track_id,
+              position: entries.length + at,
+              added_at: "",
+            })),
+          ];
+          return { added: track_ids.length, skipped: 0 };
+        },
+      );
+      renderScreen();
+      await tableReady();
+      await openCollection();
+      await userEvent.click(screen.getByText("Track 1"));
+      fireEvent.click(screen.getByText("Track 3"), { ctrlKey: true });
+      await screen.findByText(/2 selected/);
+      bridge.applyBatch.mockResolvedValueOnce({
+        applied: {
+          batch_id: "b9",
+          operation: "remove_from_collection",
+          target: "Warmups",
+          total: 2,
+          changed: 2,
+          unchanged: 0,
+          failed: 0,
+          cancelled: false,
+        },
+      });
+      await openMenuOn("Track 1");
+      await userEvent.click(await menuItem("Remove from “Warmups”"));
+      await screen.findByText("Removed 2 tracks from “Warmups”");
+      entries = entries.filter((entry) => entry.track_id === 2);
+
+      await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+      // Added in the order they used to sit, then each moved to where it was.
+      await waitFor(() =>
+        expect(bridge.addTracksToCollection).toHaveBeenCalledWith({
+          collection_id: 12,
+          track_ids: [3, 1],
+        }),
+      );
+      await waitFor(() => expect(bridge.reorderCollectionEntry).toHaveBeenCalledTimes(2));
+      expect(bridge.reorderCollectionEntry.mock.calls.map(([call]) => call)).toEqual([
+        { entry_id: 600, position: 0 },
+        { entry_id: 601, position: 1 },
+      ]);
+    });
+
+    it("adds the failure and the early stop of a partial removal to its toast", async () => {
+      renderScreen();
+      await tableReady();
+      await openCollection();
+      bridge.applyBatch.mockResolvedValueOnce({
+        applied: {
+          batch_id: "b10",
+          operation: "remove_from_collection",
+          target: "Warmups",
+          total: 4,
+          changed: 2,
+          unchanged: 1,
+          failed: 1,
+          cancelled: true,
+        },
+      });
+      await openMenuOn("Track 2");
+      await userEvent.click(await menuItem("Remove from “Warmups”"));
+
+      expect(
+        await screen.findByText(
+          "Stopped early. Removed 2 tracks from “Warmups” — 1 were not in it, 1 could not be changed.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("still tells the person Undo failed after they left the page", async () => {
+      const view = renderScreen();
+      await tableReady();
+      await openCollection();
+      bridge.applyBatch.mockResolvedValueOnce({
+        applied: {
+          batch_id: "b11",
+          operation: "remove_from_collection",
+          target: "Warmups",
+          total: 1,
+          changed: 1,
+          unchanged: 0,
+          failed: 0,
+          cancelled: false,
+        },
+      });
+      await openMenuOn("Track 2");
+      await userEvent.click(await menuItem("Remove from “Warmups”"));
+      await screen.findByText("Removed 1 track from “Warmups”");
+      let refuse: (reason: Error) => void = () => {};
+      bridge.addTracksToCollection.mockImplementationOnce(
+        () => new Promise((_, reject) => (refuse = reject)),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+      // Leave the page; the toast stack belongs to the shell and stays.
+      view.rerender(
+        <ScaleProvider>
+          <ToastProvider>{null}</ToastProvider>
+        </ScaleProvider>,
+      );
+      refuse(new Error("offline"));
+
+      // The failure is told even though the page that asked is gone.
+      expect(await screen.findByText("Could not restore “Warmups”.")).toBeInTheDocument();
+    });
+
+    it("ignores a held Delete key (one removal per press)", async () => {
+      renderScreen();
+      await tableReady();
+      await openCollection();
+      await userEvent.click(screen.getByText("Track 2"));
+      const row = screen.getByText("Track 2");
+      fireEvent.keyDown(row, { key: "Delete", repeat: true });
+      expect(bridge.applyBatch).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(row, { key: "Delete" });
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalledTimes(1));
+    });
+
+    it("clears the selection once the tracks are removed", async () => {
+      renderScreen();
+      await tableReady();
+      await openCollection();
+      await userEvent.click(screen.getByText("Track 2"));
+      await screen.findByText(/1 selected/);
+      bridge.applyBatch.mockResolvedValueOnce({
+        applied: {
+          batch_id: "b12",
+          operation: "remove_from_collection",
+          target: "Warmups",
+          total: 1,
+          changed: 1,
+          unchanged: 0,
+          failed: 0,
+          cancelled: false,
+        },
+      });
+      fireEvent.keyDown(screen.getByText("Track 2"), { key: "Delete" });
+
+      await screen.findByText("Removed 1 track from “Warmups”");
+      expect(screen.queryByText(/1 selected/)).toBeNull();
+    });
+
     it("takes the selection out of the open Collection with the Delete key, and does nothing in All tracks (SB2)", async () => {
       renderScreen();
       await tableReady();
