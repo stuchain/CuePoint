@@ -340,7 +340,7 @@
   margin-left: var(--space-xs);
   padding-right: var(--space-xs);
   font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   line-height: 1;
 }
 

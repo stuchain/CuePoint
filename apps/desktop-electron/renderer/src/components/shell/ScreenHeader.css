@@ -70,7 +70,7 @@
 .cp-screen-header__title,
 .cp-screen-header__display {
   font-size: var(--font-size-xl);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   line-height: var(--toolbar-height);
   min-width: 0;
   overflow: hidden;

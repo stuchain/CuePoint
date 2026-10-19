@@ -50,7 +50,7 @@
   --control-border-width: var(--hairline);
   --control-height: round(nearest, calc(20px * var(--scale)), 1px);
   --control-font-size: var(--font-size-xs);
-  --control-font-weight: 400;
+  --control-font-weight: var(--font-weight-regular);
   /* Hover for every control (area 79): a shade of the text colour, and a firmer border on fields. */
   --hover-shade: color-mix(in srgb, var(--fg-primary) 14%, transparent);
   --hover-border: var(--fg-muted);
@@ -133,8 +133,13 @@
   --font-size-dialog: var(--font-size-lg);
   --font-size-section: var(--font-size-md);
   --font-size-label: var(--font-size-xs);
-  --weight-strong: 700;
-  --weight-normal: 400;
+  /* The four weights (TY19): a rule names one of these, never a number. */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --weight-strong: var(--font-weight-bold);
+  --weight-normal: var(--font-weight-regular);
 
   /* Pixel icons come in three sizes only (12 / 16 / 24 times the text size), each a multiple of
      the 12-unit grid so no art pixel is fractional. */

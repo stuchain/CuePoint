@@ -45,7 +45,7 @@
 .cp-queue__count {
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
 }
 
 /* The gestures, said once under the title (BAR-8). */
@@ -119,7 +119,7 @@
 /* The playing row is marked with weight and a bar, not colour alone. */
 .cp-queue__row--playing {
   background: var(--selected-row-background);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .cp-queue__row--failed .cp-queue__row-title {
@@ -173,7 +173,7 @@
 }
 
 .cp-queue__failed {
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
   color: var(--danger-text);
 }
 

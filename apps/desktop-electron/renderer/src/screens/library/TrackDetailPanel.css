@@ -38,7 +38,7 @@
   margin: 0;
   overflow-wrap: anywhere;
   font-size: var(--font-size-sm);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   line-height: 1.3;
 }
 
@@ -215,7 +215,7 @@
   margin: 0 0 var(--space-xs);
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .cp-track-detail__playlists ul {
@@ -619,7 +619,7 @@
 
 .cp-track-beatport__release {
   font-family: var(--font-data);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   overflow-wrap: anywhere;
 }
 
@@ -664,12 +664,12 @@
 }
 
 .cp-track-beatport__now {
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .cp-track-beatport__source {
   color: var(--fg-muted);
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
 }
 
 .cp-track-history__revert {

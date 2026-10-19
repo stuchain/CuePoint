@@ -1,4 +1,5 @@
 import type { ActivityEvent } from "../../api/cuepointBridge.types";
+import { formatCount } from "../../format/counts";
 import { formatTimeOfDay } from "../../format/dates";
 
 /**
@@ -159,9 +160,14 @@ export function formatEventDetail(
   return shown.join(" · ");
 }
 
+/** The number with commas every three digits: how the engine writes a count into a summary. */
+function groupedDigits(value: number): string {
+  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 /** Whether the summary already prints this number, grouped ("1,200") or plain ("1200"). */
 function summaryHasNumber(summary: string, value: number): boolean {
-  const forms = [value.toLocaleString("en-US"), String(value)];
+  const forms = [formatCount(value), groupedDigits(value), String(value)];
   // Not a digit run inside a version ("v1.0.0") or a word, and "3," is 3, not "3,5".
   const printed = summary.match(/(?<![\d.\w])(?:\d{1,3}(?:,\d{3})+|\d+)(?![\d.,]\d)(?!\w)/g);
   return (printed ?? []).some((text) => forms.includes(text));
@@ -173,7 +179,7 @@ function count(n: number, noun: string): string {
 }
 
 function formatDetailValue(value: unknown): string {
-  if (typeof value === "number") return value.toLocaleString("en-US");
+  if (typeof value === "number") return formatCount(value);
   if (typeof value === "string") return value;
   if (Array.isArray(value)) return count(value.length, "item");
   // Objects would otherwise stringify to "[object Object]", which tells the

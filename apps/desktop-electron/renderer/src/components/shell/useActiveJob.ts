@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatCount } from "../../format/counts";
 import { JOB_POLL_MS, subscribeActiveJobs, subscribeJobEvents } from "../../api/jobsStore";
 import type {
   EngineJobSummary,
@@ -123,7 +124,7 @@ const STAGED_JOBS: ReadonlySet<string> = new Set(["discovery", "beatport_playlis
 
 /** "120 of 4,000": every count is written in words, in the American style (STR-3). */
 function countInWords(done: number, total: number): string {
-  return `${done.toLocaleString("en-US")} of ${total.toLocaleString("en-US")}`;
+  return `${formatCount(done)} of ${formatCount(total)}`;
 }
 
 /** A short description of what a job is doing, for the strip. */
@@ -138,7 +139,7 @@ export function jobLabel(job: EngineJobSummary | null): string {
   // wrong tells the user something untrue about their library.
   if (job.state === "queued") return known ? `Waiting to start · ${countInWords(done, total)}` : "Waiting to start";
   // A batch says how many tracks it is changing, which is its count.
-  if (job.type === "library_batch" && known) return `Updating ${total.toLocaleString("en-US")} tracks`;
+  if (job.type === "library_batch" && known) return `Updating ${formatCount(total)} tracks`;
   const verb =
     STAGED_JOBS.has(job.type) && typeof stage === "string" && stage.trim()
       ? stage.trim()
@@ -221,7 +222,7 @@ export function jobTitle(job: EngineJobSummary | null): string | undefined {
   const remaining = total - done;
   if (!(eta > 0) || remaining <= 0) return reason;
   const perHour = Math.round((remaining * 3600) / eta);
-  return `${reason} About ${perHour.toLocaleString("en-US")} an hour · ${aboutDuration(eta)} left`;
+  return `${reason} About ${formatCount(perHour)} an hour · ${aboutDuration(eta)} left`;
 }
 
 /**

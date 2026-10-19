@@ -100,7 +100,8 @@ describe("text roles and the one legend (area 4)", () => {
     expect(rootDecl(tokens, "--font-size-dialog")).toBe("var(--font-size-lg)");
     expect(rootDecl(tokens, "--font-size-section")).toBe("var(--font-size-md)");
     expect(rootDecl(tokens, "--font-size-label")).toBe("var(--font-size-xs)");
-    expect(rootDecl(tokens, "--weight-strong")).toBe("700");
+    expect(rootDecl(tokens, "--weight-strong")).toBe("var(--font-weight-bold)");
+    expect(rootDecl(tokens, "--font-weight-bold")).toBe("700");
     const label = parseRules(stripComments(indexCss)).find((r) => r.selector === ".cp-text-label")!;
     expect(Object.fromEntries(declarations(label.body))).toMatchObject({
       "font-weight": "var(--weight-strong)",
@@ -117,10 +118,19 @@ describe("text roles and the one legend (area 4)", () => {
     });
   });
 
-  it("uses no weight but 700 in a component", () => {
+  it("uses no weight but the named ones in a component", () => {
     for (const [file, css] of Object.entries(sheets)) {
       for (const match of stripComments(css).matchAll(/font-weight\s*:\s*([^;}]+)/g)) {
-        expect(["700", "400", "var(--weight-strong)", "var(--weight-normal)", "var(--control-font-weight)", "inherit"], `${file}: ${match[1]}`).toContain(
+        expect([
+            "var(--font-weight-bold)",
+            "var(--font-weight-regular)",
+            "var(--font-weight-medium)",
+            "var(--font-weight-semibold)",
+            "var(--weight-strong)",
+            "var(--weight-normal)",
+            "var(--control-font-weight)",
+            "inherit",
+          ], `${file}: ${match[1]}`).toContain(
           match[1]!.trim(),
         );
       }

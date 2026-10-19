@@ -146,7 +146,6 @@
 /* aria-disabled rather than disabled, so the bar's keys still land on it and
    the reason is readable; it looks and acts as off. */
 .library-toolbar__button[aria-disabled="true"] {
-  opacity: 0.55;
   cursor: not-allowed;
   color: var(--fg-disabled);
 }

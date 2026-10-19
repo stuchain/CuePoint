@@ -161,13 +161,13 @@
 }
 
 .cp-wheel__key[data-lit="same"] + .cp-wheel__label {
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 /* A chosen key sits on the solid accent, like the track's own. */
 .cp-wheel__key[data-chosen] + .cp-wheel__label {
   color: var(--border-outline);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 /* The counts mode writes the count under the key, both centered on the wedge. */
@@ -180,7 +180,7 @@
 
 .cp-wheel__count {
   font-size: round(down, calc(var(--font-size-xs) * 13 / 15), 1px);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 /* The hole in the middle: the key the wheel is lit for. */

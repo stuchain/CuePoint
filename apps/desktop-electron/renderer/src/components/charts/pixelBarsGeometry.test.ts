@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { formatCount } from "./formatCount";
 import { barsLayout, type BarsLayout, type PixelBucket } from "./pixelBarsGeometry";
 
 const SCALES = [1, 1.25, 1.5, 2, 3] as const;
@@ -137,7 +138,7 @@ describe("barsLayout: size and text", () => {
   it("writes every count but the empty ones, and thins the labels of a crowded axis", () => {
     const layout = barsLayout({ buckets: ORDERED, orientation: "vertical", width: 200, height: 200, scale: 1 });
     expect(layout.bars.map((b) => b.count?.text ?? null)).toEqual(
-      ORDERED.map((b) => (b.count > 0 ? b.count.toLocaleString("en-US") : null)),
+      ORDERED.map((b) => (b.count > 0 ? formatCount(b.count) : null)),
     );
     const shown = layout.bars.filter((b) => b.label).length;
     expect(shown).toBeGreaterThan(0);

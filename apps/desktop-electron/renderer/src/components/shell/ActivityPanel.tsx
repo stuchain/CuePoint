@@ -10,6 +10,7 @@ import {
   groupByDay,
   sortNewestFirst,
 } from "./activityFormat";
+import { formatCount } from "../../format/counts";
 import { pluralize } from "../../screens/library/libraryFormat";
 import { ActivityOffer } from "./ActivityOffer";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -115,7 +116,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
             <p className="cp-activity__summary">
               {events.length === feed?.total
                 ? pluralize(feed?.total ?? 0, "event")
-                : `Showing ${events.length} of ${feed?.total.toLocaleString("en-US")}`}
+                : `Showing ${events.length} of ${formatCount(feed?.total ?? 0)}`}
             </p>
             <div className="cp-activity__list">
               {groupByDay(events).map((group) => (

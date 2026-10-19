@@ -96,7 +96,7 @@
   color: var(--fg-primary);
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .cp-global-search__meta {
@@ -106,7 +106,7 @@
 
 .cp-global-search__matched {
   color: var(--fg-primary);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .cp-global-search__title,

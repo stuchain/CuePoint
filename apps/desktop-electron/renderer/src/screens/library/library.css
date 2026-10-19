@@ -39,7 +39,7 @@
   border: var(--border-width-heavy) solid var(--border-outline);
   background: var(--accent-warning);
   color: var(--fg-on-accent);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .library-preview__warning--refs {
@@ -70,7 +70,7 @@
 
 .library-preview__count dd {
   margin: 0;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .library-preview__count--destructive dt,

@@ -47,5 +47,5 @@
 
 .cp-update-panel__ask {
   margin: 0 0 var(--space-sm);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }

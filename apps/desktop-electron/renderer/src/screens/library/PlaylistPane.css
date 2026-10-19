@@ -43,7 +43,7 @@
 
 .cp-playlist-pane__title {
   font-size: var(--font-size-sm);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 /* Both sections' headings fold from their title: a fold arrow, the title, one small item at the right. */
@@ -170,7 +170,7 @@
 /* Folders read as folders: a shade brighter and bold (700: the only weight besides 400 the app bundles), over names that are a shade softer. */
 .cp-playlist-pane__row[data-kind="folder"] .cp-playlist-pane__name {
   color: var(--fg-primary);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .cp-playlist-pane__row:not([data-kind="folder"]) .cp-playlist-pane__name {

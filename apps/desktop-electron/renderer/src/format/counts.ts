@@ -16,7 +16,16 @@ export function pluralWord(count: number, one: string, many: string = `${one}s`)
   return count === 1 ? one : many;
 }
 
-/** "1 track", "2 tracks", "1,234 tracks". */
+/**
+ * The one plural helper (C169): the grouped count and its noun, "1 track", "2 tracks",
+ * "1,234 tracks". Pass `many` for an irregular plural ("entry", "entries"). Screens never write
+ * their own `plural*` function.
+ */
+export function countNoun(count: number, noun: string, many?: string, locale?: string): string {
+  return `${formatCount(count, locale)} ${pluralWord(count, noun, many)}`;
+}
+
+/** "1 track", "2 tracks", "1,234 tracks" (the same as `countNoun`). */
 export function plural(count: number, one: string, many?: string, locale?: string): string {
-  return `${formatCount(count, locale)} ${pluralWord(count, one, many)}`;
+  return countNoun(count, one, many, locale);
 }

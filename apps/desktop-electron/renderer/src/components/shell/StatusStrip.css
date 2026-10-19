@@ -23,7 +23,7 @@
 .cp-status__engine {
   flex: none;
   padding: 0 var(--space-xs);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 /*

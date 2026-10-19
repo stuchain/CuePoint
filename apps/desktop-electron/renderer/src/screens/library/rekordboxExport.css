@@ -22,7 +22,7 @@
   margin: 0;
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .rekordbox-export__destination {
@@ -54,7 +54,7 @@
   border: var(--border-width-heavy) solid var(--border-outline);
   background: var(--accent-warning);
   color: var(--fg-on-accent);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .rekordbox-export__refusal {
@@ -155,7 +155,7 @@
 /* The summary leads the dialog; Details holds the rest (DEC-247). */
 .rekordbox-export__summary {
   margin: 0;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   overflow-wrap: anywhere;
 }
 

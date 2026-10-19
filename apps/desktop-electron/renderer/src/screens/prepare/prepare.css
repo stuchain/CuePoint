@@ -120,7 +120,7 @@
   min-width: 0;
   gap: var(--space-xs);
   color: var(--fg-primary);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   white-space: nowrap;
 }
 
@@ -141,7 +141,7 @@
 
 .prepare-header__warnings {
   color: var(--fg-primary);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .prepare-link {
@@ -294,11 +294,11 @@ body.prepare-resizing {
   justify-content: center;
   gap: calc(2px * var(--scale));
   overflow: hidden;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .prepare-lanes__range {
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
   white-space: nowrap;
 }
 
@@ -392,7 +392,7 @@ body.prepare-resizing {
 }
 
 .prepare-transition__name {
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .prepare-transition__times {
@@ -493,7 +493,7 @@ body.prepare-resizing {
   flex-wrap: wrap;
   column-gap: var(--space-xs);
   margin: 0;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .prepare-transition__piece {
@@ -524,12 +524,12 @@ body.prepare-resizing {
   min-width: 0;
   margin: 0;
   color: var(--fg-primary);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .prepare-transition__warning--accepted {
   color: var(--fg-muted);
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
 }
 
 .prepare-transition__sentence {
@@ -554,7 +554,7 @@ body.prepare-resizing {
 .prepare-transition__more {
   flex: none;
   color: var(--fg-muted);
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
   white-space: nowrap;
 }
 
@@ -570,7 +570,7 @@ body.prepare-resizing {
 /* A chapter's heading is a row of the table (DEC-103), drawn as a band. */
 .track-table__row.prepare-heading {
   background: var(--bg-panel-alt);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   cursor: default;
 }
 
@@ -707,17 +707,13 @@ body.prepare-resizing {
   font-variant-numeric: tabular-nums;
 }
 
-.prepare-time__input:focus {
-  outline: none;
-}
-
 .prepare-time__input[aria-invalid="true"] {
   border-color: var(--accent-danger);
 }
 
 .prepare-warning--open {
   color: var(--fg-primary);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .prepare-warning--accepted {
@@ -813,13 +809,13 @@ body.prepare-resizing {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-xs);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .prepare-entry-zone__warning--accepted,
 .prepare-entry-zone__notice {
   color: var(--fg-muted);
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
 }
 
 /* ----------------------------------------------------------------- dialogs */
@@ -966,7 +962,7 @@ body.prepare-resizing {
 
 .prepare-source__point em {
   font-style: normal;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .prepare-source__note {

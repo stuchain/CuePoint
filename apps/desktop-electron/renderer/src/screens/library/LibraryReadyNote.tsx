@@ -18,6 +18,7 @@
 import { useLayoutEffect, useState } from "react";
 
 import { Button } from "../../components";
+import { formatCount } from "../../format/counts";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 import { JOB_POLL_MS, useActiveJob } from "../../components/shell/useActiveJob";
 import { wasDismissed, rememberDismissal, wasChainDone, rememberChainDone } from "./libraryNoticeMemory";
@@ -44,7 +45,7 @@ function nowLine(job: EngineJobSummary): string {
   const total = job.progress?.total_tracks;
   const step = CHAIN[job.type]!;
   if (typeof done !== "number" || typeof total !== "number" || total <= 0) return `Now: ${step}`;
-  return `Now: ${step}, ${done.toLocaleString("en-US")} of ${total.toLocaleString("en-US")}`;
+  return `Now: ${step}, ${formatCount(done)} of ${formatCount(total)}`;
 }
 
 interface LibraryReadyNoteProps {

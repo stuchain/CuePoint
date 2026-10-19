@@ -169,7 +169,7 @@
 }
 
 .keys-sources__row--whole {
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 /* A group's name is the label role (.cp-text-label); it sits 4 above its list. */
@@ -251,7 +251,7 @@
   background: var(--selected-row-background);
   background-origin: border-box;
   color: inherit;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .keys-counts__code {
