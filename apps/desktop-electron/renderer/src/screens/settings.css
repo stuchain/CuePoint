@@ -135,8 +135,8 @@
   min-width: 0;
 }
 
-/* The About card's own lines; a hint keeps the one hint size (C59). */
-.settings-page__about p:not(.settings-hint) {
+/* The About card's own lines; a hint and a greyed button's reason keep their one size (C59). */
+.settings-page__about p:not(.settings-hint):not(.cp-reason) {
   margin: 0;
   font-size: var(--font-size-sm);
 }

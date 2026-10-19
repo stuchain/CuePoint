@@ -21,9 +21,9 @@ describe("Settings page CSS", () => {
     expect(body(".settings-hint")).toMatch(/max-width:\s*var\(--field-width-standard\)/);
   });
 
-  it("does not let the About card's paragraph size reach a hint (C59)", () => {
+  it("does not let the About card's paragraph size reach a hint or a reason line (C59)", () => {
     expect(rules.some((r) => /\.settings-page__about p\s*$/.test(r.selector.trim()))).toBe(false);
-    expect(body(".settings-page__about p:not(.settings-hint)")).toMatch(/font-size/);
+    expect(body(".settings-page__about p:not(.settings-hint):not(.cp-reason)")).toMatch(/font-size/);
   });
 
   it("lands a section and its heading a box's gap below the sticky header (C124)", () => {
