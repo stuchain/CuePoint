@@ -28,13 +28,14 @@ import {
   nudgeColumn,
   reconcileLayout,
   saveColumnLayout,
+  toStored,
   toggleHidden,
   visibleColumns,
   widthsOf,
   withWidths,
   type ColumnLayout,
 } from "./columnLayout";
-import { COLUMN_DEFAULT_PX, type TrackColumnDef } from "./trackTableLayout";
+import type { TrackColumnDef } from "./trackTableLayout";
 
 interface Row {
   title: string;
@@ -63,7 +64,7 @@ describe("the default layout", () => {
   it("uses each column's declared width at this scale", () => {
     const layout = defaultLayout(COLUMNS, 2);
     expect(layout[0]!.width).toBe(400);
-    expect(layout[1]!.width).toBe(COLUMN_DEFAULT_PX * 2);
+    expect(layout[1]!.width).toBe(170 * 2);
   });
 });
 
@@ -285,7 +286,7 @@ describe("storage", () => {
     layout = toggleHidden(layout, "key");
     layout = nudgeColumn(COLUMNS, layout, "bpm", -1);
     layout = withWidths(layout, { artist: 333 });
-    saveColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, layout);
+    saveColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, layout, 1);
 
     expect(loadColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, COLUMNS, 1)).toEqual(layout);
   });
@@ -307,7 +308,7 @@ describe("storage", () => {
     // Rating is shown by default; that reaches a first run only. A user who hid
     // a column and came back finds it hidden still.
     expect(loadColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, COLUMNS, 1).find((e) => e.id === "bpm")?.hidden).toBe(false);
-    saveColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, toggleHidden(defaultLayout(COLUMNS, 1), "bpm"));
+    saveColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, toggleHidden(defaultLayout(COLUMNS, 1), "bpm"), 1);
     expect(loadColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, COLUMNS, 1).find((e) => e.id === "bpm")?.hidden).toBe(true);
   });
 
@@ -338,7 +339,7 @@ describe("storage", () => {
         throw new Error("Quota exceeded");
       });
     expect(() =>
-      saveColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, defaultLayout(COLUMNS, 1)),
+      saveColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, defaultLayout(COLUMNS, 1), 1),
     ).not.toThrow();
     setItem.mockRestore();
   });
@@ -423,9 +424,18 @@ describe("moving a layout still on the previous default order (DEC-NEW-K1)", () 
       "bpm",
       "key",
     ]);
-    saveColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, OLD);
+    saveColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, OLD, 1);
     const loaded = loadColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, COLUMNS, 1, PREVIOUS);
     expect(ids(loaded)).toEqual(["title", "artist", "bpm", "key"]);
     expect(loaded.find((e) => e.id === "key")).toMatchObject({ width: 91, hidden: true });
+  });
+});
+
+describe("1x storage (C205)", () => {
+  it("stores widths divided by the scale and reads them back multiplied", () => {
+    const layout = [{ id: "bpm", width: 150, hidden: false }];
+    const stored = toStored(layout, 1.5);
+    expect(stored).toEqual({ unit: "1x", columns: [{ id: "bpm", width: 100, hidden: false }] });
+    expect(reconcileLayout(stored, COLUMNS, 1.5).find((e) => e.id === "bpm")!.width).toBe(150);
   });
 });

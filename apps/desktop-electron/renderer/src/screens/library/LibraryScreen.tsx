@@ -2196,6 +2196,7 @@ export function LibraryScreen({
         onToggle={columns.toggle}
         onNudge={columns.nudge}
         onReset={columns.reset}
+        onRestore={columns.restore}
         note="A dot marks a value you changed in CuePoint; a B marks one taken from Beatport. Rekordbox's own value is kept underneath."
       />
 

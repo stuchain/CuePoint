@@ -194,3 +194,30 @@ describe("the note under the list (LIB-9)", () => {
     expect(screen.queryByText(/marks a value/)).toBeNull();
   });
 });
+
+describe("reset with Undo", () => {
+  it("puts the previous layout back from the toast", async () => {
+    const { ToastProvider } = await import("../Toast");
+    const onRestore = vi.fn();
+    const layout = toggleHidden(defaultLayout(COLUMNS, 1), "bpm");
+    render(
+      <ToastProvider>
+        <ColumnPicker
+          open
+          columns={COLUMNS}
+          layout={layout}
+          onToggle={vi.fn()}
+          onNudge={vi.fn()}
+          onReset={vi.fn()}
+          onRestore={onRestore}
+          onClose={vi.fn()}
+        />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset columns" }));
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+    expect(onRestore).toHaveBeenCalledWith(layout);
+  });
+});

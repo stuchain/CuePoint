@@ -469,6 +469,7 @@ function SuggestionsTab({
         onToggle={layout.toggle}
         onNudge={layout.nudge}
         onReset={layout.reset}
+        onRestore={layout.restore}
       />
     </>
   );
@@ -573,6 +574,7 @@ function LibraryTab({
         onToggle={layout.toggle}
         onNudge={layout.nudge}
         onReset={layout.reset}
+        onRestore={layout.restore}
       />
     </>
   );

@@ -9,8 +9,11 @@
  * It renders the *whole* list including hidden columns, in layout order, so
  * moving a column and showing it are the same list rather than two.
  */
+import { UNDO } from "../../format/words";
 import { Button } from "../Button";
+import { Hint } from "../Hint";
 import { Modal } from "../Modal";
+import { useOptionalToast } from "../Toast";
 import { canMove, isLastVisible, type ColumnLayout } from "./columnLayout";
 import type { TrackColumnDef } from "./trackTableLayout";
 import "./ColumnPicker.css";
@@ -23,6 +26,8 @@ interface ColumnPickerProps<Row> {
   onToggle: (id: string) => void;
   onNudge: (id: string, delta: -1 | 1) => void;
   onReset: () => void;
+  /** Puts a layout back; with it, a reset offers Undo on a toast rather than asking first. */
+  onRestore?: (layout: ColumnLayout) => void;
   /** A line under the list: what a mark in this table's cells means (LIB-9). */
   note?: string;
 }
@@ -35,20 +40,31 @@ export function ColumnPicker<Row>({
   onToggle,
   onNudge,
   onReset,
+  onRestore,
   note,
 }: ColumnPickerProps<Row>) {
+  const toast = useOptionalToast();
   if (!open) return null;
 
   const byId = new Map(columns.map((column) => [column.id, column]));
 
   return (
     <Modal
-      size="large"
+      size="medium"
       open={open}
       onClose={onClose}
       title="Columns"
       closeLabel="Close"
-      extraAction={{ label: "Reset columns", onClick: onReset }}
+      extraAction={{
+        label: "Reset columns",
+        onClick: () => {
+          const before = layout;
+          onReset();
+          if (onRestore && toast) {
+            toast.push("Columns reset", "info", { label: UNDO, onClick: () => onRestore(before) });
+          }
+        },
+      }}
     >
       <ul className="cp-column-picker" role="list">
         {layout.map((entry) => {
@@ -72,6 +88,7 @@ export function ColumnPicker<Row>({
                 )}
               </label>
               <span className="cp-column-picker__moves">
+                <Hint text={`Move ${column.header} up`}>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -81,6 +98,8 @@ export function ColumnPicker<Row>({
                   disabled={!canMove(columns, layout, entry.id, -1)}
                   onClick={() => onNudge(entry.id, -1)}
                 />
+                </Hint>
+                <Hint text={`Move ${column.header} down`}>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -90,6 +109,7 @@ export function ColumnPicker<Row>({
                   disabled={!canMove(columns, layout, entry.id, 1)}
                   onClick={() => onNudge(entry.id, 1)}
                 />
+                </Hint>
               </span>
             </li>
           );

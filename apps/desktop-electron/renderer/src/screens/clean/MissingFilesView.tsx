@@ -323,6 +323,7 @@ export function MissingFilesView({
         onToggle={columns.toggle}
         onNudge={columns.nudge}
         onReset={columns.reset}
+        onRestore={columns.restore}
       />
     </div>
   );

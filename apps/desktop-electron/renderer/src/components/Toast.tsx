@@ -185,6 +185,11 @@ function ToastItem({
   );
 }
 
+/** The toast context, or null outside a provider, for a control that can do without one. */
+export function useOptionalToast(): ToastContextValue | null {
+  return useContext(ToastContext);
+}
+
 export function useToast(): ToastContextValue {
   const ctx = useContext(ToastContext);
   if (!ctx) throw new Error("useToast must be used within ToastProvider");

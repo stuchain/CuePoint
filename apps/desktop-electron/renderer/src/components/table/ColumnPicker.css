@@ -12,11 +12,8 @@
 .cp-column-picker__row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
-  background: var(--bg-input);
-  border: var(--hairline) solid var(--border-muted);
+  padding: var(--space-xs) 0;
 }
 
 .cp-column-picker__label {
@@ -43,7 +40,7 @@
 .cp-column-picker__moves {
   display: flex;
   flex-shrink: 0;
-  gap: var(--space-md);
+  gap: var(--space-xs);
 }
 
 /* What the marks in the cells mean (LIB-9): small, and under the list it is about. */

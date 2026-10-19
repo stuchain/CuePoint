@@ -213,6 +213,7 @@ export function BeatportTable<Row extends { beatport_track_id: number; title: st
         onToggle={layout.toggle}
         onNudge={layout.nudge}
         onReset={layout.reset}
+        onRestore={layout.restore}
       />
     </div>
   );

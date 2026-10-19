@@ -52,6 +52,45 @@ export function defaultLayout<Row>(
   }));
 }
 
+/**
+ * What is stored (SR1, C205): widths in 1x units, so a layout saved at one text
+ * scale opens correctly at another. `unit` marks the new shape; an older
+ * layout is a bare array of widths at the scale it was saved in, which is read
+ * as the current scale's and rewritten as 1x on the next change.
+ */
+interface StoredLayout {
+  unit: "1x";
+  columns: ColumnLayoutEntry[];
+}
+
+/** Widths scaled by `factor`, rounded to whole pixels. */
+export function rescaleLayout(layout: ColumnLayout, factor: number): ColumnLayout {
+  if (factor === 1) return layout;
+  return layout.map((entry) => ({ ...entry, width: Math.round(entry.width * factor) }));
+}
+
+/** The shape written to storage: widths divided back to 1x. */
+export function toStored(layout: ColumnLayout, scale: number): StoredLayout {
+  return {
+    unit: "1x",
+    columns: layout.map((entry) => ({ ...entry, width: Math.round(entry.width / scale) })),
+  };
+}
+
+function entriesOf(stored: unknown, scale: number): unknown {
+  if (typeof stored === "object" && stored !== null && !Array.isArray(stored)) {
+    const shaped = stored as Partial<StoredLayout>;
+    if (shaped.unit === "1x" && Array.isArray(shaped.columns)) {
+      return shaped.columns.map((raw) =>
+        isEntry(raw) && typeof raw.width === "number"
+          ? { ...raw, width: raw.width * scale }
+          : raw,
+      );
+    }
+  }
+  return stored;
+}
+
 function isEntry(value: unknown): value is Partial<ColumnLayoutEntry> {
   return typeof value === "object" && value !== null;
 }
@@ -69,10 +108,8 @@ function isEntry(value: unknown): value is Partial<ColumnLayoutEntry> {
  * A stored layout whose ids, once those no longer in `columns` are dropped,
  * are in exactly that order was never rearranged by the person, so it is
  * re-sorted into the registry's order, each entry keeping its width and
- * hidden flag. Any other order is left as stored. The moved layout is saved
- * and is then the registry order, so this never fires a second time. (A
- * person who later drags the columns back into exactly the old order has them
- * moved once more on the next launch.)
+ * hidden flag. Any other order is left as stored. Loading writes nothing, so the
+ * move is saved with the person's next change and is then the registry order.
  */
 export function reconcileLayout<Row>(
   stored: unknown,
@@ -83,9 +120,10 @@ export function reconcileLayout<Row>(
   const byId = new Map(columns.map((column) => [column.id, column]));
   const seen = new Set<string>();
   const layout: ColumnLayout = [];
+  const entries = entriesOf(stored, scale);
 
-  if (Array.isArray(stored)) {
-    for (const raw of stored) {
+  if (Array.isArray(entries)) {
+    for (const raw of entries) {
       if (!isEntry(raw) || typeof raw.id !== "string") continue;
       const column = byId.get(raw.id);
       // A column that no longer exists. Dropped, not rendered as a gap.
@@ -274,11 +312,24 @@ export function loadColumnLayout<Row>(
 }
 
 /** Write a layout, ignoring a storage that will not have it. */
-export function saveColumnLayout(storageKey: string, layout: ColumnLayout): void {
+export function saveColumnLayout(
+  storageKey: string,
+  layout: ColumnLayout,
+  scale: number,
+): void {
   try {
-    localStorage.setItem(storageKey, JSON.stringify(layout));
+    localStorage.setItem(storageKey, JSON.stringify(toStored(layout, scale)));
   } catch {
     // A private window, or site data blocked. The table still works; it just
     // opens with its defaults next time.
+  }
+}
+
+/** Forget a stored layout, so the next open uses the defaults. */
+export function clearColumnLayout(storageKey: string): void {
+  try {
+    localStorage.removeItem(storageKey);
+  } catch {
+    // Nothing stored, or storage refuses; the defaults apply either way.
   }
 }

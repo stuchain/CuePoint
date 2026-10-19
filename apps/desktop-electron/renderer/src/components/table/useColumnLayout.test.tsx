@@ -106,7 +106,43 @@ describe("remembering", () => {
 
     const raw = localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY);
     expect(raw).toBeTruthy();
-    expect(JSON.parse(raw!)).toEqual(result.current.layout);
+    const saved = JSON.parse(raw!);
+    expect(saved.unit).toBe("1x");
+    expect(saved.columns).toEqual(result.current.layout);
+  });
+
+  it("does not write when it only loads", () => {
+    render();
+    expect(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)).toBeNull();
+  });
+
+  it("stores widths in 1x units and reads them back at another scale", () => {
+    localStorage.setItem("cuepoint-ui-lab-scale", "2");
+    const first = render();
+    act(() => first.result.current.setWidths({ bpm: 200 }));
+    expect(JSON.parse(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)!).columns).toContainEqual(
+      expect.objectContaining({ id: "bpm", width: 100 }),
+    );
+    first.unmount();
+
+    localStorage.setItem("cuepoint-ui-lab-scale", "1");
+    const second = render();
+    expect(second.result.current.widths.bpm).toBe(100);
+  });
+
+  it("reads a layout saved before the unit was recorded as the current scale's", () => {
+    localStorage.setItem(
+      LIBRARY_TABLE_LAYOUT_KEY,
+      JSON.stringify([{ id: "bpm", width: 130, hidden: false }]),
+    );
+    expect(render().result.current.widths.bpm).toBe(130);
+  });
+
+  it("forgets the stored layout on reset", () => {
+    const { result } = render();
+    act(() => result.current.nudge("bpm", -1));
+    act(() => result.current.reset());
+    expect(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)).toBeNull();
   });
 
   it("keeps a column a later release added", () => {
@@ -202,7 +238,7 @@ describe("resetting", () => {
       "bpm",
     ]);
     expect(result.current.layout.every((entry) => !entry.hidden)).toBe(true);
-    expect(result.current.widths).toMatchObject({ title: 200, artist: 120, bpm: 80 });
+    expect(result.current.widths).toMatchObject({ title: 200, artist: 170, bpm: 80 });
   });
 
   it("is remembered too", () => {
@@ -255,7 +291,7 @@ describe("moving a layout saved in the previous default order (DEC-NEW-K1)", () 
     expect(result.current.layout.map((entry) => entry.id)).toEqual(["title", "artist", "bpm"]);
     expect(result.current.layout[1]).toMatchObject({ width: 150, hidden: true });
     expect(result.current.layout[2]).toMatchObject({ width: 95 });
-    const saved = JSON.parse(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)!);
-    expect(saved.map((entry: { id: string }) => entry.id)).toEqual(["title", "artist", "bpm"]);
+    // Loading writes nothing; the move is saved with the person's next change.
+    expect(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)).not.toContain('"unit"');
   });
 });
