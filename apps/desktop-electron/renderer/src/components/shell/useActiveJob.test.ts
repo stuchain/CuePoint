@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 import {
   JOB_EXPLAINERS,
-  aboutDuration,
   jobExplainer,
   jobLabel,
   jobPercent,
@@ -71,8 +70,8 @@ describe("jobLabel", () => {
     // CLEAN-10: the one job that writes audio files must not read as the
     // preview that only reads them, nor as the restore that undoes it.
     expect(jobLabel(job({ type: "tag_write_preview" }))).toBe("Reading tags · 3 of 10");
-    expect(jobLabel(job({ type: "tag_write" }))).toBe("Saving to files · 3 of 10");
-    expect(jobLabel(job({ type: "tag_restore" }))).toBe("Undoing the save · 3 of 10");
+    expect(jobLabel(job({ type: "tag_write" }))).toBe("Syncing to files · 3 of 10");
+    expect(jobLabel(job({ type: "tag_restore" }))).toBe("Undoing the sync · 3 of 10");
   });
 
   it("names the Rekordbox export apart from the other exports (EXPORT-05)", () => {
@@ -239,7 +238,7 @@ describe("the waveform analysis on the strip", () => {
       analysis({ completed_tracks: 1234, total_tracks: 50000, eta_seconds: 6 * 3600 }),
     );
     expect(title).toBe(
-      `${JOB_EXPLAINERS.waveform_analysis} About 8,128 an hour · about 6 hours left`,
+      `${JOB_EXPLAINERS.waveform_analysis} About 8,128 an hour · 6 h left`,
     );
   });
 
@@ -259,19 +258,6 @@ describe("the waveform analysis on the strip", () => {
     expect(jobStopLabel(analysis(undefined))).toBe("Pause");
     expect(jobStopLabel(job())).toBe("Stop");
     expect(jobStopLabel(null)).toBe("Stop");
-  });
-});
-
-describe("aboutDuration", () => {
-  it.each([
-    [20, "under a minute"],
-    [60, "about 1 minute"],
-    [45 * 60, "about 45 minutes"],
-    [90 * 60, "about 2 hours"],
-    [3600, "about 1 hour"],
-    [26 * 3600, "about 26 hours"],
-  ])("reads %s seconds as %s", (seconds, words) => {
-    expect(aboutDuration(seconds)).toBe(words);
   });
 });
 

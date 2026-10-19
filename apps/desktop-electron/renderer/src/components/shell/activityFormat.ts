@@ -1,6 +1,6 @@
 import type { ActivityEvent } from "../../api/cuepointBridge.types";
 import { formatCount } from "../../format/counts";
-import { formatTimeOfDay } from "../../format/dates";
+import { formatDay, formatTimeOfDay } from "../../format/dates";
 
 /**
  * Presentation rules for the activity feed, as pure functions.
@@ -25,20 +25,10 @@ export function formatEventTime(iso: string): string {
   return formatTimeOfDay(when);
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-/** The day as a heading: "Today", "Yesterday", "Oct 3", or "Dec 31, 2025" from another year. */
+/** The day as a heading: "Today", "Yesterday", "Oct 3", or "Dec 31, 2025" from another year (C170). */
 export function formatDayHeading(iso: string, now: Date = new Date()): string {
-  const when = new Date(iso);
-  if (Number.isNaN(when.getTime())) return iso;
-
-  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const daysAgo = Math.round((day(now) - day(when)) / 86_400_000);
-  if (daysAgo === 0) return "Today";
-  if (daysAgo === 1) return "Yesterday";
-  // Month first, always: the app is American English (DEC-158), whatever the locale.
-  const date = `${MONTHS[when.getMonth()]} ${when.getDate()}`;
-  return when.getFullYear() === now.getFullYear() ? date : `${date}, ${when.getFullYear()}`;
+  // The app's one date writer, in the computer's own order; an unreadable value is shown as it is.
+  return formatDay(iso, { now }) || iso;
 }
 
 /** Events under one day heading, in the order given. */
@@ -90,9 +80,9 @@ const EVENT_WORDS: Record<string, string> = {
   "clean.duplicates.dismissed": "Duplicates",
   "clean.duplicates.restored": "Duplicates",
   "clean.artwork.scanned": "Artwork",
-  "clean.tags.written": "Saved to files",
-  "clean.tags.restored": "Save undone",
-  "clean.tags.interrupted": "Tags stopped",
+  "clean.tags.written": "Synced to files",
+  "clean.tags.restored": "Sync undone",
+  "clean.tags.interrupted": "Sync stopped",
   "discovery.ran": "Discover",
   "discover.beatport.resolved": "Beatport",
   "discover.playlist.pushed": "Beatport playlist",

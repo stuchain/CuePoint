@@ -11,7 +11,9 @@ import type {
   WaveformAnalysisStatus,
   WaveformTrack,
 } from "../../api/cuepointBridge.types";
-import { aboutDuration } from "../shell/useActiveJob";
+import { countNoun, formatCount } from "../../format/counts";
+import { aboutDuration } from "../../format/durations";
+import { STATUS_STRIP } from "../../format/words";
 import type { WaveformEntry } from "./waveformCache";
 import type { DetailEntry } from "./waveformDetailCache";
 
@@ -33,7 +35,7 @@ export const DECODER_MISSING_WORDS =
   "This version of CuePoint can't draw waveforms.";
 
 function count(value: number): string {
-  return value.toLocaleString();
+  return formatCount(value);
 }
 
 /** One line: what the analysis is doing, and how far it has got. */
@@ -257,7 +259,7 @@ export function trackDetailsWaveformWords(entry: WaveformEntry | null | undefine
     if (entry.track.state === "waiting") {
       return entry.paused
         ? "Waveforms are paused. Resume them in Settings."
-        : "Waveform not drawn yet. CuePoint is working through your library (see the status strip).";
+        : `Waveform not drawn yet. CuePoint is working through your library (see the ${STATUS_STRIP}).`;
     }
   }
   return waveformEntryWords(entry);
@@ -265,7 +267,7 @@ export function trackDetailsWaveformWords(entry: WaveformEntry | null | undefine
 
 /** A size on disk in words: bytes, KB, MB or GB, one decimal above a kilobyte. */
 export function sizeWords(bytes: number): string {
-  if (!(bytes >= 1024)) return `${Math.max(0, Math.round(bytes)).toLocaleString()} bytes`;
+  if (!(bytes >= 1024)) return `${formatCount(Math.max(0, Math.round(bytes)))} bytes`;
   const units = ["KB", "MB", "GB"] as const;
   let value = bytes / 1024;
   let unit = 0;
@@ -306,5 +308,5 @@ export function deleteDataWords(status: WaveformAnalysisStatus | null): string[]
 /** What a deletion did, in one line. */
 export function deletedWords(waveforms: number, freedBytes: number): string {
   if (waveforms === 0) return "There was no waveform data to delete.";
-  return `Deleted ${count(waveforms)} ${waveforms === 1 ? "waveform" : "waveforms"}, freeing ${sizeWords(freedBytes)}.`;
+  return `Deleted ${countNoun(waveforms, "waveform")}, freeing ${sizeWords(freedBytes)}.`;
 }

@@ -10,6 +10,8 @@
  * scrollbars and clipped every summary.
  */
 .cp-activity {
+  --cp-activity-time: calc(64px * var(--scale));
+  --cp-activity-tag: calc(104px * var(--scale));
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -45,7 +47,8 @@
 
 .cp-activity__row {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
+  /* The time and the tag have columns of their own, so every message starts at one x (C37). */
+  grid-template-columns: var(--cp-activity-time) var(--cp-activity-tag) minmax(0, 1fr);
   min-width: 0;
   gap: var(--space-sm);
   align-items: baseline;
@@ -83,6 +86,9 @@
 }
 
 .cp-activity__type {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 0 var(--space-xs);
   border: var(--divider);
   color: var(--fg-muted);

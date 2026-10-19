@@ -48,7 +48,9 @@
  */
 .cp-player-slot > .cp-hint:has(> .cp-detail-strip) {
   display: flex;
-  width: 100%;
+  /* Clamped to the content column: it starts after the sidebar, as the page does (C213). */
+  margin-left: var(--shell-sidebar-width, 0px);
+  width: auto;
   min-height: 0;
 }
 

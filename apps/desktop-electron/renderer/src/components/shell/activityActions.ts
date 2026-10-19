@@ -9,6 +9,7 @@
  * membership, whose refusal never varies and is drawn as a disabled control
  * with its reason rather than a button whose only outcome is an error.
  */
+import { countNoun, formatCount } from "../../format/counts";
 import type {
   ActivityEvent,
   BatchRevertResult,
@@ -90,14 +91,10 @@ export function activityOffer(event: ActivityEvent): ActivityOffer {
  */
 export function resumeOfferLine(remaining: number | null): string {
   if (remaining == null) return "Nothing is left to resume.";
-  return `${count(remaining, "track")} left to match.`;
+  return `${countNoun(remaining, "track")} left to match.`;
 }
 
 // --------------------------------------------------- unconfirmed writes
-
-function count(number: number, noun: string): string {
-  return `${number.toLocaleString()} ${noun}${number === 1 ? "" : "s"}`;
-}
 
 /**
  * What a record of tag writes says, never calling an unconfirmed write done.
@@ -109,21 +106,21 @@ export function writesLine(restorable: number, unconfirmed: number): string {
   if (restorable <= 0) return "Everything saved to files has been undone.";
   const confirmed = restorable - unconfirmed;
   if (unconfirmed <= 0) {
-    return `${count(confirmed, "value")} saved to files can be undone.`;
+    return `${countNoun(confirmed, "value")} saved to files can be undone.`;
   }
-  const unfinished = `${count(unconfirmed, "save")} may not have finished`;
+  const unfinished = `${countNoun(unconfirmed, "save")} may not have finished`;
   return confirmed > 0
-    ? `${unfinished}, and ${count(confirmed, "value")} ${confirmed === 1 ? "was" : "were"} saved. Undoing the save puts every one back as it was.`
+    ? `${unfinished}, and ${countNoun(confirmed, "value")} ${confirmed === 1 ? "was" : "were"} saved. Undoing the save puts every one back as it was.`
     : `${unfinished}. Undoing the save puts every one back as it was; a file still holding its old value counts as undone.`;
 }
 
 /** What a batch revert did, in its counts. */
 export function revertedLine(result: BatchRevertResult | null): string {
   if (!result) return "Undone.";
-  const parts = [`Undid ${count(result.changed, "change")}`];
-  if (result.skipped > 0) parts.push(`${result.skipped.toLocaleString()} skipped because the value changed since`);
-  if (result.unchanged > 0) parts.push(`${result.unchanged.toLocaleString()} already in place`);
-  if (result.failed > 0) parts.push(`${result.failed.toLocaleString()} could not be undone`);
+  const parts = [`Undid ${countNoun(result.changed, "change")}`];
+  if (result.skipped > 0) parts.push(`${formatCount(result.skipped)} skipped because the value changed since`);
+  if (result.unchanged > 0) parts.push(`${formatCount(result.unchanged)} already in place`);
+  if (result.failed > 0) parts.push(`${formatCount(result.failed)} could not be undone`);
   const line = `${parts.join(", ")}.`;
   return result.cancelled ? `Stopped early. ${line}` : line;
 }
@@ -133,8 +130,8 @@ export function restoredLine(results: readonly TagRestoreResult[]): string {
   const files = results.reduce((sum, result) => sum + result.files, 0);
   const skipped = results.reduce((sum, result) => sum + result.skipped, 0);
   const failed = results.reduce((sum, result) => sum + result.failed, 0);
-  const parts = [`Undid ${count(files, "file")}`];
-  if (skipped > 0) parts.push(`${skipped.toLocaleString()} values left alone because the file changed since`);
-  if (failed > 0) parts.push(`${failed.toLocaleString()} could not be undone`);
+  const parts = [`Undid ${countNoun(files, "file")}`];
+  if (skipped > 0) parts.push(`${formatCount(skipped)} values left alone because the file changed since`);
+  if (failed > 0) parts.push(`${formatCount(failed)} could not be undone`);
   return `${parts.join(", ")}.`;
 }

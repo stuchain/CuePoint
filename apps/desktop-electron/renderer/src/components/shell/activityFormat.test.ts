@@ -112,7 +112,7 @@ describe("formatEventType (STR-6)", () => {
     expect(formatEventType("engine.started")).toBe("App started");
     expect(formatEventType("backup.created")).toBe("Backup");
     expect(formatEventType("library.imported")).toBe("Import");
-    expect(formatEventType("clean.tags.written")).toBe("Saved to files");
+    expect(formatEventType("clean.tags.written")).toBe("Synced to files");
   });
 
   it("has a word for every event type the app records", () => {

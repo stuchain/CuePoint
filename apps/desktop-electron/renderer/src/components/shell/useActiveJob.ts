@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { formatCount } from "../../format/counts";
+import { countNoun, formatCount } from "../../format/counts";
+import { aboutDuration } from "../../format/durations";
+
+// Kept so a screen that still imports it from here reads the one style (C173).
+export { aboutDuration };
+import { SYNC } from "../../format/words";
 import { JOB_POLL_MS, subscribeActiveJobs, subscribeJobEvents } from "../../api/jobsStore";
 import type {
   EngineJobSummary,
@@ -79,8 +84,8 @@ const JOB_VERBS: Record<string, string> = {
   // keeps "on Beatport" because that is where the work is happening.
   clean_match: "Matching on Beatport",
   tag_write_preview: "Reading tags",
-  tag_write: "Saving to files",
-  tag_restore: "Undoing the save",
+  tag_write: SYNC.running,
+  tag_restore: "Undoing the sync",
   // EXPORT-05's Rekordbox export. "Exporting" alone would read as the CSV,
   // JSON and Excel export Settings offers, which is a different thing that
   // writes a different file.
@@ -139,7 +144,7 @@ export function jobLabel(job: EngineJobSummary | null): string {
   // wrong tells the user something untrue about their library.
   if (job.state === "queued") return known ? `Waiting to start · ${countInWords(done, total)}` : "Waiting to start";
   // A batch says how many tracks it is changing, which is its count.
-  if (job.type === "library_batch" && known) return `Updating ${formatCount(total)} tracks`;
+  if (job.type === "library_batch" && known) return `Updating ${countNoun(total, "track")}`;
   const verb =
     STAGED_JOBS.has(job.type) && typeof stage === "string" && stage.trim()
       ? stage.trim()
@@ -150,15 +155,6 @@ export function jobLabel(job: EngineJobSummary | null): string {
 /** What the strip's stop button says for a job: "Pause" where stopping pauses. */
 export function jobStopLabel(job: EngineJobSummary | null): string {
   return job && PAUSED_BY_STOP.has(job.type) ? "Pause" : "Stop";
-}
-
-/** A length of time in the words the strip uses: "about 6 hours". */
-export function aboutDuration(seconds: number): string {
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 1) return "under a minute";
-  if (minutes < 60) return `about ${minutes} minute${minutes === 1 ? "" : "s"}`;
-  const hours = Math.round(minutes / 60);
-  return `about ${hours} hour${hours === 1 ? "" : "s"}`;
 }
 
 /** What a kind of background work is for, and that the user can carry on (STR-3, DEC-132). */
@@ -179,9 +175,9 @@ export const JOB_EXPLAINERS: Record<string, string> = {
     "CuePoint is looking your tracks up on Beatport to fill in what is missing. You can keep working.",
   tag_write_preview:
     "CuePoint is reading the tags in your files to show what would change. Nothing is saved, and you can keep working.",
-  tag_write: "CuePoint is saving to your audio files. Please keep CuePoint open until it finishes.",
+  tag_write: "CuePoint is syncing to your audio files. Keep CuePoint open until it finishes.",
   tag_restore:
-    "CuePoint is undoing the save in your audio files. Please keep CuePoint open until it finishes.",
+    "CuePoint is undoing the sync in your audio files. Keep CuePoint open until it finishes.",
   rekordbox_export:
     "CuePoint is writing your changes to a Rekordbox file. You can keep working.",
   credit_index:

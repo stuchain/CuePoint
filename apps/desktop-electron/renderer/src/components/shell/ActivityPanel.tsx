@@ -10,8 +10,8 @@ import {
   groupByDay,
   sortNewestFirst,
 } from "./activityFormat";
-import { formatCount } from "../../format/counts";
-import { pluralize } from "../../screens/library/libraryFormat";
+import { countNoun, formatCount } from "../../format/counts";
+import { couldNot } from "../../format/words";
 import { ActivityOffer } from "./ActivityOffer";
 import { reportUnexpected } from "../../reporting/reporting";
 import "./ActivityPanel.css";
@@ -100,7 +100,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
               // The raw reason stays out of the sentence (STR-8); the hint carries it.
               tabIndex={error ? 0 : undefined}
             >
-              Couldn't load the list. Try Refresh.
+              {couldNot("load the list")} Try Refresh.
             </p>
           </Hint>
         )}
@@ -115,7 +115,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
           <>
             <p className="cp-activity__summary">
               {events.length === feed?.total
-                ? pluralize(feed?.total ?? 0, "event")
+                ? countNoun(feed?.total ?? 0, "event")
                 : `Showing ${events.length} of ${formatCount(feed?.total ?? 0)}`}
             </p>
             <div className="cp-activity__list">

@@ -319,6 +319,23 @@ describe("the bottom inset the toast stack sits above", () => {
     document.documentElement.style.removeProperty("--shell-bottom-inset");
   });
 
+  it("puts the sidebar's width on the root for the zoomed waveform, and clears it (C213)", () => {
+    install();
+    const { container, unmount } = render(
+      <AppShellLayout sidebar={<nav />} player={<div />}>
+        <p>Page</p>
+      </AppShellLayout>,
+    );
+    Object.defineProperty(container.querySelector(".app-shell__sidebar")!, "offsetWidth", {
+      configurable: true,
+      value: 228,
+    });
+    act(fire);
+    expect(document.documentElement.style.getPropertyValue("--shell-sidebar-width")).toBe("228px");
+    unmount();
+    expect(document.documentElement.style.getPropertyValue("--shell-sidebar-width")).toBe("");
+  });
+
   it("is the player and the status strip together, and is cleared on unmount", () => {
     install();
     const { container, unmount } = render(

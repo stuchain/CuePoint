@@ -151,7 +151,7 @@ describe("ActivityPanel", () => {
     render(<ActivityPanel open onClose={() => {}} />);
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Couldn't load the list. Try Refresh.");
+    expect(alert).toHaveTextContent("Could not load the list. Try Refresh.");
     // The raw error is for a title, never the sentence.
     expect(alert).not.toHaveTextContent(/ECONNREFUSED/);
     expect(alert).toHaveAttribute("title", "connect ECONNREFUSED 127.0.0.1:51234");
