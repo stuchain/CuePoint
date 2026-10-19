@@ -53,6 +53,7 @@ import {
   type PlaysChoice,
   type PlaysSince,
 } from "./playsChoice";
+import "../../components/table/DataTable.css";
 import "./PlaysSection.css";
 
 /**
@@ -314,7 +315,7 @@ export function PlaysSection({
               ) : (
                 <>
                   <div
-                    className={`plays__columns-head${canPreview ? " plays__columns-head--play" : ""}`}
+                    className={`cp-data-grid__head plays__columns-head${canPreview ? " plays__columns-head--play" : ""}`}
                     aria-hidden="true"
                   >
                     <span className="rank__hash">#</span>
@@ -323,16 +324,16 @@ export function PlaysSection({
                     <span className="rank__number">BPM</span>
                     <span className="rank__number">Plays</span>
                   </div>
-                  <ol className="plays__list" aria-label="Most played tracks">
+                  <ol className="cp-data-grid__list" aria-label="Most played tracks">
                     {data.tracks.map((track, index) => (
                       <li
                         key={track.id}
-                        className="plays__item"
+                        className="cp-data-grid__item plays__item"
                         data-changed={changedMark(marks, String(track.id))}
                       >
                         <button
                           type="button"
-                          className="plays__row"
+                          className="cp-data-grid__row plays__row"
                           aria-label={`${index + 1}. ${track.title} by ${track.artist}, ${playsWord(track.plays)}`}
                           onClick={() => navigate("/library", { state: libraryTrackState(track.id) })}
                         >

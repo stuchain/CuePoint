@@ -1127,15 +1127,18 @@ describe("the Plays section, after review (STATS-05)", () => {
       expect(region.querySelector(".statistics-note + .statistics-note")).toBeNull();
     });
 
-    it("draws the list headings in the one table header look (D8, C72)", () => {
-      for (const [sheet, selector] of [[css, ".rank__columns"], [playsCss, ".plays__columns-head"]] as const) {
-        const at = sheet.indexOf(`${selector} {`);
-        expect(at, selector).toBeGreaterThan(-1);
-        const rule = sheet.slice(at, sheet.indexOf("}", at));
-        expect(rule, selector).toContain("min-height: var(--row-height);");
-        expect(rule, selector).toContain("background: var(--bg-toolbar);");
-        expect(rule, selector).toContain("font-family: var(--font-pixel-digits);");
-      }
+    it("draws the list headings in the one table header look (D8, C72)", async () => {
+      // The look is the shared list variant, sticky like a table's header; the pages only name columns.
+      const grid = (await import("../../components/table/DataTable.css?raw")).default;
+      const at = grid.indexOf(".cp-data-grid__head {");
+      expect(at).toBeGreaterThan(-1);
+      const rule = grid.slice(at, grid.indexOf("}", at));
+      expect(rule).toContain("position: sticky;");
+      expect(rule).toContain("min-height: var(--row-height);");
+      expect(rule).toContain("background: var(--bg-toolbar);");
+      expect(rule).toContain("font-family: var(--font-pixel-digits);");
+      // Neither page sheet draws a header look of its own any more.
+      for (const sheet of [css, playsCss]) expect(sheet).not.toContain("var(--bg-toolbar)");
     });
   });
 

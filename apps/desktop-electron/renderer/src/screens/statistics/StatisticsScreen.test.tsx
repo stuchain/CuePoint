@@ -27,6 +27,7 @@ import { statisticsFocusState } from "./statisticsLink";
 import { PLAYS_STORAGE_KEY } from "./playsChoice";
 import { formatDayTime } from "../../format/dates";
 import css from "./statistics.css?raw";
+import grid from "../../components/table/DataTable.css?raw";
 import { STATISTICS_SCOPE_STORAGE_KEY } from "./statisticsScope";
 import { useLibraryJobsFinished } from "./useStatistics";
 
@@ -419,7 +420,8 @@ describe("the Statistics page (STATS-04)", () => {
     const rule = /\.rank__columns > \.rank__hash,[^{]*\.plays__columns-head > \.rank__number\s*\{([^}]*)\}/.exec(css)![1]!;
     expect(rule).toMatch(/font-size:\s*inherit/);
     expect(rule).toMatch(/font-family:\s*inherit/);
-    expect(css).toMatch(/\.rank__columns\s*\{[^}]*font-size:\s*var\(--font-size-xs\)/);
+    // The header's own size is the shared list look's.
+    expect(grid).toMatch(/\.cp-data-grid__head\s*\{[^}]*font-size:\s*var\(--font-size-xs\)/);
   });
 
   it("with no library says the one empty block (Q10, Q8)", async () => {

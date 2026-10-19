@@ -15,6 +15,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { RankBar } from "../../components/charts/RankBar";
 import { ShowMore } from "../../components/ShowMore";
 import { formatCount } from "../../format/counts";
+import "../../components/table/DataTable.css";
 
 export interface RankRow {
   id: string;
@@ -71,7 +72,7 @@ export function RankList({
       ) : (
         <>
           <div
-            className="rank__columns"
+            className="cp-data-grid__head rank__columns"
             style={{ ["--rank-columns" as string]: columns.length }}
             aria-hidden="true"
           >
@@ -83,12 +84,12 @@ export function RankList({
               </span>
             ))}
           </div>
-          <ol className="rank__list" aria-label={title}>
+          <ol className="cp-data-grid__list" aria-label={title}>
             {visible.map((row, index) => (
-              <li key={row.id} className="rank__item">
+              <li key={row.id} className="cp-data-grid__item">
                 <button
                   type="button"
-                  className="rank__row"
+                  className="cp-data-grid__row rank__row"
                   style={{ ["--rank-columns" as string]: columns.length }}
                   aria-label={row.label}
                   onClick={() => onOpen(row.rules)}

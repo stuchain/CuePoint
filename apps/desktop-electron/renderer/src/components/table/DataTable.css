@@ -72,3 +72,70 @@
 .cp-data-table thead th.num {
   font-family: var(--font-pixel-digits);
 }
+
+/*
+ * The list variant of the same look, for a ranked list drawn as an `<ol>` of rows rather than a
+ * `<table>` (the Statistics lists, which keep a button, a bar or a play button in each row). Put
+ * `cp-data-grid__head` on the heading row (it is sticky, like a table's header), `cp-data-grid__list`
+ * on the `<ol>`, `cp-data-grid__item` on each `<li>` and `cp-data-grid__row` on the row's button; the
+ * page names its columns once, in `--cp-data-grid-columns`, on the heading and on the row.
+ *
+ * The lists sit inside a card, which is already the `--bg-panel` colour that `--row-hover` is, so a
+ * row there lights with `--hover-fill` instead.
+ */
+.cp-data-grid__head,
+.cp-data-grid__row {
+  display: grid;
+  grid-template-columns: var(--cp-data-grid-columns, minmax(0, 1fr));
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.cp-data-grid__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  min-height: var(--row-height);
+  padding: 0 var(--space-sm);
+  background: var(--bg-toolbar);
+  border-bottom: var(--hairline) solid var(--border-muted);
+  color: var(--fg-muted);
+  font-family: var(--font-pixel-digits);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.cp-data-grid__list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cp-data-grid__item {
+  min-height: var(--row-height);
+  border-bottom: var(--divider);
+}
+
+.cp-data-grid__item:hover {
+  background: var(--hover-fill);
+}
+
+.cp-data-grid__row {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--row-height);
+  padding: 0 var(--space-sm);
+  border: 0;
+  background: transparent;
+  color: var(--fg-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}

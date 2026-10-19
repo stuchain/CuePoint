@@ -20,35 +20,11 @@
   gap: var(--space-md);
 }
 
-/* One row height for every track list; no boxes, no gaps between rows. */
-.plays__list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  width: 100%;
-}
-
+/* The list look is the shared one (`cp-data-grid` in components/table/DataTable.css, D8); this sheet
+   names the columns. */
 .plays__columns-head,
 .plays__row {
-  display: grid;
-  grid-template-columns: 3ch minmax(0, 1fr) 6ch 7ch 6ch;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-/* The table header look (D8): the row height on the toolbar fill, a pixel label in muted text. */
-.plays__columns-head {
-  min-height: var(--row-height);
-  padding: 0 var(--space-sm);
-  background: var(--bg-toolbar);
-  border-bottom: var(--hairline) solid var(--border-muted);
-  color: var(--fg-muted);
-  font-family: var(--font-pixel-digits);
-  font-size: var(--font-size-xs);
-  font-weight: var(--weight-strong);
+  --cp-data-grid-columns: 3ch minmax(0, 1fr) 6ch 7ch 6ch;
 }
 
 /* The play button's room, so the headings line up with the rows. */
@@ -64,24 +40,10 @@
   align-items: center;
   gap: var(--space-md);
   min-width: 0;
-  min-height: var(--row-height);
-  border-bottom: var(--divider);
-}
-
-.plays__item:hover {
-  background: var(--hover-fill);
 }
 
 .plays__row {
   min-width: 0;
-  min-height: var(--row-height);
-  padding: 0 var(--space-sm);
-  border: 0;
-  background: transparent;
-  color: var(--fg-primary);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
 }
 
 /* Title and artist on one line, so the row keeps the one row height. */
