@@ -521,7 +521,7 @@ describe("values saved into the music file", () => {
     panel();
     const note = await screen.findByText(/may not have finished/);
     expect(note).toHaveTextContent(
-      "2 saves may not have finished, and 1 value was saved. Undoing the save puts every one back as it was.",
+      "2 syncs may not have finished, and 1 value was synced. Undoing the sync puts every one back as it was.",
     );
     expect(note.textContent).not.toMatch(/3 values? (were )?saved/);
     expect(screen.getByRole("button", { name: "Undo this save" })).toBeEnabled();
