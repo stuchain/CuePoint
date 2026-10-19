@@ -18,9 +18,12 @@
   align-items: start;
 }
 
+/* One sticky header, one divider: the rail sticks just under the header's divider and leaves the
+   same gap the page leaves below it (C35). Its links start at the title's left edge (C124). */
 .settings-page__nav {
   position: sticky;
-  top: var(--screen-header-height, 0);
+  top: calc(var(--screen-header-height, 0px) + var(--space-md));
+  margin-inline-start: calc(-1 * var(--space-sm));
 }
 
 .settings-page__nav ul {
@@ -62,6 +65,8 @@
   flex-direction: column;
   gap: var(--gap-box);
   min-width: 0;
+  /* Room below the last card, so About & updates can scroll up to the top (C124). */
+  padding-bottom: 60vh;
   /* One reading column at wide windows, so a card never stretches past its content (C211). */
   max-width: calc(720px * var(--scale));
 }
@@ -99,7 +104,7 @@
   align-items: center;
   gap: var(--space-sm);
   min-height: calc(24px * var(--scale));
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   color: var(--fg-primary);
   cursor: pointer;
 }
@@ -129,10 +134,10 @@
   font-size: var(--font-size-sm);
 }
 
-/* One column below about 467px at 1× (700px at the default 1.5×). The rail grows with the scale,
-   and a container query cannot read --scale, so the larger sizes name their own width: at 3× in a
-   1280 window the rail took 480px of a 763px page and the sections overflowed it. */
-@container content (max-width: 700px) {
+/* One column below about 700px at the default size (C206: a container query in em of the content
+   region's text, which is 10px times the size, so 46.7em is 700px at 1.5, 933 at 2 and 1400 at 3).
+   One rule covers every size; the rail grows with the scale and so does the width it needs. */
+@container content (max-width: 46.7em) {
   .settings-page__layout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -142,36 +147,6 @@
   }
 
   .settings-page__nav ul {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-}
-
-@container content (max-width: 934px) {
-  :root[data-scale="2"] .settings-page__layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  :root[data-scale="2"] .settings-page__nav {
-    position: static;
-  }
-
-  :root[data-scale="2"] .settings-page__nav ul {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-}
-
-@container content (max-width: 1400px) {
-  :root[data-scale="3"] .settings-page__layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  :root[data-scale="3"] .settings-page__nav {
-    position: static;
-  }
-
-  :root[data-scale="3"] .settings-page__nav ul {
     flex-direction: row;
     flex-wrap: wrap;
   }
@@ -195,8 +170,9 @@
   overflow-wrap: anywhere;
   margin: 0;
   color: var(--fg-primary);
-  font-size: var(--font-size-sm);
-  line-height: 1.5;
+  font-family: var(--font-data);
+  font-size: var(--text-body);
+  line-height: var(--line-height-prose);
 }
 
 .settings-status:focus {
@@ -225,8 +201,9 @@
   margin: 0;
   max-width: min(var(--reading-width), calc(400px * var(--scale)));
   color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  line-height: 1.5;
+  font-family: var(--font-data);
+  font-size: var(--text-body);
+  line-height: var(--line-height-prose);
 }
 
 .settings-actions {

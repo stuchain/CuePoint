@@ -13,6 +13,7 @@
 }
 
 .about-dialog__logo {
+  image-rendering: pixelated;
   display: block;
   width: round(nearest, calc(32px * var(--scale)), 1px);
   height: round(nearest, calc(32px * var(--scale)), 1px);

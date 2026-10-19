@@ -15,7 +15,7 @@
 }
 
 .cp-export-settings__heading {
-  margin: 0 0 var(--space-xs);
+  margin: 0 0 var(--space-md);
 }
 
 .cp-export-settings__list {
@@ -48,7 +48,8 @@
   color: var(--fg-muted);
 }
 
-@media (max-width: 640px) {
+/* In em of the content region's text (C206): 42.7em is 640px at the default size. */
+@container content (max-width: 42.7em) {
   .cp-export-settings__item {
     grid-template-columns: minmax(0, 1fr);
   }
