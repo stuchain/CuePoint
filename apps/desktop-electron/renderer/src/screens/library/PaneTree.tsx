@@ -65,6 +65,8 @@ interface PaneTreeProps {
 
   // ---- everything below is optional; a read-only section passes none ----
 
+  /** A row took focus (a click or the keyboard), for a pane whose row menu follows it. */
+  onRowFocus?: (key: string) => void;
   /** The row being renamed, drawn as a text field instead of a name. */
   renamingKey?: string | null;
   onRenameCommit?: (key: string, name: string) => void;
@@ -100,6 +102,7 @@ export function PaneTree({
   selectedKey,
   onSelect,
   onExpand,
+  onRowFocus,
   renamingKey = null,
   onRenameCommit,
   onRenameCancel,
@@ -237,6 +240,10 @@ export function PaneTree({
               onSelect(row.key);
             }}
             onKeyDown={(event) => onKeyDown(event, row)}
+            onFocus={(event) => {
+              // The row itself, not a button or field inside it.
+              if (event.target === event.currentTarget) onRowFocus?.(row.key);
+            }}
             onContextMenu={
               onRowContextMenu
                 ? (event) => {

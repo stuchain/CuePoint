@@ -276,10 +276,28 @@ export function CollectionsPane({
 
   const nodeFor = (key: string) => findCollection(tree, Number(key));
 
+  // A folder is opened and closed, never selected (C197), so its Rename and Delete need another
+  // home: the "•••" follows the folder last clicked or focused, while the selected look stays on
+  // the Collection the table shows. It lapses when the selection changes.
+  const [activeFolder, setActiveFolder] = useState<{ id: number; selectedId: number | null } | null>(
+    null,
+  );
+  const activeNode =
+    activeFolder && activeFolder.selectedId === (selected?.id ?? null)
+      ? findCollection(tree, activeFolder.id)
+      : null;
+  const menuNode = activeNode ?? selected;
+  const noteRow = (key: string) => {
+    const node = nodeFor(key);
+    setActiveFolder(
+      node?.kind === "folder" ? { id: node.id, selectedId: selected?.id ?? null } : null,
+    );
+  };
+
   const create = async (kind: CreatableKind) => {
-    // Made inside the selected folder when one is selected, which is what a
-    // user pressing "new" while looking at a folder means.
-    const parentId = selected?.kind === "folder" ? selected.id : null;
+    // Made inside the folder in view when one is, which is what a user pressing "new" while
+    // looking at a folder means.
+    const parentId = menuNode?.kind === "folder" ? menuNode.id : null;
     const result = await onCreate(kind, UNTITLED[kind], parentId);
     if (!result.ok) {
       say(result.error ?? "Could not create that.", "warning");
@@ -500,7 +518,7 @@ export function CollectionsPane({
     count: holdsTracks(row.node) ? row.node.entry_count : null,
     // The selected row carries its own actions, where the eye already is (C15, C227).
     trailing:
-      selected?.id === row.node.id && renamingId !== row.node.id ? (
+      menuNode?.id === row.node.id && renamingId !== row.node.id ? (
         <RowMenu name={row.node.name} items={menuItems(row.node)} />
       ) : null,
     badge: row.node.broken ? (
@@ -572,7 +590,19 @@ export function CollectionsPane({
           label="Collections"
           rows={treeRows}
           selectedKey={selected ? String(selected.id) : null}
-          onSelect={(key) => onSelect(nodeFor(key))}
+          onSelect={(key) => {
+            const node = nodeFor(key);
+            // A folder only opens and closes (C197); the menu moves to it.
+            if (node?.kind === "folder") {
+              noteRow(key);
+              const open = treeRows.find((row) => row.key === key)?.expanded ?? false;
+              onExpand(node.id, !open);
+              return;
+            }
+            setActiveFolder(null);
+            onSelect(node);
+          }}
+          onRowFocus={noteRow}
           onExpand={(key, expanded) => onExpand(Number(key), expanded)}
           renamingKey={renamingId === null ? null : String(renamingId)}
           onRenameCommit={(key, name) => void commitRename(Number(key), name)}

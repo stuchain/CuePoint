@@ -22,7 +22,9 @@ export function LibraryNoKeyNote({ count }: LibraryNoKeyNoteProps) {
       <p className="library-notice__line">
         {`${countNoun(count, "track")} ${count === 1 ? "has" : "have"} no Beatport key.`} A key comes from a track&apos;s
         confirmed match. A track that was matched can still have none when Beatport&apos;s record
-        has none, so this is not the same as {MATCH_STATE.notLookedUp}.
+        has none, so this is not the same as a track with no confirmed match ({MATCH_STATE.notLookedUp},{" "}
+        {MATCH_STATE.toCheck}, {MATCH_STATE.noMatch}, {MATCH_STATE.rejected} or{" "}
+        {MATCH_STATE.searchFailed}).
       </p>
     </Notice>
   );

@@ -113,6 +113,51 @@ async function rowActions(): Promise<string[]> {
   return names;
 }
 
+describe("a folder click (C197)", () => {
+  it("opens or closes the folder and does not select it", async () => {
+    const props = paneWith(WARMUP);
+    await userEvent.click(screen.getByText(GIGS.name));
+    expect(props.onSelect).not.toHaveBeenCalled();
+    expect(props.onExpand).toHaveBeenCalledTimes(1);
+    expect((props.onExpand as ReturnType<typeof vi.fn>).mock.calls[0]![0]).toBe(GIGS.id);
+  });
+
+  it("moves the \"•••\" to the folder without moving the selected look", async () => {
+    paneWith(WARMUP);
+    expect(screen.getAllByRole("button", { name: /^Actions for / })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: `Actions for ${WARMUP.name}` })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText(GIGS.name));
+
+    // One menu button, on the folder just clicked; the Collection is still the selected one.
+    const buttons = screen.getAllByRole("button", { name: /^Actions for / });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toHaveAccessibleName(`Actions for ${GIGS.name}`);
+    const rows = screen.getAllByRole("treeitem");
+    const selectedRows = rows.filter((item) => item.getAttribute("aria-selected") === "true");
+    expect(selectedRows).toHaveLength(1);
+    expect(selectedRows[0]).toHaveTextContent(WARMUP.name);
+    const gigs = rows.find((item) => within(item).queryByText(GIGS.name))!;
+    expect(gigs).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("gives a folder its Rename and Delete from that menu", async () => {
+    paneWith(WARMUP);
+    await userEvent.click(screen.getByText(GIGS.name));
+    const menu = await openRowMenu();
+    const names = within(menu).getAllByRole("menuitem").map((item) => item.textContent);
+    expect(names).toContain("Rename");
+    expect(names).toContain("Delete…");
+  });
+
+  it("makes a new node inside the folder last clicked", async () => {
+    const props = paneWith(WARMUP);
+    await userEvent.click(screen.getByText(GIGS.name));
+    await chooseNew("Collection");
+    expect(props.onCreate).toHaveBeenCalledWith("collection", expect.any(String), GIGS.id);
+  });
+});
+
 describe("the selected row's actions menu", () => {
   it("has no bar at the foot of the pane any more", () => {
     paneWith(WARMUP);
@@ -195,7 +240,7 @@ describe("the selected row's actions menu", () => {
 
     // The parent deselects the deleted node, so the row's menu goes with the selection.
     rerender(<CollectionsPane {...props} selected={null} />);
-    expect(screen.queryByRole("button", { name: /^Actions for / })).toBeNull();
+    expect(screen.queryByRole("button", { name: `Actions for ${WARMUP.name}` })).toBeNull();
     const stop = document.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
     expect(stop).not.toBeNull();
     expect(stop).toHaveFocus();
