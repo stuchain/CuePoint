@@ -671,7 +671,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect.poll(() => jobsOf(win, "library_import"), { timeout: 60_000 }).toBeGreaterThan(imports);
   });
 
-  test("Edit values and Use Beatport's values: the Library's More and Beatport menus", async () => {
+  test("Edit values and Copy Beatport values: the Library's More and Beatport menus", async () => {
     await openLibrary(win);
     const genres = () =>
       win.evaluate(async () => {
@@ -699,7 +699,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect(editor).toBeHidden({ timeout: 30_000 });
     await expect.poll(() => titlesWithGenre("Deep House"), { timeout: 30_000 }).toEqual(["Warm One", "Warm Two"]);
 
-    // Use Beatport's values…: with Beatport's genre accepted for one track, applying it
+    // Copy Beatport values…: with Beatport's genre accepted for one track, applying it
     // changes that track's genre and leaves the other (the match is seeded, as the matcher would).
     seedAcceptedMatch(cuepointHome, "Warm One", { genre: "Tech House" });
     await win.reload();
@@ -707,7 +707,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await openLibrary(win);
     await pick(win, "Warm One", "Warm Two");
     await use(win, toolbar(win).getByRole("button", { name: "Beatport", exact: true }), "the bar's Beatport");
-    await choose(win, "Use Beatport's values…");
+    await choose(win, "Copy Beatport values…");
     const beatport = win.getByRole("dialog", { name: "Copy Beatport values" });
     await expect(beatport).toContainText("2 tracks");
     await use(win, beatport.getByRole("checkbox", { name: "Genre" }), "Genre", "Space");
@@ -722,11 +722,11 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await pick(win, "Warm One", "Warm Two");
     await use(win, toolbar(win).getByRole("button", { name: "More", exact: true }), "the bar's More");
     await expect(win.getByRole("menuitem", { name: "Edit values…" })).toBeVisible();
-    await expect(win.getByRole("menuitem", { name: "Save to files…" })).toHaveCount(0);
+    await expect(win.getByRole("menuitem", { name: "Sync to files…" })).toHaveCount(0);
     await win.keyboard.press("Escape");
 
     // The Library has no save bar of its own: syncing into the files is per playlist, on Clean.
-    await expect(win.locator("main.app-main .screen:visible").getByRole("region", { name: "Save to files" })).toHaveCount(0);
+    await expect(win.locator("main.app-main .screen:visible").getByRole("region", { name: "Sync to files" })).toHaveCount(0);
   });
 
   test("Match: a tick and the Match button on Clean ▸ Playlists", async () => {
@@ -918,7 +918,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await expect(win.getByRole("heading", { name: "Keys", level: 1 })).toBeVisible({ timeout: 15_000 });
 
     // The page opens on the wheel (K15); these steps read the list.
-    await win.getByRole("tab", { name: "List" }).click();
+    await win.getByRole("toolbar", { name: "Track list" }).getByRole("button", { name: "List" }).click();
     const list = win.getByRole("group", { name: "Keys in these sources" });
     const countOf = (code: string) => list.getByRole("button", { name: new RegExp(`^${code},`) }).locator(".keys-counts__count");
     // The whole library to start: 8A on 1, 3, 5 and 7; 9A on 2 and 6; 8B on 4.

@@ -151,7 +151,7 @@ test.describe("the sizes (PAGES-14)", () => {
 
       // --- a fresh profile opens at the size its screen suggests (R2-5) --------
       await win.waitForSelector(".app-shell", { timeout: 30_000 });
-      // R2-5's rule: Compact under 860 px, else Medium, stepping down while fewer than
+      // R2-5's rule: Small (1.25) under 860 px, else Medium, stepping down while fewer than
       // 560 px of rows would fit (a CI Mac's small virtual screen gets 1).
       const suggested = await win.evaluate(() => {
         const height = screen.availHeight;

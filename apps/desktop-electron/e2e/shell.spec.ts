@@ -523,7 +523,7 @@ ${tracks.join("\n")}
 
       const items = await menuItems(app);
       const labels = items.map((item) => item.label);
-      for (const label of ["File", "Edit", "View", "Help", "Import a Rekordbox file…", "Track details", "Privacy…"]) {
+      for (const label of ["File", "Edit", "View", "Help", "Import a Rekordbox file…", "Track details", "Search library…", "Activity…", "Privacy…"]) {
         expect(labels, label).toContain(label);
       }
       expect(items.filter((item) => /zoom/i.test(item.role) || /zoom/i.test(item.label))).toEqual([]);
@@ -573,7 +573,7 @@ ${tracks.join("\n")}
       // screen 1,120 px tall, which a CI display may not have, so the step is read off the screen.
       const bigger = await window.evaluate(() => (screen.availHeight / 2 >= 560 ? "2" : "1.5"));
       await expect.poll(scale).toBe(bigger);
-      // 2 → 1.5 → 1.25 (Compact, R2-5) → 1, and from 1.5 the third press stays at 1.
+      // 2 → 1.5 → 1.25 (Small, R2-5) → 1, and from 1.5 the third press stays at 1.
       await chooseMenuItem(app, "size-smaller");
       await chooseMenuItem(app, "size-smaller");
       await chooseMenuItem(app, "size-smaller");

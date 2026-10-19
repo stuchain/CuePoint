@@ -446,7 +446,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         for (const name of ["Peak time", "Festival set", "Rooftop"]) await sources.getByRole("checkbox", { name, exact: true }).check();
         await expect(window.getByRole("status").filter({ hasText: "in 3 playlists" })).toBeVisible({ timeout: 30_000 });
         // The page opens on the wheel (K15); these steps read the list.
-        await window.getByRole("tab", { name: "List" }).click();
+        await window.getByRole("toolbar", { name: "Track list" }).getByRole("button", { name: "List" }).click();
         const list = window.getByRole("group", { name: "Keys in these sources" });
         // the key with the most tracks in it
         const counts = await list.locator(".keys-counts__count").allInnerTexts();

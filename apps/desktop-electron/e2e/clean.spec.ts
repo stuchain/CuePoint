@@ -347,7 +347,7 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
 
       await test.step("the Library keeps no save bar and Clean none either", async () => {
         await window.getByRole("link", { name: "Clean", exact: true }).click();
-        await expect(window.getByRole("region", { name: "Save to files" })).toHaveCount(0);
+        await expect(window.getByRole("region", { name: "Sync to files" })).toHaveCount(0);
         // The refresh below is the Library's.
         await window.getByRole("link", { name: "Library", exact: true }).click();
       });

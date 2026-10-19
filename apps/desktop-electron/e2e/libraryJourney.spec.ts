@@ -258,7 +258,7 @@ test.describe("Phase 3 end to end (LIBRARY-12)", () => {
       await expect(window.locator(".cp-status__job-label")).toContainText(/^Importing/, {
         timeout: 30_000,
       });
-      await expect(window.locator("progress.cp-status__progress")).toBeVisible();
+      await expect(window.locator("progress.cp-progress")).toBeVisible();
     } finally {
       await app.close();
     }

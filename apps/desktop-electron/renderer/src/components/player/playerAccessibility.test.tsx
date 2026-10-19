@@ -238,7 +238,9 @@ describe("the shortcuts dialog lists what the player takes", () => {
     // focus, the queued track here and the tree's row there. Alt+Up / Alt+Down moves what
     // has the focus too: the queued track here, a Set's entry (FLW-17) and a Collection's
     // track in the Library.
-    const shared = new Set(["Delete", "Alt+Up / Alt+Down"]);
+    // The queue's own list keys are the track tables' too: Enter plays the focused row, the arrows and
+    // Home / End move along it. Space ticks a row in Clean's review, where the player's Space is not taken.
+    const shared = new Set(["Delete", "Alt+Up / Alt+Down", "Enter", "Up / Down", "Home / End", "Space"]);
     expect(keys.filter((key) => !shared.has(key) && others.includes(key))).toEqual([]);
   });
 });

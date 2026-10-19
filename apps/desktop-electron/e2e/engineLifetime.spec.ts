@@ -162,7 +162,7 @@ test.describe("the engine's lifetime (EXPORT-07)", () => {
       // The supervisor restarts it by itself, so the wording can be either
       // "stopped" or "starting it again"; what matters is that it is there.
       await expect(banner).toBeVisible({ timeout: 5_000 });
-      await expect(window.getByRole("alert")).toContainText(/CuePoint (stopped working|couldn't start) in the background/);
+      await expect(window.getByRole("alert")).toContainText(/CuePoint (stopped working|could not start) in the background/);
       await expect(window.locator(".cp-status__engine")).toHaveText("");
       await expect(window.locator("main.app-main")).toHaveAttribute("data-offline", "");
 

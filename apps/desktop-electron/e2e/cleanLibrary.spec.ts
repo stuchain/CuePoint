@@ -276,7 +276,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       const bar = window.getByRole("toolbar", { name: "Selected tracks" });
       await bar.getByRole("button", { name: "Beatport", exact: true }).click();
       const beatport = window.getByRole("menu");
-      for (const entry of ["Match on Beatport…", "Review these matches", "Use Beatport's values…"]) {
+      for (const entry of ["Match on Beatport…", "Review these matches", "Copy Beatport values…"]) {
         await expect(beatport.getByRole("menuitem", { name: entry, exact: true })).toBeVisible();
       }
       await window.keyboard.press("Escape");
@@ -286,7 +286,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
         await expect(menu.getByRole("menuitem", { name: entry, exact: true })).toBeVisible();
       }
       // Saving into the files is not in More.
-      await expect(menu.getByRole("menuitem", { name: "Save to files…" })).toHaveCount(0);
+      await expect(menu.getByRole("menuitem", { name: "Sync to files…" })).toHaveCount(0);
       await menu.getByRole("menuitem", { name: "Edit values…" }).click();
       // The editor opens at once, in place on the Library, over the three tracks chosen (K4).
       const dialog = window.getByRole("dialog", { name: "Edit values" });
@@ -353,8 +353,8 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await screen.waitFor({ timeout: 30_000 });
       await expect(row(window, "Tone One")).toBeVisible({ timeout: 30_000 });
       // Syncing into the files is per playlist, on Clean: the Library has no bar for it.
-      await expect(screen.getByRole("region", { name: "Save to files" })).toHaveCount(0);
-      await expect(screen.getByRole("button", { name: "Save to files…" })).toHaveCount(0);
+      await expect(screen.getByRole("region", { name: "Sync to files" })).toHaveCount(0);
+      await expect(screen.getByRole("button", { name: "Sync to files…" })).toHaveCount(0);
     } finally {
       await app.close();
     }
