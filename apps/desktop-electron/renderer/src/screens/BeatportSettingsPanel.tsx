@@ -173,7 +173,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
                     disabled={noDesktop || (!draft.trim() && !status.configured)}
                     onClick={() => void test(true)}
                   >
-                    Test connection
+                    Check sign-in
                   </Button>
                 ) : null}
               </div>
@@ -206,7 +206,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
                 disabled={noDesktop}
                 onClick={() => void test()}
               >
-                Test connection
+                Check sign-in
               </Button>
               {signedIn ? (
                 <Button
@@ -234,14 +234,17 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
   );
 }
 
-/** The one line that says where the sign-in stands. */
+/**
+ * The one line that says where the sign-in stands. A pasted one reads as the sign-in it is, with
+ * how it differs, and not as a token (C178); the masked end tells one sign-in from the next.
+ */
 function lineFor(state: BeatportAuth["state"], masked: string | null): string {
   const tail = masked ? ` · ${masked}` : "";
   switch (state) {
     case "signed_in":
       return `Signed in to Beatport${tail} · renews by itself`;
     case "pasted":
-      return `Using a pasted token${tail}`;
+      return `Signed in to Beatport${tail} · pasted by hand`;
     case "expired":
       return "Beatport sign-in ended";
     case "env":

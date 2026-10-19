@@ -224,7 +224,7 @@ describe("the Beatport test result", () => {
       secure_storage: true,
     }));
     renderSettings();
-    const button = await within(region("Beatport")).findByRole("button", { name: "Test connection" });
+    const button = await within(region("Beatport")).findByRole("button", { name: "Check sign-in" });
     await waitFor(() => expect(button).toBeEnabled());
     await userEvent.click(button);
     return await within(region("Beatport")).findByRole("status");

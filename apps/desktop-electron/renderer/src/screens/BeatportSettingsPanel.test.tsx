@@ -131,7 +131,7 @@ describe("signed out", () => {
     expect(field).toBeVisible();
     expect(screen.getByText("Without a sign-in, past digs and wantlist still open.")).toBeVisible();
     expect(screen.getByRole("button", { name: "Save token" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Test connection" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Check sign-in" })).toBeVisible();
   });
 
   it("is open on arrival when a link asked for the token field, and focuses it", async () => {
@@ -183,7 +183,7 @@ describe("signed out", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save token" }));
     await waitFor(() => expect(bridge.saveBeatportPastedToken).toHaveBeenCalledWith("secret-token"));
     expect(bridge.setBeatportToken).not.toHaveBeenCalled();
-    expect(await screen.findByText("Using a pasted token · ••••wxyz")).toBeInTheDocument();
+    expect(await screen.findByText("Signed in to Beatport · ••••wxyz · pasted by hand")).toBeInTheDocument();
     // The pasted token is not kept anywhere on the page afterwards.
     expect(document.body.innerHTML).not.toContain("secret-token");
   });
@@ -212,7 +212,7 @@ describe("signed out", () => {
     await userEvent.type(field, "half-typed");
     await userEvent.click(screen.getByRole("button", { name: "Sign in to Beatport" }));
     await screen.findByText("Signed in to Beatport · ••••abcd · renews by itself");
-    // Signing out brings the field back empty, and Test connection must not send the old text.
+    // Signing out brings the field back empty, and Check sign-in must not send the old text.
     await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
     await screen.findByText("Sign in to let Discover search Beatport.");
     await userEvent.click(screen.getByRole("button", { name: "Paste a token instead" }));
@@ -247,7 +247,7 @@ describe("signed out", () => {
     expect(screen.queryByText("Sign in to let Discover search Beatport.")).toBeNull();
     expect(screen.queryByRole("button", { name: "Sign in to Beatport" })).toBeNull();
     await act(async () => answer({ state: "pasted", masked: "••••abcd", expires_at: null, secure_storage: true }));
-    expect(await screen.findByText("Using a pasted token · ••••abcd")).toBeInTheDocument();
+    expect(await screen.findByText("Signed in to Beatport · ••••abcd · pasted by hand")).toBeInTheDocument();
   });
 
   it("says when the sign-in in use was saved earlier", async () => {
@@ -267,11 +267,11 @@ describe("signed out", () => {
 });
 
 describe("signed in", () => {
-  it("shows the masked end of the token, Test connection and Sign out", async () => {
+  it("shows the masked end of the sign-in, Check sign-in and Sign out", async () => {
     install({ state: "signed_in", masked: "••••abcd", expires_at: "2099-01-01T00:00:00Z", secure_storage: true });
     renderPanel();
     expect(await screen.findByText("Signed in to Beatport · ••••abcd · renews by itself")).toBeInTheDocument();
-    expect(within(panel()).getByRole("button", { name: "Test connection" })).toBeEnabled();
+    expect(within(panel()).getByRole("button", { name: "Check sign-in" })).toBeEnabled();
     expect(within(panel()).getByRole("button", { name: "Sign out" })).toBeEnabled();
     expect(within(panel()).queryByRole("button", { name: "Sign in to Beatport" })).toBeNull();
     expect(document.getElementById(FIELD_ID)).toBeNull();
@@ -280,7 +280,7 @@ describe("signed in", () => {
   it("tests the connection with the token main holds, sending none", async () => {
     install({ state: "signed_in", masked: "••••abcd", expires_at: null, secure_storage: true });
     renderPanel();
-    await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Check sign-in" }));
     await waitFor(() => expect(bridge.testBeatportToken).toHaveBeenCalledWith(undefined));
     expect(await screen.findByRole("status")).toHaveTextContent("Connected. Beatport let CuePoint in.");
   });
@@ -291,7 +291,7 @@ describe("signed in", () => {
     await waitFor(() => expect(document.getElementById(FIELD_ID)).toBeEnabled());
     const field = document.getElementById(FIELD_ID) as HTMLInputElement;
     await userEvent.type(field, "typed-but-unsaved");
-    await userEvent.click(screen.getByRole("button", { name: "Test connection" }));
+    await userEvent.click(screen.getByRole("button", { name: "Check sign-in" }));
     await waitFor(() => expect(bridge.testBeatportToken).toHaveBeenCalledWith(undefined));
   });
 
@@ -338,8 +338,8 @@ describe("a pasted token", () => {
   it("says so, with the masked end", async () => {
     install({ state: "pasted", masked: "••••abcd", expires_at: null, secure_storage: true });
     renderPanel();
-    expect(await screen.findByText("Using a pasted token · ••••abcd")).toBeInTheDocument();
-    expect(within(panel()).getByRole("button", { name: "Test connection" })).toBeInTheDocument();
+    expect(await screen.findByText("Signed in to Beatport · ••••abcd · pasted by hand")).toBeInTheDocument();
+    expect(within(panel()).getByRole("button", { name: "Check sign-in" })).toBeInTheDocument();
     expect(within(panel()).getByRole("button", { name: "Sign out" })).toBeInTheDocument();
   });
 });
@@ -356,7 +356,7 @@ describe("opened by a link that wants the token field, while signed in", () => {
   it("leaves the field out on an ordinary visit", async () => {
     install({ state: "pasted", masked: "••••abcd", expires_at: null, secure_storage: true });
     renderPanel();
-    await screen.findByText("Using a pasted token · ••••abcd");
+    await screen.findByText("Signed in to Beatport · ••••abcd · pasted by hand");
     expect(document.getElementById(FIELD_ID)).toBeNull();
   });
 });
@@ -379,7 +379,7 @@ describe("a token from the environment", () => {
     expect(await screen.findByText("Using a Beatport sign-in set outside CuePoint")).toBeInTheDocument();
     expect(within(panel()).queryByRole("button", { name: "Sign in to Beatport" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Paste a token instead" })).toBeNull();
-    expect(within(panel()).getByRole("button", { name: "Test connection" })).toBeEnabled();
+    expect(within(panel()).getByRole("button", { name: "Check sign-in" })).toBeEnabled();
   });
 });
 

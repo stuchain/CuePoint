@@ -293,10 +293,10 @@ the problem.
 
 If the sign-in window does not work for you, **Settings → Beatport → Paste a
 token instead** takes a token you already have. Paste it into **Beatport token**,
-choose **Save token**, then **Test connection**: CuePoint calls Beatport once and
+choose **Save token**, then **Check sign-in**: CuePoint calls Beatport once and
 tells you whether Beatport let it in (in green) or refused it (in red). Once
-it is saved, the field is replaced by **Using a pasted token · ••••abcd** with
-**Test connection** and **Sign out**; to replace the token, sign out first.
+it is saved, the field is replaced by **Signed in to Beatport · ••••abcd · pasted by hand** with
+**Check sign-in** and **Sign out**; to replace the token, sign out first.
 
 Beatport does not hand out tokens from your account page. You ask for API access,
 and then exchange what they give you for a token.

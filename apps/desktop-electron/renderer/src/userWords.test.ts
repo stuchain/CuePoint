@@ -205,7 +205,7 @@ const GLOSSARY: { never: RegExp; say: string; only?: RegExp }[] = [
 const GLOSSARY_ALLOWED: { file: RegExp; text: RegExp; reason: string }[] = [
   {
     file: /\.\/screens\/BeatportSettingsPanel\.tsx$/,
-    text: /^(Paste a token instead|Beatport token|Paste a new token to replace the saved one|Paste your Beatport access token|Loading token status…|Save token|Using a pasted token|Saved token|\. Paste a new one to replace it\.)$/,
+    text: /^(Paste a token instead|Beatport token|Paste a new token to replace the saved one|Paste your Beatport access token|Loading token status…|Save token|Saved token|\. Paste a new one to replace it\.)$/,
     reason: "the pasted-token fallback behind \"Paste a token instead\" (glossary)",
   },
   {
