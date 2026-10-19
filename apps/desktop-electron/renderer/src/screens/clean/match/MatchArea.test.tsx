@@ -143,6 +143,17 @@ describe("the one row (D13)", () => {
     expect(within(row).getByLabelText("Filter playlists")).toBeInTheDocument();
   });
 
+  it("puts the search at the left, straight after the sub-tabs, where the Library's sits (C223)", async () => {
+    renderArea();
+    const row = screen.getByRole("tablist").parentElement!;
+    const children = Array.from(row.children);
+    const search = screen.getByLabelText("Filter playlists").closest(".match-area__search")!;
+    expect(children.indexOf(search)).toBe(1);
+    const css = (await import("./match.css?raw")).default;
+    const rule = /\.match-area__search\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(rule).not.toMatch(/margin-inline-start:\s*auto/);
+  });
+
   it("filters the playlists with that one search", () => {
     renderArea();
     fireEvent.change(screen.getByLabelText("Filter playlists"), { target: { value: "peak" } });

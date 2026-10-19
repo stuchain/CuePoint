@@ -3,8 +3,8 @@
  *
  * One row at the top: the sub-tabs **Playlists** (the default, where Match opens: tick playlists
  * and match them) and **Past searches** (every match run; opening one opens its review), the
- * caption that says which of the three steps this is ("Step 1 of 3 · Tick playlists") and the
- * page's search on the right. There is no tab for a review: a review is a view inside Playlists.
+ * page's search at the left, where the Library's sits (C223), and the caption that says which of the
+ * three steps this is ("Step 1 of 3 · Tick playlists"). There is no tab for a review: a review is a view inside Playlists.
  * While one is shown the Playlists sub-tab stays selected and a quiet **‹ Playlists** button sits
  * left of the caption; it returns to the list, which kept its scroll and its ticks (its pane is
  * hidden, not unmounted).
@@ -193,10 +193,10 @@ export function MatchArea({
 
   return (
     <div className="match-area">
-      {/* One row (D13): the sub-tabs, the step caption and the search; a review adds a back line. */}
+      {/* One row (D13): the sub-tabs, the search and the step caption; a review adds a back line.
+          The search follows the sub-tabs at the left, where the Library's search sits (C223). */}
       <div className="match-area__row">
         <Tabs tabs={tabs} activeId={review ? "playlists" : tab} onChange={chooseTab} variant="sub" />
-        {caption && <span className="match-area__caption">{caption}</span>}
         {!review && (
           <SearchField
             ref={searchRef}
@@ -207,6 +207,7 @@ export function MatchArea({
             onValueChange={tab === "past" ? setPastText : setFilter}
           />
         )}
+        {caption && <span className="match-area__caption">{caption}</span>}
       </div>
       {/* The way back is a quiet line of its own under the row, as the D13 mockup draws it. */}
       {review && (

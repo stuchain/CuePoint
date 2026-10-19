@@ -50,7 +50,6 @@
 .match-area__search {
   flex: none;
   width: var(--search-width);
-  margin-inline-start: auto;
 }
 
 /* The hidden helper text is absolutely placed: its box must be this pane's, or a
