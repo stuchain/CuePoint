@@ -11,6 +11,7 @@ import sidebarSource from "../components/shell/Sidebar.tsx?raw";
 import statusStripSource from "../components/shell/StatusStrip.tsx?raw";
 import playerShortcutsSource from "../components/player/usePlayerShortcuts.ts?raw";
 import queuePanelSource from "../components/player/QueuePanel.tsx?raw";
+import pageSearchSource from "../components/usePageSearch.ts?raw";
 import libraryScreenSource from "../screens/library/LibraryScreen.tsx?raw";
 import trackTableSource from "../components/table/TrackTable.tsx?raw";
 import trackTableKeysSource from "../components/table/trackTableKeys.ts?raw";
@@ -176,10 +177,10 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     ["Ctrl+?", "Everywhere", appSource, /key === "\?"/],
     ["F1", "Everywhere", appSource, /key === "F1"/],
     ["Esc", "Everywhere", modalSource, /key === "Escape"/],
-    ["Ctrl+F", "Library", libraryScreenSource, /key\.toLowerCase\(\) === "f"/],
+    ["Ctrl+F", "Library", pageSearchSource, /key\.toLowerCase\(\) !== "f"/],
     ["Ctrl+A", "Library", libraryScreenSource, /key\.toLowerCase\(\) === "a"/],
     ["Enter", "Library", trackTableSource, /key === "Enter" && onRowActivate/],
-    ["Esc", "Library", libraryScreenSource, /key === "Escape" && !typing\) selection\.clear/],
+    ["Esc", "Library", trackTableSource, /key === "Escape" && onClearSelection/],
     ["Shift+F10", "Library", trackTableSource, /shiftKey && event\.key === "F10"/],
     ["Alt+Up / Alt+Down", "Library", trackTableSource, /event\.altKey &&\s+onRowMove/],
     ["F2", "Library", collectionsPaneSource, /key === "F2"/],

@@ -172,10 +172,10 @@ describe("A2: the menu chevron", () => {
 });
 
 describe("A4: the search field", () => {
-  it("grows from 120 to 240 so the filters share its line", () => {
+  it("is the one flexible item, so the filters share its line", () => {
     const rule = ".cp-filter-bar__row > .cp-search-field";
-    expect(decl(filterBarCss, rule, "flex")).toBe("1 1 calc(120px * var(--scale))");
-    expect(decl(filterBarCss, rule, "max-width")).toBe("calc(240px * var(--scale))");
+    expect(decl(filterBarCss, rule, "flex")).toBe("0 1 var(--search-width)");
+    expect(decl(filterBarCss, rule, "max-width")).toBe("var(--search-width)");
   });
 });
 
