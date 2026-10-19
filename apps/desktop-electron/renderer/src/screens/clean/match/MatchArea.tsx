@@ -1,21 +1,26 @@
 /**
- * The Match area (C14, C22).
+ * The Match area (C14, C22, D13).
  *
- * Tabs: **Playlists** (the default, where Match opens: tick playlists and match them), one
- * **Review <name>** tab for each playlist matched or reviewed (several playlists, several tabs; the
- * whole library, only its own: `ReviewTab.tsx`) and **Past searches** (every match run; opening one
- * opens its review). A review stays until ‹ Playlists closes it.
+ * One row at the top: the sub-tabs **Playlists** (the default, where Match opens: tick playlists
+ * and match them) and **Past searches** (every match run; opening one opens its review), the
+ * caption that says which of the three steps this is ("Step 1 of 3 · Tick playlists") and the
+ * page's search on the right. There is no tab for a review: a review is a view inside Playlists.
+ * While one is shown the Playlists sub-tab stays selected and a quiet **‹ Playlists** button sits
+ * left of the caption; it returns to the list, which kept its scroll and its ticks (its pane is
+ * hidden, not unmounted).
  *
- * A match that finishes opens a review tab for each playlist it was started on, and so do Review
- * on a row, Open on a past search and the Inspector's link. A tab left for another keeps what it
- * was showing (its scroll, ticks, selection and open panel): its pane is hidden, not unmounted. What a tab reviews is a playlist, a run
- * (its resumes included) or, from the Inspector's link, every matched track. A tick is the
- * person's decision to sync a track; nothing is written to a value or a file until Sync.
+ * A match that finishes opens the review of the first playlist it was started on, and so do
+ * Review on a row, Open on a past search and the Inspector's link. What a review shows is a
+ * playlist, a run (its resumes included) or, from the Inspector's link, every matched track. A tick
+ * is the person's decision to sync a track; nothing is written to a value or a file until Sync.
  */
 import { Activity, useCallback, useEffect, useRef, useState } from "react";
 
 import type { CleanPlaylistStatus, MatchRun } from "../../../api/cuepointBridge.types";
+import { Button } from "../../../components/Button";
+import { SearchField } from "../../../components/SearchField";
 import { Tabs } from "../../../components/Tabs";
+import { usePageSearch } from "../../../components/usePageSearch";
 import type { CleanOpening } from "../cleanLink";
 import type { CleanMatch } from "../useCleanMatch";
 import { PastSearches } from "./PastSearches";
@@ -27,29 +32,30 @@ import { whatLine } from "./pastSearchWords";
 import type { CleanPlaylistsState } from "./useCleanPlaylists";
 import { WHOLE_LIBRARY_NAME } from "./useCleanPlaylists";
 import type { ReviewSource } from "./useMatchReview";
-import { loadMatchTab, saveMatchTab, type MatchTab } from "./matchTab";
+import { loadMatchTab, saveMatchTab, stepCaption, type MatchTab, type MatchView } from "./matchTab";
 import "./match.css";
 
-export type { MatchTab };
+export type { MatchTab, MatchView };
 
-/** One playlist (or, with null, the whole library) to open a review tab for. */
+/** One playlist (or, with null, the whole library) to open a review for. */
 export interface ReviewTarget {
   playlistId: number | null;
   name: string;
 }
 
 /**
- * Reviews opened from outside the area (a match that finished, the toast's Review): a tab for each
- * target. Applied once per `token`, as a track the Library opens is.
+ * Reviews opened from outside the area (a match that finished, the toast's Review). Only the first
+ * target is shown, since a review is one view; the others are one Review button away on their
+ * rows. Applied once per `token`, as a track the Library opens is.
  */
 export interface ReviewOpening {
   token: string;
   targets: ReviewTarget[];
 }
 
-/** One open review tab. */
+/** The review being shown. */
 interface Reviewing {
-  /** Which opening this is, so a review opened again starts clean; also its tab's id. */
+  /** Which opening this is, so a review opened again starts clean. */
   key: string;
   source: ReviewSource;
   name: string;
@@ -71,12 +77,9 @@ interface MatchAreaProps {
   reviewOpening?: ReviewOpening | null;
   /** The opening has been used, so coming back to this tab does not apply it again. */
   onReviewOpened?: () => void;
-  /** Which sub-tab is open, and whether a review's panel is open, said up so a match that ends knows where it may land. */
-  onViewChange?: (view: { tab: MatchTab; panelOpen: boolean }) => void;
+  /** What is showing, and whether a review's panel is open, said up so a match that ends knows where it may land. */
+  onViewChange?: (view: { tab: MatchView; panelOpen: boolean }) => void;
 }
-
-const sourceKey = (source: ReviewSource) => `${source.jobId ?? ""}|${source.playlistId ?? ""}`;
-const reviewTabId = (key: string) => `review:${key}`;
 
 export function MatchArea({
   onHealthChanged,
@@ -88,54 +91,44 @@ export function MatchArea({
   onReviewOpened,
   onViewChange,
 }: MatchAreaProps) {
-  const [tab, setTab] = useState<string>(loadMatchTab);
-  const [reviews, setReviews] = useState<Reviewing[]>([]);
+  const [tab, setTab] = useState<MatchTab>(loadMatchTab);
+  const [review, setReview] = useState<Reviewing | null>(null);
   const openings = useRef(0);
-  const reviewsRef = useRef<Reviewing[]>([]);
-
   const [panelOpen, setPanelOpen] = useState(false);
-  // Panes already opened stay mounted (hidden) when another tab is shown, so coming back finds
-  // the same scroll, selection and ticks. A pane never opened is not drawn.
-  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
-  const active = tab.startsWith("review:") && !reviews.some((entry) => reviewTabId(entry.key) === tab) ? "playlists" : tab;
-  const view: MatchTab = active.startsWith("review:") ? "review" : (active as MatchTab);
-  if (!opened.has(active)) setOpened(new Set([...opened, active]));
+  // The one search of the row filters the list shown; each list keeps its own text.
+  const [filter, setFilter] = useState("");
+  const [pastText, setPastText] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  // Panes already opened stay mounted (hidden) when another is shown, so coming back finds the
+  // same scroll and ticks. A pane never opened is not drawn.
+  const [opened, setOpened] = useState<ReadonlySet<MatchTab>>(new Set());
+  if (!opened.has(tab)) setOpened(new Set([...opened, tab]));
+  const view: MatchView = review ? "review" : tab;
   useEffect(() => {
     onViewChange?.({ tab: view, panelOpen: view === "review" && panelOpen });
   }, [onViewChange, panelOpen, view]);
+  usePageSearch(review ? undefined : searchRef);
 
-  const chooseTab = useCallback((id: string) => {
-    setTab(id);
-    if (id === "playlists" || id === "past") saveMatchTab(id);
+  const closeReview = useCallback(() => {
+    setReview(null);
+    setPanelOpen(false);
   }, []);
 
-  /** Open a review tab for each of these, or bring the one already open for the same tracks forward. */
-  const showReviews = useCallback((next: Array<{ source: ReviewSource; name: string; trackId?: number }>) => {
-    let list = reviewsRef.current;
-    let first: string | null = null;
-    next.forEach((entry, index) => {
-      const same = list.find((open) => sourceKey(open.source) === sourceKey(entry.source));
-      // The same tracks again: that tab stays, and starts clean only when a track is asked for.
-      if (same && entry.trackId === undefined) {
-        if (index === 0) first = same.key;
-        return;
-      }
-      openings.current += 1;
-      const made = { ...entry, key: String(openings.current) };
-      list = [...list.filter((open) => open !== same), made];
-      if (index === 0) first = made.key;
-    });
-    reviewsRef.current = list;
-    setReviews(list);
-    if (first !== null) setTab(reviewTabId(first));
-  }, []);
+  /** A sub-tab: also the way out of a review, which belongs to Playlists. */
+  const chooseTab = useCallback(
+    (id: string) => {
+      const next: MatchTab = id === "past" ? "past" : "playlists";
+      setTab(next);
+      saveMatchTab(next);
+      closeReview();
+    },
+    [closeReview],
+  );
 
-  /** ‹ Playlists: close this review and go back to the rows. */
-  const closeReview = useCallback((key: string) => {
-    reviewsRef.current = reviewsRef.current.filter((entry) => entry.key !== key);
-    setReviews(reviewsRef.current);
-    setTab("playlists");
-    saveMatchTab("playlists");
+  /** Show this review, replacing any other. */
+  const showReview = useCallback((entry: { source: ReviewSource; name: string; trackId?: number }) => {
+    openings.current += 1;
+    setReview({ ...entry, key: String(openings.current) });
     setPanelOpen(false);
   }, []);
 
@@ -144,41 +137,37 @@ export function MatchArea({
   useEffect(() => {
     if (!focus || focusToken.current === focus.token) return;
     focusToken.current = focus.token;
-    showReviews([{ source: {}, name: WHOLE_LIBRARY_NAME, trackId: focus.trackId }]);
-  }, [focus, showReviews]);
+    showReview({ source: {}, name: WHOLE_LIBRARY_NAME, trackId: focus.trackId });
+  }, [focus, showReview]);
 
   // Reviews opened from the page: a match that finished, or the toast's Review.
   const openingToken = useRef<string | null>(null);
   useEffect(() => {
     if (!reviewOpening || openingToken.current === reviewOpening.token) return;
     openingToken.current = reviewOpening.token;
-    showReviews(
-      reviewOpening.targets.map((target) => ({
-        source: target.playlistId === null ? {} : { playlistId: target.playlistId },
-        name: target.name,
-      })),
-    );
+    const first = reviewOpening.targets[0];
+    if (first) {
+      showReview({ source: first.playlistId === null ? {} : { playlistId: first.playlistId }, name: first.name });
+    }
     onReviewOpened?.();
-  }, [onReviewOpened, reviewOpening, showReviews]);
+  }, [onReviewOpened, reviewOpening, showReview]);
 
   /** Review, on a row: that playlist's tracks; null is the whole library. */
   const reviewPlaylist = useCallback(
     (picked: CleanPlaylistStatus | null) => {
-      showReviews([
-        picked
-          ? { source: { playlistId: picked.id }, name: picked.name }
-          : { source: {}, name: WHOLE_LIBRARY_NAME },
-      ]);
+      showReview(
+        picked ? { source: { playlistId: picked.id }, name: picked.name } : { source: {}, name: WHOLE_LIBRARY_NAME },
+      );
     },
-    [showReviews],
+    [showReview],
   );
 
   /** Open, from Past searches: that run's tracks, all of them. */
   const openRun = useCallback(
     (picked: MatchRun) => {
-      showReviews([{ source: { jobId: picked.job_id }, name: picked.label ?? whatLine(picked) }]);
+      showReview({ source: { jobId: picked.job_id }, name: picked.label ?? whatLine(picked) });
     },
-    [showReviews],
+    [showReview],
   );
 
   const resumeRun = useCallback(
@@ -197,22 +186,43 @@ export function MatchArea({
 
   const tabs = [
     { id: "playlists", label: "Playlists" },
-    ...reviews.map((entry) => ({ id: reviewTabId(entry.key), label: `Review ${entry.name}` })),
     { id: "past", label: "Past searches" },
   ];
-  const shown = (id: string) => (id === active ? "visible" : "hidden");
+  const caption = stepCaption(view, match.matching, review?.name);
+  const shown = (visible: boolean) => (visible ? "visible" : "hidden");
 
   return (
     <div className="match-area">
-      <Tabs tabs={tabs} activeId={active} onChange={chooseTab} variant="sub" />
+      {/* One row (D13): the sub-tabs, the step caption and the search. */}
+      <div className="match-area__row">
+        <Tabs tabs={tabs} activeId={review ? "playlists" : tab} onChange={chooseTab} variant="sub" />
+        {review && (
+          <Button variant="quiet" size="sm" icon="chevron-left" onClick={() => chooseTab("playlists")}>
+            Playlists
+          </Button>
+        )}
+        {caption && <span className="match-area__caption">{caption}</span>}
+        {!review && (
+          <SearchField
+            ref={searchRef}
+            thing={tab === "past" ? "past searches" : "playlists"}
+            label={tab === "past" ? "Search past searches" : "Filter playlists"}
+            className="match-area__search"
+            value={tab === "past" ? pastText : filter}
+            onValueChange={tab === "past" ? setPastText : setFilter}
+          />
+        )}
+      </div>
 
       <div className="match-area__body">
         {opened.has("playlists") && (
-          <Activity mode={shown("playlists")}>
+          <Activity mode={shown(!review && tab === "playlists")}>
             <PlaylistsView
               data={playlists.data}
               error={playlists.error}
+              onRetry={playlists.reload}
               loading={playlists.loading}
+              filter={filter}
               matching={match.matching}
               onMatch={onMatch}
               onReview={reviewPlaylist}
@@ -222,28 +232,25 @@ export function MatchArea({
             />
           </Activity>
         )}
-        {reviews
-          .filter((entry) => opened.has(reviewTabId(entry.key)))
-          .map((entry) => (
-            <Activity key={entry.key} mode={shown(reviewTabId(entry.key))}>
-              <ReviewTab
-                source={entry.source}
-                name={entry.name}
-                version={match.ended + match.started}
-                matching={match.matching}
-                onPanelChange={setPanelOpen}
-                onBack={() => closeReview(entry.key)}
-                onChanged={onHealthChanged}
-                initialTrackId={entry.trackId}
-              />
-            </Activity>
-          ))}
+        {review && (
+          <ReviewTab
+            key={review.key}
+            source={review.source}
+            name={review.name}
+            version={match.ended + match.started}
+            matching={match.matching}
+            onPanelChange={setPanelOpen}
+            onChanged={onHealthChanged}
+            initialTrackId={review.trackId}
+          />
+        )}
         {opened.has("past") && (
-          <Activity mode={shown("past")}>
+          <Activity mode={shown(!review && tab === "past")}>
             <PastSearches
+              search={pastText}
               version={match.ended + match.started}
               matching={match.matching}
-              openId={reviews.find((entry) => entry.source.jobId !== undefined)?.source.jobId ?? null}
+              openId={review?.source.jobId ?? null}
               onOpen={openRun}
               onResume={resumeRun}
               onMatchAgain={matchAgain}

@@ -31,6 +31,7 @@ import { useNavigate } from "react-router-dom";
 
 import type { EntityKind, LibrarySummary, MatchRun } from "../../api/cuepointBridge.types";
 import { LIBRARY_SUMMARY, useSharedRead } from "../../api/sharedReads";
+import { formatCount } from "../../format/counts";
 import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
@@ -44,7 +45,7 @@ import { usePageActive } from "../../components/shell/pageActive";
 import { WHOLE_LIBRARY_NAME, useCleanPlaylists } from "./match/useCleanPlaylists";
 import { matchRequest, type MatchChoice } from "./match/matchPlaylists";
 import type { NothingFound } from "./match/matchDone";
-import type { MatchTab } from "./match/matchTab";
+import type { MatchView } from "./match/matchTab";
 import type { CleanMatchOpening, CleanOpening, CleanSectionOpening } from "./cleanLink";
 import type { CleanTracks } from "./cleanTracks";
 import { libraryImportState } from "../library/libraryLink";
@@ -147,7 +148,7 @@ export function CleanScreen({
   const matchShown = pageActive && section === "review";
   // Which Match tab is open, and whether a review's details are: a run that ends lands on its review
   // only from the rows (or Past searches) or a review with nothing open, never over a panel being read.
-  const [matchView, setMatchView] = useState<{ tab: MatchTab; panelOpen: boolean }>({
+  const [matchView, setMatchView] = useState<{ tab: MatchView; panelOpen: boolean }>({
     tab: "playlists",
     panelOpen: false,
   });
@@ -264,7 +265,7 @@ export function CleanScreen({
                   // amber when it is work waiting (area 58).
                   detail:
                     waiting === undefined ? undefined : (
-                      <span className="clean-tab-count">{waiting.toLocaleString()}</span>
+                      <span className="clean-tab-count">{formatCount(waiting)}</span>
                     ),
                 };
               })}
