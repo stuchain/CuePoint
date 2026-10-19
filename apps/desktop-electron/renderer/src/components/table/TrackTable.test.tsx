@@ -1257,6 +1257,8 @@ describe("the columns button in the header's corner (K21)", () => {
     const rule = /\.track-table__row-corner\s*\{([^}]*)\}/.exec(css)![1]!;
     expect(rule).toMatch(/position:\s*sticky/);
     expect(rule).toMatch(/grid-column:\s*-2 \/ -1/);
+    // A selected row's cover is its flat fill: the accent bar at the row's left is not drawn again.
+    expect(css).toMatch(/\.track-table__row--selected \.track-table__row-corner\s*\{\s*background:\s*var\(--bg-selected\)/);
   });
 
   it("leaves nothing to cover without the button", () => {

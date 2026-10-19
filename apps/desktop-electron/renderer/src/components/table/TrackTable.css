@@ -391,7 +391,8 @@
 }
 
 .track-table__row--selected .track-table__end,
-.track-table__row--selected:hover .track-table__end {
+.track-table__row--selected:hover .track-table__end,
+.track-table__row--selected .track-table__row-corner {
   background: var(--bg-selected);
 }
 
