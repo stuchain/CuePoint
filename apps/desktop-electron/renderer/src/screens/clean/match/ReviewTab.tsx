@@ -26,7 +26,7 @@ import { Loading } from "../../../components/Loading";
 import { SelectionBar } from "../../../components/SelectionBar";
 import { TrackContextMenu, type TrackContextMenuItem } from "../../../components/TrackContextMenu";
 import { countNoun } from "../../../format/counts";
-import { SYNC, UNDO, couldNot } from "../../../format/words";
+import { RETRY, SYNC, UNDO, couldNot } from "../../../format/words";
 import { toQueueItem, queuedMessage } from "../../library/useLibraryPlayback";
 import { writeClipboard } from "../../library/trackClipboard";
 import { revealTrack } from "../revealTrack";
@@ -167,7 +167,8 @@ export function ReviewTab({ source, name, version, matching, onChanged, initialT
     (step: -1 | 1 | "first" | "last", extend: boolean) => {
       if (rows.length === 0) return;
       // With nothing chosen yet the cursor is on the first row, the one in the tab order.
-      const from = panel ?? current ?? rows[0]!.track_id;
+      // The cursor is where the last key left it; the panel only follows it.
+      const from = current ?? panel ?? rows[0]!.track_id;
       const at = rows.findIndex((row) => row.track_id === from);
       const target =
         step === "first"
@@ -429,7 +430,18 @@ export function ReviewTab({ source, name, version, matching, onChanged, initialT
   if (error && !review) {
     return (
       <section className="review" aria-label={`Review ${name}`}>
-        <Notice kind="danger">{error}</Notice>
+        <Notice
+          kind="danger"
+          action={
+            error === needsDesktopApp() ? undefined : (
+              <Button variant="secondary" onClick={reread}>
+                {RETRY}
+              </Button>
+            )
+          }
+        >
+          {error}
+        </Notice>
       </section>
     );
   }
@@ -503,7 +515,7 @@ export function ReviewTab({ source, name, version, matching, onChanged, initialT
       <div className="cp-toolbar review__footer">
         <span className="cp-prose review__facts">{barFacts(total, ticked, counts)}</span>
         <Hint text={ticked === 0 ? "Tick at least one track to sync" : undefined}>
-          <Button variant="secondary" className="review__sync" disabled={ticked === 0} onClick={() => setSyncOpen(true)}>
+          <Button variant="write" className="review__sync" disabled={ticked === 0} onClick={() => setSyncOpen(true)}>
             {SYNC.opener}
           </Button>
         </Hint>

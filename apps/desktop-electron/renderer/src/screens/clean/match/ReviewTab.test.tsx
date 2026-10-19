@@ -201,7 +201,9 @@ describe("the table", () => {
   it("needs the desktop app", async () => {
     removeMatchBridge();
     renderTab();
-    expect(await screen.findByRole("alert", undefined, LOADED)).toHaveTextContent("This needs the CuePoint desktop app.");
+    const alert = await screen.findByRole("alert", undefined, LOADED);
+    expect(alert).toHaveTextContent("This needs the CuePoint desktop app.");
+    expect(within(alert).queryByRole("button", { name: "Try again" })).toBeNull();
   });
 });
 
@@ -323,10 +325,10 @@ describe("ticking", () => {
 });
 
 describe("the Sync button", () => {
-  it("is the quiet-bordered Sync to files button, and opens the Sync window on this review (C1)", async () => {
+  it("is the toned-down green write button, and opens the Sync window on this review (D14)", async () => {
     renderTab();
     await loaded();
-    expect(screen.getByRole("button", { name: "Sync to files…" })).toHaveClass("cp-btn--secondary");
+    expect(screen.getByRole("button", { name: "Sync to files…" })).toHaveClass("cp-btn--write");
     await userEvent.click(screen.getByRole("button", { name: "Sync to files…" }));
     expect(screen.getByText('syncing hJ {"playlistId":7}')).toBeInTheDocument();
   });
@@ -359,7 +361,7 @@ describe("the side panel", () => {
     await loaded();
     fireEvent.click(rowOf(1));
     const panel = await screen.findByRole("complementary", { name: /^Candidates for / });
-    expect(await within(panel).findByRole("list", { name: "Beatport candidates" })).toBeInTheDocument();
+    expect(await within(panel).findByRole("radiogroup", { name: "Beatport candidates" })).toBeInTheDocument();
     expect(within(panel).getByText("1 of 5")).toBeInTheDocument();
     expect(panel).toHaveFocus();
     expect(onPanelChange).toHaveBeenLastCalledWith(true);
@@ -434,7 +436,7 @@ describe("the side panel", () => {
     await loaded();
     fireEvent.click(rowOf(4));
     const panel = await screen.findByRole("complementary", { name: /^Candidates for / });
-    await within(panel).findByRole("list", { name: "Beatport candidates" });
+    await within(panel).findByRole("radiogroup", { name: "Beatport candidates" });
     bridge.getMatchReview.mockClear();
     await userEvent.click(within(panel).getByRole("button", { name: "Use this match" }));
     expect(bridge.decideMatch).toHaveBeenCalledWith({ decision: "accept", track_id: 4, candidate_id: 1001 });
@@ -449,7 +451,7 @@ describe("the side panel", () => {
     await loaded();
     fireEvent.click(rowOf(4));
     const panel = await screen.findByRole("complementary", { name: /^Candidates for / });
-    await within(panel).findByRole("list", { name: "Beatport candidates" });
+    await within(panel).findByRole("radiogroup", { name: "Beatport candidates" });
     await userEvent.click(within(panel).getByRole("button", { name: "Use this match" }));
     expect(await screen.findByText("The library is busy")).toBeInTheDocument();
   });
@@ -521,6 +523,38 @@ describe("keys and selection follow the Library's table (C190, C191)", () => {
     press("ArrowDown", { shiftKey: true });
     await waitFor(() => expect(screen.getByText("2 selected")).toBeInTheDocument());
     expect(rowOf(3)).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("extends with Shift+Down twice from where the cursor is, even with the panel open", async () => {
+    renderTab();
+    await loaded();
+    fireEvent.click(rowOf(1));
+    await screen.findByRole("complementary", { name: /^Candidates for / });
+    press("ArrowDown", { shiftKey: true });
+    press("ArrowDown", { shiftKey: true });
+    await waitFor(() => expect(screen.getByText("3 selected")).toBeInTheDocument());
+  });
+
+  it("leaves the arrows on a candidate's radio to the radio: they change the pick, not the track", async () => {
+    renderTab();
+    await loaded();
+    fireEvent.click(rowOf(1));
+    const panel = await screen.findByRole("complementary", { name: /^Candidates for / });
+    const radios = await within(panel).findAllByRole("radio");
+    radios[0]!.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(within(screen.getByRole("complementary")).getByText("1 of 5")).toBeInTheDocument();
+    expect(radios[1]).toBeChecked();
+  });
+
+  it("offers Try again when the table cannot be read, but not when there is no desktop app", async () => {
+    bridge.getMatchReview.mockRejectedValueOnce(new Error("The library service is not running"));
+    renderTab();
+    const alert = await screen.findByRole("alert", undefined, LOADED);
+    bridge.getMatchReview.mockClear();
+    await userEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalled());
+    await loaded();
   });
 
   it("does not tint a row for being ticked: the look is the selection's alone", async () => {
@@ -605,7 +639,7 @@ describe("selecting rows and the right-click menu", () => {
     fireEvent.contextMenu(rowOf(2));
     expect(rowOf(2)).toHaveAttribute("aria-selected", "true");
     const menu = await screen.findByRole("menu");
-    for (const name of ["Play", "Play next", "Add to queue", "Copy", "Show in folder", "Tick to sync", "Leave out", "Choose a match"]) {
+    for (const name of ["Play", "Play next", "Add to queue", "Tick to sync", "Leave out", "Choose a match", "More"]) {
       expect(within(menu).getByRole("menuitem", { name })).toBeInTheDocument();
     }
     expect(within(menu).getByText("This page")).toBeInTheDocument();

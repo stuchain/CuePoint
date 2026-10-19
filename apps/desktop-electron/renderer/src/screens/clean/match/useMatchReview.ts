@@ -139,8 +139,11 @@ export function useMatchReview(source: ReviewSource | null, version = 0): MatchR
       });
   }, [loaded, read, review]);
 
+  const reading = useRef(false);
   const loadAll = useCallback(() => {
-    if (!review) return;
+    // A second press while the pages are coming does not start a second reader.
+    if (!review || reading.current) return;
+    reading.current = true;
     const key = asked.current;
     const total = review.total;
     void (async () => {
@@ -162,6 +165,8 @@ export function useMatchReview(source: ReviewSource | null, version = 0): MatchR
     })().catch((cause: unknown) => {
       reportUnexpected(cause);
       setError(userMessage(cause));
+    }).finally(() => {
+      reading.current = false;
     });
   }, [read, review]);
 
