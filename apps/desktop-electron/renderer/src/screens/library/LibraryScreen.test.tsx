@@ -1333,7 +1333,7 @@ describe("nothing to show (LIBUI-10)", () => {
     expect(await screen.findByText("This playlist is empty")).toBeInTheDocument();
   });
 
-  it("says a selected folder is a folder, not an empty playlist (R7-5)", async () => {
+  it("opens a clicked Playlists folder instead of making it the scope (C197, R7-5)", async () => {
     const node = (id: number, parent: number | null, name: string, kind: "folder" | "playlist", path: string) => ({
       id,
       parent_id: parent,
@@ -1356,13 +1356,11 @@ describe("nothing to show (LIBUI-10)", () => {
     const tree = await screen.findByRole("tree", { name: "Playlists" });
     await userEvent.click(within(tree).getByText("Gigs 2026"));
 
-    expect(await screen.findByText("Gigs 2026 is a folder")).toBeInTheDocument();
-    expect(screen.getByText("Pick one of its 2 playlists in the list.")).toBeInTheDocument();
-    expect(screen.queryByText("This playlist is empty")).toBeNull();
-    const table = screen.getByRole("table", { name: "Library tracks" });
-    expect(within(table).queryByRole("button", { name: "Check for changes" })).toBeNull();
-    expect(container.querySelector(".cp-screen-header__summary")).toHaveTextContent("Folder · 2 playlists");
-    expect(container.querySelector(".cp-screen-header__summary")).not.toHaveTextContent("0 tracks");
+    // A folder is not a scope: the click only opens it, so no "folder" state replaces the table.
+    expect(await screen.findByText("Summer")).toBeInTheDocument();
+    expect(screen.queryByText("Gigs 2026 is a folder")).toBeNull();
+    expect(screen.getByText("This Rekordbox file has no tracks in it")).toBeInTheDocument();
+    expect(container.querySelector(".cp-screen-header__summary")).not.toHaveTextContent("Folder");
   });
 
   it("blames the search, not the playlist, when both are in play", async () => {
@@ -1400,7 +1398,7 @@ describe("nothing to show (LIBUI-10)", () => {
     renderScreen();
     await screen.findByText("This Rekordbox file has no tracks in it");
     expect(
-      screen.getByText("Export again from Rekordbox and import that file."),
+      screen.getByText("Export again from Rekordbox and import that file"),
     ).toBeInTheDocument();
 
     const table = screen.getByRole("table", { name: "Library tracks" });
@@ -1417,7 +1415,7 @@ describe("nothing to show (LIBUI-10)", () => {
     await screen.findByText("This playlist is empty");
     expect(
       screen.getByText(
-        "Playlists come from Rekordbox. Add tracks to it there, then Check for changes.",
+        "Playlists come from Rekordbox. Add tracks to it there, then Check for changes",
       ),
     ).toBeInTheDocument();
 
@@ -1435,7 +1433,7 @@ describe("nothing to show (LIBUI-10)", () => {
     const search = await screen.findByLabelText("Search");
     await userEvent.type(search, "zz");
     await screen.findByText("No tracks match this search");
-    expect(screen.getByText("Try fewer words, or clear the search.")).toBeInTheDocument();
+    expect(screen.getByText("Try fewer words, or clear the search")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Clear the search" }));
 

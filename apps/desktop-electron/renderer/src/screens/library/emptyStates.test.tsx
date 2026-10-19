@@ -146,7 +146,7 @@ describe("a Smart Collection that matches nothing", () => {
       emptiedByRefresh: false,
     });
 
-    expect(view.title).toBe("Nothing matches these rules right now.");
+    expect(view.title).toBe("Nothing matches these rules right now");
     expect(view.rules).toEqual(["Genre is Gabber"]);
     expect(view.hint).toContain(SMART.name);
     expect(view.action).toEqual({ id: "edit-rules", label: "Edit the rules" });
@@ -168,7 +168,7 @@ describe("a Collection holding nothing", () => {
       emptiedByRefresh: false,
     });
 
-    expect(view.title).toBe("This Collection is empty.");
+    expect(view.title).toBe("This Collection is empty");
     expect(view.hint).toMatch(/Drop tracks onto it/);
     expect(view.action?.label).toBe("Browse the whole library");
   });
@@ -232,7 +232,7 @@ describe("the empty table, drawn (LIB-5)", () => {
 
     expect(screen.getByText("No tracks match this search")).toBeInTheDocument();
     expect(
-      screen.getByText("Try fewer words, or clear the search and filters."),
+      screen.getByText("Try fewer words, or clear the search and filters"),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Clear search and filters" }));
     expect(onAction).toHaveBeenCalledWith("clear-all");

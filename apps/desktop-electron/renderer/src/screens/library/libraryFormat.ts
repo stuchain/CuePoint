@@ -213,7 +213,7 @@ export function applyLabel(diff: RefreshDiff): string {
 
 /** The line shown after a refresh finishes. */
 export function appliedLine(result: RefreshApplied): string {
-  const parts = [`${countNoun(result.track_count, "track")} in your library`];
+  const parts = [`${countNoun(result.track_count ?? 0, "track")} in your library`];
   if (result.tracks_inserted > 0) parts.push(`${formatCount(result.tracks_inserted)} added`);
   if (result.tracks_deleted > 0) parts.push(`${formatCount(result.tracks_deleted)} removed`);
   if (result.relinked_count > 0) parts.push(`${formatCount(result.relinked_count)} re-linked`);

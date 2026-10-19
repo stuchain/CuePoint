@@ -282,7 +282,7 @@ describe("a Set as the table's scope (DEC-104, fact 3)", () => {
 
     await userEvent.click(within(treeRow("Warm-up", "collection")).getByText("Warm-up"));
     await waitFor(() => expect(screen.queryByRole("note")).toBeNull());
-    expect(await organizeLabels(await rowMenu("Warm Two"))).toContain("Remove from “Warm-up”");
+    expect(await organizeLabels(await rowMenu("Warm Two"))).toContain("Remove from “Warm-up”Delete");
   });
 
   it("does not move a row with Alt+↓ inside it, and says nothing", async () => {
@@ -578,7 +578,7 @@ describe("a Set's menu in the tree", () => {
     await ready();
     fireEvent.contextMenu(treeRow("Gigs", "folder"));
     await userEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Delete…" }));
-    const dialog = await screen.findByRole("dialog", { name: "Delete Gigs?" });
+    const dialog = await screen.findByRole("dialog", { name: "Delete “Gigs”?" });
     expect(dialog).toHaveTextContent(
       "This removes 1 folder and 4 Sets, with 17 track entries filed in them. " +
         "Each Set's chapters, planned times and notes go with it. No tracks are deleted.",

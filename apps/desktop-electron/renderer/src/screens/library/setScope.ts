@@ -17,7 +17,7 @@ export function setScopeNote(
   if (set.entry_count === set.track_count) {
     return `${name} is a Set. The table lists each of its tracks once, in the order they first play.`;
   }
-  const entries = `${countNoun(set.entry_count, "entry")}`;
+  const entries = `${countNoun(set.entry_count, "entry", "entries")}`;
   const tracks = `${countNoun(set.track_count, "track")}`;
   return `${name} is a Set of ${entries}. The table lists each of its ${tracks} once, in the order they first play.`;
 }
