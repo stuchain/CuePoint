@@ -374,7 +374,7 @@ describe("what the entries do", () => {
   });
 
   it.each([
-    ["Beatport", "Copy Beatport values…", "Use Beatport's values"],
+    ["Beatport", "Copy Beatport values…", "Copy Beatport values"],
     ["More", "Edit values…", "Edit values"],
   ] as const)(
     "opens the dialog for %s ▸ %s here, not on Clean (K4)",

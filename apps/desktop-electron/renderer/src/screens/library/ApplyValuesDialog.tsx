@@ -87,7 +87,7 @@ export function ApplyValuesDialog({ open, count, onClose, onApply, preview }: Ap
   return (
     <Modal
       open={open}
-      title="Use Beatport's values"
+      title="Copy Beatport values"
       onClose={onClose}
       primaryAction={{
         label: `Copy to ${tracksWord(together ?? count)}`,

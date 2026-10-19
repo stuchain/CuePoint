@@ -708,7 +708,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await pick(win, "Warm One", "Warm Two");
     await use(win, toolbar(win).getByRole("button", { name: "Beatport", exact: true }), "the bar's Beatport");
     await choose(win, "Use Beatport's values…");
-    const beatport = win.getByRole("dialog", { name: "Use Beatport's values" });
+    const beatport = win.getByRole("dialog", { name: "Copy Beatport values" });
     await expect(beatport).toContainText("2 tracks");
     await use(win, beatport.getByRole("checkbox", { name: "Genre" }), "Genre", "Space");
     // Counted as the tracks it would change.

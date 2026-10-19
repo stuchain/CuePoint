@@ -57,7 +57,7 @@ export function NoteDialog({ open, track, note, maxLength, onSave, onClose }: No
   return (
     <Modal
       open={open}
-      title="Wantlist note"
+      title="Edit note"
       onClose={onClose}
       initialFocus={focusById("discover-note")}
       secondaryAction={{ label: "Cancel", onClick: onClose }}

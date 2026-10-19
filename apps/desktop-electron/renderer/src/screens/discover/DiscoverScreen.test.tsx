@@ -1489,7 +1489,7 @@ describe("the wantlist", () => {
     await waitFor(() => expect(rowsOf("Wantlist").length).toBeGreaterThan(0), LOADED);
     fireEvent.click(rowsOf("Wantlist")[0]!);
     fireEvent.click(screen.getByRole("button", { name: "Edit note…" }));
-    const dialog = await screen.findByRole("dialog", { name: "Wantlist note" });
+    const dialog = await screen.findByRole("dialog", { name: "Edit note" });
     fireEvent.change(within(dialog).getByLabelText("Note"), { target: { value: "Ask the shop" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save note" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(

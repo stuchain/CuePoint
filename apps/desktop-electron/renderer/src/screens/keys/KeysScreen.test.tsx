@@ -892,7 +892,7 @@ describe("choosing keys", () => {
 
 describe("the Beatport and More entries (K4)", () => {
   it.each([
-    ["Copy Beatport values…", /Beatport/],
+    ["Copy Beatport values…", "Copy Beatport values"],
     ["Edit values…", "Edit values"],
   ])("open %s in place, not on Clean", async (entry, title) => {
     install({
