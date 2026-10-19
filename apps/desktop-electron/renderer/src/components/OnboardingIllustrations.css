@@ -9,9 +9,9 @@
 
 .ob-win { fill: var(--bg-panel); stroke: var(--border-muted); }
 .ob-bar { fill: var(--bg-toolbar); }
-.ob-dot--a { fill: var(--accent-danger); }
-.ob-dot--b { fill: var(--accent-warning); }
-.ob-dot--c { fill: var(--accent-success); }
+.ob-dot--a { fill: var(--danger-text); }
+.ob-dot--b { fill: var(--warning-text); }
+.ob-dot--c { fill: var(--success-text); }
 .ob-menu { fill: var(--bg-input); stroke: var(--border-muted); }
 .ob-field { fill: var(--bg-input); stroke: var(--accent-fill); }
 .ob-line { fill: var(--border-muted); }

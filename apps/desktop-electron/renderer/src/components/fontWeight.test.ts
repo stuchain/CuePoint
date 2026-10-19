@@ -11,7 +11,8 @@ const sheets = import.meta.glob(["/src/**/*.css", "!/src/tokens/**"], {
   eager: true,
 }) as Record<string, string>;
 
-const LITERAL_WEIGHT = /font-weight:\s*\d/;
+/** A number or a keyword: `bold`, `bolder`, `lighter` and `normal` are weights too. */
+const LITERAL_WEIGHT = /font-weight:\s*(?:\d|bold|bolder|lighter|normal)/i;
 
 describe("font weight guard (C65)", () => {
   it("has no literal font-weight outside tokens/", () => {
@@ -26,5 +27,9 @@ describe("font weight guard (C65)", () => {
   it("still sees a literal weight", () => {
     expect(LITERAL_WEIGHT.test("a { font-weight: 700; }")).toBe(true);
     expect(LITERAL_WEIGHT.test("a { font-weight: var(--font-weight-bold); }")).toBe(false);
+    for (const keyword of ["bold", "bolder", "lighter", "normal", "BOLD"]) {
+      expect(LITERAL_WEIGHT.test(`a { font-weight: ${keyword}; }`)).toBe(true);
+    }
+    expect(LITERAL_WEIGHT.test("a { font-weight: inherit; }")).toBe(false);
   });
 });

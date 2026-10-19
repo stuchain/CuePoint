@@ -138,7 +138,7 @@
 .cp-collections__broken {
   margin-left: var(--space-xs);
   color: var(--warning-text);
-  font-weight: bold;
+  font-weight: var(--font-weight-bold);
 }
 
 /* The row a drop would land on. */

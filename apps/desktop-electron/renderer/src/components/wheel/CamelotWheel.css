@@ -56,7 +56,7 @@
 
 /* The keys that mix with the track's. */
 .cp-wheel__shape[data-lit] {
-  fill: var(--accent-success);
+  fill: var(--success-text);
   /* The same color, so a lit wedge is as big as an unlit one with its outline. */
   stroke: var(--accent-success);
 }
