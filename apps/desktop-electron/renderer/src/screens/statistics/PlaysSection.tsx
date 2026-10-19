@@ -287,10 +287,9 @@ export function PlaysSection({
       )}
 
       {!noRefresh && (
-        <div className="plays__columns">
-          <div className="plays__column plays__column--main">
+        <div className="statistics-panels">
             <Card
-              className="statistics-panel plays__tracks"
+              className="statistics-panel statistics-panel--wide plays__tracks"
               title="Most played tracks"
               unit={`top ${choice.limit}`}
               bodyClassName="statistics-panel__body"
@@ -409,12 +408,9 @@ export function PlaysSection({
               empty="No plays to rank."
               onOpen={open}
             />
-          </div>
-
-          <div className="plays__column">
             <RankList
               title="Top artists"
-              unit="plays · tracks"
+              unit="tracks · plays"
               columns={["tracks", "plays"]}
               rows={data.artists.map((row) => rankRow(row.name_key, row))}
               empty="No plays to rank."
@@ -422,7 +418,7 @@ export function PlaysSection({
             />
             <RankList
               title="Top labels"
-              unit="plays · tracks"
+              unit="tracks · plays"
               columns={["tracks", "plays"]}
               rows={data.labels.map((row) => rankRow(row.label_key, row))}
               empty="No plays to rank."
@@ -455,7 +451,6 @@ export function PlaysSection({
                 </div>
               ))}
             </Card>
-          </div>
         </div>
       )}
     </div>

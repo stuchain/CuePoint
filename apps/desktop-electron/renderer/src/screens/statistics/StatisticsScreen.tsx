@@ -3,7 +3,7 @@
  *
  * What you play most, how the library is made up and what needs fixing, as three tabs: Plays,
  * Library and Health. The page is the frame: the header with its scope picker and a summary line
- * of what is counted, the tab strip (Library carries the track count, Health a "N issues" chip),
+ * of what is counted, the tab strip (Health carries a "N issues" chip),
  * and each tab's loading, failed and empty states. Nothing here is drawn from numbers the
  * engine did not send.
  *
@@ -237,22 +237,17 @@ export function StatisticsScreen() {
       inset
       beside={
         answered !== null && !libraryEmpty ? (
-          // The word "Scope" sits inside the picker, so the title row is one control tall like the
-          // other pages' (area 59); the label stays the select's accessible name.
-          <span className="statistics-page__scope-wrap">
-            <span className="statistics-page__scope-word" aria-hidden="true">
-              Scope
-            </span>
-            <Select
-              label="Scope"
-              hideLabel
-              className="statistics-page__scope"
-              value={scope}
-              options={options}
-              disabled={!settled}
-              onChange={(event) => choose(event.target.value)}
-            />
-          </span>
+          // The word "Scope" is the select's own label, drawn inside its box (C244), so the title
+          // row is one control tall like the other pages' and nothing is painted over.
+          <Select
+            label="Scope"
+            inlineLabel
+            className="statistics-page__scope"
+            value={scope}
+            options={options}
+            disabled={!settled}
+            onChange={(event) => choose(event.target.value)}
+          />
         ) : undefined
       }
       summary={summaryLine}
@@ -264,11 +259,8 @@ export function StatisticsScreen() {
             onChange={(id) => chooseTab(id as TabId)}
             tabs={[
               { id: "plays", label: "Plays" },
-              {
-                id: "library",
-                label: "Library",
-                detail: spreads.data ? formatCount(spreads.data.total) : undefined,
-              },
+              // No count after the name: the track count is the first figure on the tab (C257).
+              { id: "library", label: "Library" },
               {
                 id: "health",
                 label: "Health",

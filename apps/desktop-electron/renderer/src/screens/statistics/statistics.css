@@ -14,13 +14,6 @@
   max-width: none;
 }
 
-.statistics-page__scope-wrap {
-  position: relative;
-  display: inline-flex;
-  min-width: 0;
-  max-width: 100%;
-}
-
 /* Sized like Prepare's Set picker (.prepare-header__picker): to its content up to a limit, the
    text at the left, long names cut with an ellipsis rather than stretching across the header. */
 .statistics-page__scope {
@@ -34,23 +27,6 @@
   text-overflow: ellipsis;
 }
 
-/* "Scope" is inside the picker, at its left, muted; the chosen value follows it. */
-.statistics-page__scope-word {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: var(--space-sm);
-  display: flex;
-  align-items: center;
-  color: var(--fg-muted);
-  font-size: var(--control-font-size);
-  pointer-events: none;
-}
-
-.statistics-page__scope .cp-select__control {
-  padding-left: calc(var(--space-sm) + 6ch + var(--space-md));
-}
-
 /* The Health tab's count: amber, because it is work to do (area 58). */
 .statistics-page__todo {
   color: var(--warning-text);
@@ -61,7 +37,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: var(--space-lg);
+  gap: var(--space-xl);
   padding: 0 0 var(--space-xl);
 }
 
@@ -94,19 +70,19 @@
 }
 
 /*
- * Cards. The `.statistics-panel*` classes are shared by all three tabs. A chart longer than its
- * card scrolls inside the card, never the page.
+ * Cards. The `.statistics-panel*` classes are shared by all three tabs, and so is the grid they sit
+ * in (C248): as many 320-wide columns as fit, 16 apart (C32). A chart is fitted to its card.
  */
 .statistics-panels {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(320px * var(--scale))), 1fr));
-  gap: var(--space-lg);
+  gap: var(--space-xl);
   width: 100%;
 }
 
-/* The charts: two to a row (BPM and Keys, Year and Loudness), one on a narrow window. */
-.statistics-panels--charts {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(380px * var(--scale))), 1fr));
+/* A card that takes the whole row (the Plays tab's most played tracks). */
+.statistics-panels > .statistics-panel--wide {
+  grid-column: 1 / -1;
 }
 
 /* A panel is a Card (the box, the title row and the 12 padding are Card.css's). */
@@ -234,7 +210,7 @@
 .library-tab {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: var(--space-xl);
 }
 
 /* Four numbers in one bordered strip. */
@@ -279,16 +255,6 @@
   font-size: var(--font-size-sm);
 }
 
-.library-lists {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(280px * var(--scale))), 1fr));
-  gap: var(--space-lg);
-}
-
-.library-tab__more {
-  align-self: flex-end;
-}
-
 /* The Keys chart: the key's own chip, a bar in its colour, and the count. */
 .keys__list {
   display: flex;
@@ -314,21 +280,7 @@
   text-align: right;
 }
 
-/* ---- The Health tab: two columns of cards. */
-.health-tab {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(260px * var(--scale))), 1fr));
-  align-items: start;
-  gap: var(--space-lg);
-}
-
-.health-tab__column {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-  min-width: 0;
-}
-
+/* ---- The Health tab: its four cards sit in the page's one grid. */
 .health-card__rows {
   display: flex;
   flex-direction: column;

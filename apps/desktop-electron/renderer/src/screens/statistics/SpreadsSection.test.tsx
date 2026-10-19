@@ -4,7 +4,7 @@
  */
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
 import type {
@@ -15,6 +15,18 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { rulesFromLocationState } from "../library/libraryLink";
 import { SpreadsSection } from "./SpreadsSection";
+
+const seen: Array<{ title: string; fit?: string; buckets: Array<{ label: string }> }> = [];
+vi.mock("../../components/charts/PixelBars", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../../components/charts/PixelBars")>();
+  return {
+    ...real,
+    PixelBars: (props: Parameters<typeof real.PixelBars>[0]) => {
+      seen.push({ title: props.title, fit: props.fit, buckets: [...props.buckets] });
+      return real.PixelBars(props);
+    },
+  };
+});
 
 const rules = (field: string, value: unknown): FilterRuleSet => ({
   match: "all",
@@ -276,6 +288,45 @@ describe("the spreads (STATS-06)", () => {
 
   it("says so when a panel has nothing to chart", () => {
     renderSection({ ...SPREADS, year: spread([], 0, "No year") });
-    expect(within(panel("Year")).getByText("Nothing here to chart.")).toBeInTheDocument();
+    expect(within(panel("Year")).getByText("Nothing here to chart")).toBeInTheDocument();
+  });
+});
+
+describe("the charts fill their cards (C247)", () => {
+  it("draws every bar chart fitted to the card width, so none scrolls inside it", () => {
+    seen.length = 0;
+    renderSection();
+    const titles = [...new Set(seen.map((call) => call.title))];
+    expect(titles).toEqual(["BPM", "Year", "Date added", "Rating", "Loudness"]);
+    expect(seen.every((call) => call.fit === "width")).toBe(true);
+  });
+
+  it("groups a long BPM run into 2-BPM bins and still opens their tracks", async () => {
+    seen.length = 0;
+    const many = Array.from({ length: 70 }, (_, i) =>
+      bucket(`${100 + i} BPM`, 100 + i, 2, {
+        match: "all",
+        rules: [
+          { field: "bpm", operator: "gte", value: 99.5 + i },
+          { field: "bpm", operator: "lt", value: 100.5 + i },
+        ],
+      }),
+    );
+    renderSection({ ...SPREADS, tempo: spread(many) });
+    const last = seen.filter((call) => call.title === "BPM").at(-1)!;
+    expect(last.buckets).toHaveLength(35);
+    expect(last.buckets[0]!.label).toBe("100–101");
+    await userEvent.click(within(panel("Tempo")).getAllByRole("button").find((el) => titleOf(el) === "100–101 BPM, 4 tracks")!);
+    expect(JSON.parse(screen.getByTestId("where").getAttribute("data-rules")!).rules).toEqual([
+      { field: "bpm", operator: "gte", value: 99.5 },
+      { field: "bpm", operator: "lt", value: 101.5 },
+    ]);
+  });
+
+  it("keeps one-BPM bars while the run fits", () => {
+    seen.length = 0;
+    renderSection();
+    const last = seen.filter((call) => call.title === "BPM").at(-1)!;
+    expect(last.buckets.map((b) => b.label)).toEqual(["123", "124"]);
   });
 });

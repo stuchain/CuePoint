@@ -202,6 +202,51 @@ const panel = (id: "plays" | "library" | "health") =>
 
 const never = () => new Promise<never>(() => {});
 
+describe("one grid and an inline Scope (C244, C248)", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    install();
+  });
+
+  afterEach(() => {
+    delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+    vi.clearAllMocks();
+  });
+
+  it("draws the word Scope inside the picker as its label, with nothing painted over it", async () => {
+    renderPage();
+    const picker = await screen.findByRole("combobox", { name: "Scope" });
+    const wrap = picker.closest(".cp-select");
+    expect(wrap).toHaveClass("cp-select--inline");
+    expect(wrap?.querySelector("label.cp-select__inline-label")).toHaveTextContent("Scope");
+    expect(document.querySelector(".statistics-page__scope-word")).toBeNull();
+    expect(css).not.toContain("scope-word");
+  });
+
+  it("puts the Library tab's count in its figures and not in the tab", async () => {
+    renderPage();
+    const tab = await screen.findByRole("tab", { name: "Library" });
+    expect(tab).not.toHaveTextContent(/\d/);
+  });
+
+  it("uses one grid on every tab", async () => {
+    renderPage();
+    await screen.findByRole("tab", { name: "Library" });
+    await waitFor(() => {
+      for (const id of ["plays", "library", "health"] as const) {
+        expect(panel(id).querySelector(".statistics-panels")).not.toBeNull();
+      }
+    });
+    const rule = /\.statistics-panels\s*\{[^}]*\}/.exec(css)?.[0] ?? "";
+    expect(rule).toContain("grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(320px * var(--scale))), 1fr));");
+    expect(rule).toContain("gap: var(--space-xl);");
+    expect(css).not.toContain("--charts");
+    expect(css).not.toContain("380px");
+    expect(css).not.toContain(".health-tab {");
+    expect(css).not.toContain(".library-lists");
+  });
+});
+
 describe("the Statistics page (STATS-04)", () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -220,7 +265,7 @@ describe("the Statistics page (STATS-04)", () => {
     const tabs = await screen.findAllByRole("tab");
     expect(tabs.map((tab) => tab.getAttribute("aria-label") ?? tab.textContent)).toEqual([
       "Plays",
-      "Library, 4,000",
+      "Library",
       "Health, 112 issues",
     ]);
     expect(screen.getByRole("tab", { name: "Plays" })).toHaveAttribute("aria-selected", "true");
@@ -229,7 +274,7 @@ describe("the Statistics page (STATS-04)", () => {
     expect(panel("health")).not.toBeVisible();
   });
 
-  it("carries the track count on Library and what needs fixing on Health", async () => {
+  it("carries what needs fixing on Health, and no count on Library (C257)", async () => {
     install({
       getStatisticsHealth: vi.fn().mockResolvedValue({
         ...health(),
@@ -242,7 +287,7 @@ describe("the Statistics page (STATS-04)", () => {
 
     // 12 missing + 0 unreadable + 41 to review + 14 duplicates + 5 changed + 3 failed.
     expect(await screen.findByRole("tab", { name: (name) => name.replace(/\s+,/g, ",") === "Health, 75 issues" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Library, 4,000" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Library" })).toBeInTheDocument();
   });
 
   it("starts the page at the top when another tab is chosen", async () => {

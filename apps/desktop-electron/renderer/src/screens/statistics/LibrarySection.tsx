@@ -47,6 +47,12 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
   const [more, setMore] = useState(false);
   const open = (rules: FilterRuleSet) => navigate("/library", { state: libraryRulesState(rules) });
   const year = (now ?? new Date()).getFullYear();
+  // The link lives inside the last chart's card, at its bottom right (C256).
+  const moreCharts = (
+    <LinkButton go={!more} className="statistics-panel__link" onClick={() => setMore((shown) => !shown)}>
+      {more ? "Fewer charts" : "More charts: date added, rating"}
+    </LinkButton>
+  );
 
   const figures: Figure[] = [
     {
@@ -122,7 +128,7 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
         ))}
       </dl>
 
-      <div className="library-lists">
+      <div className="statistics-panels">
         <RankList
           title="Genres"
           unit="tracks"
@@ -147,17 +153,15 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
           empty="No artists to list."
           onOpen={open}
         />
-      </div>
-
-      <div className="statistics-panels statistics-panels--charts">
         <SpreadsSection spreads={spreads} charts={["tempo"]} />
         <KeySummary scope={spreads.scope} collections={collections} />
-        <SpreadsSection spreads={spreads} charts={["year", "loudness"]} />
-        {more && <SpreadsSection spreads={spreads} charts={["date_added", "rating"]} />}
+        <SpreadsSection
+          spreads={spreads}
+          charts={["year", "loudness"]}
+          footer={more ? undefined : moreCharts}
+        />
+        {more && <SpreadsSection spreads={spreads} charts={["date_added", "rating"]} footer={moreCharts} />}
       </div>
-      <LinkButton go={!more} className="library-tab__more" onClick={() => setMore((shown) => !shown)}>
-        {more ? "Fewer charts" : "More charts: date added, rating"}
-      </LinkButton>
     </div>
   );
 }

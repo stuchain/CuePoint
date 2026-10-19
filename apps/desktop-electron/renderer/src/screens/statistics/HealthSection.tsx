@@ -145,75 +145,70 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
   const { files, beatport, analyzed, other } = health;
 
   return (
-    <div className="health-tab">
-      <div className="health-tab__column">
-        <HealthCard
-          id="files"
-          title="Files"
-          note={health.checked_at ? `checked ${formatDayTime(health.checked_at) || health.checked_at}` : "not checked yet"}
-          bar
-          onOpen={open}
-          rows={[
-            { id: "present", label: "Present", count: files.present.count, swatch: "success" },
-            { id: "missing", label: "Missing", count: files.missing.count, swatch: "danger", todo: "danger", place: clean("missing") },
-            { id: "unreadable", label: "Unreadable", count: files.unreadable.count, swatch: "warning", todo: "danger", place: clean("missing") },
-            { id: "not_checked", label: "Not checked", count: files.not_checked.count, swatch: "muted" },
-          ]}
-        />
-        <HealthCard
-          id="other"
-          title="Other"
-          onOpen={open}
-          rows={[
-            { id: "duplicates", label: "Duplicates", count: other.duplicates.count, todo: "warning", place: clean("duplicates") },
-            { id: "disputed", label: "Changed since you decided", count: other.disputed.count, todo: "warning", place: clean("review") },
-            { id: "no_artwork", label: "No cover art", count: other.no_artwork.count, place: { page: "Library", rules: other.no_artwork.rules } },
-          ]}
-        >
-          <div className="health-card__foot">
-            <Button
-              variant="secondary"
-              onClick={onReadCoverArt}
-              disabled={coverArtRunning}
-              loading={coverArtRunning}
-            >
-              Read cover art
-            </Button>
-            <span className="statistics-note">{artworkLine(health.artwork_checked_at)}</span>
-          </div>
-        </HealthCard>
-      </div>
-
-      <div className="health-tab__column">
-        <HealthCard
-          id="beatport"
-          title="Beatport"
-          note={`${formatCount(beatport.accepted.count)} of ${formatCount(health.total)} matched`}
-          bar
-          onOpen={open}
-          rows={[
-            { id: "accepted", label: "Confirmed", count: beatport.accepted.count, swatch: "success" },
-            { id: "needs_review", label: "To review", count: beatport.needs_review.count, swatch: "warning", todo: "warning", place: clean("review") },
-            { id: "rejected", label: "Rejected", count: beatport.rejected.count, swatch: "danger" },
-            { id: "no_match", label: "No match", count: beatport.no_match.count, swatch: "neutral", place: clean("review") },
-            { id: "not_matched", label: "Not matched", count: beatport.not_matched.count, swatch: "muted", place: clean("review") },
-            { id: "not_synced", label: "Not synced to files", count: health.not_synced.count, outline: "write", place: { page: "Library", rules: health.not_synced.rules } },
-          ]}
-        />
-        <HealthCard
-          id="analysis"
-          title="Analysis"
-          note="waveforms and loudness"
-          bar
-          onOpen={open}
-          rows={[
-            { id: "analyzed", label: "Analyzed", count: analyzed.analyzed, swatch: "success" },
-            { id: "waiting", label: "Waiting", count: analyzed.waiting, swatch: "neutral" },
-            { id: "failed", label: "Failed", count: analyzed.failed, swatch: "danger", todo: "danger", place: { page: "Settings" } },
-            { id: "no_file", label: "No file", count: analyzed.no_file, swatch: "muted" },
-          ]}
-        />
-      </div>
+    <div className="statistics-panels">
+      <HealthCard
+        id="files"
+        title="Files"
+        note={health.checked_at ? `checked ${formatDayTime(health.checked_at) || health.checked_at}` : "not checked yet"}
+        bar
+        onOpen={open}
+        rows={[
+          { id: "present", label: "Present", count: files.present.count, swatch: "success" },
+          { id: "missing", label: "Missing", count: files.missing.count, swatch: "danger", todo: "danger", place: clean("missing") },
+          { id: "unreadable", label: "Unreadable", count: files.unreadable.count, swatch: "warning", todo: "danger", place: clean("missing") },
+          { id: "not_checked", label: "Not checked", count: files.not_checked.count, swatch: "muted" },
+        ]}
+      />
+      <HealthCard
+        id="other"
+        title="Other"
+        onOpen={open}
+        rows={[
+          { id: "duplicates", label: "Duplicates", count: other.duplicates.count, todo: "warning", place: clean("duplicates") },
+          { id: "disputed", label: "Changed since you decided", count: other.disputed.count, todo: "warning", place: clean("review") },
+          { id: "no_artwork", label: "No cover art", count: other.no_artwork.count, place: { page: "Library", rules: other.no_artwork.rules } },
+        ]}
+      >
+        <div className="health-card__foot">
+          <Button
+            variant="secondary"
+            onClick={onReadCoverArt}
+            disabled={coverArtRunning}
+            loading={coverArtRunning}
+          >
+            Read cover art
+          </Button>
+          <span className="statistics-note">{artworkLine(health.artwork_checked_at)}</span>
+        </div>
+      </HealthCard>
+      <HealthCard
+        id="beatport"
+        title="Beatport"
+        note={`${formatCount(beatport.accepted.count)} of ${formatCount(health.total)} matched`}
+        bar
+        onOpen={open}
+        rows={[
+          { id: "accepted", label: "Confirmed", count: beatport.accepted.count, swatch: "success" },
+          { id: "needs_review", label: "To review", count: beatport.needs_review.count, swatch: "warning", todo: "warning", place: clean("review") },
+          { id: "rejected", label: "Rejected", count: beatport.rejected.count, swatch: "danger" },
+          { id: "no_match", label: "No match", count: beatport.no_match.count, swatch: "neutral", place: clean("review") },
+          { id: "not_matched", label: "Not matched", count: beatport.not_matched.count, swatch: "muted", place: clean("review") },
+          { id: "not_synced", label: "Not synced to files", count: health.not_synced.count, outline: "write", place: { page: "Library", rules: health.not_synced.rules } },
+        ]}
+      />
+      <HealthCard
+        id="analysis"
+        title="Analysis"
+        note="waveforms and loudness"
+        bar
+        onOpen={open}
+        rows={[
+          { id: "analyzed", label: "Analyzed", count: analyzed.analyzed, swatch: "success" },
+          { id: "waiting", label: "Waiting", count: analyzed.waiting, swatch: "neutral" },
+          { id: "failed", label: "Failed", count: analyzed.failed, swatch: "danger", todo: "danger", place: { page: "Settings" } },
+          { id: "no_file", label: "No file", count: analyzed.no_file, swatch: "muted" },
+        ]}
+      />
     </div>
   );
 }

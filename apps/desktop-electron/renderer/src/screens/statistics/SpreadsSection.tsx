@@ -11,7 +11,7 @@
  * Tempo, Year and Loudness are numeric axes, so the integers the engine did not send are drawn as
  * empty bins and a long empty stretch as one ⋯ break (`fillBins`). Every number is the engine's.
  */
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
 import type {
@@ -21,13 +21,15 @@ import type {
   StatisticsSpreads,
 } from "../../api/cuepointBridge.types";
 import { Card } from "../../components/Card";
+import { EmptyState } from "../../components/EmptyState";
 import { LinkButton } from "../../components/LinkButton";
 import { plural } from "../../format/counts";
+import { goTo } from "../../format/words";
 import { formatBpmText, formatLufs } from "../../format/units";
 import { PixelBars } from "../../components/charts/PixelBars";
 import { trueMinus } from "../../components/charts/trueMinus";
 import { libraryRulesState } from "../library/libraryLink";
-import { fillBins } from "./spreadBins";
+import { FIT_BINS, fillBins, groupTempo } from "./spreadBins";
 
 interface Item {
   /** The axis label. */
@@ -51,6 +53,8 @@ interface Panel {
   axis?: (value: string | number | null) => string;
   /** A numeric axis: names a bin the engine did not send, so the holes are filled. */
   fill?: (n: number) => string;
+  /** Pairs a long run of one-number bins so a fitted chart stays readable. */
+  group?: boolean;
   /** The line for the tracks it cannot place. */
   unknown: (n: number) => string;
   noFile?: (n: number) => string;
@@ -70,6 +74,7 @@ const PANELS: Panel[] = [
     bucketLabel: "Tempo (BPM)",
     axis: (value) => String(value),
     fill: (n) => formatBpmText(n),
+    group: true,
     unknown: (n) => `${tracksOf(n)} ${has(n)} no BPM`,
     opens: true,
     unit: "tracks",
@@ -117,7 +122,11 @@ const PANELS: Panel[] = [
 ];
 
 function itemsOf(panel: Panel, spread: StatisticsSpread): Item[] {
-  const buckets = panel.fill ? fillBins(spread.buckets, 1, panel.fill) : spread.buckets;
+  const filled = panel.fill ? fillBins(spread.buckets, 1, panel.fill) : spread.buckets;
+  const buckets =
+    panel.group && filled.filter((bucket) => !("gap" in bucket && bucket.gap === true)).length > FIT_BINS
+      ? groupTempo(filled)
+      : filled;
   return buckets.map((bucket) => {
     const gap = "gap" in bucket && bucket.gap === true;
     return {
@@ -146,10 +155,10 @@ function Line({ text, line, onOpen }: LineProps) {
       {onOpen && rules && (
         <LinkButton
           go
-          aria-label={`Open in Library: ${line.label}`}
+          aria-label={`${goTo("Library")}: ${line.label}`}
           onClick={() => onOpen(rules)}
         >
-          Open in Library
+          {goTo("Library")}
         </LinkButton>
       )}
     </p>
@@ -160,9 +169,11 @@ interface SpreadsSectionProps {
   spreads: StatisticsSpreads;
   /** Which charts to draw, in this order. */
   charts: readonly ChartId[];
+  /** Inside the last chart's card, at its bottom right (a link such as "More charts"). */
+  footer?: ReactNode;
 }
 
-export function SpreadsSection({ spreads, charts }: SpreadsSectionProps) {
+export function SpreadsSection({ spreads, charts, footer }: SpreadsSectionProps) {
   const navigate = useNavigate();
   const openRules = (rules: FilterRuleSet) =>
     navigate("/library", { state: libraryRulesState(rules) });
@@ -173,7 +184,7 @@ export function SpreadsSection({ spreads, charts }: SpreadsSectionProps) {
 
   return (
     <>
-      {charts.map((id) => PANELS.find((panel) => panel.id === id)!).map((panel) => {
+      {charts.map((id) => PANELS.find((panel) => panel.id === id)!).map((panel, at) => {
         const spread = spreads[panel.id];
         const items = itemsById[panel.id]!;
         return (
@@ -195,9 +206,10 @@ export function SpreadsSection({ spreads, charts }: SpreadsSectionProps) {
                 isSelectable={(item) => item.rules !== null}
                 isGap={(item) => item.gap}
                 bucketLabel={panel.bucketLabel}
+                fit="width"
               />
             ) : (
-              <p className="statistics-note">Nothing here to chart.</p>
+              <EmptyState compact headline="Nothing here to chart" />
             )}
             <Line
               text={panel.unknown(spread.unknown.count)}
@@ -207,6 +219,7 @@ export function SpreadsSection({ spreads, charts }: SpreadsSectionProps) {
             {spread.no_file && panel.noFile && (
               <Line text={panel.noFile(spread.no_file.count)} line={spread.no_file} />
             )}
+            {footer && at === charts.length - 1 && footer}
           </Card>
         );
       })}
