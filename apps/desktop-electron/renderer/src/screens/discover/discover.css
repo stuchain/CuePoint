@@ -856,16 +856,6 @@
   padding-top: 0;
 }
 
-/* One left edge: the tabs strip starts at the page gutter like the banner, the cards and the table. */
-.discover-screen .cp-tabs {
-  padding-left: 0;
-}
-
-/* The first tab's text lines up with the title and banner edge; the underline still spans the tab. */
-.discover-screen .cp-tabs__tab:first-child {
-  padding-left: 0;
-}
-
 .discover-runs__menu[aria-disabled="true"] {
   cursor: default;
   color: var(--fg-disabled);
