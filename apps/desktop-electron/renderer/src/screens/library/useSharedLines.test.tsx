@@ -17,7 +17,15 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-function Body({ withHeader = true, startFolded = false }: { withHeader?: boolean; startFolded?: boolean }) {
+function Body({
+  withHeader = true,
+  startFolded = false,
+  wrap = 0,
+}: {
+  withHeader?: boolean;
+  startFolded?: boolean;
+  wrap?: number;
+}) {
   const ref = useSharedLines();
   const [folded, setFolded] = useState(startFolded);
   return (
@@ -31,6 +39,12 @@ function Body({ withHeader = true, startFolded = false }: { withHeader?: boolean
           <div className="cp-playlist-pane__head" data-h={30} />
         </div>
       </div>
+      <div className="cp-filter-bar__row">
+        <span data-top={0} data-h={24} />
+        <span data-top={wrap} data-h={24} />
+        {/* A hidden item: an empty box, which is not a line. */}
+        <span data-top={-500} />
+      </div>
       {withHeader && <div className="track-table__header" data-bottom={headerBottom} />}
     </div>
   );
@@ -42,7 +56,8 @@ function stubRects() {
   Element.prototype.getBoundingClientRect = function (this: Element) {
     const h = Number(this.getAttribute("data-h") ?? 0);
     const bottom = this.getAttribute("data-bottom") != null ? Number(this.getAttribute("data-bottom")) : h;
-    return { height: h, width: 0, top: 0, left: 0, right: 0, bottom, x: 0, y: 0, toJSON() {} };
+    const top = Number(this.getAttribute("data-top") ?? 0);
+    return { height: h, width: 0, top, left: 0, right: 0, bottom, x: 0, y: 0, toJSON() {} };
   };
   Object.defineProperty(HTMLElement.prototype, "clientHeight", {
     configurable: true,
@@ -66,6 +81,18 @@ describe("useSharedLines", () => {
       expect(view.getByTestId("body").style.getPropertyValue("--library-collections-min")).toBe("90px");
       view.unmount();
       expect(disconnect).toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+  });
+
+  it("keeps the pane's own height when the filter bar wraps to a second line (C198)", () => {
+    const restore = stubRects();
+    try {
+      // The bar's second line pushes the header 33 down; the section is not made 33 taller.
+      headerBottom = 153;
+      const view = render(<Body wrap={33} />);
+      expect(view.getByTestId("body").style.getPropertyValue("--library-collections-min")).toBe("90px");
     } finally {
       restore();
     }

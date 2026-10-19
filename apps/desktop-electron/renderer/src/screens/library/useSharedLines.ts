@@ -7,12 +7,29 @@ import { useCallback, useRef } from "react";
  *
  * That needs room. The section is given the height that puts its bottom edge on the header's
  * bottom edge, as `--library-collections-min` (whole pixels), only when the pane can hold it and
- * still show the Playlists heading under it. Otherwise (a small window, a wrapped toolbar, the
- * queue open: the header sits far down) the variable is removed and the pane is simply its content,
- * never a blank band.
+ * still show the Playlists heading under it. Otherwise (a small window: the header sits far down)
+ * the variable is removed and the pane is simply its content, never a blank band.
+ *
+ * The line is where the header sits with the search and filter bar on one line. When that bar
+ * wraps (a narrow window, the queue open), the extra lines are left out, so the pane keeps its
+ * own height and its Playlists heading stays put whatever the right side does (C198).
  *
  * Returns the ref for the body element, which sets the observers up when it mounts.
  */
+/** How much taller the filter bar's rows are than one line each: the spread of their items' tops. */
+function wrapped(body: HTMLElement): number {
+  let extra = 0;
+  for (const row of body.querySelectorAll<HTMLElement>(".cp-filter-bar__row")) {
+    // Only the items drawn: a hidden one has an empty box at the top of the window.
+    const tops = [...row.children]
+      .map((child) => child.getBoundingClientRect())
+      .filter((box) => box.width > 0 || box.height > 0)
+      .map((box) => box.top);
+    if (tops.length > 1) extra += Math.max(...tops) - Math.min(...tops);
+  }
+  return extra;
+}
+
 export function useSharedLines(): (body: HTMLElement | null) => void {
   const stop = useRef<(() => void) | null>(null);
 
@@ -42,7 +59,7 @@ export function useSharedLines(): (body: HTMLElement | null) => void {
         return;
       }
       const top = body.getBoundingClientRect().top;
-      const target = Math.round(header.getBoundingClientRect().bottom - top - all.getBoundingClientRect().height);
+      const target = Math.round(header.getBoundingClientRect().bottom - top - all.getBoundingClientRect().height - wrapped(body));
       const after = next ? next.getBoundingClientRect().height : 0;
       apply(target > 0 && target + after <= scroll.clientHeight ? `${target}px` : "");
     };
