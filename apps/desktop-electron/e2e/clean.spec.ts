@@ -288,13 +288,8 @@ test.describe("Clean, end to end (CLEAN-14)", () => {
 
         // Sync: the green button opens one window for the ticked tracks; the choice of values is made there.
         const before = readFileSync(library.files[1]!);
-<<<<<<< HEAD
         await window.getByRole("button", { name: "Sync to files…" }).click();
-        const dialog = window.getByRole("dialog", { name: /^Sync .* to your files$/ });
-=======
-        await window.getByRole("button", { name: "Sync Journey to files…" }).click();
-        const dialog = window.getByRole("dialog", { name: "Sync “Journey” to your files" });
->>>>>>> 4d4f69dc (feat(menu): settings in File, dialog items end in an ellipsis, e2e wording)
+        const dialog = window.getByRole("dialog", { name: /^Sync \d[\d,]* tracks? to your files$/ });
         await dialog.getByRole("checkbox", { name: "Key" }).check({ timeout: 60_000 });
         const sync = dialog.getByRole("button", { name: /^(Sync \d[\d,]* files?|Nothing to sync)$/ });
         await expect(sync).toBeEnabled({ timeout: 30_000 });
