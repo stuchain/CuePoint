@@ -339,12 +339,14 @@ function compareValues(a: string | number | null | undefined, b: string | number
  * A text cell is drawn in its own box that ends in "..." when the value is cut short (the cell
  * itself is a flex box, where `text-overflow` never applies), and the full value shows in the app
  * hint on hover (components/OverflowHintHost). Anything that is not plain text (a chip, a button, an input)
- * is drawn as it came.
+ * is drawn as it came. Only null and undefined read as missing; "" is blank on purpose.
  */
 function cellContent<Row>(content: ReactNode, column: TrackColumnDef<Row>): ReactNode {
-  // An empty value is a dash, never a blank (C73); a column with no visible heading is buttons.
-  const blank = content === null || content === undefined || content === false || (typeof content === "string" && content.trim() === "");
-  if (blank) return column.headerHidden ? content : <MissingValue />;
+  // A missing value (null or undefined) is a dash (C73). An empty string or false is blank on
+  // purpose: a chapter row has no key, an empty Fit cell means nothing to say. A column with no
+  // visible heading is buttons and keeps what it was given.
+  if (content === null || content === undefined) return column.headerHidden ? content : <MissingValue />;
+  if (content === "" || content === false) return null;
   if (typeof content === "string" || typeof content === "number") {
     return (
       <span className="track-table__cell-text" data-cut-hint="">

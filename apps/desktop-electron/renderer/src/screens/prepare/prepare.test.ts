@@ -329,6 +329,16 @@ describe("the words", () => {
     );
   });
 
+  it("leaves a chapter row's Key and Fit, and the first entry's Fit, empty so the table draws them blank (S2)", () => {
+    // "" is blank on purpose; only null and undefined become a dash.
+    const heading = rows.find((row) => row.kind === "heading")!;
+    const first = rows.find((row) => row.kind === "entry" && row.entry.position === 0)!;
+    const cell = (id: string, row: PrepareRow) => PREPARE_COLUMNS.find((column) => column.id === id)!.render(row);
+    expect(cell("key", heading)).toBe("");
+    expect(cell("artist", heading)).toBe("");
+    expect(cell("fit", first)).toBe("");
+  });
+
   it("writes a planned time, or nothing", () => {
     expect(timeCell(270)).toBe("4:30");
     expect(timeCell(null)).toBe("");

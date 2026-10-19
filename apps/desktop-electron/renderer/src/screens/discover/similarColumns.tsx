@@ -84,7 +84,7 @@ function sharedColumn(
     minWidthPx: 32,
     defaultWidthPx: 38,
     render: (row) => {
-      if (!reasonTokens(row.suggestion.reasons)[component]) return "";
+      if (!reasonTokens(row.suggestion.reasons)[component]) return null;
       return (
         <Hint text={sentenceFor(row, component) || undefined} portal>
           <span>

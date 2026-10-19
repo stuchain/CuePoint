@@ -71,7 +71,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     header: "Remixer",
     minWidthPx: 100,
     defaultWidthPx: 140,
-    render: (track) => track.remixer ?? "",
+    render: (track) => track.remixer ?? null,
   },
   {
     id: "key",
@@ -104,7 +104,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     minWidthPx: 56,
     defaultWidthPx: 76,
     align: "right",
-    render: (track) => formatDuration(track.duration_seconds),
+    render: (track) => formatDuration(track.duration_seconds) || null,
   },
   {
     id: "genre",
@@ -130,7 +130,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "rating",
     minWidthPx: 70,
     defaultWidthPx: 92,
-    render: (track) => formatRating(track.effective_rating),
+    render: (track) => formatRating(track.effective_rating) || null,
   },
   {
     id: "album",
@@ -138,7 +138,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "album",
     minWidthPx: 100,
     defaultWidthPx: 170,
-    render: (track) => track.album ?? "",
+    render: (track) => track.album ?? null,
   },
   {
     id: "year",
@@ -159,7 +159,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     minWidthPx: 56,
     defaultWidthPx: 72,
     align: "right",
-    render: (track) => (track.play_count == null ? "" : String(track.play_count)),
+    render: (track) => (track.play_count == null ? null : String(track.play_count)),
   },
   {
     id: "date_added",
@@ -168,7 +168,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "date_added",
     minWidthPx: 90,
     defaultWidthPx: 110,
-    render: (track) => track.date_added ?? "",
+    render: (track) => track.date_added ?? null,
   },
   {
     id: "colour",
@@ -176,7 +176,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     header: "Color",
     minWidthPx: 70,
     defaultWidthPx: 90,
-    render: (track) => track.colour ?? "",
+    render: (track) => track.colour ?? null,
   },
   {
     id: "bitrate",
@@ -186,7 +186,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     minWidthPx: 60,
     defaultWidthPx: 82,
     align: "right",
-    render: (track) => (track.bitrate == null ? "" : String(track.bitrate)),
+    render: (track) => (track.bitrate == null ? null : String(track.bitrate)),
   },
   {
     id: "comment",
@@ -194,7 +194,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     header: "Comment",
     minWidthPx: 100,
     defaultWidthPx: 180,
-    render: (track) => track.comment ?? "",
+    render: (track) => track.comment ?? null,
   },
   {
     id: "file_path",
@@ -223,7 +223,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     minWidthPx: 56,
     defaultWidthPx: 72,
     align: "right",
-    render: (track) => formatScore(track.match_score),
+    render: (track) => formatScore(track.match_score) || null,
   },
   {
     id: "file_status",
@@ -232,7 +232,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     sortKey: "file_status",
     minWidthPx: 80,
     defaultWidthPx: 110,
-    render: (track) => fileStatusLabel(track.file_status),
+    render: (track) => fileStatusLabel(track.file_status) || null,
   },
   {
     id: "artwork",

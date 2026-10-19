@@ -1355,16 +1355,21 @@ describe("resizing a table with spare width (B2)", () => {
   });
 });
 
-describe("an empty cell reads as a dash (C73)", () => {
-  it("shows the dash for an empty string and for nothing", () => {
+describe("an empty cell reads as a dash only when the value is missing (C73, S2)", () => {
+  it("shows the dash for null and undefined, and nothing for an empty string or false", () => {
     const columns: TrackColumnDef<Track>[] = [
       { id: "title", header: "Title", render: (t) => t.title },
       { id: "artist", header: "Artist", render: () => "" },
       { id: "bpm", header: "BPM", render: () => null },
+      { id: "path", header: "File", render: () => undefined },
+      { id: "flag", header: "Flag", render: () => false },
     ];
     renderTable({ columns });
     const first = renderedRows()[0]!;
     expect(within(first).getAllByText("—")).toHaveLength(2);
+    const cells = within(first).getAllByRole("cell");
+    expect(cells[1]).toHaveTextContent(/^$/);
+    expect(cells[4]).toHaveTextContent(/^$/);
   });
 
   it("leaves a column with no header alone, which is a button column", () => {
