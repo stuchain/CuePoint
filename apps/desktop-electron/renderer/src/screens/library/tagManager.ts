@@ -12,6 +12,7 @@
  * loud before they run, and the number is the engine's `track_count` rather
  * than anything counted here.
  */
+import { countNoun } from "../../format/counts";
 import type { Tag, TagUsage } from "../../api/cuepointBridge.types";
 
 /** A tag's name, as the engine bounds it. */
@@ -23,9 +24,9 @@ export const TAG_CATEGORY_MAX_LENGTH = 60;
 /**
  * The colours a tag may have, in the engine's order.
  *
- * Token names, not colours: a tag coloured `danger` is red in one theme and
- * whatever `--accent-danger` is in the next, which is the whole reason the
- * engine stores a token rather than a hex value.
+ * Names the engine stores (it bounds them), not what is painted: a tag is painted from the tag
+ * palette (`--tag-*`), never from a status colour, so a "Red" tag does not read as an error and
+ * a name is the hue it shows in every theme (C96).
  */
 export const TAG_COLOURS = ["primary", "success", "warning", "danger", "info"] as const;
 
@@ -35,9 +36,18 @@ type TagColour = (typeof TAG_COLOURS)[number];
 const COLOUR_LABELS: Record<TagColour, string> = {
   primary: "Blue",
   success: "Green",
-  warning: "Amber",
+  warning: "Yellow",
   danger: "Red",
   info: "Cyan",
+};
+
+/** The tag palette hue each stored name paints with. */
+const COLOUR_HUES: Record<TagColour, string> = {
+  primary: "blue",
+  success: "green",
+  warning: "yellow",
+  danger: "red",
+  info: "cyan",
 };
 
 export function colourLabel(colour: string | null): string {
@@ -48,7 +58,7 @@ export function colourLabel(colour: string | null): string {
 /** The CSS variable a colour token paints with. */
 export function colourVariable(colour: string | null): string | undefined {
   if (colour === null || !TAG_COLOURS.includes(colour as TagColour)) return undefined;
-  return `var(--accent-${colour})`;
+  return `var(--tag-${COLOUR_HUES[colour as TagColour]})`;
 }
 
 /** What a tag is edited into. Absent fields say nothing about their column. */
@@ -112,7 +122,7 @@ export function hasChanges(patch: TagPatch): boolean {
 }
 
 function tracks(count: number): string {
-  return `${count.toLocaleString()} ${count === 1 ? "track" : "tracks"}`;
+  return countNoun(count, "track");
 }
 
 /**
@@ -124,29 +134,28 @@ function tracks(count: number): string {
  */
 export function describeDelete(tag: TagUsage): string {
   if (tag.track_count === 0) {
-    return `Delete “${tag.name}”? Nothing is tagged with it.`;
+    return "Nothing is tagged with it.";
   }
-  return `Delete “${tag.name}”? It comes off ${tracks(tag.track_count)}, and there is no undo.`;
+  return `It comes off ${tracks(tag.track_count)}, and there is no undo.`;
 }
 
 /** What merging would do. The source is deleted, which is said rather than implied. */
 export function describeMerge(source: TagUsage, target: TagUsage): string {
   return (
-    `Merge “${source.name}” into “${target.name}”? ` +
-    `${tracks(source.track_count)} move across, and “${source.name}” is deleted.`
+    `${tracks(source.track_count)} move across to “${target.name}”, and “${source.name}” is deleted.`
   );
 }
 
 /** What a finished delete says. `untagged` is the engine's count, not a guess. */
 export function deletedLine(name: string, untagged: number): string {
-  if (untagged === 0) return `Deleted “${name}”.`;
-  return `Deleted “${name}” — ${tracks(untagged)} lost it.`;
+  if (untagged === 0) return `Deleted “${name}”`;
+  return `Deleted “${name}”, ${tracks(untagged)} lost it`;
 }
 
 /** What a finished merge says. */
 export function mergedLine(source: string, target: string, moved: number): string {
-  if (moved === 0) return `Merged “${source}” into “${target}”.`;
-  return `Merged “${source}” into “${target}” — ${tracks(moved)} moved.`;
+  if (moved === 0) return `Merged “${source}” into “${target}”`;
+  return `Merged “${source}” into “${target}”, ${tracks(moved)} moved`;
 }
 
 /**

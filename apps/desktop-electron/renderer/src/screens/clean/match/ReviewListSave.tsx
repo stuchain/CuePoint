@@ -86,7 +86,7 @@ export function ReviewListSave({ run, open, onClose }: ReviewListSaveProps) {
       primaryAction={{ label: "Choose where to save…", onClick: () => void save(), loading: saving }}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
     >
-      <p>
+      <p className="cp-modal__lead">
         Saves the tracks of this search — with their match state and Beatport link — as a
         spreadsheet you can share or check by hand.
       </p>

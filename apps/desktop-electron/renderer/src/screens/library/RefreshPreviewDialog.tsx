@@ -8,7 +8,7 @@
  * to miss, and to let someone walk away without having changed anything.
  */
 import { useEffect, useState } from "react";
-import { Modal } from "../../components";
+import { Modal, Notice } from "../../components";
 import type { RefreshDiff } from "../../api/cuepointBridge.types";
 import {
   applyLabel,
@@ -63,16 +63,12 @@ export function RefreshPreviewDialog({
       title={diff.is_empty ? "Nothing has changed" : "Review this refresh"}
       size="large"
       onClose={onCancel}
-      secondaryAction={
-        diff.is_empty
-          ? undefined
-          : // "Cancel", not "Close": this is a decision being declined, and the
-            // acceptance criterion is that declining changes nothing.
-            { label: "Cancel", onClick: onCancel }
-      }
+      // Nothing changed: an info-only dialog ends in one grey Close. Otherwise this is a decision,
+      // and declining it is "Cancel", not "Close": declining changes nothing.
+      closeLabel={diff.is_empty ? "Close" : "Cancel"}
       primaryAction={
         diff.is_empty
-          ? { label: "Close", onClick: onCancel }
+          ? undefined
           : {
               label: applyLabel(diff),
               onClick: () => onApply({ confirmReferences: acknowledged }),
@@ -94,15 +90,11 @@ export function RefreshPreviewDialog({
         ) : (
           <>
             {removalNote && (
-              <p className="library-preview__warning" role="alert">
-                {removalNote}
-              </p>
+              <Notice kind="danger">{removalNote}</Notice>
             )}
 
             {referenceNote && (
-              <p className="library-preview__warning library-preview__warning--refs" role="alert">
-                {referenceNote}
-              </p>
+              <Notice kind="danger">{referenceNote}</Notice>
             )}
 
             <dl className="library-preview__counts">
@@ -143,7 +135,7 @@ export function RefreshPreviewDialog({
             )}
 
             {mustAcknowledge && (
-              <label className="library-preview__acknowledge">
+              <label className="library-preview__acknowledge cp-check">
                 <input
                   type="checkbox"
                   checked={acknowledged}

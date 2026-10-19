@@ -160,7 +160,7 @@ export function ChapterDialog({
           id={`${ids}-target`}
           label="Target length"
           value={target}
-          placeholder="e.g. 45:00"
+          placeholder="45:00"
           hint="As m:ss or h:mm:ss. Blank for none."
           error={error ?? undefined}
           onChange={(event) => setTarget(event.target.value)}

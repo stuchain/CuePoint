@@ -24,18 +24,19 @@
   align-items: center;
   gap: var(--space-xs);
   width: 100%;
+  min-height: var(--row-height);
   padding: var(--space-xs) var(--space-sm);
   border: none;
   background: transparent;
   color: var(--fg-primary);
-  font-family: var(--font-data);
+  font-family: var(--font-pixel);
   font-size: var(--font-size-xs);
   text-align: left;
   cursor: pointer;
 }
 
 .cp-tag-manager__row:hover {
-  background: var(--bg-panel-alt);
+  background: var(--hover-fill);
 }
 
 .cp-tag-manager__row--on,
@@ -83,25 +84,4 @@
   display: flex;
   align-items: flex-end;
   gap: var(--space-sm);
-}
-
-.cp-tag-manager__problem {
-  margin: 0;
-  color: var(--danger-text);
-  font-size: var(--font-size-xs);
-}
-
-/* The confirmation sits over the manager rather than replacing it: the count
-   it names is on the row behind it. */
-
-.cp-tag-manager__confirm {
-  margin-top: var(--space-md);
-  padding: var(--space-sm);
-  background: var(--bg-panel-alt);
-  border: var(--hairline) solid var(--accent-danger);
-}
-
-.cp-tag-manager__confirm p {
-  margin: 0 0 var(--space-sm);
-  font-size: var(--font-size-sm);
 }

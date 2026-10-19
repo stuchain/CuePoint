@@ -17,8 +17,11 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "../../components/Button";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { EmptyState } from "../../components/EmptyState";
 import { Modal } from "../../components/Modal";
+import { Notice } from "../../components/Notice";
+import { deleteLabel, deleteTitle, quoted } from "../../format/words";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
 import type { TagUsage } from "../../api/cuepointBridge.types";
@@ -140,6 +143,7 @@ export function TagManagerDialog({
   };
 
   return (
+    <>
     <Modal
       open={open}
       title="Tags"
@@ -197,7 +201,7 @@ export function TagManagerDialog({
                 label="Category"
                 value={draft.category}
                 maxLength={TAG_CATEGORY_MAX_LENGTH}
-                placeholder="Energy, Mood, Set position…"
+                placeholder="Energy, Mood, Set position"
                 onChange={(event) =>
                   setDraft((previous) =>
                     previous ? { ...previous, category: event.target.value } : previous,
@@ -242,7 +246,7 @@ export function TagManagerDialog({
                   label="Merge into"
                   value={mergeInto}
                   options={[
-                    { value: "", label: "Choose a tag…" },
+                    { value: "", label: "Choose a tag" },
                     ...ordered
                       // Not into itself: the engine refuses it, and offering
                       // it would be offering a mistake.
@@ -257,9 +261,7 @@ export function TagManagerDialog({
               </div>
 
               {(problem ?? error) && (
-                <p className="cp-tag-manager__problem" role="alert">
-                  {problem ?? error}
-                </p>
+                <Notice kind="danger">{problem ?? error}</Notice>
               )}
             </>
           )}
@@ -267,27 +269,31 @@ export function TagManagerDialog({
       </div>
       )}
 
-      {pending && (
-        <div
-          className="cp-tag-manager__confirm"
-          role="alertdialog"
-          aria-label={pending.kind === "delete" ? "Delete tag" : "Merge tags"}
-        >
-          <p>
-            {pending.kind === "delete"
-              ? describeDelete(pending.tag)
-              : describeMerge(pending.source, pending.target)}
-          </p>
-          <div className="cp-tag-manager__actions">
-            <Button variant="secondary" onClick={() => setPending(null)}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={confirm}>
-              {pending.kind === "delete" ? "Delete tag" : "Merge tags"}
-            </Button>
-          </div>
-        </div>
-      )}
     </Modal>
+    {/* Delete is a red fill; a merge moves tracks and is a plain one (C16). */}
+    <ConfirmDialog
+      open={pending?.kind === "delete"}
+      title={pending?.kind === "delete" ? deleteTitle("tag", pending.tag.name) : "Delete tag?"}
+      danger
+      confirmLabel={deleteLabel("tag")}
+      onConfirm={confirm}
+      onCancel={() => setPending(null)}
+    >
+      {pending?.kind === "delete" ? describeDelete(pending.tag) : ""}
+    </ConfirmDialog>
+    <ConfirmDialog
+      open={pending?.kind === "merge"}
+      title={
+        pending?.kind === "merge"
+          ? `Merge ${quoted(pending.source.name)} into ${quoted(pending.target.name)}?`
+          : "Merge tags?"
+      }
+      confirmLabel="Merge tags"
+      onConfirm={confirm}
+      onCancel={() => setPending(null)}
+    >
+      {pending?.kind === "merge" ? describeMerge(pending.source, pending.target) : ""}
+    </ConfirmDialog>
+    </>
   );
 }

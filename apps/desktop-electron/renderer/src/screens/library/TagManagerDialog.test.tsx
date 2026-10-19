@@ -157,15 +157,17 @@ describe("deleting one", () => {
     choose("Peak-time");
     fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
     expect(onDelete).not.toHaveBeenCalled();
-    expect(screen.getByRole("alertdialog")).toHaveTextContent("comes off 412 tracks");
+    expect(screen.getByRole("dialog", { name: "Delete “Peak-time”?" })).toHaveTextContent("comes off 412 tracks");
   });
 
   it("deletes once it is confirmed", () => {
     const { onDelete } = show();
     choose("Peak-time");
     fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
-    expect(screen.getByRole("alertdialog", { name: "Delete tag" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Delete tag" }));
+    const red = screen.getByRole("button", { name: "Delete tag" });
+    // A delete confirm is a filled red button (C16).
+    expect(red).toHaveClass("cp-btn--danger-confirm");
+    fireEvent.click(red);
     expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
   });
 
@@ -175,7 +177,7 @@ describe("deleting one", () => {
     fireEvent.click(screen.getByRole("button", { name: "Delete…" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onDelete).not.toHaveBeenCalled();
-    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Delete “Peak-time”?" })).not.toBeInTheDocument();
   });
 });
 
@@ -194,7 +196,7 @@ describe("merging two", () => {
     fireEvent.change(screen.getByLabelText("Merge into"), { target: { value: "1" } });
     fireEvent.click(screen.getByRole("button", { name: "Merge…" }));
     expect(onMerge).not.toHaveBeenCalled();
-    const asked = screen.getByRole("alertdialog");
+    const asked = screen.getByRole("dialog", { name: "Merge “Peak Time” into “Peak-time”?" });
     expect(asked).toHaveTextContent("40 tracks move across");
     expect(asked).toHaveTextContent("“Peak Time” is deleted");
   });
@@ -204,8 +206,10 @@ describe("merging two", () => {
     choose("Peak Time");
     fireEvent.change(screen.getByLabelText("Merge into"), { target: { value: "1" } });
     fireEvent.click(screen.getByRole("button", { name: "Merge…" }));
-    expect(screen.getByRole("alertdialog", { name: "Merge tags" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Merge tags" }));
+    // A merge is a plain confirm, not a red one (C16).
+    const plain = screen.getByRole("button", { name: "Merge tags" });
+    expect(plain).not.toHaveClass("cp-btn--danger-confirm");
+    fireEvent.click(plain);
     expect(onMerge).toHaveBeenCalledWith(
       expect.objectContaining({ id: 2 }),
       expect.objectContaining({ id: 1 }),

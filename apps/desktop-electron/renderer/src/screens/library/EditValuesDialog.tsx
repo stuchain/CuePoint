@@ -14,7 +14,9 @@
 import { useLayoutEffect, useState } from "react";
 
 import type { OverrideField } from "../../api/cuepointBridge.types";
-import { Modal } from "../../components";
+import { Button, Modal } from "../../components";
+import { countNoun } from "../../format/counts";
+import { BACK } from "../../format/words";
 import { Select } from "../../components/Select";
 import { APPLY_FIELD_LABELS } from "../clean/comparison";
 import { NOT_SET } from "../../words";
@@ -118,7 +120,7 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
     onClose();
   };
 
-  const many = `${count.toLocaleString()} ${count === 1 ? "track" : "tracks"}`;
+  const many = countNoun(count, "track");
   // Nothing set and nothing cleared: the same data save() builds its edits from. A value
   // that does not parse is left enabled, so pressing the button names the field.
   const built = editsFromDraft(draft);
@@ -137,11 +139,7 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
         disabled: nothingToChange,
         disabledReason: "Set or clear at least one value.",
       }}
-      secondaryAction={
-        asking
-          ? { label: "Back", onClick: () => setAsking(false) }
-          : { label: "Cancel", onClick: onClose }
-      }
+      secondaryAction={{ label: "Cancel", onClick: onClose }}
     >
       <div className="clean-dialog">
         <p className="cp-modal__lead">
@@ -150,8 +148,11 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
         </p>
         {asking && (
           <div role="alert">
+            <Button variant="quiet" icon="chevron-left" onClick={() => setAsking(false)}>
+              {BACK}
+            </Button>
             <p className="clean-dialog__headline">{`Change ${many}?`}</p>
-            <p className="clean-dialog__lead">
+            <p className="cp-modal__lead">
               {BATCH_RECORDED_NOTE}
             </p>
           </div>
@@ -186,7 +187,7 @@ export function EditValuesDialog({ open, count, onClose, onEdit, current }: Edit
                     disabled={entry.mode === "clear"}
                     value={entry.text}
                     inputMode={field === "bpm" || field === "year" ? "decimal" : undefined}
-                    placeholder={field === "key" ? "e.g. 8A, Am or Amin" : undefined}
+                    placeholder={field === "key" ? "8A" : undefined}
                     onChange={(event) =>
                       change(field, {
                         text: event.target.value,

@@ -143,7 +143,8 @@ describe("a draft the engine would refuse", () => {
 
 describe("a colour is a token, not a colour", () => {
   it("paints from the theme's accent rather than from a hex value", () => {
-    expect(colourVariable("danger")).toBe("var(--accent-danger)");
+    expect(colourVariable("danger")).toBe("var(--tag-red)");
+    expect(colourVariable("primary")).toBe("var(--tag-blue)");
   });
 
   it("paints nothing for a tag with no colour", () => {
@@ -167,7 +168,7 @@ describe("a colour is a token, not a colour", () => {
 describe("what a destructive gesture says first", () => {
   it("names the tracks a delete takes it off", () => {
     expect(describeDelete(tag({ track_count: 412 }))).toBe(
-      "Delete “Peak-time”? It comes off 412 tracks, and there is no undo.",
+      "It comes off 412 tracks, and there is no undo.",
     );
   });
 
@@ -179,7 +180,7 @@ describe("what a destructive gesture says first", () => {
     // A tag nobody used is a tidy-up, and warning about it teaches people to
     // click through warnings.
     expect(describeDelete(tag({ track_count: 0 }))).toBe(
-      "Delete “Peak-time”? Nothing is tagged with it.",
+      "Nothing is tagged with it.",
     );
   });
 
@@ -205,22 +206,22 @@ describe("what a destructive gesture says first", () => {
 
 describe("what it says afterwards", () => {
   it("reports the engine's count rather than the one it warned about", () => {
-    expect(deletedLine("Peak-time", 412)).toBe("Deleted “Peak-time” — 412 tracks lost it.");
+    expect(deletedLine("Peak-time", 412)).toBe("Deleted “Peak-time”, 412 tracks lost it");
   });
 
   it("says nothing about tracks when none were touched", () => {
-    expect(deletedLine("Peak-time", 0)).toBe("Deleted “Peak-time”.");
+    expect(deletedLine("Peak-time", 0)).toBe("Deleted “Peak-time”");
   });
 
   it("reports what a merge moved", () => {
     expect(mergedLine("Peak Time", "Peak-time", 40)).toBe(
-      "Merged “Peak Time” into “Peak-time” — 40 tracks moved.",
+      "Merged “Peak Time” into “Peak-time”, 40 tracks moved",
     );
   });
 
   it("says a merge that moved nothing still happened", () => {
     // Every track already had both tags. The source is gone either way.
-    expect(mergedLine("A", "B", 0)).toBe("Merged “A” into “B”.");
+    expect(mergedLine("A", "B", 0)).toBe("Merged “A” into “B”");
   });
 });
 

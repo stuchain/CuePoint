@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { BatchSelection, LibraryHealth } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components";
 import { formatCount, plural } from "../../format/counts";
-import { MATCH_ON_BEATPORT } from "../../format/words";
+import { MATCH_ON_BEATPORT, quoted } from "../../format/words";
 import type { RuleSource } from "../library/filterText";
 import { trackCount } from "./cleanFormat";
 import {
@@ -127,7 +127,7 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
       const named = places
         .map((place) => sources.find((source) => source.kind === place.kind && source.id === place.id))
         .filter((source): source is CleanSource => source !== undefined);
-      if (named.length === 1) return `${PLACE_WORDS[named[0]!.kind]} "${named[0]!.name}"`;
+      if (named.length === 1) return `${PLACE_WORDS[named[0]!.kind]} ${quoted(named[0]!.name)}`;
       return `${formatCount(places.length)} chosen places`;
     }
     const chosenTracks = tracks ? chosenCount(tracks) : 0;
@@ -143,11 +143,11 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
   } else if (nothingToDo && which === "not_yet") {
     sentence = "Every track has been looked up.";
   } else if (searched !== null) {
-    sentence = `CuePoint will search Beatport for ${trackCount(searched)}.`;
+    sentence = `CuePoint will match ${trackCount(searched)} on Beatport.`;
   } else if (total !== null) {
-    sentence = `CuePoint will search Beatport for those of the ${trackCount(total)} that have not been looked up yet.`;
+    sentence = `CuePoint will match those of the ${trackCount(total)} that have not been looked up yet.`;
   } else {
-    sentence = "CuePoint will search Beatport for the tracks you chose.";
+    sentence = "CuePoint will match the tracks you chose on Beatport.";
   }
 
   // R3-2: the button says what it will do, with the count the sentence states (the
@@ -168,7 +168,7 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
   } else if (nothingToDo) {
     if (lookedUpAgain) reason = "There are no tracks here to match.";
     else if (which === "not_yet") reason = "Every track has been looked up; choose other tracks.";
-    else reason = "All of these are already matched; tick “Look up tracks that already have a match again”.";
+    else reason = "All of these are already matched; tick “Match tracks that already have a match again”.";
   }
 
   const start = () => {
@@ -195,9 +195,9 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
       }}
       secondaryAction={{ label: "Cancel", onClick: onClose }}
     >
-      <p>
-        CuePoint searches Beatport for each track and proposes a match. Sure matches are confirmed
-        for you; the rest wait in Match.
+      <p className="cp-modal__lead">
+        CuePoint finds each track on Beatport and proposes a match. Sure matches are confirmed for
+        you; the rest wait in Match.
       </p>
       <fieldset className="clean-match-choice">
         <legend className="clean-visually-hidden">Which tracks</legend>
@@ -232,13 +232,13 @@ export function MatchWindow({ open, tracks, health, onStart, onClose }: MatchWin
             disabled={which === "not_yet"}
             onChange={(event) => setAgain(event.target.checked)}
           />
-          Look up tracks that already have a match again
+          Match tracks that already have a match again
         </label>
         <p className="clean-fix__hint">
           {notYet !== null
-            ? `Left off, only the ${formatCount(notYet)} not looked up yet are searched.`
+            ? `Left off, only the ${formatCount(notYet)} not looked up yet are matched.`
             : "Left off, tracks that already have a match are skipped."}{" "}
-          A decision you made is never changed by a new search.
+          A decision you made is never changed by a new match.
         </p>
       </div>
 

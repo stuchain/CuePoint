@@ -13,6 +13,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import type { OverrideField } from "../../api/cuepointBridge.types";
 import { Modal } from "../../components";
+import { countNoun } from "../../format/counts";
 import { APPLY_FIELDS, APPLY_FIELD_LABELS } from "../clean/comparison";
 import "./cleanDialogs.css";
 
@@ -30,7 +31,7 @@ interface ApplyValuesDialogProps {
   preview?: (fields: OverrideField[]) => Promise<ApplyPreview>;
 }
 
-const tracksWord = (n: number) => `${n.toLocaleString()} ${n === 1 ? "track" : "tracks"}`;
+const tracksWord = (n: number) => countNoun(n, "track");
 
 export function ApplyValuesDialog({ open, count, onClose, onApply, preview }: ApplyValuesDialogProps) {
   const [chosen, setChosen] = useState<OverrideField[]>([]);
@@ -100,7 +101,7 @@ export function ApplyValuesDialog({ open, count, onClose, onApply, preview }: Ap
       secondaryAction={{ label: "Cancel", onClick: onClose }}
     >
       <div className="clean-dialog">
-        <p className="clean-dialog__lead">
+        <p className="cp-modal__lead">
           Copies values from each track&rsquo;s confirmed Beatport match. Tracks without one are
           skipped.
         </p>
@@ -110,7 +111,7 @@ export function ApplyValuesDialog({ open, count, onClose, onApply, preview }: Ap
             const would = perField?.[field];
             return (
               <div key={field} className="clean-dialog__tick">
-                <label className="clean-dialog__check">
+                <label className="clean-dialog__check cp-check">
                   <input
                     type="checkbox"
                     checked={chosen.includes(field)}
