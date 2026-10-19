@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import appIcon from "../../assets/cuepoint-icon.png";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
@@ -29,8 +29,8 @@ import "./Sidebar.css";
  * Every entry comes from the registry, so a destination that has not been
  * built is not rendered — and enabling one later is a flag, not a change here.
  *
- * `NavLink` is used rather than `Link` because it sets `aria-current="page"`
- * on the active entry itself. In the collapsed rail that is the only thing
+ * `Link` with an explicit `aria-current="page"` on the lit entry, not `NavLink`: NavLink matches
+ * by path, so it would keep Discover current on an Artist page opened from the Library. In the collapsed rail that is the only thing
  * distinguishing the current page for a screen-reader user, since the labels
  * are gone. The entry lit is the page's own, or for an Artist or Similar page the page it was
  * opened from (C221).
@@ -48,7 +48,7 @@ function DestinationLink({ destination, collapsed, lit }: {
   const { hint } = destination;
   return (
     <Hint text={collapsed ? `${destination.label}: ${hint}` : hint} portal placement="right">
-      <NavLink
+      <Link
         to={destination.path}
         className={`cp-sidebar__link${lit ? " cp-sidebar__link--active" : ""}`}
         aria-current={lit ? "page" : undefined}
@@ -60,7 +60,7 @@ function DestinationLink({ destination, collapsed, lit }: {
           <NavIcon destination={destination} />
         </span>
         {!collapsed && <span className="cp-sidebar__label">{destination.label}</span>}
-      </NavLink>
+      </Link>
     </Hint>
   );
 }

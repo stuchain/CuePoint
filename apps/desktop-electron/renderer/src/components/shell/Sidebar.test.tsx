@@ -338,6 +338,25 @@ describe("Sidebar", () => {
     });
   });
 
+  describe("the page a sub-page was opened from stays current (C221)", () => {
+    it("marks Library, and not Discover, on an Artist page opened from the Library", () => {
+      render(
+        <ToastProvider>
+          <MemoryRouter initialEntries={[{ pathname: "/discover/artist/x", state: { from: "library" } }]}>
+            <Sidebar />
+          </MemoryRouter>
+        </ToastProvider>,
+      );
+      expect(within(nav()).getByRole("link", { name: "Library" })).toHaveAttribute("aria-current", "page");
+      expect(within(nav()).getByRole("link", { name: "Discover" })).not.toHaveAttribute("aria-current");
+    });
+
+    it("keeps Discover current on an Artist page with no known origin", () => {
+      renderSidebar("/discover/artist/x");
+      expect(within(nav()).getByRole("link", { name: "Discover" })).toHaveAttribute("aria-current", "page");
+    });
+  });
+
   describe("no Pages label (C228)", () => {
     it("has no heading over the list, so toggling the rail moves no entry", async () => {
       const user = userEvent.setup();
