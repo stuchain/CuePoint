@@ -211,6 +211,9 @@ describe("the page's words (SET-6)", () => {
     const fold = screen.getByRole("button", { name: "Disk space" });
     expect(fold).toHaveAttribute("aria-expanded", "false");
     expect(container.querySelector("details")).toBeNull();
+    // The very button "More about this" is: quiet, grey, the same size (C117).
+    const more = screen.getByRole("button", { name: "More about this" });
+    expect(fold.className).toBe(more.className);
     // Closed, the body is not drawn at all, so it leaves no gap (C117).
     expect(screen.queryByRole("button", { name: "Delete waveform data…" })).toBeNull();
     await userEvent.click(fold);
@@ -493,5 +496,13 @@ describe("Delete waveform data…", () => {
     });
 
     expect(await screen.findByText("The waveform data could not be deleted")).toBeInTheDocument();
+  });
+});
+
+describe("the panel's sentences (D5, C55)", () => {
+  it("sets the preview's words and the delete question in Inter", async () => {
+    const css = (await import("./waveform-settings.css?raw")).default;
+    expect(css).toMatch(/\.cp-waveform-settings__words\s*\{[^}]*font-family:\s*var\(--font-data\)/);
+    expect(css).toMatch(/\.cp-waveform-settings__confirm\s*\{[^}]*font-family:\s*var\(--font-data\)/);
   });
 });

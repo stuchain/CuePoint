@@ -209,16 +209,17 @@ export function WaveformSettingsPanel() {
 
         {analysis.supported ? (
           <div className="cp-waveform-settings__disk">
-            <button
-              type="button"
-              className="cp-waveform-settings__fold"
+            {/* The very button "More about this" is: quiet, grey, the shared arrow (C117). */}
+            <Button
+              variant="quiet"
+              className="cp-more-about__toggle"
               aria-expanded={diskOpen}
               aria-controls={diskId}
+              icon={<DisclosureArrow open={diskOpen} />}
               onClick={() => setDiskOpen((open) => !open)}
             >
-              <DisclosureArrow open={diskOpen} />
               Disk space
-            </button>
+            </Button>
             {diskOpen ? (
               <div id={diskId} className="cp-waveform-settings__delete">
                 <SettingsHint>{status ? `Waveforms take ${sizeWords(status.store_bytes)}.` : null}</SettingsHint>
