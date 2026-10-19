@@ -8,6 +8,7 @@
  * 11 rows" is the thing a reader would otherwise count and wonder about.
  */
 import type { CollectionNode } from "../../api/cuepointBridge.types";
+import { countNoun } from "../../format/counts";
 
 export function setScopeNote(
   set: Pick<CollectionNode, "name" | "entry_count" | "track_count">,
@@ -16,7 +17,7 @@ export function setScopeNote(
   if (set.entry_count === set.track_count) {
     return `${name} is a Set. The table lists each of its tracks once, in the order they first play.`;
   }
-  const entries = `${set.entry_count.toLocaleString()} ${set.entry_count === 1 ? "entry" : "entries"}`;
-  const tracks = `${set.track_count.toLocaleString()} ${set.track_count === 1 ? "track" : "tracks"}`;
+  const entries = `${countNoun(set.entry_count, "entry")}`;
+  const tracks = `${countNoun(set.track_count, "track")}`;
   return `${name} is a Set of ${entries}. The table lists each of its ${tracks} once, in the order they first play.`;
 }

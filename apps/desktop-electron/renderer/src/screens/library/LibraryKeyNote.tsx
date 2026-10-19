@@ -13,7 +13,7 @@
  */
 import { useEffect, useState } from "react";
 
-import { Button } from "../../components";
+import { Notice } from "../../components/Notice";
 import { reportUnexpected } from "../../reporting/reporting";
 import { libraryHasNoKeys } from "./libraryKeys";
 import { rememberKeyNoteDismissal, wasKeyNoteDismissed } from "./libraryNoticeMemory";
@@ -59,17 +59,15 @@ export function LibraryKeyNote({ trackCount, asked = false }: LibraryKeyNoteProp
   };
 
   return (
-    <div className="library-notice" role="status" aria-label="No Beatport keys yet">
+    <Notice
+      kind="info"
+      className="library-notice"
+      aria-label="No Beatport keys yet"
+      onDismiss={asked ? undefined : dismiss}
+    >
       <p className="library-notice__line">
         No tracks have a Beatport key yet. Keys come from matching.
       </p>
-      {!asked && (
-        <div className="library-notice__actions">
-          <Button variant="secondary" onClick={dismiss} aria-label="Dismiss this note">
-            Dismiss
-          </Button>
-        </div>
-      )}
-    </div>
+    </Notice>
   );
 }

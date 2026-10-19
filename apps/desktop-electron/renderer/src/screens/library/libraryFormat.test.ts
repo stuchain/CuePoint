@@ -226,7 +226,7 @@ describe("sourceState", () => {
   });
 
   it("badges each state in words about Rekordbox (LIB-3)", () => {
-    expect(sourceBadge("unchanged")).toBe("In sync");
+    expect(sourceBadge("unchanged")).toBe("Up to date");
     expect(sourceBadge("changed")).toBe("Changed in Rekordbox");
     expect(sourceBadge("missing")).toBe("File not found");
     expect(sourceBadge("unknown")).toBe("Not checked yet");

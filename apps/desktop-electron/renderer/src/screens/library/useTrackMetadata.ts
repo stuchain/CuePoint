@@ -30,6 +30,7 @@ import {
 } from "./trackEdits";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
+import { needsDesktopApp } from "../../api/userMessage";
 
 /** What one write asks the engine to change. */
 interface MetadataPatch {
@@ -138,8 +139,8 @@ export function useTrackMetadata({
     ): Promise<void> => {
       const bridge = window.cuepoint?.setTrackMetadata;
       if (!bridge) {
-        onError("You can only edit tracks in the CuePoint desktop app.");
-        throw new Error("You can only edit tracks in the CuePoint desktop app.");
+        onError(needsDesktopApp("Editing tracks"));
+        throw new Error(needsDesktopApp("Editing tracks"));
       }
       if (showing && optimistic) setShown(optimistic);
       try {

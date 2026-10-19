@@ -246,7 +246,7 @@ describe("the Beatport ▸ entries of the operations list", () => {
     expect(items.map((item) => item.label)).toEqual([
       "Match on Beatport…",
       "Review these matches",
-      "Use Beatport's values…",
+      "Copy Beatport values…",
     ]);
   });
 

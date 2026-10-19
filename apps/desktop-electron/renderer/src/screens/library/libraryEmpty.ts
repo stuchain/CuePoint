@@ -17,6 +17,8 @@
  * clause into a sentence is `filterText.ts`'s job and there is no reason for
  * two modules to know how (ORG-12).
  */
+import { countNoun } from "../../format/counts";
+import { CLEAR_SEARCH, opensDialog } from "../../format/words";
 import type { LibraryQuery } from "./libraryQuery";
 
 export interface EmptyStateInput {
@@ -83,7 +85,7 @@ export interface EmptyStateView {
   action?: EmptyAction;
 }
 
-const CLEAR_SEARCH: EmptyAction = { id: "clear-search", label: "Clear the search" };
+const CLEAR_SEARCH_ACTION: EmptyAction = { id: "clear-search", label: CLEAR_SEARCH };
 const CLEAR_FILTERS: EmptyAction = { id: "clear-filters", label: "Clear all filters" };
 const CLEAR_ALL: EmptyAction = { id: "clear-all", label: "Clear search and filters" };
 
@@ -94,20 +96,19 @@ function askingRules(input: EmptyStateInput): boolean {
 
 /** The button that undoes whatever is narrowing the view. */
 function clearing(input: EmptyStateInput): EmptyAction {
-  if (input.searching === true && input.filtering === false) return CLEAR_SEARCH;
+  if (input.searching === true && input.filtering === false) return CLEAR_SEARCH_ACTION;
   if (input.filtering === true && input.searching === false) return CLEAR_FILTERS;
   return CLEAR_ALL;
 }
 
 export function emptyStateFor(input: EmptyStateInput): EmptyStateView {
   if (input.error) {
-    // The bar above already has "Try again"; this one is worded so the two are
-    // not the same button twice.
+    // The bar above already has "Try again" (C142): the table offers it a second time never.
     return {
       title: input.error,
       rules: [],
       hint: null,
-      action: input.filtered ? CLEAR_ALL : { id: "retry", label: "Ask again" },
+      action: input.filtered ? CLEAR_ALL : undefined,
     };
   }
 
@@ -116,18 +117,18 @@ export function emptyStateFor(input: EmptyStateInput): EmptyStateView {
     const noun = kind === "playlist" ? "playlist" : "Collection";
     if (count === 0) {
       return {
-        title: "This folder is empty.",
+        title: "This folder is empty",
         rules: [],
         hint:
           kind === "playlist"
-            ? "Folders and their playlists come from Rekordbox."
-            : "Folders hold your Collections; make one inside it.",
+            ? "Folders and their playlists come from Rekordbox"
+            : "Folders hold your Collections; make one inside it",
       };
     }
     return {
-      title: `${name} is a folder.`,
+      title: `${name} is a folder`,
       rules: [],
-      hint: `Pick one of its ${count} ${count === 1 ? noun : `${noun}s`} in the list.`,
+      hint: `Select one of its ${countNoun(count, noun)} in the list`,
     };
   }
 
@@ -139,53 +140,53 @@ export function emptyStateFor(input: EmptyStateInput): EmptyStateView {
     // answer would have been.
     const searched = input.searching === true;
     const title = searched
-      ? "Nothing inside these rules matches this search."
+      ? "Nothing inside these rules matches this search"
       : input.filtered
-        ? "Nothing matches these rules as you changed them."
-        : "Nothing matches these rules right now.";
+        ? "Nothing matches these rules as you changed them"
+        : "Nothing matches these rules right now";
     return {
       title,
       rules: input.rules,
       hint:
         input.smartName === null
           ? null
-          : `${input.smartName} keeps asking this, so tracks appear here as they start to match.`,
+          : `${input.smartName} keeps asking this, so tracks appear here as they start to match`,
       // A search inside the rules is cleared; the rules themselves are edited.
       // Filters changed on a Smart Collection are rules too, so they are edited.
-      action: searched ? CLEAR_SEARCH : { id: "edit-rules", label: "Edit the rules" },
+      action: searched ? CLEAR_SEARCH_ACTION : { id: "edit-rules", label: "Edit the rules" },
     };
   }
 
   if (input.filtered) {
     if (input.searching === false) {
       return {
-        title: "No tracks match these filters.",
+        title: "No tracks match these filters",
         rules: [],
-        hint: "Try fewer filters, or clear them all.",
+        hint: "Try fewer filters, or clear them all",
         action: CLEAR_FILTERS,
       };
     }
     if (input.filtering === false) {
       return {
-        title: "No tracks match this search.",
+        title: "No tracks match this search",
         rules: [],
-        hint: "Try fewer words, or clear the search.",
-        action: CLEAR_SEARCH,
+        hint: "Try fewer words, or clear the search",
+        action: CLEAR_SEARCH_ACTION,
       };
     }
     return {
-      title: "No tracks match this search.",
+      title: "No tracks match this search",
       rules: [],
-      hint: "Try fewer words, or clear the search and filters.",
+      hint: "Try fewer words, or clear the search and filters",
       action: clearing(input),
     };
   }
 
   if (input.playlistId != null) {
     return {
-      title: "This playlist is empty.",
+      title: "This playlist is empty",
       rules: [],
-      hint: "Playlists come from Rekordbox. Add tracks to it there, then Check for changes.",
+      hint: "Playlists come from Rekordbox. Add tracks to it there, then Check for changes",
       action: { id: "check-rekordbox", label: "Check for changes" },
     };
   }
@@ -198,26 +199,26 @@ export function emptyStateFor(input: EmptyStateInput): EmptyStateView {
     // lost the tracks they put there (DEC-011). A Set likewise (PREP-02).
     if (input.emptiedByRefresh) {
       return {
-        title: `This ${kind} is empty.`,
+        title: `This ${kind} is empty`,
         rules: [],
         hint:
           "The tracks it held are no longer in your Rekordbox file, so the " +
-          "last refresh removed them.",
+          "last refresh removed them",
         action,
       };
     }
     return {
-      title: `This ${kind} is empty.`,
+      title: `This ${kind} is empty`,
       rules: [],
-      hint: `Drop tracks onto it, or use Add to ${kind} from the track menu.`,
+      hint: `Drop tracks onto it, or use Add to ${kind} from the track menu`,
       action,
     };
   }
 
   return {
-    title: "This Rekordbox file has no tracks in it.",
+    title: "This Rekordbox file has no tracks in it",
     rules: [],
-    hint: "Export again from Rekordbox and import that file.",
-    action: { id: "import", label: "Import a Rekordbox file…" },
+    hint: "Export again from Rekordbox and import that file",
+    action: { id: "import", label: opensDialog("Import a Rekordbox file") },
   };
 }

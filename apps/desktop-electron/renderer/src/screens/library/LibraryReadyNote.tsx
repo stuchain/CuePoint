@@ -2,7 +2,7 @@
  * The note under the Library's header after an import (LIB-1, DEC-132).
  *
  * An import is followed by work nobody asked for: CuePoint checks the files,
- * reads the cover art and draws every waveform, and for a large library that
+ * reads the artwork and draws every waveform, and for a large library that
  * is hours. Without a word on the page the Library looks finished and then
  * slows down. The note says what is going on, that the user can keep working,
  * and where progress is — the status strip, whose jobs it reads (`useActiveJob`)
@@ -17,7 +17,7 @@
  */
 import { useLayoutEffect, useState } from "react";
 
-import { Button } from "../../components";
+import { Notice } from "../../components/Notice";
 import { formatCount } from "../../format/counts";
 import type { EngineJobSummary } from "../../api/cuepointBridge.types";
 import { JOB_POLL_MS, useActiveJob } from "../../components/shell/useActiveJob";
@@ -27,7 +27,7 @@ import "./LibraryNotice.css";
 /** What each job of the chain after an import is doing, as a clause for "Now: …". */
 const CHAIN: Record<string, string> = {
   file_check: "checking your music files",
-  artwork_scan: "reading cover art",
+  artwork_scan: "reading artwork",
   waveform_analysis: "drawing waveforms",
   marks_backfill: "reading cue points and beat grids",
   credit_index: "getting artist and label pages ready",
@@ -97,19 +97,19 @@ export function LibraryReadyNote({
   };
 
   return (
-    <div className="library-notice" role="status" aria-label="Getting your library ready">
-      <div className="library-notice__text">
-        <p className="library-notice__line">
-          <strong>Getting your library ready.</strong> CuePoint is checking that your music files
-          are where Rekordbox says, reading their cover art and drawing each track&apos;s
-          waveform. You can browse and play while it works. Progress is in the status strip at the
-          bottom; <strong>Activity</strong> shows each step.
-        </p>
-        <p className="library-notice__now">{nowLine(job)}</p>
-      </div>
-      <Button variant="secondary" onClick={dismiss} aria-label="Dismiss this note">
-        Dismiss
-      </Button>
-    </div>
+    <Notice
+      kind="info"
+      className="library-notice"
+      aria-label="Getting your library ready"
+      onDismiss={dismiss}
+    >
+      <p className="library-notice__line">
+        <strong>Getting your library ready.</strong> CuePoint is checking that your music files
+        are where Rekordbox says, reading their artwork and drawing each track&apos;s waveform.
+        You can browse and play while it works. Progress is in the status strip at the bottom;{" "}
+        <strong>Activity</strong> shows each step.
+      </p>
+      <p className="library-notice__now">{nowLine(job)}</p>
+    </Notice>
   );
 }

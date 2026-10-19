@@ -62,15 +62,15 @@ describe("a rating as text", () => {
   });
 
   it("draws stars for the rest", () => {
-    expect(ratingText(3)).toBe("★★★");
-    expect(ratingText(RATING_STARS)).toBe("★★★★★");
+    expect(ratingText(3)).toBe("3 stars");
+    expect(ratingText(RATING_STARS)).toBe("5 stars");
   });
 });
 
 describe("which layer the stars are showing", () => {
   it("says yours, and what is underneath it", () => {
     expect(describeRatingSource({ rating: 5, rekordbox_rating: 3 })).toBe(
-      "Your rating (Rekordbox has ★★★)",
+      "Your rating (Rekordbox has 3 stars)",
     );
   });
 
@@ -103,7 +103,7 @@ describe("the clear control", () => {
 
   it("says what the stars become only when something is underneath (INS-6)", () => {
     // A clear over nothing leaves nothing, so it is only a clear.
-    expect(clearRatingLabel({ rating: 2, rekordbox_rating: 4 })).toBe("Use Rekordbox's ★★★★");
+    expect(clearRatingLabel({ rating: 2, rekordbox_rating: 4 })).toBe("Use Rekordbox's 4 stars");
     expect(clearRatingLabel({ rating: 2, rekordbox_rating: null })).toBe("Clear rating");
   });
 });
@@ -202,8 +202,8 @@ describe("a history entry as a line", () => {
 
   it("shows a rating as stars on both sides", () => {
     const line = historyLine(change({ old_value: 2, new_value: 5 }));
-    expect(line.from).toBe("★★");
-    expect(line.to).toBe("★★★★★");
+    expect(line.from).toBe("2 stars");
+    expect(line.to).toBe("5 stars");
   });
 
   it("shows a cleared rating as absent", () => {

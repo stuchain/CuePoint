@@ -19,6 +19,7 @@ import type { Tag, TagUsage } from "../../api/cuepointBridge.types";
 import { TAGS, useSharedRead } from "../../api/sharedReads";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
+import { needsDesktopApp } from "../../api/userMessage";
 
 /** A tag as one track's record carries it — no usage count, that is the vocabulary's. */
 export type TrackTag = Pick<Tag, "id" | "name" | "category" | "colour">;
@@ -79,7 +80,7 @@ export function useTrackTags({
       const create = window.cuepoint?.createTag;
       const assign = window.cuepoint?.assignTag;
       if (!create || !assign) {
-        onError("You can only edit tags in the CuePoint desktop app.");
+        onError(needsDesktopApp("Editing tags"));
         return;
       }
       if (alreadyHas(shown, wanted)) return;
@@ -112,7 +113,7 @@ export function useTrackTags({
       if (trackId == null) return;
       const unassign = window.cuepoint?.unassignTag;
       if (!unassign) {
-        onError("You can only edit tags in the CuePoint desktop app.");
+        onError(needsDesktopApp("Editing tags"));
         return;
       }
       const before = shown;

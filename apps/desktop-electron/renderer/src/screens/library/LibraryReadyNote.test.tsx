@@ -53,7 +53,7 @@ describe("the ready note", () => {
     const note = await screen.findByRole("status");
     expect(note).toHaveTextContent("Getting your library ready.");
     expect(note).toHaveTextContent(
-      "CuePoint is checking that your music files are where Rekordbox says, reading their cover art and drawing each track's waveform.",
+      "CuePoint is checking that your music files are where Rekordbox says, reading their artwork and drawing each track's waveform.",
     );
     expect(note).toHaveTextContent("You can browse and play while it works.");
     expect(note).toHaveTextContent("Progress is in the status strip at the bottom");
@@ -69,7 +69,7 @@ describe("the ready note", () => {
 
   it.each([
     ["file_check", "Now: checking your music files"],
-    ["artwork_scan", "Now: reading cover art"],
+    ["artwork_scan", "Now: reading artwork"],
     ["waveform_analysis", "Now: drawing waveforms"],
     ["marks_backfill", "Now: reading cue points and beat grids"],
     ["credit_index", "Now: getting artist and label pages ready"],
@@ -92,7 +92,7 @@ describe("the ready note", () => {
     running(job({ type: "clean_match" }), job({ id: "b", type: "artwork_scan", progress: {} }));
     render(<LibraryReadyNote armedAt={AFTER_IMPORT} />);
 
-    expect(await screen.findByText("Now: reading cover art")).toBeInTheDocument();
+    expect(await screen.findByText("Now: reading artwork")).toBeInTheDocument();
   });
 
   it("is not mounted when nothing was imported, however busy the engine is", () => {
@@ -139,7 +139,7 @@ describe("the ready note", () => {
     const { unmount } = render(<LibraryReadyNote armedAt={AFTER_IMPORT} />);
     await screen.findByRole("status");
 
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss this note" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("status")).toBeNull();
 
     // Leaving the Library and coming back is the same session.
@@ -153,7 +153,7 @@ describe("the ready note", () => {
     running(job());
     const { unmount } = render(<LibraryReadyNote armedAt={AFTER_IMPORT} />);
     await screen.findByRole("status");
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss this note" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     unmount();
 
     render(<LibraryReadyNote armedAt={AFTER_IMPORT + 5000} />);
@@ -167,7 +167,7 @@ describe("the ready note", () => {
     await screen.findByRole("status");
 
     expect(onShownChange).toHaveBeenLastCalledWith(true);
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss this note" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onShownChange).toHaveBeenLastCalledWith(false);
   });
 });

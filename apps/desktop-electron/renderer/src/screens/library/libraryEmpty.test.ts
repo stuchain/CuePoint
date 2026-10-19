@@ -55,7 +55,7 @@ describe("a refusal", () => {
       id: "clear-all",
       label: "Clear search and filters",
     });
-    expect(view({ error: "refused" }).action).toEqual({ id: "retry", label: "Ask again" });
+    expect(view({ error: "refused" }).action).toBeUndefined();
   });
 });
 
@@ -66,7 +66,7 @@ describe("a Smart Collection", () => {
       smartName: "Closers",
       rules: ["Genre is Techno", "BPM is between 120 and 124"],
     });
-    expect(shown.title).toBe("Nothing matches these rules right now.");
+    expect(shown.title).toBe("Nothing matches these rules right now");
     expect(shown.rules).toEqual(["Genre is Techno", "BPM is between 120 and 124"]);
     expect(shown.action).toEqual({ id: "edit-rules", label: "Edit the rules" });
   });
@@ -86,7 +86,7 @@ describe("a Smart Collection", () => {
       searching: true,
       rules: ["Genre is Techno"],
     });
-    expect(searched.title).toBe("Nothing inside these rules matches this search.");
+    expect(searched.title).toBe("Nothing inside these rules matches this search");
     expect(searched.rules).toEqual(["Genre is Techno"]);
     expect(searched.action).toEqual({ id: "clear-search", label: "Clear the search" });
   });
@@ -100,7 +100,7 @@ describe("a Smart Collection", () => {
       filtering: true,
       rules: ["Genre is Techno"],
     });
-    expect(changed.title).toBe("Nothing matches these rules as you changed them.");
+    expect(changed.title).toBe("Nothing matches these rules as you changed them");
     expect(changed.action).toEqual({ id: "edit-rules", label: "Edit the rules" });
   });
 
@@ -109,7 +109,7 @@ describe("a Smart Collection", () => {
     // first, and the sentence must not be "no tracks match this search" for
     // the frame in between.
     const unnamed = view({ scope: "smart", rules: ["Genre is Techno"] });
-    expect(unnamed.title).toBe("Nothing matches these rules right now.");
+    expect(unnamed.title).toBe("Nothing matches these rules right now");
     expect(unnamed.hint).toBeNull();
   });
 
@@ -123,12 +123,12 @@ describe("a Smart Collection", () => {
 
 describe("a search that matched nothing", () => {
   it("says the search is why", () => {
-    expect(view({ filtered: true }).title).toBe("No tracks match this search.");
+    expect(view({ filtered: true }).title).toBe("No tracks match this search");
   });
 
   it("says what to try, and offers to clear both (LIB-5)", () => {
     const shown = view({ filtered: true });
-    expect(shown.hint).toBe("Try fewer words, or clear the search and filters.");
+    expect(shown.hint).toBe("Try fewer words, or clear the search and filters");
     expect(shown.action).toEqual({ id: "clear-all", label: "Clear search and filters" });
   });
 
@@ -138,7 +138,7 @@ describe("a search that matched nothing", () => {
       label: "Clear the search",
     });
     const filters = view({ filtered: true, searching: false, filtering: true });
-    expect(filters.title).toBe("No tracks match these filters.");
+    expect(filters.title).toBe("No tracks match these filters");
     expect(filters.action).toEqual({ id: "clear-filters", label: "Clear all filters" });
   });
 
@@ -146,13 +146,13 @@ describe("a search that matched nothing", () => {
     // "This playlist is empty" while a search term is in the box sends someone
     // looking for a broken import.
     expect(view({ filtered: true, playlistId: 3 }).title).toBe(
-      "No tracks match this search.",
+      "No tracks match this search",
     );
   });
 
   it("beats an empty Collection for the same reason", () => {
     expect(view({ filtered: true, scope: "collection" }).title).toBe(
-      "No tracks match this search.",
+      "No tracks match this search",
     );
   });
 });
@@ -162,21 +162,21 @@ describe("a folder (R7-5)", () => {
 
   it("says it is a folder and how many playlists to pick from, with no Check for changes", () => {
     const answer = view({ playlistId: 3, folder });
-    expect(answer.title).toBe("Gigs 2026 is a folder.");
-    expect(answer.hint).toBe("Pick one of its 4 playlists in the list.");
+    expect(answer.title).toBe("Gigs 2026 is a folder");
+    expect(answer.hint).toBe("Select one of its 4 playlists in the list");
     expect(answer.action).toBeUndefined();
   });
 
   it("says one playlist in the singular", () => {
     expect(view({ playlistId: 3, folder: { ...folder, count: 1 } }).hint).toBe(
-      "Pick one of its 1 playlist in the list.",
+      "Select one of its 1 playlist in the list",
     );
   });
 
   it("says an empty folder is empty, and where its playlists come from", () => {
     const answer = view({ playlistId: 3, folder: { ...folder, count: 0 } });
-    expect(answer.title).toBe("This folder is empty.");
-    expect(answer.hint).toBe("Folders and their playlists come from Rekordbox.");
+    expect(answer.title).toBe("This folder is empty");
+    expect(answer.hint).toBe("Folders and their playlists come from Rekordbox");
     expect(answer.action).toBeUndefined();
   });
 
@@ -186,17 +186,17 @@ describe("a folder (R7-5)", () => {
 
   it("has its own words for a Collections folder", () => {
     const answer = view({ folder: { name: "Gigs", count: 2, kind: "collection" } });
-    expect(answer.title).toBe("Gigs is a folder.");
-    expect(answer.hint).toBe("Pick one of its 2 Collections in the list.");
+    expect(answer.title).toBe("Gigs is a folder");
+    expect(answer.hint).toBe("Select one of its 2 Collections in the list");
   });
 });
 
 describe("an empty playlist", () => {
   it("says so, where playlists come from, and offers the check (LIB-5, DEC-208)", () => {
     const empty = view({ playlistId: 3 });
-    expect(empty.title).toBe("This playlist is empty.");
+    expect(empty.title).toBe("This playlist is empty");
     expect(empty.hint).toBe(
-      "Playlists come from Rekordbox. Add tracks to it there, then Check for changes.",
+      "Playlists come from Rekordbox. Add tracks to it there, then Check for changes",
     );
     expect(empty.action).toEqual({
       id: "check-rekordbox",
@@ -208,7 +208,7 @@ describe("an empty playlist", () => {
 describe("an empty Collection", () => {
   it("invites tracks into it", () => {
     const invited = view({ scope: "collection" });
-    expect(invited.title).toBe("This Collection is empty.");
+    expect(invited.title).toBe("This Collection is empty");
     expect(invited.hint).toMatch(/Drop tracks onto it/);
     expect(invited.action).toEqual({ id: "show-library", label: "Browse the whole library" });
   });
@@ -226,7 +226,7 @@ describe("an empty Collection", () => {
     // The flag is about a Collection; a playlist that a refresh emptied is a
     // Rekordbox fact and reads as one.
     expect(view({ playlistId: 3, emptiedByRefresh: true }).title).toBe(
-      "This playlist is empty.",
+      "This playlist is empty",
     );
   });
 });
@@ -234,9 +234,9 @@ describe("an empty Collection", () => {
 describe("a library with nothing in it", () => {
   it("says the export is empty and what to do about it (LIB-5)", () => {
     const nothing = view();
-    expect(nothing.title).toBe("This Rekordbox file has no tracks in it.");
+    expect(nothing.title).toBe("This Rekordbox file has no tracks in it");
     expect(nothing.rules).toEqual([]);
-    expect(nothing.hint).toBe("Export again from Rekordbox and import that file.");
+    expect(nothing.hint).toBe("Export again from Rekordbox and import that file");
     expect(nothing.action).toEqual({ id: "import", label: "Import a Rekordbox file…" });
   });
 });
@@ -252,7 +252,7 @@ describe("every answer", () => {
       { scope: "collection", emptiedByRefresh: true },
       { scope: "smart", rules: ["Genre is Techno"] },
       { scope: "smart", filtered: true, rules: ["Genre is Techno"] },
-      { error: "refused" },
+      // A refusal has no button of its own: the filter bar's notice carries Try again (C142).
     ];
     for (const input of cases) {
       const action = view(input).action;

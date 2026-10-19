@@ -20,6 +20,7 @@ import type {
   CollectionNode,
   FilterRuleSet,
 } from "../../api/cuepointBridge.types";
+import { countNoun } from "../../format/counts";
 
 /** Where the Collections section's expansion and selection are kept. */
 export const COLLECTIONS_PANE_STORAGE_KEY = "cuepoint-library-collections-pane";
@@ -446,17 +447,15 @@ export function describeDeletion(summary: {
   nodes: number;
 }): string {
   const parts: string[] = [];
-  const plural = (count: number, one: string, many: string) =>
-    `${count} ${count === 1 ? one : many}`;
   const sets = summary.sets ?? 0;
-  if (summary.folders) parts.push(plural(summary.folders, "folder", "folders"));
+  if (summary.folders) parts.push(countNoun(summary.folders, "folder"));
   if (summary.collections)
-    parts.push(plural(summary.collections, "Collection", "Collections"));
+    parts.push(countNoun(summary.collections, "Collection"));
   if (summary.smart_collections)
     parts.push(
-      plural(summary.smart_collections, "Smart Collection", "Smart Collections"),
+      countNoun(summary.smart_collections, "Smart Collection"),
     );
-  if (sets) parts.push(plural(sets, "Set", "Sets"));
+  if (sets) parts.push(countNoun(sets, "Set"));
   if (parts.length === 0) return "This removes nothing.";
 
   const listed =
@@ -464,7 +463,7 @@ export function describeDeletion(summary: {
       ? parts[0]!
       : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]!}`;
   const entries = summary.entries
-    ? `, with ${plural(summary.entries, "track entry", "track entries")} filed in them`
+    ? `, with ${countNoun(summary.entries, "track entry", "track entries")} filed in them`
     : "";
   const plan = sets
     ? ` ${sets === 1 ? "The Set's" : "Each Set's"} chapters, planned times and notes go with it.`

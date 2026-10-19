@@ -28,17 +28,19 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import { Badge, Button, Hint } from "../../components";
+import { PixelIcon } from "../../components/PixelIcon";
+import { CHECK_FOR_CHANGES } from "../../format/words";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import type { LibraryQuickFacets, LibrarySummary } from "../../api/cuepointBridge.types";
 import {
   fileName,
   formatWhen,
-  pluralize,
   scopeFactsLine,
   sourceBadge,
   sourceState,
   sourceStateMessage,
 } from "./libraryFormat";
+import { countNoun } from "../../format/counts";
 import "./LibraryHeader.css";
 
 interface LibraryHeaderProps {
@@ -46,8 +48,8 @@ interface LibraryHeaderProps {
   summary: LibrarySummary | null;
   /** The scope's name: "All tracks", or the playlist's, Collection's or Set's. */
   scopeName?: string;
-  /** The path above the title ("Playlists › Gigs 2026"); null on All tracks, which is "Library". */
-  scopeGroup?: string | null;
+  /** The trail to the scope ("Playlists", "Gigs 2026"), drawn in the facts line; none on All tracks. */
+  scopeTrail?: readonly string[];
   /** A folder is selected: its facts line says what it holds instead of "0 tracks" (R7-5). */
   folder?: { count: number; noun: "playlist" | "Collection" } | null;
   /** First steps is showing its own violet Import, so this one is grey (R7-9). */
@@ -70,7 +72,7 @@ interface LibraryHeaderProps {
 
 /** The buttons' words, always whole. */
 const LABELS = {
-  check: "Check for changes",
+  check: CHECK_FOR_CHANGES,
   export: "Export to Rekordbox…",
 } as const;
 
@@ -186,7 +188,7 @@ function useLean(enabled: boolean) {
 export function LibraryHeader({
   summary,
   scopeName = "All tracks",
-  scopeGroup = null,
+  scopeTrail = [],
   folder = null,
   importQuiet = false,
   facts = null,
@@ -219,17 +221,13 @@ export function LibraryHeader({
     );
   }
 
-  /** What a button shows: its own words, or the busy words while it works. */
-  const label = (button: keyof typeof LABELS, working: boolean) => {
-    const name = working && busyLabel ? busyLabel : LABELS[button];
-    return { name, text: name };
-  };
   const state = sourceState(source);
   const needsLook = state === "changed" || state === "missing";
-  const check = label("check", busy === "checking" || busy === "applying");
-  const exporting = label("export", false);
+  // A button's words never change while it works: it shows the spinner, and the status strip says
+  // what is happening (C239).
+  const checking = busy === "checking" || busy === "applying";
   const parts = folder
-    ? ["Folder", pluralize(folder.count, folder.noun)]
+    ? ["Folder", countNoun(folder.count, folder.noun)]
     : scopeFactsLine(facts, fallbackCount);
   // The file's name, with the whole path in its hint, and the file's state.
   const sourceLine = (
@@ -242,6 +240,22 @@ export function LibraryHeader({
       <Badge variant={needsLook ? "warning" : state === "unknown" ? "default" : "success"}>
         {sourceBadge(state)}
       </Badge>
+      {/* Nothing needs a look: checking is a quiet refresh icon beside the state. When the file
+          changed or went missing, the labelled primary button is in the actions instead. */}
+      {!needsLook && (
+        <Hint text={checking && busyLabel ? busyLabel : CHECK_FOR_CHANGES}>
+          <Button
+            variant="quiet"
+            size="sm"
+            iconOnly
+            icon="refresh"
+            aria-label={CHECK_FOR_CHANGES}
+            loading={checking}
+            disabled={disabled}
+            onClick={onCheck}
+          />
+        </Hint>
+      )}
     </span>
   );
 
@@ -250,7 +264,6 @@ export function LibraryHeader({
       <ScreenHeader
         title="Library"
         display={scopeName}
-        crumb={scopeGroup ?? "Library"}
         beside={
           level >= 2 ? undefined : (
             <>
@@ -263,6 +276,18 @@ export function LibraryHeader({
           <span key="scope" className="library-header__sr-only">
             {scopeName}:{" "}
           </span>,
+          // The trail to the scope leads the facts: Playlists, then the folders above it (C44).
+          scopeTrail.length > 0 ? (
+            <span key="trail" className="library-header__trail" data-testid="library-trail">
+              {scopeTrail.map((name, index) => (
+                <span key={`${index}-${name}`}>
+                  {index > 0 && <PixelIcon name="chevron-right-sm" className="library-header__trail-arrow" />}
+                  {name}
+                </span>
+              ))}
+              <span className="library-header__sep"> · </span>
+            </span>
+          ) : null,
           ...parts.map((part, index) => (
           <span key={index}>
             {index > 0 && <span className="library-header__sep"> · </span>}
@@ -285,21 +310,19 @@ export function LibraryHeader({
         ]}
         actions={
           <>
-            <Button
-              variant={needsLook ? "primary" : "secondary"}
-              onClick={onCheck}
-              disabled={disabled}
-              aria-label={check.name}
-            >
-              {check.text}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={onExport}
-              disabled={disabled}
-              aria-label={exporting.name}
-            >
-              {exporting.text}
+            {needsLook && (
+              <Button
+                variant="primary"
+                onClick={onCheck}
+                disabled={disabled}
+                loading={checking}
+                aria-label={LABELS.check}
+              >
+                {LABELS.check}
+              </Button>
+            )}
+            <Button variant="secondary" onClick={onExport} disabled={disabled} aria-label={LABELS.export}>
+              {LABELS.export}
             </Button>
           </>
         }

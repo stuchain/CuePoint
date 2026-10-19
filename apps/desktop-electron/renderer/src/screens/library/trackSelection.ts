@@ -15,6 +15,8 @@
  * and the page renders it.
  */
 
+import { countNoun } from "../../format/counts";
+
 export interface Selection {
   /** True when the selection is "everything the query matches". */
   all: boolean;
@@ -157,7 +159,7 @@ export function isDescribed(selection: Selection): boolean {
 export function describeSelection(selection: Selection, total: number): string {
   const count = selectionCount(selection, total);
   if (count === 0) return "";
-  return `${count.toLocaleString()} ${count === 1 ? "track" : "tracks"} selected`;
+  return `${countNoun(count, "track")} selected`;
 }
 
 /** The range of row indices a shift-click covers, in either direction. */

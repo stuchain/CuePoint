@@ -12,6 +12,7 @@
  * used instead, because a copy of "[object Object]" helps nobody.
  */
 import type { TrackColumnDef } from "../../components/table";
+import { countNoun, formatCount } from "../../format/counts";
 
 /** Each gathered column's text, by column id (`gatherText`). */
 type GatheredTexts<Row> = ReadonlyMap<string, (row: Row) => string>;
@@ -86,9 +87,9 @@ export async function gatherTracksAsText<Row>(
 export function copySummary(copied: number, selected: number): string {
   if (copied === 0) return "Nothing to copy";
   if (copied < selected) {
-    return `Copied the first ${copied.toLocaleString()} of ${selected.toLocaleString()} tracks`;
+    return `Copied the first ${formatCount(copied)} of ${formatCount(selected)} tracks`;
   }
-  return `Copied ${copied.toLocaleString()} ${copied === 1 ? "track" : "tracks"}`;
+  return `Copied ${countNoun(copied, "track")}`;
 }
 
 /**

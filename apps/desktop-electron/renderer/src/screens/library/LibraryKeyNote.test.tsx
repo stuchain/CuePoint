@@ -61,7 +61,7 @@ describe("the key note", () => {
 
     const note = await screen.findByRole("status");
     expect(note).toHaveTextContent("No tracks have a Beatport key yet. Keys come from matching.");
-    expect(screen.queryByRole("button", { name: "Dismiss this note" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
   });
 
   it("is silent when any track has a key", async () => {
@@ -97,7 +97,7 @@ describe("the key note", () => {
     render(<LibraryKeyNote trackCount={3} />);
     await screen.findByRole("status");
 
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss this note" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
 
     expect(screen.queryByRole("status")).toBeNull();
   });
@@ -106,7 +106,7 @@ describe("the key note", () => {
     facet([{ value: null, count: 3 }]);
     const { unmount } = render(<LibraryKeyNote trackCount={3} />);
     await screen.findByRole("status");
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss this note" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     unmount();
 
     render(<LibraryKeyNote trackCount={3} />);

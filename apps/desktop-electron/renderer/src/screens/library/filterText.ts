@@ -25,7 +25,7 @@ import type {
   LibraryFilterField,
   LibraryFilterVocabulary,
 } from "../../api/cuepointBridge.types";
-import { pluralize } from "./libraryFormat";
+import { countNoun } from "../../format/counts";
 
 type OperatorArity = "none" | "single" | "pair" | "list";
 
@@ -168,10 +168,10 @@ export function buildableFields(
   return [...(vocabulary?.fields ?? [])];
 }
 
-/** Stars, for a rating. The engine stores 0–5; nothing needs converting. */
+/** A rating in words ("3 stars"). The engine stores 0–5; nothing needs converting. */
 export function starsFor(value: number): string {
   const count = Math.max(0, Math.min(RATING_STARS, Math.round(value)));
-  return count === 0 ? "unrated" : "★".repeat(count);
+  return count === 0 ? "unrated" : countNoun(count, "star");
 }
 
 /**
@@ -320,7 +320,7 @@ export function describeRule(
   if (named) return named;
   // A list of tracks no page named: its size, never its ids.
   if (rule.field === "track" && Array.isArray(rule.value)) {
-    return rule.value.length === 1 ? "This track" : `These ${pluralize(rule.value.length, "track")}`;
+    return rule.value.length === 1 ? "This track" : `These ${countNoun(rule.value.length, "track")}`;
   }
   const field = fieldOf(vocabulary, rule.field);
   const label = field?.label ?? rule.field;

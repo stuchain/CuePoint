@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import type { LibraryTrackRow, QueueItemInput } from "../../api/cuepointBridge.types";
 import type { LibraryQuery } from "./libraryQuery";
 import { browseParams } from "./libraryQuery";
+import { countNoun } from "../../format/counts";
 
 /**
  * Playing from the Library table (PLAYER-09, DEC-012, DEC-013).
@@ -126,6 +127,6 @@ export function useLibraryPlayback({
  * say what they did.
  */
 export function queuedMessage(count: number, where: "next" | "end"): string {
-  const tracks = count === 1 ? "1 track" : `${count.toLocaleString()} tracks`;
+  const tracks = countNoun(count, "track");
   return where === "next" ? `${tracks} queued to play next` : `${tracks} added to the queue`;
 }

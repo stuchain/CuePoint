@@ -416,12 +416,12 @@ describe("reading a clause back", () => {
     // at import, so there is no second mapping here.
     expect(
       describeRule(VOCABULARY, { field: "rating", operator: "is", value: 4 }),
-    ).toBe("Rating is ★★★★");
+    ).toBe("Rating is 4 stars");
   });
 
   it("calls a zero rating unrated rather than showing no stars", () => {
     expect(starsFor(0)).toBe("unrated");
-    expect(starsFor(5)).toBe("★★★★★");
+    expect(starsFor(5)).toBe("5 stars");
   });
 
   it("falls back to the identifier for a field it does not know", () => {
@@ -652,7 +652,7 @@ describe("CuePoint's own field kinds (ORG-12)", () => {
       };
       expect(
         describeRule(layered, { field: "cuepoint_rating", operator: "is", value: 3 }),
-      ).toBe("CuePoint rating is ★★★");
+      ).toBe("CuePoint rating is 3 stars");
     });
 
     it("leaves a unit it has never heard of as a plain number", () => {

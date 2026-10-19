@@ -26,8 +26,8 @@ export function LibraryEmptyState({ view, onAction }: LibraryEmptyStateProps) {
   return (
     <EmptyState
       icon="library"
-      // A headline is a label: no full stop (area 66); the reason is the description.
-      headline={view.title.replace(/\.$/, "")}
+      // A headline is a label with no full stop (area 66): libraryEmpty.ts writes it so.
+      headline={view.title}
       description={
         rules || view.hint ? (
           <>

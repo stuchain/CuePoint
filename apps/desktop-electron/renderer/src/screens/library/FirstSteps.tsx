@@ -13,6 +13,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "../../components";
+import { PixelIcon } from "../../components/PixelIcon";
+import { MATCH_ON_BEATPORT, opensDialog } from "../../format/words";
 import {
   firstStepsDone,
   firstStepsPlayed,
@@ -87,7 +89,7 @@ function useFirstSteps(imported: boolean, { onMatch, onAddToken, onImport, onHow
       label: "Match your tracks on Beatport",
       hint: "After importing: keys, genres and labels come from Beatport.",
       done: matched,
-      action: imported ? { label: "Match on Beatport…", onClick: onMatch } : undefined,
+      action: imported ? { label: opensDialog(MATCH_ON_BEATPORT), onClick: onMatch } : undefined,
     },
     {
       id: "play",
@@ -116,9 +118,9 @@ function StepList({ steps }: { steps: Step[] }) {
     <ol className="first-steps__list" aria-label="First steps">
       {steps.map((step) => (
         <li key={step.id} className="first-steps__item" data-done={step.done ? "true" : "false"}>
-          <span className="first-steps__tick" aria-hidden="true">
-            {step.done ? "✓" : ""}
-          </span>
+          {/* The number is the list's own (1. 2. 3.). A finished step wears a drawn check; a
+              step still to do wears nothing, so there are no empty squares (C146). */}
+          {step.done && <PixelIcon name="check" size="sm" className="first-steps__done" />}
           <div className="first-steps__text">
             <span className="first-steps__label">{step.label}</span>
             <span className="first-steps__state">{step.done ? " (done)" : " (not yet)"}</span>

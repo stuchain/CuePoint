@@ -1,22 +1,9 @@
 /* The notice line above the Library's filter row (LIB-1, DEC-201): one notice at a time,
    a sentence and the buttons that go with it. It takes its own row only while it is
    shown, which is only after an import. */
+/* The notice itself is the shared Notice (C88); this is only where it sits on the page. */
 .library-notice {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
-  background: var(--bg-panel);
-  border-bottom: var(--divider);
-  font-size: var(--font-size-xs);
-}
-
-.library-notice__text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+  margin: var(--space-xs) var(--space-sm);
 }
 
 .library-notice__line,

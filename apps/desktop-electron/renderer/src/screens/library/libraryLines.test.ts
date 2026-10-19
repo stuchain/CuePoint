@@ -44,16 +44,21 @@ describe("the Library's shared lines", () => {
     expect(rule(pane, ".cp-library-pane__all")).toContain("border-bottom: var(--divider)");
   });
 
-  it("lays both bars out as one toolbar, 8 between controls and one module between the bars", () => {
-    const bar = rule(toolbar, ".library-toolbar");
-    expect(bar).toContain("min-height: var(--toolbar-height)");
-    expect(bar).toContain("padding: var(--toolbar-padding)");
-    expect(bar).toContain("margin-top: var(--library-module)");
-    expect(bar).toMatch(/--library-toolbar-row-gap:\s*round\(nearest, calc\(8px \* var\(--scale\)\), 1px\)/);
-    const filter = rule(filterBar, ".cp-filter-bar");
-    expect(filter).toContain("min-height: var(--toolbar-height)");
-    expect(filter).toContain("padding: var(--toolbar-padding)");
+  it("lays the filter row out as the shared toolbar, with no px of its own", () => {
+    // The row is `.cp-toolbar` (C217): its height, padding and 8 between controls are the shared
+    // class's. The selection bar above it is the shared SelectionBar.
+    const row = rule(filterBar, ".cp-filter-bar__row");
+    expect(row).not.toMatch(/\d+px/);
+    // Sizes are tokens or scaled; the one raw 1px is the visually hidden label's.
+    const raw = strip(filterBar)
+      .replace(/calc\([\d.]+px \* var\(--scale\)\)/g, "")
+      .replace(/(width|height|margin): -?1px/g, "");
+    expect(raw).not.toMatch(/\d+px/);
     expect(rule(library, ".library-screen__body")).toMatch(/--library-module:\s*round\(nearest, calc\(12px/);
+  });
+
+  it("keeps the selection bar and the count in the filter row, where Select all is", () => {
+    expect(rule(filterBar, ".cp-filter-bar__trailing")).toContain("margin-inline-start: auto");
   });
 
   it("keeps one divider: only the pane has a right edge, the main column has no left one", () => {

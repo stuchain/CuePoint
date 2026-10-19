@@ -112,3 +112,13 @@
   margin: 0;
   color: var(--fg-muted);
 }
+
+/* The trail to the scope, at the start of the facts line: names with a chevron between (C44). */
+.library-header__trail {
+  color: var(--fg-muted);
+}
+
+.library-header__trail-arrow {
+  margin-inline: var(--space-xs);
+  vertical-align: middle;
+}

@@ -64,7 +64,7 @@ function renderHeader(
     <LibraryHeader
       summary={SUMMARY}
       scopeName="All tracks"
-      scopeGroup={null}
+      scopeTrail={[]}
       facts={FACTS}
       fallbackCount={3880}
       busy={null}
@@ -131,7 +131,7 @@ afterEach(() => {
 const PATH = "C:\\Users\\dj\\Downloads\\collection.xml";
 
 describe("after an import", () => {
-  it("has two buttons named for what they do, and no menu", () => {
+  it("has the check as a refresh icon beside the state and Export as a button, and no menu", () => {
     renderHeader();
 
     for (const name of ["Check for changes", "Export to Rekordbox…"]) {
@@ -154,12 +154,12 @@ describe("after an import", () => {
     expect(handlers.onImport).not.toHaveBeenCalled();
   });
 
-  it("makes Check secondary while the export is in sync, primary when it changed or went missing", () => {
+  it("makes Check a quiet icon while the export is up to date, a labelled primary when it changed or went missing", () => {
     const view = render(
       <LibraryHeader
         summary={summaryWith(false)}
         scopeName="All tracks"
-        scopeGroup={null}
+        scopeTrail={[]}
         facts={FACTS}
         fallbackCount={1}
         busy={null}
@@ -168,13 +168,14 @@ describe("after an import", () => {
       />,
     );
     const check = () => screen.getByRole("button", { name: "Check for changes" });
-    expect(check()).toHaveClass("cp-btn--secondary");
+    expect(check()).toHaveClass("cp-btn--quiet");
+    expect(check()).toHaveTextContent("");
     for (const next of [summaryWith(true), summaryWith(false, false)]) {
       view.rerender(
         <LibraryHeader
           summary={next}
           scopeName="All tracks"
-          scopeGroup={null}
+          scopeTrail={[]}
           facts={FACTS}
           fallbackCount={1}
           busy={null}
@@ -193,32 +194,33 @@ describe("after an import", () => {
     widths = { row: 1000, title: 120, beside: 200, button: 160 };
     renderHeader();
 
-    expect(screen.getByText("Check for changes")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Check for changes" })).toBeVisible();
     expect(screen.queryByText("Export…")).toBeNull();
   });
 
   it("never cuts a button's words: the chips beside the title go first", () => {
-    widths = { row: 500, title: 120, beside: 200, button: 160 };
+    // Only Export is in the actions while the file is up to date: the check is the refresh icon.
+    widths = { row: 440, title: 120, beside: 200, button: 160 };
     renderHeader({ extra: <button type="button">First steps 1/4</button> });
 
     const check = screen.getByRole("button", { name: "Check for changes" });
     const exported = screen.getByRole("button", { name: "Export to Rekordbox…" });
-    expect(check).toHaveTextContent("Check for changes");
+    expect(check).toBeInTheDocument();
     expect(exported).toHaveTextContent("Export to Rekordbox…");
     expect(screen.queryByRole("button", { name: "First steps 1/4" })).toBeNull();
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
   it("drops the chips when a long scope name, the chips and the buttons together do not fit one line", () => {
-    // 1000 wide would fit a short name; this name is 500 wide, and 500 + 200 + 2 x 160 > 1000.
-    widths = { row: 1000, title: 500, beside: 200, button: 160 };
+    // 1000 wide would fit a short name; this name is 700 wide, and 700 + 200 + 160 > 1000.
+    widths = { row: 1000, title: 700, beside: 200, button: 160 };
     renderHeader({ extra: <button type="button">First steps 1/4</button> });
     expect(screen.queryByRole("button", { name: "First steps 1/4" })).toBeNull();
   });
 
   it("moves the file and its state to the facts line when they do not fit beside the title", () => {
-    // 300 + 50 + 2 x 160 = 670 > 600: the name goes from beside the title to the end of the facts.
-    widths = { row: 600, title: 300, beside: 200, source: 50, button: 160 };
+    // 400 + 50 + 160 = 610 > 600: the name goes from beside the title to the end of the facts.
+    widths = { row: 600, title: 400, beside: 200, source: 50, button: 160 };
     renderHeader();
     expect(document.querySelector(".cp-screen-header__beside")).toBeNull();
     expect(document.querySelector(".cp-screen-header__summary .library-header__file")).not.toBeNull();
@@ -226,7 +228,7 @@ describe("after an import", () => {
   });
 
   it("keeps the file and its state beside the title when only the First steps chip must go", () => {
-    widths = { row: 700, title: 300, beside: 200, source: 50, button: 160 };
+    widths = { row: 700, title: 350, beside: 200, source: 50, button: 160 };
     renderHeader({ extra: <button type="button">First steps 1/4</button> });
     expect(document.querySelector(".cp-screen-header__beside .library-header__file")).not.toBeNull();
     expect(document.querySelector(".cp-screen-header__beside .cp-badge")).not.toBeNull();
@@ -234,7 +236,7 @@ describe("after an import", () => {
   });
 
   it("brings the chips back when the window grows", () => {
-    widths = { row: 500, title: 120, beside: 200, button: 160 };
+    widths = { row: 440, title: 120, beside: 200, button: 160 };
     renderHeader({ extra: <button type="button">First steps 1/4</button> });
     expect(screen.queryByRole("button", { name: "First steps 1/4" })).toBeNull();
 
@@ -260,11 +262,10 @@ describe("after an import", () => {
     expect(screen.getByText("Export to Rekordbox…")).toBeInTheDocument();
   });
 
-  it("says what is happening on the button doing it", () => {
+  it("keeps the button's name while it works, with the spinner and the busy words in its hint", () => {
     renderHeader({ busy: "checking", busyLabel: "Comparing with Rekordbox…" });
-    expect(
-      screen.getByRole("button", { name: "Comparing with Rekordbox…" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Check for changes" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Comparing with Rekordbox…" })).toBeNull();
     expect(screen.getByRole("button", { name: "Export to Rekordbox…" })).toBeDisabled();
   });
 
@@ -280,7 +281,7 @@ describe("the scope (R4-4)", () => {
       <LibraryHeader
         summary={SUMMARY}
         scopeName="All tracks"
-        scopeGroup={null}
+        scopeTrail={[]}
         facts={FACTS}
         fallbackCount={1}
         busy={null}
@@ -291,7 +292,9 @@ describe("the scope (R4-4)", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1, name: "Library" })).toBeInTheDocument();
     expect(container.querySelector(".cp-screen-header__display")).toHaveTextContent("All tracks");
-    expect(container.querySelector(".cp-screen-header__crumb")).toHaveTextContent("Library");
+    // No line above the title any more: the trail is in the facts line, and All tracks has none.
+    expect(container.querySelector(".cp-screen-header__crumb")).toBeNull();
+    expect(screen.queryByTestId("library-trail")).toBeNull();
   });
 
   it("names a playlist, with the group it is in above it", () => {
@@ -299,7 +302,7 @@ describe("the scope (R4-4)", () => {
       <LibraryHeader
         summary={SUMMARY}
         scopeName="Friday warm-up"
-        scopeGroup="Playlists"
+        scopeTrail={["Playlists"]}
         facts={FACTS}
         fallbackCount={1}
         busy={null}
@@ -308,18 +311,19 @@ describe("the scope (R4-4)", () => {
       />,
     );
     expect(container.querySelector(".cp-screen-header__display")).toHaveTextContent("Friday warm-up");
-    expect(container.querySelector(".cp-screen-header__crumb")).toHaveTextContent("Playlists");
+    expect(container.querySelector(".cp-screen-header__crumb")).toBeNull();
+    expect(screen.getByTestId("library-trail")).toHaveTextContent("Playlists");
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Library");
   });
 });
 
 describe("the path and folders (R7-4, R7-5)", () => {
-  it("shows the full path above the title", () => {
+  it("shows the full path in the facts line, a chevron icon between the names", () => {
     const { container } = render(
       <LibraryHeader
         summary={SUMMARY}
         scopeName="Sunset"
-        scopeGroup="Playlists › Gigs 2026 › Summer"
+        scopeTrail={["Playlists", "Gigs 2026", "Summer"]}
         facts={FACTS}
         fallbackCount={1}
         busy={null}
@@ -327,15 +331,17 @@ describe("the path and folders (R7-4, R7-5)", () => {
         {...HANDLERS()}
       />,
     );
-    expect(container.querySelector(".cp-screen-header__crumb")).toHaveTextContent(
-      "Playlists › Gigs 2026 › Summer",
-    );
+    const trail = screen.getByTestId("library-trail");
+    expect(trail).toHaveTextContent("PlaylistsGigs 2026Summer");
+    expect(trail.textContent).not.toContain("›");
+    expect(trail.querySelectorAll("[data-icon='chevron-right-sm']")).toHaveLength(2);
+    expect(container.querySelector(".cp-screen-header__crumb")).toBeNull();
   });
 
   it("says Folder and its playlists instead of 0 tracks", () => {
     renderHeader({
       scopeName: "Gigs 2026",
-      scopeGroup: "Playlists",
+      scopeTrail: ["Playlists"],
       folder: { count: 4, noun: "playlist" },
     });
     expect(screen.getByTestId("library-track-count")).toHaveTextContent("Folder");
@@ -364,11 +370,11 @@ describe("what the scope holds (K9)", () => {
   });
 
   it("starts the summary with the scope's name for a screen reader", () => {
-    renderHeader({ scopeName: "Friday warm-up", scopeGroup: "Playlists" });
+    renderHeader({ scopeName: "Friday warm-up", scopeTrail: ["Playlists"] });
     const summary = document.querySelector(".cp-screen-header__summary")!;
     const lead = summary.querySelector(".library-header__sr-only");
     expect(lead).toHaveTextContent("Friday warm-up:");
-    expect(summary.textContent?.startsWith("Friday warm-up: 36 tracks")).toBe(true);
+    expect(summary.textContent?.startsWith("Friday warm-up: Playlists · 36 tracks")).toBe(true);
   });
 
   it("no longer counts playlists", () => {
@@ -385,13 +391,13 @@ describe("the source line (K9)", () => {
     expect(name).toHaveAttribute("title", expect.stringContaining(PATH));
     expect(name).toHaveAttribute("title", expect.stringContaining("last read"));
     expect(name).toHaveAttribute("tabindex", "0");
-    expect(screen.getByText("In sync")).toBeInTheDocument();
+    expect(screen.getByText("Up to date")).toBeInTheDocument();
     expect(screen.queryByText(PATH)).toBeNull();
     expect(screen.queryByText(/^last read /)).toBeNull();
   });
 
   it.each([
-    [false, true, "In sync"],
+    [false, true, "Up to date"],
     [true, true, "Changed in Rekordbox"],
     [null, true, "Not checked yet"],
     [false, false, "File not found"],
@@ -400,7 +406,7 @@ describe("the source line (K9)", () => {
     expect(screen.getByText(word)).toBeInTheDocument();
   });
 
-  it("does not repeat \"In sync\" in a sentence, but explains what needs a word", () => {
+  it("does not repeat \"Up to date\" in a sentence, but explains what needs a word", () => {
     renderHeader({ summary: summaryWith(false, true) });
     expect(screen.queryByText(/Unchanged since your last import/)).toBeNull();
     expect(screen.queryByRole("status")).toBeNull();
@@ -416,9 +422,9 @@ describe("the source line (K9)", () => {
     const note = screen.getByRole("status");
     expect(note).toHaveTextContent(/could not tell whether this Rekordbox file has changed/);
     expect(note).not.toHaveClass("library-header__state--attention");
-    // Check stays a secondary button: nothing is known to need a look.
+    // Check stays the quiet refresh icon: nothing is known to need a look.
     expect(screen.getByRole("button", { name: "Check for changes" })).toHaveClass(
-      "cp-btn--secondary",
+      "cp-btn--quiet",
     );
   });
 

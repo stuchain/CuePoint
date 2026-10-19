@@ -26,6 +26,8 @@ import type { BatchSelection } from "../../api/cuepointBridge.types";
 import type { CleanTracks } from "../clean/cleanTracks";
 import { formatBpm } from "./trackValues";
 import { NOT_SET, NO_VALUE } from "../../words";
+import { COPY_VALUES, SYNC, opensDialog } from "../../format/words";
+import { formatCount } from "../../format/counts";
 
 export { writesLine } from "../../components/shell/activityActions";
 
@@ -114,7 +116,7 @@ export function artworkText(state: ArtworkState | null | undefined): string {
   }
 }
 
-/** The cover art line of Track details' Beatport section (INS-5). */
+/** The artwork line of Track details' Beatport section (INS-5). */
 export function coverArtText(state: ArtworkState | null | undefined): string {
   switch (state) {
     case "embedded":
@@ -199,7 +201,7 @@ export async function cleanTracksFor(
 
 /** What the page says when Clean was handed fewer tracks than were selected. */
 export function cleanCapLine(handed: number, selected: number): string {
-  return `Clean was given the first ${handed.toLocaleString()} of the ${selected.toLocaleString()} tracks selected. Narrow the selection to work on the rest.`;
+  return `Clean was given the first ${formatCount(handed)} of the ${formatCount(selected)} tracks selected. Narrow the selection to work on the rest.`;
 }
 
 /**
@@ -225,7 +227,7 @@ export function beatportMenuItems(
   if (handlers.onUseBeatport) {
     items.push({
       id: "beatport-values",
-      label: "Use Beatport's values…",
+      label: opensDialog(`${COPY_VALUES} Beatport values`),
       onSelect: handlers.onUseBeatport,
     });
   }
@@ -245,7 +247,7 @@ export function fixMenuItems(
   if (handlers.onWriteTags) {
     items.push({
       id: "fix-write-tags",
-      label: "Sync to files…",
+      label: SYNC.opener,
       onSelect: handlers.onWriteTags,
     });
   }

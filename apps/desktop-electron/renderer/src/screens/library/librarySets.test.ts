@@ -233,14 +233,14 @@ describe("Add to Set, as a batch", () => {
     );
   });
 
-  it("says there is no undo for a Set, not for a Collection", () => {
+  it("says nothing about undo, for a Set or a Collection", () => {
     expect(batchSummary(action, { ...ADDED_TO_SET, changed: 40 })).toBe(
-      "Added 40 tracks to “Friday” — 1 were already there. There is no undo for Set changes.",
+      "Added 40 tracks to “Friday” — 1 were already there.",
     );
     expect(batchConsequence("add_to_collection", "set")).toBe(
-      "It runs in the background, and there is no undo: adding tracks to or removing them from a Set cannot be undone.",
+      "It runs in the background, and you can keep working. Adding tracks to a Set or removing them is not recorded in History.",
     );
-    expect(batchConsequence("add_to_collection")).toMatch(/from a Collection cannot be undone/);
+    expect(batchConsequence("add_to_collection")).toMatch(/to a Collection or removing them is not recorded/);
   });
 
   it("is said of both in Activity, which does not record which it was", () => {

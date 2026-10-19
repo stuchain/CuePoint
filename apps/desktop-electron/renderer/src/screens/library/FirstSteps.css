@@ -4,10 +4,12 @@
   font-size: var(--font-size-md);
 }
 
+/* A numbered list: 1. 2. 3. (C146). */
 .first-steps__list {
   margin: 0;
   padding: 0;
   list-style: none;
+  counter-reset: first-steps;
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -17,26 +19,29 @@
   display: flex;
   align-items: center;
   gap: var(--space-md);
+  counter-increment: first-steps;
   padding: var(--space-sm);
   background: var(--bg-panel);
   border: var(--hairline) solid var(--border-muted);
+}
+
+.first-steps__item::before {
+  content: counter(first-steps) ".";
+  flex: none;
+  min-width: 1.5em;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
 }
 
 .first-steps__item[data-done="true"] {
   color: var(--fg-muted);
 }
 
-.first-steps__tick {
+/* A finished step's drawn check, in the quiet success colour. */
+.first-steps__done {
   flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: calc(var(--unit) * 5);
-  height: calc(var(--unit) * 5);
-  border: var(--hairline) solid var(--border-muted);
-  background: var(--bg-input);
   color: var(--success-text);
-  font-size: var(--font-size-sm);
 }
 
 .first-steps__text {

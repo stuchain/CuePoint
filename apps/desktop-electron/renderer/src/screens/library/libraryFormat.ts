@@ -7,6 +7,8 @@
  * read like the sentences themselves, not tests that go through a render.
  */
 import { formatDayTime } from "../../format/dates";
+import { countNoun, formatCount } from "../../format/counts";
+import { UP_TO_DATE } from "../../format/words";
 import { formatTotal } from "../../format/durations";
 import type {
   LibraryQuickFacets,
@@ -15,15 +17,12 @@ import type {
   RefreshApplied,
 } from "../../api/cuepointBridge.types";
 
-/** Thousands separators, because "3880 tracks" reads as a serial number. */
-export function formatCount(value: number): string {
-  return new Intl.NumberFormat().format(value);
-}
-
-/** "3,880 tracks" / "1 track". Counts are the whole point of this page. */
-export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
-  return `${formatCount(count)} ${count === 1 ? singular : plural}`;
-}
+/**
+ * The shared count helpers (C169), re-exported under the names other pages already import:
+ * `formatCount` groups digits by the computer's locale and `pluralize` is `countNoun`
+ * ("3,880 tracks", "1 track").
+ */
+export { countNoun as pluralize, formatCount };
 
 /** Just the file name, for a path too long to show in full. */
 export function fileName(filePath: string): string {
@@ -68,7 +67,7 @@ export function sourceState(source: LibrarySourceInfo): SourceState {
 export function sourceBadge(state: SourceState): string {
   switch (state) {
     case "unchanged":
-      return "In sync";
+      return UP_TO_DATE;
     case "changed":
       return "Changed in Rekordbox";
     case "missing":
@@ -144,7 +143,7 @@ export function removalWarning(diff: RefreshDiff): string | null {
   const count = diff.tracks.removed.count;
   if (count === 0) return null;
   return (
-    `${pluralize(count, "track")} in your library are no longer in this Rekordbox file. ` +
+    `${countNoun(count, "track")} in your library are no longer in this Rekordbox file. ` +
     "Refreshing deletes them, along with any ratings, tags and history CuePoint " +
     "has for them. This cannot be undone."
   );
@@ -164,14 +163,14 @@ export function referenceWarning(diff: RefreshDiff): string | null {
   if (!references || !references.has_references) return null;
   const kinds: string[] = [];
   if (references.collection_count > 0) {
-    const holders = pluralize(references.collection_count, "Collection");
+    const holders = countNoun(references.collection_count, "Collection");
     kinds.push(`${formatCount(references.collection_track_count)} in ${holders}`);
   }
   if (references.set_count > 0) {
     // Sets as their own kind, counted as the Collections are: "4 in 1 Set",
     // the engine's own refusal wording (PREP-02). An engine older than
     // `set_track_count` sends none, and the holders alone are still true.
-    const holders = pluralize(references.set_count, "Set");
+    const holders = countNoun(references.set_count, "Set");
     kinds.push(
       references.set_track_count > 0
         ? `${formatCount(references.set_track_count)} in ${holders}`
@@ -189,7 +188,7 @@ export function referenceWarning(diff: RefreshDiff): string | null {
   }
   const one = references.referenced_track_count === 1;
   return (
-    `${pluralize(references.referenced_track_count, "track")} you are about to ` +
+    `${countNoun(references.referenced_track_count, "track")} you are about to ` +
     `remove ${one ? "carries" : "carry"} your own work: ${kinds.join(", ")}. ` +
     `Removing ${one ? "it" : "them"} removes that too.`
   );
@@ -209,18 +208,18 @@ export function needsReferenceConfirmation(diff: RefreshDiff): boolean {
 export function applyLabel(diff: RefreshDiff): string {
   const removed = diff.tracks.removed.count;
   if (removed === 0) return "Apply changes";
-  return `Remove ${pluralize(removed, "track")} and refresh`;
+  return `Remove ${countNoun(removed, "track")} and refresh`;
 }
 
 /** The line shown after a refresh finishes. */
 export function appliedLine(result: RefreshApplied): string {
-  const parts = [`${pluralize(result.track_count, "track")} in your library`];
+  const parts = [`${countNoun(result.track_count, "track")} in your library`];
   if (result.tracks_inserted > 0) parts.push(`${formatCount(result.tracks_inserted)} added`);
   if (result.tracks_deleted > 0) parts.push(`${formatCount(result.tracks_deleted)} removed`);
   if (result.relinked_count > 0) parts.push(`${formatCount(result.relinked_count)} re-linked`);
   // Marks CuePoint cannot read are skipped and counted, never stored (DEC-118).
   const skipped = result.marks?.skipped ?? 0;
-  if (skipped > 0) parts.push(`${pluralize(skipped, "unreadable mark")} skipped`);
+  if (skipped > 0) parts.push(`${countNoun(skipped, "unreadable mark")} skipped`);
   return parts.join(" · ");
 }
 
@@ -270,12 +269,12 @@ export function formatBpmRange(min: number | null, max: number | null): string |
  * knows is shown, never numbers of the scope the user has just left.
  */
 export function scopeFactsLine(facts: LibraryQuickFacets | null, fallbackCount: number): string[] {
-  if (!facts) return [pluralize(fallbackCount, "track")];
-  const parts = [pluralize(facts.total, "track")];
+  if (!facts) return [countNoun(fallbackCount, "track")];
+  const parts = [countNoun(facts.total, "track")];
   const length = formatLength(facts.total_seconds);
   if (length) parts.push(length);
   const bpm = formatBpmRange(facts.bpm.min, facts.bpm.max);
   if (bpm) parts.push(bpm);
-  if (facts.keys.length > 0) parts.push(pluralize(facts.keys.length, "key"));
+  if (facts.keys.length > 0) parts.push(countNoun(facts.keys.length, "key"));
   return parts;
 }
