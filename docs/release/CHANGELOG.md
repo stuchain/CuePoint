@@ -8,12 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **View has Search library… and Activity….** Both are in the **View** menu with their keys (**Ctrl+K** and **Ctrl+Shift+A**), and the shortcuts list now includes Clean's review (**Enter** plays, **Space** ticks) and the queue's keys (**Up**, **Down**, **Home**, **End**, **Enter**, **Menu key**, **Alt+Up**, **Alt+Down**, **Delete**).
+- **A "more" icon.** The selected Collection's row menu is a three-dot icon button, and Discover's icon in the sidebar is a gem, so it no longer looks like the Search magnifier.
 - **Continue a dig that stopped partway.** A dig stopped by Beatport, a refused sign-in, a closed app or your **Stop** now reads "Stopped" (not "Failed"), says why on its card and has a **Continue** button that picks it up where it stopped, skipping the charts, artists and labels already read and adding to the same dig. Clean's Past searches also say why a match stopped ("Stopped: Beatport did not answer."); **Resume** was already there.
 
 ### Fixed
+- **Interface fixes.** Radios keep their border on hover; cut-off headers and the Statistics header facts fit; low-contrast text, hover tabs and borders in Retro, Neo dark and Muted are readable; a right-click on an unselected row selects it first (the menu then acts on that row); **Undo** after removing tracks from a Collection or a Set puts them back in their old places, and a partly removed selection says so; **Enter** in Prepare plays the entry (it used to open an editor), and **Enter** in a dialog submits once.
 - **Digs and Clean matches no longer stop when the Beatport sign-in renews.** Requests wait out the few seconds while the new sign-in arrives (CuePoint checks for it every second once the old one ends) and a request Beatport refuses is tried once more with the new sign-in. This covers Discover, Clean, lookups, playlist pushes and Beatport pages.
 
 ### Changed
+- **Look and wording, page by page.**
+  - **Toggles and radios.** A button that is on has one soft violet look and reports itself as pressed, and a radio is a square with a small square inside.
+  - **Sync and match words.** Writing to files is **Sync** everywhere (**Sync to files…**, **Sync 17 files**, **Nothing to sync**, **Undo this sync**), the Library header says **Up to date**, **Check for changes** is the one word for re-reading the Rekordbox file, and **Copy Beatport values…** replaces "Use Beatport's values…". Match states read **Confirmed**, **To check**, **No match**, **Not looked up yet**, **Rejected** and **Search failed**, and the agree button is **Use this match**. Confirmed rows are a quiet tick; only problems get a chip.
+  - **Clean.** Match is one row of tabs, a caption ("Step 1 of 3 · Tick playlists", "Step 3 of 3 · Check and sync …"), and search; a Review is a view inside Playlists with a **‹ Playlists** back button, and **Sync to files…** sits at its bottom right. Playlists, Past searches and the Review share the Library table's look. **Enter** plays a review row and **Space** ticks it.
+  - **Keys.** Two panes: the Sources and the wheel (or the list of counts) on the left, the track list beside them with its toolbar (count, **Select all**, **Open in Library** and the **Wheel | List** switch), so picking a key shows its tracks at once.
+  - **The queue** opens at the Track details width, scales with the text size and can be dragged wider, but never past half the window.
+  - **Prepare.** **View** has ticked items (**Tempo lane**, **Transition strip**, **Mix in and Mix out**); the New Set dialogs end in **Create the Set**; **Enter** plays from the selected entry and **F2** edits its mix-in time. The Set table opens with fewer columns (Fit, Starts at, Mix in, Mix out, Transition and Note are in **Columns…**).
+  - **Statistics, Settings and dialogs.** Statistics lists share the Library table's header, row height and hover, with a sticky header; Settings has a sticky section list; dialogs share one name-and-folder form and one footer; set list toasts have no full stop.
+  - **Activity** is a row in the sidebar's foot above Settings and **View → Activity…**; the status strip has no button.
+  - **Themes** change colour only: tuned palettes (line strength, a darker Classic toolbar, a cyan link in Club neon, softer status colours in Muted) and Rekordbox's blue, orange and white in every waveform. Text sizes are **Extra small (1×)**, **Small (1.25×)**, **Medium (1.5×)**, **Large** and **Extra large**.
+  - **Artist, Label and Similar pages** opened from the Library, Track details, Clean, Prepare, Keys or the player bar say so in their top line (**Library › Artist**) and keep the Library lit in the sidebar.
+  - **Past searches has no Delete.** Digs can be deleted from Discover, but the engine has no endpoint to delete a Clean match run, so Past searches only opens, resumes, matches again and saves the review list.
 - **UI consistency foundation.** Buttons have six button looks (primary, secondary, write, danger, confirm-delete and quiet; a bare button is secondary), status text uses the text colours, font weights have names, and chips, notices, toasts, menus and dialogs are shared. Writing to files is **Sync** ("Up to date" when nothing is waiting), match states read Confirmed, To check, No match, Not looked up yet and Rejected, tables share one look, and column widths are remembered in 1x units so a text-size change keeps them. Waveform colours follow Rekordbox in every theme.
 
 ## [1.0.0-test.4] - 2026-10-18

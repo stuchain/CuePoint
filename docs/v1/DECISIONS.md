@@ -8216,7 +8216,7 @@ marked as recommended (A).
 - D5 any full sentence is set in Inter; the pixel font stays for short labels (five words or fewer), headings, buttons, tabs and chips.
 - D6 a radio is the square box with a small centred square when selected.
 - D7 selection actions sit in the bar right above the list ("Select all" in the filter row), a step in a flow ends with its main action at the bottom right, and actions for the whole page sit in the header, left of Details.
-- D8 Clean's hand-built tables, the shortcuts table and the Statistics lists share one table stylesheet: the Library table's header band, row height, padding, sticky header and hover.
+- D8 Clean's hand-built tables, the shortcuts table and the Statistics lists share one table stylesheet: the Library table's header band, row height, padding, sticky header and hover (the Statistics lists, drawn as `<ol>` rows, use its list variant, `cp-data-grid` in `DataTable.css`).
 - D9 the bar above every list is the Library toolbar band: a dark band, no frame, controls set slightly in from the edge.
 - D10 themes are colour-only with tuned palettes (line strength 2.2 to 2.8:1, a darker Classic toolbar, a cyan link in Club neon, softer status colours in Muted, a row-divider colour for Retro).
 - D11 the queue opens at the Track details width, scaled with the text size, and can be dragged wider.
