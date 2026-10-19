@@ -74,14 +74,17 @@
   line-height: var(--line-height-prose);
 }
 
-/* The lead line (what the dialog is for) is grey; the rest is the primary colour. */
+/* The lead line (what the dialog is for) is grey; the rest is the primary colour. Both are
+   sentences, so Inter (D5, C55); labels and headings in the body keep the pixel face. */
 .cp-modal__lead {
   color: var(--fg-muted);
+  font-family: var(--font-data);
 }
 
 /* Paragraphs in a body are flex children: the body's gap is the space, never a margin. */
 .cp-modal__body > p {
   margin: 0;
+  font-family: var(--font-data);
 }
 
 .cp-modal > .cp-modal__header,
@@ -95,6 +98,7 @@
   margin: 0;
   padding: 0 var(--space-lg) var(--space-sm);
   color: var(--fg-muted);
+  font-family: var(--font-data);
   font-size: var(--text-body);
   text-align: right;
 }

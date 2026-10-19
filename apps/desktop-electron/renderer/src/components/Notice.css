@@ -24,8 +24,11 @@
   --notice-tone: var(--accent-warning);
 }
 
+/* A notice says a sentence, so Inter (D5, C55); its short title stays in the pixel face. */
 .cp-notice__text {
   min-width: 0;
+  font-family: var(--font-data);
+  line-height: var(--line-height-prose);
 }
 
 .cp-notice__text > p {
@@ -33,6 +36,7 @@
 }
 
 .cp-notice__title {
+  font-family: var(--font-pixel-digits);
   font-weight: var(--weight-strong);
 }
 

@@ -24,10 +24,13 @@
   color: var(--fg-primary);
 }
 
+/* The description is a sentence, so Inter (D5, C55); the headline stays in the pixel face. */
 .cp-empty-state__description {
   margin: 0;
   max-width: 60ch;
+  font-family: var(--font-data);
   font-size: var(--text-body);
+  line-height: var(--line-height-prose);
   color: var(--fg-muted);
 }
 

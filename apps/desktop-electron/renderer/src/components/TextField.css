@@ -61,8 +61,10 @@
   border-color: var(--accent-danger);
 }
 
+/* A hint or an error is a sentence, so Inter (D5, C55). */
 .cp-field__hint,
 .cp-field__error {
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
 }
 
