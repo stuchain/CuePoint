@@ -17,10 +17,12 @@ export type ScopeMode = "all" | "list" | "none";
 
 export interface NewRunForm {
   genreIds: number[];
+  /**
+   * The one window of dates the dig reads: charts and releases alike. (The names are
+   * the charts' from before releases shared it.)
+   */
   chartsFrom: string;
   chartsTo: string;
-  /** As typed, so a half-typed number is not replaced under the cursor. */
-  days: string;
   artists: ScopeMode;
   /** The saved artist list a "list" scope reads, or null before one is chosen. */
   artistListId: number | null;
@@ -44,7 +46,6 @@ export function defaultForm(defaults: DiscoverDefaults): NewRunForm {
     genreIds: [...defaults.genre_ids],
     chartsFrom: defaults.charts_from,
     chartsTo: defaults.charts_to,
-    days: String(defaults.new_releases_days),
     artists: "all",
     artistListId: null,
     labels: "all",
@@ -75,20 +76,15 @@ export function formProblems(
   if (form.genreIds.length > limits.max_genres) {
     problems.push(`Choose at most ${limits.max_genres} genres.`);
   }
-  if (form.genreIds.length > 0) {
-    const from = dayOf(form.chartsFrom);
-    const to = dayOf(form.chartsTo);
-    if (from === null || to === null) {
-      problems.push("Give both chart dates as dates.");
-    } else if (from > to) {
-      problems.push("The first chart date is after the last.");
-    } else if (to - from + 1 > limits.max_window_days) {
-      problems.push(`Charts can span at most ${limits.max_window_days} days.`);
-    }
-  }
-  const days = Number(form.days);
-  if (!/^\d+$/.test(form.days.trim()) || days < 1 || days > limits.max_window_days) {
-    problems.push(`Releases reach back from 1 to ${limits.max_window_days} days.`);
+  // One window for charts and releases, so it is checked with or without a genre.
+  const from = dayOf(form.chartsFrom);
+  const to = dayOf(form.chartsTo);
+  if (from === null || to === null) {
+    problems.push("Give both dates as dates.");
+  } else if (from > to) {
+    problems.push("The first date is after the last.");
+  } else if (to - from + 1 > limits.max_window_days) {
+    problems.push(`Dates can span at most ${limits.max_window_days} days.`);
   }
   problems.push(...listProblem("artist", form.artists, form.artistListId, members.artists));
   problems.push(...listProblem("label", form.labels, form.labelListId, members.labels));
@@ -130,9 +126,10 @@ export function runRequest(
 ): DiscoverRunRequest {
   const request: DiscoverRunRequest = {
     genre_ids: [...form.genreIds],
-    new_releases_days: Number(form.days),
     artists: scope(form.artists, members.artists),
     labels: scope(form.labels, members.labels),
+    releases_from: form.chartsFrom,
+    releases_to: form.chartsTo,
   };
   // Chart dates mean nothing without a genre to read charts in.
   if (form.genreIds.length > 0) {
@@ -145,18 +142,18 @@ export function runRequest(
 }
 
 /**
- * The chart dates in a few words, for the genres legend (DSC-5):
- * "last 30 days" while they are the engine's default window, the two dates
+ * The dig's dates in a few words, for the dig bar's sentence (DSC-5):
+ * "the last 30 days" while they are the engine's default window, the two dates
  * once they are not.
  */
-export function chartsWindowShort(form: NewRunForm, defaults: DiscoverDefaults): string {
+export function windowShort(form: NewRunForm, defaults: DiscoverDefaults): string {
   const from = dayOf(form.chartsFrom);
   const to = dayOf(form.chartsTo);
-  if (from === null || to === null) return "chosen dates";
+  if (from === null || to === null) return "the chosen dates";
   const isDefault =
     form.chartsFrom === defaults.charts_from && form.chartsTo === defaults.charts_to;
   const days = to - from;
-  if (isDefault && days >= 1) return `last ${days} days`;
+  if (isDefault && days >= 1) return `the last ${days} days`;
   return formatIsoRange(form.chartsFrom, form.chartsTo);
 }
 

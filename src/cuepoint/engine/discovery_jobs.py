@@ -175,6 +175,8 @@ def start_discovery_job(
     artists: Optional[Iterable[str]] = None,
     labels: Optional[Iterable[str]] = None,
     include_user_charts: bool = False,
+    releases_from: Optional[date] = None,
+    releases_to: Optional[date] = None,
 ) -> Job:
     """Start a discovery run over the library.
 
@@ -197,6 +199,8 @@ def start_discovery_job(
         artists=artists,
         labels=labels,
         include_user_charts=include_user_charts,
+        releases_from=releases_from,
+        releases_to=releases_to,
     )
 
     def runner(job: Job) -> None:

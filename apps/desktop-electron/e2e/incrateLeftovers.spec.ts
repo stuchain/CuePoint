@@ -222,7 +222,8 @@ test.describe("What inCrate left behind (DISCOVER-12)", () => {
         return { summary, options, runs, wantlist, page, similar, token };
       });
       expect(answers.summary.track_count).toBe(2);
-      // The settings loaded: Discover's release window is the file's 14 days.
+      // The settings loaded: the engine still reports the file's 14 days (the
+      // desktop form now sends its own From/To dates for releases).
       expect(answers.options.refusal).toBeNull();
       expect(answers.options.value!.defaults.new_releases_days).toBe(14);
       // And a pushed playlist is named in the file's ISO format.

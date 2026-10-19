@@ -32,7 +32,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import pytest
@@ -563,6 +563,21 @@ class TestStartingARun:
         }
         assert params["labels"] == {"picked": [], "count": 0, "linked_ids": 0}
 
+    def test_release_dates_are_carried_to_the_run(self, engine, store, world):
+        today = date.today()
+        body = {
+            "genre_ids": [],
+            "releases_from": (today - timedelta(days=100)).isoformat(),
+            "releases_to": (today - timedelta(days=80)).isoformat(),
+        }
+        job = ok(post(engine, api.RUN_START_PATH, body), 202)
+        run_id = finished(store, job["id"]).result["id"]
+        params = ok(get(engine, run_path(run_id)))["run"]["params"]
+        assert (params["releases_from"], params["releases_to"]) == (
+            body["releases_from"],
+            body["releases_to"],
+        )
+
     def test_without_a_token_it_is_refused_as_a_value_and_starts_nothing(
         self, engine, store, library
     ):
@@ -580,6 +595,16 @@ class TestStartingARun:
             ({"genre_ids": "5"}, "genre_ids must be a list"),
             ({"genre_ids": [5], "charts_from": "yesterday"}, "YYYY-MM-DD"),
             ({"genre_ids": [5], "charts_from": "2026-02-30"}, "not a date"),
+            ({"genre_ids": [5], "releases_from": "2026-09-01"}, "both"),
+            (
+                {
+                    "genre_ids": [5],
+                    "releases_from": "2026-09-10",
+                    "releases_to": "2026-09-01",
+                },
+                "ends before",
+            ),
+            ({"genre_ids": [5], "releases_to": "yesterday"}, "YYYY-MM-DD"),
             ({"genre_ids": [5], "new_releases_days": 0}, "new_releases_days"),
             ({"genre_ids": [5], "new_releases_days": True}, "whole number"),
             ({"genre_ids": [-1]}, "genre id"),

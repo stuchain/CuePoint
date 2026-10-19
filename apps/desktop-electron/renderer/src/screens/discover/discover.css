@@ -306,12 +306,6 @@
   min-width: 0;
 }
 
-.discover-new__dates {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-md);
-}
-
 .discover-new__choice {
   display: flex;
   align-items: center;
@@ -351,7 +345,7 @@
  * The dig bar: the page's one 32-high panel bar (area 61), pinned flush with the foot of what
  * scrolls so Start is always at hand. One line only, to cover no more than a row of the form
  * under it: the summary sentence (cut with an ellipsis; the app hint shows the whole of it), the
- * window's days, and Start looking at the right.
+ * window's From and To dates, and Start looking at the right.
  */
 .discover-new__bar {
   display: flex;
@@ -404,7 +398,8 @@
   white-space: nowrap;
 }
 
-.discover-new__days {
+/* The window's From and To in the bar: one pick for charts and releases (DSC-5). */
+.discover-new__dates {
   flex: none;
   display: flex;
   align-items: center;
@@ -413,13 +408,12 @@
   font-size: var(--text-body);
 }
 
-.discover-new__days-label {
+.discover-new__dates-label {
   color: var(--fg-primary);
 }
 
-.discover-new__days-input {
-  width: calc(64px * var(--scale));
-  text-align: center;
+.discover-new__date {
+  width: calc(150px * var(--scale));
 }
 
 .discover-genres,
@@ -782,18 +776,6 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-md);
-}
-
-/* DSC-5: chart dates folded under "More options". */
-.discover-new__more {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.discover-new__more > summary {
-  cursor: pointer;
-  font-size: var(--font-size-sm);
 }
 
 /* A past search's row: the card, with its ⋯ menu button at the top right and, while it

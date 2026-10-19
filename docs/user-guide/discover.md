@@ -25,9 +25,8 @@ See [Where inCrate went](#where-incrate-went) if you used it.
 
 **New dig** asks what to look for, starting from your defaults. The tab is the heading; when you are not signed in, the sign-in banner sits under the tabs, and with no library the same **No library yet** block as the other pages sits above the form (a dig of genre charts works without one). A bar right under the
 form says in a sentence what the dig will cover ("Look for charts in 2 genres,
-releases by 25 artists and 9 labels from the last 30 days."), with **Change the
-window** (**Releases from the last … days**) beside it and **Start looking** at the
-right. The bar is the same plain 32-high bar the other pages use, and it sits flush
+releases by 25 artists and 9 labels from the last 30 days."), with the **Dates**
+(a **From** and a **To** date) beside it and **Start looking** at the right. The bar is the same plain 32-high bar the other pages use, and it sits flush
 with the bottom of the page: the form scrolls behind it, never beneath a gap. The
 genre and the artist and label choices are cards; the sentence, when it is cut short,
 shows in full when you rest the pointer on it.
@@ -42,16 +41,18 @@ shows in full when you rest the pointer on it.
   artist behind them; a dig leaves those out unless you turn on **Include charts
   by regular Beatport users** in **Settings → Beatport**. The note under the
   genres says which it will read. A dig records which it read.
-  Tick no genre and it reads no charts. The heading says which dates it will
-  read ("last 30 days"); to choose other dates open **More options**, which holds
-  **Charts from** and **Charts to**. Until you sign in to Beatport, the genres
+  Tick no genre and it reads no charts. The heading says how many genres you
+  ticked; the dates are the **Dates** in the bar, below. Until you sign in to Beatport, the genres
   read "Genres appear after you sign in."
 - **Artists** and **Labels.** Each is every artist or label in your library
   (with how many), **a saved list** of them, or none. A saved list is picked
   from the drop-down beside it, which says how many names each list holds.
-- **Releases from the last … days** (under the sentence in the bar). New releases on your
-  labels, and on the artists you chose from a saved list, in that many days. When
-  you ticked genres, only releases in those genres count.
+- **Dates** (**From** and **To**, in the bar beside **Start looking**). One window
+  for the whole dig, the last 30 days to start with: the charts are read from these
+  dates, and so are the new releases on your labels and on the artists you chose from
+  a saved list. The sentence in the bar says the window ("from the last 30 days", or
+  the two dates once you change them). When you ticked genres, only releases in those
+  genres count.
 
 ### Saved lists
 

@@ -540,7 +540,7 @@ describe("Results", () => {
     expect(items[0]).toHaveTextContent("Failed");
     expect(items[0]).toHaveTextContent("0 tracks found");
     expect(items[1]).toHaveTextContent("Finished");
-    expect(items[1]).toHaveTextContent("House, Techno (Peak Time / Driving) · 30 days of releases");
+    expect(items[1]).toHaveTextContent("House, Techno (Peak Time / Driving) · Releases from");
     expect(items[1]).toHaveTextContent("7 tracks found");
     for (const item of items) {
       expect(within(item).getByRole("button", { name: /^More for / })).toBeInTheDocument();
@@ -1148,41 +1148,41 @@ describe("New dig", () => {
     expect(within(panel).queryByText(/then press Start looking/)).toBeNull();
   });
 
-  it("shows the chart window in the legend, and folds the chart dates under More options (DSC-5)", async () => {
+  it("shows only the genre count in the legend, with the dates in the bar (DSC-5)", async () => {
     renderDiscover();
     const panel = await openNewSearch();
     const genres = within(panel).getByRole("group", { name: "Genres for DJ charts" });
-    expect(within(genres).getByText(/^0 chosen · last \d+ days$/)).toBeInTheDocument();
+    expect(within(genres).getByText("0 chosen")).toBeInTheDocument();
     expect(within(panel).queryByText(/artists publish charts/)).toBeNull();
-    const more = within(panel).getByText("More options").closest("details") as HTMLDetailsElement;
-    expect(more.open).toBe(false);
-    expect(more).toContainElement(within(panel).getByLabelText("Charts from"));
-    expect(more).toContainElement(within(panel).getByLabelText("Charts to"));
-    expect(within(panel).queryByText(/Charts from the last \d+ days\./)).toBeNull();
+    expect(within(panel).queryByText("More options")).toBeNull();
+    const bar = within(panel).getByRole("group", { name: "Start a dig" });
+    expect(bar).toContainElement(within(panel).getByLabelText("From"));
+    expect(bar).toContainElement(within(panel).getByLabelText("To"));
+    expect(bar).toHaveTextContent("from the last 30 days");
   });
 
   it("starts from the engine's defaults, and asks for what was chosen", async () => {
     renderDiscover();
     const panel = await openNewSearch();
-    expect(within(panel).getByLabelText("Releases from the last (days)")).toHaveValue(30);
-    expect(within(panel).getByLabelText("Charts from")).toHaveValue(OPTIONS.defaults.charts_from);
-    // No genre chosen: no chart dates to give.
-    expect(within(panel).getByLabelText("Charts from")).toBeDisabled();
+    expect(within(panel).getByLabelText("From")).toHaveValue(OPTIONS.defaults.charts_from);
+    expect(within(panel).getByLabelText("To")).toHaveValue(OPTIONS.defaults.charts_to);
+    // No genre chosen: the dates are still the releases' window.
+    expect(within(panel).getByLabelText("From")).toBeEnabled();
     expect(within(panel).getByText("Every artist in your library (3)")).toBeInTheDocument();
 
     fireEvent.click(within(panel).getByRole("checkbox", { name: "House" }));
-    fireEvent.change(within(panel).getByLabelText("Releases from the last (days)"), {
-      target: { value: "14" },
-    });
+    fireEvent.change(within(panel).getByLabelText("From"), { target: { value: "2026-09-01" } });
+    fireEvent.change(within(panel).getByLabelText("To"), { target: { value: "2026-09-30" } });
     fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
     await waitFor(() =>
       expect(bridge.startDiscoveryRun).toHaveBeenCalledWith({
         genre_ids: [5],
-        new_releases_days: 14,
         artists: null,
         labels: null,
-        charts_from: OPTIONS.defaults.charts_from,
-        charts_to: OPTIONS.defaults.charts_to,
+        charts_from: "2026-09-01",
+        charts_to: "2026-09-30",
+        releases_from: "2026-09-01",
+        releases_to: "2026-09-30",
       }),
     );
     expect(

@@ -274,6 +274,13 @@ class TestTheRequest:
             {"new_releases_days": 0},
             {"new_releases_days": MAX_WINDOW_DAYS + 1},
             {"new_releases_days": True},
+            {"releases_from": date(2026, 9, 1)},
+            {"releases_to": date(2026, 9, 1)},
+            {"releases_from": date(2026, 9, 10), "releases_to": date(2026, 9, 1)},
+            {
+                "releases_from": TODAY - timedelta(days=MAX_WINDOW_DAYS),
+                "releases_to": TODAY,
+            },
             {"artists": "Mara Veil"},
             {"labels": [3]},
         ],
@@ -281,6 +288,58 @@ class TestTheRequest:
     def test_what_a_run_cannot_use_is_refused(self, db, kwargs):
         with pytest.raises(ValueError):
             make(db, BeatportWorld()).request(**kwargs)
+
+
+class TestTheReleaseDates:
+    def test_given_dates_are_carried_to_the_request(self, db):
+        asked = make(db, BeatportWorld()).request(
+            releases_from=date(2026, 9, 1), releases_to=date(2026, 9, 30)
+        )
+        assert (asked.releases_from, asked.releases_to) == (
+            date(2026, 9, 1),
+            date(2026, 9, 30),
+        )
+
+    def test_without_them_the_request_has_none(self, db):
+        asked = make(db, BeatportWorld()).request()
+        assert (asked.releases_from, asked.releases_to) == (None, None)
+
+    def test_a_past_range_reads_releases_between_the_two_dates_not_up_to_today(
+        self, db, library, world
+    ):
+        service = make(db, world)
+        run = service.run(
+            request(
+                service,
+                genre_ids=[],
+                labels=["Nightfall Audio"],
+                releases_from=TODAY - timedelta(days=100),
+                releases_to=TODAY - timedelta(days=80),
+            )
+        )
+        assert run.outcome == RUN_SUCCEEDED
+        # Only the 90 days old release is inside the range.
+        assert found(db, run.id) == [9]
+        assert run.params["releases_from"] == (TODAY - timedelta(days=100)).isoformat()
+        assert run.params["releases_to"] == (TODAY - timedelta(days=80)).isoformat()
+        # The configured days did not decide this window, so the run does not list them.
+        assert run.params["new_releases_days"] is None
+
+    def test_with_dates_the_unused_days_are_not_checked(self, db):
+        asked = make(db, BeatportWorld()).request(
+            releases_from=date(2026, 9, 1),
+            releases_to=date(2026, 9, 30),
+            new_releases_days=0,
+        )
+        assert asked.releases_from == date(2026, 9, 1)
+
+    def test_without_dates_the_window_is_the_last_days_up_to_today(
+        self, db, library, world
+    ):
+        service = make(db, world)
+        run = service.run(request(service, genre_ids=[], new_releases_days=30))
+        assert run.params["releases_to"] == TODAY.isoformat()
+        assert run.params["new_releases_days"] == 30
 
 
 # ---------------------------------------------------------------------- run

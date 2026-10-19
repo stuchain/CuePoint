@@ -201,6 +201,8 @@ RUN_START_FIELDS: Tuple[str, ...] = (
     "artists",
     "labels",
     "include_user_charts",
+    "releases_from",
+    "releases_to",
 )
 WANTLIST_ADD_FIELDS: Tuple[str, ...] = ("track_ids", "run_id", "groups")
 WANTLIST_REMOVE_FIELDS: Tuple[str, ...] = ("track_ids",)
@@ -703,6 +705,8 @@ def run_start(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]
         artists=_optional_list(data, "artists"),
         labels=_optional_list(data, "labels"),
         include_user_charts=_optional_bool(data, "include_user_charts", False),
+        releases_from=_optional_date(data, "releases_from"),
+        releases_to=_optional_date(data, "releases_to"),
     )
     return _job_started(job)
 

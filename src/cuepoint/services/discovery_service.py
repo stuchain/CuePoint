@@ -243,7 +243,11 @@ class DiscoveryRequest:
         genre_ids: The genres to read charts in; none reads no charts.
         charts_from: The first day a chart may be published.
         charts_to: The last.
-        new_releases_days: How many days back label releases are read.
+        new_releases_days: How many days back label releases are read, when
+            no release dates are given.
+        releases_from: The first day a release may be dated; with
+            ``releases_to``, replaces ``new_releases_days``.
+        releases_to: The last.
         artists: The library artists to match chart makers against, as the
             user named them; ``None`` for every artist in the library.
         labels: The library labels to read releases from; ``None`` for all.
@@ -260,6 +264,8 @@ class DiscoveryRequest:
     artists: Optional[Tuple[str, ...]] = None
     labels: Optional[Tuple[str, ...]] = None
     include_user_charts: bool = False
+    releases_from: Optional[date] = None
+    releases_to: Optional[date] = None
 
     def __post_init__(self) -> None:
         """Validate the request."""
@@ -273,11 +279,22 @@ class DiscoveryRequest:
             raise ValueError("The chart window ends before it starts")
         if (self.charts_to - self.charts_from).days >= MAX_WINDOW_DAYS:
             raise ValueError(f"The chart window is at most {MAX_WINDOW_DAYS} days")
+        if (self.releases_from is None) != (self.releases_to is None):
+            raise ValueError("Release dates are given as both a start and an end")
+        if self.releases_from is not None and self.releases_to is not None:
+            if self.releases_from > self.releases_to:
+                raise ValueError("The release window ends before it starts")
+            if (self.releases_to - self.releases_from).days >= MAX_WINDOW_DAYS:
+                raise ValueError(
+                    f"The release window is at most {MAX_WINDOW_DAYS} days"
+                )
         days = self.new_releases_days
-        if isinstance(days, bool) or not isinstance(days, int):
-            raise ValueError("new_releases_days is a whole number of days")
-        if not 1 <= days <= MAX_WINDOW_DAYS:
-            raise ValueError(f"new_releases_days is 1 to {MAX_WINDOW_DAYS}")
+        # With release dates the days are not used, so they are not checked.
+        if self.releases_from is None:
+            if isinstance(days, bool) or not isinstance(days, int):
+                raise ValueError("new_releases_days is a whole number of days")
+            if not 1 <= days <= MAX_WINDOW_DAYS:
+                raise ValueError(f"new_releases_days is 1 to {MAX_WINDOW_DAYS}")
         if not isinstance(self.include_user_charts, bool):
             raise ValueError("include_user_charts is true or false")
         for names in (self.artists, self.labels):
@@ -444,6 +461,8 @@ class DiscoveryService(IDiscoveryService):
         artists: Optional[Iterable[str]] = None,
         labels: Optional[Iterable[str]] = None,
         include_user_charts: bool = False,
+        releases_from: Optional[date] = None,
+        releases_to: Optional[date] = None,
     ) -> DiscoveryRequest:
         """A run's request, with inCrate's defaults for what is not given.
 
@@ -481,6 +500,8 @@ class DiscoveryService(IDiscoveryService):
             artists=_names(artists),
             labels=_names(labels),
             include_user_charts=include_user_charts,
+            releases_from=releases_from,
+            releases_to=releases_to,
         )
 
     def _configured_genres(self) -> List[int]:
@@ -542,7 +563,11 @@ class DiscoveryService(IDiscoveryService):
             for key, beatport_id in self._credits.label_ids_by_key().items()
             if key in label_names
         }
-        releases_from = today - timedelta(days=request.new_releases_days)
+        if request.releases_from is not None and request.releases_to is not None:
+            releases_from, releases_to = request.releases_from, request.releases_to
+        else:
+            releases_from = today - timedelta(days=request.new_releases_days)
+            releases_to = today
         mode = charts_mode(request)
         artists_asked = len(artists)
         if mode == CHARTS_ARTISTS and artists_asked > MAX_PICKED_ARTISTS:
@@ -561,9 +586,13 @@ class DiscoveryService(IDiscoveryService):
             "genre_ids": list(request.genre_ids),
             "charts_from": request.charts_from.isoformat(),
             "charts_to": request.charts_to.isoformat(),
-            "new_releases_days": request.new_releases_days,
+            # Kept only when it decided the window: a run over chosen dates
+            # would otherwise list the configured default it never used.
+            "new_releases_days": (
+                None if request.releases_from is not None else request.new_releases_days
+            ),
             "releases_from": releases_from.isoformat(),
-            "releases_to": today.isoformat(),
+            "releases_to": releases_to.isoformat(),
             "artists": {
                 "picked": None if request.artists is None else list(request.artists),
                 "count": len(artists),
@@ -620,7 +649,7 @@ class DiscoveryService(IDiscoveryService):
                     artists,
                     linked_artists,
                     releases_from,
-                    today,
+                    releases_to,
                     progress,
                     cancel,
                 )
@@ -628,7 +657,7 @@ class DiscoveryService(IDiscoveryService):
                 state, labels, linked_labels, progress, cancel
             )
             self._read_releases(
-                state, request, resolved, releases_from, today, progress, cancel
+                state, request, resolved, releases_from, releases_to, progress, cancel
             )
             self._flush(state)
         except _Cancelled:

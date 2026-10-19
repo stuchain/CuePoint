@@ -173,9 +173,7 @@ export function runSummary(run: DiscoverRun, genres: readonly DiscoverGenre[]): 
     run.params.genre_ids.length > 0
       ? genreNames(run.params.genre_ids, genres).join(", ")
       : "No charts",
-    run.params.new_releases_days != null
-      ? `${formatCount(run.params.new_releases_days)} days of releases`
-      : "Releases",
+    releasesLine(run),
   ];
   return parts.join(" · ");
 }

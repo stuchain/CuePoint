@@ -3290,6 +3290,9 @@ export interface DiscoverRunRequest {
   charts_from?: string;
   charts_to?: string;
   new_releases_days?: number;
+  /** The release window, both or neither; takes the place of new_releases_days. */
+  releases_from?: string;
+  releases_to?: string;
   /** Library artist names; absent or null is the whole library, [] is none. */
   artists?: string[] | null;
   labels?: string[] | null;

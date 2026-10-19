@@ -6,9 +6,9 @@
  * with no artists chosen; users' charts too when Settings → Beatport says so),
  * and recent releases of the chosen artists and the library's labels — every artist and label, or only those picked from the
  * Library's own facets, with how many tracks each has. Every field starts from the engine's defaults (`options`),
- * and the form refuses what the engine would, from the bounds it sends. The
- * chart dates are two more fields a beginner does not need, so they fold under
- * "More options" with the default said in words (DSC-5).
+ * and the form refuses what the engine would, from the bounds it sends. One
+ * From/To pick in the bar sets the window for charts and releases alike, with
+ * the default said in words in the bar's sentence (DSC-5).
  *
  * **Start looking** hands the search to the engine as a job: the status strip
  * shows it, and the page opens Results on it as soon as the engine begins it.
@@ -26,18 +26,17 @@ import { Card } from "../../components/Card";
 import { Hint } from "../../components/Hint";
 import { Notice } from "../../components/Notice";
 import { SearchField } from "../../components/SearchField";
-import { TextField } from "../../components/TextField";
 import { formatCount, pluralize } from "../library/libraryFormat";
 import { useIncludeUserCharts } from "./includeUserCharts";
 import { SavedListField } from "./SavedListField";
 import { ScopeDialog } from "./ScopeDialog";
 import { refusalText } from "./discoverFormat";
 import {
-  chartsWindowShort,
   defaultForm,
   formProblems,
   runRequest,
   scopeCount,
+  windowShort,
   type ListMembers,
   type NewRunForm,
   type ScopeMode,
@@ -187,11 +186,6 @@ export function NewRunPanel({
 
   const artistCount = scopeCount(form.artists, options.artists.total_values, members.artists);
   const labelCount = scopeCount(form.labels, options.labels.total_values, members.labels);
-  const dayCount = Number(form.days);
-  const windowText =
-    form.days.trim() !== "" && Number.isInteger(dayCount) && dayCount >= 1
-      ? pluralize(dayCount, "day")
-      : "… days";
   // "Look for charts in 2 genres, releases by 200 artists and 121 labels from the last 30 days."
   const releaseParts = [
     artistCount > 0 ? <strong key="a">{pluralize(artistCount, "artist")}</strong> : null,
@@ -203,11 +197,10 @@ export function NewRunPanel({
       {releaseParts.length > 0 && (
         <>
           , releases by {releaseParts[0]}
-          {releaseParts.length > 1 && <> and {releaseParts[1]}</>} from the last{" "}
-          <strong>{windowText}</strong>
+          {releaseParts.length > 1 && <> and {releaseParts[1]}</>}
         </>
-      )}
-      .
+      )}{" "}
+      from <strong>{windowShort(form, options.defaults)}</strong>.
     </>
   );
 
@@ -227,7 +220,7 @@ export function NewRunPanel({
             role="group"
             aria-label="Genres for DJ charts"
             title="Genres for DJ charts"
-            unit={`${formatCount(form.genreIds.length)} chosen · ${chartsWindowShort(form, options.defaults)}`}
+            unit={`${formatCount(form.genreIds.length)} chosen`}
           >
             {options.genres.length === 0 ? (
               <p className="discover-note">
@@ -265,27 +258,6 @@ export function NewRunPanel({
                 ? "With no artists chosen, this reads charts by artists and by regular Beatport users (Settings → Beatport)."
                 : "With no artists chosen, this reads charts by artists. Settings → Beatport can include charts by regular Beatport users."}
             </p>
-            <details className="discover-new__more">
-              <summary>More options</summary>
-              <div className="discover-new__dates">
-                <TextField
-                  label="Charts from"
-                  id="discover-charts-from"
-                  type="date"
-                  value={form.chartsFrom}
-                  disabled={form.genreIds.length === 0}
-                  onChange={(event) => change({ chartsFrom: event.target.value })}
-                />
-                <TextField
-                  label="Charts to"
-                  id="discover-charts-to"
-                  type="date"
-                  value={form.chartsTo}
-                  disabled={form.genreIds.length === 0}
-                  onChange={(event) => change({ chartsTo: event.target.value })}
-                />
-              </div>
-            </details>
           </Card>
 
           <div className="discover-new__column">
@@ -338,20 +310,26 @@ export function NewRunPanel({
             >
               {sentence}
             </p>
-            <label className="discover-new__days">
-              <span className="cp-visually-hidden">Change the window</span>
-              <span className="discover-new__days-label">Releases from the last</span>
+            <div className="discover-new__dates" role="group" aria-label="Dates">
+              <span className="discover-new__dates-label" aria-hidden="true">
+                Dates
+              </span>
               <input
-                type="number"
-                className="cp-field__input discover-new__days-input"
-                aria-label="Releases from the last (days)"
-                min={1}
-                max={options.limits.max_window_days}
-                value={form.days}
-                onChange={(event) => change({ days: event.target.value })}
+                type="date"
+                className="cp-field__input discover-new__date"
+                aria-label="From"
+                value={form.chartsFrom}
+                onChange={(event) => change({ chartsFrom: event.target.value })}
               />
-              <span>days</span>
-            </label>
+              <span aria-hidden="true">to</span>
+              <input
+                type="date"
+                className="cp-field__input discover-new__date"
+                aria-label="To"
+                value={form.chartsTo}
+                onChange={(event) => change({ chartsTo: event.target.value })}
+              />
+            </div>
             {!usable && unusableReason && <span className="discover-note">{unusableReason}</span>}
             {usable && busy && !starting && (
               <span className="discover-note">A dig is already running.</span>

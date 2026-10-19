@@ -57,7 +57,7 @@ import {
   saveDiscoverSection,
 } from "./discoverSections";
 import {
-  chartsWindowShort,
+  windowShort,
   defaultForm,
   NO_MEMBERS,
   formProblems,
@@ -265,7 +265,6 @@ describe("the New dig form", () => {
       genreIds: OPTIONS.defaults.genre_ids,
       chartsFrom: OPTIONS.defaults.charts_from,
       chartsTo: OPTIONS.defaults.charts_to,
-      days: "30",
       artists: "all",
       artistListId: null,
       labels: "all",
@@ -275,8 +274,8 @@ describe("the New dig form", () => {
   });
 
   it("says the engine's default 30-day window as 30 days, and other windows by their dates", () => {
-    expect(chartsWindowShort(form(), OPTIONS.defaults)).toBe("last 30 days");
-    expect(chartsWindowShort(form({ chartsFrom: "2026-09-01" }), OPTIONS.defaults)).toBe(
+    expect(windowShort(form(), OPTIONS.defaults)).toBe("the last 30 days");
+    expect(windowShort(form({ chartsFrom: "2026-09-01" }), OPTIONS.defaults)).toBe(
       formatIsoRange("2026-09-01", OPTIONS.defaults.charts_to),
     );
   });
@@ -284,11 +283,12 @@ describe("the New dig form", () => {
   it("asks the engine for the whole library as null, none as an empty list", () => {
     expect(runRequest(form({ genreIds: [5] }))).toEqual({
       genre_ids: [5],
-      new_releases_days: 30,
       artists: null,
       labels: null,
       charts_from: OPTIONS.defaults.charts_from,
       charts_to: OPTIONS.defaults.charts_to,
+      releases_from: OPTIONS.defaults.charts_from,
+      releases_to: OPTIONS.defaults.charts_to,
     });
     expect(
       runRequest(form({ artists: "list", artistListId: 4, labels: "none" }), {
@@ -322,27 +322,27 @@ describe("the New dig form", () => {
     );
   });
 
-  it("sends no chart dates when no genre is chosen", () => {
-    const request = runRequest(form({ genreIds: [] }));
+  it("sends no chart dates when no genre is chosen, but always the one window as releases", () => {
+    const request = runRequest(
+      form({ genreIds: [], chartsFrom: "2026-09-01", chartsTo: "2026-09-30" }),
+    );
     expect(request).not.toHaveProperty("charts_from");
     expect(request).not.toHaveProperty("charts_to");
+    expect(request).not.toHaveProperty("new_releases_days");
+    expect(request).toMatchObject({ releases_from: "2026-09-01", releases_to: "2026-09-30" });
   });
 
   it.each([
     [{ genreIds: Array.from({ length: 51 }, (_, i) => i + 1) }, "Choose at most 50 genres."],
-    [{ genreIds: [5], chartsFrom: "2026-02-31" }, "Give both chart dates as dates."],
-    [{ genreIds: [5], chartsFrom: "soon" }, "Give both chart dates as dates."],
+    [{ genreIds: [5], chartsFrom: "2026-02-31" }, "Give both dates as dates."],
+    [{ genreIds: [], chartsFrom: "2026-02-31" }, "Give both dates as dates."],
+    [{ chartsTo: "" }, "Give both dates as dates."],
+    [{ chartsFrom: "soon" }, "Give both dates as dates."],
+    [{ chartsFrom: "2026-09-02", chartsTo: "2026-09-01" }, "The first date is after the last."],
     [
-      { genreIds: [5], chartsFrom: "2026-09-02", chartsTo: "2026-09-01" },
-      "The first chart date is after the last.",
+      { genreIds: [], chartsFrom: "2025-01-01", chartsTo: "2026-01-02" },
+      "Dates can span at most 366 days.",
     ],
-    [
-      { genreIds: [5], chartsFrom: "2025-01-01", chartsTo: "2026-01-02" },
-      "Charts can span at most 366 days.",
-    ],
-    [{ days: "0" }, "Releases reach back from 1 to 366 days."],
-    [{ days: "367" }, "Releases reach back from 1 to 366 days."],
-    [{ days: "3.5" }, "Releases reach back from 1 to 366 days."],
     [{ artists: "list" }, "Choose a saved list of artists, or look for every one."],
     [{ labels: "list" }, "Choose a saved list of labels, or look for every one."],
     [
@@ -477,8 +477,24 @@ describe("the sentences", () => {
     expect(scopeLine({ picked: ["A", "B"], count: 2, linked_ids: 0 }, "label", "labels")).toBe(
       "2 labels",
     );
-    expect(runSummary(FINISHED, genres)).toBe(
-      "House, Techno (Peak Time / Driving) · 30 days of releases",
+    expect(
+      runSummary(
+        { ...FINISHED, params: { ...FINISHED.params, releases_from: null, releases_to: null } },
+        genres,
+      ),
+    ).toBe("House, Techno (Peak Time / Driving) · Releases from the last 30 days");
+    // A dig over chosen dates says those dates, not the default it no longer used.
+    const dated = {
+      ...FINISHED,
+      params: {
+        ...FINISHED.params,
+        new_releases_days: null,
+        releases_from: "2026-06-01",
+        releases_to: "2026-06-20",
+      },
+    };
+    expect(runSummary(dated, genres)).toBe(
+      `House, Techno (Peak Time / Driving) · Releases from ${formatIsoRange("2026-06-01", "2026-06-20")}`,
     );
   });
 

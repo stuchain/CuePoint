@@ -20,6 +20,7 @@ import type {
 import { ScaleProvider } from "../../tokens/ScaleContext";
 import fixture from "./discoverPage.fixture.json";
 import { NewRunPanel } from "./NewRunPanel";
+import { formatIsoRange } from "./discoverFormat";
 import css from "./discover.css?raw";
 import { resetIncludeUserChartsForTests, saveIncludeUserCharts } from "./includeUserCharts";
 
@@ -152,7 +153,7 @@ describe("the dig bar", () => {
     expect(bar).toHaveTextContent(
       "Look for charts in 0 genres, releases by 3 artists and 2 labels from the last 30 days.",
     );
-    expect(bar).toHaveTextContent("Change the window");
+    expect(bar).toHaveTextContent("Dates");
     expect(bar).toContainElement(within(panel).getByRole("button", { name: "Start looking" }));
     // Not pinned to the window's foot: it follows the form inside the scrolling body.
     expect(panel.lastElementChild).not.toBe(bar);
@@ -160,7 +161,7 @@ describe("the dig bar", () => {
     expect(grid?.compareDocumentPosition(bar)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
-  it("is one line pinned at the foot of the form: the sentence cut short, the days and Start", async () => {
+  it("is one line pinned at the foot of the form: the sentence cut short, the dates and Start", async () => {
     install([]);
     const panel = await renderPanel();
     const bar = within(panel).getByRole("group", { name: "Start a dig" });
@@ -180,22 +181,24 @@ describe("the dig bar", () => {
     expect(barRule).toContain("min-height: var(--toolbar-height)");
     expect(barRule).not.toMatch(/accent|color-mix|border: 1px/);
     expect(css).toMatch(/\.discover-new__summary \{[^}]*text-overflow: ellipsis[^}]*white-space: nowrap/);
-    expect(bar).toContainElement(within(panel).getByLabelText("Releases from the last (days)"));
+    expect(bar).toContainElement(within(panel).getByLabelText("From"));
+    expect(bar).toContainElement(within(panel).getByLabelText("To"));
+    expect(bar).toHaveTextContent("Dates");
   });
 
-  it("leaves out the releases it will not look for, and follows the days field", async () => {
+  it("leaves out the releases it will not look for, and follows the dates", async () => {
     install([]);
     const panel = await renderPanel();
     const bar = within(panel).getByRole("group", { name: "Start a dig" });
     fireEvent.click(within(panel).getByRole("radio", { name: "No artists" }));
     expect(bar).toHaveTextContent("Look for charts in 0 genres, releases by 2 labels from the last 30 days.");
     fireEvent.click(within(panel).getByRole("radio", { name: "No labels" }));
-    expect(bar).toHaveTextContent(/^Look for charts in 0 genres\.Change the window/);
+    // Only charts are looked for, and the window is still said.
+    expect(bar).toHaveTextContent(/^Look for charts in 0 genres from the last 30 days\.Dates/);
     fireEvent.click(within(panel).getByRole("radio", { name: "Every label in your library (2)" }));
-    fireEvent.change(within(panel).getByLabelText("Releases from the last (days)"), {
-      target: { value: "1" },
-    });
-    expect(bar).toHaveTextContent("from the last 1 day.");
+    fireEvent.change(within(panel).getByLabelText("From"), { target: { value: "2026-09-01" } });
+    fireEvent.change(within(panel).getByLabelText("To"), { target: { value: "2026-09-30" } });
+    expect(bar).toHaveTextContent(`from ${formatIsoRange("2026-09-01", "2026-09-30")}.`);
   });
 
   it("counts a genre as the box is ticked, and says one in the singular", async () => {
@@ -207,27 +210,52 @@ describe("the dig bar", () => {
     );
   });
 
-  it("holds the days, and the old field at the top is gone", async () => {
+  it("holds one From and To pick in the bar, and the old fields are gone", async () => {
     install([]);
     const panel = await renderPanel();
-    const days = within(panel).getByLabelText("Releases from the last (days)");
-    expect(days).toHaveValue(30);
-    expect(within(panel).getByRole("group", { name: "Start a dig" })).toContainElement(days);
-    expect(within(panel).getAllByLabelText("Releases from the last (days)")).toHaveLength(1);
-    fireEvent.change(days, { target: { value: "14" } });
-    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
-    await waitFor(() =>
-      expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ new_releases_days: 14 })),
-    );
+    const bar = within(panel).getByRole("group", { name: "Start a dig" });
+    const from = within(panel).getByLabelText("From");
+    const to = within(panel).getByLabelText("To");
+    expect(from).toHaveValue(OPTIONS.defaults.charts_from);
+    expect(to).toHaveValue(OPTIONS.defaults.charts_to);
+    expect(bar).toContainElement(from);
+    expect(bar).toContainElement(to);
+    expect(within(panel).queryByText("More options")).toBeNull();
+    expect(within(panel).queryByLabelText("Charts from")).toBeNull();
+    expect(within(panel).queryByLabelText("Releases from the last (days)")).toBeNull();
   });
 
-  it("refuses days the engine would, beside the button", async () => {
+  it("edits the dates with no genre chosen, and sends one window for charts and releases", async () => {
     install([]);
     const panel = await renderPanel();
-    fireEvent.change(within(panel).getByLabelText("Releases from the last (days)"), {
-      target: { value: "0" },
+    const from = within(panel).getByLabelText("From");
+    expect(from).toBeEnabled();
+    expect(within(panel).getByLabelText("To")).toBeEnabled();
+    fireEvent.change(from, { target: { value: "2026-09-01" } });
+    fireEvent.change(within(panel).getByLabelText("To"), { target: { value: "2026-09-30" } });
+    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    await waitFor(() => expect(onStart).toHaveBeenCalled());
+    const request = onStart.mock.calls[0][0];
+    expect(request).toMatchObject({ releases_from: "2026-09-01", releases_to: "2026-09-30" });
+    expect(request).not.toHaveProperty("new_releases_days");
+    expect(request).not.toHaveProperty("charts_from");
+
+    fireEvent.click(within(panel).getByRole("checkbox", { name: "House" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Start looking" }));
+    await waitFor(() => expect(onStart).toHaveBeenCalledTimes(2));
+    expect(onStart.mock.calls[1][0]).toMatchObject({
+      charts_from: "2026-09-01",
+      charts_to: "2026-09-30",
+      releases_from: "2026-09-01",
+      releases_to: "2026-09-30",
     });
-    expect(within(panel).getByText("Releases reach back from 1 to 366 days.")).toBeInTheDocument();
+  });
+
+  it("refuses dates the engine would, beside the button", async () => {
+    install([]);
+    const panel = await renderPanel();
+    fireEvent.change(within(panel).getByLabelText("From"), { target: { value: "" } });
+    expect(within(panel).getByText("Give both dates as dates.")).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Start looking" })).toBeDisabled();
   });
 
@@ -300,7 +328,8 @@ describe("saved lists in the scope fields", () => {
     await waitFor(() =>
       expect(onStart).toHaveBeenCalledWith({
         genre_ids: [],
-        new_releases_days: 30,
+        releases_from: OPTIONS.defaults.charts_from,
+        releases_to: OPTIONS.defaults.charts_to,
         artists: ["Kiko", "DJEFF"],
         labels: null,
       }),
