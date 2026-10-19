@@ -549,10 +549,10 @@ describe("managing the queue (BAR-8)", () => {
     const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(2));
 
-    // × only closes: removing a track has its own icon.
+    // Removing a track is the boxed × Track details uses, never the trash can (C129).
     expect(container.querySelector(".cp-close [data-icon='close']")).not.toBeNull();
-    expect(container.querySelectorAll(".cp-remove [data-icon='remove']")).toHaveLength(2);
-    expect(container.querySelectorAll(".cp-remove [data-icon='close']")).toHaveLength(0);
+    expect(container.querySelectorAll(".cp-remove [data-icon='close']")).toHaveLength(2);
+    expect(container.querySelectorAll("[data-icon='remove']")).toHaveLength(0);
     expect(container.textContent).not.toContain("×");
     expect(screen.getByRole("button", { name: "Close the queue" })).toHaveAttribute(
       "title",

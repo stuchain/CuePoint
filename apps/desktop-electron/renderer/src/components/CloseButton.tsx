@@ -12,7 +12,7 @@ interface CloseButtonProps extends Omit<ComponentPropsWithRef<"button">, "childr
 
 /**
  * The one close button: a small bordered square with a pixel ×, top right of every dialog, toast,
- * side panel and inspector. × only closes; taking a row or an entry out of a list is `RemoveButton`.
+ * side panel and inspector. Taking a row or an entry out of a list is `RemoveButton`, the same box.
  * Its hover tip is its `aria-label`, so the words are written once.
  */
 export function CloseButton({ className = "", "aria-label": label = "Close", shortcut, ...rest }: CloseButtonProps) {
@@ -35,8 +35,8 @@ export function CloseButton({ className = "", "aria-label": label = "Close", sho
 }
 
 /**
- * Takes one entry out of a list (a recent folder, a tag, a queue row). It is not a close button:
- * it uses the `remove` icon, so a row's × and a dialog's × never look the same.
+ * Takes one entry out of a list (a recent folder, a tag, a queue row): the same boxed × as Track
+ * details and every close, never a trash can (C129). Its own name says what it takes out.
  */
 export function RemoveButton({ className = "", "aria-label": label = "Remove", shortcut, ...rest }: CloseButtonProps) {
   return (
@@ -45,7 +45,7 @@ export function RemoveButton({ className = "", "aria-label": label = "Remove", s
         variant="secondary"
         size="sm"
         iconOnly
-        icon="remove"
+        icon="close"
         aria-label={label}
         className={`cp-close cp-remove ${className}`.trim()}
         {...rest}

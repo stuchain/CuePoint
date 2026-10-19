@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import closeCss from "./CloseButton.css?raw";
 import { CloseButton, RemoveButton } from "./CloseButton";
 
 describe("CloseButton (C139, C200)", () => {
@@ -30,5 +31,16 @@ describe("RemoveButton", () => {
     const { container } = render(<RemoveButton />);
     expect(screen.getByRole("button", { name: "Remove" })).toHaveAttribute("title", "Remove");
     expect(container.querySelector(".cp-remove")).not.toBeNull();
+  });
+
+  it("draws the same boxed × as a close, not a trash can (C129)", () => {
+    const remove = render(<RemoveButton />).container.querySelector("svg")?.innerHTML;
+    const close = render(<CloseButton />).container.querySelector("svg")?.innerHTML;
+    expect(remove).toBeTruthy();
+    expect(remove).toBe(close);
+  });
+
+  it("keeps its whole box in a tight row: the tip wrapper does not shrink (C129)", () => {
+    expect(closeCss).toMatch(/\.cp-hint:has\(> \.cp-close\) \{\s*flex: none;/);
   });
 });
