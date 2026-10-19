@@ -2,11 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   KEYS_SOURCES_STORAGE_KEY,
+  folderTick,
   goneSource,
   keepExisting,
   loadSources,
   requestSources,
   saveSources,
+  setSources,
   toggleSource,
 } from "./keysSources";
 
@@ -84,6 +86,29 @@ describe("the ticked sources (PAGES-16)", () => {
   it("are asked of the engine as the whole library when none is ticked", () => {
     expect(requestSources([])).toEqual([{ kind: "all" }]);
     expect(requestSources([{ kind: "set", id: 4 }])).toEqual([{ kind: "set", id: 4 }]);
+  });
+});
+
+describe("ticking a folder (C40)", () => {
+  const a = { kind: "collection", id: 1 } as const;
+  const b = { kind: "collection", id: 2 } as const;
+  const c = { kind: "collection", id: 3 } as const;
+
+  it("reads a folder as none, some or all of what is under it", () => {
+    expect(folderTick([], [a, b])).toBe("none");
+    expect(folderTick([a], [a, b])).toBe("some");
+    expect(folderTick([a, b, c], [a, b])).toBe("all");
+    // A folder with nothing to tick under it is not ticked.
+    expect(folderTick([a], [])).toBe("none");
+  });
+
+  it("ticks everything under it at once, keeping what was ticked and not doubling it", () => {
+    expect(setSources([a], [a, b], true)).toEqual([a, b]);
+    expect(setSources([c], [a, b], true)).toEqual([c, a, b]);
+  });
+
+  it("unticks everything under it at once and leaves the rest", () => {
+    expect(setSources([a, b, c], [a, b], false)).toEqual([c]);
   });
 });
 

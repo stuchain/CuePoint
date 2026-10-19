@@ -71,6 +71,26 @@ export function toggleSource(
     : [...sources, source];
 }
 
+/** How much of what is under a folder is ticked: a folder's box is empty, dashed or ticked. */
+export function folderTick(
+  picked: readonly PickedSource[],
+  under: readonly PickedSource[],
+): "none" | "some" | "all" {
+  const ticked = under.filter((source) => picked.some((item) => sameSource(item, source))).length;
+  if (ticked === 0) return "none";
+  return ticked === under.length ? "all" : "some";
+}
+
+/** Several sources ticked or unticked together (a folder's box), the rest kept as they were. */
+export function setSources(
+  sources: readonly PickedSource[],
+  change: readonly PickedSource[],
+  on: boolean,
+): PickedSource[] {
+  if (!on) return sources.filter((item) => !change.some((source) => sameSource(item, source)));
+  return [...sources, ...change.filter((source) => !sources.some((item) => sameSource(item, source)))];
+}
+
 /** The sources that still exist: a playlist a refresh removed is dropped, not counted. */
 export function keepExisting(
   sources: readonly PickedSource[],
