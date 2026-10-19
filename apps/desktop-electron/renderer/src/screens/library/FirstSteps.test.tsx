@@ -14,6 +14,7 @@ import type { LibraryHealth, PlayerSnapshot } from "../../api/cuepointBridge.typ
 import { resetPlayerStore } from "../../components/player/playerStore";
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { FirstSteps, FirstStepsNote } from "./FirstSteps";
+import firstStepsCss from "./FirstSteps.css?raw";
 
 function health(trackCount: number, notMatched: number): LibraryHealth {
   return {
@@ -416,5 +417,11 @@ describe("the chip in the Library header", () => {
     install({ health: health(10, 10) });
     const { container } = mountNote();
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("a step's hint (D5, C55)", () => {
+  it("is a sentence, so it is set in Inter", () => {
+    expect(firstStepsCss).toMatch(/\.first-steps__hint \{[^}]*font-family:\s*var\(--font-data\)/);
   });
 });

@@ -56,8 +56,10 @@
   font-size: var(--font-size-sm);
 }
 
+/* A step's hint is a sentence, so Inter (D5, C55). */
 .first-steps__hint {
   color: var(--fg-muted);
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
 }
 
