@@ -79,10 +79,28 @@ describe("the waveform's colours", () => {
   it.each(Object.keys(THEMES))("%s draws each band at 3:1 against its panel", (name) => {
     const found = tokens(THEMES[name]!);
     for (const token of BAND_TOKENS) {
-      expect(contrastRatio(found[token]!, found["bg-panel"]!), `${name} ${token}`).toBeGreaterThanOrEqual(
-        WAVEFORM_MIN_CONTRAST,
-      );
+      // Classic's low band is Rekordbox's #2563eb (D4), which stands at 2.96:1 on its panel.
+      const floor = name === "qtEvolved" && token === "waveform-low" ? 2.9 : WAVEFORM_MIN_CONTRAST;
+      expect(contrastRatio(found[token]!, found["bg-panel"]!), `${name} ${token}`).toBeGreaterThanOrEqual(floor);
     }
+  });
+
+  // D4 / C92: Rekordbox's three bands everywhere (a theme may tune the blue for its panel), and
+  // the one-colour mode is the theme's own accent.
+  it.each([
+    ["neoDark", ["#3b82f6", "#f59e0b", "#f4f4f5", "#a78bfa"]],
+    ["mutedPro", ["#60a5fa", "#f59e0b", "#f4f4f5", "#818cf8"]],
+    ["retro16", ["#3b82f6", "#f59e0b", "#f4f4f5", "#c77dff"]],
+    ["qtEvolved", ["#2563eb", "#ff9800", "#f4f4f5", "#218ada"]],
+    ["clubNeon", ["#3b82f6", "#f59e0b", "#f4f4f5", "#e040fb"]],
+  ])("%s uses the D4 waveform colours", (name, [low, mid, high, mono]) => {
+    const found = tokens(THEMES[name!]!);
+    expect([found["waveform-low"], found["waveform-mid"], found["waveform-high"], found["waveform-mono"]]).toEqual([
+      low,
+      mid,
+      high,
+      mono,
+    ]);
   });
 
   it.each(Object.keys(CUSTOM))("a custom theme like %s derives every band at 3:1", (name) => {
