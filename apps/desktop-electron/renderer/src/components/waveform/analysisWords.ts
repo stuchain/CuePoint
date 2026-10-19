@@ -32,7 +32,7 @@ export const NOTHING_TO_ANALYZE_WORDS =
 
 /** The sentence a build without a decoder shows instead of a state. */
 export const DECODER_MISSING_WORDS =
-  "This version of CuePoint can't draw waveforms.";
+  "This version of CuePoint cannot draw waveforms.";
 
 function count(value: number): string {
   return formatCount(value);

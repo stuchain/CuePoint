@@ -26,7 +26,8 @@ import { Notice } from "../../components/Notice";
 import { SearchField } from "../../components/SearchField";
 import { deleteLabel, deleteTitle, nothingMatches } from "../../format/words";
 import { TextField } from "../../components/TextField";
-import { formatCount, pluralize } from "../library/libraryFormat";
+import { countNoun } from "../../format/counts";
+import { formatCount } from "../library/libraryFormat";
 
 interface ScopeDialogProps {
   open: boolean;
@@ -133,7 +134,7 @@ export function ScopeDialog({
           onValueChange={setText}
         />
         <p className="discover-dialog__text" role="status">
-          {pluralize(picked.size, `${noun} chosen`, `${noun}s chosen`)}
+          {countNoun(picked.size, `${noun} chosen`, `${noun}s chosen`)}
         </p>
         <ul className="discover-scope" aria-label={`${noun}s in your library`}>
           {shown.map((entry) => (

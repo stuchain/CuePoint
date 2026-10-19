@@ -177,7 +177,7 @@
 .discover-runs__item:focus-visible {
   /* Inset: the list scrolls and has no side padding, so an outer ring would be clipped. */
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--focus-ring-width));
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 .discover-runs__item--selected {

@@ -19,21 +19,10 @@ import type {
 
 /**
  * The shared count helpers (C169), re-exported under the names other pages already import:
- * `formatCount` groups digits by the computer's locale and `pluralize` is `countNoun`
- * ("3,880 tracks", "1 track").
+ * `formatCount` groups digits by the computer's locale ("3,880").
  */
 export function formatCount(count: number | null | undefined, locale?: string): string {
   return groupCount(count ?? 0, locale);
-}
-
-/** The shared `countNoun`, tolerant of a count a partial payload left out (read as none). */
-export function pluralize(
-  count: number | null | undefined,
-  one: string,
-  many?: string,
-  locale?: string,
-): string {
-  return countNoun(count ?? 0, one, many, locale);
 }
 
 /** Just the file name, for a path too long to show in full. */

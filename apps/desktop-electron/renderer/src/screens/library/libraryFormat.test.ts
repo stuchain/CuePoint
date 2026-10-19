@@ -5,6 +5,7 @@
  * feature. DEC-003's removals are permanent, and whether a user understands
  * that before pressing the button is decided entirely by these sentences.
  */
+import { countNoun } from "../../format/counts";
 import { describe, expect, it } from "vitest";
 
 import type {
@@ -24,7 +25,6 @@ import {
   formatWhen,
   jobErrorMessage,
   needsReferenceConfirmation,
-  pluralize,
   referenceWarning,
   removalWarning,
   scopeFactsLine,
@@ -99,21 +99,19 @@ describe("counts", () => {
   });
 
   it("agrees with itself about one", () => {
-    expect(pluralize(1, "track")).toBe("1 track");
-    expect(pluralize(0, "track")).toBe("0 tracks");
-    expect(pluralize(2, "track")).toBe("2 tracks");
+    expect(countNoun(1, "track")).toBe("1 track");
+    expect(countNoun(0, "track")).toBe("0 tracks");
+    expect(countNoun(2, "track")).toBe("2 tracks");
   });
 
   it("takes an irregular plural", () => {
-    expect(pluralize(3, "entry", "entries")).toBe("3 entries");
+    expect(countNoun(3, "entry", "entries")).toBe("3 entries");
   });
 
   it("treats a missing count as none, the way the pages that import these expect", () => {
     // Discover and Prepare pass payload fields that a partial answer can leave out.
     expect(formatCount(undefined)).toBe("0");
     expect(formatCount(null)).toBe("0");
-    expect(pluralize(undefined, "track")).toBe("0 tracks");
-    expect(pluralize(null, "entry", "entries")).toBe("0 entries");
   });
 });
 
@@ -185,7 +183,7 @@ describe("scopeFactsLine", () => {
   });
 
   it("shows only the count it knows while the facts are loading", () => {
-    expect(scopeFactsLine(null, 3880)).toEqual([pluralize(3880, "track")]);
+    expect(scopeFactsLine(null, 3880)).toEqual([countNoun(3880, "track")]);
   });
 });
 

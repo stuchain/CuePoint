@@ -355,7 +355,7 @@
 .cp-track-yours__favorite:focus-visible,
 .cp-track-yours__tag-remove:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--hairline);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .cp-track-yours__clear {
@@ -660,7 +660,7 @@
 
 .cp-track-section__toggle:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--hairline);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .cp-track-section {

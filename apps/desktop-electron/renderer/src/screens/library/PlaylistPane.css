@@ -62,7 +62,7 @@
 
 .cp-playlist-pane__fold:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--space-2xs);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .cp-playlist-pane__source {
@@ -108,7 +108,7 @@
 
 .cp-playlist-pane__row:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--focus-ring-width));
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 .cp-playlist-pane__row--selected,

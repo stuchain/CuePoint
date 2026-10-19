@@ -22,5 +22,5 @@
 
 .cp-credit-link:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--hairline);
+  outline-offset: var(--focus-ring-offset);
 }

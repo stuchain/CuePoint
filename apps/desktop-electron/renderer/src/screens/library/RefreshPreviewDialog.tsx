@@ -10,13 +10,13 @@
 import { useEffect, useState } from "react";
 import { Modal, Notice } from "../../components";
 import type { RefreshDiff } from "../../api/cuepointBridge.types";
+import { countNoun } from "../../format/counts";
 import {
   applyLabel,
   diffLines,
   fileName,
   formatCount,
   needsReferenceConfirmation,
-  pluralize,
   referenceWarning,
   removalWarning,
 } from "./libraryFormat";
@@ -129,7 +129,7 @@ export function RefreshPreviewDialog({
                 </ul>
                 {removed.count > Math.min(removed.items.length, SAMPLE_LIMIT) && (
                   <p className="library-preview__more">
-                    and {pluralize(removed.count - Math.min(removed.items.length, SAMPLE_LIMIT), "more track")}
+                    and {countNoun(removed.count - Math.min(removed.items.length, SAMPLE_LIMIT), "more track")}
                   </p>
                 )}
               </section>

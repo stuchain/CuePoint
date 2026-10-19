@@ -102,7 +102,7 @@
 /* The row a drop would land on. */
 .cp-playlist-pane__row--drop {
   outline: var(--focus-ring-width) solid var(--accent-primary);
-  outline-offset: -1px;
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 /*

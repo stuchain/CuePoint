@@ -179,7 +179,7 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
                 // What went wrong is for the hint; the sentence says what to do.
                 tabIndex={error ? 0 : undefined}
               >
-                Search didn't work. Try again.
+                Search did not work. Try again.
               </p>
             </Hint>
           )}
