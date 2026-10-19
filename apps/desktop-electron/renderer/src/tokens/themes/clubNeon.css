@@ -10,7 +10,7 @@
   --border-shadow: #050508;
   --border-outline: #000000;
   --border-light: #00e5ff;
-  --border-muted: #3a3a58;
+  --border-muted: #50507a;
   --border-control: #6a6a8a;
   --tab-underline-color: #e040fb;
   --bevel-highlight: #5a5a80;
@@ -35,7 +35,7 @@
   /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */
   --accent-fill: #e040fb;
   --danger-fill: #c62828;
-  --link: #e040fb;
+  --link: #00e5ff;
   --focus-ring-color: #00e5ff;
   --color-scheme: dark;
 

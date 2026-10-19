@@ -10,7 +10,7 @@
   --border-shadow: #111318;
   --border-outline: #000000;
   --border-light: #9ca3af;
-  --border-muted: #4b5568;
+  --border-muted: #5f6b80;
   --border-control: #7b8190;
   --tab-underline-color: #818cf8;
   --bevel-highlight: #6b7280;
@@ -27,8 +27,8 @@
   --accent-primary-pressed: #6366f1;
   --accent-secondary: #343d4f;
   --accent-secondary-hover: #3d4656;
-  --accent-success: #10b981;
-  --accent-warning: #fde047;
+  --accent-success: #34b38a;
+  --accent-warning: #e5c453;
   --accent-danger: #ef4a4a;
   --accent-info: #38bdf8;
 

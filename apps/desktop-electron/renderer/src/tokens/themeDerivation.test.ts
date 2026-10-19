@@ -50,6 +50,26 @@ describe("the contrast-held tokens", () => {
     expect(contrastRatio(light["bg-app"]!, light["bg-panel-alt"]!)).toBeGreaterThan(contrastRatio(light["bg-app"]!, light["bg-panel"]!));
   });
 
+  it("puts the derived toolbar between the page and the panel (C94)", () => {
+    const lum = (hex: string) => contrastRatio(hex, "#000000");
+    for (const colors of [
+      NEO_DARK_EDITOR_COLORS,
+      { ...NEO_DARK_EDITOR_COLORS, bgApp: "#1e1e1e", bgPanel: "#252526" },
+      { ...NEO_DARK_EDITOR_COLORS, bgApp: "#0a0a0f", bgPanel: "#14141f" },
+      { ...NEO_DARK_EDITOR_COLORS, bgApp: "#1a1a2e", bgPanel: "#22344d" },
+    ]) {
+      const t = deriveThemeTokens(colors);
+      expect(lum(t["bg-toolbar"]!), colors.bgPanel).toBeGreaterThanOrEqual(lum(t["bg-app"]!));
+      expect(lum(t["bg-toolbar"]!), colors.bgPanel).toBeLessThan(lum(t["bg-panel"]!));
+    }
+  });
+
+  it("derives Classic's toolbar as about #222223 (TH-19)", () => {
+    const t = deriveThemeTokens({ ...NEO_DARK_EDITOR_COLORS, bgApp: "#1e1e1e", bgPanel: "#252526" });
+    const channels = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    channels(t["bg-toolbar"]!).forEach((value, at) => expect(Math.abs(value - channels("#222223")[at]!)).toBeLessThanOrEqual(1));
+  });
+
   it("derives a colour scheme from the page's luminance", () => {
     expect(deriveThemeTokens(NEO_DARK_EDITOR_COLORS)["color-scheme"]).toBe("dark");
     expect(deriveThemeTokens({ ...NEO_DARK_EDITOR_COLORS, bgApp: "#ffffff" })["color-scheme"]).toBe("light");

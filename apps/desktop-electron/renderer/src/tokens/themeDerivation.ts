@@ -15,6 +15,7 @@ const TOKEN_KEYS = [
   "border-outline",
   "border-light",
   "border-muted",
+  "row-divider",
   "border-control",
   "tab-underline-color",
   "bevel-highlight",
@@ -149,6 +150,9 @@ export function controlBorder(panel: string, toolbar: string, min = 3): string {
   return worst("#ffffff") >= worst("#000000") ? "#ffffff" : "#000000";
 }
 
+/** How far from the page towards the panel the derived toolbar sits (page <= toolbar < panel). */
+const TOOLBAR_MIX = 0.55;
+
 /** The least contrast a panel edge (--border-muted) keeps on the panel. */
 const BORDER_MUTED_MIN_CONTRAST = 1.5;
 /** The least contrast the panel-alt surface keeps against the panel. */
@@ -245,7 +249,8 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
   const fgMuted = normalizeHex(colors.fgMuted);
   const accentPrimary = normalizeHex(colors.accentPrimary);
 
-  const bgToolbar = darken(bgApp, 0.05);
+  // The toolbar sits between the page and the panel, a little nearer the panel (C94).
+  const bgToolbar = blend(bgApp, bgPanel, TOOLBAR_MIX);
   const bgPanelAlt = stepAwayFrom(bgApp, bgPanel, PANEL_ALT_MIN_CONTRAST);
   const borderShadow = darken(bgApp, 0.2);
   const borderHighlight = lighten(bgPanel, 0.15);
@@ -283,6 +288,7 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "border-outline": "#000000",
     "border-light": borderLight,
     "border-muted": borderMuted,
+    "row-divider": borderMuted,
     "border-control": borderControl,
     // The active tab's underline is the accent, moved only as far as 3:1 on the toolbar needs.
     "tab-underline-color": withContrast(accentPrimary, bgToolbar, 3),

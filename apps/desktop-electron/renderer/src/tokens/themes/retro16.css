@@ -3,7 +3,7 @@
 [data-theme="retro16"] {
   --bg-app: #1a1a2e;
   --bg-panel: #22344d;
-  --bg-panel-alt: #2d4563;
+  --bg-panel-alt: #283d58;
   --bg-input: #1b263b;
   --bg-toolbar: #293241;
 
@@ -11,7 +11,9 @@
   --border-shadow: #0d1b2a;
   --border-outline: #000000;
   --border-light: #e0fbfc;
-  --border-muted: #5a7ba6;
+  --border-muted: #57779f;
+  /* Table rows: a quieter line than the frames (C93). */
+  --row-divider: #3a5577;
   --border-control: #98c1d9;
   --tab-underline-color: #b673f0;
   --bevel-highlight: #98c1d9;

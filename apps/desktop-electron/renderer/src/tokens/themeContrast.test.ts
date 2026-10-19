@@ -64,7 +64,8 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
 
   it("steps the surface ladder away from the page", () => {
     if (builtIn) expect(contrastRatio(app, panel), "app to panel").toBeGreaterThanOrEqual(1.05);
-    expect(contrastRatio(panel, alt), "panel to alt").toBeGreaterThanOrEqual(1.15);
+    // Retro's slabs were the loudest thing on the page, so D10 (C93) set them to 1.14:1, no louder than a panel.
+    expect(contrastRatio(panel, alt), "panel to alt").toBeGreaterThanOrEqual(builtIn ? 1.1 : 1.15);
     if (panel !== "#ffffff" && panel !== "#000000") {
       expect(contrastRatio(app, alt), "alt is further from the page than the panel").toBeGreaterThan(contrastRatio(app, panel));
     }
@@ -72,6 +73,21 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
 
   it("draws --border-muted at 1.5:1 on the panel", () => {
     expect(contrastRatio(t["border-muted"]!, panel)).toBeGreaterThanOrEqual(1.5);
+  });
+
+  it("draws a built-in theme's line at 2.2 to 2.8:1 on the panel and 2:1 or more on the page (C93)", () => {
+    if (!builtIn) return;
+    const onPanel = contrastRatio(t["border-muted"]!, panel);
+    expect(onPanel, "line on panel").toBeGreaterThanOrEqual(2.2);
+    expect(onPanel, "line on panel").toBeLessThanOrEqual(2.8);
+    expect(contrastRatio(t["border-muted"]!, app), "line on page").toBeGreaterThanOrEqual(2);
+  });
+
+  it("puts the toolbar between the page and the panel (C94)", () => {
+    if (!builtIn) return;
+    const lum = (hex: string) => contrastRatio(hex, "#000000");
+    expect(lum(toolbar)).toBeGreaterThanOrEqual(lum(app));
+    expect(lum(toolbar)).toBeLessThan(lum(panel));
   });
 
   it("keeps --accent-info at 3:1 on the panel", () => {
