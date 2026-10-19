@@ -8,7 +8,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OUTAGE_PARTWAY_MESSAGE } from "../../api/userMessage";
-import { followJob, isTerminal } from "./followJob";
+import { SAFETY_POLL_MS, followJob, isTerminal } from "./followJob";
 
 interface Bridge {
   getJob?: ReturnType<typeof vi.fn>;
@@ -127,6 +127,48 @@ describe("followJob", () => {
 
     await expect(handle.finished).resolves.toEqual({ state: "succeeded", error: undefined });
     expect(unsubscribe).toHaveBeenCalled();
+  });
+
+  it("falls back to asking when the stream ends without the job's end", async () => {
+    // The engine closes a job's stream after five minutes with an error frame
+    // and no state. A dig longer than that used to leave its page waiting for
+    // ever, saying "A dig is already running." long after it had finished.
+    vi.useFakeTimers();
+    let emit: ((event: unknown) => void) | null = null;
+    let state = "running";
+    const getJob = vi.fn(async () => ({ state }));
+    install({
+      getJob,
+      subscribeJobEvents: vi.fn((_id: string, onEvent: (event: unknown) => void) => {
+        emit = onEvent;
+        return vi.fn();
+      }),
+    });
+
+    const handle = followJob("job-1", 10);
+    await vi.advanceTimersByTimeAsync(10);
+    emit!({ type: "error", code: "TIMEOUT", message: "Job event stream timed out" });
+    await vi.advanceTimersByTimeAsync(30);
+    expect(getJob.mock.calls.length).toBeGreaterThan(1);
+
+    state = "succeeded";
+    await vi.advanceTimersByTimeAsync(20);
+
+    await expect(handle.finished).resolves.toEqual({ state: "succeeded", error: undefined });
+  });
+
+  it("still hears the end when the stream goes quiet without a last frame", async () => {
+    vi.useFakeTimers();
+    let state = "running";
+    const getJob = vi.fn(async () => ({ state }));
+    install({ getJob, subscribeJobEvents: vi.fn(() => vi.fn()) });
+
+    const handle = followJob("job-1", 10);
+    await vi.advanceTimersByTimeAsync(10);
+    state = "succeeded";
+    await vi.advanceTimersByTimeAsync(SAFETY_POLL_MS);
+
+    await expect(handle.finished).resolves.toEqual({ state: "succeeded", error: undefined });
   });
 
   it("fails rather than hanging when there is no bridge", async () => {

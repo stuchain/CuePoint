@@ -18,6 +18,14 @@ import { NEEDS_DESKTOP, isEngineOutage, userMessage } from "../../api/userMessag
 /** How often to ask, when there is no subscription to listen to. */
 const POLL_INTERVAL_MS = 400;
 
+/**
+ * How often to ask anyway while listening to a stream. A stream can end
+ * without the job's last frame (the engine closes it after five minutes, or
+ * the connection drops), and a follower that only listens would then wait for
+ * ever: a dig longer than that kept saying "A dig is already running."
+ */
+export const SAFETY_POLL_MS = 5_000;
+
 const TERMINAL: readonly JobState[] = ["succeeded", "failed", "cancelled"];
 
 export function isTerminal(state: string | undefined): boolean {
@@ -52,6 +60,7 @@ export function followJob(jobId: string, pollMs = POLL_INTERVAL_MS): FollowHandl
   let settle: ((value: FinishedJob) => void) | null = null;
   let unsubscribe: (() => void) | null = null;
   let timer: number | null = null;
+  let safety: number | null = null;
   let stopped = false;
 
   const finished = new Promise<FinishedJob>((resolve) => {
@@ -62,6 +71,10 @@ export function followJob(jobId: string, pollMs = POLL_INTERVAL_MS): FollowHandl
     if (timer !== null) {
       window.clearInterval(timer);
       timer = null;
+    }
+    if (safety !== null) {
+      window.clearInterval(safety);
+      safety = null;
     }
     if (unsubscribe) {
       unsubscribe();
@@ -106,17 +119,27 @@ export function followJob(jobId: string, pollMs = POLL_INTERVAL_MS): FollowHandl
     }
   };
 
+  const poll = () => {
+    if (stopped || timer !== null) return;
+    timer = window.setInterval(() => void check(), pollMs);
+  };
+
   if (typeof bridge.subscribeJobEvents === "function") {
     // Through the store, so the strip and this page share one stream for the job.
     unsubscribe = subscribeJobEvents(
       jobId,
       (event) => {
-        consider(event as Partial<EngineJobSummary>);
+        const frame = event as Partial<EngineJobSummary> | null | undefined;
+        // A frame with no state is the stream's own end (timed out, or failed)
+        // before the job's: ask from here on instead.
+        if (frame && frame.state == null) poll();
+        else consider(frame);
       },
       bridge,
     );
+    safety = window.setInterval(() => void check(), SAFETY_POLL_MS);
   } else {
-    timer = window.setInterval(() => void check(), pollMs);
+    poll();
   }
 
   // Asked once immediately either way. A job short enough to finish before the
