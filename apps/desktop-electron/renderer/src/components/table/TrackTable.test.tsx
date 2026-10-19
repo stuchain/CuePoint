@@ -586,7 +586,7 @@ describe("scale", () => {
 
     const table = screen.getByTestId("track-table");
     expect(table.style.getPropertyValue("--track-table-columns")).toBe(
-      "600px 360px 240px minmax(360px, 1fr)",
+      "600px 510px 240px minmax(360px, 1fr)",
     );
   });
 
@@ -763,7 +763,7 @@ describe("column widths", () => {
     renderTable();
     const table = screen.getByTestId("track-table");
     expect(table.style.getPropertyValue("--track-table-columns")).toBe(
-      "200px 120px 80px minmax(120px, 1fr)",
+      "200px 170px 80px minmax(120px, 1fr)",
     );
   });
 
@@ -779,7 +779,7 @@ describe("column widths", () => {
     const onWidthsChange = vi.fn();
     renderTable({ widths: { title: 200, artist: 120, bpm: 80, path: 120 }, onWidthsChange });
 
-    const handle = screen.getByRole("button", { name: "Resize Title column" });
+    const handle = screen.getByRole("separator", { name: "Resize Title column" });
     fireEvent.mouseDown(handle, { clientX: 0 });
     fireEvent.mouseMove(window, { clientX: 50 });
     fireEvent.mouseUp(window);
@@ -793,7 +793,7 @@ describe("column widths", () => {
     const onWidthsChange = vi.fn();
     renderTable({ widths: { title: 200, artist: 120, bpm: 80, path: 120 }, onWidthsChange });
 
-    const handle = screen.getByRole("button", { name: "Resize BPM column" });
+    const handle = screen.getByRole("separator", { name: "Resize BPM column" });
     fireEvent.mouseDown(handle, { clientX: 500 });
     fireEvent.mouseMove(window, { clientX: 0 });
     fireEvent.mouseUp(window);
@@ -804,21 +804,21 @@ describe("column widths", () => {
   it("resizes without a controlled width, for a caller that does not persist", () => {
     renderTable();
 
-    const handle = screen.getByRole("button", { name: "Resize Title column" });
+    const handle = screen.getByRole("separator", { name: "Resize Title column" });
     fireEvent.mouseDown(handle, { clientX: 0 });
     fireEvent.mouseMove(window, { clientX: 40 });
     fireEvent.mouseUp(window);
 
     const table = screen.getByTestId("track-table");
     expect(table.style.getPropertyValue("--track-table-columns")).toBe(
-      "240px 120px 80px minmax(120px, 1fr)",
+      "240px 170px 80px minmax(120px, 1fr)",
     );
   });
 
   it("marks the body while a column is being dragged", () => {
     renderTable();
 
-    const handle = screen.getByRole("button", { name: "Resize Title column" });
+    const handle = screen.getByRole("separator", { name: "Resize Title column" });
     fireEvent.mouseDown(handle, { clientX: 0 });
     expect(document.body).toHaveClass("track-table--resizing");
 
@@ -1222,7 +1222,7 @@ describe("the columns button in the header's corner (K21)", () => {
     renderTable({ onColumns: vi.fn() });
     const table = screen.getByTestId("track-table");
     expect(table.style.getPropertyValue("--track-table-columns")).toBe(
-      "200px 120px 80px minmax(120px, 1fr) var(--track-table-corner)",
+      "200px 170px 80px minmax(120px, 1fr) var(--track-table-corner)",
     );
     expect(table.style.getPropertyValue("--track-table-min-width")).toContain("var(--track-table-corner)");
   });
@@ -1230,7 +1230,7 @@ describe("the columns button in the header's corner (K21)", () => {
   it("leaves the tracks alone when there is no Columns… button", () => {
     renderTable();
     expect(screen.getByTestId("track-table").style.getPropertyValue("--track-table-columns")).toBe(
-      "200px 120px 80px minmax(120px, 1fr)",
+      "200px 170px 80px minmax(120px, 1fr)",
     );
   });
 
@@ -1283,5 +1283,133 @@ describe("a heading follows its column (areas 14, 41)", () => {
     const file = screen.getByText("File").closest(".track-table__header-cell")!;
     expect(file.tagName).toBe("DIV");
     expect(file).toHaveClass("track-table__header-cell--plain");
+  });
+});
+
+describe("the resizer is a separator (C149, C199)", () => {
+  it("is a vertical separator you can reach with Tab", () => {
+    renderTable();
+    const handle = screen.getByRole("separator", { name: "Resize Title column" });
+    expect(handle).toHaveAttribute("aria-orientation", "vertical");
+    expect(handle).toHaveAttribute("tabindex", "0");
+    expect(handle).toHaveAttribute("aria-valuenow", "200");
+  });
+
+  it("Arrow Right and Arrow Left resize by 8 at 1x, and stop at the minimum", () => {
+    const onWidthsChange = vi.fn();
+    renderTable({ widths: { title: 200, artist: 120, bpm: 80, path: 120 }, onWidthsChange });
+    const handle = screen.getByRole("separator", { name: "Resize Title column" });
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+    expect(onWidthsChange).toHaveBeenLastCalledWith(expect.objectContaining({ title: 208 }));
+    fireEvent.keyDown(handle, { key: "ArrowLeft" });
+    expect(onWidthsChange).toHaveBeenLastCalledWith(expect.objectContaining({ title: 192 }));
+  });
+
+  it("stops at the column's minimum", () => {
+    const onWidthsChange = vi.fn();
+    renderTable({ onWidthsChange });
+    const bpm = screen.getByRole("separator", { name: "Resize BPM column" });
+    for (let i = 0; i < 5; i += 1) fireEvent.keyDown(bpm, { key: "ArrowLeft" });
+    expect(onWidthsChange).toHaveBeenLastCalledWith(expect.objectContaining({ bpm: 60 }));
+  });
+});
+
+describe("an empty cell reads as a dash (C73)", () => {
+  it("shows the dash for an empty string and for nothing", () => {
+    const columns: TrackColumnDef<Track>[] = [
+      { id: "title", header: "Title", render: (t) => t.title },
+      { id: "artist", header: "Artist", render: () => "" },
+      { id: "bpm", header: "BPM", render: () => null },
+    ];
+    renderTable({ columns });
+    const first = renderedRows()[0]!;
+    expect(within(first).getAllByText("—")).toHaveLength(2);
+  });
+
+  it("leaves a column with no header alone, which is a button column", () => {
+    const columns: TrackColumnDef<Track>[] = [
+      { id: "title", header: "Title", render: (t) => t.title },
+      { id: "act", header: "Actions", headerHidden: true, render: () => null },
+    ];
+    renderTable({ columns });
+    expect(within(renderedRows()[0]!).queryByText("—")).toBeNull();
+  });
+});
+
+describe("sorting by a column with an accessor, in the table (C193)", () => {
+  const SORT_COLUMNS: TrackColumnDef<Track>[] = [
+    { id: "title", header: "Title", render: (t) => t.title },
+    { id: "bpm", header: "BPM", accessor: (t) => t.bpm, render: (t) => (t.bpm == null ? "" : String(t.bpm)) },
+  ];
+  const DATA: Track[] = [
+    { id: 1, title: "A", artist: "x", bpm: 130 },
+    { id: 2, title: "B", artist: "x", bpm: null },
+    { id: 3, title: "C", artist: "x", bpm: 120 },
+  ];
+
+  it("sorts a column that has no engine sort key and says so in aria-sort", () => {
+    const onSortChange = vi.fn();
+    const { rerender } = renderTable({ columns: SORT_COLUMNS, source: inMemorySource(DATA), onSortChange });
+    fireEvent.click(screen.getByRole("button", { name: "BPM" }));
+    expect(onSortChange).toHaveBeenCalledWith({ key: "bpm", direction: "asc" });
+    rerender(
+      <ScaleProvider>
+        <TrackTable<Track>
+          columns={SORT_COLUMNS}
+          source={inMemorySource(DATA)}
+          getRowKey={(row) => row.id}
+          sort={{ key: "bpm", direction: "asc" }}
+        />
+      </ScaleProvider>,
+    );
+    expect(renderedRows().map((row) => within(row).getAllByRole("cell")[0]!.textContent)).toEqual(["C", "A", "B"]);
+    expect(screen.getByRole("columnheader", { name: /BPM/ })).toHaveAttribute("aria-sort", "ascending");
+  });
+
+  it("puts empty values last in either direction", () => {
+    renderTable({
+      columns: SORT_COLUMNS,
+      source: inMemorySource(DATA),
+      sort: { key: "bpm", direction: "desc" },
+    });
+    expect(renderedRows().map((row) => within(row).getAllByRole("cell")[0]!.textContent)).toEqual(["A", "C", "B"]);
+  });
+
+  it("leaves a column with an engine sort key to the engine", () => {
+    const withKey: TrackColumnDef<Track>[] = [
+      { id: "title", header: "Title", render: (t) => t.title },
+      { id: "bpm", header: "BPM", sortKey: "bpm", accessor: (t) => t.bpm, render: (t) => String(t.bpm) },
+    ];
+    renderTable({ columns: withKey, source: inMemorySource(DATA), sort: { key: "bpm", direction: "asc" } });
+    expect(renderedRows().map((row) => within(row).getAllByRole("cell")[0]!.textContent)).toEqual(["A", "B", "C"]);
+  });
+});
+
+describe("the row's play button (C84)", () => {
+  it("draws the shared play button at the row's end and plays that row", () => {
+    const onPlay = vi.fn();
+    renderTable({ playButton: { label: (t) => `Play ${t.title}`, onPlay } });
+    const button = screen.getByRole("button", { name: "Play Track 2" });
+    expect(button).toHaveClass("cp-play-btn");
+    expect(button.closest(".track-table__end")).not.toBeNull();
+    fireEvent.click(button);
+    expect(onPlay).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }), 1);
+  });
+
+  it("does not select the row when the button is pressed", () => {
+    const onSelect = vi.fn();
+    renderTable({ onSelect, playButton: { label: (t) => `Play ${t.title}`, onPlay: () => {} } });
+    fireEvent.click(screen.getByRole("button", { name: "Play Track 1" }));
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
+describe("a drag the table will not take (C187)", () => {
+  it("answers none, so the pointer shows a no-drop cursor", () => {
+    renderTable({ onRowDrop: () => {}, acceptsRowDrop: () => false });
+    const table = screen.getByRole("table", { name: "Tracks" });
+    const dataTransfer = { dropEffect: "move", effectAllowed: "move" } as unknown as DataTransfer;
+    fireEvent.dragOver(table, { dataTransfer });
+    expect(dataTransfer.dropEffect).toBe("none");
   });
 });

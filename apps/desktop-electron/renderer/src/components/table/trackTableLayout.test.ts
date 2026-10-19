@@ -14,6 +14,9 @@ import layoutCss from "../../tokens/layout.css?raw";
 import {
   COLUMN_DEFAULT_PX,
   COLUMN_MIN_PX,
+  DEFAULT_WIDTH_PX_BY_ID,
+  GROW_WEIGHTS,
+  growWidths,
   ROW_HEIGHT_FALLBACK,
   columnDefaultWidth,
   columnMinWidth,
@@ -57,6 +60,19 @@ describe("column widths", () => {
 
   it("falls back to the standard default", () => {
     expect(columnDefaultWidth({}, 1)).toBe(COLUMN_DEFAULT_PX);
+    expect(columnDefaultWidth({ id: "not-a-known-column" }, 1)).toBe(COLUMN_DEFAULT_PX);
+  });
+
+  it("gives one default width per column id, shared by every table (C210)", () => {
+    expect(columnDefaultWidth({ id: "title" }, 1)).toBe(220);
+    expect(columnDefaultWidth({ id: "artist" }, 1)).toBe(170);
+    expect(columnDefaultWidth({ id: "year", minWidthPx: 40 }, 1)).toBe(72);
+    expect(columnDefaultWidth({ id: "title" }, 2)).toBe(440);
+    expect(DEFAULT_WIDTH_PX_BY_ID.title).toBe(220);
+  });
+
+  it("lets a column's own declared default win over the shared one", () => {
+    expect(columnDefaultWidth({ id: "title", defaultWidthPx: 300 }, 1)).toBe(300);
   });
 
   it("never defaults below the minimum", () => {
@@ -68,7 +84,7 @@ describe("column widths", () => {
     const widths = defaultWidths(COLUMNS, 1);
     expect(Object.keys(widths)).toEqual(["title", "artist", "bpm", "key"]);
     expect(widths.title).toBe(200);
-    expect(widths.key).toBe(COLUMN_DEFAULT_PX);
+    expect(widths.key).toBe(COLUMN_MIN_PX);
   });
 });
 
@@ -85,7 +101,7 @@ describe("resolving stored widths", () => {
 
   it("fills in a column the stored layout has never seen", () => {
     const widths = resolveWidths(COLUMNS, { title: 300 }, 1);
-    expect(widths.artist).toBe(COLUMN_DEFAULT_PX);
+    expect(widths.artist).toBe(170);
   });
 
   it("drops a width for a column that no longer exists", () => {
@@ -98,7 +114,7 @@ describe("resolving stored widths", () => {
     const stored = { title: Number.NaN, artist: Infinity } as Record<string, number>;
     const widths = resolveWidths(COLUMNS, stored, 1);
     expect(widths.title).toBe(200);
-    expect(widths.artist).toBe(COLUMN_DEFAULT_PX);
+    expect(widths.artist).toBe(170);
   });
 
   it("resolves against the scale it is given", () => {
@@ -114,7 +130,7 @@ describe("the grid", () => {
   });
 
   it("falls back for a column with no width at all", () => {
-    expect(orderedWidths(COLUMNS, {}, 1)).toEqual([200, 120, 60, 120]);
+    expect(orderedWidths(COLUMNS, {}, 1)).toEqual([200, 170, 60, 80]);
   });
 
   it("builds a pixel template whose last column takes what is left", () => {
@@ -130,7 +146,7 @@ describe("the grid", () => {
 
 describe("sticky columns", () => {
   it("puts the first sticky column at the left edge", () => {
-    expect(stickyLeft(COLUMNS, [200, 120, 60, 120], 0)).toBe(0);
+    expect(stickyLeft(COLUMNS, [200, 170, 60, 80], 0)).toBe(0);
   });
 
   it("counts only the sticky columns before it", () => {
@@ -144,7 +160,7 @@ describe("sticky columns", () => {
   });
 
   it("is zero when nothing before it is sticky", () => {
-    expect(stickyLeft(COLUMNS, [200, 120, 60, 120], 2)).toBe(200);
+    expect(stickyLeft(COLUMNS, [200, 170, 60, 80], 2)).toBe(200);
   });
 });
 
@@ -231,5 +247,47 @@ describe("insertionAt", () => {
   it("has no row to be over in an empty table", () => {
     expect(insertionAt(0, 20, 0)).toEqual({ insertAt: 0, over: -1 });
     expect(insertionAt(300, 20, 0)).toEqual({ insertAt: 0, over: -1 });
+  });
+});
+
+describe("spare width goes by grow weights (C210)", () => {
+  const cols: TrackColumnDef<Row>[] = [
+    { id: "title", header: "Title", render: () => null },
+    { id: "artist", header: "Artist", render: () => null },
+    { id: "album", header: "Album", render: () => null },
+    { id: "bpm", header: "BPM", render: () => null },
+  ];
+
+  it("weights Title 3, Artist 2, Album, Label and Genre 1, and numbers 0", () => {
+    expect(GROW_WEIGHTS).toMatchObject({ title: 3, artist: 2, album: 1, label: 1, genre: 1 });
+    expect(GROW_WEIGHTS.bpm ?? 0).toBe(0);
+  });
+
+  it("shares the room left over in proportion, and gives numbers none", () => {
+    // 600 of columns in 1200: 600 spare, over weights 3 + 2 + 1 = 6.
+    const grown = growWidths(cols, [200, 150, 150, 100], 1200);
+    expect(grown).toEqual([200 + 300, 150 + 200, 150 + 100, 100]);
+    expect(grown.reduce((a, b) => a + b, 0)).toBe(1200);
+  });
+
+  it("never gives away a pixel it cannot divide: the heaviest column takes the remainder", () => {
+    const grown = growWidths(cols, [200, 150, 150, 100], 1204);
+    expect(grown.reduce((a, b) => a + b, 0)).toBe(1204);
+    expect(grown[3]).toBe(100);
+  });
+
+  it("leaves the widths alone when there is no spare, no room measured, or nothing that grows", () => {
+    expect(growWidths(cols, [200, 150, 150, 100], 500)).toEqual([200, 150, 150, 100]);
+    expect(growWidths(cols, [200, 150, 150, 100], 0)).toEqual([200, 150, 150, 100]);
+    const numbers: TrackColumnDef<Row>[] = [{ id: "bpm", header: "BPM", render: () => null }];
+    expect(growWidths(numbers, [100], 900)).toEqual([100]);
+  });
+
+  it("takes a column's own grow weight over the shared one", () => {
+    const own: TrackColumnDef<Row>[] = [
+      { id: "title", header: "T", grow: 0, render: () => null },
+      { id: "x", header: "X", grow: 1, render: () => null },
+    ];
+    expect(growWidths(own, [100, 100], 300)).toEqual([100, 200]);
   });
 });

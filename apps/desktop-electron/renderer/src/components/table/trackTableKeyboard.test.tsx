@@ -330,3 +330,57 @@ describe("a row that has not arrived", () => {
     expect(lastCall(onSelect).index).toBe(0);
   });
 });
+
+describe("Enter, F2 and Escape (C186, C188)", () => {
+  it("Enter plays the active row and never edits it", () => {
+    const onRowActivate = vi.fn();
+    const onRowEdit = vi.fn();
+    const { table } = draw({ activeIndex: 2, onRowActivate, onRowEdit });
+    fireEvent.keyDown(table, { key: "Enter" });
+    expect(onRowActivate).toHaveBeenCalledTimes(1);
+    expect(onRowActivate.mock.calls[0]![1]).toBe(2);
+    expect(onRowEdit).not.toHaveBeenCalled();
+  });
+
+  it("F2 edits the active row and never plays it", () => {
+    const onRowActivate = vi.fn();
+    const onRowEdit = vi.fn();
+    const { table } = draw({ activeIndex: 3, onRowActivate, onRowEdit });
+    fireEvent.keyDown(table, { key: "F2" });
+    expect(onRowEdit).toHaveBeenCalledTimes(1);
+    expect(onRowEdit.mock.calls[0]![0]).toMatchObject({ title: "Row 4" });
+    expect(onRowEdit.mock.calls[0]![1]).toBe(3);
+    expect(onRowActivate).not.toHaveBeenCalled();
+  });
+
+  it("F2 does nothing without a handler or an active row", () => {
+    const onRowEdit = vi.fn();
+    const first = draw({ onRowEdit });
+    fireEvent.keyDown(first.table, { key: "F2" });
+    expect(onRowEdit).not.toHaveBeenCalled();
+  });
+
+  it("Escape clears the selection when focus is in the table", () => {
+    const onClearSelection = vi.fn();
+    const { table } = draw({ onClearSelection, selectedKeys: new Set([1]) });
+    fireEvent.keyDown(table, { key: "Escape" });
+    expect(onClearSelection).toHaveBeenCalledTimes(1);
+  });
+
+  it("Escape does nothing when nothing is selected", () => {
+    const onClearSelection = vi.fn();
+    const { table } = draw({ onClearSelection });
+    fireEvent.keyDown(table, { key: "Escape" });
+    expect(onClearSelection).not.toHaveBeenCalled();
+  });
+
+  it("Escape from outside the table, such as a menu or popover, does not reach it", () => {
+    const onClearSelection = vi.fn();
+    draw({ onClearSelection, selectedKeys: new Set([1]) });
+    const popover = document.createElement("div");
+    document.body.appendChild(popover);
+    fireEvent.keyDown(popover, { key: "Escape" });
+    popover.remove();
+    expect(onClearSelection).not.toHaveBeenCalled();
+  });
+});

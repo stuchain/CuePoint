@@ -204,8 +204,9 @@ describe("the seed and its suggestions", () => {
     const second = rowOf(TITLES[1]);
     expect(cell(second, "key")).toHaveTextContent(/^8A.*same$/);
     expect(cell(second, "bpm_delta")).toHaveTextContent("0.5×");
-    expect(cell(second, "genre_shared")).toBeEmptyDOMElement();
-    expect(cell(second, "label_shared")).toBeEmptyDOMElement();
+    // Nothing shared is the dash every empty cell shows (C73).
+    expect(cell(second, "genre_shared")).toHaveTextContent(/^—$/);
+    expect(cell(second, "label_shared")).toHaveTextContent(/^—$/);
     expect(within(cell(second, "artist_shared")).getByText("Shared artist")).toBeInTheDocument();
 
     expect(cell(rowOf(TITLES[2]), "key")).toHaveTextContent(/^8B.*rel\.$/);

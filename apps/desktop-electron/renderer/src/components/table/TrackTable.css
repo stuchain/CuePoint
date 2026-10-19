@@ -85,9 +85,9 @@
   border-right: var(--hairline) solid var(--border-muted);
   background: inherit;
   color: var(--fg-muted);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
-  font-weight: var(--weight-strong);
+  font-weight: var(--font-weight-bold);
   line-height: 1.2;
   text-align: left;
   cursor: pointer;
@@ -150,7 +150,9 @@
   box-sizing: border-box;
   height: 100%;
   padding: 0 var(--space-xs);
+  /* Solid, with a line on its left, so a heading scrolled under it is covered and not shown through (C69). */
   background: var(--bg-toolbar);
+  border-left: var(--hairline) solid var(--border-muted);
 }
 
 .track-table__header-cell-wrap--dragging {
@@ -176,13 +178,14 @@
   cursor: col-resize;
 }
 
-.track-table__col-resizer:hover,
-.track-table__col-resizer:focus-visible {
-  background: color-mix(in srgb, var(--accent-info) 35%, transparent);
+.track-table__col-resizer:hover {
+  background: var(--resizer-hover);
 }
 
+/* The keyboard gets the one focus ring, inside the narrow handle so the header does not clip it. */
 .track-table__col-resizer:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 .track-table__body {
@@ -199,7 +202,8 @@
   left: 0;
   width: 100%;
   background: var(--bg-input);
-  border-bottom: var(--hairline) solid var(--border-muted);
+  /* Exactly the row height: the divider is drawn inside the row, in Retro's own line colour when it has one (C74). */
+  box-shadow: inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-divider, var(--border-muted));
   cursor: default;
   /* Clipped, never hidden: "hidden" makes the row a scroll container of its own, and a sticky cell
      sticks to its nearest scroll container, so the row's pinned Title would stick to a row that
@@ -209,7 +213,7 @@
 }
 
 .track-table__row:hover {
-  background: color-mix(in srgb, var(--bg-panel) 35%, var(--bg-input));
+  background: var(--row-hover);
 }
 
 /* Selected (C4): a lighter fill and a thin accent bar on the left. The :hover pair is there
@@ -240,6 +244,13 @@
    cells keep their colour so a row still reads as a row. */
 .track-table__row--playing .track-table__cell[data-column="title"] {
   color: var(--accent-primary);
+}
+
+/* Playing is an accent bar on the left edge and the speaker, never the selected tint (C143). */
+.track-table__row--playing:not(.track-table__row--selected) {
+  box-shadow:
+    inset var(--selected-bar-width) 0 0 0 var(--accent-primary),
+    inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-divider, var(--border-muted));
 }
 
 .track-table__row--played .track-table__cell[data-column="title"] {
@@ -344,12 +355,12 @@
   align-items: center;
   box-sizing: border-box;
   height: 100%;
-  padding: 0 var(--space-xs);
+  padding: 0 var(--row-end-inset) 0 var(--space-xs);
   background: var(--bg-input);
 }
 
 .track-table__row:hover .track-table__end {
-  background: color-mix(in srgb, var(--bg-panel) 35%, var(--bg-input));
+  background: var(--row-hover);
 }
 
 .track-table__row--selected .track-table__end,
@@ -370,7 +381,7 @@
   justify-content: center;
   padding: var(--space-lg);
   color: var(--fg-muted);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-sm);
   text-align: center;
 }
@@ -409,7 +420,7 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
   padding: 0 var(--space-xs);
   background: var(--accent-primary);
   color: var(--fg-primary);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
   line-height: 1.4;
   pointer-events: none;
@@ -441,7 +452,7 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
   padding: var(--space-lg);
   border: round(down, calc(2px * var(--scale)), 1px) dashed var(--accent-primary);
   color: var(--accent-primary);
-  font-family: var(--font-pixel);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-sm);
   text-align: center;
   pointer-events: none;
@@ -453,21 +464,24 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
   display: none;
 }
 
-/* The grip says a row can be picked up; the Library table has it too. Out of the column flow, at
-   the row's left edge, so a narrow right-aligned first column keeps its content. Empty alt text,
-   so a screen reader skips it. */
-.track-table__row--grip::before {
-  content: "⠿" / "";
+/* The one drag handle (C187): the grip icon, out of the column flow at the row's left edge, so a narrow
+   right-aligned first column keeps its content. Decorative; the row is what is dragged. */
+.track-table__grip {
   position: absolute;
   left: var(--space-xs);
   top: 50%;
   transform: translateY(-50%);
   z-index: 3;
+  display: inline-flex;
   color: var(--fg-muted);
-  line-height: 1;
   pointer-events: none;
 }
 
-.track-table__row--grip > .track-table__cell:first-child {
-  padding-left: calc(var(--space-xs) + 1.2em);
+.track-table__row--grip > .track-table__cell:first-of-type {
+  padding-left: calc(var(--space-xs) + var(--icon-size-sm) + var(--space-xs));
+}
+
+/* The heading above the grip column has the same leading padding as its rows (C81). */
+.track-table[data-grip] .track-table__header-cell-wrap:first-child .track-table__header-cell {
+  padding-left: calc(var(--space-xs) + var(--icon-size-sm) + var(--space-xs));
 }

@@ -1,0 +1,69 @@
+/*
+ * The shared table look (C72, D8): one set of rules for every plain table and list the pages draw
+ * outside the virtualised track table, mirroring the Library table. Put `cp-data-table` on a
+ * `<table>`; mark number cells `.num` and a chosen row `aria-selected="true"`.
+ *
+ * - header: the row height, on the toolbar colour, a pixel label in the muted colour, one
+ *   `--border-muted` line below it, sticky;
+ * - rows: the row height, with the divider drawn inside the row so it never adds to the height;
+ * - cells: `--space-sm` either side, ending in "…" when cut short;
+ * - hover: `--row-hover`; selected: `--selected-row-background`.
+ */
+.cp-data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  color: var(--fg-primary);
+}
+
+.cp-data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  height: var(--row-height);
+  padding: 0 var(--space-sm);
+  background: var(--bg-toolbar);
+  border-bottom: var(--hairline) solid var(--border-muted);
+  color: var(--fg-muted);
+  font-family: var(--font-pixel-digits);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.cp-data-table tbody tr {
+  height: var(--row-height);
+}
+
+.cp-data-table tbody td {
+  box-sizing: border-box;
+  max-width: 0;
+  padding: 0 var(--space-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-divider, var(--border-muted));
+}
+
+.cp-data-table tbody tr:hover td {
+  background: var(--row-hover);
+}
+
+.cp-data-table tbody tr[aria-selected="true"] td {
+  background: var(--selected-row-background);
+}
+
+/* Numbers line up column-wise, right-aligned, in the data face. */
+.cp-data-table .num {
+  text-align: right;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-data-table thead th.num {
+  font-family: var(--font-pixel-digits);
+}

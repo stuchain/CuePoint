@@ -27,8 +27,51 @@ import { useScaleFactor } from "../../tokens/ScaleContext";
 /** Qt-style minimum column width in CSS pixels, before scale. */
 export const COLUMN_MIN_PX = 80;
 
-/** What a column gets when it declares no width of its own. */
+/** What a column gets when it declares no width of its own and has no entry below. */
 export const COLUMN_DEFAULT_PX = 120;
+
+/**
+ * One default width per column id, before scale, shared by every table (C210). These are the
+ * Library table's, which the other tables mirror; a column that declares its own
+ * `defaultWidthPx` still wins, but should not need to.
+ */
+export const DEFAULT_WIDTH_PX_BY_ID: Readonly<Record<string, number>> = {
+  title: 220,
+  artist: 170,
+  remixer: 140,
+  key: 70,
+  bpm: 72,
+  duration_seconds: 76,
+  genre: 130,
+  label: 140,
+  rating: 92,
+  album: 170,
+  year: 72,
+  play_count: 72,
+  date_added: 110,
+  colour: 90,
+  bitrate: 82,
+  comment: 180,
+  file_path: 240,
+  match_state: 150,
+  match_score: 72,
+  file_status: 110,
+  artwork: 64,
+  waveform: 120,
+  loudness: 72,
+};
+
+/**
+ * How the room left over in a wide table is shared (C210): Title most, then Artist, then the other
+ * words; numbers keep the width they have. A column's own `grow` wins.
+ */
+export const GROW_WEIGHTS: Readonly<Record<string, number>> = {
+  title: 3,
+  artist: 2,
+  album: 1,
+  label: 1,
+  genre: 1,
+};
 
 /** Fallback row height, in CSS pixels, when no stylesheet has loaded. */
 export const ROW_HEIGHT_FALLBACK = 26;
@@ -68,12 +111,20 @@ export interface TrackColumnDef<Row> {
   align?: ColumnAlign;
   /** Pinned to the left edge while the table scrolls sideways. */
   sticky?: boolean;
+  /** How much of a wide table's spare room this column takes, against the others (0 takes none). */
+  grow?: number;
   /**
    * Not shown until a user asks for it (DEC-042). A table that opened on every
    * column it has would be a wall; the picker is where the rest live, and once
    * chosen the choice is remembered.
    */
   hiddenByDefault?: boolean;
+  /**
+   * The value the column sorts by, for a column the engine cannot sort (Key and BPM in a list the
+   * page holds). A column with an `accessor` and no `sortKey` can be sorted in the table, over the
+   * rows it has; empty values go last (C193).
+   */
+  accessor?: (row: Row) => string | number | null | undefined;
   /** What the cell shows. Given the row; never given the index. */
   render: (row: Row) => ReactNode;
   /**
@@ -101,10 +152,11 @@ export function columnMinWidth(
 }
 
 export function columnDefaultWidth(
-  column: Pick<TrackColumnDef<unknown>, "minWidthPx" | "defaultWidthPx">,
+  column: Pick<TrackColumnDef<unknown>, "minWidthPx" | "defaultWidthPx"> & { id?: string },
   scale: number,
 ): number {
-  const declared = (column.defaultWidthPx ?? COLUMN_DEFAULT_PX) * scale;
+  const shared = column.id === undefined ? undefined : DEFAULT_WIDTH_PX_BY_ID[column.id];
+  const declared = (column.defaultWidthPx ?? shared ?? COLUMN_DEFAULT_PX) * scale;
   return Math.max(columnMinWidth(column, scale), Math.round(declared));
 }
 
@@ -165,6 +217,27 @@ export function gridTemplate(widths: number[]): string {
   return widths
     .map((width, index) => (index === last ? `minmax(${Math.round(width)}px, 1fr)` : `${Math.round(width)}px`))
     .join(" ");
+}
+
+/**
+ * The widths with a wide table's spare room shared out by grow weight (C210): `room` is the width
+ * the columns may fill. Returns the widths unchanged when there is no room, no spare, or no column
+ * that grows. Whole pixels; the heaviest column takes the remainder, so the total is exactly `room`.
+ */
+export function growWidths<Row>(
+  columns: readonly TrackColumnDef<Row>[],
+  widths: number[],
+  room: number,
+): number[] {
+  const spare = Math.floor(room) - widths.reduce((sum, width) => sum + width, 0);
+  if (!(room > 0) || spare <= 0) return widths;
+  const weights = columns.map((column) => column.grow ?? GROW_WEIGHTS[column.id] ?? 0);
+  const sum = weights.reduce((a, b) => a + b, 0);
+  if (sum <= 0) return widths;
+  const shares = weights.map((weight) => Math.floor((spare * weight) / sum));
+  const left = spare - shares.reduce((a, b) => a + b, 0);
+  const heaviest = weights.indexOf(Math.max(...weights));
+  return widths.map((width, index) => width + shares[index]! + (index === heaviest ? left : 0));
 }
 
 export function totalWidth(widths: number[]): number {

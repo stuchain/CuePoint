@@ -97,3 +97,54 @@ describe("a mouse press on a row", () => {
     expect(activate.mock.calls[0][0]).toEqual({ id: 2, title: "Row 2" });
   });
 });
+
+describe("right-click selects the row first (SB1, C183)", () => {
+  function drawSelected(selected: number[]) {
+    const calls: string[] = [];
+    const onSelect = vi.fn((row: Row, _index: number, modifiers: unknown) => {
+      calls.push(`select:${row.id}`);
+      void modifiers;
+    });
+    const onRowContextMenu = vi.fn((row: Row) => {
+      calls.push(`menu:${row.id}`);
+    });
+    render(
+      <ScaleProvider>
+        <TrackTable<Row>
+          columns={COLUMNS}
+          source={inMemorySource(ROWS)}
+          getRowKey={(r) => r.id}
+          selectedKeys={new Set(selected)}
+          onSelect={onSelect}
+          onRowContextMenu={onRowContextMenu}
+          ariaLabel="Rows"
+        />
+      </ScaleProvider>,
+    );
+    return { calls, onSelect, onRowContextMenu };
+  }
+
+  it("selects an unselected row before the menu opens, so the menu acts on it alone", async () => {
+    const { calls, onSelect } = drawSelected([1, 2, 3]);
+    const row = (await screen.findByText("Row 6")).closest('[role="row"]')!;
+    fireEvent.contextMenu(row);
+    expect(calls).toEqual(["select:6", "menu:6"]);
+    expect(onSelect.mock.calls[0]![2]).toEqual({ shiftKey: false, ctrlKey: false, metaKey: false });
+  });
+
+  it("leaves the selection alone when the row is already in it", async () => {
+    const { calls, onSelect } = drawSelected([1, 2, 3]);
+    const row = (await screen.findByText("Row 2")).closest('[role="row"]')!;
+    fireEvent.contextMenu(row);
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(calls).toEqual(["menu:2"]);
+  });
+
+  it("is the same with Ctrl or Shift held", async () => {
+    const { calls, onSelect } = drawSelected([1]);
+    const row = (await screen.findByText("Row 5")).closest('[role="row"]')!;
+    fireEvent.contextMenu(row, { ctrlKey: true, shiftKey: true });
+    expect(calls).toEqual(["select:5", "menu:5"]);
+    expect(onSelect.mock.calls[0]![2]).toEqual({ shiftKey: false, ctrlKey: false, metaKey: false });
+  });
+});

@@ -212,7 +212,8 @@ async function tableReady() {
 }
 
 async function openMenuOn(text: string) {
-  const row = screen.getByText(text).closest("[role=row]")!;
+  // In the table: a right-click selects the row (SB1), and the details panel then shows its title too.
+  const row = within(screen.getByRole("table", { name: "Library tracks" })).getByText(text).closest("[role=row]")!;
   fireEvent.contextMenu(row, { clientX: 100, clientY: 100 });
   return screen.findByRole("menu");
 }
