@@ -121,6 +121,18 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
     // the track list's own toolbar (D12), beside the count and "Open in Library".
     const trackBar = win.getByRole("toolbar", { name: "Track list" });
     await expect(trackBar.getByRole("button", { name: "Open in Library" })).toBeVisible();
+    // The decision's size: 1264 x 735 at text size 1.25.
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.setSize(1264, 735);
+    });
+    await win.evaluate(() => localStorage.setItem("cuepoint-ui-lab-scale", "1.25"));
+    await win.reload();
+    await expect(win.getByRole("group", { name: "Keys" })).toBeVisible({ timeout: 30_000 });
+    // Two panes (D12): the list's toolbar sits to the right of the wheel, on the wheel's top line.
+    const wheelBox = await win.getByRole("group", { name: "Keys" }).boundingBox();
+    const barBox = await trackBar.boundingBox();
+    expect(barBox!.x, "toolbar is right of the wheel").toBeGreaterThanOrEqual(wheelBox!.x + wheelBox!.width);
+    expect(Math.abs(barBox!.y - wheelBox!.y), "toolbar and wheel share their top").toBeLessThanOrEqual(1);
     await trackBar.getByRole("button", { name: "List" }).click();
     const list = win.getByRole("group", { name: "Keys in these sources" });
     // The exact count on a key's row (its count cell, not a substring of the row).
