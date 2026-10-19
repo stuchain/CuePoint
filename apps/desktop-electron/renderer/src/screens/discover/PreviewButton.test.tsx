@@ -93,6 +93,7 @@ function tableOf(rows: BeatportTrackRow[], count = 0) {
     select: vi.fn(),
     selectAll: vi.fn(),
     clear,
+    reindex: () => {},
   } as unknown as BeatportSelection<BeatportTrackRow>;
   return (
     <ScaleProvider>

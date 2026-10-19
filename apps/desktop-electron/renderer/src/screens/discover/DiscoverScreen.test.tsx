@@ -710,7 +710,8 @@ describe("Results", () => {
 
     const [first, , third] = rowsOf("Tracks this dig found");
     fireEvent.click(first!);
-    expect(buttonsOf(bar)).toEqual(names);
+    // One track selected: its artist and label pages are buttons too, not only in the menu (C196).
+    expect(buttonsOf(bar)).toEqual([...names, "Open artist page", "Open label page"]);
     expect(button("Add to wantlist")).toBeEnabled();
     expect(button("Open on Beatport")).toBeEnabled();
     expect(bar).toHaveTextContent("1 selected");
@@ -1426,7 +1427,7 @@ describe("the wantlist", () => {
     );
     const notBought = WANTED.rows.findIndex((row) => row.bought_at === null);
     fireEvent.click(rowsOf("Wantlist")[notBought]!);
-    expect(buttonsOf(bar)).toEqual(all);
+    expect(buttonsOf(bar)).toEqual([...all, "Open artist page", "Open label page"]);
     expect(enabled()).toEqual(all);
     const other = WANTED.rows.findIndex((row, index) => index !== notBought && row.bought_at === null);
     fireEvent.click(rowsOf("Wantlist")[other]!, { ctrlKey: true });
