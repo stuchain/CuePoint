@@ -179,6 +179,8 @@ export function RunsView({
   }, [runningJobId]);
 
   const showMore = () => {
+    // Already asking for the most the engine keeps: the same question would never answer anew.
+    if (Math.min(limit, tools.options.limits.max_runs) >= tools.options.limits.max_runs) return;
     setLoadingMore(true);
     // "Show all" shows all of them (up to the most the engine keeps), not another page.
     setLimit(tools.options.limits.max_runs);
@@ -228,6 +230,7 @@ export function RunsView({
   if (runs.length === 0 && !starting) {
     return (
       <>
+        {lookup && <div className="discover-runs-view__lookup">{lookup}</div>}
         {listError && (
           <Notice
             action={
@@ -280,6 +283,7 @@ export function RunsView({
               void onContinue(run.id);
             }}
             continueBlocked={continueBlocked}
+            max={tools.options.limits.max_runs}
             onShowMore={showMore}
             loadingMore={loadingMore}
           />

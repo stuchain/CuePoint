@@ -56,6 +56,7 @@ function view(
     runsVersion?: number;
     onContinue?: (runId: number) => Promise<unknown>;
     continueBlocked?: string | null;
+    lookup?: React.ReactNode;
   } = {},
 ) {
   return (
@@ -67,6 +68,7 @@ function view(
         onNewSearch={() => {}}
         onContinue={props.onContinue ?? (async () => null)}
         continueBlocked={props.continueBlocked ?? null}
+        lookup={props.lookup}
         pollMs={60_000}
       />
     </ScaleProvider>
@@ -171,6 +173,26 @@ describe("the Results list", () => {
 
     await act(async () => answerBigger());
     await waitFor(() => expect(within(nav).queryByText("Loading older digs…")).toBeNull());
+  });
+
+  it("shows the lookup prompt above 'No digs yet' too", async () => {
+    install(vi.fn(async () => ({ value: { ...RUNS, runs: [], total: 0 }, refusal: null })));
+    render(view({ lookup: <p>Match 12 tracks on Beatport</p> }));
+    const prompt = await screen.findByText("Match 12 tracks on Beatport");
+    const empty = screen.getByText("No digs yet");
+    expect(prompt.compareDocumentPosition(empty) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("stops offering 'Show all' once the engine's most are showing, and says so", async () => {
+    const max = OPTIONS.limits.max_runs;
+    const many = Array.from({ length: max }, (_, i) => ({ ...RUNS.runs[0]!, id: 1000 + i }));
+    const list = vi.fn(async () => ({ value: { ...RUNS, runs: many, total: max + 50 }, refusal: null }));
+    install(list);
+    render(view());
+    const nav = await screen.findByRole("navigation", { name: "Past digs" });
+    expect(within(nav).queryByRole("button", { name: /^Show all/ })).toBeNull();
+    expect(within(nav).getByText(`Showing the newest ${max}`)).toBeInTheDocument();
+    expect(within(nav).queryByText("Loading older digs…")).toBeNull();
   });
 
   it("hands the list the same array while nothing about it changed", async () => {

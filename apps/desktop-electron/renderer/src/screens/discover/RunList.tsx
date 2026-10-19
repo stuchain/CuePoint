@@ -15,7 +15,7 @@ import { Hint } from "../../components/Hint";
 import { Loading } from "../../components/Loading";
 import { ShowMore } from "../../components/ShowMore";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
-import { countNoun } from "../../format/counts";
+import { countNoun, formatCount } from "../../format/counts";
 import {
   canContinueRun,
   runStateLabel,
@@ -39,6 +39,8 @@ interface RunListProps {
   /** Why Continue is off right now (another dig, Beatport), or null. */
   continueBlocked: string | null;
   /** Asked to show every dig, not only the newest page of them. */
+  /** The most digs the engine keeps: past it there is nothing more to show. */
+  max: number;
   onShowMore: () => void;
   loadingMore: boolean;
 }
@@ -167,6 +169,7 @@ export function RunList({
   onDelete,
   onContinue,
   continueBlocked,
+  max,
   onShowMore,
   loadingMore,
 }: RunListProps) {
@@ -187,7 +190,9 @@ export function RunList({
         ))}
       </ul>
       {runs.length < total &&
-        (loadingMore ? (
+        (runs.length >= max ? (
+          <p className="discover-note">{`Showing the newest ${formatCount(max)}`}</p>
+        ) : loadingMore ? (
           <Loading what="older digs" />
         ) : (
           <ShowMore total={total} expanded={false} onToggle={onShowMore} />
