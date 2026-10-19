@@ -125,6 +125,30 @@ async function clickRow(win: Page, row: ReturnType<typeof rowTitled>) {
   await win.mouse.click(box.x + 40, box.y + box.height / 2);
 }
 
+/**
+ * A ticked item of the View menu (C126): opens the menu, ticks or unticks the item, and closes the
+ * menu again, as a ticked item leaves it open.
+ */
+async function toggleView(win: Page, name: string) {
+  await win.getByRole("button", { name: "View", exact: true }).click();
+  await win.getByRole("menuitemcheckbox", { name }).click();
+  await win.keyboard.press("Escape");
+}
+
+/**
+ * Track details open from the Details button on this page and hide the source panel while open
+ * (C226): a selected row no longer opens them by itself.
+ */
+async function showDetails(win: Page) {
+  const toggle = win.getByRole("button", { name: "Track details", exact: true });
+  if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
+}
+
+async function hideDetails(win: Page) {
+  const toggle = win.getByRole("button", { name: "Track details", exact: true });
+  if ((await toggle.getAttribute("aria-pressed")) === "true") await toggle.click();
+}
+
 function point(win: Page) {
   return win.getByRole("region", { name: "Add to the Set" }).getByRole("status", { name: /^Inserting: / });
 }
@@ -193,7 +217,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       const title = ((await first.locator('[data-column="title"]').textContent()) ?? "").trim();
       await clickRow(win, first);
       await win.getByRole("button", { name: "Insert here" }).click();
-      await expect(win.getByText(`Inserted “${title}” into “Friday”.`)).toBeVisible({ timeout: 15_000 });
+      await expect(win.getByText(`Inserted “${title}” into “Friday”`)).toBeVisible({ timeout: 15_000 });
       await expect.poll(async () => (await runningOrder(win, setId)).map((entry) => entry.title).slice(0, 4)).toEqual([
         "Track 01",
         "Track 02",
@@ -224,7 +248,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       await expect(found).toBeVisible({ timeout: 30_000 });
       const target = rowTitled(win, "Set entries", "Track 07");
       await found.dragTo(target, { sourcePosition: { x: 30, y: 8 }, targetPosition: { x: 30, y: 4 } });
-      await expect(win.getByText("Inserted 1 track into “Friday”.")).toBeVisible({ timeout: 15_000 });
+      await expect(win.getByText("Inserted 1 track into “Friday”")).toBeVisible({ timeout: 15_000 });
       await expect
         .poll(async () => {
           const order = (await runningOrder(win, setId)).map((entry) => entry.title);
@@ -261,16 +285,18 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
       await expect.poll(async () => (await runningOrder(win, setId)).at(-1)?.title).toBe("Track 22");
 
       // --- the lanes: open, and a column selects its entry -----------------------
-      await win.getByRole("button", { name: "View", exact: true }).click();
-      await win.getByRole("menuitem", { name: "Show tempo and key lanes" }).click();
+      await toggleView(win, "Tempo lane");
       const lanes = win.getByRole("group", { name: "Tempo and key lanes" });
       await expect(lanes).toBeVisible();
       await expect(lanes.locator('[data-relation="clash"]').first()).toBeAttached();
       const order = await runningOrder(win, setId);
       const ninth = order.find((entry) => entry.title === "Track 09")!;
       await lanes.locator(`[data-entry="${ninth.id}"]`).click();
+      // Track details open from the Details button, and the source panel waits while they do (C226).
+      await showDetails(win);
       const inspector = win.getByRole("complementary", { name: "Track details" });
       await expect(inspector.getByText(`Entry ${order.indexOf(ninth) + 1}, in Peak`)).toBeVisible({ timeout: 15_000 });
+      await hideDetails(win);
       await expect(point(win)).toHaveAccessibleName(/^Inserting: between “Track 09” and “Track 10”, in Peak$/);
 
       // --- a reload keeps the tab and the lanes -------------------------------------
@@ -319,7 +345,7 @@ test.describe("the Prepare page's source panel and lanes (PREP-11)", () => {
 
       // The centre of the table, well away from the note at its top.
       await found.dragTo(setTable, { sourcePosition: { x: 30, y: 8 } });
-      await expect(win.getByText("Inserted 1 track into “Blank”.")).toBeVisible({ timeout: 15_000 });
+      await expect(win.getByText("Inserted 1 track into “Blank”")).toBeVisible({ timeout: 15_000 });
       await expect.poll(async () => (await runningOrder(win, setId)).map((entry) => entry.title)).toEqual(["Track 21"]);
     } finally {
       await app.close();

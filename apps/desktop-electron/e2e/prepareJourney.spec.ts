@@ -139,7 +139,7 @@ function row(win: Page, title: string, nth = 0) {
   return setTable(win)
     .locator(".track-table__row")
     // A chapter's heading carries its Edit… button (FLW-17), which is part of its title cell's text.
-    .filter({ has: win.locator('[data-column="title"]', { hasText: new RegExp(`^(⚠ )?${title}(Edit…)?$`) }) })
+    .filter({ has: win.locator('[data-column="title"]', { hasText: new RegExp(`^${title}(Edit…)?$`) }) })
     .nth(nth);
 }
 
@@ -154,6 +154,30 @@ async function menu(win: Page, name: string) {
 
 function inspector(win: Page) {
   return win.getByRole("complementary", { name: "Track details" });
+}
+
+/**
+ * A ticked item of the View menu (C126): opens the menu, ticks or unticks the item, and closes the
+ * menu again, as a ticked item leaves it open.
+ */
+async function toggleView(win: Page, name: string) {
+  await win.getByRole("button", { name: "View", exact: true }).click();
+  await win.getByRole("menuitemcheckbox", { name }).click();
+  await win.keyboard.press("Escape");
+}
+
+/**
+ * Track details open from the Details button on this page and hide the source panel while open
+ * (C226): a selected row no longer opens them by itself.
+ */
+async function showDetails(win: Page) {
+  const toggle = win.getByRole("button", { name: "Track details", exact: true });
+  if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
+}
+
+async function hideDetails(win: Page) {
+  const toggle = win.getByRole("button", { name: "Track details", exact: true });
+  if ((await toggle.getAttribute("aria-pressed")) === "true") await toggle.click();
 }
 
 function facts(win: Page) {
@@ -268,16 +292,17 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       // --- 3. times, a reorder, and the running time and "Starts at" moving ------------
       async function time(title: string, inTime: string, outTime: string) {
         await at(win, row(win, title));
+        await showDetails(win);
         const zone = inspector(win).getByRole("region", { name: "In this Set" });
         await expect(zone).toBeVisible({ timeout: 15_000 });
         await zone.getByRole("textbox", { name: "Mix in", exact: true }).fill(inTime);
         const out = zone.getByRole("textbox", { name: "Mix out", exact: true });
         await out.fill(outTime);
         await out.press("Enter");
+        await hideDetails(win);
       }
-      // R4-5: Mix in and Mix out are hidden until View ▸ Show times.
-      await win.getByRole("button", { name: "View", exact: true }).click();
-      await win.getByRole("menuitem", { name: "Show times" }).click();
+      // C246: Mix in shows already and Mix out waits; the View item ticks for both, so one click shows Mix out.
+      await toggleView(win, "Mix in and Mix out");
       // FLW-18: Warm One's times are typed in the table: click Mix in, Tab to Mix out, Enter.
       await row(win, "Warm One").getByRole("button", { name: /^Mix in for/ }).first().click();
       await win.getByRole("textbox", { name: /^Mix in for/ }).fill("0:30");
@@ -379,10 +404,11 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const suggested = ((await suggestion.locator('[data-column="title"]').textContent()) ?? "").trim();
       await at(win, suggestion);
       await panel.getByRole("button", { name: "Insert here" }).click();
-      await expect(win.getByText(`Inserted “${suggested}” into “Friday”.`)).toBeVisible({ timeout: 15_000 });
+      await expect(win.getByText(`Inserted “${suggested}” into “Friday”`)).toBeVisible({ timeout: 15_000 });
       expect((await order(win, setId)).slice(0, 3)).toEqual(["Warm Two", suggested, "Warm One"]);
 
       await at(win, row(win, "Peak Jump"));
+      await showDetails(win);
       const zone = inspector(win).getByRole("region", { name: "In this Set" });
       const clash = zone.getByRole("listitem").filter({ hasText: /Keys clash/ });
       await clash.getByRole("button", { name: "Mark OK" }).click();
@@ -390,10 +416,10 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await expect(facts(win).getByTitle(/1 marked OK/)).toBeVisible({ timeout: 15_000 });
       await expect(clash.getByRole("button", { name: "Undo Mark OK" })).toBeVisible();
       expect((await readSet(win, setId)).analysis.acknowledged).toBe(1);
+      await hideDetails(win);
       // FLW-19: the strip's caption reads the keys and tempos of the selected entry into the next,
       // and one warning on that transition ends it, with Accept beside it.
-      await win.getByRole("button", { name: "View", exact: true }).click();
-      await win.getByRole("menuitem", { name: "Show transition strip" }).click();
+      await toggleView(win, "Transition strip");
       await at(win, row(win, "Build"));
       const caption = win.getByTestId("transition-caption");
       await expect(caption.getByTestId("transition-words")).toContainText(/[+−]?[\d.]+%/, { timeout: 15_000 });
@@ -402,8 +428,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       await expect(caption.getByTestId("transition-warning")).toHaveCount(1);
       await expect(caption.getByText(/^\+\d+ more$/)).toHaveAttribute("data-hint", /Keys clash.*\(OK\)/);
       await expect(caption.getByTestId("transition-warning").getByRole("button", { name: "Mark OK" })).toBeVisible();
-      await win.getByRole("button", { name: "View", exact: true }).click();
-      await win.getByRole("menuitem", { name: "Hide transition strip" }).click();
+      await toggleView(win, "Transition strip");
 
       // --- 5. played from the third entry, the repeat in the queue ------------------
       const running = await order(win, setId);
@@ -452,8 +477,8 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       const exported = path.join(workspace, "out", "CuePoint Export.xml");
       mkdirSync(path.dirname(exported));
       await saveDialogAnswers(app, exported);
-      await win.getByRole("button", { name: "Set", exact: true }).click();
-      await menu(win, "Export to Rekordbox…");
+      // Export is a page action in the header (C216), no longer in the Set menu.
+      await win.getByRole("button", { name: "Export to Rekordbox…", exact: true }).click();
       const dialog = win.getByRole("dialog", { name: "Export to Rekordbox" });
       // The playlist ticks sit behind Details, which starts closed (DEC-247).
       await dialog.getByRole("button", { name: "Details" }).click({ timeout: 30_000 });

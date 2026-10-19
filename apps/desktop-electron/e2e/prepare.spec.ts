@@ -284,6 +284,30 @@ async function currentTitle(win: Page): Promise<string | null> {
   });
 }
 
+/**
+ * A ticked item of the View menu (C126): opens the menu, ticks or unticks the item, and closes the
+ * menu again, as a ticked item leaves it open.
+ */
+async function toggleView(win: Page, name: string) {
+  await win.getByRole("button", { name: "View", exact: true }).click();
+  await win.getByRole("menuitemcheckbox", { name }).click();
+  await win.keyboard.press("Escape");
+}
+
+/**
+ * Track details open from the Details button on this page and hide the source panel while open
+ * (C226): a selected row no longer opens them by itself.
+ */
+async function showDetails(win: Page) {
+  const toggle = win.getByRole("button", { name: "Track details", exact: true });
+  if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
+}
+
+async function hideDetails(win: Page) {
+  const toggle = win.getByRole("button", { name: "Track details", exact: true });
+  if ((await toggle.getAttribute("aria-pressed")) === "true") await toggle.click();
+}
+
 async function setSidebar(win: Page, collapsed: boolean) {
   const nav = win.getByRole("navigation", { name: "Main navigation" });
   const wanted = collapsed ? "Collapse sidebar" : "Expand sidebar";
@@ -393,8 +417,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       expect(source.whole, "the Suggestions the panel shows").toBeGreaterThanOrEqual(SOURCE_ROWS);
 
       // --- with the tempo and key lanes open (PREP-11) ------------------------
-      await win.getByRole("button", { name: "View", exact: true }).click();
-      await win.getByRole("menuitem", { name: "Show tempo and key lanes" }).click();
+      await toggleView(win, "Tempo lane");
       await expect(win.getByRole("group", { name: "Tempo and key lanes" })).toBeVisible();
       const lanes: Record<string, Measured> = {};
       for (const collapsed of [false, true]) {
@@ -411,13 +434,11 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       for (const [state, m] of Object.entries(lanes)) {
         expect(m.whole, `whole rows, ${state}`).toBeGreaterThanOrEqual(WHOLE_ROWS_LANES);
       }
-      await win.getByRole("button", { name: "View", exact: true }).click();
-      await win.getByRole("menuitem", { name: "Hide tempo and key lanes" }).click();
+      await toggleView(win, "Tempo lane");
       await expect(win.getByRole("group", { name: "Tempo and key lanes" })).toHaveCount(0);
 
       // --- with the transition strip open (WAVE-07) ---------------------------
-      await win.getByRole("button", { name: "View", exact: true }).click();
-      await win.getByRole("menuitem", { name: "Show transition strip" }).click();
+      await toggleView(win, "Transition strip");
       const strip = win.getByRole("region", { name: "Transition" });
       await expect(strip).toBeVisible();
       // A row of titles and a waveform two rows tall, in the Set's own rows. The titles' row
@@ -433,7 +454,8 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
           titles: Math.max(row.getBoundingClientRect().height, 2.3 * xs),
         };
       });
-      expect(geometry.rows).toBe(`${geometry.titles}px ${geometry.row * 2}px`);
+      // With a row selected: titles and two rows of waveform. With none, one line only (C259).
+      expect([`${geometry.titles}px ${geometry.row * 2}px`, `${geometry.titles}px`]).toContain(geometry.rows);
       const transition: Record<string, Measured> = {};
       for (const collapsed of [false, true]) {
         await setSidebar(win, collapsed);
@@ -449,8 +471,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       for (const [state, m] of Object.entries(transition)) {
         expect(m.whole, `whole rows, ${state}`).toBeGreaterThanOrEqual(WHOLE_ROWS_TRANSITION);
       }
-      await win.getByRole("button", { name: "View", exact: true }).click();
-      await win.getByRole("menuitem", { name: "Hide transition strip" }).click();
+      await toggleView(win, "Transition strip");
       await expect(strip).toHaveCount(0);
 
       // --- the row double-clicked is the row that plays -----------------------
@@ -510,11 +531,10 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       await setSidebar(win, false);
       const crowded: Record<string, number> = {};
       for (const [show, hide, name] of [
-        ["Show tempo and key lanes", "Hide tempo and key lanes", "lanes"],
-        ["Show transition strip", "Hide transition strip", "transition"],
+        ["Tempo lane", "Tempo lane", "lanes"],
+        ["Transition strip", "Transition strip", "transition"],
       ] as const) {
-        await win.getByRole("button", { name: "View", exact: true }).click();
-        await win.getByRole("menuitem", { name: show }).click();
+        await toggleView(win, show);
         await win.evaluate(() => {
           const screen = [...document.querySelectorAll<HTMLElement>("main.app-main .screen")].find((el) => el.getClientRects().length > 0)!;
           screen.scrollTop = screen.scrollHeight;
@@ -526,8 +546,7 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         await win.evaluate(() => {
           [...document.querySelectorAll<HTMLElement>("main.app-main .screen")].find((el) => el.getClientRects().length > 0)!.scrollTop = 0;
         });
-        await win.getByRole("button", { name: "View", exact: true }).click();
-        await win.getByRole("menuitem", { name: hide }).click();
+        await toggleView(win, hide);
       }
       console.log("WAVE-07 whole rows, crowded:", JSON.stringify(crowded));
 
