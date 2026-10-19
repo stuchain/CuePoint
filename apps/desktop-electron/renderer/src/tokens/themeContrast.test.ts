@@ -66,8 +66,9 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
 
   it("steps the surface ladder away from the page", () => {
     if (builtIn) expect(contrastRatio(app, panel), "app to panel").toBeGreaterThanOrEqual(1.05);
-    // Retro's slabs were the loudest thing on the page, so D10 (C93) set them to 1.14:1, no louder than a panel.
-    expect(contrastRatio(panel, alt), "panel to alt").toBeGreaterThanOrEqual(builtIn ? 1.1 : 1.15);
+    // Only Retro's slabs are below 1.15: D10 (C93) set them to 1.14:1, no louder than a panel. Its hover
+    // does not lean on them (see --hover-fill below). Every other theme keeps the 1.15 floor.
+    expect(contrastRatio(panel, alt), "panel to alt").toBeGreaterThanOrEqual(name === "retro16" ? 1.1 : 1.15);
     if (panel !== "#ffffff" && panel !== "#000000") {
       expect(contrastRatio(app, alt), "alt is further from the page than the panel").toBeGreaterThan(contrastRatio(app, panel));
     }
@@ -90,6 +91,19 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
   it("keeps the specified line in the themes D10 leaves alone", () => {
     const spec: Record<string, string> = { neoDark: "#52525b", mutedPro: "#4b5568" };
     if (name in spec) expect(t["border-muted"]).toBe(spec[name]);
+  });
+
+  it("draws a hover fill of 1.3:1 or more against the page, and in Retro against the tab strip too", () => {
+    if (!builtIn) return;
+    // `--hover-fill` is the panel-alt surface unless a theme sets its own (Retro does: its slabs are
+    // too close to a panel to show a hover).
+    const fill = t["hover-fill"] ?? alt;
+    expect(contrastRatio(fill, app), "hover on page").toBeGreaterThanOrEqual(1.3);
+    if (name === "retro16") {
+      expect(t["hover-fill"], "Retro sets its own").toBeDefined();
+      expect(contrastRatio(fill, toolbar), "hover on the tab strip").toBeGreaterThanOrEqual(1.3);
+      expect(contrastRatio(fill, panel), "hover on a panel").toBeGreaterThanOrEqual(1.3);
+    }
   });
 
   it("puts the toolbar between the page and the panel (C94)", () => {

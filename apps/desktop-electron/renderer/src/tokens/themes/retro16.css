@@ -13,6 +13,7 @@
   --border-muted: #57779f;
   /* Table rows: a quieter line than the frames (C93). */
   --row-divider: #3a5577;
+  --hover-fill: #3a5577;
   --border-control: #98c1d9;
   --tab-underline-color: #b673f0;
   --bevel-highlight: #98c1d9;

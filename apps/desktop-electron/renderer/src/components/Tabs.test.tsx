@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Tabs, panelId, tabId } from "./Tabs";
 import css from "./Tabs.css?raw";
+import tokens from "../tokens/tokens.css?raw";
 
 const TABS = [
   { id: "a", label: "One" },
@@ -56,9 +57,13 @@ describe("Tabs", () => {
     expect(/\.cp-tabs\s*\{([^}]*)\}/.exec(css)![1]!).toMatch(/border-bottom:/);
   });
 
+  it("defaults the hover fill to the panel-alt surface, which a theme may replace", () => {
+    expect(tokens).toMatch(/--hover-fill:\s*var\(--bg-panel-alt\)/);
+  });
+
   it("has no hard-coded white wash on hover", () => {
     expect(css).not.toMatch(/rgba\(255,\s*255,\s*255/);
-    expect(css).toMatch(/:hover:not\(:disabled\)\s*\{[^}]*var\(--bg-panel-alt\)/);
+    expect(css).toMatch(/:hover:not\(:disabled\)\s*\{[^}]*var\(--hover-fill\)/);
   });
 
   it("keeps the active main tab's weight, so the underline alone says it is active (C26)", () => {

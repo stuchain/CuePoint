@@ -55,6 +55,8 @@
   /* Hover for every control (area 79): a shade of the text colour, and a firmer border on fields. */
   --hover-shade: color-mix(in srgb, var(--fg-primary) 14%, transparent);
   --hover-border: var(--fg-muted);
+  /* The fill under a hovered tab: the panel-alt surface unless a theme sets its own (Retro's slabs sit too close to the panel to show a hover). */
+  --hover-fill: var(--bg-panel-alt);
   /* The one bar (area 68): horizontal for ranked lists (RankBar), vertical for ranges (PixelBars).
      Flat accent, no outline, the same hover; a ranked bar is this thick. */
   --chart-bar: var(--accent-primary);

@@ -25,7 +25,7 @@
 
 .cp-tabs__tab:hover:not(:disabled) {
   color: var(--fg-primary);
-  background: var(--bg-panel-alt);
+  background: var(--hover-fill);
 }
 
 /* The underline and the brighter text say it is active; the weight never changes, so the strip
