@@ -409,6 +409,41 @@ describe("Modal footer and focus (C107, C111, C112)", () => {
   });
 });
 
+describe("the automatic footer Close (S1)", () => {
+  it("is drawn for a dialog with no buttons of its own", () => {
+    render(
+      <Modal open title="Log" onClose={() => {}}>
+        words
+      </Modal>,
+    );
+    const footer = screen.getByRole("dialog").querySelector<HTMLElement>(".cp-modal__footer")!;
+    expect(within(footer).getByRole("button", { name: "Close" })).toBeEnabled();
+  });
+
+  it("is left out with noFooter, for a dialog that draws its own buttons", () => {
+    render(
+      <Modal open title="Save" onClose={() => {}} noFooter>
+        <button type="button">Save to files</button>
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.querySelector(".cp-modal__footer")).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Close" })).toHaveLength(1);
+  });
+
+  it("is greyed while closeDisabled, and the reason line says why", () => {
+    render(
+      <Modal open title="Saving" onClose={() => {}} closeDisabled closeReason="Wait until it has saved.">
+        words
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+    const footer = dialog.querySelector<HTMLElement>(".cp-modal__footer")!;
+    expect(within(footer).getByRole("button", { name: "Close" })).toBeDisabled();
+    expect(dialog.querySelector(".cp-modal__reason")).toHaveTextContent("Wait until it has saved.");
+  });
+});
+
 describe("Enter submits (C111)", () => {
   it("runs the one main button when Enter is pressed in a text field", async () => {
     const go = vi.fn();

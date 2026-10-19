@@ -69,6 +69,7 @@ export function NewSetFromDialog({
       title={source ? newSetFromTitle(source) : "New Set"}
       onClose={onClose}
       size="small"
+      noFooter
     >
       <div className="cp-new-set-from">
         <p className="cp-new-set-from__note">{source ? newSetFromExplanation(source) : ""}</p>

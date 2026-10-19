@@ -80,7 +80,7 @@ export function SaveSmartDialog({
   };
 
   return (
-    <Modal open={open} title="Save as Smart Collection" onClose={onClose}>
+    <Modal open={open} title="Save as Smart Collection" onClose={onClose} noFooter>
       <div className="cp-save-smart">
         {!savable.ok && (
           <p className="cp-save-smart__problem" role="alert">

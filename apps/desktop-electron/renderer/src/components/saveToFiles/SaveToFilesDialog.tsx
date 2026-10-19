@@ -413,6 +413,7 @@ export function SaveToFilesDialog({
       title={title ?? saveTitle(count)}
       onClose={busy ? () => undefined : requestClose}
       size={list ? "large" : "medium"}
+      noFooter
     >
       <div className="save-dialog">
         {choosing && !list && (

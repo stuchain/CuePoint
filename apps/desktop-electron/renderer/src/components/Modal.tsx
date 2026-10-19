@@ -83,6 +83,11 @@ type ModalProps = FooterExtras & {
    */
   closeDisabled?: boolean;
   closeReason?: string;
+  /**
+   * True for a dialog that draws its own buttons in its body (Save to files, a search): the
+   * footer, and so the automatic grey Close, is not drawn.
+   */
+  noFooter?: boolean;
 };
 
 /** Dialogs open now, oldest first: only the newest answers Escape and Tab, so a question asked from inside a dialog does not close both. */
@@ -117,6 +122,7 @@ export function Modal({
   restoreFocus = true,
   initialFocus,
   closeDisabled = false,
+  noFooter = false,
   closeReason,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -230,7 +236,9 @@ export function Modal({
     reasonProp ??
     (primaryAction?.disabled ? primaryAction.disabledReason : undefined);
   // A dialog with no buttons of its own only shows something: it ends in one grey Close (C107).
-  const footerClose = closeLabel ?? (!primaryAction && !secondaryAction && !backAction ? "Close" : undefined);
+  const footerClose = noFooter
+    ? undefined
+    : (closeLabel ?? (!primaryAction && !secondaryAction && !backAction ? "Close" : undefined));
   const close = () => {
     if (!closeDisabled) onClose();
   };
@@ -286,7 +294,7 @@ export function Modal({
               </Button>
             )}
             {footerClose && !primaryAction && (
-              <Button variant="secondary" onClick={close}>
+              <Button variant="secondary" onClick={close} disabled={closeDisabled}>
                 {footerClose}
               </Button>
             )}
