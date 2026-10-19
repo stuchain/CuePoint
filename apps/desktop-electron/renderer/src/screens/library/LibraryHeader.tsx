@@ -281,7 +281,7 @@ export function LibraryHeader({
             <span key="trail" className="library-header__trail" data-testid="library-trail">
               {scopeTrail.map((name, index) => (
                 <span key={`${index}-${name}`}>
-                  {index > 0 && <PixelIcon name="chevron-right-sm" className="library-header__trail-arrow" />}
+                  {index > 0 && <PixelIcon name="chevron-right-sm" className="cp-pixel-icon--text library-header__trail-arrow" />}
                   {name}
                 </span>
               ))}

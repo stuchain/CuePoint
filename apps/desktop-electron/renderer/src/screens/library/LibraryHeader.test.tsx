@@ -338,6 +338,24 @@ describe("the path and folders (R7-4, R7-5)", () => {
     expect(container.querySelector(".cp-screen-header__crumb")).toBeNull();
   });
 
+  it("keeps the trail on the facts line: the chevron is an in-line icon, not a block that breaks it (C220)", () => {
+    render(
+      <LibraryHeader
+        summary={SUMMARY}
+        scopeName="Rooftop, Oct 10"
+        scopeTrail={["Collections", "Gigs"]}
+        facts={FACTS}
+        fallbackCount={1}
+        busy={null}
+        busyLabel={null}
+        {...HANDLERS()}
+      />,
+    );
+    const arrow = screen.getByTestId("library-trail").querySelector("[data-icon='chevron-right-sm']")!;
+    // A bare pixel icon is display: block, which put "Collections", the chevron and "Gigs" on three lines.
+    expect(arrow).toHaveClass("cp-pixel-icon--text");
+  });
+
   it("says Folder and its playlists instead of 0 tracks", () => {
     renderHeader({
       scopeName: "Gigs 2026",
