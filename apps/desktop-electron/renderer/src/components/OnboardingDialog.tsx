@@ -158,34 +158,38 @@ export function OnboardingDialog({
           <h3 className="onboarding-dialog__title">{screen.title}</h3>
           <p className="onboarding-dialog__body">{screen.body}</p>
           {screen.steps && <OnboardingDrawings />}
-          {/* Steps 2 to 4 keep a line for what is done, so the three read alike (C116). */}
-          {screen.done && (
-            <p className="onboarding-dialog__done" role="status">
-              {doneLine && (
-                <>
-                  <PixelIcon name="check" size="sm" />
-                  <span>{doneLine}</span>
-                </>
-              )}
-            </p>
-          )}
-          {screen.action && !(screen.action.id === "sign-in" && progress.signedIn) && (
-            <div className="onboarding-dialog__actions">
-              <Button
-                variant="secondary"
-                disabled={Boolean(needsLine)}
-                aria-describedby={needsLine ? needsId : undefined}
-                onClick={() => act(screen.action!.id)}
-              >
-                {screen.action.label}
-              </Button>
-              {screen.action.id === "import" && (
-                <Button variant="secondary" size="sm" onClick={onShowExport}>
-                  How do I get one?
+          {/* What is done and the step's buttons share one row where it fits, so the tallest step
+              (and with it the dialog) is no taller than it needs to be (C108). */}
+          <div className="onboarding-dialog__row">
+            {/* Steps 2 to 4 keep a line for what is done, so the three read alike (C116). */}
+            {screen.done && (
+              <p className="onboarding-dialog__done" role="status">
+                {doneLine && (
+                  <>
+                    <PixelIcon name="check" size="sm" />
+                    <span>{doneLine}</span>
+                  </>
+                )}
+              </p>
+            )}
+            {screen.action && !(screen.action.id === "sign-in" && progress.signedIn) && (
+              <div className="onboarding-dialog__actions">
+                <Button
+                  variant="secondary"
+                  disabled={Boolean(needsLine)}
+                  aria-describedby={needsLine ? needsId : undefined}
+                  onClick={() => act(screen.action!.id)}
+                >
+                  {screen.action.label}
                 </Button>
-              )}
-            </div>
-          )}
+                {screen.action.id === "import" && (
+                  <Button variant="secondary" size="sm" onClick={onShowExport}>
+                    How do I get one?
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
           {needsLine && screen.action && (
             <p id={needsId} className="onboarding-dialog__needs">
               {needsLine}

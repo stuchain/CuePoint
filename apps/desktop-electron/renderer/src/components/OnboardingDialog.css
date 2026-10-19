@@ -30,8 +30,27 @@
 
 /* Every step is the same size: the dialog's body as tall as the tallest step (2, with its done
    line) and no taller, so no step is left mostly empty (C108). */
+/* As tall as the tallest step (step 2, its four drawings), which is 235 at 1x. */
 .onboarding-dialog {
-  height: calc(272px * var(--scale));
+  height: calc(240px * var(--scale));
+}
+
+/* The done line, then the buttons; one row when both fit, the buttons below when they do not. */
+.onboarding-dialog__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-lg);
+  margin: 0 0 var(--space-md);
+}
+
+.onboarding-dialog__row:empty {
+  display: none;
+}
+
+.onboarding-dialog__row > .onboarding-dialog__done,
+.onboarding-dialog__row > .onboarding-dialog__actions {
+  margin: 0;
 }
 
 /* Steps 1, 3 and 4: the words on the left, one picture of a fixed size on the right. */

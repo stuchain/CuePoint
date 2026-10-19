@@ -193,8 +193,10 @@ describe("the four screens", () => {
 
   it("is as tall as its tallest step and no taller, and its sentences are Inter (C108, C55)", async () => {
     const css = (await import("./OnboardingDialog.css?raw")).default;
-    // Step 2, the tallest, measures 267 at 1x with its done line; 352 left every step half empty.
-    expect(css).toMatch(/\.onboarding-dialog\s*\{[^}]*height:\s*calc\(272px \* var\(--scale\)\)/);
+    // Step 2, the tallest, measures 235 at 1x with its done line beside its buttons; 352 left
+    // every step half empty.
+    expect(css).toMatch(/\.onboarding-dialog\s*\{[^}]*height:\s*calc\(240px \* var\(--scale\)\)/);
+    expect(css).toMatch(/\.onboarding-dialog__row\s*\{[^}]*flex-wrap:\s*wrap/);
     for (const selector of [".onboarding-dialog__body", ".onboarding-dialog__needs", ".onboarding-dialog__done"]) {
       const escaped = selector.replace(/[.]/g, "\\.");
       expect(css).toMatch(new RegExp(`${escaped}\\s*\\{[^}]*font-family:\\s*var\\(--font-data\\)`));
