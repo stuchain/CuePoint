@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "re
 import { ScreenHeader } from "../components/shell/ScreenHeader";
 import { useLocation } from "react-router-dom";
 
-import { appVersion } from "../components/AboutDialog";
+import { appVersion, versionWords } from "../components/AboutDialog";
 import { Button, Panel } from "../components";
 import { opensDialog } from "../format/words";
 import type { AppBuildInfo } from "../api/cuepointBridge.types";
@@ -138,7 +138,7 @@ export function SettingsScreen({
     <div className="screen screen--stack screen--scroll settings-page">
       <ScreenHeader
         title="Settings"
-        facts={{ count: SETTINGS_SECTIONS.length, noun: "section", facts: [`version ${appVersion(build)}`] }}
+        facts={{ count: SETTINGS_SECTIONS.length, noun: "section", facts: [`Version ${versionWords(appVersion(build), build)}`] }}
       />
 
       <div className="settings-page__layout">

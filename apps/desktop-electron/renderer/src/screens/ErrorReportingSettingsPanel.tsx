@@ -9,25 +9,25 @@ import { readExitClearing, saveExitClearing } from "./exitClearing";
 import "./error-reporting-settings.css";
 import { needsDesktopApp, userMessage } from "../api/userMessage";
 
-/** The switch's id: what Help → Privacy's "Change in Settings" focuses. */
+/** The checkbox's id: what Help → Privacy's "Change in Settings" focuses. */
 export const ERROR_REPORTING_FIELD_ID = "settings-error-reporting";
 
 interface ErrorReportingSettingsPanelProps {
   /** Opens the Privacy dialog, which explains what is collected and links back here. */
   onOpenPrivacy?: () => void;
-  /** One per navigation that asked for the switch; it is focused once, when it can take focus. */
+  /** One per navigation that asked for the checkbox; it is focused once, when it can take focus. */
   focusToken?: string | null;
   /** The rest of the Privacy section, shown after the error-report controls. */
   children?: ReactNode;
 }
 
 /**
- * Settings → Privacy (REPORT-01, DEC-128). Its first part is this switch; the
+ * Settings → Privacy (REPORT-01, DEC-128). Its first part is this checkbox; the
  * exit-clearing choices follow as `children` (SET-7), in the same panel.
  *
- * One switch for error reports, read from and written through the bridge,
+ * One checkbox for error reports, read from and written through the bridge,
  * which stores it in Electron main and tells the engine. The answered state is
- * the one shown; a refusal puts the switch back and says why.
+ * the one shown; a refusal puts the checkbox back and says why.
  */
 export function ErrorReportingSettingsPanel({
   onOpenPrivacy,
@@ -64,7 +64,7 @@ export function ErrorReportingSettingsPanel({
     };
   }, []);
 
-  // Focused once its state is read: a disabled switch cannot take focus.
+  // Focused once its state is read: a disabled checkbox cannot take focus.
   const focused = useRef<string | null>(null);
   const ready = available && !loading;
   useEffect(() => {
@@ -121,6 +121,7 @@ export function ErrorReportingSettingsPanel({
             <input
               id={ERROR_REPORTING_FIELD_ID}
               type="checkbox"
+              aria-describedby={lineId}
               checked={enabled}
               disabled={!available || loading || busy}
               onChange={(event) => void toggle(event.target.checked)}

@@ -168,19 +168,19 @@ describe("a colour is a token, not a colour", () => {
 describe("what a destructive gesture says first", () => {
   it("names the tracks a delete takes it off", () => {
     expect(describeDelete(tag({ track_count: 412 }))).toBe(
-      "It comes off 412 tracks, and there is no undo.",
+      "This cannot be undone. It comes off 412 tracks.",
     );
   });
 
   it("counts one track as one", () => {
-    expect(describeDelete(tag({ track_count: 1 }))).toContain("1 track,");
+    expect(describeDelete(tag({ track_count: 1 }))).toContain("1 track.");
   });
 
   it("says so when a delete costs nothing", () => {
     // A tag nobody used is a tidy-up, and warning about it teaches people to
     // click through warnings.
     expect(describeDelete(tag({ track_count: 0 }))).toBe(
-      "Nothing is tagged with it.",
+      "This cannot be undone. Nothing is tagged with it.",
     );
   });
 

@@ -13,6 +13,7 @@
  * than anything counted here.
  */
 import { countNoun } from "../../format/counts";
+import { deleteLead } from "../../format/words";
 import type { Tag, TagUsage } from "../../api/cuepointBridge.types";
 
 /** A tag's name, as the engine bounds it. */
@@ -134,15 +135,15 @@ function tracks(count: number): string {
  */
 export function describeDelete(tag: TagUsage): string {
   if (tag.track_count === 0) {
-    return "Nothing is tagged with it.";
+    return `${deleteLead} Nothing is tagged with it.`;
   }
-  return `It comes off ${tracks(tag.track_count)}, and there is no undo.`;
+  return `${deleteLead} It comes off ${tracks(tag.track_count)}.`;
 }
 
 /** What merging would do. The source is deleted, which is said rather than implied. */
 export function describeMerge(source: TagUsage, target: TagUsage): string {
   return (
-    `${tracks(source.track_count)} move across to “${target.name}”, and “${source.name}” is deleted.`
+    `${tracks(source.track_count)} ${source.track_count === 1 ? "moves" : "move"} across to “${target.name}”, and “${source.name}” is deleted.`
   );
 }
 

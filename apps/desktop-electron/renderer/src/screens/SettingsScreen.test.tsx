@@ -324,7 +324,7 @@ describe("Reset section", () => {
 
   it("states the header as a count and a fact, and the version one way (C233, C118)", () => {
     renderSettings();
-    expect(screen.getByText(/^\d+ sections? · version /)).toBeInTheDocument();
+    expect(screen.getByText(/^\d+ sections? · Version /)).toBeInTheDocument();
     expect(within(region("About & updates")).getByTestId("settings-version")).toHaveTextContent(/^Version \d/);
   });
 });

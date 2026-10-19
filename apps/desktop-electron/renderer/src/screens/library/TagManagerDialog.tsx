@@ -14,7 +14,7 @@
  * the History — a way to find out what happened, not a way to undo it
  * (DEC-008).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "../../components/Button";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
@@ -75,6 +75,10 @@ export function TagManagerDialog({
   const [draft, setDraft] = useState<TagDraft | null>(null);
   const [mergeInto, setMergeInto] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
+  // The last question stays drawn while its dialog closes, so the title and body do not blank out.
+  const lastPending = useRef<Pending | null>(null);
+  if (pending) lastPending.current = pending;
+  const shown = pending ?? lastPending.current;
   const [problem, setProblem] = useState<string | null>(null);
 
   const selected = ordered.find((tag) => tag.id === selectedId) ?? null;
@@ -273,26 +277,26 @@ export function TagManagerDialog({
     {/* Delete is a red fill; a merge moves tracks and is a plain one (C16). */}
     <ConfirmDialog
       open={pending?.kind === "delete"}
-      title={pending?.kind === "delete" ? deleteTitle("tag", pending.tag.name) : "Delete tag?"}
+      title={shown?.kind === "delete" ? deleteTitle("tag", shown.tag.name) : "Delete tag?"}
       danger
       confirmLabel={deleteLabel("tag")}
       onConfirm={confirm}
       onCancel={() => setPending(null)}
     >
-      {pending?.kind === "delete" ? describeDelete(pending.tag) : ""}
+      {shown?.kind === "delete" ? describeDelete(shown.tag) : ""}
     </ConfirmDialog>
     <ConfirmDialog
       open={pending?.kind === "merge"}
       title={
-        pending?.kind === "merge"
-          ? `Merge ${quoted(pending.source.name)} into ${quoted(pending.target.name)}?`
+        shown?.kind === "merge"
+          ? `Merge ${quoted(shown.source.name)} into ${quoted(shown.target.name)}?`
           : "Merge tags?"
       }
       confirmLabel="Merge tags"
       onConfirm={confirm}
       onCancel={() => setPending(null)}
     >
-      {pending?.kind === "merge" ? describeMerge(pending.source, pending.target) : ""}
+      {shown?.kind === "merge" ? describeMerge(shown.source, shown.target) : ""}
     </ConfirmDialog>
     </>
   );
