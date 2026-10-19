@@ -540,3 +540,14 @@ describe("the divider's width", () => {
     expect(loadSourceWidth()).toBe(SOURCE_DEFAULT_WIDTH);
   });
 });
+
+describe("the Set table's default columns fit (C246)", () => {
+  it("leave the last default column whole at the default window with the sidebar open", () => {
+    // At 1264 x 735 and the 1.25 text size, with the sidebar expanded and the Suggestions pane
+    // open, the Set's rows are 717 px wide and the Columns… button takes 30 of them. The defaults
+    // stay under that, and grow into whatever is spare.
+    const shown = PREPARE_COLUMNS.filter((column) => !column.hiddenByDefault);
+    const total = shown.reduce((sum, column) => sum + (column.defaultWidthPx ?? 0), 0);
+    expect(total * 1.25 + 30).toBeLessThanOrEqual(717);
+  });
+});

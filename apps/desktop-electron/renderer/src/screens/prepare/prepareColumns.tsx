@@ -65,10 +65,10 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     id: "title",
     header: "Title",
     minWidthPx: 120,
-    // Pinned and roomy by default: Mix in and Mix out are hidden until View ▸
-    // Show times, so the title no longer shares the first screen with them, and a
-    // chapter heading's buttons keep their room.
-    defaultWidthPx: 150,
+    // Pinned, and it takes the most of any spare room (GROW_WEIGHTS). It starts narrow enough
+    // that the default columns fit beside the sidebar and the Suggestions pane at the default
+    // window (C246), and a chapter heading's name and Edit… button still fit it.
+    defaultWidthPx: 130,
     sticky: true,
     render: (row) => {
       if (row.kind === "heading") {
@@ -101,7 +101,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     id: "artist",
     header: "Artist",
     minWidthPx: 100,
-    defaultWidthPx: 130,
+    defaultWidthPx: 110,
     render: (row) => (row.kind === "entry" ? row.entry.track.artist : ""),
   },
   {
