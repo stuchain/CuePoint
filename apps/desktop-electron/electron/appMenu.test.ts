@@ -246,6 +246,21 @@ describe("View: size, panels, Settings", () => {
     expect(sent).toEqual(["toggle-inspector", "toggle-sidebar"]);
   });
 
+  it("opens Search and Activity from the View menu, with the keys the page answers to", () => {
+    const { items, sent } = template("linux");
+    const search = byId(items, "search-library")!;
+    expect(search.label).toBe("Search library…");
+    expect(search.accelerator).toBe("CmdOrCtrl+K");
+    expect(search.registerAccelerator).toBe(false);
+    const activity = byId(items, "activity")!;
+    expect(activity.label).toBe("Activity…");
+    expect(activity.accelerator).toBe("CmdOrCtrl+Shift+A");
+    expect(activity.registerAccelerator).toBe(false);
+    click(search);
+    click(activity);
+    expect(sent).toEqual(["search-library", "activity"]);
+  });
+
   it("leaves a shortcut the page already answers to the page, on Windows and Linux", () => {
     // The page handles Ctrl+B and Ctrl+I itself; a registered accelerator would toggle twice.
     const { items } = template("linux");
@@ -343,6 +358,8 @@ describe("the command ids", () => {
       "check-rekordbox",
       "toggle-inspector",
       "toggle-sidebar",
+      "search-library",
+      "activity",
       "size-bigger",
       "size-smaller",
       "size-default",

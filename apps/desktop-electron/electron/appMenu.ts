@@ -34,6 +34,8 @@ export const MENU_COMMAND_IDS = [
   "check-rekordbox",
   "toggle-inspector",
   "toggle-sidebar",
+  "search-library",
+  "activity",
   "size-bigger",
   "size-smaller",
   "size-default",
@@ -189,6 +191,10 @@ export function buildMenuTemplate({
       { type: "separator" },
       command("toggle-inspector", "Track details", { accelerator: "CmdOrCtrl+I", ...shownOnly }),
       command("toggle-sidebar", "Sidebar", { accelerator: "CmdOrCtrl+B", ...shownOnly }),
+      { type: "separator" },
+      // Both open a dialog, so both end in "…" (C166); the page answers Ctrl+K and Ctrl+Shift+A itself.
+      command("search-library", "Search library…", { accelerator: "CmdOrCtrl+K", ...shownOnly }),
+      command("activity", "Activity…", { accelerator: "CmdOrCtrl+Shift+A", ...shownOnly }),
     ],
   });
 

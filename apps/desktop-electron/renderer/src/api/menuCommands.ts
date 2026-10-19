@@ -28,6 +28,8 @@ export const MENU_COMMAND_IDS = [
   "check-rekordbox",
   "toggle-inspector",
   "toggle-sidebar",
+  "search-library",
+  "activity",
   "size-bigger",
   "size-smaller",
   "size-default",

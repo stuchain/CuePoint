@@ -182,6 +182,20 @@ describe("panels", () => {
   });
 });
 
+describe("search and activity", () => {
+  it("opens the search dialog", async () => {
+    render(<App />);
+    command("search-library");
+    expect(await screen.findByRole("dialog", { name: "Search" })).toBeInTheDocument();
+  });
+
+  it("opens the Activity panel", async () => {
+    render(<App />);
+    command("activity");
+    expect(await screen.findByRole("dialog", { name: "Activity" })).toBeInTheDocument();
+  });
+});
+
 describe("size", () => {
   const scale = () => document.documentElement.dataset.scale;
   const lastReported = () => menu.setSizeState.mock.calls.at(-1)![0] as { current: number };

@@ -59,6 +59,7 @@ import { keysOpening, keysState } from "./screens/keys/keysLink";
 import { settingsFocusState } from "./screens/settingsLink";
 import { hasShortcutModifier } from "./components/shell/platformKeys";
 import { emitShellCommand } from "./components/shell/shellCommands";
+import { openActivity } from "./components/shell/activityState";
 import { useMenuCommands } from "./components/shell/useMenuCommands";
 import { PREPARE_SET_ROUTE, preparePath } from "./screens/prepare/prepareLink";
 import { EntityScreen } from "./screens/discover/EntityScreen";
@@ -319,6 +320,8 @@ function AppShell() {
     "check-rekordbox": () => navigate("/library", { state: libraryRefreshState() }),
     "toggle-inspector": () => emitShellCommand("toggle-inspector"),
     "toggle-sidebar": () => emitShellCommand("toggle-sidebar"),
+    "search-library": () => emitShellCommand("open-search"),
+    activity: openActivity,
   });
 
   // Every destination the user has opened stays alive behind the current one (KeptPages), so
