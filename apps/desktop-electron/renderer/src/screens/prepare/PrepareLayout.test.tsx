@@ -31,6 +31,38 @@ function divider() {
 }
 
 describe("the layout", () => {
+  it("draws a fresh and a migrated width the same at any size, both in 1x units (C209)", () => {
+    expect(SOURCE_DEFAULT_WIDTH).toBe(240);
+    expect(SOURCE_MIN_WIDTH).toBe(160);
+    const { unmount } = renderAtScale(1.5, true, 2400);
+    const fresh = divider().getAttribute("aria-valuenow");
+    expect(fresh).toBe(String(SOURCE_DEFAULT_WIDTH * 1.5));
+    unmount();
+    // The old default, 360 px, read at the same size.
+    localStorage.setItem(SOURCE_WIDTH_STORAGE_KEY, "360");
+    renderAtScale(1.5, true, 2400);
+    expect(divider().getAttribute("aria-valuenow")).toBe(fresh);
+  });
+
+  it("keeps the floor at 160 x the scale (C209)", () => {
+    localStorage.setItem(SOURCE_WIDTH_STORAGE_KEY, JSON.stringify({ unit: "1x", width: 100 }));
+    renderAtScale(2, true, 2400);
+    expect(divider()).toHaveAttribute("aria-valuenow", String(SOURCE_MIN_WIDTH * 2));
+  });
+
+  it("saves a drag when the pointer is released, not on every move", () => {
+    renderAtScale(1);
+    fireEvent.mouseDown(divider(), { clientX: 800 });
+    fireEvent.mouseMove(window, { clientX: 760 });
+    fireEvent.mouseMove(window, { clientX: 750 });
+    expect(localStorage.getItem(SOURCE_WIDTH_STORAGE_KEY)).toBeNull();
+    fireEvent.mouseUp(window);
+    expect(JSON.parse(localStorage.getItem(SOURCE_WIDTH_STORAGE_KEY)!)).toEqual({
+      unit: "1x",
+      width: SOURCE_DEFAULT_WIDTH + 50,
+    });
+  });
+
   it("keeps the source panel mounted but out of sight, with no divider, while Track details are open (C226)", () => {
     const { container } = render(
       <PrepareLayout set={<p>the set</p>} source={<p>the source</p>} sourceHidden />,

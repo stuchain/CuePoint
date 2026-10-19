@@ -38,11 +38,14 @@ export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayo
   const scale = useScaleFactor();
   // Held in 1x units; drawn as 1x width * scale (C209).
   const [stored, setStoredState] = useState(() => loadSourceWidth(scale));
+  // A drag is held and saved on release; a key press saves at once.
+  const latest = useRef(stored);
   const setStored = useCallback(
-    (pixels: number) => {
+    (pixels: number, save: boolean = true) => {
       const next = pixels / scale;
+      latest.current = next;
       setStoredState(next);
-      saveSourceWidth(next);
+      if (save) saveSourceWidth(next);
     },
     [scale],
   );
@@ -68,18 +71,19 @@ export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayo
     };
   }, [hasSource, sourceHidden]);
 
-  const width = clampSourceWidth(stored * scale, paneWidth);
+  const width = clampSourceWidth(stored * scale, paneWidth, scale);
 
   const startResize = useCallback(
     (startX: number) => {
       const startWidth = width;
       // The divider is the source panel's left edge: leftwards widens it.
       const onMove = (event: MouseEvent) => {
-        setStored(clampSourceWidth(startWidth + (startX - event.clientX), paneWidth));
+        setStored(clampSourceWidth(startWidth + (startX - event.clientX), paneWidth, scale), false);
       };
       const onUp = () => {
         setDragging(false);
         document.body.classList.remove("prepare-resizing");
+        saveSourceWidth(latest.current);
         window.removeEventListener("mousemove", onMove);
         window.removeEventListener("mouseup", onUp);
       };
@@ -88,7 +92,7 @@ export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayo
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [paneWidth, setStored, width],
+    [paneWidth, scale, setStored, width],
   );
 
   if (!source) {
@@ -118,7 +122,7 @@ export function PrepareLayout({ set, source, sourceHidden = false }: PrepareLayo
           if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
           event.preventDefault();
           const delta = (event.key === "ArrowLeft" ? SOURCE_NUDGE : -SOURCE_NUDGE) * scale;
-          setStored(clampSourceWidth(width + delta, paneWidth));
+          setStored(clampSourceWidth(width + delta, paneWidth, scale));
         }}
       />
       )}

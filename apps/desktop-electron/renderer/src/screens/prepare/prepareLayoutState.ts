@@ -3,18 +3,21 @@
  * clamped when read, as the Inspector's is (DEC-018).
  */
 export const SOURCE_WIDTH_STORAGE_KEY = "cuepoint-prepare-source-width";
-/** Narrower than this and a source row cannot show a title and its reasons. */
-export const SOURCE_MIN_WIDTH = 240;
-export const SOURCE_DEFAULT_WIDTH = 360;
+/** Narrower than this and a source row cannot show a title and its reasons. In 1x units (C209), drawn times the scale. */
+export const SOURCE_MIN_WIDTH = 160;
+/** In 1x units too, so a fresh and a migrated person draw the same width at any size. */
+export const SOURCE_DEFAULT_WIDTH = 240;
 /** The Set stays the wider pane (DEC-112). */
 const SOURCE_MAX_FRACTION = 0.45;
 /** How far an arrow key moves the divider. */
 export const SOURCE_NUDGE = 16;
 
-export function clampSourceWidth(width: number, paneWidth: number): number {
-  const max = Math.max(SOURCE_MIN_WIDTH, Math.floor(paneWidth * SOURCE_MAX_FRACTION));
-  if (!Number.isFinite(width)) return Math.min(SOURCE_DEFAULT_WIDTH, max);
-  return Math.min(max, Math.max(SOURCE_MIN_WIDTH, Math.round(width)));
+/** `width` and `paneWidth` are drawn pixels; the floor and the default are 1x units times `scale`. */
+export function clampSourceWidth(width: number, paneWidth: number, scale: number = 1): number {
+  const min = Math.round(SOURCE_MIN_WIDTH * scale);
+  const max = Math.max(min, Math.floor(paneWidth * SOURCE_MAX_FRACTION));
+  if (!Number.isFinite(width)) return Math.min(Math.round(SOURCE_DEFAULT_WIDTH * scale), max);
+  return Math.min(max, Math.max(min, Math.round(width)));
 }
 
 /**
