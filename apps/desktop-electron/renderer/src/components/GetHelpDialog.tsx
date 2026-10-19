@@ -215,7 +215,7 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
           <dt>Version</dt>
           <dd data-testid="get-help-version">{versionWords(version, build)}</dd>
           <dt>Last report</dt>
-          <dd data-testid="get-help-last-report">{lastId ? shortReportId(lastId) : "none"}</dd>
+          <dd className="get-help-dialog__id" data-testid="get-help-last-report">{lastId ? shortReportId(lastId) : "none"}</dd>
         </dl>
         {phase === "sent" ? (
           <p className="get-help-dialog__done" role="status">

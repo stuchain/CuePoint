@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, ConfirmDialog, Modal, Panel, Select, TextField } from "../components";
-import { SettingsActions, SettingsHint } from "./SettingsParts";
+import { PanelTools, SettingsActions, SettingsHint } from "./SettingsParts";
 import { colorsInUse } from "./themeSeed";
 import { deleteLabel, deleteTitle, opensDialog, quoted } from "../format/words";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
@@ -189,7 +189,15 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
   };
 
   return (
-    <Panel title="Appearance" badge={<SavedTick signal={saved} />}>
+    <Panel
+      title="Appearance"
+      badge={
+        <PanelTools
+          saved={<SavedTick signal={saved} />}
+          reset={<ResetToDefaults section="Appearance" onReset={resetToDefaults} />}
+        />
+      }
+    >
       <div className="theme-settings">
         <Select
           label="Active theme"
@@ -260,7 +268,7 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
           <SettingsHint>No custom themes yet. Pick nine colors; borders are made from them.</SettingsHint>
         )}
 
-        <SettingsActions reset={<ResetToDefaults section="Appearance" onReset={resetToDefaults} />}>
+        <SettingsActions>
           <Button variant="secondary" onClick={openCreate}>
             Create custom theme…
           </Button>

@@ -73,3 +73,8 @@
   border: 0;
   cursor: pointer;
 }
+
+/* The error ID is a code to read out or paste, so it is in the code face (C68). */
+.get-help-dialog__id {
+  font-family: var(--font-mono);
+}

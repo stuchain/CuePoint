@@ -255,7 +255,7 @@ describe("Motion and About & updates", () => {
     renderSettings({ onOpenOnboarding });
     const about = region("About & updates");
     await waitFor(() => expect(within(about).getByTestId("settings-version")).toHaveTextContent("9.8.7"));
-    await userEvent.click(within(about).getByRole("button", { name: "Getting started" }));
+    await userEvent.click(within(about).getByRole("button", { name: "Getting started…" }));
     expect(onOpenOnboarding).toHaveBeenCalledTimes(1);
     expect(about.querySelector('[data-slot="updates"]')).not.toBeNull();
   });
@@ -306,12 +306,26 @@ describe("Reset section", () => {
     expect(holders).not.toContain("About & updates");
   });
 
-  it("puts Reset in the section's one action row, at the right, quiet", () => {
+  it("puts Reset at the right of the card's title line in every section, quiet (C52)", () => {
     renderSettings();
-    const reset = within(region("Appearance")).getByRole("button", { name: "Reset appearance" });
-    expect(reset.closest(".settings-actions__reset")).not.toBeNull();
-    expect(reset.closest(".settings-actions")).not.toBeNull();
-    expect(reset).toHaveClass("cp-btn--quiet");
+    for (const [title, name] of [
+      ["Appearance", "Reset appearance"],
+      ["Motion", "Reset motion"],
+      ["Waveforms", "Reset waveforms"],
+      ["Beatport", "Reset Beatport"],
+      ["Privacy", "Reset privacy"],
+    ] as const) {
+      const reset = within(region(title)).getByRole("button", { name });
+      expect(reset.closest(".settings-page__tools"), title).not.toBeNull();
+      expect(reset.closest(".settings-actions"), title).toBeNull();
+      expect(reset).toHaveClass("cp-btn--quiet");
+    }
+  });
+
+  it("states the header as a count and a fact, and the version one way (C233, C118)", () => {
+    renderSettings();
+    expect(screen.getByText(/^\d+ sections? · version /)).toBeInTheDocument();
+    expect(within(region("About & updates")).getByTestId("settings-version")).toHaveTextContent(/^Version \d/);
   });
 });
 

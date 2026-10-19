@@ -82,7 +82,7 @@ export function UpdateReadyPanel({ open, state, onClose, flow }: UpdateReadyPane
       >
         <div ref={body}>
           {flow.unknown ? (
-            <p className="cp-update-panel__ask">CuePoint couldn't tell whether work is still running.</p>
+            <p className="cp-update-panel__ask">CuePoint could not tell whether work is still running.</p>
           ) : (
             <p className="cp-update-panel__ask">{flow.work ?? "Background work"} is still running.</p>
           )}

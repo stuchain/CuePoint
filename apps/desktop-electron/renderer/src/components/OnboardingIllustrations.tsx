@@ -198,7 +198,7 @@ export function OnboardingArt({ id }: { id: "welcome" | "match" | "sign-in" }) {
 const STEPS: { art: ReactNode; caption: string }[] = [
   { art: <OpenApp />, caption: "Open Rekordbox on your computer." },
   { art: <ExportMenu />, caption: "File menu: Export Collection in xml format." },
-  { art: <SaveAs />, caption: "Choose where to save, e.g. Documents, as rekordbox.xml." },
+  { art: <SaveAs />, caption: "Choose where to save, such as Documents, as rekordbox.xml." },
   { art: <BackHere />, caption: "Back here: Import a Rekordbox file…" },
 ];
 

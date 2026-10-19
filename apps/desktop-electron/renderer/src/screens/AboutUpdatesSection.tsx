@@ -1,6 +1,7 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
 
 import type { AppBuildInfo, UpdateState, WhatsNew as WhatsNewNotes } from "../api/cuepointBridge.types";
+import { appVersion, versionWords } from "../components/AboutDialog";
 import { Button } from "../components/Button";
 import { ReasonLine } from "../components/ReasonLine";
 import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
@@ -152,13 +153,11 @@ export function AboutUpdatesSection({ actions }: { actions?: ReactNode } = {}) {
 
   return (
     <div className="about-updates">
-      {(build || isTestVersion(version)) && (
-        <SettingsStatus>
-          {build && `Build ${build.dist ?? "not recorded"}`}
-          {build && isTestVersion(version) && " · "}
-          {isTestVersion(version) && <span>test version</span>}
-        </SettingsStatus>
-      )}
+      {/* The one place the version is written on this page: "Version 1.2.3 (build abc1234)" (C118). */}
+      <SettingsStatus data-testid="settings-version">
+        {`Version ${versionWords(version ?? appVersion(build), build)}`}
+        {isTestVersion(version) && " · test version"}
+      </SettingsStatus>
       <div className="about-updates__state">
         {/* Announced politely. The percentage is beside the words, so it does not repeat them as it moves. */}
         {reason === null && (

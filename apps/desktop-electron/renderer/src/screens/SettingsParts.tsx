@@ -2,8 +2,9 @@ import type { ComponentPropsWithRef, ReactNode } from "react";
 
 /**
  * The three pieces every Settings section is made of (area 86), in this order inside its card:
- * a status line (what stands now), the settings, and one action row whose buttons are at the left
- * and the quiet "Reset {section}" at the right. A section with no settings has no Reset.
+ * a status line (what stands now), the settings, and one action row of buttons. The quiet
+ * "Reset {section}" is at the right of the card's title line (`PanelTools`). A section with no
+ * settings has no Reset.
  */
 
 /**
@@ -37,12 +38,24 @@ export function SettingsHint({ id, children, className = "" }: { id?: string; ch
   );
 }
 
-/** The one action row: the section's buttons at the left, its Reset (a ResetToDefaults) at the right. */
-export function SettingsActions({ children, reset }: { children?: ReactNode; reset?: ReactNode }) {
+/**
+ * What sits at the right of a card's title line: the saved tick, then the quiet "Reset ..." (C52).
+ * Every section has its Reset here, never on the button row.
+ */
+export function PanelTools({ saved, reset }: { saved?: ReactNode; reset?: ReactNode }) {
+  return (
+    <span className="settings-page__tools">
+      {saved}
+      {reset}
+    </span>
+  );
+}
+
+/** The one action row: the section's buttons, at the left. The section's Reset is in `PanelTools`. */
+export function SettingsActions({ children }: { children?: ReactNode }) {
   return (
     <div className="settings-actions">
       <div className="settings-actions__main">{children}</div>
-      {reset ? <div className="settings-actions__reset">{reset}</div> : null}
     </div>
   );
 }

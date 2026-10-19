@@ -317,7 +317,7 @@ export function SaveToFilesDialog({
 
   const state = preview
     ? saveState({ choices, preview, total, count, variant })
-    : { label: variant === "sync" ? syncButton(null) : "Save to files", enabled: false, reason: null };
+    : { label: syncButton(null), enabled: false, reason: null };
 
   const runSave = async () => {
     // Sync is one job: the files, then the decisions and the values each file got.

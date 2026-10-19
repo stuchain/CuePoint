@@ -4,10 +4,10 @@ import { useLocation } from "react-router-dom";
 
 import { appVersion } from "../components/AboutDialog";
 import { Button, Panel } from "../components";
+import { opensDialog } from "../format/words";
 import type { AppBuildInfo } from "../api/cuepointBridge.types";
 import { AboutUpdatesSection } from "./AboutUpdatesSection";
 import { AudioSettingsPanel } from "./AudioSettingsPanel";
-import { SettingsStatus } from "./SettingsParts";
 import { BeatportSettingsPanel } from "./BeatportSettingsPanel";
 import { ErrorReportingSettingsPanel } from "./ErrorReportingSettingsPanel";
 import { ExitClearingSettings } from "./ExitClearingSettings";
@@ -62,16 +62,15 @@ function useBuildInfo(): AppBuildInfo | null {
   return build;
 }
 
-function AboutSection({ build, onOpenOnboarding }: { build: AppBuildInfo | null; onOpenOnboarding?: () => void }) {
+function AboutSection({ onOpenOnboarding }: { onOpenOnboarding?: () => void }) {
   return (
     <Panel title={titleOf("settings-about")}>
       <div className="settings-page__about">
-        <SettingsStatus data-testid="settings-version">CuePoint version {appVersion(build)}</SettingsStatus>
         <div data-slot="updates">
           <AboutUpdatesSection
             actions={
               <Button variant="secondary" onClick={() => onOpenOnboarding?.()}>
-                Getting started
+                {opensDialog("Getting started")}
               </Button>
             }
           />
@@ -137,7 +136,10 @@ export function SettingsScreen({
 
   return (
     <div className="screen screen--stack screen--scroll settings-page">
-      <ScreenHeader title="Settings" summary={`CuePoint ${appVersion(build)}`} />
+      <ScreenHeader
+        title="Settings"
+        facts={{ count: SETTINGS_SECTIONS.length, noun: "section", facts: [`version ${appVersion(build)}`] }}
+      />
 
       <div className="settings-page__layout">
         <nav aria-label="Settings sections" className="settings-page__nav">
@@ -188,7 +190,7 @@ export function SettingsScreen({
           </Section>
 
           <Section id="settings-about">
-            <AboutSection build={build} onOpenOnboarding={onOpenOnboarding} />
+            <AboutSection onOpenOnboarding={onOpenOnboarding} />
           </Section>
         </div>
       </div>

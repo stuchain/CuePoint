@@ -35,3 +35,8 @@
   align-items: center;
   gap: var(--space-md);
 }
+
+/* The row of the switch spans the card, so the whole line is its click area (C133). */
+.cp-error-reporting__row .settings-check {
+  flex: 1 1 auto;
+}

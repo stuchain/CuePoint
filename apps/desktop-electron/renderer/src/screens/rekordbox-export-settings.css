@@ -9,35 +9,9 @@
   gap: var(--space-lg);
 }
 
-.cp-export-settings__facts {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin: 0;
-}
-
-.cp-export-settings__facts {
-  gap: var(--space-md);
-}
-
-/* A fact: its name above (the label role), its value under it (area 77). */
-.cp-export-settings__facts > div {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  font-size: var(--font-size-sm);
-}
-
-.cp-export-settings__facts dt {
-  color: var(--fg-muted);
-  font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
-}
-
-.cp-export-settings__facts dd {
-  margin: 0;
+/* The remembered facts are the shared label/value list (.cp-facts, C66). */
+.cp-export-settings .cp-facts dd {
   overflow-wrap: anywhere;
-  font-family: var(--font-data);
 }
 
 .cp-export-settings__heading {

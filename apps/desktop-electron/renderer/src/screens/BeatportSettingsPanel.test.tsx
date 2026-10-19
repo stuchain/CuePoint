@@ -250,12 +250,12 @@ describe("signed out", () => {
     expect(await screen.findByText("Using a pasted token · ••••abcd")).toBeInTheDocument();
   });
 
-  it("says when the token in use is the one in the config file", async () => {
+  it("says when the sign-in in use was saved earlier", async () => {
     install(SIGNED_OUT, {
       getBeatportTokenStatus: vi.fn(async () => ({ configured: true, masked: "••••cfg1", source: "config" })),
     });
     renderPanel();
-    expect(await screen.findByText("Using the sign-in saved in CuePoint's config file · ••••cfg1")).toBeInTheDocument();
+    expect(await screen.findByText("Using a Beatport sign-in saved earlier · ••••cfg1")).toBeInTheDocument();
   });
 
   it("has no 'How do I get a token?' help any more", async () => {
@@ -373,10 +373,10 @@ describe("expired", () => {
 });
 
 describe("a token from the environment", () => {
-  it("names the variable and offers no sign-in", async () => {
+  it("says so and offers no sign-in", async () => {
     install({ state: "env", masked: null, expires_at: null, secure_storage: true });
     renderPanel();
-    expect(await screen.findByText("Using BEATPORT_ACCESS_TOKEN from the environment")).toBeInTheDocument();
+    expect(await screen.findByText("Using the Beatport sign-in from your system settings")).toBeInTheDocument();
     expect(within(panel()).queryByRole("button", { name: "Sign in to Beatport" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Paste a token instead" })).toBeNull();
     expect(within(panel()).getByRole("button", { name: "Test connection" })).toBeEnabled();

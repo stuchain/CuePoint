@@ -44,7 +44,7 @@ afterEach(() => {
 describe("the build", () => {
   it("shows the build and calls a -test.N version a test version", async () => {
     setup();
-    expect(await screen.findByText(/Build abc1234/)).toBeInTheDocument();
+    expect(await screen.findByText(/\(build abc1234\)/)).toBeInTheDocument();
     expect(screen.getByText(/test version/)).toBeInTheDocument();
   });
 
@@ -53,13 +53,13 @@ describe("the build", () => {
       { currentVersion: "1.0.0" },
       { buildInfo: vi.fn(async () => ({ version: "1.0.0", release: "cuepoint@1.0.0", dist: "abc1234", environment: "production" })) },
     );
-    await screen.findByText(/Build abc1234/);
+    await screen.findByText(/\(build abc1234\)/);
     expect(screen.queryByText(/test version/)).toBeNull();
   });
 
   it("says when no build was recorded", async () => {
     setup({}, { buildInfo: vi.fn(async () => ({ version: "1.0.0-test.1", release: "r", dist: null, environment: "production" })) });
-    expect(await screen.findByText(/Build not recorded/)).toBeInTheDocument();
+    expect(await screen.findByText(/\(build not recorded\)/)).toBeInTheDocument();
   });
 });
 
@@ -133,7 +133,7 @@ describe("the state in words", () => {
 
   it("calls a test version a test version from the state when there is no build info", async () => {
     setup({ status: "up-to-date" }, { buildInfo: undefined });
-    expect(await screen.findByText("test version")).toBeInTheDocument();
+    expect(await screen.findByText(/test version/)).toBeInTheDocument();
   });
 
   it("uses none of the engine's words", async () => {
@@ -165,7 +165,7 @@ describe("Check for updates", () => {
 
   it.each(["checking", "downloading"] as const)("is disabled while %s", async (status) => {
     setup({ status, version: "1.0.0-test.2", progress: 5 });
-    await screen.findByText(/Build abc1234/);
+    await screen.findByText(/\(build abc1234\)/);
     expect(screen.getByRole("button", { name: "Check for updates" })).toBeDisabled();
   });
 });

@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { Button, Modal, MoreAbout, Panel } from "../components";
+import { Button, DisclosureArrow, Modal, MoreAbout, Panel } from "../components";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { selectCurrentItem, selectPosition } from "../components/player/playerFormat";
 import { usePlayerValue } from "../components/player/playerStore";
@@ -28,7 +28,7 @@ import {
 import { WAVEFORM_DETAIL_DEFAULT, useWaveformDetailSetting } from "../components/waveform/waveformDetailSetting";
 import { useWaveformBox } from "../components/waveform/waveformEnvironment";
 import { ResetToDefaults } from "./ResetToDefaults";
-import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
+import { PanelTools, SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
 import "./waveform-settings.css";
 
 /**
@@ -90,6 +90,7 @@ export function WaveformSettingsPanel() {
   const [detailOn, setDetailOn] = useWaveformDetailSetting();
   const colorsId = useId();
   const [confirming, setConfirming] = useState(false);
+  const [diskOpen, setDiskOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [saved, markSaved] = useSavedSignal();
   const { status } = analysis;
@@ -137,7 +138,15 @@ export function WaveformSettingsPanel() {
   const nothingToAnalyze = status?.state === "idle" && status.present === 0;
 
   return (
-    <Panel title="Waveforms" badge={<SavedTick signal={saved} />}>
+    <Panel
+      title="Waveforms"
+      badge={
+        <PanelTools
+          saved={<SavedTick signal={saved} />}
+          reset={<ResetToDefaults section="Waveforms" onReset={resetColors} />}
+        />
+      }
+    >
       <div className="cp-waveform-settings">
         {!analysis.supported ? (
           <SettingsStatus>Open CuePoint as a desktop app to analyze waveforms.</SettingsStatus>
@@ -197,8 +206,14 @@ export function WaveformSettingsPanel() {
         <WaveformPreview />
 
         {analysis.supported ? (
-          <details className="cp-waveform-settings__disk">
-            <summary>Disk space</summary>
+          <details
+            className="cp-waveform-settings__disk"
+            onToggle={(event) => setDiskOpen(event.currentTarget.open)}
+          >
+            <summary className="cp-waveform-settings__fold">
+              <DisclosureArrow open={diskOpen} />
+              Disk space
+            </summary>
             <div className="cp-waveform-settings__delete">
               <SettingsHint>{status ? `Waveforms take ${sizeWords(status.store_bytes)}.` : null}</SettingsHint>
               <Button
@@ -217,7 +232,7 @@ export function WaveformSettingsPanel() {
 
         {message ? <SettingsStatus role="status" className="cp-waveform-settings__message">{message}</SettingsStatus> : null}
 
-        <SettingsActions reset={<ResetToDefaults section="Waveforms" onReset={resetColors} />}>
+        <SettingsActions>
           {analysis.supported && action ? (
             <Button variant="secondary" loading={analysis.busy} onClick={() => void runAction()}>
               {ACTION_LABELS[action]}

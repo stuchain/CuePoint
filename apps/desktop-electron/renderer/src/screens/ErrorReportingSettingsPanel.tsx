@@ -4,7 +4,7 @@ import { LinkButton, MoreAbout, Notice, Panel } from "../components";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { reportUnexpected, setReportingChoice } from "../reporting/reporting";
 import { ResetToDefaults } from "./ResetToDefaults";
-import { SettingsActions, SettingsHint } from "./SettingsParts";
+import { PanelTools, SettingsHint } from "./SettingsParts";
 import { readExitClearing, saveExitClearing } from "./exitClearing";
 import "./error-reporting-settings.css";
 import { userMessage } from "../api/userMessage";
@@ -110,7 +110,10 @@ export function ErrorReportingSettingsPanel({
   };
 
   return (
-    <Panel title="Privacy">
+    <Panel
+      title="Privacy"
+      badge={<PanelTools reset={<ResetToDefaults section="Privacy" onReset={resetToDefaults} />} />}
+    >
       <div className="cp-error-reporting">
         <div className="settings-option">
         <div className="cp-error-reporting__row">
@@ -118,7 +121,6 @@ export function ErrorReportingSettingsPanel({
             <input
               id={ERROR_REPORTING_FIELD_ID}
               type="checkbox"
-              role="switch"
               checked={enabled}
               disabled={!available || loading || busy}
               onChange={(event) => void toggle(event.target.checked)}
@@ -143,10 +145,9 @@ export function ErrorReportingSettingsPanel({
           <SettingsHint>Open CuePoint as a desktop app to change this.</SettingsHint>
         )}
         {error && (
-          <Notice kind="problem">{error}</Notice>
+          <Notice kind="danger">{error}</Notice>
         )}
         {children}
-        <SettingsActions reset={<ResetToDefaults section="Privacy" onReset={resetToDefaults} />} />
       </div>
     </Panel>
   );

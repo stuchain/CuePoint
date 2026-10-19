@@ -6,7 +6,7 @@ import { NEEDS_DESKTOP } from "../api/userMessage";
 import { useBeatportToken } from "../hooks/useBeatportToken";
 import { useIncludeUserCharts } from "./discover/includeUserCharts";
 import { ResetToDefaults } from "./ResetToDefaults";
-import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
+import { PanelTools, SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
 
 interface BeatportSettingsPanelProps {
   /** The token field's id: what Discover's Open Settings link focuses. */
@@ -114,14 +114,17 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
   };
 
   return (
-    <Panel title="Beatport">
+    <Panel
+      title="Beatport"
+      badge={<PanelTools reset={<ResetToDefaults section="Beatport" onReset={resetToDefaults} />} />}
+    >
       <div className="settings-body">
         <SettingsStatus id={lineId} ref={lineRef} tabIndex={-1}>
           {line}
         </SettingsStatus>
         {fromConfig ? (
           <SettingsStatus>
-            Using the sign-in saved in CuePoint&apos;s config file · {status.masked ?? "••••"}
+            Using a Beatport sign-in saved earlier · {status.masked ?? "••••"}
           </SettingsStatus>
         ) : null}
         {!env && !auth.secure_storage ? (
@@ -132,7 +135,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
         {noDesktop ? <SettingsStatus>{NEEDS_DESKTOP}</SettingsStatus> : null}
         {signingIn ? <SettingsStatus role="status">Finish signing in in the Beatport window.</SettingsStatus> : null}
         {authError ? (
-          <Notice kind="problem">{authError}</Notice>
+          <Notice kind="danger">{authError}</Notice>
         ) : null}
         {!showPaste ? testResult : null}
         {showPaste ? (
@@ -194,7 +197,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
             too; there are many more, so the dig takes longer.
           </SettingsHint>
         </div>
-        <SettingsActions reset={<ResetToDefaults section="Beatport" onReset={resetToDefaults} />}>
+        <SettingsActions>
           {signedIn || env ? (
             <>
               <Button
@@ -242,7 +245,7 @@ function lineFor(state: BeatportAuth["state"], masked: string | null): string {
     case "expired":
       return "Beatport sign-in ended";
     case "env":
-      return "Using BEATPORT_ACCESS_TOKEN from the environment";
+      return "Using the Beatport sign-in from your system settings";
     case "unavailable":
       return "Signing in to Beatport is not available on this system.";
     case "signed_out":

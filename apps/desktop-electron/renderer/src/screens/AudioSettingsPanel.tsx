@@ -4,7 +4,7 @@ import type { AudioDevice } from "../api/cuepointBridge.types";
 import { MoreAbout, Notice, Panel } from "../components";
 import { Select } from "../components/Select";
 import { ResetToDefaults } from "./ResetToDefaults";
-import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
+import { PanelTools, SettingsHint, SettingsStatus } from "./SettingsParts";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { audioFellBack, selectAudio } from "../components/player/playerFormat";
 import {
@@ -146,7 +146,15 @@ export function AudioSettingsPanel() {
   };
 
   return (
-    <Panel title="Playback" badge={<SavedTick signal={saved} />}>
+    <Panel
+      title="Playback"
+      badge={
+        <PanelTools
+          saved={<SavedTick signal={saved} />}
+          reset={available ? <ResetToDefaults section="Playback" onReset={resetToDefaults} /> : undefined}
+        />
+      }
+    >
       <div className="cp-audio-settings">
         <SettingsStatus id={outputsId}>
           {loading && !listed
@@ -214,11 +222,7 @@ export function AudioSettingsPanel() {
           </Notice>
         )}
         {error && (
-          <Notice kind="problem">{error}</Notice>
-        )}
-
-        {available && (
-          <SettingsActions reset={<ResetToDefaults section="Playback" onReset={resetToDefaults} />} />
+          <Notice kind="danger">{error}</Notice>
         )}
       </div>
     </Panel>

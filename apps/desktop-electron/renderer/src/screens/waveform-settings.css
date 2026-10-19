@@ -84,9 +84,18 @@ fieldset.cp-waveform-settings__choice {
   background: var(--bg-panel-alt);
 }
 
-.cp-waveform-settings__disk summary {
-  min-height: var(--hit-min);
+/* The same quiet fold as "More about this": the shared arrow, no native marker, no box (C117). */
+.cp-waveform-settings__fold {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: var(--row-height);
   color: var(--fg-primary);
   font-size: var(--font-size-sm);
+  list-style: none;
   cursor: pointer;
+}
+
+.cp-waveform-settings__fold::-webkit-details-marker {
+  display: none;
 }

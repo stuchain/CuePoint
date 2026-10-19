@@ -33,8 +33,10 @@
 }
 
 .settings-page__nav a {
-  display: block;
-  padding: var(--space-xs) var(--space-sm);
+  display: flex;
+  align-items: center;
+  min-height: var(--row-height);
+  padding: 0 var(--space-sm);
   color: var(--fg-muted);
   font-size: var(--font-size-sm);
   text-decoration: none;
@@ -58,8 +60,17 @@
 .settings-page__sections {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  gap: var(--gap-box);
   min-width: 0;
+  /* One reading column at wide windows, so a card never stretches past its content (C211). */
+  max-width: calc(720px * var(--scale));
+}
+
+/* The saved tick and the quiet Reset, at the right of a card's title line (C52). */
+.settings-page__tools {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
 }
 
 /* A link lands on the section; focus there is a landing, not a control. */
@@ -207,11 +218,12 @@
   font-weight: var(--weight-strong);
 }
 
-/* A hint under a setting: one size, one cap. */
+/* A hint under a setting: one size, one cap, and never wider than the controls above it, which stop
+   at 400 (C51). */
 .settings-hint {
   overflow-wrap: anywhere;
   margin: 0;
-  max-width: 60ch;
+  max-width: min(var(--reading-width), calc(400px * var(--scale)));
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
   line-height: 1.5;
@@ -232,6 +244,4 @@
   gap: var(--space-md);
 }
 
-.settings-actions__reset {
-  margin-left: auto;
-}
+

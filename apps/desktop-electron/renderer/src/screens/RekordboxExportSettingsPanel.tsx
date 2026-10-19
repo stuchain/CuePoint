@@ -62,6 +62,7 @@ export function RekordboxExportSettingsPanel() {
 
         {error && (
           <Notice
+            kind="danger"
             action={
               <Button variant="secondary" onClick={load}>
                 {RETRY}
@@ -75,19 +76,13 @@ export function RekordboxExportSettingsPanel() {
         {loading && !history && <SettingsStatus>Reading past exports…</SettingsStatus>}
 
         {remembered && (
-          <dl className="cp-export-settings__facts">
-            <div>
-              <dt>Save dialog opens in</dt>
-              <dd data-testid="export-remembered-folder" data-hint={remembered.folder ?? undefined}>
-                {rememberedFolderLine(remembered)}
-              </dd>
-            </div>
-            <div>
-              <dt>Key notation</dt>
-              <dd data-testid="export-remembered-notation">
-                {keyFormatLabel(remembered.key_format)}
-              </dd>
-            </div>
+          <dl className="cp-facts">
+            <dt>Save dialog opens in</dt>
+            <dd data-testid="export-remembered-folder" data-hint={remembered.folder ?? undefined}>
+              {rememberedFolderLine(remembered)}
+            </dd>
+            <dt>Key notation</dt>
+            <dd data-testid="export-remembered-notation">{keyFormatLabel(remembered.key_format)}</dd>
           </dl>
         )}
 

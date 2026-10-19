@@ -5,7 +5,7 @@ import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { MOTION_GROUPS, type MotionKindId, type MotionSwitches } from "../tokens/motion";
 import { useMotion } from "../tokens/MotionContext";
 import { ResetToDefaults } from "./ResetToDefaults";
-import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
+import { PanelTools, SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
 import "./motion-settings.css";
 
 type MotionMode = "on" | "off" | "custom";
@@ -93,7 +93,15 @@ export function MotionSettingsPanel() {
   };
 
   return (
-    <Panel title="Motion" badge={<SavedTick signal={saved} />}>
+    <Panel
+      title="Motion"
+      badge={
+        <PanelTools
+          saved={<SavedTick signal={saved} />}
+          reset={<ResetToDefaults section="Motion" onReset={resetToDefaults} />}
+        />
+      }
+    >
       <div className="motion-settings">
         <SettingsStatus>
           Motion follows your system&apos;s Reduce motion setting: {systemReduced ? "on" : "off"}
@@ -152,7 +160,7 @@ export function MotionSettingsPanel() {
           ))}
         </div>
 
-        <SettingsActions reset={<ResetToDefaults section="Motion" onReset={resetToDefaults} />}>
+        <SettingsActions>
           <Button
             variant="secondary"
             aria-expanded={listOpen}

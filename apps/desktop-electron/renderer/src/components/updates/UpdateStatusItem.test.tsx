@@ -208,7 +208,7 @@ describe("work that is running (DEC-173)", () => {
     listJobs.mockRejectedValue(new Error("down"));
     await userEvent.click(await screen.findByRole("button", { name: /is ready/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Restart now" }));
-    expect(await screen.findByText(/couldn't tell whether work is still running/)).toBeInTheDocument();
+    expect(await screen.findByText(/could not tell whether work is still running/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Restart when done" })).toBeNull();
     expect(fake.bridge.restart).not.toHaveBeenCalled();
   });

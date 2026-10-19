@@ -34,7 +34,7 @@ describe("the error-reporting switch", () => {
 
   it("shows a stored on", async () => {
     render(<ErrorReportingSettingsPanel />);
-    const toggle = screen.getByRole("switch", { name: "Send error reports" });
+    const toggle = screen.getByRole("checkbox", { name: "Send error reports" });
     await waitFor(() => expect(toggle).toBeEnabled());
     expect(toggle).toBeChecked();
   });
@@ -42,7 +42,7 @@ describe("the error-reporting switch", () => {
   it("shows a stored off", async () => {
     install(false);
     render(<ErrorReportingSettingsPanel />);
-    const toggle = screen.getByRole("switch", { name: "Send error reports" });
+    const toggle = screen.getByRole("checkbox", { name: "Send error reports" });
     await waitFor(() => expect(toggle).toBeEnabled());
     expect(toggle).not.toBeChecked();
   });
@@ -62,7 +62,7 @@ describe("the error-reporting switch", () => {
 
   it("calls the bridge once with the opposite value, and shows the answer", async () => {
     render(<ErrorReportingSettingsPanel />);
-    const toggle = screen.getByRole("switch", { name: "Send error reports" });
+    const toggle = screen.getByRole("checkbox", { name: "Send error reports" });
     await waitFor(() => expect(toggle).toBeEnabled());
 
     await userEvent.click(toggle);
@@ -74,7 +74,7 @@ describe("the error-reporting switch", () => {
 
   it("shows Saved once the bridge has accepted the change", async () => {
     render(<ErrorReportingSettingsPanel />);
-    const toggle = screen.getByRole("switch", { name: "Send error reports" });
+    const toggle = screen.getByRole("checkbox", { name: "Send error reports" });
     await waitFor(() => expect(toggle).toBeEnabled());
     await userEvent.click(toggle);
     await waitFor(() => expect(document.body).toHaveTextContent("Saved"));
@@ -94,7 +94,7 @@ describe("the error-reporting switch", () => {
   it("puts the switch back and says why when the change is refused", async () => {
     set.mockRejectedValue(new Error("The settings file could not be written."));
     render(<ErrorReportingSettingsPanel />);
-    const toggle = screen.getByRole("switch", { name: "Send error reports" });
+    const toggle = screen.getByRole("checkbox", { name: "Send error reports" });
     await waitFor(() => expect(toggle).toBeEnabled());
 
     await userEvent.click(toggle);
@@ -132,7 +132,7 @@ describe("when a link asks for the switch", () => {
     install(true);
     get.mockReturnValue(new Promise((resolve) => (answer = resolve)));
     const { rerender } = render(<ErrorReportingSettingsPanel focusToken="a" />);
-    const toggle = screen.getByRole("switch", { name: "Send error reports" });
+    const toggle = screen.getByRole("checkbox", { name: "Send error reports" });
     expect(toggle).toBeDisabled();
     expect(toggle).not.toHaveFocus();
 
@@ -151,7 +151,7 @@ describe("without the desktop bridge", () => {
   it("is disabled, and says how to change it", () => {
     delete (window as unknown as { cuepoint?: unknown }).cuepoint;
     render(<ErrorReportingSettingsPanel />);
-    expect(screen.getByRole("switch", { name: "Send error reports" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Send error reports" })).toBeDisabled();
     expect(screen.getByText("Open CuePoint as a desktop app to change this.")).toBeInTheDocument();
   });
 });
@@ -166,7 +166,7 @@ describe("Reset privacy", () => {
   it("turns error reports on and clears nothing on quit, and Undo puts both back", async () => {
     saveExitClearing({ clearCache: true, clearLogs: true });
     render(<ErrorReportingSettingsPanel />);
-    const toggle = screen.getByRole("switch", { name: "Send error reports" });
+    const toggle = screen.getByRole("checkbox", { name: "Send error reports" });
     await waitFor(() => expect(toggle).toBeEnabled());
 
     await userEvent.click(screen.getByRole("button", { name: "Reset privacy" }));
