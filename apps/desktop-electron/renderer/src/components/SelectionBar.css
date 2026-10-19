@@ -2,13 +2,18 @@
  * The selection bar (C9, C215): 42 high at 1x, on the toolbar colour, directly above the list.
  * It carries no border; the list's own header divider is the line below it.
  */
+:root {
+  /* The bar's height, shared with the pages that make room for it (Discover's half tables). */
+  --selection-bar-height: round(nearest, calc(42px * var(--scale)), 1px);
+}
+
 .cp-selection-bar {
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
-  min-height: round(nearest, calc(42px * var(--scale)), 1px);
+  min-height: var(--selection-bar-height);
   padding-inline: var(--space-md);
   background: var(--bg-toolbar);
   color: var(--fg-primary);

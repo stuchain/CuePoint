@@ -680,7 +680,7 @@
 }
 
 .discover-page__half > .discover-table[data-selecting] {
-  height: calc((var(--discover-rows, 10) + 1) * var(--row-height) + 42px * var(--scale));
+  height: calc((var(--discover-rows, 10) + 1) * var(--row-height) + var(--selection-bar-height));
 }
 
 .discover-page__beatport-table {
