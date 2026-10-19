@@ -15,7 +15,7 @@
   /* No padding of its own: the Inspector body already insets by 8, so the title bar and this
      body share one left edge (spacing round 2). */
   padding: 0;
-  overflow-y: auto;
+  /* No scroller of its own: the Inspector's body scrolls, so the sticky head sticks to it. */
 }
 
 .cp-track-detail__note {
@@ -27,7 +27,9 @@
 }
 
 /* The sticky head (C35): the words and the buttons; the art is outside it and scrolls away. */
-.cp-track-detail__head {
+.cp-track-detail .cp-track-detail__head {
+  /* The Inspector's colour, so rows do not show through behind the head. */
+  background: var(--bg-toolbar);
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
@@ -326,27 +328,27 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: calc(2px * var(--scale));
+  gap: var(--space-2xs);
 }
 
 .cp-track-yours__group {
   display: flex;
   align-items: center;
-  gap: calc(2px * var(--scale));
+  gap: var(--space-2xs);
 }
 
 .cp-track-yours__star {
   padding: 0 var(--hairline);
   border: none;
   background: transparent;
-  color: var(--fg-disabled);
+  color: var(--fg-muted);
   font-size: var(--font-size-md);
   line-height: 1;
   cursor: pointer;
 }
 
 .cp-track-yours__star--on {
-  color: var(--warning-text);
+  color: var(--fg-primary);
 }
 
 .cp-track-yours__star:focus-visible,
@@ -388,7 +390,8 @@
 
 .cp-track-yours__favorite--on {
   border-color: var(--accent-primary);
-  color: var(--accent-primary);
+  background: var(--bg-selected);
+  color: var(--fg-primary);
 }
 
 /* Notes, Tags and Add a tag are labelled rows like Overview's: the label in the shared column,

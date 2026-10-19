@@ -7,6 +7,7 @@ import library from "./library.css?raw";
 import toolbar from "./LibraryToolbar.css?raw";
 import pane from "./CollectionsPane.css?raw";
 import filterBar from "./FilterBar.css?raw";
+import detail from "./TrackDetailPanel.css?raw";
 
 const strip = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, "");
 
@@ -59,6 +60,26 @@ describe("the Library's shared lines", () => {
 
   it("keeps the selection bar and the count in the filter row, where Select all is", () => {
     expect(rule(filterBar, ".cp-filter-bar__trailing")).toContain("margin-inline-start: auto");
+  });
+
+  it("lets the Inspector's body be the scroller for Track details, with the head on its colour", () => {
+    // A second scroller inside the body would make the sticky head stick to the wrong box.
+    expect(rule(detail, ".cp-track-detail")).not.toMatch(/overflow/);
+    expect(rule(detail, ".cp-track-detail .cp-track-detail__head")).toContain("background: var(--bg-toolbar)");
+  });
+
+  it("draws the Yours stars like the table's: white filled, grey empty, a token apart (C104)", () => {
+    expect(rule(detail, ".cp-track-yours__star")).toContain("color: var(--fg-muted)");
+    expect(rule(detail, ".cp-track-yours__star--on")).toContain("color: var(--fg-primary)");
+    expect(rule(detail, ".cp-track-yours__stars")).toContain("gap: var(--space-2xs)");
+    expect(rule(detail, ".cp-track-yours__group")).toContain("gap: var(--space-2xs)");
+  });
+
+  it("draws Favorite on as D1 says: selected fill, accent border, primary text", () => {
+    const on = rule(detail, ".cp-track-yours__favorite--on");
+    expect(on).toContain("background: var(--bg-selected)");
+    expect(on).toContain("border-color: var(--accent-primary)");
+    expect(on).toContain("color: var(--fg-primary)");
   });
 
   it("keeps one divider: only the pane has a right edge, the main column has no left one", () => {
