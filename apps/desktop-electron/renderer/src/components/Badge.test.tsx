@@ -16,9 +16,9 @@ describe("Badge", () => {
     expect(screen.getByText("Done")).toHaveClass("cp-badge--success");
   });
 
-  it("is square with a hairline border in the theme's control colour and no shadow (T5, C91)", () => {
+  it("is square with a hairline border in its own tone and no shadow (T5, C91)", () => {
     const body = rule(".cp-badge");
-    expect(body).toMatch(/border:\s*var\(--hairline\) solid var\(--border-control\)/);
+    expect(body).toMatch(/border:\s*var\(--hairline\) solid var\(--chip-tone\)/);
     expect(body).toMatch(/border-radius:\s*0/);
     expect(body).not.toMatch(/box-shadow/);
   });
@@ -49,8 +49,12 @@ describe("Badge", () => {
     expect(rule(".cp-badge--info")).toMatch(/--chip-tone:\s*var\(--accent-info\)/);
   });
 
-  it("the neutral and default badge border is --border-muted", () => {
-    expect(rule(".cp-badge--neutral")).toMatch(/border-color:\s*var\(--border-muted\)/);
+  it("only the neutral and default badge take the grey control border", () => {
+    expect(rule(".cp-badge--neutral")).toMatch(/border-color:\s*var\(--border-control\)/);
+    expect(rule(".cp-badge--default")).toMatch(/border-color:\s*var\(--border-control\)/);
+    for (const tone of ["success", "warning", "danger", "accent", "info"]) {
+      expect(rule(`.cp-badge--${tone}`)).not.toMatch(/border-color/);
+    }
   });
 
   it("is the same component as Chip, and tone wins over variant", () => {

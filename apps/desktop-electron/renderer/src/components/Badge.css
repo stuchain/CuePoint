@@ -10,7 +10,7 @@
   align-items: center;
   box-sizing: border-box;
   padding: var(--space-2xs) var(--space-sm);
-  border: var(--hairline) solid var(--border-control);
+  border: var(--hairline) solid var(--chip-tone);
   border-radius: 0;
   background: color-mix(in srgb, var(--chip-tone) var(--chip-fill-mix), transparent);
   color: var(--chip-text, color-mix(in srgb, var(--chip-tone) var(--chip-text-mix), var(--fg-primary)));
@@ -32,7 +32,7 @@
 .cp-badge--default,
 .cp-badge--neutral {
   --chip-tone: var(--fg-muted);
-  border-color: var(--border-muted);
+  border-color: var(--border-control);
 }
 
 .cp-badge--success {
