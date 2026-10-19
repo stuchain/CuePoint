@@ -1250,6 +1250,15 @@ describe("the columns button in the header's corner (K21)", () => {
     expect(cell).toMatch(/overflow:\s*clip/);
   });
 
+  it("covers the rows under the button too, so a column cut at the edge is cut at one place (C69)", async () => {
+    renderTable({ onColumns: vi.fn() });
+    for (const row of renderedRows()) expect(row.querySelector(".track-table__row-corner")).not.toBeNull();
+    const css = (await import("./TrackTable.css?raw")).default;
+    const rule = /\.track-table__row-corner\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(rule).toMatch(/position:\s*sticky/);
+    expect(rule).toMatch(/grid-column:\s*-2 \/ -1/);
+  });
+
   it("leaves nothing to cover without the button", () => {
     renderTable();
     expect(screen.getByTestId("track-table").style.getPropertyValue("--track-table-cover")).toBe("0px");

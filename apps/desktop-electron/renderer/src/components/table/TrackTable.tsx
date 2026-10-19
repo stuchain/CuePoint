@@ -1197,6 +1197,9 @@ export function TrackTable<Row>({
                       )}
                     </div>
                   ))}
+                  {/* The rows' share of the Columns… button's track: sticky like the button, so a
+                      column running under it at the edge is cut where its heading is (C69). */}
+                  {onColumns && <div className="track-table__row-corner" aria-hidden="true" />}
                   {hasEnd && (
                     <div className="track-table__end" role="cell">
                       {end}
