@@ -11,9 +11,12 @@ as they are replaced.
 | The `rekordbox.xml` you bring in | **Rekordbox file** | "Rekordbox export", "XML export", "your export", "Rekordbox collection" |
 | CuePoint writing a file for Rekordbox | **Export to Rekordbox** (the only meaning of "export") | "Export results", "Export support bundle" |
 | Bringing the Rekordbox file in | **Import** ("Import a Rekordbox file…") | "Import another file…" |
-| Writing values into the audio files | **Save to files** | "Write", "Writing tags", "Save changes into the files" |
+| Writing values into the audio files | **Sync** ("Sync to files", "Sync 12 files", "Synced 12 files"); a library whose files match is **Up to date** | "Write", "Writing tags", "Save to files", "Write N files", "Nothing to write", "In sync", "Save changes into the files" |
 | Taking back a change | **Undo** | "Revert", "Restore", "Put back", "Go back to…" |
-| Agreeing with a Beatport match | **Correct** (the button), **confirmed** (the state) | "accepted", "Take", "Resolved" |
+| Agreeing with a Beatport match | **Use this match** (the button), **Confirmed** (the state) | "accepted", "Take", "Resolved", "Use this", "Correct" |
+| The state of a track's Beatport match | **Confirmed**, **To check**, **No match**, **Not looked up yet**, **Rejected** | "Matched", "Not matched", "Waiting for you", "To review", "Not found", "Not searched yet" |
+| The picture on a track | **Artwork** | "cover art" |
+| The strip along the bottom of the window | **status strip** | "status bar" |
 | Agreeing a Prepare warning is fine | **Mark OK** | "Accept", "Undo accept" |
 | Getting Beatport access | **Sign in to Beatport** | "token", except in the fallback "Paste a token instead" |
 | CuePoint's background process | not named: "CuePoint stopped working in the background" | "library service", "engine" (only Diagnostics and the log viewer keep it) |

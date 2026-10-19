@@ -8199,3 +8199,26 @@ through the same mpv. The site and support policy said macOS 12 or newer.
   version." and no Download button; it is not reported and that version is not downloaded again.
 
 **Decided with**: User (decision card, "Raise minimum") · **Date**: 2026-10-17
+
+## DEC-297 — UI Consistency Audit: D1 to D14 All Take the Recommended Option
+
+**Status**: Accepted · **Related**: DEC-294, DEC-295, `changes/consistency-audit/DECISIONS-FOR-MOCKUPS.md`
+
+**Context**: The 2026-10-19 consistency audit compared every screen and listed 14 choices where the
+app said or drew the same thing two ways. Mockups showed each option; every choice took the one
+marked as recommended (A).
+
+**Decision**:
+- D1 buttons: four explicit variants (primary, secondary, quiet, danger); a bare Button is secondary.
+- D2 match states: Confirmed, To check, No match, Not looked up yet, Rejected; the agree button is "Use this match".
+- D3 writing to files is "Sync" (Sync to files, Sync 12 files, Up to date); Write and Save are retired.
+- D4 to D9: one chip, notice, toast, menu and dialog look from shared components (sizes small, medium, large; a footer Close when a dialog has no action).
+- D10 palettes: tuned per theme; waveform colours follow Rekordbox in every theme.
+- D11 to D14: tables share one look (header at row height, hover and selected backgrounds, "—" for empty cells, right-click selects the row), column widths are stored in 1x units, counts format by locale, and font weights are named.
+- Rules that follow: one violet per screen; writing to files is green through `--accent-write`;
+  problem text uses the `*-text` tokens; themes change colour only, never layout or weight; full
+  sentences are set in Inter.
+- Held by tests: button variant, status text colour, font weight, number format, disabled look,
+  focus ring, typed marks and the retired-word guard (`retiredWords.test.ts`).
+
+**Decided with**: User (consistency audit decisions, all A) · **Date**: 2026-10-19
