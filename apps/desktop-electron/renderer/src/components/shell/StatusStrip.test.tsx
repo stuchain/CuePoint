@@ -538,6 +538,21 @@ describe("the strip is there only while it has something to show (C231)", () => 
     expect(screen.getByRole("status")).toHaveTextContent("Ready");
   });
 
+  it("stays up for the finish pulse, then goes idle", async () => {
+    listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
+    render(<StatusStrip />);
+    await screen.findByText("Matching on Beatport · 3 of 10");
+
+    listJobs.mockResolvedValue({ jobs: [], active_count: 0 });
+    await vi.advanceTimersByTimeAsync(4100);
+    await waitFor(() => expect(screen.queryByText(/Matching/)).not.toBeInTheDocument());
+    expect(strip()).not.toHaveAttribute("data-idle");
+    expect(strip()).toHaveAttribute("data-finished");
+
+    await vi.advanceTimersByTimeAsync(900);
+    await waitFor(() => expect(strip()).toHaveAttribute("data-idle"));
+  });
+
   it("is not idle while the engine is starting", async () => {
     getEngineStatus.mockResolvedValue({ connected: false, starting: true });
     render(<StatusStrip />);

@@ -172,11 +172,12 @@ export function StatusStrip() {
 
   // The strip is there only while it has something to say (C231): work, a message from the
   // player, an engine that is not ready, or an update on its way. Otherwise it takes no room;
-  // the live region stays mounted, so a screen reader still hears the state change.
+  // the live region stays mounted, so a screen reader still hears the state change. A job that
+  // just finished keeps the strip up for its pulse (finished is back to 0 after it).
   const updateShown =
     update !== null &&
     (update.status === "downloading" || update.status === "ready" || update.status === "manual");
-  const idle = job === null && !playerMessage && !updateShown && (connected || offline);
+  const idle = job === null && !playerMessage && !updateShown && finished === 0 && (connected || offline);
 
   /**
    * Stopping the work the strip is reporting (ORG-13).
