@@ -23,6 +23,7 @@ import { LinkButton } from "../../components/LinkButton";
 import { formatCount } from "../../format/counts";
 import { formatDayTime } from "../../format/dates";
 import { MATCH_STATE, goTo } from "../../format/words";
+import { checkedLine } from "../clean/cleanEmpty";
 import { cleanSectionState } from "../clean/cleanLink";
 import type { CleanSection } from "../clean/cleanSections";
 import { libraryRulesState } from "../library/libraryLink";
@@ -143,7 +144,8 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
       <HealthCard
         id="files"
         title="Files"
-        note={health.checked_at ? `checked ${formatDayTime(health.checked_at) || health.checked_at}` : "not checked yet"}
+        // The very words Clean's Missing files bar uses for the same check (C170).
+        note={(health.checked_at && checkedLine(health.checked_at)) || "not checked yet"}
         bar
         onOpen={open}
         rows={[

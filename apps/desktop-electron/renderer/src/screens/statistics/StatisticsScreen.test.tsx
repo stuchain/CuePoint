@@ -25,7 +25,7 @@ import { StatisticsScreen } from "./StatisticsScreen";
 import { needsDesktopApp } from "../../api/userMessage";
 import { statisticsFocusState } from "./statisticsLink";
 import { PLAYS_STORAGE_KEY } from "./playsChoice";
-import { formatDayTime } from "../../format/dates";
+import { checkedLine } from "../clean/cleanEmpty";
 import css from "./statistics.css?raw";
 import grid from "../../components/table/DataTable.css?raw";
 import { STATISTICS_SCOPE_STORAGE_KEY } from "./statisticsScope";
@@ -458,7 +458,7 @@ describe("the Statistics page (STATS-04)", () => {
       within(panel("library")).getByRole("heading", { level: 3, name: "Genres", hidden: true }),
     ).toBeInTheDocument();
     expect(
-      within(panel("health")).getByText(`checked ${formatDayTime("2026-10-08T12:00:00Z")}`),
+      within(panel("health")).getByText(checkedLine("2026-10-08T12:00:00Z")),
     ).toBeInTheDocument();
     // The whole library is the scope until the picker says otherwise.
     expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "library" });
@@ -516,7 +516,7 @@ describe("the Statistics page (STATS-04)", () => {
     expect(section).not.toHaveTextContent(/engine said no/);
     expect(reportUnexpected).toHaveBeenCalled();
     // The other sections are not taken down with it.
-    await within(panel("health")).findByText(`checked ${formatDayTime("2026-10-08T12:00:00Z")}`);
+    await within(panel("health")).findByText(checkedLine("2026-10-08T12:00:00Z"));
 
     await userEvent.click(within(section).getByRole("button", { name: "Try again" }));
 
@@ -1068,7 +1068,7 @@ describe("revisiting the page (C19d)", () => {
     await waitFor(() => expect(within(plays).getByText("3,120")).toBeInTheDocument());
     await waitFor(() =>
       expect(
-        within(panel("health")).getByText(/^checked /),
+        within(panel("health")).getByText(/^Checked /),
       ).toBeInTheDocument(),
     );
     first.unmount();
