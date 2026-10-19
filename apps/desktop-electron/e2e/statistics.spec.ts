@@ -137,9 +137,9 @@ test.describe("The Statistics page (STATS-04)", () => {
           timeout: 30_000,
         });
       }
-      await expect(window.getByRole("combobox", { name: "Scope" })).toHaveValue("library");
+      await expect(window.getByRole("combobox", { name: "Which tracks" })).toHaveValue("library");
       // The word Scope is the picker's own inline label, and the Library tab carries no count.
-      await expect(window.locator(".cp-select--inline .cp-select__inline-label")).toHaveText("Scope");
+      await expect(window.locator(".cp-select--inline .cp-select__inline-label")).toHaveText("Which tracks");
       await expect(tabs.getByRole("tab", { name: /^Library/ })).toHaveText("Library");
       // The three routes answered through the bridge: each tab drew its count.
       await expect(window.locator(".plays__unplayed")).toContainText(/Plays unknown\s*3/, {
@@ -246,7 +246,7 @@ test.describe("The Your library section (STATS-06)", () => {
 
       // Narrow to the Warmup playlist and open Keys: the same counts, the playlist ticked.
       await window.getByRole("link", { name: "Statistics" }).click();
-      await window.getByRole("combobox", { name: "Scope" }).selectOption({ label: "Warmup" });
+      await window.getByRole("combobox", { name: "Which tracks" }).selectOption({ label: "Warmup" });
       await window.getByRole("tab", { name: /^Library/ }).click();
       const section = window.locator(".library-tab");
       await expect(section).toContainText("1 with a key · 1 with none", { timeout: 30_000 });

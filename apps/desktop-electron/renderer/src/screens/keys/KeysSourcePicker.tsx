@@ -19,6 +19,7 @@ import { Select } from "../../components/Select";
 import { usePageSearch } from "../../components/usePageSearch";
 import { formatCount } from "../../format/counts";
 import { nothingMatches } from "../../format/words";
+import { WHICH_TRACKS } from "../../words";
 import { flatten, type PlaylistTreeNode } from "../library/playlistTree";
 import {
   collectionPickerNodes,
@@ -149,7 +150,7 @@ export function KeysSourcePicker({
       </h2>
       <div className="keys-sources__body" role="group" aria-label="Sources">
         <Select
-          label="Which tracks"
+          label={WHICH_TRACKS}
           inlineLabel
           width="full"
           className="keys-sources__scope"

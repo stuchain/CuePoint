@@ -462,7 +462,7 @@ test.describe("the website's pictures (SITE-04)", () => {
       await test.step("statistics: how the whole library spreads", async () => {
         await window.getByRole("link", { name: "Statistics", exact: true }).click();
         await expect(window.getByRole("heading", { name: "Statistics", level: 1 })).toBeVisible();
-        await expect(window.getByRole("combobox", { name: "Scope" })).toHaveValue("library", { timeout: 30_000 });
+        await expect(window.getByRole("combobox", { name: "Which tracks" })).toHaveValue("library", { timeout: 30_000 });
         const plays = window.getByRole("region", { name: "Plays" });
         const library = window.getByRole("region", { name: "Your library" });
         const health = window.getByRole("region", { name: "Health" });

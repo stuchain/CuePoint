@@ -217,10 +217,10 @@ describe("one grid and an inline Scope (C244, C248)", () => {
 
   it("draws the word Scope inside the picker as its label, with nothing painted over it", async () => {
     renderPage();
-    const picker = await screen.findByRole("combobox", { name: "Scope" });
+    const picker = await screen.findByRole("combobox", { name: "Which tracks" });
     const wrap = picker.closest(".cp-select");
     expect(wrap).toHaveClass("cp-select--inline");
-    expect(wrap?.querySelector("label.cp-select__inline-label")).toHaveTextContent("Scope");
+    expect(wrap?.querySelector("label.cp-select__inline-label")).toHaveTextContent("Which tracks");
     expect(document.querySelector(".statistics-page__scope-word")).toBeNull();
     expect(css).not.toContain("scope-word");
   });
@@ -389,7 +389,7 @@ describe("the Statistics page (STATS-04)", () => {
 
   it("puts the scope picker beside the title and says what is counted in one summary line", async () => {
     renderPage();
-    const picker = await screen.findByRole("combobox", { name: "Scope" });
+    const picker = await screen.findByRole("combobox", { name: "Which tracks" });
     const header = screen.getByRole("banner");
     expect(header).toContainElement(picker);
     expect(picker.closest(".cp-screen-header__beside")).not.toBeNull();
@@ -400,7 +400,7 @@ describe("the Statistics page (STATS-04)", () => {
     window.localStorage.setItem(STATISTICS_SCOPE_STORAGE_KEY, "collection:10");
     install({ getStatisticsSpreads: vi.fn().mockResolvedValue({ ...spreads(4), scope: "collection:10" }) });
     renderPage();
-    await screen.findByRole("combobox", { name: "Scope" });
+    await screen.findByRole("combobox", { name: "Which tracks" });
     await waitFor(() =>
       expect(document.querySelector(".cp-screen-header__summary")).toHaveTextContent("4 tracks · Box"),
     );
@@ -536,7 +536,7 @@ describe("the Statistics page (STATS-04)", () => {
     it("offers the whole library first, then the playlists and the Collections", async () => {
       renderPage();
 
-      const picker = await screen.findByRole("combobox", { name: "Scope" });
+      const picker = await screen.findByRole("combobox", { name: "Which tracks" });
       await waitFor(() => expect(within(picker).getAllByRole("option").length).toBeGreaterThan(1));
       const options = within(picker).getAllByRole("option");
       expect(options[0]).toHaveTextContent("Whole library");
@@ -551,7 +551,7 @@ describe("the Statistics page (STATS-04)", () => {
 
     it("reads all three again, for the new scope, and remembers it", async () => {
       renderPage();
-      const picker = await screen.findByRole("combobox", { name: "Scope" });
+      const picker = await screen.findByRole("combobox", { name: "Which tracks" });
       await waitFor(() => expect(within(picker).getAllByRole("option").length).toBeGreaterThan(1));
       await waitFor(() => expect(mock("getStatisticsHealth")).toHaveBeenCalledTimes(1));
 
@@ -573,7 +573,7 @@ describe("the Statistics page (STATS-04)", () => {
       await waitFor(() =>
         expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "collection:10" }),
       );
-      expect(screen.getByRole("combobox", { name: "Scope" })).toHaveValue("collection:10");
+      expect(screen.getByRole("combobox", { name: "Which tracks" })).toHaveValue("collection:10");
     });
 
     it("falls back to the whole library when the remembered playlist is gone", async () => {
@@ -584,7 +584,7 @@ describe("the Statistics page (STATS-04)", () => {
         expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "library" }),
       );
       expect(mock("getStatisticsPlays")).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole("combobox", { name: "Scope" })).toHaveValue("library");
+      expect(screen.getByRole("combobox", { name: "Which tracks" })).toHaveValue("library");
     });
 
     it("falls back to the whole library when the remembered Collection is gone", async () => {
@@ -610,7 +610,7 @@ describe("the Statistics page (STATS-04)", () => {
       await waitFor(() =>
         expect(mock("getStatisticsPlays")).toHaveBeenCalledWith({ limit: 10, scope: "playlist:41" }),
       );
-      expect(screen.getByRole("combobox", { name: "Scope" })).toHaveValue("playlist:41");
+      expect(screen.getByRole("combobox", { name: "Which tracks" })).toHaveValue("playlist:41");
     });
 
     it("heads the playlists, and shows a Smart Collection that cannot run as unavailable", async () => {
@@ -625,7 +625,7 @@ describe("the Statistics page (STATS-04)", () => {
       });
       renderPage();
 
-      const picker = await screen.findByRole("combobox", { name: "Scope" });
+      const picker = await screen.findByRole("combobox", { name: "Which tracks" });
       await waitFor(() => expect(picker).toBeEnabled());
       const options = within(picker).getAllByRole("option");
       expect(options[1]).toHaveTextContent("Rekordbox playlists");
@@ -663,7 +663,7 @@ describe("the Statistics page (STATS-04)", () => {
       });
       renderPage();
 
-      const picker = await screen.findByRole("combobox", { name: "Scope" });
+      const picker = await screen.findByRole("combobox", { name: "Which tracks" });
       expect(picker).toBeDisabled();
       expect(mock("getStatisticsPlays")).not.toHaveBeenCalled();
       release({ collections: [], total: 0 });
@@ -675,7 +675,7 @@ describe("the Statistics page (STATS-04)", () => {
       renderPage();
 
       await screen.findByRole("heading", { level: 1, name: "Statistics" });
-      expect(screen.queryByRole("combobox", { name: "Scope" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("combobox", { name: "Which tracks" })).not.toBeInTheDocument();
     });
 
     it("never shows an answer for the scope it was switched away from", async () => {
@@ -690,7 +690,7 @@ describe("the Statistics page (STATS-04)", () => {
       install({ getStatisticsPlays: read });
       renderPage();
 
-      const picker = await screen.findByRole("combobox", { name: "Scope" });
+      const picker = await screen.findByRole("combobox", { name: "Which tracks" });
       await waitFor(() => expect(picker).toBeEnabled());
       await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
       await userEvent.selectOptions(picker, "playlist:2");
@@ -712,7 +712,7 @@ describe("the Statistics page (STATS-04)", () => {
       });
       try {
         renderPage();
-        const picker = await screen.findByRole("combobox", { name: "Scope" });
+        const picker = await screen.findByRole("combobox", { name: "Which tracks" });
         await waitFor(() => expect(within(picker).getAllByRole("option").length).toBeGreaterThan(1));
         await userEvent.selectOptions(picker, "playlist:2");
         await waitFor(() =>
@@ -1032,7 +1032,7 @@ describe("reading artwork from Health", () => {
     mock("getStatisticsHealth").mockImplementation(
       () => new Promise<StatisticsHealth>((resolve) => (answerSlow = resolve)),
     );
-    const picker = screen.getByRole("combobox", { name: "Scope" });
+    const picker = screen.getByRole("combobox", { name: "Which tracks" });
     await waitFor(() => expect(within(picker).getAllByRole("option").length).toBeGreaterThan(1));
     await userEvent.selectOptions(picker, "playlist:2");
     await within(panel("health")).findByRole("status");

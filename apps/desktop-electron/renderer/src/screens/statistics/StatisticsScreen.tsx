@@ -30,6 +30,7 @@ import { Notice } from "../../components/Notice";
 import { Tabs, panelId, tabId } from "../../components/Tabs";
 import { countNoun, formatCount, pluralWord } from "../../format/counts";
 import { RETRY } from "../../format/words";
+import { WHICH_TRACKS } from "../../words";
 import { Select } from "../../components/Select";
 import { useCleanJob, type CleanMessageTone } from "../clean/useCleanJob";
 import { libraryImportState } from "../library/libraryLink";
@@ -241,10 +242,10 @@ export function StatisticsScreen() {
       inset
       beside={
         answered !== null && !libraryEmpty ? (
-          // The word "Scope" is the select's own label, drawn inside its box (C244), so the title
-          // row is one control tall like the other pages' and nothing is painted over.
+          // The label is the select's own, drawn inside its box (C244), so the title row is one
+          // control tall like the other pages' and nothing is painted over. Keys says the same (C222).
           <Select
-            label="Scope"
+            label={WHICH_TRACKS}
             inlineLabel
             className="statistics-page__scope"
             value={scope}
