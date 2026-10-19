@@ -293,9 +293,10 @@ body.prepare-resizing {
 .prepare-lanes__name {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /* Centred in its lane, or from the top when its lines are taller than the lane (the 20 px
+     tempo lane at 1.25): centred and clipped, the top half of "BPM" was cut off (C251). */
+  justify-content: safe center;
   gap: calc(2px * var(--scale));
-  overflow: hidden;
   font-weight: var(--font-weight-bold);
 }
 

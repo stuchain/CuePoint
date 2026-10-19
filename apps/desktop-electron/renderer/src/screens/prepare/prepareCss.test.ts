@@ -21,6 +21,15 @@ describe("the strips above the Set (C251, C49, C259)", () => {
     expect(rule(".prepare-set")).toMatch(/--prepare-strip-pad:\s*var\(--space-xs\)/);
   });
 
+  it("never cuts the top of the BPM name when its two lines are taller than the lane (C251)", () => {
+    // At 1.25 the tempo lane is 20 px and "BPM" over its range is about 28: centred and clipped,
+    // the top half of "BPM" was cut. Safe centring starts it at the top when it does not fit, and
+    // the gap and the Key lane below leave room for the range.
+    const name = rule(".prepare-lanes__name");
+    expect(name).toMatch(/justify-content:\s*safe center/);
+    expect(name).not.toMatch(/overflow:\s*hidden/);
+  });
+
   it("insets the right waveform by 8 at 1x (--space-md)", () => {
     expect(rule(".prepare-transition")).toMatch(/padding-right:\s*var\(--space-md\)/);
   });
