@@ -301,7 +301,8 @@ test.describe("Loudness, measured with each waveform (WAVE-08)", () => {
       await window.getByRole("link", { name: "Prepare", exact: true }).click();
       await expect(window).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 30_000 });
       await window.getByRole("button", { name: "View", exact: true }).click();
-      await window.getByRole("menuitem", { name: "Show transition strip" }).click();
+      await window.getByRole("menuitemcheckbox", { name: "Transition strip" }).click();
+      await window.keyboard.press("Escape");
       const setTable = window.getByRole("table", { name: "Set entries" });
       await setTable.locator(".track-table__row").first().click({ position: { x: 60, y: 10 } });
       const words = window.getByTestId("transition-words");

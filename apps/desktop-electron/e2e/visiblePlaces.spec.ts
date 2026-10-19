@@ -160,7 +160,7 @@ async function reach(win: Page, target: Locator, what: string, max = 200) {
     if (await isFocused(handle)) return;
     const where = await handle.evaluate((element) => {
       const active = document.activeElement;
-      const bar = element.closest('[role="toolbar"]');
+      const bar = element.closest('[role="toolbar"], [role="tablist"]');
       const group = (node: Element | null) => (node instanceof HTMLInputElement && node.type === "radio" ? node.name : null);
       const radio = group(element) !== null && group(element) === group(active);
       return {
@@ -169,15 +169,19 @@ async function reach(win: Page, target: Locator, what: string, max = 200) {
         radioUp: radio && Boolean(active!.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING),
         along: bar !== null && bar.contains(active),
         // A tree is one Tab stop; the arrow keys go from node to node.
+        // A control inside the focused row (the row menu's button) is the next Tab stop.
+        inside: active !== null && active !== element && active.contains(element),
+        // A toolbar's buttons are Tab stops of their own, a tab strip's other tabs are the arrow keys'.
+        tabStop: (element as HTMLElement).tabIndex >= 0,
         down:
-          element.closest('[role="tree"]')?.contains(active) === true && Boolean(active!.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
+          element.closest('[role="tree"]')?.contains(active) === true && !active!.contains(element) && Boolean(active!.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING),
         up:
-          element.closest('[role="tree"]')?.contains(active) === true && Boolean(active!.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING),
+          element.closest('[role="tree"]')?.contains(active) === true && !active!.contains(element) && Boolean(active!.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING),
         // Whether the control comes before the focus in the page, so Shift+Tab is the short way.
         before: active !== null && active !== document.body && Boolean(active.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_PRECEDING),
       };
     });
-    await win.keyboard.press(where.down || where.radioDown ? "ArrowDown" : where.up || where.radioUp ? "ArrowUp" : where.along ? "ArrowRight" : where.before ? "Shift+Tab" : "Tab");
+    await win.keyboard.press(where.down || where.radioDown ? "ArrowDown" : where.up || where.radioUp ? "ArrowUp" : where.along && !where.tabStop && !where.inside ? "ArrowRight" : where.before ? "Shift+Tab" : "Tab");
   }
   throw new Error(`${what} cannot be reached with Tab and the arrow keys (${max} presses)`);
 }
@@ -281,7 +285,11 @@ const treeNode = (win: Page, name: string) =>
   collectionsTree(win).getByRole("treeitem").filter({ has: win.getByText(name, { exact: true }) });
 /** Choose a tree node with the keyboard: the arrow keys to it, then Enter. */
 const chooseNode = (win: Page, node: Locator, what: string) => use(win, node, what);
-const treeBar = (win: Page) => win.getByRole("toolbar", { name: "Selected Collection or Set" });
+/** A selected row's own menu (the "more" button at its end): open it with the keyboard and choose an entry. */
+async function treeAction(win: Page, node: string | RegExp, entry: string) {
+  await use(win, win.getByRole("button", { name: typeof node === "string" ? `Actions for ${node}` : node }), `${node}'s actions`);
+  await choose(win, entry);
+}
 
 /** Type a name into the row a create left open, and press Enter. */
 async function nameIt(win: Page, name: string) {
@@ -587,7 +595,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     }
   });
 
-  test("Rename, Duplicate, Delete, Open in Prepare, Save set list and Export to Rekordbox: the bar under the tree", async () => {
+  test("Rename, Duplicate, Delete, Open in Prepare, Save set list and Export to Rekordbox: the selected row's menu", async () => {
     await viaBridge(win, async () => {
       const c = (window as never as Bridge).cuepoint;
       await c.createCollection({ kind: "collection", name: "Bar crate" });
@@ -598,27 +606,19 @@ test.describe("FLW-1: every action in the table has a visible place that works f
       win.evaluate(async () => (await (window as never as Bridge).cuepoint.getCollections()).collections.map((n: { name: string }) => n.name) as string[]);
     const node = (name: string) => treeNode(win, name);
 
-    // The bar is always drawn (DEC-245): with nothing selected its buttons are dimmed and say why.
-    await expect(treeBar(win)).toBeVisible();
-    for (const name of ["Rename", "Duplicate", "Delete"]) {
-      await expect(treeBar(win).getByRole("button", { name, exact: true })).toHaveAttribute("aria-disabled", "true");
-    }
-    await treeBar(win).getByRole("button", { name: "Rename", exact: true }).hover();
-    await expect(win.getByText("Select a Collection, folder or Set first").first()).toBeVisible();
-
     await chooseNode(win, node("Bar crate"), "the Bar crate node");
-    await use(win, treeBar(win).getByRole("button", { name: "Rename", exact: true }), "Rename");
+    await treeAction(win, "Bar crate", "Rename");
     await nameIt(win, "Bar crate renamed");
     await expect.poll(names, { timeout: 15_000 }).toContain("Bar crate renamed");
 
     // Export to Rekordbox… opens the export.
-    await use(win, treeBar(win).getByRole("button", { name: "Export to Rekordbox…", exact: true }), "Export to Rekordbox…");
+    await treeAction(win, "Bar crate renamed", "Export to Rekordbox…");
     const exporting = win.getByRole("dialog", { name: "Export to Rekordbox" });
     await expect(exporting).toBeVisible({ timeout: 15_000 });
     await win.keyboard.press("Escape");
     await expect(exporting).toBeHidden();
 
-    await use(win, treeBar(win).getByRole("button", { name: "Delete", exact: true }), "Delete");
+    await treeAction(win, "Bar crate renamed", "Delete…");
     const confirm = win.getByRole("dialog", { name: /^Delete / });
     await expect(confirm).toBeVisible();
     await reach(win, confirm.getByRole("button", { name: /^Delete / }), "the confirm's Delete");
@@ -627,9 +627,10 @@ test.describe("FLW-1: every action in the table has a visible place that works f
 
     // A Set: Duplicate, Open in Prepare and Save set list…
     await chooseNode(win, node("Bar set"), "the Bar set node");
-    await use(win, treeBar(win).getByRole("button", { name: "Duplicate", exact: true }), "Duplicate");
+    await treeAction(win, "Bar set", "Duplicate");
     await expect.poll(async () => (await names()).filter((name) => name.startsWith("Bar set")).length, { timeout: 15_000 }).toBe(2);
-    await use(win, treeBar(win).getByRole("button", { name: "Open in Prepare", exact: true }), "Open in Prepare");
+    // Duplicate selects the copy; either opens the Set in Prepare.
+    await treeAction(win, /^Actions for Bar set/, "Open in Prepare");
     await expect(win).toHaveURL(/#\/prepare\/\d+$/, { timeout: 15_000 });
 
     await openLibrary(win);
@@ -638,7 +639,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await app.evaluate(({ dialog }, chosen) => {
       (dialog as unknown as { showSaveDialog: unknown }).showSaveDialog = async () => ({ canceled: false, filePath: chosen });
     }, file);
-    await use(win, treeBar(win).getByRole("button", { name: "Save set list…", exact: true }), "Save set list…");
+    await treeAction(win, "Bar set", "Save set list…");
     await expect.poll(() => existsSync(file), { timeout: 15_000 }).toBe(true);
   });
 
@@ -735,7 +736,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     await win.getByRole("tab", { name: "Playlists", exact: true }).click();
     // Match opens on Playlists (C22): tick the whole library and press Match, none in the header; no window opens.
     await win.getByRole("checkbox", { name: "Match Whole library" }).check();
-    await use(win, win.getByRole("button", { name: "Match whole library" }), "Match whole library");
+    await use(win, win.getByRole("button", { name: "Match ticked playlists" }), "Match whole library");
     await expect(win.getByRole("dialog", { name: "Match on Beatport" })).toHaveCount(0);
     await expect.poll(() => jobsOf(win, "clean_match"), { timeout: 30_000 }).toBeGreaterThan(before);
     // Nothing here reaches Beatport for real: stop what started, and wait until it has stopped,
@@ -835,7 +836,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
 
     await press("Climb", "Edit chapter");
     await use(win, win.getByRole("dialog", { name: /^Edit chapter/ }).getByRole("button", { name: "Delete chapter…" }), "Delete chapter…");
-    const confirm = win.getByRole("dialog", { name: /^Delete the chapter/ });
+    const confirm = win.getByRole("dialog", { name: /^Delete / });
     await reach(win, confirm.getByRole("button", { name: "Delete chapter" }), "the confirm's Delete chapter");
     await win.keyboard.press("Enter");
     await expect.poll(async () => (await readSet(win, setId)).chapters.length, { timeout: 15_000 }).toBe(1);
@@ -845,9 +846,10 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     const setId = await makeSet(win, "Times", ["Warm One", "Warm Two", "Build"]);
     await openSet(win, setId);
     await expect(setRow(win, "Build")).toBeVisible({ timeout: 30_000 });
-    // R4-5: the time columns are hidden until View ▸ Show times.
+    // R4-5: the time columns are hidden until View ▸ Mix in and Mix out.
     await win.getByRole("button", { name: "View", exact: true }).click();
-    await win.getByRole("menuitem", { name: "Show times" }).click();
+    await win.getByRole("menuitemcheckbox", { name: "Mix in and Mix out" }).click();
+    await win.keyboard.press("Escape");
     // Select the entry with a click, then F2 starts the cell, Tab moves from In to Out, Enter saves.
     await pickEntry(win, "Warm Two");
     await win.keyboard.press("F2");
@@ -981,7 +983,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     // The home: Clean's header.
     await go(win, "#/clean");
     await win.getByRole("tab", { name: "Playlists", exact: true }).click();
-    await expect(win.getByRole("button", { name: /^Match (playlists|\d+ playlists?|whole library)$/ })).toBeVisible();
+    await expect(win.getByRole("button", { name: "Match ticked playlists" })).toBeVisible();
 
     // The link: the Library's selection bar.
     await openLibrary(win);
@@ -1040,15 +1042,14 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await win.reload();
     await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
     await chooseNode(win, treeNode(win, "Home crate"), "the Home crate node");
-    await use(win, treeBar(win).getByRole("button", { name: "Export to Rekordbox…" }), "the tree's Export to Rekordbox…");
+    await treeAction(win, "Home crate", "Export to Rekordbox…");
     await expect(exporting).toBeVisible({ timeout: 15_000 });
     await win.keyboard.press("Escape");
     await expect(exporting).toBeHidden();
 
     const setId = await makeSet(win, "Home set", ["Warm One", "Warm Two"]);
     await openSet(win, setId);
-    await use(win, win.getByRole("button", { name: "Set", exact: true }), "Prepare's Set menu");
-    await choose(win, "Export to Rekordbox…");
+    await use(win, win.getByRole("button", { name: "Export to Rekordbox…" }), "Prepare's Export to Rekordbox…");
     await expect(exporting).toBeVisible({ timeout: 15_000 });
     await win.keyboard.press("Escape");
 
@@ -1089,7 +1090,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await chooseNode(win, win.getByRole("treeitem", { name: /^Warmup/ }), "the Warmup playlist");
     const keyFilter = win.getByRole("button", { name: /^Key/ }).first();
     await use(win, keyFilter, "the Key filter");
-    const open = win.getByRole("button", { name: "Open in Keys ›" });
+    const open = win.getByRole("button", { name: "Open in Keys" });
     await use(win, open, "Open in Keys");
     await expect(win).toHaveURL(/#\/keys/, { timeout: 15_000 });
     await expect(win.getByRole("group", { name: "Sources" }).getByRole("checkbox", { name: "Warmup" })).toBeChecked({ timeout: 15_000 });
@@ -1123,7 +1124,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     await win.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
     await openLibrary(win);
     await chooseNode(win, treeNode(win, "Linked set"), "the Linked set node");
-    await use(win, treeBar(win).getByRole("button", { name: "Open in Prepare", exact: true }), "Open in Prepare");
+    await treeAction(win, "Linked set", "Open in Prepare");
     await expect(win).toHaveURL(new RegExp(`#/prepare/${setId}$`), { timeout: 15_000 });
     await expect(setTable(win)).toBeVisible({ timeout: 30_000 });
     // The Library does not edit a Set's chapters or times: Prepare owns them.

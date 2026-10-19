@@ -487,7 +487,8 @@ test.describe("the website's pictures (SITE-04)", () => {
         await expect(table).toBeVisible({ timeout: 30_000 });
         await expect(table.locator(".track-table__row").nth(3)).toBeVisible();
         await window.getByRole("button", { name: "View", exact: true }).click();
-        await window.getByRole("menuitem", { name: "Show transition strip" }).click();
+        await window.getByRole("menuitemcheckbox", { name: "Transition strip" }).click();
+        await window.keyboard.press("Escape");
         await expect(window.getByRole("region", { name: "Transition" })).toBeVisible();
         await table.locator('.track-table__row [data-column="title"]').nth(2).click();
         await expect(window.locator(".prepare-transition canvas").first()).toBeVisible({ timeout: 30_000 });
@@ -538,7 +539,7 @@ test.describe("the website's pictures (SITE-04)", () => {
         // Match opens on Playlists (C22): tick the live playlist and press Match.
         const live = showcase.playlists.find((p) => p.name === showcase.livePlaylist)!;
         await window.getByRole("checkbox", { name: `Match ${showcase.livePlaylist}`, exact: true }).check({ timeout: 30_000 });
-        await window.getByRole("button", { name: "Match 1 playlist" }).click();
+        await window.getByRole("button", { name: "Match ticked playlists" }).click();
         await expect(window.getByText(`Matching ${live.trackIds.length} tracks on Beatport.`, { exact: true })).toBeVisible({ timeout: 30_000 });
         // the job's end, not the toast's: the toast goes on its own
         await idle(window);
