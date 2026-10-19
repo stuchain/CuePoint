@@ -71,12 +71,12 @@ export function showAll(count: number, locale?: string): string {
 }
 
 /** What an empty list of Collections or Sets says, everywhere it is shown. */
-export const NO_COLLECTIONS = "No Collections yet.";
-export const NO_SETS = "No Sets yet.";
+export const NO_COLLECTIONS = "No Collections yet";
+export const NO_SETS = "No Sets yet";
 
 /** The toast text after taking tracks out of a list; it carries an `UNDO` action. */
 export function removedFrom(count: number, name: string): string {
-  return `Removed ${countNoun(count, "track")} from ${quoted(name)}.`;
+  return `Removed ${countNoun(count, "track")} from ${quoted(name)}`;
 }
 export const CANCEL = "Cancel";
 export const CLEAR_SEARCH = "Clear the search";
@@ -117,8 +117,9 @@ export function showOnWheel(key: string): string {
 
 // ---------------------------------------------------------------------- quotes
 
-/** A name in curly quotes: “Warm-up”. */
+/** A name in curly quotes: “Warm-up”. One that is already quoted is left alone. */
 export function quoted(name: string): string {
+  if (name.length > 1 && name.startsWith("\u201c") && name.endsWith("\u201d")) return name;
   return `\u201c${name}\u201d`;
 }
 

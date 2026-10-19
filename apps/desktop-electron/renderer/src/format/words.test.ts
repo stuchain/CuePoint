@@ -98,9 +98,17 @@ describe("other shared words", () => {
   });
 
   it("has one sentence for each empty list and one undo toast", () => {
-    expect(words.NO_COLLECTIONS).toBe("No Collections yet.");
-    expect(words.NO_SETS).toBe("No Sets yet.");
-    expect(words.removedFrom(3, "Warm-up")).toBe("Removed 3 tracks from “Warm-up”.");
-    expect(words.removedFrom(1, "Warm-up")).toBe("Removed 1 track from “Warm-up”.");
+    // Empty-state headlines and toasts carry no full stop (C163).
+    expect(words.NO_COLLECTIONS).toBe("No Collections yet");
+    expect(words.NO_SETS).toBe("No Sets yet");
+    expect(words.removedFrom(3, "Warm-up")).toBe("Removed 3 tracks from “Warm-up”");
+    expect(words.removedFrom(1, "Warm-up")).toBe("Removed 1 track from “Warm-up”");
+  });
+
+  it("does not quote a name that is already quoted", () => {
+    expect(words.quoted("“Warm-up”")).toBe("“Warm-up”");
+    expect(words.couldNot("rename", "“Warm-up”")).toBe("Could not rename “Warm-up”.");
+    expect(words.deleteTitle("Set", "“Warm-up”")).toBe("Delete “Warm-up”?");
+    expect(words.quoted("Warm-up")).toBe("“Warm-up”");
   });
 });
