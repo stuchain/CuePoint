@@ -347,7 +347,7 @@ async function pickEntry(win: Page, title: string, nth = 0) {
   await clickRowAt(win, setRow(win, title, nth));
 }
 
-const toolbar = (win: Page) => win.getByRole("toolbar", { name: "Selected tracks" });
+const toolbar = (win: Page) => win.getByRole("toolbar", { name: "Selection" });
 const libraryTable = (win: Page) => win.getByRole("table", { name: "Library tracks" });
 const libraryRow = (win: Page, title: string) =>
   libraryTable(win)
@@ -363,7 +363,7 @@ async function pick(win: Page, ...titles: string[]) {
   for (const [index, title] of titles.entries()) {
     await libraryRow(win, title).click({ modifiers: index === 0 ? [] : ["ControlOrMeta"] });
   }
-  await expect(toolbar(win).getByRole("button", { name: new RegExp(`^Clear selection, ${titles.length} selected`) })).toBeVisible();
+  await expect(toolbar(win).getByText(`${titles.length} selected`, { exact: true })).toBeVisible();
 }
 
 async function openLibrary(win: Page) {
@@ -376,7 +376,7 @@ async function openLibrary(win: Page) {
   while (await chips.count()) await chips.first().click();
   await expect(libraryRow(win, "Warm One")).toBeVisible({ timeout: 30_000 });
   // Nothing selected, as every row starts.
-  const clear = win.getByRole("button", { name: /^Clear selection/ });
+  const clear = win.getByRole("button", { name: "Clear selection" });
   if (await clear.count()) await clear.click();
 }
 
@@ -872,7 +872,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
     });
     await go(win, "#/library");
     await go(win, `#/discover/similar/${seed}`);
-    const bar = win.getByRole("toolbar", { name: "Selected tracks" });
+    const bar = win.getByRole("toolbar", { name: "Selection" });
     // Nothing selected: no group buttons, only the count and Select all.
     await expect(win.getByRole("button", { name: "Select all" })).toBeVisible({ timeout: 30_000 });
     await expect(bar).toHaveCount(0);
@@ -1102,7 +1102,7 @@ test.describe("FLW-2: each function has one home, and the other places link to i
     });
     await go(win, "#/library");
     await go(win, `#/discover/similar/${seed}`);
-    const bar = win.getByRole("toolbar", { name: "Selected tracks" });
+    const bar = win.getByRole("toolbar", { name: "Selection" });
     // The bar shows once a suggestion is selected.
     const rows = win.getByRole("table", { name: "Similar tracks" }).locator('[role="row"][data-index]');
     await expect(rows.first()).toBeVisible({ timeout: 30_000 });

@@ -235,7 +235,8 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
           const observer = new MutationObserver(() => {
             if (main.getAttribute("data-page-phase") === phaseBefore) return;
             observer.disconnect();
-            resolve(main.querySelector("h1")?.textContent === "Settings" ? 0 : 1);
+            // Visited pages stay mounted, hidden, behind the shown one: the heading looked for is Settings'.
+            resolve([...main.querySelectorAll("h1")].some((h) => h.textContent === "Settings") ? 0 : 1);
           });
           observer.observe(main, { attributes: true, attributeFilter: ["data-page-phase"] });
         });
@@ -243,8 +244,8 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
         const framesToHeading = await inserted;
         // ...and the one after it: the heading is on screen, the page is stepping in, nothing hidden.
         await frame();
-        const heading = main.querySelector("h1") as HTMLElement;
-        const screen = main.querySelector(":scope > .screen") as HTMLElement;
+        const heading = [...main.querySelectorAll("h1")].find((h) => h.textContent === "Settings") as HTMLElement;
+        const screen = heading.closest(".screen") as HTMLElement;
         const style = getComputedStyle(screen);
         return {
           hashChanged: location.hash !== hashBefore,
@@ -280,7 +281,7 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
       await window.reload();
       await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
       await window.getByRole("navigation", { name: /main navigation/i }).getByRole("link", { name: "Settings" }).click();
-      await expect(window.locator("main.app-main h1")).toHaveText("Settings");
+      await expect(window.locator("main.app-main h1:visible")).toHaveText("Settings");
       const animation = await window.locator("main.app-main > .screen:visible").evaluate((el) => getComputedStyle(el).animationName);
       expect(animation).toBe("none");
     } finally {

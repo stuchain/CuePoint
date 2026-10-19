@@ -384,7 +384,7 @@ test.describe("Phase 5 end to end", () => {
       // The library works: browsing, sorting and selecting are all unaffected.
       await expect(table).toBeVisible();
       await win.locator(".track-table__row").first().click();
-      await expect(win.getByRole("button", { name: /^Clear selection, 1 selected/ })).toBeVisible();
+      await expect(win.getByRole("toolbar", { name: "Selection" }).getByText("1 selected", { exact: true })).toBeVisible();
 
       // Playing is refused with something a person can act on, rather than
       // hanging or throwing into the void.

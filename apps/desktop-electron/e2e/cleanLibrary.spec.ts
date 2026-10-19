@@ -273,7 +273,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await window.getByRole("button", { name: "Select all" }).click();
       // The bar's groups hold the entries the right-click menu does (FLW-8): Beatport ▸
       // opens Clean with the selection, and More ▸ holds Edit values….
-      const bar = window.getByRole("toolbar", { name: "Selected tracks" });
+      const bar = window.getByRole("toolbar", { name: "Selection" });
       await bar.getByRole("button", { name: "Beatport", exact: true }).click();
       const beatport = window.getByRole("menu");
       for (const entry of ["Match on Beatport…", "Review these matches", "Copy Beatport values…"]) {
