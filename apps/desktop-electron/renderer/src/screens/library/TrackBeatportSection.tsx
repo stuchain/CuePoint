@@ -15,6 +15,7 @@ import type { LibraryTrackRow } from "../../api/cuepointBridge.types";
 import { agreeLine, compareBeatportRows, joinLabels, releaseLine, scoreWords } from "./beatportComparison";
 import { beatportFieldRows, coverArtText, fieldSourceText } from "./libraryClean";
 import { NO_VALUE } from "../../words";
+import { Loading } from "../../components/Loading";
 import { RouteButton } from "./RouteButton";
 
 interface TrackBeatportSectionProps {
@@ -25,7 +26,7 @@ interface TrackBeatportSectionProps {
 }
 
 function dash(text: string): string {
-  return text === "" ? "—" : text;
+  return text === "" ? NO_VALUE : text;
 }
 
 /** Said when the track has not been looked up on Beatport. */
@@ -40,7 +41,7 @@ export function MatchOnBeatport({ trackId }: { trackId: number }) {
     <RouteButton
       to="/clean"
       state={cleanMatchState([trackId])}
-      className="cp-track-detail__reveal"
+      className="cp-link"
       title="Matches this one track on Beatport"
     >
       {MATCH_ON_BEATPORT}
@@ -53,7 +54,7 @@ export function TrackBeatportSection({ track, matches, onOpenInClean }: TrackBea
   const candidate = matches.matches?.candidate ?? null;
 
   if (matches.error) return <p className="cp-track-history__note">{matches.error}</p>;
-  if (!matches.matches) return <p className="cp-track-history__note">Reading the match…</p>;
+  if (!matches.matches) return <Loading what="the match" />;
 
   if (state?.state === "not_matched") {
     return (
@@ -73,7 +74,7 @@ export function TrackBeatportSection({ track, matches, onOpenInClean }: TrackBea
   ]
     .filter(Boolean)
     .join(" · ");
-  const statusLine = [state ? decisionLine(state) : "", scoreWords(candidate?.score), cover !== "" && cover !== NO_VALUE ? `cover art ${cover}` : ""]
+  const statusLine = [state ? decisionLine(state) : "", scoreWords(candidate?.score), cover !== "" && cover !== NO_VALUE ? `artwork ${cover}` : ""]
     .filter(Boolean)
     .join(" · ");
 
@@ -91,7 +92,6 @@ export function TrackBeatportSection({ track, matches, onOpenInClean }: TrackBea
       )}
       {agreed !== "" && (
         <p className="cp-track-beatport__agree">
-          <span aria-hidden>{"✓ "}</span>
           {`${agreed.charAt(0).toUpperCase()}${agreed.slice(1)}`}
         </p>
       )}
@@ -127,10 +127,10 @@ export function TrackBeatportSection({ track, matches, onOpenInClean }: TrackBea
       {onOpenInClean && (
         <button
           type="button"
-          className="cp-track-detail__reveal"
+          className="cp-link cp-link--go"
           onClick={() => onOpenInClean(track.id)}
         >
-          Compare all on the Clean page {"›"}
+          Compare all on the Clean page
         </button>
       )}
     </div>

@@ -187,7 +187,7 @@ describe("the rating", () => {
       rating_source: "cuepoint",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Use Rekordbox's ★★★★" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use Rekordbox's 4 stars" }));
 
     await waitFor(() =>
       expect(bridge.setTrackMetadata).toHaveBeenCalledWith({ trackId: 12, rating: null }),
@@ -203,7 +203,7 @@ describe("the rating", () => {
       rating_source: "cuepoint",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Use Rekordbox's ★★★★" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use Rekordbox's 4 stars" }));
 
     await waitFor(() =>
       expect(screen.getByRole("radiogroup", { name: "Your rating" })).toHaveAttribute("data-hint", "From Rekordbox"),
@@ -278,7 +278,7 @@ describe("the favorite", () => {
   it("sits beside the stars, as an icon", () => {
     draw();
     const heart = screen.getByRole("button", { name: "Favorite" });
-    expect(heart).toHaveTextContent("♡");
+    expect(heart.querySelector("[data-icon='heart-outline']")).not.toBeNull();
     expect(heart.closest(".cp-hint")?.parentElement).toBe(screen.getByRole("radiogroup").parentElement);
   });
 
@@ -693,7 +693,7 @@ describe("a build with no bridge", () => {
     fireEvent.click(star(4));
 
     await waitFor(() =>
-      expect(onError).toHaveBeenCalledWith("You can only edit tracks in the CuePoint desktop app."),
+      expect(onError).toHaveBeenCalledWith("Editing tracks needs the CuePoint desktop app."),
     );
   });
 
@@ -704,6 +704,6 @@ describe("a build with no bridge", () => {
     fireEvent.change(screen.getByLabelText("Add a tag"), { target: { value: "Closer" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
 
-    await waitFor(() => expect(onError).toHaveBeenCalledWith("You can only edit tags in the CuePoint desktop app."));
+    await waitFor(() => expect(onError).toHaveBeenCalledWith("Editing tags needs the CuePoint desktop app."));
   });
 });

@@ -26,28 +26,38 @@
   line-height: 1.5;
 }
 
+/* The sticky head (C35): the words and the buttons; the art is outside it and scrolls away. */
 .cp-track-detail__head {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2xs);
-  padding-bottom: var(--space-xs);
-  border-bottom: var(--hairline) solid var(--border-muted);
+  gap: var(--space-md);
+  padding-bottom: var(--space-md);
 }
 
+.cp-track-detail__art {
+  display: flex;
+}
+
+/* Title in the pixel face, one line with an ellipsis (C56); the full text is on hover. */
 .cp-track-detail__title {
   margin: 0;
-  overflow-wrap: anywhere;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  line-height: 1.3;
+  overflow: hidden;
+  font-family: var(--font-pixel-digits);
+  font-size: var(--font-size-section);
+  font-weight: var(--weight-strong);
+  line-height: var(--line-height-tight);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cp-track-detail__artist {
   margin: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
   color: var(--fg-muted);
   font-family: var(--font-data);
-  font-size: var(--font-size-xs);
+  font-size: var(--text-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The track's label name under the artist (a Label page opens from it). */
@@ -58,66 +68,50 @@
 }
 
 .cp-track-detail__selection {
-  margin: var(--space-xs) 0 0;
-  color: var(--accent-info);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  margin: 0;
+  color: var(--fg-muted);
   font-size: var(--font-size-xs);
 }
 
+/* The Details list is a .cp-facts grid; each row's wrapper adds no box of its own (C66). */
 .cp-track-detail__fields {
-  display: flex;
-  flex-direction: column;
-  gap: calc(2px * var(--scale));
-  margin: 0;
+  align-items: baseline;
 }
 
 /* Small art beside the words that name the track. */
 .cp-track-detail__ident {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--space-md);
+  min-width: 0;
 }
 
 /* The text wants a readable measure: when the panel is too narrow for the art beside it
    (a narrow Inspector at a high scale), the art moves above. */
 .cp-track-detail__idtext {
   display: flex;
-  flex: 1 1 calc(120px * var(--scale));
+  flex: 1 1 auto;
   flex-direction: column;
-  gap: calc(2px * var(--scale));
+  gap: var(--space-2xs);
   min-width: 0;
 }
 
 /* The facts: a labelled two-column grid under the tabs. The key takes a whole row so the
    chip, the wheel's button and the key's name never wrap apart; the rest sit two to a row. */
 .cp-track-detail__facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-lg) var(--space-md);
-  margin: 0;
-  font-size: var(--font-size-xs);
+  align-items: baseline;
 }
 
-.cp-track-detail__fact {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  min-width: 0;
-}
-
-.cp-track-detail__fact--key {
-  grid-column: 1 / -1;
-}
-
-.cp-track-detail__factlabel {
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
+/* Each fact is a div around its dt and dd; the grid lays the pair out (C66). */
+.cp-track-detail__fact,
+.cp-track-detail__row {
+  display: contents;
 }
 
 .cp-track-detail__factvalue {
-  margin: 0;
   min-width: 0;
-  font-family: var(--font-data);
   overflow-wrap: anywhere;
 }
 
@@ -135,7 +129,7 @@
 .cp-track-detail__tabpanel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-lg);
   min-width: 0;
 }
 
@@ -152,7 +146,6 @@
   min-width: 0;
 }
 
-.cp-track-detail__row,
 .cp-track-beatport__field,
 .cp-track-history__entry {
   display: grid;
@@ -167,10 +160,7 @@
 }
 
 .cp-track-detail__value {
-  margin: 0;
   min-width: 0;
-  font-family: var(--font-data);
-  font-size: var(--font-size-xs);
   word-break: break-word;
 }
 
@@ -190,29 +180,16 @@
   overflow-wrap: anywhere;
 }
 
-.cp-track-detail__reveal,
 .cp-track-detail__playlist {
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
   align-self: flex-start;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--accent-info);
-  font-family: var(--font-pixel-digits);
-  font-size: var(--font-size-xs);
   text-align: left;
-  cursor: pointer;
-}
-
-.cp-track-detail__reveal:hover,
-.cp-track-detail__playlist:hover {
-  text-decoration: underline;
 }
 
 .cp-track-detail__subtitle {
-  margin: 0 0 var(--space-xs);
+  margin: 0 0 var(--space-md);
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
@@ -373,7 +350,6 @@
 }
 
 .cp-track-yours__star:focus-visible,
-.cp-track-yours__clear:focus-visible,
 .cp-track-yours__favorite:focus-visible,
 .cp-track-yours__tag-remove:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
@@ -382,17 +358,6 @@
 
 .cp-track-yours__clear {
   margin-left: var(--space-xs);
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--accent-info);
-  font-family: var(--font-pixel-digits);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-}
-
-.cp-track-yours__clear:hover {
-  text-decoration: underline;
 }
 
 .cp-track-yours__source {
@@ -440,11 +405,6 @@
   flex-direction: column;
   gap: calc(2px * var(--scale));
   min-width: 0;
-}
-
-.cp-track-yours__tag-input:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: 0;
 }
 
 .cp-track-yours__state {
@@ -500,26 +460,12 @@
   font-size: var(--font-size-xs);
 }
 
-/* The label above (a .cp-track-yours__label), then the field and its button on one line. */
+/* The field and its button wrap when the panel is narrow (C241). */
 .cp-track-yours__add {
   display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
-.cp-track-yours__tag-field {
-  flex: 1 1 auto;
-  min-width: calc(80px * var(--scale));
-}
-
-.cp-track-yours__tag-input {
-  width: 100%;
-  padding: var(--space-xs);
-  border: var(--hairline) solid var(--border-muted);
-  background: var(--bg-input);
-  color: var(--fg-primary);
-  font-family: var(--font-data);
-  font-size: var(--font-size-xs);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-md);
 }
 
 /*
@@ -675,23 +621,6 @@
 .cp-track-history__revert {
   grid-column: 2;
   justify-self: start;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--accent-info);
-  font-family: var(--font-pixel-digits);
-  font-size: var(--font-size-xs);
-  cursor: pointer;
-}
-
-.cp-track-history__revert:disabled {
-  color: var(--fg-disabled);
-  cursor: default;
-}
-
-.cp-track-history__revert:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--hairline);
 }
 
 .cp-track-history__writes {

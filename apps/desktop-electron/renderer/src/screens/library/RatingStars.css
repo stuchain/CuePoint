@@ -1,0 +1,15 @@
+/* Rating stars (C104): white filled, grey outlined. */
+.library-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  vertical-align: middle;
+}
+
+.library-stars__on {
+  color: var(--fg-primary);
+}
+
+.library-stars__off {
+  color: var(--fg-muted);
+}

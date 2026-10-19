@@ -19,6 +19,7 @@ import { camelotOf } from "../../components/wheel/keyColour";
 import { fileStatusLabel } from "../clean/cleanFormat";
 import { matchCell } from "../clean/cleanColumns";
 import { starsFor } from "./filterText";
+import { RatingStars } from "./RatingStars";
 import { artworkText, effectiveText, formatScore } from "./libraryClean";
 import { OverriddenValue, RowArtwork, RowLoudness, RowWaveform } from "./libraryCells";
 import { gatherLoudnessText } from "./libraryLoudness";
@@ -27,13 +28,17 @@ import { formatDuration } from "./trackValues";
 
 /**
  * Stars, not a number — the parser converted Rekordbox's 0/51/…/255 encoding
- * at import (LIBRARY-02), so the stored value is already a star count. A track
- * with no rating shows nothing; one rated zero shows "unrated", because those
- * are different facts (DEC-034).
+ * at import (LIBRARY-02), so the stored value is already a star count. The earned stars are
+ * drawn filled and the rest outlined (C104); a track with no rating, or rated zero, shows the
+ * muted dash ("unrated" is only a filter's word).
  */
 function formatRating(rating: number | null): ReactNode {
-  // Unrated and "rated zero" both read as the muted dash: "unrated" is only a filter's word.
-  return rating == null || Math.round(rating) <= 0 ? <MissingValue /> : starsFor(rating);
+  return rating == null || Math.round(rating) <= 0 ? <MissingValue /> : <RatingStars count={rating} />;
+}
+
+/** The rating as words, for a copied cell: "3 stars", or nothing when there is none. */
+function ratingText(rating: number | null): string {
+  return rating == null || Math.round(rating) <= 0 ? "" : starsFor(rating);
 }
 
 export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
@@ -131,6 +136,7 @@ export const LIBRARY_COLUMNS: readonly TrackColumnDef<LibraryTrackRow>[] = [
     minWidthPx: 70,
     defaultWidthPx: 92,
     render: (track) => formatRating(track.effective_rating) || null,
+    text: (track) => ratingText(track.effective_rating),
   },
   {
     id: "album",

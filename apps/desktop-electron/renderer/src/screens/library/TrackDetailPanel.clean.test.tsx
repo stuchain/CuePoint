@@ -250,7 +250,7 @@ describe("the Beatport tab", () => {
     beatportPanel();
     const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
     expect(await within(zone).findByText(/Confirmed by you/)).toHaveTextContent(
-      "Confirmed by you · score 96.5 · cover art from Beatport",
+      "Confirmed by you · score 96.5 · artwork from Beatport",
     );
     expect(within(zone).getByText("deadmau5 – Strobe (Original Mix) · mau5trap")).toBeInTheDocument();
     // Genre and label agree; BPM (typed) and year differ.

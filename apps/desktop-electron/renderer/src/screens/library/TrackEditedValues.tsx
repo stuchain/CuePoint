@@ -83,7 +83,7 @@ export function TrackEditedValues({ track, beatportKey, onSaved, onError }: Trac
 
   return (
     <div className="cp-track-values">
-      <Button variant="secondary" onClick={() => setEditing(true)}>
+      <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
         Edit values…
       </Button>
       {/* A track's own state: it opens itself when a value is edited, and
@@ -112,7 +112,7 @@ export function TrackEditedValues({ track, beatportKey, onSaved, onError }: Trac
                 </span>
                 <button
                   type="button"
-                  className="cp-track-yours__clear"
+                  className="cp-link"
                   disabled={busy !== null}
                   aria-label={undoLabel(field, beatportKey)}
                   onClick={() => void goBack(field)}

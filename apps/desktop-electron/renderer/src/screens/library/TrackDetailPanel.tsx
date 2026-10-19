@@ -55,7 +55,6 @@ import { Tabs, panelId, tabId } from "../../components/Tabs";
 import { DisclosureSection } from "./DisclosureSection";
 import { RouteButton } from "./RouteButton";
 import { followJob } from "./followJob";
-import { starsFor } from "./filterText";
 import { jobErrorMessage } from "./libraryFormat";
 import { TrackArtwork } from "./TrackArtwork";
 import { MatchOnBeatport, TrackBeatportSection } from "./TrackBeatportSection";
@@ -73,6 +72,11 @@ import { userMessage } from "../../api/userMessage";
 import { formatLength } from "../../format/durations";
 import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
+import { EmptyState } from "../../components/EmptyState";
+import { Loading } from "../../components/Loading";
+import { countNoun, formatCount } from "../../format/counts";
+import { NO_VALUE } from "../../words";
+import { RatingStars } from "./RatingStars";
 
 /** A Collection as the track-detail read names it — enough to show and to open. */
 type TrackCollectionRef = Pick<CollectionNode, "id" | "name" | "kind">;
@@ -135,7 +139,7 @@ interface TrackDetailPanelProps {
 
 /** Absent is absent: an em dash, never a zero. */
 function text(value: string | null | undefined): string {
-  return value == null || value === "" ? "—" : value;
+  return value == null || value === "" ? NO_VALUE : value;
 }
 
 /**
@@ -155,7 +159,7 @@ function keyDetail(track: {
 }
 
 function number(value: number | null | undefined, suffix = ""): string {
-  return value == null ? "—" : `${value.toLocaleString()}${suffix}`;
+  return value == null ? NO_VALUE : `${formatCount(value)}${suffix}`;
 }
 
 function duration(seconds: number | null): string {
@@ -371,9 +375,13 @@ export function TrackDetailPanel({
 
   if (!detail) {
     return (
-      <p className="cp-track-detail__note">
-        {loading ? "Reading the track…" : "Click a track to see its details, rate it and tag it here."}
-      </p>
+      <div className="cp-track-detail__note">
+        {loading ? (
+          <Loading what="track" />
+        ) : (
+          <EmptyState compact headline="Select a track to see its details" />
+        )}
+      </div>
     );
   }
 
@@ -431,12 +439,14 @@ export function TrackDetailPanel({
 
   return (
     <div className="cp-track-detail">
-      <header className="cp-track-detail__head">
-        {/* Small art beside the words that name the track. */}
+      {/* The art scrolls away; the words that name the track and the buttons stay (C35). */}
+      {track.id != null && window.cuepoint?.getTrackArtwork && (
+        <div className="cp-track-detail__art">
+          <TrackArtwork trackId={track.id} version={written} />
+        </div>
+      )}
+      <header className="cp-sticky-head cp-track-detail__head">
         <div className="cp-track-detail__ident">
-          {track.id != null && window.cuepoint?.getTrackArtwork && (
-            <TrackArtwork trackId={track.id} version={written} />
-          )}
           <div className="cp-track-detail__idtext">
             <h2 className="cp-track-detail__title">{text(track.title)}</h2>
             <p className="cp-track-detail__artist">
@@ -458,30 +468,29 @@ export function TrackDetailPanel({
           // fields below change this one. K5 says it on one line, the second
           // half in the link's title rather than a paragraph.
           <p className="cp-track-detail__selection">
-            <span role="status">{selectionCount.toLocaleString()} selected</span>
+            <span role="status">{formatCount(selectionCount)} selected</span>
             {onEditValues && (
               <>
-                {" · "}
-                <Hint text={`Edit values for ${selectionCount.toLocaleString()} tracks — the fields below change only this one`}>
-                  <button
-                    type="button"
-                    className="cp-track-detail__reveal"
-                    aria-label={`Edit values for ${selectionCount.toLocaleString()} tracks…`}
+                <Hint text={`Edit values for ${formatCount(selectionCount)} tracks — the fields below change only this one`}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    aria-label={`Edit values for ${formatCount(selectionCount)} tracks…`}
                     onClick={onEditValues}
                   >
                     Edit values…
-                  </button>
+                  </Button>
                 </Hint>
               </>
             )}
           </p>
         )}
-        {/* Three buttons (K5, DEC-285, amending DEC-246): Play, Queue ▾ with
+        {/* Three buttons (K5, DEC-285, amending DEC-246): Play, Queue (a menu) with
             the two that never interrupt, and Similar. The aria-labels and titles
             keep the full names. Show in folder lives in the row's menus. */}
         <div className="cp-track-actions" role="group" aria-label="Actions for this track">
           {queue.play && (
-            <Button variant="secondary" disabled={acting !== null} onClick={() => void act("play")}>
+            <Button variant="secondary" size="sm" disabled={acting !== null} onClick={() => void act("play")}>
               Play
             </Button>
           )}
@@ -489,6 +498,7 @@ export function TrackDetailPanel({
             <Button
               variant="secondary"
               aria-label="Queue"
+              size="sm"
               menu
               aria-expanded={queueMenu !== null}
               disabled={acting !== null}
@@ -506,6 +516,7 @@ export function TrackDetailPanel({
               aria-label="Similar tracks"
               title="Similar tracks"
               variant="secondary"
+              size="sm"
             >
               Similar
             </RouteButton>
@@ -539,7 +550,7 @@ export function TrackDetailPanel({
       {panel(
         "overview",
         <>
-          <dl className="cp-track-detail__facts" aria-label="Facts">
+          <dl className="cp-facts cp-track-detail__facts" aria-label="Facts">
             <div className="cp-track-detail__fact cp-track-detail__fact--key" data-testid="track-key">
               <dt className="cp-track-detail__factlabel">Key</dt>
               <dd className="cp-track-detail__factvalue">
@@ -624,7 +635,7 @@ export function TrackDetailPanel({
           )}
 
           <DisclosureSection id="details" title="Details from Rekordbox" defaultOpen={false}>
-            <dl className="cp-track-detail__fields">
+            <dl className="cp-facts cp-track-detail__fields">
               <Row
                 label="Remixer"
                 value={credited(track.remixer, credits?.remixers, onOpenEntity)}
@@ -632,8 +643,8 @@ export function TrackDetailPanel({
               <Row label="Album" value={text(track.album)} />
               <Row label="Label" value={text(track.label)} />
               <Row label="Genre" value={text(track.genre)} />
-              <Row label="BPM" value={formatBpm(track.bpm) || "—"} valueClassName="cp-data" />
-              <Row label="Year" value={track.year == null ? "—" : String(track.year)} valueClassName="cp-data" />
+              <Row label="BPM" value={formatBpm(track.bpm) || NO_VALUE} valueClassName="cp-data" />
+              <Row label="Year" value={track.year == null ? NO_VALUE : String(track.year)} valueClassName="cp-data" />
               <Row label="Length" value={duration(track.duration_seconds)} valueClassName="cp-data" />
               {/* Stars, not a number: the parser converted Rekordbox's 0/51/…/255
                   encoding at import, so what is stored is already a star count. This
@@ -641,7 +652,7 @@ export function TrackDetailPanel({
                   the resolved one is above, with its source on hover. */}
               <Row
                 label="Rating"
-                value={track.rating == null ? "—" : starsFor(track.rating)}
+                value={track.rating == null ? NO_VALUE : <RatingStars count={track.rating} of={5} />}
               />
               <Row label="Plays" value={number(track.play_count)} valueClassName="cp-data" />
               <Row label="Color" value={text(track.colour)} />
@@ -680,14 +691,14 @@ export function TrackDetailPanel({
           {collections.length > 0 && (
             <section className="cp-track-detail__playlists">
               <h4 className="cp-track-detail__subtitle">
-                {`In ${collections.length} ${collections.length === 1 ? "Collection" : "Collections"}`}
+                {`In ${countNoun(collections.length, "Collection")}`}
               </h4>
               <ul>
                 {collections.map((collection) => (
                   <li key={collection.id}>
                     <button
                       type="button"
-                      className="cp-track-detail__playlist"
+                      className="cp-link cp-track-detail__playlist"
                       onClick={() => onSelectCollection?.(collection)}
                     >
                       <PixelIcon
@@ -705,7 +716,7 @@ export function TrackDetailPanel({
           {sets.length > 0 && (
             <section className="cp-track-detail__playlists" aria-label="Sets">
               <h4 className="cp-track-detail__subtitle">
-                {`In ${sets.length} ${sets.length === 1 ? "Set" : "Sets"}`}
+                {`In ${countNoun(sets.length, "Set")}`}
               </h4>
               <ul>
                 {sets.map((set) => (
@@ -713,7 +724,7 @@ export function TrackDetailPanel({
                     <Hint text={onOpenInPrepare ? `Open ${set.name} in Prepare` : undefined}>
                       <button
                         type="button"
-                        className="cp-track-detail__playlist"
+                        className="cp-link cp-track-detail__playlist"
                         onClick={() =>
                           onOpenInPrepare ? onOpenInPrepare(set) : onSelectCollection?.(set)
                         }
@@ -733,7 +744,7 @@ export function TrackDetailPanel({
           ) : (
             <section className="cp-track-detail__playlists">
               <h4 className="cp-track-detail__subtitle">
-                {`In ${playlists.length} ${playlists.length === 1 ? "playlist" : "playlists"}`}
+                {`In ${countNoun(playlists.length, "playlist")}`}
               </h4>
               <ul>
                 {playlists.map((playlist) => (
@@ -741,7 +752,7 @@ export function TrackDetailPanel({
                     <Hint text={playlist.path}>
                       <button
                         type="button"
-                        className="cp-track-detail__playlist"
+                        className="cp-link cp-track-detail__playlist"
                         onClick={() => onSelectPlaylist?.(playlist)}
                       >
                         <PixelIcon name="playlist" className="cp-track-detail__icon" />
@@ -784,7 +795,7 @@ export function TrackDetailPanel({
                     ? null
                     : changeCount === 0
                       ? "none yet"
-                      : `${changeCount.toLocaleString()} ${changeCount === 1 ? "change" : "changes"}`
+                      : countNoun(changeCount, "change")
                 }
                 defaultOpen={false}
               >

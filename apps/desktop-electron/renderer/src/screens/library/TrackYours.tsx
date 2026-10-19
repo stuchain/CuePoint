@@ -17,8 +17,8 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 
 import { Button } from "../../components/Button";
+import { RemoveButton } from "../../components/CloseButton";
 import { PixelIcon } from "../../components/PixelIcon";
-import { SuggestInput } from "../../components/SuggestInput";
 import type { LibraryTrackRow, TrackMetadata } from "../../api/cuepointBridge.types";
 import {
   NOTES_MAX_LENGTH,
@@ -34,6 +34,7 @@ import { useTrackMetadata } from "./useTrackMetadata";
 import { useTrackTags, type TrackTag } from "./useTrackTags";
 import { Hint } from "../../components/Hint";
 import { Textarea } from "../../components/Textarea";
+import { TextField } from "../../components/TextField";
 
 interface TrackYoursProps {
   trackId: number;
@@ -175,14 +176,14 @@ export function TrackYours({
                 onClick={() => pick(star)}
                 onFocus={() => setFocusStar(star)}
               >
-                {star <= lit ? "★" : "☆"}
+                <PixelIcon name={star <= lit ? "star" : "star-outline"} size="sm" />
               </button>
             ))}
           </div>
           {clearLabel && (
             <button
               type="button"
-              className="cp-track-yours__clear"
+              className="cp-link cp-track-yours__clear"
               onClick={() => editor.clearRating()}
             >
               {clearLabel}
@@ -198,7 +199,7 @@ export function TrackYours({
               aria-pressed={record.favorite}
               onClick={() => editor.setFavorite(!record.favorite)}
             >
-              {record.favorite ? "♥" : "♡"}
+              <PixelIcon name={record.favorite ? "heart" : "heart-outline"} size="sm" />
             </button>
           </Hint>
         </div>
@@ -217,7 +218,7 @@ export function TrackYours({
           rows={3}
           maxLength={NOTES_MAX_LENGTH}
           value={editor.notes}
-          placeholder="Anything you want to remember about this track. Kept in CuePoint."
+          placeholder="Long intro, vocal at 2:30"
           onChange={(event) => editor.editNotes(event.target.value)}
           onBlur={() => editor.flushNotes()}
         />
@@ -238,14 +239,10 @@ export function TrackYours({
             <li key={tag.id} className="cp-track-yours__tag">
               <PixelIcon name="tag" className="cp-track-yours__tag-icon" />
               {tag.name}
-              <button
-                type="button"
-                className="cp-track-yours__tag-remove"
+              <RemoveButton
                 aria-label={`Remove tag ${tag.name}`}
                 onClick={() => void tagging.remove(tag.id)}
-              >
-                <PixelIcon name="close" className="cp-pixel-icon--text" />
-              </button>
+              />
             </li>
           ))}
           {tagging.tags.length === 0 && (
@@ -254,36 +251,30 @@ export function TrackYours({
         </ul>
       </div>
 
-      <div className="cp-track-yours__row">
-        <label className="cp-track-yours__label" htmlFor={tagId}>
-          Add a tag
-        </label>
-        <div className="cp-track-yours__add">
-          {/* Suggestions only, in an in-app list rather than a native <datalist> (macOS
-              crashed on that popup). Whether a typed name is a new tag or one that
-              already exists in another capitalization is the engine's answer,
-              not this list's. */}
-          <SuggestInput
-            id={tagId}
-            wrapperClassName="cp-track-yours__tag-field"
-            className="cp-track-yours__tag-input"
-            suggestions={suggestionItems}
-            onPick={setDraftTag}
-            value={draftTag}
-            maxLength={TAG_NAME_MAX_LENGTH}
-            placeholder="Type a name"
-            onChange={(event) => setDraftTag(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                addTag();
-              }
-            }}
-          />
-          <Button variant="secondary" onClick={addTag} disabled={draftTag.trim() === ""}>
-            Add
-          </Button>
-        </div>
+      <div className="cp-track-yours__add">
+        {/* Suggestions only, in an in-app list rather than a native <datalist> (macOS
+            crashed on that popup). Whether a typed name is a new tag or one that
+            already exists in another capitalization is the engine's answer,
+            not this list's. */}
+        <TextField
+          id={tagId}
+          label="Add a tag"
+          suggestions={suggestionItems}
+          onPick={setDraftTag}
+          value={draftTag}
+          maxLength={TAG_NAME_MAX_LENGTH}
+          placeholder="Peak time"
+          onChange={(event) => setDraftTag(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              addTag();
+            }
+          }}
+        />
+        <Button variant="secondary" size="sm" onClick={addTag} disabled={draftTag.trim() === ""}>
+          Add
+        </Button>
       </div>
 
       {track && (

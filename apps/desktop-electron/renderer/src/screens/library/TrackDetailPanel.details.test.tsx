@@ -283,15 +283,17 @@ describe("the facts grid", () => {
     expect(screen.queryByText("Bitrate")).not.toBeVisible();
   });
 
-  it("draws the artwork small, beside the title", () => {
+  it("draws the artwork above the sticky head, outside it, so it scrolls away", () => {
     (window as unknown as { cuepoint: Record<string, unknown> }).cuepoint.getTrackArtwork = vi
       .fn()
       .mockResolvedValue(null);
     const { container } = show();
-    const ident = container.querySelector(".cp-track-detail__ident") as HTMLElement;
-    expect(ident.querySelector(".cp-track-detail__artwork")).not.toBeNull();
-    expect(ident.querySelector(".cp-track-detail__idtext")).toContainElement(
-      within(ident).getByRole("heading", { level: 2 }),
+    const head = container.querySelector(".cp-sticky-head") as HTMLElement;
+    const art = container.querySelector(".cp-track-detail__art") as HTMLElement;
+    expect(art.querySelector(".cp-track-detail__artwork")).not.toBeNull();
+    expect(head).not.toContainElement(art);
+    expect(head.querySelector(".cp-track-detail__idtext")).toContainElement(
+      within(head).getByRole("heading", { level: 2 }),
     );
   });
 
@@ -659,7 +661,7 @@ describe("plain words (INS-6…10)", () => {
   it("empty-state text invites a click", () => {
     render(<TrackDetailPanel detail={null} />);
     expect(
-      screen.getByText("Click a track to see its details, rate it and tag it here."),
+      screen.getByText("Select a track to see its details"),
     ).toBeInTheDocument();
   });
 

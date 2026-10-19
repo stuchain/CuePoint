@@ -22,6 +22,7 @@
  * it finish (CLEAN-10).
  */
 import type { TrackFieldChange } from "../../api/cuepointBridge.types";
+import { Loading } from "../../components/Loading";
 import { canRevertChange, writesLine } from "./libraryClean";
 import { historyLine } from "./trackEdits";
 import type { TrackWritesState } from "./useTrackWrites";
@@ -62,7 +63,7 @@ export function TrackHistorySection({
     <div className="cp-track-history">
       {error && <p className="cp-track-history__note">{error}</p>}
       {!error && loading && changes.length === 0 && (
-        <p className="cp-track-history__note">Reading the history…</p>
+        <Loading what="history" />
       )}
       {!error && !loading && changes.length === 0 && (
         <p className="cp-track-history__note">Nothing has changed about this track yet.</p>
@@ -93,7 +94,7 @@ export function TrackHistorySection({
               {revertable && (
                 <button
                   type="button"
-                  className="cp-track-history__revert"
+                  className="cp-link cp-track-history__revert"
                   disabled={reverting !== null}
                   aria-label={`Undo: ${line.title}, ${line.when}`}
                   onClick={() => onRevert(change)}
@@ -117,7 +118,7 @@ export function TrackHistorySection({
           {onRestore && (
             <button
               type="button"
-              className="cp-track-history__revert"
+              className="cp-link cp-track-history__revert"
               disabled={restoring}
               onClick={onRestore}
             >

@@ -180,7 +180,7 @@ describe("what the panel shows", () => {
     // The parser converted Rekordbox's 0/51/…/255 at import, so what is
     // stored is already a star count.
     render(<TrackDetailPanel detail={DETAIL} />);
-    expect(within(rowFor("Rating")).getByText("★★★★")).toBeInTheDocument();
+    expect(within(rowFor("Rating")).getByRole("img", { name: "4 stars", hidden: true })).toBeInTheDocument();
   });
 
   it("reads a missing field as absent, not as zero", () => {
@@ -214,12 +214,12 @@ describe("what the panel shows", () => {
 
   it("says what to do before anything is selected", () => {
     render(<TrackDetailPanel detail={null} />);
-    expect(screen.getByText(/click a track to see its details/i)).toBeInTheDocument();
+    expect(screen.getByText("Select a track to see its details")).toBeInTheDocument();
   });
 
   it("says it is reading while it reads", () => {
     render(<TrackDetailPanel detail={null} loading />);
-    expect(screen.getByText(/reading the track/i)).toBeInTheDocument();
+    expect(screen.getByText("Loading track…")).toBeInTheDocument();
   });
 
   it("says when the track could not be read", () => {
@@ -269,7 +269,7 @@ describe("the imported zone is still read-only (DEC-047, ORG-10)", () => {
         }}
       />,
     );
-    expect(within(rowFor("Rating")).getByText("★★★★")).toBeInTheDocument();
+    expect(within(rowFor("Rating")).getByRole("img", { name: "4 stars", hidden: true })).toBeInTheDocument();
   });
 });
 
@@ -490,7 +490,7 @@ describe("the history (DEC-008)", () => {
 
     expect(within(list).getByText("Your rating")).toBeInTheDocument();
     expect(within(list).getByText("BPM")).toBeInTheDocument();
-    expect(list.textContent).toContain("— → ★★★★★");
+    expect(list.textContent).toContain("— → 5 stars");
   });
 
   it("tells a change of yours from one an import made", async () => {
