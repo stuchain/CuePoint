@@ -7,7 +7,7 @@
  * read like the sentences themselves, not tests that go through a render.
  */
 import { formatDayTime } from "../../format/dates";
-import { countNoun, formatCount } from "../../format/counts";
+import { countNoun, formatCount as groupCount } from "../../format/counts";
 import { UP_TO_DATE } from "../../format/words";
 import { formatTotal } from "../../format/durations";
 import type {
@@ -22,7 +22,19 @@ import type {
  * `formatCount` groups digits by the computer's locale and `pluralize` is `countNoun`
  * ("3,880 tracks", "1 track").
  */
-export { countNoun as pluralize, formatCount };
+export function formatCount(count: number | null | undefined, locale?: string): string {
+  return groupCount(count ?? 0, locale);
+}
+
+/** The shared `countNoun`, tolerant of a count a partial payload left out (read as none). */
+export function pluralize(
+  count: number | null | undefined,
+  one: string,
+  many?: string,
+  locale?: string,
+): string {
+  return countNoun(count ?? 0, one, many, locale);
+}
 
 /** Just the file name, for a path too long to show in full. */
 export function fileName(filePath: string): string {
@@ -164,7 +176,7 @@ export function referenceWarning(diff: RefreshDiff): string | null {
   const kinds: string[] = [];
   if (references.collection_count > 0) {
     const holders = countNoun(references.collection_count, "Collection");
-    kinds.push(`${formatCount(references.collection_track_count)} in ${holders}`);
+    kinds.push(`${groupCount(references.collection_track_count)} in ${holders}`);
   }
   if (references.set_count > 0) {
     // Sets as their own kind, counted as the Collections are: "4 in 1 Set",
@@ -173,7 +185,7 @@ export function referenceWarning(diff: RefreshDiff): string | null {
     const holders = countNoun(references.set_count, "Set");
     kinds.push(
       references.set_track_count > 0
-        ? `${formatCount(references.set_track_count)} in ${holders}`
+        ? `${groupCount(references.set_track_count)} in ${holders}`
         : `in ${holders}`,
     );
   }
@@ -184,7 +196,7 @@ export function referenceWarning(diff: RefreshDiff): string | null {
     [references.edited_track_count, "edited"],
   ];
   for (const [count, words] of counted) {
-    if (count > 0) kinds.push(`${formatCount(count)} ${words}`);
+    if (count > 0) kinds.push(`${groupCount(count)} ${words}`);
   }
   const one = references.referenced_track_count === 1;
   return (
@@ -213,10 +225,11 @@ export function applyLabel(diff: RefreshDiff): string {
 
 /** The line shown after a refresh finishes. */
 export function appliedLine(result: RefreshApplied): string {
-  const parts = [`${countNoun(result.track_count ?? 0, "track")} in your library`];
-  if (result.tracks_inserted > 0) parts.push(`${formatCount(result.tracks_inserted)} added`);
-  if (result.tracks_deleted > 0) parts.push(`${formatCount(result.tracks_deleted)} removed`);
-  if (result.relinked_count > 0) parts.push(`${formatCount(result.relinked_count)} re-linked`);
+  const parts: string[] = [];
+  if (typeof result.track_count === "number") parts.push(`${countNoun(result.track_count, "track")} in your library`);
+  if (result.tracks_inserted > 0) parts.push(`${groupCount(result.tracks_inserted)} added`);
+  if (result.tracks_deleted > 0) parts.push(`${groupCount(result.tracks_deleted)} removed`);
+  if (result.relinked_count > 0) parts.push(`${groupCount(result.relinked_count)} re-linked`);
   // Marks CuePoint cannot read are skipped and counted, never stored (DEC-118).
   const skipped = result.marks?.skipped ?? 0;
   if (skipped > 0) parts.push(`${countNoun(skipped, "unreadable mark")} skipped`);

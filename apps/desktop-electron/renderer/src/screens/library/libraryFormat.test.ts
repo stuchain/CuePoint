@@ -107,6 +107,14 @@ describe("counts", () => {
   it("takes an irregular plural", () => {
     expect(pluralize(3, "entry", "entries")).toBe("3 entries");
   });
+
+  it("treats a missing count as none, the way the pages that import these expect", () => {
+    // Discover and Prepare pass payload fields that a partial answer can leave out.
+    expect(formatCount(undefined)).toBe("0");
+    expect(formatCount(null)).toBe("0");
+    expect(pluralize(undefined, "track")).toBe("0 tracks");
+    expect(pluralize(null, "entry", "entries")).toBe("0 entries");
+  });
 });
 
 describe("formatLength", () => {
@@ -442,6 +450,14 @@ describe("applyLabel", () => {
 
   it("says nothing about removal when there is none", () => {
     expect(applyLabel(diff())).toBe("Apply changes");
+  });
+});
+
+describe("appliedLine without a track count", () => {
+  it("leaves that part out instead of claiming 0 tracks", () => {
+    const line = appliedLine({ tracks_inserted: 2, tracks_deleted: 0, relinked_count: 0 } as never);
+    expect(line).toBe("2 added");
+    expect(line).not.toMatch(/0 tracks/);
   });
 });
 
