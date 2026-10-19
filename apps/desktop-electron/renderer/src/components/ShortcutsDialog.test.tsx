@@ -62,3 +62,33 @@ describe("ShortcutsDialog", () => {
     }
   });
 });
+
+describe("the fixed head and the shared table look (C58, C72, C119)", () => {
+  it("keeps the search and the result count outside the part that scrolls", () => {
+    render(<ShortcutsDialog open onClose={vi.fn()} />);
+    const dialog = screen.getByRole("dialog");
+    const scroller = dialog.querySelector(".shortcuts-dialog__table-wrap")!;
+    const search = within(dialog).getByRole("searchbox", { name: "Search" });
+    const count = within(dialog).getByTestId("shortcuts-count");
+    expect(scroller.contains(search)).toBe(false);
+    expect(scroller.contains(count)).toBe(false);
+    expect(count).toHaveClass("cp-count");
+  });
+
+  it("counts what is shown, and says when nothing is", async () => {
+    render(<ShortcutsDialog open onClose={vi.fn()} />);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search" }), "volume");
+    expect(screen.getByTestId("shortcuts-count")).toHaveTextContent("2 shortcuts");
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search" }), "zzzz");
+    expect(screen.getByTestId("shortcuts-count")).toHaveTextContent("No shortcuts");
+  });
+
+  it("draws the list with the shared table class and the group headings in the sub-heading style", () => {
+    render(<ShortcutsDialog open onClose={vi.fn()} />);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.querySelector("table")).toHaveClass("cp-data-table");
+    for (const heading of within(dialog).getAllByRole("heading", { level: 3 })) {
+      expect(heading).toHaveClass("cp-text-subhead");
+    }
+  });
+});

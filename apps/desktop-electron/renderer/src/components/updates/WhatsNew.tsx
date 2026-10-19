@@ -16,7 +16,7 @@ interface WhatsNewProps {
 
 /**
  * The notes of the version that is running (DIST-07, DEC-172). Mounted in the app, it asks main
- * once, on launch, and shows them only after an update, until **Got it**. Given `notes`, it shows
+ * once, on launch, and shows them only after an update, until it is closed. Given `notes`, it shows
  * those on demand and never dismisses anything.
  */
 export function WhatsNew({ notes, open: openOnDemand = true, onClose, hold = false }: WhatsNewProps) {
@@ -60,7 +60,7 @@ export function WhatsNew({ notes, open: openOnDemand = true, onClose, hold = fal
       open={onDemand ? openOnDemand : !dismissed && !hold}
       title={`What's new in CuePoint ${shown.version}`}
       onClose={close}
-      primaryAction={{ label: "Got it", onClick: close }}
+      closeLabel="Close"
     >
       <ReleaseNotesView notes={shown.notes} />
     </Modal>

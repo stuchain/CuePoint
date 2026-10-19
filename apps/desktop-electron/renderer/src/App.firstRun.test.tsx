@@ -167,7 +167,7 @@ describe("someone who finished the old tour", () => {
     expect(guide()).toBeNull();
     expect(await screen.findByRole("dialog", { name: "What changed" })).toBeInTheDocument();
     expect(screen.getByText("Keys now come only from Beatport. 8 of your tracks have a key.")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Got it" }));
+    await userEvent.click(footerClose());
     first.unmount();
 
     render(<App />);
@@ -190,3 +190,8 @@ describe("someone who finished the old tour", () => {
     await waitFor(() => expect(window.location.hash).toBe("#/clean"));
   });
 });
+
+/** The grey Close of the footer; the title bar has a close button of the same name. */
+function footerClose(): HTMLElement {
+  return screen.getAllByRole("button", { name: "Close" }).find((b) => !b.classList.contains("cp-close"))!;
+}

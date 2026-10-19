@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "./Button";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { Loading } from "./Loading";
 import { Modal } from "./Modal";
 import { Notice } from "./Notice";
 import { SearchField } from "./SearchField";
@@ -8,6 +9,10 @@ import { Select } from "./Select";
 import { reportUnexpected } from "../reporting/reporting";
 import "./LogViewerDialog.css";
 import { userMessage } from "../api/userMessage";
+import { couldNot } from "../format/words";
+
+/** The folder button's words, shared with Get help. */
+export const OPEN_LOGS_FOLDER = "Open logs folder";
 
 const LEVEL_OPTIONS = ["All", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] as const;
 
@@ -33,7 +38,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
   const [search, setSearch] = useState("");
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [logText, setLogText] = useState<string>("Loading…");
+  const [logText, setLogText] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
   const levelRequest = useMemo(() => (level === "All" ? undefined : level), [level]);
@@ -56,7 +61,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
       setLogText(result.cuepoint_log ?? "");
     } catch (e) {
       reportUnexpected(e);
-      setError(userMessage(e, "Failed to load logs."));
+      setError(userMessage(e, couldNot("load the logs")));
       setLogText("");
     } finally {
       setLoading(false);
@@ -87,7 +92,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
       await refresh();
     } catch (e) {
       reportUnexpected(e);
-      setError(userMessage(e, "Failed to clear logs."));
+      setError(userMessage(e, couldNot("clear the logs")));
     } finally {
       setLoading(false);
     }
@@ -100,7 +105,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
       await window.cuepoint.showItemInFolder(result.logs_dir);
     } catch (e) {
       reportUnexpected(e);
-      setError(userMessage(e, "Failed to open logs folder."));
+      setError(userMessage(e, couldNot("open the logs folder")));
     }
   }, []);
 
@@ -144,7 +149,7 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
             value={search}
             onValueChange={setSearch}
           />
-          <label className="log-viewer-dialog__auto">
+          <label className="log-viewer-dialog__auto cp-check">
             <input
               type="checkbox"
               checked={autoRefresh}
@@ -154,24 +159,34 @@ export function LogViewerDialog({ open, onClose }: LogViewerDialogProps) {
           </label>
         </div>
 
-        <div className="log-viewer-dialog__actions">
+        <div className="cp-button-row log-viewer-dialog__actions">
           <Button variant="secondary" disabled={loading} loading={loading} onClick={() => void refresh()}>
             Refresh
           </Button>
-          <Button variant="danger" disabled={loading} onClick={() => setConfirmingClear(true)}>
-            Clear logs…
-          </Button>
           <Button variant="secondary" disabled={loading} onClick={handleExport}>
-            Export…
+            Export
           </Button>
           <Button variant="secondary" disabled={loading} onClick={() => void handleOpenLogsFolder()}>
-            Open logs folder
+            {OPEN_LOGS_FOLDER}
+          </Button>
+          {/* The one red button goes last, after a gap (C123). */}
+          <Button
+            className="log-viewer-dialog__clear"
+            variant="danger"
+            disabled={loading}
+            onClick={() => setConfirmingClear(true)}
+          >
+            Clear logs…
           </Button>
         </div>
 
-        {error ? <Notice kind="problem">{error}</Notice> : null}
+        {error ? <Notice kind="danger">{error}</Notice> : null}
 
-        <pre className="log-viewer-dialog__output">{logText === "" && !error && !loading ? emptyText : logText}</pre>
+        {loading && logText === "" ? (
+          <Loading what="logs" />
+        ) : (
+          <pre className="log-viewer-dialog__output">{logText === "" && !error ? emptyText : logText}</pre>
+        )}
       </div>
     </Modal>
     <ConfirmDialog

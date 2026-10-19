@@ -256,7 +256,7 @@ describe("What's new", () => {
     await userEvent.click(await screen.findByRole("button", { name: "What's new" }));
     const dialog = await screen.findByRole("dialog", { name: "What's new in CuePoint 1.0.0-test.1" });
     expect(dialog).toHaveTextContent("Something new");
-    await userEvent.click(screen.getByRole("button", { name: "Got it" }));
+    await userEvent.click(footerClose());
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(fake.bridge.getNotes).toHaveBeenCalled();
     expect(fake.bridge.dismissWhatsNew).not.toHaveBeenCalled();
@@ -270,3 +270,8 @@ describe("without the bridge", () => {
     expect(await screen.findByText("Updates are checked in the installed app.")).toBeInTheDocument();
   });
 });
+
+/** The grey Close of the footer; the title bar has a close button of the same name. */
+function footerClose(): HTMLElement {
+  return screen.getAllByRole("button", { name: "Close" }).find((b) => !b.classList.contains("cp-close"))!;
+}

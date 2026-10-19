@@ -36,10 +36,11 @@ describe("WhatsNew after an update", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("dismisses on Got it and closes", async () => {
+  it("dismisses on Close and closes", async () => {
     const fake = installUpdates(updateState(), { whatsNew: NOTES });
     render(<WhatsNew />);
-    await userEvent.click(await screen.findByRole("button", { name: "Got it" }));
+    await screen.findByRole("dialog");
+    await userEvent.click(footerClose());
     expect(fake.bridge.dismissWhatsNew).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
@@ -47,7 +48,8 @@ describe("WhatsNew after an update", () => {
   it("does not come back on the next start, when main has nothing more", async () => {
     const fake = installUpdates(updateState(), { whatsNew: NOTES });
     const first = render(<WhatsNew />);
-    await userEvent.click(await screen.findByRole("button", { name: "Got it" }));
+    await screen.findByRole("dialog");
+    await userEvent.click(footerClose());
     first.unmount();
     // The next start: main has marked it seen and answers null.
     vi.mocked(fake.bridge.getWhatsNew).mockResolvedValue(null);
@@ -91,8 +93,13 @@ describe("WhatsNew on demand", () => {
     render(<WhatsNew notes={NOTES} onClose={() => (closed += 1)} />);
     expect(await screen.findByRole("dialog", { name: "What's new in CuePoint 1.0.0-test.2" })).toBeInTheDocument();
     expect(fake.bridge.getWhatsNew).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("button", { name: "Got it" }));
+    await userEvent.click(footerClose());
     expect(closed).toBe(1);
     expect(fake.bridge.dismissWhatsNew).not.toHaveBeenCalled();
   });
 });
+
+/** The grey Close of the footer; the title bar has a close button of the same name. */
+function footerClose(): HTMLElement {
+  return screen.getAllByRole("button", { name: "Close" }).find((b) => !b.classList.contains("cp-close"))!;
+}

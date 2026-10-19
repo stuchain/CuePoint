@@ -1,26 +1,22 @@
-.privacy-dialog__text {
-  margin: 0 0 var(--space-sm);
-  padding: var(--space-sm);
-  white-space: pre-wrap;
-  font-size: var(--text-body);
-  line-height: 1.5;
-  color: var(--fg-muted);
-  background: var(--bg-toolbar);
-  border: var(--divider);
+/* Headings and short sentences. The Modal body puts the blocks 12 apart; inside a group they are 8. */
+.privacy-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
 }
 
-.privacy-dialog__actions {
+.privacy-dialog__group {
   display: flex;
-  gap: var(--space-sm);
-  flex-wrap: wrap;
-  margin-top: var(--space-sm);
+  flex-direction: column;
+  gap: var(--space-md);
 }
 
 .privacy-dialog__reporting {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm);
-  margin: 0 0 var(--space-sm);
+  gap: var(--space-md);
+  margin: 0;
   font-size: var(--text-body);
 }
 

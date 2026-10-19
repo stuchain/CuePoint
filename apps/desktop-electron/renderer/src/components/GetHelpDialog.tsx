@@ -3,7 +3,11 @@ import { Modal } from "./index";
 import { Button } from "./Button";
 import { MoreAbout } from "./MoreAbout";
 import { Notice } from "./Notice";
-import { DESKTOP_ENGINE_VERSION } from "./AboutDialog";
+import { DESKTOP_ENGINE_VERSION, versionWords } from "./AboutDialog";
+import { OPEN_LOGS_FOLDER } from "./LogViewerDialog";
+import { Textarea } from "./Textarea";
+import type { AppBuildInfo } from "../api/cuepointBridge.types";
+import { couldNot } from "../format/words";
 import { userMessage } from "../api/userMessage";
 import { lastReportId, reportingSetUp, sendProblemReport, setReportingChoice } from "../reporting/reporting";
 import { shortReportId } from "../reporting/ErrorScreen";
@@ -34,6 +38,7 @@ type HelpFile = { kind: "idle" } | { kind: "saved" } | { kind: "error"; message:
 export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewer }: GetHelpDialogProps) {
   const [note, setNote] = useState("");
   const [version, setVersion] = useState<string>(DESKTOP_ENGINE_VERSION);
+  const [build, setBuild] = useState<AppBuildInfo | null>(null);
   const [choice, setChoice] = useState<Choice>("unknown");
   const [phase, setPhase] = useState<Phase>("editing");
   // The last report is read when the dialog opens: it is what the user just saw go wrong.
@@ -77,6 +82,16 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
         });
     } else {
       setChoice("unavailable");
+    }
+    if (typeof bridge?.buildInfo === "function") {
+      bridge
+        .buildInfo()
+        .then((info) => {
+          if (live) setBuild(info);
+        })
+        .catch(() => {
+          // The version alone still shows.
+        });
     }
     if (typeof bridge?.getEngineStatus === "function") {
       bridge
@@ -135,7 +150,7 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
       await Promise.resolve(api.showItemInFolder?.(result.bundle_path)).catch(() => {});
     } catch (error) {
       if (current()) {
-        setHelpFile({ kind: "error", message: userMessage(error, "The help file could not be saved.") });
+        setHelpFile({ kind: "error", message: userMessage(error, couldNot("save the help file")) });
       }
     } finally {
       if (current()) setSaving(false);
@@ -151,7 +166,7 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
       const result = await api.getLogsDir();
       await api.showItemInFolder(result.logs_dir);
     } catch (error) {
-      if (mounted.current && session.current === mine) setFolderError(userMessage(error, "The log folder could not be opened."));
+      if (mounted.current && session.current === mine) setFolderError(userMessage(error, couldNot("open the logs folder")));
     }
   }, []);
 
@@ -170,7 +185,7 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
       }
     >
       <div className="get-help-dialog">
-        <p className="get-help-dialog__lead">Something not working? Tell us what you were doing.</p>
+        <p className="cp-modal__lead">Something not working? Tell us what you were doing.</p>
         {choice === "off" ? (
           <Notice kind="warning" className="get-help-dialog__off">
             Sending is off in Settings: save a help file and attach it to your email or GitHub issue.
@@ -183,77 +198,68 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
         ) : null}
         {canReport ? (
           <>
-            <label className="get-help-dialog__field">
-              <span>What were you doing?</span>
-              <textarea
-                value={note}
-                rows={5}
-                disabled={choice !== "on" || phase === "sent"}
-                onChange={(event) => setNote(event.target.value)}
-              />
-            </label>
+            <Textarea
+              label="What were you doing?"
+              value={note}
+              rows={5}
+              disabled={choice !== "on" || phase === "sent"}
+              onChange={(event) => setNote(event.target.value)}
+            />
             <p className="get-help-dialog__note">
               Your note is sent exactly as you write it. Do not put anything in it you would not want
               us to read.
             </p>
           </>
         ) : null}
-        <ul className="get-help-dialog__facts">
-          <li>
-            Version: <span data-testid="get-help-version">{version}</span>
-          </li>
-          <li>
-            Last report:{" "}
-            <span data-testid="get-help-last-report">{lastId ? shortReportId(lastId) : "none"}</span>
-          </li>
-        </ul>
+        <dl className="cp-facts">
+          <dt>Version</dt>
+          <dd data-testid="get-help-version">{versionWords(version, build)}</dd>
+          <dt>Last report</dt>
+          <dd data-testid="get-help-last-report">{lastId ? shortReportId(lastId) : "none"}</dd>
+        </dl>
         {phase === "sent" ? (
           <p className="get-help-dialog__done" role="status">
             Thank you. Your note was sent.
           </p>
         ) : null}
         {phase === "failed" ? (
-          <Notice kind="problem" className="get-help-dialog__error">
+          <Notice kind="danger" className="get-help-dialog__error">
             Your note could not be sent. Check your connection and try again.
           </Notice>
         ) : null}
 
         {canSaveFile || canOpenFolder ? (
           <section className="get-help-dialog__file" aria-label="Help file">
+            <div className="cp-button-row">
+              {canSaveFile ? (
+                <Button variant="secondary" loading={saving} onClick={() => void saveHelpFile()}>
+                  Save a help file…
+                </Button>
+              ) : null}
+              {canOpenFolder ? (
+                <Button variant="secondary" onClick={() => void openLogFolder()}>
+                  {OPEN_LOGS_FOLDER}
+                </Button>
+              ) : null}
+            </div>
             {canSaveFile ? (
-              <>
-                <div className="get-help-dialog__row">
-                  <Button variant="secondary" loading={saving} onClick={() => void saveHelpFile()}>
-                    Save a help file…
-                  </Button>
-                  {canOpenFolder ? (
-                    <button type="button" className="cp-link get-help-dialog__link" onClick={() => void openLogFolder()}>
-                      Open log folder
-                    </button>
-                  ) : null}
-                </div>
-                <p className="get-help-dialog__note">
-                  Saves your settings and CuePoint&apos;s log as one file you can attach to an email. Your
-                  sign-in and your user folder name are left out.
-                </p>
-              </>
-            ) : (
-              <button type="button" className="cp-link get-help-dialog__link" onClick={() => void openLogFolder()}>
-                Open log folder
-              </button>
-            )}
+              <p className="get-help-dialog__note">
+                Saves your settings and CuePoint&apos;s log as one file you can attach to an email. Your
+                sign-in and your user folder name are left out.
+              </p>
+            ) : null}
             {helpFile.kind === "saved" ? (
               <p className="get-help-dialog__done" role="status">
-                Help file saved.
+                Help file saved
               </p>
             ) : null}
             {helpFile.kind === "error" ? (
-              <Notice kind="problem" className="get-help-dialog__error">
+              <Notice kind="danger" className="get-help-dialog__error">
                 {helpFile.message}
               </Notice>
             ) : null}
             {folderError ? (
-              <Notice kind="problem" className="get-help-dialog__error">
+              <Notice kind="danger" className="get-help-dialog__error">
                 {folderError}
               </Notice>
             ) : null}
@@ -262,7 +268,7 @@ export function GetHelpDialog({ open, onClose, onOpenDiagnostics, onOpenLogViewe
 
         {onOpenDiagnostics || onOpenLogViewer ? (
           <MoreAbout label="Details for support">
-            <div className="get-help-dialog__row">
+            <div className="cp-button-row">
               {onOpenDiagnostics ? (
                 <Button variant="secondary" size="sm" onClick={onOpenDiagnostics}>
                   Diagnostics…

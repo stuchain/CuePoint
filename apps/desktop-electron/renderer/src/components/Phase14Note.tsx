@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { LIBRARY_HEALTH, useSharedRead } from "../api/sharedReads";
+import { formatCount } from "../format/counts";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 import { markPhase14NoteSeen } from "./firstRunMemory";
@@ -68,14 +69,14 @@ export function Phase14Note({ open, onClose, onChangeSize, onMatch }: Phase14Not
   const keySentence =
     count === null
       ? "Keys now come only from Beatport."
-      : `Keys now come only from Beatport. ${count.toLocaleString()} of your tracks ${count === 1 ? "has" : "have"} a key.`;
+      : `Keys now come only from Beatport. ${formatCount(count)} of your tracks ${count === 1 ? "has" : "have"} a key.`;
 
   return (
     <Modal
       open
       title="What changed"
       onClose={close}
-      primaryAction={{ label: "Got it", onClick: close }}
+      closeLabel="Close"
     >
       <div className="phase14-note">
         {sizeLine && (

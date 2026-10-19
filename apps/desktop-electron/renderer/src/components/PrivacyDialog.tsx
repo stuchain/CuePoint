@@ -7,24 +7,41 @@ import { LinkButton } from "./LinkButton";
 import { reportUnexpected } from "../reporting/reporting";
 import "./PrivacyDialog.css";
 import { userMessage } from "../api/userMessage";
+import { couldNot } from "../format/words";
 
-const PRIVACY_TEXT = `CuePoint respects your privacy.
+/** Short plain sentences under three headings (C171); each is one line to read. */
+const STAYS_HERE = [
+  "Your Rekordbox library, match history, settings and exports stay on your computer.",
+  "Your Beatport sign-in is stored on your computer when you sign in.",
+  "Logs and the cache are kept for debugging. You can clear them below.",
+  "CuePoint has no analytics and no usage tracking.",
+];
 
-Data collection:
-- No analytics or usage tracking
-- Error reports: when CuePoint hits an unexpected error, a released build sends a report to Sentry (EU region) unless you turn it off. Reports are cleaned on your computer so they do not include file, folder, track, artist, label or playlist names, the notes and tags you keep in CuePoint, or your Beatport sign-in. The Privacy Notice says what a report carries and how long it is kept.
+const BEATPORT = [
+  "CuePoint searches Beatport only when you ask it to.",
+  "It sends nothing else about you or your library.",
+];
 
-Network requests:
-- Beatport scraping/search: user-initiated only
-- Updates: the installed app checks GitHub for updates at launch and every 4 hours, and downloads a new version from there. A check sends only what any download sends, with no id, no account and nothing from your library. You can also check in Settings → About & updates.
+const ERROR_REPORTS = [
+  "When CuePoint hits an unexpected error, a released build sends a report to Sentry in the EU unless you turn it off.",
+  "Reports are cleaned on your computer first. They leave out file, folder, track, artist, label and playlist names, the notes and tags you keep in CuePoint, and your Beatport sign-in.",
+  "The Privacy Notice says what a report carries and how long it is kept.",
+];
 
-Local storage:
-- Match history CSV exports and configuration on disk
-- Your Beatport sign-in stored locally when you sign in
-- Logs and cache for debugging (can be cleared)
+const UPDATES =
+  "The installed app checks GitHub for updates at launch and every 4 hours, and downloads a new version from there. A check sends no id, no account and nothing from your library. You can also check in Settings → About & updates.";
 
-You can clear the cache and the logs now. Whether CuePoint sends error reports, and whether
-it clears the cache and logs when it quits, are chosen in Settings → Privacy.`;
+function Sentences({ lines }: { lines: readonly string[] }) {
+  return (
+    <>
+      {lines.map((line) => (
+        <p key={line} className="cp-prose cp-prose--body privacy-dialog__sentence">
+          {line}
+        </p>
+      ))}
+    </>
+  );
+}
 
 interface PrivacyDialogProps {
   open: boolean;
@@ -65,10 +82,10 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
     setClearing(true);
     try {
       await window.cuepoint.clearCuepointCache();
-      push("Cache cleared.", "success");
+      push("Cache cleared", "success");
     } catch (e) {
       reportUnexpected(e);
-      push(userMessage(e, "Failed to clear cache."), "warning");
+      push(userMessage(e, couldNot("clear the cache")), "warning");
     } finally {
       setClearing(false);
     }
@@ -80,10 +97,10 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
     setClearing(true);
     try {
       await window.cuepoint.clearCuepointLogs();
-      push("Logs cleared.", "success");
+      push("Logs cleared", "success");
     } catch (e) {
       reportUnexpected(e);
-      push(userMessage(e, "Failed to clear logs."), "warning");
+      push(userMessage(e, couldNot("clear the logs")), "warning");
     } finally {
       setClearing(false);
     }
@@ -111,29 +128,35 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
       closeLabel="Close"
     >
       <div className="privacy-dialog">
-        <pre className="privacy-dialog__text">{PRIVACY_TEXT}</pre>
-        <p className="privacy-dialog__reporting">
-          <span data-testid="privacy-error-reports">{reportingWords}</span>{" "}
-          <LinkButton className="privacy-dialog__link" onClick={handleChangeInSettings}>
-            Change these in Settings → Privacy
-          </LinkButton>
-        </p>
+        <p className="cp-modal__lead">{UPDATES}</p>
 
-        <div className="privacy-dialog__actions">
-          <Button
-            variant="secondary"
-            loading={clearing}
-            disabled={clearing}
-            onClick={() => setAsking("cache")}
-          >
+        <section className="privacy-dialog__group" aria-label="What stays on your computer">
+          <h3 className="cp-text-subhead">What stays on your computer</h3>
+          <Sentences lines={STAYS_HERE} />
+        </section>
+
+        <section className="privacy-dialog__group" aria-label="What goes to Beatport">
+          <h3 className="cp-text-subhead">What goes to Beatport</h3>
+          <Sentences lines={BEATPORT} />
+        </section>
+
+        <section className="privacy-dialog__group" aria-label="Error reports">
+          <h3 className="cp-text-subhead">Error reports</h3>
+          <Sentences lines={ERROR_REPORTS} />
+          <p className="privacy-dialog__reporting">
+            <span data-testid="privacy-error-reports">{reportingWords}</span>{" "}
+            <LinkButton className="privacy-dialog__link" onClick={handleChangeInSettings}>
+              Change these in Settings → Privacy
+            </LinkButton>
+          </p>
+        </section>
+
+        {/* The cache first, the red logs last (C123). */}
+        <div className="cp-button-row">
+          <Button variant="secondary" loading={clearing} disabled={clearing} onClick={() => setAsking("cache")}>
             Clear cache now…
           </Button>
-          <Button
-            variant="danger"
-            loading={clearing}
-            disabled={clearing}
-            onClick={() => setAsking("logs")}
-          >
+          <Button variant="danger" loading={clearing} disabled={clearing} onClick={() => setAsking("logs")}>
             Clear logs now…
           </Button>
         </div>

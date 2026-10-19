@@ -3,6 +3,8 @@ import { Modal } from "./index";
 import { SearchField } from "./SearchField";
 import { shortcutLabel } from "./shell/platformKeys";
 import { filterShortcuts, KEYBOARD_SHORTCUTS, type KeyboardShortcutEntry } from "../api/keyboardShortcuts";
+import { countNoun } from "../format/counts";
+import "./table/DataTable.css";
 import "./ShortcutsDialog.css";
 
 interface ShortcutsDialogProps {
@@ -32,12 +34,20 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
     return [...byContext].map(([context, rows]) => ({ context, rows }));
   }, [query]);
 
+  const shown = groups.reduce((total, group) => total + group.rows.length, 0);
+
   return (
     <Modal size="large" open={open} title="Keyboard shortcuts" onClose={onClose} closeLabel="Close">
       <div className="shortcuts-dialog">
-        <SearchField thing="shortcuts" label="Search" value={query} onValueChange={setQuery} />
+        {/* The search and the count stay put; only the list below scrolls (C119). */}
+        <div className="shortcuts-dialog__head">
+          <SearchField thing="shortcuts" label="Search" value={query} onValueChange={setQuery} />
+          <span className="cp-count" data-testid="shortcuts-count" role="status">
+            {shown === 0 ? "No shortcuts" : countNoun(shown, "shortcut")}
+          </span>
+        </div>
         <div className="shortcuts-dialog__table-wrap">
-          <table className="shortcuts-dialog__table">
+          <table className="cp-data-table shortcuts-dialog__table">
             <thead>
               <tr>
                 <th>Action</th>
@@ -48,7 +58,7 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
               <tbody key={group.context}>
                 <tr>
                   <th colSpan={2} scope="rowgroup" className="shortcuts-dialog__group">
-                    <h3>{group.context}</h3>
+                    <h3 className="cp-text-subhead">{group.context}</h3>
                   </th>
                 </tr>
                 {group.rows.map((row) => (

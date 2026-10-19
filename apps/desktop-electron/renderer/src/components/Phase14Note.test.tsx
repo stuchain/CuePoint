@@ -119,7 +119,7 @@ describe("what it says", () => {
     (window as unknown as { cuepoint?: unknown }).cuepoint = { getLibraryHealth };
     mount();
     expect(screen.getByText("CuePoint is now Medium size (1.5×).")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Got it" })).toBeInTheDocument();
+    expect(footerClose()).toBeInTheDocument();
     expect(screen.queryByText(/Keys now come only/)).toBeNull();
     await act(async () => answer(health(12, 4)));
     expect(
@@ -187,10 +187,11 @@ describe("what it does", () => {
     expect(localStorage.getItem(SEEN)).toBe("1");
   });
 
-  it("Got it, Escape and the close button all mark it seen, so it shows once", async () => {
+  it("Close, Escape and the close button all mark it seen, so it shows once", async () => {
     install(health(12, 4));
     const { onClose } = mount();
-    await userEvent.click(await screen.findByRole("button", { name: "Got it" }));
+    await screen.findByRole("dialog");
+    await userEvent.click(footerClose());
     expect(localStorage.getItem(SEEN)).toBe("1");
     expect(onClose).toHaveBeenCalledTimes(1);
 
@@ -199,7 +200,7 @@ describe("what it does", () => {
     expect(localStorage.getItem(SEEN)).toBe("1");
 
     localStorage.clear();
-    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Close" }).find((b) => b.classList.contains("cp-close"))!);
     expect(localStorage.getItem(SEEN)).toBe("1");
   });
 
@@ -209,7 +210,13 @@ describe("what it does", () => {
       throw new Error("storage disabled");
     });
     const { onClose } = mount();
-    await userEvent.click(await screen.findByRole("button", { name: "Got it" }));
+    await screen.findByRole("dialog");
+    await userEvent.click(footerClose());
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+/** The grey Close of the footer; the title bar has a close button of the same name. */
+function footerClose(): HTMLElement {
+  return screen.getAllByRole("button", { name: "Close" }).find((b) => !b.classList.contains("cp-close"))!;
+}

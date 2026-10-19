@@ -43,7 +43,7 @@ describe("PrivacyDialog (REPORT-08, DEC-128)", () => {
     const text = document.body.textContent ?? "";
     expect(text).not.toMatch(/No telemetry or analytics/i);
     expect(text).not.toMatch(/No background data collection/i);
-    expect(text).toMatch(/No analytics or usage tracking/);
+    expect(text).toMatch(/no analytics and no usage tracking/);
     expect(text).toMatch(/Sentry/);
     expect(text).toMatch(/cleaned on your computer/);
     expect(text).not.toMatch(/\b30 days\b/);
@@ -123,6 +123,49 @@ describe("PrivacyDialog (REPORT-08, DEC-128)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Clear logs now…" }));
     await userEvent.click(within(screen.getByRole("dialog", { name: "Clear logs?" })).getByRole("button", { name: "Clear logs" }));
     await waitFor(() => expect(clearCuepointLogs).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe("the words of the dialog (C171)", () => {
+  afterEach(() => {
+    delete (window as { cuepoint?: unknown }).cuepoint;
+  });
+
+  it("has three headings and short plain sentences under them", () => {
+    install(async () => ({ enabled: true, configured: true }));
+    show();
+    const dialog = screen.getByRole("dialog");
+    const headings = within(dialog).getAllByRole("heading", { level: 3 });
+    expect(headings.map((heading) => heading.textContent)).toEqual([
+      "What stays on your computer",
+      "What goes to Beatport",
+      "Error reports",
+    ]);
+    for (const heading of headings) expect(heading).toHaveClass("cp-text-subhead");
+    expect(dialog.querySelector("pre")).toBeNull();
+    for (const sentence of dialog.querySelectorAll(".privacy-dialog__sentence")) {
+      expect(sentence.textContent!.length).toBeLessThan(260);
+    }
+  });
+
+  it("puts the clean-up buttons in a row with the red one last", () => {
+    install(async () => ({ enabled: true, configured: true }));
+    show();
+    const row = screen.getByRole("button", { name: "Clear cache now…" }).parentElement!;
+    expect(row).toHaveClass("cp-button-row");
+    const names = [...row.querySelectorAll("button")].map((button) => button.textContent);
+    expect(names).toEqual(["Clear cache now…", "Clear logs now…"]);
+  });
+
+  it("says a clear failed by naming the thing", async () => {
+    install(async () => ({ enabled: true, configured: true }));
+    (window as unknown as { cuepoint: Record<string, unknown> }).cuepoint.clearCuepointLogs = vi
+      .fn()
+      .mockRejectedValue(new Error("busy"));
+    show();
+    await userEvent.click(screen.getByRole("button", { name: "Clear logs now…" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Clear logs?" })).getByRole("button", { name: "Clear logs" }));
+    expect(await screen.findByText("busy")).toBeInTheDocument();
   });
 });
 

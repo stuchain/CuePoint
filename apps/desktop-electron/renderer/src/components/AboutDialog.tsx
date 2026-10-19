@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
+import appIcon from "../assets/cuepoint-icon.png";
 import { Modal } from "./index";
 import type { AppBuildInfo } from "../api/cuepointBridge.types";
+import "./AboutDialog.css";
 
 export const DESKTOP_ENGINE_VERSION = "1.0.0-test.4";
 
 /** The version shown for this app: the build's own, else the desktop version. */
 export function appVersion(build: AppBuildInfo | null): string {
   return build?.version ?? DESKTOP_ENGINE_VERSION;
+}
+
+/**
+ * The one way the version is written (C118): "1.2.3 (build 456)", or just "1.2.3" when this
+ * build has told no commit. A label in front of it is the caller's ("Version").
+ */
+export function versionWords(version: string, build: AppBuildInfo | null): string {
+  return build ? `${version} (build ${build.dist ?? "not recorded"})` : version;
 }
 
 interface AboutDialogProps {
@@ -37,16 +47,21 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
   return (
     <Modal open={open} title="About CuePoint" onClose={onClose} closeLabel="Close">
       <div className="about-dialog">
-        <p>
-          <strong>CuePoint</strong> — Rekordbox ↔ Beatport matching and discovery.
-        </p>
-        <ul>
-          <li data-testid="about-version">Version: {appVersion(build)}</li>
-          <li data-testid="about-build">
-            Build: {build ? (build.dist ?? "not recorded") : "unknown"}
-            {build?.environment === "development" ? " (development)" : ""}
-          </li>
-        </ul>
+        <div className="about-dialog__brand">
+          <img className="about-dialog__logo" src={appIcon} alt="" draggable={false} />
+          <span className="about-dialog__name cp-text-section">CuePoint</span>
+        </div>
+        <p className="cp-modal__lead">Match your Rekordbox playlists with Beatport and find new music.</p>
+        <dl className="cp-facts">
+          <dt>Version</dt>
+          <dd data-testid="about-version">{versionWords(appVersion(build), build)}</dd>
+          {build?.environment === "development" && (
+            <>
+              <dt>Environment</dt>
+              <dd data-testid="about-environment">Development</dd>
+            </>
+          )}
+        </dl>
       </div>
     </Modal>
   );

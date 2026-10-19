@@ -18,18 +18,12 @@
 }
 
 .log-viewer-dialog__auto {
-  display: flex;
-  gap: var(--space-xs);
-  align-items: center;
   font-size: var(--text-body);
   color: var(--fg-primary);
 }
 
-.log-viewer-dialog__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  align-items: center;
+.log-viewer-dialog__clear {
+  margin-left: auto;
 }
 
 .log-viewer-dialog__output {

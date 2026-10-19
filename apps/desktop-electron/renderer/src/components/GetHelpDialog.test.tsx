@@ -114,7 +114,7 @@ describe("GetHelpDialog across sessions", () => {
     view.rerender(<GetHelpDialog open onClose={() => {}} />);
     await act(async () => finish({ canceled: false, bundle_path: "/tmp/help.zip" }));
 
-    expect(screen.queryByText("Help file saved.")).toBeNull();
+    expect(screen.queryByText("Help file saved")).toBeNull();
   });
 });
 
@@ -195,7 +195,7 @@ describe("GetHelpDialog help file", () => {
 
     expect(exportSupportBundle).toHaveBeenCalledWith({ include_logs: true, include_config: true, sanitize: true });
     expect(showItemInFolder).toHaveBeenCalledWith("/tmp/help.zip");
-    expect(await screen.findByText("Help file saved.")).toBeInTheDocument();
+    expect(await screen.findByText("Help file saved")).toBeInTheDocument();
   });
 
   it("still says the file was saved when showing it in the folder fails", async () => {
@@ -205,7 +205,7 @@ describe("GetHelpDialog help file", () => {
     render(<GetHelpDialog open onClose={() => {}} />);
     await userEvent.click(screen.getByRole("button", { name: "Save a help file…" }));
 
-    expect(await screen.findByText("Help file saved.")).toBeInTheDocument();
+    expect(await screen.findByText("Help file saved")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
@@ -218,7 +218,7 @@ describe("GetHelpDialog help file", () => {
 
     await waitFor(() => expect(exportSupportBundle).toHaveBeenCalled());
     expect(showItemInFolder).not.toHaveBeenCalled();
-    expect(screen.queryByText("Help file saved.")).toBeNull();
+    expect(screen.queryByText("Help file saved")).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
@@ -229,15 +229,15 @@ describe("GetHelpDialog help file", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save a help file…" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Disk is full.");
-    expect(screen.queryByText("Help file saved.")).toBeNull();
+    expect(screen.queryByText("Help file saved")).toBeNull();
   });
 
-  it("opens the log folder", async () => {
+  it("opens the logs folder", async () => {
     const getLogsDir = vi.fn().mockResolvedValue({ logs_dir: "/var/logs/cuepoint" });
     const showItemInFolder = vi.fn().mockResolvedValue(undefined);
     installBridge(true, "1.2.3", { exportSupportBundle: vi.fn(), getLogsDir, showItemInFolder });
     render(<GetHelpDialog open onClose={() => {}} />);
-    await userEvent.click(screen.getByRole("button", { name: "Open log folder" }));
+    await userEvent.click(screen.getByRole("button", { name: "Open logs folder" }));
 
     expect(showItemInFolder).toHaveBeenCalledWith("/var/logs/cuepoint");
   });
@@ -246,7 +246,7 @@ describe("GetHelpDialog help file", () => {
     installBridge(true);
     render(<GetHelpDialog open onClose={() => {}} />);
     expect(screen.queryByRole("button", { name: "Save a help file…" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Open log folder" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open logs folder" })).toBeNull();
   });
 
   it("hands Diagnostics and the log viewer to the app from the support details", async () => {
@@ -263,5 +263,41 @@ describe("GetHelpDialog help file", () => {
 
     expect(onOpenDiagnostics).toHaveBeenCalledTimes(1);
     expect(onOpenLogViewer).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("the look of Get help (C12, C118, C123)", () => {
+  afterEach(() => {
+    resetRendererReporting();
+    delete (window as { cuepoint?: unknown }).cuepoint;
+  });
+
+  it("uses the shared text box, with its label above", async () => {
+    await start(true);
+    render(<GetHelpDialog open onClose={() => {}} />);
+    const box = screen.getByRole("textbox");
+    expect(box).toHaveClass("cp-textarea");
+    expect(screen.getByLabelText("What were you doing?")).toBe(box);
+  });
+
+  it("writes the version one way, with its build", async () => {
+    installBridge(true, "1.2.3", {
+      buildInfo: async () => ({ version: "1.2.3", release: "cuepoint@1.2.3", dist: "abc1234", environment: "production" }),
+    });
+    render(<GetHelpDialog open onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByTestId("get-help-version")).toHaveTextContent("1.2.3 (build abc1234)"));
+    expect(document.querySelector("dl.cp-facts")).not.toBeNull();
+  });
+
+  it("opens the logs folder with a grey button beside the help file button", async () => {
+    installBridge(true, "1.2.3", {
+      exportSupportBundle: vi.fn(),
+      getLogsDir: vi.fn(),
+      showItemInFolder: vi.fn(),
+    });
+    render(<GetHelpDialog open onClose={() => {}} />);
+    const open = screen.getByRole("button", { name: "Open logs folder" });
+    expect(open).toHaveClass("cp-btn--secondary");
+    expect(open.parentElement).toHaveClass("cp-button-row");
   });
 });

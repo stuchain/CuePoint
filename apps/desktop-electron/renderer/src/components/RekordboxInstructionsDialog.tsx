@@ -23,7 +23,7 @@ export function RekordboxInstructionsDialog({ open, onClose }: RekordboxInstruct
       closeLabel="Close"
     >
       <div className="rekordbox-instructions">
-        <p>
+        <p className="cp-modal__lead">
           A Rekordbox file holds your collection and playlists. CuePoint imports it into its
           library, and matches tracks on Beatport from there.
         </p>
