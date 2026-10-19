@@ -40,7 +40,7 @@ import { TRACK_IDS_MIME } from "../library/collectionDrag";
 import { TRACK_DETAIL } from "../library/librarySets.testFixture";
 import { toQueueItem } from "../library/useLibraryPlayback";
 import { PrepareScreen } from "./PrepareScreen";
-import { SUGGESTION_COLUMNS, suggestionRow } from "./sourceColumns";
+import { SOURCE_LIBRARY_COLUMNS, SUGGESTION_COLUMNS, SUGGESTION_TABLE_LAYOUT_KEY, SUGGESTIONS_RANKING_TITLE, suggestionRow } from "./sourceColumns";
 import { fitText } from "./prepareSource";
 import { answered, refused } from "./prepare.testFixture";
 import {
@@ -56,11 +56,10 @@ import {
   SUGGESTIONS,
 } from "./prepareSource.testFixture";
 import { PREPARE_PATH, PREPARE_SET_ROUTE, preparePath } from "./prepareLink";
-import { EMPTY_SET_SUGGESTIONS, EMPTY_SET_SUGGESTIONS_HEADLINE, SUGGESTIONS_RANKING_NOTE, SUGGESTIONS_RANKING_TITLE } from "./SourcePanel";
+import { EMPTY_SET_SUGGESTIONS, EMPTY_SET_SUGGESTIONS_HEADLINE } from "./SourcePanel";
 import {
   LANES_STORAGE_KEY,
   SOURCE_POOL_STORAGE_KEY,
-  SUGGESTIONS_NOTE_STORAGE_KEY,
   SOURCE_TAB_STORAGE_KEY,
   TRANSITION_STORAGE_KEY,
 } from "./sourcePanelState";
@@ -334,26 +333,31 @@ describe("the insertion point", () => {
   });
 });
 
-describe("the ranking note (PRP-7)", () => {
-  it("shows the first time Suggestions show, then never again", async () => {
-    const first = renderAt(preparePath(SOURCE_IDS.build));
-    await opened();
-    const note = await within(panel()).findByText(SUGGESTIONS_RANKING_NOTE);
-    expect(note).toHaveAttribute("data-hint", SUGGESTIONS_RANKING_TITLE);
-    expect(localStorage.getItem(SUGGESTIONS_NOTE_STORAGE_KEY)).toBe("1");
-    first.unmount();
+describe("the ranking, said in the BPM Δ header (C203)", () => {
+  it("draws no note above the table, on the first visit or any other", async () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
     await suggestionRows();
-    expect(within(panel()).queryByText(SUGGESTIONS_RANKING_NOTE)).toBeNull();
+    expect(within(panel()).queryByText(/Ranked by/)).toBeNull();
+    expect(panel().querySelector(".prepare-source__note--line")).toBeNull();
+    expect(localStorage.getItem("cuepoint-prepare-suggestions-note")).toBeNull();
   });
 
-  it("is not shown again once the person has seen it", async () => {
-    localStorage.setItem(SUGGESTIONS_NOTE_STORAGE_KEY, "1");
+  it("is the BPM Δ header's hint instead", async () => {
     renderAt(preparePath(SOURCE_IDS.build));
     await opened();
     await suggestionRows();
-    expect(within(panel()).queryByText(SUGGESTIONS_RANKING_NOTE)).toBeNull();
+    const table = screen.getByRole("table", { name: "Suggestions" });
+    const header = within(table).getByText("BPM Δ").closest<HTMLElement>(".track-table__header-cell")!;
+    expect(header.getAttribute("title") ?? header.getAttribute("data-hint")).toContain(SUGGESTIONS_RANKING_TITLE);
+  });
+});
+
+describe("the source columns put Key before BPM (C70)", () => {
+  it("lists Title, Key, BPM in the Library tab and Title, Key, BPM Δ in Suggestions", () => {
+    expect(SOURCE_LIBRARY_COLUMNS.map((column) => column.id).slice(0, 3)).toEqual(["title", "key", "bpm"]);
+    expect(SUGGESTION_COLUMNS.map((column) => column.id)).toEqual(["title", "key", "bpm_delta"]);
+    expect(SUGGESTION_COLUMNS.find((column) => column.id === "bpm_delta")!.align).toBe("right");
   });
 });
 
@@ -369,7 +373,21 @@ describe("Suggestions", () => {
 
   it("draws a suggestion's Key as a Camelot chip (R4-2)", async () => {
     const rows = await between();
-    expect(rows[0].querySelector('[data-column="fit"] .key-chip')).toHaveTextContent(/^\d{1,2}[AB]$/);
+    expect(rows[0].querySelector('[data-column="key"] .key-chip')).toHaveTextContent(/^\d{1,2}[AB]$/);
+  });
+
+  it("sorts on screen by Key and by BPM Δ, and remembers the last sort (C193)", async () => {
+    const first = await between();
+    expect(first.map(titleOf)).toEqual(["Bridge Deep", "Deep Spare", "Deep Relative", "Half Time"]);
+    const table = screen.getByRole("table", { name: "Suggestions" });
+    fireEvent.click(within(table).getByRole("button", { name: "Key" }));
+    await waitFor(() => expect(rowsOf("Suggestions").map(titleOf)).toEqual(["Bridge Deep", "Deep Relative", "Deep Spare", "Half Time"]));
+    // The engine was not asked for a key it does not know.
+    expect(lastRequest()).not.toHaveProperty("sort");
+    fireEvent.click(within(table).getByRole("button", { name: "BPM Δ" }));
+    fireEvent.click(within(table).getByRole("button", { name: "BPM Δ" }));
+    await waitFor(() => expect(rowsOf("Suggestions").map(titleOf)[0]).toBe("Deep Spare"));
+    expect(localStorage.getItem(SUGGESTION_TABLE_LAYOUT_KEY)).toContain("bpm_delta");
   });
 
   it("lists what fits both sides, best first, with each side's reasons and the score", async () => {
@@ -377,17 +395,20 @@ describe("Suggestions", () => {
     expect(rows.map(titleOf)).toEqual(SUGGESTIONS.both.suggestions.map((s) => s.track.title));
     const first = rows[0];
     const [best] = SUGGESTIONS.both.suggestions;
-    // Title and one short Fit column: the tempo step and the key chip, nothing else (Round 7, 19).
+    // Title, the normal Key column and a right-aligned BPM Δ: no fit text, no dot (C78).
     const table = screen.getByRole("table", { name: "Suggestions" });
     const headers = Array.from(table.querySelectorAll(".track-table__header-cell")).map((cell) => cell.textContent?.trim());
-    expect(headers).toEqual(["Title", "Fit"]);
+    expect(headers).toEqual(["Title", "Key", "BPM Δ"]);
     const header = (name: string) => within(table).getByText(name).closest<HTMLElement>(".track-table__header-cell")!;
-    expect(header("Fit")).toHaveAttribute("title", expect.stringContaining("out of 100"));
-    for (const gone of ["before", "after", "score", "bpm", "key", "artist"]) {
+    expect(header("BPM Δ")).toHaveAttribute("title", expect.stringContaining("out of 100"));
+    for (const gone of ["fit", "before", "after", "score", "bpm", "artist"]) {
       expect(table.querySelector(`[data-column="${gone}"]`)).toBeNull();
     }
-    const fit = first.querySelector('[data-column="fit"]')!;
-    expect(fit.textContent).toMatch(/^\+1 BPM · \d{1,2}[AB]$/);
+    expect(first.querySelector('[data-column="key"]')!.textContent).toMatch(/^\d{1,2}[AB]$/);
+    const fit = first.querySelector('[data-column="bpm_delta"]')!;
+    expect(fit.textContent).toBe("+1");
+    expect(fit.className).toContain("track-table__cell--right");
+    expect(fit.textContent).not.toMatch(/BPM|·/);
     // The full reason stays in the hover hint: each side in playing order, with the score.
     expect(fit.querySelector("[data-hint]")).toHaveAttribute(
       "data-hint",
@@ -409,13 +430,13 @@ describe("Suggestions", () => {
     );
   });
 
-  it("takes the Fit's tempo step from the side a list is fitted to, and says nothing in common", () => {
-    const fitColumn = SUGGESTION_COLUMNS.find((column) => column.id === "fit")!;
+  it("takes the BPM Δ from the side a list is fitted to, and says nothing in common", () => {
+    const fitColumn = SUGGESTION_COLUMNS.find((column) => column.id === "bpm_delta")!;
     const base = SUGGESTIONS.both.suggestions[0];
     const oneSide = suggestionRow({ ...base, before: null })!;
-    expect(fitColumn.text!(oneSide)).toMatch(/^\+1 BPM · /);
+    expect(fitColumn.text!(oneSide)).toBe("+1");
     const none = suggestionRow({ ...base, before: { score: 12, reasons: [] }, after: null })!;
-    expect(fitColumn.text!(none)).not.toMatch(/BPM/);
+    expect(fitColumn.text!(none)).toBe("");
     const { container } = render(<>{fitColumn.render(none)}</>);
     expect(container.querySelector("[data-hint]")).toHaveAttribute(
       "data-hint",

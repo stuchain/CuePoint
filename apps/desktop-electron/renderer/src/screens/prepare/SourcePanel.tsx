@@ -73,10 +73,8 @@ import {
   type SuggestionRow,
 } from "./sourceColumns";
 import {
-  hasSeenSuggestionsNote,
   loadSourcePool,
   loadSourceTab,
-  saveSeenSuggestionsNote,
   saveSourcePool,
   saveSourceTab,
   type SourceTab,
@@ -87,13 +85,6 @@ import { useSetSuggestions } from "./useSetSuggestions";
 export const EMPTY_SET_SUGGESTIONS_HEADLINE = "Suggestions need a track to fit against";
 const EMPTY_SET_SUGGESTIONS_HELP = "Add the first one from the Library tab";
 export const EMPTY_SET_SUGGESTIONS = `${EMPTY_SET_SUGGESTIONS_HEADLINE}. ${EMPTY_SET_SUGGESTIONS_HELP}.`;
-
-/** The one line that says what Suggestions are ranked by, the first time they show (PRP-7). */
-export const SUGGESTIONS_RANKING_TITLE =
-  "Ranked by how well each track follows the one before and leads into the one after: tempo, key, genre, label and artist.";
-
-/** The same on one short line (DEC-112 gives the panel no more); the sentence is its title. */
-export const SUGGESTIONS_RANKING_NOTE = "Ranked by fit with both neighbors";
 
 /** How long the search box waits for typing to stop. */
 const SEARCH_DELAY_MS = 200;
@@ -202,12 +193,6 @@ export function SourcePanel(props: SourcePanelProps) {
   const pointTitle = [pointText(words), tab === "suggestions" ? pointDetail : undefined]
     .filter(Boolean)
     .join(" ");
-  // Suggestions' first showing explains the ranking, once (PRP-7).
-  const [explain] = useState(() => !hasSeenSuggestionsNote());
-  const explaining = explain && tab === "suggestions" && words.kind !== "empty";
-  useEffect(() => {
-    if (explaining) saveSeenSuggestionsNote();
-  }, [explaining]);
   const body = useRef<HTMLDivElement>(null);
   const pickTracks = () => body.current?.querySelector<HTMLElement>('[data-active="true"] [role="table"]')?.focus();
 
@@ -258,7 +243,6 @@ export function SourcePanel(props: SourcePanelProps) {
               onPicked={pickSuggestions}
               onPointDetail={setPointDetail}
               onOpenLibrary={() => chooseTab("library")}
-              explain={explaining}
             />
           </div>
         )}
@@ -330,11 +314,9 @@ function SuggestionsTab({
   onPicked,
   onPointDetail,
   onOpenLibrary,
-  explain,
 }: TabProps & {
   onOpenLibrary: () => void;
   onPointDetail: (detail: string | undefined) => void;
-  explain: boolean;
 }) {
   const gap = gapKey(point);
   // Each side's own list belongs to the gap it was asked for.
@@ -427,9 +409,6 @@ function SuggestionsTab({
           <LinkButton onClick={() => setSide(null)}>Fit both sides</LinkButton>
         </p>
       )}
-      {explain && <p className="prepare-source__note prepare-source__note--line" data-hint={SUGGESTIONS_RANKING_TITLE}>
-          {SUGGESTIONS_RANKING_NOTE}
-        </p>}
       {range && <p className="prepare-source__note">{range}</p>}
       {unused.notes.map((note) => (
         <p key={note} className="prepare-source__note">
@@ -449,6 +428,8 @@ function SuggestionsTab({
         onColumnMove={layout.move}
         source={source}
         loadedRows={loadedRows}
+        sort={layout.sort ?? undefined}
+        onSortChange={layout.setSort}
         resetKey={`${gap}|${pool}|${against ?? ""}`}
         emptyState={empty}
         onInsert={onInsert}

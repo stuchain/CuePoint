@@ -955,8 +955,20 @@ body.prepare-resizing {
   text-overflow: ellipsis;
 }
 
-/* A Suggestions row's Fit: the tempo step and the key chip on one line. */
-.prepare-source__fit {
+/* A Suggestions row's title: the in-Set mark beside a text box that ends in "..." (C64). */
+.prepare-source__title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.prepare-source__title > .prepare-source__in-set {
+  flex: none;
+}
+
+/* The BPM Δ figure: right-aligned by its column, in tabular figures so the signs line up (C78). */
+.prepare-source__delta {
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -969,12 +981,6 @@ body.prepare-resizing {
   margin: 0;
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
-}
-
-.prepare-source__note--line {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .prepare-source__table {

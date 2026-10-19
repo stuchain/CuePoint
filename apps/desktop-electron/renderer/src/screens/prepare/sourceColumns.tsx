@@ -1,25 +1,27 @@
 /**
  * The source panel's columns (PREP-11).
  *
- * The panel is narrow at the default window size, so Suggestions has two
- * columns and never scrolls sideways.
+ * The panel is narrow at the default window size, so Suggestions has three
+ * short columns and never scrolls sideways.
  *
  * A suggestion and a library row are library rows, so title, artist, BPM and
  * key are the Library's own cells, effective values and override marks
  * included: a track reads the same in the panel as in the Set beside it.
  *
- * **Suggestions** are Title and one short Fit column (the tempo step and the
- * track's key chip, "±0 BPM · 8A"); the reasons for each side, in playing
- * order (`inPlayOrder`), and the score out of 100 are the Fit cell's hover
- * hint, and a track already in the Set is marked on its title. The engine's
- * order is kept: nothing sorts it (DISCOVER-11's rule).
+ * **Suggestions** are Title, the normal Key chip column and a right-aligned **BPM Δ** (the
+ * tempo step, signed, in tabular figures: C78, C70). The reasons for each side, in playing order
+ * (`inPlayOrder`), and the score out of 100 are the BPM Δ cell's hover hint, and a track already
+ * in the Set is marked on its title. The engine's order is kept until a heading is clicked:
+ * Key and BPM Δ sort the loaded rows on screen, and the last sort is remembered (C193); the
+ * engine is never asked for them.
  *
  * **Library** rows sort by any column the engine sorts by, as the Library's
  * table does (LIBUI-01).
  */
 import type { LibraryTrackRow, SetSuggestion, SetSuggestionSide, SetSuggestionSideName } from "../../api/cuepointBridge.types";
 import { PixelIcon } from "../../components/PixelIcon";
-import { KeyChip } from "../../components/wheel/KeyChip";
+import { camelotOf } from "../../components/wheel/keyColour";
+import { parseCode } from "../../components/wheel/camelot";
 import type { TrackColumnDef } from "../../components/table";
 import { reasonTokens, tempoDeltaText } from "../discover/reasonTokens";
 import { reasonsText } from "../discover/similarColumns";
@@ -33,8 +35,8 @@ export type SuggestionRow = LibraryTrackRow & { id: number; suggestion: SetSugge
 /** A library row with the id every row the engine sends has. */
 type SourceLibraryRow = LibraryTrackRow;
 
-// The second layout: Title and Fit only. A layout saved under the first key lists columns that are gone.
-export const SUGGESTION_TABLE_LAYOUT_KEY = "cuepoint-prepare-suggestions-layout-2";
+// The third layout: Title, Key and BPM Δ. A layout saved under an earlier key lists a Fit column that is gone.
+export const SUGGESTION_TABLE_LAYOUT_KEY = "cuepoint-prepare-suggestions-layout-3";
 export const SOURCE_LIBRARY_TABLE_LAYOUT_KEY = "cuepoint-prepare-library-layout";
 
 function libraryColumn(id: string): TrackColumnDef<LibraryTrackRow> {
@@ -47,6 +49,10 @@ function unsorted<Row extends LibraryTrackRow>(column: TrackColumnDef<LibraryTra
   const { sortKey: _engineOrder, ...rest } = column;
   return rest as TrackColumnDef<Row>;
 }
+
+/** What Suggestions are ranked by: the BPM Δ header's hint, where the one-time note used to be (C203). */
+export const SUGGESTIONS_RANKING_TITLE =
+  "Ranked by how well each track follows the one before and leads into the one after: tempo, key, genre, label and artist.";
 
 /** One side's reasons as a sentence: the hint, the copied text and the hint. */
 function sideText(side: SetSuggestionSide | null, name: SetSuggestionSideName): string {
@@ -69,18 +75,27 @@ function suggestionSummary(row: SuggestionRow): string {
   return lines.join(" · ");
 }
 
-/** The tempo step a suggestion makes, from the side the list is fitted to ("±0 BPM"), or "". */
-function tempoStep(row: SuggestionRow): string {
+/** The tempo step a suggestion makes, from the side the list is fitted to, or null. */
+function tempoOf(row: SuggestionRow): ReturnType<typeof reasonTokens>["tempo"] {
   const { before, after } = row.suggestion;
   const side = before ?? after;
-  if (!side) return "";
+  if (!side) return null;
   const name: SetSuggestionSideName = before ? "before" : "after";
-  const { tempo } = reasonTokens(inPlayOrder(side.reasons, name));
-  if (tempo === null) return "";
-  return typeof tempo === "string" ? tempoDeltaText(tempo) : `${tempoDeltaText(tempo)} BPM`;
+  return reasonTokens(inPlayOrder(side.reasons, name)).tempo;
 }
 
-/** The full reason behind the Fit cell: the score and each side's reasons, as its hover hint. */
+/** The tempo step as the BPM Δ cell says it: "+1", "−2", "±0", "0.5×", or "". */
+function tempoStep(row: SuggestionRow): string {
+  return tempoDeltaText(tempoOf(row));
+}
+
+/** Where a key sits on the wheel as one number, so Key sorts around the wheel and A before B (C193). */
+function keyOrder(row: SuggestionRow): number | null {
+  const place = parseCode(camelotOf(effectiveText(row, "key")) ?? "");
+  return place ? place.number * 2 + (place.letter === "B" ? 1 : 0) : null;
+}
+
+/** The full reason behind the BPM Δ cell: the score and each side's reasons, as its hover hint. */
 function fitHint(row: SuggestionRow): string {
   const { before, after, score } = row.suggestion;
   const lines = [`Fit ${fitText(score)}`];
@@ -90,9 +105,9 @@ function fitHint(row: SuggestionRow): string {
 }
 
 /**
- * Suggestions are Title and one short Fit: the tempo step and the track's own key as the usual key
- * chip. The panel is a narrow column, so the reasons (and the other columns) live in the hover
- * hint and the Title's summary; nothing scrolls sideways.
+ * Suggestions are Title, the track's own key as the usual key chip, and the tempo step as a
+ * right-aligned BPM Δ. The panel is a narrow column, so the reasons live in the hover hint and the
+ * Title's summary; nothing scrolls sideways.
  */
 export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
   {
@@ -102,42 +117,51 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
     render: (row) => {
       const inSet = inSetText(row.suggestion.in_set);
       return (
-        <span data-hint={suggestionSummary(row)}>
+        <span className="prepare-source__title" data-hint={suggestionSummary(row)}>
           {inSet && (
             <span className="prepare-source__in-set" data-hint={inSet} aria-label={inSet}>
               <PixelIcon name="repeat-after" className="cp-pixel-icon--text cp-pixel-icon--before" />
             </span>
           )}
-          {row.title}
+          <span className="track-table__cell-text" data-cut-hint="">
+            {row.title}
+          </span>
         </span>
       );
     },
     text: (row) => row.title,
   },
   {
-    id: "fit",
-    header: "Fit",
-    hint: "How well this track fits the gap: the tempo step and its key. Hover a row for the reasons and the score out of 100.",
-    minWidthPx: 96,
-    defaultWidthPx: 112,
+    ...unsorted<SuggestionRow>(libraryColumn("key")),
+    accessor: keyOrder,
+  },
+  {
+    id: "bpm_delta",
+    header: "BPM Δ",
+    hint: `The tempo step from the neighbor: −2, +3 or ±0, and a mark for half or double. ${SUGGESTIONS_RANKING_TITLE} Hover a row for the reasons and the score out of 100.`,
+    minWidthPx: 56,
+    defaultWidthPx: 64,
+    align: "right",
+    accessor: (row) => {
+      const tempo = tempoOf(row);
+      return tempo !== null && typeof tempo !== "string" ? tempo.delta : null;
+    },
     render: (row) => {
       const step = tempoStep(row);
       return (
-        <span className="prepare-source__fit" data-hint={fitHint(row)}>
+        <span className="prepare-source__delta" data-hint={fitHint(row)}>
           {step}
-          {step && " · "}
-          <KeyChip value={effectiveText(row, "key")} />
         </span>
       );
     },
-    text: (row) => [tempoStep(row), effectiveText(row, "key")].filter(Boolean).join(" · "),
+    text: tempoStep,
   },
 ];
 
 export const SOURCE_LIBRARY_COLUMNS: readonly TrackColumnDef<SourceLibraryRow>[] = [
   { ...libraryColumn("title"), defaultWidthPx: 170 },
-  libraryColumn("bpm"),
   libraryColumn("key"),
+  libraryColumn("bpm"),
   libraryColumn("artist"),
   libraryColumn("genre"),
   libraryColumn("duration_seconds"),
