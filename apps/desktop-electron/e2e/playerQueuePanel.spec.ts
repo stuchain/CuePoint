@@ -80,7 +80,8 @@ test("the queue panel shows the real queue and edits it", async () => {
     expect(Math.abs(mainBox!.height - mainBefore!.height)).toBeLessThanOrEqual(1);
     await expect(panel.getByRole("option")).toHaveCount(FIXTURES.length);
     await expect(panel.getByText("Queued 0")).toBeVisible();
-    await expect(panel.getByRole("option").first()).toHaveAttribute("aria-selected", "true");
+    // The playing row is marked as current; a selection is the user's own (C187).
+    await expect(panel.getByRole("option").first()).toHaveAttribute("aria-current", "true");
 
     // Reorder without a mouse, and check main agrees.
     await panel.getByRole("option").nth(3).focus();
