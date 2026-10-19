@@ -622,12 +622,9 @@ describe("the empty state", () => {
     );
     expect(within(first).getByRole("button", { name: "Import a Rekordbox file…" })).toBeInTheDocument();
     expect(within(first).getByRole("button", { name: "How do I get one?" })).toBeInTheDocument();
-    // The header keeps its own import button, grey; First steps' is the one violet one (R7-9).
-    const imports = screen.getAllByRole("button", { name: "Import a Rekordbox file…" });
-    expect(imports).toHaveLength(2);
+    // One Import on the page: First steps' violet one; the header shows none beside it (C146).
+    expect(screen.getAllByRole("button", { name: "Import a Rekordbox file…" })).toHaveLength(1);
     expect(within(first).getByRole("button", { name: "Import a Rekordbox file…" })).toHaveClass("cp-btn--primary");
-    const header = imports.find((button) => !first.contains(button))!;
-    expect(header).toHaveClass("cp-btn--secondary");
   });
 
   it("the first step's Import… runs the import", async () => {

@@ -1950,7 +1950,7 @@ export function LibraryScreen({
       <div className="screen screen--stack screen--scroll library-screen">
         <LibraryHeader
           summary={summary}
-          importQuiet={!firstStepsDone()}
+          importInFirstSteps={!firstStepsDone()}
           busy={busy}
           busyLabel={busy ? BUSY_LABEL[busy] : null}
           onCheck={() => void handleCheck()}

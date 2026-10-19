@@ -181,13 +181,11 @@ test.describe("The Library page (LIBRARY-11)", () => {
       await openLibrary(window);
 
       await expect(window.getByText(/Export Collection in xml format/i)).toBeVisible();
-      // Two buttons carry the name now: the header's and the First steps list's.
+      // One button carries the name: First steps' violet one; the header shows none beside it (C146).
       await expect(
         window.getByRole("list", { name: "First steps" }).getByRole("button", { name: "Import a Rekordbox file…" }),
       ).toBeVisible();
-      await expect(
-        window.locator(".library-header").getByRole("button", { name: "Import a Rekordbox file…" }),
-      ).toBeVisible();
+      await expect(window.getByRole("button", { name: "Import a Rekordbox file…" })).toHaveCount(1);
       await expect(window.getByRole("button", { name: "How do I get one?" })).toBeVisible();
     } finally {
       await app.close();

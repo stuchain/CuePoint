@@ -446,14 +446,14 @@ describe("the source line (K9)", () => {
     );
   });
 
-  it("is the one violet Import before the first import, grey while First steps has its own (R7-9)", () => {
+  it("is the one violet Import before the first import, and none while First steps has its own (C146)", () => {
     const { unmount } = render(
       <LibraryHeader summary={null} busy={null} busyLabel={null} {...HANDLERS()} />,
     );
     expect(screen.getByRole("button", { name: "Import a Rekordbox file…" })).toHaveClass("cp-btn--primary");
     unmount();
-    render(<LibraryHeader summary={null} importQuiet busy={null} busyLabel={null} {...HANDLERS()} />);
-    expect(screen.getByRole("button", { name: "Import a Rekordbox file…" })).toHaveClass("cp-btn--secondary");
+    render(<LibraryHeader summary={null} importInFirstSteps busy={null} busyLabel={null} {...HANDLERS()} />);
+    expect(screen.queryByRole("button", { name: "Import a Rekordbox file…" })).toBeNull();
   });
 
   it("never calls the Rekordbox export a collection", () => {

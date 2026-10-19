@@ -52,8 +52,8 @@ interface LibraryHeaderProps {
   scopeTrail?: readonly string[];
   /** A folder is selected: its facts line says what it holds instead of "0 tracks" (R7-5). */
   folder?: { count: number; noun: "playlist" | "Collection" } | null;
-  /** First steps is showing its own violet Import, so this one is grey (R7-9). */
-  importQuiet?: boolean;
+  /** First steps is showing its own violet Import, so the header shows none: one Import, not two (C146). */
+  importInFirstSteps?: boolean;
   /** What the scope holds; null while it is being read. */
   facts?: LibraryQuickFacets | null;
   /** The scope's track count as far as the page already knows it. */
@@ -190,7 +190,7 @@ export function LibraryHeader({
   scopeName = "All tracks",
   scopeTrail = [],
   folder = null,
-  importQuiet = false,
+  importInFirstSteps = false,
   facts = null,
   fallbackCount = 0,
   busy,
@@ -212,9 +212,11 @@ export function LibraryHeader({
         <ScreenHeader
           title="Library"
           actions={
-            <Button variant={importQuiet ? "secondary" : "primary"} onClick={onImport} disabled={disabled}>
-              {busy === "importing" ? busyLabel : "Import a Rekordbox file…"}
-            </Button>
+            importInFirstSteps ? undefined : (
+              <Button variant="primary" onClick={onImport} disabled={disabled}>
+                {busy === "importing" ? busyLabel : "Import a Rekordbox file…"}
+              </Button>
+            )
           }
         />
       </div>
