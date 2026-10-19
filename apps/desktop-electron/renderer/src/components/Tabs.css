@@ -71,7 +71,9 @@
   font-weight: var(--control-font-weight);
 }
 
-.cp-tabs--sub :where(.cp-tabs__tab + .cp-tabs__tab) {
+/* Strong enough to beat the transparent border above, so the hairline really shows (C260); the
+   picked part keeps its own accent edge. */
+.cp-tabs--sub .cp-tabs__tab + .cp-tabs__tab:not(.cp-tabs__tab--active) {
   border-left-color: var(--border-control);
 }
 

@@ -45,8 +45,10 @@ describe("Tabs", () => {
     expect(sub).toMatch(/border:\s*var\(--control-border-width\) solid var\(--border-control\)/);
     expect(sub).not.toMatch(/border-bottom:\s*0/);
     expect(sub).toMatch(/width:\s*fit-content/);
-    // A hairline between the parts, so neighbours never run together.
-    expect(css).toMatch(/\.cp-tabs--sub :where\(\.cp-tabs__tab \+ \.cp-tabs__tab\)\s*\{[^}]*border-left-color:/);
+    // A hairline between the parts, so neighbours never run together; not in a zero-weight
+    // :where(), which the transparent border on every part outweighed, so it never showed (C260).
+    expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab \+ \.cp-tabs__tab:not\(\.cp-tabs__tab--active\)\s*\{[^}]*border-left-color:/);
+    expect(css).not.toMatch(/:where\(\.cp-tabs__tab \+ \.cp-tabs__tab\)/);
     expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab\s*\{[^}]*padding:\s*0 var\(--space-sm\)/);
     expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab--active\s*\{[^}]*background:\s*var\(--bg-selected\)/);
     expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab\s*\{[^}]*font-size:\s*var\(--font-size-xs\)/);

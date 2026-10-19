@@ -117,14 +117,16 @@
   overflow-wrap: anywhere;
 }
 
-/* Sub-tabs (T8) wrap rather than clip at the Inspector's narrowest, and give up some padding so
-   four of them share a row where they can. */
+/* Sub-tabs (T8): one framed strip as wide as the panel, its four parts sharing the width, so they
+   are not squeezed into a short box and each sits apart from the next (C260). They wrap rather
+   than clip at the Inspector's narrowest. */
 .cp-track-detail > .cp-tabs {
   flex-wrap: wrap;
-  gap: var(--space-xs);
+  width: 100%;
 }
 
 .cp-track-detail > .cp-tabs .cp-tabs__tab {
+  flex: 1 1 auto;
   padding: 0 var(--space-sm);
 }
 

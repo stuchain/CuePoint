@@ -23,3 +23,11 @@ describe("Track details tabs share Overview's flat look (round 8)", () => {
     expect(rule(".cp-track-actions")).not.toMatch(/width:\s*100%/);
   });
 });
+
+describe("Track details sub-tabs (C260)", () => {
+  it("are one strip as wide as the panel, its parts sharing the width, not a short squeezed box", () => {
+    expect(rule(".cp-track-detail > .cp-tabs")).toMatch(/width:\s*100%/);
+    expect(rule(".cp-track-detail > .cp-tabs")).not.toMatch(/gap/);
+    expect(rule(".cp-track-detail > .cp-tabs .cp-tabs__tab")).toMatch(/flex:\s*1 1 auto/);
+  });
+});
