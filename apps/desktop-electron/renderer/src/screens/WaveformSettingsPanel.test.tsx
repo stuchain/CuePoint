@@ -208,11 +208,15 @@ describe("the page's words (SET-6)", () => {
     expect(at("waveform-analysis-state")).toBeLessThan(at("Colors"));
     expect(at("Colors")).toBeLessThan(at("waveform-preview"));
     expect(at("waveform-preview")).toBeLessThan(at("Disk space"));
-    const disk = container.querySelector("details")!;
-    expect(disk).not.toHaveAttribute("open");
-    expect(disk.querySelector("summary")).toHaveTextContent("Disk space");
-    expect(disk).toHaveTextContent("Waveforms take 240.3 MB.");
-    expect(disk).toContainElement(screen.getByRole("button", { name: "Delete waveform data…" }));
+    const fold = screen.getByRole("button", { name: "Disk space" });
+    expect(fold).toHaveAttribute("aria-expanded", "false");
+    expect(container.querySelector("details")).toBeNull();
+    // Closed, the body is not drawn at all, so it leaves no gap (C117).
+    expect(screen.queryByRole("button", { name: "Delete waveform data…" })).toBeNull();
+    await userEvent.click(fold);
+    expect(fold).toHaveAttribute("aria-expanded", "true");
+    expect(container.querySelector(".cp-waveform-settings__disk")).toHaveTextContent("Waveforms take 240.3 MB.");
+    expect(screen.getByRole("button", { name: "Delete waveform data…" })).toBeInTheDocument();
   });
 
   it("says there is nothing to analyze yet, and links to the Clean page", async () => {

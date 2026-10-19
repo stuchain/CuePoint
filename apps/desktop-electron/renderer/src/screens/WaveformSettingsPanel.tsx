@@ -92,6 +92,7 @@ export function WaveformSettingsPanel() {
   const colorsId = useId();
   const [confirming, setConfirming] = useState(false);
   const [diskOpen, setDiskOpen] = useState(false);
+  const diskId = useId();
   const [message, setMessage] = useState<string | null>(null);
   const [saved, markSaved] = useSavedSignal();
   const { status } = analysis;
@@ -207,28 +208,33 @@ export function WaveformSettingsPanel() {
         <WaveformPreview />
 
         {analysis.supported ? (
-          <details
-            className="cp-waveform-settings__disk"
-            onToggle={(event) => setDiskOpen(event.currentTarget.open)}
-          >
-            <summary className="cp-waveform-settings__fold">
+          <div className="cp-waveform-settings__disk">
+            <button
+              type="button"
+              className="cp-waveform-settings__fold"
+              aria-expanded={diskOpen}
+              aria-controls={diskId}
+              onClick={() => setDiskOpen((open) => !open)}
+            >
               <DisclosureArrow open={diskOpen} />
               Disk space
-            </summary>
-            <div className="cp-waveform-settings__delete">
-              <SettingsHint>{status ? `Waveforms take ${sizeWords(status.store_bytes)}.` : null}</SettingsHint>
-              <Button
-                variant="danger"
-                disabled={analysis.busy || !status}
-                onClick={() => {
-                  setMessage(null);
-                  setConfirming(true);
-                }}
-              >
-                Delete waveform data…
-              </Button>
-            </div>
-          </details>
+            </button>
+            {diskOpen ? (
+              <div id={diskId} className="cp-waveform-settings__delete">
+                <SettingsHint>{status ? `Waveforms take ${sizeWords(status.store_bytes)}.` : null}</SettingsHint>
+                <Button
+                  variant="danger"
+                  disabled={analysis.busy || !status}
+                  onClick={() => {
+                    setMessage(null);
+                    setConfirming(true);
+                  }}
+                >
+                  Delete waveform data…
+                </Button>
+              </div>
+            ) : null}
+          </div>
         ) : null}
 
         {message ? <SettingsStatus role="status" className="cp-waveform-settings__message">{message}</SettingsStatus> : null}
