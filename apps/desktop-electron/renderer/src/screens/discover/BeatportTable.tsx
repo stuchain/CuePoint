@@ -19,6 +19,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "../../components/Button";
+import { CloseButton } from "../../components/CloseButton";
 import { Hint } from "../../components/Hint";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
 import {
@@ -30,7 +31,7 @@ import {
 } from "../../components/table";
 import type { TrackTableSource } from "../../components/table";
 import { stopAllPreviews } from "../../components/preview/useBeatportPreview";
-import { pluralize } from "../library/libraryFormat";
+import { countNoun, formatCount } from "../../format/counts";
 import { PreviewButton } from "./PreviewButton";
 import { trackName } from "./discoverFormat";
 import type { BeatportAction, BeatportActionId } from "./beatportActions";
@@ -49,8 +50,16 @@ interface BeatportTableProps<Row> {
   onAction: (id: BeatportActionId) => void;
   /** What the rows are, for a screen reader and the toolbar. */
   label: string;
-  /** Rows the table shows, when nothing is selected: "146 tracks". */
+  /**
+   * The one count of the table, at the right end of its bar (C224): "146 tracks", or a longer line
+   * the page needs ("40 tracks · 12 already in your library (hidden)"). While rows are selected
+   * it reads "3 selected" instead, with the close mark that clears them.
+   */
   summary: string;
+  /** Before the filters and actions, at the left of the bar: a way back to the cards. */
+  lead?: ReactNode;
+  /** The table's filters, after the lead and before the actions (C234). */
+  filters?: ReactNode;
   emptyState: ReactNode;
   resetKey: string;
   /** Anything the toolbar shows before the actions: a filter, a toggle. */
@@ -69,6 +78,8 @@ export function BeatportTable<Row extends { beatport_track_id: number; title: st
   onAction,
   label,
   summary,
+  lead,
+  filters,
   emptyState,
   resetKey,
   busy = false,
@@ -133,10 +144,9 @@ export function BeatportTable<Row extends { beatport_track_id: number; title: st
 
   return (
     <div className="discover-table">
-      <div className="discover-table__actions" role="toolbar" aria-label={`${label}: actions`}>
-        <span className="discover-table__count" role="status">
-          {selection.count > 0 ? `${pluralize(selection.count, "track")} selected` : summary}
-        </span>
+      <div className="cp-toolbar discover-table__actions" role="toolbar" aria-label={`${label}: actions`}>
+        {lead}
+        {filters}
         {actions.map((action) => (
           <span key={action.id} className="discover-table__action">
             <Hint text={action.reason ?? undefined}>
@@ -151,10 +161,11 @@ export function BeatportTable<Row extends { beatport_track_id: number; title: st
             {action.note && <span className="discover-note">{action.note}</span>}
           </span>
         ))}
+        <span className="cp-count" role="status">
+          {selection.count > 0 ? `${formatCount(selection.count)} selected` : summary}
+        </span>
         {selection.count > 0 && (
-          <Button variant="quiet" onClick={selection.clear}>
-            Clear
-          </Button>
+          <CloseButton aria-label="Clear selection" onClick={selection.clear} />
         )}
       </div>
 
@@ -194,7 +205,7 @@ export function BeatportTable<Row extends { beatport_track_id: number; title: st
         <TrackContextMenu
           x={menu.x}
           y={menu.y}
-          label={`${pluralize(Math.max(selection.count, 1), "track")} from Beatport`}
+          label={`${countNoun(Math.max(selection.count, 1), "track")} from Beatport`}
           items={actions.map((action) => ({
             id: action.id,
             label: action.label,

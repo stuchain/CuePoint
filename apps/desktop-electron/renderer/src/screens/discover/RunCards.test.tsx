@@ -172,7 +172,7 @@ describe("a dig's results as rows of cards", () => {
     fireEvent.click(within(row).getByRole("button", { name: "See all" }));
     fireEvent.click(within(row).getByRole("checkbox", { name: "Tick Chart 2" }));
     fireEvent.click(within(row).getByRole("button", { name: /^Chart Chart 3,/ }));
-    fireEvent.click(await screen.findByRole("button", { name: "All results" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Back to all results" }));
     const back = await screen.findByRole("region", { name: "Your artists' charts" });
     expect(within(back).getAllByRole("listitem")).toHaveLength(8);
     expect(within(back).getByRole("checkbox", { name: "Tick Chart 2" })).toBeChecked();
@@ -385,7 +385,7 @@ describe("opening a card, and Everything", () => {
     );
     expect(await screen.findByRole("table", { name: "Mara Veil" })).toBeInTheDocument();
     expect(bridge.getDiscoveryRunTracks).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "All results" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back to all results" }));
     expect(await screen.findByRole("region", { name: "Your labels" })).toBeInTheDocument();
   });
 
@@ -394,7 +394,7 @@ describe("opening a card, and Everything", () => {
     renderRun();
     fireEvent.click(await card("Label NIGHTFALL-AUDIO, 3 new"));
     await screen.findByRole("table", { name: "NIGHTFALL-AUDIO" });
-    fireEvent.click(await screen.findByRole("button", { name: "Make a Beatport playlist…" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add to a Beatport playlist…" }));
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Make playlist" }));
     await waitFor(() =>
@@ -416,7 +416,11 @@ describe("opening a card, and Everything", () => {
     expect(within(table).getByText("From")).toBeInTheDocument();
     expect(bridge.getDiscoveryRunTracks).toHaveBeenCalled();
     expect(bridge.getDiscoveryGroupTracks).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "All results" }));
+    // One bar over the table holds the filter, the actions and the count (C224).
+    const bars = screen.getAllByRole("toolbar", { name: /: actions$/ });
+    expect(bars).toHaveLength(1);
+    expect(within(bars[0]!).getByText("Hide tracks already in your library")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Back to all results" }));
     expect(await screen.findByRole("region", { name: "Your artists' charts" })).toBeInTheDocument();
   });
 
@@ -428,7 +432,7 @@ describe("opening a card, and Everything", () => {
     });
     renderRun();
     expect(await screen.findByRole("table", { name: "Tracks this dig found" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "All results" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Back to all results" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Your labels" })).not.toBeInTheDocument();
   });
 

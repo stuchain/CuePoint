@@ -41,45 +41,18 @@
 
 /* ---------------------------------------------------------------- notices */
 
-.discover-banner {
-  /* The usual 12 px under the tabs (and between banners). */
-  margin-top: var(--space-md);
+/* Beatport's state and a playlist's outcome: Notices, one under the other, 12 apart and 12 above
+   whatever the tab shows (C31). */
+.discover-screen__notices {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-md);
-  min-height: var(--toolbar-height);
-  max-height: calc(40px * var(--scale));
-  padding: var(--toolbar-padding);
-  border-bottom: var(--divider);
-  background: var(--bg-panel-alt);
-  overflow: hidden;
+  margin-bottom: var(--space-md);
 }
 
-/* A token to fix is the one thing on the page a person has to act on before
-   a run can start, so it is marked rather than muted. */
-.discover-banner--warning {
-  border-left: var(--border-width-heavy) solid var(--accent-warning);
-}
-
-.discover-banner > [role="alert"] {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.discover-banner > .cp-btn {
-  flex: none;
-  white-space: nowrap;
-}
-
-.discover-banner__text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--font-size-xs);
+/* The lookup notice, at the top of Results: 12 above the list and the open dig. */
+.discover-runs-view__lookup {
+  margin-bottom: var(--space-md);
 }
 
 .discover-note {
@@ -259,8 +232,7 @@
 /* ---------------------------------------------------------------- new run */
 
 .discover-new {
-  /* 12 from the tabs (or the banner under them) to the form; the heading that used to sit here is gone. */
-  padding-top: var(--space-md);
+  /* The header leaves 12 under its rule, and the notices 12 under themselves: no padding of its own (C31). */
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -465,20 +437,7 @@
   min-height: 100%;
 }
 
-/* A tab's toolbar line, laid out one way (area 67): the count at the left in the data face, the
-   options and actions after it at the right. */
-.discover-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  /* Centred, so "6 found" sits on the buttons' middle, not below it; 32 high, 8 between controls. */
-  align-items: center;
-  gap: var(--space-md);
-  min-height: var(--toolbar-height);
-  /* The toolbar's 6 above and below; the page gutter is the sides. */
-  padding: var(--space-sm) 0;
-  border-bottom: var(--divider);
-}
-
+/* "Hide tracks already in your library", in a table's bar. */
 .discover-toolbar__check {
   display: flex;
   align-items: center;
@@ -486,25 +445,6 @@
   align-self: center;
   font-size: var(--font-size-xs);
   cursor: pointer;
-}
-
-.discover-toolbar__hidden {
-  align-self: center;
-  font-size: var(--font-size-xs);
-}
-
-/* The Beatport page's "saved earlier" note, after its count. */
-.discover-toolbar__freshness {
-  margin-left: var(--space-md);
-}
-
-/* The count: first, at the left, and what pushes everything else to the right. */
-.discover-toolbar__count {
-  margin-right: auto;
-  color: var(--fg-muted);
-  font-family: var(--font-data);
-  font-size: var(--text-body);
-  font-variant-numeric: tabular-nums;
 }
 
 /* Grows from nothing to fill what is left, but the rows never go below a
@@ -546,19 +486,11 @@
   flex: 1;
 }
 
-/* The bar of actions over a table: the page's one 32-high panel bar (area 61), joined to the
-   table's own box under it; the count in the data face at the left, the actions at the right. */
+/* The one bar over a table (C224, D9): `.cp-toolbar` gives its fill, height and 8-apart controls.
+   Its lead and filters come first, then the actions, then the count at the right end. It wraps
+   whole buttons rather than cut a word. */
 .discover-table__actions {
-  display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-md);
-  box-sizing: border-box;
-  min-height: var(--toolbar-height);
-  padding: var(--toolbar-padding);
-  border: var(--divider);
-  border-bottom: 0;
-  background: var(--bg-panel);
   font-size: var(--text-body);
 }
 
@@ -570,13 +502,6 @@
 /* The row whose sample is sounding, tinted. */
 .discover-table .track-table__row:not(.track-table__row--selected):has(.cp-play-btn--playing) {
   background: var(--bg-selected);
-}
-
-.discover-table__count {
-  margin-right: auto;
-  font-family: var(--font-data);
-  font-size: var(--text-body);
-  font-variant-numeric: tabular-nums;
 }
 
 /* The headline of the Beatport state box (artist and label pages); empty lists use EmptyState. */

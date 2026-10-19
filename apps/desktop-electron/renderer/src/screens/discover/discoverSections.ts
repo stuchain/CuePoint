@@ -1,8 +1,9 @@
 /**
  * The Discover page's three tabs, and which one it opens on (DISCOVER-10, FLW-15).
  *
- * Setting up a search, reading what past searches found, and the wantlist are
- * three jobs, so they are three tabs (FLW-3). The tab last used is remembered
+ * Reading what past searches found, setting up a new one, and the wantlist are
+ * three jobs, so they are three tabs (FLW-3). Results comes first and is where the page opens
+ * (C240), as Clean and Statistics open on their first tab. The tab last used is remembered
  * with the same `localStorage` pattern Clean's parts use (CLEAN-12), so the
  * page reopens where the work was. "Run" is the engine's word and is never
  * shown (DSC-2): the ids here are the page's own.
@@ -11,8 +12,8 @@
 export type DiscoverSection = "new" | "results" | "wantlist";
 
 export const DISCOVER_SECTIONS: ReadonlyArray<{ id: DiscoverSection; label: string }> = [
-  { id: "new", label: "New dig" },
   { id: "results", label: "Results" },
+  { id: "new", label: "New dig" },
   { id: "wantlist", label: "Wantlist" },
 ];
 

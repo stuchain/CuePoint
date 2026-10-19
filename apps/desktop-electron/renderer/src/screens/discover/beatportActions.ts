@@ -12,6 +12,7 @@
  * Beatport, and be opened there.
  */
 import type { WantlistRow } from "../../api/cuepointBridge.types";
+import { ADD_TO_BEATPORT_PLAYLIST, opensDialog } from "../../format/words";
 
 export type BeatportActionId =
   | "add_to_wantlist"
@@ -41,7 +42,7 @@ export interface BeatportAction {
 export const MAX_OPEN_PAGES = 10;
 
 /** The reason an action that works on rows waits for them. */
-const SELECT_FIRST = "Select tracks in the table first.";
+const SELECT_FIRST = "Select tracks in the table first";
 
 interface ActionContext {
   /** Whether Beatport can be asked: a playlist needs a token it accepts. */
@@ -72,18 +73,18 @@ function needsRows(
 }
 
 /**
- * "Make a Beatport playlist…" (DSC-7). It stays enabled with nothing selected,
- * and then takes every row the table shows, as the push always did; the note
- * beside it says which it will be.
+ * "Add to a Beatport playlist…" (DSC-7, C156): the one opener, the one dialog title and the
+ * words the status strip uses. It stays enabled with nothing selected, and then takes every row
+ * the table shows, as the push always did; the dialog says which it will be, so no note sits
+ * between the buttons.
  */
 function push(count: number, context: ActionContext): BeatportAction {
-  const label = "Make a Beatport playlist…";
+  const label = ADD_TO_BEATPORT_PLAYLIST;
   if (!context.pushable) return action("push", label, context.pushReason);
   if (count === 0 && context.total === 0) {
-    return action("push", label, "Nothing to put in a playlist.");
+    return action("push", label, "Nothing to put in a playlist");
   }
-  // With rows selected the bar already says how many, once; the note only says what "nothing selected" means.
-  return action("push", label, null, count > 0 ? null : `All ${context.total} shown`);
+  return action("push", label);
 }
 
 function open(count: number): BeatportAction {
@@ -91,7 +92,7 @@ function open(count: number): BeatportAction {
     "open",
     "Open on Beatport",
     count,
-    count > MAX_OPEN_PAGES ? `Opens at most ${MAX_OPEN_PAGES} pages at once.` : null,
+    count > MAX_OPEN_PAGES ? `Opens at most ${MAX_OPEN_PAGES} pages at once` : null,
   );
 }
 
@@ -123,7 +124,7 @@ export function wantlistActions(
   return [
     push(count, context),
     open(count),
-    action("note", "Edit note…", count === 1 ? null : "Select one track to edit its note."),
+    action("note", opensDialog("Edit note"), count === 1 ? null : "Select one track to edit its note"),
     allBought
       ? needsRows("unbought", "Mark not bought", count)
       : needsRows("bought", "Mark bought", count),

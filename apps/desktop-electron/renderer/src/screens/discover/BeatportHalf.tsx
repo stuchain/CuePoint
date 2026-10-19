@@ -34,17 +34,17 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { DISCOVER_OPTIONS, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
-import { CloseButton } from "../../components/CloseButton";
 import { NO_VALUE } from "../../words";
 import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
-import { MATCH_ON_BEATPORT, RETRY } from "../../format/words";
+import { MATCH_ON_BEATPORT, RETRY, STATUS_STRIP } from "../../format/words";
 import { useToast } from "../../components/Toast";
-import { formatCount, pluralize } from "../library/libraryFormat";
+import { countNoun, formatCount } from "../../format/counts";
 import { BeatportSignInButton } from "./BeatportSignInButton";
 import { BeatportTable } from "./BeatportTable";
 import { HideOwnedSwitch } from "./HideOwnedSwitch";
 import { useHideOwned } from "./useHideOwned";
+import { PlaylistNotice, type PlaylistOutcome } from "./PlaylistNotice";
 import { PushDialog } from "./PushDialog";
 import { TOKEN_STATES } from "./beatportState";
 import { beatportRowKey } from "./beatportKey";
@@ -88,12 +88,6 @@ interface BeatportHalfProps {
   onResolved: () => void;
 }
 
-interface PushNotice {
-  text: string;
-  url: string | null;
-  tone: "success" | "warning";
-}
-
 export function BeatportHalf({
   kind,
   pageRef,
@@ -116,7 +110,7 @@ export function BeatportHalf({
   const asked = useRef(false);
   const optionsRead = useSharedRead(wantsOptions ? DISCOVER_OPTIONS : NOT_WANTED);
   useReportReadError(optionsRead.error);
-  const [pushNotice, setPushNotice] = useState<PushNotice | null>(null);
+  const [pushNotice, setPushNotice] = useState<PlaylistOutcome | null>(null);
   // Set by "Read again": the next request asks Beatport however fresh the copy.
   const refreshNext = useRef(false);
 
@@ -314,7 +308,7 @@ export function BeatportHalf({
     if (!refused) {
       setPushing(null);
       setPushNotice(null);
-      notify("Making the playlist on Beatport… The status bar shows how far it has got.", "info");
+      notify(`Making the playlist on Beatport… The ${STATUS_STRIP} shows how far it has got.`, "info");
     }
     return refused;
   };
@@ -358,28 +352,15 @@ export function BeatportHalf({
   };
 
   const pushBanner = pushNotice && (
-    <div
-      className={`discover-banner${pushNotice.tone === "warning" ? " discover-banner--warning" : ""}`}
-      role="status"
-      aria-label="Beatport playlist"
-    >
-      <span className="discover-banner__text">{pushNotice.text}</span>
-      {pushNotice.url && (
-        <Button
-          variant="secondary"
-          onClick={() => {
-            const url = pushNotice.url;
-            if (!url) return;
-            void openOnBeatport([url]).then((problem) => {
-              if (problem) notify(problem, "warning");
-            });
-          }}
-        >
-          Open the playlist
-        </Button>
-      )}
-      <CloseButton aria-label="Dismiss" onClick={() => setPushNotice(null)} />
-    </div>
+    <PlaylistNotice
+      outcome={pushNotice}
+      onDismiss={() => setPushNotice(null)}
+      onOpen={(url) => {
+        void openOnBeatport([url]).then((problem) => {
+          if (problem) notify(problem, "warning");
+        });
+      }}
+    />
   );
 
   // --- nothing answered yet, or the engine could not be asked
@@ -457,31 +438,20 @@ export function BeatportHalf({
 
   const page = half.page;
   const freshness = freshnessLine(half);
+  // The table's one count (C224): what the half found, and what of it the library already has.
+  const summary = page
+    ? `${half.found_by_name ? "Found by name on Beatport. " : ""}${countNoun(page.tracks, "track")} released since ${
+        formatIsoDay(half.since) || NO_VALUE
+      }${
+        page.owned > 0
+          ? ` · ${formatCount(page.owned)} already in your library${owned === "hide" ? " (hidden)" : ""}`
+          : ""
+      }`
+    : half.message;
 
   return (
     <div className="discover-page__beatport">
       {pushBanner}
-      <div className="discover-toolbar" role="toolbar" aria-label="Beatport's releases">
-        <span className="discover-toolbar__count" role="status">
-          {half.found_by_name ? "Found by name on Beatport. " : ""}
-          {page
-            ? `${pluralize(page.tracks, "track")} released since ${formatIsoDay(half.since) || NO_VALUE}${
-                page.owned > 0
-                  ? ` · ${formatCount(page.owned)} already in your library${owned === "hide" ? " (hidden)" : ""}`
-                  : ""
-              }`
-            : half.message}
-          {freshness ? <span className="discover-toolbar__freshness">{freshness}</span> : null}
-        </span>
-        <HideOwnedSwitch
-          hiding={owned === "hide"}
-          onChange={setHiding}
-        />
-        <Button variant="secondary" onClick={readAgain}>
-          Check Beatport again
-        </Button>
-      </div>
-
       <div
         className="discover-page__beatport-table"
         onMouseDownCapture={() => {
@@ -489,6 +459,15 @@ export function BeatportHalf({
         }}
       >
         <BeatportTable<BeatportTrackRow>
+          filters={
+            <>
+              <HideOwnedSwitch hiding={owned === "hide"} onChange={setHiding} />
+              <Button variant="secondary" onClick={readAgain}>
+                Check Beatport again
+              </Button>
+              {freshness ? <span className="discover-note">{freshness}</span> : null}
+            </>
+          }
           columns={ENTITY_COLUMNS}
           layoutKey={ENTITY_TABLE_LAYOUT_KEY}
           source={tracks.source}
@@ -497,7 +476,7 @@ export function BeatportHalf({
           actions={actions}
           onAction={onAction}
           label={`Beatport's releases by this ${nounOf(kind)}`}
-          summary={pluralize(tracks.total, "track")}
+          summary={summary}
           emptyState={
             tracks.loading ? (
               <Loading what="Beatport" />
@@ -522,8 +501,8 @@ export function BeatportHalf({
           open
           what={
             selection.count > 0
-              ? `the ${pluralize(selection.count, "selected track")}`
-              : `the ${pluralize(tracks.total, "track")} this table shows`
+              ? `the ${countNoun(selection.count, "selected track")}`
+              : `the ${countNoun(tracks.total, "track")} this table shows`
           }
           defaultName={pushing.options.defaults.playlist_name}
           maxNameLength={pushing.options.limits.max_playlist_name_length}

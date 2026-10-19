@@ -30,6 +30,30 @@ export function similarPath(trackId: number): string {
   return `/discover/similar/${trackId}`;
 }
 
+/**
+ * Which page an Artist, Label or Similar page was opened from (C221). It travels in the router's
+ * location state as `{ from }`, so the crumb can name and lead back to the origin and the sidebar
+ * can light that page. A page opened with no origin, or one this does not know, is Discover's.
+ */
+export type PageOrigin = "library" | "discover";
+
+/** The route state that says where a page was opened from. */
+export function originState(from: PageOrigin): { from: PageOrigin } {
+  return { from };
+}
+
+/** The origin a location state names; Discover when it names none or a page this does not know. */
+export function pageOrigin(state: unknown): PageOrigin {
+  if (!state || typeof state !== "object") return "discover";
+  return (state as { from?: unknown }).from === "library" ? "library" : "discover";
+}
+
+/** The origin's name and where its crumb leads. */
+export const ORIGIN_PAGE: Readonly<Record<PageOrigin, { label: string; path: string }>> = {
+  library: { label: "Library", path: "/library" },
+  discover: { label: "Discover", path: "/discover" },
+};
+
 /** A reference by name, as spelled; the engine folds it to a key. */
 export function nameRef(name: string): string {
   return `name:${name.trim()}`;

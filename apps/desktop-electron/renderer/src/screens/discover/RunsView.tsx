@@ -12,7 +12,7 @@
  * **Deleting a search lives on its row**, so the confirmation is here, beside
  * the list, and the search's own page has no delete of its own.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { DiscoverRun } from "../../api/cuepointBridge.types";
 import { discoveryRuns, useReportReadError, useSharedRead } from "../../api/sharedReads";
@@ -54,6 +54,11 @@ interface RunsViewProps {
   continueBlocked: string | null;
   /** How often to ask while a search runs; the status strip's interval by default. */
   pollMs?: number;
+  /**
+   * The lookup notice (DSC-4): it belongs to Results alone (C237), above the list and the open
+   * dig, and is not drawn while there are no digs to look at.
+   */
+  lookup?: ReactNode;
 }
 
 export function RunsView({
@@ -64,6 +69,7 @@ export function RunsView({
   onContinue,
   continueBlocked,
   pollMs = JOB_POLL_MS,
+  lookup = null,
 }: RunsViewProps) {
   // The list is read through the shared cache (C19d): a page shown again has it
   // at once, and it is read again when a search ends (the cache hears the job),
@@ -243,65 +249,68 @@ export function RunsView({
   }
 
   return (
-    <div
-      ref={view}
-      className={`discover-runs-view${stacked ? " discover-runs-view--stacked" : ""}`}
-    >
-      <div className="discover-runs-view__list">
-        {listError && (
-          <Notice
-            action={
-              <Button variant="secondary" onClick={refresh}>
-                {RETRY}
-              </Button>
-            }
-          >
-            {listError}
-          </Notice>
-        )}
-        <RunList
-          runs={runs}
-          total={total}
-          genres={tools.options.genres}
-          selected={selected}
-          onSelect={setSelected}
-          onDelete={setDeleting}
-          onContinue={(run) => {
-            setSelected(run.id);
-            void onContinue(run.id);
-          }}
-          continueBlocked={continueBlocked}
-          onShowMore={showMore}
-          loadingMore={loadingMore}
-        />
-      </div>
-      <div className="discover-runs-view__detail">
-        {selected === null ? (
-          <Loading what="your digs" />
-        ) : (
-          <RunDetail
-            key={selected}
-            runId={selected}
-            tools={tools}
-            version={detailVersion}
-            onGone={onGone}
-          />
-        )}
-      </div>
-
-      <ConfirmDialog
-        open={deleting !== null}
-        title={deleteTitle("this dig")}
-        confirmLabel={deleteLabel("dig")}
-        danger
-        onConfirm={() => {
-          if (!deletePending) void remove();
-        }}
-        onCancel={() => setDeleting(null)}
+    <>
+      {lookup && <div className="discover-runs-view__lookup">{lookup}</div>}
+      <div
+        ref={view}
+        className={`discover-runs-view${stacked ? " discover-runs-view--stacked" : ""}`}
       >
-        The dig and the list of what it found go. Tracks you added to your wantlist from it stay
-        there.
-      </ConfirmDialog>
-    </div>
+        <div className="discover-runs-view__list">
+          {listError && (
+            <Notice
+              action={
+                <Button variant="secondary" onClick={refresh}>
+                  {RETRY}
+                </Button>
+              }
+            >
+              {listError}
+            </Notice>
+          )}
+          <RunList
+            runs={runs}
+            total={total}
+            genres={tools.options.genres}
+            selected={selected}
+            onSelect={setSelected}
+            onDelete={setDeleting}
+            onContinue={(run) => {
+              setSelected(run.id);
+              void onContinue(run.id);
+            }}
+            continueBlocked={continueBlocked}
+            onShowMore={showMore}
+            loadingMore={loadingMore}
+          />
+        </div>
+        <div className="discover-runs-view__detail">
+          {selected === null ? (
+            <Loading what="your digs" />
+          ) : (
+            <RunDetail
+              key={selected}
+              runId={selected}
+              tools={tools}
+              version={detailVersion}
+              onGone={onGone}
+            />
+          )}
+        </div>
+
+        <ConfirmDialog
+          open={deleting !== null}
+          title={deleteTitle("this dig")}
+          confirmLabel={deleteLabel("dig")}
+          danger
+          onConfirm={() => {
+            if (!deletePending) void remove();
+          }}
+          onCancel={() => setDeleting(null)}
+        >
+          The dig and the list of what it found go. Tracks you added to your wantlist from it stay
+          there.
+        </ConfirmDialog>
+      </div>
+    </>
   );
 }

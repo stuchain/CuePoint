@@ -146,13 +146,4 @@ describe("a dig's table", () => {
     // Nothing later turns the .discover-table itself into a flex box.
     expect(ruleWith(".discover-table")).not.toMatch(/display:\s*flex/);
   });
-
-  it("aligns the group toolbar on its middle and gives it the toolbar's height", () => {
-    const bare = discoverCss.replace(/\/\*[\s\S]*?\*\//g, "");
-    const toolbar = [...bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(
-      ([, selectors = ""]) => selectors.trim() === ".discover-toolbar",
-    )?.[2];
-    expect(toolbar).toMatch(/align-items:\s*center/);
-    expect(toolbar).toMatch(/min-height:\s*var\(--toolbar-height\)/);
-  });
 });

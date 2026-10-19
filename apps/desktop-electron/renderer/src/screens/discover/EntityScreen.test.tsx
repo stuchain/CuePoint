@@ -501,7 +501,7 @@ describe("the Beatport half, in every state", () => {
     const hide = screen.getByRole("checkbox", { name: "Hide tracks already in your library" });
     expect(hide.closest("label")).toHaveAttribute(
       "title",
-      "Tracks you've matched on the Clean page. Match more tracks there to hide more of what you already have.",
+      "Tracks you have matched on the Clean page. Match more tracks there to hide more of what you already have.",
     );
   });
 
@@ -538,7 +538,7 @@ describe("the Beatport half, in every state", () => {
     fireEvent.click(cell);
     expect(getSelectedTrack()).toMatchObject({ id: "bp-9", key: "8A" });
     const actions = screen.getByRole("toolbar", { name: /Beatport's releases by this label: actions/ });
-    fireEvent.click(within(actions).getByRole("button", { name: "Clear" }));
+    fireEvent.click(within(actions).getByRole("button", { name: "Clear selection" }));
     expect(getSelectedTrack()).toBeNull();
   });
 
@@ -592,7 +592,7 @@ describe("the Beatport half, in every state", () => {
     await beatportRows(/Beatport's releases/);
     const open = () => {
       const actions = screen.getByRole("toolbar", { name: /Beatport's releases by this label: actions/ });
-      fireEvent.click(within(actions).getByRole("button", { name: "Make a Beatport playlist…" }));
+      fireEvent.click(within(actions).getByRole("button", { name: "Add to a Beatport playlist…" }));
     };
     open();
     const dialog = await screen.findByRole("dialog", {}, LOADED);
@@ -633,7 +633,7 @@ describe("the Beatport half, in every state", () => {
     renderAt(entityPath("label", "bp:40211"));
     await beatportRows(/Beatport's releases/);
     const actions = screen.getByRole("toolbar", { name: /Beatport's releases by this label: actions/ });
-    fireEvent.click(within(actions).getByRole("button", { name: "Make a Beatport playlist…" }));
+    fireEvent.click(within(actions).getByRole("button", { name: "Add to a Beatport playlist…" }));
 
     // The dialog opens with the fresh answer, and the old refusal is never said.
     expect(await screen.findByRole("dialog", {}, LOADED)).toBeInTheDocument();
@@ -655,7 +655,7 @@ describe("the Beatport half, in every state", () => {
     renderAt(entityPath("label", "bp:40211"));
     await beatportRows(/Beatport's releases/);
     const actions = screen.getByRole("toolbar", { name: /Beatport's releases by this label: actions/ });
-    fireEvent.click(within(actions).getByRole("button", { name: "Make a Beatport playlist…" }));
+    fireEvent.click(within(actions).getByRole("button", { name: "Add to a Beatport playlist…" }));
 
     expect(await screen.findByRole("dialog", {}, LOADED)).toBeInTheDocument();
     expect(screen.queryByText("no token")).toBeNull();
@@ -666,7 +666,7 @@ describe("the Beatport half, in every state", () => {
     renderAt(entityPath("label", "bp:40211"));
     await beatportRows(/Beatport's releases/);
     const actions = screen.getByRole("toolbar", { name: /Beatport's releases by this label: actions/ });
-    fireEvent.click(within(actions).getByRole("button", { name: "Make a Beatport playlist…" }));
+    fireEvent.click(within(actions).getByRole("button", { name: "Add to a Beatport playlist…" }));
     const dialog = await screen.findByRole("dialog", {}, LOADED);
     expect(mock("getDiscoverOptions")).toHaveBeenCalledTimes(1);
     const name = within(dialog).getByRole("textbox") as HTMLInputElement;

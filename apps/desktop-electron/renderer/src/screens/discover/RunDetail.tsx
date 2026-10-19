@@ -14,7 +14,8 @@ import type { DiscoverGroupCard, DiscoverRunHeader } from "../../api/cuepointBri
 import { Button } from "../../components/Button";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
-import { pluralize } from "../library/libraryFormat";
+import { countNoun } from "../../format/counts";
+import { BACK } from "../../format/words";
 import { RunCards } from "./RunCards";
 import { RunTracksView } from "./RunTracksView";
 import {
@@ -27,7 +28,7 @@ import {
   scopeLine,
 } from "./discoverFormat";
 import { NO_ENGINE, type DiscoverTools } from "./discoverTools";
-import { cardCounts, cardRef } from "./groupCards";
+import { cardRef } from "./groupCards";
 import { useRunGroups } from "./useRunGroups";
 import { reportUnexpected } from "../../reporting/reporting";
 import { userMessage } from "../../api/userMessage";
@@ -44,13 +45,22 @@ interface RunDetailProps {
 /** What the results area shows: the cards (or, with none, everything), one card, or everything. */
 type View = { kind: "auto" } | { kind: "everything" } | { kind: "card"; card: DiscoverGroupCard };
 
+/** "‹ Back": the quiet way from a card, or Everything, to the cards (C20). */
+function BackToResults({ onBack }: { onBack: () => void }) {
+  return (
+    <Button variant="quiet" icon="chevron-left" aria-label="Back to all results" onClick={onBack}>
+      {BACK}
+    </Button>
+  );
+}
+
 /** The names a run's scope resolved to, folded away when there are many. */
 function ScopeNames({ names, noun }: { names: DiscoverRunHeader["artists"]; noun: string }) {
   if (names.length === 0) return null;
   return (
     <details className="discover-run__names">
       <summary>
-        The {pluralize(names.length, noun)} it looked for
+        The {countNoun(names.length, noun)} it looked for
       </summary>
       <p className="discover-note">{names.map((entry) => entry.name).join(", ")}</p>
     </details>
@@ -123,12 +133,9 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
         label={view.card.name}
         lead={
           <>
-            <Button variant="secondary" icon="chevron-left" onClick={back}>
-              All results
-            </Button>
-            <span className="discover-run__card-title">
-              <strong>{view.card.name}</strong>{" "}
-              <span className="discover-note">{cardCounts(view.card)}</span>
+            <BackToResults onBack={back} />
+            <span className="discover-run__card-title" data-cut-hint="">
+              <strong>{view.card.name}</strong>
             </span>
           </>
         }
@@ -161,9 +168,7 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
         label="Tracks this dig found"
         lead={
           grouped ? (
-            <Button variant="secondary" icon="chevron-left" onClick={back}>
-              All results
-            </Button>
+            <BackToResults onBack={back} />
           ) : undefined
         }
         onGone={onGone}

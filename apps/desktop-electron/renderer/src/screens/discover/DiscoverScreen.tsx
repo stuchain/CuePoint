@@ -30,21 +30,28 @@ import type {
   DiscoverRunRequest,
   DiscoveryRunResult,
 } from "../../api/cuepointBridge.types";
-import { DISCOVER_OPTIONS, LIBRARY_SUMMARY, useReportReadError, useSharedRead } from "../../api/sharedReads";
+import {
+  DISCOVER_OPTIONS,
+  LIBRARY_SUMMARY,
+  discoveryRuns,
+  useReportReadError,
+  useSharedRead,
+} from "../../api/sharedReads";
 import { Button } from "../../components/Button";
-import { CloseButton } from "../../components/CloseButton";
 import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState";
 import { Hint } from "../../components/Hint";
+import { LinkButton } from "../../components/LinkButton";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
 import { Tabs } from "../../components/Tabs";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useActiveJob } from "../../components/shell/useActiveJob";
 import { useToast } from "../../components/Toast";
-import { MATCH_ON_BEATPORT, RETRY } from "../../format/words";
+import { MATCH_ON_BEATPORT, RETRY, STATUS_STRIP } from "../../format/words";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { libraryImportState } from "../library/libraryLink";
 import { NewRunPanel } from "./NewRunPanel";
+import { PlaylistNotice, type PlaylistOutcome } from "./PlaylistNotice";
 import { RunsView } from "./RunsView";
 import { WantlistView } from "./WantlistView";
 import { beatportNotice, beatportUsable, refusalState, unusableReason } from "./beatportState";
@@ -84,12 +91,6 @@ const INSPECTOR_EMPTY = (
   </p>
 );
 
-interface PushNotice {
-  text: string;
-  url: string | null;
-  tone: "success" | "warning";
-}
-
 export function DiscoverScreen() {
   const { push: toast } = useToast();
   const navigate = useNavigate();
@@ -101,7 +102,7 @@ export function DiscoverScreen() {
     message: string | null;
   } | null>(null);
   const [runsVersion, setRunsVersion] = useState(0);
-  const [pushNotice, setPushNotice] = useState<PushNotice | null>(null);
+  const [pushNotice, setPushNotice] = useState<PlaylistOutcome | null>(null);
 
   // Nothing here describes a track, so a selection elsewhere does not open the panel (K1).
   useInspectorSlot(INSPECTOR_EMPTY, { autoOpen: false });
@@ -115,6 +116,17 @@ export function DiscoverScreen() {
   const summaryRead = useSharedRead(LIBRARY_SUMMARY);
   const libraryEmpty =
     (summaryRead.value as { library_empty?: boolean } | undefined)?.library_empty === true;
+  // A page opened on genre charts from the empty page stays whole (C230).
+  const [digging, setDigging] = useState(false);
+  // Whether a first dig exists is asked only while the library is empty: that decides if the page
+  // is empty.
+  const firstDigs = useSharedRead(discoveryRuns({ limit: 1, offset: 0 }), libraryEmpty);
+  const waitingForDigs =
+    libraryEmpty && !firstDigs.unavailable && firstDigs.loading && firstDigs.value === undefined;
+  const digsFound =
+    firstDigs.value && !firstDigs.value.refusal ? firstDigs.value.value.total : 0;
+  const noDigsYet = libraryEmpty && digsFound === 0;
+  const summaryPending = !summaryRead.unavailable && summaryRead.loading && summaryRead.value === undefined;
   const answer = optionsRead.value;
   // A refusal does not take away the options already shown: the last good ones stay.
   const lastOptions = useRef<DiscoverOptions | null>(null);
@@ -249,7 +261,7 @@ export function DiscoverScreen() {
       const refusal = await startPush(() => bridge(request));
       if (!refusal) {
         setPushNotice(null);
-        toast("Making the playlist on Beatport… The status bar shows how far it has got.", "info");
+        toast(`Making the playlist on Beatport… The ${STATUS_STRIP} shows how far it has got.`, "info");
       }
       return refusal;
     },
@@ -307,7 +319,7 @@ export function DiscoverScreen() {
     saveDiscoverSection(next);
   };
 
-  if (!tools) {
+  if (!tools || summaryPending) {
     return (
       <div className="screen screen--stack screen--scroll discover-screen--waiting">
         <ScreenHeader title="Discover" inset />
@@ -332,16 +344,96 @@ export function DiscoverScreen() {
   }
 
   const toRead = tools.options.resolve.to_read;
-  // Nothing imported yet: nothing for a dig to look by, so New dig says so instead of a form.
-  const noLibrary = libraryEmpty;
   const looking = resolve.jobId !== null;
+  // Beatport's state is the page's, said once, above whatever tab is showing.
+  const stateNotice = notice ? (
+    <Notice
+      kind="warning"
+      action={
+        notice.action === "signin" ? (
+          <BeatportSignInButton
+            label={notice.actionLabel}
+            hint={notice.hint || undefined}
+            onDone={reloadOptions}
+          />
+        ) : (
+          <Hint text={notice.hint || undefined}>
+            <Button variant="secondary" onClick={reloadOptions}>
+              {notice.actionLabel}
+            </Button>
+          </Hint>
+        )
+      }
+    >
+      {notice.headline}
+    </Notice>
+  ) : null;
+  const openPlaylist = (url: string) => {
+    void openOnBeatport([url]).then((problem) => {
+      if (problem) toast(problem, "warning");
+    });
+  };
+
+  // A library with nothing in it and no dig yet is an empty page (C230): the sign-in notice and
+  // one empty state, with no tabs and no form. Genre charts need no library, so the empty state
+  // leads to them; the page comes back whole once the first dig exists.
+  if (libraryEmpty && !digging && (waitingForDigs || noDigsYet)) {
+    return (
+      <div className="screen screen--stack screen--scroll discover-screen--waiting">
+        <ScreenHeader title="Discover" inset />
+        {stateNotice}
+        {waitingForDigs ? (
+          <Loading what="Discover" />
+        ) : (
+          <EmptyState
+            icon="discover"
+            headline="No library yet"
+            description="Discover looks for new music by the artists and labels in your library. Genre charts work without one."
+            action={
+              <div className="cp-button-row">
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate("/library", { state: libraryImportState() })}
+                >
+                  {IMPORT_COLLECTION_LABEL}
+                </Button>
+                <LinkButton
+                  onClick={() => {
+                    setDigging(true);
+                    choose("new");
+                  }}
+                >
+                  Dig genre charts
+                </LinkButton>
+              </div>
+            }
+          />
+        )}
+      </div>
+    );
+  }
+
+  const lookupNotice =
+    (toRead > 0 || looking) && beatportUsable(state) ? (
+      <Notice
+        kind="info"
+        aria-label="Beatport lookup"
+        action={
+          <Button variant="secondary" loading={looking} onClick={() => void startResolve()}>
+            {MATCH_ON_BEATPORT}
+          </Button>
+        }
+      >
+        {looking ? lookingUpLine(toRead) : resolvePrompt(toRead)}
+      </Notice>
+    ) : null;
 
   return (
     <div className="screen discover-screen">
       <ScreenHeader
         title="Discover"
         inset
-        summary={discoverFacts(tools.options)}
+        facts={discoverFacts(tools.options)}
         tabs={
           <Tabs
             tabs={DISCOVER_SECTIONS.map((entry) => ({ id: entry.id, label: entry.label }))}
@@ -351,94 +443,20 @@ export function DiscoverScreen() {
         }
       />
 
-      {notice && (
-        <div className="discover-banner discover-banner--warning" role="status">
-          <div className="discover-banner__text">
-            <strong>{notice.headline}</strong>
-          </div>
-          {notice.action === "signin" ? (
-            <BeatportSignInButton
-              label={notice.actionLabel}
-              hint={notice.hint || undefined}
-              onDone={reloadOptions}
+      {(stateNotice || pushNotice) && (
+        <div className="discover-screen__notices">
+          {stateNotice}
+          {pushNotice && (
+            <PlaylistNotice
+              outcome={pushNotice}
+              onOpen={openPlaylist}
+              onDismiss={() => setPushNotice(null)}
             />
-          ) : (
-            <Hint text={notice.hint || undefined}>
-              <Button variant="secondary" onClick={reloadOptions}>
-                {notice.actionLabel}
-              </Button>
-            </Hint>
           )}
-        </div>
-      )}
-
-      {(toRead > 0 || looking) && beatportUsable(state) && (
-        <div className="discover-banner" role="status" aria-label="Beatport lookup">
-          <div className="discover-banner__text">
-            {looking ? <strong>{lookingUpLine(toRead)}</strong> : <span>{resolvePrompt(toRead)}</span>}
-          </div>
-          <Button variant="secondary" loading={looking} onClick={() => void startResolve()}>
-            {MATCH_ON_BEATPORT}
-          </Button>
-        </div>
-      )}
-
-      {pushNotice && (
-        <div
-          className={`discover-banner${pushNotice.tone === "warning" ? " discover-banner--warning" : ""}`}
-          role="status"
-          aria-label="Beatport playlist"
-        >
-          <span className="discover-banner__text">{pushNotice.text}</span>
-          {pushNotice.url && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                const url = pushNotice.url;
-                if (!url) return;
-                void openOnBeatport([url]).then((problem) => {
-                  if (problem) toast(problem, "warning");
-                });
-              }}
-            >
-              Open the playlist
-            </Button>
-          )}
-          <CloseButton aria-label="Dismiss" onClick={() => setPushNotice(null)} />
         </div>
       )}
 
       <div className="discover-screen__body">
-        {seen.has("new") && (
-          <div
-            role="tabpanel"
-            aria-label="New dig"
-            hidden={section !== "new"}
-            className="discover-screen__panel"
-          >
-            {/* With no library the shared empty block leads, and the form stays below it: a dig of
-                genre charts needs no library (DISCOVER-10). */}
-            {noLibrary && (
-              <EmptyState
-                icon="discover"
-                headline="No library yet"
-                description="Discover looks for new music by the artists and labels in your library. Genre charts work without one."
-                action={{
-                  label: IMPORT_COLLECTION_LABEL,
-                  onClick: () => navigate("/library", { state: libraryImportState() }),
-                }}
-              />
-            )}
-            <NewRunPanel
-              options={tools.options}
-              usable={beatportUsable(state)}
-              unusableReason={unusableReason(state)}
-              signedOut={state === "no_token"}
-              busy={discovery.jobId !== null}
-              onStart={startRun}
-            />
-          </div>
-        )}
         {seen.has("results") && (
           <div
             role="tabpanel"
@@ -459,6 +477,24 @@ export function DiscoverScreen() {
                     ? null
                     : unusableReason(state)
               }
+              lookup={lookupNotice}
+            />
+          </div>
+        )}
+        {seen.has("new") && (
+          <div
+            role="tabpanel"
+            aria-label="New dig"
+            hidden={section !== "new"}
+            className="discover-screen__panel"
+          >
+            <NewRunPanel
+              options={tools.options}
+              usable={beatportUsable(state)}
+              unusableReason={unusableReason(state)}
+              signedOut={state === "no_token"}
+              busy={discovery.jobId !== null}
+              onStart={startRun}
             />
           </div>
         )}

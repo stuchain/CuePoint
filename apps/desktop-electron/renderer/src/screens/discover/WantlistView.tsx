@@ -27,7 +27,7 @@ import { RETRY, UNDO } from "../../format/words";
 import { EmptyState } from "../../components/EmptyState";
 import { Select } from "../../components/Select";
 import type { TrackTableSort } from "../../components/table";
-import { formatCount, pluralize } from "../library/libraryFormat";
+import { countNoun, formatCount } from "../../format/counts";
 import { BeatportTable } from "./BeatportTable";
 import { IN_LIBRARY_EXPLAINER } from "./HideOwnedSwitch";
 import { NoteDialog } from "./NoteDialog";
@@ -335,32 +335,29 @@ export function WantlistView({ tools }: WantlistViewProps) {
 
   return (
     <section className="discover-wantlist" aria-label="Wantlist" {...trackFocus}>
-      <div className="discover-toolbar" role="toolbar" aria-label="Wantlist filters">
-        {page && (
-          <span className="discover-toolbar__count" role="status">
-            {pluralize(page.entries, "wanted track")}, {formatCount(page.bought)} bought,{" "}
-            {formatCount(page.owned)} in your library
-          </span>
-        )}
-        <Hint text={IN_LIBRARY_EXPLAINER}>
-          <Select
-            label="In your library"
-            id="discover-wantlist-owned"
-            options={OWNED_CHOICES}
-            value={owned}
-            onChange={(event) => isFilter(event.target.value) && setOwned(event.target.value)}
-          />
-        </Hint>
-        <Select
-          label="Marked bought"
-          id="discover-wantlist-bought"
-          options={BOUGHT_CHOICES}
-          value={bought}
-          onChange={(event) => isFilter(event.target.value) && setBought(event.target.value)}
-        />
-      </div>
-
       <BeatportTable<WantlistRow>
+        filters={
+          <>
+            <Hint text={IN_LIBRARY_EXPLAINER}>
+              <Select
+                label="In your library"
+                inlineLabel
+                id="discover-wantlist-owned"
+                options={OWNED_CHOICES}
+                value={owned}
+                onChange={(event) => isFilter(event.target.value) && setOwned(event.target.value)}
+              />
+            </Hint>
+            <Select
+              label="Marked bought"
+              inlineLabel
+              id="discover-wantlist-bought"
+              options={BOUGHT_CHOICES}
+              value={bought}
+              onChange={(event) => isFilter(event.target.value) && setBought(event.target.value)}
+            />
+          </>
+        }
         columns={WANTLIST_COLUMNS}
         layoutKey={WANTLIST_TABLE_LAYOUT_KEY}
         source={list.source}
@@ -374,7 +371,11 @@ export function WantlistView({ tools }: WantlistViewProps) {
         actions={actions}
         onAction={onAction}
         label="Wantlist"
-        summary={pluralize(list.total, "track")}
+        summary={
+          page
+            ? `${countNoun(page.entries, "wanted track")} · ${formatCount(page.bought)} bought · ${formatCount(page.owned)} in your library`
+            : countNoun(list.total, "track")
+        }
         emptyState={emptyState}
         resetKey={windowKey}
         busy={working}
@@ -384,8 +385,8 @@ export function WantlistView({ tools }: WantlistViewProps) {
         open={pushOpen}
         what={
           selection.count > 0
-            ? `the ${pluralize(selection.count, "selected track")}`
-            : `the ${pluralize(list.total, "track")} this list shows`
+            ? `the ${countNoun(selection.count, "selected track")}`
+            : `the ${countNoun(list.total, "track")} this list shows`
         }
         defaultName={tools.options.defaults.playlist_name}
         maxNameLength={tools.options.limits.max_playlist_name_length}

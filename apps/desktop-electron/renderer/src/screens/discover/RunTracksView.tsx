@@ -24,7 +24,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { RETRY } from "../../format/words";
 import type { TrackTableSort } from "../../components/table";
-import { pluralize } from "../library/libraryFormat";
+import { countNoun } from "../../format/counts";
 import { BeatportTable } from "./BeatportTable";
 import { PushDialog, type PushTarget } from "./PushDialog";
 import { runActions, type BeatportActionId } from "./beatportActions";
@@ -232,17 +232,9 @@ export function RunTracksView({
 
   return (
     <div className="discover-run__tracks">
-      <div className="discover-toolbar" role="toolbar" aria-label={groups ? `${label}: tracks` : "This dig's tracks"}>
-        {lead}
-        {page && (
-          <span className="discover-toolbar__count" role="status">
-            {foundLine(page.tracks, page.owned, owned === "hide")}
-          </span>
-        )}
-        <HideOwnedSwitch hiding={owned === "hide"} onChange={setHiding} />
-      </div>
-
       <BeatportTable<DiscoverRunTrackRow>
+        lead={lead}
+        filters={<HideOwnedSwitch hiding={owned === "hide"} onChange={setHiding} />}
         columns={RUN_COLUMNS}
         layoutKey={RUN_TABLE_LAYOUT_KEY}
         source={tracks.source}
@@ -256,7 +248,7 @@ export function RunTracksView({
         actions={actions}
         onAction={onAction}
         label={label}
-        summary={pluralize(tracks.total, "track")}
+        summary={page ? foundLine(page.tracks, page.owned, owned === "hide") : countNoun(tracks.total, "track")}
         emptyState={emptyState}
         resetKey={windowKey}
         busy={working}
@@ -266,11 +258,11 @@ export function RunTracksView({
         open={pushOpen}
         allowExisting
         what={(includeOwned) => {
-          if (selection.count === 0) return `the ${pluralize(tracks.total, "track")} this table shows`;
+          if (selection.count === 0) return `the ${countNoun(tracks.total, "track")} this table shows`;
           const going = includeOwned
             ? selection.count
             : selection.rows.filter((row) => !row.owned).length;
-          return `the ${pluralize(going, "selected track")}`;
+          return `the ${countNoun(going, "selected track")}`;
         }}
         defaultName={tools.options.defaults.playlist_name}
         maxNameLength={tools.options.limits.max_playlist_name_length}

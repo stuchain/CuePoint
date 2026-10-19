@@ -19,7 +19,8 @@ import type {
   DiscoveryRunResult,
 } from "../../api/cuepointBridge.types";
 import { formatDay, formatDayTime, formatRange } from "../../format/dates";
-import { formatCount, pluralize } from "../library/libraryFormat";
+import { countNoun, formatCount } from "../../format/counts";
+import type { HeaderFacts } from "../../components/shell/ScreenHeader";
 
 /**
  * A calendar day the engine wrote as "2026-09-01". Read as that day on this computer, not as
@@ -116,8 +117,8 @@ export function runFound(
   run: Pick<DiscoverRun, "tracks_found" | "charts_read" | "releases_read">,
 ): string {
   return (
-    `${pluralize(run.tracks_found, "track")} from ` +
-    `${pluralize(run.charts_read, "chart")} and ${pluralize(run.releases_read, "release")}`
+    `${countNoun(run.tracks_found, "track")} from ` +
+    `${countNoun(run.charts_read, "chart")} and ${countNoun(run.releases_read, "release")}`
   );
 }
 
@@ -144,7 +145,7 @@ function genreNames(ids: readonly number[], genres: readonly DiscoverGenre[]): s
 export function scopeLine(scope: DiscoverRunScope, one: string, many: string): string {
   if (scope.picked === null) return `every ${one} in your library (${formatCount(scope.count)})`;
   if (scope.picked.length === 0) return `no ${many}`;
-  return pluralize(scope.picked.length, one, many);
+  return countNoun(scope.picked.length, one, many);
 }
 
 /** "Charts from 2026-08-27 to 2026-09-26 in House, Techno". */
@@ -159,7 +160,7 @@ export function chartsLine(run: DiscoverRun, genres: readonly DiscoverGenre[]): 
 export function releasesLine(run: DiscoverRun): string {
   const { new_releases_days: days, releases_from: from, releases_to: to } = run.params;
   if (from && to) return `Releases from ${formatIsoRange(from, to)}`;
-  if (days != null) return `Releases from the last ${pluralize(days, "day")}`;
+  if (days != null) return `Releases from the last ${countNoun(days, "day")}`;
   return "Releases";
 }
 
@@ -171,11 +172,11 @@ export function runScopeLine(run: DiscoverRun, genres: readonly DiscoverGenre[])
   const { genre_ids: ids, new_releases_days: days, releases_from: from, releases_to: to } = run.params;
   const count = (scope: DiscoverRunScope, one: string) => {
     const n = scope.picked === null ? scope.count : scope.picked.length;
-    return n > 0 ? pluralize(n, one) : null;
+    return n > 0 ? countNoun(n, one) : null;
   };
   const parts = [
     ids.length > 0 ? genreNames(ids, genres).join(", ") : null,
-    from && to ? formatIsoRange(from, to) : days != null ? `last ${pluralize(days, "day")}` : null,
+    from && to ? formatIsoRange(from, to) : days != null ? `last ${countNoun(days, "day")}` : null,
     count(run.params.artists, "artist"),
     count(run.params.labels, "label"),
   ];
@@ -243,11 +244,11 @@ export function sourcesText(sources: readonly DiscoverRunSource[]): string {
 }
 
 /**
- * The one count line over a table (DSC-6, DEC-092): "40 found · 12 already in
+ * The one count over a table (DSC-6, DEC-092, C224): "40 tracks · 12 already in
  * your library (hidden)". Said once, so the number hidden is never a second line.
  */
 export function foundLine(found: number, inLibrary: number, hiding: boolean): string {
-  const count = `${formatCount(found)} found`;
+  const count = countNoun(found, "track");
   if (inLibrary <= 0) return count;
   return `${count} · ${formatCount(inLibrary)} already in your library${hiding ? " (hidden)" : ""}`;
 }
@@ -257,23 +258,23 @@ export function pushOutcome(result: BeatportPlaylistResult): string {
   const name = `“${result.name}”`;
   const skipped =
     result.skipped_owned > 0
-      ? ` ${pluralize(result.skipped_owned, "track")} already in your library ${result.skipped_owned === 1 ? "was" : "were"} left out.`
+      ? ` ${countNoun(result.skipped_owned, "track")} already in your library ${result.skipped_owned === 1 ? "was" : "were"} left out.`
       : "";
   const held =
     result.already_in_playlist > 0
-      ? ` ${pluralize(result.already_in_playlist, "track")} already in the playlist ${result.already_in_playlist === 1 ? "was" : "were"} left out.`
+      ? ` ${countNoun(result.already_in_playlist, "track")} already in the playlist ${result.already_in_playlist === 1 ? "was" : "were"} left out.`
       : "";
   const failed =
     result.failed > 0
-      ? ` ${pluralize(result.failed, "track")} could not be added.`
+      ? ` ${countNoun(result.failed, "track")} could not be added.`
       : "";
   if (result.outcome === "succeeded") {
     return result.existing_playlist
-      ? `Added ${pluralize(result.added, "track")} to ${name} on Beatport.${skipped}${held}${failed}`
-      : `Made ${name} on Beatport with ${pluralize(result.added, "track")}.${skipped}${failed}`;
+      ? `Added ${countNoun(result.added, "track")} to ${name} on Beatport.${skipped}${held}${failed}`
+      : `Made ${name} on Beatport with ${countNoun(result.added, "track")}.${skipped}${failed}`;
   }
   const before = result.playlist_id
-    ? `after adding ${pluralize(result.added, "track")} to ${name}`
+    ? `after adding ${countNoun(result.added, "track")} to ${name}`
     : `before ${name} was made`;
   if (result.outcome === "cancelled" || result.cancelled) {
     return `Making the playlist stopped when asked, ${before}.${skipped}`;
@@ -283,7 +284,7 @@ export function pushOutcome(result: BeatportPlaylistResult): string {
 
 /** What a lookup of tracks on Beatport did, for the page's notice (DSC-4). */
 export function resolveOutcome(result: BeatportResolveResult): string {
-  const read = `Looked up ${pluralize(result.resolved, "track")} on Beatport`;
+  const read = `Looked up ${countNoun(result.resolved, "track")} on Beatport`;
   const missing =
     result.not_found > 0 ? `; Beatport no longer has ${formatCount(result.not_found)}` : "";
   if (result.outcome === "succeeded") return `${read}${missing}.`;
@@ -327,14 +328,15 @@ export function lookingUpLine(toRead: number): string {
 }
 
 /**
- * The facts line under the page title: what a dig can look through, from the library. Without
- * artists or labels it says why a dig has nothing to look by.
+ * The facts line under the page title (C233): what a dig can look through, from the library, as
+ * "67 artists · 28 labels".
  */
 export function discoverFacts(
   options: { artists: { total_values: number }; labels: { total_values: number } },
-): string {
-  const artists = options.artists.total_values;
-  const labels = options.labels.total_values;
-  if (artists === 0 && labels === 0) return "No artists or labels in your library yet";
-  return `${pluralize(artists, "artist")} and ${pluralize(labels, "label")} in your library to dig by`;
+): HeaderFacts {
+  return {
+    count: options.artists.total_values,
+    noun: "artist",
+    facts: [countNoun(options.labels.total_values, "label")],
+  };
 }

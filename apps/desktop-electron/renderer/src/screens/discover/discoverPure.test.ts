@@ -93,8 +93,8 @@ afterEach(() => localStorage.clear());
 describe("the remembered tab", () => {
   it("has the three tabs FLW-15 names, and never says Run", () => {
     expect(DISCOVER_SECTIONS.map((section) => section.label)).toEqual([
-      "New dig",
       "Results",
+      "New dig",
       "Wantlist",
     ]);
   });
@@ -193,24 +193,24 @@ describe("what a selection offers", () => {
     const none = runActions(0, usable);
     expect(labels(none)).toEqual([
       "Add to wantlist",
-      "Make a Beatport playlist…",
+      "Add to a Beatport playlist…",
       "Open on Beatport",
     ]);
     expect(none.map((a) => a.disabled)).toEqual([true, false, true]);
-    expect(none[0]!.reason).toBe("Select tracks in the table first.");
-    expect(none[2]!.reason).toBe("Select tracks in the table first.");
+    expect(none[0]!.reason).toBe("Select tracks in the table first");
+    expect(none[2]!.reason).toBe("Select tracks in the table first");
     const some = runActions(3, usable);
     expect(some.map((a) => a.disabled)).toEqual([false, false, false]);
     expect(some.map((a) => a.reason)).toEqual([null, null, null]);
   });
 
-  it("makes a playlist of every row shown when nothing is selected, and says so", () => {
+  it("makes a playlist of every row shown when nothing is selected, with no note between the buttons (C236)", () => {
     const playlist = (count: number, total: number) =>
       runActions(count, { ...usable, total }).find((a) => a.id === "push")!;
-    expect(playlist(0, 48).note).toBe("All 48 shown");
-    expect(playlist(0, 1).note).toBe("All 1 shown");
+    expect(playlist(0, 48)).toMatchObject({ disabled: false, label: "Add to a Beatport playlist…" });
+    expect(playlist(0, 48).note).toBeNull();
     expect(playlist(3, 48).note).toBeNull();
-    expect(playlist(0, 0)).toMatchObject({ disabled: true, reason: "Nothing to put in a playlist." });
+    expect(playlist(0, 0)).toMatchObject({ disabled: true, reason: "Nothing to put in a playlist" });
     expect(playlist(0, 0).note).toBeNull();
   });
 
@@ -218,7 +218,7 @@ describe("what a selection offers", () => {
     const open = (count: number) => runActions(count, usable).find((a) => a.id === "open")!;
     expect(open(MAX_OPEN_PAGES).disabled).toBe(false);
     expect(open(MAX_OPEN_PAGES + 1).disabled).toBe(true);
-    expect(open(MAX_OPEN_PAGES + 1).reason).toBe("Opens at most 10 pages at once.");
+    expect(open(MAX_OPEN_PAGES + 1).reason).toBe("Opens at most 10 pages at once");
   });
 
   it("does not offer a playlist without a token Beatport accepts", () => {
@@ -230,8 +230,8 @@ describe("what a selection offers", () => {
     const none = wantlistActions([], usable);
     expect(none.map((a) => a.id)).toEqual(["push", "open", "note", "bought", "remove"]);
     expect(none.map((a) => a.disabled)).toEqual([false, true, true, true, true]);
-    expect(none[2]!.reason).toBe("Select one track to edit its note.");
-    expect(none[4]!.reason).toBe("Select tracks in the table first.");
+    expect(none[2]!.reason).toBe("Select one track to edit its note");
+    expect(none[4]!.reason).toBe("Select tracks in the table first");
     const one = wantlistActions([{ bought_at: null }], usable);
     expect(one.map((a) => a.disabled)).toEqual([false, false, false, false, false]);
     const two = wantlistActions([{ bought_at: null }, { bought_at: null }], usable);
@@ -242,7 +242,7 @@ describe("what a selection offers", () => {
       ["bought", false],
       ["remove", false],
     ]);
-    expect(two[2]!.reason).toBe("Select one track to edit its note.");
+    expect(two[2]!.reason).toBe("Select one track to edit its note");
   });
 
   it("undoes a bought mark when everything selected is marked", () => {
@@ -382,15 +382,16 @@ describe("the New dig form", () => {
 describe("the sentences", () => {
   it("says what a dig can look through, for the page's facts line", () => {
     const facet = (total_values: number) => ({ total_values });
-    expect(discoverFacts({ artists: facet(200), labels: facet(121) })).toBe(
-      "200 artists and 121 labels in your library to dig by",
-    );
-    expect(discoverFacts({ artists: facet(1), labels: facet(0) })).toBe(
-      "1 artist and 0 labels in your library to dig by",
-    );
-    expect(discoverFacts({ artists: facet(0), labels: facet(0) })).toBe(
-      "No artists or labels in your library yet",
-    );
+    expect(discoverFacts({ artists: facet(200), labels: facet(121) })).toEqual({
+      count: 200,
+      noun: "artist",
+      facts: ["121 labels"],
+    });
+    expect(discoverFacts({ artists: facet(1), labels: facet(1) })).toEqual({
+      count: 1,
+      noun: "artist",
+      facts: ["1 label"],
+    });
   });
 
   it("says a dig the app's closing interrupted was stopped by that", () => {
@@ -543,10 +544,10 @@ describe("the sentences", () => {
   it("titles a search by its date, and counts what it found on one line (DSC-2, DSC-6)", () => {
     expect(searchTitle(FINISHED.started_at)).toMatch(/^Dig of /);
     expect(searchTitle(FINISHED.started_at)).not.toMatch(/run/i);
-    expect(foundLine(40, 12, true)).toBe("40 found · 12 already in your library (hidden)");
-    expect(foundLine(40, 12, false)).toBe("40 found · 12 already in your library");
-    expect(foundLine(40, 0, true)).toBe("40 found");
-    expect(foundLine(1, 1, true)).toBe("1 found · 1 already in your library (hidden)");
+    expect(foundLine(40, 12, true)).toBe("40 tracks · 12 already in your library (hidden)");
+    expect(foundLine(40, 12, false)).toBe("40 tracks · 12 already in your library");
+    expect(foundLine(40, 0, true)).toBe("40 tracks");
+    expect(foundLine(1, 1, true)).toBe("1 track · 1 already in your library (hidden)");
   });
 
   it("says what a push, a resolve and a discovery did, from their results", () => {

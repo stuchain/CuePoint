@@ -9,7 +9,7 @@ import { Hint } from "../../components/Hint";
 
 /** What "in your library" means, said once, where the switch is (DEC-092). */
 export const IN_LIBRARY_EXPLAINER =
-  "Tracks you've matched on the Clean page. Match more tracks there to hide more of what you already have.";
+  "Tracks you have matched on the Clean page. Match more tracks there to hide more of what you already have.";
 
 interface HideOwnedSwitchProps {
   hiding: boolean;
