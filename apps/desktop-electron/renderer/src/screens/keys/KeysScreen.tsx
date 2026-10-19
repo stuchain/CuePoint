@@ -2,13 +2,15 @@
  * The Keys page (PAGES-16, FLW-21, DEC-200).
  *
  * Which keys the playlists, Collections and Sets you pick hold, and the tracks in the keys you
- * click. On the left, the sources; beside them the Camelot wheel, with each key's count on its
- * segment (and in its name) and darker where there are more, or the same counts as a list with
- * a bar each, in Camelot order and "No Beatport key: N" on its own line. A Wheel | List switch
- * picks the one shown, one at a time, and the page remembers it (K15). Clicking keys (Ctrl or
- * Command for several, Shift for a run) lists those tracks below in the Library's table with
- * the Library's selection bar. Every count is written on the page: the list is the reading of
- * the wheel for anyone who cannot see its colors, and nothing here waits on a hover.
+ * click (D12). Two panes. On the left, the sources and beside them the Camelot wheel, with each
+ * key's count on its segment (and in its name) and darker where there are more, or the same
+ * counts as a list with a bar each, in Camelot order and "— no key" as one more row. On the
+ * right, the track list in the Library's table: with no key picked it shows every track in the
+ * sources and the wheel's caption asks to "Pick a key"; clicking keys (Ctrl or Command for
+ * several, Shift for a run) narrows it at once. The list's own toolbar holds the count, the link
+ * to the Library and the Wheel | List switch, which picks the view in the middle one at a time
+ * and is remembered (K15). Every count is written on the page: the list is the reading of the
+ * wheel for anyone who cannot see its colors, and nothing here waits on a hover.
  *
  * The counts are the engine's (`POST /api/v1/library/keys/population`) and the keys are
  * Beatport's (DEC-201); the page keeps no rule about either. The tracks are asked for with an
@@ -25,16 +27,16 @@ import { EmptyState, IMPORT_COLLECTION_LABEL } from "../../components/EmptyState
 import { Hint } from "../../components/Hint";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
-import { Tabs } from "../../components/Tabs";
 import { useToast } from "../../components/Toast";
 import { CamelotWheel, type PickModifiers } from "../../components/wheel/CamelotWheel";
 import { CAMELOT_CODES } from "../../components/wheel/camelot";
 import { useCompatibleKeys } from "../../components/wheel/useWheelSubject";
+import { needsDesktopApp } from "../../api/userMessage";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { LIBRARY_PLAYLISTS, LIBRARY_SUMMARY, useReportReadError, useSharedRead } from "../../api/sharedReads";
-import { formatCount, plural } from "../../format/counts";
-import { MATCH_ON_BEATPORT, RETRY } from "../../format/words";
+import { countNoun, formatCount } from "../../format/counts";
+import { MATCH_ON_BEATPORT, RETRY, couldNot, opensDialog } from "../../format/words";
 import { cleanMatchState, cleanTrackState } from "../clean/cleanLink";
 import type { CleanTracks } from "../clean/cleanTracks";
 import { entityPath, similarPath } from "../discover/discoverLinks";
@@ -59,6 +61,7 @@ import {
   choiceRules,
   choiceWords,
   hasChoice,
+  listRules,
   modeFromEvent,
   type KeyChoice,
 } from "./keysChoice";
@@ -71,6 +74,7 @@ import {
   requestSources,
   sameSource,
   saveSources,
+  setSources,
   sourcesWords,
   toggleSource,
   type PickedSource,
@@ -78,9 +82,9 @@ import {
 import { loadView, saveView, type KeysView } from "./keysView";
 import { useKeysPopulation } from "./useKeysPopulation";
 
-const CLICK_A_KEY = "Click a key first";
+const SELECT_A_KEY = "Select a key first";
 
-const VIEWS = [
+const VIEWS: { id: KeysView; label: string }[] = [
   { id: "wheel", label: "Wheel" },
   { id: "list", label: "List" },
 ];
@@ -220,6 +224,10 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
   }, [data, order]);
 
   const chosen = useMemo(() => new Set(choice.keys), [choice.keys]);
+  // The tracks the choice holds, from the counts the wheel and the list write.
+  const choiceTotal = choice.none
+    ? (data?.no_key ?? 0)
+    : choice.keys.reduce((sum, code) => sum + (counts.get(code) ?? 0), 0);
 
   const pick = useCallback(
     (code: string, modifiers: PickModifiers) => {
@@ -228,15 +236,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
     },
     [order],
   );
-  // The tracks sit below the counts: the first key picked brings them into view, so the click
-  // shows its result. Easing only where the user has scroll motion on; instant otherwise.
-  const tracksRef = useRef<HTMLElement | null>(null);
   const chosenAny = hasChoice(choice);
-  useEffect(() => {
-    if (!chosenAny) return;
-    const easing = document.documentElement.hasAttribute("data-motion-scroll");
-    tracksRef.current?.scrollIntoView?.({ block: "start", behavior: easing ? "smooth" : "auto" });
-  }, [chosenAny]);
 
   const pickNone = useCallback(() => setChoice((current) => chooseNone(current)), []);
 
@@ -250,7 +250,10 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
 
   // ---------------------------------------------------------- carrying it on
 
+  // What Open in Library and Save as Smart Collection carry: null until a key is chosen.
   const rules: FilterRuleSet | null = useMemo(() => choiceRules(choice, picked), [choice, picked]);
+  // What the list beside the wheel shows: that, or every track in the sources.
+  const shownRules = useMemo(() => listRules(choice, picked), [choice, picked]);
 
   const names = useMemo(() => {
     const out = new Map<string, string>();
@@ -282,7 +285,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
     const result = await collections.saveSmart(name, rules, parentId);
     if (!result.ok || !result.node) {
       setSaving("open");
-      setSaveError(result.error ?? "Could not save that Smart Collection.");
+      setSaveError(result.error ?? couldNot("save that Smart Collection"));
       return;
     }
     setSaving("closed");
@@ -341,17 +344,47 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
   // above), and until it does the page says nothing rather than blaming playlists.
   const wholeLibraryEmpty = data !== null && data.total === 0 && picked.length === 0;
 
+  const shown = data && !libraryEmpty && !wholeLibraryEmpty ? data : null;
+  const noKeys = data !== null && data.total > 0 && data.keys.length === 0;
+  const emptySources = data !== null && data.total === 0 && picked.length > 0;
+  const countable = data !== null && data.keys.length > 0;
+  const mixWord = choice.anchor ? `Show keys that mix with ${choice.anchor}` : "Show keys that mix";
+  const needChoice = rules === null;
+
   const header = (
     <ScreenHeader
       title="Keys"
-      inset
-      summary={
-        data && !libraryEmpty && !wholeLibraryEmpty ? (
-          <span role="status">
-            {data.total === 0
-              ? "No tracks here"
-              : `${plural(data.total, "track")} · ${sourcesWords(picked)}`}
-          </span>
+      facts={shown && shown.total > 0 ? { count: shown.total, noun: "track", facts: [sourcesWords(picked)] } : undefined}
+      summary={shown && shown.total === 0 ? <span role="status">No tracks here</span> : undefined}
+      pageActions={
+        countable || noKeys ? (
+          <>
+            <Hint text={choice.anchor === null ? SELECT_A_KEY : undefined}>
+              <Button
+                variant="secondary"
+                aria-pressed={showMix}
+                aria-disabled={choice.anchor === null ? true : undefined}
+                onClick={() => {
+                  if (choice.anchor !== null) setShowMix((on) => !on);
+                }}
+              >
+                {mixWord}
+              </Button>
+            </Hint>
+            <Hint text={needChoice ? SELECT_A_KEY : undefined}>
+              <Button
+                variant="secondary"
+                aria-disabled={needChoice || !window.cuepoint?.saveSmartCollection ? true : undefined}
+                onClick={() => {
+                  if (needChoice) return;
+                  setSaveError(null);
+                  setSaving("open");
+                }}
+              >
+                {opensDialog("Save as Smart Collection")}
+              </Button>
+            </Hint>
+          </>
         ) : undefined
       }
     />
@@ -374,23 +407,18 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
     );
   }
 
-  const noKeys = data !== null && data.total > 0 && data.keys.length === 0;
-  const emptySources = data !== null && data.total === 0 && picked.length > 0;
-  const countable = data !== null && data.keys.length > 0;
-  const mixWord = choice.anchor ? `Show keys that mix with ${choice.anchor}` : "Show keys that mix with…";
-  const needChoice = rules === null;
-
   return (
     <div className="screen screen--scroll keys-page">
       {header}
 
-      <div className="keys-page__top">
+      <div className="keys-page__panes">
         <KeysSourcePicker
           playlists={playlistTree}
           collections={collections.tree}
           libraryTrackCount={summaryRead.value?.track_count ?? null}
           picked={picked}
           onToggle={(source) => update(toggleSource(picked, source))}
+          onToggleMany={(sources, on) => update(setSources(picked, sources, on))}
           onClear={() => update([])}
         />
 
@@ -414,7 +442,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
             className="keys-page__state"
             icon="keys"
             headline="Keys are counted in the desktop app"
-            description="Once CuePoint has started"
+            description={needsDesktopApp("Counting keys")}
           />
         )}
 
@@ -438,36 +466,26 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
 
         {countable && data && (
           <div className="keys-page__view" data-view={view}>
-            <Tabs
-              variant="sub"
-              tabs={VIEWS}
-              activeId={view}
-              onChange={(id) => {
-                const next: KeysView = id === "list" ? "list" : "wheel";
-                setView(next);
-                saveView(next);
-              }}
-            />
-            <div role="tabpanel" aria-label={view === "wheel" ? "Wheel" : "List"} className="keys-page__panel">
+            <div className="keys-page__panel">
               {view === "wheel" ? (
                 <>
-                <div className="keys-page__wheel">
-                  <CamelotWheel
-                    lit={lit}
-                    focusCode={choice.anchor ?? order[0] ?? CAMELOT_CODES[0]!}
-                    onFocusCode={() => undefined}
-                    onPick={pick}
-                    counts={counts}
-                    chosen={chosen}
-                    center={
-                      <>
-                        <strong>{formatCount(data.total - data.no_key)}</strong>
-                        <small>with a key</small>
-                      </>
-                    }
-                  />
-                </div>
-                <KeysNoKeyRow noKey={data.no_key} noneChosen={choice.none} onPickNone={pickNone} />
+                  <div className="keys-page__wheel">
+                    <CamelotWheel
+                      lit={lit}
+                      focusCode={choice.anchor ?? order[0] ?? CAMELOT_CODES[0]!}
+                      onFocusCode={() => undefined}
+                      onPick={pick}
+                      counts={counts}
+                      chosen={chosen}
+                      center={
+                        <>
+                          <strong>{formatCount(data.total - data.no_key)}</strong>
+                          <small>with a key</small>
+                        </>
+                      }
+                    />
+                  </div>
+                  <KeysNoKeyRow noKey={data.no_key} noneChosen={choice.none} onPickNone={pickNone} />
                 </>
               ) : (
                 <KeysCountsList
@@ -482,85 +500,51 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
                 />
               )}
             </div>
+            <p className="keys-page__caption" role="status">
+              {chosenAny ? `${choiceWords(choice)} · ${countNoun(choiceTotal, "track")}` : "Pick a key"}
+            </p>
           </div>
         )}
+
+        {countable && (
+          <section className="keys-page__tracks" aria-label="Tracks">
+            <KeysTracks
+              rules={shownRules}
+              viewSwitch={
+                <span className="cp-button-row" role="group" aria-label="View">
+                  {VIEWS.map((item) => (
+                    <Button
+                      key={item.id}
+                      variant="secondary"
+                      aria-pressed={view === item.id}
+                      onClick={() => {
+                        setView(item.id);
+                        saveView(item.id);
+                      }}
+                    >
+                      {item.label}
+                    </Button>
+                  ))}
+                </span>
+              }
+              openInLibrary={{ run: openInLibrary, disabledReason: needChoice ? SELECT_A_KEY : null }}
+              onSelectTrack={onSelectTrack}
+              reloadToken={reloadToken}
+              heldDetail={detail.detail}
+              collections={collections.tree}
+              onCollectionsChanged={collections.reload}
+              onOpenEntity={openEntity}
+              onOpenSimilar={openSimilar}
+              onOpenInClean={openInClean}
+              onOpenMatch={openMatch}
+              onTracksChanged={() => {
+                setReloadToken((value) => value + 1);
+                detail.reload();
+              }}
+            />
+          </section>
+        )}
       </div>
-
-      {(countable || noKeys) && (
-        <div className="keys-page__actions">
-          <Hint text={choice.anchor === null ? CLICK_A_KEY : undefined}>
-            <Button
-              variant="secondary"
-              aria-pressed={showMix}
-              aria-disabled={choice.anchor === null ? true : undefined}
-              onClick={() => {
-                if (choice.anchor !== null) setShowMix((on) => !on);
-              }}
-            >
-              {mixWord}
-            </Button>
-          </Hint>
-          <Hint text={needChoice ? CLICK_A_KEY : undefined}>
-            <Button
-              variant="secondary"
-              aria-disabled={needChoice ? true : undefined}
-              onClick={() => {
-                if (!needChoice) openInLibrary();
-              }}
-            >
-              Open in Library
-            </Button>
-          </Hint>
-          <Hint text={needChoice ? CLICK_A_KEY : undefined}>
-            <Button
-              variant="secondary"
-              aria-disabled={needChoice || !window.cuepoint?.saveSmartCollection ? true : undefined}
-              onClick={() => {
-                if (needChoice) return;
-                setSaveError(null);
-                setSaving("open");
-              }}
-            >
-              Save as Smart Collection…
-            </Button>
-          </Hint>
-        </div>
-      )}
-
-      {countable && (
-        <section ref={tracksRef} className="keys-page__tracks" aria-labelledby="keys-tracks-title">
-          {hasChoice(choice) && rules ? (
-            <>
-              <h2 id="keys-tracks-title" className="cp-text-section">
-                {`Tracks in ${choiceWords(choice)}`}
-              </h2>
-              <KeysTracks
-                rules={rules}
-                onSelectTrack={onSelectTrack}
-                reloadToken={reloadToken}
-                heldDetail={detail.detail}
-                collections={collections.tree}
-                onCollectionsChanged={collections.reload}
-                onOpenEntity={openEntity}
-                onOpenSimilar={openSimilar}
-                onOpenInClean={openInClean}
-                onOpenMatch={openMatch}
-                onTracksChanged={() => {
-                  setReloadToken((value) => value + 1);
-                  detail.reload();
-                }}
-              />
-            </>
-          ) : (
-            <>
-              <h2 id="keys-tracks-title" className="cp-text-section">
-                Tracks
-              </h2>
-              <EmptyState icon="keys" headline="Click a key to list its tracks" />
-            </>
-          )}
-        </section>
-      )}
 
       <SaveSmartDialog
         open={saving !== "closed"}

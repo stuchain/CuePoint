@@ -111,6 +111,29 @@ export function choiceRules(
   return { match: "all", rules };
 }
 
+/**
+ * The rules the track list asks for (D12): the choice's own, or with no key chosen every track
+ * in the sources, so picking a key narrows a list that is already there. Never null; an empty
+ * rule set is the whole library.
+ */
+export function listRules(choice: KeyChoice, sources: readonly PickedSource[]): FilterRuleSet {
+  const chosen = choiceRules(choice, sources);
+  if (chosen) return chosen;
+  return {
+    match: "all",
+    rules:
+      sources.length > 0
+        ? [
+            {
+              field: "in_playlist",
+              operator: "any_of",
+              value: sources.map((source) => ({ kind: source.kind, id: source.id })),
+            },
+          ]
+        : [],
+  };
+}
+
 /** The choice in words: "8A", "8A and 9A", "1A, 8A and 9A". */
 export function choiceWords(choice: KeyChoice): string {
   if (choice.none) return "No Beatport key";

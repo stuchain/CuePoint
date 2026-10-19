@@ -281,8 +281,10 @@ const countsList = () => screen.getByRole("group", { name: "Keys in these source
 const wheel = () => screen.getByRole("group", { name: "Keys" });
 const rowButton = (code: string) =>
   within(countsList()).getByRole("button", { name: new RegExp(`^${code},`) });
-const showWheel = () => fireEvent.click(screen.getByRole("tab", { name: "Wheel" }));
-const showList = () => fireEvent.click(screen.getByRole("tab", { name: "List" }));
+const showWheel = () => fireEvent.click(screen.getByRole("button", { name: "Wheel" }));
+const showList = () => fireEvent.click(screen.getByRole("button", { name: "List" }));
+const trackToolbar = () => screen.getByRole("toolbar", { name: "Track list" });
+const whichTracks = () => within(sourcesPanel()).getByRole("combobox", { name: "Which tracks" });
 const findList = () => screen.findByRole("group", { name: "Keys in these sources" }, LOADED);
 const where = () => screen.getByTestId("where");
 const state = () => JSON.parse(where().getAttribute("data-state") ?? "null");
@@ -322,18 +324,25 @@ afterEach(() => {
 });
 
 describe("the source picker", () => {
-  it("shows the library's track count on the Whole library row", async () => {
+  it("writes the library's track count in the Which tracks choice", async () => {
     renderKeys();
     await opened();
-    const row = within(sourcesPanel()).getByRole("checkbox", { name: "Whole library" }).closest("label")!;
-    await waitFor(() => expect(within(row).getByText("1,500")).toHaveClass("cp-playlist-pane__count"));
+    await waitFor(() =>
+      expect(within(whichTracks()).getByRole("option", { name: "Whole library · 1,500" })).toBeInTheDocument(),
+    );
+  });
+
+  it("chooses which tracks with the shared Select, its label inside the box, as Statistics does (C222)", async () => {
+    renderKeys();
+    await opened();
+    expect(whichTracks().closest(".cp-select")).toHaveClass("cp-select--inline");
   });
 
   it("starts on the whole library and asks for its keys", async () => {
     renderKeys();
     await opened();
     expect(screen.getByRole("heading", { level: 1, name: "Keys" })).toBeInTheDocument();
-    expect(within(sourcesPanel()).getByRole("checkbox", { name: "Whole library" })).toBeChecked();
+    expect(whichTracks()).toHaveValue("whole");
     expect(mock("getKeysPopulation")).toHaveBeenCalledWith({ sources: [{ kind: "all" }] });
     expect(screen.getByText("1,500 tracks · Whole library")).toBeInTheDocument();
   });
@@ -352,7 +361,37 @@ describe("the source picker", () => {
     expect(within(panel).getByText("Sets")).toBeInTheDocument();
   });
 
-  it("counts the ticked sources, and the whole library box lets go of them", async () => {
+  it("ticks a Collections folder to tick everything under it, and dashes it while only some is (C40)", async () => {
+    install({
+      getCollections: vi.fn().mockResolvedValue({
+        collections: [
+          collection(50, "Crates", "folder"),
+          collection(51, "Warm", "collection", 50),
+          collection(52, "Late", "collection", 50),
+        ],
+        total: 3,
+      }),
+    });
+    renderKeys();
+    await opened();
+    const panel = sourcesPanel();
+    fireEvent.click(await within(panel).findByRole("checkbox", { name: "Warm" }, LOADED));
+    await waitFor(() =>
+      expect((within(panel).getByRole("checkbox", { name: "Crates" }) as HTMLInputElement).indeterminate).toBe(true),
+    );
+    fireEvent.click(within(panel).getByRole("checkbox", { name: "Crates" }));
+    await waitFor(() =>
+      expect(mock("getKeysPopulation")).toHaveBeenLastCalledWith({
+        sources: [
+          { kind: "collection", id: 51 },
+          { kind: "collection", id: 52 },
+        ],
+      }),
+    );
+    expect(within(panel).getByRole("checkbox", { name: "Crates" })).toBeChecked();
+  });
+
+  it("counts the ticked sources, and the Which tracks choice lets go of them", async () => {
     renderKeys();
     await opened();
     const panel = sourcesPanel();
@@ -367,11 +406,11 @@ describe("the source picker", () => {
         ],
       }),
     );
-    expect(within(panel).getByRole("checkbox", { name: "Whole library" })).not.toBeChecked();
+    expect(whichTracks()).toHaveValue("ticked");
     expect(await screen.findByText("20 tracks · 1 playlist and 1 Set")).toBeInTheDocument();
     expect(await within(countsList()).findByRole("button", { name: /^1B,/ })).toBeInTheDocument();
 
-    fireEvent.click(within(panel).getByRole("checkbox", { name: "Whole library" }));
+    fireEvent.change(whichTracks(), { target: { value: "whole" } });
     // The whole library's counts were read on opening and are still in the shared cache (C19d),
     // so going back to them shows them without asking again.
     expect(await screen.findByText("1,500 tracks · Whole library")).toBeInTheDocument();
@@ -488,17 +527,21 @@ describe("the counts", () => {
       expect.stringMatching(/^9A.*3$/),
       expect.stringMatching(/^10A.*5$/),
       expect.stringMatching(/^11B.*1,234$/),
-      "No Beatport key: 246",
+      // One more row, drawn like the others (C258).
+      expect.stringMatching(/^—no key.*246$/),
     ]);
     expect(rowButton("8A").querySelector("[data-bar]")).not.toBeNull();
     expect(rowButton("11B").querySelector("[data-bar]")).toHaveAttribute("data-percent", "100");
   });
 
-  it("writes 'No Beatport key: N' on its own line", async () => {
+  it("ends the list with '— no key  N' as one more row, not a lone line under a rule (C258)", async () => {
     renderKeys();
     await opened();
     const none = within(countsList()).getByRole("button", { name: "No Beatport key: 246" });
     expect(none.parentElement).toHaveAttribute("data-line", "no-key");
+    expect(none).toHaveClass("keys-counts__row");
+    expect(none.closest("li")).toBe(countsList().querySelector("li:last-child"));
+    expect(none).toHaveTextContent("—no key246");
   });
 
   it("writes the counts on the wheel's segments, in the same numbers", async () => {
@@ -520,14 +563,26 @@ describe("the counts", () => {
 });
 
 describe("the Wheel | List switch (K15)", () => {
-  const tab = (name: "Wheel" | "List") => screen.getByRole("tab", { name });
+  const tab = (name: "Wheel" | "List") => screen.getByRole("button", { name });
+
+  it("sits in the track list's toolbar, so nothing moves when it is used (D12, C249)", async () => {
+    localStorage.clear();
+    renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+    const bar = trackToolbar();
+    expect(bar).toHaveClass("cp-toolbar");
+    expect(within(bar).getByRole("button", { name: "Wheel" })).toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: "List" })).toBeInTheDocument();
+    // The view's own box is not a second place for the switch.
+    expect(screen.queryByRole("tablist")).toBeNull();
+  });
 
   it("is visible above the counts, one view at a time, on the wheel at first", async () => {
     localStorage.clear();
     renderKeys();
     await screen.findByRole("group", { name: "Keys" }, LOADED);
-    expect(tab("Wheel")).toHaveAttribute("aria-selected", "true");
-    expect(tab("List")).toHaveAttribute("aria-selected", "false");
+    expect(tab("Wheel")).toHaveAttribute("aria-pressed", "true");
+    expect(tab("List")).toHaveAttribute("aria-pressed", "false");
     expect(wheel()).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Keys in these sources" })).not.toBeInTheDocument();
   });
@@ -538,7 +593,7 @@ describe("the Wheel | List switch (K15)", () => {
     await screen.findByRole("group", { name: "Keys" }, LOADED);
 
     showList();
-    expect(tab("List")).toHaveAttribute("aria-selected", "true");
+    expect(tab("List")).toHaveAttribute("aria-pressed", "true");
     expect(countsList()).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Keys" })).not.toBeInTheDocument();
     expect(rowButton("8A")).toHaveTextContent("12");
@@ -566,7 +621,7 @@ describe("the Wheel | List switch (K15)", () => {
 
     renderKeys();
     await findList();
-    expect(tab("List")).toHaveAttribute("aria-selected", "true");
+    expect(tab("List")).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByRole("group", { name: "Keys" })).not.toBeInTheDocument();
     showWheel();
     expect(localStorage.getItem("cuepoint-keys-view")).toBe("wheel");
@@ -585,15 +640,6 @@ describe("the Wheel | List switch (K15)", () => {
     // Drawn once: the list does not add a second one.
     showList();
     expect(screen.getAllByRole("button", { name: "No Beatport key: 246" })).toHaveLength(1);
-  });
-
-  it("names the shown view as a tab panel", async () => {
-    localStorage.clear();
-    renderKeys();
-    await screen.findByRole("group", { name: "Keys" }, LOADED);
-    expect(screen.getByRole("tabpanel", { name: "Wheel" })).toContainElement(wheel());
-    showList();
-    expect(screen.getByRole("tabpanel", { name: "List" })).toContainElement(countsList());
   });
 
   it("writes each key in the list as the Library's key chip", async () => {
@@ -645,12 +691,15 @@ describe("choosing keys", () => {
   it("lists the tracks in a key when it is clicked, in an ordinary track table", async () => {
     renderKeys();
     await opened();
-    expect(screen.getByText("Click a key to list its tracks")).toBeInTheDocument();
+    // With no key picked the list already shows every track in the sources, and the caption asks.
+    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    expect(await within(table).findByText("Track 1")).toBeInTheDocument();
+    expect(screen.getByText("Pick a key")).toBeInTheDocument();
+    expect((mock("browseLibrary").mock.calls.at(-1)![0] as { filters: any }).filters?.rules ?? []).toEqual([]);
 
     fireEvent.click(rowButton("8A"));
 
-    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
-    expect(await within(table).findByText("Track 1")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("8A · 12 tracks")).toBeInTheDocument());
     expect(rowButton("8A")).toHaveAttribute("aria-pressed", "true");
     const last = mock("browseLibrary").mock.calls.at(-1)![0] as {
       filters: unknown;
@@ -668,36 +717,55 @@ describe("choosing keys", () => {
     });
   });
 
-  it("scrolls the Tracks into view on the first key picked, instantly unless scroll motion is on", async () => {
+  it("filters the list at once and never scrolls the page: the tracks are already beside the wheel", async () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
     try {
       renderKeys();
       await opened();
+      fireEvent.click(rowButton("8A"));
+      await waitFor(() => {
+        const last = mock("browseLibrary").mock.calls.at(-1)![0] as { filters: any };
+        expect(last.filters.rules).toEqual([{ field: "key", operator: "is", value: "8A" }]);
+      });
       expect(scrollIntoView).not.toHaveBeenCalled();
-      fireEvent.click(rowButton("8A"));
-      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
-      expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "auto" });
-      expect(scrollIntoView.mock.contexts[0]).toBe(
-        screen.getByRole("heading", { name: /^Tracks in/ }).closest("section"),
-      );
-      // A second key changes the list in place: no second jump.
-      fireEvent.click(rowButton("9A"), { ctrlKey: true });
-      await waitFor(() => expect(rowButton("9A")).toHaveAttribute("aria-pressed", "true"));
-      expect(scrollIntoView).toHaveBeenCalledTimes(1);
-
-      // Let go of every key, then pick again with scroll motion on: it eases.
-      fireEvent.click(rowButton("8A"), { ctrlKey: true });
-      fireEvent.click(rowButton("9A"), { ctrlKey: true });
-      await waitFor(() => expect(screen.getByText("Click a key to list its tracks")).toBeInTheDocument());
-      document.documentElement.setAttribute("data-motion-scroll", "on");
-      fireEvent.click(rowButton("8A"));
-      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(2));
-      expect(scrollIntoView).toHaveBeenLastCalledWith({ block: "start", behavior: "smooth" });
     } finally {
-      document.documentElement.removeAttribute("data-motion-scroll");
       Reflect.deleteProperty(Element.prototype, "scrollIntoView");
     }
+  });
+
+  it("puts Sources, the wheel and the tracks side by side in that order, the tracks after the wheel (D12)", async () => {
+    localStorage.clear();
+    renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+    const sources = sourcesPanel();
+    const tracks = trackToolbar();
+    const follows = (a: Element, b: Element) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(follows(sources, wheel())).toBeTruthy();
+    expect(follows(wheel(), tracks)).toBeTruthy();
+    expect(sources.closest(".keys-page__panes")).toBe(tracks.closest(".keys-page__panes"));
+  });
+
+  it("counts the tracks in the toolbar and links to the Library from it, as a go-to link (C80, C11)", async () => {
+    renderKeys();
+    await opened();
+    await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    const bar = trackToolbar();
+    await waitFor(() => expect(within(bar).getByText("3 tracks")).toBeInTheDocument());
+    const link = within(bar).getByRole("button", { name: "Open in Library" });
+    expect(link).toHaveClass("cp-link", "cp-link--go");
+  });
+
+  it("selects the row that is right-clicked first, so the menu acts on what is marked (C183)", async () => {
+    renderKeys();
+    await opened();
+    const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+    const row = async (title: string) => (await within(table).findByText(title)).closest("[role=row]")!;
+    fireEvent.click(await row("Track 1"));
+    fireEvent.click(await row("Track 2"), { ctrlKey: true });
+    fireEvent.contextMenu(await row("Track 3"), { clientX: 100, clientY: 100 });
+    expect(await screen.findByRole("menu", { name: "Track actions" })).toBeInTheDocument();
+    expect(screen.queryByRole("menu", { name: /Actions for 2 tracks/ })).toBeNull();
   });
 
   it("chooses with a click on the wheel as well", async () => {
@@ -728,7 +796,7 @@ describe("choosing keys", () => {
       const last = mock("browseLibrary").mock.calls.at(-1)![0] as { filters: any };
       expect(last.filters.rules[0].value).toEqual(["9A", "10A", "11B"]);
     });
-    expect(screen.getByRole("heading", { level: 2, name: "Tracks in 9A, 10A and 11B" })).toBeInTheDocument();
+    expect(screen.getByText(/^9A, 10A and 11B · /)).toBeInTheDocument();
   });
 
   it("narrows the tracks to the ticked sources, playlists included", async () => {
@@ -764,7 +832,7 @@ describe("choosing keys", () => {
     expect(none).toHaveAttribute("title", "Every track here has a key");
     fireEvent.click(none);
     expect(none).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByText("Click a key to list its tracks")).toBeInTheDocument();
+    expect(screen.getByText("Pick a key")).toBeInTheDocument();
   });
 
   it("lists the tracks with no key when 'No Beatport key' is chosen", async () => {
@@ -784,7 +852,7 @@ describe("choosing keys", () => {
     await opened();
     showWheel();
     fireEvent.click(within(wheel()).getByRole("button", { name: /^1A,/ }));
-    expect(screen.getByText("Click a key to list its tracks")).toBeInTheDocument();
+    expect(screen.getByText("Pick a key")).toBeInTheDocument();
   });
 
   it("hands the selected track's key to the header's wheel", async () => {
@@ -797,21 +865,23 @@ describe("choosing keys", () => {
     await waitFor(() => expect(getSelectedTrack()).toMatchObject({ id: 3, key: "9A" }));
   });
 
-  it("shows the Library's selection bar over the table, with Play only", async () => {
+  it("shows the shared selection bar over the table, with Play only (C215)", async () => {
     renderKeys();
     await opened();
     fireEvent.click(rowButton("8A"));
-    // The bar shows once a track is selected; before that the row holds only the count.
+    // The bar shows once a track is selected; before that there is no empty band.
     const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
-    expect(screen.queryByRole("toolbar", { name: "Selected tracks" })).toBeNull();
+    expect(screen.queryByRole("toolbar", { name: "Selection" })).toBeNull();
     fireEvent.click((await within(table).findByText("Track 3")).closest("[role=row]")!);
-    const bar = await screen.findByRole("toolbar", { name: "Selected tracks" }, LOADED);
+    const bar = await screen.findByRole("toolbar", { name: "Selection" }, LOADED);
+    expect(bar.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // K15: only Play, the page's job, is on the bar; the rest stays in the right-click menu.
     expect(within(bar).getByRole("button", { name: /^Play/ })).toBeInTheDocument();
     for (const name of ["Organize", "Beatport", "More"]) {
       expect(within(bar).queryByRole("button", { name: new RegExp(`^${name}`) })).toBeNull();
     }
-    expect(within(bar).getByRole("button", { name: "Clear selection, 1 selected" })).toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: "Clear selection" })).toBeInTheDocument();
+    expect(within(bar).getByText("1 selected")).toBeInTheDocument();
   });
 });
 
@@ -938,9 +1008,9 @@ describe("the keys that mix", () => {
   it("is disabled until a key is chosen, and says why", async () => {
     renderKeys();
     await opened();
-    const button = screen.getByRole("button", { name: "Show keys that mix with…" });
+    const button = screen.getByRole("button", { name: "Show keys that mix" });
     expect(button).toHaveAttribute("aria-disabled", "true");
-    expect(button).toHaveAttribute("title", "Click a key first");
+    expect(button).toHaveAttribute("title", "Select a key first");
   });
 
   it("lights the engine's compatible keys on the wheel and in the list, in words", async () => {
@@ -1044,8 +1114,18 @@ describe("carrying the choice on", () => {
     for (const name of ["Open in Library", "Save as Smart Collection…"]) {
       const button = screen.getByRole("button", { name });
       expect(button).toHaveAttribute("aria-disabled", "true");
-      expect(button).toHaveAttribute("title", "Click a key first");
+      expect(button).toHaveAttribute("title", "Select a key first");
     }
+  });
+
+  it("keeps the page's actions in the header and the selection's in the bar (C216, D7)", async () => {
+    renderKeys();
+    await opened();
+    const header = screen.getByRole("heading", { level: 1, name: "Keys" }).closest(".cp-screen-header") as HTMLElement;
+    expect(within(header).getByRole("button", { name: "Save as Smart Collection…" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "Show keys that mix" })).toBeInTheDocument();
+    // The header takes the page's one margin, with no local offset (C219).
+    expect(header).not.toHaveClass("cp-screen-header--inset");
   });
 });
 

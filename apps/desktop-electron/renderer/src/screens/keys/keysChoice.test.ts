@@ -6,6 +6,7 @@ import {
   chooseNone,
   choiceRules,
   choiceWords,
+  listRules,
   modeFromEvent,
 } from "./keysChoice";
 
@@ -114,6 +115,19 @@ describe("the rules a choice makes (FLW-7, PAGES-16)", () => {
         { field: "in_playlist", operator: "any_of", value: [playlist] },
       ],
     });
+  });
+
+  it("lists every track in the sources while no key is chosen (D12)", () => {
+    expect(listRules(EMPTY_CHOICE, [])).toEqual({ match: "all", rules: [] });
+    expect(listRules(EMPTY_CHOICE, [playlist])).toEqual({
+      match: "all",
+      rules: [{ field: "in_playlist", operator: "any_of", value: [playlist] }],
+    });
+  });
+
+  it("lists the same rules as the choice once a key is chosen", () => {
+    const one = chooseKey(EMPTY_CHOICE, "8A", ORDER, "only");
+    expect(listRules(one, [set])).toEqual(choiceRules(one, [set]));
   });
 
   it("says what is chosen in words", () => {

@@ -12,7 +12,7 @@
  * runs after one — is repeated here at the size this page needs; Clean's windows are
  * opened by way of the page's `navigate` and the same link state the Library uses.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type {
   LibraryTrackDetail,
@@ -27,8 +27,11 @@ import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
 import { useToast } from "../../components/Toast";
 import { Button } from "../../components/Button";
-import { formatCount } from "../../format/counts";
-import { RETRY } from "../../format/words";
+import { Hint } from "../../components/Hint";
+import { LinkButton } from "../../components/LinkButton";
+import { SelectAllButton, SelectionBar } from "../../components/SelectionBar";
+import { countNoun, formatCount } from "../../format/counts";
+import { RETRY, couldNot, goTo } from "../../format/words";
 import { TrackContextMenu, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -40,7 +43,6 @@ import { cleanCapLine, cleanTracksFor } from "../library/libraryClean";
 import { LIBRARY_COLUMNS, LIBRARY_PREVIOUS_DEFAULT_ORDER } from "../library/libraryColumns";
 import { creditsFor } from "../library/libraryDiscover";
 import { DEFAULT_LIBRARY_QUERY, queryKey, type LibraryQuery } from "../library/libraryQuery";
-import { LibraryToolbar } from "../library/LibraryToolbar";
 import { PickerDialog, type PickerItem } from "../library/PickerDialog";
 import { copySummary, gatherTracksAsText, writeClipboard } from "../library/trackClipboard";
 import {
@@ -102,7 +104,12 @@ interface MenuState {
 }
 
 interface KeysTracksProps {
+  /** The tracks asked for: the sources alone, or with the keys chosen. No rules is every track. */
   rules: FilterRuleSet;
+  /** The Wheel | List switch, drawn at the right of this list's toolbar (D12). */
+  viewSwitch: ReactNode;
+  /** Go to the Library on the same choice; the reason says why it cannot yet. */
+  openInLibrary: { run: () => void; disabledReason: string | null };
   /** The track the Inspector should show, and how many are selected. */
   onSelectTrack: (trackId: number | null, count: number) => void;
   /** Changes when something outside the table changed its rows. */
@@ -128,6 +135,8 @@ const KEYS_BAR_GROUPS: readonly TrackActionGroupId[] = ["play"];
 
 export function KeysTracks({
   rules,
+  viewSwitch,
+  openInLibrary,
   onSelectTrack,
   reloadToken,
   heldDetail,
@@ -286,7 +295,7 @@ export function KeysTracks({
         runAction({ kind: "add_tag", value: tag.id, target: tag.name }, current.target);
       } catch (error) {
         reportUnexpected(error);
-        push(userMessage(error, "Could not make that tag."), "warning");
+        push(userMessage(error, couldNot("make that tag")), "warning");
       }
     },
     [loadTags, picker, push, runAction],
@@ -309,7 +318,7 @@ export function KeysTracks({
       const text = await gatherTracksAsText(columns.visible, rows);
       const wrote = text === "" ? false : await writeClipboard(text);
       push(
-        wrote ? copySummary(rows.length, wanted) : "Could not copy to the clipboard",
+        wrote ? copySummary(rows.length, wanted) : couldNot("copy to the clipboard"),
         wrote ? "success" : "warning",
       );
     },
@@ -520,7 +529,7 @@ export function KeysTracks({
 
   const emptyState = window_.error ? (
     <Notice
-      title="The tracks could not be read."
+      title="The tracks could not be read"
       action={
         <Button variant="secondary" onClick={window_.retry}>
           {RETRY}
@@ -532,21 +541,54 @@ export function KeysTracks({
   ) : window_.loading ? (
     <Loading what="tracks" centered />
   ) : (
-    <EmptyState icon="keys" headline="No track is in these keys here" />
+    <EmptyState compact icon="keys" headline="No track is in these keys here" />
   );
 
   return (
     <div className="keys-tracks">
-      <LibraryToolbar
-        groups={barGroups}
-        total={window_.total}
-        selected={selection.count}
-        describedByQuery={selection.selection.all}
-        openGroup={menu?.group ?? null}
-        onOpenGroup={(id, anchor) => void openGroup(id, anchor)}
-        onClear={selection.clear}
-        onSelectAll={selection.selectAllMatching}
-      />
+      <div className="cp-toolbar keys-tracks__toolbar" role="toolbar" aria-label="Track list">
+        <span className="keys-tracks__count" role="status">
+          {countNoun(window_.total, "track")}
+        </span>
+        {window_.total > 0 && selection.count < window_.total && (
+          <SelectAllButton onSelectAll={selection.selectAllMatching} />
+        )}
+        <div className="keys-tracks__end">
+          <Hint text={openInLibrary.disabledReason ?? undefined}>
+            <LinkButton
+              go
+              aria-disabled={openInLibrary.disabledReason ? true : undefined}
+              onClick={() => {
+                if (!openInLibrary.disabledReason) openInLibrary.run();
+              }}
+            >
+              {goTo("Library")}
+            </LinkButton>
+          </Hint>
+          {viewSwitch}
+        </div>
+      </div>
+
+      {/* K15: the bar keeps only Play, the page's job; every other action stays one right-click away. */}
+      <SelectionBar count={selection.count} onClear={selection.clear}>
+        {barGroups.map((group) => (
+          <Hint key={group.id} text={group.disabledReason ?? undefined}>
+            <Button
+              variant="secondary"
+              menu
+              aria-expanded={menu?.group === group.id}
+              aria-disabled={group.disabledReason ? true : undefined}
+              onClick={(event) => {
+                if (group.disabledReason) return;
+                const rect = event.currentTarget.getBoundingClientRect();
+                void openGroup(group.id, { x: rect.left, y: rect.bottom });
+              }}
+            >
+              {group.label}
+            </Button>
+          </Hint>
+        ))}
+      </SelectionBar>
 
       <div className="keys-tracks__rows">
         <TrackTable<LibraryTrackRow>
@@ -609,7 +651,7 @@ export function KeysTracks({
             ? "There are no Collections yet. Make one in the Library."
             : picker?.kind === "set"
               ? "There are no Sets yet. Make one in the Library."
-              : "No tags yet."
+              : "No tags yet"
         }
       />
 
