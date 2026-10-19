@@ -29,7 +29,7 @@ import { Hint } from "../../components/Hint";
 import { formatMatchScore } from "../../format/units";
 import { effectiveText } from "../library/libraryClean";
 import { OverriddenValue } from "../library/libraryCells";
-import { LIBRARY_COLUMNS } from "../library/libraryColumns";
+import { LIBRARY_COLUMNS, LIBRARY_PREVIOUS_DEFAULT_ORDER } from "../library/libraryColumns";
 import { PixelIcon } from "../../components/PixelIcon";
 import type { SortValue } from "./clientSort";
 import { reasonTokens, tempoDeltaText } from "./reasonTokens";
@@ -216,5 +216,5 @@ export const SIMILAR_PREVIOUS_DEFAULT_ORDER: readonly string[] = [
   "label_shared",
   "artist_shared",
   "score",
-  ...LIBRARY_COLUMNS.map((column) => column.id).filter((id) => id !== "title" && id !== "key"),
+  ...LIBRARY_PREVIOUS_DEFAULT_ORDER.filter((id) => id !== "title" && id !== "key"),
 ];

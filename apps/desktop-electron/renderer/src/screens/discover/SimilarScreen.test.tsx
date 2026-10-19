@@ -379,6 +379,19 @@ describe("suggestions are library rows (DEC-012, DEC-013)", () => {
     expect(within(bar).getByRole("button", { name: "Play" })).not.toHaveAttribute("aria-disabled");
   });
 
+  it("has a visible Select all and a count in the heading row, as the Library half has (C215)", async () => {
+    renderAt(similarPath(1));
+    await listed();
+    const head = screen.getByRole("heading", { name: "Similar tracks", level: 2 }).parentElement!;
+    expect(within(head).getByRole("status")).toHaveTextContent(
+      `${SIMILAR.value!.suggestions.length} tracks`,
+    );
+    fireEvent.click(within(head).getByRole("button", { name: "Select all" }));
+    expect(screen.getByRole("toolbar", { name: "Selection" })).toHaveTextContent(
+      `${SIMILAR.value!.suggestions.length} selected`,
+    );
+  });
+
   it("plays a selection as the queue, from the bar's Play too", async () => {
     renderAt(similarPath(1));
     await listed();

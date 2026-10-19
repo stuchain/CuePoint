@@ -59,6 +59,7 @@ import { PageCrumb } from "./PageCrumb";
 import { refusalText } from "./discoverFormat";
 import { NO_ENGINE } from "./discoverTools";
 import { consideredLine, seedFactParts, SIMILAR_INDEX_BUILDING } from "./entityFormat";
+import { SelectAllButton } from "../../components/SelectionBar";
 import { DiscoverSelectionBar } from "./DiscoverSelectionBar";
 import { libraryRowMenu } from "./libraryRowMenu";
 import {
@@ -182,6 +183,15 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
   // the table reports the displayed position.
   const rows = useMemo(() => sortedRows(given, SIMILAR_COLUMNS, columns.sort), [columns.sort, given]);
   const source = useMemo(() => inMemorySource(rows), [rows]);
+  // The list is sorted above, once; the table only shows which heading sorts it. Giving each such
+  // heading its own key as the "engine" key keeps the table from sorting the rows a second time.
+  const tableColumns = useMemo(
+    () =>
+      columns.visible.map((column) =>
+        column.sortKey || !column.accessor ? column : { ...column, sortKey: column.id },
+      ),
+    [columns.visible],
+  );
   const loadedRows = useCallback(() => rows.map((row, index) => ({ row, index })), [rows]);
   const selection = useBeatportSelection<SimilarRow>({
     key: String(seedId),
@@ -401,6 +411,15 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
         )}
       </div>
 
+      <div className="discover-section__head">
+        <h2 className="discover-section__title">Similar tracks</h2>
+        <span className="discover-section__tools">
+          <SelectAllButton disabled={rows.length === 0} onSelectAll={selection.selectAll} />
+          <span className="cp-count" role="status">
+            {countNoun(rows.length, "track")}
+          </span>
+        </span>
+      </div>
       <div className="discover-table discover-page__similar">
         <div className="discover-page__library-actions">
           <DiscoverSelectionBar
@@ -421,7 +440,7 @@ export function SimilarScreen({ onOpenInClean }: SimilarScreenProps = {}) {
           }}
         >
           <TrackTable<SimilarRow>
-            columns={columns.visible}
+            columns={tableColumns}
             source={source}
             widths={columns.widths}
             onWidthsChange={columns.setWidths}
