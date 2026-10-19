@@ -73,15 +73,6 @@ ROOT = Path(__file__).resolve().parent.parent
 #: scan cannot see belongs here; otherwise delete the file or wire it in. An
 #: entry whose file is gone or is now reached fails the guard, so this cannot rot.
 ALLOWLIST: dict[str, str] = {
-    "apps/desktop-electron/renderer/src/components/SelectionBar.css": (
-        "shared piece built in batch F; the page batches wire it in (Z removes this entry)"
-    ),
-    "apps/desktop-electron/renderer/src/components/SelectionBar.tsx": (
-        "shared piece built in batch F; the page batches wire it in (Z removes this entry)"
-    ),
-    "apps/desktop-electron/renderer/src/components/usePageSearch.ts": (
-        "shared piece built in batch F; the page batches wire it in (Z removes this entry)"
-    ),
 }
 
 SECTIONS = (
