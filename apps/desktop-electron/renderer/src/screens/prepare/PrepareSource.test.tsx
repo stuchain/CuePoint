@@ -210,6 +210,12 @@ function panel() {
   return screen.getByRole("region", { name: "Add to the Set" });
 }
 
+/** Choose a ticked item of the View menu, opening the menu only if it is not open (C126). */
+function toggleView(name: string) {
+  if (!screen.queryByRole("menu")) fireEvent.click(screen.getByRole("button", { name: "View" }));
+  fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitemcheckbox", { name }));
+}
+
 function point() {
   return within(panel()).getByRole("status", { name: /^Inserting: / });
 }
@@ -1019,9 +1025,9 @@ describe("the Library tab", () => {
 });
 
 describe("the lanes", () => {
+  /** The View menu's ticked items (C126): it stays open when one is chosen. */
   function openLanes() {
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
-    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Show tempo and key lanes" }));
+    toggleView("Tempo lane");
   }
 
   it("start hidden, open from the View menu, and are remembered", async () => {
@@ -1032,8 +1038,11 @@ describe("the lanes", () => {
     const lanes = screen.getByRole("group", { name: "Tempo and key lanes" });
     expect(within(lanes).getByText("63–145")).toBeInTheDocument();
     expect(localStorage.getItem(LANES_STORAGE_KEY)).toBe("1");
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
-    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Hide tempo and key lanes" }));
+    expect(within(screen.getByRole("menu")).getByRole("menuitemcheckbox", { name: "Tempo lane" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    toggleView("Tempo lane");
     expect(screen.queryByRole("group", { name: "Tempo and key lanes" })).toBeNull();
     expect(localStorage.getItem(LANES_STORAGE_KEY)).toBe("0");
   });
@@ -1093,9 +1102,8 @@ describe("the lanes", () => {
 });
 
 describe("the transition strip (WAVE-07)", () => {
-  function toggleStrip(label: "Show transition strip" | "Hide transition strip") {
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
-    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: label }));
+  function toggleStrip() {
+    toggleView("Transition strip");
   }
 
   const strip = () => screen.queryByRole("region", { name: "Transition" });
@@ -1128,13 +1136,13 @@ describe("the transition strip (WAVE-07)", () => {
     await opened();
     expect(strip()).toBeNull();
 
-    toggleStrip("Show transition strip");
+    toggleStrip();
     expect(strip()).toHaveTextContent(NO_SELECTION_WORDS);
     expect(localStorage.getItem(TRANSITION_STORAGE_KEY)).toBe("1");
     // The lanes keep their own memory.
     expect(localStorage.getItem(LANES_STORAGE_KEY)).toBeNull();
 
-    toggleStrip("Hide transition strip");
+    toggleStrip();
     expect(strip()).toBeNull();
     expect(localStorage.getItem(TRANSITION_STORAGE_KEY)).toBe("0");
   });

@@ -16,10 +16,10 @@ import type {
 import { formatBpmRange } from "../../components/format/bpm";
 import { chapterName } from "./prepareRows";
 import { describeFileCheck, describeSetWarning } from "./setWarnings";
-import { formatLength } from "../../format/durations";
-import { NEEDS_DESKTOP } from "../../api/userMessage";
+import { formatLength, formatSetLength } from "../../format/durations";
+import { needsDesktopApp } from "../../api/userMessage";
 import { NO_BPM, formatTempoPercent } from "../../format/units";
-import { plural } from "../../format/counts";
+import { formatCount, plural } from "../../format/counts";
 
 function counted(count: number, one: string, many: string): string {
   return plural(count, one, many);
@@ -36,12 +36,12 @@ const NO_TIMES_YET =
  */
 export function runningTimeLine(running: SetRunningTime): string | null {
   if (running.timed === 0 && running.seconds === 0) return null;
-  return `${formatLength(running.seconds)} planned`;
+  return `${formatSetLength(running.seconds)} planned`;
 }
 
 /** "3 without times"; null when every entry has one. */
 export function withoutTimesLine(running: SetRunningTime): string | null {
-  return running.untimed > 0 ? `${running.untimed.toLocaleString()} without times` : null;
+  return running.untimed > 0 ? `${formatCount(running.untimed)} without times` : null;
 }
 
 /** The header's count of warnings still open; the accepted ones are `acceptedLine`, in its title. */
@@ -52,7 +52,7 @@ export function warningCountLine(analysis: SetAnalysis): string {
 
 /** "2 accepted"; null when none is. */
 function acceptedLine(analysis: SetAnalysis): string | null {
-  return analysis.acknowledged > 0 ? `${analysis.acknowledged.toLocaleString()} marked OK` : null;
+  return analysis.acknowledged > 0 ? `${formatCount(analysis.acknowledged)} marked OK` : null;
 }
 
 /** One fact in the header's line: its words, a longer title, and whether it is a warning. */
@@ -116,14 +116,14 @@ export function headerFacts(
       text: never ? "Files not checked" : `${counted(unchecked, "file", "files")} not checked`,
       title: files,
       action: "open_missing",
-      actionText: "Missing files ›",
+      actionText: "Missing files",
     });
   }
   if (analysis.without_key > 0) {
     // Not a warning (DEC-201): said once, as plain text.
     const count = analysis.without_key;
     facts.push({
-      text: `${count.toLocaleString()} without key`,
+      text: `${formatCount(count)} without key`,
       title: `${counted(count, "entry", "entries")} ${count === 1 ? "has" : "have"} no Beatport key, so no key check applies.`,
     });
   }
@@ -136,7 +136,7 @@ export function chapterTimeText(chapter: Pick<SetChapterPlan, "running_time" | "
   const planned =
     chapter.target_seconds == null ? run : `${run} of ${formatLength(chapter.target_seconds)}`;
   const untimed = chapter.running_time.untimed;
-  return untimed > 0 ? `${planned} · ${untimed.toLocaleString()} without times` : planned;
+  return untimed > 0 ? `${planned} · ${formatCount(untimed)} without times` : planned;
 }
 
 /** A chapter's BPM range: "120–123", "from 120", "to 123", or "" with none. */
@@ -220,8 +220,8 @@ export function notesLinkTitle(notes: string | null): string {
 /** What the page says with no Sets at all (DEC-104). */
 export const WHAT_A_SET_IS = "A Set is a running order of tracks.";
 
-/** Said in a shell without the Sets bridge: a browser tab, an older shell. */
-export const NO_SETS = NEEDS_DESKTOP;
+/** Said in a shell without the Sets bridge: a browser tab, an older shell (C162). */
+export const SETS_NEED_DESKTOP = needsDesktopApp();
 
 /** An empty Set's table: the empty state's headline, its line, and both as one sentence. */
 export const EMPTY_SET_HEADLINE = "This Set is empty";
@@ -246,7 +246,7 @@ export function deletionLine(chapters: readonly SetChapterPlan[], chapter: SetCh
   const entries =
     count === 0
       ? "It holds no entries."
-      : `Its ${count === 1 ? "entry joins" : `${count.toLocaleString()} entries join`} “${
+      : `Its ${count === 1 ? "entry joins" : `${formatCount(count)} entries join`} “${
           joins ? chapterName(joins) : ""
         }”, with ${count === 1 ? "its" : "their"} times and notes.`;
   return `${entries} The chapter's name, notes and targets are deleted with it.`;

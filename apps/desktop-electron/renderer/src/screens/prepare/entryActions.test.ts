@@ -65,17 +65,18 @@ describe("the five buttons", () => {
       "Repeat after",
       "Remove",
     ]);
+    // Move up and Move down are an up arrow and a down arrow, not two copies of one mark (C245).
     expect(list.map((button) => button.short)).toEqual([
-      { icon: "move" },
-      { icon: "move" },
+      { icon: "arrow-up" },
+      { icon: "arrow-down" },
       { text: "Chapter here" },
       { text: "Repeat after" },
       { text: "Remove" },
     ]);
     // A pane with no room for the words draws these instead (DEC-249).
     expect(list.map((button) => button.glyph)).toEqual([
-      { icon: "move" },
-      { icon: "move" },
+      { icon: "arrow-up" },
+      { icon: "arrow-down" },
       { text: "Chapter" },
       { icon: "repeat-after" },
       { icon: "remove" },

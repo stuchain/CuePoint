@@ -2,7 +2,7 @@
  * The buttons for the selected entries (FLW-17), apart from their drawing.
  *
  * Move up, Move down, Start a chapter here, Repeat after and Remove sit on the
- * focused entry's row, in short words (DEC-249, which amends DEC-209). With no
+ * focused entry's row, in short words (DEC-249, which amends DEC-209), each the shared small grey Button. With no
  * entry selected there is no such row and none is drawn; with several selected
  * they act on all of them, and a button that cannot says why in its hint. Which
  * are enabled, and what "Move up" asks of the engine for one entry or several,
@@ -15,6 +15,7 @@
  * cannot move leaves the ones behind it where they are.
  */
 import type { PixelIconName } from "../../components/pixelIcons";
+import { countNoun } from "../../format/counts";
 import { canSplitAt, isEntryRow, type EntryMove, type PrepareRow } from "./prepareRows";
 
 export type EntryButtonId = "up" | "down" | "split" | "repeat" | "remove";
@@ -107,18 +108,18 @@ export function stepMoves(
   return moves;
 }
 
-// One meaning per icon (area 48): the arrows sort, × only closes, so moving, removing and
-// "carry on after" have icons of their own. Up and Down share the move mark; their names say which.
+// One meaning per icon (area 48): × only closes, so removing and "carry on after" have icons of
+// their own. Move up and Move down are an up arrow and a down arrow (C245), as everywhere else.
 const SHORT: Record<EntryButtonId, EntryMark> = {
-  up: { icon: "move" },
-  down: { icon: "move" },
+  up: { icon: "arrow-up" },
+  down: { icon: "arrow-down" },
   split: { text: "Chapter here" },
   repeat: { text: "Repeat after" },
   remove: { text: "Remove" },
 };
 const GLYPHS: Record<EntryButtonId, EntryMark> = {
-  up: { icon: "move" },
-  down: { icon: "move" },
+  up: { icon: "arrow-up" },
+  down: { icon: "arrow-down" },
   split: { text: "Chapter" },
   repeat: { icon: "repeat-after" },
   remove: { icon: "remove" },
@@ -127,8 +128,8 @@ const GLYPHS: Record<EntryButtonId, EntryMark> = {
 /** What a button does, to the entries it acts on: "Move 3 entries up", "Remove". */
 function doing(id: EntryButtonId, label: string, count: number): string {
   if (count < 2) return label;
-  if (id === "up" || id === "down") return `Move ${count.toLocaleString()} entries ${id}`;
-  if (id === "remove") return `Remove ${count.toLocaleString()} entries`;
+  if (id === "up" || id === "down") return `Move ${countNoun(count, "entry", "entries")} ${id}`;
+  if (id === "remove") return `Remove ${countNoun(count, "entry", "entries")}`;
   return label;
 }
 

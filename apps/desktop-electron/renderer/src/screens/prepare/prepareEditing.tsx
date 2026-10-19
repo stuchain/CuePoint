@@ -19,10 +19,19 @@
  *   the words, or one "Actions ▾" button where it has no room for those either; the
  *   full names are kept. Not drawn while a time on that row is being typed in.
  */
-import { useContext, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
-import { PixelIcon } from "../../components/PixelIcon";
+import {
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
+import { Button } from "../../components/Button";
 
 import { Hint } from "../../components/Hint";
+import { opensDialog } from "../../format/words";
 import { entryButtonDomId, type EntryButton, type EntryMark } from "./entryActions";
 import { useEntryButtonsForm } from "./entryButtonsRoom";
 import { DOUBLE_CLICK_MS, PrepareEditingContext, type PrepareEditing } from "./prepareEditingContext";
@@ -147,9 +156,22 @@ const stopTableKeys = (event: KeyboardEvent) => {
   if (TABLE_KEYS.has(event.key)) event.stopPropagation();
 };
 
-/** A button's mark: its icon, drawn at the size of the line, or its words. */
-function drawMark(mark: EntryMark) {
-  return "icon" in mark ? <PixelIcon name={mark.icon} className="cp-pixel-icon--text" /> : mark.text;
+/**
+ * A row button: the shared small grey Button (C6), its mark an icon alone or its words. The full
+ * name is its accessible name either way.
+ */
+function MarkButton({
+  mark,
+  label,
+  ...rest
+}: { mark: EntryMark; label: string } & Omit<ComponentPropsWithoutRef<"button">, "children" | "aria-label">) {
+  return "icon" in mark ? (
+    <Button size="sm" variant="secondary" iconOnly icon={mark.icon} aria-label={label} {...rest} />
+  ) : (
+    <Button size="sm" variant="secondary" aria-label={label} {...rest}>
+      {mark.text}
+    </Button>
+  );
 }
 
 /**
@@ -171,14 +193,14 @@ export function ChapterButtons({ row }: { row: HeadingRow }) {
       onKeyDown={stopTableKeys}
     >
       <Hint text="Edit chapter" portal>
-        <button
-          type="button"
-          className="prepare-heading__button"
+        <Button
+          size="sm"
+          variant="secondary"
           aria-label="Edit chapter"
           onClick={() => editing.chapters.edit(chapter)}
         >
-          Edit…
-        </button>
+          {opensDialog("Edit")}
+        </Button>
       </Hint>
     </span>
   );
@@ -239,16 +261,12 @@ export function EntryButtons({ row }: { row: EntryRow }) {
     <>
       <span className="prepare-row-buttons prepare-row-buttons--measure" aria-hidden="true" data-measure="words" ref={measure}>
         {buttons.map((button) => (
-          <span key={button.id} className="prepare-row-buttons__button">
-            {drawMark(button.short)}
-          </span>
+          <MarkButton key={button.id} mark={button.short} label={button.label} tabIndex={-1} />
         ))}
       </span>
       <span className="prepare-row-buttons prepare-row-buttons--measure" aria-hidden="true" data-measure="glyphs">
         {buttons.map((button) => (
-          <span key={button.id} className="prepare-row-buttons__button">
-            {drawMark(button.glyph)}
-          </span>
+          <MarkButton key={button.id} mark={button.glyph} label={button.label} tabIndex={-1} />
         ))}
       </span>
       {/* Each is a Tab stop, and its keys stay its own: Enter presses it and does not start typing a time. */}
@@ -268,34 +286,31 @@ export function EntryButtons({ row }: { row: EntryRow }) {
       >
         {form === "actions" ? (
           <Hint text="Actions for this entry" portal>
-            <button
-              type="button"
+            <Button
               id={ACTIONS_BUTTON_ID}
-              className="prepare-row-buttons__button"
+              size="sm"
+              variant="secondary"
+              menu
               aria-label="Actions"
-              aria-haspopup="menu"
               onClick={(event) => {
                 const box = event.currentTarget.getBoundingClientRect();
                 openMenu(row, { x: box.left, y: box.bottom });
               }}
             >
-              Actions<PixelIcon name="chevron-down" className="cp-pixel-icon--text cp-pixel-icon--after" />
-            </button>
+              Actions
+            </Button>
           </Hint>
         ) : (
           buttons.map((button) => (
             <Hint key={button.id} text={button.hint} portal>
-              <button
-                type="button"
+              <MarkButton
                 id={entryButtonDomId(button.id)}
                 data-entry-button={button.id}
-                className="prepare-row-buttons__button"
-                aria-label={button.label}
+                mark={form === "glyphs" ? button.glyph : button.short}
+                label={button.label}
                 disabled={button.disabled}
                 onClick={onPress(button)}
-              >
-                {drawMark(form === "glyphs" ? button.glyph : button.short)}
-              </button>
+              />
             </Hint>
           ))
         )}

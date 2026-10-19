@@ -42,14 +42,6 @@
   font-size: var(--font-size-xs);
 }
 
-.prepare-empty__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-sm);
-  margin-top: var(--space-sm);
-}
-
 /* ------------------------------------------------------------------ header */
 
 /* The Set picker beside the title: its label is only for assistive tech, and it reads as a
@@ -600,58 +592,14 @@ body.prepare-resizing {
   gap: var(--space-xs);
 }
 
-.prepare-heading__button,
-.prepare-row-buttons__button {
-  padding: 0 var(--space-xs);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-panel);
-  color: var(--fg-primary);
-  font: inherit;
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-  line-height: 1.2;
-  cursor: pointer;
-}
-
-.prepare-heading__button:hover:not(:disabled),
-.prepare-row-buttons__button:hover:not(:disabled) {
-  filter: brightness(1.08);
-}
-
-.prepare-heading__button:disabled,
-.prepare-row-buttons__button:disabled {
-  color: var(--fg-disabled);
-  cursor: not-allowed;
-}
-
-/* The selected entries' buttons, at the right end of the focused row (DEC-249): the row's own
-   height, in the table's sticky end cell. Short words and a hairline apart; "↑" and "↓" are one
-   glyph wide. */
+/* The selected entries' buttons, at the right end of the focused row (DEC-249): the shared small
+   grey Button (C6), centred in the row's height, a gap apart. */
 .prepare-row-buttons {
   display: inline-flex;
   flex: none;
-  gap: var(--space-xs);
+  gap: var(--space-md);
   height: 100%;
   align-items: center;
-}
-
-.prepare-row-buttons > .cp-hint {
-  height: calc(100% - 2 * var(--hairline));
-}
-
-.prepare-row-buttons__button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  min-width: var(--control-height);
-  height: calc(100% - 2 * var(--hairline));
-  font-family: var(--font-pixel-digits);
-  white-space: nowrap;
-}
-
-.prepare-row-buttons > .cp-hint > .prepare-row-buttons__button {
-  height: 100%;
 }
 
 /* The words and the glyphs, drawn unseen and out of the flow so the end cell can be measured for
@@ -664,16 +612,6 @@ body.prepare-resizing {
   height: 100%;
   visibility: hidden;
   pointer-events: none;
-}
-
-.prepare-row-buttons--measure .prepare-row-buttons__button {
-  border: var(--control-border-width) solid transparent;
-  height: 100%;
-}
-
-.prepare-row-buttons__button:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: calc(-1 * var(--hairline));
 }
 
 /* Mix in and Mix out: the cell is its time, and a field once it is clicked

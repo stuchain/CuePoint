@@ -32,8 +32,9 @@ import { cleanSectionState } from "../clean/cleanLink";
 import { DOUBLE_CLICK_MS } from "./prepareEditingContext";
 import { PrepareScreen, SET_ENTRY_MIME, SET_GONE_LINE } from "./PrepareScreen";
 import { EDITS, FRIDAY, IDS, PLAIN, REFUSALS, TREE, answered, refused } from "./prepare.testFixture";
+import css from "./prepare.css?raw";
 import { PREPARE_TABLE_LAYOUT_KEY } from "./prepareColumns";
-import { NO_SETS, WHAT_A_SET_IS } from "./prepareFormat";
+import { SETS_NEED_DESKTOP, WHAT_A_SET_IS } from "./prepareFormat";
 import { LAST_SET_STORAGE_KEY, PREPARE_PATH, PREPARE_SET_ROUTE, preparePath } from "./prepareLink";
 
 /** What a button draws: the name of its icon, else its words. */
@@ -136,7 +137,7 @@ function Where() {
   return <p data-testid="where">{useLocation().pathname}</p>;
 }
 
-/** Where "Missing files ›" lands: it shows the location state it was handed. */
+/** Where "Missing files" lands: it shows the location state it was handed. */
 function CleanProbe() {
   return <p data-testid="clean-state">{JSON.stringify(useLocation().state)}</p>;
 }
@@ -186,10 +187,18 @@ function inspector() {
   return screen.getByRole("complementary", { name: "Inspector" });
 }
 
-/** Turns the Mix in and Mix out columns on: they are hidden until View ▸ Show times. */
+/**
+ * A ticked item of the View menu (C126): the menu is opened if it is not open, and stays open
+ * when the item is chosen, so the next one is found in the same menu.
+ */
+function viewItem(name: string): HTMLElement {
+  if (!screen.queryByRole("menu")) fireEvent.click(screen.getByRole("button", { name: "View" }));
+  return within(screen.getByRole("menu")).getByRole("menuitemcheckbox", { name });
+}
+
+/** Turns the Mix in and Mix out columns on: View, then the ticked Mix in and Mix out. */
 function showTimes() {
-  fireEvent.click(screen.getByRole("button", { name: "View" }));
-  fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Show times" }));
+  fireEvent.click(viewItem("Mix in and Mix out"));
 }
 
 /** The names of the columns the table draws, left to right. */
@@ -395,7 +404,6 @@ describe("New Set from the header (PRP-1)", () => {
       "Notes (1)…",
       "Save set list…",
       "Copy set list",
-      "Export to Rekordbox…",
     ]);
     fireEvent.click(await menuItem("New Set…"));
     const dialog = await screen.findByRole("dialog", { name: "New Set" });
@@ -419,7 +427,7 @@ describe("the header's facts and buttons (PRP-3, PRP-6, PRP-10)", () => {
   it("opens Clean's Missing files from the files fact, and no longer checks files itself", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    fireEvent.click(within(factsLine()).getByRole("button", { name: "Missing files ›" }));
+    fireEvent.click(within(factsLine()).getByRole("button", { name: "Missing files" }));
     await waitFor(() => expect(where()).toBe("/clean"));
     expect(JSON.parse(screen.getByTestId("clean-state").textContent ?? "null")).toEqual(
       JSON.parse(JSON.stringify(cleanSectionState("missing"))),
@@ -439,15 +447,27 @@ describe("the header's facts and buttons (PRP-3, PRP-6, PRP-10)", () => {
     );
   });
 
-  it("titles the page Prepare, with the picker beside it and three buttons: Play Set, Set, View", async () => {
+  it("titles the page Prepare, with the picker beside it, the menus Set and View, then the page actions Play Set and Export (C216)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     const header = screen.getByRole("heading", { level: 1 }).closest("header") as HTMLElement;
     expect(header).toHaveTextContent(/^Prepare/);
     expect(within(header).getByLabelText("Set", { selector: "select" })).toHaveValue(String(IDS.friday));
     const buttons = within(header).getAllByRole("button");
-    expect(buttons.map((button) => button.textContent)).toEqual(["Play Set", "Set", "View", "Missing files ›"]);
-    expect(buttons[0]).toHaveClass("cp-btn--primary");
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      "Set",
+      "View",
+      "Play Set",
+      "Export to Rekordbox…",
+      "Missing files",
+    ]);
+    // Play Set is the one violet button (C5); the page actions are the header's last, left of Details.
+    expect(buttons[2]).toHaveClass("cp-btn--primary");
+    expect(header.querySelectorAll(".cp-btn--primary")).toHaveLength(1);
+    expect(buttons[3]).toHaveClass("cp-btn--secondary");
+    const actions = header.querySelector(".cp-screen-header__actions")!;
+    expect(actions).toContainElement(buttons[2]);
+    expect(actions).toContainElement(buttons[3]);
     for (const name of ["Set", "View"]) {
       const button = within(header).getByRole("button", { name });
       expect(button).toHaveClass("cp-btn--secondary");
@@ -455,10 +475,10 @@ describe("the header's facts and buttons (PRP-3, PRP-6, PRP-10)", () => {
     }
   });
 
-  it("has no Match tracks… and no Check now, and no Notes, Export or New Set button of its own", async () => {
+  it("has no Match tracks… and no Check now, and no Notes or New Set button of its own", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    for (const name of [/Match tracks/, /Check now/, /^Notes/, /^Export/, /^New Set/]) {
+    for (const name of [/Match tracks/, /Check now/, /^Notes/, /^New Set/]) {
       expect(screen.queryByRole("button", { name })).toBeNull();
     }
   });
@@ -548,7 +568,7 @@ describe("which Set opens", () => {
   it("is unavailable, and says so, in a shell without the Sets bridge", async () => {
     delete bridge.sets;
     renderAt(PREPARE_PATH);
-    expect(await screen.findByText(NO_SETS)).toBeInTheDocument();
+    expect(await screen.findByText(SETS_NEED_DESKTOP)).toBeInTheDocument();
   });
 });
 
@@ -558,19 +578,19 @@ describe("the Set", () => {
     await opened();
     const facts = document.querySelector(".prepare-header__facts") as HTMLElement;
     expect(facts).toHaveTextContent(
-      "6 tracks · 9:00 planned · 5 warnings",
+      "6 tracks · 0:09:00 planned · 5 warnings",
     );
     // What asks something of the person sits beside the facts, never inside them (they give way).
-    expect(facts).toHaveTextContent("Files not checked · Missing files ›");
+    expect(facts).toHaveTextContent("Files not checked · Missing files");
     // Each short fact carries its sentence: the untimed and the accepted are in their titles.
-    expect(within(facts).getByText("9:00 planned")).toHaveAttribute("title", "4 without times");
+    expect(within(facts).getByText("0:09:00 planned")).toHaveAttribute("title", "4 without times");
     expect(within(facts).getByText(/5 warnings/)).toHaveAttribute(
       "title",
       "2 tempo jumps, 1 key clash, 1 chapter over its target, 1 chapter outside its BPM range, 1 marked OK",
     );
     expect(facts).not.toHaveTextContent("without times");
     expect(facts).not.toHaveTextContent("marked OK");
-    expect(within(facts).getByRole("button", { name: "Missing files ›" })).toHaveAttribute(
+    expect(within(facts).getByRole("button", { name: "Missing files" })).toHaveAttribute(
       "title",
       expect.stringMatching(/^Files in this Set have never been checked/),
     );
@@ -579,11 +599,10 @@ describe("the Set", () => {
     // The lanes, the transition strip and the times share one link, so the line stays one line;
     // the columns are the Set table's corner button (R4-2).
     fireEvent.click(screen.getByRole("button", { name: "View" }));
-    expect(
-      within(screen.getByRole("menu"))
-        .getAllByRole("menuitem")
-        .map((item) => item.textContent),
-    ).toEqual(["Show tempo and key lanes", "Show transition strip", "Show times"]);
+    const items = within(screen.getByRole("menu")).getAllByRole("menuitemcheckbox");
+    expect(items.map((item) => item.textContent)).toEqual(["Tempo lane", "Transition strip", "Mix in and Mix out"]);
+    // Ticked on and off, not "Show" and "Hide" (C126); none is on in a fresh layout.
+    expect(items.map((item) => item.getAttribute("aria-checked"))).toEqual(["false", "false", "false"]);
   });
 
   it("shows the Set's own notes and edits them in one write (PREP-12)", async () => {
@@ -835,7 +854,7 @@ describe("an entry's menu", () => {
     fireEvent.contextMenu(rowAt(2));
     fireEvent.click(await menuItem("Remove from Set"));
     await waitFor(() => expect(bridge.removeCollectionEntries).toHaveBeenCalledWith({ entry_ids: [E2] }));
-    expect(await screen.findByText("Removed 1 entry from “Friday”.")).toBeInTheDocument();
+    expect(await screen.findByText("Removed 1 track from “Friday”")).toBeInTheDocument();
   });
 
   it("offers Undo with the removal, and puts the entry back where it was", async () => {
@@ -844,7 +863,7 @@ describe("an entry's menu", () => {
     fireEvent.contextMenu(rowAt(2));
     fireEvent.click(await menuItem("Remove from Set"));
     const gone = FRIDAY.entries.entries[1];
-    expect(await screen.findByText("Removed 1 entry from “Friday”.")).toBeInTheDocument();
+    expect(await screen.findByText("Removed 1 track from “Friday”")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     await waitFor(() =>
       expect(bridge.insertTrackInCollection).toHaveBeenCalledWith({
@@ -864,15 +883,29 @@ describe("an entry's menu", () => {
     expect(await within(inspector()).findByText(/2 selected/, {}, LOADED)).toBeInTheDocument();
     fireEvent.contextMenu(rowAt(2));
     fireEvent.click(await menuItem("Remove 2 entries from Set"));
-    expect(await screen.findByText(/^Removed .* from “Friday”\.$/)).toBeInTheDocument();
+    expect(await screen.findByText(/^Removed .* from “Friday”$/)).toBeInTheDocument();
     const insert = bridge.insertTrackInCollection as unknown as ReturnType<typeof vi.fn>;
     insert.mockClear();
     insert.mockRejectedValueOnce(new Error("gone"));
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(insert).toHaveBeenCalledTimes(2));
     expect(
-      await screen.findByText("Undo could not bring back 1 of 2 removed entries; the rest are back."),
+      await screen.findByText("Could not restore 1 of 2 tracks. The rest are back."),
     ).toBeInTheDocument();
+  });
+
+  it("says in a danger toast that Undo could not restore the Set's entries when none comes back (SB2)", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.contextMenu(rowAt(2));
+    fireEvent.click(await menuItem("Remove from Set"));
+    expect(await screen.findByText("Removed 1 track from “Friday”")).toBeInTheDocument();
+    const insert = bridge.insertTrackInCollection as unknown as ReturnType<typeof vi.fn>;
+    insert.mockClear();
+    insert.mockRejectedValueOnce(new Error("gone"));
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    const failed = await screen.findByText("Could not restore “Friday”.");
+    expect(failed.closest(".cp-toast")).toHaveClass("cp-toast--error");
   });
 
   it("acts on every selected entry", async () => {
@@ -975,7 +1008,9 @@ describe("a heading's menu", () => {
     await opened();
     fireEvent.contextMenu(rowAt(3));
     fireEvent.click(await menuItem("Delete chapter…"));
-    const dialog = await screen.findByRole("dialog", { name: "Delete the chapter “Peak”?" });
+    const dialog = await screen.findByRole("dialog", { name: "Delete “Peak”?" });
+    // The shared lead says it is permanent, then what happens to the entries (C165).
+    expect(within(dialog).getByText("This cannot be undone.")).toBeInTheDocument();
     expect(within(dialog).getByText(/Its 2 entries join “Warm-up”/)).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete chapter" }));
     await waitFor(() => expect(sets.deleteChapter).toHaveBeenCalledWith({ chapter_id: 2 }));
@@ -1108,11 +1143,10 @@ describe("set lists and the export", () => {
     );
   });
 
-  it("opens the Rekordbox export with the Set ticked", async () => {
+  it("opens the Rekordbox export with the Set ticked, from the header's Export button (C216)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    openSetMenu();
-    fireEvent.click(await menuItem("Export to Rekordbox…"));
+    fireEvent.click(screen.getByRole("button", { name: "Export to Rekordbox…" }));
     const dialog = await screen.findByRole("dialog", { name: "Export to Rekordbox" });
     // The tick list sits behind Details (DEC-247).
     fireEvent.click(within(dialog).getByRole("button", { name: "Details" }));
@@ -1182,8 +1216,8 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     fireEvent.click(rowAt(2));
     const group = within(rowAt(2)).getByRole("group", { name: "Selected entries" });
     expect(within(group).getAllByRole("button").map(markOf)).toEqual([
-      "move",
-      "move",
+      "arrow-up",
+      "arrow-down",
       "Chapter here",
       "Repeat after",
       "Remove",
@@ -1195,6 +1229,23 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     expect(screen.getAllByRole("button", { name: "Move up" })).toHaveLength(1);
     // The facts line has none of them any more.
     for (const name of names) expect(within(factsLine()).queryByRole("button", { name })).toBeNull();
+  });
+
+  it("are the shared small grey Button, with no hover filter of their own (C6)", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    const group = within(rowAt(2)).getByRole("group", { name: "Selected entries" });
+    for (const each of within(group).getAllByRole("button")) {
+      expect(each).toHaveClass("cp-btn", "cp-btn--sm", "cp-btn--secondary");
+    }
+    // The chapter heading's one button is the same.
+    expect(within(rowAt(3)).getByRole("button", { name: "Edit chapter" })).toHaveClass(
+      "cp-btn",
+      "cp-btn--sm",
+      "cp-btn--secondary",
+    );
+    expect(css).not.toMatch(/filter:\s*brightness/);
   });
 
   it("sit on the focused entry's row when several are selected, and say how many they act on", async () => {
@@ -1324,8 +1375,8 @@ describe("the entry buttons (FLW-17, C15d)", () => {
       await opened();
       fireEvent.click(rowAt(2));
       expect(within(within(rowAt(2)).getByRole("group", { name: "Selected entries" })).getAllByRole("button").map(markOf)).toEqual([
-        "move",
-        "move",
+        "arrow-up",
+        "arrow-down",
         "Chapter here",
         "Repeat after",
         "Remove",
@@ -1614,7 +1665,7 @@ describe("the entry buttons (FLW-17, C15d)", () => {
     await waitFor(() => expect(sets.moveChapter).toHaveBeenCalledWith({ chapter_id: 2, position: 2 }));
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete chapter…" }));
-    const confirm = await screen.findByRole("dialog", { name: "Delete the chapter “Peak”?" });
+    const confirm = await screen.findByRole("dialog", { name: "Delete “Peak”?" });
     expect(confirm).toHaveTextContent(/join/);
     fireEvent.click(within(confirm).getByRole("button", { name: "Delete chapter" }));
     await waitFor(() => expect(sets.deleteChapter).toHaveBeenCalledWith({ chapter_id: 2 }));
@@ -1868,17 +1919,17 @@ describe("the Set table's columns (R4-5)", () => {
     expect(chip).toHaveClass(`key-chip--${chip!.textContent}`);
   });
 
-  it("shows both time columns from View ▸ Show times, and hides both again", async () => {
+  it("ticks both time columns on from View ▸ Mix in and Mix out, and off again, with the menu left open (C126)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     showTimes();
     expect(headers()).toEqual(expect.arrayContaining(["Mix in", "Mix out"]));
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
-    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Hide times" }));
+    // The menu is still open, and the item is ticked.
+    expect(viewItem("Mix in and Mix out")).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(viewItem("Mix in and Mix out"));
     expect(headers()).not.toContain("Mix in");
     expect(headers()).not.toContain("Mix out");
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
-    expect(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Show times" })).toBeInTheDocument();
+    expect(viewItem("Mix in and Mix out")).toHaveAttribute("aria-checked", "false");
   });
 
   it("hides both when only one is showing, rather than swapping them", async () => {
@@ -1887,8 +1938,7 @@ describe("the Set table's columns (R4-5)", () => {
     await opened();
     expect(headers()).toContain("Mix out");
     expect(headers()).not.toContain("Mix in");
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
-    fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Hide times" }));
+    fireEvent.click(viewItem("Mix in and Mix out"));
     expect(headers()).not.toContain("Mix out");
   });
 

@@ -57,7 +57,7 @@ import { Modal } from "../../components/Modal";
 import { EmptyState } from "../../components/EmptyState";
 import { Panel } from "../../components/Panel";
 import { Select } from "../../components/Select";
-import { TrackContextMenu } from "../../components/TrackContextMenu";
+import { TrackContextMenu, useMenuButton } from "../../components/TrackContextMenu";
 import { useToast } from "../../components/Toast";
 import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import { useInspectorSlot } from "../../components/shell/inspectorSlot";
@@ -66,7 +66,8 @@ import { ColumnPicker, TrackTable, inMemorySource, useColumnLayout } from "../..
 import { useRowHeight } from "../../components/table/trackTableLayout";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { formatLength } from "../../format/durations";
-import { RETRY, UNDO, opensDialog } from "../../format/words";
+import { countNoun } from "../../format/counts";
+import { NO_SETS, RETRY, UNDO, couldNot, deleteLead, deleteTitle, opensDialog, removedFrom } from "../../format/words";
 import { cleanSectionState } from "../clean/cleanLink";
 import { entityPath, similarPath } from "../discover/discoverLinks";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
@@ -101,7 +102,7 @@ import { PREPARE_COLUMNS, PREPARE_TABLE_LAYOUT_KEY } from "./prepareColumns";
 import {
   EMPTY_SET_HEADLINE,
   EMPTY_SET_HELP,
-  NO_SETS,
+  SETS_NEED_DESKTOP,
   WHAT_A_SET_IS,
   deletionLine,
   headerFacts,
@@ -437,7 +438,7 @@ export function PrepareScreen({
   // Put removed entries back where they were, in their order, with their times and notes (Undo on
   // the toast that says they were removed). Warnings marked OK are not brought back.
   const restoreEntries = useCallback(
-    async (saved: SavedEntry[]) => {
+    async (saved: SavedEntry[], setName: string) => {
       const insert = window.cuepoint?.insertTrackInCollection;
       if (!insert || setId === null || saved.length === 0) return;
       const made = await write(async () => {
@@ -463,9 +464,9 @@ export function PrepareScreen({
       if (failed > 0) {
         push(
           failed === saved.length
-            ? "Undo could not bring back any of the removed entries."
-            : `Undo could not bring back ${failed} of ${saved.length} removed entries; the rest are back.`,
-          "warning",
+            ? couldNot("restore", setName)
+            : `${couldNot(`restore ${failed} of ${countNoun(saved.length, "track")}`)} The rest are back.`,
+          "error",
         );
       }
       for (const [at, entry] of saved.entries()) {
@@ -506,10 +507,10 @@ export function PrepareScreen({
       if (!done) return;
       selection.clear();
       tree.reload();
-      const what = done.removed === 1 ? "1 entry" : `${done.removed.toLocaleString()} entries`;
-      push(`Removed ${what} from “${shown.plan.name}”.`, "success", {
+      // Reversible, so it runs at once with an Undo (SB2); no confirm.
+      push(removedFrom(done.removed, shown.plan.name), "success", {
         label: UNDO,
-        onClick: () => void restoreEntries(saved),
+        onClick: () => void restoreEntries(saved, shown.plan.name),
       });
     },
     [push, restoreEntries, selection, shown, tree, write],
@@ -857,8 +858,13 @@ export function PrepareScreen({
   const [menu, setMenu] = useState<Menu | null>(null);
   // The header holds two menus: "Set" (new, notes, set list, export) and "View" (the lanes, the
   // transition strip, times and the columns), so the page keeps its rows (DEC-112).
-  const [headerSetMenu, setHeaderSetMenu] = useState<{ x: number; y: number } | null>(null);
-  const [viewMenu, setViewMenu] = useState<{ x: number; y: number } | null>(null);
+  // The two menus open from their own button and close from it too (C113, C106).
+  const setMenuButton = useMenuButton();
+  const viewMenuButton = useMenuButton();
+  const belowButton = (anchor: { current: HTMLElement | null }) => {
+    const box = anchor.current?.getBoundingClientRect();
+    return { x: box?.left ?? 0, y: box?.bottom ?? 0 };
+  };
 
   const openEntryMenu = useCallback(
     async (row: EntryRow, index: number, x: number, y: number) => {
@@ -1117,7 +1123,7 @@ export function PrepareScreen({
       <div className="screen screen--stack screen--scroll prepare-screen--waiting">
         <ScreenHeader title="Prepare" />
         <Panel>
-          <p className="prepare-note">{NO_SETS}</p>
+          <p className="prepare-note">{SETS_NEED_DESKTOP}</p>
         </Panel>
       </div>
     );
@@ -1132,20 +1138,27 @@ export function PrepareScreen({
         <ScreenHeader title="Prepare" />
         {noSets ? (
           <>
-            <EmptyState icon="prepare" headline="No Sets yet" description={WHAT_A_SET_IS} />
-            <div className="prepare-empty__actions">
-              <Button variant="primary"
-                onClick={() => {
-                  setCreateError(null);
-                  setCreating(true);
-                }}
-              >
-                {opensDialog("New Set")}
-              </Button>
-              <Button variant="secondary" onClick={() => void chooseSource()}>
-                New Set from…
-              </Button>
-            </div>
+            <EmptyState
+              icon="prepare"
+              headline={NO_SETS}
+              description={WHAT_A_SET_IS}
+              action={
+                <div className="cp-button-row">
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setCreateError(null);
+                      setCreating(true);
+                    }}
+                  >
+                    {opensDialog("New Set")}
+                  </Button>
+                  <Button variant="secondary" onClick={() => void chooseSource()}>
+                    {opensDialog("New Set from")}
+                  </Button>
+                </div>
+              }
+            />
           </>
         ) : tree.status === "error" ? (
           <Notice
@@ -1337,30 +1350,21 @@ export function PrepareScreen({
         }
         actions={
           <>
+            <Button variant="secondary" menu {...setMenuButton.buttonProps}>
+              Set
+            </Button>
+            <Button variant="secondary" menu {...viewMenuButton.buttonProps}>
+              View
+            </Button>
+          </>
+        }
+        pageActions={
+          <>
             <Button variant="primary" onClick={() => void playFrom(0)} disabled={entries.length === 0 || !player}>
               Play Set
             </Button>
-            <Button
-              variant="secondary"
-              menu
-              aria-expanded={headerSetMenu !== null}
-              onClick={(event) => {
-                const rect = event.currentTarget.getBoundingClientRect();
-                setHeaderSetMenu({ x: rect.left, y: rect.bottom });
-              }}
-            >
-              Set
-            </Button>
-            <Button
-              variant="secondary"
-              menu
-              aria-expanded={viewMenu !== null}
-              onClick={(event) => {
-                const rect = event.currentTarget.getBoundingClientRect();
-                setViewMenu({ x: rect.left, y: rect.bottom });
-              }}
-            >
-              View
+            <Button variant="secondary" onClick={() => setExporting(true)}>
+              Export to Rekordbox…
             </Button>
           </>
         }
@@ -1395,7 +1399,7 @@ export function PrepareScreen({
                   <Hint text={fact.title} inline>
                     <button
                       type="button"
-                      className="cp-link prepare-header__link"
+                      className="cp-link cp-link--go prepare-header__link"
                       onClick={() => navigate("/clean", { state: cleanSectionState("missing") })}
                     >
                       {fact.actionText}
@@ -1442,17 +1446,17 @@ export function PrepareScreen({
             menu.kind === "heading"
               ? `Chapter “${chapterName(menu.row.chapter)}”`
               : menu.rows.length > 1
-                ? `Actions for ${menu.rows.length.toLocaleString()} entries`
+                ? `Actions for ${countNoun(menu.rows.length, "entry", "entries")}`
                 : "Entry actions"
           }
         />
       )}
-      {headerSetMenu && (
+      {setMenuButton.open && (
         <TrackContextMenu
-          x={headerSetMenu.x}
-          y={headerSetMenu.y}
+          {...belowButton(setMenuButton.anchor)}
+          anchor={setMenuButton.anchor}
           label="Set"
-          onClose={() => setHeaderSetMenu(null)}
+          onClose={setMenuButton.close}
           items={[
             {
               id: "new",
@@ -1474,33 +1478,22 @@ export function PrepareScreen({
             },
             { id: "save", label: "Save set list…", onSelect: () => void setList.save(target), separatorBefore: true },
             { id: "copy", label: "Copy set list", onSelect: () => void setList.copy(target) },
-            { id: "rekordbox", label: "Export to Rekordbox…", onSelect: () => setExporting(true) },
           ]}
         />
       )}
 
-      {viewMenu && (
+      {viewMenuButton.open && (
         <TrackContextMenu
-          x={viewMenu.x}
-          y={viewMenu.y}
+          {...belowButton(viewMenuButton.anchor)}
+          anchor={viewMenuButton.anchor}
           label="View"
-          onClose={() => setViewMenu(null)}
+          onClose={viewMenuButton.close}
+          // Ticked items (C126): the label never flips, the tick says on or off, and the menu stays
+          // open so several can be set.
           items={[
-            {
-              id: "lanes",
-              label: lanesOpen ? "Hide tempo and key lanes" : "Show tempo and key lanes",
-              onSelect: toggleLanes,
-            },
-            {
-              id: "transition",
-              label: transitionOpen ? "Hide transition strip" : "Show transition strip",
-              onSelect: toggleTransition,
-            },
-            {
-              id: "times",
-              label: timesShown ? "Hide times" : "Show times",
-              onSelect: toggleTimes,
-            },
+            { id: "lanes", label: "Tempo lane", checked: lanesOpen, onSelect: toggleLanes },
+            { id: "transition", label: "Transition strip", checked: transitionOpen, onSelect: toggleTransition },
+            { id: "times", label: "Mix in and Mix out", checked: timesShown, onSelect: toggleTimes },
           ]}
         />
       )}
@@ -1529,7 +1522,7 @@ export function PrepareScreen({
       />
       <Modal
         open={chapterDeleting !== null}
-        title={chapterDeleting ? `Delete the chapter “${chapterName(chapterDeleting)}”?` : "Delete chapter"}
+        title={chapterDeleting ? deleteTitle("chapter", chapterName(chapterDeleting)) : deleteTitle("chapter")}
         onClose={() => setChapterDeleting(null)}
         variant="danger"
         size="small"
@@ -1539,6 +1532,7 @@ export function PrepareScreen({
         }}
         secondaryAction={{ label: "Cancel", onClick: () => setChapterDeleting(null) }}
       >
+        <p className="prepare-note">{deleteLead}</p>
         <p className="prepare-note">{chapterDeleting ? deletionLine(plan.chapters, chapterDeleting) : ""}</p>
       </Modal>
       <RekordboxExportDialog

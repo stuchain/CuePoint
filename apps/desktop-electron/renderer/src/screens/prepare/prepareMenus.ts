@@ -8,6 +8,7 @@
  */
 import type { EntityKind, TrackCreditLinks } from "../../api/cuepointBridge.types";
 import type { TrackContextMenuItem } from "../../components/TrackContextMenu";
+import { countNoun } from "../../format/counts";
 import { discoverMenuItems } from "../library/libraryDiscover";
 import { groupMenuId, moreItems, moreWithExplore, playItems } from "../library/trackActions";
 
@@ -108,7 +109,7 @@ export function entryMenuItems(
   }
   page.push({
     id: "remove",
-    label: one ? "Remove from Set" : `Remove ${count.toLocaleString()} entries from Set`,
+    label: one ? "Remove from Set" : `Remove ${countNoun(count, "entry", "entries")} from Set`,
     onSelect: handlers.onRemove,
   });
   return [
@@ -157,6 +158,8 @@ export function headingMenuItems(
     {
       id: "delete",
       label: "Delete chapter…",
+      // A delete item is red in every menu (C16); it asks first, as it cannot be undone (C184).
+      danger: true,
       onSelect: handlers.onDelete,
       // A Set always has one chapter (DEC-103).
       disabled: state.chapters <= 1,

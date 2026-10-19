@@ -11,7 +11,9 @@
  * are the part a test can pin and a component test can only glimpse.
  */
 import type { SetListFormat, SetListSaved, SetRefusal } from "../../api/cuepointBridge.types";
-import { NEEDS_DESKTOP } from "../../api/userMessage";
+import { needsDesktopApp } from "../../api/userMessage";
+import { countNoun, formatCount } from "../../format/counts";
+import { quoted } from "../../format/words";
 
 /** Each form, as the sentence names it: "as a CSV set list". */
 const FORM_WORDS: Record<SetListFormat, string> = {
@@ -20,32 +22,28 @@ const FORM_WORDS: Record<SetListFormat, string> = {
   m3u8: "an M3U8",
 };
 
-function counted(count: number, one: string, many: string): string {
-  return `${count.toLocaleString()} ${count === 1 ? one : many}`;
-}
-
 /** What a save wrote, for the toast. */
 export function setListSavedLine(setName: string, saved: SetListSaved): string {
-  const parts = [counted(saved.entries, "entry", "entries")];
+  const parts = [countNoun(saved.entries, "entry", "entries")];
   if (saved.missing_files > 0) {
-    parts.push(`${counted(saved.missing_files, "file", "files")} missing`);
+    parts.push(`${countNoun(saved.missing_files, "file")} missing`);
   }
   if (saved.untimed > 0 && saved.format !== "m3u8") {
-    parts.push(`${saved.untimed.toLocaleString()} untimed`);
+    parts.push(`${formatCount(saved.untimed)} untimed`);
   }
-  return `Saved “${setName}” as ${FORM_WORDS[saved.format]} set list, ${parts.join(", ")}.`;
+  return `Saved ${quoted(setName)} as ${FORM_WORDS[saved.format]} set list, ${parts.join(", ")}`;
 }
 
 /** What a copy put on the clipboard. */
 export function setListCopiedLine(setName: string): string {
-  return `Copied the set list for “${setName}”.`;
+  return `Copied the set list for ${quoted(setName)}`;
 }
 
 /** Said when the clipboard refuses, which the web API does without a reason. */
 export const CLIPBOARD_REFUSED = "Could not copy to the clipboard.";
 
 /** Said when the shell has no `sets` namespace: a browser tab, an older shell. */
-export const NO_SET_LISTS = NEEDS_DESKTOP;
+export const NO_SET_LISTS = needsDesktopApp();
 
 /**
  * Whether a refused save should reopen the dialog (PREP-08).

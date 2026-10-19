@@ -199,7 +199,7 @@ describe("chapter starts and repeats", () => {
 
 describe("the words", () => {
   it("counts the timed entries; how many are not is said apart (DEC-107)", () => {
-    expect(runningTimeLine(FRIDAY.plan.running_time)).toBe("9:00 planned");
+    expect(runningTimeLine(FRIDAY.plan.running_time)).toBe("0:09:00 planned");
     expect(runningTimeLine({ seconds: 5660, timed: 3, untimed: 0 })).toBe("1:34:20 planned");
     expect(withoutTimesLine(FRIDAY.plan.running_time)).toBe("4 without times");
     expect(withoutTimesLine({ seconds: 5660, timed: 3, untimed: 0 })).toBeNull();
@@ -270,7 +270,7 @@ describe("the words", () => {
 
   it("puts the header's facts on one line, each longer sentence in its title (C15d)", () => {
     const facts = headerFacts(6, FRIDAY.plan.running_time, FRIDAY.analysis);
-    expect(facts.map((fact) => fact.text)).toEqual(["6 tracks", "9:00 planned", "5 warnings", "Files not checked"]);
+    expect(facts.map((fact) => fact.text)).toEqual(["6 tracks", "0:09:00 planned", "5 warnings", "Files not checked"]);
     // What is left out of the line is in a title: the untimed, and the accepted warnings.
     expect(facts[1].title).toBe("4 without times");
     // Transitions, then entries, then chapters, in words that count.
@@ -280,7 +280,7 @@ describe("the words", () => {
       strong: true,
     });
     // The files fact is the one that links: it opens Clean's Missing files.
-    expect(facts[3]).toMatchObject({ action: "open_missing", actionText: "Missing files ›" });
+    expect(facts[3]).toMatchObject({ action: "open_missing", actionText: "Missing files" });
     expect(facts[3].title).toContain("never been checked");
     const partly = { ...FRIDAY.analysis.files, never_checked: false, checked: 3, unchecked: 2 };
     expect(headerFacts(1, FRIDAY.plan.running_time, { ...FRIDAY.analysis, files: partly })[3].text).toBe(
@@ -288,7 +288,7 @@ describe("the words", () => {
     );
     const checked = { ...FRIDAY.analysis.files, never_checked: false, checked: 5, unchecked: 0 };
     const quiet = headerFacts(1, FRIDAY.plan.running_time, { ...FRIDAY.analysis, counts: {}, files: checked });
-    expect(quiet.map((fact) => fact.text)).toEqual(["1 track", "9:00 planned", "No warnings"]);
+    expect(quiet.map((fact) => fact.text)).toEqual(["1 track", "0:09:00 planned", "No warnings"]);
     expect(quiet[2]).toEqual({ text: "No warnings", title: "1 marked OK", strong: false });
   });
 
@@ -301,7 +301,7 @@ describe("the words", () => {
     );
     // One timed entry is a plan; an empty Set has no entries to be untimed.
     const one = headerFacts(6, { seconds: 0, timed: 1, untimed: 5 }, FRIDAY.analysis);
-    expect([one[1].text, one[1].title]).toEqual(["0:00 planned", "5 without times"]);
+    expect([one[1].text, one[1].title]).toEqual(["0:00:00 planned", "5 without times"]);
     expect(headerFacts(0, { seconds: 0, timed: 0, untimed: 0 }, FRIDAY.analysis)[1].text).toBe("5 warnings");
   });
 
