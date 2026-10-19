@@ -201,7 +201,7 @@ describe("a tag write's entry", () => {
     events = [event(1, "clean.tags.written", { job_id: "w-1" }, "Wrote tags to 2 files")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Wrote tags to 2 files");
-    expect(await within(entry).findByText("4 values saved to files can be undone.")).toBeInTheDocument();
+    expect(await within(entry).findByText("4 values synced to files can be undone.")).toBeInTheDocument();
     expect(bridge.getTagWrites).toHaveBeenCalledWith({ jobId: "w-1", limit: 1 });
 
     await userEvent.click(within(entry).getByRole("button", { name: "Undo" }));
@@ -210,7 +210,7 @@ describe("a tag write's entry", () => {
 
     await waitFor(() => expect(bridge.startTagRestore).toHaveBeenCalledWith({ job_id: "w-1" }));
     expect(await within(entry).findByText("Undid 2 files.")).toBeInTheDocument();
-    expect(within(entry).getByText("Everything saved to files has been undone.")).toBeInTheDocument();
+    expect(within(entry).getByText("Everything synced to files has been undone.")).toBeInTheDocument();
   });
 
   it("shows unconfirmed writes as unfinished, never as written", async () => {
@@ -221,7 +221,7 @@ describe("a tag write's entry", () => {
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Writing tags stopped");
     const note = await within(entry).findByText(/may not have finished/);
-    expect(note).toHaveTextContent("3 saves may not have finished.");
+    expect(note).toHaveTextContent("3 syncs may not have finished.");
     expect(note.textContent).not.toMatch(/were saved/);
     expect(entry.querySelector(".cp-activity__offer--unfinished")).not.toBeNull();
     expect(within(entry).getByRole("button", { name: "Undo" })).toBeEnabled();
@@ -285,7 +285,7 @@ describe("a tag write's entry", () => {
     events = [event(1, "clean.tags.written", { job_id: "w-1" }, "Wrote tags")];
     render(<ActivityPanel open onClose={() => undefined} />);
     const entry = await row("Wrote tags");
-    expect(await within(entry).findByText("Everything saved to files has been undone.")).toBeInTheDocument();
+    expect(await within(entry).findByText("Everything synced to files has been undone.")).toBeInTheDocument();
     expect(within(entry).queryByRole("button", { name: "Undo" })).toBeNull();
   });
 
