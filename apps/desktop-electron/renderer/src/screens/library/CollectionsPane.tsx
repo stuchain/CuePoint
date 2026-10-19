@@ -168,7 +168,7 @@ function kindWord(node: CollectionTreeNode): string {
 }
 
 /**
- * The selected row's own menu: a "•••" button at the right end of the row, opening the same list
+ * The selected row's own menu: a "more" (three dots) button at the right end of the row, opening the same list
  * the right-click menu shows (Rename, Duplicate, Delete, Export to Rekordbox…). It replaced the
  * bar at the foot of the pane, which was a screen away from the row it acted on (C15, C227).
  */
@@ -181,11 +181,11 @@ function RowMenu({ name, items }: { name: string; items: TrackContextMenuItem[] 
         variant="quiet"
         size="sm"
         className="cp-collections__row-menu"
+        iconOnly
+        icon="more"
         aria-label={`Actions for ${name}`}
         {...menu.buttonProps}
-      >
-        •••
-      </Button>
+      />
       {menu.open && box && (
         <TrackContextMenu
           x={box.left}

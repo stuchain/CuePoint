@@ -9,7 +9,6 @@ import {
   litDestination,
   type NavDestination,
 } from "./navRegistry";
-import { NavIcon } from "./NavIcon";
 import { Kbd } from "../Kbd";
 import { ActivityButton } from "./ActivityButton";
 import { isDialogOpen } from "./shellKeyboard";
@@ -57,7 +56,7 @@ function DestinationLink({ destination, collapsed, lit }: {
         aria-label={destination.label}
       >
         <span className="cp-sidebar__icon" aria-hidden>
-          <NavIcon destination={destination} />
+          {destination.icon ? <PixelIcon name={destination.icon} /> : <span className="cp-sidebar__glyph">{destination.glyph}</span>}
         </span>
         {!collapsed && <span className="cp-sidebar__label">{destination.label}</span>}
       </Link>

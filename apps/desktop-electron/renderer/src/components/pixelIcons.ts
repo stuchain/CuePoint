@@ -358,25 +358,21 @@ const clean = [
 ];
 
 /**
- * Discover: a magnifier.
- *
- * Two earlier attempts read as a letter Q, because the handle hung from the
- * bottom of the ring like a tail. It attaches at the lower-right corner and
- * runs on a clear 45-degree diagonal now, which is the difference between a
- * magnifier and a Q.
+ * Discover: a gem (C229). A diamond with a spark inside, "something to find". It is not a magnifier
+ * on purpose: the sidebar's Search button wears `search`, and in the rail the two would read as one.
  */
 const discover = [
   "............",
-  "...####.....",
-  "..##..##....",
-  "..##..##....",
-  "..##..##....",
-  "...####.....",
-  ".....###....",
-  "......###...",
-  ".......###..",
-  "........###.",
-  ".........##.",
+  ".....##.....",
+  "....####....",
+  "...##..##...",
+  "..##....##..",
+  ".##..##..##.",
+  ".##..##..##.",
+  "..##....##..",
+  "...##..##...",
+  "....####....",
+  ".....##.....",
   "............",
 ];
 
@@ -929,6 +925,22 @@ const chevronRightSm = [
   "............",
 ];
 
+/** More: three dots in a row, the button that opens a row's other actions. */
+const more = [
+  "............",
+  "............",
+  "............",
+  "............",
+  "............",
+  ".##..##..##.",
+  ".##..##..##.",
+  "............",
+  "............",
+  "............",
+  "............",
+  "............",
+];
+
 export const PIXEL_ICONS = {
   play,
   pause,
@@ -993,6 +1005,7 @@ export const PIXEL_ICONS = {
   "dot-filled": dotFilled,
   "dot-half": dotHalf,
   refresh,
+  more,
 } as const satisfies Record<string, readonly string[]>;
 
 export type PixelIconName = keyof typeof PIXEL_ICONS;

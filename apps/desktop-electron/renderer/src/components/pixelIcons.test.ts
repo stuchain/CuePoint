@@ -190,3 +190,12 @@ describe("C138 icons: drawn marks for the typed glyphs", () => {
     expect(pixelRunsFor("check").length).toBeGreaterThanOrEqual(8);
   });
 });
+
+describe("the gem and the three dots", () => {
+  it("draws Discover as a gem that is not the search magnifier, and a more icon", () => {
+    expect(PIXEL_ICON_NAMES).toEqual(expect.arrayContaining(["discover", "more"]));
+    expect(PIXEL_ICONS.discover).not.toEqual(PIXEL_ICONS.search);
+    // Three dots: three runs on each of the two rows they use.
+    expect(pixelRunsFor("more")).toHaveLength(6);
+  });
+});

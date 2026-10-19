@@ -165,12 +165,13 @@ describe("the selected row's actions menu", () => {
     expect(document.querySelector(".cp-collections__bar")).toBeNull();
   });
 
-  it("is drawn on the selected row only, as '•••' with the row's name", () => {
+  it("is drawn on the selected row only, as the three-dot icon with the row's name", () => {
     paneWith(WARMUP);
     const buttons = screen.getAllByRole("button", { name: /^Actions for / });
     expect(buttons).toHaveLength(1);
     expect(buttons[0]).toHaveAttribute("aria-label", `Actions for ${WARMUP.name}`);
-    expect(buttons[0]).toHaveTextContent("•••");
+    expect(buttons[0]).toHaveTextContent("");
+    expect(buttons[0]!.querySelector('[data-icon="more"]')).not.toBeNull();
     expect(buttons[0]).toHaveAttribute("aria-haspopup", "menu");
   });
 
