@@ -6,7 +6,7 @@
 .clean-dialog {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-lg);
   min-width: 0;
 }
 
@@ -21,6 +21,7 @@
 
 .clean-dialog__headline {
   margin: 0;
+  font-size: var(--text-body);
   font-weight: var(--font-weight-bold);
 }
 
@@ -114,8 +115,9 @@
 .clean-dialog__check {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  min-height: var(--hit-min);
+  gap: var(--space-sm);
+  /* One tick row for every dialog: the same 32 as the tick column of the tables (C77). */
+  min-height: calc(32px * var(--scale));
   font-size: var(--font-size-xs);
   cursor: pointer;
 }

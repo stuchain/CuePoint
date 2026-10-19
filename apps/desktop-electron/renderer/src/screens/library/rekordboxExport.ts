@@ -343,11 +343,14 @@ interface ConfirmState {
  * Said rather than only greyed, as the refresh preview does: a button that
  * cannot be pressed and does not say why is a dead end.
  */
+/** The blocker that is about the destination, which the dialog draws under it. */
+export const CHOOSE_DESTINATION = "Choose where to save the file.";
+
 export function confirmBlocker(state: ConfirmState): string | null {
   if (state.working) return null;
   if (state.refusal) return "Nothing can be exported until the problem above is dealt with.";
   if (!state.preview) return "The preview has not answered yet.";
-  if (!state.destination) return "Choose where to save the file.";
+  if (!state.destination) return CHOOSE_DESTINATION;
   return null;
 }
 

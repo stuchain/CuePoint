@@ -169,6 +169,25 @@ describe("when the engine refuses", () => {
 
   it("says it is working while it works", () => {
     show({ busy: true });
-    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    expect(save).toHaveAttribute("aria-busy", "true");
+  });
+});
+
+describe("the shared shape (C105, C109, C111)", () => {
+  it("is a medium dialog with Cancel and Save in the Modal footer", () => {
+    show();
+    const dialog = screen.getByRole("dialog", { name: "Save as Smart Collection" });
+    expect(dialog).toHaveClass("cp-modal--medium");
+    const footer = dialog.querySelector(".cp-modal__footer") as HTMLElement;
+    expect(within(footer).getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(within(footer).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  });
+
+  it("puts focus in the name field, and shows the note as the muted lead", () => {
+    show();
+    expect(screen.getByLabelText("Name")).toHaveFocus();
+    expect(screen.getByText(/keeps answering/i)).toHaveClass("cp-modal__lead");
   });
 });

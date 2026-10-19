@@ -171,7 +171,7 @@ export function SaveToFilesDialog({
   selectionRef.current = selection;
   const progress = useJobProgress(jobId);
   const backRef = useRef<HTMLButtonElement>(null);
-  const footerRef = useRef<HTMLElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLParagraphElement>(null);
   const restoredRef = useRef<HTMLParagraphElement>(null);
   const cameFromList = useRef(false);
@@ -400,6 +400,10 @@ export function SaveToFilesDialog({
   /** The list of changes is shown while reading or once ready; a failed read goes back to the rows. */
   const list = view === "changes" && (reading || phase === "ready");
 
+  /** A button of the Modal footer, which this dialog does not draw itself. */
+  const footerButton = (selector: string) =>
+    rootRef.current?.closest(".cp-modal")?.querySelector<HTMLButtonElement>(selector) ?? null;
+
   // Focus follows the view: Back on entering the list, See changes on leaving it, and the result
   // once a save or a restore has answered.
   useEffect(() => {
@@ -409,13 +413,13 @@ export function SaveToFilesDialog({
       backRef.current?.focus();
     } else if (cameFromList.current) {
       cameFromList.current = false;
-      footerRef.current?.querySelector<HTMLButtonElement>('[data-role="see-changes"]')?.focus();
+      footerButton(".cp-modal__extra")?.focus();
     }
   }, [open, list]);
   useEffect(() => {
     const target = phase === "saved" ? headlineRef.current : phase === "restored" ? restoredRef.current : null;
     if (phase !== "saved" && phase !== "restored") return;
-    (target ?? footerRef.current?.querySelector<HTMLButtonElement>('[data-role="done"]'))?.focus();
+    (target ?? footerButton(".cp-modal__footer .cp-btn:last-child"))?.focus();
   }, [phase]);
   const rows = useMemo(() => (preview ? changeRows(preview, choices) : []), [preview, choices]);
   const sampled = preview ? preview.changes.length < preview.files : false;
@@ -425,11 +429,48 @@ export function SaveToFilesDialog({
     <Modal
       open={open}
       title={title ?? saveTitle(count)}
-      onClose={busy ? () => undefined : requestClose}
+      onClose={requestClose}
       size="large"
-      noFooter
+      closeDisabled={busy}
+      closeReason={jobId ? "Press Stop first" : "Wait until it finishes"}
+      reason={phase === "ready" && state.reason ? state.reason : undefined}
+      extraAction={
+        !finished && phase === "ready" && !list
+          ? { label: variant === "sync" ? "See every change" : "See changes", onClick: () => setView("changes") }
+          : undefined
+      }
+      secondaryAction={
+        finished
+          ? undefined
+          : (reading || phase === "saving") && jobId
+            ? { label: "Stop", onClick: stop }
+            : { label: "Cancel", onClick: requestClose }
+      }
+      primaryAction={
+        finished
+          ? { label: "Done", onClick: onClose, disabled: phase === "restoring" }
+          : phase === "failed" || countError
+            ? {
+                label: RETRY,
+                onClick: () => {
+                  if (phase === "failed") {
+                    void readFiles(choices);
+                  } else {
+                    setProblem(null);
+                    setCountTry((n) => n + 1);
+                  }
+                },
+              }
+            : {
+                label: state.label,
+                onClick: () => void runSave(),
+                loading: phase === "saving",
+                disabled: phase !== "ready" || !state.enabled,
+                variant: "write",
+              }
+      }
     >
-      <div className="save-dialog">
+      <div ref={rootRef} className="save-dialog">
         {choosing && !list && (
           <>
             <ul className="save-dialog__rows">
@@ -462,6 +503,10 @@ export function SaveToFilesDialog({
                       value={choices.comment_text}
                       maxLength={MAX_COMMENT_LENGTH}
                       disabled={!choices.fields.comment}
+                      // Enter here is a line's end, not "sync": the Modal's Enter would write the files.
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") event.preventDefault();
+                      }}
                       onChange={(event) => change({ comment_text: cleanComment(event.target.value) })}
                     />
                   )}
@@ -601,61 +646,6 @@ export function SaveToFilesDialog({
         )}
 
         {problem && <Notice kind="danger">{problem}</Notice>}
-
-        <p className="save-dialog__reason" role="status" aria-live="polite">
-          {phase === "ready" ? state.reason : null}
-        </p>
-
-        <footer ref={footerRef} className="save-dialog__footer">
-          <div className="save-dialog__buttons">
-            {finished ? (
-              <Button variant="primary" data-role="done" onClick={onClose} disabled={phase === "restoring"}>
-                Done
-              </Button>
-            ) : (
-              <>
-                {phase === "ready" && !list && (
-                  <Button variant="secondary" className="save-dialog__extra" data-role="see-changes" onClick={() => setView("changes")}>
-                    {variant === "sync" ? "See every change" : "See changes"}
-                  </Button>
-                )}
-                {(reading || phase === "saving") && jobId ? (
-                  <Button variant="secondary" onClick={stop}>
-                    Stop
-                  </Button>
-                ) : (
-                  <Button variant="secondary" onClick={requestClose}>
-                    Cancel
-                  </Button>
-                )}
-                {phase === "failed" || countError ? (
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      if (phase === "failed") {
-                        void readFiles(choices);
-                      } else {
-                        setProblem(null);
-                        setCountTry((n) => n + 1);
-                      }
-                    }}
-                  >
-                    {RETRY}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="write"
-                    loading={phase === "saving"}
-                    disabled={phase !== "ready" || !state.enabled}
-                    onClick={() => void runSave()}
-                  >
-                    {state.label}
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
-        </footer>
       </div>
     </Modal>
   );

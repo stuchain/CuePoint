@@ -8,6 +8,8 @@
  * stops matching knows why the Set did not grow next week.
  */
 import type { SetSource } from "../../api/cuepointBridge.types";
+import { countNoun, formatCount, pluralWord } from "../../format/counts";
+import { quoted } from "../../format/words";
 
 /**
  * The most entries a Set holds: the engine's `MAX_SET_ENTRIES` (PREP-02).
@@ -58,7 +60,7 @@ export function setSourceOf(source: NewSetSource): SetSource {
 
 /** "1 selected track", "12 selected tracks". */
 function selectedTracks(count: number): string {
-  return `${count.toLocaleString()} selected ${count === 1 ? "track" : "tracks"}`;
+  return `${formatCount(count)} selected ${pluralWord(count, "track")}`;
 }
 
 /** A selection as a source: its tracks, in order, with a name to start from. */
@@ -70,7 +72,7 @@ export function selectionSource(trackIds: readonly number[], parentId: number | 
 export function newSetFromTitle(source: NewSetSource): string {
   return source.kind === "selection"
     ? `New Set from the ${selectedTracks(source.trackIds?.length ?? 0)}`
-    : `New Set from “${source.name}”`;
+    : `New Set from ${quoted(source.name)}`;
 }
 
 /**
@@ -83,14 +85,14 @@ export function newSetFromTitle(source: NewSetSource): string {
 export function selectionTooLarge(count: number, limit: number = SET_ENTRY_LIMIT): string | null {
   if (count <= limit) return null;
   return (
-    `A Set holds at most ${limit.toLocaleString()} entries, and ${count.toLocaleString()} ` +
+    `A Set holds at most ${formatCount(limit)} entries, and ${formatCount(count)} ` +
     `tracks are selected. Select fewer, or add them to a Collection instead.`
   );
 }
 
 /** What the dialog says the Set will start with, and what copying means here. */
 export function newSetFromExplanation(source: NewSetSource): string {
-  const name = `“${source.name}”`;
+  const name = quoted(source.name);
   switch (source.kind) {
     case "selection":
       return (
@@ -120,6 +122,5 @@ export function newSetFromExplanation(source: NewSetSource): string {
 
 /** What the page says once the Set is made. */
 export function newSetMadeLine(name: string, entries: number): string {
-  const counted = `${entries.toLocaleString()} ${entries === 1 ? "entry" : "entries"}`;
-  return `Made the Set “${name}” with ${counted}.`;
+  return `Made the Set ${quoted(name)} with ${countNoun(entries, "entry", "entries")}.`;
 }

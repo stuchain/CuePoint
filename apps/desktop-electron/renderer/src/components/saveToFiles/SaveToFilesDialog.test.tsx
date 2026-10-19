@@ -338,9 +338,10 @@ describe("when Save is greyed", () => {
   it("puts the reason line above the footer, not under its buttons", async () => {
     open();
     await ready();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Key" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Genre" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Label" }));
-    const reason = await screen.findByRole("status");
+    const reason = await screen.findByText("Tick at least one value.");
     const footer = screen.getByRole("dialog").querySelector("footer")!;
     expect(reason.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(footer.contains(reason)).toBe(false);
@@ -663,15 +664,15 @@ describe("focus and announcements", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "See changes" })).toHaveFocus());
   });
 
-  it("ties each row's count to its tick and announces the reason politely", async () => {
+  it("ties each row's count to its tick and shows the reason as the Modal's reason line", async () => {
     open();
     await ready();
     const key = screen.getByRole("checkbox", { name: "Key" });
     expect(key).toHaveAccessibleDescription("31 files");
     for (const name of ["Key", "Genre", "Label"]) await userEvent.click(screen.getByRole("checkbox", { name }));
     const reason = screen.getByText("Tick at least one value.");
-    expect(reason).toHaveAttribute("role", "status");
-    expect(reason).toHaveAttribute("aria-live", "polite");
+    expect(reason).toHaveAttribute("role", "note");
+    expect(reason).toHaveClass("cp-modal__reason");
   });
 });
 
@@ -793,13 +794,13 @@ describe("the Sync window (a playlist's ticked tracks)", () => {
     await syncReady();
     expect(screen.getByRole("button", { name: "See every change" })).toBeInTheDocument();
     // See every change on the far left, then Cancel, then the main button on the far right.
-    const buttons = screen.getByRole("dialog").querySelector(".save-dialog__buttons")!;
+    const buttons = screen.getByRole("dialog").querySelector(".cp-modal__footer")!;
     expect([...buttons.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
       "See every change",
       "Cancel",
       "Sync 38 files",
     ]);
-    expect(screen.getByRole("button", { name: "See every change" })).toHaveClass("save-dialog__extra");
+    expect(screen.getByRole("button", { name: "See every change" })).toHaveClass("cp-modal__extra");
     await userEvent.click(screen.getByRole("checkbox", { name: "Key" }));
     await syncReady();
     await userEvent.click(screen.getByRole("button", { name: "Sync 38 files" }));
@@ -926,5 +927,37 @@ describe("the sync look (C1, C108, C115, C148, C151)", () => {
     bridge.previewTagWrite.mockRejectedValue(new Error("A file check is running; wait for it"));
     open();
     expect(await screen.findByRole("alert")).toHaveClass("cp-notice");
+  });
+});
+
+describe("the Modal footer (C105, C112)", () => {
+  it("draws no footer of its own", async () => {
+    open();
+    await ready();
+    expect(screen.getByRole("dialog").querySelector(".save-dialog__footer")).toBeNull();
+    expect(screen.getByRole("dialog").querySelectorAll("footer")).toHaveLength(1);
+  });
+
+  it("greys the close button with its reason while the sync runs, and Escape does nothing", async () => {
+    bridge.getJob.mockImplementation(
+      (id: string) => new Promise((resolve) => (id === "w-1" ? undefined : resolve({ id, state: "succeeded" }))),
+    );
+    const props = open();
+    await ready();
+    await userEvent.click(screen.getByRole("button", { name: "Sync 38 files" }));
+    await screen.findByRole("button", { name: "Stop" });
+    expect(screen.getByRole("button", { name: "Close" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByText("Press Stop first")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    expect(props.onClose).not.toHaveBeenCalled();
+  });
+
+  it("does not sync when Enter is pressed in the comment text", async () => {
+    bridge.previewSync = vi.fn().mockResolvedValue({ preview: preview() });
+    bridge.startSync = vi.fn().mockResolvedValue({ job_id: "w-1", id: "w-1", state: "queued", preview_id: "p-1" });
+    open({ variant: "sync", count: 22 });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Sync 38 files" })).toBeEnabled());
+    await userEvent.type(screen.getByRole("textbox", { name: "Comment text" }), "{Enter}");
+    expect(bridge.startSync).not.toHaveBeenCalled();
   });
 });

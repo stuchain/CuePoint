@@ -146,40 +146,5 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm);
-}
-
-/* Stuck to the bottom of the dialog's body, across its full width, so a long list never scrolls the buttons away. */
-.save-dialog__footer {
-  position: sticky;
-  bottom: calc(-1 * var(--space-lg));
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  margin: 0 calc(-1 * var(--space-lg)) calc(-1 * var(--space-lg));
-  padding: var(--space-md) var(--space-lg);
-  border-top: var(--divider);
-  background: var(--bg-panel);
-}
-
-.save-dialog__buttons {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
   gap: var(--space-md);
-}
-
-/* The extra action ("See every change") is on the far left; the space is before Cancel. */
-.save-dialog__buttons > .save-dialog__extra {
-  margin-right: auto;
-}
-
-.save-dialog__reason {
-  margin: 0;
-  color: var(--fg-muted);
-  font-size: var(--text-body);
-}
-
-.save-dialog__reason:not(:empty) {
-  margin-top: var(--space-md);
 }

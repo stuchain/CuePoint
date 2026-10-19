@@ -10,25 +10,12 @@
 import { useId, useLayoutEffect, useState } from "react";
 
 import { Modal } from "../../components/Modal";
-import { Notice } from "../../components/Notice";
+import { NameFolderDialog, type FolderOption } from "../../components/NameFolderDialog";
 import { Select } from "../../components/Select";
-import { TextField } from "../../components/TextField";
 import { dialogTitle } from "../../format/words";
 import type { NewSetSource } from "../library/newSetFrom";
-import type { FolderOption } from "../library/SaveSmartDialog";
-import { SMART_NAME_MAX_LENGTH, checkSmartName } from "../library/smartFilter";
 import { sourceKey, type SourceGroup } from "./newSetSources";
 import "./prepare.css";
-
-function folderChoices(folders: readonly FolderOption[]) {
-  return [
-    { value: "", label: "Top level" },
-    ...folders.map((folder) => ({
-      value: String(folder.id),
-      label: `${"　".repeat(folder.depth)}${folder.name}`,
-    })),
-  ];
-}
 
 interface NewSetDialogProps {
   open: boolean;
@@ -42,66 +29,19 @@ interface NewSetDialogProps {
 }
 
 export function NewSetDialog({ open, folders, busy = false, error = null, errorKey = 0, onCreate, onClose }: NewSetDialogProps) {
-  const [name, setName] = useState("");
-  const [parent, setParent] = useState("");
-  const [problem, setProblem] = useState<string | null>(null);
-  const ids = useId();
-
-  // In the commit that opens it, so a name typed as the dialog appeared is kept.
-  useLayoutEffect(() => {
-    if (!open) return;
-    setName("");
-    setParent("");
-    setProblem(null);
-  }, [open]);
-
-  const submit = () => {
-    const checked = checkSmartName(name);
-    if (!checked.ok) {
-      setProblem(checked.reason);
-      return;
-    }
-    setProblem(null);
-    onCreate(checked.name, parent === "" ? null : Number(parent));
-  };
-
   return (
-    <Modal
+    <NameFolderDialog
       open={open}
       title="New Set"
+      folders={folders}
+      submitLabel="Make the Set"
+      busy={busy}
+      error={error}
+      errorKey={errorKey}
+      placeholder="Friday at the Warehouse"
+      onSubmit={onCreate}
       onClose={onClose}
-      primaryAction={{ label: "Make the Set", onClick: submit, loading: busy }}
-      secondaryAction={{ label: "Cancel", onClick: onClose }}
-    >
-      <div className="prepare-dialog">
-        <TextField
-          id={`${ids}-name`}
-          label="Name"
-          value={name}
-          maxLength={SMART_NAME_MAX_LENGTH}
-          placeholder="Friday at the Warehouse"
-          onChange={(event) => setName(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              submit();
-            }
-          }}
-        />
-        <Select
-          id={`${ids}-folder`}
-          label="In"
-          value={parent}
-          options={folderChoices(folders)}
-          onChange={(event) => setParent(event.target.value)}
-        />
-        {(problem ?? error) && (
-          <Notice key={problem ?? errorKey} kind="field-error">
-            {problem ?? error}
-          </Notice>
-        )}
-      </div>
-    </Modal>
+    />
   );
 }
 

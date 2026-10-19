@@ -33,6 +33,8 @@ import type {
 import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
 import { exportHistory, useSharedRead } from "../../api/sharedReads";
 import { Button, Modal, MoreAbout } from "../../components";
+import { Notice } from "../../components/Notice";
+import { ReasonLine } from "../../components/ReasonLine";
 import { Select } from "../../components/Select";
 import type { CollectionTreeNode } from "./collectionTree";
 import { followJob, type FollowHandle } from "./followJob";
@@ -43,6 +45,7 @@ import {
   OPEN_IN_REKORDBOX,
   canConfirm,
   changeLine,
+  CHOOSE_DESTINATION,
   confirmBlocker,
   confirmLabel,
   copyLine,
@@ -68,7 +71,7 @@ import { reportUnexpected } from "../../reporting/reporting";
 import { RETRY } from "../../format/words";
 import "./cleanDialogs.css";
 import "./rekordboxExport.css";
-import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
+import { needsDesktopApp, userMessage } from "../../api/userMessage";
 import { Hint } from "../../components/Hint";
 
 export interface RekordboxExportDialogProps {
@@ -352,22 +355,20 @@ export function RekordboxExportDialog({
   const loudWarnings = warnings.filter((warning) => warning.tone === "warning");
   const noteWarnings = warnings.filter((warning) => warning.tone === "note");
   const renderWarning = (warning: (typeof warnings)[number]) => (
-    <li
+    <Notice
       key={warning.key}
       data-warning={warning.key}
-      className={
-        warning.tone === "warning"
-          ? "rekordbox-export__warning"
-          : "rekordbox-export__warning rekordbox-export__warning--note"
+      kind={warning.tone === "warning" ? "warning" : "info"}
+      action={
+        warning.key === "missing" && onOpenMissingFiles ? (
+          <Button variant="secondary" onClick={onOpenMissingFiles}>
+            Show missing files
+          </Button>
+        ) : undefined
       }
     >
-      <span>{warning.text}</span>
-      {warning.key === "missing" && onOpenMissingFiles && (
-        <Button variant="secondary" onClick={onOpenMissingFiles}>
-          Show missing files
-        </Button>
-      )}
-    </li>
+      {warning.text}
+    </Notice>
   );
   const show = window.cuepoint?.showItemInFolder;
 
@@ -386,10 +387,14 @@ export function RekordboxExportDialog({
     <Modal
       open={open}
       title="Export to Rekordbox"
-      onClose={phase === "exporting" ? () => undefined : onClose}
+      onClose={onClose}
       size="medium"
-      // Why Export is greyed: one line above the footer, not a note in the body (area 93).
-      reason={blocker && !previewing ? blocker : undefined}
+      // The × and Escape wait for the export, and the × says why (C112).
+      closeDisabled={phase === "exporting"}
+      closeReason="Press Stop first"
+      // Why Export is greyed: one line above the footer. The one about the destination sits under
+      // the destination instead (C131).
+      reason={blocker && blocker !== CHOOSE_DESTINATION && !previewing ? blocker : undefined}
       primaryAction={primary}
       secondaryAction={
         phase === "exporting"
@@ -402,9 +407,7 @@ export function RekordboxExportDialog({
       }
     >
       <div className="clean-dialog rekordbox-export">
-        {!bridge && (
-          <p className="clean-dialog__problem" role="alert">{NEEDS_DESKTOP}</p>
-        )}
+        {!bridge && <Notice kind="danger">{needsDesktopApp()}</Notice>}
 
         {phase === "done" ? (
           <section className="clean-dialog__answer" aria-label="Export finished">
@@ -436,7 +439,7 @@ export function RekordboxExportDialog({
           <>
             {/* 1. Where it goes. */}
             <section className="rekordbox-export__part" aria-label="Destination">
-              <h3 className="rekordbox-export__heading">Save as</h3>
+              <h3 className="rekordbox-export__heading cp-text-label">Save as</h3>
               <div className="rekordbox-export__destination">
                 {destination ? (
                   <Hint text={destination} inline>
@@ -458,56 +461,65 @@ export function RekordboxExportDialog({
                   {destination ? "Change…" : "Choose…"}
                 </Button>
               </div>
+              {blocker === CHOOSE_DESTINATION && !previewing && <ReasonLine>{blocker}</ReasonLine>}
             </section>
 
             {/* A refusal stands in the preview's place and says what to do. */}
             {refusal && (
-              <section className="rekordbox-export__refusal" aria-label="Refused">
-                <p role="alert">{refusalText(refusal)}</p>
-                <div className="clean-dialog__actions">
-                  {step === "import" && onImport && (
-                    <Button variant="secondary" onClick={onImport}>
-                      Import a Rekordbox file…
-                    </Button>
-                  )}
-                  {step === "retry" && (
-                    <Button variant="secondary" onClick={() => setAsked((token) => token + 1)}>
-                      {RETRY}
-                    </Button>
-                  )}
-                  {step === "choose" && (
-                    <Button variant="secondary" onClick={() => void choose()}>
-                      Choose another file…
-                    </Button>
-                  )}
-                </div>
+              <section aria-label="Refused">
+                <Notice
+                  kind="danger"
+                  action={
+                    <>
+                      {step === "import" && onImport && (
+                        <Button variant="secondary" onClick={onImport}>
+                          Import a Rekordbox file…
+                        </Button>
+                      )}
+                      {step === "retry" && (
+                        <Button variant="secondary" onClick={() => setAsked((token) => token + 1)}>
+                          {RETRY}
+                        </Button>
+                      )}
+                      {step === "choose" && (
+                        <Button variant="secondary" onClick={() => void choose()}>
+                          Choose another file…
+                        </Button>
+                      )}
+                    </>
+                  }
+                >
+                  {refusalText(refusal)}
+                </Notice>
               </section>
             )}
 
             {/* 2. The answer in one line, then what must be seen before anything is written. */}
             {preview && (
-              <p className="cp-modal__summary rekordbox-export__summary" data-testid="export-summary" role="status">
+              <p className="cp-text-section rekordbox-export__summary" data-testid="export-summary" role="status">
                 {exportSummaryLine(preview, keyFormat)}
               </p>
             )}
 
             {staleness && (
-              <section className="rekordbox-export__part" aria-label="Source changed">
-                <div className="rekordbox-export__stale" role="alert">
-                  <p>{staleness}</p>
-                  <Button variant="secondary" onClick={onRefreshFirst}>
-                    Refresh first
-                  </Button>
-                </div>
+              <section aria-label="Source changed">
+                <Notice
+                  kind="warning"
+                  action={
+                    <Button variant="secondary" onClick={onRefreshFirst}>
+                      Refresh first
+                    </Button>
+                  }
+                >
+                  {staleness}
+                </Notice>
               </section>
             )}
 
             {loudWarnings.length > 0 && (
               <section className="rekordbox-export__part" aria-label="Warnings">
-                <h3 className="rekordbox-export__heading">Before you export</h3>
-                <ul className="rekordbox-export__warnings">
-                  {loudWarnings.map(renderWarning)}
-                </ul>
+                <h3 className="rekordbox-export__heading cp-text-label">Before you export</h3>
+                <div className="rekordbox-export__warnings">{loudWarnings.map(renderWarning)}</div>
               </section>
             )}
 
@@ -516,7 +528,7 @@ export function RekordboxExportDialog({
               <div className="rekordbox-export__details">
                 {preview && (
                   <section className="rekordbox-export__part" aria-label="Source">
-                    <h3 className="rekordbox-export__heading">From</h3>
+                    <h3 className="rekordbox-export__heading cp-text-label">From</h3>
                     <Hint text={preview.source.path}>
                       <p className="clean-dialog__note">{sourceLine(preview.source)}</p>
                     </Hint>
@@ -528,7 +540,7 @@ export function RekordboxExportDialog({
 
                 {preview && (
                   <section className="rekordbox-export__part" aria-label="Tracks">
-                    <h3 className="rekordbox-export__heading">Tracks</h3>
+                    <h3 className="rekordbox-export__heading cp-text-label">Tracks</h3>
                     <p className="clean-dialog__headline" data-testid="export-track-count">
                       {trackCountLine(preview)}
                     </p>
@@ -548,7 +560,7 @@ export function RekordboxExportDialog({
 
                 {/* The playlists: what to tick, and what that appends. */}
                 <section className="rekordbox-export__part" aria-label="Playlists">
-                  <h3 className="rekordbox-export__heading">Playlists</h3>
+                  <h3 className="rekordbox-export__heading cp-text-label">Playlists</h3>
                   {rows.length === 0 ? (
                     <p className="clean-dialog__note">
                       You have no Collections or Sets yet, so no playlists are added. To send
@@ -562,22 +574,30 @@ export function RekordboxExportDialog({
                       <legend>Collections and Sets to add as playlists</legend>
                       {rows.map(({ node, depth }) => {
                         const implied = covered.has(node.id);
+                        // Why a row cannot be ticked: a hint on the row, and the same words
+                        // beside its name so they are not for the pointer alone (C114).
+                        const why = node.broken
+                          ? (node.problem ?? "Its rules cannot be run")
+                          : implied
+                            ? "Added with its folder"
+                            : undefined;
                         return (
-                          <label
-                            key={node.id}
-                            className="clean-dialog__check rekordbox-export__node"
-                            style={{ paddingLeft: `calc(${depth} * var(--space-md))` }}
-                            title={node.broken ? (node.problem ?? "Its rules cannot be run") : undefined}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={implied || ticked.has(node.id)}
-                              disabled={implied || node.broken}
-                              onChange={(event) => toggle(node.id, event.target.checked)}
-                            />
-                            <span>{node.name}</span>
-                            <span className="rekordbox-export__kind">{exportNodeLabel(node)}</span>
-                          </label>
+                          <Hint key={node.id} text={why}>
+                            <label
+                              className="cp-check clean-dialog__check rekordbox-export__node"
+                              style={{ paddingLeft: `calc(${depth} * var(--space-md))` }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={implied || ticked.has(node.id)}
+                                disabled={implied || node.broken}
+                                onChange={(event) => toggle(node.id, event.target.checked)}
+                              />
+                              <span>{node.name}</span>
+                              {why && <span className="rekordbox-export__reason">{why}</span>}
+                              <span className="rekordbox-export__kind">{exportNodeLabel(node)}</span>
+                            </label>
+                          </Hint>
                         );
                       })}
                     </fieldset>
@@ -606,10 +626,8 @@ export function RekordboxExportDialog({
 
                 {noteWarnings.length > 0 && (
                   <section className="rekordbox-export__part" aria-label="Notes">
-                    <h3 className="rekordbox-export__heading">Good to know</h3>
-                    <ul className="rekordbox-export__warnings">
-                      {noteWarnings.map(renderWarning)}
-                    </ul>
+                    <h3 className="rekordbox-export__heading cp-text-label">Good to know</h3>
+                    <div className="rekordbox-export__warnings">{noteWarnings.map(renderWarning)}</div>
                   </section>
                 )}
 
@@ -645,11 +663,7 @@ export function RekordboxExportDialog({
           </>
         )}
 
-        {problem && (
-          <p className="clean-dialog__problem" role="alert">
-            {problem}
-          </p>
-        )}
+        {problem && <Notice kind="danger">{problem}</Notice>}
       </div>
     </Modal>
   );

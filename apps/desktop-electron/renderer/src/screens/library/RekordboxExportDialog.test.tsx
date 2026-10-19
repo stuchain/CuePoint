@@ -284,12 +284,14 @@ describe("choosing what to send", () => {
     expect(confirmButton()).toBeEnabled();
   });
 
-  it("offers no tick for a broken Smart Collection, and says why", async () => {
+  it("offers no tick for a broken Smart Collection, and says why with a Hint and in words beside the name", async () => {
     renderDialog();
     await previewed();
     await openDetails();
     expect(box("Tagged")).toBeDisabled();
     expect(box("Tagged").closest("label")).toHaveAttribute("title", "Its tag was deleted");
+    const why = within(dialog()).getByText("Its tag was deleted");
+    expect(why).toHaveClass("rekordbox-export__reason");
   });
 
   it("says what to do when there are no Collections at all", async () => {
@@ -714,9 +716,9 @@ describe("confirming", () => {
 
     expect(confirmButton()).toHaveTextContent("Export 4 tracks and 4 playlists");
     expect(confirmButton()).toBeDisabled();
-    expect(within(dialog()).getByRole("note")).toHaveTextContent(
-      "Choose where to save the file.",
-    );
+    // The reason sits under the field it is about, not floating over the footer (C131).
+    const destination = within(dialog()).getByRole("region", { name: "Destination" });
+    expect(within(destination).getByRole("note")).toHaveTextContent("Choose where to save the file.");
   });
 
   it("writes nothing while choosing, ticking and changing notation", async () => {
@@ -773,6 +775,9 @@ describe("confirming", () => {
     expect(within(dialog()).getByText(/the file appears only once it is complete/)).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(handlers.onClose).not.toHaveBeenCalled();
+    // The × says so instead of doing nothing (C112).
+    expect(within(dialog()).getByRole("button", { name: "Close" })).toHaveAttribute("aria-disabled", "true");
+    expect(within(dialog()).getByText("Press Stop first")).toBeInTheDocument();
 
     await user.click(stop);
     expect(bridge.cancelJob).toHaveBeenCalledWith("x-1");
@@ -902,7 +907,7 @@ describe("staleness (DEC-082)", () => {
     // Said without opening Details: it changes what the export patches.
     const source = within(dialog()).getByRole("region", { name: "Source changed" });
     expect(source).toBeVisible();
-    expect(within(source).getByRole("alert")).toHaveTextContent(
+    expect(within(source).getByRole("status")).toHaveTextContent(
       /collection\.xml has changed since you imported it.*830 bytes, was 821 bytes/,
     );
     expect(confirmButton()).toBeEnabled();
@@ -971,5 +976,23 @@ describe("opening it again (C19d)", () => {
     await waitFor(() =>
       expect(within(dialog()).getByTestId("export-summary")).not.toHaveTextContent(/Keys written/),
     );
+  });
+});
+
+describe("the look of the dialog (C61, C88, C39)", () => {
+  it("leads with the summary in the section heading style, and headings in the label style", async () => {
+    renderDialog({ initialIds: [7] });
+    await previewed();
+    expect(within(dialog()).getByTestId("export-summary")).toHaveClass("cp-text-section");
+    expect(within(dialog()).getByRole("heading", { name: "Save as" })).toHaveClass("cp-text-label");
+  });
+
+  it("shows warnings in a Notice and the tree's ticks with the shared gap", async () => {
+    renderDialog({ initialIds: [7] });
+    await previewed();
+    const warnings = within(dialog()).getByRole("region", { name: "Warnings" });
+    expect(warnings.querySelector(".cp-notice")).not.toBeNull();
+    await openDetails();
+    expect(box("Saturday").closest("label")).toHaveClass("cp-check");
   });
 });

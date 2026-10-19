@@ -1,0 +1,7 @@
+/* The name field and its refusal are one group: 8 apart. The blocks of the dialog are 12 apart
+   (the Modal body's gap). */
+.cp-name-folder__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
