@@ -13,7 +13,7 @@
  * **Start looking** hands the search to the engine as a job: the status strip
  * shows it, and the page opens Results on it as soon as the engine begins it.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type {
   DiscoverListKind,
@@ -26,6 +26,7 @@ import { Card } from "../../components/Card";
 import { Hint } from "../../components/Hint";
 import { Notice } from "../../components/Notice";
 import { SearchField } from "../../components/SearchField";
+import { usePageSearch } from "../../components/usePageSearch";
 import { countNoun, formatCount } from "../../format/counts";
 import { useIncludeUserCharts } from "./includeUserCharts";
 import { SavedListField } from "./SavedListField";
@@ -73,6 +74,9 @@ export function NewRunPanel({
 }: NewRunPanelProps) {
   const [form, setForm] = useState<NewRunForm>(() => defaultForm(options.defaults));
   const [genreFilter, setGenreFilter] = useState("");
+  // Ctrl+F goes to the genre filter while it is showing (C189).
+  const genreSearch = useRef<HTMLInputElement>(null);
+  usePageSearch(options.genres.length > 0 ? genreSearch : undefined);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [editBusy, setEditBusy] = useState(false);
@@ -231,6 +235,7 @@ export function NewRunPanel({
             ) : (
               <>
                 <SearchField
+                  ref={genreSearch}
                   thing="genres"
                   id="discover-genre-filter"
                   label="Find genres"

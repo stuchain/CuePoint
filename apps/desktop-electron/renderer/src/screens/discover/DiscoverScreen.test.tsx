@@ -195,7 +195,7 @@ async function openRun(id: number) {
   const list = await screen.findByRole("navigation", { name: "Past digs" });
   const item = within(list)
     .getAllByRole("button")
-    .find((button) => button.textContent?.includes(id === 1 ? "Finished" : "Stopped"))!;
+    .find((button) => button.textContent?.includes(id === 1 ? "Done" : "Stopped"))!;
   fireEvent.click(item);
 }
 
@@ -292,7 +292,7 @@ describe("the page", () => {
     const list = screen.getByRole("navigation", { name: "Past digs" });
     const row = within(list)
       .getAllByRole("listitem")
-      .find((item) => item.textContent?.includes("Finished"))!;
+      .find((item) => item.textContent?.includes("Done"))!;
     await openDelete(row);
     const dialog = await screen.findByRole("dialog", { name: "Delete this dig?" });
     expect(dialog.textContent ?? "").not.toMatch(/\bruns?\b/i);
@@ -441,7 +441,7 @@ describe("Beatport's state", () => {
     await openNewSearch();
     const start = await screen.findByRole("button", { name: "Start looking" });
     expect(start).toBeDisabled();
-    expect(screen.getByText("Needs a Beatport sign-in.")).toBeInTheDocument();
+    expect(screen.getByText("Needs a Beatport sign-in")).toBeInTheDocument();
   });
 
   it("shows a token refused as a search starts, over what options said", async () => {
@@ -555,7 +555,7 @@ describe("Results", () => {
     expect(items[0]).toHaveTextContent(/^Dig of /);
     expect(items[0]).toHaveTextContent("Stopped");
     expect(items[0]).toHaveTextContent("0 tracks found");
-    expect(items[1]).toHaveTextContent("Finished");
+    expect(items[1]).toHaveTextContent("Done");
     expect(items[1]).toHaveTextContent("House, Techno (Peak Time / Driving) · Releases from");
     expect(items[1]).toHaveTextContent("7 tracks found");
     for (const item of items) {
@@ -1029,7 +1029,7 @@ describe("Results", () => {
     const list = screen.getByRole("navigation", { name: "Past digs" });
     const row = within(list)
       .getAllByRole("listitem")
-      .find((item) => item.textContent?.includes("Finished"))!;
+      .find((item) => item.textContent?.includes("Done"))!;
     await openDelete(row);
     const dialog = await screen.findByRole("dialog", { name: "Delete this dig?" });
     install({
@@ -1055,7 +1055,7 @@ describe("Results", () => {
     const more = await screen.findByRole("button", { name: /^More for / });
     // Focusable, and it says why: a keyboard user is told rather than skipped past.
     expect(more).toHaveAttribute("aria-disabled", "true");
-    expect(more).toHaveAccessibleName(/A running dig cannot be deleted\./);
+    expect(more).toHaveAccessibleName(/A running dig cannot be deleted$/);
     expect(more).not.toBeDisabled();
     fireEvent.click(more);
     expect(screen.queryByRole("menuitem", { name: "Delete this dig…" })).toBeNull();

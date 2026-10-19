@@ -120,5 +120,5 @@ export function beatportUsable(state: DiscoverBeatportState): boolean {
 /** Why an action that asks Beatport is not offered, in the button's hint. */
 export function unusableReason(state: DiscoverBeatportState): string | null {
   if (beatportUsable(state)) return null;
-  return state === "forbidden" ? "Beatport refused this sign-in." : "Needs a Beatport sign-in.";
+  return state === "forbidden" ? "Beatport refused this sign-in" : "Needs a Beatport sign-in";
 }

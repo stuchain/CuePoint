@@ -173,7 +173,7 @@ describe("a dig's results as rows of cards", () => {
     });
     renderRun();
     const row = await screen.findByRole("region", { name: "Your artists' charts" });
-    fireEvent.click(within(row).getByRole("button", { name: "See all" }));
+    fireEvent.click(within(row).getByRole("button", { name: "Show all 8" }));
     fireEvent.click(within(row).getByRole("checkbox", { name: "Tick Chart 2" }));
     fireEvent.click(within(row).getByRole("button", { name: /^Chart Chart 3,/ }));
     fireEvent.click(await screen.findByRole("button", { name: "Back to all results" }));
@@ -182,7 +182,7 @@ describe("a dig's results as rows of cards", () => {
     expect(within(back).getByRole("checkbox", { name: "Tick Chart 2" })).toBeChecked();
   });
 
-  it("shows six cards of a long row and the rest under 'See all'", async () => {
+  it("shows six cards of a long row and the rest under 'Show all'", async () => {
     const many: DiscoverGroupCard[] = Array.from({ length: 8 }, (_, i) => ({
       ...ARTISTS.rows[0]!.cards[0]!,
       key: String(100 + i),
@@ -196,18 +196,18 @@ describe("a dig's results as rows of cards", () => {
     renderRun();
     const row = await screen.findByRole("region", { name: "Your artists' charts" });
     expect(within(row).getAllByRole("listitem")).toHaveLength(6);
-    const seeAll = within(row).getByRole("button", { name: "See all" });
+    const seeAll = within(row).getByRole("button", { name: "Show all 8" });
     expect(seeAll).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(seeAll);
     expect(within(row).getAllByRole("listitem")).toHaveLength(8);
-    expect(within(row).getByRole("button", { name: "Show fewer" })).toHaveAttribute("aria-expanded", "true");
+    expect(within(row).getByRole("button", { name: "Show less" })).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("has no 'See all' when the whole row is showing", async () => {
+  it("has no 'Show all' when the whole row is showing", async () => {
     install();
     renderRun();
     const row = await screen.findByRole("region", { name: "Your artists' charts" });
-    expect(within(row).queryByRole("button", { name: "See all" })).not.toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: "Show all 8" })).not.toBeInTheDocument();
   });
 
   it("draws a card's picture from a thumbnail the preload made, and lets it go", async () => {
@@ -298,7 +298,7 @@ describe("ticking cards", () => {
     install();
     renderRun();
     fireEvent.click(await screen.findByRole("checkbox", { name: "Tick Mara Veil" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Add to playlist…" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add to a Beatport playlist…" }));
     const dialog = await screen.findByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText("Playlist name"), { target: { value: "Friday finds" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Make playlist" }));
@@ -316,7 +316,7 @@ describe("ticking cards", () => {
     install();
     renderRun();
     fireEvent.click(await screen.findByRole("checkbox", { name: "Tick Mara Veil" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Add to playlist…" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add to a Beatport playlist…" }));
     const dialog = await screen.findByRole("dialog");
     await waitFor(() => expect(bridge.getBeatportPlaylists).toHaveBeenCalled());
     const existing = within(dialog).getByRole("radio", { name: "A playlist I already have" });
@@ -342,7 +342,7 @@ describe("ticking cards", () => {
     fireEvent.click(await screen.findByRole("checkbox", { name: "Tick Mara Veil" }));
     const bar = await screen.findByRole("group", { name: "Ticked cards" });
     await waitFor(() => expect(bar).toHaveTextContent(`${SUMMARY.tracks} tracks`), LOADED);
-    fireEvent.click(within(bar).getByRole("button", { name: "Add to playlist…" }));
+    fireEvent.click(within(bar).getByRole("button", { name: "Add to a Beatport playlist…" }));
     const dialog = await screen.findByRole("dialog");
     const going = SUMMARY.tracks - SUMMARY.owned;
     expect(dialog).toHaveTextContent(`the ${going} tracks on the ticked card`);
@@ -362,7 +362,7 @@ describe("ticking cards", () => {
     });
     renderRun();
     fireEvent.click(await screen.findByRole("checkbox", { name: "Tick Mara Veil" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Add to playlist…" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add to a Beatport playlist…" }));
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Make playlist" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Already in your library");
@@ -373,7 +373,7 @@ describe("ticking cards", () => {
     tools = { ...tools, beatportState: "no_token" };
     renderRun();
     fireEvent.click(await screen.findByRole("checkbox", { name: "Tick Mara Veil" }));
-    expect(await screen.findByRole("button", { name: "Add to playlist…" })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: "Add to a Beatport playlist…" })).toBeDisabled();
   });
 });
 

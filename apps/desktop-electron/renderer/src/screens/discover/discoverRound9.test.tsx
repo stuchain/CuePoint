@@ -24,9 +24,18 @@ describe("a dig's page", () => {
 
 describe("a chart without a cover", () => {
   it("is the shared artwork placeholder, not a purple tile with an initial", () => {
-    const { container } = render(<GroupArt runId={1} kind="chart" cardKey="k" name="Peak Time" hasArt={false} />);
+    const { container } = render(<GroupArt runId={1} kind="chart" cardKey="k" hasArt={false} />);
     expect(container.querySelector(".cp-artwork-placeholder")).not.toBeNull();
     expect(container.querySelector(".discover-card__initial")).toBeNull();
     expect(screen.queryByText("P")).toBeNull();
+  });
+
+  it("is the same placeholder for an artist or a label, and an artist's stays round", () => {
+    const artist = render(<GroupArt runId={1} kind="artist" cardKey="k" hasArt={false} />);
+    expect(artist.container.querySelector(".cp-artwork-placeholder")).not.toBeNull();
+    expect(artist.container.querySelector(".discover-card__art--artist")).not.toBeNull();
+    artist.unmount();
+    const label = render(<GroupArt runId={1} kind="label" cardKey="k" hasArt={false} />);
+    expect(label.container.querySelector(".cp-artwork-placeholder")).not.toBeNull();
   });
 });

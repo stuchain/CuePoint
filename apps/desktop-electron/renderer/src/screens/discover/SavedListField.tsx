@@ -3,7 +3,7 @@
  * saved list of them, or none.
  *
  * A saved list is picked from a drop-down that says how many names each holds;
- * **Edit…** changes the one shown and **+ New list** makes another, both in
+ * **Edit…** changes the one shown and **New list…** makes another, both in
  * the same chooser. Which list is chosen is the form's, what is in it is the
  * engine's, so the field only draws them and says what was asked.
  */
@@ -112,7 +112,7 @@ export function SavedListField({
         aria-label={`New ${noun} list`}
         onClick={onNew}
       >
-        + New list
+        New list…
       </LinkButton>
       <label className="discover-new__choice">
         <input type="radio" name={name} checked={mode === "none"} onChange={() => onMode("none")} />

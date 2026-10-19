@@ -65,17 +65,24 @@ export function searchTitle(startedAt: string): string {
   return `Dig of ${formatWhen(startedAt)}`;
 }
 
+/** A dig's state in a word; Clean's Past searches uses the same three (C153). A failed dig reads as Stopped. */
+export const RUN_STATE = {
+  running: "Running",
+  done: "Done",
+  stopped: "Stopped",
+} as const;
+
 /** A search's state, as its badge says it. */
 export function runStateLabel(run: DiscoverRun): string {
-  if (run.running) return "Running";
+  if (run.running) return RUN_STATE.running;
   switch (run.outcome) {
     case "succeeded":
-      return "Finished";
+      return RUN_STATE.done;
     case "cancelled":
-      return "Stopped";
+      return RUN_STATE.stopped;
     case "failed":
       // A dig that fails keeps what it found, so it reads as stopped partway.
-      return "Stopped";
+      return RUN_STATE.stopped;
     default:
       return "Ended";
   }
@@ -90,7 +97,7 @@ export function runStateTone(run: DiscoverRun): "info" | "success" | "warning" |
 }
 
 /** Why Continue is off while another dig runs. */
-export const CONTINUE_BUSY = "Another dig is running.";
+export const CONTINUE_BUSY = "Another dig is running";
 
 /** A dig that stopped partway can be continued: the user's Stop, or Beatport's trouble. */
 export function canContinueRun(run: Pick<DiscoverRun, "running" | "outcome">): boolean {

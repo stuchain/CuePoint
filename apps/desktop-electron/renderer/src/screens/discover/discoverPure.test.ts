@@ -171,7 +171,7 @@ describe("Beatport's state", () => {
     for (const state of ["no_token", "rejected", "forbidden"] as const) {
       expect(beatportUsable(state)).toBe(false);
       expect(unusableReason(state)).toBe(
-        state === "forbidden" ? "Beatport refused this sign-in." : "Needs a Beatport sign-in.",
+        state === "forbidden" ? "Beatport refused this sign-in" : "Needs a Beatport sign-in",
       );
     }
     expect(unusableReason("ok")).toBeNull();
@@ -404,7 +404,7 @@ describe("the sentences", () => {
   });
 
   it("names a run's state and how it ended, from the engine's runs", () => {
-    expect(runStateLabel(FINISHED)).toBe("Finished");
+    expect(runStateLabel(FINISHED)).toBe("Done");
     expect(runStateLabel(FAILED)).toBe("Stopped");
     expect(runStateTone(FAILED)).toBe("warning");
     expect(runStateLabel({ ...FINISHED, running: true })).toBe("Running");

@@ -10,7 +10,7 @@
  * - A card is a button: it opens that card's tracks. Its tick is a separate,
  *   labelled checkbox beside it, so ticking never opens anything.
  * - Ticked cards raise a bar: "Ticked: Argy, Afterlife · 20 tracks · 3 already
- *   in your library", with Add to wantlist and Add to playlist. A track on two
+ *   in your library", with Add to wantlist and Add to a Beatport playlist. A track on two
  *   ticked cards is counted once, and tracks the library already owns are left
  *   out (and said so).
  * - "Everything" opens the whole dig as the single list it always was.
@@ -28,9 +28,8 @@ import type {
 import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
 import { Notice } from "../../components/Notice";
-import { opensDialog } from "../../format/words";
-import { LinkButton } from "../../components/LinkButton";
-import { PixelIcon } from "../../components/PixelIcon";
+import { ShowMore } from "../../components/ShowMore";
+import { ADD_TO_BEATPORT_PLAYLIST } from "../../format/words";
 import { countNoun, formatCount } from "../../format/counts";
 import { GroupArt } from "./GroupArt";
 import { PushDialog, type PushTarget } from "./PushDialog";
@@ -87,7 +86,7 @@ function CardTile({
   return (
     <li className={`discover-card discover-card--${card.kind}${ticked ? " discover-card--ticked" : ""}`}>
       <button type="button" className="discover-card__open" aria-label={cardName(card, mode)} onClick={onOpen}>
-        <GroupArt runId={runId} kind={card.kind} cardKey={card.key} name={card.name} hasArt={card.has_art} />
+        <GroupArt runId={runId} kind={card.kind} cardKey={card.key} hasArt={card.has_art} />
         <span className="discover-card__title">{card.name}</span>
         {card.kind === "chart" && card.curator && !card.name.includes(card.curator) && (
           <span className="discover-card__curator">by {card.curator}</span>
@@ -132,10 +131,9 @@ function CardRow({
           {note ? ` · ${note}` : ""}
         </span>
         {overflow && (
-          <LinkButton className="discover-cards__see-all" aria-expanded={all} onClick={onAll}>
-            {all ? "Show fewer" : "See all"}
-            <PixelIcon name={all ? "chevron-down" : "chevron-right"} />
-          </LinkButton>
+          <span className="discover-cards__more">
+            <ShowMore total={row.cards.length} expanded={all} onToggle={onAll} />
+          </span>
         )}
       </header>
       <ul className="discover-cards__grid">
@@ -300,7 +298,7 @@ export function RunCards({
                 disabled={!pushable || tools.pushing}
                 onClick={() => setPushOpen(true)}
               >
-                {opensDialog("Add to playlist")}
+                {ADD_TO_BEATPORT_PLAYLIST}
               </Button>
             </Hint>
           </div>

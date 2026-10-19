@@ -149,7 +149,7 @@ describe("a dig that stopped partway", () => {
 });
 
 describe("the Results list", () => {
-  it("keeps 'Show older digs' busy until the bigger list answers", async () => {
+  it("shows every dig from 'Show all', busy until the bigger list answers", async () => {
     let answerBigger!: () => void;
     const list = vi.fn((params: { limit: number }) =>
       params.limit > 50
@@ -160,18 +160,17 @@ describe("the Results list", () => {
     );
     install(list);
     render(view());
-    const more = await screen.findByRole("button", { name: "Show older digs" });
+    const more = await screen.findByRole("button", { name: "Show all 80" });
 
     fireEvent.click(more);
-    // The key moves to the bigger list, which has no answer yet: still waiting.
+    // The key moves to the bigger list, which has no answer yet: still waiting, with the shared line.
     await act(async () => {});
     const nav = screen.getByRole("navigation", { name: "Past digs" });
-    const busy = nav.querySelector(".cp-btn--loading");
-    expect(busy).not.toBeNull();
-    expect(busy).toBeDisabled();
+    expect(within(nav).getByText("Loading older digs…")).toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: "Show all 80" })).toBeNull();
 
     await act(async () => answerBigger());
-    await waitFor(() => expect(within(nav).getByRole("button", { name: "Show older digs" })).toBeEnabled());
+    await waitFor(() => expect(within(nav).queryByText("Loading older digs…")).toBeNull());
   });
 
   it("hands the list the same array while nothing about it changed", async () => {

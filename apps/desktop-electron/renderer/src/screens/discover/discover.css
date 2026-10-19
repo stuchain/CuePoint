@@ -55,10 +55,12 @@
   margin-bottom: var(--space-md);
 }
 
+/* A line of help: the reading width (C214) in the data face the form's names use (C55). */
 .discover-note {
   margin: 0;
-  max-width: 80ch;
+  max-width: var(--reading-width);
   color: var(--fg-muted);
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
 }
 
@@ -185,10 +187,19 @@
   border-left-color: transparent;
 }
 
+/* The title takes the whole line and is cut with an ellipsis; the state chip sits below it (C252). */
 .discover-runs__when {
+  grid-column: 1 / -1;
   min-width: 0;
   font-size: var(--font-size-sm);
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discover-runs__item > .cp-badge {
+  grid-column: 1 / -1;
+  justify-self: start;
 }
 
 .discover-runs__what,
@@ -279,6 +290,11 @@
   margin: 0;
 }
 
+/* The genre card stretches to the height of the scope column beside it (C53). */
+.discover-new__grid > .discover-new__genres {
+  height: 100%;
+}
+
 .discover-new__card-body {
   display: flex;
   flex-direction: column;
@@ -295,6 +311,7 @@
 .discover-new__choice {
   display: flex;
   align-items: center;
+  min-height: var(--row-height);
   /* Tick box to its words 6. */
   gap: var(--space-sm);
   font-size: var(--font-size-xs);
@@ -422,6 +439,7 @@
 .discover-scope__row {
   display: flex;
   align-items: center;
+  min-height: var(--row-height);
   gap: var(--space-sm);
   font-size: var(--font-size-xs);
   cursor: pointer;
@@ -784,33 +802,9 @@
   background: currentColor;
 }
 
-/* A running dig's thin progress line, along the card's bottom edge. */
+/* A running dig's progress line: the one shared bar (C148), across the card. */
 .discover-runs__progress {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: calc(4px * var(--scale));
-  overflow: hidden;
-  background: var(--border-muted);
-}
-
-.discover-runs__progress::after {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 40%;
-  background: var(--accent-primary);
-}
-
-:root[data-motion-loading] .discover-runs__progress::after {
-  animation: discover-runs-progress var(--motion-slow) steps(8, end) infinite alternate;
-}
-
-@keyframes discover-runs-progress {
-  to {
-    transform: translateX(150%);
-  }
+  --cp-progress-width: 100%;
 }
 
 .discover-run__looked-title {

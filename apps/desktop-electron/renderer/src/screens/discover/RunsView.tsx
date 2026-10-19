@@ -180,7 +180,8 @@ export function RunsView({
 
   const showMore = () => {
     setLoadingMore(true);
-    setLimit((value) => value + RUNS_PAGE);
+    // "Show all" shows all of them (up to the most the engine keeps), not another page.
+    setLimit(tools.options.limits.max_runs);
   };
 
   // The newest search left opens in its place, once the list has been read again.

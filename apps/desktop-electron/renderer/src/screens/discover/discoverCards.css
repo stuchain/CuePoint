@@ -14,7 +14,7 @@
   /* Row to row 16; the header's rule to the first row 12 (ScreenHeader gives the page's own 12). */
   gap: var(--space-xl);
   /* No bottom padding: the ticked-cards bar is sticky, and sticks at the padding edge (area 61). */
-  padding: var(--space-lg) 0 0;
+  padding: 0;
 }
 
 .discover-cards__top {
@@ -44,13 +44,9 @@
   font-weight: var(--weight-strong);
 }
 
-/* A LinkButton (the one link look); it only needs its icon beside the words and the right edge. */
-.discover-cards__see-all {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
+/* The shared Show all / Show less button, at the row head's right edge. */
+.discover-cards__more {
   margin-left: auto;
-  font-size: var(--font-size-xs);
 }
 
 .discover-cards__grid {
@@ -58,8 +54,8 @@
   /* A card stays about this wide whatever the window: several fit a row at 1.5x. */
   grid-template-columns: repeat(auto-fill, minmax(calc(150px * var(--scale)), calc(170px * var(--scale))));
   justify-content: start;
-  /* Card to card 12. */
-  gap: var(--space-lg);
+  /* Card to card: the page's large gap (C32). */
+  gap: var(--space-xl);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -135,16 +131,6 @@
   border-radius: 50%;
 }
 
-.discover-card__initial {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  color: var(--fg-muted);
-  font-size: var(--font-size-xl);
-  font-weight: var(--weight-strong);
-}
-
 .discover-card__title,
 .discover-card__curator,
 .discover-card__counts {
@@ -191,10 +177,8 @@
   cursor: pointer;
 }
 
-/* The tick is the global square checkbox, drawn larger here so it reads over a picture. */
+/* The tick is the global square checkbox at its own size. */
 .discover-card__tick input {
-  width: var(--font-size-md);
-  height: var(--font-size-md);
   margin: 0;
   cursor: pointer;
 }
