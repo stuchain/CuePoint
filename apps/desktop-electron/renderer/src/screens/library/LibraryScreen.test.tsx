@@ -1113,7 +1113,7 @@ describe("the refresh preview (DEC-032)", () => {
     await userEvent.click(await screen.findByRole("button", { name: /Check for changes/i }));
 
     // No dialog to dismiss (R3-11): a toast says the file has no changes.
-    expect(await screen.findByText("collection.xml has no changes.")).toBeInTheDocument();
+    expect(await screen.findByText("collection.xml has no changes")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 

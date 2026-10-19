@@ -577,7 +577,7 @@ test.describe("The Library page (LIBRARY-11)", () => {
 
       await window.getByRole("button", { name: /Check for changes/i }).click();
       // No dialog to dismiss (R3-11): a toast says the file has no changes.
-      await expect(window.getByText(/ has no changes\.$/)).toBeVisible({ timeout: 30_000 });
+      await expect(window.getByText(/ has no changes$/)).toBeVisible({ timeout: 30_000 });
       await expect(window.getByRole("dialog")).toHaveCount(0);
     } finally {
       await app.close();

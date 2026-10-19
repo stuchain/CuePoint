@@ -42,7 +42,9 @@ from cuepoint.models.waveform import STORED_FAILED, STORED_READY
 from cuepoint.models.waveform_analysis import (
     STOP_PAUSED,
     STOP_STEPPED_ASIDE,
+    STOP_REASONS,
     STOP_UNAVAILABLE,
+    AnalysisRunResult,
     RunProgress,
 )
 from cuepoint.persistence.waveform_store import WaveformStoreError
@@ -314,7 +316,7 @@ class TestTheDrain:
         assert lib.stored() == {"a": STORED_READY, "b": STORED_READY, "c": STORED_READY}
         assert (result.analysed, result.failed, result.remaining) == (3, 0, 0)
         assert result.present == 3 and result.drained
-        assert result.summary_line() == "Analyzed 3 waveforms. Finished."
+        assert result.summary_line() == "Analyzed 3 waveforms"
 
     def test_tracks_added_while_it_runs_are_analysed_in_the_same_run(self, lib):
         lib.add("first")
@@ -363,7 +365,7 @@ class TestTheDrain:
 
         assert lib.decoder.names() == ["b"]
         assert not result.whole_library and result.analysed == 1
-        assert result.summary_line() == "Analyzed 1 waveform."
+        assert result.summary_line() == "Analyzed 1 waveform"
 
     def test_an_already_analysed_request_costs_a_stat(self, lib):
         lib.add("a")
@@ -382,7 +384,7 @@ class TestTheDrain:
         result = run(lib)
 
         assert result.analysed == 0
-        assert result.summary_line() == "All waveforms are up to date. Finished."
+        assert result.summary_line() == "All waveforms are up to date"
 
 
 class TestTheOrder:
@@ -490,7 +492,7 @@ class TestFailuresAndGoneFiles:
 
         assert first.failed == 1
         assert first.summary_line() == (
-            "Analyzed 0 waveforms; 1 file could not be read. Finished."
+            "Analyzed 0 waveforms; 1 file could not be read"
         )
         assert second.failed == 0 and second.analysed == 0
         assert lib.decoder.names() == ["broken"]
@@ -734,7 +736,7 @@ class TestActivity:
         assert len(events) == 1
         assert events[0].type == EVENT_WAVEFORMS_ANALYSED
         assert events[0].summary == (
-            "Analyzed 1 waveform; 1 file could not be read. Finished."
+            "Analyzed 1 waveform; 1 file could not be read"
         )
         assert events[0].detail["analysed"] == 1
         assert events[0].detail["failed"] == 1
@@ -845,3 +847,17 @@ class TestDeletingTheData:
     def test_the_store_s_size_never_opens_it(self, lib):
         assert lib.analysis.store_bytes() == 0
         assert not lib.store.path.exists()
+
+
+class TestTheActivityLine:
+    """C163: an Activity line ends without a full stop, however the run ended."""
+
+    @pytest.mark.parametrize("stopped", [None, *STOP_REASONS])
+    @pytest.mark.parametrize("whole", [True, False])
+    def test_no_closing_full_stop(self, stopped, whole):
+        line = AnalysisRunResult(
+            trigger="launch", whole_library=whole, analysed=300, stopped=stopped
+        ).summary_line()
+
+        assert not line.endswith(".")
+        assert ". " not in line

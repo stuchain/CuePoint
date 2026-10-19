@@ -1686,7 +1686,7 @@ export function LibraryScreen({
       // Nothing changed: no dialog to dismiss, a toast says so (R3-11).
       if (previewed.is_empty) {
         const name = fileName(previewed.xml_path ?? "");
-        push(name ? `${name} has no changes.` : "Your Rekordbox file has no changes.", "info");
+        push(name ? `${name} has no changes` : "Your Rekordbox file has no changes", "info");
         return;
       }
       if (mounted.current) setDiff(previewed);

@@ -625,7 +625,7 @@ class TestActivity:
 
         events = lib.events()
         assert events[-1].detail["stopped"] == STOP_STEPPED_ASIDE
-        assert "Stopped for a library change" in events[-1].summary
+        assert "stopped for a library change" in events[-1].summary
 
 
 class TestFailures:
@@ -937,7 +937,7 @@ class TestDeletingTheData:
         )
 
         assert result.summary_line() == (
-            "Analyzed 3 waveforms. Stopped to delete the waveform data."
+            "Analyzed 3 waveforms; stopped to delete the waveform data"
         )
 
 

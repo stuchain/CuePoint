@@ -649,7 +649,7 @@ test.describe("FLW-1: every action in the table has a visible place that works f
 
     // Check for changes: the file has not changed, and a toast says so (R3-11).
     await use(win, header.getByRole("button", { name: "Check for changes" }), "Check for changes");
-    await expect(win.getByText(/ has no changes\.$/)).toBeVisible({ timeout: 30_000 });
+    await expect(win.getByText(/ has no changes$/)).toBeVisible({ timeout: 30_000 });
     await expect(win.getByRole("dialog")).toHaveCount(0);
 
     // Export to Rekordbox…

@@ -256,17 +256,17 @@ class AnalysisRunResult:
                 f"; {_plural(self.not_found, 'file was', 'files were')}"
                 " not found, and will be looked for after the next file check"
             )
-        if self.stopped == STOP_PAUSED:
-            return f"{line}. Paused."
-        if self.stopped == STOP_STEPPED_ASIDE:
-            return f"{line}. Stopped for a library change, and continues after it."
-        if self.stopped == STOP_UNAVAILABLE:
-            return f"{line}. Stopped: the decoder could not analyse audio."
-        if self.stopped == STOP_CANCELLED:
-            return f"{line}. Stopped as the engine closed."
-        if self.stopped == STOP_DATA_DELETED:
-            return f"{line}. Stopped to delete the waveform data."
-        return f"{line}." if not self.whole_library else f"{line}. Finished."
+        # One line with no closing full stop, as every Activity line reads (C163); a run that was
+        # not stopped needs no "finished": only a stop is said.
+        endings = {
+            STOP_PAUSED: "paused",
+            STOP_STEPPED_ASIDE: "stopped for a library change, and continues after it",
+            STOP_UNAVAILABLE: "stopped: the decoder could not analyse audio",
+            STOP_CANCELLED: "stopped as the engine closed",
+            STOP_DATA_DELETED: "stopped to delete the waveform data",
+        }
+        ending = endings.get(self.stopped) if self.stopped is not None else None
+        return f"{line}; {ending}" if ending else line
 
     def to_dict(self) -> Dict[str, Any]:
         """The result as a job's result, and as the activity event's detail."""
