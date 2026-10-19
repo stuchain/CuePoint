@@ -23,7 +23,7 @@ import type {
 import { Card } from "../../components/Card";
 import { EmptyState } from "../../components/EmptyState";
 import { LinkButton } from "../../components/LinkButton";
-import { plural } from "../../format/counts";
+import { countNoun } from "../../format/counts";
 import { goTo } from "../../format/words";
 import { formatBpmText, formatLufs } from "../../format/units";
 import { PixelBars } from "../../components/charts/PixelBars";
@@ -62,7 +62,7 @@ interface Panel {
   unit?: string;
 }
 
-const tracksOf = (n: number): string => plural(n, "track");
+const tracksOf = (n: number): string => countNoun(n, "track");
 const has = (n: number) => (n === 1 ? "has" : "have");
 const is = (n: number) => (n === 1 ? "is" : "are");
 

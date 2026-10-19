@@ -649,9 +649,9 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await panel("plays");
 
-      expect(await within(region).findByText("None of these tracks has been played yet.")).toBeVisible();
+      expect(await within(region).findByText("None of these tracks has been played yet")).toBeVisible();
       expect(within(region).getByRole("button", { name: "Keep as Collection" })).toBeDisabled();
-      expect(within(region).getAllByText("No plays to rank.")).toHaveLength(3);
+      expect(within(region).getAllByText("No plays to rank")).toHaveLength(3);
     });
 
     it("says so when nothing was played in the time chosen", async () => {
@@ -662,7 +662,7 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await panel("plays");
 
-      expect(await within(region).findByText("No plays were recorded in that time.")).toBeVisible();
+      expect(await within(region).findByText("No plays were recorded in that time")).toBeVisible();
     });
 
     it("says there is no history yet, while all-time plays still show", async () => {
@@ -1084,6 +1084,52 @@ describe("the Plays section, after review (STATS-05)", () => {
     });
   });
 
+  describe("wording and layout of the Plays tab (C47, C85, C140, C72)", () => {
+    it("puts the source note under the Since select as its hint (C47)", async () => {
+      renderPage();
+      const region = await section();
+
+      const since = within(region).getByRole("combobox", { name: "Since" });
+      const hint = since.closest(".cp-select")!.querySelector(".cp-field__hint")!;
+      expect(hint).toHaveTextContent(/^From your Rekordbox play counts · history since /);
+      expect(since).toHaveAccessibleDescription(hint.textContent!);
+      expect(region.querySelector(".plays__footer")).toBeNull();
+    });
+
+    it("writes who a track is as one 'Title · artist' line (C85)", async () => {
+      renderPage();
+      const region = await section();
+
+      const first = region.querySelector(".plays__item .plays__what")!;
+      expect(first.textContent).toBe("Alpha · B");
+      expect(first.querySelectorAll("span")).toHaveLength(1);
+    });
+
+    it("says an empty list with the compact empty state, headline without a full stop (C140)", async () => {
+      install({
+        getStatisticsPlays: vi.fn().mockResolvedValue(plays({ tracks: [], artists: [], labels: [], genres: [] })),
+      });
+      renderPage();
+      const region = await panel("plays");
+
+      await within(region).findByText("None of these tracks has been played yet");
+      const empties = region.querySelectorAll(".cp-empty-state--compact");
+      expect(empties).toHaveLength(4);
+      expect(region.querySelector(".statistics-note + .statistics-note")).toBeNull();
+    });
+
+    it("draws the list headings in the one table header look (D8, C72)", () => {
+      for (const [sheet, selector] of [[css, ".rank__columns"], [playsCss, ".plays__columns-head"]] as const) {
+        const at = sheet.indexOf(`${selector} {`);
+        expect(at, selector).toBeGreaterThan(-1);
+        const rule = sheet.slice(at, sheet.indexOf("}", at));
+        expect(rule, selector).toContain("min-height: var(--row-height);");
+        expect(rule, selector).toContain("background: var(--bg-toolbar);");
+        expect(rule, selector).toContain("font-family: var(--font-pixel-digits);");
+      }
+    });
+  });
+
   describe("playing from Most played (C192)", () => {
     const rowFor = (id: number) => ({ id, title: `T${id}`, artist: "B", file_path: `/m/${id}.mp3` });
 
@@ -1170,7 +1216,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       expect(item).toContain("grid-template-columns: minmax(0, 1fr) var(--plays-play-column);");
       expect(playsCss).toMatch(/--plays-play-column:\s*round\(nearest, calc\(16px \* var\(--scale\)\), 1px\)/);
       expect(playsCss).toMatch(/\.plays__row\s*\{\s*min-width:\s*0;/);
-      const name = /\.plays__name,\s*\.plays__artist\s*\{([^}]*)\}/.exec(playsCss)![1]!;
+      const name = /\.plays__name\s*\{([^}]*)\}/.exec(playsCss)![1]!;
       expect(name).toContain("text-overflow: ellipsis;");
     });
 

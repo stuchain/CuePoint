@@ -168,6 +168,7 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
         ]}
       >
         <div className="health-card__foot">
+          <span className="statistics-note">{artworkLine(health.artwork_checked_at)}</span>
           <Button
             variant="secondary"
             onClick={onReadCoverArt}
@@ -176,7 +177,6 @@ export function HealthSection({ health, coverArtRunning, onReadCoverArt }: Healt
           >
             Read artwork
           </Button>
-          <span className="statistics-note">{artworkLine(health.artwork_checked_at)}</span>
         </div>
       </HealthCard>
       <HealthCard

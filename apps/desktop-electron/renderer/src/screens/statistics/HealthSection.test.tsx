@@ -258,6 +258,15 @@ describe("the Health tab (STATS-07, K3)", () => {
     expect(onReadCoverArt).not.toHaveBeenCalled();
   });
 
+  it("puts the status on the left and the Read artwork button on the right (C235)", () => {
+    renderSection();
+    const foot = panel("other").querySelector(".health-card__foot")!;
+    expect(foot.children[0]).toHaveTextContent(/^Artwork last read /);
+    expect(foot.children[1]).toBe(within(panel("other")).getByRole("button", { name: "Read artwork" }));
+    const rule = /\.health-card__foot\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(rule).toContain("justify-content: space-between;");
+  });
+
   it("no longer offers All health checks or any way into Clean's Health tab", () => {
     renderSection();
     expect(screen.queryByRole("button", { name: "All health checks" })).not.toBeInTheDocument();
@@ -310,6 +319,5 @@ describe("the Health tab (STATS-07, K3)", () => {
     const muted = /\.stacked__part--muted\s*\{([^}]*)\}/.exec(css)![1]!;
     expect(muted).toContain("var(--fg-muted)");
     expect(muted).not.toContain("--border-muted");
-    expect(css).not.toContain("var(--border-muted)");
   });
 });

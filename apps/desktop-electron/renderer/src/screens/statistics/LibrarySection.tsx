@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 
 import type { CollectionNode, FilterRuleSet, StatisticsSpreads } from "../../api/cuepointBridge.types";
 import { LinkButton } from "../../components/LinkButton";
-import { formatCount, plural } from "../../format/counts";
+import { countNoun, formatCount } from "../../format/counts";
 import { formatLength, formatTotal } from "../../format/durations";
 import { formatBpm } from "../../format/units";
 import { libraryRulesState } from "../library/libraryLink";
@@ -59,7 +59,7 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
       id: "tracks",
       label: "Tracks",
       value: formatCount(spreads.total),
-      note: playlistCount === null ? "in this scope" : plural(playlistCount, "playlist"),
+      note: playlistCount === null ? "in this scope" : countNoun(playlistCount, "playlist"),
     },
     {
       id: "time",
@@ -99,7 +99,7 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
             tracks: bucket.count,
             weight: bucket.count,
             rules: bucket.rules,
-            label: `${bucket.label}, ${plural(bucket.count, "track")}`,
+            label: `${bucket.label}, ${countNoun(bucket.count, "track")}`,
           },
         ],
   );
@@ -109,7 +109,7 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
     tracks: row.tracks,
     weight: row.tracks,
     rules: row.rules,
-    label: `${row.name}, ${plural(row.tracks, "track")}`,
+    label: `${row.name}, ${countNoun(row.tracks, "track")}`,
   }));
   const artists: RankRow[] = spreads.artists.map((row) => ({
     id: row.name_key,
@@ -117,7 +117,7 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
     tracks: row.tracks,
     weight: row.tracks,
     rules: row.rules,
-    label: `${row.name}, ${plural(row.tracks, "track")}`,
+    label: `${row.name}, ${countNoun(row.tracks, "track")}`,
   }));
 
   return (
@@ -138,7 +138,7 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
           unit="tracks"
           columns={["tracks"]}
           rows={genres}
-          empty="No genres to list."
+          empty="No genres to list"
           onOpen={open}
         />
         <RankList
@@ -146,7 +146,7 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
           unit="tracks"
           columns={["tracks"]}
           rows={labels}
-          empty="No labels to list."
+          empty="No labels to list"
           onOpen={open}
         />
         <RankList
@@ -154,7 +154,7 @@ export function LibrarySection({ spreads, collections, playlistCount, now }: Lib
           unit="tracks"
           columns={["tracks"]}
           rows={artists}
-          empty="No artists to list."
+          empty="No artists to list"
           onOpen={open}
         />
         <SpreadsSection spreads={spreads} charts={["tempo"]} />

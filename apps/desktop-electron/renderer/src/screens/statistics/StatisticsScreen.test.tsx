@@ -22,6 +22,7 @@ import { ToastProvider } from "../../components";
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { reportUnexpected } from "../../reporting/reporting";
 import { StatisticsScreen } from "./StatisticsScreen";
+import { needsDesktopApp } from "../../api/userMessage";
 import { statisticsFocusState } from "./statisticsLink";
 import { PLAYS_STORAGE_KEY } from "./playsChoice";
 import { formatDayTime } from "../../format/dates";
@@ -394,6 +395,16 @@ describe("the Statistics page (STATS-04)", () => {
     expect(header.querySelector(".cp-screen-header__summary")).not.toBeNull();
   });
 
+  it("writes the summary as '<count> <noun> · <fact>' for a scope too (C233)", async () => {
+    window.localStorage.setItem(STATISTICS_SCOPE_STORAGE_KEY, "collection:10");
+    install({ getStatisticsSpreads: vi.fn().mockResolvedValue({ ...spreads(4), scope: "collection:10" }) });
+    renderPage();
+    await screen.findByRole("combobox", { name: "Scope" });
+    await waitFor(() =>
+      expect(document.querySelector(".cp-screen-header__summary")).toHaveTextContent("4 tracks · Box"),
+    );
+  });
+
   it("sizes the scope picker like Prepare's Set picker: to content up to a limit, text at the left (Q17)", () => {
     const wrap = /\.statistics-page__scope\s*\{([^}]*)\}/.exec(css)![1]!;
     // It shrinks with the header (the shared header cuts its text with an ellipsis).
@@ -476,6 +487,9 @@ describe("the Statistics page (STATS-04)", () => {
 
     const section = await panel("plays");
     expect(await within(section).findByText("Play history starts at your next refresh")).toBeInTheDocument();
+    // The shared compact empty state, starting 12 under the header like every other (C30, C140).
+    expect(section.querySelector(".cp-empty-state--compact")).toHaveTextContent("Play history starts at your next refresh");
+    expect(section.querySelector(".statistics-empty")).toBeNull();
     // All-time counts are still the section's content.
     expect(within(section).getByText("3,120")).toBeInTheDocument();
   });
@@ -898,7 +912,8 @@ describe("the Statistics page (STATS-04)", () => {
     renderPage();
 
     const section = await panel("plays");
-    await waitFor(() => expect(section).toHaveTextContent(/desktop app/i));
+    await waitFor(() => expect(section).toHaveTextContent(needsDesktopApp("Statistics")));
+    expect(section.querySelector(".cp-empty-state--compact")).not.toBeNull();
   });
 });
 

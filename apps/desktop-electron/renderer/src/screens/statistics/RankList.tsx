@@ -11,6 +11,7 @@ import { useState, type ReactNode } from "react";
 
 import type { FilterRuleSet } from "../../api/cuepointBridge.types";
 import { Card } from "../../components/Card";
+import { EmptyState } from "../../components/EmptyState";
 import { RankBar } from "../../components/charts/RankBar";
 import { ShowMore } from "../../components/ShowMore";
 import { formatCount } from "../../format/counts";
@@ -66,7 +67,7 @@ export function RankList({
   return (
     <Card className="statistics-panel rank" title={title} unit={unit} titleClassName="rank__title" bodyClassName="statistics-panel__body" aria-label={title}>
       {rows.length === 0 ? (
-        <p className="statistics-note">{empty}</p>
+        <EmptyState compact headline={empty} />
       ) : (
         <>
           <div

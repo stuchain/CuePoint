@@ -28,7 +28,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
 import { Tabs, panelId, tabId } from "../../components/Tabs";
-import { formatCount, plural } from "../../format/counts";
+import { countNoun, formatCount } from "../../format/counts";
 import { RETRY } from "../../format/words";
 import { Select } from "../../components/Select";
 import { useCleanJob, type CleanMessageTone } from "../clean/useCleanJob";
@@ -53,11 +53,9 @@ import {
   useStatisticsSpreads,
   useStatisticsTrees,
 } from "./useStatistics";
-import { NEEDS_DESKTOP } from "../../api/userMessage";
+import { NEEDS_DESKTOP, needsDesktopApp } from "../../api/userMessage";
 import "../screens.css";
 import "./statistics.css";
-
-const NOT_HERE = "Statistics can be read in the desktop app, once CuePoint has started.";
 
 type TabId = "plays" | "library" | "health";
 
@@ -83,7 +81,7 @@ function TabPanel({ id, active, status, loading, failed, onRetry, children }: Ta
       data-panel-of={id}
     >
       {status === "loading" && <Loading what={loading} />}
-      {status === "unavailable" && <p className="statistics-note">{NOT_HERE}</p>}
+      {status === "unavailable" && <EmptyState compact headline={needsDesktopApp("Statistics")} />}
       {status === "error" && (
         <Notice
           action={
@@ -224,12 +222,16 @@ export function StatisticsScreen() {
       ? undefined
       : scope === "library"
         ? [
-            typeof summaryValue.track_count === "number" ? plural(summaryValue.track_count, "track") : null,
-            typeof summaryValue.playlist_count === "number" ? plural(summaryValue.playlist_count, "playlist") : null,
+            typeof summaryValue.track_count === "number" ? countNoun(summaryValue.track_count, "track") : null,
+            typeof summaryValue.playlist_count === "number" ? countNoun(summaryValue.playlist_count, "playlist") : null,
           ]
             .filter((part): part is string => part !== null)
             .join(" · ") || undefined
-        : (scopeLabel ?? undefined);
+        : scopeLabel === null
+          ? undefined
+          : spreads.data?.scope === scope
+            ? `${countNoun(spreads.data.total, "track")} · ${scopeLabel}`
+            : scopeLabel;
 
   const header = (
     <ScreenHeader
@@ -320,10 +322,7 @@ export function StatisticsScreen() {
         {plays.data && (
           <>
             {noHistory && (
-              <div className="statistics-empty statistics-empty--section">
-                <p className="statistics-empty__title">{noHistory.title}</p>
-                {noHistory.hint && <p className="statistics-note">{noHistory.hint}</p>}
-              </div>
+              <EmptyState compact headline={noHistory.title} description={noHistory.hint ?? undefined} />
             )}
             <PlaysSection
               data={plays.data}

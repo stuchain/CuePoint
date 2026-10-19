@@ -14,13 +14,8 @@
 .plays__controls {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: var(--space-md);
-}
-
-/* The source line sits beside the Since choice, on its baseline. */
-.plays__footer {
-  align-self: center;
 }
 
 /* One row height for every track list; no boxes, no gaps between rows. */
@@ -42,12 +37,16 @@
   gap: var(--space-md);
 }
 
+/* The table header look (D8): the row height on the toolbar fill, a pixel label in muted text. */
 .plays__columns-head {
+  min-height: var(--row-height);
   padding: 0 var(--space-sm);
+  background: var(--bg-toolbar);
+  border-bottom: var(--hairline) solid var(--border-muted);
   color: var(--fg-muted);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
   font-weight: var(--weight-strong);
-  border-bottom: var(--divider);
 }
 
 /* The play button's room, so the headings line up with the rows. */
@@ -95,22 +94,13 @@
   min-width: 0;
 }
 
-.plays__name,
-.plays__artist {
+.plays__name {
+  flex: 0 1 auto;
   min-width: 0;
   font-family: var(--font-data);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.plays__name {
-  flex: 0 1 auto;
-}
-
-.plays__artist {
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
 }
 
 .plays__key {

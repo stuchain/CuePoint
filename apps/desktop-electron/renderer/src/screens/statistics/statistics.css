@@ -133,10 +133,14 @@
 }
 
 /* Column headings: the pixel face, bold and muted, like a table's. */
+/* The table header look (D8): the row height on the toolbar fill, a pixel label in muted text. */
 .rank__columns {
+  min-height: var(--row-height);
   padding: 0 var(--space-sm);
-  border-bottom: var(--divider);
+  background: var(--bg-toolbar);
+  border-bottom: var(--hairline) solid var(--border-muted);
   color: var(--fg-muted);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
   font-weight: var(--weight-strong);
 }
@@ -341,11 +345,13 @@
   white-space: nowrap;
 }
 
+/* The status at the left, the button that runs the check again at the right (C235). */
 .health-card__foot {
   margin-top: var(--space-md);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-md);
 }
 

@@ -21,6 +21,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
+import { EmptyState } from "../../components/EmptyState";
 import { LinkButton } from "../../components/LinkButton";
 import { ShowMore } from "../../components/ShowMore";
 import { Loading } from "../../components/Loading";
@@ -32,7 +33,8 @@ import { KeyChip } from "../../components/wheel/KeyChip";
 import { changedMark, useCountChanges } from "../../components/wheel/useCountChanges";
 import { isEngineRefusal } from "../../api/bridgeError";
 import { reportUnexpected } from "../../reporting/reporting";
-import { formatCount, plural } from "../../format/counts";
+import { countNoun, formatCount } from "../../format/counts";
+import { trackIdentity } from "../../format/trackFacts";
 import { RETRY, goTo } from "../../format/words";
 import { formatBpm } from "../../format/units";
 import { libraryRulesState, libraryTrackState } from "../library/libraryLink";
@@ -92,8 +94,8 @@ function SinceDate({ saved, onDate }: { saved: string; onDate: (day: string) => 
 }
 
 const count = (n: number): string => formatCount(n);
-const playsWord = (n: number): string => plural(n, "play");
-const tracksWord = (n: number): string => plural(n, "track");
+const playsWord = (n: number): string => countNoun(n, "play");
+const tracksWord = (n: number): string => countNoun(n, "track");
 
 interface PlaysSectionProps {
   data: StatisticsPlays;
@@ -215,10 +217,10 @@ export function PlaysSection({
   const noRefresh = choice.since === "refresh" && data.last_read_id === null;
 
   const emptyWords = noHistory && windowed
-    ? "No plays are recorded for that yet."
+    ? "No plays are recorded for that yet"
     : windowed
-      ? "No plays were recorded in that time."
-      : "None of these tracks has been played yet.";
+      ? "No plays were recorded in that time"
+      : "None of these tracks has been played yet";
 
   /** A row of a ranked list: the name's plays, tracks and what opens them. */
   function rankRow(
@@ -244,6 +246,7 @@ export function PlaysSection({
       <div className="plays__controls">
         <Select
           label="Since"
+          hint={footer(data)}
           value={sinceValue}
           options={SINCE_OPTIONS.map((option) => ({ ...option }))}
           onChange={(event) => {
@@ -262,7 +265,6 @@ export function PlaysSection({
             onDate={(day) => change({ ...choice, since: `date:${day}` })}
           />
         )}
-        <p className="statistics-note plays__footer">{footer(data)}</p>
       </div>
 
       {stale && <Loading what="plays" />}
@@ -308,7 +310,7 @@ export function PlaysSection({
               aria-label="Most played tracks"
             >
               {data.tracks.length === 0 ? (
-                <p className="statistics-note">{emptyWords}</p>
+                <EmptyState compact headline={emptyWords} />
               ) : (
                 <>
                   <div
@@ -338,8 +340,7 @@ export function PlaysSection({
                             {index + 1}
                           </span>
                           <span className="plays__what" aria-hidden="true">
-                            <span className="plays__name">{track.title}</span>
-                            <span className="plays__artist">{track.artist}</span>
+                            <span className="plays__name">{trackIdentity(track.title, track.artist)}</span>
                           </span>
                           <span className="plays__key" aria-hidden="true">
                             <KeyChip value={track.key} />
@@ -420,7 +421,7 @@ export function PlaysSection({
               unit="plays"
               columns={["plays"]}
               rows={data.genres.map((row) => rankRow(row.genre_key, row))}
-              empty="No plays to rank."
+              empty="No plays to rank"
               onOpen={open}
             />
             <RankList
@@ -428,7 +429,7 @@ export function PlaysSection({
               unit="tracks · plays"
               columns={["tracks", "plays"]}
               rows={data.artists.map((row) => rankRow(row.name_key, row))}
-              empty="No plays to rank."
+              empty="No plays to rank"
               onOpen={open}
             />
             <RankList
@@ -436,7 +437,7 @@ export function PlaysSection({
               unit="tracks · plays"
               columns={["tracks", "plays"]}
               rows={data.labels.map((row) => rankRow(row.label_key, row))}
-              empty="No plays to rank."
+              empty="No plays to rank"
               onOpen={open}
             />
             <Card
