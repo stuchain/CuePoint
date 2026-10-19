@@ -1,15 +1,15 @@
 /**
  * The Review table's right-click menu, as pure data.
  *
- * Built from the same pieces as every track menu (`library/trackActions.ts`): Play, Play next and
- * Add to queue, then Copy and Show in folder; then a "This page" block for what only Review can
- * do: tick the track to sync it or leave it out, and choose its match. Right-clicking a row
+ * Built from the same pieces and in the same order as every track menu: Play, Play next and Add to
+ * queue; a "This page" block for what only Review can do (tick the track to sync it or leave it
+ * out, choose its match); then the More submenu holding Copy and Show in folder. Right-clicking a row
  * selects it first, so the menu always acts on what is shown selected. "Tick to sync" is enabled
  * exactly when the selection bar offers it (C185).
  */
 import type { TrackContextMenuItem } from "../../../components/TrackContextMenu";
 import { playItems, moreItems } from "../../library/trackActions";
-import { thisPageBlock } from "../../prepare/prepareMenus";
+import { moreSubmenu, thisPageBlock } from "../../prepare/prepareMenus";
 
 export interface ReviewMenuState {
   /** Tracks the menu acts on. */
@@ -45,7 +45,6 @@ export function reviewMenuItems(state: ReviewMenuState, handlers: ReviewMenuHand
       onPlayNext: handlers.onPlayNext,
       onAddToQueue: handlers.onAddToQueue,
     }),
-    ...more.map((item, at) => (at === 0 ? { ...item, separatorBefore: true } : item)),
     // The block for this page: a label-style heading over its first entry, then what Review adds.
     ...thisPageBlock([
       {
@@ -64,5 +63,6 @@ export function reviewMenuItems(state: ReviewMenuState, handlers: ReviewMenuHand
       },
       { id: "choose", label: "Choose a match", disabled: count !== 1, reason: "Choose one track at a time", onSelect: handlers.onChoose },
     ]),
+    ...moreSubmenu(more),
   ];
 }

@@ -39,10 +39,15 @@ describe("the review menu", () => {
     expect(off.find((item) => item.id === "leave-out")?.disabled).toBeFalsy();
   });
 
-  it("starts with the same Play entries as every track menu, then a rule before Copy", () => {
+  it("is ordered as every track menu is: Play, a This page block, then the More submenu with Copy", () => {
     const items = reviewMenuItems({ count: 1, canTick: true, canLeaveOut: true }, handlers);
     expect(items.slice(0, 3).map((item) => item.label)).toEqual(["Play", "Play next", "Add to queue"]);
-    expect(items.find((item) => item.label === "Copy")?.separatorBefore).toBe(true);
+    const ids = items.map((item) => item.id);
+    expect(ids.indexOf("tick")).toBeGreaterThan(2);
+    expect(ids.indexOf("tick")).toBeLessThan(ids.indexOf("choose"));
+    const last = items[items.length - 1]!;
+    expect(last.label).toBe("More");
+    expect(last.items?.some((item) => item.label === "Copy")).toBe(true);
   });
 
   it("names Choose a match without an ellipsis: it opens a panel, not a dialog", () => {
