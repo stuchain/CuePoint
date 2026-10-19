@@ -2,6 +2,8 @@
 .cp-reason {
   margin: 0;
   color: var(--fg-muted);
+  /* A sentence, so Inter (D5, C55). */
+  font-family: var(--font-data);
   font-size: var(--text-body);
   font-weight: var(--weight-normal);
   line-height: 1.4;

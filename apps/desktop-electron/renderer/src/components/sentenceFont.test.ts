@@ -10,6 +10,7 @@ import { parseRules, stripComments } from "../test/cssRules";
 import emptyCss from "./EmptyState.css?raw";
 import modalCss from "./Modal.css?raw";
 import noticeCss from "./Notice.css?raw";
+import reasonCss from "./ReasonLine.css?raw";
 import fieldCss from "./TextField.css?raw";
 
 function body(css: string, selector: string): string {
@@ -29,6 +30,7 @@ describe("sentences in the shared pieces are Inter (D5, C55)", () => {
     { css: modalCss, selector: ".cp-modal__lead" },
     { css: modalCss, selector: ".cp-modal__body > p" },
     { css: modalCss, selector: ".cp-modal__reason" },
+    { css: reasonCss, selector: ".cp-reason" },
   ])("$selector", ({ css, selector }) => {
     expect(body(css, selector)).toMatch(INTER);
   });
