@@ -61,6 +61,19 @@ export function defaultLayout<Row>(
 interface StoredLayout {
   unit: "1x";
   columns: ColumnLayoutEntry[];
+  /** The last sort the table made itself (a column with an `accessor` and no engine key); absent when none (C193). */
+  sort?: ColumnSort;
+}
+
+/** A sort a table remembers: a column id and a direction. */
+export interface ColumnSort {
+  key: string;
+  direction: "asc" | "desc";
+}
+
+/** Whether a column sorts in the table over the rows it has, not on the engine (C193). */
+export function sortsOnClient<Row>(column: TrackColumnDef<Row>): boolean {
+  return !column.sortKey && column.accessor !== undefined;
 }
 
 /** Widths scaled by `factor`, rounded to whole pixels. */
@@ -70,10 +83,11 @@ export function rescaleLayout(layout: ColumnLayout, factor: number): ColumnLayou
 }
 
 /** The shape written to storage: widths divided back to 1x. */
-export function toStored(layout: ColumnLayout, scale: number): StoredLayout {
+export function toStored(layout: ColumnLayout, scale: number, sort?: ColumnSort | null): StoredLayout {
   return {
     unit: "1x",
     columns: layout.map((entry) => ({ ...entry, width: Math.round(entry.width / scale) })),
+    ...(sort ? { sort: { key: sort.key, direction: sort.direction } } : {}),
   };
 }
 
@@ -311,14 +325,40 @@ export function loadColumnLayout<Row>(
   }
 }
 
-/** Write a layout, ignoring a storage that will not have it. */
+/**
+ * The client sort stored with a layout, if it still names a column that sorts in the table.
+ * Never throws, and never returns a key the engine would be sent: an engine column, an unknown id
+ * and a bad direction all read as no sort. A layout saved before the sort existed has none.
+ */
+export function loadColumnSort<Row>(
+  storageKey: string,
+  columns: readonly TrackColumnDef<Row>[],
+): ColumnSort | null {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return null;
+    const stored: unknown = JSON.parse(raw);
+    if (typeof stored !== "object" || stored === null || Array.isArray(stored)) return null;
+    const sort = (stored as { sort?: unknown }).sort;
+    if (typeof sort !== "object" || sort === null) return null;
+    const { key, direction } = sort as { key?: unknown; direction?: unknown };
+    if (typeof key !== "string" || (direction !== "asc" && direction !== "desc")) return null;
+    const column = columns.find((entry) => entry.id === key);
+    return column && sortsOnClient(column) ? { key, direction } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Write a layout (and the client sort with it), ignoring a storage that will not have it. */
 export function saveColumnLayout(
   storageKey: string,
   layout: ColumnLayout,
   scale: number,
+  sort?: ColumnSort | null,
 ): void {
   try {
-    localStorage.setItem(storageKey, JSON.stringify(toStored(layout, scale)));
+    localStorage.setItem(storageKey, JSON.stringify(toStored(layout, scale, sort)));
   } catch {
     // A private window, or site data blocked. The table still works; it just
     // opens with its defaults next time.

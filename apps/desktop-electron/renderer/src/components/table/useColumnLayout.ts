@@ -13,16 +13,19 @@ import {
   clearColumnLayout,
   defaultLayout,
   loadColumnLayout,
+  loadColumnSort,
   moveColumn,
   nudgeColumn,
   reconcileLayout,
   rescaleLayout,
   saveColumnLayout,
+  sortsOnClient,
   toggleHidden,
   visibleColumns,
   widthsOf,
   withWidths,
   type ColumnLayout,
+  type ColumnSort,
 } from "./columnLayout";
 import type { ColumnWidths, TrackColumnDef } from "./trackTableLayout";
 
@@ -33,6 +36,17 @@ interface ColumnLayoutController<Row> {
   visible: TrackColumnDef<Row>[];
   /** Widths keyed by id, as the table takes them. */
   widths: ColumnWidths;
+  /**
+   * The last sort the table made itself (a column with an `accessor` and no engine key), restored
+   * on open; null when none. It is never an engine key.
+   */
+  sort: ColumnSort | null;
+  /**
+   * Remember the sort the person just chose. A client sort is stored with the layout; any other
+   * (an engine key, or null) forgets the remembered one, so a key the engine does not know is
+   * never stored.
+   */
+  setSort: (sort: ColumnSort | null) => void;
   setWidths: (widths: ColumnWidths) => void;
   toggle: (id: string) => void;
   move: (id: string, toIndex: number) => void;
@@ -52,6 +66,8 @@ export function useColumnLayout<Row>(
     loadColumnLayout(storageKey, columns, scale, options?.previousDefaultOrder),
   );
 
+  const [sort, setSortState] = useState<ColumnSort | null>(() => loadColumnSort(storageKey, columns));
+  const sortRef = useRef(sort);
   const layoutRef = useRef(layout);
   const scaleRef = useRef(scale);
 
@@ -73,7 +89,7 @@ export function useColumnLayout<Row>(
       if (next === layoutRef.current) return;
       layoutRef.current = next;
       setLayout(next);
-      saveColumnLayout(storageKey, next, scaleRef.current);
+      saveColumnLayout(storageKey, next, scaleRef.current, sortRef.current);
     },
     [storageKey],
   );
@@ -96,10 +112,25 @@ export function useColumnLayout<Row>(
       commit((previous) => nudgeColumn(columns, previous, id, delta)),
     [columns, commit],
   );
+  const setSort = useCallback(
+    (next: ColumnSort | null) => {
+      const column = next ? columns.find((entry) => entry.id === next.key) : undefined;
+      const kept = next && column && sortsOnClient(column) ? { key: next.key, direction: next.direction } : null;
+      const was = sortRef.current;
+      if (kept?.key === was?.key && kept?.direction === was?.direction) return;
+      sortRef.current = kept;
+      setSortState(kept);
+      saveColumnLayout(storageKey, layoutRef.current, scaleRef.current, kept);
+    },
+    [columns, storageKey],
+  );
+
   const reset = useCallback(() => {
     const next = defaultLayout(columns, scaleRef.current);
     layoutRef.current = next;
     setLayout(next);
+    sortRef.current = null;
+    setSortState(null);
     clearColumnLayout(storageKey);
   }, [columns, storageKey]);
 
@@ -107,7 +138,7 @@ export function useColumnLayout<Row>(
     (next: ColumnLayout) => {
       layoutRef.current = next;
       setLayout(next);
-      saveColumnLayout(storageKey, next, scaleRef.current);
+      saveColumnLayout(storageKey, next, scaleRef.current, sortRef.current);
     },
     [storageKey],
   );
@@ -115,5 +146,5 @@ export function useColumnLayout<Row>(
   const visible = useMemo(() => visibleColumns(columns, layout), [columns, layout]);
   const widths = useMemo(() => widthsOf(layout), [layout]);
 
-  return { layout, visible, widths, setWidths, toggle, move, nudge, reset, restore };
+  return { layout, visible, widths, sort, setSort, setWidths, toggle, move, nudge, reset, restore };
 }

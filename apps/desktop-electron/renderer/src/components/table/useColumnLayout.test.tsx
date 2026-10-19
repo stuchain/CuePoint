@@ -25,6 +25,11 @@ const COLUMNS: TrackColumnDef<Row>[] = [
   { id: "bpm", header: "BPM", minWidthPx: 60, defaultWidthPx: 80, render: () => null },
 ];
 
+const WITH_A_CLIENT_SORT: TrackColumnDef<Row>[] = [
+  { id: "title", header: "Title", sortKey: "title", defaultWidthPx: 200, render: (r) => r.title },
+  { id: "bpm", header: "BPM", accessor: () => null, render: () => null },
+];
+
 const WITH_A_NEW_COLUMN: TrackColumnDef<Row>[] = [
   ...COLUMNS,
   { id: "rating", header: "Rating", render: () => null },
@@ -318,5 +323,53 @@ describe("moving a layout saved in the previous default order (DEC-NEW-K1)", () 
     expect(result.current.layout[2]).toMatchObject({ width: 95 });
     // Loading writes nothing; the move is saved with the person's next change.
     expect(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)).not.toContain('"unit"');
+  });
+});
+
+describe("the remembered client sort (S11)", () => {
+  const sorted = () => renderHook(() => useColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, WITH_A_CLIENT_SORT), { wrapper });
+
+  it("starts with none, and is there after a client sort is made and the table reopens", () => {
+    const first = sorted();
+    expect(first.result.current.sort).toBeNull();
+    act(() => first.result.current.setSort({ key: "bpm", direction: "desc" }));
+    expect(first.result.current.sort).toEqual({ key: "bpm", direction: "desc" });
+    first.unmount();
+    expect(sorted().result.current.sort).toEqual({ key: "bpm", direction: "desc" });
+  });
+
+  it("is kept when a width, a column or the order changes afterwards", () => {
+    const { result } = sorted();
+    act(() => result.current.setSort({ key: "bpm", direction: "asc" }));
+    act(() => result.current.setWidths({ title: 260 }));
+    act(() => result.current.toggle("bpm"));
+    expect(JSON.parse(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)!)).toMatchObject({
+      unit: "1x",
+      sort: { key: "bpm", direction: "asc" },
+    });
+  });
+
+  it("forgets a client sort when the person sorts by an engine column, and never stores an engine key", () => {
+    const { result } = sorted();
+    act(() => result.current.setSort({ key: "bpm", direction: "asc" }));
+    act(() => result.current.setSort({ key: "title", direction: "asc" }));
+    expect(result.current.sort).toBeNull();
+    expect(JSON.parse(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)!).sort).toBeUndefined();
+  });
+
+  it("is forgotten by a reset", () => {
+    const { result } = sorted();
+    act(() => result.current.setSort({ key: "bpm", direction: "asc" }));
+    act(() => result.current.reset());
+    expect(result.current.sort).toBeNull();
+    expect(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)).toBeNull();
+  });
+
+  it("reads a layout saved before sorts were stored as having none, and writes nothing on load", () => {
+    localStorage.setItem(LIBRARY_TABLE_LAYOUT_KEY, JSON.stringify([{ id: "bpm", width: 90, hidden: false }]));
+    const before = localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY);
+    const { result } = sorted();
+    expect(result.current.sort).toBeNull();
+    expect(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)).toBe(before);
   });
 });

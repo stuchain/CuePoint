@@ -24,6 +24,7 @@ import {
   defaultLayout,
   isLastVisible,
   loadColumnLayout,
+  loadColumnSort,
   moveColumn,
   nudgeColumn,
   reconcileLayout,
@@ -437,5 +438,64 @@ describe("1x storage (C205)", () => {
     const stored = toStored(layout, 1.5);
     expect(stored).toEqual({ unit: "1x", columns: [{ id: "bpm", width: 100, hidden: false }] });
     expect(reconcileLayout(stored, COLUMNS, 1.5).find((e) => e.id === "bpm")!.width).toBe(150);
+  });
+});
+
+describe("the remembered client sort (C193, S11)", () => {
+  const SORTABLE: TrackColumnDef<Row>[] = [
+    { id: "title", header: "Title", sortKey: "title", defaultWidthPx: 200, render: () => null },
+    { id: "key", header: "Key", accessor: () => null, render: () => null },
+    { id: "bpm", header: "BPM", accessor: () => null, render: () => null },
+  ];
+  const layout = defaultLayout(SORTABLE, 1);
+
+  it("is stored beside the widths, in the same value", () => {
+    expect(toStored(layout, 1, { key: "bpm", direction: "desc" })).toMatchObject({
+      unit: "1x",
+      sort: { key: "bpm", direction: "desc" },
+    });
+    expect("sort" in toStored(layout, 1)).toBe(false);
+    expect("sort" in toStored(layout, 1, null)).toBe(false);
+  });
+
+  it("round-trips with the layout", () => {
+    saveColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, layout, 1, { key: "bpm", direction: "asc" });
+    expect(loadColumnSort(LIBRARY_TABLE_LAYOUT_KEY, SORTABLE)).toEqual({ key: "bpm", direction: "asc" });
+    expect(loadColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, SORTABLE, 1)).toEqual(layout);
+  });
+
+  it("is absent from a layout saved before it existed, array or object", () => {
+    localStorage.setItem(LIBRARY_TABLE_LAYOUT_KEY, JSON.stringify(layout));
+    expect(loadColumnSort(LIBRARY_TABLE_LAYOUT_KEY, SORTABLE)).toBeNull();
+    saveColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, layout, 1);
+    expect(loadColumnSort(LIBRARY_TABLE_LAYOUT_KEY, SORTABLE)).toBeNull();
+    expect(loadColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, SORTABLE, 1)).toEqual(layout);
+  });
+
+  it("is dropped when it names an engine column, an unknown column or a bad direction", () => {
+    for (const sort of [
+      { key: "title", direction: "asc" },
+      { key: "gone", direction: "asc" },
+      { key: "bpm", direction: "sideways" },
+      { key: 3, direction: "asc" },
+      "bpm",
+    ]) {
+      localStorage.setItem(LIBRARY_TABLE_LAYOUT_KEY, JSON.stringify({ ...toStored(layout, 1), sort }));
+      expect(loadColumnSort(LIBRARY_TABLE_LAYOUT_KEY, SORTABLE)).toBeNull();
+    }
+  });
+
+  it("reads null from nothing, from garbage and from a storage that throws", () => {
+    expect(loadColumnSort(LIBRARY_TABLE_LAYOUT_KEY, SORTABLE)).toBeNull();
+    localStorage.setItem(LIBRARY_TABLE_LAYOUT_KEY, "{nope");
+    expect(loadColumnSort(LIBRARY_TABLE_LAYOUT_KEY, SORTABLE)).toBeNull();
+    const spy = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    try {
+      expect(loadColumnSort(LIBRARY_TABLE_LAYOUT_KEY, SORTABLE)).toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
