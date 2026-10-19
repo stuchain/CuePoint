@@ -193,14 +193,9 @@ export function MatchArea({
 
   return (
     <div className="match-area">
-      {/* One row (D13): the sub-tabs, the step caption and the search. */}
+      {/* One row (D13): the sub-tabs, the step caption and the search; a review adds a back line. */}
       <div className="match-area__row">
         <Tabs tabs={tabs} activeId={review ? "playlists" : tab} onChange={chooseTab} variant="sub" />
-        {review && (
-          <Button variant="quiet" size="sm" icon="chevron-left" onClick={() => chooseTab("playlists")}>
-            Playlists
-          </Button>
-        )}
         {caption && <span className="match-area__caption">{caption}</span>}
         {!review && (
           <SearchField
@@ -213,6 +208,14 @@ export function MatchArea({
           />
         )}
       </div>
+      {/* The way back is a quiet line of its own under the row, as the D13 mockup draws it. */}
+      {review && (
+        <div className="match-area__back">
+          <Button variant="quiet" size="sm" icon="chevron-left" onClick={() => chooseTab("playlists")}>
+            Playlists
+          </Button>
+        </div>
+      )}
 
       <div className="match-area__body">
         {opened.has("playlists") && (

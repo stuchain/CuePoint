@@ -187,6 +187,15 @@ describe("Review on a row", () => {
     expect(screen.getByRole("region", { name: "Review Closing" })).toBeInTheDocument();
   });
 
+  it("puts ‹ Playlists on a line of its own below the row of tabs (D13)", async () => {
+    renderArea();
+    fireEvent.click(screen.getByRole("button", { name: "Review Peak time" }));
+    const back = screen.getByRole("button", { name: "Playlists" });
+    const row = screen.getByRole("tablist").parentElement!;
+    expect(row.contains(back)).toBe(false);
+    expect(back.closest(".match-area__back")).not.toBeNull();
+  });
+
   it("goes back with ‹ Playlists, and lands on Playlists", async () => {
     renderArea();
     fireEvent.click(screen.getByRole("button", { name: "Review Peak time" }));

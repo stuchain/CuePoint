@@ -8,16 +8,16 @@
  * part is for, so no part opens with a paragraph (C15b); the tabs say where
  * work waits (CLN-3). The header is the shared `ScreenHeader`; its one action
  * lives on the Match tab only (K4: one home per action). Match is the
- * Match area (`match/MatchArea.tsx`): Playlists, the Review of a run (when one is open) and
- * Past searches.
+ * Match area (`match/MatchArea.tsx`): Playlists and Past searches on one row, and the Review of
+ * a run (when one is open) below it.
  *
  * Match opens on Playlists (C22). Tick one or more playlists (or the whole library) and press
- * **Match N playlists**: the page starts that one run and follows it. While any match
+ * **Match ticked playlists**: the page starts that one run and follows it. While any match
  * runs, a line at the top of every tab says what, how far and how long is left, with Stop,
  * read from the engine running job so it is right after leaving the page and coming
- * back. A run that ends lands on a Review tab for each playlist it matched (every track, with what
+ * back. A run that ends lands on the Review of the first playlist it matched (every track, with what
  * was found and a tick to sync it); one that found nothing says so in a red note instead, and from
- * another page a toast says it, with **Review**. Syncing is per playlist, from its Review tab: there
+ * another page a toast says it, with **Review**. Syncing is per playlist, from its Review: there
  * is no save bar on this page. The match window stays for tracks handed in from other pages
  * (`matchWith`).
  *
@@ -82,7 +82,7 @@ interface CleanScreenProps {
   matchWith?: CleanMatchOpening | null;
 }
 
-/** What a run reviews once it ends: one tab for each playlist it was started on. */
+/** What a run reviews once it ends: each playlist it was started on (the first one opens). */
 function targetsOf(choice: MatchChoice): ReviewTarget[] {
   return choice.whole
     ? [{ playlistId: null, name: WHOLE_LIBRARY_NAME }]
@@ -218,7 +218,7 @@ export function CleanScreen({
   }
 
   // A run's reviews: from its end, a toast on another page, or the red note. Brings the Match area
-  // back with a tab for each playlist.
+  // back on the first playlist's review.
   const openReview = (run: MatchRun, targets: ReviewTarget[]) => {
     setSection("review");
     saveCleanSection("review");

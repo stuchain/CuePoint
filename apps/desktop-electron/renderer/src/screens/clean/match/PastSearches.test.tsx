@@ -149,6 +149,17 @@ describe("the list", () => {
     expect(screen.getAllByRole("button", { name: /again$/ })).toHaveLength(2);
   });
 
+  it("says why a run stopped after its Stopped status, on the same row", async () => {
+    world.runs = [RUNS[0]!, { ...RUNS[1]!, stop_reason: "Beatport did not answer" }];
+    renderPast();
+    await screen.findByRole("table", { name: /Every match run/ }, LOADED);
+    const row = screen.getAllByRole("row")[2]!;
+    expect(within(row).getAllByText(/Stopped/)).toHaveLength(1);
+    expect(within(row).getByText(/Beatport did not answer/)).toHaveClass("match-past__why");
+    expect(within(row).getByText(/Beatport did not answer/).textContent).not.toMatch(/\.$/);
+    expect(within(row).getByRole("button", { name: `Resume ${WHOLE}` })).toBeEnabled();
+  });
+
   it("offers no Resume in a build that cannot resume", async () => {
     delete bridge.resumeCleanMatch;
     renderPast();

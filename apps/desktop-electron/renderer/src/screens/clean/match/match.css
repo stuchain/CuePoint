@@ -31,6 +31,11 @@
   width: fit-content;
 }
 
+.match-area__back {
+  flex: none;
+  margin: calc(-1 * var(--space-sm)) 0 var(--space-sm);
+}
+
 .match-area__caption {
   flex: 1 1 0;
   min-width: 0;
@@ -491,6 +496,11 @@
 .review-candidate__why {
   color: var(--danger-text);
   font-size: var(--control-font-size);
+}
+
+.match-past__why {
+  color: var(--fg-muted);
+  white-space: nowrap;
 }
 
 .review-candidate__in-use-line {
