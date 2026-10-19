@@ -91,10 +91,6 @@ select {
   color: var(--accent-primary);
 }
 
-:where(input[type="radio"]):checked:hover:not(:disabled) {
-  border-color: var(--accent-primary);
-}
-
 :where(input[type="radio"])::before {
   width: round(nearest, calc(7px * var(--scale)), 1px);
   height: round(nearest, calc(7px * var(--scale)), 1px);
@@ -107,6 +103,11 @@ select {
 
 :where(input[type="checkbox"], input[type="radio"]):checked:hover:not(:disabled) {
   border-color: var(--accent-fill);
+}
+
+/* After the rule above, so a checked radio keeps its own border on hover (all of these have zero specificity). */
+:where(input[type="radio"]):checked:hover:not(:disabled) {
+  border-color: var(--accent-primary);
 }
 
 :where(input[type="checkbox"], input[type="radio"]):disabled {

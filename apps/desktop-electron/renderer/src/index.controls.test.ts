@@ -43,6 +43,20 @@ describe("checkbox and radio marks", () => {
   });
 });
 
+describe("a checked radio keeps its own border on hover", () => {
+  // Every selector here is wrapped in :where(), so none has any specificity and the later rule
+  // wins. The radio's rule must come after the generic checked-hover rule, which paints --accent-fill.
+  it("puts the radio's checked-hover rule after the checkbox-and-radio one", () => {
+    const generic = css.indexOf(':where(input[type="checkbox"], input[type="radio"]):checked:hover:not(:disabled) {');
+    const radio = css.indexOf(':where(input[type="radio"]):checked:hover:not(:disabled) {');
+    expect(generic).toBeGreaterThan(-1);
+    expect(radio).toBeGreaterThan(generic);
+    expect(ruleBody(':where(input[type="radio"]):checked:hover:not(:disabled)')).toMatch(
+      /border-color:\s*var\(--accent-primary\)/,
+    );
+  });
+});
+
 describe("one fold arrow", () => {
   it("hides the native marker, WebKit's included", () => {
     expect(css).toMatch(/summary::-webkit-details-marker\s*\{[^}]*display:\s*none/);
