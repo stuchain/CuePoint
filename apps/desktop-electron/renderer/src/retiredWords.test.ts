@@ -6,17 +6,8 @@
  * - D2: match states are Confirmed, To check, No match, Not looked up yet and Rejected.
  * - Plain words: "artwork" not "cover art", "status strip" not "status bar", no contractions,
  *   no "Please", no "Failed to", no "e.g.".
- *
- * The files listed still hold an old phrase. The page batch that owns each file removes it from
- * ALLOW; Z empties the list. With CP_GUARD_STRICT=1 a listed file that no longer offends fails, so the list only shrinks.
- *
- * Staleness: the "allow list has no stale entries" check runs only with CP_GUARD_STRICT=1. Batch Z
- * turns it on (and removes the condition) once every page batch is merged; until then a page batch
- * that removes its file's last offender must not fail this guard for it.
  */
 import { describe, expect, it } from "vitest";
-
-const STRICT = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.CP_GUARD_STRICT === "1";
 
 const sources = import.meta.glob(
   ["/src/**/*.{ts,tsx}", "!/src/**/*.test.{ts,tsx}", "!/src/**/*.stories.tsx", "!/src/**/*.d.ts"],
@@ -43,37 +34,6 @@ const BANNED: Record<string, RegExp> = {
   "e.g.": /\be\.g\./,
 };
 
-const ALLOW = new Set([
-  // Contractions the stricter pattern found; each belongs to a page batch (H, S, C, D), which rewords it.
-  "components/shell/GlobalSearch.tsx",
-  "components/shell/OfflineBanner.tsx",
-  "components/updates/UpdateReadyPanel.tsx",
-  "components/waveform/analysisWords.ts",
-  "screens/clean/match/MatchRunLine.tsx",
-  "screens/discover/HideOwnedSwitch.tsx",
-  "components/LogViewerDialog.tsx",
-  "components/OnboardingIllustrations.tsx",
-  "components/PrivacyDialog.tsx",
-  "components/player/QueuePanel.tsx",
-  "components/saveToFiles/SaveToFilesDialog.tsx",
-  "components/saveToFiles/saveChoices.ts",
-  "components/shell/ActivityPanel.tsx",
-  "components/shell/useActiveJob.ts",
-  "screens/clean/cleanFormat.ts",
-  "screens/clean/match/reviewList.ts",
-  "screens/discover/BeatportHalf.tsx",
-  "screens/discover/DiscoverScreen.tsx",
-  "screens/library/EditValuesDialog.tsx",
-  "screens/library/LibraryNoKeyNote.tsx",
-  "screens/library/LibraryReadyNote.tsx",
-  "screens/library/TrackBeatportSection.tsx",
-  "screens/library/libraryFormat.ts",
-  "screens/prepare/ChapterDialog.tsx",
-  "screens/prepare/SetEntryZone.tsx",
-  "screens/statistics/HealthSection.tsx",
-  "screens/statistics/StatisticsScreen.tsx",
-]);
-
 function code(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`\w])\/\/[^\n]*/g, "$1");
 }
@@ -97,15 +57,8 @@ function offenders(): Map<string, string[]> {
 describe("wording guard (D2, D3)", () => {
   it("uses none of the retired words outside the listed files", () => {
     const bad = [...offenders()]
-      .filter(([path]) => !ALLOW.has(path))
       .map(([path, hits]) => `${path} (${hits.join(", ")})`);
     expect(bad, `use the shared words in format/words.ts: ${bad.join("; ")}`).toEqual([]);
-  });
-
-  it.runIf(STRICT)("lists only files that still use one", () => {
-    const found = offenders();
-    const stale = [...ALLOW].filter((path) => !found.has(path));
-    expect(stale, `remove from ALLOW: ${stale.join(", ")}`).toEqual([]);
   });
 
   it("still sees each pattern", () => {

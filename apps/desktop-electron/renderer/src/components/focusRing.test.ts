@@ -5,17 +5,10 @@
  *
  * C17: one offset too. An outline is drawn `--focus-ring-offset` outside the control, or
  * `--focus-ring-offset-inset` inside it where the control is clipped (a row, a header cell); no
- * sheet states its own number. The sheets in `OWN_OFFSET` still do; their page batch converts
- * them and Z empties the list.
- *
- * Staleness: the "allow list has no stale entries" check runs only with CP_GUARD_STRICT=1. Batch Z
- * turns it on (and removes the condition) once every page batch is merged; until then a page batch
- * that removes its file's last offender must not fail this guard for it.
+ * sheet states its own number.
  */
 
 import { describe, expect, it } from "vitest";
-
-const STRICT = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.CP_GUARD_STRICT === "1";
 
 const sheets = import.meta.glob("/src/**/*.css", { query: "?raw", import: "default", eager: true }) as Record<
   string,
@@ -29,17 +22,6 @@ export const NOT_FOCUS_OUTLINES: ReadonlyArray<{ sheet: string; value: string; r
     value: "var(--focus-ring-width) solid var(--accent-primary)",
     reason: "drop target, not focus",
   },
-];
-
-/** Sheets that still state their own outline-offset. Z empties this list. */
-const OWN_OFFSET = [
-  "/src/screens/library/CreditLinks.css",
-  "/src/screens/library/CollectionsPane.css",
-  "/src/screens/library/TrackDetailPanel.css",
-  "/src/screens/library/PlaylistPane.css",
-  "/src/screens/discover/discover.css",
-  "/src/screens/discover/discoverCards.css",
-  "/src/screens/prepare/prepare.css",
 ];
 
 function offsets(): Array<{ sheet: string; value: string }> {
@@ -89,17 +71,8 @@ describe("one focus ring (T16)", () => {
 
   it("draws every ring at the one offset, or the one inset (C17)", () => {
     const allowed = ["var(--focus-ring-offset)", "var(--focus-ring-offset-inset)"];
-    const bad = offsets().filter(({ sheet, value }) => !allowed.includes(value) && !OWN_OFFSET.includes(sheet));
+    const bad = offsets().filter(({ value }) => !allowed.includes(value));
     expect(bad, JSON.stringify(bad)).toEqual([]);
-  });
-
-  it.runIf(STRICT)("lists only sheets that still state their own offset", () => {
-    for (const sheet of OWN_OFFSET) {
-      const own = offsets().filter(
-        (o) => o.sheet === sheet && !["var(--focus-ring-offset)", "var(--focus-ring-offset-inset)"].includes(o.value),
-      );
-      expect(own.length, `${sheet} is clean: take it off OWN_OFFSET`).toBeGreaterThan(0);
-    }
   });
 
   it("states the ring once, in index.css", () => {
