@@ -109,7 +109,8 @@ const WHOLE_ROWS_LANES = ON_LINUX ? 9 : 8;
  */
 // Consistency round (26px rows, 39px at 1.5×): Windows measures 10 with the strip, Linux holds one higher.
 // Round 5 review: measured 8 with the strip at 1,264 x 735 (the always-drawn bar; 10 before it).
-const WHOLE_ROWS_TRANSITION = ON_LINUX ? 9 : 8;
+// Batch Z: Linux now measures 8 as well (9 at the base): the strip and the shared header take the row Linux had spare.
+const WHOLE_ROWS_TRANSITION = 8;
 
 /**
  * The rows the Set keeps under the lanes or the strip whatever else is on

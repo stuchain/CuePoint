@@ -314,7 +314,10 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
         (await readSet(win, setId)).entries.entries.find((entry: { position: number }) => entry.position === 0),
       ).toMatchObject({ in_seconds: 30, out_seconds: 270 });
       // A time the engine refuses is said on the facts line, by name, and the cell stays open.
-      await row(win, "Warm One").getByRole("button", { name: /^Mix out for/ }).first().click();
+      // The row is still the focused one, so its buttons sit over the time columns: F2 starts the cell
+      // from the keyboard, and Tab moves on to Mix out.
+      await win.keyboard.press("F2");
+      await win.keyboard.press("Tab");
       await win.getByRole("textbox", { name: /^Mix out for/ }).fill("0:10");
       await win.keyboard.press("Enter");
       await expect(facts(win)).toContainText("Not saved: An entry must come in before it goes out", {

@@ -203,7 +203,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       await importAndCheck(window, writeExport(workspace));
       await window.getByRole("link", { name: "Clean" }).click();
       await window.getByRole("tab", { name: "Duplicates" }).click();
-      await expect(window.getByRole("button", { name: "Find duplicates" }).first()).toBeVisible();
+      await expect(window.getByRole("button", { name: /^Find (duplicates|again)$/ }).first()).toBeVisible();
 
       // A renderer reload in the middle of a session keeps the tab (a fresh start is a new launch).
       await window.reload();
@@ -217,7 +217,7 @@ test.describe("The Clean page (CLEAN-12)", () => {
       );
       await window.getByRole("tab", { name: /^Match/ }).click();
       const widths = await window.evaluate(() => ({
-        main: document.querySelector(".app-main")!.getBoundingClientRect().width,
+        main: document.querySelector(".app-main")!.clientWidth,
         page: document.querySelector(".clean-screen")!.getBoundingClientRect().width,
       }));
       expect(widths.main).toBeGreaterThan(1300);

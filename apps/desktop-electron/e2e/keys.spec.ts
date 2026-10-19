@@ -205,6 +205,8 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
     expect(titles.map((t) => t.trim()).sort()).toEqual(["Track 1", "Track 2", "Track 4"]);
 
     // Play one from the list.
+    // The selection bar opens on the first click and moves the table down, so the row is selected before it is double-clicked.
+    await rows.nth(1).click();
     await rows.nth(1).dblclick();
     await expect
       .poll(

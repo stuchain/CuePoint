@@ -600,7 +600,8 @@ test.describe("The Library page (LIBRARY-11)", () => {
       await window.getByRole("table", { name: "Library tracks" }).waitFor();
 
       const widths = await window.evaluate(() => ({
-        main: document.querySelector(".app-main")!.getBoundingClientRect().width,
+        // The page scroller keeps its scrollbar's room (C219): what the page fills is what is left of it.
+        main: document.querySelector(".app-main")!.clientWidth,
         page: document.querySelector(".library-screen--browser")!.getBoundingClientRect().width,
       }));
       expect(widths.main).toBeGreaterThan(1300);

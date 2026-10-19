@@ -190,6 +190,8 @@ test.describe("Phase 5 end to end", () => {
       // Repeat-one so the current track stays put: the fixtures are a quarter
       // of a second long and would otherwise run out from under the assertions.
       await win.evaluate(() => (window as never as Bridge).cuepoint.player.setRepeat("one"));
+      // The selection bar opens on the first click and moves the table down, so the row is selected before it is double-clicked.
+      await rows.nth(1).click();
       await rows.nth(1).dblclick();
 
       await expect(win.locator(".cp-player-bar")).toBeVisible({ timeout: 15_000 });

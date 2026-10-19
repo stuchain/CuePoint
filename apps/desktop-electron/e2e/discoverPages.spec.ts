@@ -286,6 +286,8 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
       await expectOneLineBar(window, "artist page");
 
       // --- play a track from the page (DEC-012) ----------------------------
+      // The selection bar opens on the first click and moves the table down, so the row is selected before it is double-clicked.
+      await row(window, "Your tracks", "Low Tide").click();
       await row(window, "Your tracks", "Low Tide").dblclick();
       await expect.poll(() => currentTitle(window), { timeout: 30_000 }).toBe("Low Tide");
       expect(await queueTitles(window)).toEqual(["Harbour Lights", "Low Tide"]);
@@ -350,9 +352,8 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await window.getByRole("button", { name: "Match ticked playlists" }).click();
         await idle(window);
         // The run lands on its Review, which lists every track of it.
-        await expect(window.getByRole("tab", { name: /^Review / })).toHaveAttribute("aria-selected", "true", {
-          timeout: 30_000,
-        });
+        // A review is a view inside Playlists, not a tab of its own.
+        await expect(window.getByRole("region", { name: /^Review / })).toBeVisible({ timeout: 30_000 });
         await expect(queueRow(window, "Harbour Lights")).toBeVisible({ timeout: 15_000 });
         await expect(queueRow(window, "Low Tide")).toBeVisible();
       });
@@ -470,6 +471,8 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(window.getByText("Your tracks by this name")).toBeVisible();
         await expect.poll(() => titlesIn(window, "Your tracks")).toEqual(["Night Bus", "Signal"]);
         await expect(window.getByLabel("On Beatport").getByText("No match")).toBeVisible({ timeout: 30_000 });
+        // The selection bar opens on the first click and moves the table down, so the row is selected before it is double-clicked.
+        await row(window, "Your tracks", "Signal").click();
         await row(window, "Your tracks", "Signal").dblclick();
         await expect.poll(() => currentTitle(window), { timeout: 30_000 }).toBe("Signal");
         expect(await queueTitles(window)).toEqual(["Night Bus", "Signal"]);

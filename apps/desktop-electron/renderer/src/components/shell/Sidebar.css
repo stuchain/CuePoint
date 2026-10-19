@@ -33,8 +33,10 @@
   width: var(--cp-sidebar-width);
   height: 100%;
   min-height: 0;
-  /* The nav itself never scrolls: the list below does, the top row and the bottom row stay put (R2-9). */
-  overflow: hidden;
+  /* The list below scrolls, the top row and the bottom rows stay put (R2-9). Only a window too short for
+     the rail's fixed rows and three destinations (3x text on 800) scrolls the rail itself. */
+  overflow-x: hidden;
+  overflow-y: auto;
   /* The top starts where the page and Track details start (C34). */
   padding: var(--cp-sidebar-pad);
   padding-top: var(--page-gutter-top);
@@ -137,7 +139,8 @@
   flex: 1;
   flex-direction: column;
   gap: var(--space-xs);
-  min-height: 0;
+  flex-shrink: 1;
+  min-height: calc(var(--icon-size) * 3);
   overflow-x: hidden;
   overflow-y: auto;
 }

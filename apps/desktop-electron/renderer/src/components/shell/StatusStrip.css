@@ -8,6 +8,8 @@
  * be taller (R2-2, DEC-266).
  */
 .cp-status {
+  /* Its visually hidden live text is clipped with the strip, so an idle strip adds no scroll to the page. */
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-md);

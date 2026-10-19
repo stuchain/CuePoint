@@ -90,7 +90,7 @@ async function currentTitle(win: Page): Promise<string | null> {
 
 /** The toolbar row's selected-count button. The Inspector says similar words, so this is scoped. */
 function selectionStrip(win: Page) {
-  return win.locator(".library-toolbar__clear:visible");
+  return win.getByRole("toolbar", { name: "Selection" });
 }
 
 /** The titles the table is showing, top to bottom. */
@@ -172,6 +172,8 @@ test("plays and queues from the Library table", async () => {
 
     // --- double-click plays that row, with the view as the queue (DEC-012) ---
     const rows = win.locator(".track-table__row");
+    // The selection bar opens on the first click and moves the table down, so the row is selected before it is double-clicked.
+    await rows.nth(1).click();
     await rows.nth(1).dblclick();
 
     await expect.poll(() => currentTitle(win), { timeout: 30_000 }).toBe(shown[1]);

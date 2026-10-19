@@ -127,6 +127,8 @@ test.describe("The Discover page (DISCOVER-10)", () => {
       await expect(window.getByRole("heading", { name: "Discover", level: 1 })).toBeVisible();
       await expect(window.getByText("Sign in to Beatport to search its charts and releases.")).toBeVisible({ timeout: 30_000 });
       // Usable without a token: past searches and the wantlist are CuePoint's own.
+      // With no library the page offers its tabs from "Dig genre charts".
+      await window.getByRole("button", { name: "Dig genre charts" }).click();
       await window.getByRole("tab", { name: "New dig" }).click();
       await expect(window.getByRole("button", { name: "Start looking" })).toBeDisabled();
       await window.getByRole("tab", { name: "Wantlist" }).click();

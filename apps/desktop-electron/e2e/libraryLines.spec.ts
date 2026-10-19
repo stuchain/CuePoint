@@ -134,7 +134,7 @@ test.describe("The Library's shared lines", () => {
     }
   });
 
-  test("All tracks starts at the pane's top and Collections ends on the table header's line, at 1x and 1.5x", async () => {
+  test("All tracks starts at the pane's top and Collections ends on or below the table header's line, at 1x and 1.5x", async () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
@@ -158,7 +158,9 @@ test.describe("The Library's shared lines", () => {
               if (b.allGapFromPaneTop == null || b.collectionsBottom == null || b.headerBottom == null) {
                 return "missing " + JSON.stringify(b);
               }
-              return Math.abs(b.allGapFromPaneTop) <= 1 && Math.abs(b.collectionsBottom - b.headerBottom) <= 0.5
+              // With no toolbar row the header's line is high on the page: a pane whose own rows already
+              // run past it is as tall as its content (useSharedLines), and ends below the line, never above it.
+              return Math.abs(b.allGapFromPaneTop) <= 1 && b.collectionsBottom - b.headerBottom >= -0.5
                 ? "aligned"
                 : JSON.stringify(b);
             },

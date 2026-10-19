@@ -324,6 +324,8 @@ test.describe("Beatport sign-in", () => {
       await window.getByRole("link", { name: "Discover" }).click();
       await expect(window.getByRole("heading", { name: "Discover", level: 1 })).toBeVisible();
       // First a sign that Beatport is usable (its genres were read), then that no banner asks for a sign-in.
+      // With no library the page offers its tabs from "Dig genre charts".
+      await window.getByRole("button", { name: "Dig genre charts" }).click();
       await window.getByRole("tab", { name: "New dig" }).click();
       await expect(
         window.getByRole("region", { name: "New dig" }).getByRole("checkbox", { name: "House" }),
