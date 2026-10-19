@@ -735,9 +735,7 @@ class TestActivity:
         events = lib.events()
         assert len(events) == 1
         assert events[0].type == EVENT_WAVEFORMS_ANALYSED
-        assert events[0].summary == (
-            "Analyzed 1 waveform; 1 file could not be read"
-        )
+        assert events[0].summary == "Analyzed 1 waveform; 1 file could not be read"
         assert events[0].detail["analysed"] == 1
         assert events[0].detail["failed"] == 1
 
