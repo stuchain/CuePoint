@@ -743,7 +743,7 @@ describe("choosing keys", () => {
     const follows = (a: Element, b: Element) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING;
     expect(follows(sources, wheel())).toBeTruthy();
     expect(follows(wheel(), tracks)).toBeTruthy();
-    expect(sources.closest(".keys-page__panes")).toBe(tracks.closest(".keys-page__panes"));
+    expect(sources.closest(".keys-page__top")).toBe(tracks.closest(".keys-page__top"));
   });
 
   it("counts the tracks in the toolbar and links to the Library from it, as a go-to link (C80, C11)", async () => {

@@ -79,7 +79,7 @@ describe("the two panes (D12)", () => {
   };
 
   it("lays Sources, the wheel and the tracks in one row, top-aligned, that wraps instead of scrolling sideways", () => {
-    const panes = rule(".keys-page__panes");
+    const panes = rule(".keys-page__top");
     expect(panes).toContain("display: flex");
     expect(panes).toContain("flex-wrap: wrap");
     expect(panes).toContain("align-items: flex-start");
@@ -113,7 +113,7 @@ describe("the two panes (D12)", () => {
 
   it("draws no second divider under the header and adds no padding offset of its own (C35, C219)", () => {
     expect(keysCss).not.toMatch(/border-top:\s*var\(--divider\)/);
-    expect(rule(".keys-page__panes")).toMatch(/padding:\s*0 0 var\(--space-lg\)/);
+    expect(rule(".keys-page__top")).toMatch(/padding:\s*0 0 var\(--space-lg\)/);
   });
 
   it("uses the shared reading width for its note (C214)", () => {

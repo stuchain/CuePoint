@@ -26,7 +26,7 @@
 
 /* Sources, the wheel (or its list) and the tracks. The header leaves 12 below its divider, so the
    row adds no space above itself, and nothing here draws a second divider under it (C35). */
-.keys-page__panes {
+.keys-page__top {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
@@ -283,6 +283,14 @@
   flex: 1 1 calc(330px * var(--scale));
   flex-direction: column;
   min-width: 0;
+  padding: 0;
+}
+
+/* The Wheel | List switch: its two buttons are 8 apart, like every row of buttons (C28). */
+.keys-page__actions {
+  display: flex;
+  gap: var(--space-md);
+  padding: 0;
 }
 
 /* Below about 1024 wide at 1.25 text size (C206: a container query, in em of the content region's

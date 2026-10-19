@@ -411,7 +411,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
     <div className="screen screen--scroll keys-page">
       {header}
 
-      <div className="keys-page__panes">
+      <div className="keys-page__top">
         <KeysSourcePicker
           playlists={playlistTree}
           collections={collections.tree}
@@ -511,7 +511,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
             <KeysTracks
               rules={shownRules}
               viewSwitch={
-                <span className="cp-button-row" role="group" aria-label="View">
+                <span className="keys-page__actions" role="group" aria-label="View">
                   {VIEWS.map((item) => (
                     <Button
                       key={item.id}
