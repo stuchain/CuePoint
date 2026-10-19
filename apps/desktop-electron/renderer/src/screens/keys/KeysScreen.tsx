@@ -41,7 +41,7 @@ import { countNoun, formatCount } from "../../format/counts";
 import { MATCH_ON_BEATPORT, RETRY, couldNot, opensDialog } from "../../format/words";
 import { cleanMatchState, cleanTrackState } from "../clean/cleanLink";
 import type { CleanTracks } from "../clean/cleanTracks";
-import { entityPath, similarPath } from "../discover/discoverLinks";
+import { entityPath, originState, similarPath } from "../discover/discoverLinks";
 import { flattenCollections, holdsTracks } from "../library/collectionTree";
 import { sourceKey } from "../library/filterText";
 import { libraryImportState, libraryRulesState } from "../library/libraryLink";
@@ -320,17 +320,17 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
         detail.reload();
       }}
       onOpenInClean={(trackId) => navigate("/clean", { state: cleanTrackState(trackId) })}
-      onOpenEntity={(kind: EntityKind, ref: string) => navigate(entityPath(kind, ref))}
+      onOpenEntity={(kind: EntityKind, ref: string) => navigate(entityPath(kind, ref), { state: originState("library") })}
     />,
   );
 
   // ------------------------------------------------------------- navigating
 
   const openEntity = useCallback(
-    (kind: EntityKind, ref: string) => navigate(entityPath(kind, ref)),
+    (kind: EntityKind, ref: string) => navigate(entityPath(kind, ref), { state: originState("library") }),
     [navigate],
   );
-  const openSimilar = useCallback((trackId: number) => navigate(similarPath(trackId)), [navigate]);
+  const openSimilar = useCallback((trackId: number) => navigate(similarPath(trackId), { state: originState("library") }), [navigate]);
   const openInClean = useCallback(
     (trackId: number) => navigate("/clean", { state: cleanTrackState(trackId) }),
     [navigate],

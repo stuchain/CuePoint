@@ -49,7 +49,7 @@ import type { MatchView } from "./match/matchTab";
 import type { CleanMatchOpening, CleanOpening, CleanSectionOpening } from "./cleanLink";
 import type { CleanTracks } from "./cleanTracks";
 import { libraryImportState } from "../library/libraryLink";
-import { entityPath } from "../discover/discoverLinks";
+import { entityPath, originState } from "../discover/discoverLinks";
 import {
   CLEAN_SECTIONS,
   factsLine,
@@ -97,7 +97,7 @@ export function CleanScreen({
   const navigate = useNavigate();
   // The Inspector's artist and label links (DISCOVER-11).
   const openEntity = useCallback(
-    (kind: EntityKind, ref: string) => navigate(entityPath(kind, ref)),
+    (kind: EntityKind, ref: string) => navigate(entityPath(kind, ref), { state: originState("library") }),
     [navigate],
   );
   const [section, setSection] = useState<CleanSection>(() =>

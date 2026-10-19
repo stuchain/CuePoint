@@ -49,7 +49,7 @@ import type {
 import { announceLibraryChange } from "../../api/libraryChanges";
 import { matchStateLabel } from "../clean/cleanFormat";
 import { useTrackMatches } from "../clean/useTrackMatches";
-import { similarPath } from "../discover/discoverLinks";
+import { originState, similarPath } from "../discover/discoverLinks";
 import { CreditLinks } from "./CreditLinks";
 import { Tabs, panelId, tabId } from "../../components/Tabs";
 import { DisclosureSection } from "./DisclosureSection";
@@ -513,6 +513,7 @@ export function TrackDetailPanel({
           {track.id != null && (
             <RouteButton
               to={selectionCount > 1 && gatherSelectedRows ? similarTarget : similarPath(track.id)}
+              state={originState("library")}
               aria-label="Similar tracks"
               title="Similar tracks"
               variant="secondary"

@@ -69,7 +69,7 @@ import { formatLength } from "../../format/durations";
 import { countNoun } from "../../format/counts";
 import { NO_SETS, RETRY, UNDO, couldNot, deleteLead, deleteTitle, opensDialog, quoted, removedFrom } from "../../format/words";
 import { cleanSectionState } from "../clean/cleanLink";
-import { entityPath, similarPath } from "../discover/discoverLinks";
+import { entityPath, originState, similarPath } from "../discover/discoverLinks";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
 import { useBeatportSelection } from "../discover/useBeatportSelection";
 import { NewSetFromDialog } from "../library/NewSetFromDialog";
@@ -821,7 +821,7 @@ export function PrepareScreen({
   );
 
   const openEntity = useCallback(
-    (kind: EntityKind, ref: string) => navigate(entityPath(kind, ref)),
+    (kind: EntityKind, ref: string) => navigate(entityPath(kind, ref), { state: originState("library") }),
     [navigate],
   );
 
@@ -927,7 +927,7 @@ export function PrepareScreen({
       moreEntries(
         { count: chosen.length, credits: menu.credits, revealable: one !== null && one.entry.track.file_path !== "" },
         {
-          onSimilar: one ? () => navigate(similarPath(one.entry.track_id)) : null,
+          onSimilar: one ? () => navigate(similarPath(one.entry.track_id), { state: originState("library") }) : null,
           onOpenPage: openEntity,
           onCopy: () => void copyTrackRows(columns.visible, chosen, push),
           onReveal: one ? () => void revealOne(one.entry.track_id, push) : null,
@@ -1448,7 +1448,7 @@ export function PrepareScreen({
               }}
               onGone={onGone}
               onMessage={(message, tone) => push(message, tone)}
-              onOpenSimilar={(trackId) => navigate(similarPath(trackId))}
+              onOpenSimilar={(trackId) => navigate(similarPath(trackId), { state: originState("library") })}
               onOpenEntity={openEntity}
               onPickedChange={onPanelPicked}
             />

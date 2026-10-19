@@ -70,7 +70,9 @@ import {
   SIMILAR_ROUTE,
   entityPath,
   nameRef,
+  originState,
   similarPath,
+  type PageOrigin,
 } from "./screens/discover/discoverLinks";
 import {
   cleanMatchOpening,
@@ -158,11 +160,12 @@ function AppShell() {
 
   // DISCOVER-11: the pages every track leads to, and Similar tracks.
   // The page a track was opened from stays lit in the sidebar (C221): it goes along as `from`.
-  const originRef = useRef<string | undefined>(undefined);
-  originRef.current = litDestination(location.pathname, location.state)?.id;
+  // Opened from Discover it is Discover's; from any other page the track is a Library track (C221).
+  const originRef = useRef<PageOrigin>("library");
+  originRef.current = litDestination(location.pathname, location.state)?.id === "discover" ? "discover" : "library";
   const openEntity = useCallback(
     (kind: "artist" | "label", ref: string) =>
-      navigate(entityPath(kind, ref), { state: { from: originRef.current } }),
+      navigate(entityPath(kind, ref), { state: originState(originRef.current) }),
     [navigate],
   );
   // BAR-4: the player bar's title opens the track in the Library, its artist the
@@ -176,7 +179,7 @@ function AppShell() {
     [openEntity],
   );
   const openSimilar = useCallback(
-    (trackId: number) => navigate(similarPath(trackId), { state: { from: originRef.current } }),
+    (trackId: number) => navigate(similarPath(trackId), { state: originState(originRef.current) }),
     [navigate],
   );
   // A one-shot opening (a searched track, the import's file choice) is spent once the

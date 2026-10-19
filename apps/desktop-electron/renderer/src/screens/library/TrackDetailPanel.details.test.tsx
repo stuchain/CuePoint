@@ -633,10 +633,11 @@ describe("the buttons under the title (FLW-9, K5)", () => {
     await waitFor(() => expect(where().path).toBe("/discover/similar/12"));
   });
 
-  it("opens Similar tracks for the track", () => {
+  it("opens Similar tracks for the track, from the Library (C221)", () => {
     show();
     fireEvent.click(screen.getByRole("button", { name: "Similar tracks" }));
     expect(where().path).toBe("/discover/similar/12");
+    expect(where().state).toEqual({ from: "library" });
   });
 
   it("leaves out Play where there is no player", () => {
