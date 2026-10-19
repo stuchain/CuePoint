@@ -1,14 +1,15 @@
 /**
  * The Review table's right-click menu, as pure data.
  *
- * The base track menu every track list has (Play, Play next, Add to queue, Copy, Show in folder),
- * then a "This page" block for what only Review can do: tick the track to sync it or leave it out,
- * and choose its match. Right-clicking a row selects it first, so the menu always acts on what
- * is shown selected.
+ * Built from the same pieces as every track menu (`library/trackActions.ts`): Play, Play next and
+ * Add to queue, then Copy and Show in folder; then a "This page" block for what only Review can
+ * do: tick the track to sync it or leave it out, and choose its match. Right-clicking a row
+ * selects it first, so the menu always acts on what is shown selected. "Tick to sync" is enabled
+ * exactly when the selection bar offers it (C185).
  */
 import type { TrackContextMenuItem } from "../../../components/TrackContextMenu";
-import { plural } from "../../../format/counts";
-import { playItems } from "../../library/trackActions";
+import { playItems, moreItems } from "../../library/trackActions";
+import { thisPageBlock } from "../../prepare/prepareMenus";
 
 export interface ReviewMenuState {
   /** Tracks the menu acts on. */
@@ -34,36 +35,34 @@ export interface ReviewMenuHandlers {
 
 export function reviewMenuItems(state: ReviewMenuState, handlers: ReviewMenuHandlers): TrackContextMenuItem[] {
   const { count } = state;
-  const items: TrackContextMenuItem[] = [
+  const more = moreItems(
+    { count, collection: null, credits: null, revealable: count === 1 && handlers.onReveal !== null },
+    { onCopy: handlers.onCopy, onReveal: handlers.onReveal },
+  );
+  return [
     ...playItems(count, {
       onPlay: handlers.onPlay,
       onPlayNext: handlers.onPlayNext,
       onAddToQueue: handlers.onAddToQueue,
     }),
-    {
-      id: "copy",
-      label: count > 1 ? `Copy ${plural(count, "track")}` : "Copy",
-      onSelect: handlers.onCopy,
-      separatorBefore: true,
-    },
-    {
-      id: "reveal",
-      label: "Show in folder",
-      disabled: count !== 1 || handlers.onReveal === null,
-      onSelect: () => handlers.onReveal?.(),
-    },
+    ...more.map((item, at) => (at === 0 ? { ...item, separatorBefore: true } : item)),
     // The block for this page: a label-style heading over its first entry, then what Review adds.
-    {
-      id: "tick",
-      label: "Tick to sync",
-      disabled: !state.canTick,
-      reason: "Every one of them is ticked or has no match",
-      onSelect: handlers.onTick,
-      groupTitle: "This page",
-      separatorBefore: true,
-    },
-    { id: "leave-out", label: "Leave out", disabled: !state.canLeaveOut, reason: "None of them is ticked", onSelect: handlers.onLeaveOut },
-    { id: "choose", label: "Choose a match…", disabled: count !== 1, reason: "Choose one track at a time", onSelect: handlers.onChoose },
+    ...thisPageBlock([
+      {
+        id: "tick",
+        label: "Tick to sync",
+        disabled: !state.canTick,
+        reason: "Every one of them is ticked or has no match",
+        onSelect: handlers.onTick,
+      },
+      {
+        id: "leave-out",
+        label: "Leave out",
+        disabled: !state.canLeaveOut,
+        reason: "None of them is ticked",
+        onSelect: handlers.onLeaveOut,
+      },
+      { id: "choose", label: "Choose a match", disabled: count !== 1, reason: "Choose one track at a time", onSelect: handlers.onChoose },
+    ]),
   ];
-  return items;
 }

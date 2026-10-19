@@ -18,7 +18,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MatchReview, ReviewTrack } from "../../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../../reporting/reporting";
-import { NEEDS_DESKTOP, userMessage } from "../../../api/userMessage";
+import { needsDesktopApp, userMessage } from "../../../api/userMessage";
 
 /** What is reviewed: one run, one playlist, or (with neither) every matched track. */
 export interface ReviewSource {
@@ -38,7 +38,10 @@ export interface MatchReviewState {
   error: string | null;
   /** Tracks that have not been read yet. */
   hasMore: boolean;
+  /** Read the next page (the arrows reach the end of what is loaded). */
   loadMore: () => void;
+  /** Show all N: read every page that is left. */
+  loadAll: () => void;
   /** A tick or a search result: change one row, and the counts with it, without reading again. */
   patchTrack: (trackId: number, changes: Partial<ReviewTrack>) => void;
 }
@@ -85,7 +88,7 @@ export function useMatchReview(source: ReviewSource | null, version = 0): MatchR
     const answer = read(null, Math.min(REVIEW_MAX, Math.max(REVIEW_PAGE, loadedRows.current)));
     if (!answer) {
       setReview(null);
-      setError(NEEDS_DESKTOP);
+      setError(needsDesktopApp());
       return;
     }
     let cancelled = false;
@@ -136,6 +139,32 @@ export function useMatchReview(source: ReviewSource | null, version = 0): MatchR
       });
   }, [loaded, read, review]);
 
+  const loadAll = useCallback(() => {
+    if (!review) return;
+    const key = asked.current;
+    const total = review.total;
+    void (async () => {
+      let have = review.tracks.length;
+      let cursor = review.tracks[have - 1]?.cursor ?? null;
+      while (have < total && cursor) {
+        const answer = read(cursor, REVIEW_PAGE);
+        if (!answer) return;
+        const next = await answer;
+        if (asked.current !== key || next.tracks.length === 0) return;
+        setReview((current) => {
+          if (!current) return next;
+          const seen = new Set(current.tracks.map((row) => row.track_id));
+          return { ...next, tracks: [...current.tracks, ...next.tracks.filter((row) => !seen.has(row.track_id))] };
+        });
+        have += next.tracks.length;
+        cursor = next.tracks[next.tracks.length - 1]?.cursor ?? null;
+      }
+    })().catch((cause: unknown) => {
+      reportUnexpected(cause);
+      setError(userMessage(cause));
+    });
+  }, [read, review]);
+
   const patchTrack = useCallback((trackId: number, changes: Partial<ReviewTrack>) => {
     setReview((current) => {
       if (!current) return current;
@@ -154,5 +183,5 @@ export function useMatchReview(source: ReviewSource | null, version = 0): MatchR
     });
   }, []);
 
-  return { review, loading, error, hasMore, loadMore, patchTrack };
+  return { review, loading, error, hasMore, loadMore, loadAll, patchTrack };
 }

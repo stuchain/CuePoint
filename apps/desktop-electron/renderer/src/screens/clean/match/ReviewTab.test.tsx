@@ -58,7 +58,6 @@ function renderTab(overrides: Partial<Props> = {}) {
     name: "hJ",
     version: 0,
     matching: false,
-    onBack: vi.fn(),
     onChanged: vi.fn(),
     ...overrides,
   };
@@ -84,6 +83,11 @@ function rowOf(id: number): HTMLElement {
   const row = screen.getAllByRole("row").find((entry) => entry.getAttribute("data-track-id") === String(id));
   if (!row) throw new Error(`no row for track ${id}`);
   return row;
+}
+
+/** The bar's one sentence of facts (C181). */
+function facts(): HTMLElement {
+  return document.querySelector<HTMLElement>(".review__facts")!;
 }
 
 /** The line beside the table that says each tick and choice (a toast may say it too). */
@@ -125,14 +129,16 @@ describe("the table", () => {
     renderTab();
     await loaded();
     const first = within(rowOf(1));
-    expect(first.getByText("Check")).toBeInTheDocument();
+    expect(first.getByText("To check")).toBeInTheDocument();
     expect(first.getByText("Track 1 · Artist 1")).toBeInTheDocument();
     // The version is its own part, so the one that differs is marked alone.
     expect(first.getByText("(Extended Mix)")).toHaveClass("review-part--differs");
     expect(first.getByText("Track 1")).not.toHaveClass("review-part--differs");
     expect(first.getByText("· Beatport Artist 1")).toBeInTheDocument();
-    expect(within(rowOf(2)).getByText("Matched")).toBeInTheDocument();
-    expect(within(rowOf(3)).getByText("Not found")).toBeInTheDocument();
+    // A confirmed match is said quietly, a state that needs a look is a chip (D14, D2).
+    expect(within(rowOf(2)).getByText("Confirmed")).toHaveClass("cp-quiet-ok");
+    expect(first.getByText("To check")).toHaveClass("cp-badge--warning");
+    expect(within(rowOf(3)).getByText("No match")).toBeInTheDocument();
     expect(within(rowOf(3)).getByText("—")).toBeInTheDocument();
     expect(within(rowOf(5)).getByText("Search failed")).toBeInTheDocument();
   });
@@ -143,6 +149,7 @@ describe("the table", () => {
     expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["", "Status", "Your track", "Beatport", "Preview"]);
     expect(screen.getByRole("checkbox", { name: "Sync Track 1 · Artist 1" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Tick every track with a match" })).toBeInTheDocument();
+    expect(screen.getByRole("table")).toHaveClass("cp-data-table");
   });
 
   it("ticks what the engine ticked, and leaves a track with no match unticked and unable to be", async () => {
@@ -166,15 +173,13 @@ describe("the table", () => {
     expect(rowOf(2)).not.toHaveClass("review-row--off");
   });
 
-  it("names the playlist, the tracks and the ticked ones, and what has no match, with a small chevron closing the review", async () => {
-    const { props } = renderTab();
+  it("says the tracks, the ticked ones and what has no match in one sentence at the foot", async () => {
+    renderTab();
     await loaded();
-    // The title is the name alone, so it is never cut; the counts are the facts line under it.
-    expect(screen.getByText("hJ")).toBeInTheDocument();
-    expect(screen.getByText("5 tracks · 2 ticked to sync")).toBeInTheDocument();
-    expect(screen.getByText("1 not found · 1 search failed")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Close review" }));
-    expect(props.onBack).toHaveBeenCalledTimes(1);
+    // The area's row names the playlist and goes back; the review has no top bar of its own.
+    expect(screen.queryByRole("button", { name: "Close review" })).toBeNull();
+    expect(facts()).toHaveTextContent("5 tracks · 2 ticked to sync · 1 no match · 1 search failed");
+    expect(facts().closest(".cp-toolbar")).not.toBeNull();
   });
 
   it("has no per-track Correct, Not this, Skip, filter chips or confirm-all", async () => {
@@ -208,7 +213,7 @@ describe("ticking", () => {
     expect(screen.getByRole("checkbox", { name: "Sync Track 2 · Artist 2" })).not.toBeChecked();
     expect(bridge.setMatchTicks).toHaveBeenCalledWith({ ticked: false, track_ids: [2] });
     expect(rowOf(2)).toHaveClass("review-row--off");
-    expect(screen.getByText("5 tracks · 1 ticked to sync")).toBeInTheDocument();
+    expect(facts()).toHaveTextContent("5 tracks · 1 ticked to sync");
     expect(live()).toHaveTextContent("Unticked “Track 2”: it will be left out.");
     await waitFor(() => expect(props.onChanged).toHaveBeenCalled());
     // The tick is the engine's: a table read again says the same.
@@ -230,7 +235,7 @@ describe("ticking", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Sync Track 2 · Artist 2" }));
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "Sync Track 2 · Artist 2" })).toBeChecked());
     expect(await screen.findByText("The library is busy")).toBeInTheDocument();
-    expect(screen.getByText("5 tracks · 2 ticked to sync")).toBeInTheDocument();
+    expect(facts()).toHaveTextContent("5 tracks · 2 ticked to sync");
   });
 
   it("keeps the ticks out of the tab order: one tab stop for the table, the row, and Space on it ticks", async () => {
@@ -291,9 +296,9 @@ describe("ticking", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Tick every track with a match" }));
     expect(bridge.setMatchTicks).toHaveBeenCalledWith({ ticked: false, scope: { job_id: "job-1" } });
     await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalled());
-    await waitFor(() => expect(screen.getByText("5 tracks · 0 ticked to sync")).toBeInTheDocument());
+    await waitFor(() => expect(facts()).toHaveTextContent("5 tracks · 0 ticked to sync"));
     expect(live()).toHaveTextContent("Unticked 3 tracks: they will be left out.");
-    expect(screen.getByRole("button", { name: "Sync hJ to files…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Sync to files…" })).toBeDisabled();
   });
 
   it("ticks them all from the header when some are not, and marks it half ticked", async () => {
@@ -304,7 +309,7 @@ describe("ticking", () => {
     expect(header.checked).toBe(false);
     await userEvent.click(header);
     expect(bridge.setMatchTicks).toHaveBeenCalledWith({ ticked: true, scope: { playlist_id: 7 } });
-    await waitFor(() => expect(screen.getByText("5 tracks · 3 ticked to sync")).toBeInTheDocument());
+    await waitFor(() => expect(facts()).toHaveTextContent("5 tracks · 3 ticked to sync"));
     expect((screen.getByRole("checkbox", { name: "Tick every track with a match" }) as HTMLInputElement).checked).toBe(true);
   });
 
@@ -313,15 +318,16 @@ describe("ticking", () => {
     renderTab();
     await loaded();
     expect(screen.getByRole("checkbox", { name: "Tick every track with a match" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Sync hJ to files…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Sync to files…" })).toBeDisabled();
   });
 });
 
 describe("the Sync button", () => {
-  it("is big and green-named for the playlist, and opens the Sync window on this review", async () => {
+  it("is the quiet-bordered Sync to files button, and opens the Sync window on this review (C1)", async () => {
     renderTab();
     await loaded();
-    await userEvent.click(screen.getByRole("button", { name: "Sync hJ to files…" }));
+    expect(screen.getByRole("button", { name: "Sync to files…" })).toHaveClass("cp-btn--secondary");
+    await userEvent.click(screen.getByRole("button", { name: "Sync to files…" }));
     expect(screen.getByText('syncing hJ {"playlistId":7}')).toBeInTheDocument();
   });
 
@@ -329,15 +335,14 @@ describe("the Sync button", () => {
     world.review = [reviewTrack(1, "matched", { ticked: false })];
     renderTab();
     await loaded();
-    const sync = screen.getByRole("button", { name: "Sync hJ to files…" });
+    const sync = screen.getByRole("button", { name: "Sync to files…" });
     expect(sync).toBeDisabled();
-    expect(sync).toHaveAttribute("title", "Tick at least one track to sync.");
   });
 
   it("reads the table again and tells the page once files were written", async () => {
     const { props } = renderTab();
     await loaded();
-    await userEvent.click(screen.getByRole("button", { name: "Sync hJ to files…" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sync to files…" }));
     bridge.getMatchReview.mockClear();
     await userEvent.click(screen.getByRole("button", { name: "files written" }));
     await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalled());
@@ -366,13 +371,26 @@ describe("the side panel", () => {
     await waitFor(() => expect(within(screen.getByRole("complementary")).getByText("1 of 5")).toBeInTheDocument());
   });
 
-  it("opens on Enter on the row itself, and not on a tick", async () => {
+  it("does not open on a tick, and Enter on the row plays it instead of opening the panel", async () => {
+    const playQueue = vi.fn().mockResolvedValue({ ok: true });
+    (window.cuepoint as unknown as Record<string, unknown>).player = { playQueue };
     renderTab();
     await loaded();
     await userEvent.click(screen.getByRole("checkbox", { name: "Sync Track 2 · Artist 2" }));
     expect(screen.queryByRole("complementary")).toBeNull();
     fireEvent.keyDown(rowOf(2), { key: "Enter" });
-    expect(await screen.findByRole("complementary", { name: /^Candidates for / })).toBeInTheDocument();
+    await waitFor(() => expect(playQueue).toHaveBeenCalledTimes(1));
+    expect(playQueue.mock.calls[0]![0]).toHaveLength(1);
+    expect(screen.queryByRole("complementary")).toBeNull();
+  });
+
+  it("plays a row on a double-click", async () => {
+    const playQueue = vi.fn().mockResolvedValue({ ok: true });
+    (window.cuepoint as unknown as Record<string, unknown>).player = { playQueue };
+    renderTab();
+    await loaded();
+    fireEvent.doubleClick(rowOf(2));
+    await waitFor(() => expect(playQueue).toHaveBeenCalledTimes(1));
   });
 
   it("closes on Esc, and gives the keyboard back to the row", async () => {
@@ -400,25 +418,25 @@ describe("the side panel", () => {
     expect(within(panel).getByText("2 of 5")).toBeInTheDocument();
   });
 
-  it("unticks from the panel with None of these — leave it out, and says so", async () => {
+  it("unticks from the panel with None of these, leave it out, and says so", async () => {
     renderTab();
     await loaded();
     fireEvent.click(rowOf(2));
     const panel = await screen.findByRole("complementary", { name: /^Candidates for / });
-    await userEvent.click(within(panel).getByRole("button", { name: "None of these — leave it out" }));
+    await userEvent.click(within(panel).getByRole("button", { name: "None of these, leave it out" }));
     expect(bridge.setMatchTicks).toHaveBeenCalledWith({ ticked: false, track_ids: [2] });
     await waitFor(() => expect(live()).toHaveTextContent("Unticked “Track 2”"));
-    expect(within(panel).getByRole("button", { name: "None of these — leave it out" })).toBeDisabled();
+    expect(within(panel).getByRole("button", { name: "None of these, leave it out" })).toBeDisabled();
   });
 
-  it("uses another candidate with Use this: the engine accepts it, which ticks the track, and the table reads again", async () => {
+  it("uses another candidate with Use this match: the engine accepts it, which ticks the track, and the table reads again", async () => {
     renderTab();
     await loaded();
     fireEvent.click(rowOf(4));
     const panel = await screen.findByRole("complementary", { name: /^Candidates for / });
     await within(panel).findByRole("list", { name: "Beatport candidates" });
     bridge.getMatchReview.mockClear();
-    await userEvent.click(within(panel).getAllByRole("button", { name: /^Use / })[0]!);
+    await userEvent.click(within(panel).getByRole("button", { name: "Use this match" }));
     expect(bridge.decideMatch).toHaveBeenCalledWith({ decision: "accept", track_id: 4, candidate_id: 1001 });
     await waitFor(() => expect(bridge.getMatchReview).toHaveBeenCalled());
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "Sync Track 4 · Artist 4" })).toBeChecked());
@@ -432,7 +450,7 @@ describe("the side panel", () => {
     fireEvent.click(rowOf(4));
     const panel = await screen.findByRole("complementary", { name: /^Candidates for / });
     await within(panel).findByRole("list", { name: "Beatport candidates" });
-    await userEvent.click(within(panel).getAllByRole("button", { name: /^Use / })[0]!);
+    await userEvent.click(within(panel).getByRole("button", { name: "Use this match" }));
     expect(await screen.findByText("The library is busy")).toBeInTheDocument();
   });
 
@@ -452,11 +470,11 @@ describe("a long review", () => {
     world.review = Array.from({ length: 5000 }, (_, index) => reviewTrack(index + 1, "matched"));
     renderTab();
     await loaded();
-    expect(screen.getByText("5,000 tracks · 5,000 ticked to sync")).toBeInTheDocument();
+    expect(facts()).toHaveTextContent("5,000 tracks · 5,000 ticked to sync");
     expect(order().length).toBeLessThan(100);
     // A page of 2,000 is read, and the rest on request: the table says how many it holds.
     expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "2001");
-    expect(screen.getByRole("button", { name: "Show more (3,000 more)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show all 5,000" })).toBeInTheDocument();
     press("ArrowDown");
     await waitFor(() => expect(document.activeElement?.getAttribute("data-track-id")).toBe("2"));
     press("ArrowDown");
@@ -475,9 +493,56 @@ describe("a long review", () => {
     }));
     renderTab();
     await loaded();
-    await userEvent.click(screen.getByRole("button", { name: /Show more \(1 more\)/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Show all 3" }));
     await waitFor(() => expect(order()).toEqual([1, 2, 3]));
     expect(bridge.getMatchReview).toHaveBeenLastCalledWith({ playlistId: 7, after: "2:2", limit: 2000 });
+  });
+});
+
+describe("keys and selection follow the Library's table (C190, C191)", () => {
+  it("selects the row that is clicked, and only it", async () => {
+    renderTab();
+    await loaded();
+    fireEvent.click(rowOf(2));
+    expect(rowOf(2)).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(rowOf(4));
+    expect(rowOf(2)).toHaveAttribute("aria-selected", "false");
+    expect(rowOf(4)).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+  });
+
+  it("moves the selection with the arrows, and Shift extends it", async () => {
+    renderTab();
+    await loaded();
+    fireEvent.click(rowOf(1));
+    press("ArrowDown");
+    await waitFor(() => expect(rowOf(2)).toHaveAttribute("aria-selected", "true"));
+    expect(rowOf(1)).toHaveAttribute("aria-selected", "false");
+    press("ArrowDown", { shiftKey: true });
+    await waitFor(() => expect(screen.getByText("2 selected")).toBeInTheDocument());
+    expect(rowOf(3)).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("does not tint a row for being ticked: the look is the selection's alone", async () => {
+    renderTab();
+    await loaded();
+    expect(rowOf(2)).toHaveAttribute("aria-selected", "false");
+    expect(rowOf(2).className).not.toMatch(/ticked|current/);
+  });
+
+  it("offers Tick to sync in the bar and the menu on exactly the same tracks (C185)", async () => {
+    renderTab();
+    await loaded();
+    // Track 4 has a match and is unticked: both offer it. Track 2 is ticked: neither does.
+    fireEvent.click(rowOf(4));
+    expect(screen.getByRole("button", { name: "Tick to sync" })).toBeEnabled();
+    fireEvent.contextMenu(rowOf(4));
+    expect(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Tick to sync" })).not.toHaveAttribute("aria-disabled", "true");
+    press("Escape");
+    fireEvent.click(rowOf(2));
+    expect(screen.getByRole("button", { name: "Tick to sync" })).toBeDisabled();
+    fireEvent.contextMenu(rowOf(2));
+    expect(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Tick to sync" })).toHaveAttribute("aria-disabled", "true");
   });
 });
 
@@ -489,13 +554,13 @@ describe("selecting rows and the right-click menu", () => {
     fireEvent.click(rowOf(3), { ctrlKey: true });
     expect(rowOf(1)).toHaveAttribute("aria-selected", "true");
     expect(rowOf(2)).toHaveAttribute("aria-selected", "false");
-    expect(screen.getByText("2 tracks selected")).toBeInTheDocument();
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
     // A Ctrl-click only selects: the panel stays closed.
     expect(screen.queryByRole("complementary")).toBeNull();
     fireEvent.click(rowOf(5), { shiftKey: true });
-    expect(screen.getByText("3 tracks selected")).toBeInTheDocument();
+    expect(screen.getByText("3 selected")).toBeInTheDocument();
     press("Escape");
-    expect(screen.queryByText(/tracks? selected/)).toBeNull();
+    expect(screen.queryByText(/\d+ selected/)).toBeNull();
   });
 
   it("leaves Esc alone when it has nothing to close or clear", async () => {
@@ -513,7 +578,7 @@ describe("selecting rows and the right-click menu", () => {
     await loaded();
     fireEvent.click(rowOf(1), { ctrlKey: true });
     fireEvent.click(rowOf(3), { ctrlKey: true });
-    expect(screen.getByText("2 tracks selected")).toBeInTheDocument();
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
 
     world.review = world.review.filter((entry: { track_id: number }) => entry.track_id !== 3);
     rerender(
@@ -524,14 +589,14 @@ describe("selecting rows and the right-click menu", () => {
       </ScaleProvider>,
     );
 
-    await waitFor(() => expect(screen.getByText("1 track selected")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("1 selected")).toBeInTheDocument());
   });
 
   it("selects every track with Ctrl+A", async () => {
     renderTab();
     await loaded();
     press("a", { ctrlKey: true });
-    expect(screen.getByText("5 tracks selected")).toBeInTheDocument();
+    expect(screen.getByText("5 selected")).toBeInTheDocument();
   });
 
   it("selects the row on right-click and opens the base menu with a This page block", async () => {
@@ -540,7 +605,7 @@ describe("selecting rows and the right-click menu", () => {
     fireEvent.contextMenu(rowOf(2));
     expect(rowOf(2)).toHaveAttribute("aria-selected", "true");
     const menu = await screen.findByRole("menu");
-    for (const name of ["Play", "Play next", "Add to queue", "Copy", "Show in folder", "Tick to sync", "Leave out", "Choose a match…"]) {
+    for (const name of ["Play", "Play next", "Add to queue", "Copy", "Show in folder", "Tick to sync", "Leave out", "Choose a match"]) {
       expect(within(menu).getByRole("menuitem", { name })).toBeInTheDocument();
     }
     expect(within(menu).getByText("This page")).toBeInTheDocument();

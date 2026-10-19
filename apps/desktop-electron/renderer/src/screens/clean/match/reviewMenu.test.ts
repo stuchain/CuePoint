@@ -30,4 +30,23 @@ describe("the review menu", () => {
       expect(item?.reason).toBeTruthy();
     }
   });
+
+  it("enables Tick to sync exactly when the selection bar offers it (C185)", () => {
+    const on = reviewMenuItems({ count: 1, canTick: true, canLeaveOut: false }, handlers);
+    const off = reviewMenuItems({ count: 1, canTick: false, canLeaveOut: true }, handlers);
+    expect(on.find((item) => item.id === "tick")?.disabled).toBeFalsy();
+    expect(off.find((item) => item.id === "tick")?.disabled).toBe(true);
+    expect(off.find((item) => item.id === "leave-out")?.disabled).toBeFalsy();
+  });
+
+  it("starts with the same Play entries as every track menu, then a rule before Copy", () => {
+    const items = reviewMenuItems({ count: 1, canTick: true, canLeaveOut: true }, handlers);
+    expect(items.slice(0, 3).map((item) => item.label)).toEqual(["Play", "Play next", "Add to queue"]);
+    expect(items.find((item) => item.label === "Copy")?.separatorBefore).toBe(true);
+  });
+
+  it("names Choose a match without an ellipsis: it opens a panel, not a dialog", () => {
+    const items = reviewMenuItems({ count: 1, canTick: true, canLeaveOut: true }, handlers);
+    expect(items.find((item) => item.id === "choose")?.label).toBe("Choose a match");
+  });
 });
