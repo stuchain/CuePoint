@@ -8209,12 +8209,20 @@ app said or drew the same thing two ways. Mockups showed each option; every choi
 marked as recommended (A).
 
 **Decision**:
-- D1 buttons: four explicit variants (primary, secondary, quiet, danger); a bare Button is secondary.
-- D2 match states: Confirmed, To check, No match, Not looked up yet, Rejected; the agree button is "Use this match".
-- D3 writing to files is "Sync" (Sync to files, Sync 12 files, Up to date); Write and Save are retired.
-- D4 to D9: one chip, notice, toast, menu and dialog look from shared components (sizes small, medium, large; a footer Close when a dialog has no action).
-- D10 palettes: tuned per theme; waveform colours follow Rekordbox in every theme.
-- D11 to D14: tables share one look (header at row height, hover and selected backgrounds, "—" for empty cells, right-click selects the row), column widths are stored in 1x units, counts format by locale, and font weights are named.
+- D1 an "on" toggle is a soft violet tint with a thin violet outline and normal text, quieter than the main button.
+- D2 match states are Confirmed, To check, No match, Not looked up yet and Rejected; the agree button is "Use this match"; "No match" is grey everywhere.
+- D3 writing to files is "Sync" everywhere ("Sync 17 files", "Nothing to sync"), and the header's "In sync" becomes "Up to date".
+- D4 waveforms use the Rekordbox blue, orange and white in every theme, Retro included; the one-colour mode uses the theme's accent.
+- D5 any full sentence is set in Inter; the pixel font stays for short labels (five words or fewer), headings, buttons, tabs and chips.
+- D6 a radio is the square box with a small centred square when selected.
+- D7 selection actions sit in the bar right above the list ("Select all" in the filter row), a step in a flow ends with its main action at the bottom right, and actions for the whole page sit in the header, left of Details.
+- D8 Clean's hand-built tables, the shortcuts table and the Statistics lists share one table stylesheet: the Library table's header band, row height, padding, sticky header and hover.
+- D9 the bar above every list is the Library toolbar band: a dark band, no frame, controls set slightly in from the edge.
+- D10 themes are colour-only with tuned palettes (line strength 2.2 to 2.8:1, a darker Classic toolbar, a cyan link in Club neon, softer status colours in Muted, a row-divider colour for Retro).
+- D11 the queue opens at the Track details width, scaled with the text size, and can be dragged wider.
+- D12 Keys is two panes: the track list fills the area beside the wheel, so picking a key shows tracks at once.
+- D13 Clean > Match is one row (sub-tabs, a plain caption such as "Step 1 of 3 · Tick playlists", and search), the Review tab is removed, and the review has a "‹ Playlists" back link.
+- D14 "all good" is quiet: matched rows get a grey tick, chips are only for problems, healthy segments are neutral, and the write green is toned down per theme.
 - Rules that follow: one violet per screen; writing to files is green through `--accent-write`;
   problem text uses the `*-text` tokens; themes change colour only, never layout or weight; full
   sentences are set in Inter.
