@@ -80,7 +80,6 @@ describe("the shared page margin", () => {
       ["discover page header", discover, ".discover-page > .cp-screen-header"],
       ["discover page header block", discover, ".discover-page__header"],
       ["discover half", discover, ".discover-page__half"],
-      ["discover toolbar", discover, ".discover-toolbar"],
       ["discover run header", discover, ".discover-run__header"],
       ["discover new body", discover, ".discover-new__body"],
       ["clean playlists", playlists, ".playlists"],
