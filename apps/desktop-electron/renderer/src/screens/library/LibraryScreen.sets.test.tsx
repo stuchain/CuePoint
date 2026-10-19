@@ -365,7 +365,7 @@ describe("Add to Set… (DEC-104, DEC-058)", () => {
     ).toBeInTheDocument();
   });
 
-  it("says there is no undo for a Set, not for a Collection", async () => {
+  it("reports an addition to a Set without a word about undo", async () => {
     bridge.applyBatch.mockResolvedValue({ applied: { ...ADDED_TO_SET, changed: 40 } });
     renderScreen();
     await ready();
@@ -373,9 +373,7 @@ describe("Add to Set… (DEC-104, DEC-058)", () => {
     const dialog = await screen.findByRole("dialog", { name: "Add to Set" });
     await userEvent.click(within(dialog).getAllByRole("option")[1]!);
     expect(
-      await screen.findByText(
-        "Added 40 tracks to “Friday” — 1 were already there. There is no undo for Set changes.",
-      ),
+      await screen.findByText("Added 40 tracks to “Friday” — 1 were already there."),
     ).toBeInTheDocument();
   });
 

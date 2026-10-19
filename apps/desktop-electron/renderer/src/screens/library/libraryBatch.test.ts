@@ -138,7 +138,7 @@ describe("the question above the threshold", () => {
 
   it("says what a rating would be, in stars", () => {
     expect(describeBatch({ kind: "set_rating", value: 4, target: "4" }, 12)).toBe(
-      "Rate 12 tracks ★★★★?",
+      "Rate 12 tracks 4 stars?",
     );
   });
 

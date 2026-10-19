@@ -23,7 +23,8 @@ import {
   type TrackContextMenuItem,
   useToast,
 } from "../../components";
-import { PixelSpinner } from "../../components/PixelSpinner";
+import { Loading } from "../../components/Loading";
+import { ScreenHeader } from "../../components/shell/ScreenHeader";
 import {
   ColumnPicker,
   LIBRARY_TABLE_LAYOUT_KEY,
@@ -52,7 +53,10 @@ import { LibraryPane } from "./LibraryPane";
 import { RefreshPreviewDialog } from "./RefreshPreviewDialog";
 import { RekordboxExportDialog } from "./RekordboxExportDialog";
 import { rekordboxExportBridge } from "../../api/rekordboxExportBridge";
-import { LibraryToolbar } from "./LibraryToolbar";
+import { LibrarySelectionBar } from "./LibrarySelectionBar";
+import { SelectAllButton } from "../../components/SelectionBar";
+import { usePageSearch } from "../../components/usePageSearch";
+import { NO_COLLECTIONS, NO_SETS, UNDO, couldNot, removedFrom } from "../../format/words";
 import { QUEUE_ACTION_LIMIT, useLibraryPlayback } from "./useLibraryPlayback";
 import { TrackDetailPanel } from "./TrackDetailPanel";
 import { defaultSortForScope, findByPath, flatten, type PlaylistTreeNode } from "./playlistTree";
@@ -105,7 +109,7 @@ import type { CleanTracks } from "../clean/cleanTracks";
 import { LibraryReadyNote } from "./LibraryReadyNote";
 import { isReadyNoteOpen, readImportedAt, rememberImport } from "./libraryNoticeMemory";
 import type { LibraryOpening, TrackOpening } from "./libraryLink";
-import { batchSelection, type BatchAction } from "./libraryBatch";
+import { batchSelection, batchSummary, type BatchAction } from "./libraryBatch";
 import { cleanCapLine, cleanTracksFor } from "./libraryClean";
 import { creditsFor } from "./libraryDiscover";
 import {
@@ -128,6 +132,7 @@ import {
 import { revealTrack } from "../clean/revealTrack";
 import { forgetWaveforms } from "../../components/waveform/waveformCache";
 import { useCollectionTree } from "./useCollectionTree";
+import { countNoun, formatCount } from "../../format/counts";
 import { goTo } from "../../format/words";
 import { libraryIdentityOf, useScopeFacts } from "./useScopeFacts";
 import { useScopeTotal } from "./useScopeTotal";
@@ -146,7 +151,7 @@ import { useTrackWindow } from "./useTrackWindow";
 import { reportUnexpected } from "../../reporting/reporting";
 import "../screens.css";
 import "./library.css";
-import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
+import { NEEDS_DESKTOP, needsDesktopApp, userMessage } from "../../api/userMessage";
 import { useTrackPlayMarks } from "../../components/player/playedTracks";
 
 const trackIdOf = (row: LibraryTrackRow) => row.id;
@@ -299,7 +304,9 @@ export function LibraryScreen({
 
   const watching = useRef<{ stop: () => void }[]>([]);
   const mounted = useRef(true);
-  const searchRef = useRef<HTMLDivElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
+  // Ctrl+F (Cmd+F) focuses the search on this page, as on every page (C189).
+  usePageSearch(searchInput);
   const shareLines = useSharedLines();
 
   useEffect(() => {
@@ -527,7 +534,7 @@ export function LibraryScreen({
   const scopeLabel = useMemo(() => {
     type Label = {
       name: string;
-      group: string | null;
+      group: readonly string[];
       count: number | null;
       folder: { count: number; noun: "playlist" | "Collection" } | null;
     };
@@ -548,7 +555,7 @@ export function LibraryScreen({
           : null;
       return { name: node.name, group, count: node.track_count, folder } as Label;
     }
-    return { name: "All tracks", group: null, count: null, folder: null } as Label;
+    return { name: "All tracks", group: [], count: null, folder: null } as Label;
   }, [collections.tree, headerScope.collectionId, headerScope.playlistId, playlists.selected, playlists.tree, smart]);
   const { facts: scopeFacts } = useScopeFacts(headerScope, libraryIdentity);
 
@@ -811,6 +818,48 @@ export function LibraryScreen({
     [batch],
   );
 
+  /**
+   * Take tracks out of the open Collection at once, and offer the way back (SB2, C21).
+   *
+   * No question first: the toast says what happened and carries an Undo, which puts the same
+   * tracks back. The ids are read before the removal, because "everything matching" is a question
+   * that has a different answer once they are gone. Undo adds them again at the end: the engine
+   * appends, so a manual order inside the Collection is not restored.
+   */
+  const removeFromCollection = useCallback(
+    async (collection: { id: number; name: string }, target: BatchTarget) => {
+      const ids =
+        target.selection.track_ids ?? (await selection.gatherIds(Number.POSITIVE_INFINITY));
+      const action: BatchAction = {
+        kind: "remove_from_collection",
+        value: collection.id,
+        target: collection.name,
+      };
+      await batch.run(
+        { action, selection: target.selection, count: target.count },
+        {
+          onResult: (result) => {
+            if (result.changed === 0 || ids.length === 0) {
+              push(batchSummary(action, result), "success");
+              return;
+            }
+            push(removedFrom(result.changed, collection.name), "success", {
+              label: UNDO,
+              onClick: () => {
+                void collections.addTracks(collection.id, ids).then((outcome) => {
+                  if (!mounted.current) return;
+                  if (outcome.ok) window_.reload();
+                  else push(couldNot("restore", collection.name), "warning");
+                });
+              },
+            });
+          },
+        },
+      );
+    },
+    [batch, collections, push, selection, window_],
+  );
+
   // ------------------------------------------------- rules, saved and edited
 
   /**
@@ -1041,12 +1090,8 @@ export function LibraryScreen({
               : undefined,
             onRemoveFromCollection: () =>
               scopedCollection &&
-              runAction(
-                {
-                  kind: "remove_from_collection",
-                  value: scopedCollection.id,
-                  target: scopedCollection.name,
-                },
+              void removeFromCollection(
+                { id: scopedCollection.id, name: scopedCollection.name },
                 target,
               ),
             onAddTag: () => openPicker("tag-add", target),
@@ -1109,6 +1154,7 @@ export function LibraryScreen({
       openNewSetFromSelection,
       openPicker,
       playback,
+      removeFromCollection,
       reveal,
       revealPath,
       runAction,
@@ -1323,7 +1369,7 @@ export function LibraryScreen({
     (id: number, patch: TagPatch) =>
       void runTagWrite(async () => {
         const bridge = window.cuepoint?.updateTag;
-        if (!bridge) throw new Error("You can only edit tags in the CuePoint desktop app.");
+        if (!bridge) throw new Error(needsDesktopApp("Editing tags"));
         const { tag } = await bridge({ id, ...patch });
         return `Saved “${tag.name}”.`;
       }),
@@ -1334,7 +1380,7 @@ export function LibraryScreen({
     (tag: TagUsage) =>
       void runTagWrite(async () => {
         const bridge = window.cuepoint?.deleteTag;
-        if (!bridge) throw new Error("You can only edit tags in the CuePoint desktop app.");
+        if (!bridge) throw new Error(needsDesktopApp("Editing tags"));
         const { untagged } = await bridge({ id: tag.id });
         return deletedLine(tag.name, untagged);
       }),
@@ -1345,7 +1391,7 @@ export function LibraryScreen({
     (source: TagUsage, target: TagUsage) =>
       void runTagWrite(async () => {
         const bridge = window.cuepoint?.mergeTags;
-        if (!bridge) throw new Error("You can only edit tags in the CuePoint desktop app.");
+        if (!bridge) throw new Error(needsDesktopApp("Editing tags"));
         const { moved } = await bridge({ source_id: source.id, target_id: target.id });
         return mergedLine(source.name, target.name, moved);
       }),
@@ -1444,7 +1490,7 @@ export function LibraryScreen({
         // with its folders taken out is a list whose indentation lies. A Set
         // holds tracks but is not a crate (fact 2): it has its own entry.
         disabled: !isCollection(node),
-        hint: isCollection(node) ? node.entry_count.toLocaleString() : undefined,
+        hint: isCollection(node) ? formatCount(node.entry_count) : undefined,
       }));
     }
     if (picker.kind === "set") {
@@ -1455,14 +1501,14 @@ export function LibraryScreen({
         depth: node.depth,
         icon: iconForKind(node.kind),
         disabled: !isSet(node),
-        hint: isSet(node) ? node.entry_count.toLocaleString() : undefined,
+        hint: isSet(node) ? formatCount(node.entry_count) : undefined,
       }));
     }
     return tags.map((tag) => ({
       id: tag.id,
       label: tag.name,
       icon: "tag" as const,
-      hint: tag.track_count.toLocaleString(),
+      hint: formatCount(tag.track_count),
     }));
   }, [collections.tree, picker, tags]);
 
@@ -1512,9 +1558,8 @@ export function LibraryScreen({
     [loadTags, picker, push, runAction],
   );
 
-  // Ctrl+A selects everything the query matches; Escape lets go of it;
-  // Ctrl+F is the in-page search, matching the Results screen (SHELL-10's
-  // shortcut list is the truth for both).
+  // Ctrl+A selects everything the query matches. Escape lets go of it from inside the table
+  // (`onClearSelection`), and Ctrl+F is `usePageSearch`'s (SHELL-10's shortcut list is the truth).
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const typing =
@@ -1526,16 +1571,6 @@ export function LibraryScreen({
         selection.selectAllMatching();
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
-        event.preventDefault();
-        searchRef.current?.querySelector<HTMLInputElement>("input")?.focus();
-        return;
-      }
-      // Escape belongs to whatever is on top, and already does: `Modal` takes
-      // it in the capture phase and stops it, so closing a dialog never
-      // reaches this listener. A `!dialogOpen` guard here was written and then
-      // removed — mutation testing showed nothing could observe it.
-      if (event.key === "Escape" && !typing) selection.clear();
     };
     globalThis.addEventListener("keydown", onKeyDown);
     return () => globalThis.removeEventListener("keydown", onKeyDown);
@@ -1578,7 +1613,7 @@ export function LibraryScreen({
   const pickFile = useCallback(async (): Promise<string | null> => {
     const open = window.cuepoint?.openXmlFileDialog;
     if (!open) {
-      push("Choosing a file needs the desktop app.", "warning");
+      push(needsDesktopApp("Choosing a file"), "warning");
       return null;
     }
     const picked = await open();
@@ -1882,9 +1917,9 @@ export function LibraryScreen({
   if (loading) {
     return (
       <div className="screen screen--stack library-screen">
-        <p className="library-screen__loading">
-          <PixelSpinner label="Reading your library…" />
-        </p>
+        {/* The header stays while the page loads, so the title does not appear late (C225). */}
+        <ScreenHeader title="Library" />
+        <Loading what="your library" centered />
       </div>
     );
   }
@@ -1926,7 +1961,7 @@ export function LibraryScreen({
       <LibraryHeader
         summary={summary}
         scopeName={scopeLabel.name}
-        scopeGroup={scopeLabel.group}
+        scopeTrail={scopeLabel.group}
         folder={scopeLabel.folder}
         facts={scopeFacts}
         fallbackCount={
@@ -1965,7 +2000,7 @@ export function LibraryScreen({
         />
 
         <div className="library-screen__main">
-          <div ref={searchRef}>
+          <div>
             {/* The notice line: one notice at a time, only after an import (LIB-1,
                 DEC-201). Inside the bar's grid row, as the Set note is, so the table
                 keeps the row that grows. The ready note goes first and the key note
@@ -1988,6 +2023,7 @@ export function LibraryScreen({
               />
             )}
             <FilterBar
+            searchInputRef={searchInput}
               vocabulary={vocabulary}
               // The bar's rules, not the query's: a Smart Collection that is
               // still what it saved resolves on the engine's side, so the
@@ -2028,6 +2064,23 @@ export function LibraryScreen({
                 onOpenEntity ? (page) => onOpenEntity(page.kind, page.ref) : undefined
               }
               openAddToken={openAdd}
+              trailing={
+                <>
+                  {window_.total > 0 && (
+                    <SelectAllButton
+                      onSelectAll={selection.selectAllMatching}
+                      disabled={selection.count >= window_.total}
+                    />
+                  )}
+                  {/* The plain count is the facts line's; the row says it only while a search or
+                      filter narrows the view. */}
+                  {scopeTotal > window_.total && (
+                    <span className="cp-count" role="status">
+                      {`Showing ${formatCount(window_.total)} of ${countNoun(scopeTotal, "track")}`}
+                    </span>
+                  )}
+                </>
+              }
             />
             {/* Inside the bar's grid row rather than a row of its own: the
                 page's rows are positional, and the table must keep the one
@@ -2048,24 +2101,34 @@ export function LibraryScreen({
             )}
           </div>
 
-          {/* One row directly above the table: the selection bar's buttons once
-              something is selected, the count and Select all (FLW-8, LIB-8). Its
-              height is the same either way, so the table never moves when a
-              selection is made or let go. Columns… is the table header's corner. */}
-          <LibraryToolbar
+          {/* The shared selection bar directly above the table, drawn only while something is
+              selected (C9, C215). Select all and the count are at the end of the filter row.
+              Columns… is the table header's corner. */}
+          <LibrarySelectionBar
             groups={barGroups}
-            total={window_.total}
-            scopeTotal={scopeTotal}
-            count="filtered"
             selected={selection.count}
             describedByQuery={selection.selection.all}
             openGroup={menu?.kind === "selection" ? menu.group : null}
             onOpenGroup={(id, anchor) => void openGroup(id, anchor)}
             onClear={selection.clear}
-            onSelectAll={selection.selectAllMatching}
           />
 
-          <div className="library-screen__table">
+          <div
+            className="library-screen__table"
+            onKeyDown={(event) => {
+              // Delete takes the selection out of the open Collection, with an Undo on the
+              // toast. In "All tracks", a playlist or a Set it does nothing at all: it must never
+              // be a way to lose a track from the library.
+              if (event.key !== "Delete" || event.defaultPrevented) return;
+              if (event.target instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName)) return;
+              if (!scopedCollection || scopedSet || selection.count === 0) return;
+              event.preventDefault();
+              void removeFromCollection(
+                { id: scopedCollection.id, name: scopedCollection.name },
+                barTarget(),
+              );
+            }}
+          >
             <TrackTable<LibraryTrackRow>
               columns={columns.visible}
               source={window_.source}
@@ -2085,6 +2148,7 @@ export function LibraryScreen({
               {...playMarks}
               onColumns={() => setPickerOpen(true)}
               onSelect={selection.onRowClick}
+              onClearSelection={selection.clear}
               // DEC-046's seam, finally given DEC-012's meaning: the row plays
               // and the whole view — the query, not the loaded window — becomes
               // the queue.
@@ -2151,7 +2215,7 @@ export function LibraryScreen({
               onClose={() => setMenu(null)}
               label={
                 menu.target.count > 1
-                  ? `Actions for ${menu.target.count.toLocaleString()} tracks`
+                  ? `Actions for ${formatCount(menu.target.count)} tracks`
                   : "Track actions"
               }
             />
@@ -2176,10 +2240,10 @@ export function LibraryScreen({
             onCreate={picker?.kind === "tag-add" ? (name) => void createAndTag(name) : undefined}
             emptyText={
               picker?.kind === "collection"
-                ? "There are no Collections yet — make one in the pane on the left."
+                ? NO_COLLECTIONS
                 : picker?.kind === "set"
-                  ? "There are no Sets yet — make one with New Set in the pane on the left."
-                  : "No tags yet."
+                  ? NO_SETS
+                  : "No tags yet"
             }
           />
 

@@ -86,11 +86,11 @@ describe("what happened", () => {
     );
   });
 
-  it("says there is no undo for Collection membership", () => {
+  it("says nothing about undo for Collection membership: the page's toast has its own Undo", () => {
     const add: BatchAction = { kind: "add_to_collection", value: 1, target: "Closers" };
-    expect(batchSummary(add, result({ changed: 40 }))).toBe(
-      "Added 40 tracks to “Closers”. There is no undo for Collection changes.",
-    );
+    expect(batchSummary(add, result({ changed: 40 }))).toBe("Added 40 tracks to “Closers”.");
+    const remove: BatchAction = { kind: "remove_from_collection", value: 1, target: "Closers" };
+    expect(batchSummary(remove, result({ changed: 40 }))).not.toMatch(/undo/i);
   });
 });
 
@@ -113,7 +113,8 @@ describe("what can be reverted", () => {
 
   it.each(["add_to_collection", "remove_from_collection"] as const)("not a %s batch", (kind) => {
     expect(canRevertKind(kind)).toBe(false);
-    expect(batchConsequence(kind)).toMatch(/no undo/);
+    expect(batchConsequence(kind)).toMatch(/not recorded in History/);
+    expect(batchConsequence(kind)).not.toMatch(/no undo|cannot be undone/);
   });
 });
 

@@ -187,6 +187,9 @@
      the body, so the table keeps its share in a narrow window. A 200 floor was tried (round 8)
      and cost the table two rows with Track details open. */
   grid-template-columns: clamp(min(calc(112px * var(--scale)), 45%), 26%, calc(220px * var(--scale))) minmax(0, 1fr);
+  /* One row as tall as the body: the pane's height is the body's, not its content's, so a taller
+     right side (Add filter open) never moves it (C198). */
+  grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
   /* The pane is its own column from its own top. The only line it shares with the right side is
@@ -292,7 +295,7 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-2xs);
   font-family: var(--font-data);
   color: var(--fg-primary);
 }

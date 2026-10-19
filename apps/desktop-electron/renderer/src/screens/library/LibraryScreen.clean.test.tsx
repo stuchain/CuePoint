@@ -273,7 +273,7 @@ const BETWEEN = [
   "Copy",
   "Match on Beatport…",
   "Review these matches",
-  "Use Beatport's values…",
+  "Copy Beatport values…",
   "Edit values…",
   "Show in folder",
 ];
@@ -374,7 +374,7 @@ describe("what the entries do", () => {
   });
 
   it.each([
-    ["Beatport", "Use Beatport's values…", "Use Beatport's values"],
+    ["Beatport", "Copy Beatport values…", "Use Beatport's values"],
     ["More", "Edit values…", "Edit values"],
   ] as const)(
     "opens the dialog for %s ▸ %s here, not on Clean (K4)",
@@ -484,38 +484,40 @@ describe("the toolbar row", () => {
     renderScreen();
     await tableReady();
     const table = screen.getByRole("table", { name: "Library tracks" });
-    const row = document.querySelector<HTMLElement>(".library-toolbar")!;
-    // Document order: the row, then the table. Nothing else stacks between.
+    const row = document.querySelector<HTMLElement>(".cp-filter-bar")!;
+    // Document order: the filter row, then the table. Select all is at the end of the row (C215).
     expect(row.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(row).queryByRole("button", { name: "Columns…" })).toBeNull();
     expect(within(table).getByRole("button", { name: "Columns…" })).toBeInTheDocument();
-    // The facts line says "3 tracks"; the bar repeats it only while a filter narrows the view (A3).
+    // The facts line says "3 tracks"; the row repeats it only while a filter narrows the view (A3).
     expect(within(row).queryByRole("status")).toBeNull();
     expect(within(row).getByRole("button", { name: "Select all" })).toBeInTheDocument();
-    expect(row.nextElementSibling?.contains(table)).toBe(true);
+    // No selection, so no bar between the filter row and the table.
+    expect(screen.queryByRole("toolbar", { name: "Selection" })).toBeNull();
   });
 
   it("shows no group buttons until something is selected, then four and the selected-count button", async () => {
     renderScreen();
     await tableReady();
-    expect(screen.queryByRole("toolbar", { name: "Selected tracks" })).toBeNull();
+    expect(screen.queryByRole("toolbar", { name: "Selection" })).toBeNull();
     for (const name of ["Play", "Organize", "Beatport", "More"]) {
       expect(screen.queryByRole("button", { name })).toBeNull();
     }
     expect(screen.queryByRole("button", { name: /^Clear selection/ })).toBeNull();
     await userEvent.click(screen.getByText("Track 1"));
-    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
+    const bar = screen.getByRole("toolbar", { name: "Selection" });
     for (const name of ["Play", "Organize", "Beatport", "More"]) {
       expect(within(bar).getByRole("button", { name })).not.toHaveAttribute("aria-disabled");
     }
-    expect(within(bar).getByRole("button", { name: "Clear selection, 1 selected" })).toHaveTextContent("1 selected");
+    expect(bar).toHaveTextContent("1 selected");
+    expect(within(bar).getByRole("button", { name: "Clear selection" })).toBeInTheDocument();
   });
 
-  it("clears the selection with the 2 selected button", async () => {
+  it("clears the selection with the bar's close button", async () => {
     renderScreen();
     await tableReady();
     await select("Track 1", "Track 2");
-    await userEvent.click(await screen.findByRole("button", { name: "Clear selection, 2 selected" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Clear selection" }));
     await waitFor(() => expect(screen.queryByRole("button", { name: /^Clear selection/ })).toBeNull());
   });
 

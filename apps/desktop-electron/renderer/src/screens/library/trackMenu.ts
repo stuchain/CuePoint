@@ -14,6 +14,7 @@
  * without opening a menu in each of three states.
  */
 import type { TrackContextMenuItem } from "../../components/TrackContextMenu";
+import { countNoun } from "../../format/counts";
 import { RATING_STARS } from "./trackEdits";
 
 /** Where the table is scoped, as far as these entries are concerned. */
@@ -52,9 +53,9 @@ export interface OrganizationMenuHandlers {
   onFavorite: (favorite: boolean) => void;
 }
 
-/** "★★★", the same glyphs the rest of the app rates with. */
+/** "3 stars", the same words the rest of the app rates with. */
 function stars(count: number): string {
-  return "★".repeat(count);
+  return countNoun(count, "star");
 }
 
 /**
@@ -96,6 +97,8 @@ export function organizationMenuItems(
       // Named, because "Remove from this Collection" over a table that could
       // be showing any of nine Collections is a question, not a label.
       label: `Remove from “${context.collection.name}”`,
+      // The Delete key does the same from the table (SB2, C127).
+      shortcut: "Delete",
       onSelect: handlers.onRemoveFromCollection,
     });
   }

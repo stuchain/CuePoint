@@ -89,7 +89,7 @@ describe("the rating submenu", () => {
     const rate = organizationMenuItems(IN_LIBRARY, handlers()).find(
       (item) => item.id === "rate",
     );
-    expect(labels(rate!.items!)).toEqual(["★", "★★", "★★★", "★★★★", "★★★★★", "Clear rating"]);
+    expect(labels(rate!.items!)).toEqual(["1 star", "2 stars", "3 stars", "4 stars", "5 stars", "Clear rating"]);
   });
 
   it("sets the number of stars that was chosen", () => {

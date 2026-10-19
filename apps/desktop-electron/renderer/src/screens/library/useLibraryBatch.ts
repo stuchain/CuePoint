@@ -55,7 +55,17 @@ export interface LibraryBatchController {
    * beside the value it names — and to the page otherwise. Resolves true when
    * the engine accepted it.
    */
-  run: (run: BatchRun, options?: { onRefused?: (message: string) => void }) => Promise<boolean>;
+  run: (
+    run: BatchRun,
+    options?: {
+      onRefused?: (message: string) => void;
+      /**
+       * What the engine counted. When given, the page says what happened (a toast with an Undo,
+       * C21) and this does not post its own summary.
+       */
+      onResult?: (result: BatchResult) => void;
+    },
+  ) => Promise<boolean>;
   /** Run the pending batch. */
   confirm: () => Promise<void>;
   /** Drop it. */
@@ -96,6 +106,7 @@ export function useLibraryBatch({
     async (
       run: BatchRun,
       onRefused?: (message: string) => void,
+      onResult?: (result: BatchResult) => void,
     ): Promise<boolean> => {
       const bridge = window.cuepoint?.applyBatch;
       if (!bridge) {
@@ -121,7 +132,8 @@ export function useLibraryBatch({
       // Applied on the request thread: the counts are already here.
       if (outcome.applied) {
         if (alive.current) setBusy(false);
-        onMessage(batchSummary(run.action, outcome.applied), "success");
+        if (onResult) onResult(outcome.applied);
+        else onMessage(batchSummary(run.action, outcome.applied), "success");
         onApplied();
         return true;
       }
@@ -159,10 +171,8 @@ export function useLibraryBatch({
       try {
         const payload = await results(jobId);
         const counts = payload.result as BatchResult | undefined;
-        onMessage(
-          counts ? batchSummary(run.action, counts) : "Done.",
-          "success",
-        );
+        if (counts && onResult) onResult(counts);
+        else onMessage(counts ? batchSummary(run.action, counts) : "Done.", "success");
       } catch {
         // The batch succeeded; not being able to read its receipt is not a
         // failure worth reporting as one.
@@ -194,8 +204,13 @@ export function useLibraryBatch({
   const cancel = useCallback(() => setPending(null), []);
 
   const runConfirmed = useCallback(
-    (run: BatchRun, options?: { onRefused?: (message: string) => void }) =>
-      apply(run, options?.onRefused),
+    (
+      run: BatchRun,
+      options?: {
+        onRefused?: (message: string) => void;
+        onResult?: (result: BatchResult) => void;
+      },
+    ) => apply(run, options?.onRefused, options?.onResult),
     [apply],
   );
 

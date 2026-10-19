@@ -774,7 +774,7 @@ describe("the notice line (LIB-1, DEC-201)", () => {
       note.compareDocumentPosition(filterRow) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
 
-    await userEvent.click(within(note).getByRole("button", { name: "Dismiss this note" }));
+    await userEvent.click(within(note).getByRole("button", { name: "Close" }));
 
     expect(screen.queryByText("Getting your library ready.")).toBeNull();
   });
@@ -818,7 +818,7 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     await importAnother();
 
     const note = await screen.findByRole("status", { name: "No Beatport keys yet" });
-    await userEvent.click(within(note).getByRole("button", { name: "Dismiss this note" }));
+    await userEvent.click(within(note).getByRole("button", { name: "Close" }));
     expect(screen.queryByText(/No tracks have a Beatport key yet/)).toBeNull();
 
     bridge.browseLibrary.mockImplementation(async (params: Record<string, unknown>) =>
@@ -828,7 +828,7 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     await userEvent.click(await screen.findByRole("checkbox", { name: /^8A/ }));
 
     const asked = await screen.findByRole("status", { name: "No Beatport keys yet" });
-    expect(within(asked).queryByRole("button", { name: "Dismiss this note" })).toBeNull();
+    expect(within(asked).queryByRole("button", { name: "Close" })).toBeNull();
     expect(screen.getAllByRole("status", { name: "No Beatport keys yet" })).toHaveLength(1);
   });
 
@@ -857,7 +857,7 @@ describe("the notice line (LIB-1, DEC-201)", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Library" }).parentElement).toContainElement(chip);
     expect(note).toBeInTheDocument();
 
-    await userEvent.click(within(note).getByRole("button", { name: "Dismiss this note" }));
+    await userEvent.click(within(note).getByRole("button", { name: "Close" }));
     expect(screen.getByRole("button", { name: /First steps:/ })).toBeInTheDocument();
   });
 
@@ -915,13 +915,13 @@ describe("an imported library", () => {
 
     const display = () => container.querySelector(".cp-screen-header__display");
     expect(display()).toHaveTextContent("All tracks");
-    expect(container.querySelector(".cp-screen-header__crumb")).toHaveTextContent("Library");
+    expect(container.querySelector(".cp-screen-header__crumb")).toBeNull();
     expect(screen.getByRole("heading", { level: 1, name: "Library" })).toBeInTheDocument();
 
     const tree = await screen.findByRole("tree", { name: "Playlists" });
     await userEvent.click(within(tree).getByText("Friday"));
     await waitFor(() => expect(display()).toHaveTextContent("Friday"));
-    expect(container.querySelector(".cp-screen-header__crumb")).toHaveTextContent("Playlists");
+    expect(screen.getByTestId("library-trail")).toHaveTextContent("Playlists");
     await waitFor(() =>
       expect(bridge.getLibraryQuickFacets).toHaveBeenCalledWith(
         expect.objectContaining({ q: "", filters: null, playlistId: expect.any(Number) }),
@@ -932,7 +932,7 @@ describe("an imported library", () => {
   it("says the export is unchanged when it is", async () => {
     renderScreen();
 
-    expect(await screen.findByText("In sync")).toBeInTheDocument();
+    expect(await screen.findByText("Up to date")).toBeInTheDocument();
     expect(screen.queryByText(/Unchanged since your last import/i)).toBeNull();
   });
 
@@ -1529,7 +1529,8 @@ describe("selecting (LIBUI-10, DEC-045)", () => {
     // count comes from the total, which is why it can be said at all.
     expect(await screen.findByText(/3 selected/)).toBeInTheDocument();
 
-    await userEvent.keyboard("{Escape}");
+    // Escape lets go from inside the table (C189's scope), not from anywhere on the page.
+    fireEvent.keyDown(screen.getByText("Track 2"), { key: "Escape" });
 
     await waitFor(() => expect(screen.queryByText(/\d selected/)).toBeNull());
   });
@@ -2280,7 +2281,7 @@ describe("organizing a selection (ORG-11)", () => {
 
       await openMenuOn("Track 2");
       await userEvent.click((await menuItem(/Rate/)));
-      await userEvent.click((await menuItem("★★★★")));
+      await userEvent.click((await menuItem("4 stars")));
 
       await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
       expect(lastBatch().operation).toEqual({ kind: "set_rating", value: 4 });
@@ -2313,6 +2314,100 @@ describe("organizing a selection (ORG-11)", () => {
         kind: "remove_from_collection",
         value: 12,
       });
+    });
+
+    it("removes at once with a toast, and Undo adds the same tracks back (SB2)", async () => {
+      renderScreen();
+      await tableReady();
+      await openCollection();
+      await userEvent.click(screen.getByText("Track 1"));
+      fireEvent.click(screen.getByText("Track 3"), { shiftKey: true });
+      await screen.findByText(/3 selected/);
+      bridge.applyBatch.mockResolvedValueOnce({
+        applied: {
+          batch_id: "b2",
+          operation: "remove_from_collection",
+          target: "Warmups",
+          total: 3,
+          changed: 3,
+          unchanged: 0,
+          failed: 0,
+          cancelled: false,
+        },
+      });
+
+      await openMenuOn("Track 2");
+      await userEvent.click(await menuItem("Remove from “Warmups”"));
+
+      // No question first: the toast says what happened and offers the way back.
+      expect(await screen.findByText("Removed 3 tracks from “Warmups”")).toBeInTheDocument();
+      expect(screen.queryByText(/no undo/i)).toBeNull();
+      expect(bridge.addTracksToCollection).not.toHaveBeenCalled();
+
+      await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+      await waitFor(() =>
+        expect(bridge.addTracksToCollection).toHaveBeenCalledWith({
+          collection_id: 12,
+          track_ids: [1, 2, 3],
+        }),
+      );
+    });
+
+    it("says it could not restore when Undo is refused", async () => {
+      renderScreen();
+      await tableReady();
+      await openCollection();
+      bridge.applyBatch.mockResolvedValueOnce({
+        applied: {
+          batch_id: "b3",
+          operation: "remove_from_collection",
+          target: "Warmups",
+          total: 1,
+          changed: 1,
+          unchanged: 0,
+          failed: 0,
+          cancelled: false,
+        },
+      });
+      await openMenuOn("Track 2");
+      await userEvent.click(await menuItem("Remove from “Warmups”"));
+      await screen.findByText("Removed 1 track from “Warmups”");
+      bridge.addTracksToCollection.mockRejectedValueOnce(new Error("offline"));
+
+      await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+      expect(await screen.findByText("Could not restore “Warmups”.")).toBeInTheDocument();
+    });
+
+    it("takes the selection out of the open Collection with the Delete key, and does nothing in All tracks (SB2)", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.click(screen.getByText("Track 2"));
+      await userEvent.keyboard("{Delete}");
+      expect(bridge.applyBatch).not.toHaveBeenCalled();
+
+      await openCollection();
+      await userEvent.click(screen.getByText("Track 2"));
+      await userEvent.keyboard("{Delete}");
+
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect(lastBatch().operation).toEqual({ kind: "remove_from_collection", value: 12 });
+    });
+
+    it("selects the row under a right-click when it was not selected, and the menu is about that one (SB1)", async () => {
+      renderScreen();
+      await tableReady();
+      await userEvent.click(screen.getByText("Track 1"));
+      fireEvent.click(screen.getByText("Track 2"), { shiftKey: true });
+      await screen.findByText(/2 selected/);
+
+      await openMenuOn("Track 3");
+
+      expect(await screen.findByText(/1 selected/)).toBeInTheDocument();
+      await userEvent.click(await menuItem("Favorite"));
+      await waitFor(() => expect(bridge.applyBatch).toHaveBeenCalled());
+      expect(lastBatch().selection).toEqual({ track_ids: [3] });
     });
 
     it("adds to a Collection chosen from the picker", async () => {
@@ -2460,7 +2555,7 @@ describe("organizing a selection (ORG-11)", () => {
       expect(screen.queryByText(/no undo/i)).toBeNull();
     });
 
-    it("still says there is no undo for Collection membership (DEC-058)", async () => {
+    it("says membership is not recorded in History, and does not say there is no undo (DEC-058)", async () => {
       renderScreen();
       await tableReady();
       await userEvent.keyboard("{Control>}a{/Control}");
@@ -2469,7 +2564,8 @@ describe("organizing a selection (ORG-11)", () => {
       await userEvent.click((await menuItem("Add to Collection…")));
       await userEvent.click(await screen.findByRole("option", { name: /Warmups/ }));
 
-      expect(await screen.findByText(/no undo/i)).toBeInTheDocument();
+      expect(await screen.findByText(/not recorded in History/i)).toBeInTheDocument();
+      expect(screen.queryByText(/no undo/i)).toBeNull();
       expect(screen.queryByText(/undone from Activity/i)).toBeNull();
     });
 
@@ -3006,7 +3102,7 @@ describe("the filter bar saves a Smart Collection (ORG-12)", () => {
 
     const header = document.querySelector<HTMLElement>(".library-header")!;
     expect(header.querySelector(".cp-screen-header__display")).toHaveTextContent("Recent techno");
-    expect(header.querySelector(".cp-screen-header__crumb")).toHaveTextContent("Collections");
+    expect(header.querySelector("[data-testid='library-trail']")).toHaveTextContent("Collections");
     // The facts are the Collection's, asked by its id, not the whole library's.
     expect(bridge.getLibraryQuickFacets).toHaveBeenLastCalledWith(
       expect.objectContaining({ scope: "smart", collectionId: 13, q: "", filters: null }),
@@ -3693,7 +3789,7 @@ describe("the Key list's link to the Keys page (PAGES-16)", () => {
 
   async function seeOnKeysPage() {
     await userEvent.click(within(document.querySelector(".cp-quick") as HTMLElement).getByRole("button", { name: "Key" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Open in Keys ›" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open in Keys" }));
   }
 
   it("opens Keys on the whole library when no playlist or Collection is open", async () => {
@@ -3761,14 +3857,14 @@ describe("the Key list's link to the Keys page (PAGES-16)", () => {
     await userEvent.click(within(tree).getByText("Recent techno"));
     await waitFor(() => expect(lastBrowse()).toMatchObject({ scope: "smart" }));
     await userEvent.click(within(document.querySelector(".cp-quick") as HTMLElement).getByRole("button", { name: "Key" }));
-    expect(screen.queryByRole("button", { name: "Open in Keys ›" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open in Keys" })).toBeNull();
   });
 
   it("offers no link where the page has nowhere to send it", async () => {
     renderScreen();
     await tableReady();
     await userEvent.click(within(document.querySelector(".cp-quick") as HTMLElement).getByRole("button", { name: "Key" }));
-    expect(screen.queryByRole("button", { name: "Open in Keys ›" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open in Keys" })).toBeNull();
   });
 });
 
@@ -3800,7 +3896,7 @@ describe("the shell polling beside the page (C19d)", () => {
     const polled = bridge.getLibrarySummary.mock.calls.length;
     // Several shell polls go by; each fails privately and quietly.
     await waitFor(() => expect(bridge.getLibrarySummary.mock.calls.length).toBeGreaterThanOrEqual(polled + 4));
-    expect(screen.queryByText("Reading your library…")).toBeNull();
+    expect(screen.queryByText("Loading your library…")).toBeNull();
     expect(screen.getAllByText("engine starting")).toHaveLength(1);
     expect(reportUnexpected).toHaveBeenCalledTimes(1);
   });
@@ -3825,8 +3921,8 @@ describe("revisiting the page (C19d)", () => {
     const before = reads();
 
     renderScreen();
-    // The first render: no "Reading your library…", the counts are already there.
-    expect(screen.queryByText("Reading your library…")).toBeNull();
+    // The first render: no "Loading your library…", the counts are already there.
+    expect(screen.queryByText("Loading your library…")).toBeNull();
     expect(screen.getByTestId("library-track-count")).toHaveTextContent("3,880");
     await tableReady();
     expect(reads()).toEqual(before);

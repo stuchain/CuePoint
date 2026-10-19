@@ -286,7 +286,7 @@ describe("the operations list's Discover entries", () => {
     const table = screen.getByRole("table", { name: "Library tracks" });
     fireEvent.click(within(table).getByText("Track 2"));
     fireEvent.click(within(table).getByText("Track 1"), { ctrlKey: true });
-    expect(await screen.findByRole("button", { name: "Clear selection, 2 selected" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Clear selection" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "More" }));
     const menu = await screen.findByRole("menu");
     expect(labels(menu)).toContain("Similar tracks");

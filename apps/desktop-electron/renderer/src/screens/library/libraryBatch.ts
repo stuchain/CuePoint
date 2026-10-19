@@ -19,6 +19,7 @@ import type {
   BatchSelection,
   OverrideField,
 } from "../../api/cuepointBridge.types";
+import { countNoun, formatCount } from "../../format/counts";
 import { starsFor } from "./filterText";
 import type { LibraryQuery } from "./libraryQuery";
 import type { Selection } from "./trackSelection";
@@ -120,7 +121,7 @@ export function batchOperation(action: BatchAction): BatchOperation {
 }
 
 function tracks(count: number): string {
-  return `${count.toLocaleString()} ${count === 1 ? "track" : "tracks"}`;
+  return countNoun(count, "track");
 }
 
 /**
@@ -251,24 +252,22 @@ function destination(action: BatchAction): string {
 export function batchSummary(action: BatchAction, result: BatchResult): string {
   const parts: string[] = [];
   if (result.unchanged > 0) {
-    parts.push(`${result.unchanged.toLocaleString()} ${alreadyWere(action)}`);
+    parts.push(`${formatCount(result.unchanged)} ${alreadyWere(action)}`);
   }
   if (result.failed > 0) {
     parts.push(
-      `${result.failed.toLocaleString()} could not be changed`,
+      `${formatCount(result.failed)} could not be changed`,
     );
   }
   const head = `${pastTense(action)} ${tracks(result.changed)}${destination(action)}`;
   const line = parts.length === 0 ? `${head}.` : `${head} — ${parts.join(", ")}.`;
   const opened = result.cancelled ? `Stopped early. ${line}` : line;
-  // No undo stack (DEC-008), but a batch can be reverted as one since CLEAN-13
-  // drew the control for it, so the toast says where — except for Collection
-  // membership, which records no History and cannot be reverted (DEC-058).
+  // A batch can be reverted as one since CLEAN-13 drew the control for it, so the toast says
+  // where. Collection membership records no History and says nothing: a removal has its own
+  // Undo on the toast the page shows, and an addition is undone by removing.
   // Not for a single track, where the toast would be longer than the edit.
-  if (result.changed <= 1) return opened;
-  return canRevertKind(action.kind)
-    ? `${opened} Each change is in the track's History, and the whole batch can be undone from Activity.`
-    : `${opened} There is no undo for ${action.holder === "set" ? "Set" : "Collection"} changes.`;
+  if (result.changed <= 1 || !canRevertKind(action.kind)) return opened;
+  return `${opened} Each change is in the track's History, and the whole batch can be undone from Activity.`;
 }
 
 /**
@@ -282,5 +281,5 @@ export function batchConsequence(kind: LibraryBatchKind, holder?: "set"): string
     return BATCH_RECORDED_NOTE;
   }
   const node = holder === "set" ? "a Set" : "a Collection";
-  return `It runs in the background, and there is no undo: adding tracks to or removing them from ${node} cannot be undone.`;
+  return `It runs in the background, and you can keep working. Adding tracks to ${node} or removing them is not recorded in History.`;
 }

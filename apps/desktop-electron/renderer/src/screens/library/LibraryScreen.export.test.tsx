@@ -246,9 +246,9 @@ describe("the Library header's entry (DEC-087)", () => {
       .getAllByRole("button")
       .filter((button) => !button.classList.contains("first-steps-chip"))
       .map((button) => button.textContent);
-    // Two buttons, never a menu (FLW-11, K9): where they do not fit, the visible labels
-    // shorten and the full names stay (see LibraryHeader.tsx).
-    expect(actions).toEqual(["Check for changes", "Export to Rekordbox…"]);
+    // The check is the refresh icon beside the state while the file is up to date (it has no
+    // words), so the labelled button is Export alone; never a menu (FLW-11, K9).
+    expect(actions).toEqual(["", "Export to Rekordbox…"]);
 
     await user.click(within(header).getByRole("button", { name: "Export to Rekordbox…" }));
     const dialog = await exportDialog();
@@ -345,7 +345,7 @@ describe("where export is not (DEC-087's amendment)", () => {
     await ready();
 
     await user.click(screen.getByText("Track 1"));
-    const bar = screen.getByRole("toolbar", { name: "Selected tracks" });
+    const bar = screen.getByRole("toolbar", { name: "Selection" });
     const labels: string[] = [];
     for (const group of within(bar).getAllByRole("button")) {
       if (group.getAttribute("aria-haspopup") !== "menu" || group.getAttribute("aria-disabled")) continue;

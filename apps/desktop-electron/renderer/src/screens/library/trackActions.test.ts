@@ -97,7 +97,7 @@ describe("the groups", () => {
       "Remove favorite",
       "Copy 3 tracks",
     ]);
-    expect(by.beatport).toEqual(["Match on Beatport…", "Review these matches", "Use Beatport's values…"]);
+    expect(by.beatport).toEqual(["Match on Beatport…", "Review these matches", "Copy Beatport values…"]);
     expect(by.more).toEqual([
       "Similar tracks",
       "Artist page",

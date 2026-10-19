@@ -22,6 +22,7 @@ import {
 } from "./libraryClean";
 import { organizationMenuItems, type OrganizationMenuHandlers } from "./trackMenu";
 import { thisPageBlock } from "../prepare/prepareMenus";
+import { formatCount } from "../../format/counts";
 
 export type TrackActionGroupId = "play" | "organize" | "beatport" | "more";
 
@@ -75,7 +76,7 @@ export interface TrackActionHandlers {
 }
 
 function tracks(count: number): string {
-  return `${count.toLocaleString()} tracks`;
+  return `${formatCount(count)} tracks`;
 }
 
 export function playItems(
@@ -88,6 +89,8 @@ export function playItems(
       // One row plays the view behind it (DEC-012); a selection *is* the
       // queue, because someone who picked five tracks meant those five.
       label: count > 1 ? `Play ${tracks(count)}` : "Play",
+      // Enter on a row plays it (C127); a selection plays from the menu or the bar.
+      ...(count === 1 ? { shortcut: "Enter" } : {}),
       onSelect: handlers.onPlay,
     },
     { id: "play-next", label: "Play next", onSelect: handlers.onPlayNext },
