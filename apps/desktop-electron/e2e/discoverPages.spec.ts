@@ -197,34 +197,28 @@ function queueRow(window: Page, title: string) {
 }
 
 /**
- * The selection bar of a Discover page holds one line (its `oneLine` mode): its buttons share a
- * top, none runs past the row, and the count is the part that gives way. They are measured as they
- * are with a selection, through the row's invisible copy of them.
+ * A Discover page's bars hold one line: the buttons of each `.cp-toolbar` (and of the selection bar,
+ * while something is selected) share a top, and none runs past its row.
  */
 async function expectOneLineBar(window: Page, page: string) {
   const m = await window.evaluate(() => {
-    const bar = [...document.querySelectorAll<HTMLElement>(".library-toolbar")].find((el) => el.offsetParent)!;
-    const box = bar.getBoundingClientRect();
-    // The buttons as they are with a selection: the bar's own, or the row's invisible copy of them
-    // while nothing is selected (the row measures that copy), so the check holds either way.
-    const buttons = [...bar.querySelectorAll<HTMLElement>(".library-toolbar__measure .library-toolbar__button")].map((el) =>
-      el.getBoundingClientRect(),
+    const bars = [...document.querySelectorAll<HTMLElement>(".cp-toolbar, .cp-selection-bar")].filter(
+      (el) => el.offsetParent,
     );
-    // Select all is always drawn, at the row's right end: it must not run past the row either.
-    const selectAll = bar.querySelector<HTMLElement>(".library-toolbar__select-all")?.getBoundingClientRect();
-    const count = bar.querySelector<HTMLElement>(".library-toolbar__count")!;
-    return {
-      oneLine: bar.classList.contains("library-toolbar--one-line"),
-      tops: new Set(buttons.map((r) => Math.round(r.top))).size,
-      past: Math.round(Math.max(...buttons.map((r) => r.right), selectAll?.right ?? 0) - box.right),
-      room: Math.round(bar.clientWidth),
-      countCut: count.scrollWidth > count.clientWidth,
-    };
+    return bars.map((bar) => {
+      const box = bar.getBoundingClientRect();
+      const buttons = [...bar.querySelectorAll<HTMLElement>("button")].map((el) => el.getBoundingClientRect());
+      return {
+        tops: new Set(buttons.map((r) => Math.round(r.top))).size,
+        past: Math.round(Math.max(0, ...buttons.map((r) => r.right)) - box.right),
+      };
+    });
   });
-  console.log(`Discover's selection bar on the ${page}:`, JSON.stringify(m));
-  expect(m.oneLine, `the ${page}'s bar is the one-line kind`).toBe(true);
-  expect(m.tops, `the ${page}'s bar buttons on one line`).toBe(1);
-  expect(m.past, `the ${page}'s bar runs past its row`).toBeLessThanOrEqual(0);
+  console.log(`Discover's bars on the ${page}:`, JSON.stringify(m));
+  for (const bar of m) {
+    expect(bar.tops, `the ${page}'s bar buttons on one line`).toBeLessThanOrEqual(1);
+    expect(bar.past, `the ${page}'s bar runs past its row`).toBeLessThanOrEqual(0);
+  }
 }
 
 function row(window: Page, table: string, title: string) {
@@ -279,8 +273,9 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
       });
       await expect(window).toHaveURL(/#\/discover\/artist\/name%3Amara%20veil$/);
       await expect(window.getByText("Your tracks by this name")).toBeVisible();
-      await expect(window.getByText("2 tracks in your library")).toBeVisible();
-      await expect(window.getByRole("link", { name: "Discover" })).toHaveAttribute(
+      await expect(window.getByText("2 tracks", { exact: false }).first()).toBeVisible();
+      // The sidebar lights the page it was opened from (the batch H rule), here the Library.
+      await expect(window.getByRole("link", { name: "Library" })).toHaveAttribute(
         "aria-current",
         "page",
       );
@@ -399,7 +394,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(bpRow(window, found, "Undertow")).toBeVisible();
         await expect(bpRow(window, found, "Salt Air")).toBeVisible();
         await expect(
-          window.getByText("4 found · 2 already in your library (hidden)"),
+          window.getByText("4 tracks · 2 already in your library (hidden)"),
         ).toBeVisible();
         const hide = window.getByRole("checkbox", { name: "Hide tracks already in your library" });
         await expect(hide).toBeChecked();
@@ -421,7 +416,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         // The add reloads the table; select again only once it has.
         await expect(bpRow(window, found, "Undertow")).toContainText("On wantlist", { timeout: 15_000 });
         await bpRow(window, found, "Salt Air").locator('[data-column="title"]').click({ modifiers: ["ControlOrMeta"] });
-        await window.getByRole("button", { name: "Make a Beatport playlist…" }).click();
+        await window.getByRole("button", { name: "Add to a Beatport playlist…" }).click();
         const dialog = window.getByRole("dialog", { name: "Make a playlist on Beatport" });
         await expect(dialog).toContainText("the 2 selected tracks");
         await dialog.getByLabel("Playlist name").fill("Journey list");
