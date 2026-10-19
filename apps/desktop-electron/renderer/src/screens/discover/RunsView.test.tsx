@@ -51,7 +51,13 @@ function install(listDiscoveryRuns: ReturnType<typeof vi.fn>) {
   };
 }
 
-function view(props: { runsVersion?: number } = {}) {
+function view(
+  props: {
+    runsVersion?: number;
+    onContinue?: (runId: number) => Promise<unknown>;
+    continueBlocked?: string | null;
+  } = {},
+) {
   return (
     <ScaleProvider>
       <RunsView
@@ -59,11 +65,49 @@ function view(props: { runsVersion?: number } = {}) {
         runningJobId={null}
         runsVersion={props.runsVersion ?? 0}
         onNewSearch={() => {}}
+        onContinue={props.onContinue ?? (async () => null)}
+        continueBlocked={props.continueBlocked ?? null}
         pollMs={60_000}
       />
     </ScaleProvider>
   );
 }
+
+describe("a dig that stopped partway", () => {
+  const stopped = RUNS.runs.find((run) => run.outcome === "failed")!;
+
+  it("says Stopped and why, and Continue picks it up", async () => {
+    install(vi.fn(async () => ({ value: RUNS, refusal: null })));
+    const onContinue = vi.fn(async () => null);
+    render(view({ onContinue }));
+    const nav = await screen.findByRole("navigation", { name: "Past digs" });
+    const card = within(nav)
+      .getAllByRole("listitem")
+      .find((item) => item.textContent?.includes("Stopped"))!;
+    expect(card).toHaveTextContent("Stopped because Beatport refused the sign-in.");
+    expect(within(card).queryByText("Failed")).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Continue" }));
+    expect(onContinue).toHaveBeenCalledWith(stopped.id);
+  });
+
+  it("cannot continue while it is blocked, and says why", async () => {
+    install(vi.fn(async () => ({ value: RUNS, refusal: null })));
+    const onContinue = vi.fn(async () => null);
+    render(view({ onContinue, continueBlocked: "Another dig is running." }));
+    const nav = await screen.findByRole("navigation", { name: "Past digs" });
+    const button = within(nav).getByRole("button", { name: "Continue" });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(onContinue).not.toHaveBeenCalled();
+  });
+
+  it("offers nothing on a finished dig", async () => {
+    install(vi.fn(async () => ({ value: { ...RUNS, runs: RUNS.runs.filter((r) => r.outcome === "succeeded"), total: 1 }, refusal: null })));
+    render(view());
+    const nav = await screen.findByRole("navigation", { name: "Past digs" });
+    expect(within(nav).queryByRole("button", { name: "Continue" })).toBeNull();
+  });
+});
 
 describe("the Results list", () => {
   it("keeps 'Show older digs' busy until the bigger list answers", async () => {

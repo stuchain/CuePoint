@@ -73,7 +73,8 @@ export function runStateLabel(run: DiscoverRun): string {
     case "cancelled":
       return "Stopped";
     case "failed":
-      return "Failed";
+      // A dig that fails keeps what it found, so it reads as stopped partway.
+      return "Stopped";
     default:
       return "Ended";
   }
@@ -83,8 +84,22 @@ export function runStateLabel(run: DiscoverRun): string {
 export function runStateTone(run: DiscoverRun): "info" | "success" | "warning" | "error" {
   if (run.running) return "info";
   if (run.outcome === "succeeded") return "success";
-  if (run.outcome === "cancelled") return "warning";
+  if (run.outcome === "cancelled" || run.outcome === "failed") return "warning";
   return "error";
+}
+
+/** Why Continue is off while another dig runs. */
+export const CONTINUE_BUSY = "Another dig is running.";
+
+/** A dig that stopped partway can be continued: the user's Stop, or Beatport's trouble. */
+export function canContinueRun(run: Pick<DiscoverRun, "running" | "outcome">): boolean {
+  return !run.running && (run.outcome === "cancelled" || run.outcome === "failed");
+}
+
+/** Why a dig stopped partway, for its card: "Stopped because Beatport could not be reached." */
+export function runStopLine(run: Pick<DiscoverRun, "outcome" | "error_class">): string {
+  if (run.outcome === "cancelled") return "Stopped when asked.";
+  return `Stopped because ${run.error_class ? stoppedBecause(run.error_class) : "of an error"}.`;
 }
 
 /** "146 tracks from 3 charts and 12 releases". */

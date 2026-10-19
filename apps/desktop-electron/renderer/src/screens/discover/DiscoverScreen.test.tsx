@@ -115,6 +115,7 @@ function install(overrides: Record<string, Fn> = {}) {
     getDiscoveryRunTracks: vi.fn(async (params: Record<string, unknown>) => runPage(params)),
     deleteDiscoveryRun: vi.fn(async () => asAnswer(fixture.run_deleted)),
     startDiscoveryRun: vi.fn(async () => asAnswer(fixture.run_started)),
+    continueDiscoveryRun: vi.fn(async () => asAnswer(fixture.run_started)),
     getWantlist: vi.fn(async (params: Record<string, unknown>) => wantlistPage(params ?? {})),
     addToWantlist: vi.fn(async () => asAnswer(fixture.wantlist_added)),
     removeFromWantlist: vi.fn(async () => asAnswer(fixture.wantlist_removed)),
@@ -194,7 +195,7 @@ async function openRun(id: number) {
   const list = await screen.findByRole("navigation", { name: "Past digs" });
   const item = within(list)
     .getAllByRole("button")
-    .find((button) => button.textContent?.includes(id === 1 ? "Finished" : "Failed"))!;
+    .find((button) => button.textContent?.includes(id === 1 ? "Finished" : "Stopped"))!;
   fireEvent.click(item);
 }
 
@@ -531,13 +532,20 @@ describe("the lookup prompt (DSC-4)", () => {
 });
 
 describe("Results", () => {
+  it("continues a dig that stopped partway through the bridge", async () => {
+    renderDiscover();
+    const list = await screen.findByRole("navigation", { name: "Past digs" });
+    fireEvent.click(await within(list).findByRole("button", { name: "Continue" }));
+    await waitFor(() => expect(bridge.continueDiscoveryRun).toHaveBeenCalledWith({ run_id: 2 }));
+  });
+
   it("lists the past searches newest first, each titled by its date, with its state, scope and count", async () => {
     renderDiscover();
     const list = await screen.findByRole("navigation", { name: "Past digs" });
     const items = within(list).getAllByRole("listitem");
     expect(items).toHaveLength(2);
     expect(items[0]).toHaveTextContent(/^Dig of /);
-    expect(items[0]).toHaveTextContent("Failed");
+    expect(items[0]).toHaveTextContent("Stopped");
     expect(items[0]).toHaveTextContent("0 tracks found");
     expect(items[1]).toHaveTextContent("Finished");
     expect(items[1]).toHaveTextContent("House, Techno (Peak Time / Driving) · Releases from");
@@ -1089,7 +1097,7 @@ describe("Results", () => {
     renderDiscover();
     await openRun(1);
     await waitFor(() => expect(bridge.listDiscoveryRuns.mock.calls.length).toBeGreaterThan(1));
-    expect(await screen.findByText(/Stopped because Beatport refused the sign-in/)).toBeInTheDocument();
+    expect((await screen.findAllByText(/Stopped because Beatport refused the sign-in/)).length).toBeGreaterThan(0);
   });
 });
 
@@ -1546,7 +1554,7 @@ describe("revisiting the page (C19d)", () => {
     const failed = () =>
       within(screen.getByRole("navigation", { name: "Past digs" }))
         .getAllByRole("button")
-        .some((button) => button.textContent?.includes("Failed"));
+        .some((button) => button.textContent?.includes("Stopped"));
     expect(failed()).toBe(true);
     await waitFor(() => expect(failed()).toBe(false));
     await waitFor(() => expect(reads()).toEqual({ options: before.options + 1, runs: before.runs + 1 }));

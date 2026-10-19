@@ -333,6 +333,48 @@ class _State:
     groups: Dict[Tuple[str, str], DiscoveryRunGroup] = field(default_factory=dict)
     artist_ids: Dict[str, int] = field(default_factory=dict)
     last_flush: float = 0.0
+    # What is fully read, for a later continue (saved with the next flush).
+    done_genres: Set[int] = field(default_factory=set)
+    done_charts: Set[int] = field(default_factory=set)
+    done_artists: Set[str] = field(default_factory=set)
+    done_labels: Set[str] = field(default_factory=set)
+    progress_dirty: bool = False
+
+    def progress(self) -> Dict[str, List[Any]]:
+        """The units fully read, as ``params_json`` keeps them."""
+        return {
+            "genres": sorted(self.done_genres),
+            "charts": sorted(self.done_charts),
+            "artists": sorted(self.done_artists),
+            "labels": sorted(self.done_labels),
+        }
+
+    def mark(self, done: Set[Any], unit: Any) -> None:
+        """Note a unit fully read."""
+        if unit not in done:
+            done.add(unit)
+            self.progress_dirty = True
+
+
+@dataclass(frozen=True)
+class _Scope:
+    """What a run looks at, once resolved: the library names and Beatport ids."""
+
+    mode: str
+    artists: List[Tuple[str, str]]
+    linked_artists: Dict[int, str]
+    labels: List[Tuple[str, str]]
+    linked_labels: Dict[str, int]
+    releases_from: date
+    releases_to: date
+
+
+class RunNotContinuable(ValueError):
+    """A run that cannot be continued: ``reason`` is ``running`` or ``finished``."""
+
+    def __init__(self, run_id: int, reason: str) -> None:
+        super().__init__(f"Discovery run {run_id} is {reason}")
+        self.reason = reason
 
 
 class _Cancelled(Exception):
@@ -626,9 +668,143 @@ class DiscoveryService(IDiscoveryService):
                 "releases_read": 0,
             },
         )
+        scope = _Scope(
+            mode,
+            artists,
+            linked_artists,
+            labels,
+            linked_labels,
+            releases_from,
+            releases_to,
+        )
+        return self._drive(state, request, scope, on_progress, should_cancel)
+
+    def check_continuable(self, run_id: int) -> DiscoveryRun:
+        """The run, when it stopped partway and so can continue.
+
+        Raises:
+            LookupError: If there is no such run.
+            RunNotContinuable: If it is running, or it finished.
+        """
+        run = self._runs.get_run(run_id)
+        if run is None:
+            raise LookupError(f"No discovery run {run_id}")
+        if run.is_running:
+            raise RunNotContinuable(run_id, "running")
+        if run.outcome == RUN_SUCCEEDED:
+            raise RunNotContinuable(run_id, "finished")
+        return run
+
+    def continue_run(
+        self,
+        run_id: int,
+        *,
+        job_id: Optional[str] = None,
+        on_progress: Optional[Callable[[str, int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> DiscoveryRun:
+        """Pick a run that stopped partway up where it stopped.
+
+        The same run: its id, ``started_at`` and tracks stay, it reads as
+        running again, and it ends in the usual outcomes. The request is
+        rebuilt from the scope the run recorded (not the library as it is now),
+        and charts, artists and labels the run recorded as fully read are not
+        asked for again. A run stored before progress was recorded has none, so
+        it re-reads everything; what it finds is deduplicated by the store
+        (tracks and reasons are kept once), so it still adds only what is
+        missing, and only costs the requests.
+
+        Raises:
+            LookupError: If there is no such run.
+            RunNotContinuable: If it is running, or it finished.
+        """
+        run = self.check_continuable(run_id)
+        params = run.params
+        scope_artists = params.get("artists") or {}
+        scope_labels = params.get("labels") or {}
+        picked_artists = scope_artists.get("picked")
+        picked_labels = scope_labels.get("picked")
+        releases_from = date.fromisoformat(params["releases_from"])
+        releases_to = date.fromisoformat(params["releases_to"])
+        request = DiscoveryRequest(
+            genre_ids=tuple(int(g) for g in params.get("genre_ids") or ()),
+            charts_from=date.fromisoformat(params["charts_from"]),
+            charts_to=date.fromisoformat(params["charts_to"]),
+            new_releases_days=int(
+                params.get("new_releases_days") or self._configured_days()
+            ),
+            artists=None if picked_artists is None else tuple(picked_artists),
+            labels=None if picked_labels is None else tuple(picked_labels),
+            include_user_charts=bool(params.get("include_user_charts", False)),
+            releases_from=releases_from,
+            releases_to=releases_to,
+        )
+        artists = [
+            (str(e["key"]), str(e["name"])) for e in scope_artists.get("scope", [])
+        ]
+        labels = [
+            (str(e["key"]), str(e["name"])) for e in scope_labels.get("scope", [])
+        ]
+        artist_keys = {key for key, _ in artists}
+        label_keys = {key for key, _ in labels}
+        scope = _Scope(
+            params.get("charts_mode") or charts_mode(request),
+            artists,
+            {
+                beatport_id: key
+                for beatport_id, key in self._credits.artist_ids_by_key().items()
+                if key in artist_keys
+            },
+            labels,
+            {
+                key: beatport_id
+                for key, beatport_id in self._credits.label_ids_by_key().items()
+                if key in label_keys
+            },
+            releases_from,
+            releases_to,
+        )
+        reopened = self._runs.reopen_run(run_id, job_id)
+        done = reopened.params.get("progress") or {}
+        state = _State(
+            run_id=run_id,
+            counts={
+                "artists_in_scope": run.artists_in_scope,
+                "labels_in_scope": run.labels_in_scope,
+                "labels_resolved": run.labels_resolved,
+                "charts_read": run.charts_read,
+                "releases_read": run.releases_read,
+            },
+            done_genres={int(g) for g in done.get("genres", [])},
+            done_charts={int(c) for c in done.get("charts", [])},
+            done_artists={str(a) for a in done.get("artists", [])},
+            done_labels={str(x) for x in done.get("labels", [])},
+        )
+        state.releases.update(
+            source.source_id
+            for source in self._runs.run_sources(run_id)
+            if source.source_type in (SOURCE_LABEL_RELEASE, SOURCE_ARTIST_RELEASE)
+        )
+        for card in self._runs.run_groups(run_id):
+            state.groups[(card.group.kind, card.group.key)] = card.group
+            if card.group.kind == GROUP_ARTIST and card.group.beatport_id:
+                state.artist_ids.setdefault(card.group.key, card.group.beatport_id)
+        return self._drive(state, request, scope, on_progress, should_cancel)
+
+    def _drive(
+        self,
+        state: _State,
+        request: DiscoveryRequest,
+        scope: _Scope,
+        on_progress: Optional[Callable[[str, int, int], None]],
+        should_cancel: Optional[Callable[[], bool]],
+    ) -> DiscoveryRun:
+        """Read what is not read yet, then end the run in one of its outcomes."""
         state.last_flush = self._monotonic()
         cancel = should_cancel or (lambda: False)
         progress = on_progress or (lambda stage, done, total: None)
+        mode, artists, labels = scope.mode, scope.artists, scope.labels
+        artist_names = dict(artists)
         outcome, error, error_class = RUN_SUCCEEDED, None, None
         try:
             # An explicit pick is a card each, found or not; "every" is only
@@ -640,24 +816,36 @@ class DiscoveryService(IDiscoveryService):
                 for key, name in labels:
                     self._group(state, GROUP_LABEL, key, name)
             self._read_charts(
-                state, request, mode, artist_names, linked_artists, progress, cancel
+                state,
+                request,
+                mode,
+                artist_names,
+                scope.linked_artists,
+                progress,
+                cancel,
             )
             if mode == CHARTS_ARTISTS:
                 self._read_artist_releases(
                     state,
                     request,
                     artists,
-                    linked_artists,
-                    releases_from,
-                    releases_to,
+                    scope.linked_artists,
+                    scope.releases_from,
+                    scope.releases_to,
                     progress,
                     cancel,
                 )
             resolved = self._resolve_labels(
-                state, labels, linked_labels, progress, cancel
+                state, labels, scope.linked_labels, progress, cancel
             )
             self._read_releases(
-                state, request, resolved, releases_from, releases_to, progress, cancel
+                state,
+                request,
+                resolved,
+                scope.releases_from,
+                scope.releases_to,
+                progress,
+                cancel,
             )
             self._flush(state)
         except _Cancelled:
@@ -669,7 +857,9 @@ class DiscoveryService(IDiscoveryService):
                 stopped.error_class,
             )
         except Exception as exc:  # noqa: BLE001 — the run is ended, not left open
-            _logger.warning("[discover] run %s failed: %s", run.id, exc, exc_info=True)
+            _logger.warning(
+                "[discover] run %s failed: %s", state.run_id, exc, exc_info=True
+            )
             outcome, error = RUN_FAILED, str(exc) or type(exc).__name__
         if outcome != RUN_SUCCEEDED:
             self._flush(state)
@@ -761,24 +951,23 @@ class DiscoveryService(IDiscoveryService):
     def _flush(self, state: _State) -> None:
         """Commit what the run holds, with its counts, in one transaction."""
         state.last_flush = self._monotonic()
-        if (
-            not state.pending_tracks
-            and not state.pending_sources
-            and not state.pending_groups
-        ):
-            return
         tracks, sources = state.pending_tracks, state.pending_sources
         groups = state.pending_groups
-        state.pending_tracks, state.pending_sources = [], []
-        state.pending_groups = []
-        self._runs.record_found(
-            state.run_id,
-            tracks,
-            sources,
-            self._clock().isoformat(),
-            _stored_counts(state),
-            groups,
-        )
+        if tracks or sources or groups:
+            state.pending_tracks, state.pending_sources = [], []
+            state.pending_groups = []
+            self._runs.record_found(
+                state.run_id,
+                tracks,
+                sources,
+                self._clock().isoformat(),
+                _stored_counts(state),
+                groups,
+            )
+        if state.progress_dirty:
+            # After the rows it describes, so it never runs ahead of them.
+            self._runs.save_progress(state.run_id, state.progress())
+            state.progress_dirty = False
 
     def _group(
         self,
@@ -842,8 +1031,12 @@ class DiscoveryService(IDiscoveryService):
         # Charts by library artists need artists to match; general charts do not.
         genres = request.genre_ids if (artist_names or mode == CHARTS_GENRE) else ()
         progress(STAGE_CHARTS, 0, len(genres))
-        seen: Set[int] = set()
+        seen: Set[int] = set(state.done_charts)
         for done, genre_id in enumerate(genres):
+            if genre_id in state.done_genres:
+                progress(STAGE_CHARTS, done + 1, len(genres))
+                continue
+            complete = True
             charts = self._ask(
                 state,
                 cancel,
@@ -873,8 +1066,8 @@ class DiscoveryService(IDiscoveryService):
                         state, cancel, self._beatport.chart_tracks, chart.id
                     )
                     if tracks is _FAILED:
+                        complete = False
                         continue
-                    state.counts["charts_read"] += 1
                     curator = (
                         chart.artist.name if chart.artist else chart.owner_name
                     ) or None
@@ -888,6 +1081,11 @@ class DiscoveryService(IDiscoveryService):
                         owner_key=owner_key,
                         curator=curator,
                         art_url=chart.image_url,
+                    )
+                    # A chart read has its card, so a continued run that reads
+                    # a chart again (an old run keeps no progress) counts it once.
+                    state.counts["charts_read"] = sum(
+                        1 for kind, _ in state.groups if kind == GROUP_CHART
                     )
                     if owner_key is not None and owner_name is not None:
                         # "Every artist": a card for each one who made a chart.
@@ -917,6 +1115,11 @@ class DiscoveryService(IDiscoveryService):
                             for track in tracks
                         ],
                     )
+                    state.mark(state.done_charts, chart.id)
+            else:
+                complete = False
+            if complete:
+                state.mark(state.done_genres, genre_id)
             progress(STAGE_CHARTS, done + 1, len(genres))
 
     # --- artists
@@ -948,6 +1151,10 @@ class DiscoveryService(IDiscoveryService):
         )
         now = self._clock()
         for done, (key, name) in enumerate(artists):
+            if key in state.done_artists:
+                progress(STAGE_ARTISTS, done + 1, len(artists))
+                continue
+            asked_ok = True
             beatport_id: Optional[int] = ids_by_key.get(key)
             lookup = cached.get(key)
             if (
@@ -960,6 +1167,7 @@ class DiscoveryService(IDiscoveryService):
                 answer = self._ask(
                     state, cancel, self._beatport.search_artist_by_name, name
                 )
+                asked_ok = answer is not _FAILED
                 if answer is not _FAILED:
                     beatport_id = positive_id(answer)
                     self._runs.save_lookup(
@@ -987,6 +1195,7 @@ class DiscoveryService(IDiscoveryService):
                     beatport_id=beatport_id,
                     art_url=_artist_art(tracks, beatport_id),
                 )
+                asked_ok = tracks is not _FAILED
                 if tracks is not _FAILED:
                     released = _in_genres(
                         (t for t in tracks if t.release_id is not None),
@@ -1012,6 +1221,8 @@ class DiscoveryService(IDiscoveryService):
                             for track in released
                         ],
                     )
+            if asked_ok:
+                state.mark(state.done_artists, key)
             progress(STAGE_ARTISTS, done + 1, len(artists))
 
     # --- labels
@@ -1031,7 +1242,12 @@ class DiscoveryService(IDiscoveryService):
         )
         now = self._clock()
         resolved: List[Tuple[str, str, int]] = []
+        already = sum(1 for key, _ in labels if key in state.done_labels)
         for done, (key, name) in enumerate(labels):
+            if key in state.done_labels:
+                # Read by an earlier pass of this run: not resolved again.
+                progress(STAGE_LABELS, done + 1, len(labels))
+                continue
             beatport_id: Optional[int] = linked.get(key)
             lookup = cached.get(key)
             if (
@@ -1056,7 +1272,7 @@ class DiscoveryService(IDiscoveryService):
                     )
             if beatport_id is not None:
                 resolved.append((key, name, beatport_id))
-                state.counts["labels_resolved"] = len(resolved)
+                state.counts["labels_resolved"] = len(resolved) + already
             progress(STAGE_LABELS, done + 1, len(labels))
         self._runs.update_counts(state.run_id, _stored_counts(state))
         return resolved
@@ -1112,6 +1328,7 @@ class DiscoveryService(IDiscoveryService):
                         for track in released
                     ],
                 )
+                state.mark(state.done_labels, key)
             progress(STAGE_RELEASES, done + 1, len(labels))
 
     # ------------------------------------------------------------- reading

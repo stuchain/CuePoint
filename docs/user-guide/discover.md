@@ -93,6 +93,13 @@ of" its date, with how it ended, what it looked for and how many tracks it found
 Choose a dig to open it beside the list; its card stays highlighted and is the heading, so the dig's name is not repeated under it; when the page is narrow, the list
 sits above it instead. With no dig yet it says so and offers **New dig**.
 
+A dig that stopped partway (you pressed **Stop**, Beatport did not answer, the
+sign-in was refused, or CuePoint was closed) reads **Stopped**, says why under its
+counts, and has a **Continue** button. Continue picks up where it stopped: it
+skips the charts, artists and labels already read and adds what it finds to the
+same dig. It is off while another dig runs or Beatport cannot be used. A dig
+made before this version re-reads everything, but still adds only what is missing.
+
 An open dig shows how it ended, including why, if Beatport stopped it, and
 one line saying what it looked for (for example "House · last 30 days · 67
 artists · 28 labels"); open that line for the full wording and the artist and

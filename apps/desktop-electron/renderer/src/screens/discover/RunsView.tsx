@@ -48,6 +48,10 @@ interface RunsViewProps {
   runsVersion: number;
   /** Opens the New search tab, from "No searches yet". */
   onNewSearch: () => void;
+  /** Picks a stopped dig up where it stopped; a refusal comes back as an answer. */
+  onContinue: (runId: number) => Promise<unknown>;
+  /** Why Continue is off right now (another dig, Beatport), or null. */
+  continueBlocked: string | null;
   /** How often to ask while a search runs; the status strip's interval by default. */
   pollMs?: number;
 }
@@ -57,6 +61,8 @@ export function RunsView({
   runningJobId,
   runsVersion,
   onNewSearch,
+  onContinue,
+  continueBlocked,
   pollMs = JOB_POLL_MS,
 }: RunsViewProps) {
   // The list is read through the shared cache (C19d): a page shown again has it
@@ -260,6 +266,11 @@ export function RunsView({
           selected={selected}
           onSelect={setSelected}
           onDelete={setDeleting}
+          onContinue={(run) => {
+            setSelected(run.id);
+            void onContinue(run.id);
+          }}
+          continueBlocked={continueBlocked}
           onShowMore={showMore}
           loadingMore={loadingMore}
         />

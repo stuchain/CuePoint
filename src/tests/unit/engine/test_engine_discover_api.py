@@ -287,6 +287,7 @@ GET_PATHS = [
 POST_PATHS = [
     api.RUN_START_PATH,
     run_path(1, "/delete"),
+    run_path(1, "/continue"),
     api.WANTLIST_ADD_PATH,
     api.WANTLIST_REMOVE_PATH,
     api.WANTLIST_NOTE_PATH,
@@ -629,6 +630,70 @@ class TestStartingARun:
             assert error["job_type"] == JOB_TYPE_DISCOVERY
         finally:
             release.set()
+
+
+class TestContinuingARun:
+    def stopped(self, engine, store, world) -> int:
+        world.failures.append(
+            lambda path, params, n: 401 if "label_id" in params else None
+        )
+        job = ok(post(engine, api.RUN_START_PATH, ASK), 202)
+        assert finished(store, job["id"]).state is JobState.FAILED
+        world.failures.clear()
+        return int(store.get(job["id"]).result["id"])
+
+    def test_it_answers_202_and_ends_the_same_run(self, engine, store, world):
+        run_id = self.stopped(engine, store, world)
+        job = ok(post(engine, run_path(run_id, "/continue"), {}), 202)
+        assert finished(store, job["id"]).state is JobState.SUCCEEDED
+        run = ok(get(engine, run_path(run_id)))["run"]
+        assert (run["outcome"], run["running"], run["tracks_found"]) == (
+            "succeeded",
+            False,
+            7,
+        )
+        assert ok(get(engine, api.RUNS_PATH))["total"] == 1
+
+    def test_a_finished_run_an_unknown_one_and_a_running_one_are_refused(
+        self, engine, store, ran
+    ):
+        refused(post(engine, run_path(ran, "/continue"), {}), 400, "INVALID_REQUEST")
+        refused(
+            post(engine, run_path(999, "/continue"), {}), 404, "DISCOVERY_RUN_NOT_FOUND"
+        )
+        running = resolve("IDiscoveryRepository").start_run(
+            DiscoveryRun(started_at="2026-09-23T12:00:00+00:00", params_json="{}")
+        )
+        refused(
+            post(engine, run_path(running.id, "/continue"), {}),
+            409,
+            "DISCOVERY_RUN_RUNNING",
+        )
+
+    def test_it_is_refused_while_another_dig_runs_or_without_a_token(
+        self, engine, store, world
+    ):
+        run_id = self.stopped(engine, store, world)
+        release = blocking_job(store, JOB_TYPE_DISCOVERY)
+        try:
+            refused(
+                post(engine, run_path(run_id, "/continue"), {}), 409, "DISCOVER_BUSY"
+            )
+        finally:
+            release.set()
+        use_beatport(BeatportWorld(access_token=""))
+        error = refused(
+            post(engine, run_path(run_id, "/continue"), {}), 409, "BEATPORT_REFUSED"
+        )
+        assert error["reason"] == "no_token"
+
+    def test_a_body_is_not_taken(self, engine, store, world):
+        run_id = self.stopped(engine, store, world)
+        refused(
+            post(engine, run_path(run_id, "/continue"), {"x": 1}),
+            400,
+            "INVALID_REQUEST",
+        )
 
 
 class TestReadingRuns:

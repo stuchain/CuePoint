@@ -1536,6 +1536,18 @@ class IDiscoveryRepository(ABC):
         ...
 
     @abstractmethod
+    def save_progress(
+        self, run_id: int, progress: Mapping[str, Sequence[object]]
+    ) -> None:
+        """Record what a running run has fully read, for a later continue."""
+        ...
+
+    @abstractmethod
+    def reopen_run(self, run_id: int, job_id: Optional[str] = None) -> "DiscoveryRun":
+        """Mark a failed or cancelled run as running again."""
+        ...
+
+    @abstractmethod
     def close_interrupted(self, finished_at: str, error: str) -> List[int]:
         """Fail every run still marked running; the ids closed."""
         ...
@@ -1681,6 +1693,23 @@ class IDiscoveryService(ABC):
         should_cancel: Optional[Callable[[], bool]] = None,
     ) -> "DiscoveryRun":
         """Run discovery and return the run as it ended."""
+        ...
+
+    @abstractmethod
+    def check_continuable(self, run_id: int) -> "DiscoveryRun":
+        """The run, if it stopped partway and can continue; else LookupError/ValueError."""
+        ...
+
+    @abstractmethod
+    def continue_run(
+        self,
+        run_id: int,
+        *,
+        job_id: Optional[str] = None,
+        on_progress: Optional[Callable[[str, int, int], None]] = None,
+        should_cancel: Optional[Callable[[], bool]] = None,
+    ) -> "DiscoveryRun":
+        """Pick a stopped run up where it stopped; the run as it ended."""
         ...
 
     @abstractmethod

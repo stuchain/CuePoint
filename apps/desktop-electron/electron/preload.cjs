@@ -359,6 +359,7 @@ contextBridge.exposeInMainWorld("cuepoint", withEngineWords({
   },
   getBeatportPlaylists: () => ipcRenderer.invoke("engine:getBeatportPlaylists"),
   startDiscoveryRun: (params) => ipcRenderer.invoke("engine:startDiscoveryRun", params),
+  continueDiscoveryRun: (params) => ipcRenderer.invoke("engine:continueDiscoveryRun", params),
   deleteDiscoveryRun: (params) => ipcRenderer.invoke("engine:deleteDiscoveryRun", params),
   getWantlist: (params) => ipcRenderer.invoke("engine:getWantlist", params),
   addToWantlist: (params) => ipcRenderer.invoke("engine:addToWantlist", params),

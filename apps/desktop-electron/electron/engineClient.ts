@@ -3557,6 +3557,14 @@ export class EngineClient {
     return this.discoverPost("/api/v1/discover/runs/start", params ?? {});
   }
 
+  /** Pick a run that stopped partway up where it stopped; the same run. */
+  async continueDiscoveryRun(params: { run_id: number }): Promise<DiscoverAnswer<DiscoverJobStarted>> {
+    return this.discoverPost(
+      `/api/v1/discover/runs/${encodeURIComponent(String(params.run_id))}/continue`,
+      {},
+    );
+  }
+
   /** Delete an ended run and its tracks; the catalog rows stay. */
   async deleteDiscoveryRun(params: { run_id: number }): Promise<DiscoverAnswer<DiscoverRunDeleted>> {
     return this.discoverPost(

@@ -1173,6 +1173,12 @@ export class EngineSupervisor {
     return (await this.readyClient()).startDiscoveryRun(params);
   }
 
+  async continueDiscoveryRun(
+    params: Parameters<EngineClient["continueDiscoveryRun"]>[0],
+  ): Promise<DiscoverAnswer<DiscoverJobStarted>> {
+    return (await this.readyClient()).continueDiscoveryRun(params);
+  }
+
   async deleteDiscoveryRun(
     params: Parameters<EngineClient["deleteDiscoveryRun"]>[0],
   ): Promise<DiscoverAnswer<DiscoverRunDeleted>> {

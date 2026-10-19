@@ -847,6 +847,9 @@ function registerIpcHandlers(): void {
   handle("engine:startDiscoveryRun", (_event, params) =>
     engine.startDiscoveryRun(params),
   );
+  handle("engine:continueDiscoveryRun", (_event, params) =>
+    engine.continueDiscoveryRun(params),
+  );
   handle("engine:deleteDiscoveryRun", (_event, params) =>
     engine.deleteDiscoveryRun(params),
   );

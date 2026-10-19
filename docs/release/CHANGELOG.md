@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Continue a dig that stopped partway.** A dig stopped by Beatport, a refused sign-in, a closed app or your **Stop** now reads "Stopped" (not "Failed"), says why on its card and has a **Continue** button that picks it up where it stopped, skipping the charts, artists and labels already read and adding to the same dig. Clean's Past searches also say why a match stopped ("Stopped: Beatport did not answer."); **Resume** was already there.
+
 ### Changed
 - **UI consistency foundation.** Buttons have six button looks (primary, secondary, write, danger, confirm-delete and quiet; a bare button is secondary), status text uses the text colours, font weights have names, and chips, notices, toasts, menus and dialogs are shared. Writing to files is **Sync** ("Up to date" when nothing is waiting), match states read Confirmed, To check, No match, Not looked up yet and Rejected, tables share one look, and column widths are remembered in 1x units so a text-size change keeps them. Waveform colours follow Rekordbox in every theme.
 

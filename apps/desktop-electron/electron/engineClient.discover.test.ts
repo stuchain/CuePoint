@@ -205,6 +205,7 @@ describe("actions", () => {
 
     await c.startDiscoveryRun({ genre_ids: [5], artists: null });
     await c.startDiscoveryRun();
+    await c.continueDiscoveryRun({ run_id: 3 });
     await c.deleteDiscoveryRun({ run_id: 3 });
     await c.addToWantlist({ track_ids: [1, 2], run_id: 3 });
     await c.removeFromWantlist({ track_ids: [2] });
@@ -217,6 +218,7 @@ describe("actions", () => {
     expect(calls.map((call) => [new URL(call.url).pathname, sent(call)])).toEqual([
       ["/api/v1/discover/runs/start", { genre_ids: [5], artists: null }],
       ["/api/v1/discover/runs/start", {}],
+      ["/api/v1/discover/runs/3/continue", {}],
       ["/api/v1/discover/runs/3/delete", {}],
       ["/api/v1/discover/wantlist/add", { track_ids: [1, 2], run_id: 3 }],
       ["/api/v1/discover/wantlist/remove", { track_ids: [2] }],

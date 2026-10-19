@@ -14,7 +14,14 @@ import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
 import { TrackContextMenu } from "../../components/TrackContextMenu";
 import { pluralize } from "../library/libraryFormat";
-import { runStateLabel, runStateTone, runSummary, searchTitle } from "./discoverFormat";
+import {
+  canContinueRun,
+  runStateLabel,
+  runStateTone,
+  runStopLine,
+  runSummary,
+  searchTitle,
+} from "./discoverFormat";
 
 interface RunListProps {
   runs: readonly DiscoverRun[];
@@ -25,6 +32,10 @@ interface RunListProps {
   onSelect: (selected: number) => void;
   /** Asked to delete a search; the page confirms before it goes. */
   onDelete: (run: DiscoverRun) => void;
+  /** Asked to pick a dig that stopped partway up where it stopped. */
+  onContinue: (run: DiscoverRun) => void;
+  /** Why Continue is off right now (another dig, Beatport), or null. */
+  continueBlocked: string | null;
   onShowMore: () => void;
   loadingMore: boolean;
 }
@@ -91,6 +102,8 @@ export function RunList({
   selected,
   onSelect,
   onDelete,
+  onContinue,
+  continueBlocked,
   onShowMore,
   loadingMore,
 }: RunListProps) {
@@ -122,6 +135,21 @@ export function RunList({
                 role="progressbar"
                 aria-label={`${searchTitle(run.started_at)} in progress`}
               />
+            )}
+            {canContinueRun(run) && (
+              <>
+                <p className="discover-note">{runStopLine(run)}</p>
+                <Hint text={continueBlocked ?? undefined}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={continueBlocked !== null}
+                    onClick={() => onContinue(run)}
+                  >
+                    Continue
+                  </Button>
+                </Hint>
+              </>
             )}
             <RunMenu run={run} onDelete={onDelete} />
           </li>

@@ -24,6 +24,7 @@ from cuepoint.engine import server
 from cuepoint.engine.discovery_jobs import (
     JOB_TYPE_DISCOVERY,
     close_interrupted_discovery_runs,
+    start_discovery_continue_job,
     start_discovery_job,
 )
 from cuepoint.engine.jobs import JobState, JobStore, JobTypeBusyError
@@ -249,6 +250,65 @@ class TestWhenItStops:
         assert job.state == JobState.CANCELLED
         assert job.error["code"] == "JOB_CANCELLED"
         assert (job.result["outcome"], job.result["tracks_found"]) == (RUN_CANCELLED, 5)
+
+
+class TestContinuing:
+    def stopped(self, store, world):
+        rule = lambda path, params, n: 401 if "label_id" in params else None  # noqa: E731
+        world.failures.append(rule)
+        job = finished(store, start_discovery_job(store, **ASK))
+        world.failures.remove(rule)
+        return job
+
+    def test_a_stopped_run_continues_as_the_same_run(self, store, world):
+        first = self.stopped(store, world)
+        run_id = first.result["id"]
+        world.requests.clear()
+        job = finished(store, start_discovery_continue_job(store, run_id))
+        assert (job.type, job.state) == (JOB_TYPE_DISCOVERY, JobState.SUCCEEDED)
+        assert job.result["id"] == run_id and job.result["tracks_found"] == 7
+        assert world.paths("catalog/charts") == []
+        run = runs().get_run(run_id)
+        assert (run.job_id, run.outcome) == (job.id, RUN_SUCCEEDED)
+        assert len(runs().list_runs()) == 1
+
+    def test_it_can_stop_again_and_say_why(self, store, world):
+        first = self.stopped(store, world)
+        world.failures.append(
+            lambda path, params, n: 401 if "label_id" in params else None
+        )
+        job = finished(store, start_discovery_continue_job(store, first.result["id"]))
+        assert (job.state, job.error["code"]) == (JobState.FAILED, "BEATPORT_REJECTED")
+
+    def test_it_is_refused_before_a_job_exists(self, store, world):
+        from cuepoint.services.discovery_service import RunNotContinuable
+
+        done = finished(store, start_discovery_job(store, **ASK))
+        with pytest.raises(RunNotContinuable):
+            start_discovery_continue_job(store, done.result["id"])
+        with pytest.raises(LookupError):
+            start_discovery_continue_job(store, 9999)
+        first = self.stopped(store, world)
+        use_beatport(BeatportWorld(access_token=""))
+        with pytest.raises(BeatportAPIError) as refused:
+            start_discovery_continue_job(store, first.result["id"])
+        assert classify_beatport_error(refused.value) == "no_token"
+        assert runs().get_run(first.result["id"]).outcome == RUN_FAILED
+        assert len(store.list_all()) == 2
+
+    def test_it_is_refused_while_another_dig_runs(self, store, world):
+        first = self.stopped(store, world)
+        release = threading.Event()
+        store.create_job(
+            job_type=JOB_TYPE_DISCOVERY,
+            runner=lambda _job: release.wait(30),
+            exclusive=True,
+        )
+        try:
+            with pytest.raises(JobTypeBusyError):
+                start_discovery_continue_job(store, first.result["id"])
+        finally:
+            release.set()
 
 
 class TestWhatWaitsForWhat:

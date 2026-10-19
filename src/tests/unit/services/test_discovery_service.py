@@ -1067,3 +1067,157 @@ class TestCommits:
         commits = self.spy(service, monkeypatch)
         run = service.run(request(service))
         assert (commits, run.tracks_found, run.outcome) == ([6], 5, RUN_FAILED)
+
+
+# ----------------------------------------------------------------- continue
+
+
+def label_401(world: BeatportWorld) -> Any:
+    """Make every label read be refused, as a sign-in Beatport took back."""
+    rule = lambda path, params, n: 401 if "label_id" in params else None  # noqa: E731
+    world.failures.append(rule)
+    return rule
+
+
+def requested(world: BeatportWorld, prefix: str) -> List[str]:
+    return world.paths(prefix)
+
+
+class TestContinue:
+    def test_progress_is_recorded_as_the_run_goes(self, db, library, world):
+        label_401(world)
+        service = make(db, world)
+        run = service.run(request(service))
+        progress = run.params["progress"]
+        assert progress["genres"] == [5, 6]
+        assert sorted(progress["charts"]) == [1, 2, 3]
+        assert progress["labels"] == []
+
+    def test_a_stopped_run_continues_in_the_same_run(self, db, library, world):
+        rule = label_401(world)
+        service = make(db, world)
+        stopped = service.run(request(service))
+        assert (stopped.outcome, stopped.error_class) == (RUN_FAILED, "rejected")
+        world.failures.remove(rule)
+        world.requests.clear()
+        ended = service.continue_run(stopped.id)
+        assert ended.id == stopped.id
+        assert ended.started_at == stopped.started_at
+        assert ended.outcome == RUN_SUCCEEDED
+        assert (ended.error, ended.error_class) == (None, None)
+        assert found(db, ended.id) == [1, 2, 3, 4, 5, 7, 8]
+        assert (ended.charts_read, ended.releases_read) == (3, 2)
+        assert ended.labels_resolved == 1
+        assert len(service.list_runs()) == 1
+
+    def test_what_was_read_is_not_read_again(self, db, library, world):
+        rule = label_401(world)
+        service = make(db, world)
+        stopped = service.run(request(service))
+        world.failures.remove(rule)
+        world.requests.clear()
+        service.continue_run(stopped.id)
+        assert requested(world, "catalog/charts") == []
+
+    def test_a_label_already_read_is_not_read_again(self, db, library, world):
+        world.add_track(
+            30, TODAY - timedelta(days=1), (40300, "Cold Room"), (730, "Cold EP")
+        )
+        service = make(db, world)
+        stopped = service.run(
+            request(service),
+            should_cancel=lambda: len(world.paths("catalog/tracks")) >= 1,
+        )
+        assert stopped.outcome == RUN_CANCELLED
+        assert stopped.params["progress"]["labels"] == ["cold room"]
+        world.requests.clear()
+        ended = service.continue_run(stopped.id)
+        assert ended.outcome == RUN_SUCCEEDED
+        assert len(world.paths("catalog/tracks")) == 1
+        assert found(db, ended.id) == [1, 2, 3, 4, 5, 30, 7, 8]
+        assert ended.labels_resolved == 2
+
+    def test_it_ends_with_the_normal_outcomes_again(self, db, library, world):
+        label_401(world)
+        service = make(db, world)
+        stopped = service.run(request(service))
+        again = service.continue_run(stopped.id)
+        assert (again.id, again.outcome, again.error_class) == (
+            stopped.id,
+            RUN_FAILED,
+            "rejected",
+        )
+        assert again.params["continued"] == 1
+        cancelled = service.continue_run(again.id, should_cancel=lambda: True)
+        assert cancelled.outcome == RUN_CANCELLED
+        assert cancelled.params["continued"] == 2
+
+    def test_the_run_reads_as_running_while_it_continues(self, db, library, world):
+        label_401(world)
+        service = make(db, world)
+        stopped = service.run(request(service))
+        seen: List[Optional[str]] = []
+
+        def peek(stage: str, done: int, total: int) -> None:
+            run = service.get_run(stopped.id)
+            seen.append(run.outcome)
+            assert run.finished_at is None and run.error is None
+
+        service.continue_run(stopped.id, on_progress=peek)
+        assert seen and set(seen) == {None}
+
+    def test_nothing_is_found_twice(self, db, library, world):
+        """An old run has no progress: it re-reads, but adds only what is missing."""
+        rule = label_401(world)
+        service = make(db, world)
+        stopped = service.run(request(service))
+        before = reasons(db, stopped.id)
+        params = stopped.params
+        params.pop("progress")
+        db.connect().execute(
+            "UPDATE discovery_runs SET params_json = ? WHERE id = ?",
+            (json.dumps(params), stopped.id),
+        )
+        db.connect().commit()
+        world.failures.remove(rule)
+        ended = service.continue_run(stopped.id)
+        assert found(db, ended.id) == [1, 2, 3, 4, 5, 7, 8]
+        after = reasons(db, ended.id)
+        for track_id, kept in before.items():
+            assert all(reason in after[track_id] for reason in kept)
+        assert ended.tracks_found == 7
+        assert ended.charts_read == 3
+
+    def test_picked_artists_continue_with_their_releases_only(self, db, library, world):
+        rule = lambda path, params, n: 401 if "artist_id" in params else None  # noqa: E731
+        world.failures.append(rule)
+        service = make(db, world)
+        ask = request(service, artists=["Mara Veil"], labels=[])
+        stopped = service.run(ask)
+        assert (stopped.outcome, stopped.error_class) == (RUN_FAILED, "rejected")
+        assert found(db, stopped.id) == [1, 2, 3]
+        assert stopped.params["progress"]["artists"] == []
+        world.failures.remove(rule)
+        world.requests.clear()
+        ended = service.continue_run(stopped.id)
+        assert found(db, ended.id) == [1, 2, 3, 7]
+        assert requested(world, "catalog/charts") == []
+        assert len(requested(world, "catalog/tracks")) == 1
+        assert ended.params["progress"]["artists"] == ["mara veil"]
+        assert ended.charts_read == 1
+
+    def test_a_run_that_is_running_succeeded_or_unknown_is_refused(
+        self, db, library, world
+    ):
+        service = make(db, world)
+        done = service.run(request(service))
+        assert done.outcome == RUN_SUCCEEDED
+        with pytest.raises(ValueError, match="finished"):
+            service.continue_run(done.id)
+        with pytest.raises(LookupError):
+            service.continue_run(9999)
+        running = DiscoveryRepository(db).start_run(
+            DiscoveryRun(started_at=NOW.isoformat(), params_json="{}")
+        )
+        with pytest.raises(ValueError, match="running"):
+            service.continue_run(running.id)

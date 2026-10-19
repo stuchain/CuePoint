@@ -48,6 +48,7 @@ from cuepoint.models.discovery_run import (
     OWNED_ONLY,
     RUN_COUNTS,
     RUN_FAILED,
+    RUN_SUCCEEDED,
     RUN_TRACK_SORTS,
     SORT_ARTIST,
     SORT_FOUND,
@@ -304,6 +305,54 @@ class DiscoveryRepository(IDiscoveryRepository):
                 ),
             )
         return ended
+
+    def save_progress(
+        self, run_id: int, progress: Mapping[str, Sequence[object]]
+    ) -> None:
+        """Record what a running run has fully read, in its ``params_json``.
+
+        Written after the rows it describes, so progress never runs ahead of
+        them; a later :meth:`DiscoveryService.continue_run` skips exactly this.
+        """
+        with self._db.transaction() as conn:
+            _require_running(conn, run_id)
+            conn.execute(
+                "UPDATE discovery_runs SET params_json ="
+                " json_set(params_json, '$.progress', json(?)) WHERE id = ?",
+                (json.dumps({k: list(v) for k, v in progress.items()}), run_id),
+            )
+
+    def reopen_run(self, run_id: int, job_id: Optional[str] = None) -> DiscoveryRun:
+        """Mark a failed or cancelled run as running again, keeping all it has.
+
+        ``job_id`` is the job now running it, when given.
+
+        It keeps its id, ``started_at``, rows and counts; the outcome, end time
+        and error are cleared, and ``params_json`` counts the continuation
+        (``continued``).
+
+        Raises:
+            LookupError: If there is no such run.
+            ValueError: If it is running, or it succeeded.
+        """
+        with self._db.transaction() as conn:
+            current = _run_on(conn, run_id)
+            if current is None:
+                raise LookupError(f"No discovery run {run_id}")
+            if current.is_running:
+                raise ValueError(f"Discovery run {run_id} is running")
+            if current.outcome == RUN_SUCCEEDED:
+                raise ValueError(f"Discovery run {run_id} finished")
+            times = int(current.params.get("continued") or 0) + 1
+            conn.execute(
+                "UPDATE discovery_runs SET outcome = NULL, finished_at = NULL,"
+                " error = NULL, error_class = NULL, job_id = coalesce(?, job_id),"
+                " params_json = json_set(params_json, '$.continued', ?) WHERE id = ?",
+                (job_id, times, run_id),
+            )
+            reopened = _run_on(conn, run_id)
+        assert reopened is not None
+        return reopened
 
     def close_interrupted(self, finished_at: str, error: str) -> List[int]:
         """Fail every run still marked running, as a crash leaves them.

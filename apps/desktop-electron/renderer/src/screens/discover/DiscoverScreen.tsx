@@ -55,6 +55,7 @@ import {
   type DiscoverSection,
 } from "./discoverSections";
 import {
+  CONTINUE_BUSY,
   discoverFacts,
   discoveryEnded,
   lookingUpLine,
@@ -218,6 +219,21 @@ export function DiscoverScreen() {
       return refusal;
     },
     [startDiscovery],
+  );
+
+  const continueRun = useCallback(
+    async (runId: number) => {
+      const bridge = window.cuepoint?.continueDiscoveryRun;
+      if (!bridge) throw new Error(NO_ENGINE);
+      const refusal = await startDiscovery(() => bridge({ run_id: runId }));
+      const beatport = refusalState(refusal);
+      if (refusal && beatport) {
+        setRefused({ state: beatport, retryAfter: refusal.retry_after, message: refusal.message });
+      }
+      if (refusal) toast(refusalText(refusal), "warning");
+      return refusal;
+    },
+    [startDiscovery, toast],
   );
 
   const pushTracks = useCallback(
@@ -429,6 +445,14 @@ export function DiscoverScreen() {
               runningJobId={discovery.jobId}
               runsVersion={runsVersion}
               onNewSearch={() => choose("new")}
+              onContinue={continueRun}
+              continueBlocked={
+                discovery.jobId !== null
+                  ? CONTINUE_BUSY
+                  : beatportUsable(state)
+                    ? null
+                    : unusableReason(state)
+              }
             />
           </div>
         )}

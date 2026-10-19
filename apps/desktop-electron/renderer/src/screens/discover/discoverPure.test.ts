@@ -41,6 +41,7 @@ import {
   runOutcome,
   runScopeLine,
   runStateLabel,
+  runStateTone,
   runSummary,
   scopeLine,
   searchTitle,
@@ -393,7 +394,8 @@ describe("the sentences", () => {
 
   it("names a run's state and how it ended, from the engine's runs", () => {
     expect(runStateLabel(FINISHED)).toBe("Finished");
-    expect(runStateLabel(FAILED)).toBe("Failed");
+    expect(runStateLabel(FAILED)).toBe("Stopped");
+    expect(runStateTone(FAILED)).toBe("warning");
     expect(runStateLabel({ ...FINISHED, running: true })).toBe("Running");
     expect(runStateLabel({ ...FINISHED, outcome: "cancelled" })).toBe("Stopped");
     expect(runOutcome(FINISHED)).toBe("Found 7 tracks from 3 charts and 2 releases.");

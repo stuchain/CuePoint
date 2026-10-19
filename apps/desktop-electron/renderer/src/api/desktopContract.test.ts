@@ -1203,7 +1203,7 @@ describe("desktop contract", () => {
   });
 
   describe("Discover (DISCOVER-09)", () => {
-    // Sixteen engine methods across all six files, named here as the export's
+    // Seventeen engine methods across all six files, named here as the export's
     // are: the generic checks compare the files with each other, so a method
     // missing from all of them passes every one.
     const READS: Record<string, string> = {
@@ -1222,6 +1222,7 @@ describe("desktop contract", () => {
     };
     const ACTIONS: Record<string, string> = {
       startDiscoveryRun: '"/api/v1/discover/runs/start"',
+      continueDiscoveryRun: "}/continue`",
       deleteDiscoveryRun: "}/delete`",
       addToWantlist: '"/api/v1/discover/wantlist/add"',
       removeFromWantlist: '"/api/v1/discover/wantlist/remove"',
@@ -1239,8 +1240,8 @@ describe("desktop contract", () => {
       return engineClient.slice(start, next === -1 ? undefined : next);
     };
 
-    it("has twenty of them", () => {
-      expect(new Set(methods).size).toBe(20);
+    it("has twenty-one of them", () => {
+      expect(new Set(methods).size).toBe(21);
     });
 
     it("carries a card's picture as bytes the preload turns into an object URL, never a URL", () => {

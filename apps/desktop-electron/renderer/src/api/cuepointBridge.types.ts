@@ -1308,6 +1308,8 @@ export interface MatchRun {
   finished_at: string | null;
   latest_job_id: string;
   resume_job_id: string | null;
+  /** Why a stopped run stopped ("Beatport did not answer"); null when the person stopped it. */
+  stop_reason?: string | null;
 }
 
 export interface MatchJobs {
@@ -4076,6 +4078,10 @@ export interface CuePointBridge {
   startDiscoveryRun?: (
     params?: DiscoverRunRequest,
   ) => Promise<DiscoverAnswer<DiscoverJobStarted>>;
+  /** Pick a stopped run up where it stopped; the same run, followed as a job. */
+  continueDiscoveryRun?: (params: {
+    run_id: number;
+  }) => Promise<DiscoverAnswer<DiscoverJobStarted>>;
   deleteDiscoveryRun?: (params: {
     run_id: number;
   }) => Promise<DiscoverAnswer<DiscoverRunDeleted>>;

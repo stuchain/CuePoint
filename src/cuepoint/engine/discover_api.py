@@ -21,7 +21,9 @@ that changes something is a POST to an action path, as ``server.py`` speaks.
 - ``GET runs`` (a window of kept runs, newest first, with the total),
   ``GET runs/{id}`` (one run's header and the scope it resolved),
   ``GET runs/{id}/tracks`` (a window of what it found, with the owned filter
-  and the hidden count), ``POST runs/start`` and ``POST runs/{id}/delete``.
+  and the hidden count), ``POST runs/start``, ``POST runs/{id}/continue`` (a
+  run that stopped partway picks up where it stopped, as the same run) and
+  ``POST runs/{id}/delete``.
 - ``GET runs/{id}/groups`` — the run's results as rows of cards (charts,
   artists, labels), with counts; ``GET runs/{id}/groups/tracks`` (a window of
   the merged tracks of one or more cards), ``GET runs/{id}/groups/summary``
@@ -108,6 +110,7 @@ PLAYLISTS_PATH = PREFIX + "playlists"
 _RUN_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)$")
 _RUN_TRACKS_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/tracks$")
 _RUN_DELETE_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/delete$")
+_RUN_CONTINUE_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/continue$")
 _RUN_GROUPS_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/groups$")
 _RUN_GROUP_TRACKS_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/groups/tracks$")
 _RUN_GROUP_SUMMARY_ROUTE = re.compile(r"^/api/v1/discover/runs/([^/]+)/groups/summary$")
@@ -711,6 +714,36 @@ def run_start(data: Dict[str, Any], job_store: Any) -> Tuple[int, Dict[str, Any]
     return _job_started(job)
 
 
+def run_continue(
+    run_id: int, data: Dict[str, Any], job_store: Any
+) -> Tuple[int, Dict[str, Any]]:
+    """Pick a run that stopped partway up where it stopped; the same run.
+
+    Refused when the run is unknown (404), running (409 ``DISCOVERY_RUN_RUNNING``),
+    or finished (400), when another discovery runs (``DISCOVER_BUSY``), and
+    without a token (``BEATPORT_REFUSED``).
+    """
+    from cuepoint.engine.discovery_jobs import start_discovery_continue_job
+    from cuepoint.services.discovery_service import RunNotContinuable
+
+    _only(data, ())
+    try:
+        job = start_discovery_continue_job(job_store, run_id)
+    except LookupError as exc:
+        raise not_found(RUN_NOT_FOUND, str(exc)) from None
+    except RunNotContinuable as exc:
+        if exc.reason == "running":
+            raise ApiError(
+                409,
+                RUN_RUNNING,
+                f"Discovery run {run_id} is still running",
+            ) from None
+        raise bad_request(
+            f"Discovery run {run_id} finished; there is nothing to continue"
+        ) from None
+    return _job_started(job)
+
+
 def run_delete(run_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
     """Delete an ended run and its tracks; the catalog rows stay."""
     _only(data, ())
@@ -1245,7 +1278,11 @@ _RUN_GET_ROUTES = (
     (_RUN_GROUP_SUMMARY_ROUTE, run_group_summary),
     (_RUN_ART_ROUTE, run_art),
 )
-POST_PATHS: Tuple[str, ...] = (*_POST_ROUTES, PREFIX + "runs/{id}/delete")
+POST_PATHS: Tuple[str, ...] = (
+    *_POST_ROUTES,
+    PREFIX + "runs/{id}/delete",
+    PREFIX + "runs/{id}/continue",
+)
 
 
 def handles_get(path: str) -> bool:
@@ -1259,7 +1296,11 @@ def handles_get(path: str) -> bool:
 
 def handles_post(path: str) -> bool:
     """True when this module answers a POST for ``path``."""
-    return path in _POST_ROUTES or bool(_RUN_DELETE_ROUTE.match(path))
+    return (
+        path in _POST_ROUTES
+        or bool(_RUN_DELETE_ROUTE.match(path))
+        or bool(_RUN_CONTINUE_ROUTE.match(path))
+    )
 
 
 def handle_get(path: str, params: Dict[str, List[str]]) -> Tuple[int, Dict[str, Any]]:
@@ -1283,6 +1324,9 @@ def handle_post(path: str, raw: bytes, *, job_store: Any) -> Tuple[int, Dict[str
     handler = _POST_ROUTES.get(path)
     if handler is not None:
         return handler(data, job_store)
+    again = _RUN_CONTINUE_ROUTE.match(path)
+    if again:
+        return run_continue(_id_in_path(again.group(1), "run"), data, job_store)
     delete = _RUN_DELETE_ROUTE.match(path)
     if delete:
         return 200, run_delete(_id_in_path(delete.group(1), "run"), data)

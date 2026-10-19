@@ -77,9 +77,15 @@ def run_discovery_job(
     job: Job,
     store: JobStore,
     service: "IDiscoveryService",
-    request: DiscoveryRequest,
+    request: Optional[DiscoveryRequest],
+    *,
+    continue_run_id: Optional[int] = None,
 ) -> None:
-    """Run discovery under ``job`` and set its terminal state in every outcome."""
+    """Run discovery under ``job`` and set its terminal state in every outcome.
+
+    With ``continue_run_id`` the run of that id is picked up where it stopped
+    (``request`` is then unused: the run holds what it was asked).
+    """
     started = time.monotonic()
     last_time = 0.0
     last_stage = ""
@@ -107,12 +113,21 @@ def run_discovery_job(
         )
 
     try:
-        run = service.run(
-            request,
-            job_id=job.id,
-            on_progress=on_progress,
-            should_cancel=lambda: bool(job.cancel_requested),
-        )
+        if continue_run_id is not None:
+            run = service.continue_run(
+                continue_run_id,
+                job_id=job.id,
+                on_progress=on_progress,
+                should_cancel=lambda: bool(job.cancel_requested),
+            )
+        else:
+            assert request is not None
+            run = service.run(
+                request,
+                job_id=job.id,
+                on_progress=on_progress,
+                should_cancel=lambda: bool(job.cancel_requested),
+            )
     except CuePointException as exc:
         _logger.warning("[discover] run failed to start or end: %s", exc)
         store.finish(
@@ -205,6 +220,32 @@ def start_discovery_job(
 
     def runner(job: Job) -> None:
         run_discovery_job(job, store, service, request)
+
+    return store.create_job(
+        job_type=JOB_TYPE_DISCOVERY,
+        runner=runner,
+        exclusive=True,
+    )
+
+
+def start_discovery_continue_job(store: JobStore, run_id: int) -> Job:
+    """Pick a run that stopped partway up where it stopped.
+
+    The same run, so the same card: it reads as running again and ends in the
+    usual outcomes. Charts, artists and labels it had fully read are skipped.
+
+    Raises:
+        LookupError: If there is no such run.
+        RunNotContinuable: If it is running, or it finished.
+        BeatportAPIError: Classified ``no_token``, when no token is configured.
+        JobTypeBusyError: If a discovery is already running.
+    """
+    service = _discovery_service()
+    service.check_continuable(run_id)
+    service.require_token()
+
+    def runner(job: Job) -> None:
+        run_discovery_job(job, store, service, None, continue_run_id=run_id)
 
     return store.create_job(
         job_type=JOB_TYPE_DISCOVERY,
