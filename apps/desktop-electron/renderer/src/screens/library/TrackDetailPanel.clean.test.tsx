@@ -321,7 +321,7 @@ describe("the Beatport tab", () => {
     bridge.getTrackMatches.mockResolvedValue(matches({ state: "needs_review", decided_by: null }));
     beatportPanel();
     const zone = await screen.findByRole("tabpanel", { name: "Beatport" });
-    expect((await within(zone).findAllByText(/Waiting for you/)).length).toBeGreaterThan(0);
+    expect((await within(zone).findAllByText(/To check/)).length).toBeGreaterThan(0);
     expect(within(zone).queryByRole("button", { name: /^Apply/ })).toBeNull();
   });
 

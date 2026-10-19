@@ -596,7 +596,7 @@ describe("the table", () => {
       const column = LIBRARY_COLUMNS.find((entry) => entry.id === id)!;
       return column.text ? column.text(row) : column.render(row);
     };
-    expect(text("match_state")).toBe("Waiting for you");
+    expect(text("match_state")).toBe("To check");
     expect(text("match_score")).toBe("81.0");
     expect(text("file_status")).toBe("Present");
     expect(text("artwork")).toBe("—");
@@ -613,7 +613,7 @@ describe("the table", () => {
     await userEvent.keyboard("{Escape}");
     const table = screen.getByRole("table", { name: "Library tracks" });
     expect(within(table).getByRole("columnheader", { name: /Match/ })).toBeInTheDocument();
-    expect(within(table).getAllByText("Waiting for you").length).toBe(3);
+    expect(within(table).getAllByText("To check").length).toBe(3);
     expect(within(table).getAllByText("81.0").length).toBe(3);
   });
 
