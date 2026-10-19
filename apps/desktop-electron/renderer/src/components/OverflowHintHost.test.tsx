@@ -79,3 +79,74 @@ describe("the keyboard and assistive technology", () => {
     expect(screen.getByTestId("chip")).toHaveAttribute("aria-description", "Own description");
   });
 });
+
+describe("the tip is placed by its measured width (C212)", () => {
+  function rect(left: number, top: number, width: number, height: number): DOMRect {
+    return { left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) } as DOMRect;
+  }
+
+  function withWindow(width: number, height: number, tipWidth: number, anchor: DOMRect, run: () => void) {
+    const originalW = window.innerWidth;
+    const originalH = window.innerHeight;
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: height });
+    const spy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("cp-hint__tip") ? rect(0, 0, tipWidth, 30) : anchor;
+    });
+    try {
+      run();
+    } finally {
+      spy.mockRestore();
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalW });
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: originalH });
+    }
+  }
+
+  it("pulls a wide tip in from the right edge by its real width, not a fixed 360", () => {
+    withWindow(1000, 800, 200, rect(900, 400, 40, 20), () => {
+      render(
+        <>
+          <OverflowHintHost />
+          <button type="button" data-hint="A tip of about two hundred pixels">
+            x
+          </button>
+        </>,
+      );
+      act(() => screen.getByRole("button", { name: "x" }).focus());
+      const tip = screen.getByRole("tooltip");
+      expect(parseFloat(tip.style.left)).toBe(1000 - 200 - 4);
+    });
+  });
+
+  it("leaves a narrow tip where it is instead of pulling it back 360", () => {
+    withWindow(1000, 800, 100, rect(800, 400, 40, 20), () => {
+      render(
+        <>
+          <OverflowHintHost />
+          <button type="button" data-hint="Short">
+            y
+          </button>
+        </>,
+      );
+      act(() => screen.getByRole("button", { name: "y" }).focus());
+      expect(parseFloat(screen.getByRole("tooltip").style.left)).toBe(800);
+    });
+  });
+
+  it("flips below the control when the measured tip does not fit above it", () => {
+    withWindow(1000, 800, 100, rect(100, 20, 40, 20), () => {
+      render(
+        <>
+          <OverflowHintHost />
+          <button type="button" data-hint="Short">
+            z
+          </button>
+        </>,
+      );
+      act(() => screen.getByRole("button", { name: "z" }).focus());
+      const tip = screen.getByRole("tooltip");
+      expect(tip.style.top).toBe("44px");
+      expect(tip.style.bottom).toBe("");
+    });
+  });
+});

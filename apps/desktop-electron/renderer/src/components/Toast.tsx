@@ -154,7 +154,7 @@ function ToastItem({
     <div
       ref={presence.ref}
       className={`cp-toast cp-toast--${toast.variant}`}
-      role="status"
+      role={toast.variant === "error" ? "alert" : "status"}
       data-leaving={presence.leaving ? "" : undefined}
       inert={presence.leaving}
       onPointerEnter={() => setHovered(true)}

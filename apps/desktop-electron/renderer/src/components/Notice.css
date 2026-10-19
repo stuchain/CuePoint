@@ -8,12 +8,16 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
   border: var(--hairline) solid var(--notice-tone);
-  border-left: var(--selected-bar-width) solid var(--notice-tone);
+  border-left: round(nearest, calc(3px * var(--scale)), 1px) solid var(--notice-tone);
   background: color-mix(in srgb, var(--notice-tone) 12%, transparent);
   color: var(--fg-primary);
   font-size: var(--text-body);
+}
+
+.cp-notice--info {
+  --notice-tone: var(--accent-info);
 }
 
 .cp-notice--warning {
@@ -34,6 +38,9 @@
 
 .cp-notice__action {
   flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 /* A field error: red words under the field, nothing around them. */

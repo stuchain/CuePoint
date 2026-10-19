@@ -5,7 +5,7 @@ import type {
   RepeatMode,
 } from "../../api/cuepointBridge.types";
 import { formatBpm } from "../format/bpm";
-import { MISSING_VALUE } from "../MissingValue";
+import { NO_VALUE } from "../../words";
 import { camelotOf } from "../wheel/keyColour";
 
 /**
@@ -25,7 +25,7 @@ import { camelotOf } from "../wheel/keyColour";
  */
 export function formatTime(seconds: number | null | undefined): string {
   if (seconds === null || seconds === undefined || !Number.isFinite(seconds) || seconds < 0) {
-    return MISSING_VALUE;
+    return NO_VALUE;
   }
   const whole = Math.floor(seconds);
   const hours = Math.floor(whole / 3600);

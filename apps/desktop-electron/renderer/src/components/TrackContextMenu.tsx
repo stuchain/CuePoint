@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLeaveGhost } from "../tokens/useLeaveGhost";
 import { Hint } from "./Hint";
 import { PixelIcon } from "./PixelIcon";
@@ -63,8 +63,16 @@ export interface TrackContextMenuItem {
    * runs `onSelect` and leaves the menu open so several can be toggled.
    */
   checked?: boolean;
-  /** A destructive entry (Delete this dig…): drawn in the theme's danger colour. */
+  /**
+   * A destructive entry (Delete this dig…): drawn in the theme's danger colour, and always listed
+   * last in its menu after a divider, whatever order it was given in (C16).
+   */
   danger?: boolean;
+  /**
+   * The key that does the same thing, written as `api/keyboardShortcuts.ts` writes it ("Enter",
+   * "F2"): drawn right-aligned in the muted data face. Take the words from that file, not here.
+   */
+  shortcut?: string;
 }
 
 interface TrackContextMenuProps {
@@ -82,11 +90,52 @@ interface TrackContextMenuProps {
   anchor?: React.RefObject<HTMLElement | null>;
 }
 
-/** Keeps a box on screen when it opens near an edge. */
+/** The room the player bar and status strip take at the bottom (the shell measures it). */
+function bottomInset(): number {
+  const value = parseFloat(document.documentElement.style.getPropertyValue("--shell-bottom-inset"));
+  return Number.isFinite(value) ? value : 0;
+}
+
+/** Keeps a box on screen, and above the player bar, when it opens near an edge. */
 function clampToViewport(x: number, y: number, width: number, height: number) {
   const maxX = Math.max(0, window.innerWidth - width - 4);
-  const maxY = Math.max(0, window.innerHeight - height - 4);
+  const maxY = Math.max(0, window.innerHeight - bottomInset() - height - 4);
   return { left: Math.min(x, maxX), top: Math.min(y, maxY) };
+}
+
+/**
+ * Danger entries last, after a divider, at every depth (C16); everything else keeps its order.
+ * The keyboard walks the arranged list, so what is drawn is what the arrows visit.
+ */
+function arrange(list: TrackContextMenuItem[]): TrackContextMenuItem[] {
+  const calm = list.filter((item) => !item.danger);
+  const danger = list.filter((item) => item.danger);
+  const ordered = danger.length > 0 && calm.length > 0 ? [...calm, { ...danger[0]!, separatorBefore: true }, ...danger.slice(1)] : list;
+  return ordered.map((item) => (item.items ? { ...item, items: arrange(item.items) } : item));
+}
+
+/**
+ * The state a menu button needs (C113). Spread `buttonProps` on the button and pass `anchor` and
+ * `close` to the menu: a press on the button no longer closes the menu first (which made the
+ * click open it again), so one click opens it and the next closes it.
+ */
+export function useMenuButton() {
+  const anchor = useRef<HTMLElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const toggle = useCallback(() => setOpen((current) => !current), []);
+  return {
+    anchor,
+    open,
+    close,
+    toggle,
+    buttonProps: {
+      ref: anchor as React.RefObject<HTMLButtonElement | null>,
+      "aria-haspopup": "menu" as const,
+      "aria-expanded": open,
+      onClick: toggle,
+    },
+  };
 }
 
 /**
@@ -147,7 +196,8 @@ function Submenu({ label, children }: { label: string; children: React.ReactNode
 const hasChildren = (item: TrackContextMenuItem | undefined) =>
   Boolean(item?.items && item.items.length > 0);
 
-export function TrackContextMenu({ x, y, items, onClose, label, anchor }: TrackContextMenuProps) {
+export function TrackContextMenu({ x, y, items: given, onClose, label, anchor }: TrackContextMenuProps) {
+  const items = useMemo(() => arrange(given), [given]);
   const menuRef = useRef<HTMLDivElement>(null);
   // Closing leaves a still copy that fades (Opening and closing panels and dialogs).
   useLeaveGhost(menuRef);
@@ -305,6 +355,7 @@ export function TrackContextMenu({ x, y, items, onClose, label, anchor }: TrackC
             className={`cp-track-menu__item${index === activeAt(at) ? " cp-track-menu__item--active" : ""}${parent ? " cp-track-menu__item--parent" : ""}${showing ? " cp-track-menu__item--open" : ""}${item.danger ? " cp-track-menu__item--danger" : ""}`}
             aria-disabled={unavailable || undefined}
             aria-describedby={reasonId}
+            aria-keyshortcuts={item.shortcut}
             aria-haspopup={parent ? "menu" : undefined}
             aria-expanded={parent ? showing : undefined}
             onMouseEnter={() => {
@@ -317,10 +368,15 @@ export function TrackContextMenu({ x, y, items, onClose, label, anchor }: TrackC
           >
             {item.checked !== undefined && (
               <span className="cp-track-menu__check" aria-hidden="true">
-                {item.checked && <PixelIcon name="clean" />}
+                {item.checked && <PixelIcon name="check" size="sm" />}
               </span>
             )}
             {item.label}
+            {item.shortcut && !parent && (
+              <span className="cp-track-menu__shortcut" aria-hidden="true">
+                {item.shortcut}
+              </span>
+            )}
             {parent && (
               <span className="cp-track-menu__arrow" aria-hidden="true">
                 <PixelIcon name="chevron-right" size="sm" />

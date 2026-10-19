@@ -570,7 +570,7 @@ describe("closing and stopping", () => {
     slowRead();
     const props = open({ count: 1200 });
     await screen.findByText(/Reading the files/);
-    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Close" })[0]!);
     expect(bridge.cancelJob).toHaveBeenCalledWith("j-1");
     expect(props.onClose).toHaveBeenCalled();
   });

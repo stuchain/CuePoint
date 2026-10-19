@@ -3,7 +3,8 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-md);
-  padding: var(--space-xl) var(--space-lg);
+  /* One start position on every page: 12 below the header divider. */
+  padding: var(--space-lg);
   text-align: center;
 }
 
@@ -32,4 +33,13 @@
 
 .cp-empty-state .cp-btn {
   margin-top: var(--space-xs);
+}
+
+/* The short form: no icon, body-size words, for an empty list inside a panel. */
+.cp-empty-state--compact {
+  gap: var(--space-sm);
+}
+
+.cp-empty-state--compact .cp-empty-state__headline {
+  font-size: var(--text-body);
 }

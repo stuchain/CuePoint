@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
 import { usePresence } from "../tokens/usePresence";
 import { Button } from "./Button";
 import { CloseButton } from "./CloseButton";
@@ -7,7 +7,12 @@ import "./Modal.css";
 
 export type ModalSize = "small" | "medium" | "large";
 
-interface ModalProps {
+/** An extra for the footer's far left is either a button (`extraAction`) or anything else (`footerExtra`), never both. */
+type FooterExtras =
+  | { extraAction?: { label: string; onClick: () => void }; footerExtra?: never }
+  | { extraAction?: never; footerExtra?: ReactNode };
+
+type ModalProps = FooterExtras & {
   open: boolean;
   title: string;
   children: ReactNode;
@@ -29,11 +34,6 @@ interface ModalProps {
   };
   secondaryAction?: { label: string; onClick: () => void };
   /**
-   * An extra action that is neither the decision nor its cancel (Reset columns, Skip, Refresh):
-   * on the far left of the footer, a space, then Cancel, then the main button on the far right.
-   */
-  extraAction?: { label: string; onClick: () => void };
-  /**
    * A step back in a multi-screen dialog (the first-run guide), in the footer between
    * the secondary and the primary action, so the buttons keep their places. Disabled
    * rather than absent on the first screen, for the same reason.
@@ -45,11 +45,6 @@ interface ModalProps {
    * It sits last, where the main button would; with a `primaryAction` it is not drawn.
    */
   closeLabel?: string;
-  /**
-   * Anything extra for the footer's far left (a count, a link-style button): the body no longer
-   * carries its own button row.
-   */
-  footerExtra?: ReactNode;
   /**
    * One muted line just above the footer: why the main button is greyed, or the one note about
    * the buttons. A greyed `primaryAction.disabledReason` is shown the same way when this is absent.
@@ -77,7 +72,18 @@ interface ModalProps {
    * does not put it back on the opener first. Escape and the close button leave it true.
    */
   restoreFocus?: boolean;
-}
+  /**
+   * The control that gets focus when the dialog opens (the name box of a rename). Without it
+   * focus starts on the dialog itself, so nothing is highlighted before the first Tab.
+   */
+  initialFocus?: RefObject<HTMLElement | null>;
+  /**
+   * True while the dialog must not be left (a write is running): the × is greyed and Escape and
+   * the backdrop do nothing. Say why in `closeReason`, which takes the reason line.
+   */
+  closeDisabled?: boolean;
+  closeReason?: string;
+};
 
 /** Dialogs open now, oldest first: only the newest answers Escape and Tab, so a question asked from inside a dialog does not close both. */
 const openDialogs: object[] = [];
@@ -109,6 +115,9 @@ export function Modal({
   variant = "default",
   closeOnBackdrop = true,
   restoreFocus = true,
+  initialFocus,
+  closeDisabled = false,
+  closeReason,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   // Each dialog's own title id. A shared one named every dialog on the page after the
@@ -125,6 +134,13 @@ export function Modal({
   // re-registering would push a parent above a child dialog that opened after it.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  // Read at the moment of the key press, so a dialog that becomes closable hears the next Escape.
+  const closeDisabledRef = useRef(closeDisabled);
+  closeDisabledRef.current = closeDisabled;
+  const initialFocusRef = useRef(initialFocus);
+  initialFocusRef.current = initialFocus;
+  const primaryRef = useRef(primaryAction);
+  primaryRef.current = primaryAction;
 
   // Layout effects, not passive ones: the dialog is on screen from this commit, and
   // a passive effect runs after the paint, so an Escape pressed as it appeared (or
@@ -136,7 +152,7 @@ export function Modal({
     // The dialog itself, not its first control. Its `aria-labelledby` means the
     // title is announced, and it avoids starting the user on whatever control
     // happens to come first in the markup — which is the close button.
-    dialogRef.current?.focus();
+    (initialFocusRef.current?.current ?? dialogRef.current)?.focus();
 
     return () => {
       // Only restore if the old element is still there: the dialog may have
@@ -154,7 +170,21 @@ export function Modal({
       if (openDialogs[openDialogs.length - 1] !== me) return;
       if (event.key === "Escape") {
         event.stopPropagation();
-        onCloseRef.current();
+        if (!closeDisabledRef.current) onCloseRef.current();
+        return;
+      }
+      if (event.key === "Enter" && !event.defaultPrevented) {
+        // Enter in a text field presses the one main button, if it can be pressed. A button, a
+        // link, a multi-line box or a list keeps its own Enter.
+        const target = event.target as HTMLElement | null;
+        const main = primaryRef.current;
+        if (main && !main.disabled && !main.loading && target instanceof HTMLInputElement && dialogRef.current?.contains(target)) {
+          const type = target.type;
+          if (type !== "button" && type !== "submit" && type !== "checkbox" && type !== "radio") {
+            event.preventDefault();
+            main.onClick();
+          }
+        }
         return;
       }
       if (event.key !== "Tab") return;
@@ -189,7 +219,15 @@ export function Modal({
   const presence = usePresence<HTMLDivElement>(open);
   if (!presence.present) return null;
 
-  const reason = reasonProp ?? (primaryAction?.disabled ? primaryAction.disabledReason : undefined);
+  const reason =
+    (closeDisabled ? closeReason : undefined) ??
+    reasonProp ??
+    (primaryAction?.disabled ? primaryAction.disabledReason : undefined);
+  // A dialog with no buttons of its own only shows something: it ends in one grey Close (C107).
+  const footerClose = closeLabel ?? (!primaryAction && !secondaryAction && !backAction ? "Close" : undefined);
+  const close = () => {
+    if (!closeDisabled) onClose();
+  };
 
   return (
     <div
@@ -198,7 +236,7 @@ export function Modal({
       role="presentation"
       data-leaving={presence.leaving ? "" : undefined}
       inert={presence.leaving}
-      onClick={closeOnBackdrop && !presence.leaving ? onClose : undefined}
+      onClick={closeOnBackdrop && !presence.leaving ? close : undefined}
     >
       <div
         ref={dialogRef}
@@ -215,14 +253,14 @@ export function Modal({
           <h2 id={titleId} className="cp-modal__title">
             {title}
           </h2>
-          <CloseButton onClick={onClose} />
+          <CloseButton onClick={close} aria-disabled={closeDisabled || undefined} />
         </header>
         <div className="cp-modal__body">{children}</div>
         {/* The one reason line, directly above the footer (area 93). */}
         <ReasonLine id={reasonId} align="end" className="cp-modal__reason">
           {reason}
         </ReasonLine>
-        {(primaryAction || secondaryAction || extraAction || backAction || closeLabel || footerExtra) && (
+        {(primaryAction || secondaryAction || extraAction || backAction || footerClose || footerExtra) && (
           <footer className="cp-modal__footer">
             {footerExtra && <div className="cp-modal__footer-extra">{footerExtra}</div>}
             {extraAction && (
@@ -240,9 +278,9 @@ export function Modal({
                 {backAction.label}
               </Button>
             )}
-            {closeLabel && !primaryAction && (
-              <Button variant="secondary" onClick={onClose}>
-                {closeLabel}
+            {footerClose && !primaryAction && (
+              <Button variant="secondary" onClick={close}>
+                {footerClose}
               </Button>
             )}
             {primaryAction && (

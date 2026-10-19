@@ -45,3 +45,23 @@ describe("EmptyState", () => {
     expect(css).toMatch(/headline\s*\{[^}]*font-size:\s*var\(--font-size-sm\)[^}]*font-weight:\s*var\(--font-weight-bold\)/);
   });
 });
+
+describe("EmptyState compact and action slot (C140, C30)", () => {
+  it("compact draws no icon and uses the body size", () => {
+    const { container } = render(<EmptyState compact headline="No matches" />);
+    expect(container.querySelector(".cp-empty-state__icon")).toBeNull();
+    expect(container.firstElementChild).toHaveClass("cp-empty-state--compact");
+    expect(css).toMatch(/\.cp-empty-state--compact \.cp-empty-state__headline\s*\{[^}]*font-size:\s*var\(--text-body\)/);
+  });
+
+  it("takes any element as its action slot", async () => {
+    const onClick = vi.fn();
+    render(<EmptyState headline="Empty" action={<button type="button" onClick={onClick}>Make one</button>} />);
+    await userEvent.click(screen.getByRole("button", { name: "Make one" }));
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts 12 below the header divider, whatever the page", () => {
+    expect(css).toMatch(/\.cp-empty-state\s*\{[^}]*padding:\s*var\(--space-lg\)/);
+  });
+});

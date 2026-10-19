@@ -13,6 +13,8 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   /** A destructive act: the main button is red (the one place a red fill is used). */
   danger?: boolean;
+  /** The act is running: the main button is busy and greyed, and the dialog cannot be left. */
+  loading?: boolean;
 }
 
 /**
@@ -20,7 +22,7 @@ interface ConfirmDialogProps {
  * Delete confirmations use `danger`: title "Delete <thing>?", the body says what is lost, Cancel
  * and a red "Delete <thing>".
  */
-export function ConfirmDialog({ open, title, children, confirmLabel, onConfirm, onCancel, danger = false }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, title, children, confirmLabel, onConfirm, onCancel, danger = false, loading = false }: ConfirmDialogProps) {
   return (
     <Modal
       open={open}
@@ -28,7 +30,8 @@ export function ConfirmDialog({ open, title, children, confirmLabel, onConfirm, 
       size="small"
       variant={danger ? "danger" : "default"}
       onClose={onCancel}
-      primaryAction={{ label: confirmLabel, onClick: onConfirm }}
+      closeDisabled={loading}
+      primaryAction={{ label: confirmLabel, onClick: onConfirm, loading }}
       secondaryAction={{ label: "Cancel", onClick: onCancel }}
     >
       <p>{children}</p>

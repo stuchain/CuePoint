@@ -12,7 +12,6 @@ import {
 import { useInspectorAutoOpen } from "./inspectorSlot";
 import { DETAILS_PANEL_ID, focusDetailsToggle, publishDetails } from "./detailsToggle";
 import { CloseButton } from "../CloseButton";
-import { Hint } from "../Hint";
 import { findOwningDestination } from "./navRegistry";
 import { useMotion } from "../../tokens/MotionContext";
 import { useScaleFactor } from "../../tokens/ScaleContext";
@@ -252,15 +251,14 @@ export function TrackInspector({ children }: TrackInspectorProps) {
 
       <header className="cp-inspector__header">
         <h2 className="cp-inspector__title">Track details</h2>
-        <Hint text="Hide track details" shortcut="Mod+I">
-          <CloseButton
-            ref={hideRef}
-            className="cp-inspector__hide"
-            onClick={toggle}
-            aria-expanded
-            aria-label="Hide track details"
-          />
-        </Hint>
+        <CloseButton
+          ref={hideRef}
+          className="cp-inspector__hide"
+          onClick={toggle}
+          aria-expanded
+          aria-label="Hide track details"
+          shortcut="Mod+I"
+        />
       </header>
 
       <div className="cp-inspector__body">

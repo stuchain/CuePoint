@@ -7,6 +7,8 @@
 
 .cp-more-about__toggle {
   min-width: 0;
+  /* The arrow sits on the content edge, not inset by the button's own padding. */
+  padding-inline-start: 0;
 }
 
 .cp-more-about__body {

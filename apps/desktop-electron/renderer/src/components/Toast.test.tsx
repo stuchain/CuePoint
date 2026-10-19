@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import toastCss from "./Toast.css?raw";
 import { ToastProvider, useToast } from "./Toast";
 
 let push: ReturnType<typeof useToast>["push"];
@@ -157,7 +158,7 @@ describe("a keyed push", () => {
     mount();
     act(() => push("Copying 1", "info", undefined, { key: "copy" }));
     act(() => push("Copying 2", "error", undefined, { key: "copy" }));
-    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(screen.getByText("Copying 2")).toBeInTheDocument();
     expect(screen.queryByText("Copying 1")).toBeNull();
   });
@@ -202,9 +203,44 @@ describe("repeats and a full stack", () => {
   it("keeps at most five on screen: the oldest makes way", () => {
     mount();
     for (let i = 1; i <= 7; i += 1) act(() => push(`Problem ${i}`, "error"));
-    expect(screen.getAllByRole("status")).toHaveLength(5);
+    expect(screen.getAllByRole("alert")).toHaveLength(5);
     expect(screen.queryByText("Problem 1")).toBeNull();
     expect(screen.queryByText("Problem 2")).toBeNull();
     expect(screen.getByText("Problem 7")).toBeInTheDocument();
+  });
+});
+
+describe("toast look (C122)", () => {
+  it("announces an error at once and the others politely", () => {
+    render(
+      <ToastProvider>
+        <Grab />
+      </ToastProvider>,
+    );
+    act(() => push("Could not save.", "error"));
+    act(() => push("Saved.", "success"));
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not save.");
+    expect(screen.getByRole("status")).toHaveTextContent("Saved.");
+  });
+
+  it("closes with the small close button, named for what it closes, and its hover tip", () => {
+    render(
+      <ToastProvider>
+        <Grab />
+      </ToastProvider>,
+    );
+    act(() => push("Saved."));
+    const close = screen.getByRole("button", { name: "Close message" });
+    expect(close).toHaveClass("cp-btn--sm");
+    expect(close).toHaveAttribute("title", "Close message");
+  });
+});
+
+describe("toast styles (C122)", () => {
+  it("sits on the panel colour with even padding, 8 apart, above the player and the table scrollbar", () => {
+    expect(toastCss).toMatch(/\.cp-toast\s*\{[^}]*background:\s*var\(--bg-panel\);/);
+    expect(toastCss).toMatch(/\.cp-toast\s*\{[^}]*padding:\s*var\(--space-md\);/);
+    expect(toastCss).toMatch(/\.cp-toast-stack\s*\{[^}]*gap:\s*var\(--space-sm\);/);
+    expect(toastCss).toMatch(/--shell-bottom-inset/);
   });
 });

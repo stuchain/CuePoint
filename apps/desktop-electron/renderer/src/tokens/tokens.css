@@ -171,11 +171,9 @@
   --chip-fill-mix: 20%;
   --chip-text-mix: 35%;
   /* Modal widths: small (a question), medium (a form), large (a table or a list). */
-  --modal-width-small: calc(400px * var(--scale));
-  --modal-width-medium: calc(560px * var(--scale));
-  --modal-width-large: calc(720px * var(--scale));
-  /* The close button every panel, dialog, toast and inspector shares. */
-  --close-size: var(--control-height);
+  --modal-width-small: calc(360px * var(--scale));
+  --modal-width-medium: calc(520px * var(--scale));
+  --modal-width-large: calc(760px * var(--scale));
 
   /*
    * Shared looks added by the consistency build, one name each so a page never invents its own:

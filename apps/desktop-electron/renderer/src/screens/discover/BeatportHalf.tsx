@@ -35,7 +35,7 @@ import type {
 import { DISCOVER_OPTIONS, useReportReadError, useSharedRead } from "../../api/sharedReads";
 import { Button } from "../../components/Button";
 import { CloseButton } from "../../components/CloseButton";
-import { MISSING_VALUE } from "../../components/MissingValue";
+import { NO_VALUE } from "../../words";
 import { EmptyState } from "../../components/EmptyState";
 import { Loading } from "../../components/Loading";
 import { MATCH_ON_BEATPORT, RETRY } from "../../format/words";
@@ -465,7 +465,7 @@ export function BeatportHalf({
         <span className="discover-toolbar__count" role="status">
           {half.found_by_name ? "Found by name on Beatport. " : ""}
           {page
-            ? `${pluralize(page.tracks, "track")} released since ${formatIsoDay(half.since) || MISSING_VALUE}${
+            ? `${pluralize(page.tracks, "track")} released since ${formatIsoDay(half.since) || NO_VALUE}${
                 page.owned > 0
                   ? ` · ${formatCount(page.owned)} already in your library${owned === "hide" ? " (hidden)" : ""}`
                   : ""

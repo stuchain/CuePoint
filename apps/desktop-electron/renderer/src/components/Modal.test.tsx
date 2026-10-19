@@ -6,7 +6,7 @@
  * `aria-modal="true"` explicitly promises does not happen. A keyboard user
  * could open a dialog and never reach it.
  */
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -136,8 +136,14 @@ describe("Modal", () => {
     open({ size });
     expect(screen.getByRole("dialog")).toHaveClass(`cp-modal--${size}`);
     expect(css).toMatch(
-      new RegExp(`\\.cp-modal--${size}\\s*\\{[^}]*var\\(--modal-width-${size}\\)`),
+      new RegExp(`\\.cp-modal--${size}\\s*\\{[^}]*--modal-width:\\s*var\\(--modal-width-${size}\\)`),
     );
+  });
+
+  it("is 360, 520 and 760 at 1x, narrowed to the window by one rule (C108)", () => {
+    const px = (name: string) => Number(new RegExp(`--modal-width-${name}:\\s*calc\\((\\d+)px \\* var\\(--scale\\)\\)`).exec(tokens)![1]);
+    expect([px("small"), px("medium"), px("large")]).toEqual([360, 520, 760]);
+    expect(css).toMatch(/\.cp-modal \{[^}]*width:\s*min\(var\(--modal-width[^;]*100vw/);
   });
 
   it("is a medium dialog (a form) unless told otherwise", () => {
@@ -301,7 +307,7 @@ describe("the title", () => {
 
   it("closes with an icon button named Close, not a typed cross (T10, N10)", () => {
     const { onClose } = open();
-    const close = screen.getByRole("button", { name: "Close" });
+    const close = within(screen.getByRole("dialog").querySelector<HTMLElement>(".cp-modal__header")!).getByRole("button", { name: "Close" });
     expect(close).toHaveClass("cp-btn--icon");
     expect(close.querySelector('svg[data-icon="close"]')).not.toBeNull();
     expect(close.textContent).toBe("");
@@ -351,5 +357,115 @@ describe("the one footer (area 75)", () => {
     const reason = dialog.querySelector(".cp-modal__reason")!;
     expect(reason).toHaveTextContent("Pick a value first.");
     expect(reason.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe("Modal footer and focus (C107, C111, C112)", () => {
+  it("gives a dialog with no actions one grey Close button", () => {
+    const onClose = vi.fn();
+    render(<Modal open title="About" onClose={onClose}>words</Modal>);
+    const footer = screen.getByRole("dialog").querySelector<HTMLElement>(".cp-modal__footer")!;
+    const close = within(footer).getByRole("button", { name: "Close" });
+    expect(close).toHaveClass("cp-btn--secondary");
+    fireEvent.click(close);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not add a Close when the dialog has its own buttons", () => {
+    render(<Modal open title="Q" onClose={() => {}} primaryAction={{ label: "Go", onClick: () => {} }} secondaryAction={{ label: "Cancel", onClick: () => {} }}>words</Modal>);
+    const footer = screen.getByRole("dialog").querySelector<HTMLElement>(".cp-modal__footer")!;
+    expect(within(footer).queryByRole("button", { name: "Close" })).toBeNull();
+  });
+
+  it("puts focus on the element initialFocus names", () => {
+    function Probe() {
+      const ref = useRef<HTMLInputElement>(null);
+      return (
+        <Modal open title="Name" onClose={() => {}} initialFocus={ref}>
+          <input ref={ref} aria-label="Name" />
+        </Modal>
+      );
+    }
+    render(<Probe />);
+    expect(screen.getByRole("textbox", { name: "Name" })).toHaveFocus();
+  });
+
+  it("cannot be closed while closeDisabled, and says why", async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Modal open title="Saving" onClose={onClose} closeDisabled closeReason="Wait until it has saved.">
+        words
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog");
+    const close = within(dialog.querySelector<HTMLElement>(".cp-modal__header")!).getByRole("button", { name: "Close" });
+    expect(close).toHaveAttribute("aria-disabled", "true");
+    await user.click(close);
+    await user.keyboard("{Escape}");
+    fireEvent.click(dialog.parentElement!);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(dialog.querySelector(".cp-modal__reason")).toHaveTextContent("Wait until it has saved.");
+  });
+});
+
+describe("Enter submits (C111)", () => {
+  it("runs the one main button when Enter is pressed in a text field", async () => {
+    const go = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Modal open title="Rename" onClose={() => {}} primaryAction={{ label: "Rename", onClick: go }}>
+        <input aria-label="Name" />
+      </Modal>,
+    );
+    await user.type(screen.getByRole("textbox", { name: "Name" }), "x{Enter}");
+    expect(go).toHaveBeenCalledTimes(1);
+  });
+
+  it("does nothing when the main button is greyed", async () => {
+    const go = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Modal open title="Rename" onClose={() => {}} primaryAction={{ label: "Rename", onClick: go, disabled: true }}>
+        <input aria-label="Name" />
+      </Modal>,
+    );
+    await user.type(screen.getByRole("textbox", { name: "Name" }), "x{Enter}");
+    expect(go).not.toHaveBeenCalled();
+  });
+
+  it("leaves Enter alone in a multi-line box and on a button", async () => {
+    const go = vi.fn();
+    const other = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Modal open title="Note" onClose={() => {}} primaryAction={{ label: "Save", onClick: go }}>
+        <textarea aria-label="Note" />
+        <button type="button" onClick={other}>
+          other
+        </button>
+      </Modal>,
+    );
+    await user.type(screen.getByRole("textbox", { name: "Note" }), "a{Enter}b");
+    expect(go).not.toHaveBeenCalled();
+    screen.getByRole("button", { name: "other" }).focus();
+    await user.keyboard("{Enter}");
+    expect(other).toHaveBeenCalledTimes(1);
+    expect(go).not.toHaveBeenCalled();
+  });
+});
+
+describe("Modal body look (C110, C67, C125, C121)", () => {
+  const flat = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  it("stacks the body 12 apart in prose line height, with a muted lead and no dead summary rule", () => {
+    expect(flat).toMatch(/\.cp-modal__body \{[^}]*display:\s*flex[^}]*flex-direction:\s*column[^}]*gap:\s*var\(--space-lg\)/);
+    expect(flat).toMatch(/\.cp-modal__body \{[^}]*line-height:\s*var\(--line-height-prose\)/);
+    expect(flat).toMatch(/\.cp-modal__lead \{[^}]*color:\s*var\(--fg-muted\)/);
+    expect(flat).not.toMatch(/cp-modal__summary/);
+  });
+
+  it("is framed by one 1px control border and keeps the dialog's soft shadow", () => {
+    expect(flat).toMatch(/\.cp-modal \{[^}]*border:\s*var\(--control-border-width\) solid var\(--border-control\)/);
+    expect(flat).toMatch(/box-shadow:\s*var\(--shadow-dialog\)/);
   });
 });

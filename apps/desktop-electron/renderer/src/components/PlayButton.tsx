@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from "react";
+import { Hint } from "./Hint";
 import { PixelIcon } from "./PixelIcon";
 import "./PlayButton.css";
 
@@ -16,8 +17,10 @@ interface PlayButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 
  */
 export function PlayButton({ playing = false, className = "", ...rest }: PlayButtonProps) {
   return (
-    <button type="button" className={`cp-play-btn${playing ? " cp-play-btn--playing" : ""} ${className}`.trim()} {...rest}>
-      <PixelIcon name={playing ? "pause" : "play"} />
-    </button>
+    <Hint text={rest["aria-label"]}>
+      <button type="button" className={`cp-play-btn${playing ? " cp-play-btn--playing" : ""} ${className}`.trim()} {...rest}>
+        <PixelIcon name={playing ? "pause" : "play"} />
+      </button>
+    </Hint>
   );
 }

@@ -50,6 +50,7 @@ interface LabelledButtonProps extends ButtonBaseProps {
 interface IconOnlyButtonProps extends ButtonBaseProps {
     iconOnly: true;
     icon: ReactElement | PixelIconName;
+    iconEnd?: never;
     "aria-label": string;
     children?: never;
 }

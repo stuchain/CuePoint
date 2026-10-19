@@ -53,3 +53,10 @@ describe("MoreAbout", () => {
     expect(screen.getByText("The detail.")).toBeVisible();
   });
 });
+
+describe("MoreAbout look (C50)", () => {
+  it("puts the arrow flush with the content edge", async () => {
+    const css = (await import("./MoreAbout.css?raw")).default as string;
+    expect(css).toMatch(/\.cp-more-about__toggle\s*\{[^}]*padding-inline-start:\s*0/);
+  });
+});

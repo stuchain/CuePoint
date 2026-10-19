@@ -10,14 +10,15 @@
   align-items: center;
   box-sizing: border-box;
   padding: var(--space-2xs) var(--space-sm);
-  border: var(--hairline) solid var(--chip-tone);
+  border: var(--hairline) solid var(--border-control);
+  border-radius: 0;
   background: color-mix(in srgb, var(--chip-tone) var(--chip-fill-mix), transparent);
-  color: color-mix(in srgb, var(--chip-tone) var(--chip-text-mix), var(--fg-primary));
+  color: var(--chip-text, color-mix(in srgb, var(--chip-tone) var(--chip-text-mix), var(--fg-primary)));
   /* Words in the pixel face, figures in the data face (area 56): "23 left" never reads "28 left". */
   font-family: var(--font-pixel-digits);
   font-variant-numeric: tabular-nums;
   font-size: var(--font-size-xs);
-  font-weight: var(--weight-strong);
+  font-weight: var(--font-weight-bold);
   line-height: 1;
   white-space: nowrap;
 }
@@ -36,17 +37,24 @@
 
 .cp-badge--success {
   --chip-tone: var(--accent-success);
+  --chip-text: var(--success-text);
 }
 
 .cp-badge--warning {
   --chip-tone: var(--accent-warning);
+  --chip-text: var(--warning-text);
 }
 
 .cp-badge--danger {
   --chip-tone: var(--accent-danger);
+  --chip-text: var(--danger-text);
 }
 
-.cp-badge--accent,
-.cp-badge--info {
+.cp-badge--accent {
   --chip-tone: var(--accent-primary);
+}
+
+/* Information is its own colour, not the theme's violet (C91). */
+.cp-badge--info {
+  --chip-tone: var(--accent-info);
 }

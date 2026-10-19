@@ -18,7 +18,7 @@ import { Hint, HINT_HOVER_DELAY_MS } from "./Hint";
 import { Kbd } from "./Kbd";
 import { LinkButton } from "./LinkButton";
 import { Loading, loadingWords } from "./Loading";
-import { MISSING_VALUE, MissingValue, valueOrMissing } from "./MissingValue";
+import { NO_VALUE, MissingValue, valueOrMissing } from "./MissingValue";
 import { Modal } from "./Modal";
 import { Callout, Notice } from "./Notice";
 import { OverflowHintHost } from "./OverflowHintHost";
@@ -54,7 +54,7 @@ describe("CloseButton", () => {
         <p>x</p>
       </Modal>,
     );
-    expect(screen.getByRole("button", { name: "Close" })).toHaveClass("cp-close");
+    expect(screen.getAllByRole("button", { name: "Close" })[0]).toHaveClass("cp-close");
   });
 });
 
@@ -70,7 +70,7 @@ describe("Notice", () => {
       </>,
     );
     const problem = screen.getByText("Try another one.").closest(".cp-notice")!;
-    expect(problem).toHaveClass("cp-notice--problem");
+    expect(problem).toHaveClass("cp-notice--danger");
     expect(problem).toHaveAttribute("role", "alert");
     expect(within(problem as HTMLElement).getByText("Could not read the file")).toHaveClass("cp-notice__title");
     expect(screen.getByText("Check the key first.").closest(".cp-notice")).toHaveAttribute("role", "status");
@@ -108,8 +108,8 @@ describe("Loading", () => {
 describe("MissingValue", () => {
   it("is one muted dash", () => {
     render(<MissingValue />);
-    expect(screen.getByText(MISSING_VALUE)).toHaveClass("cp-missing");
-    expect(MISSING_VALUE).toBe("—");
+    expect(screen.getByText(NO_VALUE)).toHaveClass("cp-missing");
+    expect(NO_VALUE).toBe("—");
   });
 
   it("stands in for an empty value and leaves a real one", () => {

@@ -9,8 +9,8 @@
 .cp-track-menu {
   position: fixed;
   z-index: 60;
-  min-width: calc(180px * var(--scale));
-  padding: var(--space-xs) 0;
+  min-width: calc(140px * var(--scale));
+  padding: var(--space-xs);
   border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-panel);
   outline: none;
@@ -21,7 +21,7 @@
    * the bottom. A submenu escapes this box by being fixed rather than
    * absolute, which is why it is positioned in script.
    */
-  max-height: calc(100vh - 8px);
+  max-height: min(60vh, calc(480px * var(--scale)));
   overflow-y: auto;
 }
 
@@ -66,12 +66,25 @@
   cursor: default;
 }
 
+/* The key that does the same thing: right-aligned, muted, in the data face (C127). */
+.cp-track-menu__shortcut {
+  margin-inline-start: auto;
+  padding-inline-start: var(--space-lg);
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+}
+
+.cp-track-menu__item--active .cp-track-menu__shortcut {
+  color: var(--fg-primary);
+}
+
 /* A group title: the label role, set in from the edge like an entry's words (area 81). */
 .cp-track-menu__heading {
   padding: var(--space-xs) var(--space-md) var(--space-2xs);
   color: var(--fg-muted);
   font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
+  font-weight: var(--font-weight-bold);
   white-space: nowrap;
 }
 
@@ -130,10 +143,10 @@
 .cp-track-menu__submenu {
   position: fixed;
   z-index: 61;
-  max-height: calc(100vh - 8px);
+  max-height: min(60vh, calc(480px * var(--scale)));
   overflow-y: auto;
-  min-width: calc(180px * var(--scale));
-  padding: var(--space-xs) 0;
+  min-width: calc(140px * var(--scale));
+  padding: var(--space-xs);
   border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-panel);
 }

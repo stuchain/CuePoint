@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { isValidElement, type ReactNode } from "react";
 import { Button } from "./Button";
 import { PixelIcon } from "./PixelIcon";
 import type { PixelIconName } from "./pixelIcons";
@@ -26,28 +26,41 @@ export interface EmptyStateProps {
   headline: string;
   /** One muted line: why, or what to do. */
   description?: ReactNode;
-  /** The one thing to do about it. */
-  action?: { label: string; onClick: () => void; disabled?: boolean };
+  /**
+   * The one thing to do about it: a `{ label, onClick }` for the standard button, or any element
+   * (a link, a button with a menu) to put in the slot as it is.
+   */
+  action?: { label: string; onClick: () => void; disabled?: boolean } | ReactNode;
+  /** The short form (C140): body-size words and no icon, for an empty list inside a panel. */
+  compact?: boolean;
   className?: string;
+}
+
+function isButtonSpec(action: EmptyStateProps["action"]): action is { label: string; onClick: () => void; disabled?: boolean } {
+  return typeof action === "object" && action !== null && !isValidElement(action) && "label" in action && "onClick" in action;
 }
 
 /**
  * The one empty state: centred, an icon, one line, and at most one button; never a full-screen
  * splash. `description` is for a second, muted line only when the first needs a reason.
  */
-export function EmptyState({ icon, tone = "empty", headline, description, action, className = "" }: EmptyStateProps) {
+export function EmptyState({ icon, tone = "empty", headline, description, action, compact = false, className = "" }: EmptyStateProps) {
   const drawn: PixelIconName = icon ?? (tone === "clear" ? "clean" : "collections");
   return (
-    <div className={`cp-empty-state${tone === "clear" ? " cp-empty-state--clear" : ""} ${className}`.trim()}>
-      <span className="cp-empty-state__icon" aria-hidden>
-        <PixelIcon name={drawn} />
-      </span>
+    <div className={`cp-empty-state${tone === "clear" ? " cp-empty-state--clear" : ""}${compact ? " cp-empty-state--compact" : ""} ${className}`.trim()}>
+      {compact ? null : (
+        <span className="cp-empty-state__icon" aria-hidden>
+          <PixelIcon name={drawn} />
+        </span>
+      )}
       <p className="cp-empty-state__headline">{headline}</p>
       {description && <p className="cp-empty-state__description">{description}</p>}
-      {action && (
+      {isButtonSpec(action) ? (
         <Button variant="secondary" onClick={action.onClick} disabled={action.disabled}>
           {action.label}
         </Button>
+      ) : (
+        action
       )}
     </div>
   );

@@ -16,9 +16,10 @@ describe("Badge", () => {
     expect(screen.getByText("Done")).toHaveClass("cp-badge--success");
   });
 
-  it("has a hairline border in its tone and no shadow (T5)", () => {
+  it("is square with a hairline border in the theme's control colour and no shadow (T5, C91)", () => {
     const body = rule(".cp-badge");
-    expect(body).toMatch(/border:\s*var\(--hairline\) solid var\(--chip-tone\)/);
+    expect(body).toMatch(/border:\s*var\(--hairline\) solid var\(--border-control\)/);
+    expect(body).toMatch(/border-radius:\s*0/);
     expect(body).not.toMatch(/box-shadow/);
   });
 
@@ -31,7 +32,7 @@ describe("Badge", () => {
   it("tints its fill from the tone and reads its words from it, never a solid fill", () => {
     const body = rule(".cp-badge");
     expect(body).toMatch(/background:\s*color-mix\(in srgb, var\(--chip-tone\) var\(--chip-fill-mix\), transparent\)/);
-    expect(body).toMatch(/color:\s*color-mix\(in srgb, var\(--chip-tone\) var\(--chip-text-mix\), var\(--fg-primary\)\)/);
+    expect(body).toMatch(/color:\s*var\(--chip-text, color-mix\(in srgb, var\(--chip-tone\) var\(--chip-text-mix\), var\(--fg-primary\)\)\)/);
     expect(body).not.toMatch(/fg-on-status|fg-on-accent/);
   });
 
@@ -39,8 +40,13 @@ describe("Badge", () => {
     expect(rule(`.cp-badge--${variant}`)).toMatch(new RegExp(`--chip-tone:\\s*var\\(--accent-${variant}\\)`));
   });
 
-  it.each(["accent", "info"])("%s takes the accent", (variant) => {
-    expect(rule(`.cp-badge--${variant}`)).toMatch(/--chip-tone:\s*var\(--accent-primary\)/);
+  it.each(["success", "warning", "danger"])("%s words use the status text token", (variant) => {
+    expect(rule(`.cp-badge--${variant}`)).toMatch(new RegExp(`--chip-text:\\s*var\\(--${variant}-text\\)`));
+  });
+
+  it("accent takes the theme accent and info takes --accent-info", () => {
+    expect(rule(".cp-badge--accent")).toMatch(/--chip-tone:\s*var\(--accent-primary\)/);
+    expect(rule(".cp-badge--info")).toMatch(/--chip-tone:\s*var\(--accent-info\)/);
   });
 
   it("the neutral and default badge border is --border-muted", () => {

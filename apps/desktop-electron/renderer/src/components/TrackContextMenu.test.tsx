@@ -12,11 +12,11 @@
  * "back" rather than "somewhere else entirely".
  */
 import * as React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TrackContextMenu, type TrackContextMenuItem } from "./TrackContextMenu";
+import { TrackContextMenu, useMenuButton, type TrackContextMenuItem } from "./TrackContextMenu";
 import css from "./TrackContextMenu.css?raw";
 import { parseRules, stripComments } from "../test/cssRules";
 
@@ -575,5 +575,130 @@ describe("tickable entries (K12)", () => {
     expect(screen.queryByRole("menu")).toBeNull();
     expect(opener).toHaveFocus();
     opener.remove();
+  });
+});
+
+describe("shortcut labels (C127)", () => {
+  it("shows an entry's shortcut after its name, and keeps the name as the accessible name", () => {
+    open({ items: items([{ shortcut: "Enter" }, {}, {}]) });
+    const play = screen.getByRole("menuitem", { name: "Play" });
+    expect(play.querySelector(".cp-track-menu__shortcut")).toHaveTextContent("Enter");
+  });
+
+  it("sets the shortcut right-aligned, muted, in the data face", () => {
+    const rule = parseRules(stripComments(css)).find((r) => r.selector.trim() === ".cp-track-menu__shortcut")!;
+    expect(rule.body).toMatch(/margin-inline-start:\s*auto/);
+    expect(rule.body).toMatch(/color:\s*var\(--fg-muted\)/);
+    expect(rule.body).toMatch(/font-family:\s*var\(--font-data\)/);
+  });
+});
+
+describe("danger entries (C16)", () => {
+  it("are sorted last after a divider, whatever order they were given in", () => {
+    open({
+      items: [
+        { id: "delete", label: "Delete", danger: true, onSelect: vi.fn() },
+        { id: "play", label: "Play", onSelect: vi.fn() },
+        { id: "rename", label: "Rename", onSelect: vi.fn() },
+      ],
+    });
+    expect(screen.getAllByRole("menuitem").map((node) => node.textContent)).toEqual(["Play", "Rename", "Delete"]);
+    const delete_ = screen.getByRole("menuitem", { name: "Delete" });
+    expect(delete_.closest(".cp-track-menu__group")!.previousElementSibling).toHaveAttribute("role", "separator");
+  });
+
+  it("walk in that order with the arrow keys", async () => {
+    const del = vi.fn();
+    open({
+      items: [
+        { id: "delete", label: "Delete", danger: true, onSelect: del },
+        { id: "play", label: "Play", onSelect: vi.fn() },
+      ],
+    });
+    await userEvent.keyboard("{End}{Enter}");
+    expect(del).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("a ticked entry (C126)", () => {
+  it("draws the check icon in its slot when checked, nothing when not", () => {
+    open({
+      items: [
+        { id: "a", label: "A", checked: true, onSelect: vi.fn() },
+        { id: "b", label: "B", checked: false, onSelect: vi.fn() },
+      ],
+    });
+    expect(screen.getByRole("menuitemcheckbox", { name: "A" }).querySelector('svg[data-icon="check"]')).not.toBeNull();
+    expect(screen.getByRole("menuitemcheckbox", { name: "B" }).querySelector("svg")).toBeNull();
+  });
+});
+
+describe("useMenuButton (C113)", () => {
+  function Harness({ onClosed }: { onClosed?: () => void }) {
+    const menu = useMenuButton();
+    return (
+      <div>
+        <button type="button" {...menu.buttonProps}>
+          More
+        </button>
+        {menu.open ? (
+          <TrackContextMenu
+            x={10}
+            y={10}
+            items={items()}
+            anchor={menu.anchor}
+            onClose={() => {
+              menu.close();
+              onClosed?.();
+            }}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
+  it("opens on a click and closes on the next click on the same button", async () => {
+    render(<Harness />);
+    const button = screen.getByRole("button", { name: "More" });
+    expect(button).toHaveAttribute("aria-haspopup", "menu");
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(button);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    await userEvent.click(button);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("does not close the menu on mousedown on its own button", async () => {
+    render(<Harness />);
+    const button = screen.getByRole("button", { name: "More" });
+    await userEvent.click(button);
+    fireEvent.mouseDown(button);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
+});
+
+describe("placement (C106)", () => {
+  it("keeps the menu above the player bar", () => {
+    const spy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      left: 0, top: 0, right: 160, bottom: 200, width: 160, height: 200, x: 0, y: 0, toJSON: () => ({}),
+    } as DOMRect);
+    document.documentElement.style.setProperty("--shell-bottom-inset", "100px");
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 600 });
+    try {
+      open();
+      expect(parseFloat(screen.getByRole("menu").style.top)).toBeLessThanOrEqual(600 - 100 - 200 - 4);
+    } finally {
+      spy.mockRestore();
+      document.documentElement.style.removeProperty("--shell-bottom-inset");
+    }
+  });
+
+  it("is one floating surface: 1px control border, even padding, 140 minimum, capped height", () => {
+    const flat = stripComments(css);
+    expect(flat).toMatch(/\.cp-track-menu \{[^}]*min-width:\s*calc\(140px \* var\(--scale\)\)/);
+    expect(flat).toMatch(/\.cp-track-menu \{[^}]*padding:\s*var\(--space-xs\);/);
+    expect(flat).toMatch(/\.cp-track-menu \{[^}]*max-height:\s*min\(60vh, calc\(480px \* var\(--scale\)\)\)/);
+    expect(flat).not.toMatch(/box-shadow/);
   });
 });

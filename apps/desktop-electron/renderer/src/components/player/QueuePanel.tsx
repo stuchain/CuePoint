@@ -165,9 +165,7 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
             Clear queue…
           </Button>
         )}
-        <Hint text="Close the queue">
-          <CloseButton onClick={onClose} aria-label="Close the queue" />
-        </Hint>
+        <CloseButton onClick={onClose} aria-label="Close the queue" />
       </header>
       <p className="cp-queue__hint">
         Drag to reorder · <Kbd keys="Alt+↑/↓" /> moves · <Kbd keys="Delete" /> removes · <Kbd keys="Enter" /> plays

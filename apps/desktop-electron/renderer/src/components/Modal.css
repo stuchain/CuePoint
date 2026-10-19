@@ -11,9 +11,9 @@
 
 .cp-modal {
   /* Medium, a form; --small and --large are the other two. All scale with the text. */
-  width: min(var(--modal-width-medium), 100%);
+  width: min(var(--modal-width, var(--modal-width-medium)), calc(100vw - 2 * var(--space-xl)));
   background: var(--bg-panel);
-  border: var(--divider);
+  border: var(--control-border-width) solid var(--border-control);
   box-shadow: var(--shadow-dialog);
   /* One scroller per dialog, the body: the dialog grows with its content up to the window's
      height, and title and buttons stay on screen. Nothing inside sets a max-height of its own. */
@@ -30,16 +30,16 @@
 
 /* A question (a confirmation) needs no more than this. */
 .cp-modal--small {
-  width: min(var(--modal-width-small), 100%);
+  --modal-width: var(--modal-width-small);
 }
 
 .cp-modal--medium {
-  width: min(var(--modal-width-medium), 100%);
+  --modal-width: var(--modal-width-medium);
 }
 
 /* For tables and lists rather than sentences: a log at the medium width clips every line. */
 .cp-modal--large {
-  width: min(var(--modal-width-large), 92vw);
+  --modal-width: var(--modal-width-large);
 }
 
 .cp-modal__header {
@@ -57,7 +57,7 @@
 .cp-modal__title {
   margin: 0;
   font-size: var(--font-size-dialog);
-  font-weight: var(--weight-strong);
+  font-weight: var(--font-weight-bold);
 }
 
 .cp-modal__body {
@@ -65,8 +65,13 @@
   min-height: 0;
   overflow: auto;
   padding: var(--space-lg);
+  /* Blocks are 12 apart; groups inside a block use 8. */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
   /* Every dialog's body text is this one size; a summary or lead is never larger. */
   font-size: var(--text-body);
+  line-height: var(--line-height-prose);
 }
 
 /* The lead line (what the dialog is for) is grey; the rest is the primary colour. */
@@ -74,18 +79,9 @@
   color: var(--fg-muted);
 }
 
-/* A summary line in a dialog (Export's counts, a result): body size, 14 at most. */
-.cp-modal__summary {
-  font-size: min(var(--text-body), calc(14px * var(--scale)));
-}
-
-/* Paragraphs in a body are blocks 12 apart (the default <p> margin put 22 between text and edge). */
+/* Paragraphs in a body are flex children: the body's gap is the space, never a margin. */
 .cp-modal__body > p {
-  margin: 0 0 var(--space-lg);
-}
-
-.cp-modal__body > p:last-child {
-  margin-bottom: 0;
+  margin: 0;
 }
 
 .cp-modal > .cp-modal__header,

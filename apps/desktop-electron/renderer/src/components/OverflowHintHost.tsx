@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { HINT_HOVER_DELAY_MS } from "./Hint";
 
@@ -29,6 +29,10 @@ interface Shown {
   left: number;
   bottom?: number;
   top?: number;
+  /** The control's box, kept so the tip can be flipped once its real size is known. */
+  anchor: { top: number; bottom: number };
+  /** Measured and placed once; never moved again for the same showing. */
+  settled?: true;
 }
 
 /**
@@ -47,6 +51,22 @@ interface Shown {
  */
 export function OverflowHintHost() {
   const [shown, setShown] = useState<Shown | null>(null);
+  const tip = useRef<HTMLSpanElement | null>(null);
+
+  // The tip's real width and height are only known once it is drawn: pull it in from the window's
+  // right edge by that width, and flip it below the control when it does not fit above.
+  useLayoutEffect(() => {
+    if (!shown || shown.settled) return;
+    const size = tip.current?.getBoundingClientRect();
+    if (!size) return;
+    const left = Math.max(GAP, Math.min(shown.left, window.innerWidth - size.width - GAP));
+    const fitsAbove = shown.anchor.top - GAP - size.height >= GAP;
+    setShown(
+      fitsAbove
+        ? { ...shown, left, settled: true }
+        : { text: shown.text, left, top: shown.anchor.bottom + GAP, anchor: shown.anchor, settled: true },
+    );
+  }, [shown]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -69,14 +89,16 @@ export function OverflowHintHost() {
     };
     const place = (element: HTMLElement, text: string) => {
       const box = element.getBoundingClientRect();
-      const room = box.top - GAP > 40;
+      // Placed above first with the left edge at the control; the layout effect below measures
+      // the tip and clamps or flips it.
       undescribe();
       described = { element, before: element.getAttribute("aria-description") };
       element.setAttribute("aria-description", text);
       setShown({
         text,
-        left: Math.max(GAP, Math.min(box.left, window.innerWidth - 360)),
-        ...(room ? { bottom: window.innerHeight - box.top + GAP } : { top: box.bottom + GAP }),
+        left: Math.max(GAP, box.left),
+        bottom: Math.max(GAP, window.innerHeight - box.top + GAP),
+        anchor: { top: box.top, bottom: box.bottom },
       });
     };
     const onOver = (event: PointerEvent) => {
@@ -132,7 +154,7 @@ export function OverflowHintHost() {
 
   if (!shown) return null;
   return createPortal(
-    <span role="tooltip" className="cp-hint__tip" style={{ left: shown.left, bottom: shown.bottom, top: shown.top }}>
+    <span ref={tip} role="tooltip" className="cp-hint__tip" style={{ left: shown.left, bottom: shown.bottom, top: shown.top }}>
       {shown.text}
     </span>,
     document.body,

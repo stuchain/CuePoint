@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { PixelIcon } from "./PixelIcon";
 import "./SavedTick.css";
 
 /** How long the tick stays after a change. */
@@ -24,7 +25,7 @@ export function SavedTick({ signal }: { signal: number }) {
     <span className="cp-saved-tick" role="status">
       {visible ? (
         <span key={signal} className="cp-saved-tick__body">
-          <span aria-hidden="true">✓</span> Saved
+          <PixelIcon name="check" size="sm" className="cp-pixel-icon--before" /> Saved
         </span>
       ) : null}
     </span>

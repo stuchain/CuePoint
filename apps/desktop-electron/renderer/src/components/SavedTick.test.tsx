@@ -17,7 +17,8 @@ describe("SavedTick", () => {
   it("says Saved when the signal changes, and goes after about two seconds", () => {
     const { rerender } = render(<SavedTick signal={0} />);
     rerender(<SavedTick signal={1} />);
-    expect(screen.getByRole("status")).toHaveTextContent("✓ Saved");
+    expect(screen.getByRole("status").querySelector('svg[data-icon="check"]')).not.toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("Saved");
     act(() => {
       vi.advanceTimersByTime(1900);
     });
