@@ -136,6 +136,18 @@ describe("KeysSourcePicker", () => {
     expect((screen.getByRole("checkbox", { name: "Gigs 2026" }) as HTMLInputElement).indeterminate).toBe(true);
   });
 
+  it("dashes a Rekordbox folder whose playlists are all ticked but not the folder itself", () => {
+    renderPicker({
+      picked: [
+        { kind: "playlist", id: 2 },
+        { kind: "playlist", id: 3 },
+      ],
+    });
+    const folder = screen.getByRole("checkbox", { name: "Gigs 2026" }) as HTMLInputElement;
+    expect(folder.indeterminate).toBe(true);
+    expect(folder).not.toBeChecked();
+  });
+
   it("chooses which tracks with the shared Select, its label inside the box (C222)", () => {
     const { onClear } = renderPicker({ libraryTrackCount: 300 });
     const select = screen.getByRole("combobox", { name: "Which tracks" });
@@ -146,6 +158,12 @@ describe("KeysSourcePicker", () => {
     expect(within(select).getByRole("option", { name: "Ticked sources" })).toBeDisabled();
     fireEvent.change(select, { target: { value: "whole" } });
     expect(onClear).not.toHaveBeenCalled();
+  });
+
+  it("names the ticked choice with what is ticked", () => {
+    renderPicker({ picked: [{ kind: "playlist", id: 2 }] });
+    const select = screen.getByRole("combobox", { name: "Which tracks" });
+    expect(within(select).getByRole("option", { name: "1 playlist" })).toBeInTheDocument();
   });
 
   it("goes back to the whole library from the Select once something is ticked", () => {

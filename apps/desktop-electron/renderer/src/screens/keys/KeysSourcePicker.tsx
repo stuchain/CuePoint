@@ -31,7 +31,7 @@ import {
   type CollectionTreeNode,
 } from "../library/collectionTree";
 import "../library/PlaylistPane.css";
-import { folderTick, sameSource, type PickedSource } from "./keysSources";
+import { folderTick, sameSource, sourcesWords, type PickedSource } from "./keysSources";
 
 interface KeysSourcePickerProps {
   playlists: readonly PlaylistTreeNode[];
@@ -156,7 +156,7 @@ export function KeysSourcePicker({
           value={everything ? "whole" : "ticked"}
           options={[
             { value: "whole", label: wholeLabel },
-            { value: "ticked", label: "Ticked sources", disabled: everything },
+            { value: "ticked", label: everything ? "Ticked sources" : sourcesWords(picked), disabled: everything },
           ]}
           // The other choice is made by ticking; going back to everything lets go of the ticks.
           onChange={(event) => {
@@ -190,7 +190,7 @@ export function KeysSourcePicker({
                 const own = row.source ? picked.some((item) => sameSource(item, row.source!)) : false;
                 const tick = folderTick(picked, row.under);
                 const checked = row.source ? own : tick === "all";
-                const dashed = !checked && tick === "some";
+                const dashed = !checked && tick !== "none";
                 const boxed = row.source !== undefined || (row.under.length > 0 && onToggleMany !== undefined);
                 const body = (
                   <>
