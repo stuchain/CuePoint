@@ -53,7 +53,12 @@
   background: var(--row-hover);
 }
 
+/* The gradient carries the accent bar, so only the first cell draws it (C4); the rest are flat. */
 .cp-data-table tbody tr[aria-selected="true"] td {
+  background: var(--bg-selected);
+}
+
+.cp-data-table tbody tr[aria-selected="true"] td:first-child {
   background: var(--selected-row-background);
 }
 

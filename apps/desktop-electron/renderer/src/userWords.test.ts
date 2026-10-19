@@ -186,10 +186,10 @@ const GLOSSARY: { never: RegExp; say: string; only?: RegExp }[] = [
   { never: /rekordbox export|xml export|your export|this export/i, say: "Rekordbox file" },
   { never: /library service/i, say: "not named (CuePoint stopped working in the background)" },
   { never: /rekordbox collection/i, say: "Rekordbox file" },
-  { never: /save changes into the files|into the files themselves/i, say: "Save to files" },
+  { never: /save changes into the files|into the files themselves/i, say: "Sync to files" },
   { never: /\bundo accept\b|^accept$/i, say: "Mark OK (a Prepare warning)" },
   { never: /import another file/i, say: "Import a Rekordbox file…" },
-  { never: /\bwrit(e|ing) tags\b/i, say: "Save to files" },
+  { never: /\bwrit(e|ing) tags\b/i, say: "Sync to files" },
   { never: /\(not used\)|\bno value\b/i, say: "— in a table, not set in a sentence" },
   {
     never: /\bnew search\b|this search found/i,

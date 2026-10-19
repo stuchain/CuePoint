@@ -14,6 +14,25 @@ const sources = import.meta.glob(
 
 const SYMBOLS = /[▸▾▼▲↑↓↻×✎✕]/;
 
+/**
+ * C138: the drawn marks (tick, warning, star, heart, grip, filled and half dot) and a typed "+"
+ * standing for add. Files that still type them are listed so the list can only shrink: a page
+ * batch removes its file from here when it swaps in a `PixelIcon`.
+ */
+const MARKS = /[✓⚠●◐★♥⠿]|["'`>]\+ [A-Za-z]/;
+const MARKS_ALLOW = new Set([
+  "components/OnboardingDialog.tsx",
+  "screens/discover/similarColumns.tsx",
+  "screens/library/FilterBar.tsx",
+  "screens/library/FirstSteps.tsx",
+  "screens/library/TrackBeatportSection.tsx",
+  "screens/library/TrackYours.tsx",
+  "screens/library/filterText.ts",
+  "screens/library/trackMenu.ts",
+  "screens/prepare/WarningCell.tsx",
+  "screens/prepare/prepareColumns.tsx",
+]);
+
 /** Source with comments removed, an arrow key in a shortcut hint (`+↑`, `+↑/↓`) and a multiplication sign after a digit ("1.5×") or a template value (`${scale}×`) left alone. */
 function codeOf(source: string): string {
   return source
@@ -30,6 +49,32 @@ function offenders(): string[] {
     .map(([path]) => path.replace(/^\/src\//, ""))
     .sort();
 }
+
+function markOffenders(): string[] {
+  return Object.entries(sources)
+    .filter(([, source]) => MARKS.test(codeOf(source)))
+    .map(([path]) => path.replace(/^\/src\//, ""))
+    .sort();
+}
+
+describe("typed marks guard (C138)", () => {
+  it("types a tick, warning, star, heart, grip, dot or plus only where listed", () => {
+    const found = markOffenders().filter((path) => !MARKS_ALLOW.has(path));
+    expect(found, `draw these with PixelIcon in: ${found.join(", ")}`).toEqual([]);
+  });
+
+  it("lists only files that still type one", () => {
+    const found = new Set(markOffenders());
+    const stale = [...MARKS_ALLOW].filter((path) => !found.has(path));
+    expect(stale, `remove from MARKS_ALLOW: ${stale.join(", ")}`).toEqual([]);
+  });
+
+  it("still sees a typed mark", () => {
+    expect(MARKS.test(codeOf("<span>✓</span>"))).toBe(true);
+    expect(MARKS.test(codeOf('label: "+ New"'))).toBe(true);
+    expect(MARKS.test(codeOf("const sum = a + b;"))).toBe(false);
+  });
+});
 
 describe("typed symbols guard (T10)", () => {
   it("has no file that types an icon glyph", () => {
