@@ -20,7 +20,7 @@
  * everything a table shows is its own action, and nothing else here acts on
  * thousands of tracks at once.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { rangeBetween } from "../library/trackSelection";
 
@@ -53,6 +53,12 @@ export interface BeatportSelection<Row> {
     event: SelectModifiers,
     rowAt?: (index: number) => Row | undefined,
   ) => void;
+  /**
+   * Move what is selected to the positions the table shows its rows at: the table calls this when
+   * it sorts its own rows or loads them again, so the anchor and the order of the selection are
+   * always displayed positions. `positions` maps a Beatport track id to its displayed index.
+   */
+  reindex: (positions: ReadonlyMap<number, number>) => void;
   /** A right-click on a row outside the selection selects that row first. */
   onRowMenu: (row: Row, index: number) => void;
   /** Select this one row, as a plain click would, from outside the table. */
@@ -85,6 +91,7 @@ export function useBeatportSelection<Row>({
   loadedRows: () => Array<Picked<Row>>;
 }): BeatportSelection<Row> {
   const [state, setState] = useState<State<Row>>(NOTHING);
+  const positionsOwned = useRef(false);
 
   // A different question selects nothing: the rows it answers are others.
   useEffect(() => {
@@ -101,8 +108,11 @@ export function useBeatportSelection<Row>({
       for (const { row, index } of loadedRows()) {
         const id = idOf(row);
         const held = picked.get(id);
-        if (held && (held.row !== row || held.index !== index)) {
-          picked.set(id, { row, index });
+        // A table that tells the positions it shows (`reindex`) owns them: it may sort its own
+        // rows, so `loadedRows` counting them in the source's order would flip them back.
+        const at = positionsOwned.current ? (held?.index ?? index) : index;
+        if (held && (held.row !== row || held.index !== at)) {
+          picked.set(id, { row, index: at });
           changed = true;
         }
       }
@@ -159,6 +169,33 @@ export function useBeatportSelection<Row>({
 
   const clear = useCallback(() => setState(NOTHING), []);
 
+  const reindex = useCallback((positions: ReadonlyMap<number, number>) => {
+    positionsOwned.current = true;
+    setState((previous) => {
+      if (previous.picked.size === 0) return previous;
+      const idAt = new Map<number, number>();
+      for (const [id, entry] of previous.picked) idAt.set(entry.index, id);
+      const moved = (index: number | null) => {
+        if (index === null) return null;
+        const id = idAt.get(index);
+        return id === undefined ? index : (positions.get(id) ?? index);
+      };
+      let changed = false;
+      const picked = new Map(previous.picked);
+      for (const [id, entry] of previous.picked) {
+        const at = positions.get(id);
+        if (at !== undefined && at !== entry.index) {
+          picked.set(id, { row: entry.row, index: at });
+          changed = true;
+        }
+      }
+      const anchor = moved(previous.anchor);
+      const last = moved(previous.last);
+      if (!changed && anchor === previous.anchor && last === previous.last) return previous;
+      return { picked, anchor, last };
+    });
+  }, []);
+
   /** Every row the table holds, for the bar's Select all. */
   const selectAll = useCallback(() => {
     const everything = loadedRows();
@@ -196,5 +233,6 @@ export function useBeatportSelection<Row>({
     select,
     selectAll,
     clear,
+    reindex,
   };
 }

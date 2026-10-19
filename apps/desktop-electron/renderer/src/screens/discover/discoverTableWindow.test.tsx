@@ -60,6 +60,7 @@ const NO_SELECTION: BeatportSelection<DiscoverRunTrackRow> = {
   select: () => {},
   selectAll: () => {},
   clear: () => {},
+  reindex: () => {},
 };
 
 const proto = HTMLElement.prototype;

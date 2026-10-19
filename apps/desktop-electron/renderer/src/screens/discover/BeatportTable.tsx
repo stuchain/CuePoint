@@ -14,7 +14,8 @@
  * selects every row loaded, and a right-click selects the row first, as everywhere.
  *
  * The bar of actions is above the table, like the Library's, and says how many tracks are
- * selected once, there.
+ * selected once, at its left. With one track selected it also holds "Open artist page" and
+ * "Open label page", the same entries as the right-click menu has (nothing is right-click only).
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -119,6 +120,21 @@ export function BeatportTable<Row extends BeatportTrackRow>({
     }
     return sortedRows(rows, columns, clientSort);
   }, [clientSort, columns, source]);
+  // The selection's positions are the displayed ones: the table's own sort, and rows loaded again,
+  // both move them (C193). Selecting all or clicking keeps them, so those need no pass.
+  const { reindex } = selection;
+  useEffect(() => {
+    const positions = new Map<number, number>();
+    if (displayed) {
+      displayed.forEach((row, at) => positions.set(idOf(row), at));
+    } else {
+      for (let at = 0; at < source.total; at += 1) {
+        const row = source.getRow(at);
+        if (row) positions.set(idOf(row), at);
+      }
+    }
+    reindex(positions);
+  }, [displayed, idOf, reindex, selection.keys, source]);
   // Preview cells scroll in and out of a virtualised table, so a sample belongs
   // to the table's lifetime, not its cell's (DEC-269).
   useEffect(() => stopAllPreviews, []);
@@ -183,6 +199,12 @@ export function BeatportTable<Row extends BeatportTrackRow>({
     return [...items, { ...first!, separatorBefore: true }, ...rest];
   };
 
+  // One selected track: the way to its artist's and label's pages, as buttons in the bar and
+  // again in the menu (C196). A person with several names gets a menu to choose from.
+  const [pageMenu, setPageMenu] = useState<{ x: number; y: number; items: TrackContextMenuItem[] } | null>(null);
+  const onlyRow = onOpenPage && selection.count === 1 ? selection.rows[0] : undefined;
+  const pageButtons = onlyRow && onOpenPage ? beatportPageItems(onlyRow, onOpenPage) : [];
+
   const run = (id: BeatportActionId) => {
     setMenu(null);
     onAction(id);
@@ -192,6 +214,12 @@ export function BeatportTable<Row extends BeatportTrackRow>({
     <div className="discover-table">
       <div className="cp-toolbar discover-table__actions" role="toolbar" aria-label={`${label}: actions`}>
         {lead}
+        <span className="cp-count" role="status">
+          {selection.count > 0 ? `${formatCount(selection.count)} selected` : summary}
+        </span>
+        {selection.count > 0 && (
+          <CloseButton aria-label="Clear selection" onClick={selection.clear} />
+        )}
         {filters}
         {actions.map((action) => (
           <span key={action.id} className="discover-table__action">
@@ -207,12 +235,24 @@ export function BeatportTable<Row extends BeatportTrackRow>({
             {action.note && <span className="discover-note">{action.note}</span>}
           </span>
         ))}
-        <span className="cp-count" role="status">
-          {selection.count > 0 ? `${formatCount(selection.count)} selected` : summary}
-        </span>
-        {selection.count > 0 && (
-          <CloseButton aria-label="Clear selection" onClick={selection.clear} />
-        )}
+        {pageButtons.map((item) => (
+          <Button
+            key={item.id}
+            variant="secondary"
+            menu={item.items !== undefined}
+            disabled={item.disabled}
+            onClick={(event) => {
+              if (item.items) {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setPageMenu({ x: rect.left, y: rect.bottom, items: item.items });
+              } else {
+                item.onSelect();
+              }
+            }}
+          >
+            {item.label}
+          </Button>
+        ))}
       </div>
 
       <div ref={rowsRef} className="discover-table__rows" onKeyDown={onRowKeys}>
@@ -254,6 +294,16 @@ export function BeatportTable<Row extends BeatportTrackRow>({
           label={`${countNoun(Math.max(selection.count, 1), "track")} from Beatport`}
           items={menuItems(menu.row)}
           onClose={() => setMenu(null)}
+        />
+      )}
+
+      {pageMenu && (
+        <TrackContextMenu
+          x={pageMenu.x}
+          y={pageMenu.y}
+          label="Open artist page"
+          items={pageMenu.items}
+          onClose={() => setPageMenu(null)}
         />
       )}
 
