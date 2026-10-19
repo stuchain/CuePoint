@@ -9,9 +9,6 @@
   gap: var(--space-xs);
   padding-bottom: var(--space-md);
   border-bottom: var(--divider);
-  /* The header always keeps the scrollbar's room, so the Details button stays put between a page
-     that scrolls as a whole and one that scrolls inside (C219). */
-  scrollbar-gutter: stable;
   /* Divider to the first content: 12, for every page. */
   margin-bottom: var(--space-lg);
   background: var(--bg-app);

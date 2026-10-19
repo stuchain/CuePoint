@@ -5,9 +5,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ScreenHeader } from "./ScreenHeader";
 import { publishDetails } from "./detailsToggle";
 import rawCss from "./ScreenHeader.css?raw";
+import rawAppCss from "../../App.css?raw";
 import { stripComments } from "../../test/cssRules";
 
 const css = stripComments(rawCss);
+const appCss = stripComments(rawAppCss);
 
 describe("ScreenHeader", () => {
   it("renders exactly one h1 holding the title", () => {
@@ -161,8 +163,10 @@ describe("ScreenHeader", () => {
   });
 
   describe("the header's own geometry", () => {
-    it("always reserves the scrollbar's room, so the Details button never shifts (C219)", () => {
-      expect(/\.cp-screen-header\s*\{([^}]*)\}/.exec(css)![1]).toMatch(/scrollbar-gutter:\s*stable/);
+    it("reserves the scrollbar's room on the page scroller, not on the header, so the Details button never shifts (C219)", () => {
+      // `scrollbar-gutter` only does anything on the box that scrolls: `.app-main`.
+      expect(/\.cp-screen-header\s*\{([^}]*)\}/.exec(css)![1]).not.toMatch(/scrollbar-gutter/);
+      expect(/\.app-main\s*\{([^}]*)\}/.exec(appCss)![1]).toMatch(/scrollbar-gutter:\s*stable/);
     });
 
     it("leaves the content 12 below its divider (C30)", () => {

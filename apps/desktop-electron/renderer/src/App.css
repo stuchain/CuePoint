@@ -23,6 +23,8 @@
   min-height: 0;
   min-width: 0;
   overflow: auto;
+  /* The page scroller keeps the scrollbar's room, so the header's Details button stays put between a page that scrolls and one that does not (C219). */
+  scrollbar-gutter: stable;
   width: 100%;
 
   /*
