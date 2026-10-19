@@ -1,6 +1,7 @@
 /**
- * The side panel of the review table: straight on the Beatport candidates, with Use this, a search
- * and None of these — leave it out. Against the real panel over a faked bridge.
+ * The side panel of the review table: straight on the Beatport candidates, a radio to pick one, a
+ * search, and the two decisions pinned at the foot (Use this match, None of these). Against the real
+ * panel over a faked bridge.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -71,9 +72,10 @@ describe("the candidates", () => {
     expect(within(panel).getByText("Found on Beatport \u00b7 pick the right one")).toBeInTheDocument();
     const list = await candidates();
     expect(list.getAllByRole("listitem")).toHaveLength(2);
-    expect(list.getByText("in use")).toBeInTheDocument();
-    // The first candidate is the row's own (1001): it is in use, so only the other offers Use this.
-    expect(list.getAllByRole("button", { name: /^Use this/ })).toHaveLength(1);
+    expect(list.getByText("In use")).toHaveClass("cp-quiet-ok");
+    // One radio per candidate, and no Use button on a candidate: the decision is in the foot (C242).
+    expect(list.getAllByRole("radio")).toHaveLength(2);
+    expect(list.queryByRole("button", { name: /^Use this/ })).toBeNull();
     // Each candidate has its facts on a line of their own: label, key, BPM, year.
     expect(list.getAllByText("Label Two \u00b7 8A \u00b7 128 BPM \u00b7 2020")).toHaveLength(2);
     expect(list.getAllByRole("button", { name: /Play the Beatport preview/ })).toHaveLength(2);
@@ -112,10 +114,42 @@ describe("the candidates", () => {
     expect(release).toHaveBeenCalledWith("blob:cover-1001");
   });
 
-  it("names the status with a chip and closes with the shared Close button", () => {
+  it("has the shared panel header: a title, the status, the place and the shared Close button", () => {
     renderPanel({ row: reviewTrack(1, "to_check") });
-    expect(screen.getByText("Check")).toHaveClass("cp-badge--warning");
+    expect(screen.getByRole("heading", { name: "Check the match" })).toHaveClass("cp-panel-header__title");
+    expect(screen.getByText("To check")).toHaveClass("cp-badge--warning");
     expect(screen.getByRole("button", { name: "Close" })).toHaveClass("cp-close");
+  });
+
+  it("says a confirmed track's status quietly, not in a chip", () => {
+    renderPanel({ row: reviewTrack(2, "matched") });
+    expect(screen.getByText("Confirmed")).toHaveClass("cp-quiet-ok");
+  });
+
+  it("closes on Esc from inside it, but a field keeps its own Esc", async () => {
+    const props = renderPanel();
+    await candidates();
+    const box = screen.getByRole("textbox", { name: "Search Beatport for" });
+    box.focus();
+    await userEvent.keyboard("{Escape}");
+    expect(props.onClose).not.toHaveBeenCalled();
+    screen.getByRole("complementary").focus();
+    await userEvent.keyboard("{Escape}");
+    expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("pins the two decisions to a foot outside the scrolling part", async () => {
+    renderPanel();
+    await candidates();
+    const foot = document.querySelector<HTMLElement>(".review-panel__foot")!;
+    const scroll = document.querySelector<HTMLElement>(".review-panel__scroll")!;
+    expect(within(foot).getByRole("button", { name: "Use this match" })).toBeInTheDocument();
+    expect(within(foot).getByRole("button", { name: "None of these, leave it out" })).toBeInTheDocument();
+    expect(scroll.contains(foot)).toBe(false);
+    // Both are the same quiet-bordered kind of button: neither outshouts the other (C1).
+    expect(within(foot).getAllByRole("button").every((button) => button.className.includes("cp-btn--secondary"))).toBe(
+      true,
+    );
   });
 
   it("says why a candidate the guards ruled out was", async () => {
@@ -124,30 +158,45 @@ describe("the candidates", () => {
     expect(list.getAllByText(/./, { selector: ".review-candidate__why" })).toHaveLength(1);
   });
 
-  it("says a candidate not in use is not ticked: an unticked row offers Use this on its own candidate too", async () => {
+  it("marks nothing in use on an unticked row, and offers its own candidate again", async () => {
     renderPanel({ row: reviewTrack(1, "matched", { ticked: false }) });
     const list = await candidates();
-    expect(list.queryByText("in use")).toBeNull();
-    expect(list.getAllByRole("button", { name: /^Use this/ })).toHaveLength(2);
+    expect(list.queryByText("In use")).toBeNull();
+    await userEvent.click(list.getAllByRole("radio")[0]!);
+    expect(screen.getByRole("button", { name: "Use this match" })).toBeEnabled();
   });
 
-  it("uses a candidate with Use this", async () => {
+  it("uses the candidate that is picked, with Use this match", async () => {
     const props = renderPanel();
     const list = await candidates();
-    await userEvent.click(list.getByRole("button", { name: /^Use this/ }));
-    expect(props.onUse).toHaveBeenCalledWith(1002);
+    // The one in use is not offered again; the other is picked from the start.
+    expect(screen.getByRole("button", { name: "Use this match" })).toBeEnabled();
+    await userEvent.click(list.getAllByRole("radio")[1]!);
+    await userEvent.click(screen.getByRole("button", { name: "Use this match" }));
+    expect(props.onUse).toHaveBeenCalledWith(expect.any(Number));
+  });
+
+  it("will not use the match that is already in use", async () => {
+    const props = renderPanel();
+    const list = await candidates();
+    const inUse = list.getByText("In use").closest("li")!;
+    await userEvent.click(within(inUse).getByRole("radio"));
+    expect(screen.getByRole("button", { name: "Use this match" })).toBeDisabled();
+    expect(props.onUse).not.toHaveBeenCalled();
   });
 
   it("waits while a choice is being sent", async () => {
     renderPanel({ busy: true });
-    const list = await candidates();
-    expect(list.getByRole("button", { name: /^Use this/ })).toBeDisabled();
+    await candidates();
+    expect(screen.getByRole("button", { name: "Use this match" })).toBeDisabled();
   });
 
   it("says there are no candidates for a track with none, and offers the search", async () => {
     bridge.getMatchCandidates.mockResolvedValue({ attempt_id: 1, track_id: 3, candidates: [], total: 0 });
     renderPanel({ row: reviewTrack(3, "not_found") });
-    expect(await screen.findByText("Beatport has no candidates for this track yet. Search below.")).toBeInTheDocument();
+    expect(await screen.findByText("Beatport has no candidates for this track yet")).toBeInTheDocument();
+    expect(screen.getByText("Search below")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use this match" })).toBeDisabled();
     expect(screen.getByRole("textbox", { name: "Search Beatport for" })).toHaveValue("Track 3 Artist 3");
   });
 
@@ -158,7 +207,7 @@ describe("the candidates", () => {
       attempts: [{ ...matchesFor(5).attempts[0]!, outcome: "error", error: "Beatport could not be reached" }],
     });
     renderPanel({ row: reviewTrack(5, "search_failed") });
-    expect(await screen.findByText(/Could not search Beatport for this track\./)).toBeInTheDocument();
+    expect(await screen.findByText(/Could not search Beatport for this track/)).toBeInTheDocument();
     // The matcher's raw reason is not in the line; it is the hint on Details.
     expect(screen.queryByText(/Beatport could not be reached/)).toBeNull();
     expect(screen.getByText("Details")).toBeInTheDocument();
@@ -166,15 +215,15 @@ describe("the candidates", () => {
 });
 
 describe("leaving it out", () => {
-  it("unticks with None of these — leave it out", async () => {
+  it("unticks with None of these, leave it out", async () => {
     const props = renderPanel();
-    await userEvent.click(screen.getByRole("button", { name: "None of these — leave it out" }));
+    await userEvent.click(screen.getByRole("button", { name: "None of these, leave it out" }));
     expect(props.onLeaveOut).toHaveBeenCalledTimes(1);
   });
 
   it("has nothing to leave out when the track is already out", () => {
     renderPanel({ row: reviewTrack(4, "matched", { ticked: false }) });
-    expect(screen.getByRole("button", { name: "None of these — leave it out" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "None of these, leave it out" })).toBeDisabled();
   });
 });
 
@@ -234,7 +283,8 @@ describe("searching Beatport", () => {
     renderPanel({ matching: true });
     await candidates();
     expect(screen.getByRole("button", { name: "Search Beatport" })).toBeDisabled();
-    expect(screen.getByText("One match at a time: wait for the one that is running.")).toBeInTheDocument();
+    // The reason is a hint on the button, not a line in the panel.
+    expect(screen.queryByText(/One match at a time/)).toBeNull();
   });
 });
 
@@ -251,10 +301,10 @@ describe("More", () => {
     await candidates();
     expect(screen.queryByRole("combobox", { name: "Attempt" })).toBeNull();
     expect(screen.queryByRole("table", { name: /scored/ })).toBeNull();
-    const more = screen.getByRole("button", { name: "More ›" });
+    const more = screen.getByRole("button", { name: "More" });
     expect(more).toHaveAttribute("aria-expanded", "false");
     await userEvent.click(more);
-    expect(screen.getByRole("button", { name: "Less ‹" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "More" })).toHaveAttribute("aria-expanded", "true");
     expect(await screen.findByRole("combobox", { name: "Attempt" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Why this score?" })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "How the matcher scored this candidate" })).toBeInTheDocument();

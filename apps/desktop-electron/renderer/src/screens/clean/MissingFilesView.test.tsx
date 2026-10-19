@@ -178,10 +178,10 @@ describe("nothing missing (K13)", () => {
     expect(screen.getByText("No missing files")).toBeInTheDocument();
   });
 
-  it("draws the bars' count in the app's UI font at bar size, not the data face (Q15)", () => {
-    const rule = /\.clean-toolbar__count\s*\{([^}]*)\}/.exec(css)![1]!;
-    expect(rule).not.toMatch(/font-family/);
-    expect(rule).toMatch(/font-size:\s*var\(--control-font-size\)/);
+  it("keeps the bar's status at the left and the button at the right, on the shared bar (C235)", () => {
+    const rule = /\.clean-toolbar__status\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(rule).toMatch(/margin-inline-end:\s*auto/);
+    expect(css).not.toMatch(/\n\.clean-toolbar\s*\{/);
   });
 
   it("puts the all-clear near the top under the bar, centred, like Duplicates (Q15)", () => {

@@ -1,5 +1,5 @@
 import { reportUnexpected } from "../../reporting/reporting";
-import { userMessage } from "../../api/userMessage";
+import { needsDesktopApp, userMessage } from "../../api/userMessage";
 /**
  * "Show in folder" for a track whose file may not be there (CLEAN-07, CLEAN-12).
  *
@@ -21,7 +21,7 @@ interface RevealOutcome {
 export async function revealTrack(trackId: number): Promise<RevealOutcome | null> {
   const bridge = window.cuepoint;
   if (!bridge?.getTrackFolder || !bridge.showItemInFolder) {
-    return { tone: "warning", message: "Showing a file needs the desktop app." };
+    return { tone: "warning", message: needsDesktopApp("Showing a file") };
   }
   try {
     const found = await bridge.getTrackFolder({ trackId });

@@ -17,7 +17,7 @@ import { useToast } from "../../components";
 import { useActiveJob } from "../../components/shell/useActiveJob";
 import { clampLabel, matchStartedLine } from "./cleanFormat";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
-import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
+import { needsDesktopApp, userMessage } from "../../api/userMessage";
 import { announceRunEnd, type NothingFound } from "./match/matchDone";
 
 /** What a run started from a playlist's row asks of the page (C22). */
@@ -128,11 +128,12 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
         started: (answer) => {
           setStarted((count) => count + 1);
           onStarted?.(answer);
-          return matchStartedLine(answer);
+          // A toast has no closing full stop; the Activity panel's line keeps its own.
+          return matchStartedLine(answer).replace(/[.]$/, "");
         },
         startedKey: MATCH_STARTED_TOAST,
         // A run that has its own notice (a playlist's row) does not also say "finished".
-        succeeded: announced ? undefined : "Matching finished.",
+        succeeded: announced ? undefined : "Matching finished",
         onEnded: () => {
           // "Matching 18 tracks on Beatport." is only true while it runs.
           dismissKey(MATCH_STARTED_TOAST);
@@ -154,7 +155,7 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
     ): Promise<boolean> => {
       const bridge = window.cuepoint?.startCleanMatch;
       if (!bridge) {
-        push(NEEDS_DESKTOP, "warning");
+        push(needsDesktopApp(), "warning");
         return Promise.resolve(false);
       }
       setNamed(runLabel ? { label: clampLabel(runLabel), jobId: null } : null);
@@ -214,7 +215,7 @@ export function useCleanMatch(onEnded: () => void): CleanMatch {
     (jobId: string) => {
       const cancel = window.cuepoint?.cancelJob;
       if (!cancel) {
-        push(NEEDS_DESKTOP, "warning");
+        push(needsDesktopApp(), "warning");
         return;
       }
       void cancel(jobId).catch((cause: unknown) => push(userMessage(cause), "warning"));

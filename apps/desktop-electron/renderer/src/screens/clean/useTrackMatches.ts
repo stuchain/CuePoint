@@ -15,7 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MatchCandidate, TrackMatches } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
-import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
+import { needsDesktopApp, userMessage } from "../../api/userMessage";
 
 export interface TrackMatchesState {
   matches: TrackMatches | null;
@@ -50,7 +50,7 @@ export function useTrackMatches(trackId: number | null, version = 0): TrackMatch
       setMatches(null);
       setAttemptId(null);
       setCandidates([]);
-      setError(trackId == null ? null : NEEDS_DESKTOP);
+      setError(trackId == null ? null : needsDesktopApp());
       setLoading(false);
       return;
     }

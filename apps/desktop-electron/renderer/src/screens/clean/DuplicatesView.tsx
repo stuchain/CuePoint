@@ -21,9 +21,10 @@ import type {
   TagUsage,
 } from "../../api/cuepointBridge.types";
 import { Badge } from "../../components/Badge";
-import { Button, Card, EmptyState, Loading, Modal, useToast } from "../../components";
+import { Button, Card, EmptyState, Loading, Modal, Notice, useToast } from "../../components";
 import { formatCount, plural } from "../../format/counts";
-import { UNDO } from "../../format/words";
+import { CANCEL, RETRY, UNDO, quoted } from "../../format/words";
+import { trackIdentity } from "../../format/trackFacts";
 import { COLLECTIONS, TAGS, useSharedRead } from "../../api/sharedReads";
 import { PickerDialog, type PickerItem } from "../library/PickerDialog";
 import {
@@ -40,7 +41,7 @@ import { fileStatusLabel, signalExplanation, signalLabel, trackCount } from "./c
 import { revealTrack } from "./revealTrack";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
 import { reportUnexpected } from "../../reporting/reporting";
-import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
+import { needsDesktopApp, userMessage } from "../../api/userMessage";
 
 /** Groups read at a time: a screenful or two, never a whole library's worth. */
 const DUPLICATE_PAGE = 50;
@@ -69,7 +70,7 @@ function GroupCard({ group, busy, onAnswer, onTag, onCollect, onReveal }: GroupC
         {group.members.map((member) => (
           <li key={member.id ?? member.file_path} className="clean-group__member">
             <span className="clean-group__track">
-              <span className="clean-group__name">{member.title}</span> — {member.artist}
+              <span className="clean-group__name">{trackIdentity(member.title, member.artist)}</span>
             </span>
             <span className="clean-group__facts">
               {[
@@ -82,6 +83,7 @@ function GroupCard({ group, busy, onAnswer, onTag, onCollect, onReveal }: GroupC
             </span>
             <span className="clean-group__path">{member.file_path}</span>
             <Button
+              size="sm"
               variant="secondary"
               aria-label={`Show ${member.title} in its folder`}
               onClick={() => member.id != null && onReveal(member.id)}
@@ -128,10 +130,10 @@ function confirmWordsFor(pending: BatchRun | null): { title: string; button: str
   const tracks = plural(pending.count, "track");
   switch (pending.action.kind) {
     case "add_tag":
-      return { title: `Tag ${tracks} “${pending.action.target}”?`, button: `Tag ${tracks}` };
+      return { title: `Tag ${tracks} ${quoted(pending.action.target)}?`, button: `Tag ${tracks}` };
     case "add_to_collection":
       return {
-        title: `Add ${tracks} to “${pending.action.target}”?`,
+        title: `Add ${tracks} to ${quoted(pending.action.target)}?`,
         button: `Add ${tracks} to Collection`,
       };
     default:
@@ -176,7 +178,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
     const bridge = window.cuepoint?.getDuplicateGroups;
     if (!bridge) {
       setLoading(false);
-      setError(NEEDS_DESKTOP);
+      setError(needsDesktopApp());
       return;
     }
     let cancelled = false;
@@ -241,7 +243,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
         push(
           kind === "dismiss"
             ? "Marked as not duplicates. It comes back if these tracks change."
-            : "Shown as possible duplicates again.",
+            : "Shown as possible duplicates again",
           "success",
           kind === "dismiss"
             ? {
@@ -341,12 +343,12 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
   const scan = useCallback(() => {
     const bridge = window.cuepoint?.startDuplicateScan;
     if (!bridge) {
-      push(NEEDS_DESKTOP, "warning");
+      push(needsDesktopApp(), "warning");
       return;
     }
     void jobs.run<CleanJobStarted>("scan", () => bridge({}), {
-      started: () => "Looking for duplicates.",
-      succeeded: "Finished looking for duplicates.",
+      started: () => "Looking for duplicates",
+      succeeded: "Finished looking for duplicates",
       onEnded: () => {
         setReloads((value) => value + 1);
         onHealthChanged();
@@ -367,8 +369,8 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
 
   return (
     <div className="clean-duplicates">
-      <div className="clean-toolbar" role="toolbar" aria-label="Duplicates">
-        <span className="clean-toolbar__count" role="status">
+      <div className="cp-toolbar" role="toolbar" aria-label="Duplicates">
+        <span className="cp-count clean-toolbar__count" role="status">
           {plural(total, "group")}
         </span>
         <label className="clean-toolbar__check">
@@ -379,22 +381,34 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
           />
           Show groups marked not duplicates
         </label>
-        <span className="clean-toolbar__spacer" />
         <Button
           variant="secondary"
           disabled={jobs.running !== null}
           loading={jobs.running === "scan"}
           onClick={scan}
         >
-          Find duplicates
+          {/* One "<verb> again" pattern for a re-run (C180). */}
+          {empty.offer === "find_duplicates" ? "Find duplicates" : "Find again"}
         </Button>
       </div>
 
       <div className="clean-duplicates__list">
         {loading && groups.length === 0 ? (
           <Loading what="possible duplicates" />
+        ) : groups.length === 0 && error ? (
+          // A failed read is a red notice with Try again, the same on every page (C142).
+          <Notice
+            kind="danger"
+            action={
+              <Button variant="secondary" onClick={() => setReloads((value) => value + 1)}>
+                {RETRY}
+              </Button>
+            }
+          >
+            {error}
+          </Notice>
         ) : groups.length === 0 ? (
-          <EmptyState
+          <EmptyState compact
             icon="clean"
             tone={empty.offer === null && !error ? "clear" : "empty"}
             headline={empty.headline}
@@ -436,8 +450,8 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
         onCreate={picker?.kind === "tag" ? (name) => void createAndTag(name) : undefined}
         emptyText={
           picker?.kind === "collection"
-            ? "There are no Collections yet — make one in the Library."
-            : "No tags yet."
+            ? "There are no Collections yet. Make one in the Library."
+            : "No tags yet"
         }
       />
 
@@ -451,7 +465,7 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
           onClick: () => void batch.confirm(),
           loading: batch.busy,
         }}
-        secondaryAction={{ label: "Cancel", onClick: batch.cancel }}
+        secondaryAction={{ label: CANCEL, onClick: batch.cancel }}
       >
         <p>{batch.question}</p>
         {batch.pending && <p>{batchConsequence(batch.pending.action.kind)}</p>}

@@ -5,13 +5,13 @@
  * library change (a decision, an undo, a write) or a job ends. While a match runs the
  * rows say "Matching x of y", so the next read follows two seconds after the
  * last one settled, and one more when the match ends so the rows move to
- * "waiting" or "ready to save". A build without the route says so (`NEEDS_DESKTOP`).
+ * "waiting" or "ready to save". A build without the route says so (`needsDesktopApp()`).
  */
 import { useCallback, useEffect, useRef } from "react";
 
 import type { CleanPlaylists } from "../../../api/cuepointBridge.types";
 import { CLEAN_PLAYLISTS, useReportReadError, useSharedRead } from "../../../api/sharedReads";
-import { NEEDS_DESKTOP, userMessage } from "../../../api/userMessage";
+import { needsDesktopApp, userMessage } from "../../../api/userMessage";
 
 /** How often the rows are read again while a match runs. */
 export const PLAYLISTS_POLL_MS = 2000;
@@ -83,7 +83,7 @@ export function useCleanPlaylists(matching: boolean, active = true): CleanPlayli
   }, [matching, active, refresh]);
 
   const unavailable = read.unavailable;
-  const error = unavailable ? NEEDS_DESKTOP : !data && read.error !== undefined ? userMessage(read.error) : null;
+  const error = unavailable ? needsDesktopApp() : !data && read.error !== undefined ? userMessage(read.error) : null;
   const loading = !unavailable && data === null && error === null;
   return { data, error, loading, reload: refresh };
 }

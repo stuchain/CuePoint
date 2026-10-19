@@ -50,18 +50,14 @@
   border: 0;
 }
 
-/* The one action bar (area 61): a 32 panel bar, the count at the left in Inter, the actions at
-   the right. The Playlists footer and the Review bars share this look (playlists.css, match.css). */
-.clean-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  box-sizing: border-box;
-  gap: var(--space-md);
-  min-height: var(--toolbar-height);
-  padding: var(--toolbar-padding);
-  border: var(--control-border-width) solid var(--border-muted);
-  background: var(--bg-panel);
+/* The one bar above and below a list is `.cp-toolbar` (D9, C217): the toolbar fill, no border. Here
+   it holds status text on the left and the button on the right (C235). */
+.clean-toolbar__status {
+  min-width: 0;
+  margin-inline-end: auto;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--text-body);
 }
 
 /* A tab's count after its name: grey, amber when it is work waiting (area 58). */
@@ -71,6 +67,7 @@
 
 /* Tab toolbar lines are laid out one way (area 67): the count, its options, the actions at the right. */
 .clean-toolbar__check {
+  margin-inline-end: auto;
   display: inline-flex;
   align-items: center;
   gap: var(--space-sm);
@@ -81,14 +78,10 @@
   margin: 0;
 }
 
-.clean-toolbar__spacer {
-  flex: 1;
-}
-
-.clean-toolbar__count {
-  align-self: center;
-  /* The app's UI font at bar size, like every other bar (not the data face). */
-  font-size: var(--control-font-size);
+/* A count with options after it keeps its place at the left; the rest of the bar goes right. */
+.cp-toolbar .clean-toolbar__count {
+  margin-inline-start: 0;
+  margin-inline-end: var(--space-md);
 }
 
 .clean-note {
@@ -152,16 +145,8 @@
 }
 
 .clean-review__selection {
-  display: flex;
   flex-wrap: wrap;
-  align-items: center;
   justify-content: space-between;
-  box-sizing: border-box;
-  gap: var(--space-md);
-  min-height: var(--toolbar-height);
-  padding: var(--toolbar-padding);
-  border: var(--control-border-width) solid var(--border-muted);
-  background: var(--bg-panel);
 }
 
 /* ------------------------------------------------------------ duplicates */
@@ -275,6 +260,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-md);
+}
+
+/* The row's own button sits in the fixed end column, right-aligned (C76). */
+.clean-group__member > .cp-btn {
+  grid-area: reveal;
+  justify-self: end;
 }
 
 .clean-note__steps {

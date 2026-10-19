@@ -15,7 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ReviewTrack } from "../../../api/cuepointBridge.types";
 import { useToast } from "../../../components";
-import { NEEDS_DESKTOP, userMessage } from "../../../api/userMessage";
+import { needsDesktopApp, userMessage } from "../../../api/userMessage";
 import { reportUnexpected } from "../../../reporting/reporting";
 import { followJob } from "../../library/followJob";
 import { jobErrorMessage } from "../../library/libraryFormat";
@@ -76,7 +76,7 @@ export function useReviewTicks(
       if (changing.length === 0) return 0;
       const bridge = window.cuepoint?.setMatchTicks;
       if (!bridge) {
-        push(NEEDS_DESKTOP, "warning");
+        push(needsDesktopApp(), "warning");
         return null;
       }
       for (const row of changing) patchTrack(row.track_id, { ticked });
@@ -95,7 +95,7 @@ export function useReviewTicks(
     async (ticked: boolean): Promise<TickedAll | null> => {
       const bridge = window.cuepoint?.setMatchTicks;
       if (!bridge) {
-        push(NEEDS_DESKTOP, "warning");
+        push(needsDesktopApp(), "warning");
         return null;
       }
       const scope = {
@@ -129,7 +129,7 @@ export function useReviewTicks(
     async (batchId: string) => {
       const bridge = window.cuepoint?.revertBatch;
       if (!bridge) {
-        push(NEEDS_DESKTOP, "warning");
+        push(needsDesktopApp(), "warning");
         return false;
       }
       const back = await send(async () => {

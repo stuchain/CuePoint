@@ -10,7 +10,7 @@ import { useMemo } from "react";
 
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
 import { LIBRARY_HEALTH, useReportReadError, useSharedRead } from "../../api/sharedReads";
-import { NEEDS_DESKTOP, userMessage } from "../../api/userMessage";
+import { needsDesktopApp, userMessage } from "../../api/userMessage";
 
 interface CleanHealth {
   health: LibraryHealth | null;
@@ -30,7 +30,7 @@ export function useCleanHealth(): CleanHealth {
 
   const health = read.value ?? null;
   const error = read.unavailable
-    ? NEEDS_DESKTOP
+    ? needsDesktopApp()
     : !read.value && read.error !== undefined
       ? userMessage(read.error)
       : null;

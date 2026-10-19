@@ -31,7 +31,7 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { Button, EmptyState, Notice, useToast } from "../../components";
 import { formatCount, plural } from "../../format/counts";
-import { couldNot } from "../../format/words";
+import { RETRY, couldNot } from "../../format/words";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { useInspectorSlot } from "../../components/shell";
 import { useReportSelectedTrack } from "../../components/shell/useReportSelectedTrack";
@@ -51,7 +51,7 @@ import { checkedLine, lastRun, missingEmptyState } from "./cleanEmpty";
 import { MISSING_FILES_RULES, WHOLE_LIBRARY, cleanQuery } from "./cleanRules";
 import { revealTrack } from "./revealTrack";
 import { useCleanJob, type CleanMessageTone } from "./useCleanJob";
-import { NEEDS_DESKTOP } from "../../api/userMessage";
+import { needsDesktopApp } from "../../api/userMessage";
 
 /** Every track in the library, as a selection. */
 const WHOLE_LIBRARY_SELECTION: BatchSelection = { query: {} };
@@ -106,15 +106,15 @@ export function MissingFilesView({
     (key: string, target: BatchSelection) => {
       const bridge = window.cuepoint?.startFileCheck;
       if (!bridge) {
-        push(NEEDS_DESKTOP, "warning");
+        push(needsDesktopApp(), "warning");
         return;
       }
       void jobs.run<FileCheckStarted & CleanJobStarted>(
         key,
         () => bridge({ selection: target }),
         {
-          started: (answer) => `Checking ${trackCount(answer.tracks)}.`,
-          succeeded: "Finished checking files.",
+          started: (answer) => `Checking ${trackCount(answer.tracks)}`,
+          succeeded: "Finished checking files",
           onEnded: () => {
             window_.reload();
             detail.reload();
@@ -221,9 +221,10 @@ export function MissingFilesView({
     const checkedBar = lastChecked ? checkedLine(lastChecked) : "";
     return (
       <div className="clean-missing clean-missing--clear">
-        <div className="clean-toolbar" role="toolbar" aria-label="Missing files">
+        <div className="cp-toolbar" role="toolbar" aria-label="Missing files">
+          {/* Status on the left, the button on the right (C235). */}
           {window_.answered && checkedBar && (
-            <span className="clean-toolbar__count" role="status">
+            <span className="clean-toolbar__status" role="status">
               {checkedBar}
             </span>
           )}
@@ -242,8 +243,13 @@ export function MissingFilesView({
     );
   }
 
-  const emptyState = (
-    <EmptyState icon="clean" headline={empty.headline} description={empty.hint ?? undefined} />
+  // A failed read is a red notice with Try again, the same on every page (C142).
+  const emptyState = window_.error ? (
+    <Notice kind="danger" action={<Button variant="secondary" onClick={window_.reload}>{RETRY}</Button>}>
+      {window_.error}
+    </Notice>
+  ) : (
+    <EmptyState compact headline={empty.headline} description={empty.hint ?? undefined} />
   );
 
   return (
@@ -272,11 +278,10 @@ export function MissingFilesView({
         ))}
       </div>
 
-      <div className="clean-toolbar" role="toolbar" aria-label="Missing files">
-        <span className="clean-toolbar__count" role="status">
+      <div className="cp-toolbar" role="toolbar" aria-label="Missing files">
+        <span className="cp-count" role="status">
           {plural(window_.total, "file")} missing
         </span>
-        <span className="clean-toolbar__spacer" />
         {checkButton}
       </div>
 
@@ -301,7 +306,7 @@ export function MissingFilesView({
         />
       </div>
 
-      <div className="clean-review__selection">
+      <div className="cp-toolbar clean-review__selection">
         <SelectionActions
           count={selection.count}
           describedByQuery={selection.selection.all}

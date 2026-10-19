@@ -15,11 +15,37 @@
   min-height: 0;
 }
 
-/* The second row of tabs (Playlists, Reviews, Past searches) is the small sub-tab look Track
-   details and Keys use; the first row (Match, Missing files, Duplicates) stays the big strip. */
-.match-area > .cp-tabs--sub {
+/* One row (D13): the sub-tabs, the step caption and the search, with 12 between it and the list
+   (C31). The caption is Inter and muted; the search is on the right at its one width (C223). */
+.match-area__row {
+  display: flex;
   flex: none;
-  margin: 0 0 var(--space-md);
+  align-items: center;
+  gap: var(--space-xl);
+  min-width: 0;
+  margin: 0 0 var(--space-lg);
+}
+
+.match-area__row > .cp-tabs--sub {
+  flex: none;
+  width: fit-content;
+}
+
+.match-area__caption {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--text-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-area__search {
+  flex: none;
+  width: var(--search-width);
+  margin-inline-start: auto;
 }
 
 /* The hidden helper text is absolutely placed: its box must be this pane's, or a
@@ -47,52 +73,34 @@
 
 /* ---------------------------------------------------------------- Past searches */
 
+/* The shared table look (D8 A) does the header, rows and hover; only this list's own parts are here.
+   Dates and names are the data face (C63). */
 .match-past {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-lg);
   min-height: 0;
   padding: 0;
   overflow-y: auto;
 }
 
-.match-past__bar {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.match-past__empty {
-  margin: 0;
-  color: var(--fg-muted);
-}
-
 .match-past__scroll {
   overflow-x: auto;
-  border: var(--control-border-width) solid var(--border-muted);
 }
 
-.match-past__table tbody tr:last-child td {
-  border-bottom: 0;
+.match-past__table .match-past__when,
+.match-past__table .match-past__what {
+  font-family: var(--font-data);
 }
 
-.match-past__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--control-font-size);
+/* The row opens its review, so it shows a pointer and takes the keyboard. */
+.match-past__row {
+  cursor: pointer;
 }
 
-.match-past__table th,
-.match-past__table td {
-  padding: var(--space-md);
-  border-bottom: var(--control-border-width) solid var(--border-muted);
-  text-align: left;
-  vertical-align: middle;
-}
-
-.match-past__table th {
-  color: var(--fg-muted);
-  font-weight: var(--weight-strong);
+.match-past__row:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset-inset);
 }
 
 /* One bar, at the row's left edge: the gradient is the first cell's only. */
@@ -104,31 +112,32 @@
   background: var(--selected-row-background);
 }
 
-.match-past__number {
+/* The row's buttons: one fixed end column, right-aligned (C76). */
+.cp-data-table .match-past__end {
+  width: calc(300px * var(--scale));
+  overflow: visible;
   text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 
 .match-past__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-md);
+  flex-wrap: nowrap;
+  justify-content: flex-end;
 }
 
 .match-past__more {
   margin: var(--space-md) 0 0;
+}
+
+/* Where each track stands: confirmed and no match are quiet, to check is amber, a miss is red. */
+.match-result--quiet {
   color: var(--fg-muted);
 }
 
-.match-result--found {
-  color: var(--success-text);
-}
-
-.match-result--waiting {
+.match-result--check {
   color: var(--warning-text);
 }
 
-.match-result--missing {
+.match-result--bad {
   color: var(--danger-text);
 }
 
@@ -160,79 +169,17 @@
   color: var(--fg-primary);
 }
 
-/* ------------------------------------------------------------ a review tab */
+/* ------------------------------------------------------------ a review */
 
+/* Step 3 inside Playlists: the selection bar (when something is selected), the table with its
+   panel, and the step's bottom bar. One border level (C238): the table is not boxed, and the
+   panel is the only framed part. */
 .review {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-md);
   min-height: 0;
   padding: 0;
-}
-
-.review__hint {
-  margin: 0;
-  color: var(--fg-muted);
-  font-size: var(--control-font-size);
-}
-
-/* The review's bar is the page's one action bar (area 61): panel, 32 high, the count in Inter,
-   the Sync button at the right. */
-.review__bar {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  box-sizing: border-box;
-  gap: var(--space-md);
-  min-height: var(--toolbar-height);
-  padding: var(--toolbar-padding);
-  border: var(--control-border-width) solid var(--border-muted);
-  background: var(--bg-panel);
-}
-
-/* The name gives way before the Sync button does: the button never drops to its own line. */
-.review__bar > * {
-  flex: none;
-}
-
-/* The title is the name over a facts line: the name is never cut by the counts. */
-.review__bar > .review__title {
-  flex: 1 1 calc(12ch);
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.review__title > .review__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.review__name {
-  font-family: var(--font-data);
-  font-weight: var(--weight-strong);
-}
-
-.review__facts {
-  display: flex;
-  gap: var(--space-sm);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--fg-muted);
-  font-size: var(--control-font-size);
-}
-
-.review__left-out {
-  color: var(--fg-muted);
-}
-
-.review__spacer {
-  display: none;
 }
 
 /* Said to a screen reader as each tick and choice is made; never a band of its own (it took 42). */
@@ -261,8 +208,6 @@
   flex: 1;
   min-width: 0;
   overflow: auto;
-  /* Every table is boxed (area 65). */
-  border: var(--control-border-width) solid var(--border-muted);
 }
 
 .review__more {
@@ -271,49 +216,61 @@
   padding: var(--space-md);
 }
 
-/* Every row is one line of a known height, which is what lets only the rows in view exist. */
-.review-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-size: var(--control-font-size);
+/* The step's bottom bar: the facts of the review on the left, the main action on the right. */
+.review__footer {
+  flex: none;
+  justify-content: space-between;
 }
 
-.review-table th,
-.review-table td {
-  padding: 0 var(--space-md);
-  border-bottom: var(--control-border-width) solid var(--border-muted);
-  text-align: left;
+.review__facts {
+  min-width: 0;
+  max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The review's columns. The shared look (cp-data-table) draws the header and the rows; each row
+   is one line of a known height, which is what lets only the rows in view exist. */
+.review-table {
+  table-layout: auto;
+}
+
+/* One tick column, the same 32 wide as the Playlists step (C77). */
+.cp-data-table .review-col--check {
+  width: calc(32px * var(--scale));
+  padding-inline: 0;
+  text-align: center;
+}
+
+.review-col--check input[type="checkbox"] {
+  width: calc(16px * var(--scale));
+  height: calc(16px * var(--scale));
+  margin: 0;
   vertical-align: middle;
 }
 
-.review-table th {
-  color: var(--fg-muted);
-  font-weight: var(--weight-strong);
+/* Status takes what its words need, and the titles get the rest (C64). */
+.cp-data-table .review-col--status {
+  width: 1%;
+  max-width: none;
+  overflow: visible;
 }
 
-/* Data is Inter; the headings stay in the pixel font. */
+/* The play button is the row's right end: wide enough for it and the cell's padding, never clipped. */
+.cp-data-table .review-col--preview {
+  width: calc(var(--icon-size-md) + 2 * var(--space-md));
+  overflow: visible;
+  text-align: right;
+}
+
 .review-table td {
   font-family: var(--font-data);
 }
 
-.review-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--bg-app);
-}
-
 .review-row {
-  height: var(--row-height);
   /* Shift-click selects rows, never the browser's own text selection. */
   user-select: none;
-}
-
-.review-row td {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .review-row:focus-visible {
@@ -321,66 +278,20 @@
   outline-offset: var(--focus-ring-offset-inset);
 }
 
-.review-row--current td,
-.review-row--selected td {
-  background: var(--bg-selected);
-}
-
-.review-row--current td:first-child,
-.review-row--selected td:first-child {
-  background: var(--selected-row-background);
-}
-
-/* The bar above the table when tracks are selected: the count, said once, and what to do with them. */
-.review__selected {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-md);
-  box-sizing: border-box;
-  min-height: var(--toolbar-height);
-  padding: var(--toolbar-padding);
-  border: var(--control-border-width) solid var(--border-muted);
-  background: var(--bg-panel);
-}
-
-.review__selected-count {
-  margin-inline-end: auto;
-  font-family: var(--font-data);
-}
-
-/* A decision a newer search disagrees with: said in words beside its Check. */
+/* A decision a newer search disagrees with: said in words beside its status. */
 .review-row__disputed {
   color: var(--warning-text);
   font-size: var(--font-size-xs);
 }
 
-/* An unticked row recedes: it will be left out of the sync. Its match is struck through, not hidden. */
+/* An unticked row recedes: it will be left out of the sync. Its match is struck through, not hidden.
+   A ticked row shows only its tick (C82). */
 .review-row--off td {
   color: var(--fg-muted);
 }
 
 .review-row__theirs--off {
   text-decoration: line-through;
-}
-
-.review-col--check {
-  width: calc(36px * var(--scale));
-}
-
-.review-col--status {
-  width: calc(130px * var(--scale));
-}
-
-/* The play button is the row's right end: wide enough for it and the cell's padding, never clipped. */
-.review-col--preview {
-  width: calc(var(--icon-size-md) + 2 * var(--space-md));
-  text-align: right;
-}
-
-.review-row__preview {
-  overflow: visible;
-  text-align: right;
 }
 
 /* The part of a match that differs from your track, in the list's own text. */
@@ -393,37 +304,53 @@
 .review-panel {
   display: flex;
   flex: 0 0 min(42%, calc(520px * var(--scale)));
-  overflow-x: hidden;
   flex-direction: column;
-  gap: var(--space-md);
   min-width: 0;
-  /* A dense side panel: 8. */
-  padding: var(--space-md);
-  overflow-y: auto;
+  overflow: hidden;
   border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-panel);
 }
 
+/* The title bar is the shared panel header (.cp-panel-header); the track's state and "3 of 24" sit
+   between its title and the close mark. */
 .review-panel__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-md);
+  flex: none;
+  justify-content: flex-start;
 }
 
-.review-panel__title {
-  min-width: 0;
-  overflow-wrap: anywhere;
+.review-panel__header > .cp-close {
+  margin-inline-start: auto;
+}
+
+/* Everything between the header and the pinned foot scrolls. */
+.review-panel__scroll {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* A dense side panel: 8. */
+  padding: var(--space-md);
+}
+
+/* The decisions, pinned to the foot: on the panel's own fill, a divider above them (C242). */
+.review-panel__foot {
+  position: sticky;
+  bottom: 0;
+  flex: none;
+  justify-content: flex-end;
+  padding: var(--space-md);
+  border-top: var(--divider);
+  background: var(--bg-panel);
 }
 
 .review-panel__position,
 .review-panel__hint {
+  margin: 0;
   color: var(--fg-muted);
   font-size: var(--control-font-size);
-}
-
-.review-panel__hint {
-  margin-inline-start: auto;
 }
 
 .review-panel__note {
@@ -488,7 +415,8 @@
   border: var(--control-border-width) solid var(--border-control);
 }
 
-/* Every candidate: a play button, what it is called, who made it, and Use this. */
+/* Every candidate: a radio to pick it, a play button, what it is called and who made it. They sit
+   in one column each, so the play buttons line up (C76). */
 .review-candidates {
   display: flex;
   flex-direction: column;
@@ -514,6 +442,17 @@
 .review-candidate--in-use {
   border-left-color: var(--accent-success);
   background: color-mix(in srgb, var(--accent-success) 10%, var(--bg-panel));
+}
+
+/* The one that Use this match would take: the selected look, the tint and the bar. */
+.review-candidate--picked:not(.review-candidate--in-use) {
+  background: var(--bg-selected);
+  border-left-color: var(--accent-primary);
+}
+
+.review-candidate__pick {
+  flex: none;
+  margin: 0;
 }
 
 /* The candidate's cover: a whole-pixel square at the row's left. */
@@ -554,12 +493,8 @@
   font-size: var(--control-font-size);
 }
 
-.review-candidate__use--in-use {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  color: var(--success-text);
-  font-weight: var(--weight-strong);
+.review-candidate__in-use-line {
+  margin: 0;
   white-space: nowrap;
 }
 
@@ -589,15 +524,8 @@
   }
 }
 
-.review-panel__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-md);
-}
-
 .review-panel__more-toggle {
-  margin-inline-start: auto;
+  align-self: flex-start;
 }
 
 .review-panel__more {
