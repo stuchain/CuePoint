@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { MatchRun } from "../../../api/cuepointBridge.types";
 import { runSelection } from "./matchScope";
-import { canResume, resultParts, statusOf, whatLine } from "./pastSearchWords";
+import { canResume, resultParts, statusOf, stopLine, whatLine } from "./pastSearchWords";
 
 function run(overrides: Partial<MatchRun> = {}): MatchRun {
   return {
@@ -24,6 +24,7 @@ function run(overrides: Partial<MatchRun> = {}): MatchRun {
     finished_at: null,
     latest_job_id: "job-1",
     resume_job_id: null,
+    stop_reason: null,
     ...overrides,
   };
 }
@@ -88,5 +89,24 @@ describe("a run as a scope", () => {
     expect(runSelection("job-1")).toEqual({
       query: { filters: { match: "all", rules: [{ field: "match_run", operator: "is", value: "job-1" }] } },
     });
+  });
+});
+
+describe("why a run stopped", () => {
+  it("says so in words when Beatport stopped it", () => {
+    expect(stopLine(run({ status: "stopped", stop_reason: "Beatport did not answer" }))).toBe(
+      "Stopped: Beatport did not answer.",
+    );
+  });
+
+  it("says nothing for a run the person stopped, or one that is not stopped", () => {
+    expect(stopLine(run({ status: "stopped", stop_reason: null }))).toBeNull();
+    expect(stopLine(run({ status: "done", stop_reason: "Beatport did not answer" }))).toBeNull();
+  });
+
+  it("still offers Resume to a run Beatport stopped", () => {
+    expect(
+      canResume(run({ status: "stopped", stop_reason: "Beatport did not answer", resume_job_id: "j" })),
+    ).toBe(true);
   });
 });

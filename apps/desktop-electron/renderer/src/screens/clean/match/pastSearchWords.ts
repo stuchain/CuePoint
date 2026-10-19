@@ -62,6 +62,11 @@ export function statusOf(run: Pick<MatchRun, "status" | "done">): RunStatus {
   }
 }
 
+/** "Stopped: Beatport did not answer." for a run Beatport's trouble stopped; else null. */
+export function stopLine(run: Pick<MatchRun, "status" | "stop_reason">): string | null {
+  return run.status === "stopped" && run.stop_reason ? `Stopped: ${run.stop_reason}.` : null;
+}
+
 /** A run can be resumed when it stopped and the engine says which job to resume. */
 export function canResume(run: Pick<MatchRun, "status" | "resume_job_id">): boolean {
   return run.status === "stopped" && run.resume_job_id !== null;

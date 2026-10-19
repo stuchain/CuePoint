@@ -3368,6 +3368,7 @@ class TestPastSearches:
                 "search_failed": 0,
                 "latest_job_id": "run-1",
                 "resume_job_id": "run-1",
+                "stop_reason": None,
             }
         ]
 

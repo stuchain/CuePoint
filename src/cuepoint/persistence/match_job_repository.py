@@ -42,6 +42,7 @@ Transactions join a caller's, as everywhere here: a track's attempt and its
 from __future__ import annotations
 
 import dataclasses
+import json
 import sqlite3
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
@@ -439,6 +440,7 @@ class MatchJobRepository(IMatchJobRepository):
             ).fetchone()[0]
         )
         records = _job_records(connection, [row["latest_job_id"] for row in rows])
+        codes = _job_error_codes(connection, [row["latest_job_id"] for row in rows])
         runs: List[MatchRunSummary] = []
         for row in rows:
             state, updated_at = records.get(row["latest_job_id"], (None, None))
@@ -460,6 +462,7 @@ class MatchJobRepository(IMatchJobRepository):
                     search_failed=int(row["search_failed"]),
                     latest_job_id=row["latest_job_id"],
                     latest_state=state,
+                    latest_error_code=codes.get(row["latest_job_id"]),
                     finished_at=(
                         updated_at if state not in (None, "queued", "running") else None
                     ),
@@ -516,6 +519,29 @@ class MatchJobRepository(IMatchJobRepository):
 
 
 # ------------------------------------------------------------------ helpers
+
+
+def _job_error_codes(
+    conn: sqlite3.Connection, job_ids: Sequence[str]
+) -> Dict[str, str]:
+    """Return ``{job id: error code}`` for the jobs whose record carries one."""
+    wanted = list(dict.fromkeys(job_ids))
+    if not wanted:
+        return {}
+    placeholders = ", ".join("?" for _ in wanted)
+    codes: Dict[str, str] = {}
+    for row in conn.execute(
+        f"SELECT id, error_json FROM jobs WHERE error_json IS NOT NULL"
+        f" AND id IN ({placeholders})",
+        wanted,
+    ):
+        try:
+            code = json.loads(row["error_json"]).get("code")
+        except (ValueError, AttributeError):
+            continue
+        if isinstance(code, str):
+            codes[row["id"]] = code
+    return codes
 
 
 def _job_records(

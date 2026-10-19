@@ -20,7 +20,7 @@ import { Notice } from "../../../components/Notice";
 import { SearchField } from "../../../components/SearchField";
 import { formatCount } from "../../../format/counts";
 import { nothingMatches } from "../../../format/words";
-import { canResume, resultParts, statusOf, whatLine, type StatusTone } from "./pastSearchWords";
+import { canResume, resultParts, statusOf, stopLine, whatLine, type StatusTone } from "./pastSearchWords";
 import { ReviewListSave } from "./ReviewListSave";
 import { useMatchJobs } from "./useMatchJobs";
 import { NEEDS_DESKTOP } from "../../../api/userMessage";
@@ -134,6 +134,7 @@ export function PastSearches({
                     </td>
                     <td>
                       <Badge variant={STATUS_VARIANTS[status.tone]}>{status.label}</Badge>
+                      {stopLine(run) && <div className="match-past__why">{stopLine(run)}</div>}
                     </td>
                     <td className="match-past__actions">
                       {canResume(run) && canResumeHere && (

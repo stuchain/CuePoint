@@ -506,6 +506,7 @@ def match_run_to_dict(run: Any) -> Dict[str, Any]:
         "search_failed": run.search_failed,
         "latest_job_id": run.latest_job_id,
         "resume_job_id": run.resume_job_id,
+        "stop_reason": run.stop_reason,
     }
 
 

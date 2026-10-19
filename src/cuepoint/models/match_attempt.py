@@ -666,6 +666,9 @@ class MatchPlan:
 #: The longest label a run keeps: a name, not a paste.
 MAX_LABEL_LENGTH = 200
 
+#: The job error code of a match that stopped because Beatport's search answered nothing.
+SEARCH_UNAVAILABLE_CODE = "MATCH_SEARCH_UNAVAILABLE"
+
 #: What a past search is doing, in the words the Match area's status chip uses.
 RUN_RUNNING = "running"
 RUN_STOPPED = "stopped"
@@ -719,6 +722,20 @@ class MatchRunSummary:
     latest_state: Optional[str] = None
     finished_at: Optional[str] = None
     search_failed: int = 0
+    latest_error_code: Optional[str] = None
+
+    @property
+    def stop_reason(self) -> Optional[str]:
+        """Why a stopped run stopped, in the words that follow "Stopped:", or ``None``.
+
+        Only a reason the person did not choose: a stop they asked for says nothing.
+        """
+        if (
+            self.status == RUN_STOPPED
+            and self.latest_error_code == SEARCH_UNAVAILABLE_CODE
+        ):
+            return "Beatport did not answer"
+        return None
 
     @property
     def status(self) -> str:

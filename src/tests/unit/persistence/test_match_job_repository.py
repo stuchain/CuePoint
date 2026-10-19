@@ -185,7 +185,9 @@ def count(db, table: str) -> int:
     return int(db.connect().execute(f"SELECT count(*) FROM {table}").fetchone()[0])
 
 
-def job_record(db, job_id: str, state: str, job_type: str = "clean_match") -> None:
+def job_record(
+    db, job_id: str, state: str, job_type: str = "clean_match", error=None
+) -> None:
     JobRepository(db).save(
         JobRecord(
             id=job_id,
@@ -193,7 +195,7 @@ def job_record(db, job_id: str, state: str, job_type: str = "clean_match") -> No
             state=state,
             demo=False,
             progress=None,
-            error=None,
+            error=error,
             created_at=NOW,
             updated_at=NOW,
         )
@@ -699,6 +701,30 @@ class TestHistory:
 
         assert (run.status, run.done, run.planned) == ("stopped", 2, 6)
         assert run.resume_job_id == "second"
+
+    def test_a_run_stopped_because_beatport_did_not_answer_says_so(self, repo, db, ids):
+        repo.create("job", ids[:3], rematch=False, selected=3, created_at=NOW)
+        job_record(
+            db,
+            "job",
+            "failed",
+            error={"code": "MATCH_SEARCH_UNAVAILABLE", "message": "Stopped"},
+        )
+
+        [run] = repo.history(None, 20, 0)[0]
+
+        assert run.status == "stopped"
+        assert run.stop_reason == "Beatport did not answer"
+
+    def test_a_run_the_person_stopped_gives_no_reason(self, repo, db, ids):
+        repo.create("job", ids[:3], rematch=False, selected=3, created_at=NOW)
+        job_record(
+            db, "job", "cancelled", error={"code": "JOB_CANCELLED", "message": "x"}
+        )
+
+        [run] = repo.history(None, 20, 0)[0]
+
+        assert (run.status, run.stop_reason) == ("stopped", None)
 
     def test_a_run_whose_job_is_live_is_running(self, repo, db, ids):
         repo.create("job", ids[:3], rematch=False, selected=3, created_at=NOW)
