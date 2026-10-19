@@ -85,12 +85,20 @@ describe("the menus on each platform", () => {
     expect(app[1]!.accelerator).toBe("CmdOrCtrl+,");
   });
 
-  it("puts Settings… in View with Ctrl+, on Windows and Linux, About in Help", () => {
+  it("puts Settings… in File with Ctrl+, on Windows and Linux, About in Help", () => {
     for (const platform of ["win32", "linux"] as const) {
       const { items } = template(platform);
-      const view = submenu(top(items, "View"));
-      const settings = view.find((item) => item.label === "Settings…");
+      const file = submenu(top(items, "File"));
+      const settings = file.find((item) => item.label === "Settings…");
       expect(settings?.accelerator).toBe("CmdOrCtrl+,");
+      expect(submenu(top(items, "View")).some((item) => item.label === "Settings…")).toBe(false);
+      // Settings sits between the file commands and Quit, with a divider on each side.
+      expect(file.map((item) => item.label ?? item.role ?? item.type).slice(-4)).toEqual([
+        "separator",
+        "Settings…",
+        "separator",
+        "quit",
+      ]);
       const help = submenu(top(items, "Help"));
       expect(labelOf(help.at(-1)!)).toBe("About CuePoint");
     }
@@ -98,7 +106,7 @@ describe("the menus on each platform", () => {
 
   it("leaves Settings… and About out of View and Help on macOS", () => {
     const { items } = template("darwin");
-    expect(submenu(top(items, "View")).some((item) => item.label === "Settings…")).toBe(false);
+    expect(submenu(top(items, "File")).some((item) => item.label === "Settings…")).toBe(false);
     expect(submenu(top(items, "Help")).some((item) => item.label === "About CuePoint")).toBe(false);
   });
 });
@@ -251,11 +259,11 @@ describe("Help", () => {
     const { items } = template("linux");
     const help = submenu(top(items, "Help"));
     expect(help.filter((item) => item.type !== "separator").map(labelOf)).toEqual([
-      "Getting started",
-      "Keyboard shortcuts",
+      "Getting started…",
+      "Keyboard shortcuts…",
       "Get help…",
       "How to get your Rekordbox file…",
-      "Privacy",
+      "Privacy…",
       "About CuePoint",
     ]);
     expect(walk(items).some((item) => /troubleshooting/i.test(item.label ?? ""))).toBe(false);

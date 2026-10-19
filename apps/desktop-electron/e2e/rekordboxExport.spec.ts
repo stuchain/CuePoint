@@ -414,7 +414,7 @@ test.describe("Export to Rekordbox, end to end (EXPORT-07)", () => {
         );
         await expect(dialog.getByRole("button", { name: "Refresh first" })).toBeVisible();
         // The remembered notation is not classic, so the summary names it.
-        await expect(dialog.getByTestId("export-summary")).toHaveText(/ Keys written as Camelot \(8A\)\.$/);
+        await expect(dialog.getByTestId("export-summary")).toHaveText(/ Key notation: Camelot \(8A\)\.$/);
         await saveDialogAnswers(app, path.join(exports, "Stale.xml"));
         await openDetails(dialog);
         await expect(dialog.getByRole("combobox", { name: /Key notation/ })).toHaveValue("camelot");

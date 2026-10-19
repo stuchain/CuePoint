@@ -88,6 +88,21 @@
   background: transparent;
 }
 
+/* The browser's own swatch frame is dropped so the field reads as the app's controls do (C25):
+   the border above is the frame, the colour fills it. */
+.theme-color-field__input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.theme-color-field__input::-webkit-color-swatch {
+  border: 0;
+}
+
+.theme-color-field__input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset, 0);
+}
+
 .theme-color-field__hex {
   color: var(--fg-muted);
   font-family: var(--font-data);

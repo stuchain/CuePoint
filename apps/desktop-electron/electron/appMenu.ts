@@ -146,7 +146,10 @@ export function buildMenuTemplate({
     submenu: [
       command("import", "Import a Rekordbox file…", { accelerator: "CmdOrCtrl+O" }),
       command("check-rekordbox", "Check for changes"),
-      ...(mac ? [] : ([{ type: "separator" }, { role: "quit" }] as MenuItemConstructorOptions[])),
+      // Settings is in the File menu on Windows and Linux, where it is a menu of its own on macOS.
+      ...(mac
+        ? []
+        : ([{ type: "separator" }, settings, { type: "separator" }, { role: "quit" }] as MenuItemConstructorOptions[])),
     ],
   });
 
@@ -186,7 +189,6 @@ export function buildMenuTemplate({
       { type: "separator" },
       command("toggle-inspector", "Track details", { accelerator: "CmdOrCtrl+I", ...shownOnly }),
       command("toggle-sidebar", "Sidebar", { accelerator: "CmdOrCtrl+B", ...shownOnly }),
-      ...(mac ? [] : ([{ type: "separator" }, settings] as MenuItemConstructorOptions[])),
     ],
   });
 
@@ -197,11 +199,12 @@ export function buildMenuTemplate({
   template.push({
     label: "Help",
     submenu: [
-      command("getting-started", "Getting started"),
-      command("shortcuts", "Keyboard shortcuts"),
+      // An item that opens a dialog ends in "…" and the dialog is named as the item is.
+      command("getting-started", "Getting started…"),
+      command("shortcuts", "Keyboard shortcuts…"),
       command("get-help", "Get help…"),
       command("rekordbox-help", "How to get your Rekordbox file…"),
-      command("privacy", "Privacy"),
+      command("privacy", "Privacy…"),
       ...(mac ? [] : ([{ type: "separator" }, about] as MenuItemConstructorOptions[])),
     ],
   });
