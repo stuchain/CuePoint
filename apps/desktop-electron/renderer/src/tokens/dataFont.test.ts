@@ -30,7 +30,6 @@ const DATA_PLACES: DataPlace[] = [
   { name: "Badge figures", file: "../components/Badge.css", selector: ".cp-badge" },
   { name: "Tabs counts", file: "../components/Tabs.css", selector: ".cp-tabs__detail" },
   { name: "key chip", file: "../components/wheel/KeyChip.tsx", needle: "key-chip--" },
-  { name: "Library toolbar count", file: "../screens/library/LibraryToolbar.tsx", needle: "library-toolbar__count " },
   { name: "Library header facts", file: "../screens/library/LibraryHeader.tsx", needle: 'data-testid={index === 0 ? "library-track-count"' },
 ];
 

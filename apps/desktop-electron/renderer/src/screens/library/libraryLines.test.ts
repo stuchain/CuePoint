@@ -4,7 +4,6 @@
  */
 import { describe, expect, it } from "vitest";
 import library from "./library.css?raw";
-import toolbar from "./LibraryToolbar.css?raw";
 import pane from "./CollectionsPane.css?raw";
 import filterBar from "./FilterBar.css?raw";
 import detail from "./TrackDetailPanel.css?raw";
@@ -34,8 +33,7 @@ describe("the Library's shared lines", () => {
     );
   });
 
-  it("draws each rule once: the toolbar's is its bottom, and the table has no top or left border", () => {
-    expect(strip(toolbar)).toContain("border-bottom: var(--hairline) solid var(--border-muted)");
+  it("draws each rule once: the table has no top or left border", () => {
     const table = rule(library, ".library-screen__table .track-table");
     expect(table).toContain("border-top: 0");
     expect(table).toContain("border-left: 0");

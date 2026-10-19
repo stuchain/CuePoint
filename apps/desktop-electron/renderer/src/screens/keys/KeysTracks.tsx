@@ -6,7 +6,7 @@
  * order, and the count above is this table's. The row behaves as a Library row does: a
  * double-click plays it with the whole table behind it (DEC-012), a right-click opens the
  * menu, and the bar above the table is the Library's (FLW-8): `trackActionGroups` builds
- * its six buttons and `LibraryToolbar` draws them.
+ * its six buttons and the shared `SelectionBar` draws them.
  *
  * What the Library does in its page — the Collection and tag pickers, and the batch that
  * runs after one — is repeated here at the size this page needs; Clean's windows are
