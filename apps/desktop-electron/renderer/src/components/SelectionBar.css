@@ -1,0 +1,31 @@
+/*
+ * The selection bar (C9, C215): 42 high at 1x, on the toolbar colour, directly above the list.
+ * It carries no border; the list's own header divider is the line below it.
+ */
+.cp-selection-bar {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  min-height: round(nearest, calc(42px * var(--scale)), 1px);
+  padding-inline: var(--space-md);
+  background: var(--bg-toolbar);
+  color: var(--fg-primary);
+  font-size: var(--text-body);
+}
+
+.cp-selection-bar__count {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.cp-selection-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}

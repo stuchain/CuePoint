@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { formatCount } from "./formatCount";
-import { barsLayout, type BarsLayout, type PixelBucket } from "./pixelBarsGeometry";
+import { barsLayout, rebin, type BarsLayout, type PixelBucket } from "./pixelBarsGeometry";
 
 const SCALES = [1, 1.25, 1.5, 2, 3] as const;
 
@@ -234,5 +234,68 @@ describe("barsLayout: a gap bucket", () => {
         expect(spans[at]![0]).toBeGreaterThanOrEqual(spans[at - 1]![1]);
       }
     }
+  });
+});
+
+describe("barsLayout: fit to the width (C247)", () => {
+  const wide = { buckets: ORDERED, orientation: "vertical" as const, width: 2400, height: 160, scale: 1 };
+
+  it("stretches the bars to fill a wide container instead of stopping at the widest pitch", () => {
+    const scroll = barsLayout(wide);
+    const fit = barsLayout({ ...wide, fit: "width" });
+    expect(fit.width).toBeGreaterThan(scroll.width);
+    expect(fit.width).toBeLessThanOrEqual(2400);
+    expect(fit.width).toBeGreaterThan(2400 - ORDERED.length);
+  });
+
+  it("squeezes the bars into a narrow container instead of scrolling", () => {
+    const narrow = barsLayout({ ...wide, width: 240, fit: "width" });
+    expect(narrow.width).toBeLessThanOrEqual(240);
+    expect(narrow.bars.every((bar) => bar.hit.width >= 1)).toBe(true);
+  });
+
+  it("keeps every edge on a whole pixel at each scale", () => {
+    for (const scale of SCALES) {
+      const layout = barsLayout({ ...wide, scale, width: 733, fit: "width" });
+      expect(numbers(layout).filter((n) => !Number.isInteger(n))).toEqual([]);
+    }
+  });
+
+  it("is the default behaviour when fit is left out", () => {
+    expect(barsLayout({ ...wide, fit: "scroll" })).toEqual(barsLayout(wide));
+  });
+});
+
+describe("rebin (C247)", () => {
+  const run: PixelBucket[] = [
+    { label: "100", count: 1 },
+    { label: "101", count: 2 },
+    { label: "102", count: 3 },
+    { label: "103", count: 4 },
+    { label: "104", count: 5 },
+  ];
+
+  it("keeps the run when it is already within the bin count", () => {
+    expect(rebin(run, 5)).toEqual(run);
+    expect(rebin(run, 9)).toEqual(run);
+  });
+
+  it("sums neighbours into at most the bin count, labelled first to last", () => {
+    const merged = rebin(run, 2);
+    expect(merged).toHaveLength(2);
+    expect(merged.map((b) => b.count)).toEqual([3, 12]);
+    expect(merged[0]!.label).toBe("100\u2013101");
+    expect(merged[1]!.label).toBe("102\u2013104");
+  });
+
+  it("keeps the total", () => {
+    for (const bins of [1, 2, 3, 4]) {
+      expect(rebin(run, bins).reduce((sum, b) => sum + b.count, 0)).toBe(15);
+    }
+  });
+
+  it("is a single bar for one bin, and the run itself for a bin count under one", () => {
+    expect(rebin(run, 1)).toEqual([{ label: "100\u2013104", count: 15 }]);
+    expect(rebin(run, 0)).toEqual(run);
   });
 });

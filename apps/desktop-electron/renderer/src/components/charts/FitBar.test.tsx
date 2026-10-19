@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { FitBar } from "./FitBar";
+import css from "./FitBar.css?raw";
 
 const filled = (el: HTMLElement) => el.querySelectorAll(".cp-fit-bar__block--filled").length;
 
@@ -31,5 +32,11 @@ describe("FitBar", () => {
     render(<FitBar score={Number.NaN} />);
     const bar = screen.getByRole("img", { name: "Fit 0 out of 100" });
     expect(filled(bar)).toBe(0);
+  });
+});
+
+describe("FitBar colour (C97)", () => {
+  it("fills with the one bar colour, like every other bar", () => {
+    expect(css).toMatch(/\.cp-fit-bar__block--filled\s*\{[^}]*background:\s*var\(--chart-bar\)/);
   });
 });

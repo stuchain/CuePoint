@@ -72,6 +72,11 @@ export interface BarsLayout {
 
 export interface BarsLayoutInput {
   buckets: readonly PixelBucket[];
+  /**
+   * Vertical charts only. `"scroll"` (the default) keeps each bar a comfortable width and lets a
+   * long run scroll sideways; `"width"` makes the bars fill the container, however wide or narrow.
+   */
+  fit?: "scroll" | "width";
   orientation: BarsOrientation;
   /** The room the chart's own container gives it, in pixels. A long ordered run grows past it. */
   width: number;
@@ -176,7 +181,30 @@ function rows({ buckets, width, scale, isGap }: BarsLayoutInput): BarsLayout {
   };
 }
 
-function columns({ buckets, width, height, scale, isGap }: BarsLayoutInput): BarsLayout {
+/**
+ * Merges an ordered run into at most `bins` bars by summing neighbours, each labelled from its
+ * first to its last bucket ("100–102"). A run already within the count (or a count under one)
+ * comes back as it is. The total never changes.
+ */
+export function rebin<T extends PixelBucket>(buckets: readonly T[], bins: number): PixelBucket[] {
+  if (!(bins >= 1) || buckets.length <= bins) return [...buckets];
+  const merged: PixelBucket[] = [];
+  for (let bin = 0; bin < bins; bin += 1) {
+    const from = Math.floor((bin * buckets.length) / bins);
+    const to = Math.floor(((bin + 1) * buckets.length) / bins);
+    const group = buckets.slice(from, to);
+    if (group.length === 0) continue;
+    const first = group[0]!.label;
+    const last = group[group.length - 1]!.label;
+    merged.push({
+      label: group.length === 1 ? first : `${first}\u2013${last}`,
+      count: group.reduce((sum, b) => sum + b.count, 0),
+    });
+  }
+  return merged;
+}
+
+function columns({ buckets, width, height, scale, isGap, fit = "scroll" }: BarsLayoutInput): BarsLayout {
   const px = sizer(scale);
   const hair = Math.max(1, Math.floor(scale));
   const fontSize = px(10);
@@ -187,13 +215,17 @@ function columns({ buckets, width, height, scale, isGap }: BarsLayoutInput): Bar
 
   const countChars = Math.max(1, ...real.map((b) => countText(b.count).length));
   const labelChars = Math.max(1, ...real.map((b) => [...b.label].length));
-  const gap = px(6);
-  const minPitch = Math.max(px(14) + gap, countChars * charW + px(2));
-  const maxPitch = px(40) + gap;
+  const fitted = fit === "width";
+  const minPitch = Math.max(px(14) + px(6), countChars * charW + px(2));
+  const maxPitch = px(40) + px(6);
   // A gap is a narrow break, a little over one character wide.
   const gapPitch = px(12);
-  const fit = real.length > 0 ? Math.floor((width - (buckets.length - real.length) * gapPitch) / real.length) : minPitch;
-  const pitch = Math.max(minPitch, Math.min(fit, maxPitch));
+  const room = real.length > 0 ? Math.floor((width - (buckets.length - real.length) * gapPitch) / real.length) : minPitch;
+  // Fitted to the width, the bars take whatever the container gives (a pixel at the least);
+  // otherwise they stay between a readable and a comfortable width and a long run scrolls.
+  const pitch = fitted ? Math.max(2, width > 0 ? room : minPitch) : Math.max(minPitch, Math.min(room, maxPitch));
+  // The space between bars shrinks with a squeezed pitch, so a bar never vanishes into it.
+  const gap = fitted ? Math.min(px(6), Math.max(1, Math.floor(pitch / 4))) : px(6);
   const barW = Math.max(1, pitch - gap);
   const inset = Math.floor((pitch - barW) / 2);
 

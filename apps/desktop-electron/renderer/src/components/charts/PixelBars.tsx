@@ -20,7 +20,7 @@ import { useScaleFactor } from "../../tokens/ScaleContext";
 import { changedMark, useCountChanges } from "../wheel/useCountChanges";
 import { formatCount } from "./formatCount";
 import { trueMinus } from "./trueMinus";
-import { barsLayout, type BarsOrientation, type PixelBucket } from "./pixelBarsGeometry";
+import { barsLayout, rebin, type BarsOrientation, type PixelBucket } from "./pixelBarsGeometry";
 import "./PixelBars.css";
 
 export interface PixelBarsProps<T extends PixelBucket = PixelBucket> {
@@ -40,6 +40,14 @@ export interface PixelBarsProps<T extends PixelBucket = PixelBucket> {
   isGap?: (bucket: T) => boolean;
   /** Vertical charts only: the height before scale. */
   height?: number;
+  /**
+   * Vertical charts only. `"width"` stretches the bars to fill the container (and squeezes them
+   * into a narrow one) instead of scrolling a long run; pair it with `maxBins` to keep them
+   * readable. The default keeps each bar a comfortable width and scrolls.
+   */
+  fit?: "scroll" | "width";
+  /** Merge an ordered run into at most this many bars (neighbours summed, labelled "first–last"). */
+  maxBins?: number;
   /** The text table's headings. */
   bucketLabel?: string;
   countLabel?: string;
@@ -52,18 +60,25 @@ const PREVIOUS_KEYS = new Set(["ArrowLeft", "ArrowUp"]);
 
 export function PixelBars<T extends PixelBucket = PixelBucket>({
   title,
-  buckets,
+  buckets: given,
   orientation,
   barName,
   onSelect,
   isSelectable,
   isGap,
   height = DEFAULT_HEIGHT,
+  fit = "scroll",
+  maxBins,
   bucketLabel = "Bucket",
   countLabel = "Tracks",
   className = "",
 }: PixelBarsProps<T>) {
   const scale = useScaleFactor();
+  // A merged bar is not any one of the caller's buckets, so merging is only for charts that open nothing.
+  const buckets = useMemo(
+    () => (maxBins !== undefined && !onSelect && !isGap ? (rebin(given, maxBins) as T[]) : given),
+    [given, isGap, maxBins, onSelect],
+  );
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
 
@@ -86,9 +101,10 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
         width: Math.max(0, width),
         height: Math.round(height * scale),
         scale,
+        fit,
         isGap: isGap && ((b) => isGap(b as T)),
       }),
-    [buckets, height, isGap, orientation, scale, width],
+    [buckets, fit, height, isGap, orientation, scale, width],
   );
 
   const counts = useMemo(() => new Map(buckets.filter((b) => !isGap?.(b)).map((b) => [b.label, b.count])), [buckets, isGap]);

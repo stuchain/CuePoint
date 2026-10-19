@@ -17,5 +17,5 @@
 }
 
 .cp-fit-bar__block--filled {
-  background: var(--accent-fill);
+  background: var(--chart-bar);
 }
