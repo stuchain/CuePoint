@@ -7,6 +7,8 @@
  * that 9A mixes with 8A. PAGES-16's Keys page draws on the same places.
  */
 
+import { countNoun } from "../../format/counts";
+
 /** The wheel is drawn on a square of this many units; a unit is a whole CSS pixel count. */
 export const GRID_CELLS = 48;
 
@@ -266,7 +268,7 @@ export function compactCount(count: number): string {
 
 /** "1 track", "1,234 tracks". */
 export function tracksWord(count: number): string {
-  return `${count.toLocaleString()} ${count === 1 ? "track" : "tracks"}`;
+  return countNoun(count, "track");
 }
 
 /**

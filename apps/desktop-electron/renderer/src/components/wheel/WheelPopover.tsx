@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObje
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "../Button";
+import { MATCH_ON_BEATPORT } from "../../format/words";
 import { CamelotWheel } from "./CamelotWheel";
 import { parseCode } from "./camelot";
 import { placeWheel } from "./wheelPlacement";
@@ -109,7 +110,7 @@ export function WheelPopover({ source, anchor, leaving = false, presenceRef }: W
     caption = "Select or play a track to light its key.";
   } else if (subject.key === null) {
     caption = "This track has no Beatport key yet";
-    action = { label: "Match on Beatport", run: () => match(subject.id) };
+    action = { label: MATCH_ON_BEATPORT, run: () => match(subject.id) };
   } else {
     caption = `${who}: ${name} · ${subject.key}`;
   }
@@ -138,7 +139,7 @@ export function WheelPopover({ source, anchor, leaving = false, presenceRef }: W
       </p>
       {action && (
         <div className="cp-wheel-pop__actions">
-          <Button variant="primary" onClick={action.run}>
+          <Button variant="secondary" onClick={action.run}>
             {action.label}
           </Button>
         </div>

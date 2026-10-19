@@ -5,6 +5,7 @@ import mutedPro from "../../tokens/themes/mutedPro.css?raw";
 import neoDark from "../../tokens/themes/neoDark.css?raw";
 import qtEvolved from "../../tokens/themes/qtEvolved.css?raw";
 import retro16 from "../../tokens/themes/retro16.css?raw";
+import { parseRules, stripComments } from "../../test/cssRules";
 import { contrastRatio } from "../../tokens/themeDerivation";
 import wheelCss from "./CamelotWheel.css?raw";
 import { COUNT_COLOUR_MIX, COUNT_LEVEL_MIX } from "./camelot";
@@ -36,7 +37,13 @@ describe.each(Object.entries(THEMES))("the wheel in %s", (_name, css) => {
   });
 
   it("outlines every wedge against the panel at 3:1", () => {
-    expect(contrastRatio(t["fg-muted"]!, t["bg-panel"]!)).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(t["border-control"]!, t["bg-panel"]!)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("reads the label of a compatible or chosen wedge at 4.5:1 with the key colours off (C101)", () => {
+    const violet = mix(t["accent-primary"]!, t["bg-panel-alt"]!, 20);
+    expect(contrastRatio(t["fg-primary"]!, violet), "compatible").toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(t["fg-primary"]!, mix(t["accent-primary"]!, t["bg-input"]!, 18)), "chosen").toBeGreaterThanOrEqual(4.5);
   });
 });
 
@@ -78,6 +85,7 @@ describe("the counts mode's styles", () => {
 });
 
 describe("the wheel's styles", () => {
+  const clean = parseRules(stripComments(wheelCss));
   const rules = [...wheelCss.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
 
   it("never change a wedge's fill on hover or focus, and give no label a background", () => {
@@ -92,11 +100,23 @@ describe("the wheel's styles", () => {
     expect(mark?.[2]).toMatch(/stroke:\s*var\(--fg-primary\)/);
   });
 
-  it("draws the art smoothly", () => {
-    const art = rules.find(([, selector]) => /\.cp-wheel__art\b/.test(selector!));
-    expect(art?.[2]).not.toMatch(/crispEdges/);
+  it("draws the segments stepped, with the app's control line (C255)", () => {
     const shape = rules.find(([, selector]) => selector!.trim() === ".cp-wheel__shape");
-    expect(shape?.[2]).toMatch(/stroke:\s*var\(--fg-muted\)/);
+    expect(shape?.[2]).toMatch(/shape-rendering:\s*crispEdges/);
+    expect(shape?.[2]).toMatch(/stroke:\s*var\(--border-control\)/);
+  });
+
+  it("draws a chosen wedge with the selected look every toggle has: the selected fill and the accent border (D1)", () => {
+    const chosen = clean.find((r) => r.selector.startsWith('.cp-wheel__shape[data-lit="same"]'));
+    expect(chosen?.body).toMatch(/fill:\s*var\(--bg-selected\)/);
+    expect(chosen?.body).toMatch(/stroke:\s*var\(--accent-primary\)/);
+  });
+
+  it("tints the compatible keys violet with the key colours off, never green (C101)", () => {
+    const lit = clean.find((r) => r.selector === ".cp-wheel__shape[data-lit]");
+    expect(lit?.body).toMatch(/color-mix\(in srgb, var\(--accent-primary\) 20%, var\(--bg-panel-alt\)\)/);
+    expect(lit?.body).not.toMatch(/success/);
+    expect(wheelCss).not.toMatch(/success-text/);
   });
 });
 

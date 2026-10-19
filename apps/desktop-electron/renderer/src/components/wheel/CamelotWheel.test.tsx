@@ -20,6 +20,7 @@ import { resetPlayerStore } from "../player/playerStore";
 import { declarations, parseRules, stripComments } from "../../test/cssRules";
 import { CamelotWheel } from "./CamelotWheel";
 import wheelCss from "./CamelotWheel.css?raw";
+import keysCss from "../../screens/keys/keys.css?raw";
 import { saveKeyColours } from "./keyColourSetting";
 import { WheelButton } from "./WheelButton";
 import { WheelPopoverHost } from "./WheelPopoverHost";
@@ -586,6 +587,38 @@ describe("the wheel in counts mode (PAGES-16)", () => {
       unmount();
       render(<CamelotWheel {...props} />);
       expect(document.querySelector(".cp-wheel")).not.toHaveClass("cp-wheel--coloured");
+    } finally {
+      saveKeyColours(true);
+    }
+  });
+
+  it("sizes a cell from the text size: round(nearest, 6px * scale, 1px), at most 9px * scale (D12)", () => {
+    const cell = /--keys-cell:\s*([^;]+);/.exec(parseRules(stripComments(keysCss)).find((r) => r.selector === ".keys-page")!.body)![1]!;
+    expect(cell).toBe(
+      "min(round(nearest, calc(6px * var(--scale)), 1px), calc(9px * var(--scale)))",
+    );
+    // Never from the window's width.
+    expect(cell).not.toMatch(/cqi|vw|%/);
+    // At each text size that is a whole pixel count (the cap is 9 * scale, so it only bites at 1x).
+    const px = [1, 1.25, 1.5, 2, 3].map((scale) => Math.min(Math.round(6 * scale), 9 * scale));
+    expect(px).toEqual([6, 8, 9, 12, 18]);
+    expect(px.every(Number.isInteger)).toBe(true);
+  });
+
+  it("lights the compatible keys without the key colours as a violet tint, with no green", () => {
+    saveKeyColours(false);
+    try {
+      render(
+        <CamelotWheel
+          lit={new Map([["9A", "adjacent" as const]])}
+          focusCode="8A"
+          onFocusCode={() => undefined}
+          onPick={() => undefined}
+          counts={counts}
+        />,
+      );
+      expect(document.querySelector(".cp-wheel")).not.toHaveClass("cp-wheel--coloured");
+      expect(document.querySelector('[data-shape="9A"]')).toHaveAttribute("data-lit", "adjacent");
     } finally {
       saveKeyColours(true);
     }

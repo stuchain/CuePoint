@@ -14,22 +14,23 @@
   margin-inline: auto;
 }
 
-/* The drawing: one SVG on the 48-unit square; the arcs are anti-aliased, not snapped. */
+/* The drawing: one SVG on the 48-unit square. The segments are stepped, never blurred, as every
+   other graphic in the app is (C255). */
 .cp-wheel__art {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  shape-rendering: geometricPrecision;
   pointer-events: none;
 }
 
 .cp-wheel__shape {
   fill: var(--bg-panel-alt);
-  /* The unlit wedges carry an outline, so they never vanish into the panel. */
-  stroke: var(--fg-muted);
+  /* The unlit wedges carry the app's control line, so they never vanish into the panel. */
+  stroke: var(--border-control);
   stroke-width: var(--hairline);
-  stroke-linejoin: round;
+  stroke-linejoin: miter;
+  shape-rendering: crispEdges;
   vector-effect: non-scaling-stroke;
 }
 
@@ -54,18 +55,20 @@
   fill: color-mix(in srgb, var(--accent-primary) 40%, var(--bg-panel-alt));
 }
 
-/* The keys that mix with the track's. */
+/* The keys that mix with the track's: a violet tint with the accent's line, never the green that
+   means "done" (C101). */
 .cp-wheel__shape[data-lit] {
-  fill: var(--success-text);
-  /* The same color, so a lit wedge is as big as an unlit one with its outline. */
-  stroke: var(--accent-success);
+  fill: color-mix(in srgb, var(--accent-primary) 20%, var(--bg-panel-alt));
+  stroke: var(--accent-primary);
 }
 
-/* The track's own key, and a key chosen on the Keys page. */
+/* The track's own key, and a key chosen on the Keys page: the selected look every toggle has (D1),
+   the selected fill and the accent's border. */
 .cp-wheel__shape[data-lit="same"],
 .cp-wheel__shape[data-chosen] {
-  fill: var(--accent-primary);
+  fill: var(--bg-selected);
   stroke: var(--accent-primary);
+  stroke-width: var(--border-width);
 }
 
 /*
@@ -114,7 +117,7 @@
 .cp-wheel--coloured .cp-wheel__shape[data-lit="same"],
 .cp-wheel--coloured .cp-wheel__shape[data-chosen] {
   fill: var(--wheel-key);
-  stroke: var(--fg-primary);
+  stroke: var(--accent-primary);
   stroke-width: var(--border-width);
 }
 
@@ -155,19 +158,11 @@
   pointer-events: none;
 }
 
-/* The fills that are lit are light: their labels use the dark outline color. */
-.cp-wheel__key[data-lit] + .cp-wheel__label {
+/* With the key colours on, a lit or chosen wedge is its key's full colour: its label uses the dark
+   outline color. With them off the tints are dark, and the label keeps the text color. */
+.cp-wheel--coloured .cp-wheel__key[data-lit] + .cp-wheel__label,
+.cp-wheel--coloured .cp-wheel__key[data-chosen] + .cp-wheel__label {
   color: var(--border-outline);
-}
-
-.cp-wheel__key[data-lit="same"] + .cp-wheel__label {
-  font-weight: var(--font-weight-bold);
-}
-
-/* A chosen key sits on the solid accent, like the track's own. */
-.cp-wheel__key[data-chosen] + .cp-wheel__label {
-  color: var(--border-outline);
-  font-weight: var(--font-weight-bold);
 }
 
 /* The counts mode writes the count under the key, both centered on the wedge. */

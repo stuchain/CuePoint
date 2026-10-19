@@ -28,14 +28,13 @@
 .cp-wheel-pop__caption {
   margin: var(--space-md) 0 0;
   color: var(--fg-primary);
-  font-size: var(--font-size-sm);
-  text-align: center;
+  font-size: var(--text-body);
   overflow-wrap: anywhere;
 }
 
 .cp-wheel-pop__actions {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   margin-top: var(--space-md);
 }
 
