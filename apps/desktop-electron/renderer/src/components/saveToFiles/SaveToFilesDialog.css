@@ -4,6 +4,8 @@
  */
 
 .save-dialog {
+  /* The one width of a row's own control: the Key select and the Comment field (C115). */
+  --save-dialog-control-width: calc(200px * var(--scale));
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
@@ -22,10 +24,20 @@
   display: flex;
   align-items: center;
   gap: var(--space-md);
+  /* Every row one height, the Key and Comment rows included: their controls are the control
+     height, which fits inside a row (C115). */
+  box-sizing: border-box;
+  height: var(--row-height);
   min-height: var(--row-height);
   padding: 0;
   border-bottom: var(--divider);
   font-size: var(--text-body);
+}
+
+/* The ticks' words take one width, so the Key select and the Comment field start in one column. */
+.save-dialog__row > .save-dialog__tick {
+  flex: none;
+  min-width: calc(72px * var(--scale));
 }
 
 .save-dialog__row:last-child {
@@ -60,11 +72,25 @@
   white-space: nowrap;
 }
 
-/* The comment's text sits on its row, between the tick and the count, and takes the room left. */
+/* The Key select and the Comment field: one size, the control height, in one column (C115). */
+.save-dialog__style,
 .save-dialog__comment {
-  flex: 1 1 0;
+  flex: 0 1 auto;
+  box-sizing: border-box;
+  width: var(--save-dialog-control-width);
+  height: var(--control-height);
   min-width: 0;
-  max-width: calc(240px * var(--scale));
+}
+
+.save-dialog__style .cp-select__control {
+  width: 100%;
+  height: var(--control-height);
+}
+
+/* The comment's text sits on its row, between the tick and the count; never wider than the select. */
+.save-dialog__comment {
+  max-width: var(--save-dialog-control-width);
+  min-height: 0;
 }
 
 .save-dialog__count {

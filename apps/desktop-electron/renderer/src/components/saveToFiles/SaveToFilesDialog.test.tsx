@@ -923,6 +923,16 @@ describe("the sync look (C1, C108, C115, C148, C151)", () => {
     expect(dialogCss).toMatch(/\.save-dialog__comment \{[^}]*max-width/);
   });
 
+  it("draws the Key select and the Comment field as one size, in one column, so every row is one height (C115)", () => {
+    // One rule sizes both: the same width and the control height, never taller than a row.
+    const both = /\.save-dialog__style,\s*\.save-dialog__comment\s*\{([^}]*)\}/.exec(dialogCss)![1]!;
+    expect(both).toMatch(/width:\s*var\(--save-dialog-control-width\)/);
+    expect(both).toMatch(/height:\s*var\(--control-height\)/);
+    // The ticks' words take one width, so both controls start at the same place.
+    expect(dialogCss).toMatch(/\.save-dialog__row > \.save-dialog__tick\s*\{[^}]*min-width:/);
+    expect(dialogCss).toMatch(/\.save-dialog__row \{[^}]*height: var\(--row-height\)/);
+  });
+
   it("shows a problem in a Notice", async () => {
     bridge.previewTagWrite.mockRejectedValue(new Error("A file check is running; wait for it"));
     open();
