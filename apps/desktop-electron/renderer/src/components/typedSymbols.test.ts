@@ -21,12 +21,19 @@ const sources = import.meta.glob(
 const SYMBOLS = /[▸▾▼▲↑↓↻×✎✕]/;
 
 /**
- * C138: the drawn marks (tick, warning, star, heart, grip, filled and half dot) and a typed "+"
+ * C138: the drawn marks (tick, warning, star, heart, grip, filled and half dot, chevron) and a typed "+"
  * standing for add. Files that still type them are listed so the list can only shrink: a page
  * batch removes its file from here when it swaps in a `PixelIcon`.
  */
-const MARKS = /[✓⚠●◐★♥⠿]|["'`>]\+ [A-Za-z]/;
+const MARKS = /[✓⚠●◐★♥⠿›]|["'`>]\+ ?[A-Za-z]/;
 const MARKS_ALLOW = new Set([
+  // A typed "›" (go-to arrow or breadcrumb) the stricter pattern found; the owning batch decides.
+  "screens/clean/match/CandidatePanel.tsx",
+  "screens/clean/match/MatchRunLine.tsx",
+  "screens/library/QuickFilters.tsx",
+  "screens/library/TagManagerDialog.tsx",
+  "screens/library/scopePath.ts",
+  "screens/prepare/prepareFormat.ts",
   "components/OnboardingDialog.tsx",
   "screens/discover/similarColumns.tsx",
   "screens/library/FilterBar.tsx",
@@ -79,6 +86,10 @@ describe("typed marks guard (C138)", () => {
     expect(MARKS.test(codeOf("<span>✓</span>"))).toBe(true);
     expect(MARKS.test(codeOf('label: "+ New"'))).toBe(true);
     expect(MARKS.test(codeOf("const sum = a + b;"))).toBe(false);
+    expect(MARKS.test(codeOf("<span>Open ›</span>"))).toBe(true);
+    expect(MARKS.test(codeOf('label: "+New"'))).toBe(true);
+    expect(MARKS.test(codeOf("<button>+Add</button>"))).toBe(true);
+    expect(MARKS.test(codeOf('const n = "+12"'))).toBe(false);
   });
 });
 
