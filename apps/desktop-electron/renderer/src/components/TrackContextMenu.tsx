@@ -62,7 +62,7 @@ export interface TrackContextMenuItem {
    * A tickable entry (K12): present, it is a menu checkbox, and choosing it
    * runs `onSelect` and leaves the menu open so several can be toggled.
    */
-  checked?: boolean;
+  checked?: boolean | "mixed";
   /**
    * A destructive entry (Delete this dig…): drawn in the theme's danger colour, and always listed
    * last in its menu after a divider, whatever order it was given in (C16).
@@ -368,7 +368,8 @@ export function TrackContextMenu({ x, y, items: given, onClose, label, anchor }:
           >
             {item.checked !== undefined && (
               <span className="cp-track-menu__check" aria-hidden="true">
-                {item.checked && <PixelIcon name="check" size="sm" />}
+                {item.checked === true && <PixelIcon name="check" size="sm" />}
+                {item.checked === "mixed" && <PixelIcon name="dot-half" size="sm" />}
               </span>
             )}
             {item.label}

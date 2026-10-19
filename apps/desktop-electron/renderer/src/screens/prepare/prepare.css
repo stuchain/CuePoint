@@ -578,7 +578,6 @@ body.prepare-resizing {
   background: var(--bg-panel-alt);
   /* No row divider and the pixel face, so a band is not read as one more data row (C250). */
   box-shadow: none;
-  font-family: var(--font-pixel);
   font-weight: var(--font-weight-bold);
   cursor: default;
 }
@@ -595,6 +594,8 @@ body.prepare-resizing {
    too long gives way with an ellipsis); a button parked at the far end of a wide cell was
    scrolled to when focused, which moved the table sideways. */
 .prepare-heading__name {
+  /* The pixel face is the label's only (C250). */
+  font-family: var(--font-pixel);
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;

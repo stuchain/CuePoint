@@ -407,6 +407,7 @@ describe("Suggestions", () => {
     expect(headers).toEqual(["Title", "Key", "BPM Δ"]);
     const header = (name: string) => within(table).getByText(name).closest<HTMLElement>(".track-table__header-cell")!;
     expect(header("BPM Δ")).toHaveAttribute("title", expect.stringContaining("out of 100"));
+    expect(header("BPM Δ")).toHaveAttribute("title", expect.stringContaining("in playing order"));
     for (const gone of ["fit", "before", "after", "score", "bpm", "artist"]) {
       expect(table.querySelector(`[data-column="${gone}"]`)).toBeNull();
     }

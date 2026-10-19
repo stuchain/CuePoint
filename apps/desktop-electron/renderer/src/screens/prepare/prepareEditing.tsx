@@ -101,7 +101,10 @@ function TimeInput({ row, field, editing }: { row: EntryRow; field: TimeField; e
         } else if (event.key === "Escape") {
           event.preventDefault();
           leaving.current = true;
+          // Like Enter, the keyboard stays on the row: the table is found before the field is gone.
+          const table = input.current?.closest<HTMLElement>('[role="table"]');
           editing.stopTimeEdit(false);
+          table?.focus();
         }
       }}
     />

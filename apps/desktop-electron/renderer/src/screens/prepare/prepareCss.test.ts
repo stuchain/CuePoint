@@ -31,7 +31,9 @@ describe("a chapter's band (C250)", () => {
     const band = rule(".track-table__row.prepare-heading");
     expect(band).toMatch(/background:\s*var\(--bg-panel-alt\)/);
     expect(band).toMatch(/box-shadow:\s*none/);
-    expect(band).toMatch(/font-family:\s*var\(--font-pixel\)/);
+    // The pixel face is the chapter's label only, not the whole row.
+    expect(band).not.toMatch(/font-family/);
+    expect(rule(".prepare-heading__name")).toMatch(/font-family:\s*var\(--font-pixel\)/);
   });
 });
 

@@ -40,7 +40,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     id: "position",
     header: "#",
     minWidthPx: 40,
-    defaultWidthPx: 48,
+    defaultWidthPx: 44,
     align: "right",
     // Pinned with the title, so a row's place stays in view as the table
     // scrolls sideways, and stays first (a pinned column leads).
@@ -68,7 +68,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     // Pinned and roomy by default: Mix in and Mix out are hidden until View ▸
     // Show times, so the title no longer shares the first screen with them, and a
     // chapter heading's buttons keep their room.
-    defaultWidthPx: 170,
+    defaultWidthPx: 150,
     sticky: true,
     render: (row) => {
       if (row.kind === "heading") {
@@ -101,14 +101,14 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     id: "artist",
     header: "Artist",
     minWidthPx: 100,
-    defaultWidthPx: 150,
+    defaultWidthPx: 130,
     render: (row) => (row.kind === "entry" ? row.entry.track.artist : ""),
   },
   {
     id: "key",
     header: "Key",
     minWidthPx: 48,
-    defaultWidthPx: 60,
+    defaultWidthPx: 56,
     render: (row) =>
       row.kind === "entry" ? <OverriddenValue row={row.entry.track} field="key" /> : "",
     text: (row) => (row.kind === "entry" ? effectiveText(row.entry.track, "key") : ""),
@@ -117,7 +117,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     id: "bpm",
     header: "BPM",
     minWidthPx: 56,
-    defaultWidthPx: 72,
+    defaultWidthPx: 64,
     align: "right",
     render: (row) =>
       row.kind === "heading" ? (
@@ -133,7 +133,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     header: "Plays for",
     hint: "How long this track plays in the Set, from its Mix in to its Mix out",
     minWidthPx: 72,
-    defaultWidthPx: 84,
+    defaultWidthPx: 72,
     align: "right",
     render: (row) =>
       row.kind === "heading" ? (
@@ -149,7 +149,7 @@ export const PREPARE_COLUMNS: readonly TrackColumnDef<PrepareRow>[] = [
     header: "Mix in",
     hint: "When you plan to bring this track in, as m:ss into the track",
     minWidthPx: 48,
-    defaultWidthPx: 60,
+    defaultWidthPx: 56,
     align: "right",
     render: (row) => <TimeCell row={row} field="in" />,
     text: (row) => (row.kind === "entry" ? timeCell(row.entry.in_seconds) : ""),

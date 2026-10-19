@@ -138,7 +138,7 @@ export const SUGGESTION_COLUMNS: readonly TrackColumnDef<SuggestionRow>[] = [
   {
     id: "bpm_delta",
     header: "BPM Δ",
-    hint: `The tempo step from the neighbor: −2, +3 or ±0, and a mark for half or double. ${SUGGESTIONS_RANKING_TITLE} Hover a row for the reasons and the score out of 100.`,
+    hint: `The tempo step from the neighbor, in playing order: −2, +3 or ±0, and a mark for half or double. ${SUGGESTIONS_RANKING_TITLE} Hover a row for the reasons and the score out of 100.`,
     minWidthPx: 56,
     defaultWidthPx: 64,
     align: "right",

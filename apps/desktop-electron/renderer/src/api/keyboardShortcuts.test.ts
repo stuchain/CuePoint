@@ -226,7 +226,8 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     expect(keyOf(/Remove the selected entries/)).toBe("Delete");
     expect(keyOf(/Play from here/)).toBe("Enter");
     expect(keyOf(/Edit mix-in time/)).toBe("F2");
-    expect(keyOf(/Save a typed time and go to the next/)).toBe("Enter or Tab");
+    expect(keyOf(/^Save a typed time$/)).toBe("Enter");
+    expect(keyOf(/Save a typed time and go to the next/)).toBe("Tab");
     expect(keyOf(/Drop a typed time/)).toBe("Esc");
   });
 

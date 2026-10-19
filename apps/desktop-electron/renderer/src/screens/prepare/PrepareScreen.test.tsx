@@ -602,7 +602,7 @@ describe("the Set", () => {
     const items = within(screen.getByRole("menu")).getAllByRole("menuitemcheckbox");
     expect(items.map((item) => item.textContent)).toEqual(["Tempo lane", "Transition strip", "Mix in and Mix out"]);
     // Ticked on and off, not "Show" and "Hide" (C126); the strips are off in a fresh layout, and the times item stands for both columns (C246).
-    expect(items.map((item) => item.getAttribute("aria-checked"))).toEqual(["false", "false", "false"]);
+    expect(items.map((item) => item.getAttribute("aria-checked"))).toEqual(["false", "false", "mixed"]);
   });
 
   it("shows the Set's own notes and edits them in one write (PREP-12)", async () => {
@@ -1767,6 +1767,27 @@ describe("In and Out in the table (FLW-18)", () => {
     expect(within(table()).queryByRole("textbox")).toBeNull();
   });
 
+  it("returns the keyboard to the table on Escape, as Enter does", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(2));
+    tableKey({ key: "F2" });
+    fireEvent.keyDown(editor(), { key: "Escape" });
+    expect(within(table()).queryByRole("textbox")).toBeNull();
+    expect(table()).toHaveFocus();
+  });
+
+  it("shows the Mix in column first when F2 is pressed with it hidden", async () => {
+    localStorage.setItem(PREPARE_TABLE_LAYOUT_KEY, JSON.stringify([{ id: "in", width: 56, hidden: true }]));
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    expect(headers()).not.toContain("Mix in");
+    fireEvent.click(rowAt(2));
+    tableKey({ key: "F2" });
+    expect(headers()).toContain("Mix in");
+    expect(within(rowAt(2)).getByRole("textbox")).toBeInTheDocument();
+  });
+
   it("does nothing on F2 over a chapter's heading", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
@@ -1929,7 +1950,8 @@ describe("the Set table's columns (R4-5)", () => {
     // Only Mix in shows by default (C246), so the item, which stands for both, is not ticked.
     expect(headers()).toContain("Mix in");
     expect(headers()).not.toContain("Mix out");
-    expect(viewItem("Mix in and Mix out")).toHaveAttribute("aria-checked", "false");
+    // Mixed, not unticked: one of the two shows. Choosing it from there shows both.
+    expect(viewItem("Mix in and Mix out")).toHaveAttribute("aria-checked", "mixed");
     showTimes();
     expect(headers()).toEqual(expect.arrayContaining(["Mix in", "Mix out"]));
     // The menu is still open, and the item is ticked.
@@ -1952,7 +1974,7 @@ describe("the Set table's columns (R4-5)", () => {
     await opened();
     expect(headers()).toContain("Mix out");
     expect(headers()).not.toContain("Mix in");
-    expect(viewItem("Mix in and Mix out")).toHaveAttribute("aria-checked", "false");
+    expect(viewItem("Mix in and Mix out")).toHaveAttribute("aria-checked", "mixed");
     fireEvent.click(viewItem("Mix in and Mix out"));
     expect(headers()).toEqual(expect.arrayContaining(["Mix in", "Mix out"]));
   });

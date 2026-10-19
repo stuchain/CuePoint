@@ -96,6 +96,7 @@ import { SetTransition } from "./SetTransition";
 import { useSetAreaFloor } from "./setAreaFloor";
 import { SourcePanel } from "./SourcePanel";
 import { useDetailsPanelOpen } from "./useDetailsPanelOpen";
+import { columnsToDrop, useMeasuredWidth } from "./prepareWidthRule";
 import { entryButtonDomId, entryButtons, stepMoves, type EntryButton } from "./entryActions";
 import { nextTimeTarget, timeRefusalWords, timeTexts, timesToSave, type TimeField, type TimeTarget, type TimeTexts } from "./timeEditing";
 import { newSetSources } from "./newSetSources";
@@ -542,6 +543,16 @@ export function PrepareScreen({
   // and Remove unmounts the buttons, and either leaves focus on the page's body.
   const pressed = useRef<{ id: EntryButton["id"]; at: number } | null>(null);
   const rowsBox = useRef<HTMLDivElement>(null);
+  // Artist gives way when the columns do not fit the pane (C246).
+  const [rowsWidth, measureRows] = useMeasuredWidth(rowsBox);
+  const narrowDrop = useMemo(
+    () => columnsToDrop(columns.visible, columns.widths, rowsWidth),
+    [columns.visible, columns.widths, rowsWidth],
+  );
+  const fittingColumns = useMemo(
+    () => (narrowDrop.length === 0 ? columns.visible : columns.visible.filter((column) => !narrowDrop.includes(column.id))),
+    [columns.visible, narrowDrop],
+  );
   useLayoutEffect(() => {
     const last = pressed.current;
     if (!last) return;
@@ -1258,10 +1269,10 @@ export function PrepareScreen({
           }}
         />
       )}
-      <div className="prepare-set__rows" ref={rowsBox} onKeyDownCapture={onSetKeys}>
+      <div className="prepare-set__rows" ref={measureRows} onKeyDownCapture={onSetKeys}>
         <PrepareEditingContext.Provider value={editing}>
         <TrackTable<PrepareRow>
-          columns={columns.visible}
+          columns={fittingColumns}
           source={source}
           widths={columns.widths}
           onWidthsChange={columns.setWidths}
@@ -1298,7 +1309,10 @@ export function PrepareScreen({
           }}
           onRowEdit={(row) => {
             // F2 types the Mix in time of an entry; a chapter's heading has no time to type.
-            if (row.kind === "entry") startTimeEdit(row.entry.entry_id, "in");
+            if (row.kind !== "entry") return;
+            // The input lives in the Mix in column: show it first, else F2 would type into nothing.
+            if (!columns.visible.some((column) => column.id === "in")) columns.toggle("in");
+            startTimeEdit(row.entry.entry_id, "in");
           }}
           onRowContextMenu={(row, index, anchor) => {
             if (row.kind === "entry") void openEntryMenu(row, index, anchor.x, anchor.y);
@@ -1369,7 +1383,7 @@ export function PrepareScreen({
               Play Set
             </Button>
             <Button variant="secondary" onClick={() => setExporting(true)}>
-              Export to Rekordbox…
+              {opensDialog("Export to Rekordbox")}
             </Button>
           </>
         }
@@ -1499,7 +1513,7 @@ export function PrepareScreen({
           items={[
             { id: "lanes", label: "Tempo lane", checked: lanesOpen, onSelect: toggleLanes },
             { id: "transition", label: "Transition strip", checked: transitionOpen, onSelect: toggleTransition },
-            { id: "times", label: "Mix in and Mix out", checked: timesShown, onSelect: toggleTimes },
+            { id: "times", label: "Mix in and Mix out", checked: timesShown ? true : timeEntries.some((entry) => !entry.hidden) ? "mixed" : false, onSelect: toggleTimes },
           ]}
         />
       )}
