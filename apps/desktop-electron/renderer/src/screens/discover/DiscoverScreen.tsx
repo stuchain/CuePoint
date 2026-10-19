@@ -224,14 +224,20 @@ export function DiscoverScreen() {
   const continueRun = useCallback(
     async (runId: number) => {
       const bridge = window.cuepoint?.continueDiscoveryRun;
-      if (!bridge) throw new Error(NO_ENGINE);
-      const refusal = await startDiscovery(() => bridge({ run_id: runId }));
-      const beatport = refusalState(refusal);
-      if (refusal && beatport) {
-        setRefused({ state: beatport, retryAfter: refusal.retry_after, message: refusal.message });
+      try {
+        if (!bridge) throw new Error(NO_ENGINE);
+        const refusal = await startDiscovery(() => bridge({ run_id: runId }));
+        const beatport = refusalState(refusal);
+        if (refusal && beatport) {
+          setRefused({ state: beatport, retryAfter: refusal.retry_after, message: refusal.message });
+        }
+        if (refusal) toast(refusalText(refusal), "warning");
+        return refusal;
+      } catch (cause) {
+        reportUnexpected(cause);
+        toast(userMessage(cause), "warning");
+        return null;
       }
-      if (refusal) toast(refusalText(refusal), "warning");
-      return refusal;
     },
     [startDiscovery, toast],
   );

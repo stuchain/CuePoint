@@ -764,8 +764,7 @@ class DiscoveryService(IDiscoveryService):
             releases_from,
             releases_to,
         )
-        reopened = self._runs.reopen_run(run_id, job_id)
-        done = reopened.params.get("progress") or {}
+        done = params.get("progress") or {}
         state = _State(
             run_id=run_id,
             counts={
@@ -780,6 +779,8 @@ class DiscoveryService(IDiscoveryService):
             done_artists={str(a) for a in done.get("artists", [])},
             done_labels={str(x) for x in done.get("labels", [])},
         )
+        # Every read happens before the run is reopened: a failure here leaves
+        # it stopped, not "running" with nothing to end it.
         state.releases.update(
             source.source_id
             for source in self._runs.run_sources(run_id)
@@ -789,6 +790,7 @@ class DiscoveryService(IDiscoveryService):
             state.groups[(card.group.kind, card.group.key)] = card.group
             if card.group.kind == GROUP_ARTIST and card.group.beatport_id:
                 state.artist_ids.setdefault(card.group.key, card.group.beatport_id)
+        self._runs.reopen_run(run_id, job_id)
         return self._drive(state, request, scope, on_progress, should_cancel)
 
     def _drive(

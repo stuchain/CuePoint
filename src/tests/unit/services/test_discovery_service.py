@@ -1187,6 +1187,12 @@ class TestContinue:
             assert all(reason in after[track_id] for reason in kept)
         assert ended.tracks_found == 7
         assert ended.charts_read == 3
+        assert (ended.releases_read, ended.labels_resolved) == (2, 1)
+        rows = [
+            (s.beatport_track_id, s.source_type, s.source_id, s.group_key)
+            for s in DiscoveryRepository(db).run_sources(ended.id)
+        ]
+        assert len(rows) == len(set(rows))
 
     def test_picked_artists_continue_with_their_releases_only(self, db, library, world):
         rule = lambda path, params, n: 401 if "artist_id" in params else None  # noqa: E731
@@ -1221,3 +1227,40 @@ class TestContinue:
         )
         with pytest.raises(ValueError, match="running"):
             service.continue_run(running.id)
+
+    def test_a_run_a_restart_interrupted_continues_like_any_stopped_run(
+        self, db, library, world
+    ):
+        rule = label_401(world)
+        service = make(db, world)
+        stopped = service.run(request(service))
+        world.failures.remove(rule)
+        db.connect().execute(
+            "UPDATE discovery_runs SET outcome = NULL, finished_at = NULL,"
+            " error = NULL, error_class = NULL WHERE id = ?",
+            (stopped.id,),
+        )
+        db.connect().commit()
+        assert service.close_interrupted() == [stopped.id]
+        closed = service.get_run(stopped.id)
+        assert (closed.error, closed.error_class) == (INTERRUPTED_ERROR, None)
+        ended = service.continue_run(stopped.id)
+        assert (ended.id, ended.outcome) == (stopped.id, RUN_SUCCEEDED)
+        assert found(db, ended.id) == [1, 2, 3, 4, 5, 7, 8]
+
+    def test_a_read_that_fails_before_it_starts_leaves_the_run_stopped(
+        self, db, library, world, monkeypatch
+    ):
+        rule = label_401(world)
+        service = make(db, world)
+        stopped = service.run(request(service))
+        world.failures.remove(rule)
+
+        def broken(self, run_id):
+            raise RuntimeError("locked")
+
+        monkeypatch.setattr(DiscoveryRepository, "run_groups", broken)
+        with pytest.raises(RuntimeError):
+            service.continue_run(stopped.id)
+        again = service.get_run(stopped.id)
+        assert (again.outcome, again.finished_at) == (RUN_FAILED, stopped.finished_at)

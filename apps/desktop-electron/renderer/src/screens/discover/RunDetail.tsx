@@ -18,6 +18,7 @@ import { pluralize } from "../library/libraryFormat";
 import { RunCards } from "./RunCards";
 import { RunTracksView } from "./RunTracksView";
 import {
+  canContinueRun,
   chartsLine,
   refusalText,
   releasesLine,
@@ -181,7 +182,8 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
         ) : (
           <>
             {/* No title of its own: the open dig's card in the list is the heading. */}
-            <p className="discover-run__outcome">{runOutcome(run)}</p>
+            {/* A stopped dig's card in the list says why; not said twice. */}
+            {!canContinueRun(run) && <p className="discover-run__outcome">{runOutcome(run)}</p>}
             <details className="discover-run__scope">
               <summary>{runScopeLine(run, tools.options.genres)}</summary>
               <p className="discover-run__looked-title">What it looked for</p>

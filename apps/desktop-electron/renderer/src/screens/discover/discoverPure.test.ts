@@ -41,6 +41,7 @@ import {
   runOutcome,
   runScopeLine,
   runStateLabel,
+  runStopLine,
   runStateTone,
   runSummary,
   scopeLine,
@@ -389,6 +390,15 @@ describe("the sentences", () => {
     );
     expect(discoverFacts({ artists: facet(0), labels: facet(0) })).toBe(
       "No artists or labels in your library yet",
+    );
+  });
+
+  it("says a dig the app's closing interrupted was stopped by that", () => {
+    const interrupted = { ...FAILED, error: "CuePoint stopped before the run finished", error_class: null };
+    expect(runStopLine(interrupted)).toBe("Stopped because CuePoint was closed.");
+    expect(runOutcome(interrupted)).toMatch(/^Stopped because CuePoint was closed, after /);
+    expect(runStopLine({ ...FAILED, error: "boom", error_class: null })).toBe(
+      "Stopped because of an error.",
     );
   });
 

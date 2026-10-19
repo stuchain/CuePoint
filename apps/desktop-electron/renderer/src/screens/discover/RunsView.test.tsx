@@ -101,6 +101,45 @@ describe("a dig that stopped partway", () => {
     expect(onContinue).not.toHaveBeenCalled();
   });
 
+  it("opens the dig when its job becomes the new one", async () => {
+    const running = { ...stopped, running: true, outcome: null, job_id: "job-new" };
+    const first = vi.fn(async () => ({ value: RUNS, refusal: null }));
+    install(first);
+    const { rerender } = render(view());
+    const nav = await screen.findByRole("navigation", { name: "Past digs" });
+    const items = () =>
+      within(nav)
+        .getAllByRole("button")
+        .filter((button) => button.className.includes("discover-runs__item"));
+    const other = RUNS.runs.find((run) => run.id !== stopped.id)!;
+    fireEvent.click(items().find((item) => item.getAttribute("aria-current") !== "page")!);
+    expect(other).toBeDefined();
+    (window as unknown as { cuepoint: { listDiscoveryRuns: unknown } }).cuepoint.listDiscoveryRuns = vi.fn(
+      async () => ({
+        value: { ...RUNS, runs: RUNS.runs.map((run) => (run.id === stopped.id ? running : run)) },
+        refusal: null,
+      }),
+    );
+    rerender(
+      <ScaleProvider>
+        <RunsView
+          tools={tools}
+          runningJobId="job-new"
+          runsVersion={1}
+          onNewSearch={() => {}}
+          onContinue={async () => null}
+          continueBlocked={null}
+          pollMs={60_000}
+        />
+      </ScaleProvider>,
+    );
+    await waitFor(() =>
+      expect(items().find((item) => item.getAttribute("aria-current") === "page")?.textContent).toContain(
+        "Running",
+      ),
+    );
+  });
+
   it("offers nothing on a finished dig", async () => {
     install(vi.fn(async () => ({ value: { ...RUNS, runs: RUNS.runs.filter((r) => r.outcome === "succeeded"), total: 1 }, refusal: null })));
     render(view());

@@ -532,6 +532,14 @@ describe("the lookup prompt (DSC-4)", () => {
 });
 
 describe("Results", () => {
+  it("tells the person when Continue cannot reach the engine", async () => {
+    install({ continueDiscoveryRun: vi.fn(async () => Promise.reject(new Error("Engine went away"))) });
+    renderDiscover();
+    const list = await screen.findByRole("navigation", { name: "Past digs" });
+    fireEvent.click(await within(list).findByRole("button", { name: "Continue" }));
+    expect(await screen.findByText("Engine went away")).toBeInTheDocument();
+  });
+
   it("continues a dig that stopped partway through the bridge", async () => {
     renderDiscover();
     const list = await screen.findByRole("navigation", { name: "Past digs" });
@@ -575,7 +583,7 @@ describe("Results", () => {
     renderDiscover();
     expect(
       await screen.findByText(
-        "Stopped because Beatport refused the sign-in, after 0 tracks from 0 charts and 0 releases.",
+        "Stopped because Beatport refused the sign-in.",
       ),
     ).toBeInTheDocument();
     expect(await screen.findByText("This dig found nothing")).toBeInTheDocument();

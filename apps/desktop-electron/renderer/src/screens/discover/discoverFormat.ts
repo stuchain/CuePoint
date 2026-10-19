@@ -96,10 +96,19 @@ export function canContinueRun(run: Pick<DiscoverRun, "running" | "outcome">): b
   return !run.running && (run.outcome === "cancelled" || run.outcome === "failed");
 }
 
+/** The text the engine gives a dig the app's closing left open. */
+const INTERRUPTED_ERROR = "CuePoint stopped before the run finished";
+
+/** What stopped a failed dig, in the words that finish "Stopped because…". */
+function failedBecause(run: Pick<DiscoverRun, "error" | "error_class">): string {
+  if (run.error_class) return stoppedBecause(run.error_class);
+  return run.error === INTERRUPTED_ERROR ? "CuePoint was closed" : "of an error";
+}
+
 /** Why a dig stopped partway, for its card: "Stopped because Beatport could not be reached." */
-export function runStopLine(run: Pick<DiscoverRun, "outcome" | "error_class">): string {
+export function runStopLine(run: Pick<DiscoverRun, "outcome" | "error" | "error_class">): string {
   if (run.outcome === "cancelled") return "Stopped when asked.";
-  return `Stopped because ${run.error_class ? stoppedBecause(run.error_class) : "of an error"}.`;
+  return `Stopped because ${failedBecause(run)}.`;
 }
 
 /** "146 tracks from 3 charts and 12 releases". */
@@ -117,8 +126,7 @@ export function runOutcome(run: DiscoverRun): string {
   if (run.running) return `Running: ${runFound(run)} so far.`;
   if (run.outcome === "succeeded") return `Found ${runFound(run)}.`;
   if (run.outcome === "cancelled") return `Stopped when asked, after ${runFound(run)}.`;
-  const reason = run.error_class ? stoppedBecause(run.error_class) : "of an error";
-  return `Stopped because ${reason}, after ${runFound(run)}.`;
+  return `Stopped because ${failedBecause(run)}, after ${runFound(run)}.`;
 }
 
 /** Genre names for ids, in the run's order; an id the list lacks shows as one. */
