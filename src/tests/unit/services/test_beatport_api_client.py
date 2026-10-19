@@ -377,3 +377,172 @@ class TestRequestBudget:
         )
         client.get("/x")
         assert free_while_sleeping == [True]
+
+
+class TestRenewalGap:
+    """The session token expires, Beatport hands out the next one a few seconds
+    later: requests wait for it instead of failing (the renewal gap)."""
+
+    @pytest.fixture(autouse=True)
+    def _session(self, monkeypatch):
+        from cuepoint.services import beatport_token
+
+        monkeypatch.delenv("BEATPORT_ACCESS_TOKEN", raising=False)
+        beatport_token.set_session_token(None)
+        yield
+        beatport_token.set_session_token(None)
+
+    @staticmethod
+    def _answers(*statuses):
+        seen = []
+
+        def request(method, url, **kw):
+            seen.append(kw["headers"]["Authorization"])
+            status = statuses[min(len(seen) - 1, len(statuses) - 1)]
+            return Mock(
+                status_code=status, json=Mock(return_value={"ok": 1}), content=b"{}"
+            )
+
+        return seen, request
+
+    def _client(self, session, wait=2.0):
+        from cuepoint.services import beatport_token
+
+        client = BeatportApiClient(
+            "https://api.test",
+            "",
+            session=session,
+            token_provider=lambda: beatport_token.get_session_token(),
+        )
+        client._token_wait_s = wait
+        return client
+
+    def test_a_401_then_a_token_swap_retries_once_and_succeeds(self):
+        from cuepoint.services import beatport_token
+
+        beatport_token.set_session_token("old", time.time() + 5)
+        seen, request = self._answers(401, 200)
+        session = Mock(request=request)
+        timer = threading.Timer(0.1, beatport_token.set_session_token, args=("new",))
+        timer.start()
+        assert self._client(session).get("/genres") == {"ok": 1}
+        timer.join()
+        assert seen == ["Bearer old", "Bearer new"]
+
+    def test_no_new_token_in_time_raises_the_same_401(self):
+        from cuepoint.services import beatport_token
+
+        beatport_token.set_session_token("old", time.time() + 5)
+        seen, request = self._answers(401)
+        client = self._client(Mock(request=request), wait=0.1)
+        with patch(
+            "cuepoint.services.beatport_token.hold_until_usable", return_value=False
+        ):
+            with pytest.raises(BeatportAPIError) as exc:
+                client.get("/genres")
+        assert exc.value.status_code == 401
+        assert exc.value.error_code == "BEATPORT_API_AUTH"
+        assert seen == ["Bearer old"]
+
+    def test_a_surviving_401_after_the_retry_is_raised(self):
+        from cuepoint.services import beatport_token
+
+        beatport_token.set_session_token("old", time.time() + 5)
+        seen, request = self._answers(401, 401)
+        timer = threading.Timer(0.05, beatport_token.set_session_token, args=("new",))
+        timer.start()
+        with pytest.raises(BeatportAPIError) as exc:
+            self._client(Mock(request=request)).get("/genres")
+        timer.join()
+        assert exc.value.status_code == 401
+        assert seen == ["Bearer old", "Bearer new"]
+
+    def test_a_request_near_expiry_is_held_and_never_sent_with_the_dead_token(self):
+        from cuepoint.services import beatport_token
+
+        now = time.time()
+        beatport_token.set_session_token("old", now + 0.2)
+        seen, request = self._answers(200)
+        timer = threading.Timer(
+            0.3, beatport_token.set_session_token, args=("new", now + 600)
+        )
+        timer.start()
+        assert self._client(Mock(request=request)).get("/genres") == {"ok": 1}
+        timer.join()
+        assert seen == ["Bearer new"]
+
+    def test_env_token_401_is_not_waited_for(self, monkeypatch):
+        monkeypatch.setenv("BEATPORT_ACCESS_TOKEN", "env")
+        seen, request = self._answers(401)
+        client = BeatportApiClient(
+            "https://api.test",
+            "env",
+            session=Mock(request=request),
+            token_provider=lambda: "env",
+        )
+        client._token_wait_s = 30.0
+        started = time.monotonic()
+        with pytest.raises(BeatportAPIError):
+            client.get("/genres")
+        assert time.monotonic() - started < 2
+        assert seen == ["Bearer env"]
+
+    def test_a_client_built_early_uses_the_renewed_token_later(self):
+        from cuepoint.services import beatport_token
+
+        beatport_token.set_session_token("first")
+        seen, request = self._answers(200)
+        client = self._client(Mock(request=request))
+        client.get("/a")
+        beatport_token.set_session_token("second")
+        client.get("/b")
+        assert seen == ["Bearer first", "Bearer second"]
+
+    def test_the_provider_decides_whether_a_token_exists(self):
+        from cuepoint.services import beatport_token
+
+        client = self._client(Mock())
+        with pytest.raises(BeatportAPIError) as exc:
+            client.require_token()
+        assert exc.value.error_code == "BEATPORT_API_NO_TOKEN"
+        beatport_token.set_session_token("x")
+        client.require_token()
+
+    def test_a_401_carries_the_token_that_was_sent(self):
+        from cuepoint.services import beatport_token
+
+        beatport_token.set_session_token("old", time.time() + 5)
+        _, request = self._answers(401, 401)
+        timer = threading.Timer(0.05, beatport_token.set_session_token, args=("new",))
+        timer.start()
+        with pytest.raises(BeatportAPIError) as exc:
+            self._client(Mock(request=request)).get("/genres")
+        timer.join()
+        beatport_token.set_session_token("newer")
+        assert exc.value.token_used == "new"
+
+    def test_a_pasted_token_401_raises_at_once(self):
+        from cuepoint.services import beatport_token
+
+        beatport_token.set_session_token("pasted")
+        seen, request = self._answers(401)
+        client = self._client(Mock(request=request), wait=30.0)
+        started = time.monotonic()
+        with pytest.raises(BeatportAPIError):
+            client.get("/genres")
+        assert time.monotonic() - started < 1
+        assert seen == ["Bearer pasted"]
+
+    def test_a_token_expired_at_launch_costs_one_wait_in_total(self, monkeypatch):
+        from cuepoint.services import beatport_token
+
+        monkeypatch.setattr(beatport_token, "HOLD_TIMEOUT_SECONDS", 0.3)
+        beatport_token.set_session_token("old", time.time() - 2)
+        seen, request = self._answers(401)
+        client = self._client(Mock(request=request), wait=None)
+        started = time.monotonic()
+        for _ in range(4):
+            with pytest.raises(BeatportAPIError):
+                client.get("/genres")
+        assert time.monotonic() - started < 0.9  # one hold of 0.3 s, no more
+        assert len(seen) == 4

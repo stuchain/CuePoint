@@ -1325,7 +1325,9 @@ def make_handler(
                 except ValueError as exc:
                     self._send_json(400, error_payload("INVALID_REQUEST", str(exc)))
                     return
-                self._send_json(200, set_session_token(body["token"]))
+                self._send_json(
+                    200, set_session_token(body["token"], body.get("expires_at"))
+                )
                 return
             self._send_json(404, error_payload("NOT_FOUND", "Unknown endpoint"))
 

@@ -39,6 +39,15 @@ describe("setBeatportSessionToken", () => {
     expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ token: "session-abcd" });
   });
 
+  it("sends the token's end as expires_at when given", async () => {
+    const calls = engineAnswering(200, { configured: true, masked: "••••abcd", source: "session" });
+    await new EngineClient(PORT, TOKEN).setBeatportSessionToken("session-abcd", "2030-01-01T00:00:00.000Z");
+    expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({
+      token: "session-abcd",
+      expires_at: "2030-01-01T00:00:00.000Z",
+    });
+  });
+
   it("sends null to forget it", async () => {
     const calls = engineAnswering(200, { configured: false, masked: null, source: null });
     await new EngineClient(PORT, TOKEN).setBeatportSessionToken(null);

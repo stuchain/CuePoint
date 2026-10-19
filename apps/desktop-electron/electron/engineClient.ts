@@ -4704,11 +4704,15 @@ export class EngineClient {
    * there is no IPC for it, so the renderer never handles a token. The answer is a status; the
    * engine never echoes the token.
    */
-  async setBeatportSessionToken(token: string | null): Promise<BeatportTokenStatusWire> {
+  async setBeatportSessionToken(
+    token: string | null,
+    expiresAt?: string | null,
+  ): Promise<BeatportTokenStatusWire> {
     const res = await fetch(this.url("/api/v1/config/beatport-session"), {
       method: "PUT",
       headers: this.headers(),
-      body: JSON.stringify({ token }),
+      // The end lets the engine hold requests across the renewal gap; omitted when not given.
+      body: JSON.stringify(expiresAt === undefined ? { token } : { token, expires_at: expiresAt }),
     });
     return readJson(res);
   }

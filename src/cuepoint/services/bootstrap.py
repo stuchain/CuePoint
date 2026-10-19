@@ -884,8 +884,13 @@ def bootstrap_services() -> None:
         ).strip()
         token, _source = resolve_access_token(cfg)
         timeout = int(cfg.get("incrate.beatport_api_timeout") or 30)
+        # The provider reads the live token for every request: a job that runs
+        # longer than one sign-in token carries on with the renewed one.
         client = BeatportApiClient(
-            base_url=base_url, access_token=token or "", timeout=timeout
+            base_url=base_url,
+            access_token=token or "",
+            timeout=timeout,
+            token_provider=lambda: resolve_access_token(cfg)[0],
         )
         return BeatportApi(client=client, cache_service=cache_service)
 

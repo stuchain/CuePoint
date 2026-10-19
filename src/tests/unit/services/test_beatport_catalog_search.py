@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from typing import Any, List, Optional
 from unittest.mock import Mock
@@ -10,6 +11,7 @@ from unittest.mock import Mock
 import pytest
 import requests
 
+from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
 from cuepoint.core.matcher import best_beatport_match
 from cuepoint.data import beatport, beatport_search, catalog_search, search_health
 from cuepoint.models.config import SETTINGS
@@ -521,3 +523,41 @@ class TestConstructedShapes:
         assert score_components(title, artists, via_api[0], via_api[1]) == (
             score_components(title, artists, via_page[0], via_page[1])
         )
+
+
+class TestRenewalGap:
+    def test_a_search_survives_the_token_expiring_between_two_tokens(self, monkeypatch):
+        import threading
+
+        from cuepoint.services import beatport_token
+
+        monkeypatch.delenv("BEATPORT_ACCESS_TOKEN", raising=False)
+        monkeypatch.delenv("CUEPOINT_SKIP_BEATPORT", raising=False)
+        beatport_token.set_session_token("old-session", time.time() + 5)
+        seen: list = []
+
+        class Session(FakeSession):
+            def request(self, method, url, **kwargs):
+                seen.append(kwargs["headers"]["Authorization"])
+                return super().request(method, url, **kwargs)
+
+        session = Session(reply(401, {}), reply(200, {"tracks": [track_object()]}))
+        provider = BeatportCatalogSearch(None, session=session, sleep=lambda s: None)
+        timer = threading.Timer(
+            0.1, beatport_token.set_session_token, args=("new-session",)
+        )
+        timer.start()
+        try:
+            hits = provider.search("Glue", 10)
+        finally:
+            timer.join()
+            beatport_token.set_session_token(None)
+        assert len(hits) == 1
+        assert seen == ["Bearer old-session", "Bearer new-session"]
+
+    def test_the_refusal_is_recorded_for_the_token_the_request_sent(self, signed_in):
+        provider, _ = provider_for()
+        error = BeatportAPIError("x", status_code=401, error_code="BEATPORT_API_AUTH")
+        error.token_used = "sent-token"
+        provider._as_search_error(error, "start-token")
+        assert provider._refused_token == provider._digest("sent-token")

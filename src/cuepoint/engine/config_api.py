@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from cuepoint.services.beatport_token import (
@@ -84,8 +86,30 @@ def parse_beatport_token_body(raw: bytes) -> Dict[str, Any]:
     return {"token": (token or "").strip()}
 
 
+_expiry_warned = False
+
+
+def _parse_expiry(raw: Any) -> Optional[datetime]:
+    """The token's end, or None. An unreadable one never rejects the token push."""
+    global _expiry_warned
+    if raw is None:
+        return None
+    try:
+        if not isinstance(raw, str):
+            raise ValueError("not a string")
+        when = datetime.fromisoformat(raw.strip().replace("Z", "+00:00"))
+    except ValueError:
+        if not _expiry_warned:
+            _expiry_warned = True
+            logging.getLogger(__name__).warning(
+                "Beatport session expires_at is not an ISO date; ignoring it"
+            )
+        return None
+    return when if when.tzinfo else when.replace(tzinfo=timezone.utc)
+
+
 def parse_beatport_session_body(raw: bytes) -> Dict[str, Any]:
-    """``{token: str | null}``; a blank string clears the session token too."""
+    """``{token: str | null, expires_at?: ISO str | null}``; a blank token clears it."""
     if not raw:
         raise ValueError("Request body required")
     try:
@@ -99,7 +123,8 @@ def parse_beatport_session_body(raw: bytes) -> Dict[str, Any]:
     token = data.get("token")
     if token is not None and not isinstance(token, str):
         raise ValueError("token must be a string or null")
-    return {"token": (token or "").strip() or None}
+    expiry = _parse_expiry(data.get("expires_at"))
+    return {"token": (token or "").strip() or None, "expires_at": expiry}
 
 
 def parse_beatport_token_test_body(raw: bytes) -> Dict[str, Any]:
@@ -126,14 +151,16 @@ def set_beatport_token(token: str) -> Dict[str, Any]:
     return get_beatport_token_status()
 
 
-def set_session_token(token: Optional[str]) -> Dict[str, Any]:
-    """Hold the desktop session token in memory (``None`` forgets it).
+def set_session_token(
+    token: Optional[str], expires_at: Optional[datetime] = None
+) -> Dict[str, Any]:
+    """Hold the desktop session token, and when it ends, in memory (``None`` forgets it).
 
     Answers the status; the token itself is never echoed.
     """
     from cuepoint.services.beatport_api import forget_genres_failure
 
-    _store_session_token(token)
+    _store_session_token(token, expires_at)
     # A genres failure cached under the old sign-in must not hold back the new one.
     forget_genres_failure()
     if token and token.strip():

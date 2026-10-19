@@ -1488,8 +1488,11 @@ export class EngineSupervisor {
   }
 
   /** Main only: hold the Beatport sign-in token in the engine's memory (`null` forgets it). */
-  async setBeatportSessionToken(token: string | null): Promise<BeatportTokenStatusWire> {
-    return (await this.readyClient()).setBeatportSessionToken(token);
+  async setBeatportSessionToken(
+    token: string | null,
+    expiresAt?: string | null,
+  ): Promise<BeatportTokenStatusWire> {
+    return (await this.readyClient()).setBeatportSessionToken(token, expiresAt);
   }
 
   /** Main only: the token the config key held, for the one-time move into secure storage. */

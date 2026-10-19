@@ -108,10 +108,12 @@ class FakeStore implements TokenStoreLike {
 
 class FakeEngine implements EnginePort {
   session: Array<string | null> = [];
+  expiries: Array<string | null | undefined> = [];
   legacy: string | null = null;
   blanked = 0;
-  async setSession(token: string | null) {
+  async setSession(token: string | null, expiresAt?: string | null) {
     this.session.push(token);
+    this.expiries.push(expiresAt);
   }
   async takeLegacy() {
     return { token: this.legacy };
@@ -1077,6 +1079,67 @@ describe("renewing", () => {
     expect(t.auth.status().state).toBe("signed_in");
     expect(t.host.opened).toHaveLength(0);
     expect(t.broadcasts.at(-1)!.expires_at).toBe(new Date(end3).toISOString());
+  });
+
+  it("hands the engine the stored token's end with the token", async () => {
+    const t = await signedIn();
+    expect(t.engine.session.at(-1)).toBe("first-token-aaaa");
+    expect(t.engine.expiries.at(-1)).toBe(new Date(T0 + 10 * MIN).toISOString());
+  });
+
+  it("when the same token comes back, looks at end+0.5s and then every second until renewed", async () => {
+    const t = await signedIn();
+    let reads = 0;
+    t.host.session = (n: number) => {
+      reads = n;
+      return n <= 4 ? sessionJson("first-token-aaaa", T0 + 10 * MIN) : sessionJson("second-token-bbbb", T0 + 22 * MIN);
+    };
+    t.host.sessionReads = 0;
+    await vi.advanceTimersByTimeAsync(9 * MIN + 1000); // read 1, a minute early: same
+    expect(reads).toBe(1);
+    await vi.advanceTimersByTimeAsync(MIN - 1000 + SAME_TOKEN_GRACE_MS - 100); // just before end+0.5s
+    expect(reads).toBe(1);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(reads).toBe(2);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(reads).toBe(3);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(reads).toBe(4);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(reads).toBe(5);
+    expect(t.store.value?.token).toBe("second-token-bbbb");
+    expect(t.engine.session.at(-1)).toBe("second-token-bbbb");
+    expect(t.engine.expiries.at(-1)).toBe(new Date(T0 + 22 * MIN).toISOString());
+    expect(t.host.opened).toHaveLength(0);
+  });
+
+  it("pushes a later end to the engine when the same token comes back with it", async () => {
+    const t = await signedIn();
+    t.host.session = sessionJson("first-token-aaaa", T0 + 11 * MIN);
+    t.host.sessionReads = 0;
+    const before = t.engine.session.length;
+    await vi.advanceTimersByTimeAsync(9 * MIN + 1000);
+    expect(t.engine.session.length).toBe(before + 1);
+    expect(t.engine.session.at(-1)).toBe("first-token-aaaa");
+    expect(t.engine.expiries.at(-1)).toBe(new Date(T0 + 11 * MIN).toISOString());
+  });
+
+  it("logs the first and the last of a run of same-token answers, not every poll", async () => {
+    const logged: Array<[string, Record<string, unknown> | undefined]> = [];
+    const t = setup(
+      { "first-token-aaaa": user(T0 + 10 * MIN), "second-token-bbbb": user(T0 + 22 * MIN) },
+      { log: (event, fields) => void logged.push([event, fields as Record<string, unknown> | undefined]) },
+    );
+    t.host.onOpen = (surface) => surface.sendBearer("first-token-aaaa");
+    t.host.session = sessionJson("first-token-aaaa", T0 + 10 * MIN);
+    await t.auth.signIn();
+    t.host.session = (n: number) =>
+      n <= 6 ? sessionJson("first-token-aaaa", T0 + 10 * MIN) : sessionJson("second-token-bbbb", T0 + 22 * MIN);
+    t.host.sessionReads = 0;
+    await vi.advanceTimersByTimeAsync(10 * MIN + 10_000);
+    const same = logged.filter(([e, f]) => e === "renew" && f?.outcome === "same");
+    expect(same).toHaveLength(2);
+    expect(same[1]![1]?.last).toBe(true);
   });
 
   it("takes seconds for accessTokenExpires as well as milliseconds", async () => {

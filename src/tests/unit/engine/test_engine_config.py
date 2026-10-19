@@ -208,7 +208,11 @@ def test_precedence_is_env_then_session_then_config(tmp_path: Path, monkeypatch)
 def test_session_put_rejects_bad_bodies(tmp_path: Path):
     path = "/api/v1/config/beatport-session"
     with _Engine(tmp_path) as engine:
-        for bad in ({}, {"token": 5}, [1]):
+        for bad in (
+            {},
+            {"token": 5},
+            [1],
+        ):
             status, body = engine.call(path, bad, "PUT")
             assert status == 400
             assert body["error"]["code"] == "INVALID_REQUEST"
@@ -299,3 +303,36 @@ def test_session_push_forgets_a_cached_genres_failure():
         config_api.set_session_token("new-session-token")
         config_api.set_session_token(None)
     assert forget.call_count == 2
+
+
+def test_session_put_accepts_an_expiry_and_keeps_it(tmp_path: Path):
+    from cuepoint.services import beatport_token
+
+    path = "/api/v1/config/beatport-session"
+    with _Engine(tmp_path) as engine:
+        status, _ = engine.call(
+            path,
+            {"token": "session-abcd", "expires_at": "2030-01-01T00:00:00.000Z"},
+            "PUT",
+        )
+        assert status == 200
+        assert beatport_token.get_session_expiry() == 1893456000.0
+        status, _ = engine.call(
+            path, {"token": "session-abcd", "expires_at": None}, "PUT"
+        )
+        assert status == 200
+        assert beatport_token.get_session_expiry() is None
+
+
+def test_session_put_ignores_an_unreadable_expiry(tmp_path: Path):
+    from cuepoint.services import beatport_token
+
+    path = "/api/v1/config/beatport-session"
+    with _Engine(tmp_path) as engine:
+        for bad in ("not a date", 5):
+            status, _ = engine.call(
+                path, {"token": "tok-abcd", "expires_at": bad}, "PUT"
+            )
+            assert status == 200
+            assert beatport_token.get_session_token() == "tok-abcd"
+            assert beatport_token.get_session_expiry() is None

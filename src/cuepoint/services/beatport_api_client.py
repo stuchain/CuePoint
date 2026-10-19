@@ -34,6 +34,7 @@ import requests
 
 from cuepoint.data import beatport_fixture
 from cuepoint.exceptions.cuepoint_exceptions import BeatportAPIError
+from cuepoint.services import beatport_token
 from cuepoint.services.reliability_retry import run_with_retry
 
 _logger = logging.getLogger(__name__)
@@ -202,17 +203,32 @@ class BeatportApiClient:
         session: Optional[requests.Session] = None,
         request_gate: Optional[threading.BoundedSemaphore] = None,
         sleep: Callable[[float], None] = time.sleep,
+        token_provider: Optional[Callable[[], Optional[str]]] = None,
     ):
         self.base_url = base_url.rstrip("/")
-        self.access_token = access_token or ""
+        self._static_token = access_token or ""
+        # With a provider every request reads the live token, so a job that
+        # outlives one sign-in token carries on with the renewed one.
+        self._token_provider = token_provider
+        self._token_wait_s: Optional[float] = None  # the module's default
         self.timeout = timeout
         self._session = session if session is not None else requests.Session()
         self._gate = request_gate if request_gate is not None else _SHARED_REQUEST_GATE
         self._sleep = sleep
 
-    def _headers(self) -> Dict[str, str]:
+    @property
+    def access_token(self) -> str:
+        if self._token_provider is not None:
+            return (self._token_provider() or "").strip()
+        return self._static_token
+
+    @access_token.setter
+    def access_token(self, value: str) -> None:
+        self._static_token = value or ""
+
+    def _headers(self, token: Optional[str] = None) -> Dict[str, str]:
         return {
-            "Authorization": f"Bearer {self.access_token}",
+            "Authorization": f"Bearer {self.access_token if token is None else token}",
             "Content-Type": "application/json",
         }
 
@@ -237,8 +253,8 @@ class BeatportApiClient:
 
     def _request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
         url = f"{self.base_url}/{path.lstrip('/')}"
-        kwargs.setdefault("headers", self._headers())
         kwargs.setdefault("timeout", self.timeout)
+        explicit_headers = "headers" in kwargs
         params = kwargs.get("params") or {}
         _logger.info(
             "Beatport API request: %s %s params=%s",
@@ -250,13 +266,35 @@ class BeatportApiClient:
             },
         )
         fixture = beatport_fixture.active()
+        used = ""
+        sent_token = ""
         if fixture is not None:
+            kwargs.setdefault("headers", self._headers())
             resp = fixture_response(
                 fixture, method, url, path, kwargs.get("params"), kwargs.get("json")
             )
         else:
+            if self._token_provider is not None:
+                # Never send a token that is about to end; wait for the next.
+                beatport_token.hold_until_usable()
+            used = sent_token = self.access_token
+            if not explicit_headers:
+                kwargs["headers"] = self._headers(used)
             with self._gate:
                 resp = self._session.request(method, url, **kwargs)
+            if resp.status_code == 401 and self._token_provider is not None:
+                # The gap's other edge: the token ended mid-flight. The gate is
+                # free while waiting; retry once with the renewed token.
+                fresh = beatport_token.wait_for_new_token(used, self._token_wait_s)
+                # A POST is retried too: Beatport refuses an unauthenticated
+                # request before acting on it, so a 401 never means half done.
+                if fresh:
+                    sent_token = fresh
+                    _logger.info("Beatport API 401: retrying with the renewed sign-in")
+                    if not explicit_headers:
+                        kwargs["headers"] = self._headers(fresh)
+                    with self._gate:
+                        resp = self._session.request(method, url, **kwargs)
         try:
             body_len = len(resp.content) if resp.content else 0
             _logger.info(
@@ -273,11 +311,15 @@ class BeatportApiClient:
             )
         if resp.status_code == 401:
             _logger.warning("Beatport API 401: invalid or expired token")
-            raise BeatportAPIError(
+            error = BeatportAPIError(
                 "Invalid or expired Beatport API token",
                 status_code=401,
                 error_code="BEATPORT_API_AUTH",
             )
+            # The token this request actually sent, for a caller deciding which
+            # sign-in was refused (it may have been renewed since).
+            error.token_used = sent_token  # type: ignore[attr-defined]
+            raise error
         if resp.status_code == 403:
             raise BeatportAPIError(
                 "Beatport API access forbidden",

@@ -228,7 +228,7 @@ function beatportAuth(): BeatportAuth {
     }),
     store: new BeatportTokenStore(path.join(app.getPath("userData"), BEATPORT_TOKEN_FILE), safeStorage, (message) => breadcrumb("beatport", message)),
     engine: {
-      setSession: (token) => engine.setBeatportSessionToken(token),
+      setSession: (token, expiresAt) => engine.setBeatportSessionToken(token, expiresAt),
       takeLegacy: () => engine.takeLegacyBeatportToken(),
       blankLegacy: () => engine.setBeatportToken(""),
     },

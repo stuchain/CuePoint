@@ -187,6 +187,7 @@ class BeatportCatalogSearch:
             timeout=int(SEARCH_TIMEOUT_SECONDS),
             session=self._session,
             sleep=self._sleep,
+            token_provider=lambda: resolve_access_token(self._config)[0],
         )
         per_page = max(10, min(int(max_results or 10), MAX_PER_PAGE))
         items = self._items(client, text, per_page, token)
@@ -323,8 +324,12 @@ class BeatportCatalogSearch:
                 search_health.KIND_BLOCKED, "HTTP 403", cooldown=COOLDOWN_SECONDS
             )
         if error_class in (ERROR_NO_TOKEN, ERROR_REJECTED, ERROR_FORBIDDEN):
+            # A 401 that survived the wait for a renewal is a real refusal, of
+            # the token the request actually sent (it may have retried with a
+            # newer one, and a newer one still may have arrived since).
+            refused = getattr(exc, "token_used", None) or token
             with self._lock:
-                self._refused_token = self._digest(token)
+                self._refused_token = self._digest(refused)
             return CatalogSearchError(
                 search_health.KIND_SIGNED_OUT,
                 f"HTTP {exc.status_code or 401}",

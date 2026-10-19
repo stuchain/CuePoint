@@ -25,7 +25,6 @@ import type { BrowserWindow, Session, WebContents } from "electron";
 
 import {
   DEFAULT_TOKEN_TTL_MS,
-  REFRESH_FLOOR_MS,
   REFRESH_LEAD_MS,
   authState,
   bearerFrom,
@@ -87,7 +86,7 @@ export interface TokenStoreLike {
 
 /** What main asks of the engine. */
 export interface EnginePort {
-  setSession(token: string | null): Promise<unknown>;
+  setSession(token: string | null, expiresAt?: string | null): Promise<unknown>;
   takeLegacy(): Promise<{ token: string | null }>;
   /** Blank the config key's value (the existing set-token call with ""). */
   blankLegacy(): Promise<unknown>;
@@ -151,8 +150,15 @@ export const VERIFY_BACKOFF_MS: readonly number[] = [2_000, 5_000, 15_000, 30_00
 
 /** After a failed renewal: how long to wait before the next try (the last one repeats). */
 export const RENEW_BACKOFF_MS: readonly number[] = [60_000, 5 * 60_000, 15 * 60_000];
-/** When the session endpoint repeats the token, look again this long after the token's end. */
-export const SAME_TOKEN_GRACE_MS = 3_000;
+/**
+ * When the session endpoint repeats the token, look again this long after the token's end, then
+ * every `SAME_TOKEN_POLL_MS` until it is renewed. The site hands out the next token only after the
+ * current one has ended, and the engine holds requests meanwhile, so the gap is kept short.
+ */
+export const SAME_TOKEN_GRACE_MS = 500;
+export const SAME_TOKEN_POLL_MS = 1_000;
+/** Polling stops this long after the token's end; the usual backoff takes over. */
+export const SAME_TOKEN_POLL_WINDOW_MS = 20_000;
 /** The same token still counts as the site's current one this long after its end (clock skew). */
 export const SAME_TOKEN_SLACK_MS = 2 * 60_000;
 /** A session read that has not answered by now has failed. */
@@ -179,6 +185,7 @@ export class BeatportAuth {
   /** Counts introspections for the log, so a line can be matched with the backoff after it. */
   private introspectCount = 0;
   /** Whether the last push to the engine got through (for the log). */
+  private sameRun = 0;
   private lastPushOk = true;
 
   constructor(private readonly options: BeatportAuthOptions) {
@@ -429,7 +436,7 @@ export class BeatportAuth {
       return this.status();
     }
     if (direct.kind === "same") {
-      this.note("renew", { outcome: "same" });
+      this.noteSame({});
       this.sameToken(stored, direct.expiresAt);
       return this.status();
     }
@@ -453,7 +460,7 @@ export class BeatportAuth {
       if (why === "same" && this.options.store.load()?.token === stored.token && stored.expires_at !== null) {
         // Not renewed yet and still valid: look again just after its end, with a fresh fallback.
         this.windowWorks = true;
-        this.note("renew", { outcome: "same", via: "hidden-window" });
+        this.noteSame({ via: "hidden-window" });
         this.sameToken(stored, stored.expires_at);
         return this.status();
       }
@@ -491,16 +498,44 @@ export class BeatportAuth {
     return verdict.kind === "ok" ? { kind: "renewed", verified: verdict.verified } : { kind: "failed" };
   }
 
+  /**
+   * "Same token" is answered every second while the site renews: log the first of such a run, and
+   * its last (when the run ends in a renewal or gives up), not every poll.
+   */
+  private noteSame(fields: SignInLogFields): void {
+    this.sameRun += 1;
+    if (this.sameRun === 1) this.note("renew", { outcome: "same", ...fields });
+  }
+
+  private endSameRun(): void {
+    if (this.sameRun > 1) this.note("renew", { outcome: "same", last: true, polls: this.sameRun });
+    this.sameRun = 0;
+  }
+
   /** The site has not renewed yet but the token lasts: keep it and look just after its end. */
   private sameToken(stored: StoredBeatportToken, expiresAt: string): void {
     if (this.options.store.load()?.token !== stored.token) return;
     if (expiresAt !== stored.expires_at) {
       this.options.store.save({ ...stored, expires_at: expiresAt });
+      // The engine holds requests around the token's end: it must know the new end.
+      void this.pushToEngine();
     }
     const end = expiryMs(expiresAt)!;
-    this.retry = 0;
-    this.fallbackTried = false;
-    this.scheduleRetry(Math.max(REFRESH_FLOOR_MS, end + SAME_TOKEN_GRACE_MS - this.now()));
+    const sinceEnd = this.now() - end;
+    if (sinceEnd < SAME_TOKEN_GRACE_MS) {
+      this.retry = 0;
+      this.fallbackTried = false;
+      this.scheduleRetry(end + SAME_TOKEN_GRACE_MS - this.now());
+    } else if (sinceEnd < SAME_TOKEN_POLL_WINDOW_MS) {
+      this.retry = 0;
+      this.fallbackTried = false;
+      this.scheduleRetry(SAME_TOKEN_POLL_MS);
+    } else {
+      this.endSameRun();
+      const wait = RENEW_BACKOFF_MS[Math.min(this.retry, RENEW_BACKOFF_MS.length - 1)]!;
+      this.scheduleRetry(wait);
+      this.retry += 1;
+    }
     if (this.expired && end > this.now()) {
       this.expired = false;
       this.options.broadcast(this.status());
@@ -602,6 +637,7 @@ export class BeatportAuth {
       this.options.breadcrumb?.("could not keep the token");
     }
     this.options.onToken?.(found.token);
+    this.endSameRun();
     this.expired = false;
     this.retry = 0;
     this.fallbackTried = false;
@@ -630,7 +666,8 @@ export class BeatportAuth {
   private pushToEngine(): Promise<void> {
     const next = this.pushChain.then(async () => {
       try {
-        await this.options.engine.setSession(this.options.store.load()?.token ?? null);
+        const stored = this.options.store.load();
+        await this.options.engine.setSession(stored?.token ?? null, stored?.expires_at ?? null);
         this.lastPushOk = true;
       } catch {
         this.lastPushOk = false;
