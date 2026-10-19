@@ -87,6 +87,10 @@ export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix }: T
     buttons?.[target]?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   };
 
+  // The one tab in the tab order: the active one, or the first enabled tab when the active id
+  // matches no enabled tab, so the strip is never unreachable by Tab (S6).
+  const stop = tabs.find((tab) => tab.id === activeId && !tab.disabled)?.id ?? tabs.find((tab) => !tab.disabled)?.id;
+
   return (
     <div
       ref={strip}
@@ -102,7 +106,7 @@ export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix }: T
           id={idPrefix ? tabId(idPrefix, tab.id) : undefined}
           aria-controls={idPrefix ? panelId(idPrefix, tab.id) : undefined}
           aria-selected={tab.id === activeId}
-          tabIndex={tab.id === activeId ? 0 : -1}
+          tabIndex={tab.id === stop ? 0 : -1}
           className={`cp-tabs__tab ${tab.id === activeId ? "cp-tabs__tab--active" : ""}`}
           // A plain count is named with its label and a comma ("Missing files, 3"); a chip or other
           // element is read in its place, after a hidden comma.

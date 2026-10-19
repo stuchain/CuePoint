@@ -99,6 +99,17 @@ describe("Tabs keyboard (C199)", () => {
     expect(screen.getByRole("tab", { name: "Three" })).toHaveAttribute("tabindex", "0");
   });
 
+  it("puts the first enabled tab in the tab order when the active id matches no enabled tab (S6)", () => {
+    const { rerender } = render(<Tabs tabs={THREE} activeId="gone" onChange={() => {}} />);
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("tab", { name: "Three" })).toHaveAttribute("tabindex", "-1");
+    // A disabled active tab is no stop either.
+    rerender(<Tabs tabs={THREE} activeId="b" onChange={() => {}} />);
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("tabindex", "-1");
+    expect(screen.getAllByRole("tab").filter((tab) => tab.getAttribute("tabindex") === "0")).toHaveLength(1);
+  });
+
   it("moves with the arrow keys, skipping a disabled tab, wrapping round, and picks the tab it lands on", async () => {
     const onChange = vi.fn();
     render(<Tabs tabs={THREE} activeId="a" onChange={onChange} />);
