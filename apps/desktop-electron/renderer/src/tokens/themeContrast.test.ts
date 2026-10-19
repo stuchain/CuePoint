@@ -23,6 +23,8 @@ import { SELECTED_ACCENT_MIX, contrastRatio, deriveThemeTokens } from "./themeDe
  *  - "alt is further from the page than the panel" when the panel is pure white or black: the alt
  *    surface then has to step back towards the page.
  */
+/** The themes whose `--border-muted` D10 tunes (DECISIONS-FOR-MOCKUPS D10, option A). */
+const D10_TUNED_LINES = ["qtEvolved", "clubNeon", "retro16"];
 const BUILT_IN: [string, Record<string, string>][] = Object.entries(THEMES).map(([name, css]) => [
   name,
   themeTokens(css),
@@ -75,12 +77,19 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
     expect(contrastRatio(t["border-muted"]!, panel)).toBeGreaterThanOrEqual(1.5);
   });
 
-  it("draws a built-in theme's line at 2.2 to 2.8:1 on the panel and 2:1 or more on the page (C93)", () => {
-    if (!builtIn) return;
+  // D10 tunes the line of Classic, Club neon and Retro only. Neo dark and Muted keep their
+  // specified borders (#52525b, #4b5568), which sit outside 2.2 to 2.8:1, so they are not held to it.
+  it("draws the line of a theme D10 tunes at 2.2 to 2.8:1 on the panel and 2:1 or more on the page (C93)", () => {
+    if (!D10_TUNED_LINES.includes(name)) return;
     const onPanel = contrastRatio(t["border-muted"]!, panel);
     expect(onPanel, "line on panel").toBeGreaterThanOrEqual(2.2);
     expect(onPanel, "line on panel").toBeLessThanOrEqual(2.8);
     expect(contrastRatio(t["border-muted"]!, app), "line on page").toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps the specified line in the themes D10 leaves alone", () => {
+    const spec: Record<string, string> = { neoDark: "#52525b", mutedPro: "#4b5568" };
+    if (name in spec) expect(t["border-muted"]).toBe(spec[name]);
   });
 
   it("puts the toolbar between the page and the panel (C94)", () => {
