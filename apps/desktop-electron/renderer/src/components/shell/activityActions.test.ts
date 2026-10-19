@@ -109,16 +109,16 @@ describe("an interrupted match's entry (CLEAN-14)", () => {
 describe("what a record of writes says", () => {
   it("never calls an unconfirmed write written", () => {
     expect(writesLine(5, 2)).toBe(
-      "2 saves may not have finished, and 3 values were saved. Undoing the save puts every one back as it was.",
+      "2 syncs may not have finished, and 3 values were synced. Undoing the sync puts every one back as it was.",
     );
     expect(writesLine(2, 2)).toBe(
-      "2 saves may not have finished. Undoing the save puts every one back as it was; a file still holding its old value counts as undone.",
+      "2 syncs may not have finished. Undoing the sync puts every one back as it was; a file still holding its old value counts as undone.",
     );
   });
 
   it("counts confirmed writes, and says when all are undone", () => {
-    expect(writesLine(1, 0)).toBe("1 value saved to files can be undone.");
-    expect(writesLine(0, 0)).toBe("Everything saved to files has been undone.");
+    expect(writesLine(1, 0)).toBe("1 value synced to files can be undone.");
+    expect(writesLine(0, 0)).toBe("Everything synced to files has been undone.");
   });
 });
 

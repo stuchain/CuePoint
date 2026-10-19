@@ -103,15 +103,15 @@ export function resumeOfferLine(remaining: number | null): string {
  * those the engine never saw finish (CLEAN-10, CLEAN-11).
  */
 export function writesLine(restorable: number, unconfirmed: number): string {
-  if (restorable <= 0) return "Everything saved to files has been undone.";
+  if (restorable <= 0) return "Everything synced to files has been undone.";
   const confirmed = restorable - unconfirmed;
   if (unconfirmed <= 0) {
-    return `${countNoun(confirmed, "value")} saved to files can be undone.`;
+    return `${countNoun(confirmed, "value")} synced to files can be undone.`;
   }
-  const unfinished = `${countNoun(unconfirmed, "save")} may not have finished`;
+  const unfinished = `${countNoun(unconfirmed, "sync")} may not have finished`;
   return confirmed > 0
-    ? `${unfinished}, and ${countNoun(confirmed, "value")} ${confirmed === 1 ? "was" : "were"} saved. Undoing the save puts every one back as it was.`
-    : `${unfinished}. Undoing the save puts every one back as it was; a file still holding its old value counts as undone.`;
+    ? `${unfinished}, and ${countNoun(confirmed, "value")} ${confirmed === 1 ? "was" : "were"} synced. Undoing the sync puts every one back as it was.`
+    : `${unfinished}. Undoing the sync puts every one back as it was; a file still holding its old value counts as undone.`;
 }
 
 /** What a batch revert did, in its counts. */
