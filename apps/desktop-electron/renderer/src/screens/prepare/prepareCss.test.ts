@@ -30,6 +30,11 @@ describe("the strips above the Set (C251, C49, C259)", () => {
     expect(name).not.toMatch(/overflow:\s*hidden/);
   });
 
+  it("sets the Inserting line and the panel's notes as sentences, in Inter (D5, C55)", () => {
+    expect(rule(".prepare-source__point")).toMatch(/font-family:\s*var\(--font-data\)/);
+    expect(rule(".prepare-source__note")).toMatch(/font-family:\s*var\(--font-data\)/);
+  });
+
   it("insets the right waveform by 8 at 1x (--space-md)", () => {
     expect(rule(".prepare-transition")).toMatch(/padding-right:\s*var\(--space-md\)/);
   });

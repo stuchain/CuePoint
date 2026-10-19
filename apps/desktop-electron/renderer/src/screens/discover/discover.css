@@ -228,9 +228,11 @@
   border-bottom: var(--divider);
 }
 
+/* A sentence, so Inter (D5, C55), at the size of the note beside it. */
 .discover-run__outcome {
   margin: 0;
-  font-size: var(--font-size-sm);
+  font-family: var(--font-data);
+  font-size: var(--text-body);
 }
 
 .discover-run__looked {

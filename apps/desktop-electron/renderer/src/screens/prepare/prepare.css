@@ -921,6 +921,8 @@ body.prepare-resizing {
   margin: 0;
   overflow: hidden;
   color: var(--fg-primary);
+  /* A sentence, so Inter (D5, C55). */
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
   overflow-wrap: anywhere;
   text-overflow: ellipsis;
@@ -951,6 +953,7 @@ body.prepare-resizing {
 .prepare-source__note {
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
 }
 
