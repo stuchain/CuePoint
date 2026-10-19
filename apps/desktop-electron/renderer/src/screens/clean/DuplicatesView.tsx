@@ -408,7 +408,8 @@ export function DuplicatesView({ health, onHealthChanged }: DuplicatesViewProps)
             {error}
           </Notice>
         ) : groups.length === 0 ? (
-          <EmptyState compact
+          // The page's own empty state, icon and all, as Missing files draws its own (C140).
+          <EmptyState
             icon="clean"
             tone={empty.offer === null && !error ? "clear" : "empty"}
             headline={empty.headline}

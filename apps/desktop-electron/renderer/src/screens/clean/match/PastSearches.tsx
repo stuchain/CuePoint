@@ -90,8 +90,8 @@ export function PastSearches({
       {!jobs.available && <EmptyState compact headline={needsDesktopApp()} />}
       {jobs.available && jobs.loading && jobs.runs.length === 0 && <Loading what="past searches" />}
       {jobs.available && !jobs.error && jobs.runs.length === 0 && !jobs.loading && (
+        // The whole view is empty, so the full empty state with its icon, as on the other tabs (C140).
         <EmptyState
-          compact
           icon="clean"
           headline={searching ? nothingMatches(query.trim()).replace(/[.]$/, "") : "No searches yet"}
           description={searching ? undefined : "Each Match on Beatport is kept here, so you can see what it found."}

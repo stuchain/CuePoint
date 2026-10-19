@@ -845,6 +845,10 @@ describe("duplicates", () => {
     bridge.getDuplicateGroups!.mockResolvedValue(fixture.scanned.duplicates);
     renderClean("duplicates");
     expect(await screen.findByText("No possible duplicates")).toBeInTheDocument();
+    // The full empty state with its icon, as Missing files shows (C140).
+    const state = screen.getByText("No possible duplicates").closest(".cp-empty-state");
+    expect(state).not.toHaveClass("cp-empty-state--compact");
+    expect(state?.querySelector(".cp-empty-state__icon")).not.toBeNull();
   });
 });
 

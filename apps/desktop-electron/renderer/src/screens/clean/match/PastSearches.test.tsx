@@ -172,6 +172,10 @@ describe("the list", () => {
     const { unmount } = renderPast();
     expect(await screen.findByText("No searches yet", undefined, LOADED)).toBeInTheDocument();
     expect(screen.getByText("Each Match on Beatport is kept here, so you can see what it found.")).toBeInTheDocument();
+    // The full empty state with its icon, as the other tabs show (C140).
+    const state = screen.getByText("No searches yet").closest(".cp-empty-state");
+    expect(state).not.toHaveClass("cp-empty-state--compact");
+    expect(state?.querySelector(".cp-empty-state__icon")).not.toBeNull();
     // The button goes to the Playlists sub-tab.
     fireEvent.click(screen.getByRole("button", { name: "Go to Playlists" }));
     expect(screen.getByRole("tab", { name: "Playlists" })).toHaveAttribute("aria-selected", "true");
