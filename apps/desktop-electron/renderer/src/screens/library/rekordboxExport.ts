@@ -228,7 +228,7 @@ export function playlistHeadline(preview: RekordboxExportPreview, chosen: number
 export function playlistCount(playlist: RekordboxExportPlaylistPreview): string {
   const written = countNoun(playlist.entry_count, "track");
   if (playlist.dropped_count === 0) return written;
-  return `${written} of ${playlist.requested_count.toLocaleString()}`;
+  return `${written} of ${formatCount(playlist.requested_count)}`;
 }
 
 /**
@@ -441,7 +441,7 @@ export function resultHeadline(result: RekordboxExportResult): string {
     return `The export failed: ${result.error ?? "no reason was given"}.`;
   }
   const parts = [countNoun(result.track_count, "track")];
-  parts.push(`${result.changed_track_count.toLocaleString()} rewritten`);
+  parts.push(`${formatCount(result.changed_track_count)} rewritten`);
   parts.push(`${countNoun(result.playlist_count, "playlist")} added`);
   return `Exported to ${name}: ${parts.join(", ")}.`;
 }
@@ -475,9 +475,9 @@ export function exportNodeLabel(
     case "smart":
       return node.broken ? "Smart Collection — broken" : "Smart Collection";
     case "set":
-      return `Set · ${node.entry_count.toLocaleString()}`;
+      return `Set · ${formatCount(node.entry_count)}`;
     default:
-      return node.entry_count.toLocaleString();
+      return formatCount(node.entry_count);
   }
 }
 
@@ -540,7 +540,7 @@ export function historyOutcome(record: RekordboxExportRecord): string {
     case "written":
       return [
         countNoun(record.track_count, "track"),
-        `${record.changed_track_count.toLocaleString()} with new tags`,
+        `${formatCount(record.changed_track_count)} with new tags`,
         countNoun(record.playlists.length, "playlist"),
         keyFormatName(record.key_format),
       ].join(" · ");

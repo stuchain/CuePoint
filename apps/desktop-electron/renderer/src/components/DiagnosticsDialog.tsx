@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { hasEngineBridge, type AppBuildInfo, type EngineStatus } from "../api/cuepointBridge.types";
 import { appVersion, versionWords } from "./AboutDialog";
+import { needsDesktopApp } from "../api/userMessage";
 import { Loading } from "./Loading";
 import { Modal } from "./Modal";
 
@@ -41,7 +42,7 @@ export function DiagnosticsDialog({ open, onClose }: DiagnosticsDialogProps) {
     <Modal open={open} title="Diagnostics" onClose={onClose} closeLabel="Close">
       {reading.kind === "loading" && <Loading what="diagnostics" />}
       {reading.kind === "none" && (
-        <p className="cp-modal__lead">The engine bridge is not available outside the desktop app</p>
+        <p className="cp-modal__lead">{needsDesktopApp("Diagnostics")}</p>
       )}
       {reading.kind === "status" && (
         <dl className="cp-facts">

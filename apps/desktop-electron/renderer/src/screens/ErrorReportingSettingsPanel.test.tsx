@@ -152,7 +152,7 @@ describe("without the desktop bridge", () => {
     delete (window as unknown as { cuepoint?: unknown }).cuepoint;
     render(<ErrorReportingSettingsPanel />);
     expect(screen.getByRole("checkbox", { name: "Send error reports" })).toBeDisabled();
-    expect(screen.getByText("Open CuePoint as a desktop app to change this.")).toBeInTheDocument();
+    expect(screen.getByText("Changing this needs the CuePoint desktop app.")).toBeInTheDocument();
   });
 });
 

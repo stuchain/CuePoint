@@ -80,7 +80,7 @@ describe("the vocabulary", () => {
     show({ tags: [] });
     expect(screen.getByText("No tags yet")).toBeInTheDocument();
     expect(
-      screen.getByText("Tag a track in Track details › Yours and it appears here."),
+      screen.getByText("Tag a track under Yours in Track details and it appears here."),
     ).toBeInTheDocument();
     // One column, not the list-plus-editor pair that was too wide for the dialog.
     expect(screen.queryByRole("list", { name: "Tags" })).not.toBeInTheDocument();

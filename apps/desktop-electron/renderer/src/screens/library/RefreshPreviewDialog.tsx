@@ -65,7 +65,8 @@ export function RefreshPreviewDialog({
       onClose={onCancel}
       // Nothing changed: an info-only dialog ends in one grey Close. Otherwise this is a decision,
       // and declining it is "Cancel", not "Close": declining changes nothing.
-      closeLabel={diff.is_empty ? "Close" : "Cancel"}
+      closeLabel={diff.is_empty ? "Close" : undefined}
+      secondaryAction={diff.is_empty ? undefined : { label: "Cancel", onClick: onCancel }}
       primaryAction={
         diff.is_empty
           ? undefined

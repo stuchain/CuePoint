@@ -147,7 +147,7 @@ describe("the Rekordbox export in Settings", () => {
   it("says the desktop app is needed without a bridge", () => {
     delete (window as unknown as { cuepoint?: unknown }).cuepoint;
     renderPanel();
-    expect(screen.getByText(/Open CuePoint as a desktop app/)).toBeInTheDocument();
+    expect(screen.getByText(/needs the CuePoint desktop app/)).toBeInTheDocument();
   });
 });
 
@@ -160,8 +160,8 @@ describe("revisiting Settings (C19d)", () => {
     const before = read.mock.calls.length;
 
     renderPanel();
-    // The first render: no "Reading past exports…", the history is already there.
-    expect(screen.queryByText("Reading past exports…")).toBeNull();
+    // The first render: no "Loading past exports…", the history is already there.
+    expect(screen.queryByText("Loading past exports…")).toBeNull();
     expect(screen.getByText("No exports yet.")).toBeInTheDocument();
     await act(async () => {});
     expect(read.mock.calls.length).toBe(before);

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import type { RekordboxExportHistory } from "../api/cuepointBridge.types";
 import { exportHistory, useReportReadError, useSharedRead } from "../api/sharedReads";
-import { Button, MoreAbout, Notice, Panel } from "../components";
+import { Button, Loading, MoreAbout, Notice, Panel } from "../components";
 import { RETRY } from "../format/words";
 import { fileName } from "./library/libraryFormat";
 import { libraryImportState } from "./library/libraryLink";
@@ -15,7 +15,7 @@ import {
 } from "./library/rekordboxExport";
 import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
 import "./rekordbox-export-settings.css";
-import { userMessage } from "../api/userMessage";
+import { needsDesktopApp, userMessage } from "../api/userMessage";
 
 /** How many past exports Settings lists. */
 export const SETTINGS_HISTORY_LIMIT = 10;
@@ -57,7 +57,7 @@ export function RekordboxExportSettingsPanel() {
     <Panel title="Rekordbox">
       <div className="cp-export-settings">
         {!available && (
-          <SettingsStatus>Open CuePoint as a desktop app to see where exports go.</SettingsStatus>
+          <SettingsStatus>{needsDesktopApp("Showing where exports go")}</SettingsStatus>
         )}
 
         {error && (
@@ -73,7 +73,7 @@ export function RekordboxExportSettingsPanel() {
           </Notice>
         )}
 
-        {loading && !history && <SettingsStatus>Reading past exports…</SettingsStatus>}
+        {loading && !history && <Loading what="past exports" />}
 
         {remembered && (
           <dl className="cp-facts">

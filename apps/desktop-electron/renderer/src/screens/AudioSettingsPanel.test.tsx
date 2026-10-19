@@ -144,7 +144,7 @@ describe("the panel's words", () => {
     harness.audioDevices.mockReturnValue(new Promise(() => {}));
     renderPanel();
     expect(screen.getByText("3 outputs found")).toBeInTheDocument();
-    expect(screen.queryByText("Reading the devices this machine has…")).toBeNull();
+    expect(screen.queryByText("Loading the output devices…")).toBeNull();
     expect(screen.getByRole("option", { name: "Speakers (Focusrite USB Audio)" })).toBeInTheDocument();
     await waitFor(() => expect(harness.audioDevices).toHaveBeenCalledTimes(2));
   });
@@ -166,7 +166,7 @@ describe("the panel's words", () => {
     harness.audioDevices.mockReturnValue(new Promise(() => {}));
     rerender(view("visible"));
     await waitFor(() => expect(harness.audioDevices).toHaveBeenCalledTimes(2));
-    expect(screen.queryByText("Reading the devices this machine has…")).toBeNull();
+    expect(screen.queryByText("Loading the output devices…")).toBeNull();
     expect(screen.getByText("3 outputs found")).toBeInTheDocument();
   });
 
@@ -198,7 +198,7 @@ describe("the panel's words", () => {
     const harness = install();
     harness.audioDevices.mockReturnValue(new Promise(() => {}));
     renderPanel();
-    expect(await screen.findByText("Reading the devices this machine has…")).toBeInTheDocument();
+    expect(await screen.findByText("Loading the output devices…")).toBeInTheDocument();
   });
 
   it("keeps the singular right", async () => {
@@ -415,6 +415,6 @@ describe("without a player", () => {
     await waitFor(() => expect(device()).toBeDisabled());
     // Nothing says exclusive output is supported, so it is not drawn.
     expect(screen.queryByRole("checkbox", { name: /Exclusive output/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/Open CuePoint as a desktop app/i)).toBeInTheDocument();
+    expect(screen.getByText(/needs the CuePoint desktop app/i)).toBeInTheDocument();
   });
 });

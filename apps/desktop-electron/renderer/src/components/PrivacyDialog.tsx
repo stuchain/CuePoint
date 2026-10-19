@@ -6,7 +6,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { LinkButton } from "./LinkButton";
 import { reportUnexpected } from "../reporting/reporting";
 import "./PrivacyDialog.css";
-import { userMessage } from "../api/userMessage";
+import { needsDesktopApp, userMessage } from "../api/userMessage";
 import { couldNot } from "../format/words";
 
 /** Short plain sentences under three headings (C171); each is one line to read. */
@@ -114,7 +114,7 @@ export function PrivacyDialog({ open, onClose }: PrivacyDialogProps) {
 
   // The switch's state, then where to change it (the notice's "Settings → Privacy → Send error reports").
   let reportingWords = "Error reports: …";
-  if (!window.cuepoint?.errorReporting) reportingWords = "Error reports: unavailable outside the desktop app";
+  if (!window.cuepoint?.errorReporting) reportingWords = needsDesktopApp("Error reporting");
   else if (reporting === "unconfigured") reportingWords = "Error reports: not available in this build (nothing is sent)";
   else if (reporting === "unreadable") reportingWords = "Error reports: could not be read";
   else if (reporting !== null) reportingWords = `Error reports: ${reporting ? "on" : "off"}`;

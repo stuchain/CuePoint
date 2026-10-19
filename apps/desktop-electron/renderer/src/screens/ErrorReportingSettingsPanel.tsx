@@ -7,7 +7,7 @@ import { ResetToDefaults } from "./ResetToDefaults";
 import { PanelTools, SettingsHint } from "./SettingsParts";
 import { readExitClearing, saveExitClearing } from "./exitClearing";
 import "./error-reporting-settings.css";
-import { userMessage } from "../api/userMessage";
+import { needsDesktopApp, userMessage } from "../api/userMessage";
 
 /** The switch's id: what Help → Privacy's "Change in Settings" focuses. */
 export const ERROR_REPORTING_FIELD_ID = "settings-error-reporting";
@@ -142,7 +142,7 @@ export function ErrorReportingSettingsPanel({
           </LinkButton>
         </MoreAbout>
         {!available && (
-          <SettingsHint>Open CuePoint as a desktop app to change this.</SettingsHint>
+          <SettingsHint>{needsDesktopApp("Changing this")}</SettingsHint>
         )}
         {error && (
           <Notice kind="danger">{error}</Notice>

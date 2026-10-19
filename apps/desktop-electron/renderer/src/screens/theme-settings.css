@@ -100,7 +100,7 @@
 
 .theme-color-field__input:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset, 0);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .theme-color-field__hex {

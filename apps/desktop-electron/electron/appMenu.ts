@@ -199,7 +199,8 @@ export function buildMenuTemplate({
   template.push({
     label: "Help",
     submenu: [
-      // An item that opens a dialog ends in "…" and the dialog is named as the item is.
+      // An item that opens a dialog ends in "…", and the dialog repeats its words without it: this
+      // one opens the "Keyboard shortcuts" dialog, "Getting started" and "Privacy" likewise (C168).
       command("getting-started", "Getting started…"),
       command("shortcuts", "Keyboard shortcuts…"),
       command("get-help", "Get help…"),

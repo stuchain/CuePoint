@@ -50,6 +50,6 @@ describe("DiagnosticsDialog", () => {
   it("says when there is no engine bridge", () => {
     delete (window as { cuepoint?: unknown }).cuepoint;
     render(<DiagnosticsDialog open onClose={() => {}} />);
-    expect(screen.getByText("The engine bridge is not available outside the desktop app")).toBeInTheDocument();
+    expect(screen.getByText("Diagnostics needs the CuePoint desktop app.")).toBeInTheDocument();
   });
 });

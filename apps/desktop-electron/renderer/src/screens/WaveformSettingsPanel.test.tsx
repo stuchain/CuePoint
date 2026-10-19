@@ -303,7 +303,7 @@ describe("the analysis's state", () => {
     window.cuepoint = {} as typeof window.cuepoint;
     renderPanel();
 
-    expect(screen.getByText("Open CuePoint as a desktop app to analyze waveforms.")).toBeInTheDocument();
+    expect(screen.getByText("Analyzing waveforms needs the CuePoint desktop app.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Delete waveform data/ })).toBeNull();
   });
 });

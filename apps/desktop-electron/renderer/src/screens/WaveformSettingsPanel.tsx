@@ -1,7 +1,8 @@
 import { useId, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { Button, DisclosureArrow, Modal, MoreAbout, Panel } from "../components";
+import { Button, DisclosureArrow, Loading, Modal, MoreAbout, Panel } from "../components";
+import { needsDesktopApp } from "../api/userMessage";
 import { SavedTick, useSavedSignal } from "../components/SavedTick";
 import { selectCurrentItem, selectPosition } from "../components/player/playerFormat";
 import { usePlayerValue } from "../components/player/playerStore";
@@ -149,7 +150,7 @@ export function WaveformSettingsPanel() {
     >
       <div className="cp-waveform-settings">
         {!analysis.supported ? (
-          <SettingsStatus>Open CuePoint as a desktop app to analyze waveforms.</SettingsStatus>
+          <SettingsStatus>{needsDesktopApp("Analyzing waveforms")}</SettingsStatus>
         ) : (
           <SettingsStatus role="status" data-testid="waveform-analysis-state">
             {analysis.error ??
@@ -160,7 +161,7 @@ export function WaveformSettingsPanel() {
               ) : status ? (
                 analysisWords(status)
               ) : (
-                "Reading the analysis…"
+                <Loading what="the analysis" />
               ))}
           </SettingsStatus>
         )}

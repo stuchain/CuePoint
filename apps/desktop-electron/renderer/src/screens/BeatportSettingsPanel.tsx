@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef } from "react";
 
-import { Button, MoreAbout, Notice, Panel, TextField } from "../components";
+import { Button, Loading, MoreAbout, Notice, Panel, TextField } from "../components";
 import type { BeatportAuth } from "../api/cuepointBridge.types";
-import { NEEDS_DESKTOP } from "../api/userMessage";
+import { needsDesktopApp } from "../api/userMessage";
 import { useBeatportToken } from "../hooks/useBeatportToken";
 import { useIncludeUserCharts } from "./discover/includeUserCharts";
 import { ResetToDefaults } from "./ResetToDefaults";
@@ -66,7 +66,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
     return (
       <Panel title="Beatport">
         <div className="settings-body">
-          <SettingsStatus>Checking Beatport…</SettingsStatus>
+          <Loading what="the Beatport sign-in" />
         </div>
       </Panel>
     );
@@ -87,7 +87,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
     ? status.configured
       ? `Saved token ${status.masked ?? ""}. Paste a new one to replace it.`
       : "Kept on this computer only."
-    : NEEDS_DESKTOP;
+    : needsDesktopApp();
 
   const settled = (): void => lineRef.current?.focus();
 
@@ -132,7 +132,7 @@ export function BeatportSettingsPanel({ fieldId, focusToken = null }: BeatportSe
             This system has no secure key store, so you sign in again each time CuePoint starts.
           </SettingsStatus>
         ) : null}
-        {noDesktop ? <SettingsStatus>{NEEDS_DESKTOP}</SettingsStatus> : null}
+        {noDesktop ? <SettingsStatus>{needsDesktopApp()}</SettingsStatus> : null}
         {signingIn ? <SettingsStatus role="status">Finish signing in in the Beatport window.</SettingsStatus> : null}
         {authError ? (
           <Notice kind="danger">{authError}</Notice>

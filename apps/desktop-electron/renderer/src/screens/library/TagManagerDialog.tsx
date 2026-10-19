@@ -155,7 +155,7 @@ export function TagManagerDialog({
         <EmptyState
           icon="tag"
           headline="No tags yet"
-          description="Tag a track in Track details › Yours and it appears here."
+          description="Tag a track under Yours in Track details and it appears here."
         />
       ) : (
       <div className="cp-tag-manager">

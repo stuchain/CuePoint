@@ -243,7 +243,7 @@ describe("signed out", () => {
     let answer: (value: BeatportAuth) => void = () => {};
     install(SIGNED_OUT, { getBeatportAuth: vi.fn(() => new Promise<BeatportAuth>((resolve) => (answer = resolve))) });
     renderPanel();
-    expect(screen.getByText("Checking Beatport…")).toBeInTheDocument();
+    expect(screen.getByText("Loading the Beatport sign-in…")).toBeInTheDocument();
     expect(screen.queryByText("Sign in to let Discover search Beatport.")).toBeNull();
     expect(screen.queryByRole("button", { name: "Sign in to Beatport" })).toBeNull();
     await act(async () => answer({ state: "pasted", masked: "••••abcd", expires_at: null, secure_storage: true }));

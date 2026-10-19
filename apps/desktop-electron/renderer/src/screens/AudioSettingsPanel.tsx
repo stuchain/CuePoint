@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import type { AudioDevice } from "../api/cuepointBridge.types";
-import { MoreAbout, Notice, Panel } from "../components";
+import { Loading, MoreAbout, Notice, Panel } from "../components";
+import { needsDesktopApp } from "../api/userMessage";
+import { countNoun } from "../format/counts";
 import { Select } from "../components/Select";
 import { ResetToDefaults } from "./ResetToDefaults";
 import { PanelTools, SettingsHint, SettingsStatus } from "./SettingsParts";
@@ -157,11 +159,13 @@ export function AudioSettingsPanel() {
     >
       <div className="cp-audio-settings">
         <SettingsStatus id={outputsId}>
-          {loading && !listed
-            ? "Reading the devices this machine has…"
-            : available
-              ? `${devices.length} ${devices.length === 1 ? "output" : "outputs"} found`
-              : "Open CuePoint as a desktop app to choose an output device."}
+          {loading && !listed ? (
+            <Loading what="the output devices" />
+          ) : available ? (
+            `${countNoun(devices.length, "output")} found`
+          ) : (
+            needsDesktopApp("Choosing an output device")
+          )}
         </SettingsStatus>
 
         <div className="settings-option">
