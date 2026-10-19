@@ -64,6 +64,8 @@
 /* ------------------------------------------------------------------- card */
 
 .discover-card {
+  /* The height of the placeholder band a card without a picture shows (C254). */
+  --discover-card-placeholder: calc(48px * var(--scale));
   position: relative;
   display: flex;
   min-width: 0;
@@ -111,8 +113,10 @@
   background: color-mix(in srgb, var(--accent-primary) 22%, var(--bg-panel-alt));
 }
 
-/* The shared placeholder fills the tile in the theme's panel colour. */
+/* No picture: the shared placeholder as a short band, not a card-wide empty square (C254). */
 .discover-card__art--placeholder {
+  aspect-ratio: auto;
+  height: var(--discover-card-placeholder);
   background: transparent;
 }
 
@@ -129,6 +133,11 @@
   width: 72%;
   margin-top: var(--space-md);
   border-radius: 50%;
+}
+
+/* An artist without one is a small round placeholder of the band's height. */
+.discover-card__art--artist.discover-card__art--placeholder {
+  width: var(--discover-card-placeholder);
 }
 
 .discover-card__title,
@@ -164,16 +173,15 @@
   white-space: nowrap;
 }
 
-/* The tick sits over the card's top-left corner, beside the button, never inside it. */
+/* The tick sits over the card's top-left corner, beside the button, never inside it: the bare
+   standard checkbox, with no tile of its own behind it (C254). */
 .discover-card__tick {
   position: absolute;
-  top: var(--space-xs);
-  left: var(--space-xs);
+  top: var(--space-sm);
+  left: var(--space-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-xs);
-  background: color-mix(in srgb, var(--bg-panel) 82%, transparent);
   cursor: pointer;
 }
 
