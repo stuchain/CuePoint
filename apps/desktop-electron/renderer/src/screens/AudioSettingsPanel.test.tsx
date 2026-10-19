@@ -233,7 +233,7 @@ describe("the panel's words", () => {
     renderPanel();
     await waitFor(() => expect(harness.audioDevices).toHaveBeenCalled());
     await userEvent.click(exclusive());
-    await waitFor(() => expect(document.body).toHaveTextContent("✓ Saved"));
+    await waitFor(() => expect(document.body).toHaveTextContent("Saved"));
   });
 
   it("does not say Saved for a change the player refused", async () => {
@@ -242,7 +242,7 @@ describe("the panel's words", () => {
     await waitFor(() => expect(harness.audioDevices).toHaveBeenCalled());
     await userEvent.click(exclusive());
     expect(await screen.findByText("No.")).toBeInTheDocument();
-    expect(document.body).not.toHaveTextContent("✓ Saved");
+    expect(document.body).not.toHaveTextContent("Saved");
   });
 });
 

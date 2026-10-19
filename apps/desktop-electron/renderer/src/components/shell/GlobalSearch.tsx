@@ -223,17 +223,15 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
                         />
                       </span>
                     </div>
-                    <Hint text={`Play ${track.title}`} portal>
-                      <PlayButton
-                        className="cp-global-search__play"
-                        aria-label={`Play ${track.title}`}
-                        // Not a tab stop: ↑/↓ and Shift+Enter do this from the field.
-                        tabIndex={-1}
-                        // Not an option, so out of the listbox's tree: Shift+Enter is the keyboard path.
-                        aria-hidden="true"
-                        onClick={() => playTrack(track)}
-                      />
-                    </Hint>
+                    <PlayButton
+                      className="cp-global-search__play"
+                      aria-label={`Play ${track.title}`}
+                      // Not a tab stop: ↑/↓ and Shift+Enter do this from the field.
+                      tabIndex={-1}
+                      // Not an option, so out of the listbox's tree: Shift+Enter is the keyboard path.
+                      aria-hidden="true"
+                      onClick={() => playTrack(track)}
+                    />
                   </li>
                 ))}
               </ul>

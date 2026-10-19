@@ -8,19 +8,27 @@ interface PlayButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 
   playing?: boolean;
   /** What it plays, for a screen reader: "Play Title", "Pause Title". */
   "aria-label": string;
+  /** False when the caller wraps it in its own `Hint` with different words (a preview button). */
+  hint?: boolean;
 }
 
 /**
- * The one row play button: a 16px round outline button with a pixel play (or pause) mark. Put it
+ * The one row play button, with its aria-label as the hover tip: a 16px round outline button with a pixel play (or pause) mark. Put it
  * at the right end of a row (the table's `rowEnd`), never as the first column, and never a
  * second look for it.
  */
-export function PlayButton({ playing = false, className = "", ...rest }: PlayButtonProps) {
-  return (
-    <Hint text={rest["aria-label"]}>
-      <button type="button" className={`cp-play-btn${playing ? " cp-play-btn--playing" : ""} ${className}`.trim()} {...rest}>
-        <PixelIcon name={playing ? "pause" : "play"} />
-      </button>
+export function PlayButton({ playing = false, hint = true, className = "", ...rest }: PlayButtonProps) {
+  const button = (
+    <button type="button" className={`cp-play-btn${playing ? " cp-play-btn--playing" : ""} ${className}`.trim()} {...rest}>
+      <PixelIcon name={playing ? "pause" : "play"} />
+    </button>
+  );
+  // It lives in table rows, which clip and transform, so the tip is drawn in the page body.
+  return hint ? (
+    <Hint text={rest["aria-label"]} portal>
+      {button}
     </Hint>
+  ) : (
+    button
   );
 }

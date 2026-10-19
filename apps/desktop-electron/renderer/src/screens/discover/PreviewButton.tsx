@@ -31,6 +31,7 @@ export function PreviewButton({ beatportTrackId, title }: PreviewButtonProps) {
   return (
     <Hint text={none ? "No preview" : sounding ? "Stop" : "Play the preview"} portal>
       <PlayButton
+        hint={false}
         playing={sounding}
         aria-label={
           none

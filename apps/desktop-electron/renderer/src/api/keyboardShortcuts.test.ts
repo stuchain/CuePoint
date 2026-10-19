@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterShortcuts, KEYBOARD_SHORTCUTS } from "./keyboardShortcuts";
+import { filterShortcuts, KEYBOARD_SHORTCUTS, KEYS } from "./keyboardShortcuts";
 import { MATCH_KEYS } from "../screens/clean/match/matchKeyboard";
 import reviewTabSource from "../screens/clean/match/ReviewTab.tsx?raw";
 import matchKeyboardSource from "../screens/clean/match/matchKeyboard.ts?raw";
@@ -212,7 +212,8 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     // FLW-17, FLW-18: the table's own keys, and the cell's.
     expect(prepareScreenSource).toMatch(/event\.altKey[\s\S]*"ArrowUp"[\s\S]*"ArrowDown"/);
     expect(prepareScreenSource).toMatch(/"Delete"/);
-    expect(prepareScreenSource).toMatch(/"Enter" \|\| event\.key === "F2"/);
+    // Enter plays from here and F2 edits the mix-in time (C188); the rows below say so.
+    expect(prepareScreenSource).toMatch(/"F2"/);
     expect(timeCellSource).toMatch(/event\.key === "Tab"/);
     expect(timeCellSource).toMatch(/event\.key === "Escape"/);
   });
@@ -222,7 +223,8 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     const keyOf = (action: RegExp) => prepare.find((row) => action.test(row.action))?.shortcut;
     expect(keyOf(/Move the selected entries/)).toBe("Alt+Up / Alt+Down");
     expect(keyOf(/Remove the selected entries/)).toBe("Delete");
-    expect(keyOf(/Type the selected entry's Mix in/)).toBe("Enter or F2");
+    expect(keyOf(/Play from here/)).toBe("Enter");
+    expect(keyOf(/Edit mix-in time/)).toBe("F2");
     expect(keyOf(/Save a typed time and go to the next/)).toBe("Enter or Tab");
     expect(keyOf(/Drop a typed time/)).toBe("Esc");
   });
@@ -264,5 +266,31 @@ describe("only shortcuts that work (PAGES-03B)", () => {
   it("calls the always-on context Everywhere, not Global (W2)", () => {
     expect(KEYBOARD_SHORTCUTS.some((row) => row.context === "Global")).toBe(false);
     expect(KEYBOARD_SHORTCUTS[0]!.context).toBe("Everywhere");
+  });
+});
+
+describe("one source for the keys a menu shows (C127)", () => {
+  it("names each shortcut once, as the list writes it", () => {
+    expect(KEYS).toEqual({
+      play: "Enter",
+      edit: "F2",
+      remove: "Delete",
+      selectAll: "Ctrl+A",
+      clear: "Esc",
+      menu: "Shift+F10",
+    });
+  });
+
+  it("uses those names in the rows", () => {
+    const library = (shortcut: string) => KEYBOARD_SHORTCUTS.some((row) => row.context === "Library" && row.shortcut === shortcut);
+    for (const key of [KEYS.play, KEYS.edit, KEYS.remove, KEYS.selectAll, KEYS.clear, KEYS.menu]) {
+      expect(library(key), key).toBe(true);
+    }
+  });
+
+  it("lists Prepare's Enter as Play from here and F2 as Edit mix-in time", () => {
+    const prepare = KEYBOARD_SHORTCUTS.filter((row) => row.context === "Prepare");
+    expect(prepare).toContainEqual({ context: "Prepare", action: "Play from here", shortcut: "Enter" });
+    expect(prepare).toContainEqual({ context: "Prepare", action: "Edit mix-in time", shortcut: "F2" });
   });
 });

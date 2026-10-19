@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { keyDisplay, toCamelot, trackFactParts, trackFactsLine } from "./trackFacts";
+import { keyDisplay, toCamelot, trackFactParts, trackFactsLine, trackIdentity } from "./trackFacts";
 
 describe("toCamelot", () => {
   it.each([
@@ -51,5 +51,16 @@ describe("trackFactsLine", () => {
     );
     expect(trackFactsLine({})).toBe("");
     expect(trackFactParts({ label: "  ", year: "2020" })).toEqual(["2020"]);
+  });
+});
+
+describe("trackIdentity (C85)", () => {
+  it("is the title, then the artist, with a middle dot", () => {
+    expect(trackIdentity("Strobe", "deadmau5")).toBe("Strobe · deadmau5");
+  });
+  it("leaves out whatever is missing, with its dot", () => {
+    expect(trackIdentity("Strobe", "")).toBe("Strobe");
+    expect(trackIdentity("", "deadmau5")).toBe("deadmau5");
+    expect(trackIdentity(null, undefined)).toBe("");
   });
 });

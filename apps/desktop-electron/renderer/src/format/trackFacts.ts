@@ -74,3 +74,11 @@ export function trackFactParts(facts: TrackFacts): string[] {
 export function trackFactsLine(facts: TrackFacts): string {
   return trackFactParts(facts).join(FACTS_SEPARATOR);
 }
+
+/** "Title · Artist": who a track is, where its facts are not shown (a toast, a dialog, a row's name). */
+export function trackIdentity(title: string | null | undefined, artist: string | null | undefined): string {
+  return [title, artist]
+    .map((part) => (part ?? "").trim())
+    .filter(Boolean)
+    .join(FACTS_SEPARATOR);
+}

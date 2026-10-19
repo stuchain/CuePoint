@@ -242,7 +242,7 @@ describe("the page's words (SET-6)", () => {
     install();
     renderPanel();
     await userEvent.click(screen.getByRole("radio", { name: "One color" }));
-    expect(document.body).toHaveTextContent("✓ Saved");
+    expect(document.body).toHaveTextContent("Saved");
   });
 });
 

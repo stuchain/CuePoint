@@ -1043,7 +1043,7 @@ describe("a row's context menu (EXPORT-07, DEC-087)", () => {
     paneWith(NODES, [1], { onExport });
     fireEvent.contextMenu(rowFor("Warmups"));
 
-    expect(entries()).toEqual(["Rename", "Delete…", "Export to Rekordbox…"]);
+    expect(entries()).toEqual(["Rename", "Export to Rekordbox…", "Delete…"]);
   });
 
   it("opens the export with that node, and closes", async () => {
@@ -1067,8 +1067,8 @@ describe("a row's context menu (EXPORT-07, DEC-087)", () => {
       "Duplicate",
       "Freeze to a Collection…",
       "Rename",
-      "Delete…",
       "Export to Rekordbox…",
+      "Delete…",
     ]);
   });
 

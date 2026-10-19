@@ -18,7 +18,8 @@ import { LinkButton } from "../../components/LinkButton";
 import { Loading } from "../../components/Loading";
 import { KeyChip } from "../../components/wheel/KeyChip";
 import { formatCount } from "../../format/counts";
-import { RETRY, needsDesktopApp } from "../../format/words";
+import { needsDesktopApp } from "../../api/userMessage";
+import { RETRY } from "../../format/words";
 import { keysState } from "../keys/keysLink";
 import { requestSources } from "../keys/keysSources";
 import { useKeysPopulation } from "../keys/useKeysPopulation";
@@ -52,7 +53,7 @@ export function KeySummary({ scope, collections }: KeySummaryProps) {
   if (keysScope.kind === "unsupported") {
     body = <p className="statistics-note">{keysScope.reason}</p>;
   } else if (population.status === "unavailable") {
-    body = <p className="statistics-note">{needsDesktopApp("read the keys")}</p>;
+    body = <p className="statistics-note">{needsDesktopApp("Reading the keys")}</p>;
   } else if (population.status === "error") {
     body = (
       <>

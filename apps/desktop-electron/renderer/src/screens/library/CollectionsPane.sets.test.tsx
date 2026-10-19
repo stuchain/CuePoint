@@ -198,10 +198,10 @@ describe("a Set's menu", () => {
     expect(entries()).toEqual([
       "Duplicate",
       "Rename",
-      "Delete…",
       "Save set list…",
       "Copy set list",
       "Export to Rekordbox…",
+      "Delete…",
     ]);
   });
 
@@ -269,8 +269,8 @@ describe("New Set from… in the tree", () => {
       "Freeze to a Collection…",
       "New Set from…",
       "Rename",
-      "Delete…",
       "Export to Rekordbox…",
+      "Delete…",
     ]);
     await userEvent.click(within(menu()).getByRole("menuitem", { name: "New Set from…" }));
     expect(onNewSetFrom).toHaveBeenLastCalledWith(expect.objectContaining({ id: SMART.id }));

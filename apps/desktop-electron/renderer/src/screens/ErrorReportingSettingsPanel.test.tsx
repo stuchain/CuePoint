@@ -77,7 +77,7 @@ describe("the error-reporting switch", () => {
     const toggle = screen.getByRole("switch", { name: "Send error reports" });
     await waitFor(() => expect(toggle).toBeEnabled());
     await userEvent.click(toggle);
-    await waitFor(() => expect(document.body).toHaveTextContent("✓ Saved"));
+    await waitFor(() => expect(document.body).toHaveTextContent("Saved"));
   });
 
   it("holds the rest of the Privacy section after its own controls", async () => {

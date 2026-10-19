@@ -5,6 +5,19 @@ export interface KeyboardShortcutEntry {
 }
 
 /**
+ * The names of the keys a menu entry may show beside its label (`TrackContextMenuItem.shortcut`),
+ * written once here so a menu and this list can never disagree.
+ */
+export const KEYS = {
+  play: "Enter",
+  edit: "F2",
+  remove: "Delete",
+  selectAll: "Ctrl+A",
+  clear: "Esc",
+  menu: "Shift+F10",
+} as const;
+
+/**
  * The Keyboard shortcuts list (Help → Keyboard shortcuts): only keys that do something. Each row is read
  * against the code that answers it by `keyboardShortcuts.test.ts`, so a handler that goes
  * takes its row with it. The menu's keys (Ctrl+O, Ctrl+,, Ctrl+=, Ctrl+-, Ctrl+0) are
@@ -27,13 +40,13 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   // The Library became a browser in Phase 4 (DEC-039), so it has a context of
   // its own.
   { context: "Library", action: "Focus search", shortcut: "Ctrl+F" },
-  { context: "Library", action: "Select all matching tracks", shortcut: "Ctrl+A" },
-  { context: "Library", action: "Play the selected track", shortcut: "Enter" },
-  { context: "Library", action: "Clear the selection", shortcut: "Esc" },
-  { context: "Library", action: "Open the track menu", shortcut: "Shift+F10" },
+  { context: "Library", action: "Select all matching tracks", shortcut: KEYS.selectAll },
+  { context: "Library", action: "Play the selected track", shortcut: KEYS.play },
+  { context: "Library", action: "Clear the selection", shortcut: KEYS.clear },
+  { context: "Library", action: "Open the track menu", shortcut: KEYS.menu },
   { context: "Library", action: "Move the selected track up or down in a Collection", shortcut: "Alt+Up / Alt+Down" },
-  { context: "Library", action: "Rename the selected Collection", shortcut: "F2" },
-  { context: "Library", action: "Delete the selected Collection", shortcut: "Delete" },
+  { context: "Library", action: "Rename the selected Collection", shortcut: KEYS.edit },
+  { context: "Library", action: "Delete the selected Collection", shortcut: KEYS.remove },
   // The Keys page (PAGES-16): the wheel and the list both choose keys the same way.
   { context: "Keys", action: "Add or remove a key from the choice", shortcut: "Ctrl+Click" },
   { context: "Keys", action: "Choose every key between the last one and this one", shortcut: "Shift+Click" },
@@ -42,13 +55,14 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   // table has focus. Plain Enter and the arrows are the field's and the divider's own.
   { context: "Prepare", action: "Resize the source panel (focus its divider first)", shortcut: "Left / Right" },
   { context: "Prepare", action: "In Track details: save Mix in or Mix out", shortcut: "Enter" },
-  { context: "Prepare", action: "Type the selected entry's Mix in", shortcut: "Enter or F2" },
+  { context: "Prepare", action: "Play from here", shortcut: "Enter" },
+  { context: "Prepare", action: "Edit mix-in time", shortcut: "F2" },
   { context: "Prepare", action: "Save a typed time and go to the next", shortcut: "Enter or Tab" },
   { context: "Prepare", action: "Drop a typed time", shortcut: "Esc" },
   { context: "Prepare", action: "Move the selected entries", shortcut: "Alt+Up / Alt+Down" },
   { context: "Prepare", action: "Remove the selected entries", shortcut: "Delete" },
   // Every track table: the table itself, once focused, answers these. Clean's Match table uses them too;
-  // Enter on a row opens its details.
+  // Enter on a row plays it (`onRowActivate`), F2 edits where a table has an edit (`onRowEdit`).
   { context: "Tables", action: "Select the previous or next track", shortcut: "Up / Down" },
   { context: "Tables", action: "Extend the selection", shortcut: "Shift+Up / Shift+Down" },
   { context: "Tables", action: "First or last track", shortcut: "Home / End" },

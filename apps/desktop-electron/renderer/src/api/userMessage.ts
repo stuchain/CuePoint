@@ -17,6 +17,14 @@ export const OUTAGE_MESSAGE = LOST_TOUCH;
 /** What the user reads when a feature needs the desktop app and this window has no bridge. */
 export const NEEDS_DESKTOP = "This needs the CuePoint desktop app.";
 
+/**
+ * The one sentence for a feature a plain browser window cannot do (C162). Name the feature as a
+ * noun phrase to start the sentence with it: `needsDesktopApp("Reading the keys")`.
+ */
+export function needsDesktopApp(feature?: string): string {
+  return feature ? `${feature} needs the CuePoint desktop app.` : NEEDS_DESKTOP;
+}
+
 /** The same outage, once a job had started: some of its work may be done. */
 export const OUTAGE_PARTWAY_MESSAGE = LOST_TOUCH_PARTWAY;
 

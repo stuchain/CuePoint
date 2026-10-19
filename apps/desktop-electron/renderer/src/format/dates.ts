@@ -60,6 +60,32 @@ export function formatDay(value: DateInput, options: DateOptions = {}): string {
   return dayText(date, now, options.locale);
 }
 
+/** `formatDay` for the middle of a sentence: "today", "yesterday", otherwise the date ("Oct 15"). */
+export function formatDayInSentence(value: DateInput, options: DateOptions = {}): string {
+  const text = formatDay(value, options);
+  return text === "Today" || text === "Yesterday" ? text.toLowerCase() : text;
+}
+
+/** The day a track was added to the library (the Added column): the same words as `formatDay`. */
+export function formatAdded(value: DateInput, options: DateOptions = {}): string {
+  return formatDay(value, options);
+}
+
+/** "Oct 15, 2026, 5:35 PM": the whole date and the time, in the locale's own order (never forced to US). */
+export function formatDateTime(value: DateInput, options: DateOptions = {}): string {
+  const date = toDate(value);
+  if (!date) return "";
+  return plain(
+    new Intl.DateTimeFormat(options.locale, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date),
+  );
+}
+
 /** "Oct 15, 2026": an absolute day for a name or a file (never "Today"); the year is left off only when `year: false`. */
 export function formatDate(value: DateInput, options: DateOptions & { year?: boolean } = {}): string {
   const date = toDate(value);

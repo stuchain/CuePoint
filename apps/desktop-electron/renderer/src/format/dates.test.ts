@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { formatChartAxis, formatDay, formatDayTime, formatRange, formatTimeOfDay } from "./dates";
+import {
+  formatAdded,
+  formatChartAxis,
+  formatDateTime,
+  formatDay,
+  formatDayInSentence,
+  formatDayTime,
+  formatRange,
+  formatTimeOfDay,
+} from "./dates";
 
 const now = new Date(2026, 9, 15, 12, 0);
 const us = { now, locale: "en-US" };
@@ -55,5 +64,33 @@ describe("formatRange", () => {
 describe("formatChartAxis", () => {
   it("writes month and year", () => {
     expect(formatChartAxis(new Date(2019, 4, 1), us)).toBe("May 2019");
+  });
+});
+
+describe("formatDayInSentence (C170)", () => {
+  it("lowercases today and yesterday so they sit inside a sentence", () => {
+    expect(formatDayInSentence(new Date(2026, 9, 15, 1, 0), us)).toBe("today");
+    expect(formatDayInSentence(new Date(2026, 9, 14, 23, 0), us)).toBe("yesterday");
+  });
+  it("leaves a date as formatDay writes it", () => {
+    expect(formatDayInSentence(new Date(2026, 8, 3), us)).toBe("Sep 3");
+    expect(formatDayInSentence("not a date", us)).toBe("");
+  });
+});
+
+describe("formatDateTime (C170)", () => {
+  it("writes the full day and the time in the locale's own order", () => {
+    expect(formatDateTime(new Date(2026, 9, 15, 17, 35), us)).toBe("Oct 15, 2026, 5:35 PM");
+    expect(formatDateTime(new Date(2026, 9, 15, 17, 35), { now, locale: "en-GB" })).toBe("15 Oct 2026, 17:35");
+  });
+  it("is empty for what is not a date", () => {
+    expect(formatDateTime(null, us)).toBe("");
+  });
+});
+
+describe("formatAdded (C170)", () => {
+  it("is the day a track was added: relative for the last two days, a date after", () => {
+    expect(formatAdded(new Date(2026, 9, 15, 1, 0), us)).toBe("Today");
+    expect(formatAdded(new Date(2026, 8, 3), us)).toBe("Sep 3");
   });
 });

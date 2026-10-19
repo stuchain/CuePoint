@@ -21,7 +21,6 @@ import type {
 } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
-import { Hint } from "../../components/Hint";
 import { LinkButton } from "../../components/LinkButton";
 import { Loading } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
@@ -342,13 +341,11 @@ export function PlaysSection({
                           </span>
                         </button>
                         {canPreview && (
-                          <Hint text="Play">
-                            <PlayButton
-                              className="plays__play"
-                              aria-label={`Play ${track.title} by ${track.artist}`}
-                              onClick={() => void preview(track)}
-                            />
-                          </Hint>
+                          <PlayButton
+                            className="plays__play"
+                            aria-label={`Play ${track.title} by ${track.artist}`}
+                            onClick={() => void preview(track)}
+                          />
                         )}
                       </li>
                     ))}

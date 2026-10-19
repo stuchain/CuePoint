@@ -2038,7 +2038,7 @@ export function LibraryScreen({
                 {onOpenInPrepare && (
                   <button
                     type="button"
-                    className="library-screen__scope-link"
+                    className="library-screen__scope-link cp-link cp-link--go"
                     onClick={() => onOpenInPrepare(scopedSet.id)}
                   >
                     {goTo("Prepare")}

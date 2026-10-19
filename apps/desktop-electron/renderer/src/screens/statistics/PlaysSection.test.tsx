@@ -475,7 +475,7 @@ describe("the Plays section (STATS-05)", () => {
       const region = await section();
 
       const play = within(region).getByRole("button", { name: "Play Alpha by B" });
-      expect(play).toHaveAttribute("title", "Play");
+      expect(play).toHaveAttribute("title", "Play Alpha by B");
       expect(play.closest("li")).toHaveClass("plays__item");
       expect(play).toHaveClass("cp-play-btn", "plays__play");
       expect(play.closest(".cp-hint")?.nextElementSibling).toBeNull();

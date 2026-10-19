@@ -40,3 +40,24 @@ export function formatTotal(seconds: number | null | undefined, locale?: string)
   }
   return totalMinutes > 0 ? `${totalMinutes} min` : "Under a minute";
 }
+
+/**
+ * A Set's length as a clock, always `h:mm:ss`: "1:23:45", "0:12:34". A Set is long enough that
+ * every one reads in the same three parts, so a column of them lines up.
+ */
+export function formatSetLength(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined || !Number.isFinite(seconds) || seconds < 0) {
+    return NO_LENGTH;
+  }
+  const whole = Math.floor(seconds);
+  const minutes = Math.floor((whole % 3600) / 60);
+  return `${Math.floor(whole / 3600)}:${String(minutes).padStart(2, "0")}:${String(whole % 60).padStart(2, "0")}`;
+}
+
+/**
+ * An approximate span in one style, for a long total or a time left: "33 h 11 min", "5 min",
+ * "Under a minute". It is `formatTotal` under the name the call site reads best.
+ */
+export function aboutDuration(seconds: number | null | undefined, locale?: string): string {
+  return formatTotal(seconds, locale);
+}
