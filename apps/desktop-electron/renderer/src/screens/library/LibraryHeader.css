@@ -105,7 +105,7 @@
 }
 
 .library-header__state--attention {
-  color: var(--accent-warning);
+  color: var(--warning-text);
 }
 
 .library-header__applied {

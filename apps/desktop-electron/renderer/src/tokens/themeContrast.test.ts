@@ -90,7 +90,7 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
   });
 
   it("reads text on the button fills at 4.5:1", () => {
-    expect(contrastRatio(t["fg-inverse"]!, t["accent-fill"]!), "fg-inverse on accent-fill").toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(t["fg-on-accent"]!, t["accent-fill"]!), "fg-on-accent on accent-fill").toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(t["fg-primary"]!, t["danger-fill"]!), "fg-primary on danger-fill").toBeGreaterThanOrEqual(4.5);
   });
 

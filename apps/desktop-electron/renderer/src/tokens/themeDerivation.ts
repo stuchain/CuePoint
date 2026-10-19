@@ -22,7 +22,7 @@ const TOKEN_KEYS = [
   "fg-primary",
   "fg-muted",
   "fg-disabled",
-  "fg-inverse",
+  "fg-on-accent",
   "fg-on-status",
   "accent-primary",
   "accent-primary-hover",
@@ -256,7 +256,7 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
   const borderControl = controlBorder(bgPanel, bgToolbar);
 
   // Text on the accent: black or white, whichever reads better, so a mid-tone accent keeps its colour.
-  const fgInverse = betterText(accentPrimary);
+  const fgOnAccent = betterText(accentPrimary);
   // Info is the accent a step lighter, and never under 3:1 on the panel where that can be held
   // (it is still the focus outline until the sweep); where black text on it then falls short, the
   // status text below turns white instead.
@@ -292,7 +292,7 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "fg-muted": fgMuted,
     // Greyed text: the muted colour dimmed towards the panel, then held at 3:1 on it.
     "fg-disabled": holdContrast(blend(fgMuted, bgPanel, 0.4), [bgPanel], 3),
-    "fg-inverse": fgInverse,
+    "fg-on-accent": fgOnAccent,
     "fg-on-status": fgOnStatus,
     "accent-primary": accentPrimary,
     "accent-primary-hover": lighten(accentPrimary, 0.12),
@@ -304,7 +304,7 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "accent-danger": accentDanger,
     "accent-info": accentInfo,
     // Button fills: the accent and the danger colour, moved until the button's text reads at 4.5:1.
-    "accent-fill": holdContrast(accentPrimary, [fgInverse], 4.5),
+    "accent-fill": holdContrast(accentPrimary, [fgOnAccent], 4.5),
     "danger-fill": holdContrast(accentDanger, [fgPrimary], 4.5),
     "link": link,
     "focus-ring-color": focusRing,

@@ -33,7 +33,7 @@
 .cp-quick__button--on {
   background: var(--accent-primary);
   border-color: var(--accent-primary);
-  color: var(--fg-inverse);
+  color: var(--fg-on-accent);
 }
 
 .cp-quick__count {

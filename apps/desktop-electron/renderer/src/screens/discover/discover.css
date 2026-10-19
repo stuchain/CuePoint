@@ -629,7 +629,7 @@
 
 .discover-dialog__refusal {
   margin: 0;
-  color: var(--accent-danger);
+  color: var(--danger-text);
   font-size: var(--font-size-xs);
   font-weight: var(--weight-strong);
 }

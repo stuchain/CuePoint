@@ -193,17 +193,17 @@
 }
 
 .settings-status--success {
-  color: var(--accent-success);
+  color: var(--success-text);
   font-weight: var(--weight-strong);
 }
 
 .settings-status--warning {
-  color: var(--accent-warning);
+  color: var(--warning-text);
   font-weight: var(--weight-strong);
 }
 
 .settings-status--danger {
-  color: var(--accent-danger);
+  color: var(--danger-text);
   font-weight: var(--weight-strong);
 }
 

@@ -17,7 +17,7 @@
 
 .cp-new-set-from__problem {
   margin: 0;
-  color: var(--accent-danger);
+  color: var(--danger-text);
   font-size: var(--font-size-xs);
 }
 

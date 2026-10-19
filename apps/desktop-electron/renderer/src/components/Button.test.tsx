@@ -109,7 +109,7 @@ describe("Button", () => {
   });
 
   it("fills primary with --accent-fill and the danger confirm with --danger-fill (R2-8)", () => {
-    expect(css).toMatch(/\.cp-btn--primary\s*\{[^}]*background:\s*var\(--accent-fill\)[^}]*color:\s*var\(--fg-inverse\)/);
+    expect(css).toMatch(/\.cp-btn--primary\s*\{[^}]*background:\s*var\(--accent-fill\)[^}]*color:\s*var\(--fg-on-accent\)/);
     expect(css).toMatch(/\.cp-btn--danger-confirm\s*\{[^}]*background:\s*var\(--danger-fill\)[^}]*color:\s*var\(--fg-primary\)/);
   });
 

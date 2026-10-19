@@ -35,7 +35,7 @@
   height: calc(var(--unit) * 5);
   border: var(--hairline) solid var(--border-muted);
   background: var(--bg-input);
-  color: var(--accent-success);
+  color: var(--success-text);
   font-size: var(--font-size-sm);
 }
 

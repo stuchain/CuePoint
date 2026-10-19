@@ -115,7 +115,7 @@
 }
 
 .cp-activity__offer--unfinished .cp-activity__reason {
-  color: var(--accent-warning);
+  color: var(--warning-text);
 }
 
 /* An entry's buttons are the standard small button; only their place is theirs. */

@@ -32,7 +32,7 @@ describe("Badge", () => {
     const body = rule(".cp-badge");
     expect(body).toMatch(/background:\s*color-mix\(in srgb, var\(--chip-tone\) var\(--chip-fill-mix\), transparent\)/);
     expect(body).toMatch(/color:\s*color-mix\(in srgb, var\(--chip-tone\) var\(--chip-text-mix\), var\(--fg-primary\)\)/);
-    expect(body).not.toMatch(/fg-on-status|fg-inverse/);
+    expect(body).not.toMatch(/fg-on-status|fg-on-accent/);
   });
 
   it.each(["success", "warning", "danger"])("%s takes its tone from the status colour", (variant) => {

@@ -137,7 +137,7 @@
 /* A Smart Collection whose saved rules cannot be run (ORG-06). */
 .cp-collections__broken {
   margin-left: var(--space-xs);
-  color: var(--accent-warning);
+  color: var(--warning-text);
   font-weight: bold;
 }
 

@@ -333,7 +333,7 @@ body.prepare-resizing {
 }
 
 .prepare-lanes__link--clash {
-  color: var(--accent-danger);
+  color: var(--danger-text);
 }
 
 .prepare-lanes__boundary {
@@ -737,19 +737,19 @@ body.prepare-resizing {
 }
 
 .prepare-fit--fit {
-  color: var(--accent-success);
+  color: var(--success-text);
 }
 
 .prepare-fit--one {
-  color: var(--accent-warning);
+  color: var(--warning-text);
 }
 
 .prepare-fit--both {
-  color: var(--accent-danger);
+  color: var(--danger-text);
 }
 
 .prepare-fit-count {
-  color: var(--accent-warning);
+  color: var(--warning-text);
 }
 
 /* ------------------------------------------------- "In this Set" (Inspector) */
@@ -772,7 +772,7 @@ body.prepare-resizing {
 }
 
 .prepare-entry-zone__refused {
-  color: var(--accent-danger);
+  color: var(--danger-text);
 }
 
 .prepare-entry-zone__times {

@@ -32,7 +32,7 @@
  * green bar reads as an alert that never clears.
  */
 .cp-status__engine--ok {
-  color: var(--accent-success);
+  color: var(--success-text);
 }
 
 .cp-status__engine--error {

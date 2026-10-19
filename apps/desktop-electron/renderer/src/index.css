@@ -46,7 +46,7 @@ select {
   margin: 0;
   border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-input);
-  color: var(--fg-inverse);
+  color: var(--fg-on-accent);
   vertical-align: middle;
   cursor: pointer;
 }
@@ -303,15 +303,15 @@ a[href]:where(:not([class])) {
 
 /* What a status means, not which hue: something to do, something wrong, something done (T5). */
 .cp-status--action {
-  color: var(--accent-warning);
+  color: var(--warning-text);
 }
 
 .cp-status--problem {
-  color: var(--accent-danger);
+  color: var(--danger-text);
 }
 
 .cp-status--done {
-  color: var(--accent-success);
+  color: var(--success-text);
 }
 
 /* Read by screen readers, not drawn. */

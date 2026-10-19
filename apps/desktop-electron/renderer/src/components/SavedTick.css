@@ -1,5 +1,5 @@
 .cp-saved-tick {
-  color: var(--accent-success);
+  color: var(--success-text);
   font-size: var(--font-size-xs);
   font-weight: 700;
   white-space: nowrap;

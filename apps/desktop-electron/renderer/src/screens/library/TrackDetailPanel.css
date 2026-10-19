@@ -369,7 +369,7 @@
 }
 
 .cp-track-yours__star--on {
-  color: var(--accent-warning);
+  color: var(--warning-text);
 }
 
 .cp-track-yours__star:focus-visible,
@@ -492,7 +492,7 @@
 }
 
 .cp-track-yours__tag-remove:hover {
-  color: var(--accent-danger);
+  color: var(--danger-text);
 }
 
 .cp-track-yours__tag-empty {
@@ -632,11 +632,11 @@
 }
 
 .cp-track-beatport__agree {
-  color: var(--accent-success);
+  color: var(--success-text);
 }
 
 .cp-track-beatport__state--disputed {
-  color: var(--accent-warning);
+  color: var(--warning-text);
 }
 
 .cp-track-beatport__fields {

@@ -53,7 +53,7 @@
 
 /* The Health tab's count: amber, because it is work to do (area 58). */
 .statistics-page__todo {
-  color: var(--accent-warning);
+  color: var(--warning-text);
 }
 
 /* A tab's panel: the header leaves 12 under its divider, so the panel adds nothing above. */
@@ -379,11 +379,11 @@
 }
 
 .health-card__count--warning {
-  color: var(--accent-warning);
+  color: var(--warning-text);
 }
 
 .health-card__count--danger {
-  color: var(--accent-danger);
+  color: var(--danger-text);
 }
 
 /* "Open in Library ›" never wraps. */

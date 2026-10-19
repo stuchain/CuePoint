@@ -25,7 +25,7 @@
 .cp-btn--primary {
   border-color: var(--accent-fill);
   background: var(--accent-fill);
-  color: var(--fg-inverse);
+  color: var(--fg-on-accent);
 }
 
 /* Standard: neutral grey. */

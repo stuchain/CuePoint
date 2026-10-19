@@ -36,7 +36,7 @@
 
 .cp-filter-bar__problem {
   align-self: center;
-  color: var(--accent-danger);
+  color: var(--danger-text);
   font-size: var(--font-size-xs);
 }
 
@@ -75,7 +75,7 @@
 }
 
 .cp-filter-bar__chip button:hover {
-  color: var(--accent-danger);
+  color: var(--danger-text);
 }
 
 /* A chip that names one artist or label opens its page (DISCOVER-11). A word,
@@ -121,7 +121,7 @@
 .cp-filter-bar__tag--on,
 .cp-filter-bar__star--on {
   background: var(--accent-primary);
-  color: var(--fg-inverse);
+  color: var(--fg-on-accent);
 }
 
 .cp-filter-bar__tag-count {
@@ -146,7 +146,7 @@
 }
 
 .cp-filter-bar__status--modified {
-  color: var(--accent-warning);
+  color: var(--warning-text);
 }
 
 /* A refused question, beside the clauses that caused it rather than only
@@ -159,7 +159,7 @@
   padding: var(--space-xs) var(--space-sm);
   background: var(--bg-input);
   border: var(--hairline) solid var(--accent-danger);
-  color: var(--accent-danger);
+  color: var(--danger-text);
   font-size: var(--font-size-xs);
 }
 

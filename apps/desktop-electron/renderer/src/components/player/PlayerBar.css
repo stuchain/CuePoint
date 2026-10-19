@@ -285,7 +285,7 @@
    room the difference has to survive, and colour alone would not. */
 .cp-player-bar__button--on {
   background: var(--accent-primary);
-  color: var(--fg-inverse);
+  color: var(--fg-on-accent);
 }
 
 .cp-player-bar__button--on:hover:not(:disabled) {

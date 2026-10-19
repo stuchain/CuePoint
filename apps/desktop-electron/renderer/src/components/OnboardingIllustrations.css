@@ -19,5 +19,5 @@
 .ob-title { fill: var(--fg-muted); font-size: 10px; }
 .ob-muted { fill: var(--fg-muted); }
 .ob-fg { fill: var(--fg-primary); }
-.ob-on { fill: var(--fg-inverse); }
+.ob-on { fill: var(--fg-on-accent); }
 .ob-logo { image-rendering: pixelated; }

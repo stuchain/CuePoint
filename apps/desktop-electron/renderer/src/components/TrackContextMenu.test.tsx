@@ -511,7 +511,7 @@ describe("a submenu inside a submenu (FLW-8)", () => {
       const active = body('.cp-track-menu__item--active:not([aria-disabled="true"])');
       expect(active).toMatch(/background:\s*var\(--selected-row-background\)/);
       expect(active).toMatch(/color:\s*var\(--fg-primary\)/);
-      expect(active).not.toMatch(/accent-primary|fg-inverse/);
+      expect(active).not.toMatch(/accent-primary|fg-on-accent/);
     });
   });
 

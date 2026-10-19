@@ -79,7 +79,7 @@
 }
 
 .cp-playlist-pane__note--error {
-  color: var(--accent-danger);
+  color: var(--danger-text);
 }
 
 .cp-playlist-pane__tree {

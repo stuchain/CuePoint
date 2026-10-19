@@ -130,7 +130,7 @@
 
 .save-dialog__problem {
   margin: 0;
-  color: var(--accent-danger);
+  color: var(--danger-text);
   font-size: var(--text-body);
 }
 
