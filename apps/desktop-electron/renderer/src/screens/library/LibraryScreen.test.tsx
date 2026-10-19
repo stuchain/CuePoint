@@ -1022,7 +1022,7 @@ describe("the refresh preview (DEC-032)", () => {
   it("puts the removals in front of the user, and names what goes with them", async () => {
     const dialog = await openPreview();
 
-    const alert = within(dialog).getAllByRole("alert")[0]!;
+    const alert = within(dialog).getAllByRole("status")[0]!;
     expect(alert).toHaveTextContent(/2 tracks/);
     expect(alert).toHaveTextContent(/cannot be undone/i);
     expect(within(dialog).getByText("Gone Track")).toBeInTheDocument();

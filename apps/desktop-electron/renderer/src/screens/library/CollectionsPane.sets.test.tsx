@@ -393,7 +393,7 @@ describe("the New Set from… dialog", () => {
     await userEvent.clear(screen.getByRole("textbox", { name: "Name" }));
     await userEvent.click(screen.getByRole("button", { name: "Create the Set" }));
     expect(onCreate).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent("Give it a name");
+    expect(screen.getByRole("textbox", { name: /name/i })).toHaveAccessibleDescription(/Give it a name/);
   });
 
   it("shows the engine's refusal, and is closed with no source", () => {
@@ -406,7 +406,7 @@ describe("the New Set from… dialog", () => {
         onClose={vi.fn()}
       />,
     );
-    expect(screen.getByRole("alert")).toHaveTextContent(/a Set holds at most 1,000/);
+    expect(screen.getByRole("textbox", { name: /name/i })).toHaveAccessibleDescription(/a Set holds at most 1,000/);
     rerender(
       <NewSetFromDialog source={null} folders={folders} onCreate={vi.fn()} onClose={vi.fn()} />,
     );
