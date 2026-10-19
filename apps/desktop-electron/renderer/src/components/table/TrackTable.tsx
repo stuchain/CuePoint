@@ -668,7 +668,7 @@ export function TrackTable<Row>({
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [applyWidths, columns, cornerWidth, ordered, scale, shownWidths, viewportWidth],
+    [applyWidths, columns, cornerWidth, effectiveWidths, ordered, scale, shownWidths, viewportWidth],
   );
 
   /** Arrow Left and Right on a focused resizer move the edge by 8 (scaled): the keyboard's drag (C149, C199). */
