@@ -308,6 +308,14 @@ describe("the rows stay one line", () => {
     expect(row.querySelector(".playlists__label")).toHaveAttribute("data-cut-hint");
   });
 
+  it("keeps the row's buttons whole in their end column, so none spills past the table's edge (C76)", () => {
+    // The shared table lets every cell shrink to nothing (max-width: 0) so text can end in "...";
+    // the end column holds buttons, which must not shrink, so it lifts that.
+    const end = /\.cp-data-table \.playlists__end\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(end).toMatch(/max-width:\s*none/);
+    expect(end).toMatch(/white-space:\s*nowrap/);
+  });
+
   it("keeps the footer's status at the left, beside the Match button at the right", () => {
     expect(css).toMatch(/\.playlists__choice\s*\{[^}]*margin-inline-end:\s*auto/);
     expect(css).toMatch(/\.playlists__next\s*\{[^}]*margin-inline-end:\s*auto/);

@@ -38,8 +38,12 @@
 /* The row's own buttons: one fixed end column, right-aligned (C76). */
 .cp-data-table .playlists__end {
   width: calc(132px * var(--scale));
+  /* The shared cells shrink to nothing so text can end in "..."; buttons cannot, so this column
+     keeps its buttons' width and the name column gives way instead (C76). */
+  max-width: none;
   overflow: visible;
   text-align: right;
+  white-space: nowrap;
 }
 
 .playlists__buttons {
