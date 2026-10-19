@@ -276,7 +276,7 @@ export function PlaylistsView({ data, error = null, loading = false, matching = 
           {choice ? choiceLine : "Tick one or more playlists"}
         </span>
         {matching && <span className="playlists__next">One match at a time: wait for the one that is running.</span>}
-        <Button disabled={!choice || matching} onClick={start}>
+        <Button variant="primary" disabled={!choice || matching} onClick={start}>
           {matchButtonLabel(choice)}
         </Button>
       </div>

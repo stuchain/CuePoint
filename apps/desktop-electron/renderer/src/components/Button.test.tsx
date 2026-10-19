@@ -73,6 +73,12 @@ describe("Button", () => {
     expect(screen.getByRole("button")).toHaveAttribute("type", "button");
   });
 
+  it("is the grey secondary button unless a variant is named (C5)", () => {
+    render(<Button>Plain</Button>);
+    expect(screen.getByRole("button")).toHaveClass("cp-btn--secondary");
+    expect(screen.getByRole("button")).not.toHaveClass("cp-btn--primary");
+  });
+
   it("applies the variant class", () => {
     render(<Button variant="danger">Delete</Button>);
     expect(screen.getByRole("button")).toHaveClass("cp-btn--danger");

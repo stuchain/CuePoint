@@ -179,7 +179,7 @@ function CandidateRow({
           <PixelIcon name="clean" /> in use
         </span>
       ) : (
-        <Button
+        <Button variant="primary"
           size="sm"
           className="review-candidate__use"
           disabled={busy}

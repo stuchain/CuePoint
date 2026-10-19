@@ -66,7 +66,7 @@ function drawIcon(icon: ReactElement | PixelIconName): ReactNode {
 
 export function Button(props: ButtonProps) {
     const {
-        variant = "primary",
+        variant = "secondary",
         loading = false,
         size,
         icon,

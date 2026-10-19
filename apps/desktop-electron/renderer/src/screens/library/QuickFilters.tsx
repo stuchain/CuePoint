@@ -361,7 +361,7 @@ function BpmRange({
         </p>
       )}
       <div className="cp-quick__actions">
-        <Button type="submit" disabled={invalid || (parsedFrom === null && parsedTo === null)}>
+        <Button variant="primary" type="submit" disabled={invalid || (parsedFrom === null && parsedTo === null)}>
           Apply
         </Button>
         {(current.from !== null || current.to !== null) && (

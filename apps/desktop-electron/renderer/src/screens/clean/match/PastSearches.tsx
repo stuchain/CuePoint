@@ -137,7 +137,7 @@ export function PastSearches({
                     </td>
                     <td className="match-past__actions">
                       {canResume(run) && canResumeHere && (
-                        <Button
+                        <Button variant="primary"
                           aria-label={`Resume ${what}`}
                           disabled={matching}
                           onClick={() => onResume(run)}

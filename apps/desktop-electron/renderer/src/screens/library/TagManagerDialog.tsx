@@ -225,7 +225,7 @@ export function TagManagerDialog({
               />
 
               <div className="cp-tag-manager__actions">
-                <Button onClick={save} disabled={busy}>
+                <Button variant="primary" onClick={save} disabled={busy}>
                   Save
                 </Button>
                 <Button

@@ -35,7 +35,7 @@ export function ErrorScreen({ scope, reportId, onReload }: ErrorScreenProps) {
           </p>
         )}
         <div className="cp-error-screen__actions">
-          <Button onClick={onReload}>Reload</Button>
+          <Button variant="primary" onClick={onReload}>Reload</Button>
         </div>
       </Panel>
     </div>

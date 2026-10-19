@@ -663,7 +663,7 @@ export function FilterBar({
             </span>
           )}
 
-          <Button onClick={submit}>Add</Button>
+          <Button variant="primary" onClick={submit}>Add</Button>
 
           {problem && (
             <span className="cp-filter-bar__problem" role="alert">

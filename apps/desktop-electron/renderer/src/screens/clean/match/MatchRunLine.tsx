@@ -25,7 +25,7 @@ export function NothingFoundNote({ name, found, onSee, onDismiss }: NothingFound
           ? "Beatport could not be reached or turned the search away, so nothing is known about those tracks. Match again usually fixes it."
           : "This usually means the search failed, not that the tracks aren't on Beatport."}
       </span>
-      <Button size="sm" onClick={onSee}>{`See the ${formatCount(count)} ›`}</Button>
+      <Button variant="primary" size="sm" onClick={onSee}>{`See the ${formatCount(count)} ›`}</Button>
       <Button size="sm" variant="secondary" aria-label="Dismiss" onClick={onDismiss}>
         Dismiss
       </Button>

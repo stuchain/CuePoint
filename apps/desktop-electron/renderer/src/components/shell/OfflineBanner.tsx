@@ -94,12 +94,12 @@ export function OfflineBanner({ onGetHelp, pulse = 0 }: OfflineBannerProps) {
         {lastOkAt !== null && <span className="cp-offline__time">Library loaded at {formatTimeOfDay(lastOkAt)}</span>}
       </div>
       {action === "restart" && (
-        <Button size="sm" onClick={() => void startAgain()}>
+        <Button variant="primary" size="sm" onClick={() => void startAgain()}>
           Start it again
         </Button>
       )}
       {action === "help" && (
-        <Button size="sm" onClick={onGetHelp}>
+        <Button variant="primary" size="sm" onClick={onGetHelp}>
           Get help…
         </Button>
       )}

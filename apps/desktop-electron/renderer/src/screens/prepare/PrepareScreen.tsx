@@ -1135,7 +1135,7 @@ export function PrepareScreen({
           <>
             <EmptyState icon="prepare" headline="No Sets yet" description={WHAT_A_SET_IS} />
             <div className="prepare-empty__actions">
-              <Button
+              <Button variant="primary"
                 onClick={() => {
                   setCreateError(null);
                   setCreating(true);
@@ -1334,7 +1334,7 @@ export function PrepareScreen({
         }
         actions={
           <>
-            <Button onClick={() => void playFrom(0)} disabled={entries.length === 0 || !player}>
+            <Button variant="primary" onClick={() => void playFrom(0)} disabled={entries.length === 0 || !player}>
               Play Set
             </Button>
             <Button

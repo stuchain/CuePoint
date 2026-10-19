@@ -336,7 +336,7 @@ export function NewRunPanel({
             )}
           </div>
           <Hint text={usable ? undefined : (unusableReason ?? undefined)}>
-            <Button
+            <Button variant="primary"
               className="discover-new__start"
               onClick={() => void start()}
               loading={starting}

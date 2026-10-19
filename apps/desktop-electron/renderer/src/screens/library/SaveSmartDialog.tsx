@@ -142,7 +142,7 @@ export function SaveSmartDialog({
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={!savable.ok || busy}>
+          <Button variant="primary" onClick={submit} disabled={!savable.ok || busy}>
             {busy ? "Saving…" : "Save"}
           </Button>
         </div>

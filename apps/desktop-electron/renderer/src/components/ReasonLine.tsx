@@ -18,7 +18,7 @@ interface ReasonLineProps {
  * Export, Sync, Check for updates and the like.
  *
  *     <ReasonLine id="export-why">{unavailable ? "Choose a playlist first" : null}</ReasonLine>
- *     <Button disabled={unavailable} aria-describedby={unavailable ? "export-why" : undefined}>Export</Button>
+ *     <Button variant="primary" disabled={unavailable} aria-describedby={unavailable ? "export-why" : undefined}>Export</Button>
  */
 export function ReasonLine({ children, id, align = "start", className = "" }: ReasonLineProps) {
   if (children === undefined || children === null || children === false || children === "") return null;

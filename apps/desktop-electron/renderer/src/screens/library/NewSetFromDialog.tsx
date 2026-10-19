@@ -109,7 +109,7 @@ export function NewSetFromDialog({
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={busy}>
+          <Button variant="primary" onClick={submit} disabled={busy}>
             {busy ? "Making…" : "Make the Set"}
           </Button>
         </div>

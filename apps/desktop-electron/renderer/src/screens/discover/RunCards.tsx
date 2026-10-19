@@ -296,7 +296,7 @@ export function RunCards({
               Add to wantlist
             </Button>
             <Hint text={pushable ? undefined : (unusableReason(tools.beatportState) ?? undefined)}>
-              <Button
+              <Button variant="primary"
                 disabled={!pushable || tools.pushing}
                 onClick={() => setPushOpen(true)}
               >
