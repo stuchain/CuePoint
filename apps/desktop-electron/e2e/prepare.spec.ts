@@ -558,8 +558,9 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       await expect
         .poll(() =>
           win.evaluate(() => {
-            const scroll = document.querySelector<HTMLElement>('[aria-label="Set entries"] .track-table__scroll')!;
-            return scroll.scrollWidth - scroll.clientWidth;
+            // The table is drawn again as Track details opens: read nothing until it is back.
+            const scroll = document.querySelector<HTMLElement>('[aria-label="Set entries"] .track-table__scroll');
+            return scroll ? scroll.scrollWidth - scroll.clientWidth : Number.POSITIVE_INFINITY;
           }),
         )
         .toBeLessThanOrEqual(0);

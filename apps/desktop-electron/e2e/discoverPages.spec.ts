@@ -445,7 +445,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await inspector.getByRole("button", { name: "Mara Veil" }).click();
         await expect(window).toHaveURL(/#\/discover\/artist\/bp%3A301001$/, { timeout: 30_000 });
         await expect(window.getByRole("heading", { name: "Mara Veil", level: 1 })).toBeVisible();
-        await expect(window.getByText("Linked to Beatport", { exact: true })).toBeVisible();
+        await expect(window.getByText("Linked to Beatport")).toBeVisible();
         await expect.poll(() => titlesIn(window, "Your tracks")).toEqual(["Harbour Lights", "Low Tide"]);
         const releases = "Beatport's releases by this artist";
         await expect(

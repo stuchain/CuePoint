@@ -4,6 +4,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { waitForEngine } from "./engineReady";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 
 /**
@@ -65,6 +66,9 @@ test("the queue panel shows the real queue and edits it", async () => {
       await bridge.player.pause();
     }, FIXTURES.map((file) => path.join(AUDIO, file)));
     await window.waitForSelector(".cp-player-bar", { timeout: 15_000 });
+    // The status strip is drawn while the engine starts (30 high); measured only once it has gone idle.
+    await waitForEngine(window);
+    await window.locator(".cp-status[data-idle]").waitFor({ state: "attached", timeout: 30_000 });
 
     // The bar's toggle opens it, and it lists what main is actually holding.
     const mainBefore = await window.locator("main.app-main").boundingBox();

@@ -281,7 +281,7 @@
    narrower than its floor (about 1024 wide at 1.25 text size). */
 .keys-page__tracks {
   display: flex;
-  flex: 1 1 calc(330px * var(--scale));
+  flex: 1 1 calc(260px * var(--scale));
   flex-direction: column;
   min-width: 0;
   padding: 0;

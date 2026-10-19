@@ -381,7 +381,7 @@ test.describe("Phase 11's journey (WAVE-07)", () => {
       await window.getByRole("menuitemcheckbox", { name: "Transition strip" }).click();
       await window.keyboard.press("Escape");
       const strip = window.getByRole("region", { name: "Transition" });
-      await expect(strip).toContainText("Select an entry to see its transition");
+      await expect(strip).toContainText("Select a row to see the transition");
       const setTable = window.getByRole("table", { name: "Set entries" });
       await setTable.locator(".track-table__row").first().click({ position: { x: 60, y: 10 } });
       // Step 7 made the second track a copy of bands.flac: the two sit level.
