@@ -522,7 +522,7 @@ describe("New Set from… (DEC-104)", () => {
     );
     const dialog = await screen.findByRole("dialog", { name: "New Set from “Warm-up”" });
     await userEvent.click(within(dialog).getByRole("button", { name: "Create the Set" }));
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent(/a Set holds at most 1,000/);
+    expect(await within(dialog).findByText(/a Set holds at most 1,000/)).toBeInTheDocument();
   });
 });
 

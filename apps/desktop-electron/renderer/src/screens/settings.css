@@ -23,7 +23,7 @@
 .settings-page__nav {
   position: sticky;
   top: calc(var(--screen-header-height, 0px) + var(--space-md));
-  margin-inline-start: calc(-1 * var(--space-sm));
+  margin-inline-start: round(nearest, calc(-1 * var(--space-sm)), 1px);
 }
 
 .settings-page__nav ul {
