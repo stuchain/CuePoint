@@ -104,6 +104,8 @@ interface MenuState {
 }
 
 interface KeysTracksProps {
+  /** "Tracks in 4A", or "Tracks": the list's visible heading, in its toolbar so the toolbar tops the pane (D12). */
+  heading: string;
   /** The tracks asked for: the sources alone, or with the keys chosen. No rules is every track. */
   rules: FilterRuleSet;
   /** The Wheel | List switch, drawn at the right of this list's toolbar (D12). */
@@ -134,6 +136,7 @@ interface KeysTracksProps {
 const KEYS_BAR_GROUPS: readonly TrackActionGroupId[] = ["play"];
 
 export function KeysTracks({
+  heading,
   rules,
   viewSwitch,
   openInLibrary,
@@ -547,6 +550,7 @@ export function KeysTracks({
   return (
     <div className="keys-tracks">
       <div className="cp-toolbar keys-tracks__toolbar" role="toolbar" aria-label="Track list">
+        <h2 className="cp-text-section keys-tracks__heading">{heading}</h2>
         <span className="keys-tracks__count" role="status">
           {countNoun(window_.total, "track")}
         </span>

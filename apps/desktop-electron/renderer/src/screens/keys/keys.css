@@ -60,6 +60,7 @@
 .keys-page__wheel {
   flex: 0 0 var(--keys-wheel);
   width: var(--keys-wheel);
+  max-width: 100%;
 }
 
 .keys-page__wheel .cp-wheel__center {
@@ -312,6 +313,11 @@
 
 .keys-tracks__toolbar {
   flex: none;
+}
+
+.keys-tracks__heading {
+  margin: 0;
+  white-space: nowrap;
 }
 
 .keys-tracks__count {

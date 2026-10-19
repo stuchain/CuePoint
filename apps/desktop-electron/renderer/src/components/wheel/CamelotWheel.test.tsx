@@ -342,7 +342,7 @@ describe("which track it lights", () => {
     mount();
     await openFromHeader();
     expect(
-      await within(dialog()).findByText("Select or play a track to light its key."),
+      await within(dialog()).findByText("Select or play a track to light its key"),
     ).toBeInTheDocument();
     expect(litCodes()).toEqual([]);
     expect(screen.queryByRole("button", { name: "Match on Beatport" })).toBeNull();
@@ -599,7 +599,7 @@ describe("the wheel in counts mode (PAGES-16)", () => {
     );
     // Never from the window's width.
     expect(cell).not.toMatch(/cqi|vw|%/);
-    // At each text size that is a whole pixel count (the cap is 9 * scale, so it only bites at 1x).
+    // At each text size that is a whole pixel count (the 9 * scale cap is a ceiling the rounding never reaches).
     const px = [1, 1.25, 1.5, 2, 3].map((scale) => Math.min(Math.round(6 * scale), 9 * scale));
     expect(px).toEqual([6, 8, 9, 12, 18]);
     expect(px.every(Number.isInteger)).toBe(true);

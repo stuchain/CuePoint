@@ -137,10 +137,13 @@ function KeysNoKeyButton({
   row,
   noneChosen,
   onPickNone,
+  bar = true,
 }: {
   row: KeysListRow;
   noneChosen: boolean;
   onPickNone: () => void;
+  /** The wheel view draws the row without a bar: there is nothing to compare it with. */
+  bar?: boolean;
 }) {
   return (
     <Hint text={row.count === 0 ? NO_KEY_HINT : undefined}>
@@ -157,9 +160,13 @@ function KeysNoKeyButton({
       >
         <span className="keys-counts__code">{NO_VALUE}</span>
         <span className="keys-counts__name">no key</span>
-        <span className="keys-counts__bar" aria-hidden="true" data-bar data-percent={row.percent}>
-          <RankBar share={row.percent / 100} />
-        </span>
+        {bar ? (
+          <span className="keys-counts__bar" aria-hidden="true" data-bar data-percent={row.percent}>
+            <RankBar share={row.percent / 100} />
+          </span>
+        ) : (
+          <span aria-hidden="true" />
+        )}
         <span className="keys-counts__count">{formatCount(row.count)}</span>
       </button>
     </Hint>
@@ -176,7 +183,7 @@ export function KeysNoKeyRow({
   return (
     <ul className="keys-counts__list" data-line="no-key">
       <li>
-        <KeysNoKeyButton row={{ ...row, percent: 0 }} noneChosen={noneChosen} onPickNone={onPickNone} />
+        <KeysNoKeyButton row={row} noneChosen={noneChosen} onPickNone={onPickNone} bar={false} />
       </li>
     </ul>
   );

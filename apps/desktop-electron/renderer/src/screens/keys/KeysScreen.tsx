@@ -17,7 +17,9 @@
  * ordinary rule set, so **Open in Library** and **Save as Smart Collection…** carry exactly the
  * choice on.
  */
-import { ScreenHeader } from "../../components/shell/ScreenHeader";
+import { ScreenHeader, factsLine } from "../../components/shell/ScreenHeader";
+import { KeyChip } from "../../components/wheel";
+import { keyName } from "../../components/wheel/camelot";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -354,8 +356,16 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
   const header = (
     <ScreenHeader
       title="Keys"
-      facts={shown && shown.total > 0 ? { count: shown.total, noun: "track", facts: [sourcesWords(picked)] } : undefined}
-      summary={shown && shown.total === 0 ? <span role="status">No tracks here</span> : undefined}
+      // A live line: it is read out when the sources change what is counted.
+      summary={
+        shown ? (
+          <span role="status">
+            {shown.total === 0
+              ? "No tracks here"
+              : factsLine({ count: shown.total, noun: "track", facts: [sourcesWords(picked)] })}
+          </span>
+        ) : undefined
+      }
       pageActions={
         countable || noKeys ? (
           <>
@@ -433,7 +443,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
               </Button>
             }
           >
-            The keys could not be counted.
+            The keys could not be counted
           </Notice>
         )}
 
@@ -501,7 +511,15 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
               )}
             </div>
             <p className="keys-page__caption" role="status">
-              {chosenAny ? `${choiceWords(choice)} · ${countNoun(choiceTotal, "track")}` : "Pick a key"}
+              {!chosenAny ? (
+                "Pick a key"
+              ) : choice.keys.length === 1 && !choice.none ? (
+                <>
+                  <KeyChip value={choice.keys[0]} /> {keyName(choice.keys[0]!)} · {countNoun(choiceTotal, "track")}
+                </>
+              ) : (
+                `${choiceWords(choice)} · ${countNoun(choiceTotal, "track")}`
+              )}
             </p>
           </div>
         )}
@@ -509,6 +527,7 @@ export function KeysScreen({ openWith = null, onOpeningApplied }: KeysScreenProp
         {countable && (
           <section className="keys-page__tracks" aria-label="Tracks">
             <KeysTracks
+              heading={chosenAny ? `Tracks in ${choiceWords(choice)}` : "Tracks"}
               rules={shownRules}
               viewSwitch={
                 <span className="keys-page__actions" role="group" aria-label="View">

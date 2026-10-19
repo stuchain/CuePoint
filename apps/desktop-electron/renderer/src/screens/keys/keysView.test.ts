@@ -116,6 +116,10 @@ describe("the two panes (D12)", () => {
     expect(rule(".keys-page__top")).toMatch(/padding:\s*0 0 var\(--space-lg\)/);
   });
 
+  it("never lets the wheel run past its column, so 3x does not scroll sideways", () => {
+    expect(rule(".keys-page__wheel")).toContain("max-width: 100%");
+  });
+
   it("uses the shared reading width for its note (C214)", () => {
     expect(rule(".keys-note")).toContain("max-width: var(--reading-width)");
   });

@@ -107,7 +107,7 @@ export function WheelPopover({ source, anchor, leaving = false, presenceRef }: W
   let caption: string;
   let action: { label: string; run: () => void } | null = null;
   if (subject === null) {
-    caption = "Select or play a track to light its key.";
+    caption = "Select or play a track to light its key";
   } else if (subject.key === null) {
     caption = "This track has no Beatport key yet";
     action = { label: MATCH_ON_BEATPORT, run: () => match(subject.id) };

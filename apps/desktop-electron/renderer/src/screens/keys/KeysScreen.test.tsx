@@ -283,6 +283,7 @@ const rowButton = (code: string) =>
   within(countsList()).getByRole("button", { name: new RegExp(`^${code},`) });
 const showWheel = () => fireEvent.click(screen.getByRole("button", { name: "Wheel" }));
 const showList = () => fireEvent.click(screen.getByRole("button", { name: "List" }));
+const caption = () => document.querySelector(".keys-page__caption") as HTMLElement;
 const trackToolbar = () => screen.getByRole("toolbar", { name: "Track list" });
 const whichTracks = () => within(sourcesPanel()).getByRole("combobox", { name: "Which tracks" });
 const findList = () => screen.findByRole("group", { name: "Keys in these sources" }, LOADED);
@@ -497,7 +498,7 @@ describe("the source picker", () => {
     );
     expect(await within(sourcesPanel()).findByRole("checkbox", { name: "Warm-up" }, LOADED)).toBeChecked();
     expect(within(sourcesPanel()).getByRole("checkbox", { name: "Peak time" })).not.toBeChecked();
-    expect(screen.queryByText("The keys could not be counted.")).toBeNull();
+    expect(screen.queryByText("The keys could not be counted")).toBeNull();
     expect(reportUnexpected).not.toHaveBeenCalled();
     expect(JSON.parse(localStorage.getItem("cuepoint-keys-sources")!)).toEqual([
       { kind: "playlist", id: 2 },
@@ -695,11 +696,14 @@ describe("choosing keys", () => {
     const table = await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
     expect(await within(table).findByText("Track 1")).toBeInTheDocument();
     expect(screen.getByText("Pick a key")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Tracks" })).toBeInTheDocument();
     expect((mock("browseLibrary").mock.calls.at(-1)![0] as { filters: any }).filters?.rules ?? []).toEqual([]);
 
     fireEvent.click(rowButton("8A"));
 
-    await waitFor(() => expect(screen.getByText("8A · 12 tracks")).toBeInTheDocument());
+    await waitFor(() => expect(caption()).toHaveTextContent("8A A minor · 12 tracks"));
+    expect(caption().querySelector(".key-chip--8A")).not.toBeNull();
+    expect(screen.getByRole("heading", { level: 2, name: "Tracks in 8A" })).toBeInTheDocument();
     expect(rowButton("8A")).toHaveAttribute("aria-pressed", "true");
     const last = mock("browseLibrary").mock.calls.at(-1)![0] as {
       filters: unknown;
@@ -796,7 +800,8 @@ describe("choosing keys", () => {
       const last = mock("browseLibrary").mock.calls.at(-1)![0] as { filters: any };
       expect(last.filters.rules[0].value).toEqual(["9A", "10A", "11B"]);
     });
-    expect(screen.getByText(/^9A, 10A and 11B · /)).toBeInTheDocument();
+    expect(caption()).toHaveTextContent(/^9A, 10A and 11B · /);
+    expect(screen.getByRole("heading", { level: 2, name: "Tracks in 9A, 10A and 11B" })).toBeInTheDocument();
   });
 
   it("narrows the tracks to the ticked sources, playlists included", async () => {
@@ -1118,6 +1123,15 @@ describe("carrying the choice on", () => {
     }
   });
 
+  it("announces the facts line as a live status, and draws no empty bar on the no-key row in the wheel view", async () => {
+    localStorage.clear();
+    renderKeys();
+    await screen.findByRole("group", { name: "Keys" }, LOADED);
+    const facts = screen.getByText("1,500 tracks · Whole library");
+    expect(facts).toHaveAttribute("role", "status");
+    expect(screen.getByRole("button", { name: "No Beatport key: 246" }).querySelector("[data-bar]")).toBeNull();
+  });
+
   it("keeps the page's actions in the header and the selection's in the bar (C216, D7)", async () => {
     renderKeys();
     await opened();
@@ -1199,7 +1213,7 @@ describe("when there is nothing to count", () => {
     const fail = vi.fn().mockRejectedValueOnce(new Error("down")).mockResolvedValue(ALL);
     install({ getKeysPopulation: fail });
     renderKeys();
-    expect(await screen.findByText("The keys could not be counted.")).toBeInTheDocument();
+    expect(await screen.findByText("The keys could not be counted")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     await opened();
   });
