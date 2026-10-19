@@ -17,6 +17,7 @@ import {
   DEFAULT_WIDTH_PX_BY_ID,
   GROW_WEIGHTS,
   growWidths,
+  widthsAfterResize,
   ROW_HEIGHT_FALLBACK,
   columnDefaultWidth,
   columnMinWidth,
@@ -289,5 +290,25 @@ describe("spare width goes by grow weights (C210)", () => {
       { id: "x", header: "X", grow: 1, render: () => null },
     ];
     expect(growWidths(own, [100, 100], 300)).toEqual([100, 200]);
+  });
+});
+
+describe("widthsAfterResize (B2)", () => {
+  const cols: TrackColumnDef<Row>[] = [
+    { id: "title", header: "t", render: () => "" },
+    { id: "artist", header: "a", render: () => "" },
+    { id: "bpm", header: "b", render: () => "" },
+  ];
+  it("stores every column at its drawn width and the dragged one at the target", () => {
+    expect(widthsAfterResize(cols, [500, 300, 200], 1000, 0, 560)).toEqual({ title: 560, artist: 300, bpm: 200 });
+  });
+  it("gives the room a narrowing frees to the last column, so no spare is shared out again", () => {
+    const stored = widthsAfterResize(cols, [500, 300, 200], 1000, 0, 420);
+    expect(stored).toEqual({ title: 420, artist: 300, bpm: 280 });
+    const drawn = growWidths(cols, [stored.title!, stored.artist!, stored.bpm!], 1000);
+    expect(drawn[0]).toBe(420);
+  });
+  it("adds nothing when the room is not measured", () => {
+    expect(widthsAfterResize(cols, [500, 300, 200], 0, 0, 420)).toEqual({ title: 420, artist: 300, bpm: 200 });
   });
 });

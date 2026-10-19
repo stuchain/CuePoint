@@ -7,7 +7,7 @@
  * really goes back to the beginning.
  */
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
 import { ScaleProvider, useScale } from "../../tokens/ScaleContext";
@@ -191,6 +191,31 @@ describe("while it is open", () => {
     act(() => result.current.scale.setScale(3));
 
     expect(result.current.columns.widths.bpm).toBe(180);
+  });
+
+  it("writes nothing to storage when only the scale changes (B2)", () => {
+    const { result } = renderHook(
+      () => ({
+        columns: useColumnLayout(LIBRARY_TABLE_LAYOUT_KEY, COLUMNS),
+        scale: useScale(),
+      }),
+      { wrapper },
+    );
+    act(() => result.current.columns.setWidths({ bpm: 90 }));
+    const stored = localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY);
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    const removeItem = vi.spyOn(Storage.prototype, "removeItem");
+    try {
+      act(() => result.current.scale.setScale(2));
+      act(() => result.current.scale.setScale(1));
+      const layoutWrites = setItem.mock.calls.filter(([key]) => key === LIBRARY_TABLE_LAYOUT_KEY);
+      expect(layoutWrites).toEqual([]);
+      expect(removeItem).not.toHaveBeenCalled();
+      expect(localStorage.getItem(LIBRARY_TABLE_LAYOUT_KEY)).toBe(stored);
+    } finally {
+      setItem.mockRestore();
+      removeItem.mockRestore();
+    }
   });
 
   it("takes on a column that appears while it is mounted", () => {

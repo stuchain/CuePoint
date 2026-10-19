@@ -240,6 +240,38 @@ export function growWidths<Row>(
   return widths.map((width, index) => width + shares[index]! + (index === heaviest ? left : 0));
 }
 
+/**
+ * The stored widths after the edge of column `index` is moved so the column draws at `target` (B2).
+ *
+ * A drag works in drawn pixels, and a drawn width is the stored one plus a share of the spare room.
+ * Storing `target` beside the other stored widths would hand that share out a second time, so the
+ * edge would jump away from the pointer. Instead every column is stored at the width it is drawn
+ * at now (`drawn`, in column order), so no spare is left to share, and the dragged one at `target`.
+ * Room a narrowing frees goes to the last column, which takes what is left over anyway; without it
+ * the freed room would be shared out again and the edge would not follow the pointer. A widening
+ * overflows into the sideways scroll bar, as a table with no spare always has.
+ */
+export function widthsAfterResize<Row>(
+  columns: readonly TrackColumnDef<Row>[],
+  drawn: readonly number[],
+  room: number,
+  index: number,
+  target: number,
+): ColumnWidths {
+  const next = drawn.slice();
+  next[index] = target;
+  const last = next.length - 1;
+  if (index !== last && room > 0) {
+    const freed = Math.floor(room) - next.reduce((sum, width) => sum + width, 0);
+    if (freed > 0) next[last] = (next[last] ?? 0) + freed;
+  }
+  const stored: ColumnWidths = {};
+  columns.forEach((column, i) => {
+    stored[column.id] = Math.round(next[i] ?? 0);
+  });
+  return stored;
+}
+
 export function totalWidth(widths: number[]): number {
   return widths.reduce((sum, width) => sum + width, 0);
 }

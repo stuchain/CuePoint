@@ -23,7 +23,7 @@
  * ResizeObserver — so the virtualizer is given a viewport below. That is a
  * fake, and it is the only one: the component under test is the real one.
  */
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -1311,6 +1311,47 @@ describe("the resizer is a separator (C149, C199)", () => {
     const bpm = screen.getByRole("separator", { name: "Resize BPM column" });
     for (let i = 0; i < 5; i += 1) fireEvent.keyDown(bpm, { key: "ArrowLeft" });
     expect(onWidthsChange).toHaveBeenLastCalledWith(expect.objectContaining({ bpm: 60 }));
+  });
+});
+
+describe("resizing a table with spare width (B2)", () => {
+  function measuredAt(width: number) {
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this.classList.contains("track-table__corner") ? 0 : width;
+      },
+    });
+  }
+  afterEach(() => {
+    delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
+  });
+  const drawn = () =>
+    (screen.getByTestId("track-table").style.getPropertyValue("--track-table-columns").match(/\d+(?=px)/g) ?? []).map(Number);
+
+  it("moves the dragged edge exactly as far as the pointer, wider and narrower", () => {
+    measuredAt(1000);
+    renderTable();
+    const before = drawn()[0]!;
+    const handle = screen.getByRole("separator", { name: "Resize Title column" });
+    fireEvent.mouseDown(handle, { clientX: 300 });
+    fireEvent.mouseMove(window, { clientX: 330 });
+    expect(drawn()[0]).toBe(before + 30);
+    fireEvent.mouseMove(window, { clientX: 270 });
+    expect(drawn()[0]).toBe(before - 30);
+    fireEvent.mouseUp(window);
+  });
+
+  it("moves the edge by exactly the keyboard step", () => {
+    measuredAt(1000);
+    renderTable();
+    const before = drawn()[0]!;
+    const handle = screen.getByRole("separator", { name: "Resize Title column" });
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+    expect(drawn()[0]).toBe(before + 8);
+    fireEvent.keyDown(handle, { key: "ArrowLeft" });
+    fireEvent.keyDown(handle, { key: "ArrowLeft" });
+    expect(drawn()[0]).toBe(before - 8);
   });
 });
 

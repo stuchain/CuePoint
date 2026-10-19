@@ -43,6 +43,7 @@ import {
   columnMinWidth,
   gridTemplate,
   growWidths,
+  widthsAfterResize,
   insertionAt,
   orderedWidths,
   useRowHeight,
@@ -631,12 +632,21 @@ export function TrackTable<Row>({
   const startResize = useCallback(
     (column: TrackColumnDef<Row>, startX: number) => {
       const startWidth = shownWidths[column.id] ?? effectiveWidths[column.id] ?? 0;
+      // What every column is drawn at as the drag starts, so the drag adds to drawn widths (B2).
+      const startDrawn = ordered;
+      const index = columns.findIndex((entry) => entry.id === column.id);
+      const room = viewportWidth - cornerWidth;
 
       const onMove = (event: MouseEvent) => {
-        applyWidths({
-          ...effectiveWidths,
-          [column.id]: widthAfterDrag(column, startWidth, event.clientX - startX, scale),
-        });
+        applyWidths(
+          widthsAfterResize(
+            columns,
+            startDrawn,
+            room,
+            index,
+            widthAfterDrag(column, startWidth, event.clientX - startX, scale),
+          ),
+        );
       };
 
       const onUp = () => {
@@ -649,7 +659,7 @@ export function TrackTable<Row>({
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [applyWidths, effectiveWidths, scale, shownWidths],
+    [applyWidths, columns, cornerWidth, ordered, scale, shownWidths, viewportWidth],
   );
 
   /** Arrow Left and Right on a focused resizer move the edge by 8 (scaled): the keyboard's drag (C149, C199). */
@@ -659,12 +669,18 @@ export function TrackTable<Row>({
       event.preventDefault();
       event.stopPropagation();
       const step = Math.round(8 * scale) * (event.key === "ArrowRight" ? 1 : -1);
-      applyWidths({
-        ...effectiveWidths,
-        [column.id]: widthAfterDrag(column, effectiveWidths[column.id] ?? 0, step, scale),
-      });
+      const drawn = shownWidths[column.id] ?? effectiveWidths[column.id] ?? 0;
+      applyWidths(
+        widthsAfterResize(
+          columns,
+          ordered,
+          viewportWidth - cornerWidth,
+          columns.findIndex((entry) => entry.id === column.id),
+          widthAfterDrag(column, drawn, step, scale),
+        ),
+      );
     },
-    [applyWidths, effectiveWidths, scale],
+    [applyWidths, columns, cornerWidth, effectiveWidths, ordered, scale, shownWidths, viewportWidth],
   );
 
   /**
