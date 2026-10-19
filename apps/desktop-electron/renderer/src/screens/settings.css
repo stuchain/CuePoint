@@ -78,9 +78,15 @@
   gap: var(--space-md);
 }
 
-/* A link lands on the section; focus there is a landing, not a control. */
-.settings-page__section {
-  scroll-margin-top: var(--screen-header-height, 0);
+/*
+ * A link lands on the section, a box's gap below the sticky header, so its top edge shows; the
+ * heading itself lands the same way, whichever one is scrolled to (C124). Focus there is a
+ * landing, not a control.
+ */
+.settings-page__section,
+.settings-page__section h2,
+.settings-page__section h3 {
+  scroll-margin-top: calc(var(--screen-header-height, 0px) + var(--gap-box));
 }
 
 .settings-page__section:focus {
@@ -129,7 +135,8 @@
   min-width: 0;
 }
 
-.settings-page__about p {
+/* The About card's own lines; a hint keeps the one hint size (C59). */
+.settings-page__about p:not(.settings-hint) {
   margin: 0;
   font-size: var(--font-size-sm);
 }
@@ -194,12 +201,12 @@
   font-weight: var(--weight-strong);
 }
 
-/* A hint under a setting: one size, one cap, and never wider than the controls above it, which stop
-   at 400 (C51). */
+/* A hint under a setting: one size, and never wider than the standard field above it, so the
+   column has one right edge (C51). */
 .settings-hint {
   overflow-wrap: anywhere;
   margin: 0;
-  max-width: min(var(--reading-width), calc(400px * var(--scale)));
+  max-width: var(--field-width-standard);
   color: var(--fg-muted);
   font-family: var(--font-data);
   font-size: var(--text-body);
