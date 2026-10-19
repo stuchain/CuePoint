@@ -9,7 +9,7 @@
  * and that is followed live as the window is resized. Storage that throws
  * reads as never chosen and forgets the choice rather than breaking the player.
  */
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 import { DETAIL_SPANS_MS, DETAIL_SPAN_MS } from "./waveformDetailLayout";
 
@@ -72,7 +72,7 @@ function shortWindowQuery(): MediaQueryList | null {
 }
 
 /** Whether the window is short now; a platform without matchMedia counts as tall. */
-export function isShortWindow(): boolean {
+function isShortWindow(): boolean {
   return shortWindowQuery()?.matches === true;
 }
 
@@ -107,11 +107,17 @@ export function saveWaveformDetail(on: boolean): void {
   listeners.forEach((listener) => listener());
 }
 
-/**
- * Hears when the window crosses the short-window line, and when the size changes: a new size
- * means a new line, so the query list is made again and the listener moves to it.
- */
-export function subscribeShortWindow(listener: () => void): () => void {
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  const onStorage = (event: StorageEvent) => {
+    // A null key is `localStorage.clear()` elsewhere: read what is left.
+    if (event.key !== null && event.key !== WAVEFORM_DETAIL_STORAGE_KEY) return;
+    choice = event.key === null ? loadWaveformChoice() : parseWaveformDetail(event.newValue);
+    choiceRead = true;
+    listener();
+  };
+  window.addEventListener("storage", onStorage);
+  // The query follows the size: a new size gets a new list, and the listeners move to it.
   let query = shortWindowQuery();
   query?.addEventListener?.("change", listener);
   const observer =
@@ -125,48 +131,10 @@ export function subscribeShortWindow(listener: () => void): () => void {
       : null;
   observer?.observe(document.documentElement, { attributes: true, attributeFilter: ["data-scale"] });
   return () => {
-    query?.removeEventListener?.("change", listener);
-    observer?.disconnect();
-  };
-}
-
-/**
- * Whether the window is short now, live (C207). The compact player bar reads this too, so the bar
- * and the strip share one threshold in the size's own units.
- */
-export function useShortWindow(): boolean {
-  return useSyncExternalStore(subscribeShortWindow, isShortWindow, () => false);
-}
-
-/**
- * Puts `data-short-window` on the page while the window is short (C207), so the stylesheet asks
- * the same question as the code: `:root[data-short-window] .cp-player-bar`. App mounts it once.
- */
-export function useShortWindowFlag(): void {
-  const short = useShortWindow();
-  useEffect(() => {
-    const root = document.documentElement;
-    if (short) root.setAttribute("data-short-window", "");
-    else root.removeAttribute("data-short-window");
-    return () => root.removeAttribute("data-short-window");
-  }, [short]);
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  const onStorage = (event: StorageEvent) => {
-    // A null key is `localStorage.clear()` elsewhere: read what is left.
-    if (event.key !== null && event.key !== WAVEFORM_DETAIL_STORAGE_KEY) return;
-    choice = event.key === null ? loadWaveformChoice() : parseWaveformDetail(event.newValue);
-    choiceRead = true;
-    listener();
-  };
-  window.addEventListener("storage", onStorage);
-  const stopShortWindow = subscribeShortWindow(listener);
-  return () => {
     listeners.delete(listener);
     window.removeEventListener("storage", onStorage);
-    stopShortWindow();
+    query?.removeEventListener?.("change", listener);
+    observer?.disconnect();
   };
 }
 

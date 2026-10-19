@@ -108,10 +108,9 @@ test.describe("The zoomed waveform above the player (T4)", () => {
     const app = await launch(userDataDir, cuepointHome);
     try {
       const window = await ready(app);
-      // The strip, and the full bar with its zoom button, are drawn only in a window over 700 px of
-      // content height times the size (1.5× by default: 1,050; C207), so the window is made just over it.
-      const scale = Number(await window.evaluate(() => document.documentElement.dataset.scale)) || 1;
-      await app.evaluate(({ BrowserWindow }, height) => BrowserWindow.getAllWindows()[0]?.setContentSize(1400, height), Math.ceil(700 * scale) + 40);
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setContentSize(1400, 900));
+      // The strip starts hidden on a window under 700 px of content height times the size (1.5× by default: 1,050),
+      // so this test asks for it, as a person who turned it on would.
       await window.evaluate(() => localStorage.setItem("cuepoint-waveform-detail", "on"));
       await window.reload();
       await window.locator("main.app-main .screen:visible").waitFor({ timeout: 30_000 });
@@ -263,25 +262,26 @@ test.describe("The zoomed waveform above the player (T4)", () => {
     );
   }
 
-  test("a short window starts without the strip and with the compact bar, and a taller one has both (R2-2, C207)", async () => {
+  test("a short window starts without the strip, and the bar button shows it (R2-2)", async () => {
     test.setTimeout(180_000);
     const { xml, file } = writeExport(workspace);
     const app = await launch(userDataDir, cuepointHome);
     try {
       const page = await ready(app);
-      const scale = Number(await page.evaluate(() => document.documentElement.dataset.scale)) || 1;
-      // Fresh profile, nothing chosen; 720 of content is under 700 x the size, which is the line for the
-      // strip and for the compact bar alike (C207): the bar is one line with no zoom button.
+      // Fresh profile, nothing chosen; 720 of content is under the 1,050 px (700 x 1.5) threshold but
+      // not compact (the compact bar, with no zoom toggle, is under 700 px of window height).
       await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setContentSize(1280, 720));
       await importAndPlay(page, xml, file);
 
-      await expect(page.locator(":root[data-short-window]")).toHaveCount(1);
-      await expect(page.locator(".cp-player-bar")).toBeVisible({ timeout: 20_000 });
-      await expect(page.getByRole("button", { name: /the zoomed waveform/ })).toHaveCount(0);
+      // Playing, and still no strip; the bar's button offers it.
+      const showButton = page.getByRole("button", { name: "Show the zoomed waveform" });
+      await expect(showButton).toBeVisible({ timeout: 20_000 });
+      await expect(showButton).toHaveAttribute("aria-pressed", "false");
       await expect(page.locator(".cp-detail-strip")).toHaveCount(0);
 
-      // Taller than the line, with nothing chosen: the strip is on and the bar offers to hide it.
-      await app.evaluate(({ BrowserWindow }, height) => BrowserWindow.getAllWindows()[0]?.setContentSize(1400, height), Math.ceil(700 * scale) + 40);
+      await showButton.click();
+      // The choice is kept, and the strip is drawn once the window is tall enough.
+      await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setContentSize(1280, 900));
       await expect(page.locator(".cp-detail-strip")).toBeVisible({ timeout: 20_000 });
       await expect(page.getByRole("button", { name: "Hide the zoomed waveform" })).toHaveAttribute(
         "aria-pressed",

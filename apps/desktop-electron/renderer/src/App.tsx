@@ -35,7 +35,7 @@ import { WheelPopoverHost } from "./components/wheel";
 import { PlayerSlot } from "./components/player/PlayerSlot";
 import { useRestorePlayerAudio } from "./components/player/playerAudioState";
 import { useRestorePlayerOrder } from "./components/player/playerOrderState";
-import { useShortWindowFlag } from "./components/waveform/waveformDetailSetting";
+import { useCompactBarFlag } from "./components/player/useCompactBar";
 import {
   CleanScreen,
   DiscoverScreen,
@@ -226,7 +226,7 @@ function AppShell() {
   useRestorePlayerAudio();
   // One short-window threshold for the compact player bar and the zoomed strip (C207): the page
   // carries it as `data-short-window`, which PlayerBar.css reads.
-  useShortWindowFlag();
+  useCompactBarFlag();
 
   /**
    * Maps a destination id to the screen that renders it.

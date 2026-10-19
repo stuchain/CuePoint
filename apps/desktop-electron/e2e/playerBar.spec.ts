@@ -13,28 +13,12 @@
  * anything.
  */
 import { test, expect, type Page } from "@playwright/test";
-import { _electron as electron, type ElectronApplication } from "playwright";
+import { _electron as electron } from "playwright";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
-
-/**
- * The full bar is drawn only in a window taller than 700 px of content times the size: the same
- * line the zoomed waveform uses (C207). These specs set the size in the page, so the window is
- * made just over the line for each size before the bar is measured.
- */
-async function fullBarAt(app: ElectronApplication, win: Page, scale: number): Promise<void> {
-  await app.evaluate(({ BrowserWindow }, height) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1280, height);
-  }, Math.ceil(700 * scale) + 40);
-  await win.evaluate((s) => {
-    document.documentElement.dataset.scale = String(s);
-    document.documentElement.style.setProperty("--scale", String(s));
-  }, scale);
-  await win.waitForFunction(() => !document.documentElement.hasAttribute("data-short-window"));
-}
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const AUDIO = path.resolve(ROOT, "../../src/tests/fixtures/audio");
@@ -84,8 +68,6 @@ test("the player bar fits the shell at every scale", async () => {
     await expect(win.getByRole("dialog")).toHaveCount(0);
 
     for (const scale of [1, 1.5, 2, 3]) {
-
-      await fullBarAt(app, win, scale);
       const report = await win.evaluate((s) => {
         // Scale drives sizes through BOTH the attribute and the CSS variable.
         document.documentElement.dataset.scale = String(s);
@@ -146,7 +128,6 @@ test("the player bar fits the shell at every scale", async () => {
       await w.cuepoint.player.pause();
     }, path.join(AUDIO, "tone.flac"));
     for (const scale of [1, 3]) {
-      await fullBarAt(app, win, scale);
       const shown = await win.evaluate((s) => {
         document.documentElement.dataset.scale = String(s);
         document.documentElement.style.setProperty("--scale", String(s));
@@ -163,7 +144,6 @@ test("the player bar fits the shell at every scale", async () => {
     // The transport buttons keep the heavy border and the hit target (C16c): the border is
     // --border-width, nothing casts a shadow, and the box is at least --hit-min tall.
     for (const scale of [1, 2]) {
-      await fullBarAt(app, win, scale);
       const button = await win.evaluate((s) => {
         document.documentElement.dataset.scale = String(s);
         document.documentElement.style.setProperty("--scale", String(s));
@@ -236,8 +216,6 @@ test("the waveform is centred and the key chip fits", async () => {
       await expect(win.locator(".cp-player-bar")).toContainText(trackTitle as string, { timeout: 10_000 });
 
       for (const scale of [1, 1.5, 2]) {
-
-        await fullBarAt(app, win, scale);
         const r = await win.evaluate((s) => {
           document.documentElement.dataset.scale = String(s);
           document.documentElement.style.setProperty("--scale", String(s));
