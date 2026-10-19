@@ -226,7 +226,7 @@ describe("GlobalSearch", () => {
     await type("strobe");
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Search didn't work. Try again.");
+    expect(alert).toHaveTextContent("Search did not work. Try again.");
     // The cause is for the title, not the sentence (HDR-7).
     expect(alert).toHaveAttribute("title", expect.stringContaining("engine offline"));
     expect(alert).not.toHaveTextContent(/offline/);

@@ -257,7 +257,7 @@ describe("why an answer draws no picture (WAVE-06)", () => {
   });
 
   it("says the build cannot draw waveforms in plain words", () => {
-    expect(DECODER_MISSING_WORDS).toBe("This version of CuePoint can't draw waveforms.");
+    expect(DECODER_MISSING_WORDS).toBe("This version of CuePoint cannot draw waveforms.");
   });
 
   it("says a failed read, and a track that is gone", () => {

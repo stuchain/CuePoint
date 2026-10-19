@@ -93,9 +93,9 @@ import { SetEntryZone } from "./SetEntryZone";
 import { SetLanes } from "./SetLanes";
 import { SetNotesDialog } from "./SetNotesDialog";
 import { SetTransition } from "./SetTransition";
+import { useDetailsOpen } from "../../components/shell/detailsToggle";
 import { useSetAreaFloor } from "./setAreaFloor";
 import { SourcePanel } from "./SourcePanel";
-import { useDetailsPanelOpen } from "./useDetailsPanelOpen";
 import { columnsToDrop, useMeasuredWidth } from "./prepareWidthRule";
 import { entryButtonDomId, entryButtons, stepMoves, type EntryButton } from "./entryActions";
 import { nextTimeTarget, timeRefusalWords, timeTexts, timesToSave, type TimeField, type TimeTarget, type TimeTexts } from "./timeEditing";
@@ -867,7 +867,7 @@ export function PrepareScreen({
     // panel does not vanish under a click, and one right-hand panel shows at a time.
     { autoOpen: false },
   );
-  const detailsOpen = useDetailsPanelOpen();
+  const detailsOpen = useDetailsOpen();
 
   // --- menus
 

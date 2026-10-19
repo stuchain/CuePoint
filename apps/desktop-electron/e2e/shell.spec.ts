@@ -174,7 +174,7 @@ test.describe("Application shell navigation", () => {
       // The bug this test exists for: the IPC channel and the client method
       // both existed, but `EngineSupervisor` never forwarded the call, so the
       // whole path failed only in the running app.
-      await expect(window.getByText(/didn't work/i)).toHaveCount(0);
+      await expect(window.getByText(/did not work/i)).toHaveCount(0);
     } finally {
       await app.close();
     }

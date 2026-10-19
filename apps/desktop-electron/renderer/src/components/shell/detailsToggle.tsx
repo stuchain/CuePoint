@@ -33,6 +33,18 @@ function subscribe(listener: () => void) {
 
 const snapshot = () => control;
 
+/**
+ * Whether the Track details panel is open now. A page that shows one right-hand panel at a time
+ * (Prepare's source panel gives way to it) reads this instead of looking for the panel's element.
+ */
+export function useDetailsOpen(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => control?.open ?? false,
+    () => false,
+  );
+}
+
 /** Where focus goes when the panel's own close button hid it: back to the toggle that opens it. */
 export const DETAILS_TOGGLE_ATTRIBUTE = "data-details-toggle";
 
