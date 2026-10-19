@@ -117,8 +117,11 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
     await win.getByRole("link", { name: "Keys" }).click();
     await expect(win.getByRole("heading", { name: "Keys", level: 1 })).toBeVisible();
 
-    // The page opens on the wheel (K15); these steps read the list.
-    await win.getByRole("tab", { name: "List" }).click();
+    // The page opens on the wheel (K15); these steps read the list. The Wheel | List switch is in
+    // the track list's own toolbar (D12), beside the count and "Open in Library".
+    const trackBar = win.getByRole("toolbar", { name: "Track list" });
+    await expect(trackBar.getByRole("button", { name: "Open in Library" })).toBeVisible();
+    await trackBar.getByRole("button", { name: "List" }).click();
     const list = win.getByRole("group", { name: "Keys in these sources" });
     // The exact count on a key's row (its count cell, not a substring of the row).
     const countOf = (code: string) =>
@@ -134,24 +137,26 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
     const sources = win.getByRole("group", { name: "Sources" });
     await sources.getByRole("checkbox", { name: "Warmup" }).check();
     await sources.getByRole("checkbox", { name: "Peak" }).check();
-    await expect(win.getByRole("status").filter({ hasText: "· 2 playlists" })).toHaveText(
-      "4 tracks · 2 playlists",
-    );
+    const facts = win.locator(".cp-screen-header__summary");
+    await expect(facts).toHaveText("4 tracks · 2 playlists");
     await expect(countOf("8A")).toHaveText("3");
     await expect(countOf("9A")).toHaveText("1");
-    await expect(list.getByText("No Beatport key: 0")).toBeVisible();
+    // "— no key" is one more row of the list (C258).
+    await expect(list.getByRole("button", { name: "No Beatport key: 0" })).toBeVisible();
 
     // Warmup alone is 8A x2 and 9A x1 (3 tracks).
     await sources.getByRole("checkbox", { name: "Peak" }).uncheck();
-    await expect(win.getByRole("status").filter({ hasText: "· 1 playlist" })).toHaveText(
-      "3 tracks · 1 playlist",
-    );
+    await expect(facts).toHaveText("3 tracks · 1 playlist");
     await expect(countOf("8A")).toHaveText("2");
     await expect(countOf("9A")).toHaveText("1");
     await sources.getByRole("checkbox", { name: "Peak" }).check();
     await expect(countOf("8A")).toHaveText("3");
 
-    // Click a key: its tracks fill the table.
+    // With no key picked the table beside the wheel already lists every track in the sources
+    // (D12); clicking a key narrows it at once.
+    await expect(win.locator("main.app-main .screen:visible .track-table__row")).toHaveCount(4, {
+      timeout: 30_000,
+    });
     await list.getByRole("button", { name: /^8A/ }).click();
 
     // The pressed key's row is lit by the selected-row background, a gradient from the accent.

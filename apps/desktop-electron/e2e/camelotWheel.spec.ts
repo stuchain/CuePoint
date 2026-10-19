@@ -267,7 +267,10 @@ test.describe("The Camelot wheel (PAGES-10)", () => {
       const wheel = window.getByRole("dialog", { name: "Camelot wheel" });
       await expect(wheel).toContainText("This track has no Beatport key yet", { timeout: 15_000 });
       await expect(window.locator("[data-lit]")).toHaveCount(0);
-      await wheel.getByRole("button", { name: "Match on Beatport" }).click();
+      // A grey button in the popover's own body-text caption row, not a second main button (C5, C128).
+      const match = wheel.getByRole("button", { name: "Match on Beatport" });
+      await expect(match).toHaveClass(/cp-btn--secondary/);
+      await match.click();
       await expect(window.getByRole("heading", { name: "Clean", level: 1 })).toBeVisible();
       // It opens Clean's match window (PAGES-07B); close it before leaving the page.
       const matchWindow = window.getByRole("dialog", { name: "Match on Beatport" });
