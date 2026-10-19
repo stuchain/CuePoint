@@ -40,6 +40,7 @@ let bridge: Record<string, unknown>;
 const mock = (name: string) => bridge[name] as Fn;
 
 const SPREAD = { buckets: [], unknown: { label: "Unknown", count: 0, rules: null }, total: 0 };
+const FILLER_IDS = Array.from({ length: 7 }, (_, i) => 1000 + i);
 const NOW = new Date(2026, 10, 20, 12, 0, 0); // Nov 20, 2026, local noon
 const HISTORY_FROM = "2026-10-08T12:00:00Z";
 const LAST_READ = "2026-11-02T12:00:00Z";
@@ -61,6 +62,14 @@ function plays(overrides: Partial<StatisticsPlays> = {}): StatisticsPlays {
       { id: 812, title: "Alpha", artist: "B", plays: 14, key: null, bpm: null },
       { id: 90, title: "Bravo", artist: "C", plays: 7, key: null, bpm: null },
       { id: 4, title: "Charlie", artist: "B", plays: 1, key: null, bpm: null },
+      ...Array.from({ length: 7 }, (_, i) => ({
+        id: 1000 + i,
+        title: `Filler ${i}`,
+        artist: "Z",
+        plays: 1,
+        key: null,
+        bpm: null,
+      })),
     ],
     artists: [
       {
@@ -446,7 +455,7 @@ describe("the Plays section (STATS-05)", () => {
       const region = await section();
       const list = within(region).getByRole("list", { name: "Most played tracks" });
 
-      expect(within(list).getAllByRole("listitem")).toHaveLength(3);
+      expect(within(list).getAllByRole("listitem")).toHaveLength(10);
       expect(
         within(list).getByRole("button", { name: "1. Alpha by B, 14 plays" }),
       ).toBeInTheDocument();
@@ -742,11 +751,11 @@ describe("the Plays section (STATS-05)", () => {
         expect(create).toHaveBeenCalledWith({
           name: "Most played, all time (top 10)",
           parent_id: null,
-          track_ids: [812, 90, 4],
+          track_ids: [812, 90, 4, ...FILLER_IDS],
         }),
       );
-      expect(await within(region).findByText(/Kept 3 tracks in rank order as/)).toHaveTextContent(
-        "Kept 3 tracks in rank order as “Most played, all time (top 10)”, in Collections in the Library.",
+      expect(await within(region).findByText(/Kept 10 tracks in rank order as/)).toHaveTextContent(
+        "Kept 10 tracks in rank order as “Most played, all time (top 10)”, in Collections in the Library.",
       );
       await user.click(within(region).getByRole("button", { name: "Open it in the Library" }));
       expect(navigated()).toEqual({
@@ -788,7 +797,7 @@ describe("the Plays section (STATS-05)", () => {
       renderPage();
       const region = await section();
 
-      expect(within(region).getByText(`Will be named “${name}”.`)).toBeVisible();
+      expect(within(region).getByText(`Will be named “${name}”`)).toBeVisible();
       await user.click(within(region).getByRole("button", { name: "Keep as Collection" }));
 
       await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
@@ -1147,7 +1156,7 @@ describe("the Plays section, after review (STATS-05)", () => {
 
       await waitFor(() => expect(playQueue).toHaveBeenCalledTimes(1));
       const [items, start] = playQueue.mock.calls[0]!;
-      expect(items.map((item: { trackId: number }) => item.trackId)).toEqual([90, 4]);
+      expect(items.map((item: { trackId: number }) => item.trackId)).toEqual([90, 4, ...FILLER_IDS]);
       expect(start).toBe(0);
       // The rows above the clicked one are not read at all.
       expect(mock("getLibraryTrack")).not.toHaveBeenCalledWith({ trackId: 812 });
@@ -1168,7 +1177,7 @@ describe("the Plays section, after review (STATS-05)", () => {
       await user.click(within(region).getByRole("button", { name: "Play Alpha by B" }));
 
       await waitFor(() => expect(playQueue).toHaveBeenCalledTimes(1));
-      expect(playQueue.mock.calls[0]![0].map((item: { trackId: number }) => item.trackId)).toEqual([812, 4]);
+      expect(playQueue.mock.calls[0]![0].map((item: { trackId: number }) => item.trackId)).toEqual([812, 4, ...FILLER_IDS]);
     });
 
     it("says so, and plays nothing, when the clicked track itself cannot be read", async () => {
@@ -1185,7 +1194,7 @@ describe("the Plays section, after review (STATS-05)", () => {
 
       await user.click(within(region).getByRole("button", { name: "Play Bravo by C" }));
 
-      expect(await within(region).findByText("That track could not be read.")).toBeVisible();
+      expect(await within(region).findByText("Could not read the track.")).toBeVisible();
       expect(playQueue).not.toHaveBeenCalled();
     });
   });
@@ -1210,11 +1219,24 @@ describe("the Plays section, after review (STATS-05)", () => {
       expect(rule).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\) 6ch minmax\(max-content, 17ch\);/);
     });
 
+    it("offers Show all 25 only when the list is full", async () => {
+      install({ getStatisticsPlays: vi.fn().mockResolvedValue(plays({ tracks: plays().tracks.slice(0, 4) })) });
+      renderPage();
+      const region = await section();
+      expect(within(region).queryByRole("button", { name: "Show all 25" })).toBeNull();
+    });
+
+    it("reserves the play column in the header and the rows alike", () => {
+      expect(playsCss).toMatch(/--plays-play-column:\s*calc\(round\(nearest, calc\(16px \* var\(--scale\)\), 1px\) \+ var\(--space-sm\)\)/);
+      const head = /\.plays__columns-head--play\s*\{([^}]*)\}/.exec(playsCss)![1]!;
+      expect(head).toContain("margin-right: calc(var(--space-md) + var(--plays-play-column));");
+    });
+
     it("keeps the play buttons in a fixed column and cuts a long title short", () => {
       const item = /\.plays__item\s*\{([^}]*)\}/.exec(playsCss)![1]!;
       expect(item).toContain("display: grid;");
       expect(item).toContain("grid-template-columns: minmax(0, 1fr) var(--plays-play-column);");
-      expect(playsCss).toMatch(/--plays-play-column:\s*round\(nearest, calc\(16px \* var\(--scale\)\), 1px\)/);
+      expect(playsCss).toContain("--plays-play-column:");
       expect(playsCss).toMatch(/\.plays__row\s*\{\s*min-width:\s*0;/);
       const name = /\.plays__name\s*\{([^}]*)\}/.exec(playsCss)![1]!;
       expect(name).toContain("text-overflow: ellipsis;");
@@ -1248,7 +1270,7 @@ describe("the Plays section, after review (STATS-05)", () => {
 
       await user.click(within(region).getByRole("button", { name: "Play Alpha by B" }));
 
-      expect(await within(region).findByText("That track could not be read.")).toBeVisible();
+      expect(await within(region).findByText("Could not read the track.")).toBeVisible();
     });
   });
 

@@ -35,7 +35,7 @@ import { isEngineRefusal } from "../../api/bridgeError";
 import { reportUnexpected } from "../../reporting/reporting";
 import { countNoun, formatCount } from "../../format/counts";
 import { trackIdentity } from "../../format/trackFacts";
-import { RETRY, goTo } from "../../format/words";
+import { RETRY, couldNot, goTo } from "../../format/words";
 import { formatBpm } from "../../format/units";
 import { libraryRulesState, libraryTrackState } from "../library/libraryLink";
 import { runQueueAction } from "../library/trackDetailsActions";
@@ -163,7 +163,7 @@ export function PlaysSection({
       const [clicked] = reads;
       if (clicked?.status === "rejected") throw clicked.reason;
       if (!clicked?.value) {
-        setMessage("That track could not be read.");
+        setMessage(couldNot("read the track"));
         return;
       }
       const rows = reads.flatMap((result) =>
@@ -173,7 +173,7 @@ export function PlaysSection({
       if (outcome) setMessage(outcome.message);
     } catch (cause) {
       if (!isEngineRefusal(cause)) reportUnexpected(cause);
-      setMessage("That track could not be read.");
+      setMessage(couldNot("read the track"));
     }
   };
   const canPreview = Boolean(window.cuepoint?.player?.playQueue && window.cuepoint?.getLibraryTrack);
@@ -385,9 +385,9 @@ export function PlaysSection({
                   </Button>
                 )}
                 {canKeep && data.tracks.length > 0 && (
-                  <span className="statistics-note">Will be named “{name}”.</span>
+                  <span className="statistics-note">Will be named “{name}”</span>
                 )}
-                {(biggerList || choice.limit > 10) && (
+                {((biggerList && data.tracks.length >= choice.limit) || choice.limit > 10) && (
                   <span className="plays__more">
                     <ShowMore
                       total={25}
