@@ -30,6 +30,7 @@ import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
+import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -294,20 +295,6 @@ async function toggleView(win: Page, name: string) {
   await win.keyboard.press("Escape");
 }
 
-/**
- * Track details open from the Details button on this page and hide the source panel while open
- * (C226): a selected row no longer opens them by itself.
- */
-async function showDetails(win: Page) {
-  const toggle = win.getByRole("button", { name: "Track details", exact: true });
-  if ((await toggle.getAttribute("aria-pressed")) !== "true") await toggle.click();
-}
-
-async function hideDetails(win: Page) {
-  const toggle = win.getByRole("button", { name: "Track details", exact: true });
-  if ((await toggle.getAttribute("aria-pressed")) === "true") await toggle.click();
-}
-
 async function setSidebar(win: Page, collapsed: boolean) {
   const nav = win.getByRole("navigation", { name: "Main navigation" });
   const wanted = collapsed ? "Collapse sidebar" : "Expand sidebar";
@@ -454,8 +441,15 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
           titles: Math.max(row.getBoundingClientRect().height, 2.3 * xs),
         };
       });
-      // With a row selected: titles and two rows of waveform. With none, one line only (C259).
-      expect([`${geometry.titles}px ${geometry.row * 2}px`, `${geometry.titles}px`]).toContain(geometry.rows);
+      // With no row selected the strip is one line (C259); the full height comes once a row is selected.
+      expect(geometry.rows).toBe(`${geometry.titles}px`);
+      await win
+        .locator('[aria-label="Set entries"] .track-table__row[draggable="true"]')
+        .first()
+        .click({ position: { x: 20, y: 8 } });
+      await expect
+        .poll(() => win.evaluate(() => getComputedStyle(document.querySelector(".prepare-transition")!).gridTemplateRows))
+        .toBe(`${geometry.titles}px ${geometry.row * 2}px`);
       const transition: Record<string, Measured> = {};
       for (const collapsed of [false, true]) {
         await setSidebar(win, collapsed);
@@ -549,6 +543,38 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         await toggleView(win, hide);
       }
       console.log("WAVE-07 whole rows, crowded:", JSON.stringify(crowded));
+
+      // --- the default columns at 1264 x 735, scale 1.25, Details open (C246) --------
+      await win.evaluate(() => localStorage.setItem("cuepoint-ui-lab-scale", "1.25"));
+      await win.reload();
+      await expect(win.getByRole("table", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
+      const openedAt = await win.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
+      await setInnerSize(app, win, WINDOWS_INNER);
+      const detailsToggle = win.getByRole("button", { name: "Track details", exact: true });
+      if ((await detailsToggle.getAttribute("aria-pressed")) !== "true") await detailsToggle.click();
+      await expect(win.getByRole("complementary", { name: "Track details" })).toBeVisible();
+      // No default column is cut: the rule drops Artist first, and what is left fits without a sideways scroll.
+      await expect
+        .poll(() =>
+          win.evaluate(() => {
+            const scroll = document.querySelector<HTMLElement>('[aria-label="Set entries"] .track-table__scroll')!;
+            return scroll.scrollWidth - scroll.clientWidth;
+          }),
+        )
+        .toBeLessThanOrEqual(0);
+      const headersShown = await win
+        .getByRole("table", { name: "Set entries" })
+        .getByRole("columnheader")
+        .allTextContents();
+      expect(headersShown.map((text) => text.trim()).filter(Boolean)).toEqual(
+        expect.arrayContaining(["#", "Title", "Key", "BPM", "Plays for", "Mix in"]),
+      );
+      // Back to the scale and the window the rest of this spec measures.
+      await detailsToggle.click();
+      await setInnerSize(app, win, openedAt);
+      await win.evaluate(() => localStorage.removeItem("cuepoint-ui-lab-scale"));
+      await win.reload();
+      await expect(win.getByRole("table", { name: "Set entries" })).toBeVisible({ timeout: 30_000 });
 
       // --- the Library, where Phase 8 found a double-click defeated -----------
       await win.getByRole("link", { name: "Library", exact: true }).click();
