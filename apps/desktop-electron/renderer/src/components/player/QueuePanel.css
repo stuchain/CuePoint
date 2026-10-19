@@ -5,30 +5,56 @@
  * works in — reordering, removing, jumping — rather than something glanced at
  * and dismissed. Built from the same tokens and pixel chrome as the rest of the
  * shell; nothing here introduces a new visual idea.
+ *
+ * Its width is the component's (queueWidth.ts: 213 times the text size, dragged between 200 and
+ * 448 times it), set inline because it is user state, as Track details' is. It pushes the page
+ * with a 1px left border and no shadow (C204, D11).
  */
 
 .cp-queue {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
   /* Fills the right column and scrolls inside it (R2-1, DEC-264). */
   height: 100%;
   box-sizing: border-box;
-  width: min(max(calc(300px * var(--scale)), 448px), 40vw);
-  border-left: var(--divider);
+  border-left: var(--hairline) solid var(--border-muted);
   background: var(--bg-panel);
 }
 
-/* A panel's title bar is one height (a toolbar's), whatever it holds; dense side panels pad 8. */
+/* The drag handle on the panel's left edge: a wider target than the border it grabs. */
+.cp-queue__handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--space-sm);
+  z-index: 1;
+  cursor: col-resize;
+  background: transparent;
+}
+
+.cp-queue__handle:hover,
+.cp-queue__handle--active {
+  background: var(--resizer-hover);
+}
+
+.cp-queue__handle:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset-inset);
+}
+
+/* While dragging, the cursor should not flicker over text it passes. */
+body.cp-queue-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* The title bar is the shared panel header (.cp-panel-header, C29); only its height is a toolbar's. */
 .cp-queue__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
   box-sizing: border-box;
   min-height: var(--toolbar-height);
-  padding: var(--space-xs) var(--space-md);
-  border-bottom: var(--divider);
 }
 
 .cp-queue__title {
@@ -36,9 +62,12 @@
   display: flex;
   align-items: baseline;
   gap: var(--space-sm);
-  margin: 0;
-  font-size: var(--font-size-section);
-  font-weight: var(--weight-strong);
+}
+
+/* The title carries the gestures as its hint, so it can be reached from the keyboard. */
+.cp-queue__name:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* The count after the name, grey and in the data face. */
@@ -46,20 +75,6 @@
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-regular);
-}
-
-/* The gestures, said once under the title (BAR-8). */
-.cp-queue__hint {
-  margin: 0;
-  padding: var(--space-xs) var(--space-md);
-  border-bottom: var(--divider);
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-}
-
-.cp-queue__remove svg {
-  display: block;
-  margin: auto;
 }
 
 /* The drop position while a row is dragged (BAR-8): a 2px line at 1x, scaled
@@ -74,13 +89,6 @@
   pointer-events: none;
 }
 
-.cp-queue__empty {
-  margin: 0;
-  padding: var(--space-lg);
-  color: var(--fg-muted);
-  font-size: var(--text-body);
-}
-
 .cp-queue__scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -89,6 +97,24 @@
   overflow-y: auto;
   position: relative;
   user-select: none;
+}
+
+/* A drag from somewhere else is held over the list: it is refused, and the list says so. */
+.cp-queue__scroll[data-refusing] {
+  outline: var(--control-border-width) dashed var(--accent-danger);
+  outline-offset: var(--focus-ring-offset-inset);
+  cursor: not-allowed;
+}
+
+.cp-queue__refusal {
+  position: sticky;
+  bottom: 0;
+  padding: var(--space-xs) var(--space-md);
+  background: var(--bg-panel);
+  border-top: var(--divider);
+  color: var(--danger-text);
+  font-size: var(--font-size-xs);
+  pointer-events: none;
 }
 
 .cp-queue__sizer {
@@ -108,7 +134,7 @@
 }
 
 .cp-queue__row:hover {
-  background: var(--bg-panel-alt);
+  background: var(--hover-fill);
 }
 
 .cp-queue__row:focus-visible {
@@ -116,15 +142,38 @@
   outline-offset: var(--focus-ring-offset-inset);
 }
 
-/* The playing row is marked with weight and a bar, not colour alone. */
-.cp-queue__row--playing {
+/* The user's selection wears the selection look the tables' rows do. */
+.cp-queue__row--selected,
+.cp-queue__row--selected:hover {
   background: var(--selected-row-background);
+}
+
+/* The playing row is marked with its volume icon and a bold title, not colour alone. */
+.cp-queue__row--playing .cp-queue__row-title {
   font-weight: var(--font-weight-bold);
+}
+
+/* The key chip is never bold, on any row (C129). */
+.cp-queue__row .key-chip {
+  font-weight: var(--font-weight-regular);
+}
+
+.cp-queue__playing-icon {
+  flex: none;
+  align-self: center;
 }
 
 .cp-queue__row--failed .cp-queue__row-title {
   text-decoration: line-through;
   color: var(--fg-muted);
+}
+
+/* The shared drag handle (C187): the grip, muted, at the row's left edge. Decorative; the row is dragged. */
+.cp-queue__grip {
+  flex: none;
+  display: inline-flex;
+  color: var(--fg-muted);
+  pointer-events: none;
 }
 
 .cp-queue__position,
@@ -177,20 +226,7 @@
   color: var(--danger-text);
 }
 
-/* Removing a track from the queue: its own icon, not the close x. */
+/* Taking a track out of the queue is the shared RemoveButton; only its place is the row's. */
 .cp-queue__remove {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-2xs);
-  border: var(--hairline) solid transparent;
-  background: transparent;
-  color: var(--fg-muted);
-  cursor: pointer;
-}
-
-.cp-queue__remove:hover {
-  border-color: var(--border-control);
-  color: var(--fg-primary);
 }

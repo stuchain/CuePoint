@@ -5,7 +5,7 @@ import type {
   RepeatMode,
 } from "../../api/cuepointBridge.types";
 import { formatBpm } from "../format/bpm";
-import { NO_VALUE } from "../../words";
+import { formatLength } from "../../format/durations";
 import { camelotOf } from "../wheel/keyColour";
 
 /**
@@ -17,26 +17,10 @@ import { camelotOf } from "../wheel/keyColour";
  */
 
 /**
- * Seconds as `m:ss`, or `h:mm:ss` past an hour.
- *
- * The one missing-value dash for anything unknown rather than `0:00`: a track whose duration has
- * not arrived yet has not got a duration of zero, and showing one makes the
- * position bar look full at the start of every track.
+ * Seconds as `m:ss`, or `h:mm:ss` past an hour: the app's one length format (C73), so the bar,
+ * the queue and the tables read alike. Unknown is the missing-value dash, not `0:00`.
  */
-export function formatTime(seconds: number | null | undefined): string {
-  if (seconds === null || seconds === undefined || !Number.isFinite(seconds) || seconds < 0) {
-    return NO_VALUE;
-  }
-  const whole = Math.floor(seconds);
-  const hours = Math.floor(whole / 3600);
-  const minutes = Math.floor((whole % 3600) / 60);
-  const secs = whole % 60;
-  const paddedSeconds = String(secs).padStart(2, "0");
-  if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, "0")}:${paddedSeconds}`;
-  }
-  return `${minutes}:${paddedSeconds}`;
-}
+export const formatTime = formatLength;
 
 /** The shared BPM format, re-exported so the player's importers stay put. */
 export { formatBpm };

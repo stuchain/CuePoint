@@ -7,6 +7,10 @@ import { QueuePanel } from "./QueuePanel";
 import { ROW_HEIGHT_FALLBACK } from "../table/trackTableLayout";
 import { resetPlayerStore } from "./playerStore";
 import { EMPTY_AUDIO_STATE } from "./playerFormat";
+import { resetQueueWidthForTests } from "./queueWidth";
+import queueCss from "./QueuePanel.css?raw";
+import { formatCount } from "../../format/counts";
+import { declarations, parseRules, stripComments } from "../../test/cssRules";
 
 /**
  * The queue panel (PLAYER-08, DEC-013).
@@ -151,8 +155,10 @@ describe("what it shows", () => {
     render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(3));
 
-    expect(rows()[0]).toHaveAttribute("aria-selected", "true");
-    expect(rows()[1]).toHaveAttribute("aria-selected", "false");
+    // Playing is not selected: a selection is the user's, the playing mark is the player's.
+    expect(rows()[0]).toHaveAttribute("aria-current", "true");
+    expect(rows()[1]).not.toHaveAttribute("aria-current");
+    expect(rows()[0]).toHaveAttribute("aria-selected", "false");
   });
 
   it("keeps already-played entries above the current one", async () => {
@@ -168,7 +174,7 @@ describe("what it shows", () => {
     await waitFor(() => expect(rows().length).toBe(3));
 
     expect(within(rows()[0]).getByText("Track 0")).toBeInTheDocument();
-    expect(rows()[1]).toHaveAttribute("aria-selected", "true");
+    expect(rows()[1]).toHaveAttribute("aria-current", "true");
   });
 
   it("marks a track that would not play (DEC-054)", async () => {
@@ -178,7 +184,7 @@ describe("what it shows", () => {
     await waitFor(() => expect(rows().length).toBe(2));
 
     expect(rows()[0]).toHaveAttribute("data-status", "failed");
-    expect(within(rows()[0]).getByText("Couldn't play this track")).toBeInTheDocument();
+    expect(within(rows()[0]).getByText("Could not play this track.")).toBeInTheDocument();
   });
 
   it("shows each track's position, name and length", async () => {
@@ -433,16 +439,24 @@ describe("without a bridge", () => {
     expect(() => render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>)).not.toThrow();
     expect(screen.getByText(/Nothing queued/i)).toBeInTheDocument();
   });
+
+  it("uses the compact empty state with no full stop on its headline (C140, C163)", () => {
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    expect(container.querySelector(".cp-empty-state--compact")).not.toBeNull();
+    expect(screen.getByText("Nothing queued")).toBeInTheDocument();
+    expect(container.querySelector(".cp-queue__empty")).toBeNull();
+  });
 });
 
 describe("managing the queue (BAR-8)", () => {
-  it("says the gestures in a hint line", async () => {
+  it("says the gestures in a hint on the title, not in a line of its own (C129)", async () => {
     install(2);
-    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
-    const hint = await screen.findByText(/Drag to reorder/);
-    expect(hint).toHaveTextContent("Drag to reorder · Alt+↑/↓ moves · Delete removes · Enter plays");
-    // The keys are drawn as key caps.
-    expect(hint.querySelectorAll("kbd.cp-kbd")).toHaveLength(3);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(2));
+    expect(container.querySelector(".cp-queue__hint")).toBeNull();
+    const title = screen.getByRole("heading", { name: /Queue/ }).querySelector("[title]") as HTMLElement;
+    expect(title).toHaveAttribute("title", "Drag to reorder · Alt+↑/↓ moves · Delete removes · Enter plays");
+    expect(title).toHaveAttribute("tabindex", "0");
   });
 
   it("asks before clearing, then clears once", async () => {
@@ -522,17 +536,18 @@ describe("managing the queue (BAR-8)", () => {
 
     // × only closes: removing a track has its own icon.
     expect(container.querySelector(".cp-close [data-icon='close']")).not.toBeNull();
-    expect(container.querySelectorAll(".cp-queue__remove [data-icon='remove']")).toHaveLength(2);
-    expect(container.querySelectorAll(".cp-queue__remove [data-icon='close']")).toHaveLength(0);
+    expect(container.querySelectorAll(".cp-remove [data-icon='remove']")).toHaveLength(2);
+    expect(container.querySelectorAll(".cp-remove [data-icon='close']")).toHaveLength(0);
     expect(container.textContent).not.toContain("×");
     expect(screen.getByRole("button", { name: "Close the queue" })).toHaveAttribute(
       "title",
       "Close the queue",
     );
-    expect(screen.getAllByRole("button", { name: /^Remove / })[0]).toHaveAttribute(
-      "title",
-      "Remove from the queue",
-    );
+    // The shared RemoveButton: its tip is its name, and it is the boxed button with no trash (C129).
+    const remove = screen.getAllByRole("button", { name: /^Remove / })[0]!;
+    expect(remove).toHaveAttribute("title", "Remove Track 0 from the queue");
+    expect(remove.classList.contains("cp-remove")).toBe(true);
+    expect(container.querySelector("[data-icon='trash']")).toBeNull();
   });
 });
 
@@ -547,9 +562,9 @@ describe("a track that could not be played (BAR-9)", () => {
     await waitFor(() => expect(rows().length).toBe(3));
 
     const failed = within(rows()[1]);
-    expect(failed.getByText("Couldn't play: the file is missing or could not be opened")).toBeVisible();
-    expect(within(rows()[0]).queryByText(/Couldn't play/)).toBeNull();
-    expect(within(rows()[2]).queryByText(/Couldn't play/)).toBeNull();
+    expect(failed.getByText("Could not play. The file is missing or could not be opened.")).toBeVisible();
+    expect(within(rows()[0]).queryByText(/Could not play/)).toBeNull();
+    expect(within(rows()[2]).queryByText(/Could not play/)).toBeNull();
   });
 
   it("still says it failed when no reason came", async () => {
@@ -557,6 +572,266 @@ describe("a track that could not be played (BAR-9)", () => {
     render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
     await waitFor(() => expect(rows().length).toBe(2));
 
-    expect(within(rows()[1]).getByText("Couldn't play this track")).toBeInTheDocument();
+    expect(within(rows()[1]).getByText("Could not play this track.")).toBeInTheDocument();
+  });
+});
+
+describe("its width (C204, D11)", () => {
+  afterEach(() => {
+    localStorage.clear();
+    resetQueueWidthForTests();
+  });
+
+  const panel = () => screen.getByRole("complementary", { name: "Playback queue" });
+
+  it("opens at the Track details width, 213 times the text size", () => {
+    install(0);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    // The default text size is Medium, 1.5.
+    expect(panel().style.width).toBe("320px");
+  });
+
+  it("has a resize handle on its left edge, and no fixed width in the stylesheet", () => {
+    install(0);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    const handle = screen.getByRole("separator", { name: "Resize the queue" });
+    expect(handle).toHaveAttribute("aria-orientation", "vertical");
+    expect(handle).toHaveAttribute("tabindex", "0");
+  });
+
+  it("drags wider to the left and remembers the width in 1x units", () => {
+    install(0);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    const handle = screen.getByRole("separator", { name: "Resize the queue" });
+
+    fireEvent.mouseDown(handle, { clientX: 900 });
+    fireEvent.mouseMove(window, { clientX: 800 });
+    fireEvent.mouseUp(window);
+
+    expect(panel().style.width).toBe("420px");
+    // 420px at 1.5x is 280 in 1x units.
+    expect(localStorage.getItem("cuepoint.queue.width1x")).toBe("280");
+  });
+
+  it("stops at 200 and 448 times the text size", () => {
+    install(0);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    const handle = screen.getByRole("separator", { name: "Resize the queue" });
+
+    fireEvent.mouseDown(handle, { clientX: 900 });
+    fireEvent.mouseMove(window, { clientX: -5000 });
+    fireEvent.mouseUp(window);
+    // 448 x 1.5, kept to half of the test window (1024).
+    expect(panel().style.width).toBe("512px");
+
+    fireEvent.mouseDown(handle, { clientX: 100 });
+    fireEvent.mouseMove(window, { clientX: 5000 });
+    fireEvent.mouseUp(window);
+    expect(panel().style.width).toBe("300px");
+  });
+
+  it("moves with the arrow keys from the handle", () => {
+    install(0);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    const handle = screen.getByRole("separator", { name: "Resize the queue" });
+    fireEvent.keyDown(handle, { key: "ArrowLeft" });
+    expect(panel().style.width).toBe("336px");
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+    expect(panel().style.width).toBe("304px");
+  });
+
+  it("reopens at the width it was left at", () => {
+    localStorage.setItem("cuepoint.queue.width1x", "300");
+    install(0);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    expect(panel().style.width).toBe("450px");
+  });
+
+  it("takes its width from the code, its border from the stylesheet, and has no shadow (D11)", () => {
+    const rule = parseRules(stripComments(queueCss)).find((r) => r.selector === ".cp-queue")!;
+    const decls = Object.fromEntries(declarations(rule.body));
+    expect(decls["border-left"]).toBe("var(--hairline) solid var(--border-muted)");
+    expect(decls["box-shadow"]).toBeUndefined();
+    expect(decls["width"]).toBeUndefined();
+  });
+});
+
+describe("its header (C29, C129)", () => {
+  it("is the shared panel header with the section-heading title and the close mark on one line", () => {
+    install(0);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    const header = container.querySelector("header") as HTMLElement;
+    expect(header.classList.contains("cp-panel-header")).toBe(true);
+    expect(screen.getByRole("heading", { name: "Queue" }).classList.contains("cp-panel-header__title")).toBe(true);
+  });
+
+  it("does not make the key chip bold", () => {
+    const rule = parseRules(stripComments(queueCss)).find((r) => r.selector === ".cp-queue__row .key-chip")!;
+    expect(Object.fromEntries(declarations(rule.body))["font-weight"]).toBe("var(--font-weight-regular)");
+  });
+});
+
+describe("selecting rows, the keys and the menu (C187)", () => {
+  it("selects a row on click, with the playing row marked apart", async () => {
+    install(4);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(4));
+
+    fireEvent.click(rows()[2]!);
+
+    expect(rows()[2]).toHaveAttribute("aria-selected", "true");
+    expect(rows()[0]).toHaveAttribute("aria-selected", "false");
+    expect(rows()[0]).toHaveAttribute("aria-current", "true");
+  });
+
+  it("moves the selection with the arrow keys, and focus with it", async () => {
+    install(4);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(4));
+
+    rows()[1]!.focus();
+    fireEvent.keyDown(rows()[1]!, { key: "ArrowDown" });
+    await waitFor(() => expect(rows()[2]).toHaveAttribute("aria-selected", "true"));
+    expect(rows()[2]).toHaveFocus();
+
+    fireEvent.keyDown(rows()[2]!, { key: "ArrowUp" });
+    fireEvent.keyDown(rows()[1]!, { key: "ArrowUp" });
+    await waitFor(() => expect(rows()[0]).toHaveAttribute("aria-selected", "true"));
+    // The first row stops it.
+    fireEvent.keyDown(rows()[0]!, { key: "ArrowUp" });
+    expect(rows()[0]).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("is one tab stop: only the active row is in the tab order", async () => {
+    install(3);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(3));
+    expect(rows().filter((row) => row.tabIndex === 0)).toHaveLength(1);
+  });
+
+  it("opens a menu on right-click, selecting the row first", async () => {
+    install(4);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(4));
+
+    fireEvent.contextMenu(rows()[2]!, { clientX: 10, clientY: 10 });
+
+    expect(rows()[2]).toHaveAttribute("aria-selected", "true");
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      expect.stringContaining("Play"),
+      expect.stringContaining("Move up"),
+      expect.stringContaining("Move down"),
+      expect.stringContaining("Remove from the queue"),
+    ]);
+  });
+
+  it("plays, moves and removes from the menu", async () => {
+    const harness = install(4);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(4));
+
+    fireEvent.contextMenu(rows()[2]!, { clientX: 10, clientY: 10 });
+    fireEvent.click(screen.getByRole("menuitem", { name: /^Play/ }));
+    await waitFor(() => expect(harness.jumpTo).toHaveBeenCalledWith(2));
+
+    fireEvent.contextMenu(rows()[2]!, { clientX: 10, clientY: 10 });
+    fireEvent.click(screen.getByRole("menuitem", { name: /^Move up/ }));
+    await waitFor(() => expect(harness.moveInQueue).toHaveBeenCalledWith(2, 1));
+
+    fireEvent.contextMenu(rows()[2]!, { clientX: 10, clientY: 10 });
+    fireEvent.click(screen.getByRole("menuitem", { name: /^Move down/ }));
+    await waitFor(() => expect(harness.moveInQueue).toHaveBeenCalledWith(2, 3));
+
+    fireEvent.contextMenu(rows()[2]!, { clientX: 10, clientY: 10 });
+    fireEvent.click(screen.getByRole("menuitem", { name: /^Remove from the queue/ }));
+    await waitFor(() => expect(harness.removeFromQueue).toHaveBeenCalledWith("q2"));
+  });
+
+  it("greys Move up on the first row and Move down on the last", async () => {
+    install(3);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(3));
+
+    fireEvent.contextMenu(rows()[0]!, { clientX: 10, clientY: 10 });
+    expect(screen.getByRole("menuitem", { name: /^Move up/ })).toHaveAttribute("aria-disabled", "true");
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    fireEvent.contextMenu(rows()[2]!, { clientX: 10, clientY: 10 });
+    expect(screen.getByRole("menuitem", { name: /^Move down/ })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("shows the keys beside the menu items", async () => {
+    install(3);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(3));
+    fireEvent.contextMenu(rows()[1]!, { clientX: 10, clientY: 10 });
+    const menu = screen.getByRole("menu");
+    expect(menu).toHaveTextContent("Enter");
+    expect(menu).toHaveTextContent("Delete");
+  });
+
+  it("draws the shared grip on each row as the drag handle", async () => {
+    install(2);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(2));
+    expect(container.querySelectorAll(".cp-queue__grip [data-icon='grip']")).toHaveLength(2);
+  });
+
+  it("refuses a drag that did not start in the queue, visibly", async () => {
+    install(3);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(3));
+    const dataTransfer = { dropEffect: "move", effectAllowed: "copy", types: ["text/plain"] };
+
+    const scroll = container.querySelector(".cp-queue__scroll") as HTMLElement;
+    fireEvent.dragOver(rows()[1]!, { dataTransfer });
+
+    expect(dataTransfer.dropEffect).toBe("none");
+    expect(scroll).toHaveAttribute("data-refusing");
+    expect(container.querySelector(".cp-queue__drop")).toBeNull();
+
+    fireEvent.dragLeave(scroll);
+    expect(scroll).not.toHaveAttribute("data-refusing");
+  });
+
+  it("moves nothing when a foreign drag is dropped", async () => {
+    const harness = install(3);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(3));
+    fireEvent.dragOver(rows()[1]!, { dataTransfer: { dropEffect: "move", types: [] } });
+    fireEvent.drop(rows()[1]!, { dataTransfer: { types: [] } });
+    expect(harness.moveInQueue).not.toHaveBeenCalled();
+    expect(container.querySelector(".cp-queue__scroll")).not.toHaveAttribute("data-refusing");
+  });
+});
+
+describe("its words (C73, C161, C163)", () => {
+  it("shows a missing title as a dash and lengths in the shared format", async () => {
+    install(2, [
+      makeItem(0, { title: "", durationSeconds: 3725, status: "playing" }),
+      makeItem(1, { durationSeconds: null as unknown as number }),
+    ]);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(2));
+    expect(within(rows()[0]!).getByText("—", { selector: ".cp-queue__row-title" })).toBeInTheDocument();
+    expect(within(rows()[0]!).getByText("1:02:05")).toBeInTheDocument();
+    expect(within(rows()[1]!).getByText("—", { selector: ".cp-queue__duration" })).toBeInTheDocument();
+    expect(screen.queryByText("Untitled")).toBeNull();
+  });
+
+  it("says a removal without a full stop", async () => {
+    install(4);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(4));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Track 1 from the queue" }));
+    expect(await screen.findByText("Removed “Track 1” from the queue")).toBeInTheDocument();
+  });
+
+  it("counts the queue with the shared grouping", async () => {
+    install(1234);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    const heading = await screen.findByRole("heading", { name: /Queue/ });
+    expect(heading.querySelector(".cp-queue__count")).toHaveTextContent(formatCount(1234));
   });
 });
