@@ -34,6 +34,7 @@ const TOKEN_KEYS = [
   "accent-warning",
   "accent-danger",
   "accent-info",
+  "accent-write",
   "accent-fill",
   "danger-fill",
   "link",
@@ -41,7 +42,6 @@ const TOKEN_KEYS = [
   "color-scheme",
   "overlay-header",
   "overlay-backdrop",
-  "row-unmatched-bg",
   "waveform-low",
   "waveform-mid",
   "waveform-high",
@@ -309,6 +309,8 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "accent-warning": accentWarning,
     "accent-danger": accentDanger,
     "accent-info": accentInfo,
+    // Writing to files (D14): the success colour, moved until black or white text on it reads at 4.5:1.
+    "accent-write": holdContrast(accentSuccess, [fgOnStatus], 4.5),
     // Button fills: the accent and the danger colour, moved until the button's text reads at 4.5:1.
     "accent-fill": holdContrast(accentPrimary, [fgOnAccent], 4.5),
     "danger-fill": holdContrast(accentDanger, [fgPrimary], 4.5),
@@ -316,8 +318,7 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
     "focus-ring-color": focusRing,
     "color-scheme": betterText(bgApp) === "#000000" ? "light" : "dark",
     "overlay-header": "rgba(0, 0, 0, 0.25)",
-    "overlay-backdrop": "rgba(0, 0, 0, 0.72)",
-    "row-unmatched-bg": darken(normalizeHex(colors.accentDanger), 0.35),
+    "overlay-backdrop": "rgba(0, 0, 0, 0.7)",
     ...deriveWaveformTokens(colors),
     // Key chips (R4-2): the 24 key colours, held on this theme's own backgrounds.
     ...keyTokens({
@@ -326,6 +327,34 @@ export function deriveThemeTokens(colors: CustomThemeColors): ThemeTokenMap {
       selected: mixHex(accentPrimary, bgInput, SELECTED_ACCENT_MIX),
     }),
   };
+}
+
+/**
+ * What a custom theme was started from (C95): the nine colours and every token value the page
+ * showed at that moment, derived ones included. Starting a theme from a built-in copies the
+ * built-in exactly; re-deriving from nine colours would move 24 to 29 of them at once.
+ */
+export interface ThemeSeed {
+  colors: CustomThemeColors;
+  tokens: Record<string, string>;
+}
+
+/**
+ * The tokens of a custom theme. Without a seed they are all derived from the nine colours. With
+ * one, a token keeps the seed's copied value unless a colour that was changed since changes how it
+ * is derived: only those are re-derived, so changing one swatch moves what depends on it and
+ * nothing else.
+ */
+export function deriveWithSeed(colors: CustomThemeColors, seed?: ThemeSeed): ThemeTokenMap {
+  const derived = deriveThemeTokens(colors);
+  if (!seed) return derived;
+  const base = deriveThemeTokens(seed.colors);
+  const out: ThemeTokenMap = { ...derived };
+  for (const key of Object.keys(derived)) {
+    const copied = seed.tokens[key];
+    if (copied !== undefined && derived[key] === base[key]) out[key] = copied;
+  }
+  return out;
 }
 
 export function applyThemeTokensToDocument(tokens: ThemeTokenMap): void {

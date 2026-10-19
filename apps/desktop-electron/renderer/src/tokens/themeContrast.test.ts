@@ -117,6 +117,20 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
     }
   });
 
+  it("reads text on the write green at 4.5:1 (D14)", () => {
+    expect(t["accent-write"], "accent-write is declared").toBeTruthy();
+    expect(contrastRatio(t["fg-on-status"]!, t["accent-write"]!), "fg-on-status on accent-write").toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("reads a keycap's text (--fg-primary on --bg-panel-alt) at 4.5:1 (C102)", () => {
+    if (!builtIn) return; // the text and the surface are the user's own colours
+    expect(contrastRatio(t["fg-primary"]!, alt)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("veils a dialog's backdrop at 0.7 (C103)", () => {
+    expect(t["overlay-backdrop"] ?? "rgba(0, 0, 0, 0.7)").toBe("rgba(0, 0, 0, 0.7)");
+  });
+
   it("reads --link at 4.5:1 on the panel and the page", () => {
     for (const [surface, colour] of [["panel", panel], ["app", app]] as const) {
       expect(contrastRatio(t["link"]!, colour), surface).toBeGreaterThanOrEqual(floor(4.5, [panel, app]));
@@ -231,6 +245,15 @@ describe("--color-scheme", () => {
     expect(deriveThemeTokens(NEO_DARK_EDITOR_COLORS)["color-scheme"]).toBe("dark");
     for (const [name, colors] of CUSTOM_PALETTES) {
       expect(deriveThemeTokens(colors)["color-scheme"], name).toBe(light.includes(name) ? "light" : "dark");
+    }
+  });
+});
+
+describe("the :root fallback (TH-22)", () => {
+  it("lives in Neo dark, the default theme, and the other themes only match their own attribute", () => {
+    expect(THEMES.neoDark).toMatch(/^:root,\s*\[data-theme="neoDark"\]/m);
+    for (const [name, css] of Object.entries(THEMES)) {
+      if (name !== "neoDark") expect(css, name).not.toMatch(/(^|[\s,}]):root\b/m);
     }
   });
 });

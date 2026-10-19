@@ -24,9 +24,22 @@ describe("checkbox and radio marks", () => {
     expect(box).toMatch(/grid-template(?:-rows)?:[^;]*100%|grid-template:\s*100%\s*\/\s*100%/);
   });
 
-  it("sizes the tick and the radio square as a share of that track", () => {
+  it("centres what is drawn in the box on both axes (D6)", () => {
+    expect(box).toMatch(/place-items:\s*center/);
+  });
+
+  it("sizes the tick as a share of that track and the radio square as a whole-pixel 7px * scale (D6)", () => {
     expect(ruleBody(':where(input[type="checkbox"])::before')).toMatch(/width:\s*100%[\s\S]*height:\s*100%/);
-    expect(ruleBody(':where(input[type="radio"])::before')).toMatch(/width:\s*40%[\s\S]*height:\s*40%/);
+    const square = ruleBody(':where(input[type="radio"])::before');
+    expect(square).toMatch(/width:\s*round\(nearest,\s*calc\(7px \* var\(--scale\)\),\s*1px\)/);
+    expect(square).toMatch(/height:\s*round\(nearest,\s*calc\(7px \* var\(--scale\)\),\s*1px\)/);
+  });
+
+  it("draws a selected radio as an --accent-primary square in a 1px --accent-primary box, and an unselected one in --border-control", () => {
+    const checked = ruleBody(':where(input[type="radio"]):checked');
+    expect(checked).toMatch(/color:\s*var\(--accent-primary\)/);
+    expect(checked).toMatch(/border-color:\s*var\(--accent-primary\)/);
+    expect(box).toMatch(/border:\s*var\(--control-border-width\)\s+solid\s+var\(--border-control\)/);
   });
 });
 

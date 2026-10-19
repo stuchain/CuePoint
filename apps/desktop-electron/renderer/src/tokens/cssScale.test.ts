@@ -183,3 +183,32 @@ describe("rem lengths (R2-4)", () => {
     expect(problems).toEqual([]);
   });
 });
+
+describe("pixel icon sizes snap on their own (C136)", () => {
+  const css = sheets["./tokens.css"] ?? sheets["../tokens/tokens.css"] ?? "";
+  const expression = (name: string) =>
+    new RegExp(`--icon-size-${name}:\\s*(?:max\\(12px,\\s*)?round\\(down,\\s*calc\\((\\d+)px \\* var\\(--scale\\)\\),\\s*12px\\)\\)?;`).exec(css);
+
+  /** What the token resolves to at a scale: the base, rounded down to the 12px grid, never under 12. */
+  const sizeAt = (name: string, scale: number) => {
+    const match = expression(name);
+    expect(match, `--icon-size-${name} is a rounded-down calc`).not.toBeNull();
+    return Math.max(12, Math.floor((Number(match![1]) * scale) / 12) * 12);
+  };
+
+  it.each([
+    ["sm", [12, 12, 12, 24, 36]],
+    ["md", [12, 12, 24, 24, 48]],
+    ["lg", [24, 24, 36, 48, 72]],
+  ] as const)("--icon-size-%s is whole 12px cells at 1, 1.25, 1.5, 2 and 3", (name, expected) => {
+    expect(SIZES.map((scale) => sizeAt(name, scale))).toEqual([...expected]);
+  });
+
+  it("never lets a size fall under its own 12px grid or above the next size up", () => {
+    for (const scale of SIZES) {
+      expect(sizeAt("sm", scale)).toBeLessThanOrEqual(sizeAt("md", scale));
+      expect(sizeAt("md", scale)).toBeLessThanOrEqual(sizeAt("lg", scale));
+      for (const name of ["sm", "md", "lg"]) expect(sizeAt(name, scale) % 12).toBe(0);
+    }
+  });
+});

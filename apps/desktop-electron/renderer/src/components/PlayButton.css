@@ -22,7 +22,7 @@
   height: max(12px, round(down, calc(8px * var(--scale)), 12px));
 }
 
-.cp-play-btn:hover:not(:disabled) {
+.cp-play-btn:hover:not(:disabled):not([aria-disabled="true"]) {
   border-color: var(--fg-primary);
   color: var(--fg-primary);
 }
@@ -32,8 +32,9 @@
   color: var(--accent-primary);
 }
 
-.cp-play-btn:disabled {
+.cp-play-btn:disabled,
+.cp-play-btn[aria-disabled="true"] {
   border-color: var(--border-muted);
   color: var(--fg-disabled);
-  cursor: not-allowed;
+  cursor: default;
 }

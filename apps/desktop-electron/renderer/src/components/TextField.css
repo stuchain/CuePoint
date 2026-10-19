@@ -37,7 +37,7 @@
 }
 
 /* One hover for every control (area 79): a firmer border and a shade. */
-.cp-field__input:hover:not(:disabled):not(:read-only):not(:focus-visible) {
+.cp-field__input:hover:not(:disabled):not([aria-disabled="true"]):not(:read-only):not(:focus-visible) {
   border-color: var(--hover-border);
   background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
 }
@@ -47,15 +47,17 @@
   outline-offset: var(--focus-ring-offset);
 }
 
-.cp-field__input:disabled {
+.cp-field__input:disabled,
+.cp-field__input[aria-disabled="true"] {
   color: var(--fg-disabled);
   background: var(--bg-panel);
   border-color: var(--border-muted);
+  cursor: default;
 }
 
 /* The error is under the box, and the box says so too. */
 .cp-field__input--error,
-.cp-field__input--error:hover:not(:disabled):not(:read-only):not(:focus-visible) {
+.cp-field__input--error:hover:not(:disabled):not([aria-disabled="true"]):not(:read-only):not(:focus-visible) {
   border-color: var(--accent-danger);
 }
 
@@ -70,4 +72,48 @@
 
 .cp-field__error {
   color: var(--danger-text);
+}
+
+/* A number field (C25): the browser's spin buttons are hidden (index.css) and these two small
+   steppers stand at the right end of the box instead, in the theme's colours. */
+.cp-field__number {
+  position: relative;
+  display: flex;
+}
+
+.cp-field__number > .cp-field__input {
+  flex: 1;
+  min-width: 0;
+  padding-right: calc(var(--icon-size-sm) + var(--space-sm) * 2);
+}
+
+.cp-field__steps {
+  position: absolute;
+  top: var(--control-border-width);
+  right: var(--control-border-width);
+  bottom: var(--control-border-width);
+  display: flex;
+  flex-direction: column;
+}
+
+.cp-field__step {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--icon-size-sm) + var(--space-sm));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.cp-field__step:hover:not(:disabled) {
+  color: var(--fg-primary);
+}
+
+.cp-field__step:disabled {
+  color: var(--fg-disabled);
+  cursor: default;
 }

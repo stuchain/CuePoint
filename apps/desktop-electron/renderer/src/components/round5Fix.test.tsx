@@ -84,17 +84,17 @@ describe("B2: the section tracker reads the header height", () => {
 });
 
 describe("B4: the Details toggle", () => {
-  it("has one name, Track details, with aria-expanded and aria-controls while open", () => {
+  it("has one name, Track details, with aria-pressed and aria-controls while open", () => {
     act(() => publishDetails({ open: false, toggle: () => undefined }));
     const view = render(<ScreenHeader title="Library" />);
     const closed = screen.getByRole("button", { name: "Track details" });
-    expect(closed).toHaveAttribute("aria-expanded", "false");
+    expect(closed).toHaveAttribute("aria-pressed", "false");
     expect(closed).not.toHaveAttribute("aria-controls");
 
     act(() => publishDetails({ open: true, toggle: () => undefined }));
     view.rerender(<ScreenHeader title="Library" />);
     const open = screen.getByRole("button", { name: "Track details" });
-    expect(open).toHaveAttribute("aria-expanded", "true");
+    expect(open).toHaveAttribute("aria-pressed", "true");
     expect(open).toHaveAttribute("aria-controls", DETAILS_PANEL_ID);
     expect(screen.queryByRole("button", { name: "Show track details" })).toBeNull();
   });

@@ -938,7 +938,7 @@ describe("reading cover art from Health", () => {
     renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
     await userEvent.click(await screen.findByRole("button", { name: "Read cover art" }));
 
-    const busy = await screen.findByRole("button", { name: "…" });
+    const busy = await screen.findByRole("button", { name: "Read cover art" });
     expect(busy).toBeDisabled();
     expect(busy).toHaveClass("cp-btn--loading");
     expect(startArtworkScan).toHaveBeenCalledWith({ selection: { query: {} } });
@@ -949,7 +949,7 @@ describe("reading cover art from Health", () => {
     renderPage({ pathname: "/statistics", state: statisticsFocusState("health") });
     await userEvent.click(await screen.findByRole("button", { name: "Read cover art" }));
     await waitFor(() => expect(jobEnds).not.toBeNull());
-    expect(screen.getByRole("button", { name: "…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Read cover art" })).toBeDisabled();
     const reads = mock("getStatisticsHealth").mock.calls.length;
 
     await act(async () => jobEnds!({ state: "succeeded" }));

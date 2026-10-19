@@ -168,7 +168,7 @@ describe("App shell", () => {
     expect(toggle).toHaveTextContent("Details");
     await user.click(toggle);
     expect(screen.getByRole("complementary", { name: "Track details" })).toBeInTheDocument();
-    expect(within(header as HTMLElement).getByRole("button", { name: "Track details" })).toHaveAttribute("aria-expanded", "true");
+    expect(within(header as HTMLElement).getByRole("button", { name: "Track details" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("opens the playing track in the Library, and its artist in Discover, from the bar (BAR-4)", async () => {

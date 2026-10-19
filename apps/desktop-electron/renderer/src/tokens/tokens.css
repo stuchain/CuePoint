@@ -26,8 +26,9 @@
   --bevel-size: round(down, calc(2px * var(--scale)), 1px);
   --bevel-size-sm: var(--hairline);
   --focus-ring-width: round(down, calc(2px * var(--scale)), 1px);
-  --radius-sm: 0;
 
+  /* The pixel shadows and bevels below are the website's (sync-tokens carries them to the web);
+     the app draws no menu, popover, toast or panel shadow (C16a). Dialogs keep --shadow-dialog. */
   --shadow-bevel: inset var(--bevel-size) var(--bevel-size) 0 var(--bevel-highlight),
     inset calc(-1 * var(--bevel-size)) calc(-1 * var(--bevel-size)) 0 var(--bevel-shadow);
   --shadow-bevel-panel: inset var(--bevel-size) var(--bevel-size) 0 var(--border-light),
@@ -121,6 +122,8 @@
    */
   --font-data: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui,
     -apple-system, "Helvetica Neue", Arial, sans-serif;
+  /* Raw text only (a log, a JSON block, a path): the one monospace stack (C68). */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   /* Pixel words with data-face figures (area 56): see tokens/fonts.css. Use through `.cp-digits`. */
   --font-pixel-digits: "CuePoint Digits", var(--font-pixel);
   --font-size-xs: calc(10px * var(--scale));
@@ -138,14 +141,18 @@
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+  /* Line heights (C67): single lines and controls, short body text, and sentences to read. */
+  --line-height-tight: 1.25;
+  --line-height-body: 1.4;
+  --line-height-prose: 1.5;
   --weight-strong: var(--font-weight-bold);
   --weight-normal: var(--font-weight-regular);
 
-  /* Pixel icons come in three sizes only (12 / 16 / 24 times the text size), each a multiple of
-     the 12-unit grid so no art pixel is fractional. */
-  --icon-size-sm: max(12px, round(nearest, calc(12px * var(--scale)), 12px));
-  --icon-size-md: max(12px, round(nearest, calc(16px * var(--scale)), 12px));
-  --icon-size-lg: round(down, calc(24px * var(--scale)), 12px);
+  /* Pixel icons come in three sizes only (12 / 16 / 24 times the text size), each rounded down on
+     its own to a multiple of the 12-unit grid so no art pixel is fractional (C136). */
+  --icon-size-sm: max(12px, round(down, calc(12px * var(--scale)), 12px));
+  --icon-size-md: max(12px, round(down, calc(16px * var(--scale)), 12px));
+  --icon-size-lg: max(12px, round(down, calc(24px * var(--scale)), 12px));
 
   /* One focus ring for every focusable control: violet, a square 2px line, the same offset. */
   --focus-ring-offset: var(--focus-ring-width);
@@ -159,7 +166,6 @@
   --danger-text: color-mix(in srgb, var(--accent-danger) 60%, var(--fg-primary));
   --success-text: color-mix(in srgb, var(--accent-success) 60%, var(--fg-primary));
   --warning-text: color-mix(in srgb, var(--accent-warning) 60%, var(--fg-primary));
-  --accent-text: color-mix(in srgb, var(--accent-primary) 50%, var(--fg-primary));
 
   /* Chips and badges: the fill is the tone's colour at 20% over the panel, the line the colour. */
   --chip-fill-mix: 20%;
@@ -170,6 +176,35 @@
   --modal-width-large: calc(720px * var(--scale));
   /* The close button every panel, dialog, toast and inspector shares. */
   --close-size: var(--control-height);
+
+  /*
+   * Shared looks added by the consistency build, one name each so a page never invents its own:
+   * row hover (R3-14), reading measure (C214), tree indent (C40), box gap (C32), resizer hover
+   * (C149), the inset of a row's end control (C84), the search field's width (C223).
+   */
+  --row-hover: var(--bg-panel);
+  --reading-width: 60ch;
+  --tree-indent: calc(12px * var(--scale));
+  --gap-box: var(--space-xl);
+  --resizer-hover: var(--accent-primary);
+  --row-end-inset: var(--space-sm);
+  --search-width: round(nearest, calc(205px * var(--scale)), 1px);
+
+  /* "All is well" is quiet (D14): a healthy segment, count or tick is the greyed text colour. */
+  --health-ok: var(--fg-disabled);
+
+  /*
+   * User tags (C96): their own eight hues, so a "Red" tag is not the danger colour. Each is a key
+   * colour, which every theme already holds for contrast on its own panel (keyColours.css).
+   */
+  --tag-red: var(--key-6A);
+  --tag-orange: var(--key-5A);
+  --tag-yellow: var(--key-4A);
+  --tag-green: var(--key-2A);
+  --tag-cyan: var(--key-12A);
+  --tag-blue: var(--key-11A);
+  --tag-violet: var(--key-9A);
+  --tag-pink: var(--key-7A);
 
   /* Hit targets */
   --hit-min: calc(44px * var(--scale));

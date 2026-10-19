@@ -1,13 +1,14 @@
 import type { ComponentPropsWithRef, ReactElement, ReactNode } from "react";
 import { PixelIcon } from "./PixelIcon";
+import { PixelSpinner } from "./PixelSpinner";
 import { PIXEL_ICONS, type PixelIconName } from "./pixelIcons";
 import "./Button.css";
 
 /**
  * One standard look (`.cp-btn`) and six roles:
  * - `primary`: violet fill; at most one per area.
- * - `secondary` (also `standard`): neutral grey; the default for everything else.
- * - `write`: green fill, for the buttons that write to the user's files (Sync to files, Save to
+ * - `secondary` (also `standard`): neutral grey; the default when no variant is named (C5).
+ * - `write`: green fill (`--accent-write`), for the buttons that write to the user's files (Sync to
  *   files, Export to Rekordbox, Write tags).
  * - `danger`: red outline, for a destructive action that opens a question or acts at once.
  * - `danger-confirm`: red fill; only the confirm button of a delete dialog.
@@ -38,8 +39,10 @@ interface ButtonBaseProps extends Omit<ComponentPropsWithRef<"button">, "childre
 
 interface LabelledButtonProps extends ButtonBaseProps {
     iconOnly?: false;
-    /** A pixel icon by name, or an element. */
+    /** A pixel icon by name, or an element, before the words. */
     icon?: ReactElement | PixelIconName;
+    /** A pixel icon by name, or an element, after the words. */
+    iconEnd?: ReactElement | PixelIconName;
     children?: ReactNode;
 }
 
@@ -70,6 +73,7 @@ export function Button(props: ButtonProps) {
         loading = false,
         size,
         icon,
+        iconEnd,
         menu = false,
         iconOnly = false,
         children,
@@ -95,16 +99,19 @@ export function Button(props: ButtonProps) {
             type="button"
             className={classes}
             disabled={isDisabled}
-            aria-busy={iconOnly && loading ? true : undefined}
+            aria-busy={loading ? true : undefined}
             aria-haspopup={menu ? "menu" : undefined}
             {...rest}
         >
-            {icon && <span className="cp-btn__icon">{drawIcon(icon)}</span>}
-            {!iconOnly && (
-                <span className="cp-btn__label">
-                    {loading ? "…" : children}
+            {loading ? (
+                <span className="cp-btn__spinner">
+                    <PixelSpinner label={null} />
                 </span>
+            ) : (
+                icon && <span className="cp-btn__icon">{drawIcon(icon)}</span>
             )}
+            {!iconOnly && <span className="cp-btn__label">{children}</span>}
+            {iconEnd && !iconOnly && <span className="cp-btn__icon cp-btn__icon--end">{drawIcon(iconEnd)}</span>}
             {menu && !iconOnly && (
                 <span className="cp-btn__menu" aria-hidden="true">
                     <PixelIcon name="chevron-down" size="sm" />

@@ -195,8 +195,8 @@ describe("size", () => {
     };
     expect(first.current).toBe(1.5);
     expect(first.options).toEqual([
-      { value: 1, label: "Small (1×)" },
-      { value: 1.25, label: "Compact (1.25×)" },
+      { value: 1, label: "Extra small (1×)" },
+      { value: 1.25, label: "Small (1.25×)" },
       { value: 1.5, label: "Medium (1.5×) — default" },
       { value: 2, label: "Large (2×)" },
       { value: 3, label: "Extra large (3×)" },

@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
+import { PixelIcon } from "./PixelIcon";
 import "./Tabs.css";
 
 interface TabItem {
@@ -41,10 +42,59 @@ function plain(detail: ReactNode): detail is string | number {
   return typeof detail === "string" || typeof detail === "number";
 }
 
+/** Whether a strip holds more tabs than it shows to the right of what is in view. */
+function hasMoreToRight(strip: HTMLElement): boolean {
+  return strip.scrollWidth - strip.clientWidth - strip.scrollLeft > 1;
+}
+
 export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix }: TabsProps) {
+  const strip = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+
+  // Sub-tabs that do not fit scroll sideways; a quiet chevron at the right edge, over a fade,
+  // says there is more and scrolls it (C27).
+  const measure = useCallback(() => {
+    const node = strip.current;
+    setMore(variant === "sub" && node !== null && hasMoreToRight(node));
+  }, [variant]);
+  useLayoutEffect(measure, [measure, tabs.length]);
+  useEffect(() => {
+    const node = strip.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [measure]);
+
+  // Roving focus (C199): only the active tab is in the tab order; the arrow keys move between tabs
+  // (skipping a disabled one, wrapping round) and choose the one they land on; Home and End go to
+  // the ends.
+  const move = (event: KeyboardEvent<HTMLButtonElement>, from: number) => {
+    const enabled = tabs.map((tab, index) => (tab.disabled ? -1 : index)).filter((index) => index >= 0);
+    if (enabled.length === 0) return;
+    const at = enabled.indexOf(from);
+    let target: number | undefined;
+    if (event.key === "ArrowRight") target = enabled[(at + 1) % enabled.length];
+    else if (event.key === "ArrowLeft") target = enabled[(at - 1 + enabled.length) % enabled.length];
+    else if (event.key === "Home") target = enabled[0];
+    else if (event.key === "End") target = enabled[enabled.length - 1];
+    if (target === undefined) return;
+    event.preventDefault();
+    const next = tabs[target]!;
+    onChange(next.id);
+    const buttons = event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+    buttons?.[target]?.focus();
+    buttons?.[target]?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  };
+
   return (
-    <div className={`cp-tabs ${variant === "sub" ? "cp-tabs--sub" : ""}`.trim()} role="tablist">
-      {tabs.map((tab) => (
+    <div
+      ref={strip}
+      className={`cp-tabs ${variant === "sub" ? "cp-tabs--sub" : ""}`.trim()}
+      role="tablist"
+      onScroll={measure}
+    >
+      {tabs.map((tab, index) => (
         <button
           key={tab.id}
           type="button"
@@ -52,12 +102,14 @@ export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix }: T
           id={idPrefix ? tabId(idPrefix, tab.id) : undefined}
           aria-controls={idPrefix ? panelId(idPrefix, tab.id) : undefined}
           aria-selected={tab.id === activeId}
+          tabIndex={tab.id === activeId ? 0 : -1}
           className={`cp-tabs__tab ${tab.id === activeId ? "cp-tabs__tab--active" : ""}`}
           // A plain count is named with its label and a comma ("Missing files, 3"); a chip or other
           // element is read in its place, after a hidden comma.
           aria-label={plain(tab.detail) ? `${tab.label}, ${tab.detail}` : undefined}
           disabled={tab.disabled}
           onClick={() => onChange(tab.id)}
+          onKeyDown={(event) => move(event, index)}
         >
           {tab.label}
           {tab.detail !== undefined && tab.detail !== null && (
@@ -70,6 +122,17 @@ export function Tabs({ tabs, activeId, onChange, variant = "main", idPrefix }: T
           )}
         </button>
       ))}
+      {more && (
+        <button
+          type="button"
+          className="cp-tabs__more"
+          tabIndex={-1}
+          aria-hidden="true"
+          onClick={() => strip.current?.scrollBy?.({ left: Math.max(1, (strip.current?.clientWidth ?? 0) * 0.6), behavior: "smooth" })}
+        >
+          <PixelIcon name="chevron-right-sm" size="sm" />
+        </button>
+      )}
     </div>
   );
 }

@@ -249,7 +249,7 @@ describe("the Health tab (STATS-07, K3)", () => {
   it("disables Read cover art and shows it busy while the read runs", async () => {
     const onReadCoverArt = vi.fn();
     renderSection(HEALTH, { coverArtRunning: true, onReadCoverArt });
-    const button = within(panel("other")).getByRole("button", { name: "…" });
+    const button = within(panel("other")).getByRole("button", { name: "Read cover art" });
     expect(button).toBeDisabled();
     expect(button).toHaveClass("cp-btn--loading");
     await userEvent.click(button);

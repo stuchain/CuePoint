@@ -2,7 +2,7 @@
 .cp-textarea {
   min-height: calc(var(--control-height) * 2);
   padding: var(--space-sm);
-  line-height: 1.4;
+  line-height: var(--line-height-body);
   resize: vertical;
 }
 

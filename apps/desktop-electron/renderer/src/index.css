@@ -2,8 +2,8 @@
 @import "./tokens/tokens.css";
 @import "./tokens/layout.css";
 @import "./tokens/scrollbars.css";
-@import "./tokens/themes/retro16.css";
 @import "./tokens/themes/neoDark.css";
+@import "./tokens/themes/retro16.css";
 @import "./tokens/themes/qtEvolved.css";
 @import "./tokens/themes/clubNeon.css";
 @import "./tokens/themes/mutedPro.css";
@@ -38,6 +38,7 @@ select {
   flex: none;
   display: inline-grid;
   place-content: center;
+  place-items: center;
   /* Explicit tracks, not auto ones: an auto track is as big as the (empty) content, so the
      mark's 100% / 40% would be a share of nothing and never draw. */
   grid-template: 100% / 100%;
@@ -81,16 +82,22 @@ select {
   background: var(--accent-fill);
 }
 
-/* A radio is not a smaller checkbox: checked, it keeps the empty box and puts a small accent
-   square in it (a dot, in pixel terms), where a checkbox fills in and draws the tick. */
+/* A radio is not a smaller checkbox: checked, it keeps the empty box (a 1px --accent-primary
+   line) and puts a small --accent-primary square in the middle of it (a dot, in pixel terms),
+   where a checkbox fills in and draws the tick. Unselected, the box is --border-control (D6). */
 :where(input[type="radio"]):checked {
+  border-color: var(--accent-primary);
   background: var(--bg-input);
-  color: var(--accent-fill);
+  color: var(--accent-primary);
+}
+
+:where(input[type="radio"]):checked:hover:not(:disabled) {
+  border-color: var(--accent-primary);
 }
 
 :where(input[type="radio"])::before {
-  width: 40%;
-  height: 40%;
+  width: round(nearest, calc(7px * var(--scale)), 1px);
+  height: round(nearest, calc(7px * var(--scale)), 1px);
 }
 
 :where(input[type="checkbox"], input[type="radio"]):hover:not(:disabled) {
@@ -242,11 +249,18 @@ a[href]:where(:not([class])) {
   text-decoration: none;
 }
 
-/* "Go to" links: the same link, ending in the arrow ›. */
+/* "Go to" links: the same link, ending in the small pixel chevron (the art of PixelIcon
+   chevron-right-sm), never a typed ›. */
 .cp-link--go::after {
-  content: " ›";
-  text-decoration: none;
+  content: "";
   display: inline-block;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  margin-inline-start: var(--space-xs);
+  vertical-align: middle;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M4 3h2v1h-2zM5 4h2v1h-2zM6 5h2v1h-2zM5 6h2v1h-2zM4 7h2v1h-2z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  text-decoration: none;
 }
 
 .cp-link--go:hover::after {
@@ -270,17 +284,18 @@ a[href]:where(:not([class])) {
   color: var(--fg-muted);
 }
 
-/* A shortcut drawn as a key cap (components/Kbd). */
+/* A shortcut drawn as a key cap (components/Kbd): white (--fg-primary) text in the data face, so
+   "O" and "0" and "B" and "8" read apart, and the text holds 4.5:1 on the cap in every theme. */
 .cp-kbd {
   display: inline-block;
   padding: 0 var(--space-xs);
   border: var(--hairline) solid var(--border-control);
   background: var(--bg-panel-alt);
-  color: var(--fg-muted);
-  font-family: var(--font-pixel);
+  color: var(--fg-primary);
+  font-family: var(--font-data);
   font-size: var(--font-size-label);
   font-weight: var(--weight-strong);
-  line-height: 1.4;
+  line-height: var(--line-height-body);
   white-space: nowrap;
 }
 
@@ -301,7 +316,9 @@ a[href]:where(:not([class])) {
   font-variant-numeric: tabular-nums;
 }
 
-/* What a status means, not which hue: something to do, something wrong, something done (T5). */
+/* What a status means, not which hue: something to do, something wrong, something done (T5).
+   These (or the --danger-text, --warning-text and --success-text tokens they use) are the only way
+   to colour problem text; the raw --accent-* colours are for borders and fills (C87). */
 .cp-status--action {
   color: var(--warning-text);
 }
@@ -311,6 +328,18 @@ a[href]:where(:not([class])) {
 }
 
 .cp-status--done {
+  color: var(--success-text);
+}
+
+.cp-status--danger {
+  color: var(--danger-text);
+}
+
+.cp-status--warning {
+  color: var(--warning-text);
+}
+
+.cp-status--success {
   color: var(--success-text);
 }
 
@@ -359,4 +388,189 @@ details[open] > summary::before {
 
 details > summary:has(.cp-disclosure)::before {
   display: none;
+}
+
+/* Selected text is the accent over the page, with the text colour kept. */
+::selection {
+  background: color-mix(in srgb, var(--accent-primary) 45%, transparent);
+  color: var(--fg-primary);
+}
+
+/* A checkbox or radio beside its words: one gap, --space-sm (6 at 1x), everywhere (C39). */
+.cp-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/*
+ * A sentence to read (D5, C55): Inter at body size, 1.5 lines, never wider than 60 characters.
+ * Hints and intros are muted; a dialog's body text is --fg-primary (.cp-prose--body). Labels,
+ * headings, buttons, tabs and chips of five words or fewer stay in the pixel face.
+ */
+.cp-prose {
+  max-width: var(--reading-width);
+  margin: 0;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--text-body);
+  line-height: var(--line-height-prose);
+}
+
+.cp-prose--body {
+  color: var(--fg-primary);
+}
+
+/* The one sub-heading inside a dialog or panel, above a group that has a name of its own (C58). */
+.cp-text-subhead {
+  margin: 0;
+  color: var(--fg-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-strong);
+  line-height: var(--line-height-tight);
+}
+
+/* Label and value facts (C66): a small bold grey label, the value in the data face. */
+.cp-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-xs) var(--space-md);
+  margin: 0;
+}
+
+.cp-facts dt {
+  color: var(--fg-muted);
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
+}
+
+.cp-facts dd {
+  margin: 0;
+  color: var(--fg-primary);
+  font-family: var(--font-data);
+  font-size: var(--text-body);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A count in a toolbar: pushed to the right, muted, in the data face (C80). */
+.cp-count {
+  margin-inline-start: auto;
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--text-body);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The one progress bar (C148): a <progress class="cp-progress"> or a div with a filled child. */
+.cp-progress {
+  flex: none;
+  width: var(--cp-progress-width, calc(80px * var(--scale)));
+  height: round(nearest, calc(6px * var(--scale)), 1px);
+  border: var(--divider);
+  border-radius: 0;
+  background: var(--bg-app);
+  appearance: none;
+}
+
+.cp-progress::-webkit-progress-bar {
+  background: var(--bg-app);
+}
+
+.cp-progress::-webkit-progress-value {
+  background: var(--accent-primary);
+}
+
+/* The bar above every list (D9): the toolbar fill, no border, one height, 8 in at the sides, and
+   nothing between it and the list below it. */
+.cp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  box-sizing: border-box;
+  min-height: var(--toolbar-height);
+  margin: 0;
+  padding-block: 0;
+  padding-inline: var(--space-md);
+  border: 0;
+  background: var(--bg-toolbar);
+}
+
+/* Buttons in a row are 8 apart (C28). */
+.cp-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* A side panel's title bar (C29): 4 x 12, the section-heading title and its close mark on one line. */
+.cp-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-xs) var(--space-lg);
+  border-bottom: var(--divider);
+}
+
+.cp-panel-header__title {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--font-size-section);
+  font-weight: var(--weight-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* One sticky header (C35): stuck at the top edge, one divider, and the same gap below it. */
+.cp-sticky-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-bottom: var(--space-lg);
+  border-bottom: var(--divider);
+  background: var(--bg-app);
+}
+
+/* "All is well" is quiet (D14): a drawn tick and the word, both in the muted colour, 12 high. */
+.cp-quiet-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--fg-muted);
+  font-family: var(--font-pixel-digits);
+  font-size: var(--font-size-sm);
+}
+
+.cp-quiet-ok::before {
+  content: "";
+  flex: none;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M10 2h2v1h-2zM9 3h2v1h-2zM8 4h2v1h-2zM1 5h2v1h-2zM7 5h2v1h-2zM1 6h2v1h-2zM6 6h2v1h-2zM2 7h5v1h-5zM3 8h4v1h-4zM4 9h2v1h-2z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+/* Native pickers and number fields follow the theme (C25): no Chromium arrows, light or dark
+   popups to match the colour scheme. The spinner is replaced by the field's own steppers. */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="color"] {
+  color-scheme: var(--color-scheme, dark);
 }

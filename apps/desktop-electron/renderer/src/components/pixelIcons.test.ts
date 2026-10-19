@@ -155,3 +155,38 @@ describe("G6 T10 icons", () => {
     expect(upTop).toBe(PIXEL_GRID_SIZE - 1 - upBottom!);
   });
 });
+
+describe("C138 icons: drawn marks for the typed glyphs", () => {
+  const NEW = [
+    "check",
+    "warning",
+    "star",
+    "star-outline",
+    "heart",
+    "heart-outline",
+    "grip",
+    "dot-filled",
+    "dot-half",
+    "refresh",
+    "chevron-right-sm",
+  ] as const;
+
+  it.each(NEW)("draws %s", (name) => {
+    expect(PIXEL_ICON_NAMES).toContain(name);
+  });
+
+  it("keeps the outline marks distinct from their filled twins", () => {
+    expect(PIXEL_ICONS.star).not.toEqual(PIXEL_ICONS["star-outline"]);
+    expect(PIXEL_ICONS.heart).not.toEqual(PIXEL_ICONS["heart-outline"]);
+    expect(PIXEL_ICONS["dot-filled"]).not.toEqual(PIXEL_ICONS["dot-half"]);
+  });
+
+  it("draws the small chevron in fewer rows than the chevron", () => {
+    const rows = (name: PixelIconName) => PIXEL_ICONS[name].filter((row) => row.includes("#")).length;
+    expect(rows("chevron-right-sm")).toBeLessThan(rows("chevron-right"));
+  });
+
+  it("draws the tick as the checkbox's tick", () => {
+    expect(pixelRunsFor("check").length).toBeGreaterThanOrEqual(8);
+  });
+});

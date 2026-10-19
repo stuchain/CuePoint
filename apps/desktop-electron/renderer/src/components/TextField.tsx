@@ -1,4 +1,5 @@
-import { useId, type InputHTMLAttributes } from "react";
+import { useId, useRef, type InputHTMLAttributes } from "react";
+import { PixelIcon } from "./PixelIcon";
 import { SuggestInput, type Suggestion } from "./SuggestInput";
 import "./TextField.css";
 
@@ -53,6 +54,20 @@ export function TextField({
   const describedBy = [rest["aria-describedby"], note ? noteId : null].filter(Boolean).join(" ") || undefined;
   const invalid = error ? true : rest["aria-invalid"];
   const root = `cp-field ${FIELD_WIDTH_CLASS[width]} ${className}`.trim();
+  const input = useRef<HTMLInputElement>(null);
+  const isNumber = rest.type === "number" && !onPick;
+  /** Steps the number the way the browser's own spin button did, then tells React it changed. */
+  const step = (direction: "up" | "down") => {
+    const node = input.current;
+    if (!node || node.disabled || node.readOnly) return;
+    try {
+      if (direction === "up") node.stepUp();
+      else node.stepDown();
+    } catch {
+      return; // a step that would pass min or max throws in some engines; stay where it is
+    }
+    node.dispatchEvent(new Event("input", { bubbles: true }));
+  };
   // One tree whatever the suggestions are: a field that swapped trees as its list
   // loaded would remount, and lose focus mid-word. The note is a sibling of the label, not inside
   // it, so it never joins the field's name.
@@ -72,7 +87,37 @@ export function TextField({
           aria-invalid={invalid}
         />
       ) : (
-        <input id={fieldId} className={inputClass} {...rest} aria-describedby={describedBy} aria-invalid={invalid} />
+        <>
+          {isNumber ? (
+            <span className="cp-field__number">
+              <input ref={input} id={fieldId} className={inputClass} {...rest} aria-describedby={describedBy} aria-invalid={invalid} />
+              <span className="cp-field__steps">
+                <button
+                  type="button"
+                  className="cp-field__step"
+                  tabIndex={-1}
+                  aria-label={`Increase ${label}`}
+                  disabled={rest.disabled || rest.readOnly}
+                  onClick={() => step("up")}
+                >
+                  <PixelIcon name="arrow-up" size="sm" />
+                </button>
+                <button
+                  type="button"
+                  className="cp-field__step"
+                  tabIndex={-1}
+                  aria-label={`Decrease ${label}`}
+                  disabled={rest.disabled || rest.readOnly}
+                  onClick={() => step("down")}
+                >
+                  <PixelIcon name="arrow-down" size="sm" />
+                </button>
+              </span>
+            </span>
+          ) : (
+            <input id={fieldId} className={inputClass} {...rest} aria-describedby={describedBy} aria-invalid={invalid} />
+          )}
+        </>
       )}
       {note && (
         <span id={noteId} className={error ? "cp-field__error" : "cp-field__hint"}>

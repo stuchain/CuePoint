@@ -1,5 +1,4 @@
 /* Retro 16-bit: lab palette with a lavender accent (40+ degrees of hue from warning and danger) */
-:root,
 [data-theme="retro16"] {
   --bg-app: #1a1a2e;
   --bg-panel: #22344d;
@@ -34,6 +33,8 @@
   --accent-warning: #ffb703;
   --accent-danger: #eb5d67;
   --accent-info: #48cae4;
+  /* Writing to the user's files is green (D14); text on it is --fg-on-status, black. */
+  --accent-write: #4caf50;
 
   /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */
   --accent-fill: #b673f0;
@@ -43,7 +44,7 @@
   --color-scheme: dark;
 
   --overlay-header: rgba(0, 0, 0, 0.15);
-  --overlay-backdrop: rgba(0, 0, 0, 0.65);
+  --overlay-backdrop: rgba(0, 0, 0, 0.7);
 
   /* Waveforms (WAVE-05): each band at 3:1 or more against --bg-panel. */
   --waveform-low: #3b82f6;

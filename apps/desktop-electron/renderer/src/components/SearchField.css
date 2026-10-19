@@ -2,7 +2,11 @@
 .cp-search-field {
   position: relative;
   display: flex;
+  flex: none;
   align-items: center;
+  /* One width everywhere, never stretched to the room there is (C223). */
+  width: var(--search-width);
+  max-width: 100%;
   min-width: 0;
 }
 
@@ -28,9 +32,17 @@
 }
 
 /* One hover for every control (area 79). */
-.cp-search-field__input:hover:not(:disabled):not(:focus-visible) {
+.cp-search-field__input:hover:not(:disabled):not([aria-disabled="true"]):not(:focus-visible) {
   border-color: var(--hover-border);
   background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
+}
+
+.cp-search-field__input:disabled,
+.cp-search-field__input[aria-disabled="true"] {
+  color: var(--fg-disabled);
+  background: var(--bg-panel);
+  border-color: var(--border-muted);
+  cursor: default;
 }
 
 .cp-search-field__input::placeholder {

@@ -138,7 +138,7 @@ describe("TrackInspector", () => {
       expect(tab).toHaveTextContent("Details");
       expect(tab).toHaveAttribute("title", "Show track details (Ctrl+I)");
       expect(tab).toHaveClass("cp-btn");
-      expect(tab).toHaveAttribute("aria-expanded", "false");
+      expect(tab).toHaveAttribute("aria-pressed", "false");
     });
 
     it("keeps one name whatever is selected", async () => {
@@ -215,14 +215,14 @@ describe("TrackInspector", () => {
       expect(panel()).toBeInTheDocument();
     });
 
-    it("reports its state through aria-expanded", async () => {
+    it("reports its state", async () => {
       const user = userEvent.setup();
       render(<TrackInspector />);
       expect(hide()).toHaveAttribute("aria-expanded", "true");
 
       await user.click(hide());
 
-      expect(reveal()).toHaveAttribute("aria-expanded", "false");
+      expect(reveal()).toHaveAttribute("aria-pressed", "false");
     });
   });
 

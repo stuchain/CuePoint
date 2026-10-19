@@ -5,6 +5,11 @@
  */
 import { describe, expect, it } from "vitest";
 import { parseRules, selectorList, stripComments } from "../test/cssRules";
+import button from "./Button.css?raw";
+import playButton from "./PlayButton.css?raw";
+import searchField from "./SearchField.css?raw";
+import select from "./Select.css?raw";
+import textField from "./TextField.css?raw";
 
 const sheets = import.meta.glob("/src/**/*.css", { query: "?raw", import: "default", eager: true }) as Record<
   string,
@@ -34,5 +39,32 @@ describe("disabled look guard (C2)", () => {
     expect(offenders("button:disabled { opacity: .5; }")).toHaveLength(1);
     expect(offenders("button:disabled { color: gray; }")).toHaveLength(0);
     expect(offenders(".fade { opacity: .5; }")).toHaveLength(0);
+  });
+});
+
+describe("one disabled look for every control (C2)", () => {
+  const controls: Array<[string, string]> = [
+    ["Button", button],
+    ["TextField", textField],
+    ["SearchField", searchField],
+    ["Select", select],
+    ["PlayButton", playButton],
+  ];
+
+  it.each(controls)("%s greys :disabled and [aria-disabled] with --fg-disabled and a default cursor", (_name, css) => {
+    const rules = parseRules(stripComments(css)).filter((r) => /color:\s*var\(--fg-disabled\)/.test(r.body));
+    const forDisabled = rules.some((r) => /:disabled/.test(r.selector));
+    const forAria = rules.some((r) => /\[aria-disabled="true"\]/.test(r.selector));
+    expect(forDisabled, ":disabled is greyed").toBe(true);
+    expect(forAria, "[aria-disabled] is greyed").toBe(true);
+    const cursor = parseRules(stripComments(css)).filter((r) => /:disabled|aria-disabled/.test(r.selector) && /cursor/.test(r.body));
+    for (const rule of cursor) expect(rule.body).toMatch(/cursor:\s*default/);
+  });
+
+  it.each(controls)("%s changes nothing on hover or press of a disabled control", (_name, css) => {
+    const hoverRules = parseRules(stripComments(css)).filter((r) => /:hover|:active/.test(r.selector) && !/--quiet|clear|--playing/.test(r.selector));
+    for (const rule of hoverRules) {
+      expect(rule.selector, rule.selector).toMatch(/:not\(:disabled\)|:not\(:disabled\):/);
+    }
   });
 });

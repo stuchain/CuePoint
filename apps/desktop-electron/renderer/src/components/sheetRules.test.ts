@@ -82,20 +82,20 @@ describe("frames (T2, N7)", () => {
   });
 });
 
-describe("screen padding (N2-2)", () => {
-  it("steps down by the content region's width, not the window's", () => {
+describe("screen padding (N2-2, C41)", () => {
+  it("is one page margin on every side, with no stepped padding and no media query", () => {
     expect(layout).not.toMatch(/@media/);
-    expect(layout).toMatch(
-      /@container content \(max-width: 900px\) \{\s*\.screen \{[^}]*--screen-padding: var\(--space-lg\)/,
-    );
-    expect(layout).toMatch(
-      /@container content \(max-width: 600px\) \{\s*\.screen \{[^}]*--screen-padding: var\(--space-md\)/,
-    );
-    // The four --safe-* are declared once on .screen; the queries set only --screen-padding.
-    // The sides and the top are the page margin (pageGutter.test.ts); the bottom is the stepped padding.
-    expect(layout).toMatch(/\n\.screen \{[^}]*--safe-bottom: var\(--screen-padding\)/);
+    expect(layout).not.toMatch(/--screen-padding/);
+    // The four --safe-* are declared once on .screen. The bottom margin is the same 12px * scale
+    // as the sides and the top (pageGutter.test.ts), on every page.
+    expect(layout).toMatch(/\n\.screen \{[^}]*--safe-bottom: var\(--page-gutter-bottom\)/);
     expect(layout).toMatch(/\n\.screen \{[^}]*--safe-left: var\(--page-gutter-x\)/);
     expect(layout.match(/--safe-left:/g)).toHaveLength(1);
     expect(rule(layout, ":root")).not.toContain("--safe-");
+  });
+
+  it("writes every layout breakpoint as a container query in em, never px (C206)", () => {
+    expect(layout).not.toMatch(/@container[^{]*\d+px/);
+    expect(layout).toMatch(/Breakpoints \(C206\)/);
   });
 });

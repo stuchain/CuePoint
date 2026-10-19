@@ -28,17 +28,23 @@
   background: var(--bg-panel-alt);
 }
 
-/* Colour is not the only cue: the active tab is also heavier. qtEvolved's accent is under
-   3:1 on its toolbar, so a theme can set --tab-underline-color. */
+/* The underline and the brighter text say it is active; the weight never changes, so the strip
+   does not shift (C26). qtEvolved's accent is under 3:1 on its toolbar, so a theme can set
+   --tab-underline-color. */
 .cp-tabs__tab--active {
   color: var(--fg-primary);
   border-bottom-color: var(--tab-underline-color, var(--accent-primary));
-  font-weight: var(--weight-strong);
+}
+
+/* The first tab's words line up with the page title: its own padding hangs out to the left (C33),
+   so the underline is still centred under the label. */
+.cp-tabs:not(.cp-tabs--sub) .cp-tabs__tab:first-child {
+  margin-inline-start: calc(-1 * var(--space-md));
 }
 
 .cp-tabs__tab:disabled {
   color: var(--fg-disabled);
-  cursor: not-allowed;
+  cursor: default;
 }
 
 /* Sub-tabs: one framed strip split into equal-padded parts, the picked part filled. A hairline
@@ -58,15 +64,15 @@
 }
 
 .cp-tabs--sub .cp-tabs__tab {
-  padding: 0 var(--space-md);
+  padding: 0 var(--space-sm);
   white-space: nowrap;
-  border-bottom: 0;
+  border: var(--control-border-width) solid transparent;
   font-size: var(--font-size-xs);
   font-weight: var(--control-font-weight);
 }
 
-.cp-tabs--sub .cp-tabs__tab + .cp-tabs__tab {
-  border-left: var(--control-border-width) solid var(--border-control);
+.cp-tabs--sub :where(.cp-tabs__tab + .cp-tabs__tab) {
+  border-left-color: var(--border-control);
 }
 
 /* Hover is a colour change only, so it never looks like the picked part. */
@@ -76,9 +82,10 @@
 }
 
 .cp-tabs--sub .cp-tabs__tab--active {
-  background: var(--bg-panel-alt);
+  background: var(--bg-selected);
+  border-color: var(--accent-primary);
   color: var(--fg-primary);
-  font-weight: var(--control-font-weight);
+  font-weight: var(--font-weight-regular);
 }
 
 .cp-tabs--sub .cp-tabs__tab--active .cp-tabs__detail {
@@ -103,4 +110,26 @@
 
 .cp-tabs__tab--active .cp-tabs__detail {
   color: var(--fg-muted);
+}
+
+/* More sub-tabs than fit (C27): a chevron stuck to the right edge, over a fade of the strip's own
+   colour. It is not a tab and not in the tab order; the arrow keys reach every tab. */
+.cp-tabs__more {
+  position: sticky;
+  right: 0;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(var(--icon-size-sm) + var(--space-md));
+  margin-inline-start: auto;
+  padding: 0 var(--space-xs);
+  border: 0;
+  background: linear-gradient(to right, transparent, var(--bg-input) 40%);
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.cp-tabs__more:hover {
+  color: var(--fg-primary);
 }

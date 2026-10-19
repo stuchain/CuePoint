@@ -32,6 +32,7 @@ describe("the shared page margin", () => {
     const root = decls(layout, ":root");
     expect(root["--page-gutter-x"]).toBe("min(calc(12px * var(--scale)), 4cqi)");
     expect(root["--page-gutter-top"]).toBe("min(calc(12px * var(--scale)), 3.4cqi)");
+    expect(root["--page-gutter-bottom"]).toBe("min(calc(12px * var(--scale)), 3.4cqi)");
     expect(root["--content-max-width"]).toBe("100%");
   });
 
@@ -40,6 +41,7 @@ describe("the shared page margin", () => {
     expect(screen["--safe-left"]).toBe("var(--page-gutter-x)");
     expect(screen["--safe-right"]).toBe("var(--page-gutter-x)");
     expect(screen["--safe-top"]).toBe("var(--page-gutter-top)");
+    expect(screen["--safe-bottom"]).toBe("var(--page-gutter-bottom)");
     expect(decls(screensCss, ".screen")["padding"]).toBe(
       "var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left)",
     );

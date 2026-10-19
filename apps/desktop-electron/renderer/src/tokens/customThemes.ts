@@ -1,3 +1,5 @@
+import type { ThemeSeed } from "./themeDerivation";
+
 /** User-editable color slots for custom themes. */
 export interface CustomThemeColors {
   bgApp: string;
@@ -15,6 +17,8 @@ export interface CustomTheme {
   id: string;
   name: string;
   colors: CustomThemeColors;
+  /** The theme it was started from, copied exactly (C95); absent on a theme made from scratch. */
+  seed?: ThemeSeed;
   createdAt: string;
   updatedAt: string;
 }
@@ -69,12 +73,21 @@ export function deleteCustomTheme(id: string): void {
   localStorage.setItem(CUSTOM_THEMES_STORAGE_KEY, JSON.stringify(themes));
 }
 
+let seedSource: (() => ThemeSeed | undefined) | null = null;
+
+/** Where a new custom theme finds the theme it starts from; `theme.ts` registers the page reader. */
+export function setThemeSeedSource(source: (() => ThemeSeed | undefined) | null): void {
+  seedSource = source;
+}
+
 export function createEmptyCustomTheme(name: string, colors: CustomThemeColors): CustomTheme {
   const now = new Date().toISOString();
+  const seed = seedSource?.();
   return {
     id: createCustomThemeId(),
     name,
     colors,
+    ...(seed ? { seed } : {}),
     createdAt: now,
     updatedAt: now,
   };

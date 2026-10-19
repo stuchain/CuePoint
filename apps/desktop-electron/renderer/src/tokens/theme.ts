@@ -1,5 +1,6 @@
 import {
   getCustomTheme,
+  setThemeSeedSource,
   listCustomThemes,
   parseCustomThemeId,
   toCustomThemeId,
@@ -9,8 +10,10 @@ import {
 import {
   applyThemeTokensToDocument,
   clearThemeTokenOverrides,
-  deriveThemeTokens,
+  deriveWithSeed,
+  type ThemeSeed,
 } from "./themeDerivation";
+import { seedFromPage } from "./themeSnapshot";
 
 export const BUILT_IN_THEME_OPTIONS = [
   { id: "neoDark", label: "Neo dark" },
@@ -85,19 +88,42 @@ export function persistThemeId(themeId: ThemeId): void {
 }
 
 function applyBuiltInTheme(themeId: BuiltInThemeId): void {
+  previewBase = undefined;
   clearThemeTokenOverrides();
   document.documentElement.dataset.theme = themeId;
 }
 
-function applyCustomTheme(theme: CustomTheme): void {
-  document.documentElement.dataset.theme = toCustomThemeId(theme.id);
-  applyThemeTokensToDocument(deriveThemeTokens(theme.colors));
+/** The theme the editor's preview started from: the page as it was before the first swatch changed. */
+let previewBase: ThemeSeed | undefined;
+
+/** Whether the page is showing the editor's preview rather than a theme of its own. */
+function isPreviewing(): boolean {
+  return document.documentElement.dataset.theme === toCustomThemeId("editor-preview");
 }
 
-export function applyCustomThemeColors(colors: CustomThemeColors, previewId = "preview"): void {
-  document.documentElement.dataset.theme = toCustomThemeId(previewId);
-  applyThemeTokensToDocument(deriveThemeTokens(colors));
+function applyCustomTheme(theme: CustomTheme): void {
+  previewBase = undefined;
+  document.documentElement.dataset.theme = toCustomThemeId(theme.id);
+  applyThemeTokensToDocument(deriveWithSeed(theme.colors, theme.seed));
 }
+
+/**
+ * Draws the app in `colors` (the editor's live preview). The first call remembers the theme on
+ * screen, so a swatch that is changed moves only what depends on it (C95).
+ */
+export function applyCustomThemeColors(colors: CustomThemeColors, previewId = "preview"): void {
+  if (!isPreviewing()) previewBase = seedFromPage();
+  document.documentElement.dataset.theme = toCustomThemeId(previewId);
+  applyThemeTokensToDocument(deriveWithSeed(colors, previewBase));
+}
+
+/** What a theme saved now would start from: the preview's base, or the theme on screen. */
+function currentSeed(): ThemeSeed | undefined {
+  if (isPreviewing()) return previewBase;
+  return seedFromPage();
+}
+
+setThemeSeedSource(currentSeed);
 
 export function applyTheme(themeId: ThemeId): void {
   if (isBuiltInThemeId(themeId)) {

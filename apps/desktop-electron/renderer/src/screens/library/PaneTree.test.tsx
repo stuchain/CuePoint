@@ -56,7 +56,7 @@ describe("PaneTree nesting", () => {
 
   it("makes folder names brighter and bold", () => {
     const folder = rule('.cp-playlist-pane__row[data-kind="folder"] .cp-playlist-pane__name');
-    expect(folder).toContain("font-weight: 700");
+    expect(folder).toContain("font-weight: var(--font-weight-bold)");
     expect(folder).toContain("color: var(--fg-primary)");
     renderTree();
     expect(screen.getByRole("treeitem", { name: /Summer/ })).toHaveAttribute("data-kind", "folder");

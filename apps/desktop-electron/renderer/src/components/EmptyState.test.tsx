@@ -42,6 +42,6 @@ describe("EmptyState", () => {
     const root = /\.cp-empty-state\s*\{([^}]*)\}/.exec(css)![1]!;
     expect(root).toMatch(/align-items:\s*center/);
     expect(root).toMatch(/text-align:\s*center/);
-    expect(css).toMatch(/headline\s*\{[^}]*font-size:\s*var\(--font-size-sm\)[^}]*font-weight:\s*700/);
+    expect(css).toMatch(/headline\s*\{[^}]*font-size:\s*var\(--font-size-sm\)[^}]*font-weight:\s*var\(--font-weight-bold\)/);
   });
 });

@@ -150,7 +150,7 @@ describe("GetHelpDialog when the send fails or reporting is not set up", () => {
     await userEvent.click(screen.getByRole("button", { name: "Send note" }));
 
     expect(screen.queryByText(/your note was sent/i)).toBeNull();
-    expect(screen.getByRole("button", { name: "…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send note" })).toBeDisabled();
     await act(async () => finish({ id: "e".repeat(32), sent: true }));
     expect(await screen.findByText(/your note was sent/i)).toBeInTheDocument();
   });

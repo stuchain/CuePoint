@@ -63,9 +63,28 @@ describe("Button", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it("hides the label while loading", () => {
+  it("keeps its label while loading, with a spinner before it and aria-busy (C13)", () => {
     render(<Button loading>Match</Button>);
-    expect(screen.queryByText("Match")).not.toBeInTheDocument();
+    const button = screen.getByRole("button", { name: /Match/ });
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(button).toHaveTextContent("Match");
+    expect(button.textContent).not.toBe("…");
+    const spinner = button.querySelector(".cp-spinner");
+    expect(spinner).not.toBeNull();
+    expect(spinner!.compareDocumentPosition(button.querySelector(".cp-btn__label")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("is not busy when it is not loading", () => {
+    render(<Button>Match</Button>);
+    expect(screen.getByRole("button")).not.toHaveAttribute("aria-busy");
+  });
+
+  it("puts an icon after its words with iconEnd", () => {
+    render(<Button iconEnd="chevron-right">Next</Button>);
+    const button = screen.getByRole("button", { name: "Next" });
+    const label = button.querySelector(".cp-btn__label")!;
+    const icon = button.querySelector('svg[data-icon="chevron-right"]')!;
+    expect(label.compareDocumentPosition(icon) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("defaults to type=button so it cannot submit a form", () => {
@@ -97,7 +116,7 @@ describe("Button", () => {
   });
 
   it("draws a disabled button by colour, with no opacity (T6)", () => {
-    const rules = parseRules(stripComments(css)).filter((r) => /:disabled/.test(r.selector));
+    const rules = parseRules(stripComments(css)).filter((r) => /:disabled|aria-disabled/.test(r.selector));
     expect(rules.length).toBeGreaterThan(0);
     for (const rule of rules) {
       expect(rule.body).not.toMatch(/opacity/);
@@ -106,6 +125,30 @@ describe("Button", () => {
     expect(body).toMatch(/background:\s*var\(--bg-panel\)/);
     expect(body).toMatch(/border-color:\s*var\(--border-muted\)/);
     expect(body).toMatch(/color:\s*var\(--fg-disabled\)/);
+    expect(body).toMatch(/cursor:\s*default/);
+  });
+
+  it("gives aria-disabled the same look as disabled and no hover or press (C2)", () => {
+    const rules = parseRules(stripComments(css));
+    const look = rules.find((r) => /aria-disabled="true"\]:not\(\.cp-btn--loading\)/.test(r.selector) && /color:\s*var\(--fg-disabled\)/.test(r.body));
+    expect(look, "a rule greys [aria-disabled=true]").toBeDefined();
+    const hover = rules.find((r) => /:hover/.test(r.selector) && /linear-gradient/.test(r.body))!;
+    expect(hover.selector).toMatch(/:not\(\[aria-disabled="true"\]\)/);
+    const press = rules.find((r) => /:active/.test(r.selector))!;
+    expect(press.selector).toMatch(/:not\(\[aria-disabled="true"\]\)/);
+  });
+
+  it("draws an on toggle (aria-pressed) as the selected fill and a 1px accent line in regular weight (D1)", () => {
+    const rule = parseRules(stripComments(css)).find((r) => /\[aria-pressed="true"\]/.test(r.selector) && /\.cp-btn/.test(r.selector))!;
+    expect(rule.body).toMatch(/background:\s*var\(--bg-selected\)/);
+    expect(rule.body).toMatch(/border-color:\s*var\(--accent-primary\)/);
+    expect(rule.body).toMatch(/color:\s*var\(--fg-primary\)/);
+    expect(rule.body).toMatch(/font-weight:\s*var\(--font-weight-regular\)/);
+  });
+
+  it("is at least two control heights wide, except the small button (C7, C120)", () => {
+    expect(css).toMatch(/\.cp-btn\s*\{[^}]*min-width:\s*calc\(var\(--control-height\) \* 2\)/);
+    expect(css).toMatch(/\.cp-btn--sm\s*\{[^}]*min-width:\s*0/);
   });
 
   it("fills primary with --accent-fill and the danger confirm with --danger-fill (R2-8)", () => {
@@ -115,7 +158,7 @@ describe("Button", () => {
 
   it("draws danger as a red outline, write as a green fill and quiet as words only", () => {
     expect(css).toMatch(/\.cp-btn--danger\s*\{[^}]*background:\s*transparent[^}]*color:\s*var\(--danger-text\)/);
-    expect(css).toMatch(/\.cp-btn--write\s*\{[^}]*background:\s*var\(--accent-success\)[^}]*color:\s*var\(--fg-on-status\)/);
+    expect(css).toMatch(/\.cp-btn--write\s*\{[^}]*background:\s*var\(--accent-write\)[^}]*color:\s*var\(--fg-on-status\)/);
     expect(css).toMatch(/\.cp-btn--quiet\s*\{[^}]*background:\s*transparent/);
   });
 
@@ -154,7 +197,7 @@ describe("Button", () => {
   });
 
   it("greys only a disabled button that is not loading, and marks a loading icon button busy", () => {
-    expect(css).toMatch(/\.cp-btn:disabled:not\(\.cp-btn--loading\)\s*\{/);
+    expect(css).toMatch(/\.cp-btn:disabled:not\(\.cp-btn--loading\)\s*[,{]/);
     render(<Button iconOnly icon="close" aria-label="Close" loading />);
     expect(screen.getByRole("button", { name: "Close" })).toHaveAttribute("aria-busy", "true");
   });

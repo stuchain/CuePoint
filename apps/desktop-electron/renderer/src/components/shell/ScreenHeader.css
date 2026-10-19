@@ -9,6 +9,9 @@
   gap: var(--space-xs);
   padding-bottom: var(--space-md);
   border-bottom: var(--divider);
+  /* The header always keeps the scrollbar's room, so the Details button stays put between a page
+     that scrolls as a whole and one that scrolls inside (C219). */
+  scrollbar-gutter: stable;
   /* Divider to the first content: 12, for every page. */
   margin-bottom: var(--space-lg);
   background: var(--bg-app);
@@ -129,25 +132,19 @@
   white-space: nowrap;
 }
 
-/* The small divider before the Details toggle, one button high at most. */
+/* The small divider before the Details toggle: one control high, in the line colour (C232). */
 .cp-details-divider {
   align-self: center;
   width: var(--hairline);
-  height: 60%;
-  background: var(--border-control);
+  height: var(--control-height);
+  background: var(--border-muted);
 }
 
+/* The icon and the word are a fixed --space-xs apart. Open is Button's own on look
+   ([aria-pressed]), the same as every toggle (D1). */
 .cp-details-toggle {
   gap: var(--space-xs);
   white-space: nowrap;
-}
-
-/* Open: the pressed look, in the same place. */
-.cp-details-toggle--open,
-.cp-details-toggle--open:hover {
-  background: var(--accent-primary);
-  border-color: var(--accent-primary);
-  color: var(--fg-on-accent);
 }
 
 .cp-screen-header__summary {

@@ -20,6 +20,11 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label: string;
   /** The label stays the accessible name but is not drawn (a select that sits in a row of controls). */
   hideLabel?: boolean;
+  /**
+   * Draw the label inside the box, before the value ("Scope  Everything"), so a select in a row of
+   * controls names itself without a line above it and nothing is painted over (C222).
+   */
+  inlineLabel?: boolean;
   options: SelectOption[];
   /** Muted words below the select. Hidden while there is an error. */
   hint?: string;
@@ -46,6 +51,7 @@ function runsOf(options: SelectOption[]): Array<{ group?: string; options: Selec
 export function Select({
   label,
   hideLabel = false,
+  inlineLabel = false,
   options,
   hint,
   error,
@@ -65,11 +71,18 @@ export function Select({
     </option>
   );
   return (
-    <div className={`cp-select ${FIELD_WIDTH_CLASS[width]} ${className}`.trim()}>
-      <label className={hideLabel ? "cp-select__label cp-visually-hidden" : "cp-select__label"} htmlFor={fieldId}>
-        {label}
-      </label>
+    <div className={`cp-select${inlineLabel ? " cp-select--inline" : ""} ${FIELD_WIDTH_CLASS[width]} ${className}`.trim()}>
+      {!inlineLabel && (
+        <label className={hideLabel ? "cp-select__label cp-visually-hidden" : "cp-select__label"} htmlFor={fieldId}>
+          {label}
+        </label>
+      )}
       <span className="cp-select__field">
+        {inlineLabel && (
+          <label className="cp-select__inline-label" htmlFor={fieldId}>
+            {label}
+          </label>
+        )}
         <select
           id={fieldId}
           className={`cp-select__control${error ? " cp-select__control--error" : ""}`}
@@ -88,7 +101,7 @@ export function Select({
           )}
         </select>
         <span className="cp-select__chevron" aria-hidden="true">
-          <PixelIcon name="chevron-down" />
+          <PixelIcon name="chevron-down" size="sm" />
         </span>
       </span>
       {note && (

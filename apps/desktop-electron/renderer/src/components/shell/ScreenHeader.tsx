@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { countNoun } from "../../format/counts";
 import { DetailsToggle } from "./detailsToggle";
 import "./ScreenHeader.css";
 
@@ -23,10 +24,21 @@ export interface ScreenHeaderProps {
   /** The facts line: one muted line under the title; ellipsized. */
   summary?: ReactNode;
   /**
+   * The facts line, typed (C233): a count and its noun, then each fact, as
+   * "1,234 tracks · 3 playlists". Use this rather than writing the line by hand; `summary` is for
+   * a line that is not a count.
+   */
+  facts?: HeaderFacts;
+  /**
    * The page's buttons, at the right. The header adds the Details toggle after them, behind a
    * small divider (no page passes it); a page without actions gets it alone on the title row.
    */
   actions?: ReactNode;
+  /**
+   * The page-wide actions (D7), right-aligned, 8 left of the Details toggle. Selection actions
+   * live in the bar above the list, never here.
+   */
+  pageActions?: ReactNode;
   /** The page's tab strip, in its own row below. */
   tabs?: ReactNode;
   /** A Badge. */
@@ -39,6 +51,20 @@ export interface ScreenHeaderProps {
    * and the first content, and a page adds none of its own.
    */
   attached?: boolean;
+}
+
+/** The typed facts line of a header: "<count> <noun> · <fact> · <fact>". */
+export interface HeaderFacts {
+  count: number;
+  /** The singular noun ("track", "Set"); `many` is the plural when it is not "<noun>s". */
+  noun: string;
+  many?: string;
+  facts?: readonly string[];
+}
+
+/** The facts as one line: the grouped count with its noun, then each fact, a middle dot apart. */
+export function factsLine({ count, noun, many, facts = [] }: HeaderFacts): string {
+  return [countNoun(count, noun, many), ...facts].join(" · ");
 }
 
 /** What the page reserves for its sticky header, in px: its height and the gap above it (NaN reads as none). */
@@ -58,7 +84,9 @@ export function ScreenHeader({
   extras,
   beside,
   summary,
+  facts,
   actions,
+  pageActions,
   tabs,
   status,
   inset = false,
@@ -112,10 +140,11 @@ export function ScreenHeader({
         </div>
         <div className="cp-screen-header__actions">
           {actions}
-          <DetailsToggle divided={Boolean(actions)} />
+          {pageActions}
+          <DetailsToggle divided={Boolean(actions || pageActions)} />
         </div>
       </div>
-      {summary && <p className="cp-screen-header__summary">{summary}</p>}
+      {(facts || summary) && <p className="cp-screen-header__summary">{facts ? factsLine(facts) : summary}</p>}
       {tabs && <div className="cp-screen-header__tabs">{tabs}</div>}
     </header>
   );

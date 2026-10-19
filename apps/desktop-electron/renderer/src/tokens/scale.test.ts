@@ -21,7 +21,9 @@ afterEach(() => localStorage.clear());
 describe("the stored scale", () => {
   it("offers 1, 1.25, 1.5, 2 and 3, and opens at 1.5", () => {
     expect([...SCALE_OPTIONS]).toEqual([1, 1.25, 1.5, 2, 3]);
-    expect(scaleOptionLabel(1.25)).toBe("Compact (1.25×)");
+    expect(scaleOptionLabel(1.25)).toBe("Small (1.25×)");
+    // Row density owns "Compact" (C159); the text sizes never use it.
+    expect(SCALE_OPTIONS.map(scaleOptionLabel).join(" ")).not.toMatch(/Compact/);
     expect(DEFAULT_SCALE).toBe(1.5);
   });
 

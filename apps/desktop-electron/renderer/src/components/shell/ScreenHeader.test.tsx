@@ -120,11 +120,53 @@ describe("ScreenHeader", () => {
       act(() => publishDetails({ open: true, toggle }));
       render(<ScreenHeader title="Library" />);
       const button = screen.getByRole("button", { name: "Track details" });
-      expect(button).toHaveClass("cp-details-toggle--open");
-      expect(button).toHaveAttribute("aria-expanded", "true");
+      // The shared on look (Button's [aria-pressed]), not a violet fill of its own (D1).
+      expect(button).toHaveAttribute("aria-pressed", "true");
+      expect(button).not.toHaveAttribute("aria-expanded");
       await userEvent.click(button);
       expect(toggle).toHaveBeenCalledTimes(1);
-      expect(css).toMatch(/\.cp-details-toggle--open[^{]*\{[^}]*background:\s*var\(--accent-primary\)/);
+      expect(css).not.toMatch(/details-toggle--open/);
+    });
+
+    it("keeps a fixed gap between the icon and the word", () => {
+      expect(/\.cp-details-toggle\s*\{([^}]*)\}/.exec(css)![1]).toMatch(/gap:\s*var\(--space-xs\)/);
+    });
+
+    it("draws the divider one control high in the line colour (C232)", () => {
+      const divider = /\.cp-details-divider\s*\{([^}]*)\}/.exec(css)![1]!;
+      expect(divider).toMatch(/height:\s*var\(--control-height\)/);
+      expect(divider).toMatch(/width:\s*var\(--hairline\)/);
+      expect(divider).toMatch(/background:\s*var\(--border-muted\)/);
+    });
+
+    it("sits after a pageActions slot as well as after actions (D7)", () => {
+      act(() => publishDetails({ open: false, toggle: () => undefined }));
+      const { container } = render(<ScreenHeader title="Clean" pageActions={<button type="button">Sync</button>} />);
+      const actions = container.querySelector(".cp-screen-header__actions")!;
+      expect([...actions.children][0]).toHaveTextContent("Sync");
+      expect(actions.querySelector(".cp-details-divider")).not.toBeNull();
+    });
+  });
+
+  describe("the facts line (C233)", () => {
+    it("writes the count and its noun, then each fact, with a middle dot", () => {
+      const { container } = render(<ScreenHeader title="Keys" facts={{ count: 1234, noun: "track", facts: ["3 playlists", "Rekordbox"] }} />);
+      expect(container.querySelector(".cp-screen-header__summary")).toHaveTextContent("1,234 tracks · 3 playlists · Rekordbox");
+    });
+
+    it("says one in the singular and needs no facts", () => {
+      const { container } = render(<ScreenHeader title="Keys" facts={{ count: 1, noun: "Set" }} />);
+      expect(container.querySelector(".cp-screen-header__summary")).toHaveTextContent(/^1 Set$/);
+    });
+  });
+
+  describe("the header's own geometry", () => {
+    it("always reserves the scrollbar's room, so the Details button never shifts (C219)", () => {
+      expect(/\.cp-screen-header\s*\{([^}]*)\}/.exec(css)![1]).toMatch(/scrollbar-gutter:\s*stable/);
+    });
+
+    it("leaves the content 12 below its divider (C30)", () => {
+      expect(/\.cp-screen-header\s*\{([^}]*)\}/.exec(css)![1]).toMatch(/margin-bottom:\s*var\(--space-lg\)/);
     });
   });
 

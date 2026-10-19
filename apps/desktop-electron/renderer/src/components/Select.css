@@ -54,13 +54,13 @@
 }
 
 /* One hover for every control (area 79): a firmer border and a shade. */
-.cp-select__control:hover:not(:disabled):not(:focus-visible) {
+.cp-select__control:hover:not(:disabled):not([aria-disabled="true"]):not(:focus-visible) {
   border-color: var(--hover-border);
   background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
 }
 
 .cp-select__control--error,
-.cp-select__control--error:hover:not(:disabled):not(:focus-visible) {
+.cp-select__control--error:hover:not(:disabled):not([aria-disabled="true"]):not(:focus-visible) {
   border-color: var(--accent-danger);
 }
 
@@ -69,7 +69,8 @@
   outline-offset: var(--focus-ring-offset);
 }
 
-.cp-select__control:disabled {
+.cp-select__control:disabled,
+.cp-select__control[aria-disabled="true"] {
   color: var(--fg-disabled);
   background: var(--bg-panel);
   background-image: none;
@@ -77,6 +78,46 @@
   cursor: default;
 }
 
-.cp-select__field:has(> .cp-select__control:disabled) .cp-select__chevron {
+.cp-select__field:has(> .cp-select__control:is(:disabled, [aria-disabled="true"])) .cp-select__chevron {
   color: var(--fg-disabled);
+}
+
+/*
+ * An inline label (C222): the box is drawn once around the label and the value, so the word sits
+ * inside it before the value and nothing is painted over. The select itself loses its own box.
+ */
+.cp-select--inline .cp-select__field {
+  align-items: center;
+  border: var(--control-border-width) solid var(--border-control);
+  background: var(--bg-input);
+}
+
+.cp-select--inline .cp-select__field:has(> .cp-select__control:is(:disabled, [aria-disabled="true"])) {
+  border-color: var(--border-muted);
+  background: var(--bg-panel);
+}
+
+.cp-select--inline .cp-select__field:has(> .cp-select__control:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.cp-select--inline .cp-select__control {
+  align-self: stretch;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  background-image: none;
+  outline: none;
+}
+
+.cp-select__inline-label {
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding-inline-start: var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
+  white-space: nowrap;
 }

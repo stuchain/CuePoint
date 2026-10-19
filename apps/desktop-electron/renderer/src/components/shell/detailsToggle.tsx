@@ -73,11 +73,12 @@ export function DetailsToggle({ divided = false }: { divided?: boolean }) {
         <Button
           variant="secondary"
           icon="panel-right"
-          className={`cp-details-toggle${current.open ? " cp-details-toggle--open" : ""}`}
+          className="cp-details-toggle"
           onClick={current.toggle}
-          aria-expanded={current.open}
+          // A toggle: pressed while the panel is open, drawn by the shared on look (D1).
+          aria-pressed={current.open}
           aria-controls={current.open ? DETAILS_PANEL_ID : undefined}
-          // One name whatever the state: the state is aria-expanded's, and the hint says the action.
+          // One name whatever the state: the state is aria-pressed's, and the hint says the action.
           // (The panel's own close button is "Hide track details".)
           aria-label="Track details"
           {...{ [DETAILS_TOGGLE_ATTRIBUTE]: "" }}

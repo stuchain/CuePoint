@@ -1,7 +1,7 @@
 import { shouldShowOnboarding } from "../components/firstRunMemory";
 
 /**
- * The app's sizes (Phase 1 DS-2; 1.5 added by DEC-161, Compact 1.25 by R2-5). Every CSS size that would
+ * The app's sizes (Phase 1 DS-2; 1.5 added by DEC-161, Small 1.25 by R2-5). Every CSS size that would
  * land on half a pixel at 1.5 is rounded in the stylesheet (`--hairline`), so the
  * pixel style stays crisp at each of them.
  */
@@ -18,8 +18,8 @@ function isScaleFactor(value: number): value is ScaleFactor {
 export const DEFAULT_SCALE: ScaleFactor = 1.5;
 
 const SCALE_NAMES: Record<number, string> = {
-  1: "Small",
-  1.25: "Compact",
+  1: "Extra small",
+  1.25: "Small",
   1.5: "Medium",
   2: "Large",
   3: "Extra large",
@@ -48,11 +48,11 @@ export function scaleOptionLabel(scale: number): string {
  */
 export const MIN_ROWS_HEIGHT = 560;
 
-/** Under this available height a fresh install opens at Compact, otherwise at Medium. */
+/** Under this available height a fresh install opens at Small, otherwise at Medium. */
 const COMPACT_BELOW_HEIGHT = 860;
 
 /**
- * The size suggested for a screen of this available height (R2-5): Compact under 860,
+ * The size suggested for a screen of this available height (R2-5): Small under 860,
  * else Medium, but never one that is too big for the screen; it steps down to 1.
  */
 export function suggestedScale(availHeight: number): ScaleFactor {

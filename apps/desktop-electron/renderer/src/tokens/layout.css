@@ -1,5 +1,12 @@
 /**
  * Layout tokens — content width, safe areas for lab chrome, responsive spacing.
+ *
+ * Breakpoints (C206): one unit system. A layout breakpoint is a CONTAINER query, never a media
+ * query (the sidebar and Track details take width the window does not know about), and its width
+ * is written in `em` of the container: the content region's text is `--text-body` (10px at 1x
+ * times the text size), so `60em` is 600px at 1x, 900px at 2x of 10px text and so on, and a
+ * breakpoint moves with the text size the way the layout does. Never px, and never a `calc()`
+ * with `var(--scale)` (a query condition cannot read a custom property).
  */
 
 /*
@@ -19,14 +26,8 @@
   --content-narrow-width: min(480px, 100%);
 
   /*
-   * Symmetric screen padding. The extra 48px of bottom clearance this used to
-   * carry existed for the floating lab nav pill, which SHELL-02 deleted; with
-   * the pill gone it was just dead space under every screen.
-   */
-  --screen-padding: var(--space-xl);
-  /*
    * The page margin (one rule for every page): the space between the sidebar (and the Track
-   * details panel) and a page's content, and above its header. `.screen` reads these through the
+   * details panel) and a page's content, above its header, and below its last line (C41). `.screen` reads these through the
    * safe-area variables, so a page takes them unless it opts out. The margin is 12px * --scale on
    * every side, each capped at 4cqi of the content region (the `content` container): at 3x it
    * would be 36px, which on a narrow window is a lot of the width, so it gives way before the
@@ -34,7 +35,7 @@
    */
   --page-gutter-x: min(calc(12px * var(--scale)), 4cqi);
   --page-gutter-top: min(calc(12px * var(--scale)), 3.4cqi);
-  --results-min-rows: 10;
+  --page-gutter-bottom: min(calc(12px * var(--scale)), 3.4cqi);
   /*
    * One row height for every track list (Library, Keys, Discover, Prepare, Clean Review, the
    * queue, Statistics, search): 26px at 1x, following the text size, not the control size.
@@ -44,24 +45,6 @@
    * dropdown options use this token too.
    */
   --row-height: round(nearest, calc(var(--font-size-xs) * var(--row-density, 2.6)), 1px);
-  --row-unmatched-bg: #5c2e2e;
-  /* Breakpoints (reference values for JS/docs; media queries use literals) */
-  --bp-sm: 600px;
-  --bp-md: 900px;
-  --bp-lg: 1200px;
-
-  /* Results table — Qt 80px column minimums (scaled) */
-  --results-col-min: calc(80px * var(--scale));
-  --results-col-write: var(--results-col-min);
-  --results-table-min-width: calc(14 * 80px * var(--scale));
-
-  /* Write, Index, Key, Camelot, Year, Matched, Score, Confidence, BPM = 80px min; text cols wider */
-  --results-grid-columns: var(--results-col-min) var(--results-col-min)
-    minmax(calc(120px * var(--scale)), 1fr) minmax(calc(120px * var(--scale)), 1fr)
-    minmax(calc(140px * var(--scale)), 1.2fr) minmax(calc(120px * var(--scale)), 1fr)
-    var(--results-col-min) var(--results-col-min) var(--results-col-min)
-    minmax(calc(120px * var(--scale)), 1fr) var(--results-col-min) var(--results-col-min)
-    var(--results-col-min) var(--results-col-min);
 }
 
 /* Roomy rows (Settings > Appearance > Tables): a step taller than the one row height. */
@@ -70,26 +53,13 @@
 }
 
 /*
- * The --safe-* are declared on .screen, where --screen-padding is read, so a container query
- * that sets only --screen-padding on .screen reaches all four. Declared on :root they would
- * keep the value resolved there. Narrow means the content region, not the window: the sidebar
- * and inspector take width the viewport does not know about.
+ * The --safe-* are declared on .screen, where the container units (cqi) of the page margin
+ * resolve: declared on :root they would keep the value resolved there. The margin is one value on
+ * every side of every page; there is no stepped padding.
  */
 .screen {
   --safe-top: var(--page-gutter-top);
   --safe-right: var(--page-gutter-x);
-  --safe-bottom: var(--screen-padding);
+  --safe-bottom: var(--page-gutter-bottom);
   --safe-left: var(--page-gutter-x);
-}
-
-@container content (max-width: 900px) {
-  .screen {
-    --screen-padding: var(--space-lg);
-  }
-}
-
-@container content (max-width: 600px) {
-  .screen {
-    --screen-padding: var(--space-md);
-  }
 }

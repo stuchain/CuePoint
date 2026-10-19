@@ -1,4 +1,5 @@
 /* Neo-dark SaaS — zinc base, violet accent */
+:root,
 [data-theme="neoDark"] {
   --bg-app: #18181b;
   --bg-panel: #27272a;
@@ -31,6 +32,8 @@
   --accent-warning: #eab308;
   --accent-danger: #ef4444;
   --accent-info: #6366f1;
+  /* Writing to the user's files is green (D14); text on it is --fg-on-status, black. */
+  --accent-write: #3fb67a;
 
   /* Fills, link and focus ring (G6): each held to its floor by themeContrast.test.ts. */
   --accent-fill: #7c3aed;
@@ -40,7 +43,7 @@
   --color-scheme: dark;
 
   --overlay-header: rgba(0, 0, 0, 0.25);
-  --overlay-backdrop: rgba(0, 0, 0, 0.72);
+  --overlay-backdrop: rgba(0, 0, 0, 0.7);
 
   /* Waveforms (WAVE-05): each band at 3:1 or more against --bg-panel. */
   --waveform-low: #3b82f6;
