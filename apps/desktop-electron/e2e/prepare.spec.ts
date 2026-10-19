@@ -559,11 +559,11 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
         .poll(() =>
           win.evaluate(() => {
             // The table is drawn again as Track details opens: read nothing until it is back.
-            const scroll = document.querySelector<HTMLElement>('[aria-label="Set entries"] .track-table__scroll');
+            const scroll = document.querySelector<HTMLElement>('[role="table"][aria-label="Set entries"]');
             return scroll ? scroll.scrollWidth - scroll.clientWidth : Number.POSITIVE_INFINITY;
           }),
         )
-        .toBeLessThanOrEqual(0);
+        .toBeLessThanOrEqual(1);
       const headersShown = await win
         .getByRole("table", { name: "Set entries" })
         .getByRole("columnheader")

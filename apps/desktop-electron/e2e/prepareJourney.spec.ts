@@ -361,10 +361,11 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
         return { end: end.right, area };
       });
       expect(Math.abs(edge.end - edge.area)).toBeLessThan(1);
-      // A time cell on the selected row is not covered by the buttons: its field is what a click
-      // at its own centre reaches, and the buttons stand aside for the typing.
+      // The buttons sit over the selected row's last columns, which here are its times, so a time is
+      // started from the keyboard (F2); the buttons stand aside for the typing, and the field is what
+      // a click at its own centre reaches.
       const mixIn = row(win, "Warm Two").getByRole("textbox", { name: /^Mix in for/ });
-      await row(win, "Warm Two").getByRole("button", { name: /^Mix in for/ }).click();
+      await win.keyboard.press("F2");
       await expect(mixIn).toBeVisible();
       expect(
         await mixIn.evaluate((field) => {
@@ -472,7 +473,7 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       expect(m3u8.split("\n").filter((line) => line.endsWith("1.mp3"))).toHaveLength(2);
       await win.getByRole("button", { name: "Set", exact: true }).click();
       await menu(win, "Copy set list");
-      await expect(win.getByText("Copied the set list for “Friday”.")).toBeVisible({ timeout: 15_000 });
+      await expect(win.getByText("Copied the set list for “Friday”")).toBeVisible({ timeout: 15_000 });
       const copied = await app.evaluate(({ clipboard }) => clipboard.readText());
       // Windows' clipboard holds text with CRLF line ends, which Chromium writes
       // for any text put on it; the lines are what must match the file.

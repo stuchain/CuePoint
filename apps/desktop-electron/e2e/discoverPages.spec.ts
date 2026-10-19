@@ -445,7 +445,7 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await inspector.getByRole("button", { name: "Mara Veil" }).click();
         await expect(window).toHaveURL(/#\/discover\/artist\/bp%3A301001$/, { timeout: 30_000 });
         await expect(window.getByRole("heading", { name: "Mara Veil", level: 1 })).toBeVisible();
-        await expect(window.getByText("Linked to Beatport")).toBeVisible();
+        await expect(window.getByText("Linked to Beatport").first()).toBeVisible();
         await expect.poll(() => titlesIn(window, "Your tracks")).toEqual(["Harbour Lights", "Low Tide"]);
         const releases = "Beatport's releases by this artist";
         await expect(
@@ -526,8 +526,8 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(row(window, "Library tracks", "Harbour Lights")).toBeVisible({ timeout: 60_000 });
         // What the session made is kept: the wantlist and the search (acceptance 2, 5).
         await nav(window).getByRole("link", { name: "Discover" }).click();
-        // Starting a dig keeps Results as the tab to come back to (the section is saved on start).
-        await expect(window.getByRole("tab", { name: "Results" })).toHaveAttribute(
+        // A fresh start opens Discover on New dig, once (freshStart); the session's tabs come after.
+        await expect(window.getByRole("tab", { name: "New dig" })).toHaveAttribute(
           "aria-selected",
           "true",
           { timeout: 30_000 },
