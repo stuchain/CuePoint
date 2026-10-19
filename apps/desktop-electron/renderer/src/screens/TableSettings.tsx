@@ -19,7 +19,8 @@ export function TableSettings({ onChange }: { onChange?: () => void } = {}) {
   const [coloured, setColoured] = useKeyColours();
 
   return (
-    <Fieldset legend="Tables" className="theme-settings__group">
+    // A group of named fields, so its name is the one sub-heading, not another field label (C58).
+    <Fieldset legend={<span className="cp-text-subhead">Tables</span>} className="theme-settings__group">
       <Select
         label="Row density"
         width="standard"

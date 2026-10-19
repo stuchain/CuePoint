@@ -9,3 +9,8 @@
 .cp-fieldset > legend {
   margin-bottom: var(--space-xs);
 }
+
+/* A legend that names a group of fields is a sub-heading, 8 above its content (C58). */
+.cp-fieldset > legend:has(> .cp-text-subhead) {
+  margin-bottom: var(--space-sm);
+}

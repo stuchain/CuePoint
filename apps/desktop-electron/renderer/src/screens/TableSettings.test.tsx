@@ -27,6 +27,11 @@ describe("Tables settings", () => {
     expect(keys()).toBeChecked();
   });
 
+  it("names the group with the one sub-heading look, not a field label's (C58)", () => {
+    const { container } = render(<TableSettings />);
+    expect(container.querySelector("legend > .cp-text-subhead")).toHaveTextContent("Tables");
+  });
+
   it("offers Compact and Roomy", () => {
     render(<TableSettings />);
     const options = Array.from((density() as HTMLSelectElement).options).map((o) => o.textContent);
