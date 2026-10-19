@@ -172,7 +172,7 @@ test.describe("Phase 3 end to end (LIBRARY-12)", () => {
       await expect(window.getByTestId("library-track-count")).toHaveText("6 tracks");
       // The header names the scope it is on (K9, R4-4); the h1 stays "Library".
       await expect(window.locator(".library-header .cp-screen-header__display:visible")).toHaveText("All tracks");
-      await expect(window.getByText("In sync")).toBeVisible();
+      await expect(window.getByText("Up to date")).toBeVisible();
 
       // ---------------------------------------------------------------- 2
       await importCollection(window, original);

@@ -289,7 +289,7 @@ test.describe("Quick filters (PAGES-05B)", () => {
       };
       const reachable = async () => {
         const first = chips.getByRole("listitem").first();
-        const more = window.locator(".cp-filter-bar__more");
+        const more = window.locator(".cp-filter-bar__chips-wrap").getByRole("button", { name: /^Show (all|less)/ });
         const seen = (await inside(first)) || ((await more.count()) > 0 && (await inside(more)));
         expect(seen, "the first chip or +N more is on screen").toBe(true);
         expect(await inside(window.getByRole("button", { name: /Save as Smart Collection/ }))).toBe(true);

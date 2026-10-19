@@ -173,9 +173,13 @@ async function chooseNew(window: Page, item: "Collection" | "Set" | "Folder") {
   await window.getByRole("menuitem", { name: item, exact: true }).click();
 }
 
-/** The bar at the pane's foot, always drawn (DEC-245); its buttons are dimmed until a node is selected. */
-function treeBar(window: Page) {
-  return window.getByRole("toolbar", { name: "Selected Collection or Set" });
+/**
+ * One of a row's actions, from the "..." menu at its right end (C15, C227): the foot bar is gone.
+ * The button follows the selected row, or the folder last clicked.
+ */
+async function rowAction(window: Page, name: string, action: string) {
+  await window.getByRole("button", { name: `Actions for ${name}`, exact: true }).click();
+  await window.getByRole("menuitem", { name: action, exact: true }).click();
 }
 
 /** The Collections section's tree. */
@@ -274,7 +278,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       const rows = table.getByRole("row").filter({ hasText: /Track/ });
       await rows.nth(0).click();
       await rows.nth(2).click({ modifiers: ["Shift"] });
-      await expect(window.getByRole("button", { name: /^Clear selection, 3 selected/ })).toBeVisible();
+      await expect(window.getByRole("toolbar", { name: "Selection" })).toContainText("3 selected");
 
       await dragRowsOnto(window, 0, "Openers");
       await expect(window.getByText(/Added 3 tracks to Openers/i).first()).toBeVisible({
@@ -353,7 +357,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // would be a menu that moves when you use it.
       await window.getByRole("menuitem", { name: "Organize", exact: true }).click();
       await window.getByRole("menuitem", { name: "Rate" }).click();
-      await window.getByRole("menuitem", { name: "★★★★", exact: true }).click();
+      await window.getByRole("menuitem", { name: "4 stars", exact: true }).click();
 
       const rated = await window.evaluate(async () => {
         const tree = await window.cuepoint!.getCollections!();
@@ -384,7 +388,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await window.getByRole("listbox", { name: "Suggestions" }).getByRole("option", { name: /^House/ }).click();
       await expect(value).toHaveValue("House");
       await window.getByRole("button", { name: "Add", exact: true }).click();
-      await expect(window.locator(".library-toolbar__count")).toContainText("Showing 6 of 12 tracks", {
+      await expect(window.locator(".cp-count")).toContainText("Showing 6 of 12 tracks", {
         timeout: 30_000,
       });
 
@@ -413,8 +417,8 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       });
 
       // ---------------------------------------------------------------- 8
-      // Selected a moment ago, so the bar under the tree is showing its Freeze (K14).
-      await treeBar(window).getByRole("button", { name: "Freeze to a Collection…" }).click();
+      // Selected a moment ago, so its row menu has Freeze (K14, C15).
+      await rowAction(window, "House only", "Freeze to a Collection…");
       const freeze = window.getByRole("dialog");
       await expect(freeze).toContainText(/matches right now/);
       await freeze.getByRole("button", { name: "Freeze it" }).click();
@@ -434,9 +438,9 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // question that starts out identical and is never linked again.
       //
       // The row is selected again first: the freeze above took the focus with
-      // its dialog, and the bar under the tree acts on the selected row.
+      // its dialog, and the row menu acts on the selected row.
       await collectionsTree(window).getByText("House only", { exact: true }).click();
-      await treeBar(window).getByRole("button", { name: "Duplicate", exact: true }).click();
+      await rowAction(window, "House only", "Duplicate");
       await expect(
         window.getByText(/separate from now on/i).first(),
       ).toBeVisible({ timeout: 30_000 });
@@ -623,7 +627,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       await collectionsTree(window).getByText("Openers").click();
 
       const measure = () => window.evaluate(() => {
-        // The bar sits outside the scroll area, at the pane's foot: nodes are counted against the scroll area.
+        // Nodes are counted against the scroll area; the pane has no bar at its foot now (C15).
         const pane = document.querySelector<HTMLElement>(".cp-library-pane__scroll")!;
         const box = pane.getBoundingClientRect();
         const tree = document.querySelector<HTMLElement>('[role="tree"][aria-label="Collections"]')!;
@@ -644,9 +648,8 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
           sideways: pane.scrollWidth - pane.clientWidth,
           visibleNodes: [...tree.querySelectorAll('[role="treeitem"]')].filter(whole).length,
           createLines: lines(".cp-collections__create button"),
-          barLines: lines(".cp-collections__bar button"),
+          footBars: document.querySelectorAll(".cp-collections__bar").length,
           createHeight: height(".cp-collections__create"),
-          barHeight: height(".cp-collections__bar"),
         };
       });
       expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.getSize()[0])).toBe(1280);
@@ -659,9 +662,9 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
         // The default 1,280-wide window, less a Windows frame's 16 px.
         expect(m.window.width).toBeGreaterThanOrEqual(1264);
         expect(m.sideways, `the pane scrolls sideways by ${m.sideways}px`).toBeLessThanOrEqual(0);
-        // Two lines at most, for the buttons over the tree and the bar under it.
+        // Two lines at most for the buttons over the tree; nothing is drawn under it.
         expect(m.createLines).toBeLessThanOrEqual(2);
-        expect(m.barLines).toBeLessThanOrEqual(2);
+        expect(m.footBars).toBe(0);
         expect(m.visibleNodes, JSON.stringify(m)).toBeGreaterThanOrEqual(WHOLE_COLLECTION_NODES);
       }
     } finally {
@@ -696,9 +699,8 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
 
       // Everything matching, which is never a list of ids.
       await window.getByRole("button", { name: "Select all" }).click();
-      await expect(
-        window.getByRole("button", { name: "Clear selection, 50,000 selected (everything matching)" }),
-      ).toBeVisible();
+      await expect(window.getByRole("toolbar", { name: "Selection" })).toContainText("50,000 selected");
+      await expect(window.getByText("The selection is everything matching")).toBeAttached();
 
       await window.getByRole("button", { name: "Organize", exact: true }).click();
       await window.getByRole("menuitem", { name: "Favorite", exact: true }).click();
@@ -754,9 +756,8 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
       // the whole batch, and one batch id across the history it wrote. The
       // selection is still what it was — stopping the work does not un-choose
       // the tracks — so this picks up where the last one left off.
-      await expect(
-        window.getByRole("button", { name: /^Clear selection, .* \(everything matching\)$/ }),
-      ).toBeVisible();
+      await expect(window.getByRole("toolbar", { name: "Selection" })).toContainText("50,000 selected");
+      await expect(window.getByText("The selection is everything matching")).toBeAttached();
       await window.getByRole("button", { name: "Organize", exact: true }).click();
       await window.getByRole("menuitem", { name: "Favorite", exact: true }).click();
       await window.getByRole("dialog").getByRole("button", { name: "Change 50,000 tracks" }).click();
