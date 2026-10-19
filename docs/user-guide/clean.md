@@ -9,7 +9,7 @@ Clean has three tabs: **Match**, **Missing files** and **Duplicates**. It
 reopens on the tab you used last. A line under the title gives the facts (the
 tracks in your library and what waits in each tab). The tabs show where work
 waits, with a count after the name, in amber: **Match 42** counts the tracks
-waiting for you plus those that changed since you decided, **Missing files 3**
+waiting to be checked plus those that changed since you decided, **Missing files 3**
 and **Duplicates 5** count what the last check found;
 Duplicates counts the tracks in duplicate groups, not the groups. A tab shows no
 number when nothing is waiting, or when that check has never run. Values go into
@@ -26,9 +26,9 @@ Three things hold everywhere on this page:
   Until you choose **Reload Tag** in Rekordbox, it keeps showing the old values.
 
 **Where the old tabs went.** The count of everything that may need you, and
-**Read cover art**, are in **Statistics ▸ Health** (an old link to Clean's Health
-opens it); starting or resuming waveform drawing is in **Settings ▸ Waveforms**. Changing values is done where the tracks are: **Edit values…** and **Use
-Beatport's values…** in the Library's menus, in Track details and in Keys open
+**Read artwork**, are in **Statistics ▸ Health** (an old link to Clean's Health
+opens it); starting or resuming waveform drawing is in **Settings ▸ Waveforms**. Changing values is done where the tracks are: **Edit values…** and **Copy
+Beatport values…** in the Library's menus, in Track details and in Keys open
 their dialogs in place, and an old link to Fix values opens the Library.
 
 ## Match
@@ -47,8 +47,10 @@ come back to Clean from another page too.
 
 ### Playlists
 
-A line at the top shows the three steps: **1 Tick the playlists to match**,
-**2 Review**, **3 Sync to files**, with the first lit, because this list is step 1.
+A caption on the tab row names the step you are on: **Step 1 of 3 · Tick
+playlists** here, **Step 2 of 3 · Matching** while a match runs and **Step 3 of 3 ·
+Check and sync** (with the playlist's name) in a Review. Past searches is not a
+step, so it has no caption.
 
 One row for every Rekordbox playlist, and a first row, **Whole library**. Each
 row is one compact line with a square tick, and the list is boxed with its
@@ -61,7 +63,7 @@ which helps when you have hundreds.
 into your files, with nothing left to save, shows a green **Synced** with the day
 it was written. Any other playlist shows a muted **Not yet**. Undoing that save, or a
 value that is waiting to be saved again, takes the mark away. Where a playlist
-stands with Beatport (matched, not found) is not on this list: that is what
+stands with Beatport (confirmed, no match) is not on this list: that is what
 **Review** is for, and a playlist with something to review has a **Review**
 button. Only the playlist being matched shows progress: a thin bar under its name and,
 in the "In your files" column, "16 of 24 · about 1 minute left" with a **Stop**
@@ -94,8 +96,8 @@ button. **Review** on a row opens the same table again later.
 If Beatport could not be reached or turned the searches away it says "hJ: 24
 searches failed" and that matching again usually fixes it; if the searches ran and
 found nothing it says "hJ: no Beatport match for 24 tracks. This usually means the
-search failed, not that the tracks aren't on Beatport." Either way **See the 24 ›**
-opens the Review, where those tracks show as **Search failed** or **Not found**.
+search failed, not that the tracks are missing from Beatport." Either way **See the 24**
+opens the Review, where those tracks show as **Search failed** or **No match**.
 
 A match that ends while you are reading a track's side panel does not replace
 what you are reading: a note says so, with **Review**.
@@ -112,7 +114,7 @@ matches only the tracks it had not reached; nothing is matched twice.
 
 Matching searches Beatport with your Beatport sign-in (**Settings → Beatport**), so
 sign in first. If Beatport does not accept the sign-in, or limits how fast it will
-answer, the tracks say **Search failed** rather than **Not found**, and matching
+answer, the tracks say **Search failed** rather than **No match**, and matching
 again tries them once that is sorted out. Without a sign-in CuePoint falls back
 to Beatport's public website, which Beatport often blocks.
 
@@ -130,15 +132,15 @@ The window asks which tracks:
 Left off, only the tracks not looked up yet are searched, and the window says how
 many that is for what you chose. The button names the job: **Match 212 tracks**,
 **Match 212 tracks again** when you turned that on, or **Match the 12 chosen** for
-tracks you came with. When it is greyed, a line says why ("Choose which tracks.").
+tracks you came with. When it is greyed, a line says why.
 
 ### What matching decides for you
 
 | Status in the Review | Means |
 | --- | --- |
-| **Matched** | The best candidate scored 95 or more and passed every check, or you chose it. CuePoint confirmed it for you |
-| **Check** | Beatport found candidates, but none was certain enough |
-| **Not found** | Beatport was asked and nothing fit |
+| **Confirmed** | The best candidate scored 95 or more and passed every check, or you chose it. CuePoint confirmed it for you |
+| **To check** | Beatport found candidates, but none was certain enough |
+| **No match** | Beatport was asked and nothing fit |
 | **Search failed** | The search itself could not finish, so nothing is known about the track |
 
 Every candidate a match found is kept, with its score and the reason it was
@@ -148,23 +150,26 @@ turned down, so you can pick another one later.
 
 Every track of one playlist, in one plain table: what Beatport found for it, and
 a tick that says whether its values go into your files. Each playlist you match or
-open has its own **Review \<name\>** tab; the whole library has only its own. The small
-**‹** button at the left of the bar closes the review and goes back to the **Playlists**
-tab.
+open is a view inside **Playlists**; the whole library has only its own. The quiet
+**‹ Playlists** button at the left of the tab row closes the review and goes back
+to the list.
 
-Above the table: the name, how many tracks and how many are **ticked to sync**,
-what was **not found**, and a big green **Sync hJ to files…**. A very long
-playlist is read a page at a time (**Show more**), and only the rows in view are
-drawn.
+Above the table, a selection bar appears while tracks are selected, with **Tick
+to sync** and **Leave out**. Under the table, the bar says how many tracks, how
+many are **ticked to sync** and how many have **no match** or a **search failed**
+("24 tracks · 22 ticked to sync · 2 no match"), and a green **Sync to files…** sits
+at its right. A very long playlist is read a page at a time (**Show all 240**), and
+only the rows in view are drawn.
 
 Each row shows:
 
 - A **tick**. The header tick ticks or unticks every track that has a match.
-- **Status**, as a coloured chip: **Matched** (green), **Check** (amber), **Not
-  found** or **Search failed** (red).
+- **Status**: **Confirmed** is a quiet tick and the word, because it needs
+  nothing from you; **To check** (amber), **No match** (grey) and **Search
+  failed** (red) are chips.
 - **Your track** and the **Beatport match** found for it, with the part that
   differs from yours (a version, the title, the artists) marked.
-- A **▶** that plays Beatport's short sample of the match.
+- A play button that plays Beatport's short sample of the match.
 
 **A ticked track is synced; an unticked one is left out.** Tracks that matched
 start ticked, and so do those to check when their match passed the checks; tracks
@@ -173,30 +178,35 @@ through. Your ticks are kept by CuePoint, so they are there when you come back,
 and a later match does not undo them. Ticking does not change any value or file:
 that happens only in **Sync**.
 
-**Click a row**, or press **Enter** on it, to open its side panel. It opens
-straight on the Beatport candidates:
+**Click a row** to open its side panel. It opens straight on the Beatport
+candidates:
 
 - **Your track · from your library** at the top: its art, a big title, its
-  artists, then its label, key, BPM, length and year, and a ▶ to play it.
+  artists, then its label, key, BPM, length and year, and a play button.
 - **Found on Beatport · pick the right one**: every candidate the matcher scored,
-  each with its cover (a grey square when Beatport has none), its title (the words that differ from yours in orange), its artists
-  (orange when they differ), a line of label, key, BPM and year, a ▶ and **Use
-  this**. The one the track is matched with is tinted green and marked **in use**.
-  A candidate that was ruled out says why.
-- A search box, filled with the track's title and artist, and **Search Beatport**,
-  which searches from CuePoint with those words (it needs your Beatport sign-in;
-  without one the panel says so). The results are scored against your track as any
-  match is, kept with it, and listed with **Use this**. A search never confirms
-  anything by itself: the track waits until you press **Use this**. It waits while
-  a match is running.
-- **None of these — leave it out**, which unticks the track.
-- **More ›**, which holds **Why this score?** (the matcher's own working for a
+  each with its cover (a grey square marked **No artwork** when Beatport has none),
+  its title (the words that differ from yours in orange), its artists (orange when
+  they differ), a line of label, key, BPM and year and a play button. The one the
+  track is matched with is tinted green and marked **in use**. A candidate that was
+  ruled out says why.
+- A search box, **Search Beatport for**, filled with the track's title and artist,
+  and **Search Beatport**, which searches from CuePoint with those words (it needs
+  your Beatport sign-in; without one the panel says so). The results are scored
+  against your track as any match is and kept with it. A search never confirms
+  anything by itself: the track waits until you press **Use this match**. It waits
+  while a match is running.
+- **More**, which holds **Why this score?** (the matcher's own working for a
   candidate) and, for a track searched more than once, an **Attempt** menu.
+- At the foot, **Use this match**, which confirms the picked candidate and ticks the
+  track, and **None of these, leave it out**, which unticks it.
 
-**Use this** confirms that candidate and ticks the track. **Up** and **Down** move
-to the previous or next track (the table moves too, also with no panel open),
-**Home** and **End** go to the first or last track, and **Esc** closes the panel. The keys do nothing while you are typing in a field or
-have a dialog open. **Space** still plays and pauses the player.
+The review has its own keys. **Up** and **Down** move to the previous or next track
+(the table moves too, also with no panel open; **Shift** extends the selection and
+the panel follows), **Home** and **End** go to the first or last track, **Ctrl+A**
+selects every track, **Enter** plays the track, **Space** ticks or unticks it, and
+**Esc** closes the panel and then clears the selection. The keys do nothing while
+you are typing in a field or have a dialog open. Everywhere else on the page,
+**Space** still plays and pauses the player.
 
 ### Previews and artwork
 
@@ -214,8 +224,8 @@ art and the preview are simply missing, and the rest works.
 ### Past searches
 
 With nothing matched yet this tab shows **No searches yet**, a line on what is kept here and a **Go to Playlists** button; its search box appears once there is something to search. Otherwise it lists every search you ran, newest first: **When**, **What was matched** (a playlist's
-name, or "N tracks"), how many **Tracks**, a **Results** line ("131 found · 42
-waiting for you · 6 not found", with "· 2 rejected" and "· 4 not reached" when
+name, or "N tracks"), how many **Tracks**, a **Results** line ("131 confirmed · 42
+to check · 6 no match", with "· 2 rejected", "· 1 search failed" and "· 4 not reached" when
 there are some) and a status of **Done**, **Stopped at 120** or **Running**. The
 numbers show where the tracks stand now, so they change as you work through them.
 A search that was resumed is still one line. Type in the search box to find one by
@@ -230,7 +240,7 @@ name or date.
 
 ## Saving values into your files
 
-**Nothing is written before Sync.** **Sync hJ to files…** opens the Sync window for
+**Nothing is written before Sync.** **Sync to files…** opens the Sync window ("Sync “hJ” to your files") for
 the ticked tracks of that playlist, and opening it changes nothing: not your
 files, and not CuePoint's own values or matches. Its numbers come from laying
 the Beatport matches' BPM, Genre, Label and Year over what each track shows, in
@@ -247,28 +257,28 @@ tag, the one Rekordbox lists as **Comments**, so you can see in Rekordbox which
 files were synced; it is your text, not a Beatport value, so CuePoint keeps no copy
 of it. **Keep values already in the files**
 leaves a field alone that the file already holds, a comment included: only files
-with no comment get yours. **Undo this save** puts a comment back as it was. **See every change** lists the
+with no comment get yours. **Undo this sync** puts a comment back as it was. **See every change** lists the
 before and after of each file. Your choices are remembered for next time.
 
 Each ticked row shows how many files that value will change, and the button
-reads how many files get written, such as **Write 17 files**; when every ticked row
-is 0 it is dimmed and reads **Nothing to write**, with the reason beside it. A note
+reads how many files get synced, such as **Sync 17 files**; when every ticked row
+is 0 it is dimmed and reads **Nothing to sync**, with the reason beside it. A note
 such as "WAV files are skipped (Rekordbox does not read their tags)." sits just
-above the buttons. Pressing **Write N files** does it in one step: the files are written first, with
+above the buttons. Pressing **Sync N files** does it in one step: the files are written first, with
 each old value recorded before it is replaced. Then, for the values each file
 actually received, CuePoint accepts the ticked matches and copies those values
 into its own, as one recorded batch. A value a file already held, or kept under
 **Keep values already in the files**, is not written and so not copied: the files
 and CuePoint agree. A value you typed yourself is replaced only when you ticked
 that value and it was written. If the files could not be written, nothing else
-changes. **Undo this save** puts the files back and takes that batch back with
+changes. **Undo this sync** puts the files back and takes that batch back with
 them, matches included; Activity offers it too. WAV files are skipped, since
 Rekordbox does not read their tags; Rekordbox shows the new values after **Reload
-Tag**. See [Saving to files](library.md#saving-to-files). The key of a match is
+Tag**. See [Syncing to files](library.md#syncing-to-files). The key of a match is
 the track's shown key unless you typed one yourself, which Sync never replaces.
 
 To sync the whole collection, open the **Whole library** row's **Review** and use
-its **Sync Whole library to files…**.
+its **Sync to files…**.
 
 ## Missing files
 
@@ -321,7 +331,7 @@ Earlier versions matched from a separate **inKey** screen and showed matches on
 | inKey: load an XML or M3U file, choose playlists, match | Import your Rekordbox file once in the Library, then match a playlist, a Collection or the whole library here |
 | Results: review, pick another candidate | **Match**: the **Review** of a search, with the keyboard |
 | Export results to CSV, JSON or Excel | **Save review list as a file…** on each run in **Past searches** |
-| Sync tags with Rekordbox | **Sync … to files…** on a playlist's [Review](#saving-values-into-your-files), previewed, recorded and undoable |
+| Sync tags with Rekordbox | **Sync to files…** on a playlist's [Review](#saving-values-into-your-files), previewed, recorded and undoable |
 | Past searches | **Past searches** in Match lists each search; the results are also kept with each track |
 
 The CSV files earlier runs wrote are still where they were saved; CuePoint no

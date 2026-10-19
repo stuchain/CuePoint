@@ -72,12 +72,20 @@ its full height. It is a place to work rather than a list to look at: what has
 played stays above what is playing, so you can see where you have been and
 jump back.
 
+The queue opens as wide as Track details and its left edge can be dragged (or
+moved with the arrow keys once it has focus) to make it wider or narrower, up to
+half the window. The width scales with the text size, and CuePoint remembers it.
+
 The panel says the gestures under its title: "Drag to reorder · Alt+↑/↓ moves
 · Delete removes · Enter plays".
+
+- **Up** / **Down** select the previous or next track, **Home** / **End** the first
+  or last.
 
 - **Enter** plays the selected track.
 - **Alt+Up** / **Alt+Down** move a track through the queue.
 - **Delete** removes one.
+- **Menu key** or **Shift+F10** opens the menu for the selected track.
 - Dragging works too; a line shows where the track will land.
 - **Clear queue** removes everything except the track that is playing, which
   keeps playing. It asks first, so a stray click does not throw away a queue you
@@ -92,8 +100,11 @@ The panel says the gestures under its title: "Drag to reorder · Alt+↑/↓ mov
 | **Space** | Play or pause |
 | **Ctrl+Right** / **Ctrl+Left** | Next / previous track |
 | **Ctrl+Up** / **Ctrl+Down** | Volume |
+| **Up** / **Down**, **Home** / **End** | In the queue: select a track |
+| **Enter** | In the queue: play the selected track |
 | **Alt+Up** / **Alt+Down** | Move a track in the queue |
 | **Delete** | Remove a track from the queue |
+| **Menu key** / **Shift+F10** | Open the menu for a queued track |
 
 Space is ignored while you are typing, while a dialog is open, or when you
 Tabbed to a button or list row — so it never stops the music halfway through a

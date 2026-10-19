@@ -29,7 +29,7 @@ each track leads into the next.
 
 A track can be in a Set more than once — a reprise at the end, an intro used
 twice — and **each time it plays is its own entry**, with its own times and its
-own note. The table marks a track played again with ↻ beside its number, and
+own note. The table marks a track played again with a small repeat mark beside its number, and
 its title says where else it plays.
 
 A Set holds at most 1,000 entries. A Collection holds larger lists.
@@ -38,7 +38,8 @@ A Set holds at most 1,000 entries. A Collection holds larger lists.
 
 - **New Set…**, in the **Set** menu in Prepare's header (it works with a
   Set open) or **Set** in the **+ New** menu at the top of the Library's
-  Collections section, makes an empty Set in the folder you choose.
+  Collections section, opens the **New Set** dialog: name it, choose the folder and
+  press **Create the Set** to make an empty Set there.
 - **New Set from…** copies the tracks of something you already have into a new
   Set, as its one chapter:
   - a **Collection**, in its order and with any repeats;
@@ -47,7 +48,8 @@ A Set holds at most 1,000 entries. A Collection holds larger lists.
   - a **Rekordbox playlist**, in its order — refreshing from Rekordbox never
     changes the Set.
 
-  On the Prepare page, **Set → New Set from…** asks what to copy first. In the
+  On the Prepare page, **Set → New Set from…** asks what to copy first. Either way
+  the dialog's button is **Create the Set**. In the
   Library, right-click a Collection, a Smart Collection or a Rekordbox playlist
   and choose **New Set from…**.
 - **New Set from these…**, in the Library's right-click menu and the selection
@@ -138,20 +140,21 @@ row, not here.
 **Set** holds **New Set…**, **New Set from…**, **Notes…** (notes for the whole Set:
 the venue, the set times, anything you want to remember; it reads **Notes (1)…**
 once the Set has some), and then **Save set list…**, **Copy set list** and
-**Export to Rekordbox…**. **View** shows or hides the tempo and key lanes and the
-transition strip, shows or hides the **Mix in** and **Mix out** times
-(**Show times** / **Hide times**). The small **Columns…** button in the table's
-header corner chooses the table's columns.
+**Export to Rekordbox…**. **View** has three ticked items, **Tempo lane**,
+**Transition strip** and **Mix in and Mix out**; the label never changes, the tick says
+whether it is on, and the menu stays open so you can set several. The small
+**Columns…** button in the table's header corner chooses the table's columns.
 
 The Set's table has one row per entry. It opens with its number, the track
-(**Title** and **Artist**), its **Key** (a coloured chip, the colour of its place on the Camelot wheel) and **BPM**, and **Fit**: a dot for how
-well the track mixes in from the one before. ● means key and tempo both fit, ◐
-means one of them is off, ○ means both are. Hover the dot for what is off; a
+(**Title** and **Artist**), its **Key** (a coloured chip, the colour of its place on the Camelot wheel), **BPM**
+and how long it **Plays for**. The columns kept out of the way until you want them are
+**Fit**, **Starts at**, the **Mix in** and **Mix out** times you plan, the **Transition**
+into it and its **Note**: **View ▸ Mix in and Mix out** brings both times in at once, and
+**Columns…** in the header corner shows or hides the others. **Fit** is a dot for how
+well the track mixes in from the one before: a filled dot means key and tempo both fit, a
+half dot means one of them is off, a ring means both are. Hover the dot for what is off; a
 warning you have marked OK counts as fit, and the first track has no dot, as
-nothing comes before it. Then come when it **Starts at** and how long it **Plays
-for**. The **Mix in** and **Mix out** times you plan, the **Transition** into it
-and its note are hidden until you want them: **View ▸ Show times** brings both
-times in at once, and **Columns…** in the header corner shows or hides the others. Hover a heading for
+nothing comes before it. Hover a heading for
 what it means. Each chapter has a heading row that states the chapter's facts
 under the same columns (under **Fit** it counts the chapter's open warnings). Nothing sorts: the order is the Set. A chapter's heading
 carries one button, **Edit…**; the chapter's dialog has **Move up**, **Move down**
@@ -191,7 +194,7 @@ range.
 
 Each entry can carry a planned **mix in** time and **mix out** time: where in the
 track you plan to bring it in and take it out. Type them straight into the
-table's **Mix in** and **Mix out** cells (choose **View ▸ Show times** first), or under **In this Set** in Track
+table's **Mix in** and **Mix out** cells (choose **View ▸ Mix in and Mix out** first), or under **In this Set** in Track
 details, as `m:ss` or `h:mm:ss` — `0:30`, `4:30`, `1:02:00`.
 In the table, click the cell (or press Enter or F2 on the selected entry); Enter or
 Tab saves and moves to the next cell (Shift+Tab goes back), Esc drops what you
@@ -310,7 +313,7 @@ Each tab keeps its search, sort, scroll and selection while you look at the othe
 
 ## The tempo and key lanes
 
-**View → Show tempo and key lanes** draws the Set's shape above its table:
+**View → Tempo lane** draws the Set's shape above its table:
 
 - **Tempo**: each entry's BPM as a mark, stepping from one to the next, so a
   jump is a step you can see.
@@ -326,7 +329,7 @@ in words; they add no fact of their own.
 
 ## The transition strip
 
-**View → Show transition strip** shows the entry you select beside the one
+**View → Transition strip** shows the entry you select beside the one
 after it, so you can see how one track ends and the next begins:
 
 - **A row of titles**: each entry's track and its planned times, "In 0:16 ·

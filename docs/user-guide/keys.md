@@ -15,10 +15,18 @@ The list on the left is **Sources**. It starts on your whole library. Tick any
 playlists, Collections or Sets to count only those; a track that is in several
 of them is counted once. The list is as tall as the wheel and uses the Library's tree (the same steps, icons and counts) with a tick box in front of each row. CuePoint remembers your choice for next time.
 
-## Reading the counts
+## The layout
 
-A **Wheel | List** switch above the counts shows one of the two at a time.
-CuePoint opens on the wheel and remembers which you chose.
+The page has two panes. On the left are the **Sources** and, beside them, the
+Camelot wheel or the list of counts. On the right is the track list, in the
+Library's table, with its own toolbar on the same top line as the wheel. The
+toolbar holds the track count, **Select all**, **Open in Library** and the
+**Wheel | List** switch, which shows one of the two views at a time. CuePoint opens
+on the wheel and remembers which you chose. With no key picked the table shows
+every track in your sources and the wheel asks you to pick a key; clicking keys
+narrows the table at once.
+
+## Reading the counts
 
 - **The wheel.** The 24 keys as two rings, minor (A) inside and major (B)
   outside, each with its track count written on it. With **Color keys** on, each key is drawn in its Camelot color, brighter
@@ -31,8 +39,8 @@ Every count is written on the page; nothing waits for you to hover.
 
 ## Opening the tracks
 
-Click a key on the wheel or in the list. The page scrolls to the tracks in that
-key, which appear in a table below. Select tracks and the bar above the table offers
+Click a key on the wheel or in the list. The track table on the right narrows to
+that key at once. Select tracks and the bar above the table offers
 **Play**; everything else the Library's bar offers is in the right-click menu. Select a
 track to see it in Track details, or double-click it to play it.
 
@@ -42,7 +50,7 @@ track to see it in Track details, or double-click it to play it.
 **Show keys that mix with 8A** lights the keys that go with the one you chose:
 the same number one step either way, and the relative key.
 
-**Open in Library** shows the same tracks on the Library page, with the same
+**Open in Library** (in the track list's toolbar) shows the same tracks on the Library page, with the same
 key and source filters. **Save as Smart Collection…** saves them as a
 [Smart Collection](organization.md) that stays up to date.
 

@@ -37,7 +37,7 @@ open in Rekordbox.
   [set list](prepare.md#set-lists) carries the times as text or CSV.
 - **Your audio files.** An export writes one file — the XML you choose — and
   never opens an audio file. To put your values into the audio files, use
-  [Save to files](library.md#saving-to-files).
+  [Sync to files](library.md#syncing-to-files).
 - **The file you imported.** CuePoint never writes over it. Choosing it as the
   destination is refused.
 
@@ -116,7 +116,7 @@ still read `Am`. If you only open the file in Rekordbox, this does not arise.
 
 The notation you use becomes the default for your next export. The choice lives
 under **Details**; when it is not the default, the summary line at the top names it
-(for example, "Keys written as Camelot (8A).").
+(for example, "Key notation: Camelot (8A).").
 
 The key written is the track's own: yours, or else its confirmed Beatport match's
 key. A track with neither keeps the key Rekordbox already has in the file; the
@@ -137,7 +137,7 @@ second library in the tree, called **rekordbox xml**, beside your own:
 ## Settings
 
 **Settings → Rekordbox** shows the folder the next save dialog opens in,
-the notation the next export writes keys in (**Keys written as**), and your
+the notation the next export writes keys in (**Key notation**), and your
 recent exports — when each ran, where it went, and what it wrote (for example
 "4 tracks · 3 with new tags · 4 playlists · Camelot (8A)"). Both remembered
 values come from your last export, and change by exporting; export itself is

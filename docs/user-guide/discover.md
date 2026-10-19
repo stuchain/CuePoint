@@ -104,7 +104,7 @@ An open dig shows how it ended, including why, if Beatport stopped it, and
 one line saying what it looked for (for example "House · last 30 days · 67
 artists · 28 labels"); open that line for the full wording and the artist and
 label names. While it works, the cards it has found appear as they arrive and
-the status bar at the bottom shows how far it has got.
+the status strip at the bottom shows how far it has got.
 
 ### Rows of cards
 
@@ -210,7 +210,7 @@ the right-click menu:
 | Action | Where | What it does |
 | --- | --- | --- |
 | **Add to wantlist** | Results, artist and label pages | Adds the selected tracks to your wantlist, noting the dig they came from. A track already there is left as it is |
-| **Make a Beatport playlist…** | Everywhere | Makes a new playlist on your Beatport account with the selected tracks, or, with nothing selected, every track the table shows, in its order. With nothing selected the hint beside it says "All 48 shown" |
+| **Add to a Beatport playlist…** | Everywhere | Opens a dialog that makes a new playlist on your Beatport account with the selected tracks, or, with nothing selected, every track the table shows, in its order. With nothing selected the dialog says which it will be ("All 48 shown") |
 | **Open on Beatport** | Everywhere | Opens each selected track's Beatport page in your browser, up to ten at once |
 | **Edit note…** | Wantlist, one track | A note of your own, up to 1,000 characters. Leave it empty to clear it |
 | **Mark bought** / **Mark not bought** | Wantlist | Marks the selected tracks bought, or takes the mark away when all of them are marked |
@@ -331,7 +331,7 @@ this by itself** when a match finishes, as long as you are signed in, and the st
 strip shows it as **Linking tracks to Beatport**. When you are not signed in it does nothing.
 
 If some tracks are still waiting, for example because you signed in later,
-the page says how many and offers **Match on Beatport**. While it works, the status bar
+the page says how many and offers **Match on Beatport**. While it works, the status strip
 shows the progress and you can leave the page.
 
 ## Artist and label pages
@@ -350,6 +350,12 @@ anywhere you meet a track:
   is Mara Veil": **Open page**.
 - **A page's own header**, which links an artist's labels and a label's
   artists.
+
+Above the title, a line names the page you came from and leads back to it:
+**Library › Artist** when you opened the page from a track in the Library, Track
+details, Clean, Prepare, Keys or the player bar, and **Discover › Artist** when you
+opened it from Discover. The sidebar keeps that page lit while you are on the
+artist, label or Similar tracks page.
 
 ### Linked to Beatport, or your tracks by this name
 

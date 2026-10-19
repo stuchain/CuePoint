@@ -47,11 +47,11 @@ after an import or a refresh finishes.
   since then. Your choices are remembered.
 - **Most played tracks** lists the ten tracks you play most: rank, title and
   artist, key, BPM and plays. Click a row to open that track in the Library; the
-  small play button at the row's end plays it. **See top 25 ›** shows twenty-five
-  (**Show top 10 ›** goes back); the choice is remembered.
+  small play button at the row's end plays it. **Show all 25** shows twenty-five
+  (**Show less** goes back); the choice is remembered.
 - **Top artists**, **Top labels** and **Top genres** list the five with the most
   plays (with their track counts, except genres), with a bar behind each name as
-  long as its share of the first. **See top 10 ›** shows more rows. An artist
+  long as its share of the first. **Show all 10** shows more rows (**Show less** puts them away). An artist
   spelled two ways in your library is counted as one artist, and so is a genre
   spelled with different capitals, because CuePoint uses the same artist, label
   and genre values as the Library. Click a row to open its tracks. With a
@@ -60,7 +60,7 @@ after an import or a refresh finishes.
   played tracks.
 - **Not played** has two counts. **Never played** counts the tracks Rekordbox
   says have a play count of zero; **Plays unknown** counts a track Rekordbox gave
-  no play count, which is not the same as never played. **Open in Library ›**
+  no play count, which is not the same as never played. **Open in Library**
   opens those tracks.
 - **Keep as Collection** makes a Collection of the Most played list you are
   looking at, in rank order. The page shows the name first (“Will be named
@@ -119,13 +119,13 @@ after an import or a refresh finishes.
   clicked, and every **Loudness** bar is shown but opens nothing, because the
   Library has no way to ask for it.
 - Under each chart a line counts the tracks that could not be placed ("41
-  tracks have no BPM"), with **Open in Library ›** where the Library can show
+  tracks have no BPM"), with **Open in Library** where the Library can show
   them. Loudness also says how many tracks have no file to measure, and how many
   are not measured yet. Loudness comes from CuePoint's own waveform analysis, not
   from Rekordbox (see [Waveforms](waveforms.md)).
 - **Keys** shows the commonest keys as bars in their Camelot colours, how many
   tracks have a key and how many have none, counting every notation of a key
-  together. **Open in Keys ›** shows the same scope on the [Keys](keys.md) page.
+  together. **Open in Keys** shows the same scope on the [Keys](keys.md) page.
   Most Smart Collections (any but one saved from a playlist view) are the
   exception: the Keys page counts playlists, Collections and Sets, not rules, so
   for one it opens on your whole library and says so.
@@ -136,7 +136,7 @@ after an import or a refresh finishes.
 
 **Health** counts how well kept the library is, in four cards. Each card's list is
 its own legend: a coloured square matching the bar, the name, the count and, when
-the count is above zero, a link such as **Open in Clean ›** on the same line. A
+the count is above zero, a link such as **Open in Clean** on the same line. A
 count is red for what is broken, amber for what waits for you, grey for the rest. The "to fix"
 number on the tab adds up the missing and unreadable files, the matches waiting
 for you, the duplicates, the matches that changed since you decided, and the
@@ -150,20 +150,20 @@ analyses that failed.
   checked yet". **Missing** and **Unreadable** open [Clean](clean.md)'s Missing
   files tab, where the check is run.
 - **Beatport** is where each track stands in matching, as a bar: **Confirmed**,
-  **To review** (a match is waiting for your decision), **Rejected**, **No
-  match** and **Not matched**, with how many are matched. **To review**, **Not
-  matched yet** and **No match found** open Clean's Match tab. **Not synced to
+  **To check** (a match is waiting for your decision), **Rejected**, **No
+  match** and **Not looked up yet**, with how many are matched. **To check**,
+  **No match** and **Not looked up yet** open Clean's Match tab. **Not synced to
   files** counts the tracks whose CuePoint values (key, genre, label, year or
   BPM) are not yet in their files, the same count as the Library's save bar;
-  **Open in Library ›** shows them.
+  **Open in Library** shows them.
 - **Other** counts **Duplicates** (tracks in a group of likely duplicates you
   have not dismissed; Clean's Duplicates tab shows every group in the library,
   so it can list more than the count for a scope), **Changed since you decided**
-  (a newer Beatport match disagrees with a choice you made) and **No cover art**
-  (a file that was read and holds no cover picture, with no Beatport image to
-  fall back on). **Read cover art** reads the pictures stored inside your audio
-  files, for the whole library, and tells you when it has finished. Under it, it
-  says "Cover art last read" with the date, or "Cover art has not been read
+  (a newer Beatport match disagrees with a choice you made) and **No artwork**
+  (a file that was read and holds no picture, with no Beatport image to
+  fall back on). **Read artwork** reads the pictures stored inside your audio
+  files, for the whole library, and tells you when it has finished. Beside it, the
+  card says "Artwork last read" with the date, or "Artwork has not been read
   yet". That date is the library's, whichever scope is picked.
 - **Analysis** is how far the waveform analysis has got, as a bar: **Analyzed**,
   **Waiting**, **Failed** and **No file** (a track with no file to analyze).

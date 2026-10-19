@@ -39,7 +39,7 @@ filters do not change that line; the toolbar above the table counts what they
 leave.
 
 Beside the title is the file the library came from, as its name and a badge:
-**In sync**, **Changed in Rekordbox**, **File not found** or **Not checked
+**Up to date**, **Changed in Rekordbox**, **File not found** or **Not checked
 yet**. Point at the name for the full path and when CuePoint last read the
 file. Two buttons sit on the right: **Check for changes** (it turns
 primary when the file changed or went missing) and **Export to Rekordbox…** —
@@ -52,10 +52,10 @@ file…** in **Settings → Rekordbox**, or **File → Import a Rekordbox
 file…** (**Ctrl+O**).
 
 **After an import**, a note under the header says CuePoint is checking that your
-music files are where Rekordbox says, reading their cover art and drawing each
+music files are where Rekordbox says, reading their artwork and drawing each
 track's waveform, and that you can browse and play while it works. A "Now:" line
 shows the step and how far it is, for example *Now: drawing waveforms, 1,204 of
-12,000*. Close it with **Dismiss**; it goes by itself when the work ends. When
+12,000*. Close it with its **×**; it goes by itself when the work ends. When
 that work is done and no track has a Beatport key yet, the same line says so.
 Matching is done in [Clean](clean.md#match), or from **Beatport ▸ Match
 tracks…** on a selection.
@@ -237,10 +237,10 @@ figures as the table.
 | --- | --- |
 | **Play ▸** | **Play**, **Play next**, **Add to queue**, for the selected tracks in the order the table shows them |
 | **Organize ▸** | **Add to Collection…**, **Add to Set…**, **New Set from these…**, **Remove from "name"** (inside a Collection), **Add tag…**, **Remove tag…**, **Rate ▸**, **Favorite**, **Remove favorite**, **Copy**. See [Organizing your library](organization.md) |
-| **Beatport ▸** | **Match on Beatport…** and **Review these matches** open [Clean](clean.md) with the selected tracks; **Use Beatport's values…** opens its dialog right here |
+| **Beatport ▸** | **Match on Beatport…** and **Review these matches** open [Clean](clean.md) with the selected tracks; **Copy Beatport values…** opens its dialog right here |
 | **More ▸** | **Similar tracks**, **Artist page** and **Label page** (see [Discover](discover.md#artist-and-label-pages); with several tracks selected they open the first one's), **Edit values…** (its dialog opens right here), **Show in folder** |
 
-The Library has no save bar. Saving values into the audio files is done per
+The Library has no sync bar. Syncing values into the audio files is done per
 playlist, on Clean ([Saving values into your
 files](clean.md#saving-values-into-your-files)). Checking that the files are
 still there is on Clean ▸ Missing files.
@@ -404,7 +404,7 @@ and never writes to it, so nothing you organize here changes what Rekordbox
 shows you. Two things take your work out of CuePoint, and each happens only
 when you ask, after a preview: [Exporting to Rekordbox](rekordbox-export.md),
 which writes a new XML file with your values and Collections (tags, notes and
-favorites stay behind), and [Saving to files](#saving-to-files).
+favorites stay behind), and [Syncing to files](#syncing-to-files).
 See [Organizing your library](organization.md).
 
 ### CuePoint checks that your files are still there — and never moves them
@@ -499,7 +499,7 @@ copies are made again as they are needed.
 
 **Reading artwork writes nothing to your files.** Adding Beatport's artwork to a
 file that has none is an option when you
-[save to files](#saving-to-files), and it never replaces a picture a
+[sync to files](#syncing-to-files), and it never replaces a picture a
 file already has.
 
 ### Cue points and beat grids come from Rekordbox — and stay there
@@ -555,7 +555,7 @@ selected; deciding a match (confirm or reject) is done there, in Review.
 
 | Column | Shows |
 | --- | --- |
-| Match | Where the track stands with Beatport: Waiting for you, Confirmed, Rejected, No match or Not matched — and *changed since you decided* when a newer search found a different best match than the one you chose |
+| Match | Where the track stands with Beatport: Confirmed, To check, No match, Not looked up yet or Rejected — and *changed since you decided* when a newer search found a different best match than the one you chose |
 | Score | The score of the Beatport match the track points at |
 | File status | What the last file check found |
 | Artwork | The track's picture, or where it would come from |
@@ -571,10 +571,10 @@ filters: **Beatport match**, **Match decided by (you or CuePoint)**,
 | --- | --- |
 | Match on Beatport… | Opens Clean's match window with the selected tracks, to look them up on Beatport. A decision you made is kept, and a newer match that disagrees marks the track *changed since you decided* |
 | Review these matches | Opens Clean's Review on the first selected track, where matches are confirmed or rejected |
-| Use Beatport's values… | Opens a dialog here to copy the fields you choose from each track's confirmed match into your values |
+| Copy Beatport values… | Opens a dialog here to copy the fields you choose from each track's confirmed match into your values |
 | Edit values… (in More) | Opens a dialog here to set or clear your key, BPM, genre, label or year |
 
-Confirming a match changes no value on its own. **Apply** is what copies
+Confirming a match changes no value on its own. **Copy Beatport values…** is what copies
 Beatport's values, and they become your values — Rekordbox's stay underneath.
 
 ### The Beatport tab
@@ -582,8 +582,8 @@ Beatport's values, and they become your values — Rekordbox's stay underneath.
 Track details' **Beatport** tab says where the track stands and which Beatport
 track was decided: the release on one line ("Don't Make Me (Original Mix) ·
 ISOLATE"), then how it was decided and where the cover came from ("Confirmed
-automatically · cover art in the file"). Fields that agree are said once ("✓ BPM,
-label and year match"). Only a field that differs is shown in full, with what
+automatically · artwork in the file"). Fields that agree are said once ("BPM,
+label and year match", with a tick). Only a field that differs is shown in full, with what
 **Using** now (Rekordbox's value, one applied from Beatport, or one you typed) and
 what **Beatport** has. A track not looked up yet gets one sentence and **Match on
 Beatport**. Copying Beatport's values is done in Review and from the Library's
@@ -622,13 +622,13 @@ A change made to many tracks at once is taken back from its entry in the
 tracks to a Collection or removing them from one cannot be undone; its entry
 says so. An undo is itself a change, and can be undone too.
 
-## Saving to files
+## Syncing to files
 
 **Sync to files…**, on Clean, puts your values into the audio files themselves, so
 Rekordbox and other software can read them. It is the one thing CuePoint does
 outside its own library, so it always goes in the same order:
 
-1. **Choose what to save**: key (in the notation you choose; a track with no
+1. **Choose what to sync**: key (in the notation you choose; a track with no
    key keeps the key its file already has), BPM, year,
    genre, label, a comment, and whether to add Beatport's artwork to files that
    have none. The comment is off to start with, because it replaces whatever
@@ -636,7 +636,7 @@ outside its own library, so it always goes in the same order:
 2. **Preview.** CuePoint reads the files and says how many would change, which
    values would be written, and which files are skipped and why. **The preview
    is a read and changes nothing.** Changing an option throws the preview away.
-3. **Write.** Only after a preview has answered. Each value a file held is
+3. **Sync.** Only after a preview has answered. The button reads **Sync N files**, or **Nothing to sync** when no file would change. Each value a file held is
    recorded before it is replaced.
 
 What is saved is the value you see in the Library: yours where you have one,
@@ -646,7 +646,7 @@ Rekordbox's otherwise. A field a file already holds is not saved again.
 
 | Skipped | Why |
 | --- | --- |
-| WAV files | CuePoint does not save to WAV files |
+| WAV files | CuePoint does not sync to WAV files |
 | Other formats | CuePoint writes MP3, AIFF, FLAC and Ogg Vorbis only |
 | Missing or unreadable files | The last file check did not find them |
 | Files never checked | CuePoint writes only to a file it checked where it is now — run **Check every file** on Clean ▸ Missing files first |
@@ -663,10 +663,10 @@ showing the old values. In Rekordbox, select the tracks and choose
 **Reload Tag**. Then refresh CuePoint's library, if you want Rekordbox's values
 here to match.
 
-### Undoing a save
+### Undoing a sync
 
-After a save, the dialog offers **Undo this save**, and so does the
-save's entry in the **Activity** panel. Track details' History offers
+After a sync, the dialog offers **Undo this sync**, and so does the
+sync's entry in the **Activity** panel. Track details' History offers
 **Undo this save** for one track. Undoing puts back every tag value
 the save replaced, and removes a picture it added.
 

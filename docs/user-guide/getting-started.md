@@ -16,9 +16,9 @@ This is the only time you need to do that. After the first install, CuePoint fin
 
 ## First run
 
-CuePoint opens with a short guide of four steps: what CuePoint does; how to bring in your Rekordbox file (four small drawings show the export from Rekordbox step by step; **Import a Rekordbox file...** closes the guide and starts the import, and **How do I get one?** shows the same steps in words); matching your tracks on Beatport (**Match on Beatport...** is off until a library is imported, and says so; once on, it closes the guide and opens Clean's match window); and signing in to Beatport, which is optional (**Sign in to Beatport** opens Beatport's own page and the guide stays open). A step that is already done says so, for example "✓ 306 tracks imported", "✓ 236 matched" or "✓ Signed in". Clicking outside the guide does not close it. **Skip** ends it (it stays on every step, dimmed on the last), **Done** ends it on the last step, and **Esc** or the close button closes it for now and shows it again at the next start. Open it again, always from its first step, with **Help > Getting started**.
+CuePoint opens with a short guide of four steps: what CuePoint does; how to bring in your Rekordbox file (four small drawings show the export from Rekordbox step by step; **Import a Rekordbox file...** closes the guide and starts the import, and **How do I get one?** shows the same steps in words); matching your tracks on Beatport (**Match on Beatport...** is off until a library is imported, and says so; once on, it closes the guide and opens Clean's match window); and signing in to Beatport, which is optional (**Sign in to Beatport** opens Beatport's own page and the guide stays open). A step that is already done says so, for example "306 tracks imported", "236 matched" or "Signed in", each with a tick. Clicking outside the guide does not close it. **Skip** ends it (it stays on every step, dimmed on the last), **Done** ends it on the last step, and **Esc** or the close button closes it for now and shows it again at the next start. Open it again, always from its first step, with **Help > Getting started…**.
 
-On a new install CuePoint also picks a size for your screen: Compact (1.25×) on a screen shorter than 860 pixels, Medium (1.5×) otherwise. Change it in **Settings > Appearance** or **View > Size**.
+On a new install CuePoint also picks a size for your screen: Small (1.25×) on a screen shorter than 860 pixels, Medium (1.5×) otherwise. Change it in **Settings > Appearance** or **View > Size**.
 
 The Library also shows **First steps**, a checklist that ticks itself: import your collection, match your tracks on Beatport, play a track, and sign in to Beatport (optional). Before you import it is the whole page below the header, and its first step has **Import a Rekordbox file…** and **How do I get one?**. After you import, it is a small **First steps 2/4** chip beside the Library heading; click it to see the list (with **Match on Beatport...**), and press **Esc** or click elsewhere to close it. Once all four are done it never shows again.
 
@@ -32,22 +32,22 @@ In Rekordbox, choose **File > Export Collection in xml format** and save the fil
 
 1. Open CuePoint and go to **Library**.
 2. Choose **Import a Rekordbox file...** and pick the XML file.
-3. Your tracks and playlists appear when the import finishes. The status strip at the bottom shows its progress.
+3. Your tracks and playlists appear when the import finishes. The status strip at the bottom shows its progress, and **Activity** in the sidebar lists each step.
 
 CuePoint then checks, in the background, that your files are where Rekordbox says they are.
 
 ### 3. Match on Beatport
 
 1. Go to **Clean**.
-2. Clean opens on **Playlists**. Tick the playlists you want (or **Whole library** to match everything) and press **Match N playlists**. When it ends, a **Review** tab opens for each playlist. Later, come back here and do the same.
+2. Clean opens on **Playlists**, step 1 of 3 (**Tick playlists**). Tick the playlists you want (or **Whole library** to match everything) and press **Match N playlists**. When it ends, a **Review** opens for each playlist (step 3, **Check and sync**). Later, come back here and do the same.
 
 Matching runs in the background, so you can keep working. Tracks CuePoint is certain about are confirmed for you. The rest are marked **To check** in the review that opens when the match ends.
 
 ### 4. Check the matches
 
-1. When a match ends on Clean, it opens **Review** for each playlist: a plain table with your track, the Beatport match (the part that differs is marked) and a tick. Matched tracks start ticked; tracks with no match cannot be.
-2. **Untick** a track to leave it out. Click a row to open a side panel on the Beatport candidates: **Use this** picks another one, **Search Beatport** looks for it yourself, **None of these — leave it out** unticks it. **Up** and **Down** move along the table; **Esc** closes the panel.
-3. Press the green **Sync … to files…** at the top. Choose which values go into the files (BPM, Genre, Label, Year, Key), look at **See every change**, then **Write N files** (it reads **Nothing to write** when no file would change). Nothing is written before that, and **Undo this save** puts the files back.
+1. When a match ends on Clean, it opens **Review** for each playlist: a plain table with your track, the Beatport match (the part that differs is marked) and a tick. **Confirmed** tracks start ticked; tracks with **No match** cannot be.
+2. **Untick** a track to leave it out. Click a row to open a side panel on the Beatport candidates: **Use this match** picks another one, **Search Beatport** looks for it yourself, **None of these, leave it out** unticks it. **Up** and **Down** move along the table, **Enter** plays a track, **Space** ticks it and **Esc** closes the panel.
+3. Press the green **Sync to files…** at the bottom right. Choose which values go into the files (BPM, Genre, Label, Year, Key), look at **See every change**, then **Sync N files** (it reads **Nothing to sync** when no file would change). Nothing is written before that, and **Undo this sync** puts the files back.
 
 ### 5. Beatport's values
 
@@ -60,7 +60,7 @@ CuePoint never deletes or moves tracks or files, and never writes to your Rekord
 - **Start small.** Match one playlist first, so you see how matching behaves on your music.
 - **Review before you apply.** Look at each candidate beside your track before you correct it.
 - **Find a track fast.** Press **Ctrl+K** to search your whole library (**Enter** opens a result in the Library, **Shift+Enter** plays it), or **Ctrl+F** to search the table in front of you. All shortcuts are in [The CuePoint window](the-window.md#keyboard-shortcuts).
-- **Save your work.** **Save review list as a file…** on the Clean page saves the list as a spreadsheet or JSON. To put your values into the audio files, see [Saving to files](library.md#saving-to-files); Rekordbox shows them after **Reload Tag**.
+- **Save your work.** **Save review list as a file…** on the Clean page saves the list as a spreadsheet or JSON. To put your values into the audio files, see [Syncing to files](library.md#syncing-to-files); Rekordbox shows them after **Reload Tag**.
 
 ## CLI quick start
 

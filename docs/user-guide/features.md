@@ -51,11 +51,11 @@ can be taken back. See [Your own values](library.md#your-own-values).
   exactly those tracks.
 - **Artwork**: read from your files and, for confirmed matches, from Beatport.
 
-### Save to files
+### Sync to files
 
 Put your values into the audio files, after a preview, with a record
 that lets every file be undone. Rekordbox shows the new values after it
-re-reads the files. See [Saving to files](library.md#saving-to-files).
+re-reads the files. See [Syncing to files](library.md#syncing-to-files).
 
 ### Export to Rekordbox
 
@@ -101,7 +101,7 @@ analysis can be paused and carries on after a restart. See
   database. An export to Rekordbox is always a new file you choose.
 - It never deletes, moves or renames a track or a file. Moving a file is done in
   Rekordbox with **Relocate**.
-- It never writes to an audio file unless you choose **Save to files**,
+- It never writes to an audio file unless you choose **Sync to files…**,
   after a preview.
 
 ## The command line

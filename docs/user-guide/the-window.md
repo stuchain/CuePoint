@@ -8,10 +8,10 @@ page you are on changes; everything around it does not.
 | Region | Where | What it does |
 | --- | --- | --- |
 | Menu bar | Top | CuePoint's one menu bar: File, Edit, View and Help (see [The menu bar](#the-menu-bar)) |
-| Sidebar | Left | The CuePoint logo, a **Search** button (see [Searching](#searching)), then the pages; collapses to an icon rail |
+| Sidebar | Left | The CuePoint logo, a **Search** button (see [Searching](#searching)), then the pages, with **Activity** and **Settings** pinned at its foot; collapses to an icon rail |
 | Page | Middle | Whatever you are working on |
 | Track details | Right | Details for a selected track, with the Camelot wheel's button beside its key (see [The Camelot wheel](#the-camelot-wheel)); opens with a selection, can be resized or closed |
-| Status strip | Bottom | Whether CuePoint is ready, what is running in the background, and the Activity panel |
+| Status strip | Bottom | Whether CuePoint is ready and what is running in the background |
 
 The window remembers how you leave it. Collapse the navigation, resize or close
 Track details on a page, and it will look the same the next time you open CuePoint. It
@@ -126,13 +126,14 @@ the small Help menu CuePoint used to draw inside the window.
   and on a Collection's or Set's own bar, because a menu item has no scope.
 - **Edit**: **Undo**, **Redo**, **Cut**, **Copy**, **Paste** and **Select all**, so
   copying and pasting work in every text field, including the pasted Beatport token.
-- **View**: **Size** (Small, Compact, Medium, Large and Extra large, with the one in use
+- **View**: **Size** (Extra small, Small, Medium, Large and Extra large, with the one in use
   ticked; a size too big for your screen is greyed), **Bigger** (**Ctrl+=**), **Smaller** (**Ctrl+-**), **Default size**
-  (**Ctrl+0**), **Track details**, **Sidebar**, and, on Windows and Linux,
-  **Settings...** (**Ctrl+,**). These keys change the Size setting, the same one as
-  Settings → Appearance; they never zoom the page.
-- **Help**: **Getting started**, **Keyboard shortcuts**, **Get help...**, **How to get
-  your Rekordbox file...**, **Privacy** (opens Settings → Privacy), and on Windows
+  (**Ctrl+0**), **Track details** (**Ctrl+I**), **Sidebar** (**Ctrl+B**), **Search library…**
+  (**Ctrl+K**) and **Activity…** (**Ctrl+Shift+A**). These keys change the Size setting, the
+  same one as Settings → Appearance; they never zoom the page. **Settings...** (**Ctrl+,**) is
+  in **File** on Windows and Linux.
+- **Help**: **Getting started…**, **Keyboard shortcuts…**, **Get help…**, **How to get
+  your Rekordbox file…**, **Privacy…** (opens Settings → Privacy), and on Windows
   and Linux **About CuePoint**. **Get help...** holds the note, the help file and, under
   **Details for support**, **Diagnostics...** and **Log viewer...**.
 
@@ -185,7 +186,7 @@ One banner appears above the page, not above the sidebar: **CuePoint stopped wor
 in the background. Your library and files are safe.** Beside it is **Start it
 again**, and **Library loaded at 5:17 PM** is the time CuePoint last heard from its background process, so you know how old what you see on the page is. While it
 starts again the banner says **CuePoint stopped working in the background. Starting
-it again (1 of 3)…** If that does not work it says **CuePoint couldn't start in the
+it again (1 of 3)…** If that does not work it says **CuePoint could not start in the
 background. Quit and open CuePoint again.** and offers **Get help…**.
 
 While the banner is up the page is dimmed and its buttons and links do nothing,
@@ -214,7 +215,7 @@ file check or a tag write, and carries on after them. See
 
 ## Activity
 
-Click **Activity** in the status strip, or press **Ctrl+Shift+A**, for a list of
+Click **Activity** in the sidebar (above **Settings**), choose **View → Activity…**, or press **Ctrl+Shift+A**, for a list of
 what CuePoint has done, newest first and grouped by day (**Today**, **Yesterday**,
 then dates such as **Oct 3**): backups, app starts, imports and refreshes, file
 checks, matches, edits to many tracks at once, and tags written to files. Each
@@ -225,21 +226,21 @@ Some entries can be acted on where they are listed. A change to many tracks
 offers **Undo this batch**, and a save to files offers **Undo**; each asks once
 more before it does anything. See
 [Undoing a change](library.md#undoing-a-change) and
-[Undoing a save](library.md#undoing-a-save).
+[Undoing a sync](library.md#undoing-a-sync).
 
 An interrupted Beatport match is listed here too, with **Resume**: resuming
 matches only the tracks it had not reached. See [Clean](clean.md#match).
 
 ## Keyboard shortcuts
 
-To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**. The dialog lists them by context (Global, Library, Tables, Prepare, Clean, Player). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys, and every key it lists does something. On a Mac the list shows the Mac keys (⌘) itself.
+To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Keyboard shortcuts…**. The dialog lists them by context (Everywhere, Library, Keys, Prepare, Tables, Clean, Player). Type in its **Search** field to filter the list by context, action or key. It is a reference: it does not rebind keys, and every key it lists does something. On a Mac the list shows the Mac keys (⌘) itself.
 
 | Shortcut | Does |
 | --- | --- |
 | **Ctrl+O** | Import a Rekordbox file |
 | **Ctrl+,** | Open Settings |
 | **Ctrl+=** / **Ctrl+-** / **Ctrl+0** | Bigger, smaller, the default size |
-| **Ctrl+K** | Search your library |
+| **Ctrl+K** | Search your library (**View → Search library…**) |
 | **Ctrl+F** | Search within the table on screen |
 | **Ctrl+A** | Select every track matching what you are looking at |
 | **Enter** | On the Library table: play the selected track |
@@ -253,7 +254,7 @@ To see the shortcuts, press **F1** or **Ctrl+?**, or choose **Help > Shortcuts**
 | **Esc** | Let go of a selection, or close what is open |
 | **Ctrl+B** | Collapse or expand the sidebar |
 | **Ctrl+I** | Show or hide Track details; while the queue is open, close it and bring Track details back |
-| **Ctrl+Shift+A** | Open Activity |
+| **Ctrl+Shift+A** | Open Activity (**View → Activity…**) |
 | **F1** or **Ctrl+?** | All keyboard shortcuts |
 
 Clean's Match area keeps its own keys, listed below, in the review table and its side panel.
@@ -266,9 +267,22 @@ In Clean's Match area, in the review table and its side panel:
 | Shortcut | Does |
 | --- | --- |
 | **Up** / **Down** | Previous or next track |
+| **Home** / **End** | First or last track |
+| **Ctrl+A** | Select every track |
 | **Esc** | Close the side panel |
+| **Enter** | Play the track |
+| **Space** | Tick or untick the track |
 
-A tick is a checkbox: **Space** on it ticks or unticks the track.
+In the player's queue, with a queued track focused:
+
+| Shortcut | Does |
+| --- | --- |
+| **Up** / **Down** | Select the previous or next queued track |
+| **Home** / **End** | First or last queued track |
+| **Enter** | Play the queued track |
+| **Menu key** / **Shift+F10** | Open the menu for the queued track |
+| **Alt+Up** / **Alt+Down** | Move the queued track |
+| **Delete** | Remove the queued track |
 
 These keys do nothing while you are typing in a field or have a dialog open.
 
@@ -281,7 +295,7 @@ and hand focus back to whatever opened them.
 
 ## Messages
 
-Short messages (a save, a reset) appear in the bottom-right corner above the player and status strip. Ones that only tell you something went well or give you information go by themselves after a few seconds, longer if they offer a button such as **Undo**. Errors and warnings stay until you close them with the **×**. Hovering over a message, or moving keyboard focus into it, keeps it on screen until you move away.
+Short messages (a save, a reset) appear in the bottom-right corner above the player and status strip. Ones that only tell you something went well or give you information go by themselves after a few seconds, longer if they offer a button such as **Undo**. Errors and warnings stay until you close them with the **×** (**Close message**). Hovering over a message, or moving keyboard focus into it, keeps it on screen until you move away.
 
 ## Settings
 
@@ -364,14 +378,14 @@ custom theme you made: **Create custom theme…** asks for nine colors, and the
 borders are made from them. The editor opens on the colors you are using now and
 changes nothing in the app until you change a color, which then previews live;
 **Cancel** puts everything back. **Delete** asks first. **Size of text and
-controls** is **Small (1×)**, **Compact (1.25×)**, **Medium (1.5×)** (the default),
+controls** is **Extra small (1×)**, **Small (1.25×)**, **Medium (1.5×)** (the default),
 **Large (2×)** or **Extra large (3×)**. Table rows follow the size, so
 the text in them is never cut. A size that would leave too little room for the
 Library on your screen is greyed: in Settings the reason is written under the
 choice, and in View → Size the size is simply greyed. The size you are using is
 never greyed. The size that suits your screen is marked "suggested for this
-screen". A new install opens at Compact on a screen shorter than 860 pixels and
-at Medium otherwise (at Small if Compact would be too big too). If you chose a size
+screen". A new install opens at Small on a screen shorter than 860 pixels and
+at Medium otherwise (at Extra small if Small would be too big too). If you chose a size
 before, or you updated from an earlier version, CuePoint keeps it, and opens at
 Medium if you never chose one.
 
