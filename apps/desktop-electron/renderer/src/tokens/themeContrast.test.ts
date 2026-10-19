@@ -88,6 +88,13 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
     expect(contrastRatio(t["border-muted"]!, app), "line on page").toBeGreaterThanOrEqual(2);
   });
 
+  it("draws Retro's table rows with a quiet line, so the page does not read as a grid (D10, C93)", () => {
+    if (name !== "retro16") return;
+    const rows = t["row-divider"]!;
+    expect(contrastRatio(rows, t["bg-input"]!), "row line on the rows").toBeLessThanOrEqual(1.6);
+    expect(contrastRatio(rows, t["bg-input"]!)).toBeLessThan(contrastRatio(t["border-muted"]!, t["bg-input"]!));
+  });
+
   it("keeps the specified line in the themes D10 leaves alone", () => {
     const spec: Record<string, string> = { neoDark: "#52525b", mutedPro: "#4b5568" };
     if (name in spec) expect(t["border-muted"]).toBe(spec[name]);
