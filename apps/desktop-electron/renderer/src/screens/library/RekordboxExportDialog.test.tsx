@@ -423,6 +423,17 @@ describe("numbers only for the question on screen", () => {
 });
 
 describe("the summary and Details (DEC-247)", () => {
+  it("reads as a sentence: Inter at body size, never bigger or heavier than its headings (C55, C61)", async () => {
+    renderDialog({ initialIds: [7] });
+    await previewed();
+    const summary = within(dialog()).getByTestId("export-summary");
+    expect(summary).toHaveClass("cp-prose", "cp-prose--body");
+    expect(summary).not.toHaveClass("cp-text-section");
+    const css = (await import("./cleanDialogs.css?raw")).default;
+    const note = /\.clean-dialog__note,\s*\.clean-dialog__hint\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(note).toMatch(/font-family:\s*var\(--font-data\)/);
+  });
+
   it("leads with one summary line", async () => {
     renderDialog({ initialIds: [7] });
     await previewed();
@@ -980,10 +991,10 @@ describe("opening it again (C19d)", () => {
 });
 
 describe("the look of the dialog (C61, C88, C39)", () => {
-  it("leads with the summary in the section heading style, and headings in the label style", async () => {
+  it("leads with the summary as a sentence, and headings in the label style", async () => {
     renderDialog({ initialIds: [7] });
     await previewed();
-    expect(within(dialog()).getByTestId("export-summary")).toHaveClass("cp-text-section");
+    expect(within(dialog()).getByTestId("export-summary")).toHaveClass("cp-prose");
     expect(within(dialog()).getByRole("heading", { name: "Save as" })).toHaveClass("cp-text-label");
   });
 

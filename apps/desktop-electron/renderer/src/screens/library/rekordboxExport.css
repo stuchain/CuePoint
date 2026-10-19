@@ -104,8 +104,8 @@
   overflow-wrap: anywhere;
 }
 
-/* The summary leads the dialog in the section heading style (.cp-text-section); Details holds
-   the rest (DEC-247). */
+/* The summary leads the dialog as a sentence (.cp-prose, D5): Inter at body size, never bigger
+   or heavier than the dialog's own headings (C61). Details holds the rest (DEC-247). */
 .rekordbox-export__summary {
   overflow-wrap: anywhere;
 }

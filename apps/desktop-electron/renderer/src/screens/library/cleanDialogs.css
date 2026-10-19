@@ -10,16 +10,19 @@
   min-width: 0;
 }
 
+/* Sentences, so Inter (D5, C55). */
 .clean-dialog__note,
 .clean-dialog__hint {
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-data);
   font-size: var(--font-size-xs);
   line-height: 1.5;
 }
 
 .clean-dialog__headline {
   margin: 0;
+  font-family: var(--font-data);
   font-size: var(--text-body);
   font-weight: var(--font-weight-bold);
 }

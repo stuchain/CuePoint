@@ -496,7 +496,7 @@ export function RekordboxExportDialog({
 
             {/* 2. The answer in one line, then what must be seen before anything is written. */}
             {preview && (
-              <p className="cp-text-section rekordbox-export__summary" data-testid="export-summary" role="status">
+              <p className="cp-prose cp-prose--body rekordbox-export__summary" data-testid="export-summary" role="status">
                 {exportSummaryLine(preview, keyFormat)}
               </p>
             )}
