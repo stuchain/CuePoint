@@ -8,14 +8,15 @@
 import type { MatchCandidate, ReviewCandidate, ReviewStatus } from "../../../api/cuepointBridge.types";
 import type { BadgeVariant } from "../../../components/Badge";
 import { formatCount, plural } from "../../../format/counts";
+import { MATCH_STATE, noMatchCount, quoted } from "../../../format/words";
 
 export type ReviewCounts = Record<ReviewStatus, number>;
 
 const LABELS: Record<ReviewStatus, string> = {
-  matched: "Matched",
-  to_check: "Check",
-  not_found: "Not found",
-  search_failed: "Search failed",
+  matched: MATCH_STATE.confirmed,
+  to_check: MATCH_STATE.toCheck,
+  not_found: MATCH_STATE.noMatch,
+  search_failed: MATCH_STATE.searchFailed,
 };
 
 /** The word on a status chip. */
@@ -23,15 +24,25 @@ export function statusLabel(status: ReviewStatus): string {
   return LABELS[status];
 }
 
-/** The chip tone of a status: fine is green, to check is amber, a miss is red. */
+/**
+ * Whether a status is drawn as the quiet tick and its word and not as a chip (D14, C99): a track
+ * that is confirmed needs nothing from you, so only the ones that do get a chip.
+ */
+export function statusIsQuiet(status: ReviewStatus): boolean {
+  return status === "matched";
+}
+
+/** The chip tone of a status that has one: to check is amber, no match is grey, a failed search is red. */
 export function statusTone(status: ReviewStatus): BadgeVariant {
   switch (status) {
-    case "matched":
-      return "success";
     case "to_check":
       return "warning";
-    default:
+    case "not_found":
+      return "neutral";
+    case "search_failed":
       return "danger";
+    default:
+      return "success";
   }
 }
 
@@ -80,29 +91,29 @@ export function matchText(candidate: ReviewCandidate | null): string {
   return matchParts(candidate, []).map((part) => part.text).join(" ") || "—";
 }
 
-/** "24 tracks · 22 ticked to sync", then what was not found. */
+/** "24 tracks · 22 ticked to sync", the first facts of the review bar. */
 export function summaryWords(total: number, ticked: number): string {
   return `${plural(total, "track")} · ${formatCount(ticked)} ticked to sync`;
 }
 
-/** "2 not found", or "2 not found · 1 search failed": what has no match to tick. */
+/** "2 no match", or "2 no match · 1 search failed": what has no match to tick. */
 export function leftOutWords(counts: ReviewCounts): string {
   const parts: string[] = [];
-  if (counts.not_found > 0) parts.push(`${formatCount(counts.not_found)} not found`);
+  if (counts.not_found > 0) parts.push(noMatchCount(counts.not_found));
   if (counts.search_failed > 0) {
-    parts.push(`${plural(counts.search_failed, "search", "searches")} failed`);
+    parts.push(`${formatCount(counts.search_failed)} ${MATCH_STATE.searchFailed.toLowerCase()}`);
   }
   return parts.join(" · ");
 }
 
-/** The Sync button's words: "Sync hJ to files…". */
-export function syncLabel(name: string): string {
-  return `Sync ${name} to files…`;
+/** The review bar's one sentence (C181): the facts, joined with " · ". */
+export function barFacts(total: number, ticked: number, counts: ReviewCounts): string {
+  return [summaryWords(total, ticked), leftOutWords(counts)].filter((part) => part !== "").join(" · ");
 }
 
 /** What a tick or an untick says in the live region beside the table. */
 export function tickedLine(ticked: boolean, title: string): string {
-  return ticked ? `Ticked “${title}”: it will be synced.` : `Unticked “${title}”: it will be left out.`;
+  return ticked ? `Ticked ${quoted(title)}: it will be synced.` : `Unticked ${quoted(title)}: it will be left out.`;
 }
 
 /** What the header tick says in the live region: how many tracks it ticked or unticked. */

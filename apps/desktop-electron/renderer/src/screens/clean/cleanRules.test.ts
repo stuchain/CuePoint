@@ -39,15 +39,15 @@ describe("the review scopes", () => {
 
   it("are named in the words CLN-4 chose, the stored states unchanged", () => {
     expect(REVIEW_SCOPES.map((scope) => [scope.id, scope.label])).toEqual([
-      ["needs_review", "Waiting for you"],
+      ["needs_review", "To check"],
       ["disputed", "Changed since you decided"],
       ["accepted", "Confirmed"],
       ["rejected", "Rejected"],
       ["no_match", "No match"],
-      ["not_matched", "Not matched"],
+      ["not_matched", "Not looked up yet"],
     ]);
     expect(REVIEW_SCOPES.find((scope) => scope.id === "disputed")!.hint).toBe(
-      "A newer search found a different best match than the one you chose.",
+      "A newer search found a different best match than the one you chose",
     );
   });
 

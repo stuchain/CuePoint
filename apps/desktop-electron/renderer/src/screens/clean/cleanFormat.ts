@@ -5,8 +5,9 @@
  * feature. "Accepted" on its own does not say whether a person or the matcher
  * decided, and a reviewer about to override a decision needs to know which.
  */
-import { plural } from "../../format/counts";
+import { formatCount, plural } from "../../format/counts";
 import { formatDayTime } from "../../format/dates";
+import { MATCH_STATE } from "../../format/words";
 import type {
   DuplicateSignal,
   FileStatus,
@@ -30,22 +31,22 @@ function count(number: number, noun: string): string {
 export function matchStateLabel(state: MatchState | null | undefined): string {
   switch (state) {
     case "needs_review":
-      return "Waiting for you";
+      return MATCH_STATE.toCheck;
     case "accepted":
-      return "Confirmed";
+      return MATCH_STATE.confirmed;
     case "rejected":
-      return "Rejected";
+      return MATCH_STATE.rejected;
     case "no_match":
-      return "No match";
+      return MATCH_STATE.noMatch;
     case "not_matched":
-      return "Not matched";
+      return MATCH_STATE.notLookedUp;
     default:
       return "";
   }
 }
 
 /** What "changed since you decided" means, where a hint can say it. */
-export const DISPUTED_HINT = "A newer search found a different best match than the one you chose.";
+export const DISPUTED_HINT = "A newer search found a different best match than the one you chose";
 
 /** Where a track stands and who put it there, in one line. */
 export function decisionLine(state: TrackMatchState): string {
@@ -53,19 +54,19 @@ export function decisionLine(state: TrackMatchState): string {
   let line: string;
   switch (state.state) {
     case "accepted":
-      line = `Confirmed ${by}`;
+      line = `${MATCH_STATE.confirmed} ${by}`;
       break;
     case "rejected":
-      line = `Rejected ${by}`;
+      line = `${MATCH_STATE.rejected} ${by}`;
       break;
     case "needs_review":
-      line = "Waiting for you";
+      line = MATCH_STATE.toCheck;
       break;
     case "no_match":
-      line = "No match";
+      line = MATCH_STATE.noMatch;
       break;
     default:
-      line = "Not matched";
+      line = MATCH_STATE.notLookedUp;
   }
   return state.disputed ? `${line} — changed since you decided` : line;
 }
@@ -153,7 +154,7 @@ export function matchStartedLine(started: Pick<MatchStarted, "planned" | "exclud
   const head = `Matching ${count(started.planned, "track")} on Beatport.`;
   if (started.excluded <= 0) return head;
   const verb = started.excluded === 1 ? "is" : "are";
-  return `${head} ${started.excluded.toLocaleString()} already matched or decided ${verb} left out.`;
+  return `${head} ${formatCount(started.excluded)} already matched or decided ${verb} left out.`;
 }
 
 /** The most characters the engine keeps of a run's name. */
@@ -174,8 +175,8 @@ export function attemptLabel(
     attempt.outcome === "matched"
       ? "matched"
       : attempt.outcome === "no_match"
-        ? "found nothing"
-        : "failed";
+        ? MATCH_STATE.noMatch.toLowerCase()
+        : MATCH_STATE.searchFailed.toLowerCase();
   const notes = [index === 0 ? "latest" : null, attempt.id === decidedOn ? "decided" : null]
     .filter(Boolean)
     .join(", ");

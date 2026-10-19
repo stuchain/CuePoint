@@ -13,8 +13,8 @@ describe("NothingFoundNote", () => {
     render(<NothingFoundNote name="hJ" found={{ failed: 0, notFound: 24 }} onSee={onSee} onDismiss={vi.fn()} />);
     const note = screen.getByRole("alert");
     expect(note).toHaveTextContent("hJ: no Beatport match for 24 tracks");
-    expect(note).toHaveTextContent("This usually means the search failed, not that the tracks aren't on Beatport.");
-    fireEvent.click(screen.getByRole("button", { name: "See the 24 ›" }));
+    expect(note).toHaveTextContent("This usually means the search failed, not that the tracks are missing from Beatport.");
+    fireEvent.click(screen.getByRole("button", { name: "See the 24" }));
     expect(onSee).toHaveBeenCalledTimes(1);
   });
 
@@ -24,13 +24,13 @@ describe("NothingFoundNote", () => {
     expect(note).toHaveTextContent("hJ: 24 searches failed");
     expect(note).toHaveTextContent("Match again usually fixes it.");
     expect(note).not.toHaveTextContent("no Beatport match");
-    expect(screen.getByRole("button", { name: "See the 24 ›" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "See the 24" })).toBeInTheDocument();
   });
 
   it("says both when both happened, and sends you to the failed ones", () => {
     render(<NothingFoundNote name="hJ" found={{ failed: 20, notFound: 4 }} onSee={vi.fn()} onDismiss={vi.fn()} />);
     expect(screen.getByRole("alert")).toHaveTextContent("hJ: 20 searches failed, no Beatport match for 4 tracks");
-    expect(screen.getByRole("button", { name: "See the 20 ›" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "See the 20" })).toBeInTheDocument();
   });
 
   it("says track for one, and can be dismissed", () => {

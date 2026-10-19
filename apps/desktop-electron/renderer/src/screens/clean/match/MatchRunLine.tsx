@@ -23,10 +23,11 @@ export function NothingFoundNote({ name, found, onSee, onDismiss }: NothingFound
       <span className="match-nothing__why">
         {found.failed > 0
           ? "Beatport could not be reached or turned the search away, so nothing is known about those tracks. Match again usually fixes it."
-          : "This usually means the search failed, not that the tracks aren't on Beatport."}
+          : "This usually means the search failed, not that the tracks are missing from Beatport."}
       </span>
-      <Button variant="primary" size="sm" onClick={onSee}>{`See the ${formatCount(count)} ›`}</Button>
-      <Button size="sm" variant="secondary" aria-label="Dismiss" onClick={onDismiss}>
+      {/* The chevron is drawn, never typed (C138). */}
+      <Button variant="secondary" size="sm" iconEnd="chevron-right" onClick={onSee}>{`See the ${formatCount(count)}`}</Button>
+      <Button size="sm" variant="secondary" onClick={onDismiss}>
         Dismiss
       </Button>
     </div>

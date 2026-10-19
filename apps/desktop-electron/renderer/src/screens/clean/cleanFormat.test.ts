@@ -47,9 +47,9 @@ describe("where a track stands", () => {
     expect(decisionLine(state({ decided_by: "auto" }))).toBe("Confirmed automatically");
     expect(decisionLine(state({ decided_by: "user" }))).toBe("Confirmed by you");
     expect(decisionLine(state({ state: "rejected", decided_by: "user" }))).toBe("Rejected by you");
-    expect(decisionLine(state({ state: "needs_review", decided_by: null }))).toBe("Waiting for you");
+    expect(decisionLine(state({ state: "needs_review", decided_by: null }))).toBe("To check");
     expect(decisionLine(state({ state: "no_match" }))).toBe("No match");
-    expect(decisionLine(state({ state: "not_matched" }))).toBe("Not matched");
+    expect(decisionLine(state({ state: "not_matched" }))).toBe("Not looked up yet");
   });
 
   it("says when a newer match disagrees", () => {
@@ -59,12 +59,12 @@ describe("where a track stands", () => {
   });
 
   it("labels every state and nothing for none", () => {
-    // CLN-4: one set of words for the Match area, the Library and the Inspector.
-    expect(matchStateLabel("needs_review")).toBe("Waiting for you");
+    // CLN-4 and D2: one set of words for the Match area, the Library and the Inspector.
+    expect(matchStateLabel("needs_review")).toBe("To check");
     expect(matchStateLabel("accepted")).toBe("Confirmed");
     expect(matchStateLabel("rejected")).toBe("Rejected");
     expect(matchStateLabel("no_match")).toBe("No match");
-    expect(matchStateLabel("not_matched")).toBe("Not matched");
+    expect(matchStateLabel("not_matched")).toBe("Not looked up yet");
     expect(matchStateLabel(null)).toBe("");
     expect(fileStatusLabel("unreadable")).toBe("Unreadable");
     expect(fileStatusLabel(undefined)).toBe("");
@@ -121,8 +121,8 @@ describe("sentences about what was done", () => {
     const attempt = { id: 5, outcome: "matched" as const, finished_at: "<recorded>" };
     expect(attemptLabel(attempt, 0, 5)).toBe("<recorded> — matched (latest, decided)");
     expect(attemptLabel({ ...attempt, outcome: "no_match" }, 1, null)).toBe(
-      "<recorded> — found nothing",
+      "<recorded> — no match",
     );
-    expect(attemptLabel({ ...attempt, outcome: "error" }, 2, null)).toBe("<recorded> — failed");
+    expect(attemptLabel({ ...attempt, outcome: "error" }, 2, null)).toBe("<recorded> — search failed");
   });
 });

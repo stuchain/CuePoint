@@ -97,7 +97,7 @@ export function announceRunEnd({
       reportUnexpected(cause);
     }
     if (!run) {
-      if (isAway) push(`${label} matched.`, "success");
+      if (isAway) push(`${label} matched`, "success");
       return;
     }
     const found = run;

@@ -12,7 +12,7 @@
  */
 
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
-import { plural } from "../../format/counts";
+import { formatCount, plural } from "../../format/counts";
 
 export type CleanSection = "review" | "missing" | "duplicates";
 
@@ -85,8 +85,8 @@ export function factsLine(
 ): string | undefined {
   const parts: string[] = [];
   if (tracks !== null && tracks > 0) parts.push(plural(tracks, "track"));
-  if (counts.review) parts.push(`${counts.review.toLocaleString()} to review`);
-  if (counts.missing) parts.push(`${counts.missing.toLocaleString()} missing`);
+  if (counts.review) parts.push(`${formatCount(counts.review)} to review`);
+  if (counts.missing) parts.push(`${formatCount(counts.missing)} missing`);
   if (counts.duplicates) parts.push(`${plural(counts.duplicates, "possible duplicate")}`);
   if (parts.length === 0) return undefined;
   if (parts.length === 1 && tracks !== null && tracks > 0) parts.push("nothing waiting");

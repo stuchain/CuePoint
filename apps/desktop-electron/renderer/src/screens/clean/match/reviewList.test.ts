@@ -8,9 +8,11 @@ import {
   matchParts,
   matchText,
   reviewCandidateOf,
+  barFacts,
+  statusIsQuiet,
   statusLabel,
+  statusTone,
   summaryWords,
-  syncLabel,
   tickedLine,
 } from "./reviewList";
 
@@ -32,11 +34,21 @@ function candidate(overrides: Partial<ReviewCandidate> = {}): ReviewCandidate {
 }
 
 describe("statusLabel", () => {
-  it("names the four places a track can be, as the table says them", () => {
-    expect(statusLabel("matched")).toBe("Matched");
-    expect(statusLabel("to_check")).toBe("Check");
-    expect(statusLabel("not_found")).toBe("Not found");
+  it("names the four places a track can be, in the words every page uses (D2)", () => {
+    expect(statusLabel("matched")).toBe("Confirmed");
+    expect(statusLabel("to_check")).toBe("To check");
+    expect(statusLabel("not_found")).toBe("No match");
     expect(statusLabel("search_failed")).toBe("Search failed");
+  });
+
+  it("gives only the tracks that need a look a chip: confirmed is quiet (D14)", () => {
+    expect(statusIsQuiet("matched")).toBe(true);
+    expect(statusIsQuiet("to_check")).toBe(false);
+    expect(statusIsQuiet("not_found")).toBe(false);
+    expect(statusIsQuiet("search_failed")).toBe(false);
+    expect(statusTone("to_check")).toBe("warning");
+    expect(statusTone("not_found")).toBe("neutral");
+    expect(statusTone("search_failed")).toBe("danger");
   });
 });
 
@@ -90,16 +102,18 @@ describe("the words over the table", () => {
   });
 
   it("says what has no match to tick, and nothing when all have one", () => {
-    expect(leftOutWords({ matched: 5, to_check: 1, not_found: 2, search_failed: 0 })).toBe("2 not found");
+    expect(leftOutWords({ matched: 5, to_check: 1, not_found: 2, search_failed: 0 })).toBe("2 no match");
     expect(leftOutWords({ matched: 5, to_check: 1, not_found: 2, search_failed: 3 })).toBe(
-      "2 not found · 3 searches failed",
+      "2 no match · 3 search failed",
     );
     expect(leftOutWords({ matched: 5, to_check: 0, not_found: 0, search_failed: 1 })).toBe("1 search failed");
     expect(leftOutWords({ matched: 5, to_check: 0, not_found: 0, search_failed: 0 })).toBe("");
   });
 
-  it("names the playlist on the Sync button", () => {
-    expect(syncLabel("hJ")).toBe("Sync hJ to files…");
+  it("joins the bar's facts with a middle dot (C181)", () => {
+    const counts = { matched: 5, to_check: 1, not_found: 2, search_failed: 0 };
+    expect(barFacts(8, 6, counts)).toBe("8 tracks · 6 ticked to sync · 2 no match");
+    expect(barFacts(8, 8, { ...counts, not_found: 0 })).toBe("8 tracks · 8 ticked to sync");
   });
 
   it("says a tick and an untick by the track", () => {

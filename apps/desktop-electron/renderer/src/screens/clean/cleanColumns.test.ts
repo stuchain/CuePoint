@@ -36,7 +36,7 @@ const cell = (columns: typeof MISSING_COLUMNS, id: string, track: LibraryTrackRo
 
 describe("the Match cell", () => {
   it("says where a track stands, and when a newer match disagrees", () => {
-    expect(matchCell(row({ match_state: "needs_review" }))).toBe("Waiting for you");
+    expect(matchCell(row({ match_state: "needs_review" }))).toBe("To check");
     expect(matchCell(row({ match_state: "accepted", match_disputed: true }))).toBe(
       "Confirmed · changed since you decided",
     );
