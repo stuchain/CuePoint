@@ -25,6 +25,13 @@ describe("Select", () => {
     expect(bare).not.toMatch(/padding-right|appearance/);
   });
 
+  it("ends a value too long for its box in … rather than cutting it mid-letter (C64)", () => {
+    const body = rules.find((r) => r.selector === ".cp-select__field > .cp-select__control")!.body;
+    expect(body).toMatch(/text-overflow:\s*ellipsis/);
+    expect(body).toMatch(/white-space:\s*nowrap/);
+    expect(body).toMatch(/overflow:\s*hidden/);
+  });
+
   it("draws the chevron at the small icon size", () => {
     expect(rawCss).toMatch(/\.cp-select__chevron \.cp-pixel-icon\s*\{[^}]*var\(--icon-size-sm\)/);
   });

@@ -307,6 +307,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
+  min-width: 0;
   max-width: 100%;
 }
 

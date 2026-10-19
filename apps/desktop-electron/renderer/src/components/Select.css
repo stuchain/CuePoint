@@ -46,6 +46,10 @@
   min-width: 0;
   padding-block: 0;
   padding-right: calc(var(--icon-size-sm) + var(--space-sm) * 2);
+  /* A value too long for the box ends in "…", as a table cell does (C64). */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .cp-select__chevron .cp-pixel-icon {

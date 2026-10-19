@@ -97,6 +97,22 @@ describe("the edited-value marker", () => {
   });
 });
 
+describe("a long value ends in an ellipsis (C64)", () => {
+  it("draws a plain value in the table's cut-off box, which ends in … and shows in full in the hint", () => {
+    const long = "Techno (Peak Time / Driving)";
+    render(<OverriddenValue row={row({ effective_genre: long, overridden: [] })} field="genre" />);
+    const text = screen.getByText(long);
+    expect(text).toHaveClass("track-table__cell-text");
+    expect(text).toHaveAttribute("data-cut-hint");
+  });
+
+  it("does the same for an edited value, beside its marker", () => {
+    const applied = row({ overridden: ["genre"], effective_genre: "Melodic House & Techno", override_sources: { genre: "beatport" } });
+    render(<OverriddenValue row={applied} field="genre" />);
+    expect(screen.getByText("Melodic House & Techno")).toHaveClass("track-table__cell-text");
+  });
+});
+
 describe("the Key cell", () => {
   it("is a dash when no Beatport key is known", () => {
     const { container } = render(<OverriddenValue row={row({ effective_key: null })} field="key" />);

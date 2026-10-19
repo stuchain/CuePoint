@@ -25,7 +25,16 @@ import { LOUDNESS_QUERY } from "./libraryLoudness";
 export function OverriddenValue({ row, field }: { row: LibraryTrackRow; field: OverrideField }) {
   // A track with no Beatport key shows a dash, not a blank (DEC-201).
   const text = effectiveText(row, field);
-  const value = field === "key" ? <KeyChip value={text} /> : text;
+  // A text value sits in the table's cut-off box, so a long genre or label ends in "…" and shows
+  // in full in the app hint, as a plain cell's does (C64).
+  const value =
+    field === "key" ? (
+      <KeyChip value={text} />
+    ) : (
+      <span className="track-table__cell-text" data-cut-hint="">
+        {text}
+      </span>
+    );
   const mark = overrideMark(row, field);
   if (!mark) return <>{value}</>;
   // The marker is a letter or a dot, which means nothing until someone says so: its
