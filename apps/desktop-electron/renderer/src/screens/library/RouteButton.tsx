@@ -23,9 +23,11 @@ interface RouteButtonProps {
   variant?: ButtonVariant;
   /** The full name, when the visible text is a short form of it. */
   "aria-label"?: string;
+  /** `"sm"` for a row of small buttons (C120). */
+  size?: "sm";
 }
 
-function Inside({ to, state, className, children, title, variant, "aria-label": ariaLabel }: RouteButtonProps) {
+function Inside({ to, state, className, children, title, variant, size, "aria-label": ariaLabel }: RouteButtonProps) {
   const navigate = useNavigate();
   const go = () => {
     if (typeof to === "string") {
@@ -39,7 +41,7 @@ function Inside({ to, state, className, children, title, variant, "aria-label": 
   return (
     <Hint text={title}>
       {variant ? (
-        <Button variant={variant} className={className} aria-label={ariaLabel} onClick={go}>
+        <Button variant={variant} size={size} className={className} aria-label={ariaLabel} onClick={go}>
           {children}
         </Button>
       ) : (

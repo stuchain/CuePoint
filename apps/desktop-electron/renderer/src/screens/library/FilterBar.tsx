@@ -16,11 +16,13 @@
  * offered *fewer* fields than the engine describes would be a feature nobody
  * can reach. Both are asserted against the vocabulary rather than reviewed.
  */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { PixelIcon } from "../../components/PixelIcon";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from "react";
 
 import { Button } from "../../components/Button";
+import { RemoveButton } from "../../components/CloseButton";
+import { Notice } from "../../components/Notice";
 import { SearchField } from "../../components/SearchField";
+import { ShowMore } from "../../components/ShowMore";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
 import type {
@@ -57,10 +59,12 @@ import {
   type ValueNames,
 } from "./filterText";
 import { QuickFilters } from "./QuickFilters";
+import { RatingStars } from "./RatingStars";
 import { hiddenChipCount } from "./chipOverflow";
 import { isModified, smartStatus, type SmartAttachment } from "./smartFilter";
 import { pageOfRule, type PageRef } from "../discover/discoverLinks";
-import { RETRY } from "../../format/words";
+import { formatCount } from "../../format/counts";
+import { CANCEL, TRY_AGAIN } from "../../format/words";
 import "./FilterBar.css";
 import { Hint } from "../../components/Hint";
 
@@ -155,6 +159,14 @@ interface FilterBarProps {
    * than a flag, so asking twice opens it twice.
    */
   openAddToken?: number;
+
+  /**
+   * What sits at the right end of the row, after everything else: Select all and the count
+   * (C215, C80). Absent, the row ends with its last control.
+   */
+  trailing?: ReactNode;
+  /** The search input, for the page to register with Ctrl+F (C189). */
+  searchInputRef?: Ref<HTMLInputElement>;
 }
 
 export function FilterBar({
@@ -181,8 +193,12 @@ export function FilterBar({
   onRetry,
   onOpenPage,
   openAddToken = 0,
+  trailing,
+  searchInputRef,
 }: FilterBarProps) {
   const [adding, setAdding] = useState(false);
+  /** Every chip shown, wrapped, instead of one line that scrolls (C18). */
+  const [chipsOpen, setChipsOpen] = useState(false);
 
   useEffect(() => {
     if (openAddToken > 0) setAdding(true);
@@ -242,10 +258,6 @@ export function FilterBar({
       watcher?.disconnect();
     };
   }, [measureChips, filters]);
-  const showLastChips = () => {
-    const list = chipsRef.current;
-    if (list) list.scrollLeft = list.scrollWidth;
-  };
 
   const field = fieldOf(vocabulary, draft.field);
   const arity = arityOf(vocabulary, draft.operator);
@@ -270,7 +282,7 @@ export function FilterBar({
   // The count is what makes a facet worth showing: it is the difference between
   // guessing a genre and knowing there are 1,204 tracks in it.
   const valueSuggestions = suggestions.flatMap((item) =>
-    item.value ? [{ value: item.value, detail: item.count.toLocaleString() }] : [],
+    item.value ? [{ value: item.value, detail: formatCount(item.count) }] : [],
   );
   const chosen = selectedIds(draft);
 
@@ -384,7 +396,7 @@ export function FilterBar({
               >
                 {value.label ?? value.value}
                 <span className="cp-filter-bar__tag-count">
-                  {value.count.toLocaleString()}
+                  {formatCount(value.count)}
                 </span>
               </button>
             );
@@ -451,7 +463,7 @@ export function FilterBar({
               key={star}
               type="button"
               aria-pressed={draft.value === String(star)}
-              aria-label={star === 0 ? "unrated" : starsFor(star)}
+              aria-label={starsFor(star)}
               className={`cp-filter-bar__star${
                 draft.value === String(star) ? " cp-filter-bar__star--on" : ""
               }`}
@@ -459,7 +471,7 @@ export function FilterBar({
                 setDraft((previous) => ({ ...previous, value: String(star) }))
               }
             >
-              {star === 0 ? "0" : "★".repeat(star)}
+              {star === 0 ? "0" : <RatingStars count={star} of={0} />}
             </button>
           ))}
         </div>
@@ -477,7 +489,7 @@ export function FilterBar({
         // keeps one shape as the facet arrives, so typing is not interrupted.
         onPick={offersText ? (value) => setDraft((previous) => ({ ...previous, value })) : undefined}
         spellCheck={false}
-        placeholder={arity === "list" ? "One, another, a third" : field.label}
+        placeholder={arity === "list" ? "House, Techno" : undefined}
         onChange={(event) =>
           setDraft((previous) => ({ ...previous, value: event.target.value }))
         }
@@ -490,8 +502,9 @@ export function FilterBar({
 
   return (
     <div className="cp-filter-bar">
-      <div className="cp-filter-bar__row">
+      <div className="cp-filter-bar__row cp-toolbar">
         <SearchField
+          ref={searchInputRef}
           thing="these tracks"
           fitPlaceholder
           label="Search"
@@ -510,21 +523,25 @@ export function FilterBar({
           />
         )}
 
+        {/* The label never changes; Cancel is inside the builder it opens (C19). */}
         <Button
           variant="secondary"
+          aria-expanded={adding}
           onClick={() => {
             setProblem(null);
             setAdding((open) => !open);
           }}
         >
-          {adding ? "Cancel" : "Add filter"}
+          Add filter
         </Button>
 
         {/* The chips share the row with the controls and scroll sideways when
             they do not fit, saying how many are out of sight. The row never
             grows a second line for them. */}
         {rules.length > 0 && (
-          <div className="cp-filter-bar__chips-wrap">
+          <div
+            className={`cp-filter-bar__chips-wrap${chipsOpen ? " cp-filter-bar__chips-wrap--open" : ""}`}
+          >
             <ul className="cp-filter-bar__chips" aria-label="Active filters" ref={chipsRef}>
               {rules.map((rule, index) => {
                 const text = describeRule(vocabulary, rule, names);
@@ -539,7 +556,7 @@ export function FilterBar({
                       <Hint text={page.kind === "label" ? "Open the label page" : "Open the artist page"}>
                         <button
                           type="button"
-                          className="cp-filter-bar__chip-open"
+                          className="cp-link cp-filter-bar__chip-open"
                           aria-label={`Open page: ${text}`}
                           onClick={() => onOpenPage(page)}
                         >
@@ -547,21 +564,20 @@ export function FilterBar({
                         </button>
                       </Hint>
                     )}
-                    <button
-                      type="button"
+                    <RemoveButton
                       aria-label={`Remove filter: ${text}`}
                       onClick={() => onFiltersChange(removeRule(filters, index))}
-                    >
-                      <PixelIcon name="close" className="cp-pixel-icon--text" />
-                    </button>
+                    />
                   </li>
                 );
               })}
             </ul>
-            {hiddenChips > 0 && (
-              <button type="button" className="cp-filter-bar__more" onClick={showLastChips}>
-                +{hiddenChips} more
-              </button>
+            {(hiddenChips > 0 || chipsOpen) && (
+              <ShowMore
+                total={rules.length}
+                expanded={chipsOpen}
+                onToggle={() => setChipsOpen((open) => !open)}
+              />
             )}
           </div>
         )}
@@ -612,6 +628,8 @@ export function FilterBar({
             Keep as a filter
           </Button>
         )}
+
+        {trailing && <div className="cp-filter-bar__trailing">{trailing}</div>}
       </div>
 
       {adding && (
@@ -663,7 +681,18 @@ export function FilterBar({
             </span>
           )}
 
-          <Button variant="primary" onClick={submit}>Add</Button>
+          <div className="cp-button-row">
+            <Button variant="primary" onClick={submit}>Add</Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setProblem(null);
+                setAdding(false);
+              }}
+            >
+              {CANCEL}
+            </Button>
+          </div>
 
           {problem && (
             <span className="cp-filter-bar__problem" role="alert">
@@ -674,14 +703,19 @@ export function FilterBar({
       )}
 
       {refusal && (
-        <div className="cp-filter-bar__refusal" role="alert">
-          <span>{refusal}</span>
-          {onRetry && (
-            <button type="button" onClick={onRetry}>
-              {RETRY}
-            </button>
-          )}
-        </div>
+        <Notice
+          kind="danger"
+          className="cp-filter-bar__refusal"
+          action={
+            onRetry ? (
+              <Button variant="secondary" onClick={onRetry}>
+                {TRY_AGAIN}
+              </Button>
+            ) : undefined
+          }
+        >
+          {refusal}
+        </Notice>
       )}
     </div>
   );

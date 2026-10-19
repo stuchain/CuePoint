@@ -1,39 +1,16 @@
-/* Key ▾, BPM ▾ and Genre ▾ (FLW-4): three buttons, each opening a small list under it. */
+/* Key, BPM and Genre (FLW-4): three toggle buttons, each opening a small list under it. */
 
 .cp-quick {
   display: flex;
-  align-items: flex-end;
-  gap: var(--space-xs);
-  /* Wrap rather than push the bar wider than its column (2x in a narrow window). */
-  flex: 0 1 auto;
-  flex-wrap: wrap;
+  align-items: center;
+  /* The buttons of a row are 8 apart (C28, C14). */
+  gap: var(--space-md);
+  flex: 0 0 auto;
   max-width: 100%;
 }
 
 .cp-quick__item {
   position: relative;
-}
-
-.cp-quick__button {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  min-height: var(--control-height);
-  padding: 0 var(--space-sm);
-  background: var(--bg-input);
-  border: var(--control-border-width) solid var(--border-control);
-  color: var(--fg-primary);
-  font-family: var(--font-pixel-digits);
-  font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.cp-quick__button--on {
-  background: var(--accent-primary);
-  border-color: var(--accent-primary);
-  color: var(--fg-on-accent);
 }
 
 .cp-quick__count {
@@ -47,11 +24,11 @@
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   min-width: calc(200px * var(--scale));
   max-width: calc(320px * var(--scale));
   max-height: calc(340px * var(--scale));
-  padding: var(--space-sm);
+  padding: var(--space-md);
   overflow-y: auto;
   background: var(--bg-panel);
   border: var(--control-border-width) solid var(--border-control);
@@ -87,15 +64,25 @@
   font-size: var(--font-size-xs);
 }
 
+.cp-quick__keys-link {
+  align-self: flex-start;
+  font-size: var(--font-size-xs);
+}
+
+/* The Key menu's figures are the data face (C60). */
+.cp-quick__list .cp-quick__name {
+  font-family: var(--font-data);
+}
+
 .cp-quick__empty,
 .cp-quick__range {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }
 
 .cp-quick__ends,
 .cp-quick__actions {
   display: flex;
-  gap: var(--space-sm);
+  gap: var(--space-md);
 }

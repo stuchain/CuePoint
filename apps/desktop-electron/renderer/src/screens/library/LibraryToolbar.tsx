@@ -31,6 +31,7 @@ import { needsTwoLines } from "./toolbarLines";
 import { useToolbarKeys } from "./useToolbarKeys";
 import "./LibraryToolbar.css";
 import { Hint } from "../../components/Hint";
+import { countNoun, formatCount } from "../../format/counts";
 
 interface LibraryToolbarProps {
   groups: readonly TrackActionGroup[];
@@ -149,13 +150,13 @@ export function LibraryToolbar({
   const showCount = count === "always" || scopeTotal > total;
   const countText =
     scopeTotal > total
-      ? `Showing ${total.toLocaleString()} of ${scopeTotal.toLocaleString()} tracks`
-      : `${total.toLocaleString()} ${total === 1 ? "track" : "tracks"}`;
-  const clearName = `Clear selection, ${selected.toLocaleString()} selected${
+      ? `Showing ${formatCount(total)} of ${formatCount(scopeTotal)} tracks`
+      : `${countNoun(total, "track")}`;
+  const clearName = `Clear selection, ${formatCount(selected)} selected${
     describedByQuery && selected > 1 ? " (everything matching)" : ""
   }`;
   /** The widest the selected-count button gets, for the invisible copy. */
-  const widest = Math.max(total, scopeTotal, selected).toLocaleString();
+  const widest = formatCount(Math.max(total, scopeTotal, selected));
 
   return (
     <div
@@ -229,7 +230,7 @@ export function LibraryToolbar({
               {...keys.buttonProps(groups.length)}
               onClick={clear}
             >
-              {selected.toLocaleString()} selected
+              {formatCount(selected)} selected
               {describedByQuery && selected > 1 && (
                 // Said, not drawn: the button stays as short as "3 selected".
                 <span className="library-toolbar__sr"> (everything matching)</span>
@@ -253,7 +254,7 @@ export function LibraryToolbar({
               {selected > 0 && (
                 // Said for a screen reader, not drawn: the selected-count button shows it.
                 <span className="library-toolbar__sr">
-                  , {selected.toLocaleString()} {selected === 1 ? "track" : "tracks"} selected
+                  , {countNoun(selected, "track")} selected
                 </span>
               )}
             </span>

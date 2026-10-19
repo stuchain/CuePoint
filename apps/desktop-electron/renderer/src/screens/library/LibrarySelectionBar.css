@@ -1,0 +1,14 @@
+/* The four groups sit in the shared selection bar's action slot, 8 apart (C28). */
+.library-selection-bar__groups {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+/* aria-disabled rather than disabled, so the arrow keys still land on it and the reason is
+   readable; it looks and acts as off. */
+.library-selection-bar__groups .cp-btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  color: var(--fg-disabled);
+}

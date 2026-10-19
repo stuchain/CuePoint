@@ -13,6 +13,7 @@
  */
 import { Button } from "../../components/Button";
 import "./SelectionActions.css";
+import { countNoun } from "../../format/counts";
 
 interface SelectionActionsProps {
   count: number;
@@ -44,7 +45,7 @@ export function SelectionActions({
     return (
       <div className="cp-selection-actions cp-selection-actions--idle">
         <span className="cp-selection-actions__count">
-          {total.toLocaleString()} {total === 1 ? "track" : "tracks"}
+          {countNoun(total, "track")}
         </span>
         {total > 0 && (
           <Button variant="secondary" onClick={onSelectAll}>
@@ -58,7 +59,7 @@ export function SelectionActions({
   return (
     <div className="cp-selection-actions" role="toolbar" aria-label="Selection">
       <span className="cp-selection-actions__count" role="status">
-        {count.toLocaleString()} {count === 1 ? "track" : "tracks"} selected
+        {countNoun(count, "track")} selected
         {describedByQuery && count > 1 ? " (everything matching)" : ""}
       </span>
 

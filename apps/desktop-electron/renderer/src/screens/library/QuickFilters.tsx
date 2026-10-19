@@ -12,11 +12,13 @@
  * until then.
  */
 import { useEffect, useId, useRef, useState } from "react";
-import { PixelIcon } from "../../components/PixelIcon";
 
 import { Button } from "../../components/Button";
 import { formatBpm } from "../../components/format/bpm";
+import { Loading } from "../../components/Loading";
 import { TextField } from "../../components/TextField";
+import { formatCount } from "../../format/counts";
+import { goTo } from "../../format/words";
 import { reportUnexpected } from "../../reporting/reporting";
 import type { FilterRuleSet, LibraryQuickFacets } from "../../api/cuepointBridge.types";
 import {
@@ -111,18 +113,19 @@ export function QuickFilters({
         const shown = open === kind;
         return (
           <div className="cp-quick__item" key={kind}>
-            <button
-              type="button"
-              className={`cp-quick__button${count > 0 ? " cp-quick__button--on" : ""}`}
+            {/* The toggle look (D1): pressed while the filter has a choice in it (C4, C14). */}
+            <Button
+              variant="secondary"
+              menu
               aria-haspopup="dialog"
+              aria-pressed={count > 0}
               aria-expanded={shown}
               aria-controls={shown ? panelId : undefined}
               onClick={() => toggle(kind)}
             >
               {LABELS[kind]}
               {count > 0 && <span className="cp-quick__count">{count}</span>}
-              <PixelIcon name="chevron-down" className="cp-pixel-icon--text cp-pixel-icon--after" />
-            </button>
+            </Button>
             {shown && (
               <div className="cp-quick__panel" role="dialog" aria-label={LABELS[kind]} id={panelId}>
                 {kind === "key" && (
@@ -189,7 +192,7 @@ function Choice({
     <label className="cp-quick__choice">
       <input type="checkbox" checked={checked} onChange={onChange} />
       <span className="cp-quick__name">{label}</span>
-      {count !== undefined && <span className="cp-quick__tally">{count.toLocaleString()}</span>}
+      {count !== undefined && <span className="cp-quick__tally">{formatCount(count)}</span>}
     </label>
   );
 }
@@ -238,7 +241,7 @@ function KeyList({
   onOpenKeys,
 }: ListProps & { onOpenKeys?: () => void }) {
   if (!facets) {
-    return <p className="cp-quick__note">{loading ? "Reading the keys…" : "Keys are not available."}</p>;
+    return loading ? <Loading what="keys" /> : <p className="cp-quick__note">Keys are not available.</p>;
   }
   if (facets.keys.length === 0) {
     return <NoKeys />;
@@ -257,15 +260,15 @@ function KeyList({
       ))}
       {(facets.no_key > 0 || asksForNone(filters, KEY_FIELD)) && (
         <Choice
-          label={`No Beatport key: ${facets.no_key.toLocaleString()}`}
+          label={`No Beatport key: ${formatCount(facets.no_key)}`}
           checked={asksForNone(filters, KEY_FIELD)}
           onChange={() => onFiltersChange(toggleNone(filters, KEY_FIELD))}
         />
       )}
       {onOpenKeys && (
-        <Button variant="secondary" className="cp-quick__keys-link" onClick={onOpenKeys}>
-          Open in Keys ›
-        </Button>
+        <button type="button" className="cp-link cp-link--go cp-quick__keys-link" onClick={onOpenKeys}>
+          {goTo("Keys")}
+        </button>
       )}
     </div>
   );
@@ -273,7 +276,7 @@ function KeyList({
 
 function GenreList({ filters, facets, loading, onFiltersChange }: ListProps) {
   if (!facets) {
-    return <p className="cp-quick__note">{loading ? "Reading the genres…" : "Genres are not available."}</p>;
+    return loading ? <Loading what="genres" /> : <p className="cp-quick__note">Genres are not available.</p>;
   }
   if (facets.genres.length === 0) {
     return <p className="cp-quick__note">No track here has a genre.</p>;
@@ -292,7 +295,7 @@ function GenreList({ filters, facets, loading, onFiltersChange }: ListProps) {
       ))}
       {facets.genres_truncated && (
         <p className="cp-quick__note">
-          The {facets.genres.length} most common of {facets.genres_total.toLocaleString()}. Add
+          The {facets.genres.length} most common of {formatCount(facets.genres_total)}. Add
           filter reaches the rest.
         </p>
       )}
@@ -330,15 +333,17 @@ function BpmRange({
         if (!invalid) apply();
       }}
     >
-      <p className="cp-quick__note">
-        {facets === null
-          ? loading
-            ? "Reading the tempos…"
-            : "Tempos are not available."
-          : low === null || high === null
-            ? "No track here has a BPM."
-            : `This view runs from ${formatBpm(low)} to ${formatBpm(high)} BPM.`}
-      </p>
+      {facets === null && loading ? (
+        <Loading what="tempos" />
+      ) : (
+        <p className="cp-quick__note">
+          {facets === null
+            ? "Tempos are not available."
+            : low === null || high === null
+              ? "No track here has a BPM."
+              : `This view runs from ${formatBpm(low)} to ${formatBpm(high)} BPM.`}
+        </p>
+      )}
       <div className="cp-quick__ends">
         <TextField
           label="From"

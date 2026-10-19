@@ -442,7 +442,7 @@ describe("the values a field takes", () => {
     openBuilder();
     chooseField("rating");
 
-    const four = screen.getByRole("button", { name: "★★★★" });
+    const four = screen.getByRole("button", { name: "4 stars" });
     fireEvent.click(four);
     expect(four).toHaveAttribute("aria-pressed", "true");
   });
@@ -878,7 +878,7 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
   describe("a rating", () => {
     it("is chosen in stars rather than typed as a number", () => {
       openOn("rating");
-      expect(screen.getByRole("button", { name: "★★★★" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "4 stars" })).toBeInTheDocument();
     });
 
     it("offers unrated as one of the choices", () => {
@@ -888,7 +888,7 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
 
     it("adds the number behind the stars", () => {
       const { onFiltersChange } = openOn("rating");
-      fireEvent.click(screen.getByRole("button", { name: "★★★★" }));
+      fireEvent.click(screen.getByRole("button", { name: "4 stars" }));
       fireEvent.click(screen.getByRole("button", { name: "Add" }));
       expect(onFiltersChange).toHaveBeenCalledWith({
         match: "all",
@@ -915,13 +915,13 @@ describe("the controls CuePoint's own fields need (ORG-12)", () => {
         },
       });
       openBuilder();
-      expect(screen.getByRole("button", { name: "★★★★★" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "5 stars" })).toBeInTheDocument();
     });
 
     it("types a number for a field the engine gave no unit", () => {
       openOn("bpm");
       expect(screen.getByLabelText("Value")).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "★★★★" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "4 stars" })).not.toBeInTheDocument();
     });
   });
 

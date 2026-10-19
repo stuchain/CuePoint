@@ -1,27 +1,27 @@
-/* Narrowing the library (LIBUI-08). A row of controls, then what is active. */
+/* Narrowing the library (LIBUI-08). One toolbar row of controls, then what is active. */
 
 .cp-filter-bar {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  /* One toolbar (--toolbar-height, --toolbar-padding), 8·scale between controls. */
-  min-height: var(--toolbar-height);
-  gap: round(nearest, calc(8px * var(--scale)), 1px);
-  padding: var(--toolbar-padding);
   background: var(--bg-toolbar);
   border-bottom: var(--divider);
 }
 
-.cp-filter-bar__row,
+/* The row is the shared toolbar (C217); it wraps rather than running off screen. */
+.cp-filter-bar__row {
+  flex-wrap: wrap;
+  row-gap: var(--space-xs);
+  padding-block: var(--space-xs);
+}
+
 .cp-filter-bar__builder {
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;
-  gap: round(nearest, calc(8px * var(--scale)), 1px);
-}
-
-.cp-filter-bar__builder {
-  padding: var(--space-sm);
+  gap: var(--space-md);
+  margin: 0 var(--space-md) var(--space-md);
+  padding: var(--space-md);
   background: var(--bg-panel);
   border: var(--hairline) solid var(--border-muted);
 }
@@ -49,52 +49,26 @@
   list-style: none;
 }
 
+/* A chip is the pixel face, like every chip (C24). */
 .cp-filter-bar__chip {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  padding: calc(2px * var(--scale)) var(--space-xs);
+  padding: var(--space-2xs) var(--space-xs);
   background: var(--bg-input);
   border: var(--hairline) solid var(--border-outline);
-  font-size: var(--font-size-xs);
-}
-
-.cp-filter-bar__chip button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: calc(14px * var(--scale));
-  height: calc(14px * var(--scale));
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--fg-muted);
   font-family: var(--font-pixel-digits);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-}
-
-.cp-filter-bar__chip button:hover {
-  color: var(--danger-text);
-}
-
-/* A chip that names one artist or label opens its page (DISCOVER-11). A word,
-   not a glyph beside the ×, so the two are never mistaken for each other. */
-.cp-filter-bar__chip .cp-filter-bar__chip-open {
-  width: auto;
-  color: var(--accent-info);
-  font-family: inherit;
   font-size: var(--font-size-xs);
 }
 
-.cp-filter-bar__chip .cp-filter-bar__chip-open:hover {
-  color: var(--accent-info);
-  text-decoration: underline;
+/* A chip that names one artist or label opens its page (DISCOVER-11). A word, not a glyph beside
+   the remove button, so the two are never mistaken for each other. */
+.cp-filter-bar__chip .cp-filter-bar__chip-open {
+  font-size: var(--font-size-xs);
 }
 
-/* The new field kinds (ORG-12). A tag is chosen from chips and a rating from
-   stars, because both are things a user recognizes and neither is a number
-   anyone would type. */
+/* The new field kinds (ORG-12). A tag is chosen from chips and a rating from stars, because both
+   are things a user recognizes and neither is a number anyone would type. */
 
 .cp-filter-bar__tags,
 .cp-filter-bar__stars {
@@ -109,33 +83,24 @@
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  padding: calc(2px * var(--scale)) var(--space-xs);
+  padding: var(--space-2xs) var(--space-xs);
   background: var(--bg-input);
   border: var(--hairline) solid var(--border-outline);
   color: var(--fg-primary);
-  font-family: var(--font-data);
+  font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
   cursor: pointer;
 }
 
 .cp-filter-bar__tag--on,
 .cp-filter-bar__star--on {
-  background: var(--accent-primary);
-  color: var(--fg-on-accent);
+  background: var(--bg-selected);
+  border-color: var(--accent-primary);
 }
 
 .cp-filter-bar__tag-count {
   color: var(--fg-muted);
-  font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
-}
-
-.cp-filter-bar__tag--on .cp-filter-bar__tag-count {
-  color: inherit;
-}
-
-.cp-filter-bar__star {
-  font-family: var(--font-data);
 }
 
 /* What the rules belong to, and what can be done about it. */
@@ -149,56 +114,33 @@
   color: var(--warning-text);
 }
 
-/* A refused question, beside the clauses that caused it rather than only
-   under the table it emptied. */
-
+/* A refused question is a danger Notice, beside the clauses that caused it. */
 .cp-filter-bar__refusal {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-sm);
-  background: var(--bg-input);
-  border: var(--hairline) solid var(--accent-danger);
-  color: var(--danger-text);
-  font-size: var(--font-size-xs);
+  margin: 0 var(--space-md) var(--space-md);
 }
 
-.cp-filter-bar__refusal button {
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-/* One row (FLW-4): search, Key ▾ BPM ▾ Genre ▾, Add filter, then the chips, which
-   take whatever width is left (at least 160) and scroll sideways. A row too narrow
-   for all of it wraps its trailing controls rather than running off screen. */
-
-.cp-filter-bar__row {
-  flex-wrap: wrap;
-}
+/* One row (FLW-4): search, Key BPM Genre, Add filter, then the chips, which take whatever width
+   is left (at least 160) and scroll sideways. A row too narrow for all of it wraps its trailing
+   controls rather than running off screen. */
 
 .cp-filter-bar__row > * {
   flex: 0 0 auto;
   max-width: 100%;
 }
 
+.cp-filter-bar__builder > .cp-field,
 .cp-filter-bar__row > .cp-field {
   position: relative;
 }
 
-/* The shared search field, at the width the text box had. */
+/* The shared search field, at the shared width (C223). */
 .cp-filter-bar__row > .cp-search-field {
-  flex: 1 1 calc(120px * var(--scale));
-  max-width: calc(240px * var(--scale));
+  flex: 0 1 var(--search-width);
+  max-width: var(--search-width);
 }
 
-/* The search box is named by its placeholder and its label; the word "Search"
-   above it cost the table a row at the default window (PAGES-05C). The label
-   stays for assistive technology. */
+/* The search box is named by its placeholder and its label; the word "Search" above it cost the
+   table a row at the default window (PAGES-05C). The label stays for assistive technology. */
 .cp-filter-bar__row > .cp-field > .cp-field__label {
   position: absolute;
   width: 1px;
@@ -213,8 +155,8 @@
 .cp-filter-bar__chips-wrap {
   display: flex;
   align-items: center;
-  /* Never squeezed to nothing: when the row is too narrow for the chips beside
-     the controls after them, the row wraps, so the rest stays on screen. */
+  /* Never squeezed to nothing: when the row is too narrow for the chips beside the controls after
+     them, the row wraps, so the rest stays on screen. */
   flex: 1 1 calc(160px * var(--scale));
   gap: var(--space-xs);
   min-width: 0;
@@ -224,8 +166,18 @@
   flex: 1 1 auto;
   flex-wrap: nowrap;
   min-width: 0;
-  padding-bottom: var(--space-xs);
   overflow-x: auto;
+}
+
+/* Show all: every chip, wrapped, on a line of its own (C18). */
+.cp-filter-bar__chips-wrap--open {
+  flex-basis: 100%;
+  align-items: flex-start;
+}
+
+.cp-filter-bar__chips-wrap--open .cp-filter-bar__chips {
+  flex-wrap: wrap;
+  overflow-x: visible;
 }
 
 .cp-filter-bar__chip {
@@ -233,20 +185,12 @@
   white-space: nowrap;
 }
 
-.cp-filter-bar__more {
-  flex: 0 0 auto;
-  padding: 0 var(--space-xs);
-  border: none;
-  background: transparent;
-  color: var(--accent-info);
-  font-family: var(--font-data);
-  font-size: var(--font-size-xs);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.cp-filter-bar__more:hover {
-  text-decoration: underline;
+/* Select all and the count end the row (C215, C80). */
+.cp-filter-bar__trailing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-inline-start: auto;
 }
 
 /* "In playlist": every playlist, Collection and Set, ticked in a list. */
