@@ -1,3 +1,4 @@
+import { countNoun, formatCount } from "../../format/counts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LibrarySearchResponse } from "../../api/cuepointBridge.types";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -108,8 +109,8 @@ export function resultSummary(response: LibrarySearchResponse | null): string {
   if (!response || response.total === 0) return "";
   const shown = response.tracks.length;
   return shown < response.total
-    ? `Showing ${shown} of ${response.total}`
-    : `${response.total} ${response.total === 1 ? "result" : "results"}`;
+    ? `Showing ${formatCount(shown)} of ${formatCount(response.total)}`
+    : countNoun(response.total, "result");
 }
 
 /** A stable, human-readable second line for a result row. */

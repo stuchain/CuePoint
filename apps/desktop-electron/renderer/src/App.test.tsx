@@ -94,6 +94,25 @@ describe("App shell", () => {
     expect(screen.queryByRole("button", { name: "Help" })).not.toBeInTheDocument();
   });
 
+  it("opens the shortcuts list on F1", async () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: "F1" });
+    expect(await screen.findByRole("dialog", { name: /keyboard shortcuts/i })).toBeInTheDocument();
+  });
+
+  it("leaves F1 to a dialog that is already open (C201)", () => {
+    render(
+      <>
+        <div role="dialog" aria-modal="true" aria-label="Something else" />
+        <App />
+      </>,
+    );
+
+    fireEvent.keyDown(window, { key: "F1" });
+    expect(screen.queryByRole("dialog", { name: /keyboard shortcuts/i })).not.toBeInTheDocument();
+  });
+
   it("has no header band; search is the sidebar's button (K8)", () => {
     const { container } = render(<App />);
 

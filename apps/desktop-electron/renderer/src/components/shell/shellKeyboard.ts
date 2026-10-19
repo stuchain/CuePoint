@@ -3,12 +3,14 @@
  * the page behind a dialog if nothing stops them, so each asks this first: a modal dialog open
  * means the key belongs to the dialog.
  */
+import { queryShown } from "./pageActive";
+
 export const MODAL_DIALOG_SELECTOR = '[role="dialog"][aria-modal="true"]';
 
-/** Whether a modal dialog is open now. */
+/** Whether a modal dialog is open now (one inside a page kept hidden does not count). */
 export function isDialogOpen(): boolean {
   if (typeof document === "undefined") return false;
-  return document.querySelector(MODAL_DIALOG_SELECTOR) !== null;
+  return queryShown(MODAL_DIALOG_SELECTOR) !== null;
 }
 
 /**

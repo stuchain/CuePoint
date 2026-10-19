@@ -22,5 +22,6 @@ export {
   homeDestination,
   retiredRedirects,
 } from "./navRegistry";
+export { isDialogOpen } from "./shellKeyboard";
 export { LAST_DESTINATION_STORAGE_KEY } from "./lastDestination";
 export { applyLaunchDestination, useRememberDestination } from "./useNavigationState";

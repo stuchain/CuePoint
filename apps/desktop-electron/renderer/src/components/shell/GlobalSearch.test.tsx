@@ -16,6 +16,8 @@ import { ToastProvider } from "../Toast";
 import { SearchDialogHost } from "./GlobalSearch";
 import { Sidebar } from "./Sidebar";
 import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "./sidebarState";
+import searchCss from "./GlobalSearch.css?raw";
+import { declarations, parseRules, selectorList, stripComments } from "../../test/cssRules";
 import { trackFromLocationState } from "../../screens/library/libraryLink";
 import type {
   LibrarySearchResponse,
@@ -364,6 +366,15 @@ describe("GlobalSearch", () => {
       expect(options()[0]).toHaveAttribute("aria-selected", "true");
     });
 
+    it("marks the matched text in a title, and groups the results as Tracks (C135)", async () => {
+      await type("strobe");
+      const list = await screen.findByRole("listbox", { name: /search results/i });
+      expect(options()[0]!.querySelector("mark")).toHaveTextContent("Strobe");
+      expect(options()[1]!.querySelector("mark")).toBeNull();
+      expect(screen.getByRole("heading", { name: "Tracks" })).toBeInTheDocument();
+      expect(list).toBeInTheDocument();
+    });
+
     it("moves the active option with the arrow keys and stops at the ends", async () => {
       const user = await type("strobe");
       await screen.findByRole("listbox");
@@ -475,5 +486,34 @@ describe("GlobalSearch", () => {
       expect(screen.getByRole("dialog")).toContainElement(landmark);
       expect(container.querySelectorAll("[role='search']")).toHaveLength(1);
     });
+  });
+});
+
+describe("the command palette look (C135, C119)", () => {
+  const rules = parseRules(stripComments(searchCss));
+  const decl = (selector: string, property: string) => {
+    const rule = rules.filter((r) => selectorList(r.selector).includes(selector) && r.context === "").pop();
+    return rule ? Object.fromEntries(declarations(rule.body))[property] : undefined;
+  };
+
+  it("is 560 wide at 1x, scaled, and no wider", () => {
+    expect(decl(".cp-modal:has(.cp-global-search)", "width")).toMatch(/calc\(560px \* var\(--scale\)\)/);
+    expect(searchCss).not.toMatch(/70vw|1500px/);
+  });
+
+  it("hangs from the top of the window, not its middle", () => {
+    expect(decl(".cp-modal__backdrop:has(.cp-global-search)", "align-items")).toBe("flex-start");
+  });
+
+  it("keeps the field and the count in place while the list scrolls", () => {
+    expect(decl(".cp-global-search__summary", "flex")).toBe("none");
+    expect(decl(".cp-global-search__results", "overflow-y")).toBe("auto");
+    expect(decl(".cp-global-search__results", "max-height")).toBeDefined();
+  });
+
+  it("does not make titles bold, and underlines the matched text in the accent", () => {
+    expect(decl(".cp-global-search__title", "font-weight")).toBeUndefined();
+    expect(decl(".cp-global-search__mark", "text-decoration-color")).toBe("var(--accent-primary)");
+    expect(decl(".cp-global-search__mark", "background")).toBe("transparent");
   });
 });

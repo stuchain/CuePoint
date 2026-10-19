@@ -15,6 +15,7 @@ import {
   applyLaunchDestination,
   AppShellLayout,
   enabledDestinations,
+  isDialogOpen,
   litDestination,
   homeDestination,
   OfflineBanner,
@@ -133,6 +134,8 @@ function AppShell() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      // Not on top of another dialog (C201).
+      if (isDialogOpen()) return;
       if (event.key === "F1") {
         event.preventDefault();
         setShortcutsOpen(true);

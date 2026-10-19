@@ -2,9 +2,17 @@
  * Global search, in its dialog (K8). The results sit under the field inside the dialog's body,
  * which scrolls; the field is its own container so a narrow dialog drops to one column.
  */
-/* The dialog follows the window, up to a limit: a fixed width cut titles even on a 1920 screen. */
-.cp-modal--large:has(.cp-global-search) {
-  width: min(92vw, max(var(--modal-width-large), 70vw), 1500px);
+/*
+ * A command palette (C135): 560 wide at 1x, scaled with the text, hanging from the top of the
+ * window like the palettes people know, so the field does not move as the results come and go.
+ */
+.cp-modal:has(.cp-global-search) {
+  width: min(calc(560px * var(--scale)), calc(100vw - 2 * var(--space-xl)));
+}
+
+.cp-modal__backdrop:has(.cp-global-search) {
+  align-items: flex-start;
+  padding-top: calc(var(--toolbar-height) * 2);
 }
 
 .cp-global-search {
@@ -40,10 +48,27 @@
 }
 
 .cp-global-search__summary {
+  flex: none;
   margin: 0 0 var(--space-xs);
   padding: var(--space-sm) var(--space-sm) 0;
   color: var(--fg-muted);
   font-size: var(--font-size-xs);
+}
+
+/* The count above stays put; this part alone scrolls, to a fixed height (C119). */
+.cp-global-search__results {
+  max-height: calc(var(--row-height) * 8);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* The group's name over its rows: small and muted, as the count is. */
+.cp-global-search__group {
+  margin: 0;
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--fg-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
 }
 
 .cp-global-search__list {
@@ -96,7 +121,16 @@
   color: var(--fg-primary);
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
+}
+
+/* The part of a title the search matched: the accent underline, no fill and no bolder (C135). */
+.cp-global-search__mark {
+  background: transparent;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--accent-primary);
+  text-decoration-thickness: var(--hairline);
+  text-underline-offset: 0.2em;
 }
 
 .cp-global-search__meta {

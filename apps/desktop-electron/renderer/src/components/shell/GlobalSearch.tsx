@@ -14,6 +14,8 @@ import { matchedLabel } from "../../screens/library/searchMatch";
 import { toQueueItem } from "../../screens/library/useLibraryPlayback";
 import { sharedTransition } from "../../tokens/sharedTransition";
 import { queryShown } from "./pageActive";
+import { Highlighted } from "./highlightMatches";
+import { isDialogOpen } from "./shellKeyboard";
 import {
   MIN_QUERY_LENGTH,
   resultSummary,
@@ -185,6 +187,10 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
           {status === "results" && response && (
             <>
               <p className="cp-global-search__summary">{resultSummary(response)}</p>
+              {/* The count above stays; only this part scrolls (C119). */}
+              <div className="cp-global-search__results">
+              {/* Results are grouped by what they are; tracks are all the library search finds (C135). */}
+              <h3 className="cp-global-search__group">Tracks</h3>
               <ul
                 key={answer.n}
                 className={`cp-global-search__list${pulsed !== answer.n ? " cp-global-search__list--fresh" : ""}`}
@@ -204,7 +210,7 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
                       onMouseMove={() => index !== active && setActive(index)}
                     >
                       <span className="cp-global-search__title" data-cut-hint="">
-                        {track.title}
+                        <Highlighted text={track.title} query={trimmed} className="cp-global-search__mark" />
                       </span>
                       <span className="cp-global-search__meta" data-cut-hint="">
                         {/* Found by its key or tempo rather than its words (FLW-5). */}
@@ -235,6 +241,7 @@ function SearchBody({ onDone }: { onDone: (how?: { navigated: true }) => void })
                   </li>
                 ))}
               </ul>
+              </div>
             </>
           )}
         </div>
@@ -261,11 +268,6 @@ function focusSelectedRow(): void {
   }, 100);
 }
 
-/** Whether some other modal dialog is open: Ctrl+K must not stack a second one on it. */
-function otherDialogOpen(): boolean {
-  return queryShown('[role="dialog"][aria-modal="true"]') !== null;
-}
-
 /**
  * The search dialog and the one window listener that opens it (K8): Ctrl+K from anywhere, a
  * table included, even with the sidebar collapsed. App mounts it once, outside the sidebar's
@@ -287,7 +289,7 @@ export function SearchDialogHost() {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        if (!open && !otherDialogOpen()) show();
+        if (!open && !isDialogOpen()) show();
       }
     };
     window.addEventListener("keydown", onKeyDown);
