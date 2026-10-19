@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { CleanPlaylistCounts, CleanPlaylistStatus } from "../../../api/cuepointBridge.types";
-import { displayFolderPath, matchButtonLabel, matchRequest } from "./matchPlaylists";
+import { displayFolderPath, MATCH_TICKED_LABEL, matchRequest } from "./matchPlaylists";
 
 const COUNTS: CleanPlaylistCounts = {
   track_count: 10,
@@ -72,12 +72,9 @@ describe("matchRequest", () => {
   });
 });
 
-describe("matchButtonLabel", () => {
-  it("says what it will match", () => {
-    expect(matchButtonLabel(null)).toBe("Match playlists");
-    expect(matchButtonLabel({ whole: true })).toBe("Match whole library");
-    expect(matchButtonLabel({ whole: false, playlists: [playlist(1, "a")] })).toBe("Match 1 playlist");
-    expect(matchButtonLabel({ whole: false, playlists: [playlist(1, "a"), playlist(2, "b")] })).toBe("Match 2 playlists");
+describe("MATCH_TICKED_LABEL", () => {
+  it("is one fixed label, so the button keeps its width as playlists are ticked (C202)", () => {
+    expect(MATCH_TICKED_LABEL).toBe("Match ticked playlists");
   });
 });
 

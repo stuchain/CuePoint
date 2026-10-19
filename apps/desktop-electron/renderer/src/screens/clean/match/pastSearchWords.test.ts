@@ -38,43 +38,55 @@ describe("what was matched", () => {
 });
 
 describe("the results line", () => {
-  it("counts what was found, waits, and is missing, as the tracks are now", () => {
-    expect(resultParts(run()).map((part) => part.text)).toEqual([
-      "131 found",
-      "42 waiting for you",
-      "6 not found",
-    ]);
+  it("counts what is confirmed, to check and without a match, as the tracks are now (D2)", () => {
+    expect(resultParts(run()).map((part) => part.text)).toEqual(["131 confirmed", "42 to check", "6 no match"]);
   });
 
   it("says how many a stopped run never reached", () => {
     const parts = resultParts(
       run({ planned: 2140, done: 976, found: 880, waiting: 96, not_found: 0, status: "stopped" }),
     );
-    expect(parts.map((part) => part.text)).toEqual(["880 found", "96 waiting for you", "1,164 not reached"]);
+    expect(parts.map((part) => part.text)).toEqual(["880 confirmed", "96 to check", "1,164 not reached"]);
+  });
+
+  it("counts rejected tracks and failed searches", () => {
+    const parts = resultParts(run({ found: 10, waiting: 0, not_found: 0, rejected: 2, search_failed: 1 }));
+    expect(parts.map((part) => part.text)).toEqual(["10 confirmed", "2 rejected", "1 search failed"]);
   });
 
   it("leaves out zeros, and says so when there is nothing", () => {
     expect(resultParts(run({ waiting: 0, not_found: 0, found: 20 })).map((part) => part.text)).toEqual([
-      "20 found",
+      "20 confirmed",
     ]);
     expect(
       resultParts(run({ found: 0, waiting: 0, not_found: 0, done: 179, planned: 179 })).map((part) => part.text),
     ).toEqual(["Nothing found yet"]);
   });
 
-  it("tones each part, so colour is never the only cue", () => {
-    expect(resultParts(run()).map((part) => part.tone)).toEqual(["found", "waiting", "missing"]);
+  it("writes one that found nothing as '1 no match', in grey", () => {
+    const [part] = resultParts(run({ found: 0, waiting: 0, not_found: 1 }));
+    expect(part).toEqual({ text: "1 no match", tone: "quiet" });
+  });
+
+  it("tones each part, so colour is never the only cue: grey, amber, red", () => {
+    expect(resultParts(run()).map((part) => part.tone)).toEqual(["quiet", "check", "quiet"]);
+    expect(resultParts(run({ found: 0, waiting: 0, not_found: 0, rejected: 1 })).map((part) => part.tone)).toEqual(["bad"]);
   });
 });
 
 describe("status", () => {
-  it("is Done, Running or where it stopped", () => {
+  it("is Running, Done, Stopped or Search failed, as Discover's runs say them (C153)", () => {
     expect(statusOf(run())).toEqual({ label: "Done", tone: "done" });
     expect(statusOf(run({ status: "running" }))).toEqual({ label: "Running", tone: "running" });
-    expect(statusOf(run({ status: "stopped", done: 1040 }))).toEqual({
-      label: "Stopped at 1,040",
-      tone: "stopped",
+    expect(statusOf(run({ status: "stopped", done: 1040 }))).toEqual({ label: "Stopped", tone: "stopped" });
+    expect(statusOf(run({ found: 0, waiting: 0, not_found: 0, search_failed: 179 }))).toEqual({
+      label: "Search failed",
+      tone: "failed",
     });
+  });
+
+  it("is Done for a run with some searches failed, since the rest were read", () => {
+    expect(statusOf(run({ search_failed: 3 })).label).toBe("Done");
   });
 
   it("can be resumed only when stopped and the engine names the job", () => {
@@ -95,7 +107,7 @@ describe("a run as a scope", () => {
 describe("why a run stopped", () => {
   it("says so in words when Beatport stopped it", () => {
     expect(stopLine(run({ status: "stopped", stop_reason: "Beatport did not answer" }))).toBe(
-      "Stopped: Beatport did not answer.",
+      "Beatport did not answer",
     );
   });
 

@@ -24,6 +24,7 @@ import { reviewTrack, run } from "../../../test/matchFixtures";
 import type { CleanMatch } from "../useCleanMatch";
 import { MatchArea } from "./MatchArea";
 import { MATCH_TAB_STORAGE_KEY } from "./matchTab";
+import { quoted } from "../../../format/words";
 
 type Fn = ReturnType<typeof vi.fn>;
 type Props = ComponentProps<typeof MatchArea>;
@@ -75,6 +76,10 @@ function renderPast(overrides: Partial<Props> = {}) {
   return { props, ...view, update: (next: Partial<Props>) => view.rerender(element({ ...props, ...next })) };
 }
 
+// A name someone chose is quoted in every label that names the run (C164).
+const ALL = quoted('Playlist "all"');
+const WHOLE = quoted("Whole library");
+
 const RUNS = [
   run({ job_id: "job-1", label: 'Playlist "all"', created_at: "2026-10-12T13:42:00" }),
   run({
@@ -118,13 +123,14 @@ describe("the list", () => {
     const first = within(rows[0]!);
     expect(first.getByText('Playlist "all"')).toBeInTheDocument();
     expect(first.getByText("179")).toBeInTheDocument();
-    expect(first.getByText(/131 found/)).toBeInTheDocument();
-    expect(first.getByText(/42 waiting for you/)).toBeInTheDocument();
-    expect(first.getByText(/6 not found/)).toBeInTheDocument();
+    // The same words a track's state has everywhere (D2).
+    expect(first.getByText(/131 confirmed/)).toBeInTheDocument();
+    expect(first.getByText(/42 to check/)).toBeInTheDocument();
+    expect(first.getByText(/6 no match/)).toBeInTheDocument();
     expect(first.getByText("Done")).toBeInTheDocument();
 
     const second = within(rows[1]!);
-    expect(second.getByText("Stopped at 1,040")).toBeInTheDocument();
+    expect(second.getByText("Stopped")).toBeInTheDocument();
     expect(second.getByText(/160 not reached/)).toBeInTheDocument();
 
     // A run with no label is named by how many tracks it had.
@@ -136,8 +142,10 @@ describe("the list", () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     expect(screen.getAllByRole("button", { name: /^Resume / })).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "Resume Whole library" })).toBeEnabled();
-    expect(screen.getAllByRole("button", { name: /^Open / })).toHaveLength(3);
+    expect(screen.getByRole("button", { name: `Resume ${WHOLE}` })).toBeEnabled();
+    // The row is the way in: no Open button (C230).
+    expect(screen.queryByRole("button", { name: /^Open / })).toBeNull();
+    expect(screen.getAllByRole("row", { name: /^Open / })).toHaveLength(3);
     expect(screen.getAllByRole("button", { name: /again$/ })).toHaveLength(2);
   });
 
@@ -153,8 +161,6 @@ describe("the list", () => {
     const { unmount } = renderPast();
     expect(await screen.findByText("No searches yet", undefined, LOADED)).toBeInTheDocument();
     expect(screen.getByText("Each Match on Beatport is kept here, so you can see what it found.")).toBeInTheDocument();
-    // Nothing to search yet: no search box.
-    expect(screen.queryByLabelText("Search")).toBeNull();
     // The button goes to the Playlists sub-tab.
     fireEvent.click(screen.getByRole("button", { name: "Go to Playlists" }));
     expect(screen.getByRole("tab", { name: "Playlists" })).toHaveAttribute("aria-selected", "true");
@@ -164,14 +170,14 @@ describe("the list", () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     world.runs = [];
-    fireEvent.change(screen.getByLabelText("Search"), { target: { value: "zzz" } });
+    fireEvent.change(screen.getByLabelText("Search past searches"), { target: { value: "zzz" } });
     expect(await screen.findByText("Nothing matches \u201czzz\u201d", undefined, LOADED)).toBeInTheDocument();
   });
 
   it("asks the engine to search, after a pause in typing", async () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.change(screen.getByLabelText("Search"), { target: { value: "friday" } });
+    fireEvent.change(screen.getByLabelText("Search past searches"), { target: { value: "friday" } });
     await waitFor(() => expect(bridge.getMatchJobs).toHaveBeenLastCalledWith({ limit: 20, q: "friday" }), LOADED);
   });
 
@@ -216,15 +222,17 @@ describe("the list", () => {
   });
 });
 
-describe("Open", () => {
+describe("Opening a run", () => {
   it("opens the review of that run: every track of it, in a tab named for it", async () => {
     world.review = [reviewTrack(1, "to_check"), reviewTrack(2, "not_found"), reviewTrack(3, "matched")];
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: 'Open Playlist "all"' }));
+    fireEvent.click(screen.getByRole("row", { name: `Open ${ALL}` }));
 
     expect(await screen.findByRole("region", { name: 'Review Playlist "all"' })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: 'Review Playlist "all"' })).toHaveAttribute("aria-selected", "true");
+    // No Review tab: the one row keeps its sub-tabs and offers a way back (D13).
+    expect(screen.queryByRole("tab", { name: /^Review/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Playlists" })).toBeInTheDocument();
     expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-1", limit: 2000 });
     expect(await screen.findAllByText("Track 2 · Artist 2", undefined, LOADED)).not.toHaveLength(0);
   });
@@ -232,19 +240,27 @@ describe("Open", () => {
   it("names a run with no label by how many tracks it had", async () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: "Open Whole library" }));
-    expect(await screen.findByRole("tab", { name: "Review Whole library" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("row", { name: `Open ${WHOLE}` }));
+    expect(await screen.findByRole("region", { name: "Review Whole library" })).toBeInTheDocument();
     expect(bridge.getMatchReview).toHaveBeenCalledWith({ jobId: "job-2", limit: 2000 });
   });
 
   it("marks the run that is open", async () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: 'Open Playlist "all"' }));
+    fireEvent.click(screen.getByRole("row", { name: `Open ${ALL}` }));
     await screen.findByRole("region", { name: 'Review Playlist "all"' });
-    fireEvent.click(screen.getByRole("tab", { name: "Past searches" }));
-    await screen.findByRole("table", { name: /Every match run/ });
-    expect(screen.getAllByRole("row").filter((row) => row.getAttribute("data-open") === "true")).toHaveLength(1);
+    // The list stays mounted behind the review, with the open run marked.
+    expect(document.querySelectorAll('tr[data-open="true"]')).toHaveLength(1);
+  });
+
+  it("opens on Enter on the row, and not on a click inside one of its buttons", async () => {
+    renderPast();
+    await screen.findByRole("table", { name: /Every match run/ }, LOADED);
+    fireEvent.click(screen.getByRole("button", { name: `Save review list of ${WHOLE} as a file…` }));
+    expect(screen.queryByRole("region", { name: "Review Whole library" })).toBeNull();
+    fireEvent.keyDown(screen.getByRole("row", { name: `Open ${WHOLE}` }), { key: "Enter" });
+    expect(await screen.findByRole("region", { name: "Review Whole library" })).toBeInTheDocument();
   });
 });
 
@@ -252,7 +268,7 @@ describe("Resume and Match again", () => {
   it("resumes the job the engine named, and nothing else", async () => {
     const { props } = renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: "Resume Whole library" }));
+    fireEvent.click(screen.getByRole("button", { name: `Resume ${WHOLE}` }));
     expect(props.match.resume).toHaveBeenCalledWith("job-2b");
     expect(props.match.start).not.toHaveBeenCalled();
   });
@@ -260,7 +276,7 @@ describe("Resume and Match again", () => {
   it("matches a run again with the run's own rule, looking up even what is matched, under its label", async () => {
     const { props } = renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: 'Match Playlist "all" again' }));
+    fireEvent.click(screen.getByRole("button", { name: `Match ${ALL} again` }));
     expect(props.match.start).toHaveBeenCalledWith(
       "rematch-run",
       { query: { filters: { match: "all", rules: [{ field: "match_run", operator: "is", value: "job-1" }] } } },
@@ -272,10 +288,8 @@ describe("Resume and Match again", () => {
   it("will not start another search while one is running", async () => {
     renderPast({ match: stubMatch({ matching: true }) });
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    expect(screen.getByRole("button", { name: 'Match Playlist "all" again' })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Resume Whole library" })).toBeDisabled();
-    // Looking is not starting.
-    expect(screen.getByRole("button", { name: 'Open Playlist "all"' })).toBeEnabled();
+    expect(screen.getByRole("button", { name: `Match ${ALL} again` })).toBeDisabled();
+    expect(screen.getByRole("button", { name: `Resume ${WHOLE}` })).toBeDisabled();
   });
 });
 
@@ -294,7 +308,7 @@ describe("Save review list (K12)", () => {
     install(vi.fn().mockResolvedValue({ canceled: false, filePath: "C:\\out\\review-list.xlsx" }));
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: 'Save review list of Playlist "all" as a file…' }));
+    fireEvent.click(screen.getByRole("button", { name: `Save review list of ${ALL} as a file…` }));
 
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Saves the tracks of this search");
@@ -324,7 +338,7 @@ describe("Save review list (K12)", () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
     expect(screen.getAllByRole("button", { name: /^Save review list of/ })).toHaveLength(RUNS.length);
-    fireEvent.click(screen.getByRole("button", { name: "Save review list of Whole library as a file…" }));
+    fireEvent.click(screen.getByRole("button", { name: `Save review list of ${WHOLE} as a file…` }));
     fireEvent.click(await screen.findByRole("button", { name: "Choose where to save…" }));
     await waitFor(() => expect(bridge.exportReviewList).toHaveBeenCalled());
     const selection = bridge.exportReviewList!.mock.calls[0]![0].selection;
@@ -335,7 +349,7 @@ describe("Save review list (K12)", () => {
     install(vi.fn().mockResolvedValue({ canceled: true }));
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);
-    fireEvent.click(screen.getByRole("button", { name: 'Save review list of Playlist "all" as a file…' }));
+    fireEvent.click(screen.getByRole("button", { name: `Save review list of ${ALL} as a file…` }));
     fireEvent.click(await screen.findByRole("button", { name: "Choose where to save…" }));
     await waitFor(() => expect(bridge.saveExportFileDialog).toHaveBeenCalled());
     expect(bridge.exportReviewList).not.toHaveBeenCalled();

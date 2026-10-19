@@ -1,27 +1,34 @@
 /**
- * The review table (the Review tab): every track of one playlist, as one plain table.
+ * The review table (a review inside Playlists): every track of one playlist, as one plain table in
+ * the shared table look (D8 A, `cp-data-table`).
  *
  * A **tick** column (the header tick toggles every track that has a match), **Status**
- * (Matched, Check, Not found, Search failed), **Your track**, the **Beatport match** with the part
- * that differs from yours marked, and a ▶ to hear it. A ticked row is synced; an unticked row dims
- * and its match is struck through. Clicking a row, or Enter on it, opens its side panel.
+ * (Confirmed as the quiet tick and its word; To check, No match and Search failed as chips),
+ * **Your track**, the **Beatport** match with the part that differs from yours marked, and a play
+ * button to hear it. A ticked row shows only its tick: no tint. An unticked row dims and its match
+ * is struck through. A selected row has one look: the tint and the bar.
+ *
+ * It selects like the Library's table (C191): a click selects only that row and opens its side
+ * panel, Ctrl- or Command-click adds or removes a row, Shift-click extends from the anchor, and the
+ * arrow keys move the cursor and the selection with it (Shift extends). Enter plays the track and
+ * Space ticks it (C190). Double-click plays too.
  *
  * It is drawn for thousands of rows: only the rows in view exist (a fixed row height, a spacer
- * above and below), one row is in the tab order and the arrows move it, and Space on the row
- * ticks it (the ticks themselves are out of the tab order). The tab owns what is current and which
- * keys move it; this draws, reports a click and says where the rows end.
+ * above and below), one row is in the tab order and the arrows move it. The tab owns what is
+ * current and which keys move it; this draws, reports a click and says where the rows end.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { ReviewTrack } from "../../../api/cuepointBridge.types";
 import { Badge } from "../../../components/Badge";
-import { Button } from "../../../components/Button";
+import { EmptyState } from "../../../components/EmptyState";
 import { Hint } from "../../../components/Hint";
 import { MissingValue } from "../../../components/MissingValue";
 import { PlayButton } from "../../../components/PlayButton";
+import { ShowMore } from "../../../components/ShowMore";
 import { useBeatportPreview } from "../../../components/preview/useBeatportPreview";
-import { formatCount } from "../../../format/counts";
-import { matchParts, statusLabel, statusTone } from "./reviewList";
+import { DISPUTED_HINT } from "../cleanFormat";
+import { matchParts, statusIsQuiet, statusLabel, statusTone } from "./reviewList";
 
 /** The row height before it has been measured (the table's own is `--row-height`), and the rows drawn beyond the ones in view. */
 const ROW_HEIGHT = 26;
@@ -38,9 +45,12 @@ interface ReviewTableProps {
   /** Tracks the review holds that have not been read yet. */
   hasMore: boolean;
   remaining: number;
-  onLoadMore: () => void;
-  /** A click or Enter on a row: open its panel (and select only it). */
+  /** Show all N: read every track that has not been read yet. */
+  onShowAll: () => void;
+  /** A plain click on a row: select only it and open its panel. */
   onOpen: (row: ReviewTrack) => void;
+  /** Enter or a double-click on a row: play the track. */
+  onPlay: (row: ReviewTrack) => void;
   /** The tracks selected: Ctrl-click, Shift-click and Ctrl+A build it. */
   selectedIds: ReadonlySet<number>;
   /** A Ctrl- or Shift-click: change the selection without opening the panel. */
@@ -79,8 +89,9 @@ export function ReviewTable({
   focusToken,
   hasMore,
   remaining,
-  onLoadMore,
+  onShowAll,
   onOpen,
+  onPlay,
   selectedIds,
   onSelect,
   onContextMenu,
@@ -154,7 +165,7 @@ export function ReviewTable({
 
   return (
     <div className="review__table" ref={tableRef} onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}>
-      <table className="review-table" aria-rowcount={rows.length + 1}>
+      <table className="cp-data-table review-table" aria-rowcount={rows.length + 1}>
         <caption className="match-visually-hidden">
           Every track of this playlist, what Beatport matched it with, and whether it will be synced
         </caption>
@@ -193,14 +204,15 @@ export function ReviewTable({
           {windowRows.map((row, offset) => {
             const parts = matchParts(row.candidate, row.differing);
             const off = !row.ticked;
+            const isSelected = selectedIds.has(row.track_id);
             return (
               <tr
                 key={row.track_id}
                 data-track-id={row.track_id}
                 data-status={row.status}
                 aria-rowindex={start + offset + 2}
-                className={`review-row${off ? " review-row--off" : ""}${current === row.track_id ? " review-row--current" : ""}${selectedIds.has(row.track_id) ? " review-row--selected" : ""}`}
-                aria-selected={selectedIds.has(row.track_id)}
+                className={`review-row${off ? " review-row--off" : ""}${current === row.track_id ? " review-row--current" : ""}`}
+                aria-selected={isSelected}
                 onContextMenu={(event) => {
                   event.preventDefault();
                   onContextMenu(row, { x: event.clientX, y: event.clientY });
@@ -221,19 +233,24 @@ export function ReviewTable({
                   if (toggle || event.shiftKey) onSelect(row, { shift: event.shiftKey, toggle });
                   else onOpen(row);
                 }}
+                onDoubleClick={(event) => {
+                  if ((event.target as HTMLElement).closest("button, input, a")) return;
+                  if (event.ctrlKey || event.metaKey || event.shiftKey) return;
+                  onPlay(row);
+                }}
                 onKeyDown={(event) => {
                   if (event.target !== event.currentTarget || event.repeat) return;
-                  // Enter on the row itself opens it; on a control inside it, the control's own.
+                  // Enter on the row itself plays it; on a control inside it, the control's own.
                   if (event.key === "Enter") {
                     event.preventDefault();
-                    onOpen(row);
+                    onPlay(row);
                   } else if (event.key === " " && row.tickable && !event.ctrlKey && !event.metaKey && !event.altKey) {
                     event.preventDefault();
                     onTick(row, !row.ticked);
                   }
                 }}
               >
-                <td>
+                <td className="review-col--check">
                   <Hint text={row.tickable ? undefined : "No Beatport match to sync"}>
                     <input
                       type="checkbox"
@@ -245,10 +262,14 @@ export function ReviewTable({
                     />
                   </Hint>
                 </td>
-                <td>
-                  <Badge tone={statusTone(row.status)}>{statusLabel(row.status)}</Badge>
+                <td className="review-col--status">
+                  {statusIsQuiet(row.status) ? (
+                    <span className="cp-quiet-ok">{statusLabel(row.status)}</span>
+                  ) : (
+                    <Badge tone={statusTone(row.status)}>{statusLabel(row.status)}</Badge>
+                  )}
                   {row.disputed && (
-                    <Hint text="A newer search found a different best match than the one you chose.">
+                    <Hint text={DISPUTED_HINT}>
                       <span className="review-row__disputed"> newer match differs</span>
                     </Hint>
                   )}
@@ -269,7 +290,7 @@ export function ReviewTable({
                         </span>
                       ))}
                 </td>
-                <td className="review-row__preview">
+                <td className="review-col--preview review-row__preview">
                   <RowPreview row={row} />
                 </td>
               </tr>
@@ -282,12 +303,10 @@ export function ReviewTable({
           )}
         </tbody>
       </table>
-      {rows.length === 0 && <p className="review__hint">Nothing here.</p>}
+      {rows.length === 0 && <EmptyState compact headline="Nothing to review here" />}
       {hasMore && (
         <div className="review__more">
-          <Button variant="secondary" onClick={onLoadMore}>
-            {`Show more (${formatCount(remaining)} more)`}
-          </Button>
+          <ShowMore total={rows.length + remaining} expanded={false} onToggle={onShowAll} />
         </div>
       )}
     </div>

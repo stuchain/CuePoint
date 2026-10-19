@@ -94,24 +94,46 @@ describe("the list", () => {
     expect(screen.getByText("Synced")).toHaveClass("cp-badge--success");
   });
 
-  it("names the steps, with the first one lit", () => {
+  it("has no steps list of its own: the area's caption says the step (D13)", () => {
     renderView();
-    const steps = screen.getByRole("list", { name: "The steps" });
-    expect(within(steps).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
-      "1Tick the playlists to match",
-      "2Review",
-      "3Sync to files",
-    ]);
-    expect(within(steps).getByText("Tick the playlists to match").closest("[aria-current]")).toHaveAttribute(
-      "aria-current",
-      "step",
-    );
+    expect(screen.queryByRole("list", { name: "The steps" })).toBeNull();
+  });
+
+  it("draws the whole library's In your files cell as the muted dash (C182)", () => {
+    renderView();
+    const cell = within(bodyRows()[0]!).getAllByRole("cell")[3]!;
+    expect(cell).toHaveTextContent("\u2014");
+  });
+
+  it("is the shared data table, with its numbers in the shared number class", () => {
+    renderView();
+    expect(screen.getByRole("table")).toHaveClass("cp-data-table");
+    expect(within(bodyRows()[0]!).getByText("1,234")).toHaveClass("num");
+  });
+
+  it("highlights a clicked row without ticking it (C195)", () => {
+    renderView();
+    const row = screen.getByText("Warmup").closest("tr")!;
+    fireEvent.click(row);
+    expect(row).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("checkbox", { name: "Match Warmup" })).not.toBeChecked();
+  });
+
+  it("ticks and unticks every playlist on show from the header", () => {
+    renderView();
+    const header = screen.getByRole("checkbox", { name: "Tick every playlist" });
+    fireEvent.click(header);
+    expect(screen.getByRole("checkbox", { name: "Match Peak time" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Match Warmup" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Match hj" })).not.toBeChecked();
+    fireEvent.click(header);
+    expect(screen.getByRole("checkbox", { name: "Match Peak time" })).not.toBeChecked();
   });
 
   it("has a tick column, and the columns Playlist, Tracks and In your files", () => {
     renderView();
     expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
-      "Match",
+      "",
       "Playlist",
       "Tracks",
       "In your files",
@@ -127,12 +149,12 @@ describe("the list", () => {
   });
 
   it("filters by name and by folder, ignoring case", () => {
-    renderView();
-    fireEvent.change(screen.getByLabelText("Filter playlists"), { target: { value: "TECHNO" } });
+    // The area's one search holds the text; the view narrows its rows by it.
+    const { rerender, props } = renderView({ filter: "TECHNO" });
     expect(screen.getByText("Peak time")).toBeInTheDocument();
     expect(screen.queryByText("Warmup")).toBeNull();
     expect(screen.getByText("Whole library")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Filter playlists"), { target: { value: "zzz" } });
+    rerender(<PlaylistsView {...props} filter="zzz" />);
     expect(screen.getByText("Nothing matches \u201czzz\u201d")).toBeInTheDocument();
   });
 
@@ -191,21 +213,22 @@ describe("the bar under the list", () => {
 describe("matching what is ticked", () => {
   it("waits for a tick, saying what it will match", () => {
     renderView();
-    expect(screen.getByRole("button", { name: "Match playlists" })).toBeDisabled();
+    // One label that never changes, so the button's width does not (the count is beside it).
+    expect(screen.getByRole("button", { name: "Match ticked playlists" })).toBeDisabled();
     tick("Peak time");
-    expect(screen.getByRole("button", { name: "Match 1 playlist" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Match ticked playlists" })).toBeEnabled();
     tick("Warmup");
-    expect(screen.getByRole("button", { name: "Match 2 playlists" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Match ticked playlists" })).toBeEnabled();
   });
 
   it("matches the ticked playlists as one choice, then clears the ticks", () => {
     const { props } = renderView();
     tick("Peak time");
     tick("Warmup");
-    fireEvent.click(screen.getByRole("button", { name: "Match 2 playlists" }));
+    fireEvent.click(screen.getByRole("button", { name: "Match ticked playlists" }));
     expect(props.onMatch).toHaveBeenCalledWith({ whole: false, playlists: [DATA.playlists[0], DATA.playlists[1]] });
     expect(screen.getByRole("checkbox", { name: "Match Peak time" })).not.toBeChecked();
-    expect(screen.getByRole("button", { name: "Match playlists" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Match ticked playlists" })).toBeDisabled();
   });
 
   it("makes the whole library exclusive: ticking it unticks and disables the playlists", () => {
@@ -215,7 +238,7 @@ describe("matching what is ticked", () => {
     expect(screen.getByRole("checkbox", { name: "Match Peak time" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Match Peak time" })).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "Match Warmup" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Match whole library" }));
+    fireEvent.click(screen.getByRole("button", { name: "Match ticked playlists" }));
     expect(props.onMatch).toHaveBeenCalledWith({ whole: true });
   });
 
@@ -229,12 +252,8 @@ describe("matching what is ticked", () => {
   it("waits while a match runs, and says why", () => {
     renderView({ matching: true });
     tick("Peak time");
-    expect(screen.getByRole("button", { name: "Match 1 playlist" })).toBeDisabled();
-    expect(screen.getByText("One match at a time: wait for the one that is running.")).toBeInTheDocument();
-  });
-
-  it("does not say one at a time while no match runs", () => {
-    renderView();
+    expect(screen.getByRole("button", { name: "Match ticked playlists" })).toBeDisabled();
+    // The reason is a hint on the button now, not a line in the bar.
     expect(screen.queryByText(/One match at a time/)).toBeNull();
   });
 });
@@ -268,11 +287,20 @@ describe("with nothing to show", () => {
     renderView({ data: null, error: "This needs the CuePoint desktop app." });
     expect(screen.getByRole("alert")).toHaveTextContent("This needs the CuePoint desktop app.");
   });
+
+  it("offers Try again on a failed read, in a red notice (C142)", () => {
+    const onRetry = vi.fn();
+    renderView({ data: null, error: "The library service is not running", onRetry });
+    expect(screen.getByRole("alert")).toHaveClass("cp-notice--danger");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("the number column's alignment", () => {
   it("is set by a rule that outweighs the table's left-aligned cells", () => {
-    // `.playlists__table th, td` is (0,1,1); a bare `.playlists__number` (0,1,0) loses to it.
-    expect(css).toMatch(/\.playlists__table \.playlists__number\s*\{[^}]*text-align:\s*right/);
+    // The shared table sets the number column once (`.num`); this sheet must not set it again.
+    expect(css).not.toMatch(/playlists__number/);
+    expect(css).not.toMatch(/\.num\s*\{[^}]*text-align:\s*left/);
   });
 });

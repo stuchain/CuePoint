@@ -1,167 +1,31 @@
-/* The Playlists view (C22): where Match opens, step 1 of "tick, review, sync". */
+/*
+ * The Playlists view (C22): where Match opens, step 1 of "tick, match, check and sync".
+ *
+ * The table is the shared look (`cp-data-table`, D8 A): header band, rows of --row-height with the
+ * divider inside, hover and selected from the tokens. Only what belongs to this list is here.
+ */
 
 .playlists {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-md);
   min-height: 0;
-  /* No bottom padding: the bar under the list is flush with the bottom of the area (area 61). */
-  padding: var(--space-md) 0 0;
-}
-
-/* 1 Tick the playlists to match -> 2 Review -> 3 Sync to files: a map, with this list lit. */
-.playlists__steps {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-md);
-  margin: 0;
+  /* The area's page margin is the only one (the shared gutter); the footer bar is flush below. */
   padding: 0;
-  list-style: none;
 }
 
-.playlists__step {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-xs) var(--space-md);
-  border: var(--control-border-width) solid var(--border-muted);
-  color: var(--fg-muted);
-  font-size: var(--control-font-size);
-}
-
-.playlists__step[aria-current="step"] {
-  border-color: var(--accent-primary);
-  background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
-  color: var(--fg-primary);
-  font-weight: var(--weight-strong);
-}
-
-.playlists__step-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: calc(16px * var(--scale));
-  border: var(--control-border-width) solid currentColor;
-  font-size: var(--font-size-xs);
-}
-
-.playlists__bar {
-  max-width: calc(320px * var(--scale));
-}
-
-/* The boxed list scrolls on its own: its header stays in view and the bar below it stays put. */
+/* One border level (C238): the rows sit on the page, and the scroll area is not boxed. */
 .playlists__scroll {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  border: var(--control-border-width) solid var(--border-muted);
 }
 
-.playlists__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--control-font-size);
-}
-
-.playlists__table th,
-.playlists__table td {
-  padding: 0 var(--space-md);
-  border-bottom: var(--control-border-width) solid var(--border-muted);
-  text-align: left;
-  vertical-align: middle;
-}
-
-/* A row is 26 (39 at 1.5x): the Library's density, not the old roomy 59. */
-.playlists__table tbody tr {
-  height: calc(26px * var(--scale));
-}
-
-/* Names are data: Inter, as in the tables. */
-.playlists__table td {
-  font-family: var(--font-data);
-}
-
-.playlists__table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  height: calc(26px * var(--scale));
-  background: var(--bg-panel);
-}
-
-.playlists__table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.playlists__table th {
-  color: var(--fg-muted);
-  font-weight: var(--weight-strong);
-}
-
-/* A ticked row is the choice: tinted so a long list still shows what Match will take. */
-.playlists__table tr[data-ticked="true"] {
-  background: color-mix(in srgb, var(--accent-primary) 20%, transparent);
-}
-
-/* After `.playlists__table th, td` (which left-align) in weight: the number and its heading line up. */
-.playlists__table .playlists__number {
-  text-align: right;
-}
-
-.playlists__path,
-.playlists__next,
-.playlists__empty {
-  color: var(--fg-muted);
-}
-
-.playlists__empty {
-  margin: 0;
-  padding: var(--space-md);
-}
-
-/* A name and its folder wrap at any letter, so a long path never widens the table past the page. */
-.playlists__table td:nth-child(2) {
-  overflow-wrap: anywhere;
-}
-
-.playlists__matching {
-  color: var(--fg-primary);
-}
-
-.playlists__waiting {
-  color: var(--fg-muted);
-}
-
-/* The status strip's bar, across the name cell under the playlist's name. */
-.playlists__progress {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  height: calc(6px * var(--scale));
-  margin-top: var(--space-xs);
-  border: var(--divider);
-  background: var(--bg-app);
-  border-radius: 0;
-  appearance: none;
-}
-
-.playlists__progress::-webkit-progress-bar {
-  background: var(--bg-app);
-}
-
-.playlists__progress::-webkit-progress-value {
-  background: var(--accent-primary);
-}
-
-.playlists__synced {
-  gap: var(--space-xs);
-}
-
-/* The tick column: a bigger tick, easier to hit down a long list. */
-.playlists__tick {
+/* The tick column is the same 32 wide in every step of the flow, with one checkbox look (C77). */
+.cp-data-table .playlists__tick {
   width: calc(32px * var(--scale));
+  padding-inline: 0;
+  text-align: center;
 }
 
 .playlists__tick input[type="checkbox"] {
@@ -171,41 +35,62 @@
   vertical-align: middle;
 }
 
-/* The bar under the list: what is ticked on the left, Match on the right. */
+/* The row's own buttons: one fixed end column, right-aligned (C76). */
+.cp-data-table .playlists__end {
+  width: calc(132px * var(--scale));
+  overflow: visible;
+  text-align: right;
+}
+
+.playlists__buttons {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+/* The name cell holds the folder, the name and, while it runs, the bar under them. */
+.cp-data-table .playlists__name-cell {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.playlists__path,
+.playlists__next {
+  color: var(--fg-muted);
+}
+
+.playlists__matching {
+  color: var(--fg-primary);
+}
+
+.playlists__waiting,
+.playlists__not-yet {
+  color: var(--fg-muted);
+}
+
+/* The status strip's bar, across the name cell under the playlist's name. */
+.playlists__progress {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: var(--space-xs);
+}
+
+.playlists__synced {
+  gap: var(--space-xs);
+}
+
+/* The bar under the list: what is ticked on the left, Match at the bottom right (C216, C235). */
 .playlists__footer {
-  display: flex;
   flex: none;
   flex-wrap: wrap;
-  align-items: center;
-  box-sizing: border-box;
-  gap: var(--space-md);
-  min-height: var(--toolbar-height);
-  padding: var(--toolbar-padding);
-  border: var(--control-border-width) solid var(--border-muted);
-  background: var(--bg-panel);
+  justify-content: flex-end;
   font-family: var(--font-data);
 }
 
-.playlists__footer > .cp-btn {
-  margin-left: auto;
+.playlists__next {
+  margin-inline-end: auto;
 }
 
 .playlists__choice {
   color: var(--fg-primary);
-  font-weight: var(--weight-strong);
-}
-
-.playlists__stepitem {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-.playlists__arrow {
-  color: var(--fg-muted);
-}
-
-/* "In your files" for a playlist no sync has written yet. */
-.playlists__not-yet {
-  color: var(--fg-muted);
 }

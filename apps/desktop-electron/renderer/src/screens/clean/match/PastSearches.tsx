@@ -1,43 +1,48 @@
 /**
  * Past searches: every match run, newest first (C14, DEC-065).
  *
- * A run is the first search and the resumes that finished it, so a match that
- * was stopped and resumed twice is one row. The counts are what the tracks are
- * now, which is what still needs the reader: "42 waiting for you" goes down as
- * tracks are corrected. Each row has its buttons — **Open** (its tracks, in One
- * at a time and the Table), **Resume** (a stopped one, only what it had not
- * reached), **Match again**, **Save review list…** (that run's list as a file,
- * K12) — so nothing is hidden behind a hover or a menu.
+ * A run is the first search and the resumes that finished it, so a match that was stopped and
+ * resumed twice is one row. The counts are what the tracks are now, which is what still needs the
+ * reader: "42 to check" goes down as tracks are corrected. It stays a table (D8) in the shared
+ * look, and a row opens like a Discover run: click it, or press Enter on it, and its review opens.
+ * Each row has its buttons in one fixed column at the right, small and grey: **Resume** (a stopped
+ * one, only what it had not reached), **Save review list…** (that run's list as a file, K12) and
+ * **Match again**, so nothing is hidden behind a hover or a menu.
+ *
+ * The search is the Match area's one search, on its row; this list reads what it holds.
  */
 import { useEffect, useState } from "react";
 
 import type { MatchRun } from "../../../api/cuepointBridge.types";
-import { formatDayTime } from "../../../format/dates";
-import { EmptyState } from "../../../components/EmptyState";
+import { needsDesktopApp } from "../../../api/userMessage";
 import { Badge, type BadgeVariant } from "../../../components/Badge";
 import { Button } from "../../../components/Button";
+import { EmptyState } from "../../../components/EmptyState";
+import { Loading } from "../../../components/Loading";
 import { Notice } from "../../../components/Notice";
-import { SearchField } from "../../../components/SearchField";
 import { formatCount } from "../../../format/counts";
-import { nothingMatches } from "../../../format/words";
+import { formatDayTime } from "../../../format/dates";
+import { RETRY, nothingMatches, quoted } from "../../../format/words";
 import { canResume, resultParts, statusOf, stopLine, whatLine, type StatusTone } from "./pastSearchWords";
 import { ReviewListSave } from "./ReviewListSave";
 import { useMatchJobs } from "./useMatchJobs";
-import { NEEDS_DESKTOP } from "../../../api/userMessage";
 
 const STATUS_VARIANTS: Record<StatusTone, BadgeVariant> = {
   done: "success",
   stopped: "warning",
   running: "info",
+  failed: "danger",
 };
 
 interface PastSearchesProps {
+  /** What the area's search holds: the engine searches by it, after a pause in typing. */
+  search: string;
   /** Bumped when a match ends, so the list is read again. */
   version: number;
   /** A match is running now: starting another is refused until it ends. */
   matching: boolean;
   /** The run whose tracks the page is showing, marked in the list. */
-  openId: string | null;
+  openId?: string | null;
   onOpen: (run: MatchRun) => void;
   onResume: (run: MatchRun) => void;
   onMatchAgain: (run: MatchRun) => void;
@@ -46,50 +51,47 @@ interface PastSearchesProps {
 }
 
 export function PastSearches({
+  search,
   version,
   matching,
-  openId,
+  openId = null,
   onOpen,
   onResume,
   onMatchAgain,
   onGoToPlaylists,
 }: PastSearchesProps) {
-  const [typed, setTyped] = useState("");
   const [query, setQuery] = useState("");
   const [saving, setSaving] = useState<{ run: MatchRun; open: boolean } | null>(null);
   // The engine does the searching: wait for a pause in typing before asking.
   useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(typed), 250);
+    const timer = window.setTimeout(() => setQuery(search), 250);
     return () => window.clearTimeout(timer);
-  }, [typed]);
+  }, [search]);
 
   const jobs = useMatchJobs(query, version);
   const canResumeHere = Boolean(window.cuepoint?.resumeCleanMatch);
   const now = new Date();
-  // The box is for a list with something in it; a search that found nothing keeps it, to be cleared.
-  const searchable = typed.trim() !== "" || query.trim() !== "" || jobs.runs.length > 0 || jobs.loading;
   const searching = query.trim() !== "";
 
   return (
     <section className="match-past" aria-label="Past searches">
-      {searchable && (
-        <div className="match-past__bar">
-          <SearchField
-            thing="past searches"
-            label="Search"
-            className="match-past__search"
-            value={typed}
-            onValueChange={setTyped}
-          />
-        </div>
+      {jobs.error && (
+        <Notice
+          kind="danger"
+          action={
+            <Button variant="secondary" onClick={jobs.reload}>
+              {RETRY}
+            </Button>
+          }
+        >
+          {jobs.error}
+        </Notice>
       )}
-
-      {jobs.error && <Notice kind="problem">{jobs.error}</Notice>}
-      {!jobs.available && (
-        <p className="match-past__empty">{NEEDS_DESKTOP}</p>
-      )}
+      {!jobs.available && <EmptyState compact headline={needsDesktopApp()} />}
+      {jobs.available && jobs.loading && jobs.runs.length === 0 && <Loading what="past searches" />}
       {jobs.available && !jobs.error && jobs.runs.length === 0 && !jobs.loading && (
         <EmptyState
+          compact
           icon="clean"
           headline={searching ? nothingMatches(query.trim()).replace(/[.]$/, "") : "No searches yet"}
           description={searching ? undefined : "Each Match on Beatport is kept here, so you can see what it found."}
@@ -99,18 +101,18 @@ export function PastSearches({
 
       {jobs.runs.length > 0 && (
         <div className="match-past__scroll">
-          <table className="match-past__table">
+          <table className="cp-data-table match-past__table">
             <caption className="match-visually-hidden">Every match run, newest first</caption>
             <thead>
               <tr>
                 <th scope="col">When</th>
                 <th scope="col">What was matched</th>
-                <th scope="col" className="match-past__number">
+                <th scope="col" className="num">
                   Tracks
                 </th>
                 <th scope="col">Results</th>
                 <th scope="col">Status</th>
-                <th scope="col">
+                <th scope="col" className="match-past__end">
                   <span className="match-visually-hidden">Actions</span>
                 </th>
               </tr>
@@ -119,11 +121,31 @@ export function PastSearches({
               {jobs.runs.map((run) => {
                 const status = statusOf(run);
                 const what = whatLine(run);
+                // A name someone chose is quoted; "12 tracks" is not a name (C164).
+                const named = run.label?.trim() ? quoted(what) : what;
+                const isOpen = run.job_id === openId;
                 return (
-                  <tr key={run.job_id} data-open={run.job_id === openId ? "true" : undefined}>
-                    <td>{formatDayTime(run.created_at, { now }) || run.created_at || ""}</td>
-                    <td>{what}</td>
-                    <td className="match-past__number">{formatCount(run.planned)}</td>
+                  <tr
+                    key={run.job_id}
+                    className="match-past__row"
+                    data-open={isOpen ? "true" : undefined}
+                    aria-selected={isOpen}
+                    tabIndex={0}
+                    aria-label={`Open ${named}`}
+                    onClick={(event) => {
+                      // A click on a button inside the row is that button's own.
+                      if ((event.target as HTMLElement).closest("button")) return;
+                      onOpen(run);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget || event.key !== "Enter") return;
+                      event.preventDefault();
+                      onOpen(run);
+                    }}
+                  >
+                    <td className="match-past__when">{formatDayTime(run.created_at, { now }) || run.created_at || ""}</td>
+                    <td className="match-past__what">{what}</td>
+                    <td className="num">{formatCount(run.planned)}</td>
                     <td>
                       {resultParts(run).map((part, index) => (
                         <span key={part.text} className={`match-result match-result--${part.tone}`}>
@@ -134,42 +156,41 @@ export function PastSearches({
                     </td>
                     <td>
                       <Badge variant={STATUS_VARIANTS[status.tone]}>{status.label}</Badge>
-                      {stopLine(run) && <div className="match-past__why">{stopLine(run)}</div>}
+                      {stopLine(run) && <span className="match-past__why"> · {stopLine(run)}</span>}
                     </td>
-                    <td className="match-past__actions">
-                      {canResume(run) && canResumeHere && (
-                        <Button variant="primary"
-                          aria-label={`Resume ${what}`}
-                          disabled={matching}
-                          onClick={() => onResume(run)}
-                        >
-                          Resume
-                        </Button>
-                      )}
-                      <Button
-                        variant="secondary"
-                        aria-label={`Open ${what}`}
-                        onClick={() => onOpen(run)}
-                      >
-                        Open
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        aria-label={`Save review list of ${what} as a file…`}
-                        onClick={() => setSaving({ run, open: true })}
-                      >
-                        Save review list…
-                      </Button>
-                      {run.status !== "running" && (
+                    <td className="match-past__end">
+                      <div className="cp-button-row match-past__actions">
+                        {canResume(run) && canResumeHere && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            aria-label={`Resume ${named}`}
+                            disabled={matching}
+                            onClick={() => onResume(run)}
+                          >
+                            Resume
+                          </Button>
+                        )}
                         <Button
+                          size="sm"
                           variant="secondary"
-                          aria-label={`Match ${what} again`}
-                          disabled={matching}
-                          onClick={() => onMatchAgain(run)}
+                          aria-label={`Save review list of ${named} as a file…`}
+                          onClick={() => setSaving({ run, open: true })}
                         >
-                          Match again
+                          Save review list…
                         </Button>
-                      )}
+                        {run.status !== "running" && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            aria-label={`Match ${named} again`}
+                            disabled={matching}
+                            onClick={() => onMatchAgain(run)}
+                          >
+                            Match again
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -177,9 +198,9 @@ export function PastSearches({
             </tbody>
           </table>
           {jobs.total > jobs.runs.length && (
-            <p className="match-past__more">
-              Showing the newest {formatCount(jobs.runs.length)} of {formatCount(jobs.total)}.
-              Search to find an older one.
+            <p className="cp-prose match-past__more">
+              Showing the newest {formatCount(jobs.runs.length)} of {formatCount(jobs.total)}. Search to find an
+              older one.
             </p>
           )}
         </div>
