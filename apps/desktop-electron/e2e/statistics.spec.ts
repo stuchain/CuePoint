@@ -138,6 +138,9 @@ test.describe("The Statistics page (STATS-04)", () => {
         });
       }
       await expect(window.getByRole("combobox", { name: "Scope" })).toHaveValue("library");
+      // The word Scope is the picker's own inline label, and the Library tab carries no count.
+      await expect(window.locator(".cp-select--inline .cp-select__inline-label")).toHaveText("Scope");
+      await expect(tabs.getByRole("tab", { name: /^Library/ })).toHaveText("Library");
       // The three routes answered through the bridge: each tab drew its count.
       await expect(window.locator(".plays__unplayed")).toContainText(/Plays unknown\s*3/, {
         timeout: 30_000,
@@ -444,7 +447,7 @@ test.describe("The Health section and the whole page (STATS-07)", () => {
         health.locator('[data-panel="beatport"]').getByRole("button", { name: /^Open in Clean/ }).first(),
       ).toBeVisible();
       await expect(
-        health.locator('[data-panel="other"]').getByRole("button", { name: "Read cover art" }),
+        health.locator('[data-panel="other"]').getByRole("button", { name: "Read artwork" }),
       ).toBeVisible();
 
       const rows = window.locator(".track-table__row");
