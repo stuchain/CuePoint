@@ -20,6 +20,7 @@
 import { useCallback, useState } from "react";
 
 import { PixelIcon } from "../../components/PixelIcon";
+import { formatCount } from "../../format/counts";
 import type { CollectionNode } from "../../api/cuepointBridge.types";
 import { CollectionsPane } from "./CollectionsPane";
 import { PlaylistPane } from "./PlaylistPane";
@@ -109,9 +110,6 @@ export function LibraryPane({
   onNewSetFrom,
   canMakeSets = false,
 }: LibraryPaneProps) {
-  // The foot of the pane, where the selected node's bar is drawn (a state, not a ref: the bar
-  // is portalled into it, so it must be known to render).
-  const [barHost, setBarHost] = useState<HTMLDivElement | null>(null);
   const [playlistsFolded, setPlaylistsFolded] = usePlaylistsFold();
   return (
     <div className="cp-library-pane">
@@ -138,9 +136,7 @@ export function LibraryPane({
             <span className="cp-playlist-pane__twisty" aria-hidden />
             <PixelIcon name="library" className="cp-playlist-pane__icon" />
             <span className="cp-playlist-pane__name">All tracks</span>
-            <span className="cp-playlist-pane__count">
-              {libraryTrackCount.toLocaleString()}
-            </span>
+            <span className="cp-playlist-pane__count">{formatCount(libraryTrackCount)}</span>
           </div>
         </div>
       </div>
@@ -168,7 +164,6 @@ export function LibraryPane({
         onOpenInPrepare={onOpenInPrepare}
         onDuplicateSet={canMakeSets ? collections.duplicateSet : undefined}
         canMakeSets={canMakeSets}
-        barHost={barHost}
         onSaveSetList={onSaveSetList}
         onCopySetList={onCopySetList}
         onNewSetFrom={onNewSetFrom}
@@ -190,7 +185,6 @@ export function LibraryPane({
         onNewSetFrom={onNewSetFrom}
       />
       </div>
-      <div ref={setBarHost} className="cp-library-pane__bar" />
     </div>
   );
 }

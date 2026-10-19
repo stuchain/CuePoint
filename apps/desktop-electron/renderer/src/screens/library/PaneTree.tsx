@@ -23,6 +23,7 @@ import { PixelIcon } from "../../components/PixelIcon";
 import type { PixelIconName } from "../../components/pixelIcons";
 import "./PlaylistPane.css";
 import { Hint } from "../../components/Hint";
+import { formatCount } from "../../format/counts";
 
 export interface PaneTreeRow {
   /** Stable identity: the focus, the selection and the drop target use it. */
@@ -46,6 +47,11 @@ export interface PaneTreeRow {
   draggable?: boolean;
   /** Whether this row may be dropped onto right now. */
   droppable?: boolean;
+  /**
+   * Drawn at the right end of the row, after the count: the selected row's "•••" menu. Clicks and
+   * keys on it stay on it and do not select the row.
+   */
+  trailing?: ReactNode;
 }
 
 interface PaneTreeProps {
@@ -198,9 +204,7 @@ export function PaneTree({
           <PixelIcon name={leadingRow.icon} className="cp-playlist-pane__icon" />
           <span className="cp-playlist-pane__name">{leadingRow.name}</span>
           {leadingRow.count != null && (
-            <span className="cp-playlist-pane__count">
-              {leadingRow.count.toLocaleString()}
-            </span>
+            <span className="cp-playlist-pane__count">{formatCount(leadingRow.count)}</span>
           )}
         </div>
       )}
@@ -294,7 +298,18 @@ export function PaneTree({
             {row.badge}
 
             {row.count != null && (
-              <span className="cp-playlist-pane__count">{row.count.toLocaleString()}</span>
+              <span className="cp-playlist-pane__count">{formatCount(row.count)}</span>
+            )}
+
+            {row.trailing && (
+              <span
+                className="cp-playlist-pane__trailing"
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+                onContextMenu={(event) => event.stopPropagation()}
+              >
+                {row.trailing}
+              </span>
             )}
           </div>
         );

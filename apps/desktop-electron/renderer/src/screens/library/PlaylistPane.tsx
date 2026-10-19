@@ -156,9 +156,16 @@ export function PlaylistPane({
         label="Playlists"
         rows={treeRows}
         selectedKey={selectedKey}
-        onSelect={(key) =>
-          onSelect(key === ALL_TRACKS_KEY ? null : (byKey.get(key) ?? null))
-        }
+        onSelect={(key) => {
+          const row = rows.find((candidate) => candidate.node.path === key);
+          // A folder opens and closes; it is not a scope, so only one row in the pane looks
+          // selected (C197).
+          if (row?.node.kind === "folder") {
+            onExpand(key, !row.expanded);
+            return;
+          }
+          onSelect(key === ALL_TRACKS_KEY ? null : (byKey.get(key) ?? null));
+        }}
         onExpand={onExpand}
         onRowContextMenu={
           onNewSetFrom

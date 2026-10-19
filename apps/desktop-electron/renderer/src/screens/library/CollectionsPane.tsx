@@ -38,20 +38,26 @@
  * the page passes its handler, so a build without them draws none.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 
 import { Button } from "../../components/Button";
 import { Hint } from "../../components/Hint";
-import { CANCEL, deleteLabel, deleteTitle } from "../../format/words";
+import {
+  CANCEL,
+  NO_COLLECTIONS,
+  deleteLabel,
+  deleteLead,
+  deleteTitle,
+} from "../../format/words";
+import { countNoun } from "../../format/counts";
 import { Modal } from "../../components/Modal";
 import { PixelIcon } from "../../components/PixelIcon";
 import {
   TrackContextMenu,
+  useMenuButton,
   type TrackContextMenuItem,
 } from "../../components/TrackContextMenu";
 import type { CollectionNode, CollectionSubtree } from "../../api/cuepointBridge.types";
 import { PaneTree, type PaneTreeRow } from "./PaneTree";
-import { useToolbarKeys } from "./useToolbarKeys";
 import {
   canMoveInto,
   describeDeletion,
@@ -137,12 +143,6 @@ interface CollectionsPaneProps {
    * there.
    */
   onOpenInPrepare?: (node: CollectionNode) => void;
-  /**
-   * Where the bar of the selected node is drawn. Absent, it follows the tree (the pane used
-   * alone); an element puts it there, at the foot of the whole Library pane; `null` is "not
-   * there yet" (the host's own ref has not mounted), and draws nothing for that moment.
-   */
-  barHost?: HTMLElement | null;
   /** A Set's "Duplicate": chapters, times, notes and all (PREP-02). */
   onDuplicateSet?: (id: number) => Promise<{ ok: boolean; error?: string }>;
   /** A Set's "Save set list…" and "Copy set list" (DEC-110). */
@@ -159,13 +159,45 @@ interface CollectionsPaneProps {
 }
 
 /** A new node's name before the user has typed one. */
-/** One button on the bar; `short` is what it says in a narrow pane, `label` stays its name. */
-interface BarButton {
-  id: string;
-  label: string;
-  short?: string;
-  reason: string | null;
-  run: () => void;
+/** What a node is called in a delete dialog's title and button: "Set", "folder", "Collection". */
+function kindWord(node: CollectionTreeNode): string {
+  if (isSet(node)) return "Set";
+  if (node.kind === "folder") return "folder";
+  if (node.kind === "smart") return "Smart Collection";
+  return "Collection";
+}
+
+/**
+ * The selected row's own menu: a "•••" button at the right end of the row, opening the same list
+ * the right-click menu shows (Rename, Duplicate, Delete, Export to Rekordbox…). It replaced the
+ * bar at the foot of the pane, which was a screen away from the row it acted on (C15, C227).
+ */
+function RowMenu({ name, items }: { name: string; items: TrackContextMenuItem[] }) {
+  const menu = useMenuButton();
+  const box = menu.open ? menu.anchor.current?.getBoundingClientRect() : undefined;
+  return (
+    <>
+      <Button
+        variant="quiet"
+        size="sm"
+        className="cp-collections__row-menu"
+        aria-label={`Actions for ${name}`}
+        {...menu.buttonProps}
+      >
+        •••
+      </Button>
+      {menu.open && box && (
+        <TrackContextMenu
+          x={box.left}
+          y={box.bottom}
+          items={items}
+          anchor={menu.anchor}
+          onClose={menu.close}
+          label={`Actions for ${name}`}
+        />
+      )}
+    </>
+  );
 }
 
 const UNTITLED: Record<CreatableKind, string> = {
@@ -196,7 +228,6 @@ export function CollectionsPane({
   onExport,
   onOpenInPrepare,
   onDuplicateSet,
-  barHost,
   onSaveSetList,
   onCopySetList,
   onNewSetFrom,
@@ -305,7 +336,7 @@ export function CollectionsPane({
     }
     const count = result.frozen ?? 0;
     say(
-      `Froze ${count} ${count === 1 ? "track" : "tracks"} from ${node.name}.`,
+      `Froze ${countNoun(count, "track")} from ${node.name}.`,
       "info",
     );
   };
@@ -377,7 +408,7 @@ export function CollectionsPane({
       if (result.silent) return;
       const added = result.added ?? 0;
       const skipped = result.skipped ?? 0;
-      const tracks = `${added} ${added === 1 ? "track" : "tracks"}`;
+      const tracks = countNoun(added, "track");
       say(
         skipped
           ? `Added ${tracks} to ${target.name} — ${skipped} already there.`
@@ -454,119 +485,6 @@ export function CollectionsPane({
     return items;
   };
 
-  /** The bar under the tree: one list, so the toolbar's keys and its buttons agree. */
-  const barButtons = ((): BarButton[] => {
-    const node = selected;
-    // The bar is always there, so nothing jumps when a row is picked: with nothing selected the
-    // same buttons are drawn dimmed, each saying why.
-    if (node === null) {
-      const reason = "Select a Collection, folder or Set first";
-      const ids: [string, string, string?][] = [
-        ["rename", "Rename"],
-        ["duplicate", "Duplicate"],
-        ["delete", "Delete"],
-        ...(onExport ? [["export", "Export to Rekordbox…", "Export…"] as [string, string, string]] : []),
-      ];
-      return ids.map(([id, label, short]) => ({ id, label, short, reason, run: () => {} }));
-    }
-    const buttons: BarButton[] = [
-      {
-        id: "rename",
-        label: "Rename",
-        reason: null,
-        run: () => setRenamingId(node.id),
-      },
-    ];
-    const canDuplicate = isSet(node) ? onDuplicateSet : node.kind === "smart" ? onDuplicateSmart : undefined;
-    buttons.push({
-      id: "duplicate",
-      label: "Duplicate",
-      reason: canDuplicate ? null : "Only a Smart Collection or a Set can be duplicated",
-      run: () => void duplicate(node),
-    });
-    // Only a saved question can be frozen, so the button is drawn for one and
-    // for nothing else rather than shown refused (K14: it was a row icon).
-    if (node.kind === "smart" && onFreezeSmart) {
-      buttons.push({
-        id: "freeze",
-        label: "Freeze to a Collection…",
-        short: "Freeze…",
-        reason: null,
-        run: () => setFreezing(node),
-      });
-    }
-    buttons.push({
-      id: "delete",
-      label: "Delete",
-      reason: null,
-      run: () => void askToDelete(node),
-    });
-    if (onExport) {
-      buttons.push({
-        id: "export",
-        label: "Export to Rekordbox…",
-        short: "Export…",
-        reason: null,
-        run: () => onExport(node),
-      });
-    }
-    if (isSet(node)) {
-      if (onOpenInPrepare) {
-        buttons.push({
-          id: "open-in-prepare",
-          label: "Open in Prepare",
-          short: "Prepare",
-          reason: null,
-          run: () => onOpenInPrepare(node),
-        });
-      }
-      if (onSaveSetList) {
-        buttons.push({
-          id: "save-set-list",
-          label: "Save set list…",
-          short: "Set list…",
-          reason: null,
-          run: () => onSaveSetList(node),
-        });
-      }
-    }
-    return buttons;
-  })();
-  const barKeys = useToolbarKeys(barButtons.length);
-
-  // What can be done to the selected node, always drawn (DEC-245): at the foot of the whole
-  // pane when the page gives it a place (`barHost`), under the tree otherwise. "Copy set list"
-  // and "New Set from…" stay on the right-click menu.
-  const bar = (
-    <div
-      ref={barKeys.ref}
-      className="cp-collections__bar"
-      role="toolbar"
-      aria-label="Selected Collection or Set"
-      onKeyDown={barKeys.onKeyDown}
-    >
-      {barButtons.map((button, index) => (
-        <Hint
-          key={button.id}
-          text={button.reason ?? (button.short ? button.label : undefined)}
-        >
-          <Button
-            variant={button.id === "delete" ? "danger" : "secondary"}
-            className="cp-collections__bar-button"
-            aria-label={button.short ? button.label : undefined}
-            aria-disabled={button.reason ? true : undefined}
-            {...barKeys.buttonProps(index)}
-            onClick={() => {
-              if (!button.reason) button.run();
-            }}
-          >
-            {button.short ?? button.label}
-          </Button>
-        </Hint>
-      ))}
-    </div>
-  );
-
   const treeRows: PaneTreeRow[] = rows.map((row) => ({
     key: String(row.node.id),
     name: row.node.name,
@@ -580,6 +498,11 @@ export function CollectionsPane({
     // Entries, repeats counted: a Set's count is how many it plays, which is
     // the number a running order is judged by (DEC-058, DEC-104).
     count: holdsTracks(row.node) ? row.node.entry_count : null,
+    // The selected row carries its own actions, where the eye already is (C15, C227).
+    trailing:
+      selected?.id === row.node.id && renamingId !== row.node.id ? (
+        <RowMenu name={row.node.name} items={menuItems(row.node)} />
+      ) : null,
     badge: row.node.broken ? (
       <Hint text={row.node.problem ?? "Its rules cannot be run"} inline>
         <span
@@ -685,7 +608,7 @@ export function CollectionsPane({
           }}
         >
           {status === "ready" && rows.length === 0 && (
-            <p className="cp-collections__empty">No Collections yet</p>
+            <p className="cp-collections__empty">{NO_COLLECTIONS}</p>
           )}
         </PaneTree>
       )}
@@ -702,8 +625,6 @@ export function CollectionsPane({
           aria-hidden
         />
       )}
-
-      {barHost === undefined ? bar : barHost ? createPortal(bar, barHost) : null}
 
       {newMenu && (
         <TrackContextMenu
@@ -753,17 +674,18 @@ export function CollectionsPane({
 
       <Modal
         open={pending !== null}
-        title={deleteTitle(pending?.node.name ?? "")}
+        title={deleteTitle(pending ? kindWord(pending.node) : "Collection", pending?.node.name)}
         variant="danger"
         size="small"
         onClose={() => setPending(null)}
         primaryAction={{
-          label: deleteLabel(pending?.node.name ?? ""),
+          label: deleteLabel(pending ? kindWord(pending.node) : "Collection"),
           onClick: () => void confirmDelete(),
           loading: deleting,
         }}
         secondaryAction={{ label: CANCEL, onClick: () => setPending(null) }}
       >
+        <p>{deleteLead}</p>
         <p>
           {pending?.summary
             ? describeDeletion(pending.summary)

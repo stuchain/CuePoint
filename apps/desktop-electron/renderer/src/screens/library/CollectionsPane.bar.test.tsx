@@ -1,13 +1,12 @@
 /**
- * The "+ New" menu and the bar under the tree (FLW-10, PAGES-05C, K14).
+ * The "+ New" menu and the selected row's "•••" menu (FLW-10, PAGES-05C, K14, C15, C227).
  *
- * One "+ New" menu button over the tree makes a Collection, a Set or a Folder.
- * Under it, a bar for the selected node is shown while a node is selected (DEC-245):
- * Rename, Duplicate, Delete and Export to Rekordbox… on every node (folders too,
- * DEC-087), for a Smart Collection also Freeze…, and for a Set also Open in Prepare
- * and Save set list…. With nothing selected there is no bar. Rows carry no icons of
- * their own (K14); the right-click menu keeps working, and "Copy set list" and
- * "New Set from…" stay on it only.
+ * One "+ New" menu button over the tree makes a Collection, a Set or a Folder. The selected row
+ * (and only that row) has a "•••" button at its right end that opens its actions, the same list
+ * the right-click menu shows: Rename, Duplicate (a Smart Collection or a Set), Delete… and Export
+ * to Rekordbox… on every node (folders too, DEC-087); for a Smart Collection also Freeze…, and for
+ * a Set also Open in Prepare and Save set list…. The bar at the foot of the pane is gone: it was a
+ * screen away from the row it acted on.
  */
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -55,7 +54,6 @@ function paneWith(
   return props;
 }
 
-const bar = () => screen.getByRole("toolbar", { name: "Selected Collection or Set" });
 
 async function chooseNew(item: "Collection" | "Set" | "Folder") {
   await userEvent.click(screen.getByRole("button", { name: "+ New" }));
@@ -95,58 +93,79 @@ describe("the + New menu over the tree", () => {
   });
 });
 
-describe("the bar under the tree", () => {
-  it("is always there, dimmed while nothing is selected, so nothing jumps (Q3)", async () => {
-    const props = paneWith(null);
-    expect(bar()).toBeInTheDocument();
-    for (const name of ["Rename", "Duplicate", "Delete", "Export to Rekordbox…"]) {
-      const button = within(bar()).getByRole("button", { name });
-      expect(button).toHaveAttribute("aria-disabled", "true");
-      await userEvent.click(button);
-    }
-    expect(props.onDelete).not.toHaveBeenCalled();
-    expect(props.onExport).not.toHaveBeenCalled();
-  });
+/** Opens the selected row's "•••" menu and returns the menu. */
+async function openRowMenu() {
+  await userEvent.click(screen.getByRole("button", { name: /^Actions for / }));
+  return screen.getByRole("menu");
+}
 
-  it("draws Delete as the red destructive button and the rest grey (round 8)", () => {
-    paneWith(null);
-    const grey = within(bar()).getByRole("button", { name: "Rename" }).className;
-    const red = within(bar()).getByRole("button", { name: "Delete" }).className;
-    expect(red).not.toBe(grey);
-    expect(red).toMatch(/danger/);
-    expect(within(bar()).getByRole("button", { name: "Duplicate" }).className).toBe(grey);
-  });
+async function pickAction(name: string) {
+  const menu = await openRowMenu();
+  await userEvent.click(within(menu).getByRole("menuitem", { name }));
+}
 
-  it("is drawn in the host it is given, at the foot of the whole pane", () => {
-    const host = document.createElement("div");
-    document.body.appendChild(host);
-    paneWith(null, { barHost: host });
-    expect(within(host).getByRole("toolbar", { name: "Selected Collection or Set" })).toBeInTheDocument();
-    host.remove();
-  });
+async function rowActions(): Promise<string[]> {
+  const menu = await openRowMenu();
+  const names = within(menu)
+    .getAllByRole("menuitem")
+    .map((item) => item.textContent ?? "");
+  await userEvent.keyboard("{Escape}");
+  return names;
+}
 
-  it("appears when a node is selected, with Rename, Duplicate, Delete and Export", () => {
+describe("the selected row's actions menu", () => {
+  it("has no bar at the foot of the pane any more", () => {
     paneWith(WARMUP);
-    for (const name of ["Rename", "Duplicate", "Delete", "Export to Rekordbox…"]) {
-      expect(within(bar()).getByRole("button", { name })).toBeInTheDocument();
-    }
-    // A Set's two are not drawn until a Set is selected.
-    expect(within(bar()).queryByRole("button", { name: "Open in Prepare" })).toBeNull();
-    expect(within(bar()).queryByRole("button", { name: "Save set list…" })).toBeNull();
+    expect(screen.queryByRole("toolbar", { name: "Selected Collection or Set" })).toBeNull();
+    expect(document.querySelector(".cp-collections__bar")).toBeNull();
+  });
+
+  it("is drawn on the selected row only, as '•••' with the row's name", () => {
+    paneWith(WARMUP);
+    const buttons = screen.getAllByRole("button", { name: /^Actions for / });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toHaveAttribute("aria-label", `Actions for ${WARMUP.name}`);
+    expect(buttons[0]).toHaveTextContent("•••");
+    expect(buttons[0]).toHaveAttribute("aria-haspopup", "menu");
+  });
+
+  it("is not drawn while nothing is selected", () => {
+    paneWith(null);
+    expect(screen.queryByRole("button", { name: /^Actions for / })).toBeNull();
+  });
+
+  it("offers New Set from…, Rename, Export to Rekordbox… and Delete… on a Collection, and no Duplicate", async () => {
+    paneWith(WARMUP);
+    expect(await rowActions()).toEqual(["New Set from…", "Rename", "Export to Rekordbox…", "Delete…"]);
+  });
+
+  it("puts Delete… last, after a divider, and not as a button of its own", async () => {
+    paneWith(WARMUP);
+    const menu = await openRowMenu();
+    const items = within(menu).getAllByRole("menuitem");
+    expect(items[items.length - 1]).toHaveTextContent("Delete…");
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
   });
 
   it("renames the selected node in its row", async () => {
     paneWith(WARMUP);
-    await userEvent.click(within(bar()).getByRole("button", { name: "Rename" }));
+    await pickAction("Rename");
     expect(screen.getByRole("textbox")).toHaveValue(WARMUP.name);
   });
 
-  it("deletes after today's confirmation", async () => {
+  it("draws no '•••' on a row while it is being renamed", async () => {
+    paneWith(WARMUP);
+    await pickAction("Rename");
+    expect(screen.queryByRole("button", { name: /^Actions for / })).toBeNull();
+  });
+
+  it("deletes after the confirmation, which names the thing and what kind it is", async () => {
     const props = paneWith(WARMUP);
-    await userEvent.click(within(bar()).getByRole("button", { name: "Delete" }));
-    const dialog = await screen.findByRole("dialog", { name: `Delete ${WARMUP.name}?` });
+    await pickAction("Delete…");
+    const dialog = await screen.findByRole("dialog", { name: `Delete “${WARMUP.name}”?` });
+    expect(dialog).toHaveTextContent("This cannot be undone.");
     expect(props.onDelete).not.toHaveBeenCalled();
-    await userEvent.click(within(dialog).getByRole("button", { name: `Delete ${WARMUP.name}` }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Delete Collection" }));
     expect(props.onDelete).toHaveBeenCalledWith(WARMUP.id);
   });
 
@@ -169,102 +188,102 @@ describe("the bar under the tree", () => {
     const { rerender } = render(
       <CollectionsPane {...props} selected={findCollection(tree, WARMUP.id) ?? null} />,
     );
-    await userEvent.click(within(bar()).getByRole("button", { name: "Delete" }));
-    const dialog = await screen.findByRole("dialog", { name: `Delete ${WARMUP.name}?` });
-    await userEvent.click(within(dialog).getByRole("button", { name: `Delete ${WARMUP.name}` }));
+    await pickAction("Delete…");
+    const dialog = await screen.findByRole("dialog", { name: `Delete “${WARMUP.name}”?` });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Delete Collection" }));
     expect(props.onDelete).toHaveBeenCalledWith(WARMUP.id);
 
-    // The parent deselects the deleted node, so the bar goes dim (it stays).
+    // The parent deselects the deleted node, so the row's menu goes with the selection.
     rerender(<CollectionsPane {...props} selected={null} />);
-    expect(within(bar()).getByRole("button", { name: "Delete" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByRole("button", { name: /^Actions for / })).toBeNull();
     const stop = document.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
     expect(stop).not.toBeNull();
     expect(stop).toHaveFocus();
   });
 
-  it("does nothing when a refused button is pressed", async () => {
-    const props = paneWith(WARMUP);
-    await userEvent.click(within(bar()).getByRole("button", { name: "Duplicate" }));
-    expect(props.onDuplicateSet).not.toHaveBeenCalled();
-    expect(props.onDuplicateSmart).not.toHaveBeenCalled();
-  });
-
   it("exports any node, a folder included (DEC-087)", async () => {
     const props = paneWith(GIGS);
-    await userEvent.click(within(bar()).getByRole("button", { name: "Export to Rekordbox…" }));
+    await pickAction("Export to Rekordbox…");
     expect(props.onExport).toHaveBeenCalledWith(expect.objectContaining({ id: GIGS.id }));
+  });
+
+  it("does not select the row, or press its key handlers, when the button is used", async () => {
+    const props = paneWith(WARMUP);
+    await userEvent.click(screen.getByRole("button", { name: `Actions for ${WARMUP.name}` }));
+    expect(props.onSelect).not.toHaveBeenCalled();
   });
 
   it("duplicates a Smart Collection, and a Set", async () => {
     const smart = paneWith(SMART);
-    await userEvent.click(within(bar()).getByRole("button", { name: "Duplicate" }));
+    await pickAction("Duplicate");
     expect(smart.onDuplicateSmart).toHaveBeenCalledWith(SMART.id);
   });
 
   it("duplicates a Set with its plan", async () => {
     const props = paneWith(FRIDAY);
-    await userEvent.click(within(bar()).getByRole("button", { name: "Duplicate" }));
+    await pickAction("Duplicate");
     expect(props.onDuplicateSet).toHaveBeenCalledWith(FRIDAY.id);
   });
 
-  it("does not offer a duplicate the engine would refuse", () => {
+  it("does not offer a duplicate the engine would refuse", async () => {
     paneWith(WARMUP);
-    const duplicate = within(bar()).getByRole("button", { name: "Duplicate" });
-    expect(duplicate).toHaveAttribute("aria-disabled", "true");
-    expect(duplicate).toHaveAttribute("title", "Only a Smart Collection or a Set can be duplicated");
+    expect(await rowActions()).not.toContain("Duplicate");
   });
 
   it("adds Open in Prepare and Save set list… for a Set", async () => {
     const props = paneWith(FRIDAY);
-    await userEvent.click(within(bar()).getByRole("button", { name: "Open in Prepare" }));
+    await pickAction("Open in Prepare");
     expect(props.onOpenInPrepare).toHaveBeenCalledWith(expect.objectContaining({ id: FRIDAY.id }));
-    await userEvent.click(within(bar()).getByRole("button", { name: "Save set list…" }));
+    await pickAction("Save set list…");
     expect(props.onSaveSetList).toHaveBeenCalledWith(expect.objectContaining({ id: FRIDAY.id }));
   });
 
-  it("does not draw the Set's buttons for a Collection", () => {
+  it("does not offer the Set's entries for a Collection", async () => {
     paneWith(WARMUP);
-    expect(within(bar()).queryByRole("button", { name: "Open in Prepare" })).toBeNull();
-    expect(within(bar()).queryByRole("button", { name: "Save set list…" })).toBeNull();
+    const names = await rowActions();
+    expect(names).not.toContain("Open in Prepare");
+    expect(names).not.toContain("Save set list…");
   });
 
-  it("is a toolbar: one Tab stop, the arrows move", async () => {
-    paneWith(FRIDAY);
-    const buttons = within(bar()).getAllByRole("button");
-    expect(buttons.filter((button) => button.tabIndex === 0)).toHaveLength(1);
-    buttons[0]!.focus();
-    await userEvent.keyboard("{ArrowRight}");
-    expect(buttons[1]).toHaveFocus();
+  it("closes on the next click of the same button, and on Escape", async () => {
+    paneWith(WARMUP);
+    const button = screen.getByRole("button", { name: `Actions for ${WARMUP.name}` });
+    await userEvent.click(button);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    await userEvent.click(button);
+    expect(screen.queryByRole("menu")).toBeNull();
+    await userEvent.click(button);
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).toBeNull();
   });
 });
 
-describe("Freeze lives on the bar for a Smart Collection (K14)", () => {
+describe("Freeze lives on the row's menu for a Smart Collection (K14)", () => {
   it("is drawn for a Smart Collection and asks before it freezes", async () => {
     const props = paneWith(SMART);
-    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
+    await pickAction("Freeze to a Collection…");
     expect(props.onFreezeSmart).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
     expect(props.onFreezeSmart).toHaveBeenCalledWith(SMART.id);
   });
 
-  it("is not drawn for a Collection, a Set or a folder", () => {
+  it("is not drawn for a Collection, a Set or a folder", async () => {
     for (const node of [WARMUP, FRIDAY, GIGS]) {
-
       paneWith(node);
-      expect(
-        within(bar()).queryByRole("button", { name: "Freeze to a Collection…" }),
-      ).toBeNull();
+      expect(await rowActions()).not.toContain("Freeze to a Collection…");
       cleanup();
     }
   });
 });
 
-describe("what stays on the right-click menu only", () => {
-  it("keeps Copy set list and New Set from… out of the bar", () => {
+describe("one list for both menus", () => {
+  it("shows a Smart Collection's New Set from… in the '•••' menu as in the right-click menu", async () => {
     paneWith(SMART);
-    const names = within(bar()).getAllByRole("button").map((button) => button.textContent);
-    for (const left of ["Copy set list", "New Set from…"]) {
-      expect(names.some((name) => name?.includes(left))).toBe(false);
-    }
+    expect(await rowActions()).toContain("New Set from…");
+  });
+
+  it("shows a Set's Copy set list in the '•••' menu as in the right-click menu", async () => {
+    paneWith(FRIDAY);
+    expect(await rowActions()).toContain("Copy set list");
   });
 });

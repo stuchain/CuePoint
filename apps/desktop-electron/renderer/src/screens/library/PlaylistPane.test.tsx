@@ -13,7 +13,7 @@
  */
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
 import type { LibraryPlaylistNode } from "../../api/cuepointBridge.types";
 import { PlaylistPane } from "./PlaylistPane";
@@ -250,6 +250,26 @@ describe("expanding", () => {
     fireEvent.click(screen.getByRole("button", { name: "Expand SETS" }));
 
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("opens and closes a folder on a click of its row, and does not select it (C197)", () => {
+    const closed = paneWith([]);
+    fireEvent.click(rowFor("SETS"));
+    expect(closed.onExpand).toHaveBeenCalledWith("SETS", true);
+    expect(closed.onSelect).not.toHaveBeenCalled();
+    cleanup();
+
+    const open = paneWith(["SETS"]);
+    fireEvent.click(rowFor("SETS"));
+    expect(open.onExpand).toHaveBeenCalledWith("SETS", false);
+    expect(open.onSelect).not.toHaveBeenCalled();
+  });
+
+  it("still selects a playlist on a click of its row", () => {
+    const { onSelect, onExpand } = paneWith(["SETS"]);
+    fireEvent.click(rowFor("warmup"));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onExpand).not.toHaveBeenCalled();
   });
 
   it("says whether a folder is open, for a screen reader", () => {

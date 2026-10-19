@@ -21,11 +21,13 @@
 .cp-library-pane {
   /* The tree steps in less when the pane is narrow (Track details open), see PlaylistPane.css. */
   container: library-pane / inline-size;
+  /* Its own height, whatever the right side does: opening Add filter must not move it (C198). */
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  /* The sections scroll inside (.cp-library-pane__scroll); the bar of the selected node stays put.
+  /* The sections scroll inside (.cp-library-pane__scroll).
      Never sideways: a row's name is ellipsised and its count kept, so the pane has nothing to scroll. */
   overflow: hidden;
   border-right: var(--divider);
@@ -76,50 +78,6 @@
   gap: var(--space-xs);
 }
 
-/* The section's heading is a line, not a band, unlike the Playlists heading's
-   var(--space-sm) (PlaylistPane.css): in a 1,264 × 735 window (a Windows frame and
-   menu bar inside 1,280 × 800) the sixth node needs the height back, and matching
-   it gives up 2 × (var(--space-sm) - var(--space-xs) / 2) = 12px at 1.5×. */
-.cp-collections .cp-playlist-pane__head {
-  padding-block: round(down, calc(var(--space-xs) / 2), 1px);
-  align-items: center;
-}
-
-/* The bar's buttons are the standard .cp-btn; they carry whole words ("Duplicate"), so they
-   spend the least on padding: Rename and Duplicate share a line in a pane about 170px wide. */
-.cp-btn.cp-collections__bar-button {
-  padding: 0 round(down, calc(var(--space-xs) / 3), 1px);
-  /* Text only and never broken. */
-  white-space: nowrap;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* The bar for the selected node: always drawn, at the foot of the whole pane, so nothing jumps
-   when a row is picked (DEC-245). aria-disabled marks a refusal such as Duplicate on a plain
-   Collection, or no selection at all, so the arrow keys still land on it. */
-.cp-collections__bar {
-  /* Two to a line in every width, so the bar is never four lines tall in a narrow pane (Track
-     details open); a label that does not fit ends in "…" and keeps its full name. */
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: round(down, calc(var(--space-xs) / 2), 1px);
-  /* Side padding is a quarter step, in whole pixels (1px at 1.5×, where 1.5px
-     would blur): Rename and Duplicate share a line in the ~156px a 1,264-wide
-     Windows window leaves the pane, with a few px over (the bar gains 1px). */
-  padding: round(down, calc(var(--space-xs) / 2), 1px) round(down, calc(var(--space-xs) / 4), 1px);
-  border-top: var(--hairline) solid var(--border-muted);
-}
-
-/* A refusal such as Duplicate on a plain Collection: greyed by colour, still reachable by the
-   arrow keys. */
-.cp-btn.cp-collections__bar-button[aria-disabled="true"] {
-  background: var(--bg-panel);
-  border-color: var(--border-muted);
-  color: var(--fg-disabled);
-  cursor: not-allowed;
-}
 
 /* The tighter gap is room, not looks: rows carry no controls now (K14), but the pane
    is only ~156px inside its scrollbar and a deep row's twisty, icon, name and count
@@ -217,7 +175,7 @@
   text-overflow: ellipsis;
 }
 
-/* The pane is a column of two parts: the sections scroll, the bar of the selected node stays. */
+/* The sections scroll inside the pane. */
 .cp-library-pane__scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -225,7 +183,16 @@
   overflow-y: auto;
 }
 
-.cp-library-pane__bar {
-  flex: 0 0 auto;
-  background: var(--bg-panel);
+/* The selected row's "•••" menu, at the right end of the row (C15, C227). */
+.cp-playlist-pane__trailing {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-inline-start: var(--space-xs);
+}
+
+.cp-collections__row-menu {
+  min-width: 0;
+  padding-inline: var(--space-xs);
+  letter-spacing: 0;
 }

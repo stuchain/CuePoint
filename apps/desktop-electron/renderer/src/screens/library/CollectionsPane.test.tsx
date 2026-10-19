@@ -131,8 +131,27 @@ async function chooseNew(item: "Collection" | "Set" | "Folder") {
   await userEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: item }));
 }
 
-/** The bar under the tree, shown while a node is selected (DEC-245). */
-const bar = () => screen.getByRole("toolbar", { name: "Selected Collection or Set" });
+/** Opens the selected row's "•••" menu and returns the menu (C15, C227). */
+async function openRowMenu() {
+  await userEvent.click(screen.getByRole("button", { name: /^Actions for / }));
+  return screen.getByRole("menu");
+}
+
+/** Picks one of the selected row's actions from its "•••" menu. */
+async function pickAction(name: string) {
+  const menu = await openRowMenu();
+  await userEvent.click(within(menu).getByRole("menuitem", { name }));
+}
+
+/** The names the selected row's "•••" menu offers, closing it again. */
+async function rowActions(): Promise<string[]> {
+  const menu = await openRowMenu();
+  const names = within(menu)
+    .getAllByRole("menuitem")
+    .map((item) => item.textContent ?? "");
+  await userEvent.keyboard("{Escape}");
+  return names;
+}
 
 /** The pane with the Smart Collection selected, so its bar is drawn. */
 function paneOnSmart(overrides: Partial<React.ComponentProps<typeof CollectionsPane>> = {}) {
@@ -533,10 +552,9 @@ describe("deleting", () => {
     const { onDelete } = paneWith();
 
     fireEvent.keyDown(rowFor("Sets"), { key: "Delete" });
-    // The bar under the tree has a Delete of its own (FLW-10): the question's is
-    // the one in the dialog.
-    const dialog = await screen.findByRole("dialog", { name: "Delete Sets?" });
-    await userEvent.click(within(dialog).getByRole("button", { name: "Delete Sets" }));
+    // The question names the thing in curly quotes (C165); its button names the kind.
+    const dialog = await screen.findByRole("dialog", { name: "Delete “Sets”?" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Delete folder" }));
 
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith(1));
   });
@@ -699,7 +717,7 @@ describe("the hook behind it", () => {
 
     expect(await result.current.create("folder", "Sets", null)).toEqual({
       ok: false,
-      error: "You can only edit Collections in the CuePoint desktop app.",
+      error: "Editing Collections needs the CuePoint desktop app.",
     });
   });
 
@@ -769,11 +787,11 @@ describe("the hook behind it", () => {
 
     expect(await result.current.duplicateSmart(5)).toEqual({
       ok: false,
-      error: "You can only edit Collections in the CuePoint desktop app.",
+      error: "Editing Collections needs the CuePoint desktop app.",
     });
     expect(await result.current.freezeSmart(5)).toEqual({
       ok: false,
-      error: "You can only edit Collections in the CuePoint desktop app.",
+      error: "Editing Collections needs the CuePoint desktop app.",
     });
   });
 
@@ -858,40 +876,35 @@ describe("at the size a real library reaches (ORG-09's DoD)", () => {
  * says what it is about to do first.
  */
 describe("a Smart Collection's own gestures", () => {
-  it("offers duplicate and freeze on a Smart Collection, in the bar", () => {
+  it("offers duplicate and freeze on a Smart Collection, in the row's menu", async () => {
     paneOnSmart();
-    expect(within(bar()).getByRole("button", { name: "Duplicate" })).not.toHaveAttribute(
-      "aria-disabled",
-    );
-    expect(
-      within(bar()).getByRole("button", { name: "Freeze to a Collection…" }),
-    ).toBeInTheDocument();
+    const names = await rowActions();
+    expect(names).toContain("Duplicate");
+    expect(names).toContain("Freeze to a Collection…");
   });
 
-  it("draws no row icons: nothing on a row but its name and count (K14)", () => {
+  it("draws one button on the selected row, its menu, and none on the others (K14, C227)", () => {
     paneOnSmart();
     const row = rowFor("Recent techno");
-    expect(within(row).queryAllByRole("button")).toEqual([]);
+    expect(within(row).getAllByRole("button")).toHaveLength(1);
+    expect(within(row).getByRole("button", { name: "Actions for Recent techno" })).toBeInTheDocument();
+    expect(within(rowFor("Warmups")).queryAllByRole("button")).toEqual([]);
     expect(document.querySelector(".cp-collections__row-actions")).toBeNull();
     for (const name of ["Rename", "Delete", "Duplicate", "Freeze"]) {
       expect(screen.queryByRole("button", { name: `${name} Recent techno` })).toBeNull();
     }
   });
 
-  it("offers no freeze on a folder or a plain Collection, and refuses a duplicate", () => {
+  it("offers no freeze on a folder or a plain Collection, and no duplicate", async () => {
     // The engine refuses both for anything that is not a saved question, so
     // offering them would be drawing a control that can only fail — the same
     // rule the drop targets follow.
     const tree = buildCollectionTree(NODES);
     for (const id of [1, 2, 3]) {
       const view = paneWith(NODES, [1], { selected: findCollection(tree, id)! });
-      expect(
-        within(bar()).queryByRole("button", { name: "Freeze to a Collection…" }),
-      ).toBeNull();
-      expect(within(bar()).getByRole("button", { name: "Duplicate" })).toHaveAttribute(
-        "aria-disabled",
-        "true",
-      );
+      const names = await rowActions();
+      expect(names).not.toContain("Freeze to a Collection…");
+      expect(names).not.toContain("Duplicate");
       view.view.unmount();
     }
   });
@@ -900,7 +913,7 @@ describe("a Smart Collection's own gestures", () => {
     const onDuplicateSmart = vi.fn(async () => ({ ok: true }));
     paneOnSmart({ onDuplicateSmart });
 
-    await userEvent.click(within(bar()).getByRole("button", { name: "Duplicate" }));
+    await pickAction("Duplicate");
 
     expect(onDuplicateSmart).toHaveBeenCalledWith(5);
   });
@@ -911,7 +924,7 @@ describe("a Smart Collection's own gestures", () => {
     const onNotify = vi.fn();
     paneOnSmart({ onDuplicateSmart: vi.fn(async () => ({ ok: true })), onNotify });
 
-    await userEvent.click(within(bar()).getByRole("button", { name: "Duplicate" }));
+    await pickAction("Duplicate");
 
     await waitFor(() =>
       expect(onNotify).toHaveBeenCalledWith(
@@ -928,7 +941,7 @@ describe("a Smart Collection's own gestures", () => {
       onNotify,
     });
 
-    await userEvent.click(within(bar()).getByRole("button", { name: "Duplicate" }));
+    await pickAction("Duplicate");
 
     await waitFor(() =>
       expect(onNotify).toHaveBeenCalledWith("That name is taken", "warning"),
@@ -939,7 +952,7 @@ describe("a Smart Collection's own gestures", () => {
     const onFreezeSmart = vi.fn(async () => ({ ok: true, frozen: 12 }));
     paneOnSmart({ onFreezeSmart });
 
-    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
+    await pickAction("Freeze to a Collection…");
 
     expect(onFreezeSmart).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toHaveTextContent(/Freeze Recent techno\?/);
@@ -948,7 +961,7 @@ describe("a Smart Collection's own gestures", () => {
   it("says the copy stops changing, which is the whole point", async () => {
     paneOnSmart({ onFreezeSmart: vi.fn(async () => ({ ok: true })) });
 
-    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
+    await pickAction("Freeze to a Collection…");
 
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent(/matches right now/);
@@ -962,7 +975,7 @@ describe("a Smart Collection's own gestures", () => {
     const onFreezeSmart = vi.fn(async () => ({ ok: true, frozen: 412 }));
     paneOnSmart({ onFreezeSmart });
 
-    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
+    await pickAction("Freeze to a Collection…");
     await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
 
     await waitFor(() => expect(onFreezeSmart).toHaveBeenCalledWith(5));
@@ -977,7 +990,7 @@ describe("a Smart Collection's own gestures", () => {
       onNotify,
     });
 
-    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
+    await pickAction("Freeze to a Collection…");
     await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
 
     await waitFor(() =>
@@ -992,7 +1005,7 @@ describe("a Smart Collection's own gestures", () => {
     const onFreezeSmart = vi.fn(async () => ({ ok: true }));
     paneOnSmart({ onFreezeSmart });
 
-    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
+    await pickAction("Freeze to a Collection…");
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(onFreezeSmart).not.toHaveBeenCalled();
@@ -1011,7 +1024,7 @@ describe("a Smart Collection's own gestures", () => {
       onNotify,
     });
 
-    await userEvent.click(within(bar()).getByRole("button", { name: "Freeze to a Collection…" }));
+    await pickAction("Freeze to a Collection…");
     await userEvent.click(screen.getByRole("button", { name: "Freeze it" }));
 
     await waitFor(() =>
@@ -1019,18 +1032,14 @@ describe("a Smart Collection's own gestures", () => {
     );
   });
 
-  it("offers nothing at all to a build without the routes", () => {
+  it("offers nothing at all to a build without the routes", async () => {
     // Every method added after the bridge existed is optional: the renderer
     // runs in a browser tab, and an older shell exposes none of these.
     paneOnSmart({ onDuplicateSmart: undefined, onFreezeSmart: undefined });
 
-    expect(
-      within(bar()).queryByRole("button", { name: "Freeze to a Collection…" }),
-    ).toBeNull();
-    expect(within(bar()).getByRole("button", { name: "Duplicate" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    const names = await rowActions();
+    expect(names).not.toContain("Freeze to a Collection…");
+    expect(names).not.toContain("Duplicate");
   });
 });
 
@@ -1119,7 +1128,7 @@ describe("a row's context menu (EXPORT-07, DEC-087)", () => {
     fireEvent.contextMenu(rowFor("Warmups"));
     await user.click(within(menu()).getByRole("menuitem", { name: "Delete…" }));
     expect(onPreviewDelete).toHaveBeenCalledWith(2);
-    expect(await screen.findByRole("dialog", { name: /Delete Warmups/ })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Delete “Warmups”?" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     fireEvent.contextMenu(rowFor("Recent techno"));

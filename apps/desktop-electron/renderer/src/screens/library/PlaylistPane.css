@@ -41,9 +41,10 @@
   background: var(--bg-toolbar);
 }
 
+/* Both section titles are section headings (C57); both heads share one padding (C43). */
 .cp-playlist-pane__title {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-section);
+  font-weight: var(--weight-strong);
 }
 
 /* Both sections' headings fold from their title: a fold arrow, the title, one small item at the right. */
@@ -61,7 +62,7 @@
 
 .cp-playlist-pane__fold:focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: 2px;
+  outline-offset: var(--space-2xs);
 }
 
 .cp-playlist-pane__source {
