@@ -297,6 +297,23 @@ describe("with nothing to show", () => {
   });
 });
 
+describe("the rows stay one line", () => {
+  it("cuts a long name with an ellipsis and keeps the running bar beside it", () => {
+    expect(css).toMatch(/\.playlists__label\s*\{[^}]*text-overflow:\s*ellipsis/);
+    expect(css).toMatch(/\.playlists__name-cell\s*\{[^}]*white-space:\s*nowrap/);
+    expect(css).not.toMatch(/overflow-wrap:\s*anywhere/);
+    renderView();
+    const row = screen.getByText("hj").closest("tr")!;
+    expect(row.querySelector(".playlists__name-line > progress")).not.toBeNull();
+    expect(row.querySelector(".playlists__label")).toHaveAttribute("data-cut-hint");
+  });
+
+  it("keeps the footer's status at the left, beside the Match button at the right", () => {
+    expect(css).toMatch(/\.playlists__choice\s*\{[^}]*margin-inline-end:\s*auto/);
+    expect(css).toMatch(/\.playlists__next\s*\{[^}]*margin-inline-end:\s*auto/);
+  });
+});
+
 describe("the number column's alignment", () => {
   it("is set by a rule that outweighs the table's left-aligned cells", () => {
     // The shared table sets the number column once (`.num`); this sheet must not set it again.

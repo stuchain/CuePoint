@@ -227,17 +227,23 @@ export function PlaylistsView({
           />
         </td>
         <td className="playlists__name-cell">
-          {prefix && <span className="playlists__path">{prefix}</span>}
-          <span className="playlists__name">{name}</span>
-          {status.running && (
-            // The app's own bar (the status strip's): a progress element, so it reports its value.
-            <progress
-              className="cp-progress playlists__progress"
-              value={status.running.done}
-              max={Math.max(1, status.running.total)}
-              aria-label={`Matching ${name}`}
-            />
-          )}
+          {/* One line: a long name ends in "..." and the whole of it is the hint (data-cut-hint); the
+              bar sits beside it, so a running row is as tall as any other. */}
+          <div className="playlists__name-line">
+            <span className="playlists__label" data-cut-hint>
+              {prefix && <span className="playlists__path">{prefix}</span>}
+              <span className="playlists__name">{name}</span>
+            </span>
+            {status.running && (
+              // The app's own bar (the status strip's): a progress element, so it reports its value.
+              <progress
+                className="cp-progress playlists__progress"
+                value={status.running.done}
+                max={Math.max(1, status.running.total)}
+                aria-label={`Matching ${name}`}
+              />
+            )}
+          </div>
         </td>
         <td className="num">{formatCount(counts.track_count)}</td>
         <td className="playlists__files">

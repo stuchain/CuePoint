@@ -47,10 +47,28 @@
   justify-content: flex-end;
 }
 
-/* The name cell holds the folder, the name and, while it runs, the bar under them. */
+/* The name cell is one line, so every row stays at the row height: the folder and the name end in
+   "..." when they are too long (the whole is the hint), and a running row's bar sits beside them. */
 .cp-data-table .playlists__name-cell {
-  overflow-wrap: anywhere;
-  white-space: normal;
+  /* Takes what the other columns leave, and no more, so a long name is cut and not wrapped. */
+  width: 100%;
+  max-width: 0;
+  white-space: nowrap;
+}
+
+.playlists__name-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.playlists__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .playlists__path,
@@ -67,12 +85,11 @@
   color: var(--fg-muted);
 }
 
-/* The status strip's bar, across the name cell under the playlist's name. */
+/* The status strip's bar, beside the playlist's name. */
 .playlists__progress {
-  display: block;
+  flex: none;
   box-sizing: border-box;
-  width: 100%;
-  margin-top: var(--space-xs);
+  width: calc(96px * var(--scale));
 }
 
 .playlists__synced {
@@ -92,5 +109,6 @@
 }
 
 .playlists__choice {
+  margin-inline-end: auto;
   color: var(--fg-primary);
 }
