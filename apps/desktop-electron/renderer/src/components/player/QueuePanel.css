@@ -101,8 +101,7 @@ body.cp-queue-resizing {
 
 /* A drag from somewhere else is held over the list: it is refused, and the list says so. */
 .cp-queue__scroll[data-refusing] {
-  outline: var(--control-border-width) dashed var(--accent-danger);
-  outline-offset: var(--focus-ring-offset-inset);
+  box-shadow: inset 0 0 0 var(--control-border-width) var(--accent-danger);
   cursor: not-allowed;
 }
 

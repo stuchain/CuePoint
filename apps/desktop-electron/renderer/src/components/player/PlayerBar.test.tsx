@@ -812,6 +812,14 @@ describe("every control names itself (BAR-1)", () => {
     );
   });
 
+  it("ends with the Activity button, which the status strip no longer holds (C231)", async () => {
+    installBridge(snapshot({ items: [item()] }));
+    const { container } = render(<PlayerBar onToggleQueue={() => undefined} />);
+    await screen.findByText("Strobe");
+    const buttons = container.querySelectorAll(".cp-player-bar__volume button");
+    expect(buttons[buttons.length - 1]).toHaveAccessibleName("Activity");
+  });
+
   it("has one wording per control: the tip is the spoken name, shortcut aside (C175)", async () => {
     installBridge(snapshot({ items: [item({ trackId: null }), item({ id: "q2" })], shuffle: true, repeat: "one" }));
     render(<PlayerBar onToggleQueue={() => undefined} />);

@@ -12,6 +12,8 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  /* The top starts where the page and the sidebar start (C34). */
+  padding-top: var(--page-gutter-top);
   background: var(--bg-toolbar);
   border-left: var(--divider);
 }
@@ -40,7 +42,7 @@
 
 .cp-inspector__handle:hover,
 .cp-inspector__handle--active {
-  background: color-mix(in srgb, var(--accent-info) 50%, transparent);
+  background: var(--resizer-hover);
 }
 
 /* While dragging, the cursor should not flicker over text it passes. */
@@ -49,33 +51,10 @@ body.cp-inspector-resizing {
   user-select: none;
 }
 
+/* The title bar is the shared panel header (.cp-panel-header, C29); only its height is a toolbar's. */
 .cp-inspector__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
   box-sizing: border-box;
-  /* A panel's title bar is one height (a toolbar's) and pads 4 x 8, as the queue's does. */
   min-height: var(--toolbar-height);
-  padding: var(--space-xs) var(--space-md);
-  border-bottom: var(--divider);
-}
-
-/*
- * `min-width: 0` because a flex item refuses to shrink below its content by
- * default: at 3x scale the uppercase title's own width pushed the hide button
- * 6px past the window edge. The title truncates; the button never shrinks,
- * because a control you cannot hit is worse than a word you cannot finish.
- */
-.cp-inspector__title {
-  margin: 0;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--fg-primary);
-  font-size: var(--font-size-section);
-  font-weight: var(--weight-strong);
 }
 
 .cp-inspector__hide {

@@ -15,7 +15,9 @@ import { MemoryRouter } from "react-router-dom";
 import { ToastProvider } from "../Toast";
 import { Sidebar } from "./Sidebar";
 import * as navRegistry from "./navRegistry";
-import { EMPTY_LIBRARY_LINE, NAV_DESTINATIONS } from "./navRegistry";
+import { NAV_DESTINATIONS } from "./navRegistry";
+import sidebarCss from "./Sidebar.css?raw";
+import { declarations, parseRules, selectorList, stripComments } from "../../test/cssRules";
 import { HINT_HOVER_DELAY_MS } from "../Hint";
 import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "./sidebarState";
 
@@ -336,28 +338,49 @@ describe("Sidebar", () => {
     });
   });
 
-  describe("the Pages heading (option D)", () => {
-    it("heads the list when expanded, outside the scrolling part", () => {
-      renderSidebar();
-      const heading = within(nav()).getByText("Pages");
-      const list = nav().querySelector<HTMLElement>(".cp-sidebar__list")!;
-      expect(list).not.toContainElement(heading);
-      expect(heading.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    });
-
-    it("names the list, so the heading labels the pages for a screen reader", () => {
-      renderSidebar();
-      const heading = within(nav()).getByText("Pages");
-      const list = within(nav()).getByRole("group", { name: "Pages" });
-      expect(list).toHaveClass("cp-sidebar__list");
-      expect(list).toHaveAttribute("aria-labelledby", heading.id);
-    });
-
-    it("is gone from the collapsed rail", async () => {
+  describe("no Pages label (C228)", () => {
+    it("has no heading over the list, so toggling the rail moves no entry", async () => {
       const user = userEvent.setup();
       renderSidebar();
-      await user.click(toggle());
       expect(within(nav()).queryByText("Pages")).not.toBeInTheDocument();
+      const top = () => within(nav()).getByRole("link", { name: "Library" }).getBoundingClientRect().top;
+      const before = top();
+      await user.click(toggle());
+      expect(top()).toBe(before);
+    });
+
+    it("still names the list for a screen reader", () => {
+      renderSidebar();
+      const list = within(nav()).getByRole("group", { name: "Pages" });
+      expect(list).toHaveClass("cp-sidebar__list");
+      expect(list).not.toHaveAttribute("aria-labelledby");
+    });
+  });
+
+  describe("Search is set apart from the pages (C229)", () => {
+    it("has a divider between the Search field and the list of pages", () => {
+      renderSidebar();
+      const search = within(nav()).getByRole("button", { name: "Search" });
+      const divider = nav().querySelector<HTMLElement>(".cp-sidebar__divider")!;
+      const list = nav().querySelector<HTMLElement>(".cp-sidebar__list")!;
+      expect(divider).not.toBeNull();
+      expect(divider).toHaveAttribute("aria-hidden", "true");
+      expect(search.compareDocumentPosition(divider) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(divider.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("keeps the divider in the collapsed rail too", async () => {
+      localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, "1");
+      renderSidebar();
+      expect(nav().querySelector(".cp-sidebar__divider")).not.toBeNull();
+    });
+
+    it("gives Discover an icon of its own, not the magnifier Search wears", () => {
+      renderSidebar();
+      const discover = within(nav()).getByRole("link", { name: "Discover" }).querySelector("svg")!;
+      const search = within(nav()).getByRole("button", { name: "Search" }).querySelector("svg")!;
+      expect(discover.getAttribute("data-icon")).not.toBe(search.getAttribute("data-icon"));
+      expect(discover.innerHTML).not.toBe(search.innerHTML);
     });
   });
 
@@ -395,14 +418,28 @@ describe("Sidebar", () => {
       expect(toggle()).toHaveFocus();
     });
 
-    it("shares the foot row between Settings and the toggle alone", () => {
+    it("keeps Settings and the toggle in one foot, the toggle on its own row under Settings (C228)", () => {
       renderSidebar();
       const foot = nav().querySelector<HTMLElement>(".cp-sidebar__foot")!;
       expect(within(foot).getAllByRole("link").map((l) => l.getAttribute("aria-label"))).toEqual(["Settings"]);
       expect(within(foot).getAllByRole("button")).toEqual([toggle()]);
+      expect(toggle().classList.contains("cp-sidebar__link")).toBe(true);
     });
 
-    it("keeps the toggle in a foot row of its own when there is no system group, and no Pages heading when there are no pages", () => {
+    it("lines the toggle's icon up with the entries' icons, in both states", async () => {
+      const user = userEvent.setup();
+      renderSidebar();
+      const iconBox = (element: Element) => element.querySelector(".cp-sidebar__icon")!;
+      for (const open of [true, false]) {
+        if (!open) await user.click(toggle());
+        const settings = within(nav()).getByRole("link", { name: "Settings" });
+        // The same box class, in a row of the same class: one icon column.
+        expect(iconBox(toggle()).className).toBe(iconBox(settings).className);
+        expect(toggle().className.includes("cp-sidebar__toggle")).toBe(true);
+      }
+    });
+
+    it("keeps the toggle in a foot row of its own when there is no system group", () => {
       const real = navRegistry.groupedDestinations();
       const workspaceOnly = real.filter((entry) => entry.group !== "system");
       const spy = vi.spyOn(navRegistry, "groupedDestinations");
@@ -411,7 +448,6 @@ describe("Sidebar", () => {
       const foot = nav().querySelector<HTMLElement>(".cp-sidebar__foot")!;
       expect(within(foot).getByRole("button", { name: /Collapse sidebar/i })).toBeInTheDocument();
       expect(within(foot).queryByRole("link")).not.toBeInTheDocument();
-      expect(within(nav()).getByText("Pages")).toBeInTheDocument();
     });
 
     it("does not list the system group under Pages when it is the only group", () => {
@@ -420,7 +456,6 @@ describe("Sidebar", () => {
       renderSidebar();
       const list = nav().querySelector<HTMLElement>(".cp-sidebar__list")!;
       expect(within(list).queryByRole("link")).not.toBeInTheDocument();
-      expect(within(nav()).queryByText("Pages")).not.toBeInTheDocument();
       expect(within(nav().querySelector<HTMLElement>(".cp-sidebar__foot")!).getByRole("link", { name: "Settings" })).toBeInTheDocument();
     });
 
@@ -497,110 +532,65 @@ describe("Sidebar", () => {
     });
   });
 
-  describe("before the first import (NAV-5)", () => {
-    const dimmed = ["Keys", "Clean", "Discover", "Prepare", "Statistics"];
+  describe("before the first import (C144)", () => {
+    const pages = ["Library", "Keys", "Clean", "Discover", "Prepare", "Statistics", "Settings"];
 
-    it("dims the pages with nothing to show, still clickable, under one shared line", async () => {
-      libraryIs(true);
-      renderSidebar();
-
-      await waitFor(() =>
-        expect(within(nav()).getByRole("link", { name: "Clean" })).toHaveAttribute("data-dimmed", "true"),
-      );
-      for (const label of dimmed) {
-        const link = within(nav()).getByRole("link", { name: label });
-        expect(link).toHaveAttribute("data-dimmed", "true");
-        expect(link).toHaveAttribute("href");
-        expect(within(link).queryByText(/Import your/)).not.toBeInTheDocument();
-      }
-      for (const label of ["Library", "Settings"]) {
-        expect(within(nav()).getByRole("link", { name: label })).not.toHaveAttribute("data-dimmed");
-      }
-      // One line for the lot, above the dimmed entries and below Library.
-      const line = within(nav()).getAllByText(EMPTY_LIBRARY_LINE);
-      expect(line).toHaveLength(1);
-      expect(line[0]!.compareDocumentPosition(within(nav()).getByRole("link", { name: "Clean" }))).toBe(
-        Node.DOCUMENT_POSITION_FOLLOWING,
-      );
-      expect(line[0]!.compareDocumentPosition(within(nav()).getByRole("link", { name: "Library" }))).toBe(
-        Node.DOCUMENT_POSITION_PRECEDING,
-      );
-    });
-
-    it("points each dimmed entry at the shared line, merged with the tooltip's description", async () => {
-      libraryIs(true);
-      renderSidebar();
-      await waitFor(() =>
-        expect(within(nav()).getByRole("link", { name: "Prepare" })).toHaveAttribute("data-dimmed", "true"),
-      );
-      const line = within(nav()).getByText(EMPTY_LIBRARY_LINE);
-      for (const label of dimmed) {
-        expect(within(nav()).getByRole("link", { name: label })).toHaveAttribute("aria-describedby", line.id);
-      }
-      expect(within(nav()).getByRole("link", { name: "Library" })).not.toHaveAttribute("aria-describedby");
-      const prepare = within(nav()).getByRole("link", { name: "Prepare" });
-      prepare.focus();
-      const tip = await screen.findByRole("tooltip");
-      expect(prepare.getAttribute("aria-describedby")!.split(" ")).toEqual([line.id, tip.id]);
-    });
-
-    it("tooltips a dimmed entry with its own hint", async () => {
-      libraryIs(true);
-      renderSidebar();
-      await waitFor(() =>
-        expect(within(nav()).getByRole("link", { name: "Prepare" })).toHaveAttribute("data-dimmed", "true"),
-      );
-      within(nav()).getByRole("link", { name: "Prepare" }).focus();
-      expect(await screen.findByRole("tooltip")).toHaveTextContent("Plan a set");
-    });
-
-    it("drops the shared line when collapsed", async () => {
-      libraryIs(true);
-      localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, "1");
-      renderSidebar();
-      await waitFor(() =>
-        expect(within(nav()).getByRole("link", { name: "Prepare" })).toHaveAttribute("data-dimmed", "true"),
-      );
-      expect(within(nav()).queryByText(EMPTY_LIBRARY_LINE)).not.toBeInTheDocument();
-    });
-
-    it("dims nothing once the library has tracks", async () => {
-      const read = libraryIs(false);
+    it("keeps every entry at its normal colour, with no shared line over them", async () => {
+      const read = libraryIs(true);
       renderSidebar();
       await waitFor(() => expect(read).toHaveBeenCalled());
       await new Promise((resolve) => setTimeout(resolve, 20));
-      for (const label of dimmed) {
-        expect(within(nav()).getByRole("link", { name: label })).not.toHaveAttribute("data-dimmed");
+      for (const label of pages) {
+        const link = within(nav()).getByRole("link", { name: label });
+        expect(link).not.toHaveAttribute("data-dimmed");
+        expect(link).not.toHaveAttribute("aria-describedby");
+        expect(link.className).not.toMatch(/dimmed/);
       }
-      expect(within(nav()).queryByText(EMPTY_LIBRARY_LINE)).not.toBeInTheDocument();
+      expect(nav().querySelector(".cp-sidebar__empty-line")).toBeNull();
     });
 
-    it("dims nothing when the library cannot be read at all", async () => {
-      (window as unknown as { cuepoint?: unknown }).cuepoint = {
-        getLibrarySummary: vi.fn().mockRejectedValue(new Error("starting")),
-      };
+    it("tooltips an entry with its own hint", async () => {
+      libraryIs(true);
       renderSidebar();
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      expect(within(nav()).getByRole("link", { name: "Clean" })).not.toHaveAttribute("data-dimmed");
+      within(nav()).getByRole("link", { name: "Prepare" }).focus();
+      expect(await screen.findByRole("tooltip")).toHaveTextContent("Plan a Set");
     });
 
-    it("reads the library again after a page change, so the first import lights the pages up", async () => {
+    it("still reads the library in the background, so the first import is noticed", async () => {
       const read = libraryIs(true);
-      const view = render(
-        <MemoryRouter initialEntries={["/library"]}>
-          <Sidebar />
-        </MemoryRouter>,
-      );
-      await waitFor(() =>
-        expect(within(nav()).getByRole("link", { name: "Clean" })).toHaveAttribute("data-dimmed", "true"),
-      );
-      read.mockResolvedValue({ library_empty: false, source: {} });
-      const user = userEvent.setup();
-      await user.click(within(nav()).getByRole("link", { name: "Settings" }));
-      await waitFor(() =>
-        expect(within(nav()).getByRole("link", { name: "Clean" })).not.toHaveAttribute("data-dimmed"),
-      );
-      view.unmount();
+      renderSidebar();
+      await waitFor(() => expect(read).toHaveBeenCalled());
     });
+  });
+});
+
+describe("the sidebar's sizes follow the text, not the window (C208, C34)", () => {
+  const rules = parseRules(stripComments(sidebarCss));
+  const decl = (selector: string, property: string) => {
+    const rule = rules.filter((r) => selectorList(r.selector).includes(selector) && r.context === "").pop();
+    return rule ? Object.fromEntries(declarations(rule.body))[property] : undefined;
+  };
+
+  it("makes a page row one row-height tall, and the search field a control", () => {
+    expect(decl(".cp-sidebar__link", "min-height")).toBe("var(--row-height)");
+    expect(decl(".cp-sidebar__search", "min-height")).toBe("var(--control-height)");
+    expect(decl(".cp-sidebar__brand", "min-height")).toBe("var(--row-height)");
+  });
+
+  it("reads no window height anywhere", () => {
+    expect(sidebarCss).not.toMatch(/cqh|vh\b|--cp-sidebar-fit/);
+  });
+
+  it("starts at the page's top gutter, as the page and Track details do", () => {
+    expect(decl(".cp-sidebar", "padding-top")).toBe("var(--page-gutter-top)");
+  });
+
+  it("has no dimmed look and no empty-library line", () => {
+    expect(sidebarCss).not.toMatch(/dimmed|empty-line/);
+  });
+
+  it("draws the toggle as a row, without a box of its own", () => {
+    expect(decl(".cp-sidebar__toggle", "border")).toBeUndefined();
+    expect(decl(".cp-sidebar__toggle", "background")).toBeUndefined();
   });
 });

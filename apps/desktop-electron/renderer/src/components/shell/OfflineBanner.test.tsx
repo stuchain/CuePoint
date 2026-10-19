@@ -54,6 +54,14 @@ describe("OfflineBanner", () => {
     expect(screen.getByRole("button", { name: "Start it again" })).toBeInTheDocument();
   });
 
+  it("draws its button at the standard height, not the small one (C8)", async () => {
+    getEngineStatus.mockResolvedValue(STOPPED);
+    bridge({ restartEngine: vi.fn() });
+    render(<OfflineBanner />);
+
+    expect(await screen.findByRole("button", { name: "Start it again" })).not.toHaveClass("cp-btn--sm");
+  });
+
   it("hides the button when the bridge cannot restart", async () => {
     getEngineStatus.mockResolvedValue(STOPPED);
     render(<OfflineBanner />);
@@ -157,7 +165,7 @@ describe("OfflineBanner", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Start it again" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "CuePoint couldn't start in the background. Quit and open CuePoint again.",
+      "CuePoint could not start in the background. Quit and open CuePoint again.",
     );
     await userEvent.click(screen.getByRole("button", { name: "Get help…" }));
     expect(onGetHelp).toHaveBeenCalledTimes(1);
@@ -168,7 +176,7 @@ describe("OfflineBanner", () => {
     bridge({ restartEngine: vi.fn().mockResolvedValue(STOPPED) });
     render(<OfflineBanner />);
     await userEvent.click(await screen.findByRole("button", { name: "Start it again" }));
-    await screen.findByText(/couldn't start/);
+    await screen.findByText(/could not start/);
     expect(screen.queryByRole("button", { name: "Get help…" })).not.toBeInTheDocument();
   });
 

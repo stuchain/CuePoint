@@ -17,6 +17,7 @@ export { StatusStrip } from "./StatusStrip";
 export { OfflineBanner } from "./OfflineBanner";
 export {
   enabledDestinations,
+  litDestination,
   findDestinationById,
   homeDestination,
   retiredRedirects,

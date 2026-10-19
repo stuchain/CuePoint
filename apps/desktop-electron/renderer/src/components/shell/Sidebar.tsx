@@ -1,15 +1,17 @@
-import { Fragment, useCallback, useEffect, useId, useRef, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import appIcon from "../../assets/cuepoint-icon.png";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
 import {
-  EMPTY_LIBRARY_LINE,
   groupedDestinations,
   homeDestination,
+  litDestination,
   type NavDestination,
 } from "./navRegistry";
+import { NavIcon } from "./NavIcon";
 import { Kbd } from "../Kbd";
+import { isDialogOpen } from "./shellKeyboard";
 import { emitShellCommand, useShellCommand } from "./shellCommands";
 import { loadSidebarCollapsed, saveSidebarCollapsed } from "./sidebarState";
 import { useLibraryEmpty } from "./useLibraryPresence";
@@ -17,9 +19,11 @@ import "./Sidebar.css";
 
 /**
  * Primary navigation (DEC-020, DEC-021, DEC-022), laid out as option D of the sidebar redesign:
- * the logo and name alone on top; the Search field (K8, DEC-282); a small "Pages" heading over
- * the page entries, which alone scroll; and at the foot Settings with the collapse toggle beside
- * it (stacked under it in the collapsed rail). The top and bottom rows stay fixed (R2-9).
+ * the logo and name alone on top; the Search field (K8, DEC-282) with a divider under it (C229);
+ * the page entries, which alone scroll; and at the foot Settings with the collapse toggle on its
+ * own row under it, in the same icon column (C228). The top and bottom rows stay fixed (R2-9).
+ * There is no "Pages" label: it labelled nothing the rail does not show, and it moved every
+ * entry when the rail was toggled (C228).
  *
  * Every entry comes from the registry, so a destination that has not been
  * built is not rendered — and enabling one later is a flag, not a change here.
@@ -27,43 +31,32 @@ import "./Sidebar.css";
  * `NavLink` is used rather than `Link` because it sets `aria-current="page"`
  * on the active entry itself. In the collapsed rail that is the only thing
  * distinguishing the current page for a screen-reader user, since the labels
- * are gone.
+ * are gone. The entry lit is the page's own, or for an Artist or Similar page the page it was
+ * opened from (C221).
  *
- * Each entry is one line, the label (K7). What it is for (NAV-1) is its tooltip, with the
- * label in front of it when the rail is collapsed. Before the first import the pages that
- * have nothing to show are dimmed, still clickable, under one shared line saying why (NAV-5).
+ * Each entry is one line, the label (K7), one row tall (C208). What it is for (NAV-1) is its
+ * tooltip, with the label in front of it when the rail is collapsed. An empty library dims
+ * nothing: each page explains itself (C144).
  */
-function DestinationLink({ destination, collapsed, dimmed, reasonId }: {
+function DestinationLink({ destination, collapsed, lit }: {
   destination: NavDestination;
   collapsed: boolean;
-  dimmed: boolean;
-  /** The shared empty-library line a dimmed entry is described by (NAV-5), when it is shown. */
-  reasonId?: string;
+  /** Whether this entry is the one lit for the current page (C221). */
+  lit: boolean;
 }) {
   const { hint } = destination;
   return (
     <Hint text={collapsed ? `${destination.label}: ${hint}` : hint} portal placement="right">
       <NavLink
         to={destination.path}
-        className={({ isActive }) =>
-          `cp-sidebar__link ${isActive ? "cp-sidebar__link--active" : ""} ${
-            dimmed ? "cp-sidebar__link--dimmed" : ""
-          }`
-            .replace(/\s+/g, " ")
-            .trim()
-        }
+        className={`cp-sidebar__link${lit ? " cp-sidebar__link--active" : ""}`}
+        aria-current={lit ? "page" : undefined}
         // The accessible name has to survive collapsing: with labels hidden the
         // link would otherwise announce as its glyph, or as nothing at all.
         aria-label={destination.label}
-        aria-describedby={dimmed ? reasonId : undefined}
-        data-dimmed={dimmed ? "true" : undefined}
       >
         <span className="cp-sidebar__icon" aria-hidden>
-          {destination.icon ? (
-            <PixelIcon name={destination.icon} />
-          ) : (
-            <span className="cp-sidebar__glyph">{destination.glyph}</span>
-          )}
+          <NavIcon destination={destination} />
         </span>
         {!collapsed && <span className="cp-sidebar__label">{destination.label}</span>}
       </NavLink>
@@ -121,12 +114,16 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(loadSidebarCollapsed);
   const openSearch = useCallback(() => emitShellCommand("open-search"), []);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const location = useLocation();
+  const lit = litDestination(location.pathname, location.state)?.id ?? null;
 
   useEffect(() => {
     saveSidebarCollapsed(collapsed);
   }, [collapsed]);
 
   const toggle = useCallback(() => setCollapsed((value) => !value), []);
+  // The shell keeps asking whether the first import has finished (it makes the pages read again
+  // when it has); it dims nothing meanwhile (C144).
   const libraryEmpty = useLibraryEmpty();
 
   // View → Sidebar in the menu.
@@ -139,6 +136,8 @@ export function Sidebar() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "b") {
+        // Not behind an open dialog (C201).
+        if (isDialogOpen()) return;
         event.preventDefault();
         toggle();
         // Keyboard users need somewhere to be after the rail changes width;
@@ -150,24 +149,18 @@ export function Sidebar() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [toggle]);
 
-  const emptyLineId = useId();
   const groups = groupedDestinations();
-  // The system group (Settings) is the one pinned at the foot, whatever else the registry holds;
-  // it is never listed under "Pages", even when it is the only group.
+  // The system group (Settings) is the one pinned at the foot, whatever else the registry holds.
   const pinned = groups.find((entry) => entry.group === "system");
   const scrolling = groups.filter((entry) => entry !== pinned);
-  const headingId = useId();
-  // The first dimmed entry, so the shared line sits just above the run of them (NAV-5, K7).
-  const firstDimmed = libraryEmpty
-    ? scrolling.flatMap((entry) => entry.destinations).find((d) => d.needsLibrary)?.id
-    : undefined;
 
+  // The toggle is a row like the entries, so its icon sits in their icon column in both states.
   const toggleButton = (
     <Hint text={`${collapsed ? "Expand" : "Collapse"} sidebar`} shortcut="Mod+B" portal placement="right">
       <button
         ref={toggleRef}
         type="button"
-        className="cp-sidebar__toggle"
+        className="cp-sidebar__link cp-sidebar__toggle"
         onClick={toggle}
         aria-expanded={!collapsed}
         aria-label={`${collapsed ? "Expand" : "Collapse"} sidebar`}
@@ -180,17 +173,7 @@ export function Sidebar() {
   );
 
   const renderLink = (destination: NavDestination) => (
-    <Fragment key={destination.id}>
-      {destination.id === firstDimmed && !collapsed ? (
-        <p className="cp-sidebar__empty-line" id={emptyLineId}>{EMPTY_LIBRARY_LINE}</p>
-      ) : null}
-      <DestinationLink
-        destination={destination}
-        collapsed={collapsed}
-        dimmed={libraryEmpty && Boolean(destination.needsLibrary)}
-        reasonId={collapsed ? undefined : emptyLineId}
-      />
-    </Fragment>
+    <DestinationLink key={destination.id} destination={destination} collapsed={collapsed} lit={destination.id === lit} />
   );
 
   const renderGroup = (entry: (typeof groups)[number]) => {
@@ -204,7 +187,7 @@ export function Sidebar() {
         </div>
       );
     }
-    // Only the last entry (Settings) shares its row with the toggle; any other stacks above (option D).
+    // Only the last entry (Settings) shares the foot with the toggle; any other stacks above it.
     const last = entry.destinations[entry.destinations.length - 1];
     return (
       <div className="cp-sidebar__group cp-sidebar__group--pinned" key={entry.group}>
@@ -223,6 +206,7 @@ export function Sidebar() {
       className={`cp-sidebar ${collapsed ? "cp-sidebar--collapsed" : ""}`.trim()}
       aria-label="Main navigation"
       data-collapsed={collapsed ? "true" : "false"}
+      data-library-empty={libraryEmpty ? "true" : undefined}
     >
       {/* Fixed above the list, so the logo never scrolls out of the window (R2-9). */}
       <div className="cp-sidebar__top">
@@ -231,21 +215,14 @@ export function Sidebar() {
 
       {/* Under the logo: opens the search dialog, which App mounts (K8). */}
       <SearchButton collapsed={collapsed} onOpen={openSearch} />
-
-      {!collapsed && scrolling.length > 0 ? (
-        <p className="cp-sidebar__pages-label" id={headingId}>Pages</p>
-      ) : null}
+      {/* Search is not a page: a rule sets it apart from them (C229). */}
+      <div className="cp-sidebar__divider" aria-hidden="true" />
 
       {/* The destinations alone scroll; the pinned group stays at the foot. */}
-      <div
-        className="cp-sidebar__list"
-        role="group"
-        aria-labelledby={!collapsed && scrolling.length > 0 ? headingId : undefined}
-        aria-label={!collapsed && scrolling.length > 0 ? undefined : "Pages"}
-      >
+      <div className="cp-sidebar__list" role="group" aria-label="Pages">
         {scrolling.map((entry) => renderGroup(entry))}
       </div>
-      {/* Settings with the collapse toggle beside it; both stay fixed at the foot (R2-9). */}
+      {/* Settings with the collapse toggle under it; both stay fixed at the foot (R2-9). */}
       {pinned ? (
         renderGroup(pinned)
       ) : (

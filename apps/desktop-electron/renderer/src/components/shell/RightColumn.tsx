@@ -3,6 +3,7 @@ import { QueuePanel } from "../player/QueuePanel";
 import { closeQueue, useQueueOpen } from "../player/queuePanelState";
 import { publishDetails } from "./detailsToggle";
 import { useShellCommand } from "./shellCommands";
+import { isDialogOpen } from "./shellKeyboard";
 
 interface RightColumnProps {
   /** Track details, which has the column whenever the queue is closed. */
@@ -39,6 +40,7 @@ function QueueDock() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "i") {
+        if (isDialogOpen()) return;
         event.preventDefault();
         closeQueue();
       }

@@ -1,5 +1,6 @@
 import {
   Activity,
+  Fragment,
   memo,
   useEffect,
   useLayoutEffect,
@@ -27,6 +28,11 @@ export interface KeptSlot {
   paths: readonly string[];
   /** The slot's `<Route>`s; given the slot's own location, so a page reads its own opening. */
   routes: (location: Location) => ReactNode;
+  /**
+   * Keep the slot's own page (its first path) alive, hidden, while a page under it is shown, so
+   * coming back from an Artist or Similar page finds Discover as it was left (C194).
+   */
+  keepRoot?: boolean;
 }
 
 interface KeptPagesProps {
@@ -41,6 +47,12 @@ function ownerOf(pathname: string, slots: readonly KeptSlot[]): string | null {
     candidate.paths.some((path) => matchPath({ path, end: true }, pathname) !== null),
   );
   return slot?.id ?? null;
+}
+
+/** Whether a pathname is the slot's own page rather than one under it. */
+function isRootPage(slot: KeptSlot, pathname: string): boolean {
+  const root = slot.paths[0];
+  return root !== undefined && matchPath({ path: root, end: true }, pathname) !== null;
 }
 
 interface PageSlotProps {
@@ -106,6 +118,16 @@ export function KeptPages({ slots, unowned }: KeptPagesProps) {
   if (owner !== null && seen[owner]?.key !== location.key) {
     setSeen({ ...seen, [owner]: location });
   }
+  // For a slot that keeps its root (C194): the last location on its own page, and the last on a
+  // page under it, kept apart so one is not drawn over the other.
+  const [kept, setKept] = useState<Readonly<Record<string, { root?: Location; sub?: Location }>>>({});
+  const ownerSlot = owner === null ? undefined : slots.find((slot) => slot.id === owner);
+  if (ownerSlot?.keepRoot) {
+    const part = isRootPage(ownerSlot, location.pathname) ? "root" : "sub";
+    if (kept[ownerSlot.id]?.[part]?.key !== location.key) {
+      setKept({ ...kept, [ownerSlot.id]: { ...kept[ownerSlot.id], [part]: location } });
+    }
+  }
 
   const navigationType = useNavigationType();
   // Where each page of each slot was scrolled to, by pathname: Prepare's `/prepare` hands on
@@ -155,6 +177,18 @@ export function KeptPages({ slots, unowned }: KeptPagesProps) {
   return (
     <>
       {slots.map((slot) => {
+        if (slot.keepRoot) {
+          const atRoot = slot.id === owner && isRootPage(slot, location.pathname);
+          const here = slot.id === owner;
+          const root = atRoot ? location : kept[slot.id]?.root;
+          const sub = here && !atRoot ? location : kept[slot.id]?.sub;
+          return (
+            <Fragment key={slot.id}>
+              {root && <PageSlot key="root" active={atRoot} location={root} routes={slot.routes(root)} />}
+              {sub && <PageSlot key="sub" active={here && !atRoot} location={sub} routes={slot.routes(sub)} />}
+            </Fragment>
+          );
+        }
         const slotLocation = slot.id === owner ? location : seen[slot.id];
         if (!slotLocation) return null;
         return (

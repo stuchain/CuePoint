@@ -17,6 +17,7 @@ import { useMotion } from "../../tokens/MotionContext";
 import { useScaleFactor } from "../../tokens/ScaleContext";
 import { leaveAsGhost } from "../../tokens/useLeaveGhost";
 import { useSelectedTrack, type SelectedTrack } from "./selectedTrack";
+import { escapeClosesPanel, isDialogOpen } from "./shellKeyboard";
 import { useShellCommand } from "./shellCommands";
 import "./TrackInspector.css";
 
@@ -152,6 +153,8 @@ export function TrackInspector({ children }: TrackInspectorProps) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "i") {
+        // Not behind an open dialog (C201).
+        if (isDialogOpen()) return;
         event.preventDefault();
         toggle();
       }
@@ -218,6 +221,13 @@ export function TrackInspector({ children }: TrackInspectorProps) {
       className="cp-inspector"
       data-entering={entering ? "" : undefined}
       style={{ width: `${width}px` }}
+      // Escape closes the panel that has focus (C29).
+      onKeyDown={(event) => {
+        if (escapeClosesPanel(event)) {
+          event.preventDefault();
+          toggle();
+        }
+      }}
       aria-label="Track details"
       data-width={width}
     >
@@ -249,8 +259,8 @@ export function TrackInspector({ children }: TrackInspectorProps) {
         }}
       />
 
-      <header className="cp-inspector__header">
-        <h2 className="cp-inspector__title">Track details</h2>
+      <header className="cp-panel-header cp-inspector__header">
+        <h2 className="cp-panel-header__title">Track details</h2>
         <CloseButton
           ref={hideRef}
           className="cp-inspector__hide"

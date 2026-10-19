@@ -528,27 +528,40 @@ describe("the reason for the work (STR-3, Hint)", () => {
   });
 });
 
-describe("the Activity button (STR-9)", () => {
-  it("says what it opens and its shortcut, on hover and on focus", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<StatusStrip />);
-    const button = screen.getByRole("button", { name: "Activity" });
+describe("the strip is there only while it has something to show (C231)", () => {
+  const strip = () => document.querySelector(".cp-status") as HTMLElement;
 
-    expect(button).toHaveAttribute(
-      "title",
-      "Activity: what CuePoint has done (Ctrl+Shift+A)",
-    );
-    await user.tab();
-    while (document.activeElement !== button) await user.tab();
-    // The tip says it in words and draws the shortcut as a key cap.
-    const tip = screen.getByRole("tooltip");
-    expect(tip).toHaveTextContent("Activity: what CuePoint has done Ctrl+Shift+A");
-    expect(tip.querySelector("kbd.cp-kbd")).toHaveTextContent("Ctrl+Shift+A");
+  it("is idle, and takes no room, when all is well", async () => {
+    render(<StatusStrip />);
+    await waitFor(() => expect(strip()).toHaveAttribute("data-idle"));
+    // A screen reader still hears the state.
+    expect(screen.getByRole("status")).toHaveTextContent("Ready");
   });
 
-  it("carries no unread badge", () => {
+  it("is not idle while the engine is starting", async () => {
+    getEngineStatus.mockResolvedValue({ connected: false, starting: true });
     render(<StatusStrip />);
-    expect(screen.getByRole("button", { name: "Activity" })).toHaveTextContent(/^Activity$/);
+    await screen.findByText("Starting up…");
+    expect(strip()).not.toHaveAttribute("data-idle");
+  });
+
+  it("is not idle while work is running", async () => {
+    listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
+    render(<StatusStrip />);
+    await screen.findByText(/Matching/);
+    expect(strip()).not.toHaveAttribute("data-idle");
+  });
+
+  it("holds no Activity button: that sits in the player bar, and Ctrl+Shift+A opens the panel", () => {
+    render(<StatusStrip />);
+    expect(screen.queryByRole("button", { name: "Activity" })).not.toBeInTheDocument();
+  });
+
+  it("draws its progress with the shared bar (C148)", async () => {
+    listJobs.mockResolvedValue({ jobs: [job()], active_count: 1 });
+    render(<StatusStrip />);
+    const bar = await screen.findByRole("progressbar");
+    expect(bar).toHaveClass("cp-progress");
   });
 });
 

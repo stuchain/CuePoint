@@ -49,11 +49,6 @@ interface NavDestinationBase {
   /** False for a destination declared but not yet built. */
   enabled: boolean;
   /**
-   * True for a page that has nothing to show before the first import (NAV-5). While the
-   * library is empty the sidebar dims it and says why; it stays clickable.
-   */
-  needsLibrary?: boolean;
-  /**
    * True when routes under this path are pages of this destination rather than
    * destinations of their own: Discover's Artist and Label pages and Similar
    * tracks (DEC-094). The sidebar keeps the destination lit on them, and
@@ -64,10 +59,8 @@ interface NavDestinationBase {
 }
 
 /**
- * Exactly one of `icon` and `glyph`, so the sidebar can hand either straight
- * through. DEC-010 drew only the highest
- * -visibility icons; `clean`, `discover` and `prepare` stay Unicode glyphs
- * until SHELL-09 draws them against this rail.
+ * Exactly one of icon and glyph, so the sidebar can hand either straight
+ * through.
  */
 export type NavDestination = NavDestinationBase &
   ({ icon: PixelIconName; glyph?: never } | { glyph: string; icon?: never });
@@ -78,26 +71,20 @@ export type NavDestination = NavDestinationBase &
  */
 export const HOME_DESTINATION_ID = "library";
 
-/**
- * The one muted line the sidebar shows above the dimmed entries before the first import
- * (NAV-5, K7): they keep their own hint in the tooltip, so the reason is said once.
- */
-export const EMPTY_LIBRARY_LINE = "Import your library to use these";
-
 export const NAV_DESTINATIONS: readonly NavDestination[] = [
   // Not built yet (DEC-020). Each is enabled by the phase that builds it.
   // Clean is enabled by CLEAN-12 (DEC-072), Discover by DISCOVER-10 (DEC-021),
   // Prepare by PREP-10 (DEC-104), its Sets pages under it (`/prepare/:setId`).
   // The Library is home (DEC-100).
   { id: "library", label: "Library", hint: "Your Rekordbox tracks", path: "/library", group: "workspace", icon: "library", enabled: true },
-  { id: "clean", label: "Clean", hint: "Match on Beatport, find missing files and duplicates", path: "/clean", group: "workspace", icon: "clean", needsLibrary: true, enabled: true },
+  { id: "clean", label: "Clean", hint: "Match on Beatport, find missing files and duplicates", path: "/clean", group: "workspace", icon: "clean", enabled: true },
   // A page of its own, not a part of the Library's tree (DEC-200): it follows Clean, at the top
   // level (C26, DEC-271).
-  { id: "keys", label: "Keys", hint: "The keys in your playlists, Collections and Sets", path: "/keys", group: "workspace", icon: "keys", needsLibrary: true, enabled: true },
-  { id: "discover", label: "Discover", hint: "Find new music", path: "/discover", group: "workspace", icon: "discover", needsLibrary: true, enabled: true, nested: true },
-  { id: "prepare", label: "Prepare", hint: "Plan a set", path: "/prepare", group: "workspace", icon: "prepare", needsLibrary: true, enabled: true, nested: true },
+  { id: "keys", label: "Keys", hint: "The keys in your playlists, Collections and Sets", path: "/keys", group: "workspace", icon: "keys", enabled: true },
+  { id: "discover", label: "Discover", hint: "Find new music", path: "/discover", group: "workspace", icon: "discover", enabled: true, nested: true },
+  { id: "prepare", label: "Prepare", hint: "Plan a Set", path: "/prepare", group: "workspace", icon: "prepare", enabled: true, nested: true },
   // Statistics follows Prepare (DEC-138, STATS-04): its own page, no nested routes.
-  { id: "statistics", label: "Statistics", hint: "See what you play most and how your library is made up", path: "/statistics", group: "workspace", icon: "statistics", needsLibrary: true, enabled: true },
+  { id: "statistics", label: "Statistics", hint: "See what you play most and how your library is made up", path: "/statistics", group: "workspace", icon: "statistics", enabled: true },
 
   { id: "settings", label: "Settings", hint: "Look, sound, accounts", path: "/settings", group: "system", icon: "settings", enabled: true },
 ];
@@ -229,6 +216,26 @@ export function groupedDestinations(
     label: NAV_GROUP_LABELS[group],
     destinations: enabledDestinations(destinations).filter((d) => d.group === group),
   })).filter((entry) => entry.destinations.length > 0);
+}
+
+/**
+ * The destination the sidebar lights for a page (C221): the page's own, or, for a sub-page that
+ * belongs to another destination (an Artist or Similar page under Discover), the destination it
+ * was opened from, named in the route state as `{ from: "<destination id>" }`. A page opened from
+ * the Library therefore keeps the Library lit; one with no known origin stays with its owner.
+ */
+export function litDestination(
+  pathname: string,
+  state: unknown,
+  destinations: readonly NavDestination[] = NAV_DESTINATIONS,
+): NavDestination | null {
+  const owner = findOwningDestination(pathname, destinations);
+  if (!owner || findDestinationByPath(pathname, destinations)) return owner;
+  const from =
+    typeof state === "object" && state !== null && "from" in state ? (state as { from?: unknown }).from : null;
+  if (typeof from !== "string") return owner;
+  const origin = findDestinationById(from, destinations);
+  return origin?.enabled ? origin : owner;
 }
 
 export function homeDestination(

@@ -128,6 +128,18 @@ const SLOTS: KeptSlot[] = [
     ),
   },
   {
+    // Discover's shape: a root page, and pages under it opened from a track (C194).
+    id: "disc",
+    paths: ["/disc", "/disc/artist/:id"],
+    keepRoot: true,
+    routes: () => (
+      <>
+        <Route path="/disc" element={<Counter name="Disc" />} />
+        <Route path="/disc/artist/:id" element={<Param name="Artist" />} />
+      </>
+    ),
+  },
+  {
     id: "menu",
     paths: ["/menu"],
     routes: route(
@@ -153,7 +165,7 @@ function Nav({ onBreak, onMend }: { onBreak: () => void; onMend: () => void }) {
   return (
     <nav>
       <p data-testid="at">{location.pathname}</p>
-      {["one", "two", "tick", "open", "fragile", "a", "b", "plain", "set", "menu", "old", "nowhere"].map((id) => (
+      {["one", "two", "tick", "open", "fragile", "a", "b", "plain", "set", "disc", "menu", "old", "nowhere"].map((id) => (
         <button key={id} type="button" onClick={() => navigate(`/${id}`)}>
           go {id}
         </button>
@@ -169,6 +181,9 @@ function Nav({ onBreak, onMend }: { onBreak: () => void; onMend: () => void }) {
       </button>
       <button type="button" onClick={() => navigate("/two/7")}>
         go two 7
+      </button>
+      <button type="button" onClick={() => navigate("/disc/artist/9")}>
+        go disc artist 9
       </button>
       <button type="button" onClick={() => navigate("/two/8")}>
         go two 8
@@ -349,6 +364,31 @@ describe("KeptPages", () => {
     await user.click(screen.getByRole("button", { name: "open t2" }));
     expect(screen.getByText("applied 2")).toBeVisible();
     expect(opened).toEqual(["t1", "t2"]);
+  });
+
+  describe("a root page kept under its sub-pages (C194)", () => {
+    it("keeps the root page's state while a page under it is shown, and gives it back", async () => {
+      const user = userEvent.setup();
+      mount("/disc");
+      await user.click(screen.getByRole("button", { name: "bump Disc" }));
+
+      await go(user, "disc artist 9");
+      expect(screen.getByText("Artist param 9")).toBeVisible();
+      hidden(screen.getByText("Disc count 1"));
+      expect(screen.getByText("Disc active false")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "back" }));
+      expect(screen.getByText("Disc count 1")).toBeVisible();
+      expect(screen.getByText("Disc active true")).toBeInTheDocument();
+    });
+
+    it("leaves a slot without keepRoot as it was: the sub-page replaces the root", async () => {
+      const user = userEvent.setup();
+      mount("/two");
+      await go(user, "two 7");
+      expect(screen.getByText("Two param 7")).toBeVisible();
+      expect(screen.queryByText("Two count 0")).toBeNull();
+    });
   });
 
   describe("scroll", () => {

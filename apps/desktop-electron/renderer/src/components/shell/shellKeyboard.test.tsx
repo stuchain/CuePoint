@@ -17,6 +17,7 @@ import { ScreenHeader } from "./ScreenHeader";
 import { INSPECTOR_AUTO_OPEN_DELAY_MS, TrackInspector } from "./TrackInspector";
 import { setSelectedTrack } from "./selectedTrack";
 import { StatusStrip } from "./StatusStrip";
+import { resetActivityForTests } from "./activityState";
 import { AppShellLayout } from "./AppShellLayout";
 import { KEYBOARD_SHORTCUTS } from "../../api/keyboardShortcuts";
 
@@ -152,6 +153,7 @@ describe("inspector focus", () => {
 });
 
 describe("status strip keyboard", () => {
+  afterEach(() => resetActivityForTests());
   beforeEach(() => {
     (window as unknown as { cuepoint?: unknown }).cuepoint = {
       getEngineStatus: vi.fn().mockResolvedValue({ connected: true }),

@@ -8,6 +8,7 @@ import { NO_VALUE } from "../../words";
 import { Button } from "../Button";
 import { CloseButton, RemoveButton } from "../CloseButton";
 import { EmptyState } from "../EmptyState";
+import { escapeClosesPanel } from "../shell/shellKeyboard";
 import { Hint } from "../Hint";
 import { Modal } from "../Modal";
 import { PixelIcon } from "../PixelIcon";
@@ -294,7 +295,19 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
   );
 
   return (
-    <aside className="cp-queue" aria-label="Playback queue" style={{ width: `${width}px` }} data-width={width}>
+    <aside
+      className="cp-queue"
+      aria-label="Playback queue"
+      style={{ width: `${width}px` }}
+      data-width={width}
+      // Escape closes the panel that has focus (C29).
+      onKeyDown={(event) => {
+        if (onClose && escapeClosesPanel(event)) {
+          event.preventDefault();
+          onClose();
+        }
+      }}
+    >
       {/* A separator role rather than a button: a resize handle that the arrow keys also move. */}
       <div
         className={`cp-queue__handle${resizing ? " cp-queue__handle--active" : ""}`}

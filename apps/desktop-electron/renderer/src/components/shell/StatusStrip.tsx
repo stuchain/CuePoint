@@ -7,7 +7,9 @@ import { Button } from "../Button";
 import { Hint } from "../Hint";
 import { PixelSpinner } from "../PixelSpinner";
 import { UpdateStatusItem } from "../updates/UpdateStatusItem";
+import { useUpdateState } from "../updates/useUpdateState";
 import { ActivityPanel } from "./ActivityPanel";
+import { closeActivity, openActivity, useActivityOpen } from "./activityState";
 import { jobLabel, jobPercent, jobStopLabel, jobTitle, useActiveJob } from "./useActiveJob";
 import { useEngineStatus } from "./useEngineStatus";
 import { usePlayerStatusMessage } from "./usePlayerStatus";
@@ -29,9 +31,6 @@ import "./StatusStrip.css";
  * strip is the only entry point to a feed that has been recorded since Phase 1
  * and never shown.
  */
-/** The Activity button's reason; its shortcut is drawn beside it as a key cap. */
-const ACTIVITY_HINT = "Activity: what CuePoint has done";
-
 /**
  * Everything that is running, from "+N more" (STR-5).
  *
@@ -98,7 +97,7 @@ function RunningList({
               </span>
               {percent !== null && (
                 <progress
-                  className="cp-status__progress"
+                  className="cp-progress"
                   value={percent}
                   max={100}
                   aria-label={`Progress: ${jobLabel(job)}`}
@@ -150,7 +149,8 @@ export function StatusStrip() {
     }
     hadJob.current = has;
   }, [job]);
-  const [activityOpen, setActivityOpen] = useState(false);
+  const activityOpen = useActivityOpen();
+  const update = useUpdateState();
 
   const percent = jobPercent(job);
   const { offline } = useEngineOnline();
@@ -169,6 +169,14 @@ export function StatusStrip() {
         : shouldShowOnboarding()
           ? "Getting ready…"
           : "Starting up…";
+
+  // The strip is there only while it has something to say (C231): work, a message from the
+  // player, an engine that is not ready, or an update on its way. Otherwise it takes no room;
+  // the live region stays mounted, so a screen reader still hears the state change.
+  const updateShown =
+    update !== null &&
+    (update.status === "downloading" || update.status === "ready" || update.status === "manual");
+  const idle = job === null && !playerMessage && !updateShown && (connected || offline);
 
   /**
    * Stopping the work the strip is reporting (ORG-13).
@@ -204,7 +212,7 @@ export function StatusStrip() {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "a") {
         event.preventDefault();
-        setActivityOpen(true);
+        openActivity();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -222,7 +230,11 @@ export function StatusStrip() {
         list open from inside the strip and would otherwise be announced as
         status updates.
       */}
-      <div className="cp-status" data-finished={finished > 0 ? finished % 2 : undefined}>
+      <div
+        className="cp-status"
+        data-finished={finished > 0 ? finished % 2 : undefined}
+        data-idle={idle ? "" : undefined}
+      >
         <span className="cp-status__live" role="status" aria-live="polite">
         {/* Ready is not drawn (the strip is quiet when all is well); a screen reader still hears it. */}
         <span
@@ -265,7 +277,7 @@ export function StatusStrip() {
                   width does not.
                 */}
                 <progress
-                  className="cp-status__progress"
+                  className="cp-progress"
                   value={percent}
                   max={100}
                   aria-label="Progress"
@@ -322,14 +334,9 @@ export function StatusStrip() {
 
         <UpdateStatusItem />
 
-        <Hint text={ACTIVITY_HINT} shortcut="Mod+Shift+A">
-          <Button variant="secondary" className="cp-status__activity" onClick={() => setActivityOpen(true)}>
-            Activity
-          </Button>
-        </Hint>
       </div>
 
-      <ActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} />
+      <ActivityPanel open={activityOpen} onClose={closeActivity} />
     </>
   );
 }

@@ -9,14 +9,15 @@
  */
 import { describe, expect, it } from "vitest";
 
+import * as navRegistry from "./navRegistry";
 import {
   enabledDestinations,
   findDestinationById,
   findDestinationByPath,
   groupedDestinations,
   homeDestination,
-  EMPTY_LIBRARY_LINE,
   HOME_DESTINATION_ID,
+  litDestination,
   NAV_DESTINATIONS,
   NAV_GROUPS,
   replacementFor,
@@ -298,7 +299,7 @@ describe("groupedDestinations", () => {
         keys: "The keys in your playlists, Collections and Sets",
         clean: "Match on Beatport, find missing files and duplicates",
         discover: "Find new music",
-        prepare: "Plan a set",
+        prepare: "Plan a Set",
         statistics: "See what you play most and how your library is made up",
         settings: "Look, sound, accounts",
       });
@@ -311,10 +312,17 @@ describe("groupedDestinations", () => {
       }
     });
 
-    it("names the pages that need a library before the first import (NAV-5)", () => {
-      const needing = NAV_DESTINATIONS.filter((d) => d.needsLibrary).map((d) => d.id);
-      expect(needing).toEqual(["clean", "keys", "discover", "prepare", "statistics"]);
-      expect(EMPTY_LIBRARY_LINE).toBe("Import your library to use these");
+    it("does not mark any page as needing a library: an empty library dims nothing (C144)", () => {
+      for (const destination of NAV_DESTINATIONS) {
+        expect("needsLibrary" in destination).toBe(false);
+      }
+      expect(Object.keys(navRegistry)).not.toContain("EMPTY_LIBRARY_LINE");
+    });
+
+    it("capitalises the app's own nouns in every hint (C160)", () => {
+      for (const destination of NAV_DESTINATIONS) {
+        expect(destination.hint).not.toMatch(/\b(set|sets|collection|collections)\b/);
+      }
     });
 
     it("declares Keys at the top level, after Clean (PAGES-16, C26, DEC-271)", () => {
@@ -325,7 +333,6 @@ describe("groupedDestinations", () => {
         group: "workspace",
         icon: "keys",
         enabled: true,
-        needsLibrary: true,
       });
       const ids = NAV_DESTINATIONS.map((d) => d.id);
       expect(ids.indexOf("keys")).toBe(ids.indexOf("clean") + 1);
@@ -335,5 +342,28 @@ describe("groupedDestinations", () => {
       const groups = groupedDestinations();
       expect(groups.at(-1)?.destinations.map((d) => d.id)).toEqual(["settings"]);
     });
+  });
+});
+
+describe("the page the sidebar lights (C221)", () => {
+  it("is the page's own destination", () => {
+    expect(litDestination("/discover", null)?.id).toBe("discover");
+    expect(litDestination("/library", { from: "discover" })?.id).toBe("library");
+  });
+
+  it("is the page a sub-page was opened from, named in the route state", () => {
+    expect(litDestination("/discover/artist/abc", { from: "library" })?.id).toBe("library");
+    expect(litDestination("/discover/similar/12", { from: "prepare" })?.id).toBe("prepare");
+  });
+
+  it("falls back to the owner when nothing, or nothing known, says where it came from", () => {
+    expect(litDestination("/discover/artist/abc", null)?.id).toBe("discover");
+    expect(litDestination("/discover/artist/abc", {})?.id).toBe("discover");
+    expect(litDestination("/discover/artist/abc", { from: "nowhere" })?.id).toBe("discover");
+    expect(litDestination("/discover/artist/abc", "library")?.id).toBe("discover");
+  });
+
+  it("lights nothing for a path that belongs to no page", () => {
+    expect(litDestination("/nowhere", { from: "library" })).toBeNull();
   });
 });

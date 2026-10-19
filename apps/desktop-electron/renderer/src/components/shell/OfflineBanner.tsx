@@ -80,7 +80,7 @@ export function OfflineBanner({ onGetHelp, pulse = 0 }: OfflineBannerProps) {
   if (starting) {
     text = `${STOPPED} Starting it again${attempt ? ` (${attempt} of ${AUTO_RESTARTS})` : ""}…`;
   } else if (failed) {
-    text = "CuePoint couldn't start in the background. Quit and open CuePoint again.";
+    text = "CuePoint could not start in the background. Quit and open CuePoint again.";
     action = onGetHelp ? "help" : null;
   } else {
     text = `${STOPPED} Your library and files are safe.`;
@@ -94,12 +94,12 @@ export function OfflineBanner({ onGetHelp, pulse = 0 }: OfflineBannerProps) {
         {lastOkAt !== null && <span className="cp-offline__time">Library loaded at {formatTimeOfDay(lastOkAt)}</span>}
       </div>
       {action === "restart" && (
-        <Button variant="primary" size="sm" onClick={() => void startAgain()}>
+        <Button variant="primary" onClick={() => void startAgain()}>
           Start it again
         </Button>
       )}
       {action === "help" && (
-        <Button variant="primary" size="sm" onClick={onGetHelp}>
+        <Button variant="primary" onClick={onGetHelp}>
           Get help…
         </Button>
       )}

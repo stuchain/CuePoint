@@ -116,6 +116,20 @@ describe("TrackInspector", () => {
   });
 
 
+  describe("its look follows the shell (C29, C34, C149)", () => {
+    it("wears the shared panel header", () => {
+      render(<TrackInspector />);
+      const header = panel().querySelector("header");
+      expect(header).toHaveClass("cp-panel-header");
+      expect(screen.getByRole("heading", { name: "Track details" })).toHaveClass("cp-panel-header__title");
+    });
+
+    it("starts at the page's top gutter and lights its handle with the shared resizer colour", () => {
+      expect(css).toMatch(/\.cp-inspector\s*\{[^}]*padding-top:\s*var\(--page-gutter-top\)/);
+      expect(css).toMatch(/\.cp-inspector__handle:hover[^{]*\{[^}]*background:\s*var\(--resizer-hover\)/);
+    });
+  });
+
   describe("named Track details (INS-1)", () => {
     it("headlines the panel Track details", () => {
       render(<TrackInspector />);
@@ -172,6 +186,18 @@ describe("TrackInspector", () => {
 
       expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
       expect(reveal()).toBeInTheDocument();
+    });
+
+    it("hides on Escape while focus is in the panel, and not otherwise (C29)", async () => {
+      const user = userEvent.setup();
+      render(<TrackInspector />);
+
+      await user.keyboard("{Escape}");
+      expect(panel()).toBeInTheDocument();
+
+      hide().focus();
+      await user.keyboard("{Escape}");
+      expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
     });
 
     it("gives the space back to the content when hidden", async () => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { HashRouter, Navigate, Route, useLocation, useNavigate, type Location } from "react-router-dom";
 import {
   AboutDialog,
@@ -15,6 +15,7 @@ import {
   applyLaunchDestination,
   AppShellLayout,
   enabledDestinations,
+  litDestination,
   homeDestination,
   OfflineBanner,
   SearchDialogHost,
@@ -152,8 +153,12 @@ function AppShell() {
   usePageTiming();
 
   // DISCOVER-11: the pages every track leads to, and Similar tracks.
+  // The page a track was opened from stays lit in the sidebar (C221): it goes along as `from`.
+  const originRef = useRef<string | undefined>(undefined);
+  originRef.current = litDestination(location.pathname, location.state)?.id;
   const openEntity = useCallback(
-    (kind: "artist" | "label", ref: string) => navigate(entityPath(kind, ref)),
+    (kind: "artist" | "label", ref: string) =>
+      navigate(entityPath(kind, ref), { state: { from: originRef.current } }),
     [navigate],
   );
   // BAR-4: the player bar's title opens the track in the Library, its artist the
@@ -167,7 +172,7 @@ function AppShell() {
     [openEntity],
   );
   const openSimilar = useCallback(
-    (trackId: number) => navigate(similarPath(trackId)),
+    (trackId: number) => navigate(similarPath(trackId), { state: { from: originRef.current } }),
     [navigate],
   );
   // A one-shot opening (a searched track, the import's file choice) is spent once the
@@ -318,6 +323,8 @@ function AppShell() {
   const slots = enabledDestinations().map((destination) => ({
     id: destination.id,
     paths: slotPaths(destination.id, destination.path),
+    // Discover's Artist and Similar pages open over its root, which stays as it was (C194).
+    keepRoot: destination.id === "discover",
     routes: (slotLocation: Location) => (
       <>
         <Route path={destination.path} element={screenFor(destination.id, slotLocation)} />

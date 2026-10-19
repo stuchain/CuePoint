@@ -135,6 +135,21 @@ afterEach(() => {
   delete (window as { cuepoint?: unknown }).cuepoint;
 });
 
+describe("Escape (C29)", () => {
+  it("closes the queue while focus is inside it, and not from elsewhere", async () => {
+    install(2);
+    const onClose = vi.fn();
+    render(<ToastProvider><QueuePanel onClose={onClose} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBeGreaterThan(0));
+
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(screen.getByRole("button", { name: "Close the queue" }), { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("what it shows", () => {
   it("lists the queue in order", async () => {
     install(5);

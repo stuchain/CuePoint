@@ -8,31 +8,25 @@
  * The collapsed width is the icon's own box plus symmetric padding, so the
  * icon is optically centered in the rail rather than sitting where a hidden
  * label left it.
+ *
+ * Sizes follow the text, never the window's height (C208): a row is one row-height tall, the
+ * Search field one control tall, and the list scrolls when the window is too short for them.
  */
 .cp-sidebar {
   --cp-sidebar-pad: var(--space-sm);
-  /* Where an entry's icon starts: its own padding and border. The logo and the "Pages" label start there too. */
+  /* Where an entry's icon starts: its own padding and border. The logo starts there too. */
   --cp-sidebar-edge: calc(var(--space-sm) + var(--hairline));
   /*
-   * Wide enough for the longest label the registry declares — "Statistics" in bold, 5.68em of
-   * Pixelify Sans — plus its icon, gap and padding, and for the top row (logo, "CuePoint" in
-   * bold), for the Search field (icon, "Search…", "Ctrl+K": about 50px for the placeholder at 1x) and for the bottom row (Settings and the compact 26px toggle side by side, about 52px for the label at 1x). At 152px the inner row is 140px, which leaves about 7px spare for "Search…" and 10px for "Settings"; the figures scale with the interface. 152 is a whole multiple of 4 (K7). Where the cap below bites, the bottom row wraps and the toggle drops under Settings. It scales with the interface,
-   * but is capped as a share of the window: at 3x an uncapped rail would take too much of it.
+   * Wide enough for the longest label the registry declares ("Statistics") plus its icon, gap and
+   * padding, for the top row (logo, "CuePoint" in bold) and for the Search field (icon,
+   * "Search…", "Ctrl+K"). 152 is a whole multiple of 4 (K7). It scales with the interface, but is
+   * capped as a share of the window: at 3x an uncapped rail would take too much of it.
    *
    * `vw` is right here, unlike inside the content region: the sidebar is a
    * child of the shell grid, so the window really is what it divides up.
    */
   --cp-sidebar-width: min(calc(152px * var(--scale)), 34vw);
 
-  /*
-   * The rail's own height decides how tall a row is, so every page link fits at any size in a
-   * short window (the list is a scroller only as a last resort). A row is as tall as a hit target
-   * until the rail is too short for ten of them plus what is not a row (padding, gaps, the "Pages"
-   * label, the divider), then they share what there is, never under the text's own height. At 2x in
-   * a 735 px window the nominal 96 px entries would have left room for one.
-   */
-  --cp-sidebar-fit: max(calc(22px * var(--scale)), calc((100cqh - 75px * var(--scale)) / 10));
-  container-type: size;
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
@@ -41,7 +35,9 @@
   min-height: 0;
   /* The nav itself never scrolls: the list below does, the top row and the bottom row stay put (R2-9). */
   overflow: hidden;
+  /* The top starts where the page and Track details start (C34). */
   padding: var(--cp-sidebar-pad);
+  padding-top: var(--page-gutter-top);
   background: var(--bg-toolbar);
   border-right: var(--divider);
 }
@@ -51,10 +47,7 @@
   align-items: center;
 }
 
-/*
- * The fixed top row (R2-9): the brand alone, logo and name (the collapse toggle moved to the
- * bottom row, beside Settings). Outside the scrolling list either way.
- */
+/* The fixed top row (R2-9): the brand alone, logo and name. Outside the scrolling list. */
 .cp-sidebar__top {
   display: flex;
   flex: none;
@@ -72,9 +65,9 @@
   min-width: 0;
   align-items: center;
   gap: var(--space-sm);
-  min-height: min(var(--hit-min), var(--cp-sidebar-fit));
-  /* No block padding. The left edge is the entries' (their padding and border), so the logo, the
-     "Pages" label and the icons all start at one x. */
+  min-height: var(--row-height);
+  /* No block padding. The left edge is the entries' (their padding and border), so the logo and
+     the icons all start at one x. */
   padding: 0 0 0 var(--cp-sidebar-edge);
   color: var(--fg-primary);
   font-size: var(--font-size-sm);
@@ -130,46 +123,13 @@
   text-overflow: ellipsis;
 }
 
-/* The collapse toggle: a small boxed button at the right of the bottom row (option D). */
-.cp-sidebar__toggle {
+/* Search is not a page: a rule under it sets it apart from the pages (C229). */
+.cp-sidebar__divider {
   flex: none;
-  align-self: center;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* Compact: the icon's box and its border, no side padding; the height is still a full hit target. */
-  box-sizing: content-box;
-  width: var(--icon-size);
-  min-height: min(var(--hit-min), var(--cp-sidebar-fit));
-  padding: 0;
-  background: var(--bg-panel);
-  border: var(--control-border-width) solid var(--border-control);
-  color: var(--fg-muted);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
+  height: 0;
+  margin: var(--space-xs) 0;
+  border-top: var(--divider);
 }
-
-.cp-sidebar__toggle:hover {
-  color: var(--fg-primary);
-  background: var(--bg-app);
-}
-
-.cp-sidebar__toggle:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring);
-  outline-offset: var(--focus-ring-offset-inset);
-}
-
-/* The small "Pages" heading over the entries; fixed, the list below it scrolls. */
-.cp-sidebar__pages-label {
-  flex: none;
-  margin: 0;
-  padding: var(--space-sm) 0 0 var(--cp-sidebar-edge);
-  color: var(--fg-muted);
-  font-size: var(--font-size-label);
-  font-weight: var(--weight-strong);
-}
-
-/* Every entry is one height (Search, the pages and Settings alike). */
 
 /* The workspace destinations: the one part of the rail that scrolls (R2-9). */
 .cp-sidebar__list {
@@ -189,8 +149,6 @@
   padding-bottom: var(--space-xs);
 }
 
-/* The divider between groups is the pinned group's own top rule, below. */
-
 .cp-sidebar--collapsed .cp-sidebar__group {
   align-items: center;
   align-self: stretch;
@@ -199,7 +157,7 @@
 /*
  * Settings is pinned to the bottom of the rail under a thin divider (NAV-6): it sits outside
  * the scrolling list, below it, so it stays at the foot however tall the window is. The collapse
- * toggle sits beside it on the same row; collapsed, the two stack (the group is already a column).
+ * toggle is a row of its own under it, in the same icon column (C228).
  */
 .cp-sidebar__group--pinned {
   flex: none;
@@ -207,41 +165,14 @@
   border-top: var(--divider);
 }
 
-/*
- * The foot row holds Settings and the toggle alone. It wraps: when the rail is too narrow for
- * both (the vw cap at high scales), the toggle drops under Settings, right-aligned, and Settings
- * keeps the whole row. Collapsed, they stack in a column.
- */
 .cp-sidebar__foot {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
+  flex-direction: column;
   gap: var(--space-xs);
 }
 
-.cp-sidebar__foot .cp-hint {
-  flex: 1 0 auto;
-}
-
-.cp-sidebar__foot .cp-hint:has(> .cp-sidebar__toggle) {
-  flex: none;
-  margin-left: auto;
-}
-
-.cp-sidebar__foot .cp-sidebar__toggle {
-  margin-left: auto;
-}
-
 .cp-sidebar--collapsed .cp-sidebar__foot {
-  flex-direction: column;
-  flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-start;
-}
-
-.cp-sidebar--collapsed .cp-sidebar__foot .cp-sidebar__toggle {
-  margin-left: 0;
 }
 
 .cp-sidebar__group-label {
@@ -263,18 +194,17 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  /*
-   * The full hit target height even when collapsed: a rail whose targets shrink
-   * with its width would be hardest to hit exactly when it is narrowest.
-   */
-  min-height: min(var(--hit-min), var(--cp-sidebar-fit));
-  /* No block padding: the row's height is its min-height, so the icon box plus padding at
-     large text cannot push a row past the fitted height. */
+  /* One row tall, as every row is (C208); it grows only with the text. */
+  min-height: var(--row-height);
   padding: 0 var(--space-sm);
   border: var(--hairline) solid transparent;
+  background: transparent;
   color: var(--fg-muted);
+  font: inherit;
   font-size: var(--font-size-sm);
+  text-align: left;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .cp-sidebar--collapsed .cp-sidebar__link {
@@ -283,18 +213,14 @@
 }
 
 /*
- * The Search button wears the entries' look; a button needs its own face reset (K8). It sits
- * straight in the rail's column, so it must not take `.cp-sidebar__link`'s `flex: 1`: that would
- * split the rail's height with the list and float the button in the middle of the gap.
+ * The Search button wears the entries' look. It sits straight in the rail's column, so it must
+ * not take `.cp-sidebar__link`'s `flex: 1`: that would split the rail's height with the list.
+ * Expanded it is a field, one control tall (C208).
  */
 .cp-sidebar__search {
   flex: none;
   width: 100%;
-  background: transparent;
-  font: inherit;
-  font-size: var(--font-size-sm);
-  text-align: left;
-  cursor: pointer;
+  min-height: var(--control-height);
 }
 
 /*
@@ -337,7 +263,7 @@
 
 .cp-sidebar__link:hover {
   color: var(--fg-primary);
-  background: var(--bg-panel);
+  background: var(--hover-fill);
 }
 
 .cp-sidebar__link--active,
@@ -371,23 +297,4 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* The one shared line above the dimmed entries (NAV-5, K7): muted, small, never an entry. */
-.cp-sidebar__empty-line {
-  margin: 0;
-  padding: var(--space-xs) var(--space-sm) 0;
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  line-height: 1.25;
-}
-
-/* Pages with nothing to show before the first import (NAV-5): greyed by colour, still clickable. */
-.cp-sidebar__link--dimmed {
-  color: var(--fg-disabled);
-}
-
-.cp-sidebar__link--dimmed:hover,
-.cp-sidebar__link--dimmed:focus-visible {
-  color: var(--fg-primary);
 }
