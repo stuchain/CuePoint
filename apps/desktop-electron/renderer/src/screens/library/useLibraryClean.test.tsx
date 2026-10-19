@@ -88,12 +88,12 @@ describe("useLibraryClean's save to files", () => {
     render(<Harness onChanged={onChanged} />);
 
     await userEvent.click(screen.getByRole("button", { name: "open save" }));
-    const save = await screen.findByRole("button", { name: "Save to 3 files" });
+    const save = await screen.findByRole("button", { name: "Sync 3 files" });
     await waitFor(() => expect(save).toBeEnabled());
-    expect(screen.getByRole("dialog", { name: "Save 3 tracks to your files" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Sync 3 tracks to your files" })).toBeInTheDocument();
     await userEvent.click(save);
 
-    expect(await screen.findByText("Wrote 3 files.")).toBeInTheDocument();
+    expect(await screen.findByText("Synced 3 files.")).toBeInTheDocument();
     expect(onChanged).toHaveBeenCalledTimes(1);
     expect(heard).toHaveBeenCalledTimes(1);
     window.removeEventListener(LIBRARY_CHANGED_EVENT, heard);

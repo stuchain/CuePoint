@@ -3598,7 +3598,7 @@ describe("the tag manager (ORG-12)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
 
     expect(bridge.deleteTag).not.toHaveBeenCalled();
-    expect(screen.getByRole("alertdialog")).toHaveTextContent("comes off 9 tracks");
+    expect(screen.getByRole("dialog", { name: "Delete “Peak-time”?" })).toHaveTextContent("comes off 9 tracks");
   });
 
   it("deletes once confirmed and reports the engine's number", async () => {
@@ -3608,7 +3608,7 @@ describe("the tag manager (ORG-12)", () => {
     await userEvent.click(screen.getByRole("button", { name: /Peak-time/ }));
     await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
     // The bar under the tree has a Delete of its own; the question's is in the dialog.
-    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete tag" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Delete “Peak-time”?" })).getByRole("button", { name: "Delete tag" }));
 
     await waitFor(() => expect(bridge.deleteTag).toHaveBeenCalledWith({ id: 21 }));
     // The engine's count, not the one the confirmation warned about.
