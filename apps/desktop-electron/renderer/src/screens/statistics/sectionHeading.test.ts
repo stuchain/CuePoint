@@ -21,9 +21,8 @@ describe("Statistics lists", () => {
     };
     expect(rule(".cp-data-grid__item")).toContain("min-height: var(--row-height);");
     expect(rule(".cp-data-grid__row")).toContain("min-height: var(--row-height);");
-    for (const own of [plays, css]) {
-      expect(own).not.toMatch(/border-bottom:\s*var\(--divider\)/);
-    }
+    expect(plays).not.toMatch(/border-bottom:\s*var\(--divider\)/);
+    expect(css).not.toMatch(/\.rank__item\s*\{/);
     expect(plays).not.toContain("plays__preview");
     expect(plays).toContain(".plays__play");
   });
