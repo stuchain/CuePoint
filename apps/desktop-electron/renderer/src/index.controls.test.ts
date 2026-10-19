@@ -79,11 +79,3 @@ describe("one fold arrow", () => {
     expect(ruleBody("details > summary:has(.cp-disclosure)::before")).toMatch(/display:\s*none/);
   });
 });
-
-describe("a date field's picker button (C25)", () => {
-  it("is drawn as the app's pixel calendar in the text colour, not Chromium's icon", () => {
-    const body = ruleBody('input[type="date"]::-webkit-calendar-picker-indicator');
-    expect(body).toMatch(/background:\s*currentColor/);
-    expect(body).toMatch(/mask:\s*url\("data:image\/svg\+xml/);
-  });
-});

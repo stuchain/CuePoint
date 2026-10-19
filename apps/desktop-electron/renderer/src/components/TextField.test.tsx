@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { TextField } from "./TextField";
+import fieldCss from "./TextField.css?raw";
 import type { Suggestion } from "./SuggestInput";
 
 function Harness({ suggestions }: { suggestions: readonly Suggestion[] }) {
@@ -80,5 +81,13 @@ describe("TextField with type=number (C25)", () => {
   it("draws no steppers on a text field", () => {
     render(<TextField label="Name" />);
     expect(screen.queryByRole("button")).toBeNull();
+  });
+});
+
+describe("a date field's picker button (C25)", () => {
+  it("is drawn as the app's pixel calendar in the text colour, not Chromium's icon", () => {
+    const rule = /\.cp-field__input\[type="date"\]::-webkit-calendar-picker-indicator\s*\{([^}]*)\}/.exec(fieldCss);
+    expect(rule?.[1]).toMatch(/background:\s*currentColor/);
+    expect(rule?.[1]).toMatch(/mask:\s*url\("data:image\/svg\+xml/);
   });
 });

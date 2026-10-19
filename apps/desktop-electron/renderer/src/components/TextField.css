@@ -119,3 +119,16 @@
   color: var(--fg-disabled);
   cursor: default;
 }
+
+/* A date field's picker button is the app's pixel calendar in the text colour, not Chromium's
+   own icon (C25). It still opens the picker; the date can also be typed. */
+.cp-field__input[type="date"]::-webkit-calendar-picker-indicator {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  margin: 0;
+  padding: 0;
+  opacity: 1;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M2 1h1v1h-1zM8 1h1v1h-1zM1 2h10v1h-10zM1 3h1v1h-1zM10 3h1v1h-1zM1 4h10v1h-10zM1 5h1v1h-1zM10 5h1v1h-1zM1 6h1v1h-1zM3 6h2v1h-2zM6 6h2v1h-2zM10 6h1v1h-1zM1 7h1v1h-1zM10 7h1v1h-1zM1 8h1v1h-1zM3 8h2v1h-2zM6 8h2v1h-2zM10 8h1v1h-1zM1 9h1v1h-1zM10 9h1v1h-1zM1 10h10v1h-10z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  cursor: pointer;
+}
