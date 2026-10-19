@@ -75,6 +75,8 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Clean", action: "First or last track in the review", shortcut: "Home / End" },
   { context: "Clean", action: "Select every track in the review", shortcut: "Ctrl+A" },
   { context: "Clean", action: "Close the track's side panel", shortcut: "Esc" },
+  { context: "Clean", action: "Play the track", shortcut: "Enter" },
+  { context: "Clean", action: "Tick or untick the track", shortcut: "Space" },
   // The player (PLAYER-12). Space is bare because it is the one key everyone
   // already tries; the rest are Ctrl-modified because bare arrows belong to the
   // table and the queue panel, which is where a keyboard user spends their time.
@@ -83,6 +85,11 @@ export const KEYBOARD_SHORTCUTS: KeyboardShortcutEntry[] = [
   { context: "Player", action: "Previous track", shortcut: "Ctrl+Left" },
   { context: "Player", action: "Volume up", shortcut: "Ctrl+Up" },
   { context: "Player", action: "Volume down", shortcut: "Ctrl+Down" },
+  // The queue panel's list: the arrows move the selection, Enter plays the row.
+  { context: "Player", action: "Select the previous or next queued track", shortcut: "Up / Down" },
+  { context: "Player", action: "First or last queued track", shortcut: "Home / End" },
+  { context: "Player", action: "Play the queued track", shortcut: "Enter" },
+  { context: "Player", action: "Open the menu for a queued track", shortcut: "Menu key / Shift+F10" },
   { context: "Player", action: "Move a queued track", shortcut: "Alt+Up / Alt+Down" },
   { context: "Player", action: "Remove a queued track", shortcut: "Delete" },
   // Held only while CuePoint has focus, so the rest of the machine keeps them.

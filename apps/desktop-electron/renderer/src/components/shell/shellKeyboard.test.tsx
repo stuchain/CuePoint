@@ -248,4 +248,12 @@ describe("the shortcuts registry", () => {
       expect(documented).toContain(shortcut);
     }
   });
+
+  it("keeps Enter, Space and the queue's keys out of the Everywhere rows", () => {
+    // They are a page's or a list's own keys (Clean's review, the queue panel), not the shell's.
+    for (const shortcut of ["Enter", "Space", "Up / Down", "Home / End", "Menu key / Shift+F10"]) {
+      const contexts = KEYBOARD_SHORTCUTS.filter((entry) => entry.shortcut === shortcut).map((entry) => entry.context);
+      expect(contexts, shortcut).not.toContain("Everywhere");
+    }
+  });
 });

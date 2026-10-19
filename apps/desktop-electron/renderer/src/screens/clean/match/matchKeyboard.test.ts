@@ -89,6 +89,8 @@ describe("matchCommand", () => {
       "last-track": "End",
       close: "Esc",
       "select-all": "Ctrl+A",
+      play: "Enter",
+      tick: "Space",
     });
   });
 });

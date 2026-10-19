@@ -26,13 +26,19 @@ export interface KeyLike {
 }
 
 /** The keys, as the shortcuts dialog lists them. */
-export const MATCH_KEYS: Record<"previous-track" | "next-track" | "first-track" | "last-track" | "close" | "select-all", string> = {
+export const MATCH_KEYS: Record<
+  "previous-track" | "next-track" | "first-track" | "last-track" | "close" | "select-all" | "play" | "tick",
+  string
+> = {
   "previous-track": "Up",
   "next-track": "Down",
   "first-track": "Home",
   "last-track": "End",
   close: "Esc",
   "select-all": "Ctrl+A",
+  // Bound on the row (ReviewTable), not by `matchCommand`.
+  play: "Enter",
+  tick: "Space",
 };
 
 /** Inputs that take no typed text: a tick or a radio is not a field. */

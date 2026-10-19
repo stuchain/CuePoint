@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { filterShortcuts, KEYBOARD_SHORTCUTS, KEYS } from "./keyboardShortcuts";
 import { MATCH_KEYS } from "../screens/clean/match/matchKeyboard";
 import reviewTabSource from "../screens/clean/match/ReviewTab.tsx?raw";
+import reviewTableSource from "../screens/clean/match/ReviewTable.tsx?raw";
 import matchKeyboardSource from "../screens/clean/match/matchKeyboard.ts?raw";
 import appSource from "../App.tsx?raw";
 import modalSource from "../components/Modal.tsx?raw";
@@ -73,11 +74,20 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
     for (const key of keys) {
       expect(clean.some((row) => row.shortcut.split(" / ").includes(key)), key).toBe(true);
     }
-    expect(clean).toHaveLength(4);
+    expect(clean).toHaveLength(6);
   });
 
-  it("lists no decision key: a tick is the decision", () => {
-    expect(clean.map((row) => row.shortcut)).not.toContain("Enter");
+  it("lists Enter as Play and Space as Tick, answered on the review's row", () => {
+    const action = (shortcut: string) => clean.find((row) => row.shortcut === shortcut)?.action;
+    expect(action("Enter")).toBe("Play the track");
+    expect(action("Space")).toBe("Tick or untick the track");
+    expect(MATCH_KEYS.play).toBe("Enter");
+    expect(MATCH_KEYS.tick).toBe("Space");
+    expect(reviewTableSource).toMatch(/event\.key === "Enter"/);
+    expect(reviewTableSource).toMatch(/event\.key === " "/);
+  });
+
+  it("lists no decision key beyond the tick", () => {
     expect(clean.map((row) => row.shortcut)).not.toContain("N");
     expect(clean.map((row) => row.shortcut)).not.toContain("S");
   });
@@ -89,10 +99,13 @@ describe("the Match area's shortcuts (CLEAN-12, C14)", () => {
     }
   });
 
-  it("leaves Space to the player", () => {
-    expect(clean.map((row) => row.shortcut)).not.toContain("Space");
+  it("leaves Space to the player everywhere but a tickable row", () => {
+    // The tick is bound on the row (ReviewTable), not in the shared key map.
     expect(matchKeyboardSource).not.toMatch(/case " "/);
-    expect(KEYBOARD_SHORTCUTS.find((row) => row.shortcut === "Space")?.context).toBe("Player");
+    expect(KEYBOARD_SHORTCUTS.filter((row) => row.shortcut === "Space").map((row) => row.context)).toEqual([
+      "Clean",
+      "Player",
+    ]);
   });
 
   it("answers each key in the code that binds it", () => {
@@ -192,6 +205,12 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     ["Ctrl+Down", "Player", playerShortcutsSource, /case "ArrowDown"/],
     ["Alt+Up / Alt+Down", "Player", queuePanelSource, /altKey && event\.key === "ArrowUp"/],
     ["Delete", "Player", queuePanelSource, /key === "Delete"/],
+    ["Up / Down", "Player", queuePanelSource, /key === "ArrowUp" \|\| event\.key === "ArrowDown"/],
+    ["Home / End", "Player", queuePanelSource, /key === "Home" \|\| event\.key === "End"/],
+    ["Enter", "Player", queuePanelSource, /key === "Enter"/],
+    ["Menu key / Shift+F10", "Player", queuePanelSource, /key === "ContextMenu"/],
+    ["Enter", "Clean", reviewTableSource, /event\.key === "Enter"/],
+    ["Space", "Clean", reviewTableSource, /event\.key === " "/],
   ];
 
   it.each(handlers)("%s (%s) has a handler", (shortcut, context, source, pattern) => {
