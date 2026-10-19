@@ -302,14 +302,6 @@
   gap: var(--space-sm);
 }
 
-/* The Activity button ends the row, one control tall (C231). */
-.cp-player-bar__activity {
-  flex: none;
-  min-height: var(--control-height);
-  min-width: 0;
-  padding: 0 var(--space-sm);
-}
-
 .cp-player-bar__slider--volume {
   flex: 0 0 auto;
   /* Follows the size: not capped to a few pixels at the larger sizes. */

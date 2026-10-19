@@ -3,7 +3,6 @@ import { Badge } from "../Badge";
 import { countNoun, formatCount } from "../../format/counts";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
-import { ActivityButton } from "../shell/ActivityButton";
 import { WheelButton } from "../wheel/WheelButton";
 import { waveformEntryWords } from "../waveform/analysisWords";
 import { useWaveform } from "../waveform/useWaveforms";
@@ -461,8 +460,6 @@ export function PlayerBar({
             aria-valuetext={`${muted ? 0 : Math.round(volume)}%`}
           />
         </Hint>
-        {/* At the right end, where the status strip's button used to be (C231). */}
-        <ActivityButton className="cp-player-bar__activity" />
       </div>
       </div>
     </div>

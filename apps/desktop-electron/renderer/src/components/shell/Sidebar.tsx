@@ -11,6 +11,7 @@ import {
 } from "./navRegistry";
 import { NavIcon } from "./NavIcon";
 import { Kbd } from "../Kbd";
+import { ActivityButton } from "./ActivityButton";
 import { isDialogOpen } from "./shellKeyboard";
 import { emitShellCommand, useShellCommand } from "./shellCommands";
 import { loadSidebarCollapsed, saveSidebarCollapsed } from "./sidebarState";
@@ -194,6 +195,8 @@ export function Sidebar() {
         {label}
         {entry.destinations.slice(0, -1).map(renderLink)}
         <div className="cp-sidebar__foot">
+          {/* Activity sits above Settings (C231): the status strip no longer holds its button. */}
+          <ActivityButton collapsed={collapsed} />
           {last ? renderLink(last) : null}
           {toggleButton}
         </div>
@@ -227,7 +230,10 @@ export function Sidebar() {
         renderGroup(pinned)
       ) : (
         <div className="cp-sidebar__group cp-sidebar__group--pinned">
-          <div className="cp-sidebar__foot">{toggleButton}</div>
+          <div className="cp-sidebar__foot">
+            <ActivityButton collapsed={collapsed} />
+            {toggleButton}
+          </div>
         </div>
       )}
     </nav>

@@ -418,11 +418,14 @@ describe("Sidebar", () => {
       expect(toggle()).toHaveFocus();
     });
 
-    it("keeps Settings and the toggle in one foot, the toggle on its own row under Settings (C228)", () => {
+    it("keeps Activity, Settings and the toggle in one foot, the toggle on its own row under Settings (C228)", () => {
       renderSidebar();
       const foot = nav().querySelector<HTMLElement>(".cp-sidebar__foot")!;
       expect(within(foot).getAllByRole("link").map((l) => l.getAttribute("aria-label"))).toEqual(["Settings"]);
-      expect(within(foot).getAllByRole("button")).toEqual([toggle()]);
+      // Activity is a row above Settings; the toggle is the last button (C231, C228).
+      const buttons = within(foot).getAllByRole("button");
+      expect(buttons.map((el) => el.getAttribute("aria-label"))).toEqual(["Activity", toggle().getAttribute("aria-label")]);
+      expect(buttons[buttons.length - 1]).toBe(toggle());
       expect(toggle().classList.contains("cp-sidebar__link")).toBe(true);
     });
 
