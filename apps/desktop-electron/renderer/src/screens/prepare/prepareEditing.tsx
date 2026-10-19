@@ -6,9 +6,10 @@
  * Mix out typed in place, and a chapter's heading with its buttons. Without a
  * provider (the column picker, a test of a column) a cell is only its text.
  *
- * - **A time cell** is a button that reads as its time. A click starts typing;
- *   Enter or Tab saves and moves to the next cell, Shift+Tab to the one
- *   before, Escape drops the typing, and leaving the cell saves it. A refused
+ * - **A time cell** is a button that reads as its time. A click or F2 starts typing;
+ *   Enter saves and keeps the keyboard on the row (it does not play), Tab saves and moves to
+ *   the next cell, Shift+Tab to the one before, Escape drops the typing, and leaving the
+ *   cell saves it. A refused
  *   time stays in the cell, marked, and is said on the page's facts line. A
  *   double-click is the table's: it plays the row, and the typing is dropped.
  * - **A heading's buttons** are Edit, up, down and delete for its chapter (their
@@ -47,11 +48,16 @@ function TimeInput({ row, field, editing }: { row: EntryRow; field: TimeField; e
     input.current?.select();
   }, []);
 
-  const leave = async (move: 1 | -1 | 0) => {
+  const leave = async (move: 1 | -1 | 0, backToTable = false) => {
     if (leaving.current) return;
     leaving.current = true;
+    // Enter keeps the keyboard on the row: the table is found before the field is gone.
+    const table = backToTable ? input.current?.closest<HTMLElement>('[role="table"]') : null;
     const result = await editing.commitTime(entryId, field, text, move);
-    if (result !== "refused") return;
+    if (result !== "refused") {
+      table?.focus();
+      return;
+    }
     leaving.current = false;
     // Left by a click elsewhere: the cell closes, the words stay.
     if (document.activeElement !== input.current) editing.stopTimeEdit(true, { entryId, field });
@@ -79,7 +85,7 @@ function TimeInput({ row, field, editing }: { row: EntryRow; field: TimeField; e
         event.stopPropagation();
         if (event.key === "Enter") {
           event.preventDefault();
-          void leave(1);
+          void leave(0, true);
         } else if (event.key === "Tab") {
           event.preventDefault();
           void leave(event.shiftKey ? -1 : 1);

@@ -213,7 +213,8 @@ describe("only shortcuts that work (PAGES-03B)", () => {
     expect(prepareScreenSource).toMatch(/event\.altKey[\s\S]*"ArrowUp"[\s\S]*"ArrowDown"/);
     expect(prepareScreenSource).toMatch(/"Delete"/);
     // Enter plays from here and F2 edits the mix-in time (C188); the rows below say so.
-    expect(prepareScreenSource).toMatch(/"F2"/);
+    expect(prepareScreenSource).toMatch(/onRowActivate=[\s\S]*playFrom/);
+    expect(prepareScreenSource).toMatch(/onRowEdit=[\s\S]*startTimeEdit/);
     expect(timeCellSource).toMatch(/event\.key === "Tab"/);
     expect(timeCellSource).toMatch(/event\.key === "Escape"/);
   });

@@ -1649,7 +1649,7 @@ describe("In and Out in the table (FLW-18)", () => {
   const cell = (index: number, name: RegExp) => within(rowAt(index)).getByRole("button", { name });
   const editor = () => within(table()).getByRole("textbox");
 
-  it("starts typing on a click of the cell, and saves both times on Enter", async () => {
+  it("starts typing on a click of the cell, and Enter saves both times and keeps focus on the table", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
     fireEvent.click(cell(1, /Mix in/));
@@ -1659,7 +1659,18 @@ describe("In and Out in the table (FLW-18)", () => {
     await waitFor(() =>
       expect(sets.setEntryTimes).toHaveBeenCalledWith({ entry_id: E1, in_time: "1:00", out_time: "4:30" }),
     );
-    // Saves and moves on: the same entry's Mix out is next.
+    // Enter commits and stops there (SB3): no jump to Mix out, and the row keeps the keyboard.
+    await waitFor(() => expect(within(table()).queryByRole("textbox")).toBeNull());
+    expect(document.activeElement).toBe(table());
+    expect(player.playQueue).not.toHaveBeenCalled();
+  });
+
+  it("moves from Mix in to the same entry's Mix out on Tab", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(cell(1, /Mix in/));
+    fireEvent.change(editor(), { target: { value: "1:00" } });
+    fireEvent.keyDown(editor(), { key: "Tab" });
     await waitFor(() => expect(editor()).toHaveValue("4:30"));
     expect(within(rowAt(1)).getByRole("textbox")).toBe(editor());
   });
@@ -1687,17 +1698,29 @@ describe("In and Out in the table (FLW-18)", () => {
     expect(sets.setEntryTimes).not.toHaveBeenCalled();
   });
 
-  it("starts on Enter or F2 for the selected row, and Enter no longer plays", async () => {
+  it("plays from the focused row on Enter and starts the Mix in time on F2 (SB3)", async () => {
     renderAt(preparePath(IDS.friday));
     await opened();
-    fireEvent.click(rowAt(1));
+    fireEvent.click(rowAt(2));
     tableKey({ key: "Enter" });
-    expect(within(rowAt(1)).getByRole("textbox")).toHaveValue("0:30");
-    expect(player.playQueue).not.toHaveBeenCalled();
-    fireEvent.keyDown(editor(), { key: "Escape" });
+    await waitFor(() => expect(player.playQueue).toHaveBeenCalledTimes(1));
+    // The queue is that entry and the rest of the Set, the same as a double-click.
+    expect(player.playQueue.mock.calls[0][1]).toBe(1);
     expect(within(table()).queryByRole("textbox")).toBeNull();
     tableKey({ key: "F2" });
-    expect(within(rowAt(1)).getByRole("textbox")).toBeInTheDocument();
+    expect(within(rowAt(2)).getByRole("textbox")).toBeInTheDocument();
+    expect(player.playQueue).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(editor(), { key: "Escape" });
+    expect(within(table()).queryByRole("textbox")).toBeNull();
+  });
+
+  it("does nothing on F2 over a chapter's heading", async () => {
+    renderAt(preparePath(IDS.friday));
+    await opened();
+    fireEvent.click(rowAt(3));
+    tableKey({ key: "F2" });
+    expect(within(table()).queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("cancels on Escape without writing", async () => {
@@ -1717,7 +1740,7 @@ describe("In and Out in the table (FLW-18)", () => {
     fireEvent.click(cell(1, /Mix in/));
     fireEvent.keyDown(editor(), { key: "Enter" });
     expect(sets.setEntryTimes).not.toHaveBeenCalled();
-    await waitFor(() => expect(editor()).toHaveValue("4:30"));
+    await waitFor(() => expect(within(table()).queryByRole("textbox")).toBeNull());
   });
 
   it("saves when the cell is left", async () => {

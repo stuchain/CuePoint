@@ -648,8 +648,9 @@ export function PrepareScreen({
     [saveTime],
   );
 
-  // Alt+Up, Alt+Down, Delete and Enter or F2 act on the entries selected while
-  // the table itself has focus; a field being typed in keeps its keys.
+  // Alt+Up, Alt+Down and Delete act on the entries selected while the table itself has focus;
+  // a field being typed in keeps its keys. Enter plays from the row and F2 types its Mix in
+  // time: those are the table's own (onRowActivate, onRowEdit).
   const onSetKeys = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       const target = event.target as HTMLElement;
@@ -681,11 +682,9 @@ export function PrepareScreen({
         if (selected.length > 0) act(() => void removeEntries(selected));
       } else if (plain && event.key === "Escape") {
         if (selected.length > 0) act(() => selection.clear());
-      } else if (plain && (event.key === "Enter" || event.key === "F2")) {
-        if (focused && headingAt === null) act(() => startTimeEdit(focused.entry.entry_id, "in"));
       }
     },
-    [focused, headingAt, moveSelected, removeEntries, selected, selection, startTimeEdit],
+    [moveSelected, removeEntries, selected, selection],
   );
 
   /**
@@ -1278,6 +1277,10 @@ export function PrepareScreen({
               setChapterError(null);
               setChapterEditing(row.chapter);
             }
+          }}
+          onRowEdit={(row) => {
+            // F2 types the Mix in time of an entry; a chapter's heading has no time to type.
+            if (row.kind === "entry") startTimeEdit(row.entry.entry_id, "in");
           }}
           onRowContextMenu={(row, index, anchor) => {
             if (row.kind === "entry") void openEntryMenu(row, index, anchor.x, anchor.y);
