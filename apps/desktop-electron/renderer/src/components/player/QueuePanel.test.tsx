@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PlayerSnapshot, QueueItem, QueueWindow } from "../../api/cuepointBridge.types";
@@ -663,6 +663,34 @@ describe("its width (C204, D11)", () => {
     expect(panel().style.width).toBe("450px");
   });
 
+  it("keeps to half the window as the window narrows (S4)", () => {
+    const before = window.innerWidth;
+    try {
+      localStorage.setItem("cuepoint.queue.width1x", "448");
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 1400 });
+      install(0);
+      render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+      expect(panel().style.width).toBe("672px");
+      act(() => {
+        Object.defineProperty(window, "innerWidth", { configurable: true, value: 1000 });
+        window.dispatchEvent(new Event("resize"));
+      });
+      expect(panel().style.width).toBe("500px");
+    } finally {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: before });
+    }
+  });
+
+  it("tells assistive technology its range on the resize handle (N2)", () => {
+    install(0);
+    render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    const handle = screen.getByRole("separator", { name: "Resize the queue" });
+    expect(handle).toHaveAttribute("aria-valuemin", "300");
+    // 448 x 1.5 is 672, kept to half of the 1024px test window.
+    expect(handle).toHaveAttribute("aria-valuemax", "512");
+    expect(handle).toHaveAttribute("aria-valuenow", panel().style.width.replace("px", ""));
+  });
+
   it("takes its width from the code, its border from the stylesheet, and has no shadow (D11)", () => {
     const rule = parseRules(stripComments(queueCss)).find((r) => r.selector === ".cp-queue")!;
     const decls = Object.fromEntries(declarations(rule.body));
@@ -808,6 +836,17 @@ describe("selecting rows, the keys and the menu (C187)", () => {
 
     fireEvent.dragLeave(scroll);
     expect(scroll).not.toHaveAttribute("data-refusing");
+  });
+
+  it("refuses a foreign drag over the gaps between and under the rows too (N1)", async () => {
+    install(3);
+    const { container } = render(<ToastProvider><QueuePanel onClose={() => undefined} /></ToastProvider>);
+    await waitFor(() => expect(rows().length).toBe(3));
+    const dataTransfer = { dropEffect: "move", types: ["text/plain"] };
+    const scroll = container.querySelector(".cp-queue__scroll") as HTMLElement;
+    fireEvent.dragOver(scroll, { dataTransfer });
+    expect(dataTransfer.dropEffect).toBe("none");
+    expect(scroll).toHaveAttribute("data-refusing");
   });
 
   it("moves nothing when a foreign drag is dropped", async () => {

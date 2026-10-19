@@ -7,7 +7,7 @@
  * pixel width that is wrong at every other size (the idea behind `inspectorState.ts`, with its own
  * key).
  */
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 export const QUEUE_WIDTH_STORAGE_KEY = "cuepoint.queue.width1x";
 
@@ -78,6 +78,24 @@ export function setQueueWidth1x(next: number): void {
 /** The width in 1x units, shared by everything that draws the queue. */
 export function useQueueWidth(): number {
   return useSyncExternalStore(subscribe, current, current);
+}
+
+/** The window's width, re-read on resize, so the half-window cap follows a window that narrows. */
+export function useWindowWidth(): number | undefined {
+  const [windowWidth, setWindowWidth] = useState<number | undefined>(
+    typeof window === "undefined" ? undefined : window.innerWidth,
+  );
+  useEffect(() => {
+    const onResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return windowWidth;
+}
+
+/** The widest the handle can reach in real pixels: the cap, or the minimum when they cross. */
+export function queueMaxPx(scale: number, windowWidth?: number): number {
+  return queueWidthPx(QUEUE_MAX_WIDTH, scale, windowWidth);
 }
 
 /** Forget the held width, so each test reads storage afresh. */

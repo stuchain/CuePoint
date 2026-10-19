@@ -17,7 +17,14 @@ import { useToast } from "../Toast";
 import { TrackContextMenu, type TrackContextMenuItem } from "../TrackContextMenu";
 import { TrackFactsLine } from "../TrackFactsLine";
 import { useScaleFactor } from "../../tokens/ScaleContext";
-import { queueWidthPx, setQueueWidth1x, useQueueWidth } from "./queueWidth";
+import {
+  QUEUE_MIN_WIDTH,
+  queueMaxPx,
+  queueWidthPx,
+  setQueueWidth1x,
+  useQueueWidth,
+  useWindowWidth,
+} from "./queueWidth";
 import { useQueueWindow } from "./useQueueWindow";
 import "./QueuePanel.css";
 
@@ -108,7 +115,8 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
   // The width is kept in 1x units and drawn times the text size (C204).
   const scale = useScaleFactor();
   const width1x = useQueueWidth();
-  const width = queueWidthPx(width1x, scale, typeof window === "undefined" ? undefined : window.innerWidth);
+  const windowWidth = useWindowWidth();
+  const width = queueWidthPx(width1x, scale, windowWidth);
   const [resizing, setResizing] = useState(false);
 
   const onScroll = useCallback(() => {
@@ -314,6 +322,8 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
         role="separator"
         aria-orientation="vertical"
         aria-label="Resize the queue"
+        aria-valuemin={Math.round(QUEUE_MIN_WIDTH * scale)}
+        aria-valuemax={queueMaxPx(scale, windowWidth)}
         aria-valuenow={width}
         tabIndex={0}
         onMouseDown={(event) => {
@@ -377,6 +387,13 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
           aria-label="Queued tracks"
           tabIndex={-1}
           data-refusing={refusing ? "" : undefined}
+          onDragOver={(event) => {
+            // A drag that did not start on a queue row is refused over the whole list, the gaps
+            // between rows and the space under them included (N1). A row's own drag passes by.
+            if (dragFrom.current !== null) return;
+            if (event.dataTransfer) event.dataTransfer.dropEffect = "none";
+            setRefusing(true);
+          }}
           onDragLeave={(event) => {
             // Only leaving the list itself ends the refusal, not crossing from one row to the next.
             if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setRefusing(false);
@@ -419,13 +436,8 @@ export function QueuePanel({ onClose }: QueuePanelProps) {
                     dragFrom.current = index;
                   }}
                   onDragOver={(event) => {
-                    if (dragFrom.current === null) {
-                      // Not a queue row: a track from a table, or a file. It cannot be dropped here,
-                      // and the list says so rather than seeming to accept it.
-                      if (event.dataTransfer) event.dataTransfer.dropEffect = "none";
-                      setRefusing(true);
-                      return;
-                    }
+                    // Not a queue row (a track from a table, or a file): the list refuses it (N1).
+                    if (dragFrom.current === null) return;
                     event.preventDefault();
                     if (dragFrom.current !== index) setDropAt(index);
                   }}
