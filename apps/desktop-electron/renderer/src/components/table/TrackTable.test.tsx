@@ -1234,6 +1234,27 @@ describe("the columns button in the header's corner (K21)", () => {
     );
   });
 
+  it("keeps every heading's words clear of the button when the table scrolls sideways (C69)", async () => {
+    renderTable({ onColumns: vi.fn() });
+    const table = screen.getByTestId("track-table");
+    expect(table.style.getPropertyValue("--track-table-cover")).toBe("var(--track-table-corner)");
+    // The words and the sort arrow are one label, which slides left of the button.
+    const label = screen.getByText("BPM").closest(".track-table__header-label");
+    expect(label).not.toBeNull();
+    const css = (await import("./TrackTable.css?raw")).default;
+    const rule = /\.track-table__header-label\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(rule).toMatch(/position:\s*sticky/);
+    expect(rule).toMatch(/right:\s*var\(--track-table-cover/);
+    // "hidden" would make each heading a scroll container, and the label would stick to it.
+    const cell = /\.track-table__header-cell\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(cell).toMatch(/overflow:\s*clip/);
+  });
+
+  it("leaves nothing to cover without the button", () => {
+    renderTable();
+    expect(screen.getByTestId("track-table").style.getPropertyValue("--track-table-cover")).toBe("0px");
+  });
+
   it("is no column header, and the table's columns are still the caller's", () => {
     renderTable({ onColumns: vi.fn() });
     const headers = screen.getAllByRole("columnheader");

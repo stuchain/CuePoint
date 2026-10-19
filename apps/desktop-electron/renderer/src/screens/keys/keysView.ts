@@ -15,6 +15,20 @@ export function loadView(): KeysView {
   }
 }
 
+/**
+ * The Library's columns in the order the Keys track list starts with: Key straight after Title
+ * (C69). The list shares a narrow pane with the wheel, and in the Library's order Key was the
+ * third column, off the pane's right edge. A layout the person arranged keeps its own order.
+ */
+export function keysColumnOrder<Column extends { id: string }>(columns: readonly Column[]): Column[] {
+  const key = columns.find((column) => column.id === "key");
+  const title = columns.findIndex((column) => column.id === "title");
+  if (!key || title < 0) return [...columns];
+  const rest = columns.filter((column) => column !== key);
+  rest.splice(title + 1, 0, key);
+  return rest;
+}
+
 export function saveView(view: KeysView): void {
   try {
     window.localStorage.setItem(KEYS_VIEW_STORAGE_KEY, view);

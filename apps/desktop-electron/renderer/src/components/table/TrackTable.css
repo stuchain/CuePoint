@@ -92,7 +92,21 @@
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
-  overflow: hidden;
+  /* Clipped, not hidden: "hidden" would make the heading a scroll container of its own, and its
+     label would stick to it instead of to the table's scroll area (C69). */
+  overflow: clip;
+}
+
+/* The words and the sort arrow. Sticky on the right, so a column that runs under the Columns…
+   button at the scroll area's edge slides its heading left of the button instead of hiding it
+   (C69); in a column that fits, it sits where it always did. */
+.track-table__header-label {
+  position: sticky;
+  right: var(--track-table-cover, 0px);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
 }
 
 /* The heading's words end in "…" when the column is narrower than they are. */

@@ -811,6 +811,8 @@ export function TrackTable<Row>({
     ["--track-table-min-width" as string]: onColumns
       ? `calc(${minWidth}px + var(--track-table-corner))`
       : `${minWidth}px`,
+    // What the button covers at the scroll area's right edge, which every heading's words keep clear of (C69).
+    ["--track-table-cover" as string]: onColumns ? "var(--track-table-corner)" : "0px",
   } as CSSProperties;
 
   const empty = source.total === 0;
@@ -989,18 +991,20 @@ export function TrackTable<Row>({
                       aria-disabled={!sortable(column) && column.hint ? true : undefined}
                       onClick={() => handleSort(column)}
                     >
-                      {column.headerHidden ? (
-                        <span className="track-table__sr-only">{column.header}</span>
-                      ) : (
-                        <span className="track-table__header-text" data-cut-hint="">
-                          {column.header}
-                        </span>
-                      )}
-                      {active && (
-                        <span className="track-table__sort" aria-hidden>
-                          <PixelIcon name={sort?.direction === "asc" ? "arrow-up" : "arrow-down"} className="cp-pixel-icon--text cp-pixel-icon--after" />
-                        </span>
-                      )}
+                      <span className="track-table__header-label">
+                        {column.headerHidden ? (
+                          <span className="track-table__sr-only">{column.header}</span>
+                        ) : (
+                          <span className="track-table__header-text" data-cut-hint="">
+                            {column.header}
+                          </span>
+                        )}
+                        {active && (
+                          <span className="track-table__sort" aria-hidden>
+                            <PixelIcon name={sort?.direction === "asc" ? "arrow-up" : "arrow-down"} className="cp-pixel-icon--text cp-pixel-icon--after" />
+                          </span>
+                        )}
+                      </span>
                     </button>
                   </Hint>
                 ) : (
@@ -1008,13 +1012,15 @@ export function TrackTable<Row>({
                   <div
                     className={`track-table__header-cell track-table__header-cell--plain${column.align === "right" ? " track-table__header-cell--right" : ""}`}
                   >
-                    {column.headerHidden ? (
-                      <span className="track-table__sr-only">{column.header}</span>
-                    ) : (
-                      <span className="track-table__header-text" data-cut-hint="">
-                        {column.header}
-                      </span>
-                    )}
+                    <span className="track-table__header-label">
+                      {column.headerHidden ? (
+                        <span className="track-table__sr-only">{column.header}</span>
+                      ) : (
+                        <span className="track-table__header-text" data-cut-hint="">
+                          {column.header}
+                        </span>
+                      )}
+                    </span>
                   </div>
                 )}
                 <div

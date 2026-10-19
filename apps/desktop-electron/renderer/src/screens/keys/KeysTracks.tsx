@@ -41,6 +41,7 @@ import { BatchConfirmDialog } from "../library/BatchConfirmDialog";
 import { batchSelection, type BatchAction } from "../library/libraryBatch";
 import { cleanCapLine, cleanTracksFor } from "../library/libraryClean";
 import { LIBRARY_COLUMNS, LIBRARY_PREVIOUS_DEFAULT_ORDER } from "../library/libraryColumns";
+import { keysColumnOrder } from "./keysView";
 import { creditsFor } from "../library/libraryDiscover";
 import { DEFAULT_LIBRARY_QUERY, queryKey, type LibraryQuery } from "../library/libraryQuery";
 import { PickerDialog, type PickerItem } from "../library/PickerDialog";
@@ -74,6 +75,8 @@ const trackIdOf = (row: LibraryTrackRow) => row.id;
 
 /** The keys table keeps a layout of its own, apart from the Library's. */
 const KEYS_TABLE_LAYOUT_KEY = "cuepoint-keys-table-layout";
+/** Key straight after Title, so the pane beside the wheel shows it (C69). */
+const KEYS_COLUMNS = keysColumnOrder(LIBRARY_COLUMNS);
 
 /**
  * The order the Library opens on (by artist, A to Z), not Camelot order: the list is the same
@@ -176,7 +179,7 @@ export function KeysTracks({
     () => ({ ...DEFAULT_LIBRARY_QUERY, filters: rules, sort: order.sort, dir: order.dir }),
     [order.dir, order.sort, rules],
   );
-  const columns = useColumnLayout<LibraryTrackRow>(KEYS_TABLE_LAYOUT_KEY, LIBRARY_COLUMNS, {
+  const columns = useColumnLayout<LibraryTrackRow>(KEYS_TABLE_LAYOUT_KEY, KEYS_COLUMNS, {
     previousDefaultOrder: LIBRARY_PREVIOUS_DEFAULT_ORDER,
   });
   const window_ = useTrackWindow(query);
@@ -665,7 +668,7 @@ export function KeysTracks({
       <ColumnPicker
         open={choosingColumns}
         onClose={() => setChoosingColumns(false)}
-        columns={LIBRARY_COLUMNS}
+        columns={KEYS_COLUMNS}
         layout={columns.layout}
         onToggle={columns.toggle}
         onNudge={columns.nudge}

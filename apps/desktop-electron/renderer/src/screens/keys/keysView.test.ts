@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { parseRules, stripComments } from "../../test/cssRules";
 import keysCss from "./keys.css?raw";
-import { KEYS_VIEW_STORAGE_KEY, loadView, saveView } from "./keysView";
+import { KEYS_VIEW_STORAGE_KEY, keysColumnOrder, loadView, saveView } from "./keysView";
 
 afterEach(() => {
   localStorage.clear();
@@ -122,5 +122,17 @@ describe("the two panes (D12)", () => {
 
   it("uses the shared reading width for its note (C214)", () => {
     expect(rule(".keys-note")).toContain("max-width: var(--reading-width)");
+  });
+});
+
+describe("the Keys track list's columns (C69)", () => {
+  it("puts Key right after Title, so the column the page is about is never off the narrow pane's edge", () => {
+    const columns = [{ id: "title" }, { id: "artist" }, { id: "remixer" }, { id: "key" }, { id: "bpm" }];
+    expect(keysColumnOrder(columns).map((column) => column.id)).toEqual(["title", "key", "artist", "remixer", "bpm"]);
+  });
+
+  it("leaves the order alone when there is no Key column", () => {
+    const columns = [{ id: "title" }, { id: "artist" }];
+    expect(keysColumnOrder(columns)).toEqual(columns);
   });
 });
