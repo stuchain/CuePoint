@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -60,6 +61,9 @@ function lifetime(toast: ToastMessage): number | null {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
+/** The stack floats this far above the player (Toast.css), plus the gap it keeps from the page. */
+const TOAST_GAP = "var(--space-lg) + var(--space-sm) + var(--space-sm)";
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const dismiss = useCallback((id: string) => {
@@ -102,10 +106,36 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({ push, dismissKey }), [push, dismissKey]);
 
+  // While a toast shows, the page keeps the room under it free (C122): the stack's height and the
+  // gap it floats in go on the root as --toast-room, which the content region pads its bottom by,
+  // so a table's last row and its scrollbar end above the toast instead of under it.
+  const stack = useRef<HTMLDivElement>(null);
+  const showing = toasts.length > 0;
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const element = stack.current;
+    if (!showing || !element) {
+      root.style.removeProperty("--toast-room");
+      return;
+    }
+    const measure = () =>
+      root.style.setProperty("--toast-room", `calc(${element.offsetHeight}px + ${TOAST_GAP})`);
+    measure();
+    let observer: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(measure);
+      observer.observe(element, { box: "border-box" });
+    }
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty("--toast-room");
+    };
+  }, [showing]);
+
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="cp-toast-stack" aria-live="polite">
+      <div className="cp-toast-stack" aria-live="polite" ref={stack}>
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={dismiss} onGone={remove} />
         ))}

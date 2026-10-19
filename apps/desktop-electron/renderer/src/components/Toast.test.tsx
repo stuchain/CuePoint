@@ -37,6 +37,27 @@ describe("a toast with an action", () => {
   });
 });
 
+describe("the room it takes", () => {
+  it("keeps the page's bottom free while a toast shows, and gives it back when it goes (C122)", () => {
+    const view = render(
+      <ToastProvider>
+        <Grab />
+      </ToastProvider>,
+    );
+    const room = () => document.documentElement.style.getPropertyValue("--toast-room");
+    expect(room()).toBe("");
+    act(() => push("rekordbox.xml has no changes", "error"));
+    expect(room()).toMatch(/^calc\(\d+px \+ var\(--space-lg\)/);
+    view.unmount();
+    expect(room()).toBe("");
+  });
+
+  it("is the room the content region pads its bottom by (C122)", async () => {
+    const app = (await import("../App.css?raw")).default;
+    expect(app).toMatch(/\.app-main \{[^}]*padding-bottom:\s*var\(--toast-room, 0px\)/);
+  });
+});
+
 describe("leaving", () => {
   it("clears its toasts' timers when it goes, so none fires on a page that is gone", () => {
     vi.useFakeTimers();
