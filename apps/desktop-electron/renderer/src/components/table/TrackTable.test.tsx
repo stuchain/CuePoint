@@ -1431,6 +1431,52 @@ describe("sorting by a column with an accessor, in the table (C193)", () => {
   });
 });
 
+describe("a client-only sort is not offered while the rows are not all here (S11)", () => {
+  const COLS: TrackColumnDef<Track>[] = [
+    { id: "title", header: "Title", sortKey: "title", render: (t) => t.title },
+    { id: "bpm", header: "BPM", accessor: (t) => t.bpm, render: (t) => (t.bpm == null ? "" : String(t.bpm)) },
+  ];
+  const DATA: Track[] = [
+    { id: 1, title: "A", artist: "x", bpm: 130 },
+    { id: 2, title: "B", artist: "x", bpm: 120 },
+  ];
+  /** A windowed source with a hole in it: row 1 has not arrived. */
+  const partial: TrackTableSource<Track> = {
+    total: 2,
+    getRow: (index) => (index === 0 ? DATA[0] : undefined),
+    requestWindow: () => {},
+    status: "ready",
+  };
+
+  it("never sends a client-only column id to the engine as a sort key", () => {
+    const onSortChange = vi.fn();
+    renderTable({ columns: COLS, source: partial, onSortChange });
+    // The BPM heading is plain text: it has no engine key and the list is not whole.
+    expect(screen.queryByRole("button", { name: "BPM" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Title" }));
+    expect(onSortChange).toHaveBeenCalledTimes(1);
+    expect(onSortChange).toHaveBeenLastCalledWith({ key: "title", direction: "asc" });
+  });
+
+  it("offers it once every row has arrived, and sorts on the client", () => {
+    const onSortChange = vi.fn();
+    const { rerender } = renderTable({ columns: COLS, source: partial, onSortChange });
+    expect(screen.queryByRole("button", { name: "BPM" })).toBeNull();
+    rerender(
+      <ScaleProvider>
+        <TrackTable<Track> columns={COLS} source={inMemorySource(DATA)} getRowKey={(row) => row.id} onSortChange={onSortChange} />
+      </ScaleProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "BPM" }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ key: "bpm", direction: "asc" });
+  });
+
+  it("does not mark a client sort as applied while it cannot be", () => {
+    renderTable({ columns: COLS, source: partial, sort: { key: "bpm", direction: "asc" }, onSortChange: vi.fn() });
+    expect(screen.getByRole("columnheader", { name: /BPM/ })).toHaveAttribute("aria-sort", "none");
+  });
+});
+
 describe("the row's play button (C84)", () => {
   it("draws the shared play button at the row's end and plays that row", () => {
     const onPlay = vi.fn();

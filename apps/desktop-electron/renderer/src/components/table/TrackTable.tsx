@@ -322,11 +322,6 @@ function sortKeyOf<Row>(column: TrackColumnDef<Row>): string | undefined {
   return column.sortKey ?? (column.accessor ? column.id : undefined);
 }
 
-/** Whether a column's heading is a button: it sorts. */
-function sortable<Row>(column: TrackColumnDef<Row>): boolean {
-  return sortKeyOf(column) !== undefined;
-}
-
 /** Empty values go last, in either direction; numbers by value, words by the locale's order. */
 function compareValues(a: string | number | null | undefined, b: string | number | null | undefined, direction: 1 | -1): number {
   const empty = (value: string | number | null | undefined) => value === null || value === undefined || value === "";
@@ -407,25 +402,37 @@ export function TrackTable<Row>({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // A column with an `accessor` and no engine sort key sorts here, over the rows the source has
-  // (C193). Only when every row has arrived: a half-loaded list cannot be ordered honestly, and a
-  // windowed source sorts on the engine anyway. The index every callback gets is then the
+  // (C193). Only when every row has arrived: a half-loaded list cannot be ordered honestly, and the
+  // engine cannot be asked for a key it does not know. Until then such a heading is not offered,
+  // and only the columns with an engine `sortKey` sort. The index every callback gets is then the
   // displayed position.
+  const hasClientColumns = columns.some((column) => !column.sortKey && column.accessor);
+  const loaded = useMemo<Row[] | null>(() => {
+    if (!hasClientColumns) return null;
+    const rows: Row[] = [];
+    for (let at = 0; at < given.total; at += 1) {
+      const row = given.getRow(at);
+      if (!row) return null;
+      rows.push(row);
+    }
+    return rows;
+  }, [given, hasClientColumns]);
+  /** Whether this heading can sort now: it has an engine key, or it sorts here and every row is here. */
+  const sortable = useCallback(
+    (column: TrackColumnDef<Row>): boolean =>
+      column.sortKey !== undefined || (column.accessor !== undefined && loaded !== null),
+    [loaded],
+  );
   const clientColumn = sort ? columns.find((column) => !column.sortKey && column.accessor && column.id === sort.key) : undefined;
   const sortDirection = sort?.direction === "desc" ? -1 : 1;
   const order = useMemo(() => {
     const accessor = clientColumn?.accessor;
-    if (!accessor) return null;
-    const loaded: Row[] = [];
-    for (let at = 0; at < given.total; at += 1) {
-      const row = given.getRow(at);
-      if (!row) return null;
-      loaded.push(row);
-    }
+    if (!accessor || !loaded) return null;
     const values = loaded.map((row) => accessor(row));
     return loaded
       .map((_, at) => at)
       .sort((a, b) => compareValues(values[a], values[b], sortDirection) || a - b);
-  }, [clientColumn, given, sortDirection]);
+  }, [clientColumn, loaded, sortDirection]);
   const source = useMemo<TrackTableSource<Row>>(
     () => (order ? { ...given, getRow: (at: number) => given.getRow(order[at] ?? at) } : given),
     [given, order],
@@ -622,13 +629,13 @@ export function TrackTable<Row>({
   const handleSort = useCallback(
     (column: TrackColumnDef<Row>) => {
       const key = sortKeyOf(column);
-      if (!key) return;
+      if (!key || !sortable(column)) return;
       const active = sort?.key === key;
       const direction: SortDirection =
         active && sort?.direction === "asc" ? "desc" : "asc";
       onSortChange?.({ key, direction });
     },
-    [onSortChange, sort],
+    [onSortChange, sort, sortable],
   );
 
   const startResize = useCallback(
@@ -941,7 +948,7 @@ export function TrackTable<Row>({
         {/* Row 1, which is what makes the body rows row 2 onward. */}
         <div className="track-table__header" role="row" aria-rowindex={1} onFocus={keepScrollOnHeaderFocus}>
           {columns.map((column, index) => {
-            const active = Boolean(sortKeyOf(column) && sort?.key === sortKeyOf(column));
+            const active = sortable(column) && sort?.key === sortKeyOf(column);
             return (
               <div
                 key={column.id}
