@@ -18,7 +18,7 @@ describe("the strips above the Set (C251, C49, C259)", () => {
   it("gives the lanes and the transition strip the same top padding, so the lanes' BPM is not clipped", () => {
     expect(rule(".prepare-lanes")).toMatch(/padding-top:\s*var\(--prepare-strip-pad\)/);
     expect(rule(".prepare-transition")).toMatch(/padding-top:\s*var\(--prepare-strip-pad\)/);
-    expect(rule(".prepare-set")).toMatch(/--prepare-strip-pad:\s*var\(--space-xs\)/);
+    expect(rule(".prepare-set")).toMatch(/--prepare-strip-pad:\s*calc\(2px \* var\(--scale\)\)/);
   });
 
   it("never cuts the top of the BPM name when its two lines are taller than the lane (C251)", () => {

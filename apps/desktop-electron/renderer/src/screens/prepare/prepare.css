@@ -231,7 +231,7 @@ body.prepare-resizing {
    keep the height left. */
 .prepare-set {
   /* The lanes and the transition strip start their content the same distance down (C251). */
-  --prepare-strip-pad: var(--space-xs);
+  --prepare-strip-pad: calc(2px * var(--scale));
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -372,7 +372,7 @@ body.prepare-resizing {
   min-width: 0;
   padding: var(--space-sm);
   padding-top: var(--prepare-strip-pad);
-  padding-bottom: calc(2px * var(--scale));
+  padding-bottom: 0;
   /* The right waveform stops 8 (at 1x) short of the pane's edge (C49). */
   padding-right: var(--space-md);
   border-bottom: var(--control-border-width) solid var(--border-muted);
