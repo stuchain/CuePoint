@@ -774,7 +774,7 @@ describe("choosing keys", () => {
       fireEvent.click(await within(await findList()).findByRole("button", { name: /^8A,/ }, LOADED));
       await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
       const bar = trackToolbar();
-      const more = await within(bar).findByRole("button", { name: "More track list actions" });
+      const more = await within(bar).findByRole("button", { name: "More actions for these tracks" });
       expect(within(bar).queryByRole("button", { name: "Open in Library" })).toBeNull();
       expect(within(bar).queryByRole("button", { name: "Select all" })).toBeNull();
       fireEvent.click(more);

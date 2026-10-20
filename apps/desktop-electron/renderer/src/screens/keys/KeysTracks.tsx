@@ -594,7 +594,7 @@ export function KeysTracks({
         )}
         <div className="keys-tracks__end">
           {folded ? (
-            <Button variant="quiet" iconOnly icon="more" aria-label="More track list actions" {...moreMenu.buttonProps} />
+            <Button variant="quiet" iconOnly icon="more" aria-label="More actions for these tracks" {...moreMenu.buttonProps} />
           ) : (
             <span className="keys-tracks__fold">
               <Hint text={openInLibrary.disabledReason ?? undefined}>
