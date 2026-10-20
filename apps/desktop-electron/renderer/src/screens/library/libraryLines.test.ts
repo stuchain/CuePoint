@@ -93,13 +93,23 @@ describe("the Library's shared lines", () => {
   });
 });
 
-describe("the pane's headings in a narrow pane (item 2, at 2x)", () => {
-  it("keep + New whole and let the title and from Rekordbox end in an ellipsis", () => {
-    expect(rule(pane, ".cp-library-pane .cp-playlist-pane__head > .cp-playlist-pane__fold")).toMatch(/min-width:\s*0/);
+describe("the pane's headings in a narrow pane (zoom spot 1C)", () => {
+  const head = ".cp-library-pane .cp-playlist-pane > .cp-playlist-pane__head";
+
+  it("wrap a heading that does not fit: + New and from Rekordbox go under the title, at the right", () => {
+    expect(rule(pane, head)).toMatch(/flex-wrap:\s*wrap/);
+    expect(rule(pane, head)).not.toMatch(/nowrap/);
+    for (const item of [".cp-library-pane .cp-collections__create", ".cp-library-pane .cp-playlist-pane__head > .cp-hint"]) {
+      expect(rule(pane, item)).toMatch(/margin-inline-start:\s*auto/);
+    }
+  });
+
+  it("never ellipsize the title, and keep + New whole", () => {
     const title = rule(pane, ".cp-library-pane .cp-playlist-pane__title");
-    expect(title).toMatch(/text-overflow:\s*ellipsis/);
-    expect(title).toMatch(/overflow:\s*hidden/);
-    expect(rule(pane, ".cp-library-pane .cp-playlist-pane__head > .cp-hint")).toMatch(/min-width:\s*0/);
+    expect(title).not.toMatch(/text-overflow/);
+    expect(title).not.toMatch(/overflow:\s*hidden/);
+    expect(title).toMatch(/white-space:\s*nowrap/);
+    expect(rule(pane, ".cp-library-pane .cp-playlist-pane__head > .cp-playlist-pane__fold")).toMatch(/flex:\s*none/);
     expect(rule(pane, ".cp-library-pane .cp-collections__create")).toMatch(/flex:\s*none/);
   });
 });

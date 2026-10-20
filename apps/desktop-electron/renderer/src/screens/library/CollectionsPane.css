@@ -162,18 +162,24 @@
   min-height: var(--library-collections-min, 0);
 }
 
+/* A heading that does not fit wraps (zoom spot 1C): "+ New" and "from Rekordbox" go under the
+   title, at the right, and the title is never ellipsised. Only a heading that does not fit grows a
+   line. The Collections section's floor (--library-collections-min) is its whole height, heading
+   included, so its divider still meets the table header's rule; useSharedLines measures the
+   Playlists heading as it is drawn, wrapped or not. */
 .cp-library-pane .cp-playlist-pane > .cp-playlist-pane__head {
   box-sizing: border-box;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
+  row-gap: var(--space-xs);
 }
 
-/* "from Rekordbox" gives way (to "...") before the title does, in a narrow pane; its hint wrapper
-   shrinks with it (item 2: at 2x it was cut at the pane's edge as "fro"). */
+/* "from Rekordbox" ends in "..." only when even a line of its own is too narrow for it. */
 .cp-library-pane .cp-playlist-pane__head > .cp-hint {
   display: block;
   flex: 0 1 auto;
   min-width: 0;
+  margin-inline-start: auto;
   overflow: hidden;
 }
 
@@ -184,20 +190,18 @@
   text-overflow: ellipsis;
 }
 
-/* + New is never cut (item 2): the title gives way to "..." first. */
+/* + New is never cut: it wraps under the title instead. */
 .cp-library-pane .cp-collections__create {
   flex: none;
+  margin-inline-start: auto;
 }
 
 .cp-library-pane .cp-playlist-pane__head > .cp-playlist-pane__fold {
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: none;
+  max-width: 100%;
 }
 
 .cp-library-pane .cp-playlist-pane__title {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
