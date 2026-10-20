@@ -7,12 +7,18 @@
  * rows of cards (charts, artists, labels), a card opening its own tracks, and
  * "Everything" the whole dig as one table. A dig made before cards existed has
  * no cards, and shows that one table.
+ *
+ * Opening a dig never waits on the engine to show it: the header is drawn at
+ * once from the list's row (its dates, scope and counts), and a still grid of
+ * card shapes holds the cards' place; the engine's header (which adds the
+ * names the scope resolved to) and the cards replace them as they arrive. Both
+ * are asked for together on the first render.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import type { DiscoverGroupCard, DiscoverRunHeader } from "../../api/cuepointBridge.types";
+import type { DiscoverGroupCard, DiscoverRun, DiscoverRunHeader } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
-import { Loading } from "../../components/Loading";
+import { Loading, loadingWords } from "../../components/Loading";
 import { Notice } from "../../components/Notice";
 import { countNoun } from "../../format/counts";
 import { BACK } from "../../format/words";
@@ -35,6 +41,11 @@ import { userMessage } from "../../api/userMessage";
 
 interface RunDetailProps {
   runId: number;
+  /**
+   * The dig as the list's row has it (its dates, scope, state and counts), or null when the list
+   * has no row for it. The header is drawn from it at once, before the engine's own arrives.
+   */
+  listed?: DiscoverRun | null;
   tools: DiscoverTools;
   /** Changes when the run may have changed: it is running, or just ended. */
   version: number;
@@ -67,7 +78,35 @@ function ScopeNames({ names, noun }: { names: DiscoverRunHeader["artists"]; noun
   );
 }
 
-export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
+/** Card shapes in the placeholder grid: about a row and a half at the narrowest. */
+const PLACEHOLDER_CARDS = 8;
+
+/**
+ * Where the cards will be, while they are read: the shape of a row of cards, still and
+ * unclickable, so opening a dig shows its place at once and nothing jumps when the cards come.
+ */
+function CardsPlaceholder() {
+  return (
+    <div className="discover-cards discover-cards--waiting" role="status" aria-busy="true" aria-label={loadingWords("the dig")}>
+      <div className="discover-cards__row" aria-hidden="true">
+        <div className="discover-cards__row-head">
+          <span className="discover-cards__shape discover-cards__shape--title" />
+        </div>
+        <ul className="discover-cards__grid">
+          {Array.from({ length: PLACEHOLDER_CARDS }, (_, index) => (
+            <li key={index} className="discover-card discover-card--placeholder">
+              <span className="discover-card__art" />
+              <span className="discover-cards__shape discover-cards__shape--line" />
+              <span className="discover-cards__shape discover-cards__shape--short" />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+export function RunDetail({ runId, listed = null, tools, version, onGone }: RunDetailProps) {
   const [header, setHeader] = useState<DiscoverRunHeader | null>(null);
   const [headerError, setHeaderError] = useState<string | null>(null);
   const [view, setView] = useState<View>({ kind: "auto" });
@@ -137,7 +176,9 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
 
   const back = useCallback(() => setView({ kind: "auto" }), []);
 
-  const run = header?.run ?? null;
+  // The engine's header once it has answered; until then the list's row, which has the same facts
+  // but the names the scope resolved to.
+  const run = header?.run ?? (listed?.id === runId ? listed : null);
   const running = run?.running ?? false;
   const grouped = read.groups?.grouped === true;
   const cardsShown = view.kind === "auto";
@@ -163,7 +204,7 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
 
   let body;
   if (read.loading) {
-    body = <Loading what="the dig" className="discover-run__reading" />;
+    body = <CardsPlaceholder />;
   } else if (view.kind === "card") {
     body = (
       <RunTracksView
@@ -211,7 +252,7 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
       <header className="discover-run__header">
         {headerError ? (
           <Notice>{headerError}</Notice>
-        ) : !run || !header ? (
+        ) : !run ? (
           <Loading what="the dig" />
         ) : (
           <>
@@ -227,8 +268,9 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
                 <li>Artists: {scopeLine(run.params.artists, "artist", "artists")}</li>
                 <li>Labels: {scopeLine(run.params.labels, "label", "labels")}</li>
               </ul>
-              <ScopeNames names={header.artists} noun="artist" />
-              <ScopeNames names={header.labels} noun="label" />
+              {/* Only the engine's header has the names; they join the header when it arrives. */}
+              {header && <ScopeNames names={header.artists} noun="artist" />}
+              {header && <ScopeNames names={header.labels} noun="label" />}
             </details>
           </>
         )}

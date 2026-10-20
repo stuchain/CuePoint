@@ -232,8 +232,42 @@
   gap: var(--space-md);
 }
 
-.discover-run__reading {
-  padding: var(--space-md) 0;
+/* While a dig's cards are read: a row of card shapes, still (no shimmer: nothing here moves), on
+   the cards' own grid so nothing jumps when they arrive. */
+.discover-card--placeholder {
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-bottom: var(--space-md);
+  pointer-events: none;
+}
+
+.discover-card--placeholder:hover {
+  border-color: var(--border-muted);
+}
+
+.discover-card--placeholder .discover-card__art {
+  background: var(--bg-panel-alt);
+}
+
+.discover-cards__shape {
+  display: block;
+  height: calc(10px * var(--scale));
+  margin: 0 var(--space-md);
+  background: var(--bg-panel-alt);
+}
+
+.discover-cards__shape--title {
+  width: calc(160px * var(--scale));
+  height: calc(14px * var(--scale));
+  margin: 0;
+}
+
+.discover-cards__shape--line {
+  width: 70%;
+}
+
+.discover-cards__shape--short {
+  width: 40%;
 }
 
 .discover-run__tracks {

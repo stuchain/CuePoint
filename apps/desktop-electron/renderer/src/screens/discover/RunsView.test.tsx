@@ -14,7 +14,14 @@ import fixture from "./discoverPage.fixture.json";
 
 const seenRuns: Array<readonly DiscoverRun[]> = [];
 
-vi.mock("./RunDetail", () => ({ RunDetail: () => null }));
+const detailProps = vi.hoisted(() => [] as Array<{ runId: number; listed?: { id: number } | null }>);
+
+vi.mock("./RunDetail", () => ({
+  RunDetail: (props: { runId: number; listed?: { id: number } | null }) => {
+    detailProps.push(props);
+    return null;
+  },
+}));
 vi.mock("./RunList", async (importOriginal) => {
   const original = await importOriginal<typeof import("./RunList")>();
   return {
@@ -41,6 +48,7 @@ afterEach(() => {
   resetEngineReadsForTests();
   delete (window as unknown as { cuepoint?: unknown }).cuepoint;
   seenRuns.length = 0;
+  detailProps.length = 0;
 });
 
 function install(listDiscoveryRuns: ReturnType<typeof vi.fn>) {
@@ -210,5 +218,18 @@ describe("the Results list", () => {
     const lastTwo = seenRuns.slice(-2);
     expect(lastTwo).toHaveLength(2);
     expect(lastTwo[1]).toBe(lastTwo[0]);
+  });
+
+  it("hands the dig it opens the list's row, so its header shows before the engine answers", async () => {
+    install(vi.fn(async () => ({ value: RUNS, refusal: null })));
+    render(view());
+    const nav = await screen.findByRole("navigation", { name: "Past digs" });
+    const items = within(nav)
+      .getAllByRole("button")
+      .filter((button) => button.className.includes("discover-runs__item"));
+    fireEvent.click(items[1]!);
+    const opened = detailProps[detailProps.length - 1]!;
+    expect(opened.runId).toBe(RUNS.runs[1]!.id);
+    expect(opened.listed).toBe(RUNS.runs[1]);
   });
 });

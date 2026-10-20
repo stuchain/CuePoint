@@ -295,6 +295,8 @@ export function RunsView({
             <RunDetail
               key={selected}
               runId={selected}
+              // The row's facts draw the header at once; the engine's header follows.
+              listed={runs.find((run) => run.id === selected) ?? null}
               tools={tools}
               version={detailVersion}
               onGone={onGone}
