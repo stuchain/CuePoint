@@ -69,6 +69,11 @@ describe("EditValuesDialog", () => {
     const button = screen.getByRole("button", { name: "Change 3 tracks" });
     expect(button).toBeDisabled();
     expect(button).toHaveAccessibleDescription("Set or clear at least one value.");
+    // In the body, as a Notice, not floating right-aligned over the footer (new C, as Sync and Export).
+    const note = screen.getByText("Set or clear at least one value.");
+    expect(note.closest(".cp-notice")).not.toBeNull();
+    expect(note.closest(".cp-modal__body")).not.toBeNull();
+    expect(document.querySelector(".cp-modal__reason")?.textContent ?? "").toBe("");
 
     fireEvent.change(screen.getByRole("textbox", { name: "BPM value" }), {
       target: { value: "126" },

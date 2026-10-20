@@ -29,6 +29,12 @@ type ModalProps = FooterExtras & {
     disabled?: boolean;
     /** One line saying why it is greyed; shown only while `disabled` is true. */
     disabledReason?: string;
+    /**
+     * The id of a Notice in the body that says why it is greyed, when the reason is about the form
+     * rather than the button (new C, as C131): the button is described by it, and no reason line
+     * floats over the footer.
+     */
+    describedBy?: string;
     /** `"write"` is a button that writes to the user's files (Export to Rekordbox): the green fill. */
     variant?: "write";
   };
@@ -304,7 +310,7 @@ export function Modal({
                 onClick={primaryAction.onClick}
                 loading={primaryAction.loading}
                 disabled={primaryAction.disabled}
-                aria-describedby={reason ? reasonId : undefined}
+                aria-describedby={reason ? reasonId : primaryAction.describedBy}
               >
                 {primaryAction.label}
               </Button>
