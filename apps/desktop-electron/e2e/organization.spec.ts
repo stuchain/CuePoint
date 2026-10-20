@@ -50,6 +50,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
 import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
+import { openAddFilter } from "./addFilter";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -377,7 +378,7 @@ test.describe("Phase 6 end to end (ORG-13)", () => {
 
       // ---------------------------------------------------------------- 7
       await window.getByRole("treeitem", { name: /All tracks/ }).click();
-      await window.getByRole("button", { name: "Add filter" }).click();
+      await openAddFilter(window);
       await window.getByLabel("Field").selectOption("genre");
       await window.locator("#rule").selectOption("is");
       // The suggestions are CuePoint's own list (a native one crashed macOS here): type a

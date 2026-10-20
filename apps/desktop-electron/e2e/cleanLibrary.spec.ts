@@ -19,6 +19,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
+import { openAddFilter } from "./addFilter";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -324,7 +325,7 @@ test.describe("Clean in the Library (CLEAN-13)", () => {
       await expect(row(window, "Tone One")).toContainText("Not looked up yet");
 
       // A fixed-value field is a choice, and its chip reads the name.
-      await window.getByRole("button", { name: "Add filter" }).click();
+      await openAddFilter(window);
       await window.getByRole("combobox", { name: "Field" }).selectOption({ label: "File status" });
       await window.getByRole("combobox", { name: "File status" }).selectOption({ label: "Missing" });
       await window.getByRole("button", { name: "Add", exact: true }).click();
