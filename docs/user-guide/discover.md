@@ -211,7 +211,7 @@ the right-click menu:
 | --- | --- | --- |
 | **Add to wantlist** | Results, artist and label pages | Adds the selected tracks to your wantlist, noting the dig they came from. A track already there is left as it is |
 | **Add to a Beatport playlist…** | Everywhere | Opens a dialog that makes a new playlist on your Beatport account with the selected tracks, or, with nothing selected, every track the table shows, in its order. With nothing selected the dialog says which it will be ("All 48 shown") |
-| **Open on Beatport** | Everywhere | Opens each selected track's Beatport page in your browser, up to ten at once |
+| **Open on Beatport** | Everywhere | Opens each selected track's Beatport page in your browser, up to ten at once. With one Beatport track selected it is the **Open ▾** menu, which also holds the track's artist and label pages |
 | **Edit note…** | Wantlist, one track | A note of your own, up to 1,000 characters. Leave it empty to clear it |
 | **Mark bought** / **Mark not bought** | Wantlist | Marks the selected tracks bought, or takes the mark away when all of them are marked |
 | **Remove from wantlist** | Wantlist | Takes the selected tracks off the wantlist |
