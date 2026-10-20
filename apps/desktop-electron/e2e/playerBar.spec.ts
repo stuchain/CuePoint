@@ -216,9 +216,14 @@ test("the waveform is centred and the key chip fits", async () => {
       await expect(win.locator(".cp-player-bar")).toContainText(trackTitle as string, { timeout: 10_000 });
 
       for (const scale of [1, 1.5, 2]) {
-        const r = await win.evaluate((s) => {
+        await win.evaluate((s) => {
           document.documentElement.dataset.scale = String(s);
           document.documentElement.style.setProperty("--scale", String(s));
+        }, scale);
+        // The bar folds its utility buttons into More once the new size is laid out (item 2), on
+        // its resize observer: give it a few frames before measuring.
+        await win.waitForTimeout(400);
+        const r = await win.evaluate(() => {
           const bar = document.querySelector(".cp-player-bar") as HTMLElement;
           const rect = (el: Element) => el.getBoundingClientRect();
           const seek = rect(bar.querySelector(".cp-player-bar__seek")!);
@@ -251,10 +256,11 @@ test("the waveform is centred and the key chip fits", async () => {
             wheelWhole,
             metaHasKey,
           };
-        }, scale);
+        });
         const at = `${label} at ${scale}x`;
         // The track takes up to 40% of the bar first (area 83), so a long title may push the seek to a
-        // second row from 2x; a short one never does until 3x.
+        // second row from 2x; a short one never does until 3x (from 2x the utility buttons fold into
+        // More first).
         if (scale !== 3 && !(scale === 2 && label === "long title")) expect(r.sameRow, `seek and controls share a row, ${at}`).toBe(true);
         if (r.sameRow) {
           expect(Math.abs(r.gapLeft - r.gapRight), `waveform centred, ${at} (left gap ${r.gapLeft}, right gap ${r.gapRight})`).toBeLessThanOrEqual(2);

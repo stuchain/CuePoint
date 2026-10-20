@@ -203,14 +203,22 @@ export function PlayerBar({
   const [folded, setFolded] = useState(false);
   const unfoldAt = useRef(0);
   const moreMenu = useMenuButton();
+  // Why it folded: pushed onto a second row (unfold once the bar is wider by the four buttons), or
+  // the timeline at its floor (unfold once the timeline has their room again, which also covers a
+  // smaller text size, where the floor itself shrinks).
+  const foldedBy = useRef<"wrap" | "floor">("floor");
+  const foldedRoom = useRef(0);
   const measureBar = useCallback(() => {
     const bar = barRef.current;
     const timeline = bar?.querySelector<HTMLElement>(".cp-player-bar__wave");
     // Nothing laid out (a hidden window, a test without layout): leave the bar as it is.
     if (!bar || !timeline || bar.clientWidth === 0) return;
     const width = bar.clientWidth;
+    // The floor as drawn (it follows --scale), or the same number from here.
+    const floor = parseFloat(getComputedStyle(timeline).minWidth) || TIMELINE_MIN_PX * scale;
     if (folded) {
-      if (width >= unfoldAt.current) setFolded(false);
+      const room = foldedBy.current === "wrap" ? width >= unfoldAt.current : timeline.clientWidth >= floor + foldedRoom.current;
+      if (room) setFolded(false);
       return;
     }
     // At its floor, or already pushed onto a second row with the controls: fold.
@@ -218,10 +226,19 @@ export function PlayerBar({
     const controls = bar.querySelector<HTMLElement>(".cp-player-bar__controls");
     const wrapped =
       !!transport && !!controls && transport.offsetHeight > 0 && controls.offsetTop >= transport.offsetTop + transport.offsetHeight;
-    if (!wrapped && timeline.clientWidth > TIMELINE_MIN_PX * scale + 1) return;
-    unfoldAt.current = width + Math.max(1, orderRef.current?.offsetWidth ?? 0);
+    if (!wrapped && timeline.clientWidth > floor + 1) return;
+    foldedBy.current = wrapped ? "wrap" : "floor";
+    foldedRoom.current = Math.max(1, orderRef.current?.offsetWidth ?? 0);
+    unfoldAt.current = width + foldedRoom.current;
     setFolded(true);
   }, [folded, scale]);
+  // A new text size measures afresh.
+  const measuredScale = useRef(scale);
+  useEffect(() => {
+    if (measuredScale.current === scale) return;
+    measuredScale.current = scale;
+    setFolded(false);
+  }, [scale]);
   useLayoutEffect(measureBar, [measureBar, item?.title]);
   useEffect(() => {
     const bar = barRef.current;
