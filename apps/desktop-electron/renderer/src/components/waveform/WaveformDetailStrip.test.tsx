@@ -725,7 +725,10 @@ describe("the stand-in", () => {
     expect(mark).not.toHaveBeenCalledWith(expect.stringContaining("standin"), expect.anything());
     finish();
     await waitFor(() => expect(strip().getAttribute("data-source")).toBe("detail"), { timeout: 3_000 });
-    expect(mark).toHaveBeenCalledWith("cp-waveform:standin:replaced", { detail: { ms: expect.any(Number) } });
+    // The mark is noted in an effect that React may run after the DOM shows the detail.
+    await waitFor(() =>
+      expect(mark).toHaveBeenCalledWith("cp-waveform:standin:replaced", { detail: { ms: expect.any(Number) } }),
+    );
   });
 
   it("notes nothing when the detail is ready before anything is drawn", async () => {
