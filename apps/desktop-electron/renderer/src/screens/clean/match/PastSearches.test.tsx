@@ -25,6 +25,8 @@ import type { CleanMatch } from "../useCleanMatch";
 import { MatchArea } from "./MatchArea";
 import { MATCH_TAB_STORAGE_KEY } from "./matchTab";
 import { quoted } from "../../../format/words";
+import matchCss from "./match.css?raw";
+import { declarations, parseRules, selectorList, stripComments } from "../../../test/cssRules";
 
 type Fn = ReturnType<typeof vi.fn>;
 type Props = ComponentProps<typeof MatchArea>;
@@ -114,6 +116,29 @@ afterEach(() => {
 });
 
 describe("the list", () => {
+  it("lets the middle column give way, so the date, the counts and the status show whole (new H)", async () => {
+    renderPast();
+    await screen.findByRole("table", { name: /Every match run/ }, LOADED);
+    const [head, first] = screen.getAllByRole("row");
+    const cells = [...first!.querySelectorAll("td")];
+    // When, Tracks, Results and Status fit their words; What was matched takes what is left.
+    expect(cells.map((cell) => cell.classList.contains("match-past__fit"))).toEqual([true, false, true, true, true, false]);
+    expect([...head!.querySelectorAll("th")].map((cell) => cell.classList.contains("match-past__fit"))).toEqual([
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+    ]);
+    const rules = parseRules(stripComments(matchCss));
+    const fit = rules.find((rule) => selectorList(rule.selector).includes(".cp-data-table td.match-past__fit"))!;
+    const props = new Map(declarations(fit.body));
+    expect(props.get("width")).toBe("1%");
+    expect(props.get("max-width")).toBe("none");
+    expect(props.get("text-overflow")).toBe("clip");
+  });
+
   it("is one row per run, with what was matched and what became of it", async () => {
     renderPast();
     await screen.findByRole("table", { name: /Every match run/ }, LOADED);

@@ -97,6 +97,15 @@
   font-family: var(--font-data);
 }
 
+/* When, Tracks, Results and Status are as wide as their words, whole; What was matched takes what
+   is left and is the one that ends in "…" (new H). */
+.cp-data-table td.match-past__fit,
+.cp-data-table th.match-past__fit {
+  width: 1%;
+  max-width: none;
+  text-overflow: clip;
+}
+
 /* The row opens its review, so it shows a pointer and takes the keyboard. */
 .match-past__row {
   cursor: pointer;

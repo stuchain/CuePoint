@@ -105,13 +105,14 @@ export function PastSearches({
             <caption className="match-visually-hidden">Every match run, newest first</caption>
             <thead>
               <tr>
-                <th scope="col">When</th>
+                {/* When, Tracks, Results and Status fit their words; What was matched gives way (new H). */}
+                <th scope="col" className="match-past__fit">When</th>
                 <th scope="col">What was matched</th>
-                <th scope="col" className="num">
+                <th scope="col" className="num match-past__fit">
                   Tracks
                 </th>
-                <th scope="col">Results</th>
-                <th scope="col">Status</th>
+                <th scope="col" className="match-past__fit">Results</th>
+                <th scope="col" className="match-past__fit">Status</th>
                 <th scope="col" className="match-past__end">
                   <span className="match-visually-hidden">Actions</span>
                 </th>
@@ -143,10 +144,10 @@ export function PastSearches({
                       onOpen(run);
                     }}
                   >
-                    <td className="match-past__when">{formatDayTime(run.created_at, { now }) || run.created_at || ""}</td>
+                    <td className="match-past__when match-past__fit">{formatDayTime(run.created_at, { now }) || run.created_at || ""}</td>
                     <td className="match-past__what">{what}</td>
-                    <td className="num">{formatCount(run.planned)}</td>
-                    <td>
+                    <td className="num match-past__fit">{formatCount(run.planned)}</td>
+                    <td className="match-past__fit">
                       {resultParts(run).map((part, index) => (
                         <span key={part.text} className={`match-result match-result--${part.tone}`}>
                           {index > 0 && <span className="match-result__dot"> · </span>}
@@ -154,7 +155,7 @@ export function PastSearches({
                         </span>
                       ))}
                     </td>
-                    <td>
+                    <td className="match-past__fit">
                       <Badge variant={STATUS_VARIANTS[status.tone]}>{status.label}</Badge>
                       {stopLine(run) && <span className="match-past__why"> · {stopLine(run)}</span>}
                     </td>
