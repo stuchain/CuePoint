@@ -10,7 +10,7 @@ import { EMPTY_AUDIO_STATE } from "./playerFormat";
 import { resetQueueWidthForTests } from "./queueWidth";
 import queueCss from "./QueuePanel.css?raw";
 import { formatCount } from "../../format/counts";
-import { declarations, parseRules, stripComments } from "../../test/cssRules";
+import { declarations, parseRules, selectorList, stripComments } from "../../test/cssRules";
 
 /**
  * The queue panel (PLAYER-08, DEC-013).
@@ -580,6 +580,27 @@ describe("a track that could not be played (BAR-9)", () => {
     expect(failed.getByText("Could not play. The file is missing or could not be opened.")).toBeVisible();
     expect(within(rows()[0]).queryByText(/Could not play/)).toBeNull();
     expect(within(rows()[2]).queryByText(/Could not play/)).toBeNull();
+  });
+
+  it("wraps the reason onto the row's second line instead of cutting it to 'Could n…' (new J)", () => {
+    const rules = parseRules(stripComments(queueCss));
+    const get = (selector: string) => {
+      const rule = rules.filter((r) => selectorList(r.selector).includes(selector)).pop();
+      return new Map(rule ? declarations(rule.body) : []);
+    };
+    // The title and the reason run as one wrapped text over the row's two lines.
+    const text = get(".cp-queue__row--failed .cp-queue__text");
+    expect(text.get("display")).toBe("-webkit-box");
+    expect(text.get("-webkit-line-clamp")).toBe("2");
+    expect(text.get("white-space")).toBe("normal");
+    for (const part of [".cp-queue__row--failed .cp-queue__row-title", ".cp-queue__row--failed .cp-queue__failed"]) {
+      expect(get(part).get("display")).toBe("inline");
+      expect(get(part).get("white-space")).toBe("normal");
+    }
+    // Two lines fit the one row height (the list's rows are all one height).
+    expect(text.get("line-height")).toBe("calc((var(--row-height) - var(--hairline)) / 2)");
+    // A track that did not play has no length worth the room; the reason takes it.
+    expect(get(".cp-queue__row--failed .cp-queue__duration").get("display")).toBe("none");
   });
 
   it("still says it failed when no reason came", async () => {

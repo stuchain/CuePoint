@@ -225,6 +225,35 @@ body.cp-queue-resizing {
   color: var(--danger-text);
 }
 
+/*
+ * A track that could not be played (new J): its reason wraps onto the row's second line instead of
+ * being cut to "Could n…". The title and the reason run as one text over two lines, each half the
+ * row height, so the row keeps the list's one height. A length is no use for a track that did not
+ * play: the reason takes its room.
+ */
+.cp-queue__row--failed .cp-queue__text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+  line-height: calc((var(--row-height) - var(--hairline)) / 2);
+}
+
+.cp-queue__row--failed .cp-queue__row-title,
+.cp-queue__row--failed .cp-queue__failed {
+  display: inline;
+  white-space: normal;
+}
+
+.cp-queue__row--failed .cp-queue__failed::before {
+  content: " ";
+}
+
+.cp-queue__row--failed .cp-queue__duration {
+  display: none;
+}
+
 /* Taking a track out of the queue is the shared RemoveButton; only its place is the row's. */
 .cp-queue__remove {
   flex: 0 0 auto;
