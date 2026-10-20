@@ -13,8 +13,8 @@ pytest-timeout==2.4.0
 coverage==7.13.1
 
 # Builds the pixel flat/sharp signs (scripts/build_key_signs_font.py)
-fonttools==4.55.3
-brotli==1.1.0
+fonttools==4.60.2
+brotli==1.2.0
 
 # Type stubs for mypy
 types-requests
