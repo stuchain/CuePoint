@@ -15,7 +15,7 @@
  *   out (and said so).
  * - "Everything" opens the whole dig as the single list it always was.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   DiscoverChartsMode,
@@ -66,7 +66,15 @@ interface RunCardsProps {
   onTicked: (next: ReadonlySet<string>) => void;
   expanded: ReadonlySet<string>;
   onExpanded: (next: ReadonlySet<string>) => void;
+  /**
+   * Kept but not shown: a card's tracks or Everything are open over it. The cards stay mounted,
+   * so coming back is instant, with their pictures, ticks and open rows as left.
+   */
+  hidden?: boolean;
 }
+
+/** Ticked-card counts kept per dig, version and ticks, so the same question is not asked twice. */
+const SUMMARIES_KEPT = 50;
 
 function CardTile({
   runId,
@@ -164,6 +172,7 @@ export function RunCards({
   onTicked,
   expanded,
   onExpanded,
+  hidden = false,
 }: RunCardsProps) {
   const mode = groups.charts_mode;
   const [summary, setSummary] = useState<DiscoverGroupSummary | null>(null);
@@ -187,16 +196,28 @@ export function RunCards({
   const refs = useMemo(() => JSON.parse(refsText) as DiscoverGroupRef[], [refsText]);
 
   // How many distinct tracks the ticked cards hold, and how many are owned: the engine's count.
+  // An answer is kept for its dig, version and ticks: the effect runs again when the page is
+  // shown again (Activity, C19e) or the same ticks come back, and nothing has changed then.
+  const summaries = useRef(new Map<string, DiscoverGroupSummary>());
   useEffect(() => {
     const bridge = window.cuepoint?.getDiscoveryGroupSummary;
     if (refs.length === 0 || !bridge) {
       setSummary(null);
       return;
     }
+    const asked = `${runId}|${version}|${JSON.stringify(refs)}`;
+    const known = summaries.current.get(asked);
+    if (known) {
+      setSummary(known);
+      return;
+    }
     let current = true;
     void bridge({ run_id: runId, groups: refs })
       .then((answer) => {
-        if (current && !answer.refusal) setSummary(answer.value);
+        if (answer.refusal) return;
+        if (summaries.current.size >= SUMMARIES_KEPT) summaries.current.clear();
+        summaries.current.set(asked, answer.value);
+        if (current) setSummary(answer.value);
       })
       .catch((cause: unknown) => reportUnexpected(cause));
     return () => {
@@ -256,7 +277,8 @@ export function RunCards({
   const pushable = beatportUsable(tools.beatportState);
 
   return (
-    <div className="discover-cards">
+    // Hidden with an inline display: none, as a kept page is, so `queryShown` passes over it.
+    <div className="discover-cards" hidden={hidden} style={hidden ? { display: "none" } : undefined}>
       <div className="discover-cards__top">
         <Button variant="secondary" onClick={onEverything}>
           {`Everything · ${countNoun(groups.tracks, "track")}`}

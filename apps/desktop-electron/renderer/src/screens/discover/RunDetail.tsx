@@ -8,7 +8,7 @@
  * "Everything" the whole dig as one table. A dig made before cards existed has
  * no cards, and shows that one table.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { DiscoverGroupCard, DiscoverRunHeader } from "../../api/cuepointBridge.types";
 import { Button } from "../../components/Button";
@@ -75,6 +75,9 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
   const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set());
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   const read = useRunGroups(runId, version, onGone);
+  const sectionRef = useRef<HTMLElement>(null);
+  // Where the page was scrolled to on the cards when a card or Everything opened.
+  const cardsTop = useRef<number | null>(null);
 
   // The header, again whenever the run may have moved on.
   useEffect(() => {
@@ -109,15 +112,54 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
     setHeader(null);
     setHeaderError(null);
     setView({ kind: "auto" });
+    cardsTop.current = null;
     setTicked(new Set());
     setExpanded(new Set());
   }, [runId]);
+
+  // The page's one scroll is `.app-main`'s (KeptPages): hiding the cards does not keep their place
+  // in it, so the place is kept here when a card (or Everything) opens and put back on Back. A
+  // layout effect, so no frame paints at the top. What opens starts at the top.
+  const open = useCallback((next: View) => {
+    cardsTop.current = sectionRef.current?.closest<HTMLElement>(".app-main")?.scrollTop ?? null;
+    setView(next);
+  }, []);
+  useLayoutEffect(() => {
+    const main = sectionRef.current?.closest<HTMLElement>(".app-main");
+    if (!main) return;
+    if (view.kind === "auto") {
+      if (cardsTop.current !== null) main.scrollTop = cardsTop.current;
+      cardsTop.current = null;
+    } else if (cardsTop.current !== null) {
+      main.scrollTop = 0;
+    }
+  }, [view]);
 
   const back = useCallback(() => setView({ kind: "auto" }), []);
 
   const run = header?.run ?? null;
   const running = run?.running ?? false;
   const grouped = read.groups?.grouped === true;
+  const cardsShown = view.kind === "auto";
+
+  // The cards stay mounted, hidden, while a card's tracks or Everything are open (C19e's rule for
+  // pages): Back is then instant, with nothing asked again and the cards as they were left.
+  const cards =
+    !read.loading && grouped && read.groups ? (
+      <RunCards
+        runId={runId}
+        groups={read.groups}
+        tools={tools}
+        version={version}
+        onOpen={(card) => open({ kind: "card", card })}
+        onEverything={() => open({ kind: "everything" })}
+        ticked={ticked}
+        onTicked={setTicked}
+        expanded={expanded}
+        onExpanded={setExpanded}
+        hidden={!cardsShown}
+      />
+    ) : null;
 
   let body;
   if (read.loading) {
@@ -143,21 +185,8 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
         running={running}
       />
     );
-  } else if (grouped && read.groups && view.kind !== "everything") {
-    body = (
-      <RunCards
-        runId={runId}
-        groups={read.groups}
-        tools={tools}
-        version={version}
-        onOpen={(card) => setView({ kind: "card", card })}
-        onEverything={() => setView({ kind: "everything" })}
-        ticked={ticked}
-        onTicked={setTicked}
-        expanded={expanded}
-        onExpanded={setExpanded}
-      />
-    );
+  } else if (cards && cardsShown) {
+    body = null;
   } else {
     body = (
       <RunTracksView
@@ -178,7 +207,7 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
   }
 
   return (
-    <section className="discover-run" aria-label="Dig">
+    <section ref={sectionRef} className="discover-run" aria-label="Dig">
       <header className="discover-run__header">
         {headerError ? (
           <Notice>{headerError}</Notice>
@@ -209,6 +238,7 @@ export function RunDetail({ runId, tools, version, onGone }: RunDetailProps) {
         <Notice>{read.error}</Notice>
       )}
 
+      {cards}
       {body}
     </section>
   );

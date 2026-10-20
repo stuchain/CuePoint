@@ -241,8 +241,85 @@ describe("a dig's results as rows of cards", () => {
     await waitFor(() => expect(artist.querySelector("img")).toHaveAttribute("src", "blob:thumb"));
     // Only the card that has a picture asks for one.
     expect(art).toHaveBeenCalledTimes(1);
+    // The picture is kept for the next time the dig is shown, not let go with the card: the
+    // cover cache releases it when it is evicted (coverLoader.test.ts).
     unmount();
-    expect(release).toHaveBeenCalledWith("blob:thumb");
+    expect(release).not.toHaveBeenCalled();
+    renderRun();
+    const again = await card("Artist Mara Veil, 1 chart · 1 new");
+    expect(again.querySelector("img")).toHaveAttribute("src", "blob:thumb");
+    expect(art).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("coming back from a card", () => {
+  const withArt = () => ({
+    ...ARTISTS,
+    rows: ARTISTS.rows.map((row) => ({ ...row, cards: row.cards.map((c) => ({ ...c, has_art: true })) })),
+  });
+
+  it("shows the same cards, not new ones: nothing is asked again", async () => {
+    const art = vi.fn(async (params: { key: string }) => `blob:${params.key}`);
+    install({ getDiscoveryRunGroups: vi.fn(async () => value(withArt())), getDiscoveryGroupArt: art });
+    renderRun();
+    const label = await card("Label NIGHTFALL-AUDIO, 3 new");
+    await waitFor(() => expect(label.querySelector("img")).not.toBeNull());
+    fireEvent.click(screen.getByRole("checkbox", { name: "Tick Mara Veil" }));
+    await waitFor(() => expect(bridge.getDiscoveryGroupSummary).toHaveBeenCalledTimes(1));
+    const artCalls = art.mock.calls.length;
+    const image = label.querySelector("img");
+
+    fireEvent.click(await card("Artist Mara Veil, 1 chart · 1 new"));
+    expect(await screen.findByRole("table", { name: "Mara Veil" })).toBeInTheDocument();
+    // The cards are kept, hidden, while the card's tracks show.
+    expect(screen.queryByRole("region", { name: "Your labels" })).not.toBeInTheDocument();
+    expect(label.isConnected).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Back to all results" }));
+
+    // The very same elements: nothing was remounted.
+    expect(await card("Label NIGHTFALL-AUDIO, 3 new")).toBe(label);
+    expect(label.querySelector("img")).toBe(image);
+    expect(screen.getByRole("checkbox", { name: "Tick Mara Veil" })).toBeChecked();
+    expect(art).toHaveBeenCalledTimes(artCalls);
+    expect(bridge.getDiscoveryGroupSummary).toHaveBeenCalledTimes(1);
+    expect(bridge.getDiscoveryRunGroups).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns to the place in the page it was left, and a card's tracks start at the top", async () => {
+    install();
+    const view = render(
+      <ScaleProvider>
+        <MemoryRouter>
+          <div className="app-main" data-testid="scroller">
+            <RunDetail runId={1} tools={tools} version={0} onGone={() => {}} />
+          </div>
+        </MemoryRouter>
+      </ScaleProvider>,
+    );
+    const scroller = view.getByTestId("scroller");
+    let top = 0;
+    Object.defineProperty(scroller, "scrollTop", {
+      configurable: true,
+      get: () => top,
+      set: (v: number) => {
+        top = v;
+      },
+    });
+
+    const open = await card("Label NIGHTFALL-AUDIO, 3 new");
+    top = 640; // read down the cards
+    fireEvent.click(open);
+    expect(top).toBe(0);
+    await screen.findByRole("table", { name: "NIGHTFALL-AUDIO" });
+    top = 120; // a little way down the card's tracks
+    fireEvent.click(screen.getByRole("button", { name: "Back to all results" }));
+    expect(top).toBe(640);
+
+    // The same for Everything.
+    fireEvent.click(screen.getByRole("button", { name: "Everything · 5 tracks" }));
+    expect(top).toBe(0);
+    fireEvent.click(await screen.findByRole("button", { name: "Back to all results" }));
+    expect(top).toBe(640);
   });
 });
 
