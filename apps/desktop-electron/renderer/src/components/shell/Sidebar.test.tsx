@@ -19,7 +19,7 @@ import { NAV_DESTINATIONS } from "./navRegistry";
 import sidebarCss from "./Sidebar.css?raw";
 import { declarations, parseRules, selectorList, stripComments } from "../../test/cssRules";
 import { HINT_HOVER_DELAY_MS } from "../Hint";
-import { SIDEBAR_COLLAPSED_STORAGE_KEY, railTight } from "./sidebarState";
+import { SIDEBAR_COLLAPSED_STORAGE_KEY, neededHeightFor, railTight } from "./sidebarState";
 
 function renderSidebar(initialPath = "/") {
   return render(
@@ -643,12 +643,104 @@ describe("a window too short for the rail (item 2, at 2x in 1264x735)", () => {
     expect(nav()).not.toHaveAttribute("data-tight");
   });
 
-  it("takes the room from the gaps and the icons' padding, never the rows' height", () => {
+  it("takes the room from the gaps and the icons' padding; a row is never shorter than its icon", () => {
     const rules = parseRules(stripComments(sidebarCss));
     const tight = rules.filter((rule) => selectorList(rule.selector).some((sel) => sel.includes("[data-tight]")));
     expect(tight.length).toBeGreaterThan(0);
-    for (const rule of tight) expect(new Map(declarations(rule.body)).has("min-height")).toBe(false);
+    // The one height a tight rule sets is the icon's own: the link follows the smaller icon.
+    for (const rule of tight) {
+      const height = new Map(declarations(rule.body)).get("min-height");
+      if (height !== undefined) expect(height).toBe("var(--icon-size)");
+    }
     const link = tight.find((rule) => selectorList(rule.selector).includes(".cp-sidebar[data-tight].cp-sidebar--collapsed .cp-sidebar__link"));
     expect(link && new Map(declarations(link.body)).get("padding-block")).toBe("0");
+  });
+});
+
+describe("the tight rail at 3x (zoom spot 3A)", () => {
+  const rules = parseRules(stripComments(sidebarCss));
+  const get = (selector: string, prop: string) => {
+    const rule = rules.find((r) => selectorList(r.selector).includes(selector) && new Map(declarations(r.body)).has(prop));
+    return rule ? new Map(declarations(rule.body)).get(prop) : undefined;
+  };
+
+  it("draws its icons at the Medium size: the large icon, its scale capped at 1.5 (36px at 3x)", () => {
+    expect(get(".cp-sidebar[data-tight]", "--icon-size")).toBe(
+      "max(12px, round(down, calc(24px * min(var(--scale), 1.5)), 12px))",
+    );
+    expect(get(".cp-sidebar[data-tight] .cp-sidebar__icon .cp-pixel-icon", "width")).toBe("var(--icon-size)");
+    expect(get(".cp-sidebar[data-tight] .cp-sidebar__icon .cp-pixel-icon", "height")).toBe("var(--icon-size)");
+  });
+
+  it("lets the link's height follow the icon", () => {
+    expect(get(".cp-sidebar[data-tight] .cp-sidebar__link", "min-height")).toBe("var(--icon-size)");
+  });
+
+  it("drops the logo row: it was a second link to the Library", () => {
+    expect(get(".cp-sidebar[data-tight] .cp-sidebar__top", "display")).toBe("none");
+  });
+
+  it("re-measures the loose rail when it opens or closes while tight, rather than trust the other width's height", () => {
+    // Tight as a closed rail that needed 640px; opened, that number says nothing about the open rail.
+    const record = { mode: "closed", height: 640 };
+    expect(neededHeightFor(record, "closed")).toBe(640);
+    expect(neededHeightFor(record, "open")).toBe(0);
+    expect(neededHeightFor(null, "closed")).toBe(0);
+    // Unknown (0): the rail loosens, measures itself and tightens again in the same layout pass.
+    expect(railTight(true, { overflow: 0, height: 600, needed: neededHeightFor(record, "open") })).toBe(false);
+  });
+
+  it("does not flicker: stays tight from the moment it fits tight until the loose rail fits", () => {
+    // A window growing a pixel at a time from 600 to 640: tight throughout, loose at 640.
+    let tight = railTight(false, { overflow: 40, height: 600, needed: 0 });
+    const needed = 640;
+    const seen: boolean[] = [];
+    for (let height = 600; height <= 640; height += 1) {
+      tight = railTight(tight, { overflow: 0, height, needed });
+      seen.push(tight);
+    }
+    expect(seen.slice(0, -1).every(Boolean)).toBe(true);
+    expect(seen.at(-1)).toBe(false);
+  });
+
+  it("keeps the rail tight across a resize observer storm while its height does not change", async () => {
+    const scroll = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function (this: HTMLElement) {
+      // Loose, the list runs 100px past its box; tight, it fits.
+      const tightNow = this.closest(".cp-sidebar")?.hasAttribute("data-tight");
+      return this.classList.contains("cp-sidebar__list") ? (tightNow ? 300 : 400) : 0;
+    });
+    const client = vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("cp-sidebar__list") ? 300 : 600;
+    });
+    const callbacks: (() => void)[] = [];
+    const original = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      constructor(callback: () => void) {
+        callbacks.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    try {
+      const changes: boolean[] = [];
+      renderSidebar();
+      const observer = new MutationObserver(() => changes.push(nav().hasAttribute("data-tight")));
+      observer.observe(nav(), { attributes: true, attributeFilter: ["data-tight"] });
+      expect(nav()).toHaveAttribute("data-tight");
+      expect(callbacks.length).toBeGreaterThan(0);
+      for (let i = 0; i < 5; i += 1) {
+        await act(async () => {
+          for (const callback of callbacks) callback();
+        });
+      }
+      expect(nav()).toHaveAttribute("data-tight");
+      expect(changes).toEqual([]);
+      observer.disconnect();
+    } finally {
+      globalThis.ResizeObserver = original;
+      scroll.mockRestore();
+      client.mockRestore();
+    }
   });
 });

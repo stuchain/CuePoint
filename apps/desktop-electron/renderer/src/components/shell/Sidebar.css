@@ -332,3 +332,26 @@
 .cp-sidebar[data-tight].cp-sidebar--collapsed .cp-sidebar__brand {
   padding-block: 0;
 }
+
+/*
+ * Still too short (3x in 1264x735, zoom spot 3A): the icons stop at the Medium size, the large
+ * icon with its scale capped at 1.5 (36px at 2x and 3x, whole art cells). The closed rail's width
+ * and each link's height follow the icon, and the logo row goes: it was a second link to the
+ * Library, which keeps its own entry. Every page, Activity, Settings and the toggle stay in view.
+ */
+.cp-sidebar[data-tight] {
+  --icon-size: max(12px, round(down, calc(24px * min(var(--scale), 1.5)), 12px));
+}
+
+.cp-sidebar[data-tight] .cp-sidebar__icon .cp-pixel-icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.cp-sidebar[data-tight] .cp-sidebar__link {
+  min-height: var(--icon-size);
+}
+
+.cp-sidebar[data-tight] .cp-sidebar__top {
+  display: none;
+}

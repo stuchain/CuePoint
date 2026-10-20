@@ -13,7 +13,7 @@ import { Kbd } from "../Kbd";
 import { ActivityButton } from "./ActivityButton";
 import { isDialogOpen } from "./shellKeyboard";
 import { emitShellCommand, useShellCommand } from "./shellCommands";
-import { loadSidebarCollapsed, saveSidebarCollapsed, railTight } from "./sidebarState";
+import { loadSidebarCollapsed, neededHeightFor, saveSidebarCollapsed, railTight } from "./sidebarState";
 import { useLibraryEmpty } from "./useLibraryPresence";
 import "./Sidebar.css";
 
@@ -128,17 +128,20 @@ export function Sidebar() {
   const navRef = useRef<HTMLElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const [tight, setTight] = useState(false);
-  const neededHeight = useRef(0);
+  // What the loose rail needed when it tightened, for the mode (open or closed, text size) it was
+  // measured in: a height from another mode is not trusted (neededHeightFor).
+  const neededHeight = useRef<{ mode: string; height: number } | null>(null);
   const measureRail = useCallback(() => {
     const rail = navRef.current;
     const list = listRef.current;
     if (!rail || !list) return;
+    const mode = `${collapsed ? "closed" : "open"}@${getComputedStyle(rail).getPropertyValue("--scale").trim()}`;
     const overflow = Math.max(0, list.scrollHeight - list.clientHeight) + Math.max(0, rail.scrollHeight - rail.clientHeight);
     const height = rail.clientHeight;
-    const next = railTight(tight, { overflow, height, needed: neededHeight.current });
-    if (next && !tight) neededHeight.current = height + overflow;
+    const next = railTight(tight, { overflow, height, needed: neededHeightFor(neededHeight.current, mode) });
+    if (next && !tight) neededHeight.current = { mode, height: height + overflow };
     if (next !== tight) setTight(next);
-  }, [tight]);
+  }, [tight, collapsed]);
   useLayoutEffect(measureRail, [measureRail, collapsed]);
   useEffect(() => {
     const rail = navRef.current;

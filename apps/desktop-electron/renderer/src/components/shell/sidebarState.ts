@@ -41,3 +41,16 @@ export function saveSidebarCollapsed(collapsed: boolean): void {
 export function railTight(tight: boolean, measure: { overflow: number; height: number; needed: number }): boolean {
   return tight ? measure.height < measure.needed : measure.overflow > 0;
 }
+
+/**
+ * The height the loose rail needed, for the rail as it is drawn now (zoom spot 3A). The open and
+ * closed rails, and each text size, need different heights: a height measured for one says
+ * nothing about another, so it reads as unknown (0). The rail then loosens, measures itself and
+ * tightens again within one layout pass, before anything is painted.
+ *
+ * @param record What the loose rail needed when it last tightened, and in which mode.
+ * @param mode The mode the rail is drawn in now.
+ */
+export function neededHeightFor(record: { mode: string; height: number } | null, mode: string): number {
+  return record && record.mode === mode ? record.height : 0;
+}
