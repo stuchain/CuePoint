@@ -217,4 +217,18 @@ describe("A6: titles line up on every page", () => {
     expect(decl(prepareCss, ".prepare-screen", "--screen-header-stick")).toBe("0px");
     expect(decl(discoverCss, ".discover-screen", "--screen-header-stick")).toBe("0px");
   });
+
+  it("puts the Similar page's header where the Artist and Label pages put theirs (new F)", () => {
+    // The Similar page is its own scroller: a header sticking a gutter below its padding sat 15px low.
+    expect(decl(discoverCss, ".discover-page--similar", "--screen-header-stick")).toBe("0px");
+    // Its backdrop still covers the gutter above it, so rows scrolling up are not seen there.
+    expect(decl(discoverCss, ".discover-page--similar > .cp-screen-header::before", "top")).toBe(
+      "calc(-1 * var(--page-gutter-top))",
+    );
+  });
+
+  it("keeps 8 between the Similar tracks heading and its table, and 16 above the heading (new F)", () => {
+    expect(decl(discoverCss, ".discover-page--similar > .discover-section__head", "margin-bottom")).toBe("var(--space-md)");
+    expect(decl(discoverCss, ".discover-page--similar > .discover-section__head", "padding-top")).toBe("var(--space-xl)");
+  });
 });

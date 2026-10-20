@@ -748,6 +748,24 @@
   flex: 1 1 0;
 }
 
+/* The page is its own scroller, so its header sticks at its padding edge (0), as Prepare's does:
+   it then sits where the Artist and Label pages put theirs (new F). The backdrop still covers the
+   gutter above it. */
+.discover-page--similar {
+  --screen-header-stick: 0px;
+}
+
+.discover-page--similar > .cp-screen-header::before {
+  top: calc(-1 * var(--page-gutter-top));
+}
+
+/* The Similar tracks heading: 16 under the details above it, 8 to its table, as the Artist and
+   Label pages' "Your tracks" (new F). */
+.discover-page--similar > .discover-section__head {
+  margin-bottom: var(--space-md);
+  padding-top: var(--space-xl);
+}
+
 /* An action and the few words beside it ("All 48 shown"). */
 .discover-table__action {
   display: inline-flex;
