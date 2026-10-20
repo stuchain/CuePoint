@@ -61,7 +61,7 @@ def test_a_dialog_that_still_says_nothing_is_collected_fails(tree: Path, old: st
     path = tree / _FILES[2]
     path.write_text(
         path.read_text(encoding="utf-8").replace(
-            "Data collection:", f"Data collection:\n- {old}"
+            "const STAYS_HERE = [", f'const STAYS_HERE = [\n  "{old}",'
         ),
         encoding="utf-8",
     )
@@ -101,11 +101,11 @@ def test_a_notice_with_the_old_wording_fails(tree: Path, old: str):
     )
 
 
-def test_the_dialog_words_are_checked_in_the_literal_not_the_file(tree: Path):
+def test_the_dialog_words_are_checked_in_the_sentences_not_the_file(tree: Path):
     path = tree / _FILES[2]
     text = path.read_text(encoding="utf-8")
     # Sentry removed from the disclosure, but still mentioned in a comment elsewhere in the file.
-    text = text.replace("Sentry (EU region)", "somebody").replace(
+    text = text.replace("to Sentry in the EU", "to somebody").replace(
         "export function PrivacyDialog", "// Sentry\nexport function PrivacyDialog"
     )
     path.write_text(text, encoding="utf-8")
@@ -114,14 +114,29 @@ def test_the_dialog_words_are_checked_in_the_literal_not_the_file(tree: Path):
     )
 
 
-def test_a_dialog_with_no_literal_fails(tree: Path):
+def test_a_dialog_without_its_error_report_sentences_fails(tree: Path):
     path = tree / _FILES[2]
     path.write_text(
-        path.read_text(encoding="utf-8").replace("const PRIVACY_TEXT", "const OTHER"),
+        path.read_text(encoding="utf-8").replace("const ERROR_REPORTS", "const OTHER"),
         encoding="utf-8",
     )
     assert any(
-        "PRIVACY_TEXT" in p for p in validate_compliance.check_privacy_disclosures(tree)
+        "ERROR_REPORTS" in p
+        for p in validate_compliance.check_privacy_disclosures(tree)
+    )
+
+
+def test_a_dialog_without_the_error_reports_heading_fails(tree: Path):
+    path = tree / _FILES[2]
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            ">Error reports</h3>", ">Crashes</h3>"
+        ),
+        encoding="utf-8",
+    )
+    assert any(
+        "Error reports" in p
+        for p in validate_compliance.check_privacy_disclosures(tree)
     )
 
 

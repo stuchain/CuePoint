@@ -31,6 +31,31 @@ _STALE_NOTICE_PHRASES = (
 _SWITCH = "Settings → Privacy → Send error reports"
 
 
+#: The dialog's sentences live in these constants (C171), under its section headings.
+_DIALOG_CONSTANTS = ("STAYS_HERE", "BEATPORT", "ERROR_REPORTS", "UPDATES")
+_STRING = re.compile(r'"((?:[^"\\]|\\.)*)"')
+
+
+def _dialog_disclosure(source: str) -> tuple[str, list[str]]:
+    """The words the privacy dialog shows, and the disclosure constants it lacks.
+
+    Only the sentence constants and the section headings count, not comments or code
+    elsewhere in the component.
+    """
+    parts: list[str] = []
+    missing: list[str] = []
+    for name in _DIALOG_CONSTANTS:
+        value = re.search(
+            rf"^const {name} =\s*(\[.*?\]|\".*?\");", source, re.DOTALL | re.MULTILINE
+        )
+        if value is None:
+            missing.append(name)
+            continue
+        parts.extend(_STRING.findall(value.group(1)))
+    parts.extend(re.findall(r"<h3[^>]*>(.*?)</h3>", source, re.DOTALL))
+    return "\n".join(parts), missing
+
+
 def check_privacy_disclosures(repo_root: Path) -> list[str]:
     """Problems with the privacy dialog and the two privacy notices; empty when they hold."""
     problems: list[str] = []
@@ -47,11 +72,11 @@ def check_privacy_disclosures(repo_root: Path) -> list[str]:
     policy_notice = repo_root / "docs" / "policy" / "privacy-notice.md"
 
     source = dialog_path.read_text(encoding="utf-8")
-    # The disclosure is the PRIVACY_TEXT literal, not the rest of the component.
-    literal = re.search(r"const PRIVACY_TEXT = `(.*?)`;", source, re.DOTALL)
-    if literal is None:
-        return ["PrivacyDialog.tsx has no PRIVACY_TEXT literal (the in-app disclosure)"]
-    dialog = literal.group(1)
+    dialog, missing = _dialog_disclosure(source)
+    problems.extend(
+        f"PrivacyDialog.tsx has no {name} constant (part of the in-app disclosure)"
+        for name in missing
+    )
     for line in _STALE_DIALOG_LINES:
         if line.lower() in dialog.lower():
             problems.append(
