@@ -22,7 +22,7 @@
     "dev": "npm run dev:renderer",
     "electron:dev": "npm run build:electron && cross-env NODE_ENV=development electron .",
     "electron:start": "npm run build && cross-env NODE_ENV=production electron .",
-    "test": "vitest run",
+    "test": "vitest run --exclude \"electron/**/*.integration.test.ts\" && vitest run --no-file-parallelism .integration.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
