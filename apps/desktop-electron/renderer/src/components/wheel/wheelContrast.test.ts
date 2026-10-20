@@ -100,9 +100,9 @@ describe("the wheel's styles", () => {
     expect(mark?.[2]).toMatch(/stroke:\s*var\(--fg-primary\)/);
   });
 
-  it("draws the segments stepped, with the app's control line (C255)", () => {
+  it("draws the segments with smooth edges and the app's control line (C255)", () => {
     const shape = rules.find(([, selector]) => selector!.trim() === ".cp-wheel__shape");
-    expect(shape?.[2]).toMatch(/shape-rendering:\s*crispEdges/);
+    expect(shape?.[2]).toMatch(/shape-rendering:\s*geometricPrecision/);
     expect(shape?.[2]).toMatch(/stroke:\s*var\(--border-control\)/);
   });
 

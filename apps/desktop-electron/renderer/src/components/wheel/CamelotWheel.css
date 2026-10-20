@@ -30,7 +30,7 @@
   stroke: var(--border-control);
   stroke-width: var(--hairline);
   stroke-linejoin: miter;
-  shape-rendering: crispEdges;
+  shape-rendering: geometricPrecision;
   vector-effect: non-scaling-stroke;
 }
 
