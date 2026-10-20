@@ -32,9 +32,13 @@ export function SetNotesDialog({ set, error = null, errorKey = 0, onSave, onClos
   const [notes, setNotes] = useState("");
   const id = useId();
 
+  // Loaded when the dialog opens (or the saved notes change), not on every render: the
+  // parent passes a fresh object each time, and a redraw mid-typing must keep the text.
+  const open = set !== null;
+  const saved = set?.notes ?? "";
   useEffect(() => {
-    if (set) setNotes(set.notes ?? "");
-  }, [set]);
+    if (open) setNotes(saved);
+  }, [open, saved]);
 
   return (
     <Modal open={set !== null} title={set ? `Notes for “${set.name}”` : "Notes"} onClose={onClose}
