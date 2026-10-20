@@ -6,11 +6,15 @@
   --scale: 1.5;
   --unit: calc(4px * var(--scale));
 
-  /* Motion (DEC-135): durations, step counts, one distance unit and the fade. */
+  /* Motion (DEC-135, DEC-298): durations; the eases and distance of interface motion (what
+     opens, closes or changes page); the step counts, step and fade of decoration. */
   --motion-instant: 16ms;
   --motion-quick: 80ms;
   --motion-base: 160ms;
   --motion-slow: 320ms;
+  --motion-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --motion-move-px: var(--unit);
   --motion-steps-short: 2;
   --motion-steps-long: 4;
   --motion-step-px: var(--unit);
@@ -54,6 +58,8 @@
   --control-font-weight: var(--font-weight-regular);
   /* Hover for every control (area 79): a shade of the text colour, and a firmer border on fields. */
   --hover-shade: color-mix(in srgb, var(--fg-primary) 14%, transparent);
+  /* A press (DEC-298): the fill darkens under the pointer, drawn on the first frame. */
+  --press-shade: color-mix(in srgb, var(--bevel-shadow) 40%, transparent);
   --hover-border: var(--fg-muted);
   /* The fill under a hovered tab: the panel-alt surface unless a theme sets its own (Retro's slabs sit too close to the panel to show a hover). */
   --hover-fill: var(--bg-panel-alt);

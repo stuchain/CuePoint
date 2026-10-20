@@ -8,7 +8,7 @@
  * `startViewTransition`, and requires each to sit behind `useMotion(kind)` (PAGES-12).
  */
 import { describe, expect, it } from "vitest";
-import { declarations, parseRules, stripComments, type Rule } from "./test/cssRules";
+import { declarations, parseRules, selectorList, stripComments, type Rule } from "./test/cssRules";
 
 /** Every stylesheet under `src`, as text, by path. */
 const STYLESHEETS = import.meta.glob<string>("./**/*.css", {
@@ -234,6 +234,123 @@ describe("motion written in script", () => {
 
   it("does not take a bare useMotion() as a kind", () => {
     expect(checkScriptMotion({ "x.tsx": "const m = useMotion(); node.animate([], 1);" })).toHaveLength(1);
+  });
+});
+
+/**
+ * The split (DEC-134, amended): interface motion (what opens, closes or changes page) moves
+ * smoothly on an ease; decoration keeps its whole-pixel steps. Interface motion is named by the
+ * element it moves, decoration by the keyframes that draw it.
+ */
+const INTERFACE_ELEMENTS: RegExp[] = [
+  /\.app-main\[data-page-phase/,
+  /\.cp-modal(__backdrop)?(?![\w-])/,
+  /\.cp-toast(?![\w-])/,
+  /\.cp-track-menu(__submenu)?(?![\w-])/,
+  /\.cp-global-search__panel/,
+  /\.cp-status__running/,
+  /\.cp-wheel-pop(?![\w-])/,
+  /\.cp-suggest__list/,
+  /\.cp-hint__tip/,
+  /\.cp-popover/,
+  /\.cp-quick__panel/,
+  /\.first-steps-note__popover/,
+  /\.cp-inspector/,
+  /\.cp-queue(?![\w-])/,
+  /\.cp-side-panel/,
+  /\[data-ghost\]/,
+  /\.cp-tabs__tab--active/,
+  /\.cp-track-section__body/,
+];
+const DECORATIVE_KEYFRAMES = ["cp-spinner-hop", "cp-shake", "cp-pixel-bars-grow-up", "cp-pixel-bars-grow-right", "cp-wheel-light"];
+const EASES = /var\(--motion-ease-(out|in)\)/;
+
+/** The compound selector an element rule lands on: the part after the last combinator. */
+function subject(selector: string): string {
+  const text = selector.trim();
+  let depth = 0;
+  let start = 0;
+  for (let k = 0; k < text.length; k++) {
+    const ch = text[k];
+    if (ch === "(" || ch === "[") depth++;
+    else if (ch === ")" || ch === "]") depth--;
+    else if (depth === 0 && /[\s>+~]/.test(ch)) start = k + 1;
+  }
+  return text.slice(start);
+}
+const isInterface = (selector: string) =>
+  /\.app-main\[data-page-phase/.test(selector) || INTERFACE_ELEMENTS.some((re) => re.test(subject(selector)));
+
+/** One message per interface motion that steps or is not eased, and per decoration that does not step. */
+export function checkMotionSplit(cssText: string, file = "css"): { problems: string[]; interfaceRules: number } {
+  const problems: string[] = [];
+  let interfaceRules = 0;
+  for (const rule of parseRules(stripComments(cssText))) {
+    if (/^@/.test(rule.selector)) continue;
+    const motion = declarations(rule.body).filter(([prop]) => prop === "animation" || prop === "transition");
+    if (motion.length === 0) continue;
+    const ui = selectorList(rule.selector).some((s) => isInterface(s));
+    if (ui) interfaceRules += 1;
+    for (const [prop, value] of motion) {
+      for (const part of splitTopLevel(value)) {
+        if (part === "none") continue;
+        if (ui && /steps\(|step-(start|end)/.test(part)) problems.push(`${file}: "${rule.selector}" steps: ${part}`);
+        if (ui && !EASES.test(part)) problems.push(`${file}: "${rule.selector}" ${prop} is not eased: ${part}`);
+        const name = part.split(/\s+/)[0];
+        if (DECORATIVE_KEYFRAMES.includes(name) && !/steps\(/.test(part)) {
+          problems.push(`${file}: "${rule.selector}" plays ${name} without its pixel steps`);
+        }
+      }
+    }
+  }
+  return { problems, interfaceRules };
+}
+
+describe("interface motion is smooth, decoration keeps its pixel steps", () => {
+  it("eases every page, dialog, menu, popover, panel, toast and tab underline, and never steps them", () => {
+    const results = Object.entries(STYLESHEETS).map(([file, css]) => checkMotionSplit(css, file));
+    expect(results.flatMap((r) => r.problems)).toEqual([]);
+    // The list above still names what the stylesheets move.
+    expect(results.reduce((n, r) => n + r.interfaceRules, 0)).toBeGreaterThanOrEqual(14);
+  });
+
+  it("keeps the spinner, the shake, the bars and the wheel's light stepped", () => {
+    const all = Object.values(STYLESHEETS).join("\n");
+    for (const name of DECORATIVE_KEYFRAMES) expect(all, name).toMatch(new RegExp(`${name} [^,;]*steps\\(`));
+  });
+
+  it("fails a stepped or linear interface motion, and a smooth decoration (self-test)", () => {
+    const gate = ":root[data-motion-entrance]";
+    expect(checkMotionSplit(`${gate} .cp-popover { animation: cp-drop-in 1ms steps(2); }`).problems).toHaveLength(2);
+    expect(checkMotionSplit(`${gate} .cp-modal { animation: cp-rise 1ms linear; }`).problems).toHaveLength(1);
+    expect(checkMotionSplit(`${gate} .cp-modal { animation: cp-rise 1ms var(--motion-ease-out); }`).problems).toEqual([]);
+    expect(checkMotionSplit(`:root[data-motion-loading] .x { animation: cp-spinner-hop 1ms linear; }`).problems).toHaveLength(1);
+    // A descendant of an interface element is not the element.
+    expect(checkMotionSplit(`${gate} .cp-wheel-pop .cp-wheel__seg { animation: cp-wheel-light 1ms steps(2); }`).problems).toEqual([]);
+  });
+});
+
+/** The controls a press reaches: the press is a look, drawn on the first frame, with nothing timed. */
+const PRESSABLE = [/\.cp-btn(?![\w-])/, /input\[type="checkbox"\]/, /input\[type="radio"\]/, /\.cp-track-yours__star(?![\w-])/, /\.cp-player-bar__button(?![\w-])/];
+
+describe("a press", () => {
+  it("has no transition on any pressable control, so it shows on the first frame", () => {
+    const problems = Object.entries(STYLESHEETS).flatMap(([file, css]) =>
+      parseRules(stripComments(css))
+        .filter((rule) => selectorList(rule.selector).some((s) => PRESSABLE.some((re) => re.test(subject(s)))))
+        .filter((rule) => declarations(rule.body).some(([prop]) => prop === "transition" || prop.startsWith("transition-")))
+        .map((rule) => `${file}: ${rule.selector}`),
+    );
+    expect(problems).toEqual([]);
+  });
+
+  it("changes the fill as well as moving, on buttons, checkboxes, radios and the player's buttons", () => {
+    const all = Object.values(STYLESHEETS).join("\n");
+    const rules = parseRules(stripComments(all)).filter((r) => r.selector.includes(":active"));
+    for (const re of PRESSABLE.filter((p) => !String(p).includes("star"))) {
+      const hit = rules.find((r) => selectorList(r.selector).some((s) => re.test(subject(s)) && s.includes(":active")) && /--press-shade/.test(r.body));
+      expect(hit, String(re)).toBeDefined();
+    }
   });
 });
 

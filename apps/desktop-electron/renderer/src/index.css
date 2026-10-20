@@ -101,6 +101,11 @@ select {
   background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
 }
 
+/* A press darkens the box on the first frame (the micro kind also sets it a hairline lower). */
+:where(input[type="checkbox"], input[type="radio"]):active:not(:disabled) {
+  background-image: linear-gradient(var(--press-shade), var(--press-shade));
+}
+
 :where(input[type="checkbox"], input[type="radio"]):checked:hover:not(:disabled) {
   border-color: var(--accent-fill);
 }

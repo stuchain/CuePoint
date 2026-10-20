@@ -124,8 +124,9 @@
 }
 
 .cp-player-bar__button:active:not(:disabled) {
-  /* The press is the shadow collapsing, as everywhere else in the shell. */
-  transform: translate(1px, 1px);
+  /* A press, drawn on the first frame: a hairline lower and a darker fill, as every button. */
+  transform: translate(var(--hairline), var(--hairline));
+  background-image: linear-gradient(var(--press-shade), var(--press-shade));
 }
 
 .cp-player-bar__button:focus-visible {

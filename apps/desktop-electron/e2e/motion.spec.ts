@@ -213,7 +213,7 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
     }
   });
 
-  test("a page change shows the new heading within one frame, stepping in without hiding it", async () => {
+  test("a page change shows the new heading within one frame, moving in without hiding it", async () => {
     const app = await launch(userDataDir);
     try {
       const window = await app.firstWindow({ timeout: 60_000 });
@@ -242,7 +242,9 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
         });
         link.click();
         const framesToHeading = await inserted;
-        // ...and the one after it: the heading is on screen, the page is stepping in, nothing hidden.
+        // The commit holds the page at its first look ("hold") for the frame that draws it; the
+        // frame after, it moves in: the heading is on screen, nothing hidden.
+        await frame();
         await frame();
         const heading = [...main.querySelectorAll("h1")].find((h) => h.textContent === "Settings") as HTMLElement;
         const screen = heading.closest(".screen") as HTMLElement;
@@ -289,7 +291,7 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
     }
   });
 
-  test("buttons step, and every running animation moves only transform and opacity, a fade linearly", async () => {
+  test("a press times nothing, and every running animation moves only transform and opacity, no fade stepped", async () => {
     const app = await launch(userDataDir);
     try {
       const window = await app.firstWindow({ timeout: 60_000 });
@@ -299,11 +301,12 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
       const timings = await window.evaluate(() => {
         const button = document.querySelector(".cp-btn") as HTMLElement;
         const style = getComputedStyle(button);
-        return { property: style.transitionProperty, timing: style.transitionTimingFunction };
+        return { duration: style.transitionDuration };
       });
-      expect(timings.property).toBe("transform");
-      expect(timings.timing).toMatch(/steps\(1/);
-      // Every running animation on the page moves only transform or opacity, and a fade is linear.
+      // A press is a look drawn on the first frame: nothing on a button is timed.
+      expect(timings.duration).toBe("0s");
+      // Every running animation on the page moves only transform or opacity; a fade is never
+      // stepped (linear for decoration, eased with its move for interface motion).
       const animations = await window.evaluate(() =>
         document.getAnimations().map((a) => {
           const effect = a.effect as KeyframeEffect;
@@ -315,7 +318,7 @@ test.describe("Motion with every kind on (PAGES-12)", () => {
       );
       for (const animation of animations) {
         for (const prop of animation.props) expect(["transform", "opacity"]).toContain(prop);
-        if (animation.props.includes("opacity")) expect(animation.easing).toBe("linear");
+        if (animation.props.includes("opacity")) expect(animation.easing).not.toMatch(/steps|step-/);
       }
     } finally {
       await app.close();

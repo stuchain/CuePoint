@@ -228,7 +228,9 @@ export function TrackContextMenu({ x, y, items: given, onClose, label, anchor }:
       return next;
     });
 
-  useEffect(() => {
+  // Placed before the first paint, so the menu's entrance plays where it stays rather than
+  // jumping into the viewport a frame in.
+  useLayoutEffect(() => {
     restoreTo.current = document.activeElement as HTMLElement | null;
     const element = menuRef.current;
     if (element) {

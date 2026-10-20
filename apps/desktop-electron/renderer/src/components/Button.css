@@ -16,11 +16,6 @@
   user-select: none;
 }
 
-:root[data-motion-micro] .cp-btn {
-  /* Only the move is animated; the press is one step, no bevel. */
-  transition: transform var(--motion-instant) steps(1);
-}
-
 /* Primary: the violet fill. At most one per area. */
 .cp-btn--primary {
   border-color: var(--accent-fill);
@@ -73,9 +68,15 @@
   background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
 }
 
+/* A press is drawn on the first frame, with nothing timed (DEC-134 as amended): the button sits a
+   hairline lower and its fill darkens, over whatever variant it is. */
 .cp-btn:active:not(:disabled):not([aria-disabled="true"]),
 .cp-btn--loading {
   transform: translate(var(--hairline), var(--hairline));
+}
+
+.cp-btn:active:not(:disabled):not([aria-disabled="true"]):not(.cp-btn--loading) {
+  background-image: linear-gradient(var(--press-shade), var(--press-shade));
 }
 
 /* A toggle that is on (D1, C4): the selected fill, a 1px accent line and the text colour, in

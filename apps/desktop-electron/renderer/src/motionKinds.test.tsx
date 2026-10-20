@@ -1,6 +1,7 @@
 /**
  * One test per kind of motion (PAGES-12, DEC-134): with the kind off the element has no
- * animation; with it on, the stepped one; under the system's reduced motion, none.
+ * animation; with it on, its motion (eased for what opens, closes or changes page, stepped for
+ * decoration); under the system's reduced motion, none.
  *
  * The components are real and are rendered under the real `MotionProvider`, which writes the
  * `data-motion-<kind>` attributes. jsdom loads no component CSS and plays nothing, so what each
@@ -112,7 +113,7 @@ function perKind(
 ) {
   describe(`${kind}: ${name}`, () => {
     for (const setup of ["on", "off", "reduced"] as const) {
-      it(setup === "on" ? "moves in steps" : setup === "off" ? "has no animation with its switch off" : "has no animation under reduced motion", async () => {
+      it(setup === "on" ? "moves" : setup === "off" ? "has no animation with its switch off" : "has no animation under reduced motion", async () => {
         configure(kind, setup);
         const { ui, target, pseudo, after } = build();
         const { container } = mount(ui);
@@ -132,12 +133,22 @@ const first = (selector: string) => (container: HTMLElement) => container.queryS
 
 // ---- micro ----------------------------------------------------------------------------------
 
-perKind("micro", "a button press", () => ({ ui: <Button>Go</Button>, target: first(".cp-btn") }), (m) => {
-  expect(m.transition).toMatch(/^transform .*steps\(1\)$/);
-});
-
-perKind("micro", "a checkbox", () => ({ ui: <input type="checkbox" aria-label="x" />, target: first("input") }), (m) => {
-  expect(steps(m.transition)).toBe(true);
+// A press is a look drawn on the first frame (the fill darkens and the control sits a hairline
+// lower): nothing is timed, so it is the same with the kind on, off or reduced.
+describe("micro: a press shows on the first frame", () => {
+  for (const setup of ["on", "off", "reduced"] as const) {
+    it(`times nothing on a button or a checkbox (${setup})`, () => {
+      configure("micro", setup);
+      const { container } = mount(
+        <>
+          <Button>Go</Button>
+          <input type="checkbox" aria-label="x" />
+        </>,
+      );
+      expect(motionOf(container.querySelector(".cp-btn")!, null, "micro")).toEqual({ animation: null, transition: null });
+      expect(motionOf(container.querySelector("input")!, null, "micro")).toEqual({ animation: null, transition: null });
+    });
+  }
 });
 
 perKind(
@@ -362,13 +373,23 @@ it("state: a count that is only drawn, or that did not change, is not marked", (
 
 perKind(
   "state",
-  "the selected tab",
+  "the selected tab's underline",
   () => ({
     ui: <Tabs tabs={[{ id: "a", label: "A" }, { id: "b", label: "B" }]} activeId="a" onChange={() => {}} />,
     target: first(".cp-tabs__tab--active"),
+    pseudo: "::after",
   }),
-  (m) => expect(m.animation).toMatch(/cp-rise [^,]*steps\(/),
+  (m) => {
+    expect(m.animation).toMatch(/cp-underline-in [^,]*var\(--motion-ease-out\)/);
+    expect(steps(m.animation)).toBe(false);
+  },
 );
+
+it("state: the newly selected tab itself is drawn at once, never from nothing", () => {
+  configure("state", "on");
+  const { container } = mount(<Tabs tabs={[{ id: "a", label: "A" }, { id: "b", label: "B" }]} activeId="a" onChange={() => {}} />);
+  expect(motionOf(container.querySelector(".cp-tabs__tab--active")!, null, "state")).toEqual({ animation: null, transition: null });
+});
 
 perKind(
   "state",
@@ -384,7 +405,10 @@ perKind(
       fireEvent.click(screen.getByRole("button", { name: /Details/ }));
     },
   }),
-  (m) => expect(m.animation).toMatch(/cp-rise [^,]*steps\(/),
+  (m) => {
+    expect(m.animation).toMatch(/cp-enter-up [^,]*var\(--motion-ease-out\)/);
+    expect(steps(m.animation)).toBe(false);
+  },
 );
 
 // ---- page -----------------------------------------------------------------------------------
@@ -399,13 +423,49 @@ perKind(
       </AppShellLayout>
     ),
     target: first("main > .screen"),
+    // The phase is written once the new page has been drawn: two frames on.
+    after: () => act(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())))),
   }),
   (m) => {
-    expect(m.animation).toMatch(/cp-page-step-a [^,]*steps\(/);
+    expect(m.animation).toMatch(/cp-page-step-a [^,]*var\(--motion-ease-out\)/);
     // It starts from half, so nothing on the page is ever hidden.
-    expect(m.animation).toMatch(/cp-page-fade-a [^,]*linear/);
+    expect(m.animation).toMatch(/cp-page-fade-a [^,]*var\(--motion-ease-out\)/);
+    expect(steps(m.animation)).toBe(false);
   },
 );
+
+describe("page: the new page starts moving once it has been drawn", () => {
+  it("holds it at its first look for the frame that draws it, then plays", async () => {
+    configure("page", "on");
+    const { container, rerender } = mount(
+      <AppShellLayout>
+        <div className="screen">page</div>
+      </AppShellLayout>,
+    );
+    const main = container.querySelector("main")!;
+    expect(main).not.toHaveAttribute("data-page-phase");
+    rerender(
+      <MemoryRouter>
+        <ThemeProvider>
+          <ScaleProvider>
+            <MotionProvider>
+              <ToastProvider>
+                <AppShellLayout pagePhase="b">
+                  <div className="screen">next</div>
+                </AppShellLayout>
+              </ToastProvider>
+            </MotionProvider>
+          </ScaleProvider>
+        </ThemeProvider>
+      </MemoryRouter>,
+    );
+    expect(main).toHaveAttribute("data-page-phase", "hold");
+    await act(() => new Promise<void>((done) => requestAnimationFrame(() => done())));
+    expect(main).toHaveAttribute("data-page-phase", "hold");
+    await act(() => new Promise<void>((done) => requestAnimationFrame(() => done())));
+    expect(main).toHaveAttribute("data-page-phase", "b");
+  });
+});
 
 perKind(
   "page",
@@ -434,7 +494,10 @@ perKind(
     ),
     target: first(".cp-modal"),
   }),
-  (m) => expect(m.animation).toMatch(/cp-rise [^,]*steps\(/),
+  (m) => {
+    expect(m.animation).toMatch(/cp-enter-up [^,]*var\(--motion-ease-out\)/);
+    expect(steps(m.animation)).toBe(false);
+  },
 );
 
 perKind(
@@ -449,7 +512,7 @@ perKind(
     target: first(".cp-modal__backdrop"),
   }),
   (m) => {
-    expect(m.animation).toMatch(/cp-fade-in [^,]*linear/);
+    expect(m.animation).toMatch(/cp-fade-in [^,]*var\(--motion-ease-out\)/);
     expect(steps(m.animation)).toBe(false);
   },
 );
@@ -473,7 +536,10 @@ perKind(
       fireEvent.click(screen.getByText("push"));
     },
   }),
-  (m) => expect(m.animation).toMatch(/cp-toast-in [^,]*steps\(/),
+  (m) => {
+    expect(m.animation).toMatch(/cp-toast-in [^,]*var\(--motion-ease-out\)/);
+    expect(steps(m.animation)).toBe(false);
+  },
 );
 
 perKind(
@@ -483,7 +549,10 @@ perKind(
     ui: <aside className="cp-inspector" data-entering="" />,
     target: first(".cp-inspector"),
   }),
-  (m) => expect(m.animation).toMatch(/cp-from-edge [^,]*steps\(/),
+  (m) => {
+    expect(m.animation).toMatch(/cp-from-edge [^,]*var\(--motion-ease-out\)/);
+    expect(steps(m.animation)).toBe(false);
+  },
 );
 
 // ---- scroll ---------------------------------------------------------------------------------
@@ -1007,18 +1076,15 @@ describe("entrance: what is simply unmounted leaves as a still copy", () => {
   function stubRect(el: HTMLElement) {
     el.getBoundingClientRect = () => ({ left: 10, top: 20, width: 100, height: 50 }) as DOMRect;
   }
+  const nextFrame = () => act(() => new Promise<void>((done) => requestAnimationFrame(() => done())));
 
   it("is added inert, without ids or tab stops, and takes no pointer events", () => {
+    html.setAttribute("data-motion-entrance", "");
     const panel = document.createElement("div");
     panel.id = "panel";
     panel.innerHTML = '<button id="b" tabindex="0">Do</button>';
     document.body.append(panel);
     stubRect(panel);
-    const real = window.getComputedStyle;
-    const spy = vi.spyOn(window, "getComputedStyle").mockImplementation((el: Element, pseudo?: string | null) => {
-      const style = real(el, pseudo);
-      return el.hasAttribute("data-ghost") ? ({ ...style, animationName: "cp-lift-out" } as unknown as CSSStyleDeclaration) : style;
-    });
     const ghost = leaveAsGhost(panel)!;
     expect(ghost).not.toBeNull();
     expect(ghost.parentElement).toBe(document.body);
@@ -1031,17 +1097,88 @@ describe("entrance: what is simply unmounted leaves as a still copy", () => {
     expect(ghost.style.left).toBe("10px");
     fireEvent.animationEnd(ghost);
     expect(ghost.isConnected).toBe(false);
-    spy.mockRestore();
     panel.remove();
+  });
+
+  it("asks for no computed style, and takes a box measured earlier without measuring again", () => {
+    html.setAttribute("data-motion-entrance", "");
+    const panel = document.createElement("div");
+    document.body.append(panel);
+    const measure = vi.fn(() => ({ left: 0, top: 0, width: 1, height: 1 }) as DOMRect);
+    panel.getBoundingClientRect = measure;
+    const styled = vi.spyOn(window, "getComputedStyle");
+    const ghost = leaveAsGhost(panel, { rect: { left: 7, top: 8, width: 90, height: 40 } })!;
+    expect(styled).not.toHaveBeenCalled();
+    expect(measure).not.toHaveBeenCalled();
+    expect(ghost.style.top).toBe("8px");
+    expect(ghost.style.width).toBe("90px");
+    styled.mockRestore();
+    ghost.remove();
+    panel.remove();
+  });
+
+  it("draws each canvas into its copy, which a clone leaves blank", () => {
+    html.setAttribute("data-motion-entrance", "");
+    const panel = document.createElement("div");
+    const canvas = document.createElement("canvas");
+    canvas.width = 30;
+    canvas.height = 12;
+    panel.append(canvas);
+    document.body.append(panel);
+    stubRect(panel);
+    const drawImage = vi.fn();
+    const getContext = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
+      () => ({ drawImage }) as unknown as CanvasRenderingContext2D,
+    );
+    const ghost = leaveAsGhost(panel)!;
+    const copy = ghost.querySelector("canvas")!;
+    expect(copy.width).toBe(30);
+    expect(copy.height).toBe(12);
+    expect(drawImage).toHaveBeenCalledWith(canvas, 0, 0);
+    getContext.mockRestore();
+    ghost.remove();
+    panel.remove();
+  });
+
+  it("measures in a frame after it renders, not while it is unmounted", async () => {
+    configure("entrance", "on");
+    let measuring = false;
+    const seen: boolean[] = [];
+    function Menu() {
+      const ref = useRef<HTMLDivElement | null>(null);
+      useLeaveGhost(ref);
+      return (
+        <div
+          ref={(el) => {
+            ref.current = el;
+            if (el) {
+              el.getBoundingClientRect = () => {
+                seen.push(measuring);
+                return { left: 1, top: 2, width: 30, height: 40 } as DOMRect;
+              };
+            }
+          }}
+          data-testid="menu"
+        >
+          menu
+        </div>
+      );
+    }
+    const { unmount } = mount(<Menu />);
+    await nextFrame();
+    expect(seen).toEqual([false]);
+    measuring = true;
+    unmount();
+    // Unmounting measured nothing, and the copy stands where the frame saw it.
+    expect(seen).toEqual([false]);
+    const ghost = document.querySelector<HTMLElement>("[data-ghost]")!;
+    expect(ghost).not.toBeNull();
+    expect(ghost.style.top).toBe("2px");
+    ghost.remove();
   });
 
   it("adds no copy when the kind is switched off while the thing is still open", async () => {
     configure("entrance", "on");
-    const real = window.getComputedStyle;
-    const spy = vi.spyOn(window, "getComputedStyle").mockImplementation((el: Element, pseudo?: string | null) => {
-      const style = real(el, pseudo);
-      return el.hasAttribute("data-ghost") ? ({ ...style, animationName: "cp-lift-out" } as unknown as CSSStyleDeclaration) : style;
-    });
     function Menu() {
       const ref = useRef<HTMLDivElement>(null);
       useLeaveGhost(ref);
@@ -1059,14 +1196,14 @@ describe("entrance: what is simply unmounted leaves as a still copy", () => {
     }
     const { unmount } = mount(<Menu />);
     stubRect(screen.getByTestId("menu"));
+    await nextFrame();
     // The switch goes off with the menu still open: nothing leaves.
     fireEvent.click(screen.getByText("off"));
     expect(document.querySelector("[data-ghost]")).toBeNull();
     unmount();
-    spy.mockRestore();
   });
 
-  it("adds nothing when the CSS plays no exit", () => {
+  it("adds nothing when the kind is not on (no exit plays)", () => {
     const panel = document.createElement("div");
     document.body.append(panel);
     stubRect(panel);

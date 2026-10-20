@@ -38,10 +38,10 @@
 }
 
 :root[data-motion-entrance] .cp-toast {
-  /* Two animations, so the slide steps and the fade does not (DEC-135). */
+  /* Interface motion: the slide and the fade both ease out (DEC-134 as amended). */
   animation:
-    cp-toast-in var(--motion-base) steps(var(--motion-steps-short)),
-    cp-toast-fade var(--motion-base) var(--motion-fade);
+    cp-toast-in var(--motion-base) var(--motion-ease-out),
+    cp-toast-fade var(--motion-base) var(--motion-ease-out);
 }
 
 .cp-toast__action {
@@ -64,17 +64,17 @@
   --toast-tone: var(--accent-danger);
 }
 
-/* The slide steps in whole --motion-step-px (DEC-135). */
+/* The slide eases up from two units below. */
 @keyframes cp-toast-in {
   from {
-    transform: translateY(calc(var(--motion-step-px) * 2));
+    transform: translateY(calc(var(--motion-move-px) * 2));
   }
   to {
     transform: translateY(0);
   }
 }
 
-/* The fade stays smooth. */
+/* The fade. */
 @keyframes cp-toast-fade {
   from {
     opacity: 0;

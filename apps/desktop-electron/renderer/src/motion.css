@@ -4,9 +4,24 @@
  * Each rule sits under `:root[data-motion-<kind>]`, which MotionProvider writes only while the
  * kind's switch is on and the system is not asking for reduced motion, so a kind switched off
  * or reduced motion shows the still state with nothing hidden. Only `transform` and `opacity`
- * move. A move steps in whole `--motion-step-px` (a multiple of the unit, so a whole pixel at
- * 1x, 1.5x, 2x and 3x); a fade stays smooth (`--motion-fade`, linear) and is its own animation.
- * `motionRules.test.ts` holds all of this, and `motionKinds.test.tsx` plays each kind.
+ * move, and opacity never steps.
+ *
+ * Two kinds of motion, kept apart on purpose (DEC-134, amended by DEC-298):
+ *
+ *  - Interface motion, what opens, closes or changes the page (a page, a dialog and its backdrop,
+ *    a menu, popover, dropdown or filter panel, the wheel popover, a hint tip, Track details and
+ *    every side panel, a toast, a Track details section, the tab underline, the shared result),
+ *    moves smoothly: `--motion-ease-out` in, `--motion-ease-in` out, over `--motion-move-px`. Its
+ *    fade eases with it. A stepped move under a smooth fade read as dropped frames, not as style.
+ *  - Decoration keeps its whole-pixel steps (`steps(--motion-steps-*)` of `--motion-step-px`, a
+ *    whole pixel at 1x, 1.5x, 2x and 3x): the pixel spinner, the field-error shake, the bars and
+ *    charts growing, the wheel's light, the Plays list, a badge or count that changes, the hover
+ *    edge bar and focus step, what is dragged and dropped, the Saved tick, the Settings links. Its
+ *    fade stays `--motion-fade` (linear) and is its own animation.
+ *
+ * A press is not motion: it is a look (`--press-shade` and a hairline down) drawn on the first
+ * frame, with no transition. `motionRules.test.ts` holds all of this, and `motionKinds.test.tsx`
+ * plays each kind.
  *
  * Nothing here animates a track table's rows while it scrolls. The Scrolling kind is not used on
  * the tables at all, and what the tables do on hover or loading waits while `[data-scrolling]`:
@@ -19,14 +34,8 @@
 
 /* ---- Button presses (micro) ------------------------------------------------------------ */
 
-:root[data-motion-micro] input[type="checkbox"],
-:root[data-motion-micro] input[type="radio"],
-:root[data-motion-micro] .cp-track-yours__star,
-:root[data-motion-micro] .cp-saved-tick__body {
-  /* Only the move is animated. */
-  transition: transform var(--motion-instant) steps(1);
-}
-
+/* A press is drawn at once (no transition): the control sits a hairline lower and its fill
+   darkens (Button.css, index.css, PlayerBar.css). The star has no fill, so it only sits lower. */
 :root[data-motion-micro] input[type="checkbox"]:active,
 :root[data-motion-micro] input[type="radio"]:active,
 :root[data-motion-micro] .cp-track-yours__star:active {
@@ -159,34 +168,54 @@
   animation: cp-state-fade-b var(--motion-base) var(--motion-fade);
 }
 
-/* The selected tab steps into place. */
-:root[data-motion-state] .cp-tabs__tab--active {
-  animation:
-    cp-rise var(--motion-base) steps(var(--motion-steps-short)),
-    cp-fade-in var(--motion-base) var(--motion-fade);
+/* The newly selected tab is drawn at once, fully; only its underline moves, growing out from the
+   middle. With the kind on, the underline is this bar in place of the tab's border (Tabs.css). */
+:root[data-motion-state] .cp-tabs:not(.cp-tabs--sub) .cp-tabs__tab--active {
+  position: relative;
+  border-bottom-color: transparent;
 }
 
-/* A section of Track details steps open once the toggle has been used. */
+:root[data-motion-state] .cp-tabs:not(.cp-tabs--sub) .cp-tabs__tab--active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(-1 * var(--tab-underline));
+  height: var(--tab-underline);
+  background: var(--tab-underline-color, var(--accent-primary));
+  pointer-events: none;
+  animation: cp-underline-in var(--motion-base) var(--motion-ease-out);
+}
+
+/* A section of Track details opens once the toggle has been used. */
 :root[data-motion-state] .cp-track-section__body--used:not([hidden]) {
   animation:
-    cp-rise var(--motion-base) steps(var(--motion-steps-short)),
-    cp-fade-in var(--motion-base) var(--motion-fade);
+    cp-enter-up var(--motion-base) var(--motion-ease-out),
+    cp-fade-in var(--motion-base) var(--motion-ease-out);
 }
 
 /* ---- Changing page (page) --------------------------------------------------------------- */
 
-/* The content steps in; the shell stays still. The page is drawn at once with whatever it has
-   (it never waits for data) and the fade starts from half, so nothing on it is ever hidden. */
+/* The content moves in; the shell stays still. The page is drawn at once with whatever it has
+   (it never waits for data) and the fade starts from half, so nothing on it is ever hidden.
+   The frame that draws a new page can be long, so the page is held at its first look ("hold")
+   for that frame and starts moving on the next (AppShellLayout): a clock started before the long
+   frame spent the motion on it, and the page stuck, then popped. */
+:root[data-motion-page] .app-main[data-page-phase="hold"] > * {
+  opacity: 0.5;
+  transform: translateY(var(--motion-move-px));
+}
+
 :root[data-motion-page] .app-main[data-page-phase="a"] > * {
   animation:
-    cp-page-step-a var(--motion-quick) steps(var(--motion-steps-short)),
-    cp-page-fade-a var(--motion-quick) var(--motion-fade);
+    cp-page-step-a var(--motion-base) var(--motion-ease-out),
+    cp-page-fade-a var(--motion-base) var(--motion-ease-out);
 }
 
 :root[data-motion-page] .app-main[data-page-phase="b"] > * {
   animation:
-    cp-page-step-b var(--motion-quick) steps(var(--motion-steps-short)),
-    cp-page-fade-b var(--motion-quick) var(--motion-fade);
+    cp-page-step-b var(--motion-base) var(--motion-ease-out),
+    cp-page-fade-b var(--motion-base) var(--motion-ease-out);
 }
 
 /* ---- Opening and closing panels and dialogs (entrance) ---------------------------------- */
@@ -205,29 +234,30 @@
 }
 
 :root[data-motion-entrance] .cp-modal__backdrop {
-  animation: cp-fade-in var(--motion-base) var(--motion-fade);
+  animation: cp-fade-in var(--motion-base) var(--motion-ease-out);
 }
 
 :root[data-motion-entrance] .cp-modal {
-  animation: cp-rise var(--motion-base) steps(var(--motion-steps-short));
+  animation: cp-enter-up var(--motion-base) var(--motion-ease-out);
 }
 
+/* Exits are shorter and ease in: what goes speeds away and is gone. */
 :root[data-motion-entrance] .cp-modal__backdrop[data-leaving] {
-  animation: cp-fade-out var(--motion-base) var(--motion-fade) forwards;
+  animation: cp-fade-out var(--motion-quick) var(--motion-ease-in) forwards;
 }
 
 :root[data-motion-entrance] .cp-modal__backdrop[data-leaving] .cp-modal {
-  animation: cp-sink var(--motion-base) steps(var(--motion-steps-short)) forwards;
+  animation: cp-exit-down var(--motion-quick) var(--motion-ease-in) forwards;
 }
 
 :root[data-motion-entrance] .cp-toast[data-leaving] {
   animation:
-    cp-sink var(--motion-base) steps(var(--motion-steps-short)) forwards,
-    cp-fade-out var(--motion-base) var(--motion-fade) forwards;
+    cp-exit-down var(--motion-quick) var(--motion-ease-in) forwards,
+    cp-fade-out var(--motion-quick) var(--motion-ease-in) forwards;
 }
 
-/* One popover motion: a menu, a dropdown list, the wheel, search and the running list hang from
-   their control, stepping down a unit while they fade in. */
+/* One popover motion: a menu, a dropdown list or filter panel, the wheel, search, a hint tip and
+   the running list hang from their control, easing down a unit while they fade in. */
 :root[data-motion-entrance] .cp-track-menu,
 :root[data-motion-entrance] .cp-track-menu__submenu,
 :root[data-motion-entrance] .cp-global-search__panel,
@@ -235,22 +265,19 @@
 :root[data-motion-entrance] .cp-wheel-pop,
 :root[data-motion-entrance] .cp-suggest__list,
 :root[data-motion-entrance] .cp-hint__tip,
+:root[data-motion-entrance] .cp-quick__panel,
+:root[data-motion-entrance] .first-steps-note__popover,
 :root[data-motion-entrance] .cp-popover {
   animation:
-    cp-drop-in var(--motion-quick) steps(var(--motion-steps-short)),
-    cp-fade-in var(--motion-quick) var(--motion-fade);
+    cp-drop-in var(--motion-base) var(--motion-ease-out),
+    cp-fade-in var(--motion-base) var(--motion-ease-out);
 }
 
-:root[data-motion-entrance] .cp-global-search__panel[data-leaving] {
-  animation:
-    cp-lift-out var(--motion-quick) steps(var(--motion-steps-short)) forwards,
-    cp-fade-out var(--motion-quick) var(--motion-fade) forwards;
-}
-
+:root[data-motion-entrance] .cp-global-search__panel[data-leaving],
 :root[data-motion-entrance] .cp-wheel-pop[data-leaving] {
   animation:
-    cp-lift-out var(--motion-base) steps(var(--motion-steps-short)) forwards,
-    cp-fade-out var(--motion-base) var(--motion-fade) forwards;
+    cp-lift-out var(--motion-quick) var(--motion-ease-in) forwards,
+    cp-fade-out var(--motion-quick) var(--motion-ease-in) forwards;
 }
 
 /* One side-panel motion: the Inspector, the queue, the activity list and any panel that hangs on
@@ -260,8 +287,8 @@
 :root[data-motion-entrance] .cp-queue,
 :root[data-motion-entrance] .cp-side-panel {
   animation:
-    cp-from-edge var(--motion-base) steps(var(--motion-steps-short)),
-    cp-fade-in var(--motion-base) var(--motion-fade);
+    cp-from-edge var(--motion-base) var(--motion-ease-out),
+    cp-fade-in var(--motion-base) var(--motion-ease-out);
 }
 
 /* What leaves without being kept (a menu, the Inspector, the running list) is a still copy
@@ -269,14 +296,14 @@
    copy's own entrance. */
 :root[data-motion-entrance] [data-ghost][data-ghost] {
   animation:
-    cp-lift-out var(--motion-quick) steps(var(--motion-steps-short)) forwards,
-    cp-fade-out var(--motion-quick) var(--motion-fade) forwards;
+    cp-lift-out var(--motion-quick) var(--motion-ease-in) forwards,
+    cp-fade-out var(--motion-quick) var(--motion-ease-in) forwards;
 }
 
 :root[data-motion-entrance] .cp-inspector[data-ghost][data-ghost] {
   animation:
-    cp-to-edge var(--motion-base) steps(var(--motion-steps-short)) forwards,
-    cp-fade-out var(--motion-base) var(--motion-fade) forwards;
+    cp-to-edge var(--motion-quick) var(--motion-ease-in) forwards,
+    cp-fade-out var(--motion-quick) var(--motion-ease-in) forwards;
 }
 
 /* ---- Scrolling (scroll) ----------------------------------------------------------------- */
@@ -323,13 +350,13 @@
 
 :root[data-motion-shared]::view-transition-group(cp-shared-result) {
   animation-duration: var(--motion-base);
-  animation-timing-function: steps(var(--motion-steps-long));
+  animation-timing-function: var(--motion-ease-out);
 }
 
 :root[data-motion-shared]::view-transition-old(cp-shared-result),
 :root[data-motion-shared]::view-transition-new(cp-shared-result) {
   animation-duration: var(--motion-base);
-  animation-timing-function: linear;
+  animation-timing-function: var(--motion-ease-out);
 }
 
 /* ---- Alerts and confirmations (feedback) ------------------------------------------------ */
@@ -393,30 +420,32 @@
   }
 }
 
-/* Up from a step below. */
-@keyframes cp-rise {
+/* ---- Interface moves: eased, over --motion-move-px --------------------------------------- */
+
+/* Up from below, for a dialog or a section that opens. */
+@keyframes cp-enter-up {
   from {
-    transform: translateY(var(--motion-step-px));
+    transform: translateY(var(--motion-move-px));
   }
   to {
     transform: translateY(0);
   }
 }
 
-/* Down a step, on the way out. */
-@keyframes cp-sink {
+/* Down, on the way out. */
+@keyframes cp-exit-down {
   from {
     transform: translateY(0);
   }
   to {
-    transform: translateY(var(--motion-step-px));
+    transform: translateY(var(--motion-move-px));
   }
 }
 
-/* Down from a step above, for what hangs from a control. */
+/* Down from above, for what hangs from a control. */
 @keyframes cp-drop-in {
   from {
-    transform: translateY(calc(var(--motion-step-px) * -1));
+    transform: translateY(calc(var(--motion-move-px) * -1));
   }
   to {
     transform: translateY(0);
@@ -428,23 +457,13 @@
     transform: translateY(0);
   }
   to {
-    transform: translateY(calc(var(--motion-step-px) * -1));
+    transform: translateY(calc(var(--motion-move-px) * -1));
   }
 }
 
 @keyframes cp-from-edge {
   from {
-    transform: translateX(calc(var(--motion-step-px) * 2));
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-/* In from the left edge, for a bar that hangs on it. */
-@keyframes cp-edge-in {
-  from {
-    transform: translateX(-100%);
+    transform: translateX(calc(var(--motion-move-px) * 2));
   }
   to {
     transform: translateX(0);
@@ -456,7 +475,58 @@
     transform: translateX(0);
   }
   to {
-    transform: translateX(calc(var(--motion-step-px) * 2));
+    transform: translateX(calc(var(--motion-move-px) * 2));
+  }
+}
+
+/* The tab underline grows out from its middle. */
+@keyframes cp-underline-in {
+  from {
+    transform: scaleX(0.25);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes cp-page-step-a {
+  from {
+    transform: translateY(var(--motion-move-px));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes cp-page-step-b {
+  from {
+    transform: translateY(var(--motion-move-px));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* ---- Decorative moves: stepped, in whole --motion-step-px -------------------------------- */
+
+/* Up from a step below. */
+@keyframes cp-rise {
+  from {
+    transform: translateY(var(--motion-step-px));
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+
+/* In from the left edge, for a bar that hangs on it. */
+@keyframes cp-edge-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
   }
 }
 
@@ -560,24 +630,6 @@
   }
   to {
     opacity: 1;
-  }
-}
-
-@keyframes cp-page-step-a {
-  from {
-    transform: translateY(var(--motion-step-px));
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes cp-page-step-b {
-  from {
-    transform: translateY(var(--motion-step-px));
-  }
-  to {
-    transform: translateY(0);
   }
 }
 

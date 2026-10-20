@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { OverflowHintHost } from "../OverflowHintHost";
 import "./AppShellLayout.css";
 
@@ -121,6 +121,24 @@ export function AppShellLayout({
     page.focus({ preventScroll: true });
   }, [pagePhase]);
 
+  // A new page is held at its first look ("hold") for the frame that draws it, and its phase is
+  // written on the frame after: the page's motion then starts once it is on the screen, rather
+  // than spending itself on a long first frame (DEC-134 as amended). Written on the element, not
+  // rendered, so the two frames cost no render.
+  useLayoutEffect(() => {
+    const page = content.current;
+    if (!page || pagePhase === undefined) return undefined;
+    page.setAttribute("data-page-phase", "hold");
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => page.setAttribute("data-page-phase", pagePhase));
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [pagePhase]);
+
   // The toast stack is rendered outside the shell, so the room the player and status strip take
   // goes on the root element, where it can lift the stack clear of them.
   const hasPlayer = Boolean(player);
@@ -155,7 +173,6 @@ export function AppShellLayout({
       {banner ? <div className="app-shell__banner">{banner}</div> : null}
       <main
         className="app-shell__content app-main"
-        data-page-phase={pagePhase}
         data-offline={offline ? "" : undefined}
         ref={content}
       >
