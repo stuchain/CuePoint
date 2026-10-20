@@ -318,12 +318,13 @@
   font-size: var(--font-size-xs);
 }
 
-/* The rating is a labelled row like Overview's: the label in the shared column, the stars after it. */
+/* Every label here is stacked above its field, 4 apart, as Add a tag's is (new K): side labels
+   wrapped "Your rating" over two lines in the panel's narrow label column. */
 .cp-track-yours__rating {
-  display: grid;
-  grid-template-columns: var(--facts-label) minmax(0, 1fr);
-  gap: var(--space-xs) var(--space-sm);
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  align-items: flex-start;
 }
 
 .cp-track-yours__stars {
@@ -396,13 +397,12 @@
   color: var(--fg-primary);
 }
 
-/* Notes, Tags and Add a tag are labelled rows like Overview's: the label in the shared column,
-   the control after it. */
+/* Notes and Tags: the label stacked above the control, as the rating's and Add a tag's (new K). */
 .cp-track-yours__row {
-  display: grid;
-  grid-template-columns: var(--facts-label) minmax(0, 1fr);
-  gap: var(--space-xs) var(--space-sm);
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
 }
 
 .cp-track-yours__control {

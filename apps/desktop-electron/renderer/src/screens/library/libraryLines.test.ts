@@ -73,6 +73,16 @@ describe("the Library's shared lines", () => {
     expect(rule(detail, ".cp-track-yours__group")).toContain("gap: var(--space-2xs)");
   });
 
+  it("stacks every Yours label above its field, 4 apart, as Add a tag is (new K)", () => {
+    for (const selector of [".cp-track-yours__rating", ".cp-track-yours__row"]) {
+      const body = rule(detail, selector);
+      expect(body).toMatch(/display:\s*flex/);
+      expect(body).toMatch(/flex-direction:\s*column/);
+      expect(body).toMatch(/gap:\s*var\(--space-xs\)/);
+      expect(body).not.toMatch(/grid-template-columns/);
+    }
+  });
+
   it("draws Favorite on as D1 says: selected fill, accent border, primary text", () => {
     const on = rule(detail, ".cp-track-yours__favorite--on");
     expect(on).toContain("background: var(--bg-selected)");
