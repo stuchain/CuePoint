@@ -513,6 +513,23 @@ describe("the toolbar row", () => {
     expect(within(bar).getByRole("button", { name: "Clear selection" })).toBeInTheDocument();
   });
 
+  it("draws the selection bar over the table's bottom rows, never above the table (option 1A)", async () => {
+    renderScreen();
+    await tableReady();
+    const room = document.querySelector(".library-screen__table .track-table__bottom-room");
+    // The end room is there before anything is selected, so selecting moves nothing.
+    expect(room).not.toBeNull();
+    await userEvent.click(screen.getByText("Track 1"));
+    const bar = screen.getByRole("toolbar", { name: "Selection" });
+    expect(bar).toHaveClass("cp-selection-bar--overlay");
+    expect(bar.closest(".track-table__bottom-bar")).not.toBeNull();
+    expect(document.querySelector(".library-screen__table .track-table__bottom-room")).toBe(room);
+    // Nothing between the filter row and the table: the table is the next part of the column.
+    const filter = document.querySelector<HTMLElement>(".cp-filter-bar")!;
+    const main = filter.closest(".library-screen__main")!;
+    expect([...main.children].some((child) => child.contains(bar) && !child.classList.contains("library-screen__table"))).toBe(false);
+  });
+
   it("clears the selection with the bar's close button", async () => {
     renderScreen();
     await tableReady();

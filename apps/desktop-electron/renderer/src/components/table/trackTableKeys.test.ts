@@ -149,4 +149,13 @@ describe("revealOffset", () => {
   it("never asks for a negative offset", () => {
     expect(reveal(0, 5)).toBe(0);
   });
+
+  it("keeps a row above what covers the viewport's bottom (the selection bar, option 1A)", () => {
+    // A 42px bar over the bottom: row 8 spans 270..300, under the bar's 258..300.
+    expect(revealOffset(8, 30, 30, 0, 300, 42)).toBe(42);
+    // Row 7 (240..270) is cut by the bar's top edge too.
+    expect(revealOffset(7, 30, 30, 0, 300, 42)).toBe(12);
+    // Row 6 (210..240) is clear of it.
+    expect(revealOffset(6, 30, 30, 0, 300, 42)).toBeNull();
+  });
 });

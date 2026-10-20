@@ -68,6 +68,12 @@ export interface TrackTableSort {
   direction: SortDirection;
 }
 
+/** What the scroll area keeps clear at its bottom (the bottom bar's `scroll-padding-bottom`), in px. */
+function bottomInset(element: HTMLElement): number {
+  const value = Number.parseFloat(getComputedStyle(element).scrollPaddingBottom);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
 export interface TrackTableProps<Row> {
   columns: readonly TrackColumnDef<Row>[];
   source: TrackTableSource<Row>;
@@ -293,6 +299,17 @@ export interface TrackTableProps<Row> {
   emptyState?: ReactNode;
 
   /**
+   * A bar drawn over the table's bottom edge, the selection bar (option 1A), so showing it never
+   * moves a row: the first click of a double-click brings it and the second still lands on the row.
+   * Given at all (null too), the rows keep a fixed end space of the bar's height after the last
+   * one, always there and never toggled, so the last row can be scrolled clear of the bar; null
+   * draws nothing in it. While the bar is drawn the scroll area keeps its height as
+   * `scroll-padding-bottom`, so a row the keys move to stays above it. The bar sits above the
+   * horizontal scrollbar and left of the vertical one.
+   */
+  bottomBar?: ReactNode;
+
+  /**
    * The rows are still being asked for and none has arrived: the pixel spinner stands where
    * the empty state would, so "nothing yet" is not read as "nothing" (PAGES-12, Loading).
    */
@@ -394,12 +411,17 @@ export function TrackTable<Row>({
   scrollToIndex = null,
   getRowKey,
   emptyState,
+  bottomBar,
   loading = false,
   overscan = 10,
   resetKey,
   ariaLabel = "Tracks",
 }: TrackTableProps<Row>) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const bottomBarRef = useRef<HTMLDivElement>(null);
+  const keepsBottomRoom = bottomBar !== undefined;
+  const bottomBarShown = bottomBar !== undefined && bottomBar !== null && bottomBar !== false;
 
   // A column with an `accessor` and no engine sort key sorts here, over the rows the source has
   // (C193). Only when every row has arrived: a half-loaded list cannot be ordered honestly, and the
@@ -527,6 +549,13 @@ export function TrackTable<Row>({
     const measure = () => {
       setViewportWidth(element.clientWidth);
       setCornerWidth(element.querySelector<HTMLElement>(".track-table__corner")?.clientWidth ?? 0);
+      // The scrollbars the bottom bar keeps clear of: it sits above the horizontal one and left of
+      // the vertical one. Set on the element, so a scrollbar coming or going costs no render.
+      const root = rootRef.current;
+      if (root) {
+        root.style.setProperty("--track-table-scrollbar-x", `${Math.max(0, element.offsetHeight - element.clientHeight)}px`);
+        root.style.setProperty("--track-table-scrollbar-y", `${Math.max(0, element.offsetWidth - element.clientWidth)}px`);
+      }
     };
     measure();
     if (typeof ResizeObserver === "undefined") return undefined;
@@ -536,6 +565,30 @@ export function TrackTable<Row>({
   }, []);
   // Whether the pinned columns fit is asked of the widths as stored: room that only grows into view is not theirs.
   const pinned = stickyFits(columns, baseWidths, viewportWidth, scale);
+
+  // The bottom bar's height, for the scroll padding while it is drawn, and the end room, which
+  // only ever grows: a bar that wraps to a second line makes it taller once, and it never shrinks,
+  // because a shorter end room scrolled to the bottom would pull every row down (C9, option 1A).
+  const bottomRoom = useRef(0);
+  useLayoutEffect(() => {
+    const bar = bottomBarRef.current;
+    const root = rootRef.current;
+    if (!bottomBarShown || !bar || !root) return undefined;
+    const measure = () => {
+      const height = bar.getBoundingClientRect().height;
+      if (height <= 0) return;
+      root.style.setProperty("--track-table-bottom-bar", `${height}px`);
+      if (height > bottomRoom.current) {
+        bottomRoom.current = height;
+        root.style.setProperty("--track-table-bottom-room", `${height}px`);
+      }
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, [bottomBarShown]);
 
   const rowHeight = useRowHeight();
 
@@ -796,7 +849,7 @@ export function TrackTable<Row>({
     const moved = to !== cursorRow;
     setCursor(to);
     setKeyboardCursor(true);
-    const offset = revealOffset(to, rowHeight, headerHeight, element.scrollTop, element.clientHeight);
+    const offset = revealOffset(to, rowHeight, headerHeight, element.scrollTop, element.clientHeight, bottomInset(element));
     if (offset != null) virtualizer.scrollToOffset(offset);
     if (!moved) return;
     const modifiers = { shiftKey: command.extend, ctrlKey: false, metaKey: false };
@@ -879,9 +932,11 @@ export function TrackTable<Row>({
 
   return (
     <div
+      ref={rootRef}
       className="track-table"
       style={style}
       data-testid="track-table"
+      data-bottom-bar={bottomBarShown ? "" : undefined}
       data-drop-ready={dropLabel && dropReady ? "" : undefined}
       data-drag-active={dropLabel && dragActive ? "" : undefined}
       data-empty={empty ? "" : undefined}
@@ -1210,7 +1265,14 @@ export function TrackTable<Row>({
             })}
           </div>
         )}
+        {/* The bottom bar's end room: always there while the table has rows, never toggled. */}
+        {keepsBottomRoom && !empty && <div className="track-table__bottom-room" aria-hidden="true" />}
       </div>
+      {bottomBarShown && (
+        <div ref={bottomBarRef} className="track-table__bottom-bar">
+          {bottomBar}
+        </div>
+      )}
       {dropLabel && (dropReady || dragActive) && (
         <div className="track-table__drop-label" aria-hidden>
           <span>{dropLabel}</span>

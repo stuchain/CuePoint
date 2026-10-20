@@ -513,3 +513,34 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
 .track-table[data-grip] .track-table__header-cell-wrap:first-child .track-table__header-cell {
   padding-left: calc(var(--space-xs) + var(--icon-size-sm) + var(--space-xs));
 }
+
+/*
+ * The bottom bar (option 1A): the selection bar drawn over the table's bottom rows rather than
+ * above the table, so it never moves a row. It keeps clear of both scrollbars and stands over the
+ * rows, the sticky columns and the keyboard's row. The end room after the last row is always there
+ * (never toggled, so clearing the selection never pulls the rows down) and only ever grows to the
+ * bar's measured height; while the bar is drawn, its height is the scroll padding a row the keys
+ * move to stays above.
+ */
+.track-table__bottom-room {
+  height: var(--track-table-bottom-room, var(--selection-bar-height));
+  pointer-events: none;
+}
+
+.track-table__bottom-bar {
+  position: absolute;
+  left: 0;
+  right: var(--track-table-scrollbar-y, 0px);
+  bottom: var(--track-table-scrollbar-x, 0px);
+  z-index: 6;
+  /* The frame passes the pointer on; the bar in it decides (it lets a double-click through). */
+  pointer-events: none;
+}
+
+.track-table__bottom-bar > * {
+  pointer-events: auto;
+}
+
+.track-table[data-bottom-bar] .track-table__scroll {
+  scroll-padding-bottom: var(--track-table-bottom-bar, var(--selection-bar-height));
+}

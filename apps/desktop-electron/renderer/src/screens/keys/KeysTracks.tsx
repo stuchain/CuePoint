@@ -576,27 +576,6 @@ export function KeysTracks({
         </div>
       </div>
 
-      {/* K15: the bar keeps only Play, the page's job; every other action stays one right-click away. */}
-      <SelectionBar count={selection.count} onClear={selection.clear}>
-        {barGroups.map((group) => (
-          <Hint key={group.id} text={group.disabledReason ?? undefined}>
-            <Button
-              variant="secondary"
-              menu
-              aria-expanded={menu?.group === group.id}
-              aria-disabled={group.disabledReason ? true : undefined}
-              onClick={(event) => {
-                if (group.disabledReason) return;
-                const rect = event.currentTarget.getBoundingClientRect();
-                void openGroup(group.id, { x: rect.left, y: rect.bottom });
-              }}
-            >
-              {group.label}
-            </Button>
-          </Hint>
-        ))}
-      </SelectionBar>
-
       <div className="keys-tracks__rows">
         <TrackTable<LibraryTrackRow>
           columns={columns.visible}
@@ -619,6 +598,32 @@ export function KeysTracks({
           }
           activeIndex={selection.selection.anchor}
           emptyState={emptyState}
+          // K15: the bar keeps only Play, the page's job; every other action stays one right-click
+          // away. Over the table's bottom rows (option 1A), so the first click of a double-click
+          // never moves the row the second lands on.
+          bottomBar={
+            selection.count > 0 ? (
+              <SelectionBar count={selection.count} onClear={selection.clear} overlay>
+                {barGroups.map((group) => (
+                  <Hint key={group.id} text={group.disabledReason ?? undefined}>
+                    <Button
+                      variant="secondary"
+                      menu
+                      aria-expanded={menu?.group === group.id}
+                      aria-disabled={group.disabledReason ? true : undefined}
+                      onClick={(event) => {
+                        if (group.disabledReason) return;
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        void openGroup(group.id, { x: rect.left, y: rect.bottom });
+                      }}
+                    >
+                      {group.label}
+                    </Button>
+                  </Hint>
+                ))}
+              </SelectionBar>
+            ) : null
+          }
           resetKey={queryKey(query)}
           ariaLabel="Tracks in these keys"
         />

@@ -26,9 +26,11 @@ interface DiscoverSelectionBarProps {
   /** The entries of a group, for the selection as it is now. */
   itemsFor: (group: TrackActionGroupId) => Promise<TrackContextMenuItem[]>;
   onClear: () => void;
+  /** Drawn over a table's bottom rows (`TrackTable`'s `bottomBar`), not above it. */
+  overlay?: boolean;
 }
 
-export function DiscoverSelectionBar({ groups, selected, itemsFor, onClear }: DiscoverSelectionBarProps) {
+export function DiscoverSelectionBar({ groups, selected, itemsFor, onClear, overlay = false }: DiscoverSelectionBarProps) {
   const [menu, setMenu] = useState<{
     x: number;
     y: number;
@@ -61,7 +63,7 @@ export function DiscoverSelectionBar({ groups, selected, itemsFor, onClear }: Di
 
   return (
     <>
-      <SelectionBar count={selected} onClear={onClear}>
+      <SelectionBar count={selected} onClear={onClear} overlay={overlay}>
         {shown.map((group) => (
           <Button
             key={group.id}

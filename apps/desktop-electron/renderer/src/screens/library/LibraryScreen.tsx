@@ -2120,18 +2120,6 @@ export function LibraryScreen({
             )}
           </div>
 
-          {/* The shared selection bar directly above the table, drawn only while something is
-              selected (C9, C215). Select all and the count are at the end of the filter row.
-              Columns… is the table header's corner. */}
-          <LibrarySelectionBar
-            groups={barGroups}
-            selected={selection.count}
-            describedByQuery={selection.selection.all}
-            openGroup={menu?.kind === "selection" ? menu.group : null}
-            onOpenGroup={(id, anchor) => void openGroup(id, anchor)}
-            onClear={selection.clear}
-          />
-
           <div
             className="library-screen__table"
             onKeyDown={(event) => {
@@ -2222,6 +2210,22 @@ export function LibraryScreen({
               activeIndex={selection.selection.anchor}
               scrollToIndex={scrollTo}
               emptyState={emptyState}
+              // The shared selection bar over the table's bottom rows, drawn only while something
+              // is selected (C9, C215, option 1A): over the rows, not above them, so the first
+              // click of a double-click never moves the row the second lands on. Select all and
+              // the count are at the end of the filter row; Columns… is the header's corner.
+              bottomBar={
+                selection.count > 0 ? (
+                  <LibrarySelectionBar
+                    groups={barGroups}
+                    selected={selection.count}
+                    describedByQuery={selection.selection.all}
+                    openGroup={menu?.kind === "selection" ? menu.group : null}
+                    onOpenGroup={(id, anchor) => void openGroup(id, anchor)}
+                    onClear={selection.clear}
+                  />
+                ) : null
+              }
               loading={window_.loading}
               resetKey={queryKey(query)}
               ariaLabel="Library tracks"

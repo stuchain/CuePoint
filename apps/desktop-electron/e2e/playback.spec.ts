@@ -11,6 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { clickRowAt } from "./rowClick";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 
 /**
@@ -190,9 +191,10 @@ test.describe("Phase 5 end to end", () => {
       // Repeat-one so the current track stays put: the fixtures are a quarter
       // of a second long and would otherwise run out from under the assertions.
       await win.evaluate(() => (window as never as Bridge).cuepoint.player.setRepeat("one"));
-      // The selection bar opens on the first click and moves the table down, so the row is selected before it is double-clicked.
-      await rows.nth(1).click();
-      await rows.nth(1).dblclick();
+      // An unselected row, double-clicked where it is: the selection bar the first click brings is
+      // drawn over the table's bottom rows, so the second click lands on the same row (option 1A).
+      await expect(win.getByRole("toolbar", { name: "Selection" })).toHaveCount(0);
+      await clickRowAt(win, rows.nth(1), { clickCount: 2 });
 
       await expect(win.locator(".cp-player-bar")).toBeVisible({ timeout: 15_000 });
       await expect.poll(() => currentTitle(win), { timeout: 30_000 }).toBe(shown[1]);

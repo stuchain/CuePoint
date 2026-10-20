@@ -1,8 +1,9 @@
 /**
- * The bar directly above the table while tracks are selected (C9, C215): the shared
+ * The bar over the table's bottom rows while tracks are selected (C9, C215, option 1A): the shared
  * `SelectionBar` ("3 selected" with its close button) with the four groups, Play, Organize,
- * Beatport and More, as its actions. Nothing is drawn with no selection, so the table has no empty
- * band above it; Select all and the count are in the filter row (`FilterBar`'s `trailing`).
+ * Beatport and More, as its actions. It is the table's `bottomBar`, so it never moves a row, and
+ * nothing is drawn with no selection; Select all and the count are in the filter row
+ * (`FilterBar`'s `trailing`).
  *
  * The groups are one Tab stop and the arrow keys move between them, Down opens the group's menu.
  * What each group opens is `trackActions.ts`'s, the list the right-click menu is built from.
@@ -58,7 +59,7 @@ export function LibrarySelectionBar({
   };
 
   return (
-    <SelectionBar count={selected} onClear={onClear}>
+    <SelectionBar count={selected} onClear={onClear} overlay>
       <div ref={keys.ref} className="library-selection-bar__groups" onKeyDown={onKeyDown}>
         {groups.map((group, index) => (
           <Hint key={group.id} text={group.disabledReason ?? undefined}>

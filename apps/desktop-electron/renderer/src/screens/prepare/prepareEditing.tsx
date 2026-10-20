@@ -31,6 +31,7 @@ import {
 import { Button } from "../../components/Button";
 
 import { Hint } from "../../components/Hint";
+import { useDoubleClickGrace } from "../../hooks/useDoubleClickGrace";
 import { opensDialog } from "../../format/words";
 import { entryButtonDomId, type EntryButton, type EntryMark } from "./entryActions";
 import { useEntryButtonsForm } from "./entryButtonsRoom";
@@ -223,11 +224,7 @@ export function EntryButtons({ row }: { row: EntryRow }) {
   // They appear where the first click of a double-click has just landed, over the row's right end:
   // for the length of a double-click the pointer goes through them to the row, so the second click
   // plays the row instead of pressing a button. Keys and Tab are not held back.
-  const [armed, setArmed] = useState(false);
-  useEffect(() => {
-    const timer = setTimeout(() => setArmed(true), DOUBLE_CLICK_MS);
-    return () => clearTimeout(timer);
-  }, []);
+  const armed = useDoubleClickGrace();
   const measure = useRef<HTMLSpanElement>(null);
   const form = useEntryButtonsForm(measure, editing?.entryButtons.titleMinWidth ?? 0);
   // A mouse click on Remove waits out a double-click: the first click of one aimed at the row would

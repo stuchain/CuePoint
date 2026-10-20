@@ -879,7 +879,11 @@ describe("choosing keys", () => {
     expect(screen.queryByRole("toolbar", { name: "Selection" })).toBeNull();
     fireEvent.click((await within(table).findByText("Track 3")).closest("[role=row]")!);
     const bar = await screen.findByRole("toolbar", { name: "Selection" }, LOADED);
-    expect(bar.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Over the table's bottom rows (option 1A): outside its scroll area, so it moves no row.
+    expect(bar).toHaveClass("cp-selection-bar--overlay");
+    expect(bar.closest(".track-table__bottom-bar")).not.toBeNull();
+    expect(table.contains(bar)).toBe(false);
+    expect(table.querySelector(".track-table__bottom-room")).not.toBeNull();
     // K15: only Play, the page's job, is on the bar; the rest stays in the right-click menu.
     expect(within(bar).getByRole("button", { name: /^Play/ })).toBeInTheDocument();
     for (const name of ["Organize", "Beatport", "More"]) {

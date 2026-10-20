@@ -598,14 +598,11 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       // row, with nothing scrolled into view first. The first click selects,
       // which brings the selection's buttons; neither may move the rows or
       // cover them before the second click lands (DEC-112).
-      // Batch Z: the Library's selection bar now opens on that first click and moves the table down by
-      // its height, so the row is selected first, measured again, and double-clicked where it now is.
-      await win.mouse.click(shown.partial!.x, shown.partial!.y);
-      await expect(win.getByRole("toolbar", { name: "Selection" })).toBeVisible();
-      const selected = await measure(win, "Library tracks");
-      expect(selected.partial, "a Library row is still cut by the table's edge").not.toBeNull();
-      await win.mouse.dblclick(selected.partial!.x, selected.partial!.y);
-      await expect.poll(() => currentTitle(win), { timeout: 30_000 }).toBe(selected.partial!.title);
+      // The Library's selection bar is drawn over the table's bottom rows (option 1A) and lets the
+      // pointer through for a double-click's length, so the second click lands on the same row.
+      await expect(win.getByRole("toolbar", { name: "Selection" })).toHaveCount(0);
+      await win.mouse.dblclick(shown.partial!.x, shown.partial!.y);
+      await expect.poll(() => currentTitle(win), { timeout: 30_000 }).toBe(shown.partial!.title);
     } finally {
       await app.close();
     }

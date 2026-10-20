@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
+import { clickRowAt } from "./rowClick";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 import { probeScrollbar } from "./scrollbarProbe";
 
@@ -205,9 +206,10 @@ test("counts the keys of two playlists, opens one key, and plays from it", async
     expect(titles.map((t) => t.trim()).sort()).toEqual(["Track 1", "Track 2", "Track 4"]);
 
     // Play one from the list.
-    // The selection bar opens on the first click and moves the table down, so the row is selected before it is double-clicked.
-    await rows.nth(1).click();
-    await rows.nth(1).dblclick();
+    // An unselected row, double-clicked where it is: the selection bar the first click brings is
+    // drawn over the table's bottom rows, so the second click lands on the same row (option 1A).
+    await expect(win.getByRole("toolbar", { name: "Selection" })).toHaveCount(0);
+    await clickRowAt(win, rows.nth(1), { clickCount: 2 });
     await expect
       .poll(
         () =>

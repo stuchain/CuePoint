@@ -677,12 +677,14 @@
 .discover-page__half > .discover-table {
   flex: none;
   /* The heading row and the rows it holds, up to ten, then it scrolls (C253): a short list is
-     not padded out to a tall box. The selection bar takes its own height while it is drawn. */
+     not padded out to a tall box. The selection bar is drawn over the bottom rows (option 1A),
+     so the box keeps its height while it is drawn. */
   height: calc((var(--discover-rows, 10) + 1) * var(--row-height));
 }
 
-.discover-page__half > .discover-table[data-selecting] {
-  height: calc((var(--discover-rows, 10) + 1) * var(--row-height) + var(--selection-bar-height));
+/* No bar row above: the selection bar is the table's own, over its bottom rows (option 1A). */
+.discover-table--bar-over {
+  grid-template-rows: minmax(calc(160px * var(--scale)), 1fr);
 }
 
 .discover-page__beatport-table {

@@ -10,11 +10,11 @@ import type { EntryRow } from "./prepareRows";
 import type { TimeField, TimeTarget } from "./timeEditing";
 
 /**
- * A double-click's length: the Windows default, the longest of the systems the app runs on. The
- * entry buttons let the pointer through to the row for this long after they appear, and hold a
- * mouse click on Remove back for it, so a double-click aimed at the row plays it.
+ * A double-click's length (shared): the entry buttons let the pointer through to the row for this
+ * long after they appear, and hold a mouse click on Remove back for it, so a double-click aimed at
+ * the row plays it.
  */
-export const DOUBLE_CLICK_MS = 500;
+export { DOUBLE_CLICK_MS } from "../../hooks/useDoubleClickGrace";
 
 /** How a save ended: written, nothing to write, or refused. */
 export type TimeSaveResult = "saved" | "unchanged" | "refused";

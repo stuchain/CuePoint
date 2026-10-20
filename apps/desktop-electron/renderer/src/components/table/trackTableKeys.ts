@@ -89,6 +89,8 @@ export function pageSizeFor(viewportHeight: number, headerHeight: number, rowHei
  *
  * The virtualizer's own scrollToIndex does not know the header sits inside the
  * scroller, so moving down leaves the row about one header's height too low.
+ * `bottomInset` is what covers the viewport's bottom (the selection bar over the
+ * rows, option 1A): a row moved to is kept above it.
  */
 export function revealOffset(
   index: number,
@@ -96,10 +98,12 @@ export function revealOffset(
   headerHeight: number,
   scrollTop: number,
   viewportHeight: number,
+  bottomInset = 0,
 ): number | null {
   const top = headerHeight + index * rowHeight;
   const bottom = top + rowHeight;
+  const shown = viewportHeight - Math.max(0, bottomInset);
   if (top < scrollTop + headerHeight) return Math.max(0, index * rowHeight);
-  if (bottom > scrollTop + viewportHeight) return Math.max(0, bottom - viewportHeight);
+  if (bottom > scrollTop + shown) return Math.max(0, bottom - shown);
   return null;
 }

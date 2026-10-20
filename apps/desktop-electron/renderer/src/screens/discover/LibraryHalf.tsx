@@ -292,19 +292,9 @@ export function LibraryHalf({
       </span>
     </div>
     <div
-      className="discover-table discover-page__library"
-      data-selecting={selection.count > 0 ? "" : undefined}
+      className="discover-table discover-table--bar-over discover-page__library"
       style={{ "--discover-rows": Math.min(MAX_ROWS_SHOWN, Math.max(MIN_ROWS_SHOWN, window_.total)) } as CSSProperties}
     >
-      <div className="discover-page__library-actions">
-        <DiscoverSelectionBar
-          groups={GROUPS}
-          selected={selection.count}
-          itemsFor={itemsFor}
-          onClear={selection.clear}
-        />
-      </div>
-
       <div
         className="discover-table__rows"
         onKeyDown={(event) => {
@@ -341,6 +331,19 @@ export function LibraryHalf({
           onRowContextMenu={(row, index, anchor) => void openMenu(row, index, anchor.x, anchor.y)}
           activeIndex={selection.selection.anchor}
           emptyState={emptyState}
+          // The selection bar over the table's bottom rows (option 1A), as in the Library: the
+          // first click of a double-click brings it and moves no row.
+          bottomBar={
+            selection.count > 0 ? (
+              <DiscoverSelectionBar
+                groups={GROUPS}
+                selected={selection.count}
+                itemsFor={itemsFor}
+                onClear={selection.clear}
+                overlay
+              />
+            ) : null
+          }
           resetKey={queryKey(query)}
           ariaLabel="Your tracks"
         />

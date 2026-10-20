@@ -292,10 +292,18 @@ test.describe("The Library page (LIBRARY-11)", () => {
         const row = visible(".cp-filter-bar__row")!;
         const bar = visible(".cp-selection-bar");
         const table = document.querySelector<HTMLElement>('[role="table"][aria-label="Library tracks"]')!;
+        const first = table.querySelector<HTMLElement>(".track-table__row");
+        const round = (value: number) => Math.round(value * 10) / 10;
+        const tableBox = table.getBoundingClientRect();
         return {
-          row: Math.round(row.getBoundingClientRect().height * 10) / 10,
-          bar: bar ? Math.round(bar.getBoundingClientRect().height * 10) / 10 : 0,
-          tableTop: Math.round(table.getBoundingClientRect().top * 10) / 10,
+          row: round(row.getBoundingClientRect().height),
+          bar: bar ? round(bar.getBoundingClientRect().height) : 0,
+          barTop: bar ? round(bar.getBoundingClientRect().top) : 0,
+          barBottom: bar ? round(bar.getBoundingClientRect().bottom) : 0,
+          // The scroll area's bottom above its horizontal scrollbar, if it has one.
+          scrollBottom: round(tableBox.top + table.clientTop + table.clientHeight),
+          tableTop: round(tableBox.top),
+          firstRowTop: first ? round(first.getBoundingClientRect().top) : 0,
         };
       });
 
@@ -392,26 +400,28 @@ test.describe("The Library page (LIBRARY-11)", () => {
           });
           await window.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
         }
-        // Nothing selected, then everything: the filter row is as high either way, and the table
-        // sits lower by exactly the selection bar's height (C9, C215), at every window and scale
-        // visited. The second state is also the widest, which is what the measure below holds the
-        // bar to.
+        // Nothing selected, then everything: the filter row is as high either way, and neither the
+        // table nor a row moves, because the selection bar is drawn over the table's bottom rows
+        // (C9, C215, option 1A), at every window and scale visited. The second state is also the
+        // widest, which is what the measure below holds the bar to.
         const chip = window.getByRole("button", { name: "Clear selection" });
         if (await chip.count()) await chip.click();
         await expect(window.getByRole("toolbar", { name: "Selection" })).toHaveCount(0);
         const before = await shape();
         expect(before.bar, "no band above the table with nothing selected").toBe(0);
         // The rows the page keeps are counted with nothing selected: the bar is only there while
-        // tracks are selected, and then it is the table that gives way, by exactly its height.
+        // tracks are selected, and then it covers the bottom rows instead of moving them.
         const idle = await measure();
         await window.getByRole("button", { name: "Select all" }).click();
         await expect(window.getByRole("toolbar", { name: "Selection" })).toBeVisible();
         const after = await shape();
         expect(after.row, "the filter row's height, with and without a selection").toBe(before.row);
         expect(after.bar, "the selection bar is drawn").toBeGreaterThan(0);
-        const moved = after.tableTop - before.tableTop;
-        expect(moved, "the table moves down by the bar and its gap, no more").toBeGreaterThanOrEqual(after.bar - 1);
-        expect(moved).toBeLessThanOrEqual(after.bar + 12);
+        expect(after.tableTop, "the table does not move when the bar appears").toBe(before.tableTop);
+        expect(after.firstRowTop, "no row moves when the bar appears").toBe(before.firstRowTop);
+        // The bar is over the table's bottom edge, inside its frame and above its scrollbar.
+        expect(after.barBottom).toBeLessThanOrEqual(after.scrollBottom + 0.5);
+        expect(after.barTop).toBeGreaterThan(before.tableTop);
         const m = await measure();
         const label = `${m.window.width}x${m.window.height}${wideScrollbars ? " with 20px scrollbars" : ""}`;
         console.log(`PAGES-05C Library whole rows at ${label}:`, idle.whole, JSON.stringify(idle));

@@ -38,3 +38,15 @@
   min-width: 0;
   padding-block: var(--space-xs, 4px);
 }
+
+/*
+ * Over a table's bottom rows (option 1A): a hairline rule on top and no shadow (C16a). For a
+ * double-click's length after it appears the pointer goes through it to the row under it.
+ */
+.cp-selection-bar--overlay {
+  border-top: var(--divider);
+}
+
+.cp-selection-bar--overlay[data-armed="false"] {
+  pointer-events: none;
+}

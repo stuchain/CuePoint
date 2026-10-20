@@ -31,6 +31,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { waitForEngine } from "./engineReady";
+import { clickRowAt } from "./rowClick";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = path.resolve(__dirname, "..");
@@ -286,9 +287,9 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
       await expectOneLineBar(window, "artist page");
 
       // --- play a track from the page (DEC-012) ----------------------------
-      // The selection bar opens on the first click and moves the table down, so the row is selected before it is double-clicked.
-      await row(window, "Your tracks", "Low Tide").click();
-      await row(window, "Your tracks", "Low Tide").dblclick();
+      // An unselected row, double-clicked where it is: the page keeps the selection bar's room.
+      await expect(window.getByRole("toolbar", { name: "Selection" })).toHaveCount(0);
+      await clickRowAt(window, row(window, "Your tracks", "Low Tide"), { clickCount: 2 });
       await expect.poll(() => currentTitle(window), { timeout: 30_000 }).toBe("Low Tide");
       expect(await queueTitles(window)).toEqual(["Harbour Lights", "Low Tide"]);
 
@@ -471,9 +472,9 @@ test.describe("Artist pages and Similar tracks (DISCOVER-11)", () => {
         await expect(window.getByText("Your tracks by this name")).toBeVisible();
         await expect.poll(() => titlesIn(window, "Your tracks")).toEqual(["Night Bus", "Signal"]);
         await expect(window.getByLabel("On Beatport").getByText("No match")).toBeVisible({ timeout: 30_000 });
-        // The selection bar opens on the first click and moves the table down, so the row is selected before it is double-clicked.
-        await row(window, "Your tracks", "Signal").click();
-        await row(window, "Your tracks", "Signal").dblclick();
+        // An unselected row, double-clicked where it is: the page keeps the selection bar's room.
+        await expect(window.getByRole("toolbar", { name: "Selection" })).toHaveCount(0);
+        await clickRowAt(window, row(window, "Your tracks", "Signal"), { clickCount: 2 });
         await expect.poll(() => currentTitle(window), { timeout: 30_000 }).toBe("Signal");
         expect(await queueTitles(window)).toEqual(["Night Bus", "Signal"]);
       });

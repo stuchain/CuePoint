@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { clickRowAt } from "./rowClick";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 
 /**
@@ -172,9 +173,10 @@ test("plays and queues from the Library table", async () => {
 
     // --- double-click plays that row, with the view as the queue (DEC-012) ---
     const rows = win.locator(".track-table__row");
-    // The selection bar opens on the first click and moves the table down, so the row is selected before it is double-clicked.
-    await rows.nth(1).click();
-    await rows.nth(1).dblclick();
+    // An unselected row, double-clicked where it is: the selection bar the first click brings is
+    // drawn over the table's bottom rows, so the second click lands on the same row (option 1A).
+    await expect(selectionStrip(win)).toHaveCount(0);
+    await clickRowAt(win, rows.nth(1), { clickCount: 2 });
 
     await expect.poll(() => currentTitle(win), { timeout: 30_000 }).toBe(shown[1]);
     expect(await queueTitles(win)).toEqual(shown);
