@@ -21,7 +21,7 @@ import { Button } from "../../components/Button";
 import { Card } from "../../components/Card";
 import { LinkButton } from "../../components/LinkButton";
 import { formatCount } from "../../format/counts";
-import { formatDayTime } from "../../format/dates";
+import { formatDayTimeInSentence } from "../../format/dates";
 import { MATCH_STATE, goTo } from "../../format/words";
 import { checkedLine } from "../clean/cleanEmpty";
 import { cleanSectionState } from "../clean/cleanLink";
@@ -51,10 +51,10 @@ interface Row {
   place?: Place | null;
 }
 
-/** "Artwork last read Sep 3, 2026, 1:04 PM", or the plain fact that it has not been. */
+/** "Artwork last read today, 1:04 PM" (the words of "Checked today, …"), or the plain fact that it has not been. */
 function artworkLine(checkedAt: string | null): string {
   if (!checkedAt) return "Artwork has not been read yet";
-  return `Artwork last read ${formatDayTime(checkedAt) || checkedAt}`;
+  return `Artwork last read ${formatDayTimeInSentence(checkedAt) || checkedAt}`;
 }
 
 interface CardProps {

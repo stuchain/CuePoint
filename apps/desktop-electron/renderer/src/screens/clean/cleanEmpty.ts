@@ -13,7 +13,7 @@
  * responses the real engine gave (`cleanEmpty.fixture.json`).
  */
 import type { LibraryHealth } from "../../api/cuepointBridge.types";
-import { formatDayInSentence, formatDayTime, formatTimeOfDay, type DateOptions } from "../../format/dates";
+import { formatDayTime, formatDayTimeInSentence, type DateOptions } from "../../format/dates";
 
 /** The one thing an empty state offers to do about itself, when there is one. */
 type CleanEmptyOffer = "check_files" | "find_duplicates";
@@ -88,8 +88,6 @@ export function duplicatesEmptyState(
  * cannot be read, so the bar never says a made-up moment.
  */
 export function checkedLine(when: string, options: DateOptions = {}): string {
-  const day = formatDayInSentence(when, options);
-  const time = formatTimeOfDay(when, options);
-  if (!day || !time) return "";
-  return `Checked ${day}, ${time}`;
+  const moment = formatDayTimeInSentence(when, options);
+  return moment ? `Checked ${moment}` : "";
 }

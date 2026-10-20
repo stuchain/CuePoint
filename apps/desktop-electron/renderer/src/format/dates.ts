@@ -66,6 +66,16 @@ export function formatDayInSentence(value: DateInput, options: DateOptions = {})
   return text === "Today" || text === "Yesterday" ? text.toLowerCase() : text;
 }
 
+/**
+ * "today, 8:28 AM", "yesterday, 9:05 AM", "Oct 15, 4:42 PM": a moment in the middle of a sentence
+ * ("Checked …", "Artwork last read …"). Empty when the time cannot be read.
+ */
+export function formatDayTimeInSentence(value: DateInput, options: DateOptions = {}): string {
+  const day = formatDayInSentence(value, options);
+  const time = formatTimeOfDay(value, options);
+  return day && time ? `${day}, ${time}` : "";
+}
+
 /** The day a track was added to the library (the Added column): the same words as `formatDay`. */
 export function formatAdded(value: DateInput, options: DateOptions = {}): string {
   return formatDay(value, options);

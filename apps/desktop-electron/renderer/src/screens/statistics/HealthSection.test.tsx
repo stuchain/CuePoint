@@ -18,7 +18,7 @@ import { checkedLine } from "../clean/cleanEmpty";
 import { cleanSectionOpening } from "../clean/cleanLink";
 import { rulesFromLocationState } from "../library/libraryLink";
 import { settingsFocus } from "../settingsLink";
-import { formatDayTime } from "../../format/dates";
+import { formatDayTimeInSentence } from "../../format/dates";
 import css from "./statistics.css?raw";
 import { HealthSection } from "./HealthSection";
 import { healthToFix } from "./healthCount";
@@ -93,7 +93,6 @@ const panel = (id: string) => document.querySelector<HTMLElement>(`[data-panel="
 const rowOf = (card: string, id: string) =>
   panel(card).querySelector<HTMLElement>(`[data-row="${id}"]`)!;
 /** An instant as the page writes it (the day and the time, on this computer), so the tests hold in any time zone. */
-const whenOf = (iso: string) => formatDayTime(iso);
 const where = () => screen.getByTestId("where");
 
 beforeEach(() => {
@@ -235,9 +234,19 @@ describe("the Health tab (STATS-07, K3)", () => {
     expect(where().dataset.settings).toBe("waveforms");
   });
 
+  it("says when the artwork was last read in the words of Checked today, …, the same helper (new B)", () => {
+    const today = new Date();
+    today.setHours(8, 28, 0, 0);
+    const iso = today.toISOString();
+    renderSection({ ...HEALTH, checked_at: iso, artwork_checked_at: iso });
+    const checked = checkedLine(iso);
+    expect(checked).toMatch(/^Checked today, /);
+    expect(within(panel("other")).getByText(`Artwork last read ${checked.slice("Checked ".length)}`)).toBeInTheDocument();
+  });
+
   it("says when the artwork was last read, and when it never was", () => {
     const first = renderSection();
-    expect(within(panel("other")).getByText(`Artwork last read ${whenOf(HEALTH.artwork_checked_at!)}`)).toBeInTheDocument();
+    expect(within(panel("other")).getByText(`Artwork last read ${formatDayTimeInSentence(HEALTH.artwork_checked_at!)}`)).toBeInTheDocument();
     first.unmount();
     renderSection({ ...HEALTH, artwork_checked_at: null });
     expect(within(panel("other")).getByText("Artwork has not been read yet")).toBeInTheDocument();

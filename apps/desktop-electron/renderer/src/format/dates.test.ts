@@ -5,6 +5,7 @@ import {
   formatDateTime,
   formatDay,
   formatDayInSentence,
+  formatDayTimeInSentence,
   formatDayTime,
   formatRange,
   formatTimeOfDay,
@@ -75,6 +76,17 @@ describe("formatDayInSentence (C170)", () => {
   it("leaves a date as formatDay writes it", () => {
     expect(formatDayInSentence(new Date(2026, 8, 3), us)).toBe("Sep 3");
     expect(formatDayInSentence("not a date", us)).toBe("");
+  });
+});
+
+describe("formatDayTimeInSentence (new B)", () => {
+  it("says the day as a sentence does and then the time: today, 8:28 AM", () => {
+    expect(formatDayTimeInSentence(new Date(2026, 9, 15, 8, 28), us)).toBe("today, 8:28 AM");
+    expect(formatDayTimeInSentence(new Date(2026, 9, 14, 9, 5), us)).toBe("yesterday, 9:05 AM");
+    expect(formatDayTimeInSentence(new Date(2026, 8, 3, 13, 4), us)).toBe("Sep 3, 1:04 PM");
+  });
+  it("is empty when the time cannot be read", () => {
+    expect(formatDayTimeInSentence("not a date", us)).toBe("");
   });
 });
 
