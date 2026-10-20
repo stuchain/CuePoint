@@ -86,6 +86,30 @@
   border: 0;
 }
 
+/* Counts with no room on their bars (item 4): the same table, in the page, under its link. */
+.cp-pixel-bars__numbers {
+  margin-top: var(--space-xs);
+}
+
+.cp-pixel-bars__table--shown {
+  position: static;
+  width: 100%;
+  height: auto;
+  margin: var(--space-md) 0 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+.cp-pixel-bars__table--shown caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /*
  * Motion (DEC-134, DEC-135). Only transform and opacity move, each behind its kind's switch, so
  * a kind that is off or reduced motion shows the bars at once. A bar grows from its baseline in

@@ -262,3 +262,39 @@ describe("PixelBars", () => {
     expect(container.querySelector("[data-bar-slot='0'] [data-changed]")).toBeNull();
   });
 });
+
+describe("counts with no room on the chart (item 4)", () => {
+  const MANY: PixelBucket[] = Array.from({ length: 30 }, (_, at) => ({ label: String(100 + at), count: 35 + at }));
+
+  function squeezed(props: Partial<React.ComponentProps<typeof PixelBars>> = {}) {
+    // A narrow box: the fitted columns are thinner than a two-digit count.
+    const width = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(200);
+    try {
+      return render(<PixelBars title="Tempo" buckets={MANY} orientation="vertical" barName={name} fit="width" {...props} />);
+    } finally {
+      width.mockRestore();
+    }
+  }
+
+  it("offers every number as a table beside the chart, shown with a click, not a hover", () => {
+    const { container } = squeezed();
+    const show = screen.getByRole("button", { name: "Show the numbers" });
+    expect(show).toHaveAttribute("aria-expanded", "false");
+    const table = screen.getByRole("table", { name: "Tempo" });
+    expect(table).not.toHaveClass("cp-pixel-bars__table--shown");
+    fireEvent.click(show);
+    expect(screen.getByRole("button", { name: "Show the numbers" })).toHaveAttribute("aria-expanded", "true");
+    expect(table).toHaveClass("cp-pixel-bars__table--shown", "cp-data-table");
+    expect(within(table).getByText("35")).toBeInTheDocument();
+    expect(container.querySelectorAll(".cp-pixel-bars__count").length).toBeLessThan(MANY.length);
+  });
+
+  it("offers no such button when every count is written on its bar", () => {
+    chart();
+    expect(screen.queryByRole("button", { name: "Show the numbers" })).toBeNull();
+  });
+
+  it("draws the shown table in the page's flow, not the hidden one's box", () => {
+    expect(CSS).toMatch(/\.cp-pixel-bars__table--shown\s*\{[^}]*position:\s*static/);
+  });
+});

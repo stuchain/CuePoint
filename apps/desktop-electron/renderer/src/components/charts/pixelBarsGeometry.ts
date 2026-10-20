@@ -295,7 +295,13 @@ function columns({ buckets, width, height, scale, isGap, fit = "scroll" }: BarsL
       outline: rect ? { x: rect.x - hair, y: rect.y - hair, width: rect.width + 2 * hair, height: rect.height + hair } : null,
       hit: { x: here, y: 0, width: pitch, height: total },
       gap: false,
-      count: bucket.count <= 0 ? null : { text: countText(bucket.count), x: centre, y: baseY - tall - hair - px(2), anchor: "middle" },
+      // A count is written only where it fits its own column (item 4): fitted to a narrow width,
+      // "35" beside "35" ran together as "3535". The value is still on the bar's focus caption and
+      // in the chart's table.
+      count:
+        bucket.count <= 0 || [...countText(bucket.count)].length * charW + px(2) > pitch
+          ? null
+          : { text: countText(bucket.count), x: centre, y: baseY - tall - hair - px(2), anchor: "middle" },
       label:
         place(bucket.label, labelStart, false, gapStartAfter(index, here))
           ? { text: bucket.label, x: labelX, y: baseY + hair + px(2) + fontSize, anchor }

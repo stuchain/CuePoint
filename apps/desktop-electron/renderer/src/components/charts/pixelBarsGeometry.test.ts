@@ -145,6 +145,26 @@ describe("barsLayout: size and text", () => {
     expect(shown).toBeLessThan(ORDERED.length);
   });
 
+  it("writes a count only where it fits its own bar's column, so neighbours never run together (item 4)", () => {
+    // Fitted to a narrow width the columns are thinner than "35", and 35 beside 35 read as "3535".
+    const buckets = Array.from({ length: 40 }, (_, at) => ({ label: String(100 + at), count: at % 3 === 0 ? 1204 : 35 }));
+    for (const scale of SCALES) {
+      const layout = barsLayout({ buckets, orientation: "vertical", width: 520, height: 200, scale, fit: "width" });
+      const charW = Math.round(6 * scale);
+      const pitch = layout.bars[1]!.hit.x - layout.bars[0]!.hit.x;
+      const written = layout.bars.filter((b) => b.count);
+      for (const bar of written) expect([...bar.count!.text].length * charW).toBeLessThan(pitch);
+      const ends = written.map((b) => {
+        const w = [...b.count!.text].length * charW;
+        return { left: b.count!.x - w / 2, right: b.count!.x + w / 2 };
+      });
+      for (let at = 1; at < ends.length; at += 1) expect(ends[at]!.left).toBeGreaterThanOrEqual(ends[at - 1]!.right);
+    }
+    // Wide enough, every count is written.
+    const wide = barsLayout({ buckets, orientation: "vertical", width: 4000, height: 200, scale: 1, fit: "width" });
+    expect(wide.bars.every((b) => b.count)).toBe(true);
+  });
+
   it("keeps every thinned label inside the chart, ending the last ones at their bar", () => {
     const months = Array.from({ length: 28 }, (_, at) => ({
       label: `${2024 + Math.floor(at / 12)}-${String((at % 12) + 1).padStart(2, "0")}`,

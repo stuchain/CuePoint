@@ -17,6 +17,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { useScaleFactor } from "../../tokens/ScaleContext";
+import { LinkButton } from "../LinkButton";
 import { changedMark, useCountChanges } from "../wheel/useCountChanges";
 import { formatCount } from "./formatCount";
 import { trueMinus } from "./trueMinus";
@@ -128,6 +129,11 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
   const [pointed, setPointed] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const shown = buckets.find((b) => !isGap?.(b) && b.label === (pointed ?? focused));
+  // Counts with no room on their bar (item 4) are offered as the chart's table, shown on a click:
+  // a bar that opens nothing cannot be focused, so its caption alone would be hover-only.
+  const countsCut = layout.bars.some((bar) => !bar.gap && bar.bucket.count > 0 && !bar.count);
+  const [tableShown, setTableShown] = useState(false);
+  const showTable = countsCut && tableShown;
 
   function moveTo(at: number | undefined) {
     if (at === undefined) return;
@@ -300,7 +306,16 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
         </svg>
       </div>
       <p className="cp-pixel-bars__caption">{shown ? trueMinus(barName(shown)) : ""}</p>
-      <table className="cp-pixel-bars__table">
+      {countsCut && (
+        <LinkButton
+          className="cp-pixel-bars__numbers"
+          aria-expanded={tableShown}
+          onClick={() => setTableShown((open) => !open)}
+        >
+          Show the numbers
+        </LinkButton>
+      )}
+      <table className={showTable ? "cp-pixel-bars__table cp-pixel-bars__table--shown cp-data-table" : "cp-pixel-bars__table"}>
         <caption>{title}</caption>
         <thead>
           <tr>
@@ -313,7 +328,7 @@ export function PixelBars<T extends PixelBucket = PixelBucket>({
             isGap?.(bucket) ? null : (
               <tr key={at}>
                 <th scope="row">{trueMinus(bucket.label)}</th>
-                <td>{formatCount(bucket.count)}</td>
+                <td className="num">{formatCount(bucket.count)}</td>
               </tr>
             ),
           )}
