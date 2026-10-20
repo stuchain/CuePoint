@@ -50,7 +50,7 @@ mutagen>=1.47.0
 # Artwork thumbnails (CLEAN-09, DEC-076 as amended). Pinned: every image
 # CuePoint decodes goes through one guarded decoder, and an image library
 # is updated deliberately, like any security-sensitive dependency.
-Pillow==12.3.0
+Pillow==13.0.0
 
 # Testing dependencies
 pytest==9.0.3

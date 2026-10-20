@@ -58,4 +58,4 @@ mutagen>=1.47.0
 pyinstaller==6.17.0
 
 # Artwork thumbnails at runtime (CLEAN-09); the pin matches requirements.txt.
-Pillow==12.3.0
+Pillow==13.0.0
