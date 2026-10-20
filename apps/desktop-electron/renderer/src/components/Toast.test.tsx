@@ -264,4 +264,8 @@ describe("toast styles (C122)", () => {
     expect(toastCss).toMatch(/\.cp-toast-stack\s*\{[^}]*gap:\s*var\(--space-sm\);/);
     expect(toastCss).toMatch(/--shell-bottom-inset/);
   });
+
+  it("sets its words in Inter, as every sentence is (new A, D5); its buttons keep their own face", () => {
+    expect(toastCss).toMatch(/\.cp-toast\s*\{[^}]*font-family:\s*var\(--font-data\);/);
+  });
 });

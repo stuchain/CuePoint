@@ -102,6 +102,8 @@
   grid-column: 3;
   min-width: 0;
   color: var(--fg-primary);
+  /* A sentence, so Inter (D5, C55); the entry's buttons keep the pixel face. */
+  font-family: var(--font-data);
   overflow-wrap: anywhere;
 }
 

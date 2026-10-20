@@ -34,6 +34,12 @@ describe("the Activity list lines up (C37)", () => {
   });
 });
 
+describe("an Activity line is a sentence (new A, D5)", () => {
+  it("is set in Inter, the data face, as every sentence is", () => {
+    expect(decl(".cp-activity__summary-text", "font-family")).toBe("var(--font-data)");
+  });
+});
+
 describe("Activity wording (C153, C161, C170)", () => {
   const job = (type: string): EngineJobSummary => ({
     id: "j",
