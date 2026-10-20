@@ -154,9 +154,10 @@ function CandidateRow({
   const preview = useBeatportPreview({ kind: "candidate", id: candidate.id });
   const playing = preview.state === "playing";
   const label = [candidate.title, candidate.artists].filter(Boolean).join(" by ");
-  const cover = useCandidateArtwork(candidate.id, "row");
+  const { ref: coverRef, url: cover } = useCandidateArtwork(candidate.id, "row");
   return (
     <li
+      ref={coverRef}
       className={`review-candidate${inUse ? " review-candidate--in-use" : ""}${picked ? " review-candidate--picked" : ""}`}
       data-candidate-id={candidate.id}
       onDoubleClick={(event) => {

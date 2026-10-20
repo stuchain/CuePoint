@@ -30,6 +30,20 @@ describe("a chart without a cover", () => {
     expect(screen.queryByText("P")).toBeNull();
   });
 
+  it("keeps the card's square while its picture is still coming, so nothing moves when it arrives", () => {
+    (window as unknown as { cuepoint: unknown }).cuepoint = {
+      getDiscoveryGroupArt: () => new Promise<string | null>(() => {}),
+    };
+    try {
+      const { container } = render(<GroupArt runId={1} kind="chart" cardKey="k" hasArt />);
+      const art = container.querySelector(".discover-card__art")!;
+      expect(art).not.toHaveClass("discover-card__art--placeholder");
+      expect(art.querySelector(".cp-artwork-placeholder")).not.toBeNull();
+    } finally {
+      delete (window as unknown as { cuepoint?: unknown }).cuepoint;
+    }
+  });
+
   it("is the same placeholder for an artist or a label, and an artist's stays round", () => {
     const artist = render(<GroupArt runId={1} kind="artist" cardKey="k" hasArt={false} />);
     expect(artist.container.querySelector(".cp-artwork-placeholder")).not.toBeNull();

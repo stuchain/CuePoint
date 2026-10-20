@@ -91,7 +91,7 @@ describe("the candidates", () => {
     bridge.releaseTrackArtwork = release;
     (window.cuepoint as unknown as Record<string, unknown>).getCandidateArtwork = get;
     (window.cuepoint as unknown as Record<string, unknown>).releaseTrackArtwork = release;
-    const { unmount } = render(
+    const panel = () => (
       <ScaleProvider>
         <CandidatePanel
           row={reviewTrack(1, "to_check")}
@@ -105,16 +105,27 @@ describe("the candidates", () => {
           onLeaveOut={vi.fn()}
           onMessage={vi.fn()}
         />
-      </ScaleProvider>,
+      </ScaleProvider>
     );
+    const { unmount } = render(panel());
     const list = await candidates();
     await waitFor(() => expect(list.getAllByRole("listitem")[0]!.querySelector("img.review-candidate__cover")).not.toBeNull());
     expect(get).toHaveBeenCalledWith({ candidateId: 1001, size: "row" });
     // The second candidate has no picture: the placeholder holds its place.
     expect(list.getAllByRole("listitem")[1]!.querySelector(".review-candidate__cover")).not.toBeNull();
     expect(list.getAllByRole("listitem")[1]!.querySelector("img")).toBeNull();
+    const asked = get.mock.calls.length;
+    // Kept for the next time the panel opens on these candidates (the cover cache releases it when
+    // it is evicted), so the next open draws it at once without asking again.
     unmount();
-    expect(release).toHaveBeenCalledWith("blob:cover-1001");
+    expect(release).not.toHaveBeenCalled();
+    render(panel());
+    const again = await candidates();
+    expect(again.getAllByRole("listitem")[0]!.querySelector("img.review-candidate__cover")).toHaveAttribute(
+      "src",
+      "blob:cover-1001",
+    );
+    expect(get).toHaveBeenCalledTimes(asked);
   });
 
   it("has the shared panel header: a title, the status, the place and the shared Close button", () => {
