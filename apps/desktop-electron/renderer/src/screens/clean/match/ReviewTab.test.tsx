@@ -218,6 +218,18 @@ describe("the selected row's look (C82)", () => {
   });
 });
 
+describe("the tick boxes' look (item 9a)", () => {
+  it("keeps a ticked box grey-outlined with a violet tick, and fills it violet only when focused", async () => {
+    const css = (await import("./match.css?raw")).default;
+    const ticked = /\.review-col--check input\[type="checkbox"\]:checked:not\(:disabled\),[^{]*\{([^}]*)\}/.exec(css)![1]!;
+    expect(ticked).toMatch(/border-color:\s*var\(--border-control\)/);
+    expect(ticked).toMatch(/background-color:\s*var\(--bg-input\)/);
+    expect(ticked).toMatch(/color:\s*var\(--accent-primary\)/);
+    const focused = /\.review-row:focus-visible \.review-col--check input\[type="checkbox"\]:checked,[^{]*\{([^}]*)\}/.exec(css)![1]!;
+    expect(focused).toMatch(/background-color:\s*var\(--accent-fill\)/);
+  });
+});
+
 describe("ticking", () => {
   it("unticks a track at once and tells the engine, which keeps it", async () => {
     const { props } = renderTab();

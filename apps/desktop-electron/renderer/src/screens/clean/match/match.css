@@ -254,6 +254,24 @@
   vertical-align: middle;
 }
 
+/* A column of ticks is not a stripe of violet (item 9a): a ticked box keeps its grey outline and
+   draws only the tick in violet; the solid violet box is the focused one's (the row the keys are
+   on, or the box itself), as a control the keyboard is on reads everywhere. */
+.review-col--check input[type="checkbox"]:checked:not(:disabled),
+.review-col--check input[type="checkbox"]:indeterminate:not(:disabled) {
+  border-color: var(--border-control);
+  background-color: var(--bg-input);
+  color: var(--accent-primary);
+}
+
+.review-row:focus-visible .review-col--check input[type="checkbox"]:checked,
+.review-col--check input[type="checkbox"]:focus-visible:checked,
+.review-col--check input[type="checkbox"]:focus-visible:indeterminate {
+  border-color: var(--accent-fill);
+  background-color: var(--accent-fill);
+  color: var(--fg-on-accent);
+}
+
 /* Status takes what its words need, and the titles get the rest (C64). */
 .cp-data-table .review-col--status {
   width: 1%;
@@ -450,9 +468,9 @@
   border-bottom: 0;
 }
 
+/* The one in use: the green bar and its "In use" chip, on the card's own fill (item 9b). */
 .review-candidate--in-use {
   border-left-color: var(--accent-success);
-  background: color-mix(in srgb, var(--accent-success) 10%, var(--bg-panel));
 }
 
 /* The one that Use this match would take: the selected look, the tint and the bar. */
