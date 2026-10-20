@@ -265,5 +265,6 @@ class TestTagColoursMatch:
 
     def test_a_colour_is_painted_from_a_theme_token(self, tag_manager: str) -> None:
         # The engine stores a token rather than a hex value precisely so a tag
-        # is the right red in every theme.
-        assert "var(--accent-${colour})" in tag_manager
+        # is the right red in every theme. Tags paint from their own palette
+        # (`--tag-*`), never a status colour, so a red tag does not read as an error.
+        assert "var(--tag-${COLOUR_HUES[colour as TagColour]})" in tag_manager
