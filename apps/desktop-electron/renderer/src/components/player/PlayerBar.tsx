@@ -1,8 +1,12 @@
-import { Fragment, useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Badge } from "../Badge";
 import { countNoun, formatCount } from "../../format/counts";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
+import { TrackContextMenu, useMenuButton, type TrackContextMenuItem } from "../TrackContextMenu";
+import { useScaleFactor } from "../../tokens/ScaleContext";
+import type { RepeatMode } from "../../api/cuepointBridge.types";
+import { useCompactBar } from "./useCompactBar";
 import { WheelButton } from "../wheel/WheelButton";
 import { waveformEntryWords } from "../waveform/analysisWords";
 import { useWaveform } from "../waveform/useWaveforms";
@@ -83,6 +87,15 @@ interface PlayerBarProps {
  * One wording per control (C175): each button's tip is its spoken name, so the two are written
  * once. A shortcut is the Hint's `shortcut`, drawn after the words.
  */
+
+/**
+ * The narrowest the timeline gets, before scale (item 2). The stylesheet's floor under
+ * `.cp-player-bar__wave` is this number too; at it, shuffle, repeat, the queue and the zoomed
+ * waveform fold into one More menu so the timeline is not squeezed further.
+ */
+export const TIMELINE_MIN_PX = 96;
+
+const REPEAT_ORDER: readonly RepeatMode[] = ["off", "all", "one"];
 
 /** What the repeat button's short label says beside its icon (BAR-3). */
 const REPEAT_SHORT: Record<string, string> = { all: "All", one: "One" };
@@ -171,6 +184,55 @@ export function PlayerBar({
     saveRepeat(next);
   }, [repeat]);
 
+  const chooseRepeat = useCallback(async (next: RepeatMode) => {
+    try {
+      await bridge()?.setRepeat(next);
+    } catch {
+      return;
+    }
+    saveRepeat(next);
+  }, []);
+
+  // At 2x in a 1264-wide window the timeline went to nothing (item 2). It keeps a floor, and once
+  // it is at that floor the four utility buttons fold into one More menu; they come back once the
+  // bar is wider again by the room they took, so the bar does not flicker at the edge.
+  const scale = useScaleFactor();
+  const compact = useCompactBar();
+  const barRef = useRef<HTMLDivElement>(null);
+  const orderRef = useRef<HTMLDivElement>(null);
+  const [folded, setFolded] = useState(false);
+  const unfoldAt = useRef(0);
+  const moreMenu = useMenuButton();
+  const measureBar = useCallback(() => {
+    const bar = barRef.current;
+    const timeline = bar?.querySelector<HTMLElement>(".cp-player-bar__wave");
+    // Nothing laid out (a hidden window, a test without layout): leave the bar as it is.
+    if (!bar || !timeline || bar.clientWidth === 0) return;
+    const width = bar.clientWidth;
+    if (folded) {
+      if (width >= unfoldAt.current) setFolded(false);
+      return;
+    }
+    // At its floor, or already pushed onto a second row with the controls: fold.
+    const transport = bar.querySelector<HTMLElement>(".cp-player-bar__transport");
+    const controls = bar.querySelector<HTMLElement>(".cp-player-bar__controls");
+    const wrapped =
+      !!transport && !!controls && transport.offsetHeight > 0 && controls.offsetTop >= transport.offsetTop + transport.offsetHeight;
+    if (!wrapped && timeline.clientWidth > TIMELINE_MIN_PX * scale + 1) return;
+    unfoldAt.current = width + Math.max(1, orderRef.current?.offsetWidth ?? 0);
+    setFolded(true);
+  }, [folded, scale]);
+  useLayoutEffect(measureBar, [measureBar, item?.title]);
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar || typeof ResizeObserver === "undefined") return;
+    const watcher = new ResizeObserver(measureBar);
+    watcher.observe(bar);
+    const timeline = bar.querySelector(".cp-player-bar__wave");
+    if (timeline) watcher.observe(timeline);
+    return () => watcher.disconnect();
+  }, [measureBar]);
+
   const commitScrub = useCallback(() => {
     if (!scrubbing.current) return;
     scrubbing.current = false;
@@ -252,8 +314,29 @@ export function PlayerBar({
   const detailHint =
     item !== null && trackId === null ? `${detailWords} · only for tracks in your Library` : detailWords;
 
+  const moreBox = folded && moreMenu.open ? moreMenu.anchor.current?.getBoundingClientRect() : undefined;
+  const moreItems: TrackContextMenuItem[] = [
+    { id: "shuffle", label: "Shuffle", checked: shuffle, onSelect: () => void toggleShuffle() },
+    {
+      id: "repeat",
+      label: "Repeat",
+      onSelect: () => undefined,
+      items: REPEAT_ORDER.map((mode) => ({
+        id: `repeat-${mode}`,
+        label: repeatLabel(mode),
+        checked: repeat === mode,
+        onSelect: () => void chooseRepeat(mode),
+      })),
+    },
+    ...(onToggleQueue
+      ? [{ id: "queue", label: `Queue (${countNoun(queueLength, "track")})`, checked: queueOpen, onSelect: onToggleQueue }]
+      : []),
+    // The short window draws no zoomed strip, so it offers no switch for one.
+    ...(compact ? [] : [{ id: "zoom", label: "Zoomed waveform", title: detailHint, checked: detailOn, onSelect: () => setDetailOn(!detailOn) }]),
+  ];
+
   return (
-    <div className="cp-player-bar" role="region" aria-label="Player">
+    <div className="cp-player-bar" role="region" aria-label="Player" ref={barRef}>
       <div className="cp-player-bar__transport">
         <Hint text="Previous track" shortcut="Mod+←">
           <button
@@ -373,7 +456,30 @@ export function PlayerBar({
       </div>
 
       <div className="cp-player-bar__controls">
-      <div className="cp-player-bar__order">
+      {folded && (
+        <Hint text="More player controls">
+          <button
+            type="button"
+            className={`cp-player-bar__button cp-player-bar__button--standard${shuffle || repeat !== "off" || queueOpen ? " cp-player-bar__button--on" : ""}`}
+            aria-label="More player controls"
+            {...moreMenu.buttonProps}
+          >
+            <PixelIcon name="more" />
+          </button>
+        </Hint>
+      )}
+      {folded && moreMenu.open && moreBox && (
+        <TrackContextMenu
+          x={moreBox.left}
+          y={moreBox.top}
+          anchor={moreMenu.anchor}
+          onClose={moreMenu.close}
+          label="More player controls"
+          items={moreItems}
+        />
+      )}
+      {!folded && (
+      <div className="cp-player-bar__order" ref={orderRef}>
         <Hint text={shuffle ? "Shuffle on" : "Shuffle off"}>
           <button
             type="button"
@@ -434,6 +540,7 @@ export function PlayerBar({
           </button>
         </Hint>
       </div>
+      )}
 
       <div className="cp-player-bar__volume">
         <Hint text={muted ? "Unmute" : "Mute"}>

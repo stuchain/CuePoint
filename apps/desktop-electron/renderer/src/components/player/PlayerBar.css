@@ -80,9 +80,11 @@
   white-space: pre;
 }
 
+/* Never narrower than its times and the timeline's floor (item 2): the track name gives way
+   first, and the utility buttons fold into More before the timeline is squeezed. */
 .cp-player-bar__seek {
   flex: 1 1 0;
-  min-width: calc(40px * var(--scale));
+  min-width: min-content;
 }
 
 /* Order and volume travel together: half a control group on each row would be
@@ -229,7 +231,8 @@
   align-items: center;
   flex: 1 1 auto;
   align-self: stretch;
-  min-width: 0;
+  /* The timeline's floor: TIMELINE_MIN_PX in PlayerBar.tsx (item 2). */
+  min-width: calc(96px * var(--scale));
 }
 
 .cp-player-bar__waveform {

@@ -3,7 +3,7 @@ import playerBarCss from "./PlayerBar.css?raw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PlayerSnapshot, QueueItem } from "../../api/cuepointBridge.types";
-import { PlayerBar } from "./PlayerBar";
+import { PlayerBar, TIMELINE_MIN_PX } from "./PlayerBar";
 import { PlayerSlot } from "./PlayerSlot";
 import { ToastProvider } from "../Toast";
 import { PLAYER_REPEAT_STORAGE_KEY, PLAYER_SHUFFLE_STORAGE_KEY } from "./playerOrderState";
@@ -1058,5 +1058,73 @@ describe("the played set (R4-6)", () => {
     harness.push(snapshot({ items: [item({ id: "q2", trackId: 2 })] }));
     await waitFor(() => expect(result.current.has(2)).toBe(true));
     expect(result.current.has(1)).toBe(true);
+  });
+});
+
+describe("a bar too narrow for its timeline (item 2, at 2x in 1264x735)", () => {
+  /** Lays the bar out as a browser would: 1000 wide, with the timeline at `wave` px. */
+  function narrow(wave: number) {
+    return vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains("cp-player-bar__wave")) return wave;
+      if (this.classList.contains("cp-player-bar")) return 1000;
+      return 40;
+    });
+  }
+
+  it("keeps a floor under the timeline, as wide in the stylesheet as the code folds at", () => {
+    expect(playerBarCss).toMatch(new RegExp(`\\.cp-player-bar__wave\\s*\\{[^}]*min-width:\\s*calc\\(${TIMELINE_MIN_PX}px \\* var\\(--scale\\)\\)`));
+    expect(playerBarCss).toMatch(/\.cp-player-bar__seek\s*\{[^}]*min-width:\s*min-content/);
+  });
+
+  it("folds shuffle, repeat, the queue and the zoomed waveform into one More menu before the timeline shrinks", async () => {
+    const width = narrow(TIMELINE_MIN_PX);
+    try {
+      const harness = installBridge(snapshot());
+      render(<PlayerBar queueOpen={false} onToggleQueue={() => undefined} />);
+      const more = await screen.findByRole("button", { name: "More player controls" });
+      expect(more).toHaveAttribute("aria-haspopup", "menu");
+      expect(screen.queryByRole("button", { name: /^Shuffle/ })).toBeNull();
+      expect(screen.queryByRole("button", { name: /queue/ })).toBeNull();
+      // Volume and the transport stay where they are.
+      expect(screen.getByRole("button", { name: "Mute" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Next track" })).toBeInTheDocument();
+
+      fireEvent.click(more);
+      const menu = await screen.findByRole("menu", { name: "More player controls" });
+      fireEvent.click(screen.getByRole("menuitemcheckbox", { name: /Shuffle/ }));
+      await waitFor(() => expect(harness.player.setShuffle).toHaveBeenCalledWith(true));
+      expect(menu).toBeInTheDocument();
+    } finally {
+      width.mockRestore();
+    }
+  });
+
+  it("folds them too when the bar has already put the controls on a second row", async () => {
+    const width = narrow(600);
+    const top = vi.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("cp-player-bar__controls") ? 60 : 0;
+    });
+    const height = vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(50);
+    try {
+      installBridge(snapshot());
+      render(<PlayerBar queueOpen={false} onToggleQueue={() => undefined} />);
+      expect(await screen.findByRole("button", { name: "More player controls" })).toBeInTheDocument();
+    } finally {
+      width.mockRestore();
+      top.mockRestore();
+      height.mockRestore();
+    }
+  });
+
+  it("keeps every control on the bar while the timeline has room", async () => {
+    const width = narrow(400);
+    try {
+      installBridge(snapshot());
+      render(<PlayerBar queueOpen={false} onToggleQueue={() => undefined} />);
+      await screen.findByRole("button", { name: /^Shuffle/ });
+      expect(screen.queryByRole("button", { name: "More player controls" })).toBeNull();
+    } finally {
+      width.mockRestore();
+    }
   });
 });
