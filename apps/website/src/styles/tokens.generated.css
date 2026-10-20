@@ -8,6 +8,9 @@
   --motion-quick: 80ms;
   --motion-base: 160ms;
   --motion-slow: 320ms;
+  --motion-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --motion-move-px: var(--unit);
   --motion-steps-short: 2;
   --motion-steps-long: 4;
   --motion-step-px: var(--unit);
@@ -31,7 +34,9 @@
   --control-font-size: var(--font-size-xs);
   --control-font-weight: var(--font-weight-regular);
   --hover-shade: color-mix(in srgb, var(--fg-primary) 14%, transparent);
+  --press-shade: color-mix(in srgb, var(--bevel-shadow) 40%, transparent);
   --hover-border: var(--fg-muted);
+  --hover-fill: var(--bg-panel-alt);
   --chart-bar: var(--accent-primary);
   --chart-bar-hover: var(--accent-primary-hover);
   --chart-bar-outline: transparent;
@@ -62,6 +67,7 @@
   --font-data: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --font-pixel-digits: "CuePoint Digits", var(--font-pixel);
+  --font-meta: var(--font-data);
   --font-size-xs: 0.7813rem;
   --font-size-sm: 0.9375rem;
   --font-size-md: 1.0938rem;
@@ -157,7 +163,9 @@
   --border-shadow: #09090b;
   --border-outline: #000000;
   --border-light: #a1a1aa;
-  --border-muted: #5f5f69;
+  --border-muted: #52525b;
+  --row-divider: #52525b;
+  --hover-fill: #3f3f46;
   --border-control: #71717a;
   --tab-underline-color: #8b5cf6;
   --bevel-highlight: #71717a;
@@ -204,6 +212,8 @@
   --border-outline: #000000;
   --border-light: #00e5ff;
   --border-muted: #50507a;
+  --row-divider: #50507a;
+  --hover-fill: #24243a;
   --border-control: #6a6a8a;
   --tab-underline-color: #e040fb;
   --bevel-highlight: #5a5a80;
@@ -249,7 +259,9 @@
   --border-shadow: #111318;
   --border-outline: #000000;
   --border-light: #9ca3af;
-  --border-muted: #5f6b80;
+  --border-muted: #4b5568;
+  --row-divider: #4b5568;
+  --hover-fill: #343d4f;
   --border-control: #7b8190;
   --tab-underline-color: #818cf8;
   --bevel-highlight: #6b7280;
@@ -296,6 +308,8 @@
   --border-outline: #000000;
   --border-light: #6a6a6a;
   --border-muted: #5f5f5f;
+  --row-divider: #5f5f5f;
+  --hover-fill: #383838;
   --border-control: #7e7e7e;
   --tab-underline-color: #3794ff;
   --bevel-highlight: #5a5a5a;
@@ -341,8 +355,9 @@
   --border-shadow: #0d1b2a;
   --border-outline: #000000;
   --border-light: #e0fbfc;
-  --border-muted: #57779f;
-  --row-divider: #3a5577;
+  --border-muted: #526a84;
+  --row-divider: #2e4360;
+  --hover-fill: #3a5577;
   --border-control: #98c1d9;
   --tab-underline-color: #b673f0;
   --bevel-highlight: #98c1d9;
