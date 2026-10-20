@@ -197,8 +197,9 @@ test.describe("The waveform analysis (WAVE-03)", () => {
         window.cuepoint!.getRecentActivity!({ type: "waveforms.analysed", limit: 10 }),
       );
       const summaries = feed.events.map((event) => event.summary);
-      expect(summaries[0]).toMatch(/\. Finished\.$/);
-      expect(summaries.some((summary) => /Paused\.$/.test(summary))).toBe(true);
+      // A finished run says only what it did; a stop is said after a semicolon (C163).
+      expect(summaries[0]).toMatch(/^Analyzed \d[\d,]* waveforms?(?!.*; )/);
+      expect(summaries.some((summary) => /; paused$/.test(summary))).toBe(true);
       expect(summaries.some((summary) => /1 file could not be read/.test(summary))).toBe(true);
     } finally {
       await app.close();
