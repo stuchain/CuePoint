@@ -920,6 +920,27 @@ describe("manual transport", () => {
     expect(played(calls)).toEqual(["/music/b.flac"]);
   });
 
+  it("next is not undone by the start of the track it replaces", async () => {
+    // Found by the real-mpv test on a slow Windows runner: mpv announced that
+    // it started the old track while the load for Next was still in flight,
+    // and the queue jumped back to the old track until the new one started.
+    const { player, advanceTo } = fakePlayer();
+    const fake = player as unknown as { play: (file: string) => Promise<number> };
+    const play = fake.play;
+    fake.play = async (file: string) => {
+      if (file === "/music/b.flac") advanceTo(1);
+      return play(file);
+    };
+    const controller = new PlaybackController(player);
+    await controller.playQueue(tracks("a", "b", "c"), 0);
+
+    await controller.next();
+
+    const statuses = controller.queueWindow(0, 10).items.map((item) => item.status);
+    expect(statuses[0]).not.toBe("playing");
+    expect(statuses[1]).toBe("playing");
+  });
+
   it("next at the end of the queue stops", async () => {
     const { player, calls } = fakePlayer();
     const controller = new PlaybackController(player);

@@ -104,6 +104,8 @@ export class PlaybackController {
    * advanced to a track nobody queued.
    */
   private generation = 0;
+  /** Loads with `replace` still waiting on mpv; while any is, older entries are not followed. */
+  private replacing = 0;
 
   /**
    * mpv's events about entries an append in flight has not named yet.
@@ -266,7 +268,14 @@ export class PlaybackController {
 
     const generation = ++this.generation;
     this.failedAwaitingAdvance = null;
-    const entryId = await this.player.play(current.filePath);
+    // Until mpv answers, a start it reports is of an entry this load replaces.
+    this.replacing += 1;
+    let entryId: number | null;
+    try {
+      entryId = await this.player.play(current.filePath);
+    } finally {
+      this.replacing -= 1;
+    }
     // A newer load happened while this one was in flight; that one owns mpv.
     if (generation !== this.generation) return;
     // `replace` cleared mpv's playlist, so every previous mapping is stale.
@@ -383,6 +392,8 @@ export class PlaybackController {
       return;
     }
     if (info.playlistEntryId === null) return;
+    // The track the user moved away from, starting late: following it would undo the move.
+    if (this.replacing > 0) return;
     const itemId = this.entryToItem.get(info.playlistEntryId);
     if (!itemId || itemId === this.queue.currentId) return;
 
