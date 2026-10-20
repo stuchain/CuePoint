@@ -669,8 +669,7 @@ class TestAThousandTracks:
         assert job.state == JobState.SUCCEEDED
         assert answered_while_running >= 10
         _sys.setswitchinterval(_old_switch)
-        print(f"FOCUS switch={switch} slowest={slowest:.3f} answered={answered_while_running}", flush=True)
-        return
+        assert False, f"FOCUS switch={switch} slowest={slowest:.3f} answered={answered_while_running}"
         print(f"slowest connect during the match: {slowest_connect:.2f} s")
         assert slowest < 1.0, (
             f"the engine took {slowest:.2f} s to answer a browse request during a "
