@@ -25,6 +25,7 @@ import { SearchField } from "../../components/SearchField";
 import { ShowMore } from "../../components/ShowMore";
 import { Select } from "../../components/Select";
 import { TextField } from "../../components/TextField";
+import { TrackContextMenu, useMenuButton } from "../../components/TrackContextMenu";
 import type {
   FilterRuleSet,
   LibraryFacet,
@@ -60,7 +61,7 @@ import {
 } from "./filterText";
 import { QuickFilters } from "./QuickFilters";
 import { RatingStars } from "./RatingStars";
-import { hiddenChipCount } from "./chipOverflow";
+import { hiddenChipCount, rowWraps } from "./chipOverflow";
 import { isModified, smartStatus, type SmartAttachment } from "./smartFilter";
 import { pageOfRule, type PageRef } from "../discover/discoverLinks";
 import { formatCount } from "../../format/counts";
@@ -258,6 +259,43 @@ export function FilterBar({
       watcher?.disconnect();
     };
   }, [measureChips, filters]);
+
+  // Tags… folds into Add filter's menu when the row would otherwise wrap it onto a line of its own
+  // (item 12, at 1.5x). Folded, it comes back once the row is wider by the button and a gap again,
+  // so it never flickers between the two at the width where it folded.
+  const rowRef = useRef<HTMLDivElement>(null);
+  const tagsRef = useRef<HTMLButtonElement>(null);
+  const [tagsFolded, setTagsFolded] = useState(false);
+  const unfoldAt = useRef(0);
+  const addMenu = useMenuButton();
+  const measureRow = useCallback(() => {
+    const row = rowRef.current;
+    if (!row || !onManageTags) return;
+    if (tagsFolded) {
+      if (row.clientWidth >= unfoldAt.current) setTagsFolded(false);
+      return;
+    }
+    // Show all puts every chip on a line of its own on purpose; that is not a wrap.
+    if (chipsOpen) return;
+    const items = Array.from(row.children).map((child) => {
+      const box = child as HTMLElement;
+      return { top: box.offsetTop, height: box.offsetHeight };
+    });
+    if (!rowWraps(items)) return;
+    const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+    unfoldAt.current = row.clientWidth + (tagsRef.current?.offsetWidth ?? 0) + gap;
+    setTagsFolded(true);
+  }, [onManageTags, tagsFolded, chipsOpen]);
+  useLayoutEffect(measureRow, [measureRow, filters, smart]);
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row || !onManageTags || typeof ResizeObserver === "undefined") return;
+    const watcher = new ResizeObserver(measureRow);
+    watcher.observe(row);
+    return () => watcher.disconnect();
+  }, [measureRow, onManageTags]);
+  const foldTags = tagsFolded && !!onManageTags;
+  const addBox = foldTags && addMenu.open ? addMenu.anchor.current?.getBoundingClientRect() : undefined;
 
   const field = fieldOf(vocabulary, draft.field);
   const arity = arityOf(vocabulary, draft.operator);
@@ -502,7 +540,7 @@ export function FilterBar({
 
   return (
     <div className="cp-filter-bar">
-      <div className="cp-filter-bar__row cp-toolbar">
+      <div className="cp-filter-bar__row cp-toolbar" ref={rowRef}>
         <SearchField
           ref={searchInputRef}
           thing="these tracks"
@@ -523,17 +561,44 @@ export function FilterBar({
           />
         )}
 
-        {/* The label never changes; Cancel is inside the builder it opens (C19). */}
-        <Button
-          variant="secondary"
-          aria-expanded={adding}
-          onClick={() => {
-            setProblem(null);
-            setAdding((open) => !open);
-          }}
-        >
-          Add filter
-        </Button>
+        {/* The label never changes; Cancel is inside the builder it opens (C19). With Tags…
+            folded into it (item 12) it is a menu of the two. */}
+        {foldTags ? (
+          <Button variant="secondary" menu {...addMenu.buttonProps}>
+            Add filter
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            aria-expanded={adding}
+            onClick={() => {
+              setProblem(null);
+              setAdding((open) => !open);
+            }}
+          >
+            Add filter
+          </Button>
+        )}
+        {foldTags && addMenu.open && addBox && (
+          <TrackContextMenu
+            x={addBox.left}
+            y={addBox.bottom}
+            anchor={addMenu.anchor}
+            onClose={addMenu.close}
+            label="Add filter"
+            items={[
+              {
+                id: "add",
+                label: "Add a filter…",
+                onSelect: () => {
+                  setProblem(null);
+                  setAdding(true);
+                },
+              },
+              { id: "tags", label: "Tags…", onSelect: () => onManageTags?.() },
+            ]}
+          />
+        )}
 
         {/* The chips share the row with the controls and scroll sideways when
             they do not fit, saying how many are out of sight. The row never
@@ -588,8 +653,8 @@ export function FilterBar({
           </Button>
         )}
 
-        {onManageTags && (
-          <Button variant="secondary" onClick={onManageTags}>
+        {onManageTags && !foldTags && (
+          <Button variant="secondary" ref={tagsRef} onClick={onManageTags}>
             Tags…
           </Button>
         )}

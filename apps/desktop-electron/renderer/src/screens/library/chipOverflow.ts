@@ -19,3 +19,18 @@ export function hiddenChipCount(scrollLeft: number, width: number, edges: readon
   // One pixel of slack: layout rounds, and a chip that fits exactly is in sight.
   return edges.filter((edge) => edge > visibleEnd + 1).length;
 }
+
+/**
+ * Whether a row of controls has wrapped onto a second line (item 12).
+ *
+ * The controls on one line are centred on it, so each one's top is above every other one's bottom;
+ * a control on a later line starts at or below the bottom of one on the first. What has no height
+ * (nothing drawn, or no layout at all) says nothing.
+ */
+export function rowWraps(items: readonly { top: number; height: number }[]): boolean {
+  const drawn = items.filter((item) => item.height > 0);
+  if (drawn.length < 2) return false;
+  const lowestTop = Math.max(...drawn.map((item) => item.top));
+  const highestBottom = Math.min(...drawn.map((item) => item.top + item.height));
+  return lowestTop >= highestBottom;
+}

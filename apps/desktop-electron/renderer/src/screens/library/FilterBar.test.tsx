@@ -1064,6 +1064,63 @@ describe("the tag vocabulary (ORG-12)", () => {
   });
 });
 
+describe("a filter row too narrow for Tags… (item 12)", () => {
+  /** Lays the row out as a browser would at 1.5x: Tags… and what follows it on a second line. */
+  function wrapAfterAddFilter(rowWidth: number) {
+    const top = vi.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function (this: HTMLElement) {
+      const row = this.parentElement?.classList.contains("cp-filter-bar__row") ? this.parentElement : null;
+      if (!row) return 0;
+      const index = Array.from(row.children).indexOf(this);
+      const addAt = Array.from(row.children).findIndex((child) => child.textContent?.startsWith("Add filter"));
+      return index > addAt ? 44 : 0;
+    });
+    const height = vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(36);
+    const width = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(60);
+    const client = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(() => rowWidth);
+    return () => {
+      top.mockRestore();
+      height.mockRestore();
+      width.mockRestore();
+      client.mockRestore();
+    };
+  }
+
+  it("folds Tags… into Add filter's menu instead of wrapping, and Tags stays one click away", () => {
+    const restore = wrapAfterAddFilter(700);
+    try {
+      const onManageTags = vi.fn();
+      show({ onManageTags });
+      expect(screen.queryByRole("button", { name: "Tags…" })).not.toBeInTheDocument();
+      const add = screen.getByRole("button", { name: "Add filter" });
+      expect(add).toHaveAttribute("aria-haspopup", "menu");
+
+      fireEvent.click(add);
+      fireEvent.click(screen.getByRole("menuitem", { name: "Tags…" }));
+      expect(onManageTags).toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+  });
+
+  it("still opens the filter form from that menu", () => {
+    const restore = wrapAfterAddFilter(700);
+    try {
+      show({ onManageTags: vi.fn() });
+      fireEvent.click(screen.getByRole("button", { name: "Add filter" }));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Add a filter…" }));
+      expect(screen.getByLabelText("Field")).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("keeps Tags… on the row, and Add filter a plain button, when the row has room", () => {
+    show({ onManageTags: vi.fn() });
+    expect(screen.getByRole("button", { name: "Tags…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add filter" })).not.toHaveAttribute("aria-haspopup");
+  });
+});
+
 describe("an artist or a label by identity (DISCOVER-03)", () => {
   /** The two `name` fields as the engine describes them. */
   const NAMES: LibraryFilterVocabulary = {

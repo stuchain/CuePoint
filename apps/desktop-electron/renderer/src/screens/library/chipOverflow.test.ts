@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { hiddenChipCount } from "./chipOverflow";
+import { hiddenChipCount, rowWraps } from "./chipOverflow";
 
 describe("hiddenChipCount", () => {
   it("counts the chips that reach past the visible right edge", () => {
@@ -21,5 +21,20 @@ describe("hiddenChipCount", () => {
 
   it("counts every chip hidden when the list is squeezed to no width", () => {
     expect(hiddenChipCount(0, 0, [100, 200])).toBe(2);
+  });
+});
+
+describe("rowWraps (item 12)", () => {
+  it("says no for one line of controls of different heights, centred on it", () => {
+    expect(rowWraps([{ top: 4, height: 28 }, { top: 0, height: 36 }, { top: 6, height: 24 }])).toBe(false);
+  });
+
+  it("says yes once a control starts below another's bottom", () => {
+    expect(rowWraps([{ top: 0, height: 36 }, { top: 4, height: 28 }, { top: 44, height: 28 }])).toBe(true);
+  });
+
+  it("ignores what has no height, and a row with no layout", () => {
+    expect(rowWraps([{ top: 0, height: 36 }, { top: 50, height: 0 }])).toBe(false);
+    expect(rowWraps([{ top: 0, height: 0 }, { top: 0, height: 0 }])).toBe(false);
   });
 });
