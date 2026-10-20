@@ -589,8 +589,10 @@ def test_checking_writes_nothing_and_acknowledging_only_its_row(lib, db):
     lib.service.analyse(set_id)
     assert everything() == before
     lib.service.acknowledge(entries[0], entries[1], TEMPO_JUMP)
-    assert everything(skip=("set_acknowledgements",)) == {
-        k: v for k, v in before.items() if k != "set_acknowledgements"
+    # The revision counters count that write (their job); no other row moves.
+    written = ("set_acknowledgements", "revision_counters")
+    assert everything(skip=written) == {
+        k: v for k, v in before.items() if k not in written
     }
     assert len(everything()["set_acknowledgements"]) == 1
 
