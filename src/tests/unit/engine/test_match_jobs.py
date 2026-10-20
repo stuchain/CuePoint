@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import os
 import socket
 import sqlite3
 import threading
@@ -622,6 +623,10 @@ class TestAThousandTracks:
             # stack taken once, so a slow one says what the engine was doing.
             in_flight: List[float] = []
             stacks: List[str] = []
+            # The process's own CPU time every tenth of a second while that request
+            # waits: flat means the runner gave the process no CPU, rising means
+            # something in the engine was busy (see the stacks for what).
+            cpu: List[str] = []
             done = threading.Event()
 
             def watch() -> None:
@@ -631,6 +636,14 @@ class TestAThousandTracks:
                     late = since is not None and time.monotonic() - since > 0.5
                     if late and not stacks:
                         stacks.append(_thread_stacks())
+                        while next(iter(in_flight), None) == since and not done.wait(
+                            0.1
+                        ):
+                            used = os.times()
+                            cpu.append(
+                                f"  {time.monotonic() - since:.1f} s: user {used.user:.2f} s,"
+                                f" system {used.system:.2f} s\n"
+                            )
 
             threading.Thread(target=watch, daemon=True).start()
             while started.job.state == JobState.RUNNING:
@@ -666,6 +679,8 @@ class TestAThousandTracks:
         print(f"slowest connect during the match: {slowest_connect:.2f} s")
         assert slowest < 1.0, (
             f"the engine took {slowest:.2f} s to answer a browse request during a "
-            "match; every thread half a second into the first slow one:\n"
+            "match; the process's CPU time while it waited:\n"
+            + "".join(cpu)
+            + "every thread half a second into the first slow one:\n"
             + "".join(stacks)
         )
