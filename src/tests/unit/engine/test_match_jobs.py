@@ -32,6 +32,7 @@ import urllib.parse
 from collections import Counter
 from typing import List
 
+import os
 import pytest
 
 import cuepoint.engine.jobs as jobs_module
@@ -590,7 +591,7 @@ class TestAThousandTracks:
         assert done_tracks(container) == Counter(ids)
         assert container.resolve(IMatchService).resumable() == []
 
-    @pytest.mark.parametrize("switch", [None, 0.0005, None, 0.0005])
+    @pytest.mark.parametrize("switch", [None] * 8)
     def test_the_engine_answers_browse_requests_while_it_runs(
         self, container, store, processor, switch
     ):
@@ -629,13 +630,23 @@ class TestAThousandTracks:
             stacks: List[str] = []
             done = threading.Event()
 
+            cpu: List[str] = []
+
             def watch() -> None:
                 while not done.wait(0.05):
                     # One read: the request loop empties the list between requests.
                     since = next(iter(in_flight), None)
-                    late = since is not None and time.monotonic() - since > 0.5
+                    late = since is not None and time.monotonic() - since > 0.3
                     if late and not stacks:
+                        t = os.times()
+                        cpu.append(f"t={time.monotonic()-since:.2f} user={t.user:.3f} sys={t.system:.3f}")
                         stacks.append(_thread_stacks())
+                        while in_flight and in_flight[0] == since and not done.is_set():
+                            time.sleep(0.1)
+                            t = os.times()
+                            cpu.append(f"t={time.monotonic()-since:.2f} user={t.user:.3f} sys={t.system:.3f}")
+                            if len(cpu) == 6:
+                                stacks.append(_thread_stacks())
 
             threading.Thread(target=watch, daemon=True).start()
             while started.job.state == JobState.RUNNING:
@@ -669,7 +680,9 @@ class TestAThousandTracks:
         assert job.state == JobState.SUCCEEDED
         assert answered_while_running >= 10
         _sys.setswitchinterval(_old_switch)
-        assert False, f"FOCUS switch={switch} slowest={slowest:.3f} answered={answered_while_running}"
+        if slowest > 0.3:
+            assert False, f"FOCUS slowest={slowest:.3f} answered={answered_while_running}\n" + "\n".join(cpu) + "\n" + "".join(stacks)
+        assert False, f"FOCUS slowest={slowest:.3f} answered={answered_while_running}"
         print(f"slowest connect during the match: {slowest_connect:.2f} s")
         assert slowest < 1.0, (
             f"the engine took {slowest:.2f} s to answer a browse request during a "
