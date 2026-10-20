@@ -97,6 +97,7 @@
   margin: 0;
   max-width: 80ch;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -204,6 +205,7 @@
 
 .clean-group__why {
   margin: 0;
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
   color: var(--fg-muted);
 }
@@ -273,6 +275,7 @@
   padding-left: var(--space-xl);
   max-width: 80ch;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -313,6 +316,7 @@
 .clean-fix__hint,
 .clean-match__figure {
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--text-body);
 }
 

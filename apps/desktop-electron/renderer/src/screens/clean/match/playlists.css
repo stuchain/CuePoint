@@ -87,6 +87,7 @@
 .playlists__waiting,
 .playlists__not-yet {
   color: var(--fg-muted);
+  font-family: var(--font-meta);
 }
 
 /* The status strip's bar, beside the playlist's name. */
@@ -110,6 +111,7 @@
 
 .playlists__next {
   margin-inline-end: auto;
+  font-family: var(--font-meta);
 }
 
 /* Both lines sit at the left (item 11): the shared count pushes itself right (margin-inline-start:

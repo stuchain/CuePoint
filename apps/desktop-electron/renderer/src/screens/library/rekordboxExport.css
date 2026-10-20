@@ -65,6 +65,7 @@
 /* Why a row cannot be ticked, beside its name (the Hint says it too). */
 .rekordbox-export__reason {
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--text-body);
   white-space: nowrap;
 }

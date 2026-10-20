@@ -30,6 +30,7 @@
 .cp-error-screen__text {
   margin: 0 0 var(--space-md);
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-sm);
   line-height: 1.5;
 }

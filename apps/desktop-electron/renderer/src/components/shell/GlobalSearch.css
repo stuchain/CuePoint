@@ -40,6 +40,7 @@
   margin: 0;
   padding: var(--space-sm);
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--text-body);
 }
 
@@ -52,6 +53,7 @@
   margin: 0 0 var(--space-xs);
   padding: var(--space-sm) var(--space-sm) 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -135,6 +137,7 @@
 
 .cp-global-search__meta {
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 

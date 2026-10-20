@@ -43,6 +43,7 @@
 .cp-update-panel__note {
   margin: 0 0 var(--space-sm);
   color: var(--fg-muted);
+  font-family: var(--font-meta);
 }
 
 .cp-update-panel__ask {

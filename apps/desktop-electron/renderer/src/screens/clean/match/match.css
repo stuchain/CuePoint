@@ -394,6 +394,7 @@
 .review-panel__note {
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
 }
 
 .review-panel__eyebrow {
@@ -528,6 +529,7 @@
 
 .review-candidate__why {
   color: var(--danger-text);
+  font-family: var(--font-meta);
   font-size: var(--control-font-size);
 }
 

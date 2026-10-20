@@ -13,5 +13,6 @@
 
 .cp-more-about__body {
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-sm);
 }

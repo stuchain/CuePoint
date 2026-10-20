@@ -22,6 +22,7 @@
   padding: var(--space-md);
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
   line-height: 1.5;
 }
@@ -76,6 +77,7 @@
   gap: var(--space-md);
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -494,6 +496,7 @@
 .cp-track-history__note {
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -510,6 +513,7 @@
 
 .cp-track-history__what {
   color: var(--fg-muted);
+  font-family: var(--font-meta);
 }
 
 .cp-track-history__values,
@@ -565,6 +569,7 @@
 .cp-track-beatport__also,
 .cp-track-beatport__agree {
   margin: 0;
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -732,6 +737,7 @@
 .cp-track-detail__none {
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
   line-height: 1.5;
 }

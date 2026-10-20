@@ -52,6 +52,7 @@
 .statistics-note {
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -170,6 +171,7 @@
 .rank__note {
   margin-left: var(--space-md);
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 

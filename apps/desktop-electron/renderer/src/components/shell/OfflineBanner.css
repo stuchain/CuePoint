@@ -27,6 +27,7 @@
 
 .cp-offline__time {
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
 }

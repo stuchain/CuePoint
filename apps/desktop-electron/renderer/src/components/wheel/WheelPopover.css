@@ -28,6 +28,7 @@
 .cp-wheel-pop__caption {
   margin: var(--space-md) 0 0;
   color: var(--fg-primary);
+  font-family: var(--font-meta);
   font-size: var(--text-body);
   overflow-wrap: anywhere;
 }

@@ -80,6 +80,11 @@ sign-off item — table-density readability at small sizes hasn't been formally 
 > the numerals, and the track table is the one screen a user reads for hours. It is a system
 > stack rather than a second bundled font, so the packaged app renders the same offline;
 > being a token, a theme or a later decision can point it back at `--font-pixel` in one line.
+>
+> **Figures and lines (area 56, one font in a line).** Pixel words take `--font-pixel-digits`, which draws
+> their digits and signs in the data face; a line of facts, counts or notes under a title (dates, BPM,
+> keys, "5,805 tracks found", a status with a number) takes `--font-meta`, the data face for the whole
+> line, so one line is never two fonts. Titles, chips, buttons, tabs and labels stay pixel.
 
 ## Spacing
 

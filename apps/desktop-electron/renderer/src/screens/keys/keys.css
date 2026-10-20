@@ -88,6 +88,7 @@
   margin: 0;
   max-width: var(--reading-width);
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -231,6 +232,7 @@
   grid-column: 2 / 4;
   grid-row: 2;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
 }
 
 .keys-counts__row[data-lit] {

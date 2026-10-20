@@ -39,6 +39,7 @@
   margin: 0;
   max-width: 80ch;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -404,6 +405,7 @@ body.prepare-resizing {
 
 .prepare-transition__times {
   color: var(--fg-muted);
+  font-family: var(--font-meta);
 }
 
 /* The track's loudness, ending the times' line (WAVE-08): a reading. */
@@ -488,6 +490,7 @@ body.prepare-resizing {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
   line-height: 1.15;
   text-align: start;
@@ -571,6 +574,7 @@ body.prepare-resizing {
   align-self: center;
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -739,6 +743,7 @@ body.prepare-resizing {
 .prepare-entry-zone__refused {
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -785,12 +790,14 @@ body.prepare-resizing {
   justify-content: space-between;
   gap: var(--space-xs);
   font-weight: var(--font-weight-bold);
+  font-family: var(--font-meta);
 }
 
 .prepare-entry-zone__warning--accepted,
 .prepare-entry-zone__notice {
   color: var(--fg-muted);
   font-weight: var(--font-weight-regular);
+  font-family: var(--font-meta);
 }
 
 /* ----------------------------------------------------------------- dialogs */
@@ -810,6 +817,7 @@ body.prepare-resizing {
 .prepare-dialog__note {
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 

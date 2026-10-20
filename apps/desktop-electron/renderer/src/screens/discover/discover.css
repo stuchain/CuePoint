@@ -208,6 +208,7 @@
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -243,6 +244,7 @@
   padding: 0;
   list-style: none;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -555,6 +557,7 @@
 
 .discover-dialog__text {
   margin: 0;
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -652,6 +655,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -852,6 +856,7 @@
 .discover-run__scope > summary {
   cursor: pointer;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 

@@ -73,6 +73,7 @@ body.cp-inspector-resizing {
 .cp-inspector__empty {
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--text-body);
   line-height: 1.5;
 }

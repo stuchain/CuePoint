@@ -101,6 +101,7 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-sm);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 

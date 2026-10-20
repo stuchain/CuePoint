@@ -23,6 +23,7 @@
   margin: 0;
   padding: var(--space-md) var(--space-sm);
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--text-body);
   line-height: 1.5;
 }
@@ -35,6 +36,7 @@
   margin: 0;
   padding: 0 var(--space-xs);
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -80,6 +82,7 @@
 
 .cp-activity__time {
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -109,6 +112,7 @@
 
 .cp-activity__detail {
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 
@@ -135,6 +139,7 @@
 .cp-activity__reason,
 .cp-activity__said {
   color: var(--fg-muted);
+  font-family: var(--font-meta);
 }
 
 .cp-activity__said {

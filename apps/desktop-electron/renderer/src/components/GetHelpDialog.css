@@ -8,6 +8,7 @@
 .get-help-dialog__lead {
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
 }
 
 .get-help-dialog__field {
@@ -34,6 +35,7 @@
 .get-help-dialog__note,
 .get-help-dialog__done {
   margin: 0;
+  font-family: var(--font-meta);
   font-size: var(--text-body);
   line-height: 1.5;
 }
@@ -47,6 +49,7 @@
   padding: 0;
   list-style: none;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--text-body);
 }
 

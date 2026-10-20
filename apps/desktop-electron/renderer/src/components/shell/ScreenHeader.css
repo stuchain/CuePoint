@@ -146,6 +146,7 @@
 
 .cp-screen-header__summary {
   margin: 0;
+  font-family: var(--font-meta);
   font-size: var(--text-label);
   color: var(--fg-muted);
   overflow: hidden;

@@ -128,6 +128,13 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   /* Pixel words with data-face figures (area 56): see tokens/fonts.css. Use through `.cp-digits`. */
   --font-pixel-digits: "CuePoint Digits", var(--font-pixel);
+  /*
+   * A line of facts, counts or notes under a title (one font in a line): "Afro House · Releases
+   * from Sep 1 – Sep 30", "5,805 tracks found", "Bedrock Records · 5A · 126 BPM · 2025", a status
+   * or reason with a number in it. Set wholly in the data face, so words and figures are one font;
+   * titles, chips, buttons, tabs and labels stay on --font-pixel-digits. One line points it back.
+   */
+  --font-meta: var(--font-data);
   --font-size-xs: calc(10px * var(--scale));
   --font-size-sm: calc(12px * var(--scale));
   --font-size-md: calc(14px * var(--scale));

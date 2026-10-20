@@ -194,7 +194,8 @@ legend,
 
 /*
  * Text roles: page 24 / dialog 18 / section 14 / label 10 bold muted. One weight (700), never
- * 600 or "bold". The pixel face is the chrome's; --font-data is for data values only (.cp-data).
+ * 600 or "bold". The pixel face is the chrome's; --font-data is for data values (.cp-data), and a
+ * line of facts, counts or notes under a title takes --font-meta, the data face, so it is one font.
  */
 .cp-text-page {
   margin: 0;

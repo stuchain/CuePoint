@@ -29,6 +29,7 @@
 .library-preview__empty {
   margin: 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
 }
 
 /* The removal warning is the one thing on this dialog that must not be skimmed
@@ -113,6 +114,7 @@
 
 .library-preview__more {
   margin: var(--space-sm) 0 0;
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
   color: var(--fg-muted);
 }
@@ -126,6 +128,7 @@
 
 .library-preview__blocked {
   margin: 0;
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
   color: var(--fg-muted);
 }
@@ -274,6 +277,7 @@
   margin: 0;
   padding: var(--space-xs) var(--space-sm);
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
 

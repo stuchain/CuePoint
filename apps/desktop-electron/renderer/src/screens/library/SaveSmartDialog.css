@@ -5,5 +5,6 @@
   margin: 0;
   padding-left: var(--space-lg);
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--text-body);
 }

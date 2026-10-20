@@ -49,5 +49,6 @@
 .cp-column-picker__note {
   margin: var(--space-lg) 0 0;
   color: var(--fg-muted);
+  font-family: var(--font-meta);
   font-size: var(--font-size-xs);
 }
