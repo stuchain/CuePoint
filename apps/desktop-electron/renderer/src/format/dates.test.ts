@@ -52,13 +52,20 @@ describe("formatTimeOfDay", () => {
 });
 
 describe("formatRange", () => {
+  // Each date is held together with no-break spaces, so a line never breaks inside one (new L):
+  // "Releases from Sep 20 – Oct" left "20" alone on the next line.
+  const nb = (text: string) => text.replace(/ /g, "\u00a0");
   it("joins two days with an en dash", () => {
-    expect(formatRange(new Date(2026, 8, 15), new Date(2026, 9, 15), us)).toBe("Sep 15 – Oct 15");
+    expect(formatRange(new Date(2026, 8, 15), new Date(2026, 9, 15), us)).toBe(`${nb("Sep 15")} – ${nb("Oct 15")}`);
   });
   it("shows both years when either is not this year", () => {
     expect(formatRange(new Date(2025, 11, 20), new Date(2026, 0, 3), us)).toBe(
-      "Dec 20, 2025 – Jan 3, 2026",
+      `${nb("Dec 20, 2025")} – ${nb("Jan 3, 2026")}`,
     );
+  });
+  it("breaks, if it must, only around the dash, never inside a date", () => {
+    const text = formatRange(new Date(2026, 8, 20), new Date(2026, 9, 20), us);
+    expect(text.split(" ")).toEqual([nb("Sep 20"), "–", nb("Oct 20")]);
   });
 });
 

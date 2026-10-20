@@ -135,7 +135,10 @@ export function formatRange(from: DateInput, to: DateInput, options: DateOptions
   if (!start || !end) return "";
   const now = options.now ?? new Date();
   const year = start.getFullYear() !== now.getFullYear() || end.getFullYear() !== now.getFullYear();
-  return `${dayText(start, now, options.locale, year)} – ${dayText(end, now, options.locale, year)}`;
+  // Each date is held together with no-break spaces: a line breaks around the dash, never inside a
+  // date ("Sep 20 – Oct" with "20" alone on the next line, new L).
+  const whole = (date: Date) => dayText(date, now, options.locale, year).replace(/ /g, " ");
+  return `${whole(start)} – ${whole(end)}`;
 }
 
 /** A chart's time axis label: "May 2019". */

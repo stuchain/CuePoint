@@ -198,7 +198,8 @@ describe("the dig bar", () => {
     fireEvent.click(within(panel).getByRole("radio", { name: "Every label in your library (2)" }));
     fireEvent.change(within(panel).getByLabelText("From"), { target: { value: "2026-09-01" } });
     fireEvent.change(within(panel).getByLabelText("To"), { target: { value: "2026-09-30" } });
-    expect(bar).toHaveTextContent(`from ${formatIsoRange("2026-09-01", "2026-09-30")}.`);
+    // Text content is read with its spaces made plain; the range holds no-break ones (new L).
+    expect(bar).toHaveTextContent(`from ${formatIsoRange("2026-09-01", "2026-09-30").replace(/\u00a0/g, " ")}.`);
   });
 
   it("counts a genre as the box is ticked, and says one in the singular", async () => {
