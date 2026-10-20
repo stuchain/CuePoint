@@ -144,25 +144,6 @@ export function AppShellLayout({
     };
   }, [hasPlayer, hasStatus]);
 
-  // The player's zoomed waveform spans the window but starts where the page does, after the
-  // sidebar, so the rail's width goes on the root for it to read (C213).
-  const hasSidebar = Boolean(sidebar);
-  useEffect(() => {
-    const root = document.documentElement;
-    const region = sidebarRegion.current;
-    if (!region) return;
-    const measure = () => root.style.setProperty("--shell-sidebar-width", `${region.offsetWidth}px`);
-    measure();
-    let observer: ResizeObserver | undefined;
-    if (typeof ResizeObserver !== "undefined") {
-      observer = new ResizeObserver(measure);
-      observer.observe(region, { box: "border-box" });
-    }
-    return () => {
-      observer?.disconnect();
-      root.style.removeProperty("--shell-sidebar-width");
-    };
-  }, [hasSidebar]);
 
   return (
     <div className="app-shell">

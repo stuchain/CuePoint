@@ -28,11 +28,11 @@ describe("the zoomed strip's look", () => {
     expect(ruleDecls(".cp-detail-strip")["transition"]).toBeUndefined();
   });
 
-  it("starts after the sidebar, in the content column, not at the window's edge (C213)", () => {
+  it("runs the full window width, from the window's edge, with no empty box under the sidebar", () => {
     const strip = ruleDecls(".cp-detail-strip");
     for (const name of ["margin-left", "padding-left", "left", "transform"]) expect(strip[name]).toBeUndefined();
     const wrapper = ruleDecls(".cp-player-slot > .cp-hint:has(> .cp-detail-strip)");
-    expect(wrapper["margin-left"]).toBe("var(--shell-sidebar-width, 0px)");
+    expect(wrapper["margin-left"]).toBeUndefined();
     expect(wrapper["width"]).toBe("auto");
     expect(wrapper["min-height"]).toBe("0");
   });
