@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useLayoutEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import appIcon from "../../assets/cuepoint-icon.png";
 import { Hint } from "../Hint";
@@ -13,7 +13,7 @@ import { Kbd } from "../Kbd";
 import { ActivityButton } from "./ActivityButton";
 import { isDialogOpen } from "./shellKeyboard";
 import { emitShellCommand, useShellCommand } from "./shellCommands";
-import { loadSidebarCollapsed, saveSidebarCollapsed } from "./sidebarState";
+import { loadSidebarCollapsed, saveSidebarCollapsed, railTight } from "./sidebarState";
 import { useLibraryEmpty } from "./useLibraryPresence";
 import "./Sidebar.css";
 
@@ -122,6 +122,31 @@ export function Sidebar() {
   }, [collapsed]);
 
   const toggle = useCallback(() => setCollapsed((value) => !value), []);
+
+  // A window too short for the rail's rows (2x in 1264x735, item 2) tightens it rather than make
+  // it scroll: the gaps go, and the closed rail's icons lose the padding above and below them.
+  const navRef = useRef<HTMLElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [tight, setTight] = useState(false);
+  const neededHeight = useRef(0);
+  const measureRail = useCallback(() => {
+    const rail = navRef.current;
+    const list = listRef.current;
+    if (!rail || !list) return;
+    const overflow = Math.max(0, list.scrollHeight - list.clientHeight) + Math.max(0, rail.scrollHeight - rail.clientHeight);
+    const height = rail.clientHeight;
+    const next = railTight(tight, { overflow, height, needed: neededHeight.current });
+    if (next && !tight) neededHeight.current = height + overflow;
+    if (next !== tight) setTight(next);
+  }, [tight]);
+  useLayoutEffect(measureRail, [measureRail, collapsed]);
+  useEffect(() => {
+    const rail = navRef.current;
+    if (!rail || typeof ResizeObserver === "undefined") return;
+    const watcher = new ResizeObserver(measureRail);
+    watcher.observe(rail);
+    return () => watcher.disconnect();
+  }, [measureRail]);
   // The shell keeps asking whether the first import has finished (it makes the pages read again
   // when it has); it dims nothing meanwhile (C144).
   const libraryEmpty = useLibraryEmpty();
@@ -209,6 +234,8 @@ export function Sidebar() {
       aria-label="Main navigation"
       data-collapsed={collapsed ? "true" : "false"}
       data-library-empty={libraryEmpty ? "true" : undefined}
+      data-tight={tight ? "" : undefined}
+      ref={navRef}
     >
       {/* Fixed above the list, so the logo never scrolls out of the window (R2-9). */}
       <div className="cp-sidebar__top">
@@ -221,7 +248,7 @@ export function Sidebar() {
       <div className="cp-sidebar__divider" aria-hidden="true" />
 
       {/* The destinations alone scroll; the pinned group stays at the foot. */}
-      <div className="cp-sidebar__list" role="group" aria-label="Pages">
+      <div className="cp-sidebar__list" role="group" aria-label="Pages" ref={listRef}>
         {scrolling.map((entry) => renderGroup(entry))}
       </div>
       {/* Settings with the collapse toggle under it; both stay fixed at the foot (R2-9). */}

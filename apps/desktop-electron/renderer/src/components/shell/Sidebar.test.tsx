@@ -19,7 +19,7 @@ import { NAV_DESTINATIONS } from "./navRegistry";
 import sidebarCss from "./Sidebar.css?raw";
 import { declarations, parseRules, selectorList, stripComments } from "../../test/cssRules";
 import { HINT_HOVER_DELAY_MS } from "../Hint";
-import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "./sidebarState";
+import { SIDEBAR_COLLAPSED_STORAGE_KEY, railTight } from "./sidebarState";
 
 function renderSidebar(initialPath = "/") {
   return render(
@@ -614,5 +614,41 @@ describe("the sidebar's sizes follow the text, not the window (C208, C34)", () =
   it("draws the toggle as a row, without a box of its own", () => {
     expect(decl(".cp-sidebar__toggle", "border")).toBeUndefined();
     expect(decl(".cp-sidebar__toggle", "background")).toBeUndefined();
+  });
+});
+
+describe("a window too short for the rail (item 2, at 2x in 1264x735)", () => {
+  it("tightens once the rail would scroll, and loosens only when its full height fits again", () => {
+    expect(railTight(false, { overflow: 0, height: 600, needed: 0 })).toBe(false);
+    expect(railTight(false, { overflow: 40, height: 600, needed: 0 })).toBe(true);
+    expect(railTight(true, { overflow: 0, height: 620, needed: 640 })).toBe(true);
+    expect(railTight(true, { overflow: 0, height: 640, needed: 640 })).toBe(false);
+  });
+
+  it("marks the rail tight when its list overflows", () => {
+    const scroll = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("cp-sidebar__list") ? 400 : 0;
+    });
+    const client = vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("cp-sidebar__list") ? 300 : 600;
+    });
+    renderSidebar();
+    expect(nav()).toHaveAttribute("data-tight");
+    scroll.mockRestore();
+    client.mockRestore();
+  });
+
+  it("is not tight when everything fits", () => {
+    renderSidebar();
+    expect(nav()).not.toHaveAttribute("data-tight");
+  });
+
+  it("takes the room from the gaps and the icons' padding, never the rows' height", () => {
+    const rules = parseRules(stripComments(sidebarCss));
+    const tight = rules.filter((rule) => selectorList(rule.selector).some((sel) => sel.includes("[data-tight]")));
+    expect(tight.length).toBeGreaterThan(0);
+    for (const rule of tight) expect(new Map(declarations(rule.body)).has("min-height")).toBe(false);
+    const link = tight.find((rule) => selectorList(rule.selector).includes(".cp-sidebar[data-tight].cp-sidebar--collapsed .cp-sidebar__link"));
+    expect(link && new Map(declarations(link.body)).get("padding-block")).toBe("0");
   });
 });

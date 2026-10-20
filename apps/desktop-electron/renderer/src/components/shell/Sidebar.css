@@ -301,3 +301,34 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/*
+ * The tight rail (item 2): a window too short for the rows (2x in 1264x735) takes the room from
+ * the gaps between them and from the closed rail's padding above and below each icon, which is
+ * more than the row needs there. Every row keeps its height, so nothing gets smaller to aim at.
+ */
+.cp-sidebar[data-tight],
+.cp-sidebar[data-tight] .cp-sidebar__list,
+.cp-sidebar[data-tight] .cp-sidebar__group,
+.cp-sidebar[data-tight] .cp-sidebar__foot {
+  gap: 0;
+}
+
+/* The top and bottom insets go to their smallest step; the page's own top line is given up here. */
+.cp-sidebar[data-tight] {
+  padding-top: var(--space-xs);
+  padding-bottom: var(--space-xs);
+}
+
+.cp-sidebar[data-tight] .cp-sidebar__group {
+  padding-bottom: 0;
+}
+
+.cp-sidebar[data-tight] .cp-sidebar__divider {
+  margin: round(down, calc(var(--space-xs) / 2), 1px) 0;
+}
+
+.cp-sidebar[data-tight].cp-sidebar--collapsed .cp-sidebar__link,
+.cp-sidebar[data-tight].cp-sidebar--collapsed .cp-sidebar__brand {
+  padding-block: 0;
+}

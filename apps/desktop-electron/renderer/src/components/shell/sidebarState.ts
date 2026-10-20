@@ -28,3 +28,16 @@ export function saveSidebarCollapsed(collapsed: boolean): void {
     // A forgotten sidebar state is not worth breaking the toggle over.
   }
 }
+
+/**
+ * Whether the rail draws its tight form (item 2): no gaps between rows, and the closed rail's icons
+ * without the padding above and below them. It tightens once the rail would scroll, and loosens
+ * only when the window is as tall as the rail needed then, so it never flickers at the edge.
+ *
+ * @param measure.overflow How far the rail's rows run past its height now.
+ * @param measure.height The rail's height now.
+ * @param measure.needed The height the loose rail needed when it tightened.
+ */
+export function railTight(tight: boolean, measure: { overflow: number; height: number; needed: number }): boolean {
+  return tight ? measure.height < measure.needed : measure.overflow > 0;
+}
