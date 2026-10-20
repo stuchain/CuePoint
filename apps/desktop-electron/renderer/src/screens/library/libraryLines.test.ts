@@ -92,3 +92,14 @@ describe("the Library's shared lines", () => {
     expect(columns).toMatch(/clamp\(min\(calc\(112px \* var\(--scale\)\), 45%\)/);
   });
 });
+
+describe("the pane's headings in a narrow pane (item 2, at 2x)", () => {
+  it("keep + New whole and let the title and from Rekordbox end in an ellipsis", () => {
+    expect(rule(pane, ".cp-library-pane .cp-playlist-pane__head > .cp-playlist-pane__fold")).toMatch(/min-width:\s*0/);
+    const title = rule(pane, ".cp-library-pane .cp-playlist-pane__title");
+    expect(title).toMatch(/text-overflow:\s*ellipsis/);
+    expect(title).toMatch(/overflow:\s*hidden/);
+    expect(rule(pane, ".cp-library-pane .cp-playlist-pane__head > .cp-hint")).toMatch(/min-width:\s*0/);
+    expect(rule(pane, ".cp-library-pane .cp-collections__create")).toMatch(/flex:\s*none/);
+  });
+});

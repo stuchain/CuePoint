@@ -168,11 +168,37 @@
   align-items: center;
 }
 
-/* "from Rekordbox" gives way (to "...") before the title does, in a narrow pane. */
+/* "from Rekordbox" gives way (to "...") before the title does, in a narrow pane; its hint wrapper
+   shrinks with it (item 2: at 2x it was cut at the pane's edge as "fro"). */
+.cp-library-pane .cp-playlist-pane__head > .cp-hint {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .cp-library-pane .cp-playlist-pane__source {
+  display: block;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* + New is never cut (item 2): the title gives way to "..." first. */
+.cp-library-pane .cp-collections__create {
+  flex: none;
+}
+
+.cp-library-pane .cp-playlist-pane__head > .cp-playlist-pane__fold {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.cp-library-pane .cp-playlist-pane__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The sections scroll inside the pane. */
