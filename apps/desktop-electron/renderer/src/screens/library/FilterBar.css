@@ -1,8 +1,10 @@
 /* Narrowing the library (LIBUI-08). One toolbar row of controls, then what is active. */
 
 .cp-filter-bar {
-  /* The narrowest the search gets before the row wraps: room for "Search…" (zoom spot 2A). */
-  --filter-search-floor: min(calc(128px * var(--scale)), var(--search-width));
+  /* The narrowest the search gets before the row wraps (zoom spot 2A): its icon, "Search…" and the
+     clear button's room, at every text size. It lets Select all stay on line 1 at 1.5x, at 1.25x
+     with Track details open, and in a 1024-wide window. */
+  --filter-search-floor: min(calc(96px * var(--scale)), var(--search-width));
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
