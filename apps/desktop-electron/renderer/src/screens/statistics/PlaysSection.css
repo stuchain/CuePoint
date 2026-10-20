@@ -27,9 +27,10 @@
   --cp-data-grid-columns: 3ch minmax(0, 1fr) 6ch 7ch 6ch;
 }
 
-/* The play button's room, so the headings line up with the rows. */
+/* The play button's room, so the headings line up with the rows: padding, so the band's fill and
+   rule run on over the play column (item 5). */
 .plays__columns-head--play {
-  margin-right: calc(var(--space-md) + var(--plays-play-column));
+  padding-right: calc(var(--space-sm) + var(--space-md) + var(--plays-play-column));
 }
 
 /* The row, then the play button in a column of its own that is always as wide as the button, so a

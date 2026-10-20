@@ -1229,10 +1229,12 @@ describe("the Plays section, after review (STATS-05)", () => {
       expect(within(region).queryByRole("button", { name: "Show all 25" })).toBeNull();
     });
 
-    it("reserves the play column in the header and the rows alike", () => {
+    it("reserves the play column in the header and the rows alike, with the header band over it (item 5)", () => {
       expect(playsCss).toMatch(/--plays-play-column:\s*calc\(round\(nearest, calc\(16px \* var\(--scale\)\), 1px\) \+ var\(--space-sm\)\)/);
       const head = /\.plays__columns-head--play\s*\{([^}]*)\}/.exec(playsCss)![1]!;
-      expect(head).toContain("margin-right: calc(var(--space-md) + var(--plays-play-column));");
+      // Padding, not margin: the band's fill and rule run on over the play column.
+      expect(head).toContain("padding-right: calc(var(--space-sm) + var(--space-md) + var(--plays-play-column));");
+      expect(head).not.toContain("margin-right");
     });
 
     it("keeps the play buttons in a fixed column and cuts a long title short", () => {
