@@ -697,6 +697,16 @@
     "reason": "names of our own fields, parameters and code values, never a user value",
     "verdict": "exempt"
   },
+  "cuepoint/engine/discover_api.py::run_continue::Discovery run {run_id} finished; there is nothing to continue": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/engine/discover_api.py::run_continue::Discovery run {run_id} is still running": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
   "cuepoint/engine/discover_api.py::run_delete::Discovery run {run_id} is still running; cancel it first": {
     "holds": "an integer id",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers",
@@ -1701,6 +1711,21 @@
     "reason": "names of our own fields, parameters and code values, never a user value",
     "verdict": "exempt"
   },
+  "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.reopen_run::Discovery run {run_id} finished": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.reopen_run::Discovery run {run_id} is running": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.reopen_run::No discovery run {run_id}": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
   "cuepoint/persistence/discovery_repository.py::DiscoveryRepository.run_track_ids::owned must be one of {OWNED_FILTERS}, got {owned!r}": {
     "holds": "request or file text that failed validation: any user or library text",
     "verdict": "corpus"
@@ -2390,12 +2415,22 @@
     "reason": "our own constants",
     "verdict": "exempt"
   },
+  "cuepoint/services/discovery_service.py::DiscoveryRequest.__post_init__::The release window is at most {MAX_WINDOW_DAYS} days": {
+    "holds": "our own constant",
+    "reason": "our own constants",
+    "verdict": "exempt"
+  },
   "cuepoint/services/discovery_service.py::DiscoveryRequest.__post_init__::new_releases_days is 1 to {MAX_WINDOW_DAYS}": {
     "holds": "our own constant",
     "reason": "our own constants",
     "verdict": "exempt"
   },
   "cuepoint/services/discovery_service.py::DiscoveryService._require_run::No discovery run {run_id}": {
+    "holds": "an integer id",
+    "reason": "integers: ids, counts and lengths the code has already checked as numbers",
+    "verdict": "exempt"
+  },
+  "cuepoint/services/discovery_service.py::DiscoveryService.check_continuable::No discovery run {run_id}": {
     "holds": "an integer id",
     "reason": "integers: ids, counts and lengths the code has already checked as numbers",
     "verdict": "exempt"
