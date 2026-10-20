@@ -131,3 +131,12 @@ describe("the bottom bar over a table (option 1A)", () => {
     }
   });
 });
+
+describe("the bar's place in the tab order", () => {
+  it("comes before the table's headers, so Tab reaches it without walking every column", () => {
+    render(tree(<button type="button">Clear selection</button>));
+    const bar = screen.getByRole("button", { name: "Clear selection" });
+    const table = screen.getByRole("table", { name: "Rows" });
+    expect(bar.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});

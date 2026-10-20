@@ -942,6 +942,13 @@ export function TrackTable<Row>({
       data-empty={empty ? "" : undefined}
       data-grip={onRowDragStart && showGrip ? "" : undefined}
     >
+      {/* The bar over the bottom rows comes first in the DOM, though it is drawn at the bottom: Tab
+          reaches it from the page before the table's headers, as when it sat above the table. */}
+      {bottomBarShown && (
+        <div ref={bottomBarRef} className="track-table__bottom-bar">
+          {bottomBar}
+        </div>
+      )}
       {/* The rows, headers and cells below are ARIA table parts, so something
           has to be the table: without this they describe nothing and a screen
           reader reads a pile of groups. `aria-rowcount` is the whole result,
@@ -1268,11 +1275,6 @@ export function TrackTable<Row>({
         {/* The bottom bar's end room: always there while the table has rows, never toggled. */}
         {keepsBottomRoom && !empty && <div className="track-table__bottom-room" aria-hidden="true" />}
       </div>
-      {bottomBarShown && (
-        <div ref={bottomBarRef} className="track-table__bottom-bar">
-          {bottomBar}
-        </div>
-      )}
       {dropLabel && (dropReady || dragActive) && (
         <div className="track-table__drop-label" aria-hidden>
           <span>{dropLabel}</span>
