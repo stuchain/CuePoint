@@ -246,6 +246,12 @@
   container: sidebar-search / inline-size;
 }
 
+/* The magnifier inside the field: three quarters of the entries' icons, closer to the text's size. */
+.cp-sidebar__search--box .cp-sidebar__icon .cp-pixel-icon {
+  width: round(nearest, calc(var(--icon-size) * 0.75), 1px);
+  height: round(nearest, calc(var(--icon-size) * 0.75), 1px);
+}
+
 .cp-sidebar__search-placeholder {
   flex: 1 0 auto;
 }

@@ -56,7 +56,9 @@ describe("pixel icons come in three sizes (area 10)", () => {
   it("scales them pixelated, and no component draws an icon at 0.6 or 14.4", () => {
     expect(sheets["./PixelIcon.css"]).toMatch(/image-rendering:\s*pixelated/);
     for (const [file, css] of Object.entries(sheets)) {
-      expect(css, file).not.toMatch(/--icon-size\)\s*\*\s*0?\.[0-46-9]/);
+      // The one exception, picked by eye (10-20): the sidebar Search field's magnifier at three quarters.
+      const checked = file.endsWith("shell/Sidebar.css") ? css.replaceAll("calc(var(--icon-size) * 0.75)", "") : css;
+      expect(checked, file).not.toMatch(/--icon-size\)\s*\*\s*0?\.[0-46-9]/);
       expect(css, file).not.toContain("14.4");
     }
   });
