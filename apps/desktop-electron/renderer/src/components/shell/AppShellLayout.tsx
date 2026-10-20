@@ -101,6 +101,26 @@ export function AppShellLayout({
     return () => element.removeEventListener("click", stop, true);
   }, [offline]);
 
+  // A page opened by a menu, a shortcut or a link inside a page leaves focus where it was. On a rail
+  // entry for another page that is wrong (item 14): it is still the focused element, so Chromium
+  // lights its :focus-visible ring once any key is pressed, and Tab would start from the old page's
+  // entry. Focus moves into the page that opened instead. The page is focusable only while it holds
+  // focus, so a click on its empty space never lands on it. The entry that was pressed to open the
+  // page is the lit one now, and keeps focus.
+  const shownPhase = useRef(pagePhase);
+  useEffect(() => {
+    if (shownPhase.current === pagePhase) return;
+    shownPhase.current = pagePhase;
+    const page = content.current;
+    const rail = sidebarRegion.current;
+    const focused = document.activeElement;
+    if (!page || !rail || !(focused instanceof HTMLElement) || !rail.contains(focused)) return;
+    if (!focused.matches("a[href]") || focused.getAttribute("aria-current") === "page") return;
+    page.setAttribute("tabindex", "-1");
+    page.addEventListener("blur", () => page.removeAttribute("tabindex"), { once: true });
+    page.focus({ preventScroll: true });
+  }, [pagePhase]);
+
   // The toast stack is rendered outside the shell, so the room the player and status strip take
   // goes on the root element, where it can lift the stack clear of them.
   const hasPlayer = Boolean(player);

@@ -44,6 +44,12 @@
   grid-area: content;
 }
 
+/* The page takes focus when it opens and a rail entry for another page held it (item 14): the page
+   is where focus is, not a control, so it draws no ring; Tab goes on from its start. */
+.app-shell__content:focus {
+  outline: none;
+}
+
 /*
  * Offline: a veil over the page, in the page's own grid cell. Not opacity on the page itself,
  * which would make it a stacking context and put its dialogs (z-index 1000) under the banner;

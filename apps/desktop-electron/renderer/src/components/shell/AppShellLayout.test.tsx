@@ -378,3 +378,59 @@ describe("the bottom inset the toast stack sits above", () => {
     ).not.toThrow();
   });
 });
+
+describe("focus when the page changes (item 14)", () => {
+  /** A rail of two pages, one lit, as the Sidebar draws it. */
+  function rail(current: "library" | "settings") {
+    return (
+      <nav>
+        <a href="#library" aria-current={current === "library" ? "page" : undefined}>
+          Library
+        </a>
+        <a href="#settings" aria-current={current === "settings" ? "page" : undefined}>
+          Settings
+        </a>
+      </nav>
+    );
+  }
+
+  it("moves focus off a rail entry that is no longer the page, into the page that opened", () => {
+    // Chromium's heuristic lights :focus-visible on a still-focused element once a key is pressed,
+    // so a Library entry left focused while a menu or shortcut opened Settings kept its ring.
+    const { rerender } = render(
+      <AppShellLayout sidebar={rail("library")} pagePhase="a">
+        <p>Library page</p>
+      </AppShellLayout>,
+    );
+    screen.getByRole("link", { name: "Library" }).focus();
+    rerender(
+      <AppShellLayout sidebar={rail("settings")} pagePhase="b">
+        <p>Settings page</p>
+      </AppShellLayout>,
+    );
+    const main = screen.getByRole("main");
+    expect(document.activeElement).toBe(main);
+    // Only while it holds focus: a click on the page's empty space must not land on it later.
+    fireEvent.blur(main);
+    expect(main).not.toHaveAttribute("tabindex");
+  });
+
+  it("leaves focus on the entry that was pressed to open the page", () => {
+    const { rerender } = render(
+      <AppShellLayout sidebar={rail("library")} pagePhase="a">
+        <p>Library page</p>
+      </AppShellLayout>,
+    );
+    screen.getByRole("link", { name: "Settings" }).focus();
+    rerender(
+      <AppShellLayout sidebar={rail("settings")} pagePhase="b">
+        <p>Settings page</p>
+      </AppShellLayout>,
+    );
+    expect(document.activeElement).toBe(screen.getByRole("link", { name: "Settings" }));
+  });
+
+  it("draws no ring of its own on the page it focuses", () => {
+    expect(shellCss).toMatch(/\.app-shell__content:focus\s*\{[^}]*outline:\s*none/);
+  });
+});
