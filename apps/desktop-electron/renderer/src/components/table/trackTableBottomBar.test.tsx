@@ -131,4 +131,3 @@ describe("the bottom bar over a table (option 1A)", () => {
     }
   });
 });
-
