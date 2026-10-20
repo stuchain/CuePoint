@@ -174,8 +174,17 @@ describe("A2: the menu chevron", () => {
 describe("A4: the search field", () => {
   it("is the one flexible item, so the filters share its line", () => {
     const rule = ".cp-filter-bar__row > .cp-search-field";
-    expect(decl(filterBarCss, rule, "flex")).toBe("0 1 var(--search-width)");
     expect(decl(filterBarCss, rule, "max-width")).toBe("var(--search-width)");
+  });
+
+  it("gives way to its floor before the row wraps, then grows back to the shared width (zoom spot 2A)", () => {
+    // The row breaks its line by each item's flex basis: a basis of the floor means the search
+    // shrinks first, so Select all stays on line 1 at 1.5x, and at 1.25x with Track details open.
+    const rule = ".cp-filter-bar__row > .cp-search-field";
+    expect(decl(filterBarCss, rule, "flex")).toBe("1 1 var(--filter-search-floor)");
+    expect(decl(filterBarCss, ".cp-filter-bar", "--filter-search-floor")).toMatch(
+      /^min\(calc\(\d+px \* var\(--scale\)\), var\(--search-width\)\)$/,
+    );
   });
 });
 

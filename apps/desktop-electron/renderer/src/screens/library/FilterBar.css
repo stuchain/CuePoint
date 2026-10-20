@@ -1,6 +1,8 @@
 /* Narrowing the library (LIBUI-08). One toolbar row of controls, then what is active. */
 
 .cp-filter-bar {
+  /* The narrowest the search gets before the row wraps: room for "Search…" (zoom spot 2A). */
+  --filter-search-floor: min(calc(128px * var(--scale)), var(--search-width));
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -133,9 +135,11 @@
   position: relative;
 }
 
-/* The shared search field, at the shared width (C223). */
+/* The shared search field, at the shared width (C223). It gives way first (zoom spot 2A): its
+   basis is the floor, so the row only wraps once the search is down to it, and it grows back to
+   the shared width while there is room. The placeholder shortens itself (fitPlaceholder). */
 .cp-filter-bar__row > .cp-search-field {
-  flex: 0 1 var(--search-width);
+  flex: 1 1 var(--filter-search-floor);
   max-width: var(--search-width);
 }
 
