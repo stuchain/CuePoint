@@ -337,28 +337,32 @@ is, nothing moves, even with **On** chosen, and motion works again as soon as yo
 turn it off. Turning a kind off never hides anything: you still see the same
 words and states, just without the movement.
 
-Everything that moves does so in whole-pixel steps, and every fade is smooth.
-Here is where each kind shows:
+What opens, closes or changes the page (pages, dialogs, menus, filter lists,
+toasts, Track details and the tab underline) moves smoothly and settles quickly.
+Small decorations (the spinner, a refused value's shake, chart bars, the wheel's
+lit keys, badges and counts that change) move in whole-pixel steps. No fade is
+ever stepped. Here is where each kind shows:
 
-- **Button presses**: a button moves down a notch while you press it, and so do
-  checkboxes, radio buttons and the star rating. The **Saved** tick steps up into
-  place.
+- **Button presses**: a button darkens and sits down a notch the moment you press
+  it, and so do checkboxes and radio buttons; the star rating sits down a notch.
+  The **Saved** tick steps up into place.
 - **Things you drag and drop**: a row you pick up dims and shifts aside, a row
   you drop settles into its place, the queue's drop marker steps in, and a
   column's resize handle shows a line while you hover or drag it.
 - **Hover and keyboard focus**: buttons lift a notch under the pointer, sidebar and
   Settings links lean toward it, a row in a track table shows a bar on its edge,
   and a control steps into its focus ring.
-- **Changing state**: a badge that changes kind or words steps once, the selected
-  tab steps into place, and a section of Track details steps open when you open it.
+- **Changing state**: a badge that changes kind or words steps once, the tab you
+  pick is lit at once while its underline grows out from the middle, and a section
+  of Track details slides open when you open it.
   The Camelot wheel's lit keys step as they light, and on the Keys page a key's
   count steps when it changes, on the wheel and in the list.
 - **Opening and closing panels and dialogs**: dialogs (search included), menus,
-  the **+N more** list, toasts and the Track details panel step in and fade out,
-  and the Camelot wheel steps in and fades out. A closing dialog or menu takes no clicks while it
-  fades: whatever is behind it takes them at once.
-- **Changing page**: the new page steps in; the sidebar, player and
-  status strip stay still. It never waits for the page's data.
+  the Library's filter lists, the **+N more** list, hint tips, toasts, the Track
+  details panel and the Camelot wheel ease in and fade out quickly. A closing dialog
+  or menu takes no clicks while it fades: whatever is behind it takes them at once.
+- **Changing page**: the new page eases in once it has been drawn; the sidebar,
+  player and status strip stay still. It never waits for the page's data.
 - **Moving between views**: a search result glides into its row in the Library
   when you open it. That is the only one: a table row you pick does not move, so a
   double-click to play and a shift-click range always land.

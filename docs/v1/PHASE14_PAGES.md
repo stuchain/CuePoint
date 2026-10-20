@@ -379,6 +379,9 @@ things change", not under "While you wait or scroll" where SET-2 was drafted bef
   - a distance unit, `--motion-step-px: var(--unit)`, so a 4-step slide moves whole CSS pixels
     at 1×, 1.5×, 2× and 3× (`--unit` is 6px at 1.5×);
   - a fade easing, `--motion-fade: linear`, for opacity, which is never stepped.
+  - *Amended by DEC-298:* interface motion (pages, dialogs, menus, popovers, panels, toasts, the
+    tab underline) moves on `--motion-ease-out` / `--motion-ease-in` over `--motion-move-px`, not
+    in steps; the steps above are for decoration only.
 - **Two rules every motion obeys,** held by a test, not by review:
   - it animates only `transform` and `opacity` (DEC-134: the compositor);
   - it is gated on a `data-motion-*` attribute.

@@ -4632,6 +4632,10 @@ animation steps in the same pixels at 1×, 2× and 3×.
 
 The steps hold at 1×, 1.5×, 2× and 3×: `--unit` is 6px at 1.5×, a whole pixel.
 
+### Amended (2026-10-20, DEC-298) — steps are for decoration only
+
+Interface motion eases; decoration keeps its pixel steps. See DEC-298.
+
 ---
 
 ## DEC-136 — Statistics Shows Plays, Artists and Labels, the Never Played, Spreads and Health
@@ -8237,3 +8241,51 @@ marked as recommended (A).
   focus ring, typed marks and the retired-word guard (`retiredWords.test.ts`).
 
 **Decided with**: User (consistency audit decisions, all A) · **Date**: 2026-10-19
+
+---
+
+## DEC-298 — Interface Motion Eases; Pixel Steps Stay for Decoration (Amends DEC-134, DEC-135)
+
+**Status**: Accepted · **Related**: DEC-134, DEC-135, DEC-161, `changes/smoothness/FINDINGS.md`
+
+**Context**: A frame-by-frame recording showed every interface motion pairing a smooth linear fade
+with a `steps(2)` move of 6, 3 and 0 px, each position held 40 or 80 ms. Next to a smooth fade the
+held positions read as dropped frames, not as pixel style. The selected tab ran a fade from 0, so
+for a frame nothing looked selected; a press was a 1px move on a one-frame transition, a frame
+late and with no colour change; a new page's 80 ms motion was spent on the long frame that drew
+it, so the page stuck at half opacity and then popped; the Library's filter panels had no entrance
+at all; and the closing Track details copy asked for a computed style of its whole clone, with its
+canvases blank. On the user's PC (144 Hz) the page and menus showed the same.
+
+**Decision** (the user's option A):
+- **Interface motion moves smoothly.** Pages, dialogs and their backdrop, menus, popovers, filter
+  panels, the wheel popover, hint tips, Track details and every side panel, toasts, Track details
+  sections, the tab underline and the shared search result ease in on `--motion-ease-out`
+  (`cubic-bezier(0.2, 0, 0, 1)`) over `--motion-base` (160 ms) and out on `--motion-ease-in`
+  (`cubic-bezier(0.4, 0, 1, 1)`) over `--motion-quick` (80 ms). They move `--motion-move-px` (the
+  unit: 4 px at 1×, 6 px at 1.5×; side panels and toasts two units), and the fade eases with them.
+- **Decoration keeps its pixel steps** (DEC-135 stands for it): the pixel spinner, the field-error
+  shake, bars and charts growing, the wheel's light, the Plays list, badges and counts, the hover
+  edge bar and focus step, drag and drop, the Saved tick and the Settings links.
+- **A press is a look drawn on the first frame:** no transition; the control sits a hairline lower
+  and its fill darkens with `--press-shade` (the theme's `--bevel-shadow` at 40%). Buttons,
+  checkboxes, radios and the player's buttons; the star only sits lower.
+- **The selected tab is drawn at once;** only its underline moves, growing out from the middle.
+- **A new page is held at its first look for the frame that draws it** and starts moving on the
+  next frame (`data-page-phase="hold"`, then `a`/`b` after two animation frames).
+- **The leave copy is cheap:** it is measured in a frame after each render (never in the unmount),
+  it is made only while the kind's attribute is on (no computed style), and its canvases are
+  drawn into the copy.
+
+**Implications**:
+- Tokens `--motion-ease-out`, `--motion-ease-in`, `--motion-move-px` and `--press-shade` join
+  `tokens.css`. The step tokens stay, for decoration.
+- `motionRules.test.ts` names the interface elements and the decorative keyframes and fails a
+  stepped or un-eased interface motion, a smooth decoration, and any transition on a pressable
+  control. Every motion is still gated by `:root[data-motion-*]`, so Settings → Motion (On, Off,
+  Custom) and the system's reduced motion work as before; only `transform` and `opacity` move.
+- Not changed: the Track details table still snaps to its new width as the panel opens (measured
+  at 21 ms on the user's PC, so left alone), and the Motion settings preview square keeps one
+  stepped sample for every kind.
+
+**Decided with**: User (option A of the smoothness findings) · **Date**: 2026-10-20

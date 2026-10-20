@@ -168,6 +168,29 @@ Every page uses the same few components; the guards below keep it that way.
 | An arrow, chevron, cross, repeat or pencil mark | `PixelIcon` (`chevron-right`, `chevron-down`, `arrow-up`, `arrow-down`, `repeat`, `close`, `edit`); in a line of text `className="cp-pixel-icon--text"` (half the icon cell, plus `cp-pixel-icon--after` for a gap before it) | `components/typedSymbols.test.ts`: none of the typed marks in source, no allowlist; an arrow key named in a shortcut hint (`Alt+↑`) is a key name and is left alone |
 | A button that is only a mark | `<Button iconOnly icon="close" aria-label="Dismiss">` | `Button.test.tsx` (the label is required by the type) |
 
+## Motion
+
+Every motion is behind its kind's `:root[data-motion-<kind>]` attribute (Settings → Motion: On,
+Off or Custom; none under the system's reduced motion) and moves only `transform` and `opacity`;
+opacity is never stepped (DEC-134, DEC-135). Since DEC-298 there are two looks, kept apart in
+`renderer/src/motion.css` and held by `motionRules.test.ts`:
+
+| Kind of motion | What | Timing | Distance |
+|---|---|---|---|
+| Interface | page change, dialog and backdrop, menus, popovers, filter panels, wheel popover, hint tips, Track details and side panels, toasts, Track details sections, the tab underline, the shared search result | `--motion-ease-out` (`cubic-bezier(0.2, 0, 0, 1)`) in over `--motion-base` (160 ms); `--motion-ease-in` out over `--motion-quick` (80 ms); the fade eases with the move | `--motion-move-px` (`--unit`: 4 px at 1×, 6 px at 1.5×) |
+| Decoration | pixel spinner, field-error shake, bars and charts growing, the wheel's light, Plays list, badges and counts, hover edge bar, focus step, drag and drop, the Saved tick, Settings links | `steps(var(--motion-steps-short/-long))`; a separate `--motion-fade` (linear) fade | `--motion-step-px` (whole pixels at every scale) |
+
+- **A press is a look, not a motion:** the control sits a hairline lower and its fill darkens
+  (`--press-shade`, from the theme's `--bevel-shadow`), with no transition, so it shows on the
+  first frame. Buttons, checkboxes, radios and the player's buttons; the star only sits lower.
+- **The selected tab is never hidden:** it is drawn at once; only its underline grows in.
+- **A new page starts moving after it is drawn:** `AppShellLayout` holds it at its first look
+  (`data-page-phase="hold"`) for the frame that draws it and writes the phase on the next frame,
+  so a long first frame does not use up the motion.
+- **What is simply unmounted leaves as a still copy** (`useLeaveGhost`): measured in a frame after
+  each render, never in the unmount, gated by the kind's attribute (no computed style), with its
+  canvases drawn into the copy.
+
 ## What this means for the target design system work
 
 This is a genuinely mature, internally consistent token system — the "reuse, don't redesign" case
