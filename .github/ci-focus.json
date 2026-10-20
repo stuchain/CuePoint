@@ -1,1 +1,1 @@
-{"runner": "macos-latest", "pytest": "src/tests/unit/engine/test_match_jobs.py::TestAThousandTracks -s", "e2e": "", "repeat": 3}
+{"runner": "macos-latest", "pytest": "src/tests/unit/engine/test_match_jobs.py::TestAThousandTracks -s --cov=src/cuepoint --cov-report=", "e2e": "", "repeat": 3}
