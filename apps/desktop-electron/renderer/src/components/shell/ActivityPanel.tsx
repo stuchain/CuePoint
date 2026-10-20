@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Badge } from "../Badge";
 import { Hint } from "../Hint";
 import { Loading } from "../Loading";
 import { Modal } from "../Modal";
@@ -134,7 +135,11 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
                           <span className="cp-activity__time">
                             {formatEventTime(event.created_at)}
                           </span>
-                          {word && <span className="cp-activity__type">{word}</span>}
+                          {word && (
+                            <Badge tone="neutral" className="cp-activity__type">
+                              {word}
+                            </Badge>
+                          )}
                           <span className="cp-activity__summary-text">
                             {event.summary}
                             {detail && <span className="cp-activity__detail"> {detail}</span>}

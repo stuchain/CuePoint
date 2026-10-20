@@ -25,6 +25,13 @@ describe("the Activity list lines up (C37)", () => {
   it("cuts a tag too long for its column instead of widening it", () => {
     expect(decl(".cp-activity__type", "text-overflow")).toBe("ellipsis");
   });
+
+  it("draws a category as the shared tinted chip, not an outlined box like a field (item 8)", () => {
+    // The chip's own fill and line (Badge); this sheet only fits it to its column.
+    expect(decl(".cp-activity__type", "border")).toBeUndefined();
+    expect(decl(".cp-activity__type", "justify-self")).toBe("start");
+    expect(decl(".cp-activity__type", "max-width")).toBe("100%");
+  });
 });
 
 describe("Activity wording (C153, C161, C170)", () => {

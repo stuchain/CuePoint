@@ -85,15 +85,15 @@
   white-space: nowrap;
 }
 
+/* A category is the shared tinted chip (Badge, as the status chips are), as wide as its words and
+   cut with an ellipsis at its column's width (item 8). */
 .cp-activity__type {
+  display: block;
+  justify-self: start;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 var(--space-xs);
-  border: var(--divider);
-  color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  white-space: nowrap;
 }
 
 /* Wraps rather than truncating: a summary is the point of the row. */
