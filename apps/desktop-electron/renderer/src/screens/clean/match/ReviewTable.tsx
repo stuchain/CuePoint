@@ -17,7 +17,7 @@
  * above and below), one row is in the tab order and the arrows move it. The tab owns what is
  * current and which keys move it; this draws, reports a click and says where the rows end.
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { ReviewTrack } from "../../../api/cuepointBridge.types";
 import { Badge } from "../../../components/Badge";
@@ -82,6 +82,128 @@ function RowPreview({ row }: { row: ReviewTrack }) {
     />
   );
 }
+
+/** What a row reports: one object for the table's life, so a row is drawn again only when its own look changes. */
+interface RowActions {
+  open: (row: ReviewTrack) => void;
+  play: (row: ReviewTrack) => void;
+  select: (row: ReviewTrack, modifiers: { shift: boolean; toggle: boolean }) => void;
+  contextMenu: (row: ReviewTrack, anchor: { x: number; y: number }) => void;
+  tick: (row: ReviewTrack, ticked: boolean) => void;
+}
+
+/**
+ * One track's row. Memoised: an arrow moves the cursor and the selection, which changes the look
+ * of two rows; the others are the same and are not drawn again (holding Down with the panel open
+ * drew every row in view again on each key).
+ */
+const ReviewRow = memo(function ReviewRow({
+  row,
+  rowIndex,
+  isSelected,
+  isCurrent,
+  tabbable,
+  actions,
+}: {
+  row: ReviewTrack;
+  rowIndex: number;
+  isSelected: boolean;
+  isCurrent: boolean;
+  /** The table's one tab stop. */
+  tabbable: boolean;
+  actions: RowActions;
+}) {
+  const parts = matchParts(row.candidate, row.differing);
+  const off = !row.ticked;
+  return (
+    <tr
+      data-track-id={row.track_id}
+      data-status={row.status}
+      aria-rowindex={rowIndex}
+      className={`review-row${off ? " review-row--off" : ""}${isCurrent ? " review-row--current" : ""}`}
+      aria-selected={isSelected}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        actions.contextMenu(row, { x: event.clientX, y: event.clientY });
+      }}
+      aria-current={isCurrent ? "true" : undefined}
+      // One row is in the tab order; the arrows move it, and Space on it ticks it, so the
+      // table is one tab stop and not a checkbox per track.
+      tabIndex={tabbable ? 0 : -1}
+      data-owns-space=""
+      // Shift-click selects a range here, never the browser's own text selection.
+      onMouseDown={(event) => {
+        if (event.shiftKey) event.preventDefault();
+      }}
+      onClick={(event) => {
+        // A click on a button, a tick or a link inside the row is that control's own.
+        if ((event.target as HTMLElement).closest("button, input, a")) return;
+        const toggle = event.ctrlKey || event.metaKey;
+        if (toggle || event.shiftKey) actions.select(row, { shift: event.shiftKey, toggle });
+        else actions.open(row);
+      }}
+      onDoubleClick={(event) => {
+        if ((event.target as HTMLElement).closest("button, input, a")) return;
+        if (event.ctrlKey || event.metaKey || event.shiftKey) return;
+        actions.play(row);
+      }}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget || event.repeat) return;
+        // Enter on the row itself plays it; on a control inside it, the control's own.
+        if (event.key === "Enter") {
+          event.preventDefault();
+          actions.play(row);
+        } else if (event.key === " " && row.tickable && !event.ctrlKey && !event.metaKey && !event.altKey) {
+          event.preventDefault();
+          actions.tick(row, !row.ticked);
+        }
+      }}
+    >
+      <td className="review-col--check">
+        <Hint text={row.tickable ? undefined : "No Beatport match to sync"} portal>
+          <input
+            type="checkbox"
+            aria-label={`Sync ${row.title} · ${row.artist}`}
+            tabIndex={-1}
+            checked={row.ticked}
+            disabled={!row.tickable}
+            onChange={(event) => actions.tick(row, event.target.checked)}
+          />
+        </Hint>
+      </td>
+      <td className="review-col--status">
+        {statusIsQuiet(row.status) ? (
+          <span className="cp-quiet-ok">{statusLabel(row.status)}</span>
+        ) : (
+          <Badge tone={statusTone(row.status)}>{statusLabel(row.status)}</Badge>
+        )}
+        {row.disputed && (
+          <Hint text={DISPUTED_HINT} portal>
+            <span className="review-row__disputed"> newer match differs</span>
+          </Hint>
+        )}
+      </td>
+      <td className="review-row__yours" data-cut-hint>
+        {row.title} · {row.artist}
+      </td>
+      <td className={`review-row__theirs${row.candidate && off ? " review-row__theirs--off" : ""}`} data-cut-hint>
+        {parts.length === 0 ? (
+          <MissingValue />
+        ) : (
+          parts.map((part, index) => (
+            <span key={index} className={part.differs ? "review-part--differs" : undefined}>
+              {index > 0 && " "}
+              {part.text}
+            </span>
+          ))
+        )}
+      </td>
+      <td className="review-col--preview review-row__preview">
+        <RowPreview row={row} />
+      </td>
+    </tr>
+  );
+});
 
 export function ReviewTable({
   rows,
@@ -163,152 +285,85 @@ export function ReviewTable({
   const tabStop = windowRows.some((row) => row.track_id === wanted) ? wanted : (windowRows[0]?.track_id ?? null);
   const columns = 5;
 
+  // The callers' handlers change as the selection does; the rows are handed one object that
+  // always calls the latest, so a new handler never draws every row again.
+  const latest = useRef({ onOpen, onPlay, onSelect, onContextMenu, onTick });
+  latest.current = { onOpen, onPlay, onSelect, onContextMenu, onTick };
+  const actions = useMemo<RowActions>(
+    () => ({
+      open: (row) => latest.current.onOpen(row),
+      play: (row) => latest.current.onPlay(row),
+      select: (row, modifiers) => latest.current.onSelect(row, modifiers),
+      contextMenu: (row, anchor) => latest.current.onContextMenu(row, anchor),
+      tick: (row, ticked) => latest.current.onTick(row, ticked),
+    }),
+    [],
+  );
+
   return (
-    <div className="review__table" ref={tableRef} onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}>
-      <table className="cp-data-table review-table" aria-rowcount={rows.length + 1}>
-        <caption className="match-visually-hidden">
-          Every track of this playlist, what Beatport matched it with, and whether it will be synced
-        </caption>
-        <thead>
-          <tr aria-rowindex={1}>
-            <th scope="col" className="review-col--check">
-              <input
-                ref={headerTick}
-                type="checkbox"
-                aria-label="Tick every track with a match"
-                checked={allTicked}
-                disabled={tickable === 0 || busy}
-                onChange={() => onTickAll(!allTicked)}
-              />
-            </th>
-            <th scope="col" className="review-col--status">
-              Status
-            </th>
-            <th scope="col">Your track</th>
-            <th scope="col">
-              <Hint text="Beatport match" portal>
-                <span>Beatport</span>
-              </Hint>
-            </th>
-            <th scope="col" className="review-col--preview">
-              <span className="match-visually-hidden">Preview</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {start > 0 && (
-            <tr role="presentation" aria-hidden style={{ height: start * rowHeight }}>
-              <td colSpan={columns} />
+    <div className="review__table-frame">
+      <div className="review__table" ref={tableRef} onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}>
+        <table className="cp-data-table review-table" aria-rowcount={rows.length + 1}>
+          <caption className="match-visually-hidden">
+            Every track of this playlist, what Beatport matched it with, and whether it will be synced
+          </caption>
+          <thead>
+            <tr aria-rowindex={1}>
+              <th scope="col" className="review-col--check">
+                <input
+                  ref={headerTick}
+                  type="checkbox"
+                  aria-label="Tick every track with a match"
+                  checked={allTicked}
+                  disabled={tickable === 0 || busy}
+                  onChange={() => onTickAll(!allTicked)}
+                />
+              </th>
+              <th scope="col" className="review-col--status">
+                Status
+              </th>
+              <th scope="col">Your track</th>
+              <th scope="col">
+                <Hint text="Beatport match" portal>
+                  <span>Beatport</span>
+                </Hint>
+              </th>
+              <th scope="col" className="review-col--preview">
+                <span className="match-visually-hidden">Preview</span>
+              </th>
             </tr>
-          )}
-          {windowRows.map((row, offset) => {
-            const parts = matchParts(row.candidate, row.differing);
-            const off = !row.ticked;
-            const isSelected = selectedIds.has(row.track_id);
-            return (
-              <tr
-                key={row.track_id}
-                data-track-id={row.track_id}
-                data-status={row.status}
-                aria-rowindex={start + offset + 2}
-                className={`review-row${off ? " review-row--off" : ""}${current === row.track_id ? " review-row--current" : ""}`}
-                aria-selected={isSelected}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  onContextMenu(row, { x: event.clientX, y: event.clientY });
-                }}
-                aria-current={current === row.track_id ? "true" : undefined}
-                // One row is in the tab order; the arrows move it, and Space on it ticks it, so the
-                // table is one tab stop and not a checkbox per track.
-                tabIndex={row.track_id === tabStop ? 0 : -1}
-                data-owns-space=""
-                // Shift-click selects a range here, never the browser's own text selection.
-                onMouseDown={(event) => {
-                  if (event.shiftKey) event.preventDefault();
-                }}
-                onClick={(event) => {
-                  // A click on a button, a tick or a link inside the row is that control's own.
-                  if ((event.target as HTMLElement).closest("button, input, a")) return;
-                  const toggle = event.ctrlKey || event.metaKey;
-                  if (toggle || event.shiftKey) onSelect(row, { shift: event.shiftKey, toggle });
-                  else onOpen(row);
-                }}
-                onDoubleClick={(event) => {
-                  if ((event.target as HTMLElement).closest("button, input, a")) return;
-                  if (event.ctrlKey || event.metaKey || event.shiftKey) return;
-                  onPlay(row);
-                }}
-                onKeyDown={(event) => {
-                  if (event.target !== event.currentTarget || event.repeat) return;
-                  // Enter on the row itself plays it; on a control inside it, the control's own.
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    onPlay(row);
-                  } else if (event.key === " " && row.tickable && !event.ctrlKey && !event.metaKey && !event.altKey) {
-                    event.preventDefault();
-                    onTick(row, !row.ticked);
-                  }
-                }}
-              >
-                <td className="review-col--check">
-                  <Hint text={row.tickable ? undefined : "No Beatport match to sync"}>
-                    <input
-                      type="checkbox"
-                      aria-label={`Sync ${row.title} · ${row.artist}`}
-                      tabIndex={-1}
-                      checked={row.ticked}
-                      disabled={!row.tickable}
-                      onChange={(event) => onTick(row, event.target.checked)}
-                    />
-                  </Hint>
-                </td>
-                <td className="review-col--status">
-                  {statusIsQuiet(row.status) ? (
-                    <span className="cp-quiet-ok">{statusLabel(row.status)}</span>
-                  ) : (
-                    <Badge tone={statusTone(row.status)}>{statusLabel(row.status)}</Badge>
-                  )}
-                  {row.disputed && (
-                    <Hint text={DISPUTED_HINT}>
-                      <span className="review-row__disputed"> newer match differs</span>
-                    </Hint>
-                  )}
-                </td>
-                <td className="review-row__yours" data-cut-hint>
-                  {row.title} · {row.artist}
-                </td>
-                <td
-                  className={`review-row__theirs${row.candidate && off ? " review-row__theirs--off" : ""}`}
-                  data-cut-hint
-                >
-                  {parts.length === 0
-                    ? <MissingValue />
-                    : parts.map((part, index) => (
-                        <span key={index} className={part.differs ? "review-part--differs" : undefined}>
-                          {index > 0 && " "}
-                          {part.text}
-                        </span>
-                      ))}
-                </td>
-                <td className="review-col--preview review-row__preview">
-                  <RowPreview row={row} />
-                </td>
+          </thead>
+          <tbody>
+            {start > 0 && (
+              <tr role="presentation" aria-hidden style={{ height: start * rowHeight }}>
+                <td colSpan={columns} />
               </tr>
-            );
-          })}
-          {end < rows.length && (
-            <tr role="presentation" aria-hidden style={{ height: (rows.length - end) * rowHeight }}>
-              <td colSpan={columns} />
-            </tr>
-          )}
-        </tbody>
-      </table>
-      {rows.length === 0 && <EmptyState compact headline="Nothing to review here" />}
-      {hasMore && (
-        <div className="review__more">
-          <ShowMore total={rows.length + remaining} expanded={false} onToggle={onShowAll} />
-        </div>
-      )}
+            )}
+            {windowRows.map((row, offset) => (
+              <ReviewRow
+                key={row.track_id}
+                row={row}
+                rowIndex={start + offset + 2}
+                isSelected={selectedIds.has(row.track_id)}
+                isCurrent={current === row.track_id}
+                tabbable={row.track_id === tabStop}
+                actions={actions}
+              />
+            ))}
+            {end < rows.length && (
+              <tr role="presentation" aria-hidden style={{ height: (rows.length - end) * rowHeight }}>
+                <td colSpan={columns} />
+              </tr>
+            )}
+          </tbody>
+        </table>
+        {rows.length === 0 && <EmptyState compact headline="Nothing to review here" />}
+        {hasMore && (
+          <div className="review__more">
+            <ShowMore total={rows.length + remaining} expanded={false} onToggle={onShowAll} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

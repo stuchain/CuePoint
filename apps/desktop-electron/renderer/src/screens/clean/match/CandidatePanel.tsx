@@ -19,7 +19,7 @@
  * from the tab (`ReviewTab.tsx`); Esc closes, here and there. Opening the panel puts the keyboard
  * in it and closing hands it back.
  */
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type { CandidateDifferences, MatchCandidate, MatchSearchAnswer, ReviewTrack } from "../../../api/cuepointBridge.types";
 import { orderCandidates } from "./candidateOrder";
@@ -49,7 +49,7 @@ import { attemptLabel } from "../cleanFormat";
 import { SCORE_ROWS, scoreLine } from "../comparison";
 import { useCandidateArtwork } from "../useCandidateArtwork";
 import { useTrackArtwork } from "../useTrackArtwork";
-import { useTrackMatches } from "../useTrackMatches";
+import { useTrackMatches, type TrackMatchesState } from "../useTrackMatches";
 import { statusIsQuiet, statusLabel, statusTone } from "./reviewList";
 
 /** Said when there is no Beatport sign-in to search with. */
@@ -136,7 +136,11 @@ function Art({ src }: { src: string | null }) {
   );
 }
 
-function CandidateRow({
+/**
+ * One candidate. Memoised, with its callbacks taking the candidate's id, so a pick, a cover
+ * arriving or the panel moving on draws only the rows whose own look changed.
+ */
+const CandidateRow = memo(function CandidateRow({
   candidate,
   inUse,
   picked,
@@ -147,9 +151,9 @@ function CandidateRow({
   inUse: boolean;
   /** This candidate is the one the foot's Use this match would take. */
   picked: boolean;
-  onPick: () => void;
+  onPick: (candidateId: number) => void;
   /** A double-click: what Use this match does for this candidate. */
-  onUse: () => void;
+  onUse: (candidateId: number) => void;
 }) {
   const preview = useBeatportPreview({ kind: "candidate", id: candidate.id });
   const playing = preview.state === "playing";
@@ -163,7 +167,7 @@ function CandidateRow({
       onDoubleClick={(event) => {
         // The play button and the pick keep their own clicks.
         if ((event.target as HTMLElement).closest("button, input")) return;
-        onUse();
+        onUse(candidate.id);
       }}
     >
       <input
@@ -172,13 +176,16 @@ function CandidateRow({
         className="review-candidate__pick"
         aria-label={`Pick ${label}`}
         checked={picked}
-        onChange={onPick}
+        onChange={() => onPick(candidate.id)}
       />
-      {cover ? (
-        <img className="review-candidate__cover" src={cover} alt="" />
-      ) : (
-        <ArtworkPlaceholder className="review-candidate__cover" label="No artwork" />
-      )}
+      {/* A fixed box that contains its own layout: a cover arriving changes nothing around it. */}
+      <span className="review-candidate__cover-box">
+        {cover ? (
+          <img className="review-candidate__cover" src={cover} alt="" decoding="async" />
+        ) : (
+          <ArtworkPlaceholder className="review-candidate__cover" label="No artwork" />
+        )}
+      </span>
       <div className="review-candidate__facts">
         <p className="review-candidate__title">
           {titleParts(candidate).map((part, index) => (
@@ -210,6 +217,47 @@ function CandidateRow({
       />
     </li>
   );
+});
+
+/** What the panel shows for a track it is only passing through: its candidates are not read yet. */
+const PASSING: TrackMatchesState = {
+  matches: null,
+  attemptId: null,
+  candidates: [],
+  loading: true,
+  error: null,
+  unavailable: false,
+  chooseAttempt: () => {},
+  reload: () => {},
+};
+
+/** How long the panel waits, after a quick move, for the keys to stop before it reads a track. */
+export const SETTLE_MS = 120;
+
+/**
+ * `value`, held back while it changes quickly. A change after a quiet spell of `quietMs` comes
+ * through at once (one press is never slowed); a change soon after another waits until the
+ * changes stop for `quietMs`. Holding Down then reads the track it stops on, not each one passed.
+ */
+function useSettled<T>(value: T, quietMs: number): T {
+  const [state, setState] = useState(() => ({ value, settled: value, at: -Infinity }));
+  let current = state;
+  if (!Object.is(state.value, value)) {
+    // Adjusted while rendering (React's pattern for state derived from a prop): no extra commit.
+    const at = performance.now();
+    current = { value, settled: at - state.at >= quietMs ? value : state.settled, at };
+    setState(current);
+  }
+  const { settled } = current;
+  useEffect(() => {
+    if (Object.is(settled, value)) return undefined;
+    const timer = window.setTimeout(
+      () => setState((now) => (Object.is(now.value, value) ? { ...now, settled: value } : now)),
+      quietMs,
+    );
+    return () => window.clearTimeout(timer);
+  }, [value, settled, quietMs]);
+  return settled;
 }
 
 export function CandidatePanel({
@@ -235,27 +283,34 @@ export function CandidatePanel({
     root.current?.focus({ preventScroll: true });
   }, []);
 
-  const matches = useTrackMatches(trackId, version);
-  const yourArt = useTrackArtwork(trackId, "inspector");
+  // The track whose matches, art and length are read: the one shown, once the keys stop moving.
+  // Until then the header and your track's words follow at once and the candidates wait, so one
+  // track's candidates are never shown under another's name.
+  const settledId = useSettled(trackId, SETTLE_MS);
+  const settled = settledId === trackId;
+  const settledMatches = useTrackMatches(settledId, version);
+  const matches = settled ? settledMatches : PASSING;
+  const settledArt = useTrackArtwork(settledId, "inspector");
+  const yourArt = settled ? settledArt : null;
   const yourPreview = useBeatportPreview(null);
   const payload = matches.matches;
   const yours = payload?.track ?? null;
   // Your track's length is not in the match payload: read the library's track for it.
-  const [yourSeconds, setYourSeconds] = useState<number | null>(null);
+  const [yourLength, setYourLength] = useState<{ trackId: number; seconds: number | null } | null>(null);
   useEffect(() => {
-    setYourSeconds(null);
     const read = window.cuepoint?.getLibraryTrack;
     if (!read) return;
     let cancelled = false;
-    void read({ trackId })
+    void read({ trackId: settledId })
       .then(({ track }) => {
-        if (!cancelled) setYourSeconds(track.duration_seconds ?? null);
+        if (!cancelled) setYourLength({ trackId: settledId, seconds: track.duration_seconds ?? null });
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [trackId]);
+  }, [settledId]);
+  const yourSeconds = yourLength?.trackId === trackId ? yourLength.seconds : null;
 
   const [words, setWords] = useState(`${row.title} ${row.artist}`.trim());
   // What searching Beatport from here found: its own results, scored against the track.
@@ -266,25 +321,29 @@ export function CandidatePanel({
   const [problem, setProblem] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [scored, setScored] = useState<number | null>(null);
+  // The candidate the foot's Use this match takes: the one picked, else the best one not in use yet.
+  const [picked, setPicked] = useState<number | null>(null);
   const moreId = useId();
 
-  // Another track: start again.
-  useEffect(() => {
+  // Another track: start again. Reset while rendering, not in an effect, so a move is one commit.
+  const identity = `${trackId}\u0000${row.title}\u0000${row.artist}`;
+  const [startedFor, setStartedFor] = useState(identity);
+  if (startedFor !== identity) {
+    const sameTrack = startedFor.startsWith(`${trackId}\u0000`);
+    setStartedFor(identity);
     setWords(`${row.title} ${row.artist}`.trim());
     setFound(null);
     setProblem(null);
     setSearching(false);
     setScored(null);
-  }, [trackId, row.title, row.artist]);
+    if (!sameTrack) setPicked(null);
+  }
 
   const inUseId = row.candidate?.id ?? null;
   // Results the person searched for replace the ones the last match found.
   const listed = found ? found.candidates : matches.candidates;
   const shown = useMemo(() => orderCandidates(listed, inUseId), [listed, inUseId]);
   const scoredCandidate = shown.find((entry) => entry.id === (scored ?? inUseId)) ?? shown[0] ?? null;
-  // The candidate the foot's Use this match takes: the one picked, else the best one not in use yet.
-  const [picked, setPicked] = useState<number | null>(null);
-  useEffect(() => setPicked(null), [trackId]);
   // An unticked track starts on the match it has, so Use this match never silently takes another.
   const inUseShown = inUseId !== null && shown.some((entry) => entry.id === inUseId) ? inUseId : null;
   const otherId =
@@ -298,6 +357,17 @@ export function CandidatePanel({
         ? (otherId ?? inUseShown)
         : (inUseShown ?? otherId);
   const pickedInUse = pickedId !== null && row.ticked && pickedId === inUseId;
+
+  // A double-click on a candidate: Use this match for it. One function for the panel's life (it
+  // reads the latest props), so the memoised rows are not drawn again for a new one.
+  const forTake = useRef({ busy, ticked: row.ticked, inUseId, onUse });
+  forTake.current = { busy, ticked: row.ticked, inUseId, onUse };
+  const takeCandidate = useCallback((candidateId: number) => {
+    const now = forTake.current;
+    if (now.busy || (now.ticked && candidateId === now.inUseId)) return;
+    setPicked(candidateId);
+    now.onUse(candidateId);
+  }, []);
 
   const playFile = () => {
     yourPreview.stop();
@@ -360,7 +430,7 @@ export function CandidatePanel({
             headline: couldNot("search Beatport for this track").replace(/[.]$/, ""),
             // The plain sentence says it; the matcher's own reason is only in the hint.
             description: (
-              <Hint text={attempt.error ?? "No reason was recorded"} inline>
+              <Hint text={attempt.error ?? "No reason was recorded"} inline portal>
                 <span className="cp-link" tabIndex={0}>Details</span>
               </Hint>
             ),
@@ -384,176 +454,175 @@ export function CandidatePanel({
         onClose();
       }}
     >
-      <header className="cp-panel-header review-panel__header">
-        <h3 className="cp-panel-header__title">Check the match</h3>
-        {statusIsQuiet(row.status) ? (
-          <span className="cp-quiet-ok">{statusLabel(row.status)}</span>
-        ) : (
-          <Badge tone={statusTone(row.status)}>{statusLabel(row.status)}</Badge>
-        )}
-        <span className="review-panel__position">
-          {formatCount(position)} of {formatCount(total)}
-        </span>
-        <CloseButton onClick={onClose} />
-      </header>
+      {/* The frame is the panel's own layout root (match.css): what changes in it lays out the panel alone. */}
+      <div className="review-panel__frame">
+        <header className="cp-panel-header review-panel__header">
+          <h3 className="cp-panel-header__title">Check the match</h3>
+          {statusIsQuiet(row.status) ? (
+            <span className="cp-quiet-ok">{statusLabel(row.status)}</span>
+          ) : (
+            <Badge tone={statusTone(row.status)}>{statusLabel(row.status)}</Badge>
+          )}
+          <span className="review-panel__position">
+            {formatCount(position)} of {formatCount(total)}
+          </span>
+          <CloseButton onClick={onClose} />
+        </header>
 
-      <div className="review-panel__scroll">
-        <p className="review-panel__hint">Up and Down move · Double-click uses a match · Esc closes</p>
+        <div className="review-panel__scroll">
+          <p className="review-panel__hint">Up and Down move · Double-click uses a match · Esc closes</p>
 
-        <section className="review-card" aria-label="Your track">
-          <Art src={yourArt} />
-          <div className="review-card__facts">
-            <p className="cp-text-label review-card__eyebrow">Your track · from your library</p>
-            <p className="review-card__title">{yours?.title ?? row.title}</p>
-            <p className="review-card__artists">{yours?.artist ?? row.artist}</p>
-            <p className="review-card__line">
-              {factsLine({
-                label: yours?.label,
-                key: yours?.key,
-                bpm: yours?.bpm,
-                seconds: yourSeconds,
-                year: yours?.year,
-              })}
-            </p>
-          </div>
-          <PlayButton aria-label="Play your track" playing={false} onClick={playFile} />
-        </section>
+          <section className="review-card" aria-label="Your track">
+            <Art src={yourArt} />
+            <div className="review-card__facts">
+              <p className="cp-text-label review-card__eyebrow">Your track · from your library</p>
+              <p className="review-card__title">{yours?.title ?? row.title}</p>
+              <p className="review-card__artists">{yours?.artist ?? row.artist}</p>
+              <p className="review-card__line">
+                {factsLine({
+                  label: yours?.label,
+                  key: yours?.key,
+                  bpm: yours?.bpm,
+                  seconds: yourSeconds,
+                  year: yours?.year,
+                })}
+              </p>
+            </div>
+            <PlayButton aria-label="Play your track" playing={false} onClick={playFile} />
+          </section>
 
-        <h3 className="cp-text-label review-panel__eyebrow">Found on Beatport · pick the right one</h3>
-        {matches.error && (
-          <Notice
-            kind="danger"
-            action={
-              matches.error === needsDesktopApp() ? undefined : (
-                <Button variant="secondary" onClick={matches.reload}>
-                  {RETRY}
-                </Button>
-              )
-            }
+          <h3 className="cp-text-label review-panel__eyebrow">Found on Beatport · pick the right one</h3>
+          {matches.error && (
+            <Notice
+              kind="danger"
+              action={
+                matches.error === needsDesktopApp() ? undefined : (
+                  <Button variant="secondary" onClick={matches.reload}>
+                    {RETRY}
+                  </Button>
+                )
+              }
+            >
+              {matches.error}
+            </Notice>
+          )}
+          {matches.loading && shown.length === 0 && <Loading what="its candidates" />}
+          {nothingNote && <EmptyState compact headline={nothingNote.headline} description={nothingNote.description} />}
+          {shown.length > 0 && (
+            <ul className="review-candidates" role="radiogroup" aria-label="Beatport candidates">
+              {shown.map((candidate) => (
+                <CandidateRow
+                  key={candidate.id}
+                  candidate={candidate}
+                  inUse={row.ticked && candidate.id === inUseId}
+                  picked={candidate.id === pickedId}
+                  onPick={setPicked}
+                  onUse={takeCandidate}
+                />
+              ))}
+            </ul>
+          )}
+
+          <form
+            className="review-panel__search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              search();
+            }}
           >
-            {matches.error}
-          </Notice>
-        )}
-        {matches.loading && shown.length === 0 && <Loading what="its candidates" />}
-        {nothingNote && <EmptyState compact headline={nothingNote.headline} description={nothingNote.description} />}
-        {shown.length > 0 && (
-          <ul className="review-candidates" role="radiogroup" aria-label="Beatport candidates">
-            {shown.map((candidate) => (
-              <CandidateRow
-                key={candidate.id}
-                candidate={candidate}
-                inUse={row.ticked && candidate.id === inUseId}
-                picked={candidate.id === pickedId}
-                onPick={() => setPicked(candidate.id)}
-                onUse={() => {
-                  if (busy || (row.ticked && candidate.id === inUseId)) return;
-                  setPicked(candidate.id);
-                  onUse(candidate.id);
-                }}
-              />
-            ))}
-          </ul>
-        )}
+            <TextField label="Search Beatport for" value={words} onChange={(event) => setWords(event.target.value)} />
+            <Hint text={matching ? ONE_AT_A_TIME : undefined} portal>
+              <Button type="submit" variant="secondary" disabled={searching || matching}>
+                {searching ? "Searching…" : "Search Beatport"}
+              </Button>
+            </Hint>
+          </form>
+          {problem && <Notice kind="danger">{problem}</Notice>}
+          {found?.failure && <Notice kind="danger">{found.failure}</Notice>}
+          {found && !found.failure && found.candidates.length === 0 && (
+            <p className="review-panel__note">{`Beatport found nothing for “${found.query}”`}</p>
+          )}
 
-        <form
-          className="review-panel__search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            search();
-          }}
-        >
-          <TextField label="Search Beatport for" value={words} onChange={(event) => setWords(event.target.value)} />
-          <Hint text={matching ? ONE_AT_A_TIME : undefined}>
-            <Button type="submit" variant="secondary" disabled={searching || matching}>
-              {searching ? "Searching…" : "Search Beatport"}
-            </Button>
-          </Hint>
-        </form>
-        {problem && <Notice kind="danger">{problem}</Notice>}
-        {found?.failure && <Notice kind="danger">{found.failure}</Notice>}
-        {found && !found.failure && found.candidates.length === 0 && (
-          <p className="review-panel__note">{`Beatport found nothing for “${found.query}”`}</p>
-        )}
+          <Button
+            variant="quiet"
+            className="review-panel__more-toggle"
+            icon={<DisclosureArrow open={moreOpen} />}
+            aria-expanded={moreOpen}
+            aria-controls={moreOpen ? moreId : undefined}
+            onClick={() => setMoreOpen(!moreOpen)}
+          >
+            More
+          </Button>
 
-        <Button
-          variant="quiet"
-          className="review-panel__more-toggle"
-          icon={<DisclosureArrow open={moreOpen} />}
-          aria-expanded={moreOpen}
-          aria-controls={moreOpen ? moreId : undefined}
-          onClick={() => setMoreOpen(!moreOpen)}
-        >
-          More
-        </Button>
-
-        {moreOpen && (
-          <div id={moreId} className="review-panel__more">
-            {payloadAttempts.length > 1 && (
-              <Select
-                className="review-panel__attempts"
-                label="Attempt"
-                id="review-attempt"
-                value={String(matches.attemptId ?? "")}
-                onChange={(event) => {
-                  setFound(null);
-                  matches.chooseAttempt(Number(event.target.value));
-                }}
-                options={payloadAttempts.map((entry, index) => ({
-                  value: String(entry.id),
-                  label: attemptLabel(entry, index, state?.attempt_id ?? null),
-                }))}
-              />
-            )}
-            {shown.length > 0 && scoredCandidate && (
-              <>
+          {moreOpen && (
+            <div id={moreId} className="review-panel__more">
+              {payloadAttempts.length > 1 && (
                 <Select
-                  label="Why this score?"
-                  id="review-score-candidate"
-                  value={String(scoredCandidate.id)}
-                  onChange={(event) => setScored(Number(event.target.value))}
-                  options={shown.map((entry) => ({
+                  className="review-panel__attempts"
+                  label="Attempt"
+                  id="review-attempt"
+                  value={String(matches.attemptId ?? "")}
+                  onChange={(event) => {
+                    setFound(null);
+                    matches.chooseAttempt(Number(event.target.value));
+                  }}
+                  options={payloadAttempts.map((entry, index) => ({
                     value: String(entry.id),
-                    label: `${entry.rank + 1} · ${entry.mix ?? entry.title ?? "Result"} · ${
-                      entry.guard_ok ? formatMatchScore(entry.score) : "ruled out"
-                    }`,
+                    label: attemptLabel(entry, index, state?.attempt_id ?? null),
                   }))}
                 />
-                <table className="review-panel__score-table">
-                  <caption className="match-visually-hidden">How the matcher scored this candidate</caption>
-                  <tbody>
-                    {SCORE_ROWS.map((entry) => (
-                      <tr key={entry.id}>
-                        <th scope="row">{entry.label}</th>
-                        <td className={entry.id === "guard" && !scoredCandidate.guard_ok ? "review-card__score--refused" : undefined}>
-                          {entry.candidate(scoredCandidate)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+              )}
+              {shown.length > 0 && scoredCandidate && (
+                <>
+                  <Select
+                    label="Why this score?"
+                    id="review-score-candidate"
+                    value={String(scoredCandidate.id)}
+                    onChange={(event) => setScored(Number(event.target.value))}
+                    options={shown.map((entry) => ({
+                      value: String(entry.id),
+                      label: `${entry.rank + 1} · ${entry.mix ?? entry.title ?? "Result"} · ${
+                        entry.guard_ok ? formatMatchScore(entry.score) : "ruled out"
+                      }`,
+                    }))}
+                  />
+                  <table className="review-panel__score-table">
+                    <caption className="match-visually-hidden">How the matcher scored this candidate</caption>
+                    <tbody>
+                      {SCORE_ROWS.map((entry) => (
+                        <tr key={entry.id}>
+                          <th scope="row">{entry.label}</th>
+                          <td className={entry.id === "guard" && !scoredCandidate.guard_ok ? "review-card__score--refused" : undefined}>
+                            {entry.candidate(scoredCandidate)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
-      {/* The two decisions, pinned to the foot so they never scroll out of reach (C242). */}
-      <footer className="review-panel__foot cp-button-row">
-        <Hint text={pickedId === null ? "No candidate to use" : pickedInUse ? "This match is already in use" : undefined}>
-          <Button
-            variant="secondary"
-            disabled={busy || pickedId === null || pickedInUse}
-            onClick={() => pickedId !== null && onUse(pickedId)}
-          >
-            {USE_MATCH}
-          </Button>
-        </Hint>
-        <Hint text={!row.ticked ? "This track is already left out" : undefined}>
-          <Button variant="secondary" disabled={busy || !row.ticked} onClick={onLeaveOut}>
-            None of these, leave it out
-          </Button>
-        </Hint>
-      </footer>
+        {/* The two decisions, pinned to the foot so they never scroll out of reach (C242). */}
+        <footer className="review-panel__foot cp-button-row">
+          <Hint text={pickedId === null ? "No candidate to use" : pickedInUse ? "This match is already in use" : undefined} portal>
+            <Button
+              variant="secondary"
+              disabled={busy || pickedId === null || pickedInUse}
+              onClick={() => pickedId !== null && onUse(pickedId)}
+            >
+              {USE_MATCH}
+            </Button>
+          </Hint>
+          <Hint text={!row.ticked ? "This track is already left out" : undefined} portal>
+            <Button variant="secondary" disabled={busy || !row.ticked} onClick={onLeaveOut}>
+              None of these, leave it out
+            </Button>
+          </Hint>
+        </footer>
+      </div>
     </aside>
   );
 }

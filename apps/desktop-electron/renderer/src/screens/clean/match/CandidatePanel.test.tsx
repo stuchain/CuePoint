@@ -393,3 +393,43 @@ describe("closing", () => {
     expect(screen.getByText("3 of 24")).toBeInTheDocument();
   });
 });
+
+describe("holding Down (moving quickly from track to track)", () => {
+  function panelOn(id: number) {
+    return (
+      <ScaleProvider>
+        <CandidatePanel
+          row={reviewTrack(id, "to_check")}
+          position={id}
+          total={9}
+          version={0}
+          busy={false}
+          matching={false}
+          onClose={vi.fn()}
+          onUse={vi.fn()}
+          onLeaveOut={vi.fn()}
+          onMessage={vi.fn()}
+        />
+      </ScaleProvider>
+    );
+  }
+
+  it("reads the track it stops on, not every track it passes, and never shows one track's candidates under another", async () => {
+    const view = render(panelOn(1));
+    await candidates();
+    view.rerender(panelOn(2));
+    view.rerender(panelOn(3));
+    view.rerender(panelOn(4));
+    // Passing through: the header follows at once, the candidates of a track left behind do not stay.
+    expect(screen.getByText("4 of 9")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Your track" })).getByText("Track 4")).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Beatport candidates" })).toBeNull();
+    view.rerender(panelOn(5));
+    await candidates();
+    const asked = bridge.getTrackMatches!.mock.calls.map(([params]) => (params as { trackId: number }).trackId);
+    expect(asked).toContain(1);
+    expect(asked).toContain(5);
+    expect(asked).not.toContain(3);
+    expect(asked).not.toContain(4);
+  });
+});

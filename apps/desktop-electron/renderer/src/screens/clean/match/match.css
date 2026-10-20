@@ -217,10 +217,20 @@
   container: review-body / inline-size;
 }
 
-.review__table {
+/* The table's room beside the panel. */
+.review__table-frame {
+  position: relative;
   flex: 1;
   min-width: 0;
+}
+
+/* The scrolling table fills its room and is contained the way the panel's frame is: a row whose
+   look changes as the arrows move lays out the table alone, not the page. */
+.review__table {
+  position: absolute;
+  inset: 0;
   overflow: auto;
+  contain: strict;
 }
 
 .review__more {
@@ -340,13 +350,24 @@
 /* ------------------------------------------------- the panel beside the table */
 
 .review-panel {
-  display: flex;
+  position: relative;
   flex: 0 0 min(42%, calc(520px * var(--scale)));
-  flex-direction: column;
   min-width: 0;
   overflow: hidden;
   border: var(--control-border-width) solid var(--border-control);
   background: var(--bg-panel);
+}
+
+/* The panel's content, filling it. Its size is the panel's, never its content's: placed and
+   contained, it is a layout root of its own (a flex item cannot be one), so a track, a candidate
+   or a cover arriving lays out the panel alone and not the whole page (holding Down laid out
+   every element of the page for each change). Its tips are drawn in the body (Hint's portal). */
+.review-panel__frame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  contain: strict;
 }
 
 /* The title bar is the shared panel header (.cp-panel-header); the track's state and "3 of 24" sit
@@ -494,14 +515,26 @@
   margin: 0;
 }
 
-/* The candidate's cover: a whole-pixel square at the row's left. */
-.review-candidate__cover {
+/* The candidate's cover: a whole-pixel square at the row's left. The box is fixed and contains
+   itself, so the picture replacing the placeholder changes nothing outside it. */
+.review-candidate__cover-box {
+  display: block;
   flex: none;
   box-sizing: border-box;
   width: calc(36px * var(--scale));
   height: calc(36px * var(--scale));
-  object-fit: cover;
   border: var(--control-border-width) solid var(--border-control);
+  contain: strict;
+}
+
+/* The box draws the border, for the picture and the placeholder alike. */
+.review-candidate__cover-box > .review-candidate__cover {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 0;
 }
 
 .review-candidate__facts {
