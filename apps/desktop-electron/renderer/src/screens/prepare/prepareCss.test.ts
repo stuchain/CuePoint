@@ -56,6 +56,18 @@ describe("the source panel and its divider (C48, C149, C28)", () => {
     expect(rule(".prepare-source")).toMatch(/padding:\s*var\(--space-lg\) var\(--space-md\) var\(--space-md\)/);
   });
 
+  it("keeps the Suggestions toolbar band inside the table's frame, never past it (item 7)", () => {
+    const bar = rule(".prepare-source > .prepare-source__controls");
+    expect(bar).toMatch(/margin-inline:\s*0/);
+    expect(bar).not.toMatch(/calc\(-1/);
+  });
+
+  it("ends the entry buttons left of the time columns when those come last (option 3A)", () => {
+    expect(rule(".track-table__row > .track-table__end:has(> .prepare-row-buttons)")).toMatch(
+      /margin-right:\s*var\(--entry-buttons-clear, 0px\)/,
+    );
+  });
+
   it("colours the divider's hover with the shared resizer token", () => {
     const hover = /\.prepare-layout__divider:hover,[^{]*\{([^}]*)\}/.exec(css)![1]!;
     expect(hover).toMatch(/background:\s*var\(--resizer-hover\)/);

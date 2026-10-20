@@ -877,9 +877,10 @@ body.prepare-resizing {
   min-width: 0;
 }
 
-/* The bar above the list (C217, .cp-toolbar) runs the panel's full width, its own 8 at the sides. */
+/* The bar above the list (C217, .cp-toolbar) is as wide as the table under it, inside the panel's
+   own 8 at the sides, so its band never runs past the table's frame (item 7). */
 .prepare-source > .prepare-source__controls {
-  margin-inline: calc(-1 * var(--space-md));
+  margin-inline: 0;
 }
 
 .prepare-source__search {
