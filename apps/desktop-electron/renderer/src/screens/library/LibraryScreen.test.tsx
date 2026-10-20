@@ -2205,7 +2205,8 @@ describe("organizing a selection (ORG-11)", () => {
         selection: { track_ids: [1, 2, 3] },
         operation: { kind: "set_favorite", value: true },
       });
-    });
+      // A whole Library, a selection and a menu: past 5 s on the Intel Mac runner.
+    }, 15_000);
 
     it("sends the question when the selection is everything matching", async () => {
       renderScreen();

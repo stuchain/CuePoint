@@ -652,8 +652,10 @@ describe("selecting rows and the right-click menu", () => {
   it("selects every track with Ctrl+A", async () => {
     renderTab();
     await loaded();
+    // The table can show before its rows; Ctrl+A with no rows is left alone, so wait for all five.
+    await waitFor(() => expect(screen.getAllByRole("row").filter((row) => row.hasAttribute("data-track-id"))).toHaveLength(5));
     press("a", { ctrlKey: true });
-    expect(screen.getByText("5 selected")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("5 selected")).toBeInTheDocument());
   });
 
   it("selects the row on right-click and opens the base menu with a This page block", async () => {
