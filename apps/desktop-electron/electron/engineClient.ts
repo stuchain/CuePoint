@@ -934,8 +934,8 @@ export interface EngineJobList {
   jobs: EngineJobSummary[];
   /** Active jobs in total, regardless of the state filter or the limit. */
   active_count: number;
-  /** Change counters for the library and the waveform cache; see the renderer's copy. */
-  revisions?: { library: number; waveforms: number };
+  /** Change counters for the library, the waveform cache and Discover; see the renderer's copy. */
+  revisions?: { library: number; waveforms: number; discover?: number };
 }
 
 export interface ActivityEvent {

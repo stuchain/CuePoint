@@ -451,7 +451,15 @@ class TestReorderingEntries:
             repo.reorder_entry(repo.entries(filled)[0].id, 2)
         finally:
             connection.set_trace_callback(None)
-        updates = [s for s in statements if s.strip().upper().startswith("UPDATE")]
+        # Each run of a row trigger (the revision counters') is traced again
+        # under the text of the statement that fired it, so a repeat in a row
+        # is one statement.
+        updates = [
+            s
+            for n, s in enumerate(statements)
+            if s.strip().upper().startswith("UPDATE")
+            and (n == 0 or statements[n - 1] != s)
+        ]
         assert len(updates) == 2  # one shift, one placement
 
     def test_reordering_an_entry_that_is_not_there_answers_none(self, repo):

@@ -31,6 +31,7 @@ from typing import List, Optional, Tuple
 
 from cuepoint.exceptions.cuepoint_exceptions import DatabaseError
 from cuepoint.migrations import Migration, discover_migrations, split_sql_statements
+from cuepoint.persistence import revision_counters
 from cuepoint.services.interfaces import IDatabaseService, IMigrationRunner
 
 _logger = logging.getLogger(__name__)
@@ -82,6 +83,9 @@ class MigrationRunner(IMigrationRunner):
         """
         self._db = database_service
         self._migrations = list(migrations) if migrations is not None else _discovered()
+        # Only the build's whole schema is given the revision counters: a runner
+        # handed some migrations (a test of one) leaves the file as they make it.
+        self._counts_revisions = migrations is None
 
     @property
     def available_migrations(self) -> List[Migration]:
@@ -150,6 +154,7 @@ class MigrationRunner(IMigrationRunner):
 
         pending = self.pending_migrations()
         if not pending:
+            self._sync_revision_counters()
             self._db.note_schema_current(versions)
             return []
 
@@ -163,8 +168,23 @@ class MigrationRunner(IMigrationRunner):
                 migration.version,
                 migration.description,
             )
+        self._sync_revision_counters()
         self._db.note_schema_current(versions)
         return applied
+
+    def _sync_revision_counters(self) -> None:
+        """Give every table the triggers the engine's revisions count by.
+
+        Once per build and file: a new table, or a restored file, gets its
+        triggers here (``persistence/revision_counters.py``). Best-effort:
+        without them the revisions count every commit, as they always did.
+        """
+        if not self._counts_revisions:
+            return
+        try:
+            revision_counters.sync(self._db)
+        except Exception as exc:  # noqa: BLE001 — a fallback exists; never fail a migrate
+            _logger.warning("[database] could not sync revision counters: %s", exc)
 
     def _apply(self, migration: Migration) -> bool:
         """Apply one migration unless another connection already has.

@@ -331,7 +331,7 @@ class TestEndpoint:
         assert set(payload) == {"jobs", "active_count", "revisions"}
         assert isinstance(payload["jobs"], list)
         # C19b: additive, opaque numbers per data domain.
-        assert set(payload["revisions"]) == {"library", "waveforms"}
+        assert set(payload["revisions"]) == {"library", "waveforms", "discover"}
 
     def test_lists_a_job_the_caller_never_started(self, engine):
         # The whole point: this job's id was never handed to the client.

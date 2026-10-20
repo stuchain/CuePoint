@@ -690,7 +690,7 @@ def test_a_missing_source_is_refused_each_time_and_never_kept(world):
 
 def test_the_jobs_list_carries_the_revisions(world):
     first = _get(world, "/api/v1/jobs")["revisions"]
-    assert set(first) == {"library", "waveforms"}
+    assert set(first) == {"library", "waveforms", "discover"}
     assert all(isinstance(number, int) for number in first.values())
     assert _get(world, "/api/v1/jobs")["revisions"] == first
     accept_with_key(world.database, world.ids["5"], "5A")
@@ -716,4 +716,51 @@ def test_revision_cache_without_services_just_computes():
     calls: List[int] = []
     revision_cache("r", {}, (LIBRARY,), lambda: calls.append(1))
     revision_cache("r", {}, (LIBRARY,), lambda: calls.append(1))
+    assert len(calls) == 2
+
+
+def test_a_catalog_write_moves_discover_and_leaves_the_library(world):
+    """A dig caches catalog rows about once a second; the library's reads stay kept."""
+    from cuepoint.persistence.beatport_catalog_repository import (
+        BeatportCatalogRepository,
+    )
+    from tests.fixtures.beatport_library import NOW, catalog_track
+
+    first = _get(world, "/api/v1/jobs")["revisions"]
+    BeatportCatalogRepository(world.database).upsert_tracks(
+        [catalog_track(4242, artists=[(1, "Someone")])], NOW
+    )
+    moved = _get(world, "/api/v1/jobs")["revisions"]
+    assert moved["discover"] != first["discover"]
+    assert moved["library"] == first["library"]
+    accept_with_key(world.database, world.ids["6"], "6A")
+    after = _get(world, "/api/v1/jobs")["revisions"]
+    assert after["library"] != moved["library"]
+    assert after["discover"] == moved["discover"]
+
+
+def test_the_resolve_counts_follow_the_catalog(world, monkeypatch):
+    """They read the catalog cache, so a Discover write must recompute them."""
+    from cuepoint.engine.discover_api import options
+    from cuepoint.persistence.beatport_catalog_repository import (
+        BeatportCatalogRepository,
+    )
+    from cuepoint.services.beatport_resolve_service import BeatportResolveService
+    from tests.fixtures.beatport_library import NOW, catalog_track
+
+    original = BeatportResolveService.plan
+    calls: List[int] = []
+
+    def counting(self):
+        calls.append(1)
+        return original(self)
+
+    monkeypatch.setattr(BeatportResolveService, "plan", counting)
+    options({})
+    options({})
+    assert len(calls) == 1
+    BeatportCatalogRepository(world.database).upsert_tracks(
+        [catalog_track(4343, artists=[(1, "Someone")])], NOW
+    )
+    options({})
     assert len(calls) == 2

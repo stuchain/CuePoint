@@ -83,7 +83,7 @@ from datetime import date, datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from cuepoint.engine.api_errors import ApiError, bad_request, error_payload, not_found
-from cuepoint.engine.revisions import LIBRARY, revision_cache
+from cuepoint.engine.revisions import DISCOVER, LIBRARY, revision_cache
 from cuepoint.models.filter_rule import FilterRuleError
 
 _logger = logging.getLogger(__name__)
@@ -577,12 +577,14 @@ def options(params: Dict[str, List[str]]) -> Dict[str, Any]:
     # changes. The resolve counts also depend on the clock (a cached track goes
     # stale 30 days after it was read), so they are keyed by the UTC hour: a
     # count never outlives the hour it was made in. The index flag reads one
-    # small table and is kept only for symmetry with the facets.
+    # small table and is kept only for symmetry with the facets. The resolve
+    # counts read the Beatport catalog cache too, whose writes count as
+    # ``discover`` (a dig or a resolve caching an owned track changes them).
     hour = _utc_hour()
     resolve_plan = revision_cache(
         "discover/options/resolve",
         hour,
-        (LIBRARY,),
+        (LIBRARY, DISCOVER),
         lambda: _resolve("IBeatportResolveService").plan().to_dict(),
     )
     index_current = revision_cache(

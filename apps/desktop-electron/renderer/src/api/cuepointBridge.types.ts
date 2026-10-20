@@ -1225,8 +1225,10 @@ export interface EngineJobList {
   /**
    * The engine's change counters, bumped when the library or the waveform cache is
    * rewritten, so a reader can tell that its copy is stale without a job to watch.
+   * `discover` moves for Discover's own writes (runs, the Beatport catalog cache), which
+   * leave `library` where it was; an engine older than it leaves it out.
    */
-  revisions?: { library: number; waveforms: number };
+  revisions?: { library: number; waveforms: number; discover?: number };
 }
 
 /** The two thumbnail sizes the engine makes (CLEAN-09): a table row, the Inspector. */

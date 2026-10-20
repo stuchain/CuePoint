@@ -38,7 +38,7 @@ const library = { domains: ["library" as const] };
 // reports an ending job or a moved counter, so a fake bridge is the honest input.
 const world = {
   jobs: [] as Array<{ id: string; type: string }>,
-  revisions: { library: 1, waveforms: 1 },
+  revisions: { library: 1, waveforms: 1 } as { library: number; waveforms: number; discover?: number },
   authListener: null as (() => void) | null,
 };
 
@@ -156,6 +156,25 @@ describe("useEngineRead", () => {
       world.revisions = { library: 2, waveforms: 2 };
     });
     expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it("reads Discover's reads again when its counter moves, and leaves the library's alone", async () => {
+    // A dig writes the catalog about once a second: the engine moves `discover`, not
+    // `library`, so Statistics and the Library are not read again for it.
+    const lib = reader<string>();
+    const disc = reader<string>();
+    renderHook(() => useEngineRead("lib", lib.read, library));
+    renderHook(() => useEngineRead("disc", disc.read, { domains: ["discover"] }));
+    await act(async () => {
+      lib.calls[0].resolve("a");
+      disc.calls[0].resolve("b");
+    });
+    world.revisions = { library: 1, waveforms: 1, discover: 1 };
+    await pollAfter(() => {
+      world.revisions = { library: 1, waveforms: 1, discover: 2 };
+    });
+    expect(disc.read).toHaveBeenCalledTimes(2);
+    expect(lib.read).toHaveBeenCalledTimes(1);
   });
 
   it("maps a finished job to the domains it touched", async () => {

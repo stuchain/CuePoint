@@ -7394,6 +7394,13 @@ about 90 s, on every visit.
   already makes when something changed.
 - A store that cannot be watched is never cached, and its number holds still. Before the engine
   moves a database file aside or restores one, the watch lets go of it (Windows locks open files).
+- *Amended (Statistics flicker during a dig)*: `cuepoint.db` holds Discover's catalog cache and runs
+  as well as the library, and a dig commits about once a second, so `data_version` moved `library`
+  for every one. The library's revision is now a counter that triggers on every table keep
+  (`persistence/revision_counters.py`, synced by the migration runner); Discover's tables and job
+  rows keep a third revision, `discover`, which `GET /api/v1/jobs` also carries. A table not named
+  as Discover's counts as the library's, and a file without the counters falls back to
+  `data_version`.
 
 **Decided with**: Claude (C19 scope, "apply ALL") · **Date**: 2026-10-13
 

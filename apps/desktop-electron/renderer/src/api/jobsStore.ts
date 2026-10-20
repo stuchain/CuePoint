@@ -46,9 +46,11 @@ export interface JobsSnapshot {
   revisions?: Revisions;
 }
 
-type RevisionDomain = "library" | "waveforms";
-type Revisions = Record<RevisionDomain, number>;
-const REVISION_DOMAINS: readonly RevisionDomain[] = ["library", "waveforms"];
+// A Discover dig writes the catalog about once a second; the engine counts that as
+// `discover`, not `library`, so only Discover's reads are read again for it.
+type RevisionDomain = "library" | "waveforms" | "discover";
+type Revisions = { library: number; waveforms: number; discover?: number };
+const REVISION_DOMAINS: readonly RevisionDomain[] = ["library", "waveforms", "discover"];
 
 const EMPTY: JobsSnapshot = { jobs: [], activeCount: 0, loaded: false, failed: false };
 

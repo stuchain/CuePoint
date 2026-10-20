@@ -22,7 +22,7 @@ function job(id: string, type = "library_import"): EngineJobSummary {
 interface Answer {
   jobs: EngineJobSummary[];
   active_count?: number;
-  revisions?: { library: number; waveforms: number };
+  revisions?: { library: number; waveforms: number; discover?: number };
 }
 
 function install(answer: () => Promise<Answer> | Answer) {
@@ -341,6 +341,24 @@ describe("onRevisionsChanged", () => {
     revisions = undefined;
     await vi.advanceTimersByTimeAsync(1000);
     expect(changed).toHaveBeenCalledTimes(2);
+  });
+
+  it("names discover when only Discover's counter moved", async () => {
+    let revisions: { library: number; waveforms: number; discover?: number } = {
+      library: 1,
+      waveforms: 1,
+      discover: 1,
+    };
+    install(() => ({ jobs: [], revisions }));
+    const changed = vi.fn();
+    onRevisionsChanged(changed);
+    subscribeActiveJobs(() => {}, 1000);
+    await settle();
+
+    revisions = { library: 1, waveforms: 1, discover: 2 };
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(changed).toHaveBeenLastCalledWith(["discover"]);
   });
 });
 

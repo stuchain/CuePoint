@@ -136,7 +136,8 @@ _ALLOWED = {
     "services/marks_backfill_service.py",
     # C19b's engine revisions: the database as a file. It asks the service only
     # for the file's path and generation, then watches ``PRAGMA data_version``
-    # on a read-only connection of its own; it queries no table.
+    # (or the counters ``persistence/revision_counters.py`` reads) on read-only
+    # connections of its own; it queries no table itself.
     "engine/revisions.py",
 }
 _ALLOWED_PREFIXES = ("persistence/", "migrations/")

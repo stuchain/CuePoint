@@ -3,17 +3,34 @@
 
 """Engine revisions and the revision-keyed memo (C19b).
 
-A *revision* says "the data behind this domain may have changed". There are two
-domains: ``library`` (``cuepoint.db``) and ``waveforms`` (``waveforms.db``).
+A *revision* says "the data behind this domain may have changed". There are
+three domains: ``library`` and ``discover`` (both in ``cuepoint.db``) and
+``waveforms`` (``waveforms.db``).
 
-Each is read from ``PRAGMA data_version`` on a connection of its own that only
-ever reads. SQLite bumps that number when *another* connection commits, so one
-dedicated connection sees every write there is: a route's, a job's, a match job
-writing mid-run. Reading it costs microseconds. The library's revision also
-folds in ``DatabaseService.generation``, so a restore (which closes every
-connection and replaces the file) counts as a change, and the file's identity,
-so a replaced file reopens the connection. Before the persistence layer moves or
-deletes either file (a restore, a set-aside waveform store) it calls
+Each is read on a connection of its own that only ever reads. ``waveforms`` is
+``PRAGMA data_version``: SQLite bumps that number when *another* connection
+commits, so one dedicated connection sees every write there is.
+
+``cuepoint.db`` holds the library and Discover's Beatport catalog cache and
+runs, and ``data_version`` cannot tell their commits apart: a dig caches catalog
+rows about once a second, and with ``data_version`` as the library's revision
+every library read (Statistics, Library, Clean, Keys) was read again once a
+second for nothing. So the two are counted where the rows are written: triggers
+on every table add one to that table's domain's counter
+(``persistence/revision_counters.py``, which says which table counts where; a
+table it does not name is the library's). ``library`` and ``discover`` are each
+their counter and ``PRAGMA schema_version`` (DDL fires no trigger), read in one
+statement or two; every connection's writes count, an older CuePoint's or
+another process's included. A file without the counters yet (before the
+migration runner has synced them, or a test's bare file) falls back to
+``data_version`` for both, so every commit counts for both: too many reads,
+never a stale answer.
+
+The library's and Discover's revisions also fold in
+``DatabaseService.generation``, so a restore (which closes every connection and
+replaces the file) counts as a change, and the file's identity, so a replaced
+file reopens the connection. Before the persistence layer moves or deletes
+either file (a restore, a set-aside waveform store) it calls
 ``file_watchers.release``, which closes the connection (Windows will not move a
 file that is open); the next look reopens it and counts as a change.
 
@@ -27,9 +44,11 @@ again", and nothing else about it may be read.
 
 :func:`revision_cache` keeps the last answer to a read while the revisions of
 the domains it depends on are unchanged, with a ceiling on its age. It is for
-reads that are a pure function of those two databases. A read that also depends
-on the clock, a config file or the file system must put that input into its
-key, or not be cached.
+reads that are a pure function of those databases, and a read must name every
+domain whose tables it reads: one that reads the Beatport catalog depends on
+``discover`` as well as ``library``. A read that also depends on the clock, a
+config file or the file system must put that input into its key, or not be
+cached.
 """
 
 from __future__ import annotations
@@ -45,15 +64,16 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Hashable, Optional, Sequence, Tuple, TypeVar
 from urllib.request import pathname2url
 
-from cuepoint.persistence import file_watchers
+from cuepoint.persistence import file_watchers, revision_counters
 
 _logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
-LIBRARY = "library"
+LIBRARY = revision_counters.LIBRARY
+DISCOVER = revision_counters.DISCOVER
 WAVEFORMS = "waveforms"
-DOMAINS: Tuple[str, ...] = (LIBRARY, WAVEFORMS)
+DOMAINS: Tuple[str, ...] = (LIBRARY, WAVEFORMS, DISCOVER)
 
 #: How long an answer is kept when nothing has changed: a ceiling, not a timer.
 CEILING_SECONDS = 600.0
@@ -62,7 +82,8 @@ CEILING_SECONDS = 600.0
 MAX_ENTRIES = 64
 
 #: What a watch says about a file: its path, the generation, the file's identity
-#: and ``data_version``. Any difference from the last look is a change.
+#: and what it measures (``data_version``, or a domain's counter). Any
+#: difference from the last look is a change.
 _State = Tuple[Hashable, ...]
 
 _Key = Tuple[str, str, Tuple[str, ...]]
@@ -87,6 +108,27 @@ def _readonly_uri(path: Path) -> str:
     return f"{base}?mode=ro"
 
 
+def _data_version(connection: sqlite3.Connection) -> Hashable:
+    """Every commit by another connection: the waveform store's measure."""
+    return (
+        "data_version",
+        int(connection.execute("PRAGMA data_version").fetchone()[0]),
+    )
+
+
+def _counted(domain: str) -> Callable[[sqlite3.Connection], Hashable]:
+    """The writes to ``domain``'s tables, or every commit while the file has no
+    counters (a measure of ``cuepoint.db``)."""
+
+    def measure(connection: sqlite3.Connection) -> Hashable:
+        counted = revision_counters.read(connection, (domain,))
+        if counted is None:
+            return _data_version(connection)
+        return ("counter", *counted)
+
+    return measure
+
+
 class _Watch:
     """One database file and the read-only connection that watches it."""
 
@@ -96,10 +138,12 @@ class _Watch:
         generation: Callable[[], int],
         *,
         absent_is_unknown: bool,
+        measure: Callable[[sqlite3.Connection], Hashable] = _data_version,
     ) -> None:
         self._locate = locate
         self._generation = generation
         self._absent_is_unknown = absent_is_unknown
+        self._measure = measure
         self.lock = threading.Lock()
         self._connection: Optional[sqlite3.Connection] = None
         self._opened_for: Optional[Tuple[str, int, int, int]] = None
@@ -176,12 +220,12 @@ class _Watch:
             self._connection, self._opened_for = connection, identity
             self._opened_path = path
         try:
-            row = self._connection.execute("PRAGMA data_version").fetchone()
+            measured = self._measure(self._connection)
         except sqlite3.Error as exc:
-            _logger.debug("[revisions] data_version of %s: %s", path, exc)
+            _logger.debug("[revisions] cannot measure %s: %s", path, exc)
             self._close()
             return _UNKNOWN
-        return (*identity, self._epoch, int(row[0]))
+        return (*identity, self._epoch, measured)
 
 
 class Revisions:
@@ -203,11 +247,26 @@ class Revisions:
         waveforms: Callable[[], Optional[Path]],
         generation: Callable[[], int] = lambda: 0,
     ) -> "Revisions":
-        """Watch the files ``library`` and ``waveforms`` name, asked on every look."""
+        """Watch the files ``library`` and ``waveforms`` name, asked on every look.
+
+        ``library`` and ``discover`` are two watches on the one file, each with
+        a connection of its own, so each is read and booked under its own lock.
+        """
         return cls(
             {
-                LIBRARY: _Watch(library, generation, absent_is_unknown=True),
+                LIBRARY: _Watch(
+                    library,
+                    generation,
+                    absent_is_unknown=True,
+                    measure=_counted(LIBRARY),
+                ),
                 WAVEFORMS: _Watch(waveforms, generation, absent_is_unknown=False),
+                DISCOVER: _Watch(
+                    library,
+                    generation,
+                    absent_is_unknown=True,
+                    measure=_counted(DISCOVER),
+                ),
             }
         )
 
@@ -363,11 +422,11 @@ _default_memo = RevisionMemo(_default_revisions)
 
 
 def current_revisions() -> Dict[str, int]:
-    """``{library, waveforms}`` as ``GET /api/v1/jobs`` reports them."""
+    """``{library, waveforms, discover}`` as ``GET /api/v1/jobs`` reports them."""
     try:
         return _default_revisions.snapshot()
     except Exception:  # noqa: BLE001 — a list of jobs never fails for this
-        return {LIBRARY: 0, WAVEFORMS: 0}
+        return {domain: 0 for domain in DOMAINS}
 
 
 def revision_cache(
@@ -396,6 +455,7 @@ def clear_cache() -> None:
 
 __all__ = (
     "CEILING_SECONDS",
+    "DISCOVER",
     "DOMAINS",
     "LIBRARY",
     "WAVEFORMS",
