@@ -12,7 +12,7 @@
  * runs after one — is repeated here at the size this page needs; Clean's windows are
  * opened by way of the page's `navigate` and the same link state the Library uses.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type {
   LibraryTrackDetail,
@@ -32,7 +32,7 @@ import { LinkButton } from "../../components/LinkButton";
 import { SelectAllButton, SelectionBar } from "../../components/SelectionBar";
 import { countNoun, formatCount } from "../../format/counts";
 import { RETRY, couldNot, goTo } from "../../format/words";
-import { TrackContextMenu, type TrackContextMenuItem } from "../../components/TrackContextMenu";
+import { TrackContextMenu, useMenuButton, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import { ColumnPicker, TrackTable, useColumnLayout } from "../../components/table";
 import { reportUnexpected } from "../../reporting/reporting";
 import type { CleanTracks } from "../clean/cleanTracks";
@@ -41,7 +41,7 @@ import { BatchConfirmDialog } from "../library/BatchConfirmDialog";
 import { batchSelection, type BatchAction } from "../library/libraryBatch";
 import { cleanCapLine, cleanTracksFor } from "../library/libraryClean";
 import { LIBRARY_COLUMNS, LIBRARY_PREVIOUS_DEFAULT_ORDER } from "../library/libraryColumns";
-import { keysColumnOrder } from "./keysView";
+import { headerFolds, keysColumnOrder } from "./keysView";
 import { creditsFor } from "../library/libraryDiscover";
 import { DEFAULT_LIBRARY_QUERY, queryKey, type LibraryQuery } from "../library/libraryQuery";
 import { PickerDialog, type PickerItem } from "../library/PickerDialog";
@@ -533,6 +533,36 @@ export function KeysTracks({
     return keys;
   }, [selection.selection, window_.source, window_.total]);
 
+  // A pane too narrow for the toolbar folds Select all and Open in Library into one "•••" menu
+  // (item 3) rather than cut the count short and wrap the two onto two and three lines.
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [folded, setFolded] = useState(false);
+  const unfoldAt = useRef(0);
+  const moreMenu = useMenuButton();
+  const measureToolbar = useCallback(() => {
+    const bar = toolbarRef.current;
+    const count = bar?.querySelector<HTMLElement>(".keys-tracks__count");
+    if (!bar || !count) return;
+    const width = bar.clientWidth;
+    const next = headerFolds(folded, { countCut: count.scrollWidth > count.clientWidth + 1, width, unfoldAt: unfoldAt.current });
+    if (next && !folded) {
+      const gap = parseFloat(getComputedStyle(bar).columnGap) || 0;
+      const room = Array.from(bar.querySelectorAll<HTMLElement>(".keys-tracks__fold")).reduce((sum, el) => sum + el.offsetWidth + gap, 0);
+      unfoldAt.current = width + room;
+    }
+    if (next !== folded) setFolded(next);
+  }, [folded]);
+  useLayoutEffect(measureToolbar, [measureToolbar, window_.total, selection.count]);
+  useEffect(() => {
+    const bar = toolbarRef.current;
+    if (!bar || typeof ResizeObserver === "undefined") return;
+    const watcher = new ResizeObserver(measureToolbar);
+    watcher.observe(bar);
+    return () => watcher.disconnect();
+  }, [measureToolbar]);
+  const offerSelectAll = window_.total > 0 && selection.count < window_.total;
+  const moreBox = folded && moreMenu.open ? moreMenu.anchor.current?.getBoundingClientRect() : undefined;
+
   const emptyState = window_.error ? (
     <Notice
       title="The tracks could not be read"
@@ -552,29 +582,56 @@ export function KeysTracks({
 
   return (
     <div className="keys-tracks">
-      <div className="cp-toolbar keys-tracks__toolbar" role="toolbar" aria-label="Track list">
+      <div className="cp-toolbar keys-tracks__toolbar" role="toolbar" aria-label="Track list" ref={toolbarRef}>
         <h2 className="cp-text-section keys-tracks__heading">{heading}</h2>
         <span className="keys-tracks__count" role="status">
           {countNoun(window_.total, "track")}
         </span>
-        {window_.total > 0 && selection.count < window_.total && (
-          <SelectAllButton onSelectAll={selection.selectAllMatching} />
+        {!folded && offerSelectAll && (
+          <span className="keys-tracks__fold">
+            <SelectAllButton onSelectAll={selection.selectAllMatching} />
+          </span>
         )}
         <div className="keys-tracks__end">
-          <Hint text={openInLibrary.disabledReason ?? undefined}>
-            <LinkButton
-              go
-              aria-disabled={openInLibrary.disabledReason ? true : undefined}
-              onClick={() => {
-                if (!openInLibrary.disabledReason) openInLibrary.run();
-              }}
-            >
-              {goTo("Library")}
-            </LinkButton>
-          </Hint>
+          {folded ? (
+            <Button variant="quiet" iconOnly icon="more" aria-label="More track list actions" {...moreMenu.buttonProps} />
+          ) : (
+            <span className="keys-tracks__fold">
+              <Hint text={openInLibrary.disabledReason ?? undefined}>
+                <LinkButton
+                  go
+                  aria-disabled={openInLibrary.disabledReason ? true : undefined}
+                  onClick={() => {
+                    if (!openInLibrary.disabledReason) openInLibrary.run();
+                  }}
+                >
+                  {goTo("Library")}
+                </LinkButton>
+              </Hint>
+            </span>
+          )}
           {viewSwitch}
         </div>
       </div>
+      {folded && moreMenu.open && moreBox && (
+        <TrackContextMenu
+          x={moreBox.left}
+          y={moreBox.bottom}
+          anchor={moreMenu.anchor}
+          onClose={moreMenu.close}
+          label="Track list"
+          items={[
+            ...(offerSelectAll ? [{ id: "select-all", label: "Select all", onSelect: selection.selectAllMatching }] : []),
+            {
+              id: "open-library",
+              label: goTo("Library"),
+              disabled: openInLibrary.disabledReason !== null,
+              reason: openInLibrary.disabledReason ?? undefined,
+              onSelect: openInLibrary.run,
+            },
+          ]}
+        />
+      )}
 
       <div className="keys-tracks__rows">
         <TrackTable<LibraryTrackRow>

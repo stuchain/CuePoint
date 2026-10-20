@@ -760,6 +760,34 @@ describe("choosing keys", () => {
     expect(link).toHaveClass("cp-link", "cp-link--go");
   });
 
+  it("folds Select all and Open in Library into one ••• menu when the count would be cut (item 3)", async () => {
+    // A pane too narrow for the toolbar: the count's text is wider than the room it is given.
+    const scroll = vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("keys-tracks__count") ? 80 : 0;
+    });
+    const client = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("keys-tracks__count") ? 30 : 300;
+    });
+    try {
+      renderKeys();
+      await opened();
+      fireEvent.click(await within(await findList()).findByRole("button", { name: /^8A,/ }, LOADED));
+      await screen.findByRole("table", { name: "Tracks in these keys" }, LOADED);
+      const bar = trackToolbar();
+      const more = await within(bar).findByRole("button", { name: "More track list actions" });
+      expect(within(bar).queryByRole("button", { name: "Open in Library" })).toBeNull();
+      expect(within(bar).queryByRole("button", { name: "Select all" })).toBeNull();
+      fireEvent.click(more);
+      const menu = await screen.findByRole("menu", { name: "Track list" });
+      expect(within(menu).getByRole("menuitem", { name: "Select all" })).toBeInTheDocument();
+      fireEvent.click(within(menu).getByRole("menuitem", { name: "Open in Library" }));
+      expect(where()).toHaveTextContent("/library");
+    } finally {
+      scroll.mockRestore();
+      client.mockRestore();
+    }
+  });
+
   it("selects the row that is right-clicked first, so the menu acts on what is marked (C183)", async () => {
     renderKeys();
     await opened();

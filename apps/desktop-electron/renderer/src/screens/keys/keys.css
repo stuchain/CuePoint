@@ -328,6 +328,14 @@
   white-space: nowrap;
 }
 
+/* Select all and Open in Library keep their words on one line; when the pane cannot fit them beside
+   the count, they fold into the "•••" menu instead (item 3). */
+.keys-tracks__fold {
+  display: inline-flex;
+  flex: none;
+  white-space: nowrap;
+}
+
 /* The view switch and the link to the Library sit at the right of the toolbar. */
 .keys-tracks__end {
   display: flex;

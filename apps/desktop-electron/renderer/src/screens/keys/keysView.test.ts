@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { parseRules, stripComments } from "../../test/cssRules";
 import keysCss from "./keys.css?raw";
-import { KEYS_VIEW_STORAGE_KEY, keysColumnOrder, loadView, saveView } from "./keysView";
+import { KEYS_VIEW_STORAGE_KEY, keysColumnOrder, loadView, saveView, headerFolds } from "./keysView";
 
 afterEach(() => {
   localStorage.clear();
@@ -134,5 +134,17 @@ describe("the Keys track list's columns (C69)", () => {
   it("leaves the order alone when there is no Key column", () => {
     const columns = [{ id: "title" }, { id: "artist" }];
     expect(keysColumnOrder(columns)).toEqual(columns);
+  });
+});
+
+describe("headerFolds (item 3)", () => {
+  it("folds once the count is cut short", () => {
+    expect(headerFolds(false, { countCut: true, width: 400, unfoldAt: 0 })).toBe(true);
+    expect(headerFolds(false, { countCut: false, width: 400, unfoldAt: 0 })).toBe(false);
+  });
+
+  it("stays folded until the toolbar is wide enough for the two again", () => {
+    expect(headerFolds(true, { countCut: false, width: 520, unfoldAt: 560 })).toBe(true);
+    expect(headerFolds(true, { countCut: false, width: 560, unfoldAt: 560 })).toBe(false);
   });
 });
