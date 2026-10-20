@@ -12,6 +12,9 @@
   --border-outline: #000000;
   --border-light: #a1a1aa;
   --border-muted: #52525b;
+  /* Table rows and hover: the defaults Retro tunes (C93). */
+  --row-divider: #52525b;
+  --hover-fill: #3f3f46;
   --border-control: #71717a;
   --tab-underline-color: #8b5cf6;
   --bevel-highlight: #71717a;

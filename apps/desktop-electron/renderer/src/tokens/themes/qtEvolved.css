@@ -11,6 +11,9 @@
   --border-outline: #000000;
   --border-light: #6a6a6a;
   --border-muted: #5f5f5f;
+  /* Table rows and hover: the defaults Retro tunes (C93). */
+  --row-divider: #5f5f5f;
+  --hover-fill: #383838;
   --border-control: #7e7e7e;
   /* Accent #0078d4 is 2.79:1 on the toolbar; the active-tab underline needs 3:1. */
   --tab-underline-color: #3794ff;
