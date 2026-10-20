@@ -37,9 +37,11 @@
   font-size: var(--font-size-xs);
 }
 
+/* At the row's end, so the arrows line up in one right-hand column (item 13). */
 .cp-column-picker__moves {
   display: flex;
   flex-shrink: 0;
+  margin-inline-start: auto;
   gap: var(--space-xs);
 }
 

@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import { ColumnPicker } from "./ColumnPicker";
+import pickerCss from "./ColumnPicker.css?raw";
 import { defaultLayout, toggleHidden, type ColumnLayout } from "./columnLayout";
 import type { TrackColumnDef } from "./trackTableLayout";
 
@@ -219,5 +220,15 @@ describe("reset with Undo", () => {
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
 
     expect(onRestore).toHaveBeenCalledWith(layout);
+  });
+});
+
+describe("the moves column (item 13)", () => {
+  it("lines every row's up and down arrows up at the right, whatever the name's length", () => {
+    // The label is as wide as its name; the moves push themselves to the row's end, so the arrows
+    // form one right-hand column instead of trailing each name.
+    const moves = /\.cp-column-picker__moves\s*\{([^}]*)\}/.exec(pickerCss)![1]!;
+    expect(moves).toMatch(/margin-inline-start:\s*auto/);
+    expect(moves).toMatch(/flex-shrink:\s*0/);
   });
 });
