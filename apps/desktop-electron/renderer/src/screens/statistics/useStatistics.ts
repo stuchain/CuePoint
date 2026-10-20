@@ -70,7 +70,11 @@ function useStatisticsRead<T>(
 }
 
 interface PlaysRead extends StatisticsRead<StatisticsPlays> {
-  /** True while an answer is shown and a newer one is being read. */
+  /**
+   * True while the answer shown is for an earlier choice the person has since changed, and the
+   * one they asked for is being read. A read of the same choice again behind it (the library
+   * changed, a job ended) is not: its numbers are swapped in when they land.
+   */
   stale: boolean;
   /** True when the last read failed; the earlier answer, if any, is still in `data`. */
   failed: boolean;
@@ -81,7 +85,10 @@ interface PlaysRead extends StatisticsRead<StatisticsPlays> {
  * choice of length and "since" (STATS-05).
  *
  * A new choice keeps the last answer on screen (marked `stale`) until the next one arrives, so
- * the controls that made it are not torn down under the person's hands; a read that fails
+ * the controls that made it are not torn down under the person's hands. Only the person's own
+ * change is marked: the same choice read again in the background (a library change, which a
+ * running Discover dig once caused every second) keeps its answer up unmarked, and the new
+ * numbers replace it quietly, as Spreads and Health do. A read that fails
  * with an answer on screen sets `failed` and leaves the answer, and the page says so beside
  * it. "Your last refresh" is asked of the route by the id of the last read, which only a read
  * can report: the first ask is without it (its own cached read), and the answer is asked for
@@ -145,11 +152,22 @@ export function useStatisticsPlays(
   if (own && scope !== null) last.current = { scope, data: own };
   const data = own ?? (scope !== null && last.current?.scope === scope ? last.current.data : null);
   const failed = shown.error !== undefined && !forgotten && !isScopeGone(shown.error, treesRefreshing);
-  const reading = shown.loading || shown.refreshing || forgotten;
+
+  // What the person asked for, and whether its answer has come yet. Set when the choice or
+  // the scope changes, and cleared once an answer of the asked read itself is on screen (for
+  // "your last refresh", the one asked by the learned id, unless there is none to learn).
+  const choiceKey = `${scope ?? ""}|${limit}|${since}`;
+  const lastChoice = useRef(choiceKey);
+  const awaiting = useRef(false);
+  if (lastChoice.current !== choiceKey) {
+    lastChoice.current = choiceKey;
+    awaiting.current = true;
+  }
+  if (own !== null) awaiting.current = false;
 
   const status: ReadStatus =
     known && shown.unavailable ? "unavailable" : data ? "ready" : failed ? "error" : "loading";
-  return { status, data, retry: shown.refresh, stale: data !== null && reading && !failed, failed };
+  return { status, data, retry: shown.refresh, stale: data !== null && awaiting.current && !failed, failed };
 }
 
 /** Your library: how the scope spreads by genre, tempo, year, date added, rating and loudness. */

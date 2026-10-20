@@ -14,6 +14,7 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import type { StatisticsPlays } from "../../api/cuepointBridge.types";
 import { ToastProvider } from "../../components";
 import { announceLibraryChange } from "../../api/libraryChanges";
+import { invalidateReads } from "../../api/engineReads";
 import { reportUnexpected } from "../../reporting/reporting";
 import { PlaysSection } from "./PlaysSection";
 import {
@@ -1040,6 +1041,63 @@ describe("the Plays section, after review (STATS-05)", () => {
       release(plays());
       await waitFor(() => expect(within(region).queryByText("Loading plays…")).toBeNull());
       expect(region.querySelector(".plays--stale")).toBeNull();
+    });
+  });
+
+  // The flicker a Discover dig caused: the job poll saw the library's revision move about
+  // once a second and read Plays again each time, and the section dimmed under "Loading
+  // plays…" for every one. A read the person did not ask for swaps its numbers in quietly.
+  describe("while the same choice is read again behind it", () => {
+    it("neither dims the list nor says it is reading, and swaps the new numbers in", async () => {
+      let release: (value: StatisticsPlays) => void = () => {};
+      const read = vi
+        .fn()
+        .mockResolvedValueOnce(plays())
+        .mockImplementationOnce(() => new Promise<StatisticsPlays>((resolve) => (release = resolve)));
+      install({ getStatisticsPlays: read });
+      renderPage();
+      const region = await section();
+      expect(within(region).getByText("3,120")).toBeInTheDocument();
+
+      act(() => invalidateReads(["library"]));
+
+      await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+      expect(within(region).queryByText("Loading plays…")).toBeNull();
+      expect(region.querySelector(".plays--stale")).toBeNull();
+      expect(region.querySelector("[aria-busy]")).toBeNull();
+      expect(within(region).getByText("3,120")).toBeInTheDocument();
+
+      await act(async () => release(plays({ never_played: count(3121) })));
+      expect(await within(region).findByText("3,121")).toBeInTheDocument();
+      expect(region.querySelector(".plays--stale")).toBeNull();
+    });
+
+    it("stays quiet for 'your last refresh' too, and still dims for a new choice after", async () => {
+      window.localStorage.setItem(PLAYS_STORAGE_KEY, JSON.stringify({ limit: 10, since: "refresh" }));
+      const pending: Array<(value: StatisticsPlays) => void> = [];
+      const read = vi
+        .fn()
+        .mockResolvedValueOnce(plays({ last_read_id: 7 }))
+        .mockResolvedValueOnce(plays({ last_read_id: 7 }))
+        .mockImplementation(() => new Promise<StatisticsPlays>((resolve) => pending.push(resolve)));
+      install({ getStatisticsPlays: read });
+      const user = userEvent.setup();
+      renderPage();
+      const region = await section();
+      await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+
+      act(() => invalidateReads(["library"]));
+
+      await waitFor(() => expect(pending.length).toBeGreaterThan(0));
+      expect(within(region).queryByText("Loading plays…")).toBeNull();
+      expect(region.querySelector(".plays--stale")).toBeNull();
+      await act(async () => {
+        for (const resolve of pending.splice(0)) resolve(plays({ last_read_id: 7 }));
+      });
+
+      await user.click(within(region).getByRole("button", { name: "Show all 25" }));
+      expect(await within(region).findByText("Loading plays…")).toBeVisible();
+      expect(region.querySelector(".plays--stale")).not.toBeNull();
     });
   });
 
