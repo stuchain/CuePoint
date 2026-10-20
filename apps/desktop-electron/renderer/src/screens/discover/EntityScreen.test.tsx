@@ -602,7 +602,9 @@ describe("the Beatport half, in every state", () => {
     await waitFor(() =>
       expect(mock("addToWantlist")).toHaveBeenCalledWith({ track_ids: [9] }),
     );
-    fireEvent.click(within(actions).getByRole("button", { name: "Open on Beatport" }));
+    // One track: Open on Beatport is the first entry of the bar's Open menu (new D).
+    fireEvent.click(within(actions).getByRole("button", { name: "Open" }));
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Open on Beatport" }));
     await waitFor(() =>
       expect(mock("openBeatportPage")).toHaveBeenCalledWith(
         halfOf("half_label_ok").page!.rows[2].url,

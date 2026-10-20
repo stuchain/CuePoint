@@ -14,8 +14,9 @@
  * selects every row loaded, and a right-click selects the row first, as everywhere.
  *
  * The bar of actions is above the table, like the Library's, and says how many tracks are
- * selected once, at its left. With one track selected it also holds "Open artist page" and
- * "Open label page", the same entries as the right-click menu has (nothing is right-click only).
+ * selected once, at its left. With one track selected, "Open on Beatport" becomes one "Open" menu
+ * button that also holds "Open artist page" and "Open label page", the same entries as the
+ * right-click menu has (nothing is right-click only), so the bar never wraps (new D).
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -23,7 +24,7 @@ import type { BeatportTrackRow, EntityKind } from "../../api/cuepointBridge.type
 import { Button } from "../../components/Button";
 import { CloseButton } from "../../components/CloseButton";
 import { Hint } from "../../components/Hint";
-import { TrackContextMenu, type TrackContextMenuItem } from "../../components/TrackContextMenu";
+import { TrackContextMenu, useMenuButton, type TrackContextMenuItem } from "../../components/TrackContextMenu";
 import {
   ColumnPicker,
   TrackTable,
@@ -199,11 +200,37 @@ export function BeatportTable<Row extends BeatportTrackRow>({
     return [...items, { ...first!, separatorBefore: true }, ...rest];
   };
 
-  // One selected track: the way to its artist's and label's pages, as buttons in the bar and
-  // again in the menu (C196). A person with several names gets a menu to choose from.
-  const [pageMenu, setPageMenu] = useState<{ x: number; y: number; items: TrackContextMenuItem[] } | null>(null);
+  // One selected track: the way to its artist's and label's pages, in the bar and again in the
+  // right-click menu (C196). A person with several names gets a submenu to choose from.
   const onlyRow = onOpenPage && selection.count === 1 ? selection.rows[0] : undefined;
-  const pageButtons = onlyRow && onOpenPage ? beatportPageItems(onlyRow, onOpenPage) : [];
+  const pageItems = onlyRow && onOpenPage ? beatportPageItems(onlyRow, onOpenPage) : [];
+  // With one track, Open on Beatport and its two pages fold into one visible "Open" menu button
+  // where Open on Beatport stood (new D): three buttons wrapped the bar onto a second line.
+  const openMenu = useMenuButton();
+  const folded = pageItems.length > 0;
+  const openAction = actions.find((action) => action.id === "open");
+  const openItems: TrackContextMenuItem[] = folded
+    ? [
+        ...(openAction
+          ? [
+              {
+                id: openAction.id,
+                label: openAction.label,
+                disabled: openAction.disabled || busy,
+                reason: openAction.reason ?? undefined,
+                onSelect: () => run(openAction.id),
+              },
+            ]
+          : []),
+        ...pageItems.map((item, at) => (at === 0 && openAction ? { ...item, separatorBefore: true } : item)),
+      ]
+    : [];
+  const openButton = (
+    <Button key="open-menu" variant="secondary" menu {...openMenu.buttonProps}>
+      Open
+    </Button>
+  );
+  const openBox = folded && openMenu.open ? openMenu.anchor.current?.getBoundingClientRect() : undefined;
 
   const run = (id: BeatportActionId) => {
     setMenu(null);
@@ -221,38 +248,25 @@ export function BeatportTable<Row extends BeatportTrackRow>({
           <CloseButton aria-label="Clear selection" onClick={selection.clear} />
         )}
         {filters}
-        {actions.map((action) => (
-          <span key={action.id} className="discover-table__action">
-            <Hint text={action.reason ?? undefined}>
-              <Button
-                variant="secondary"
-                disabled={action.disabled || busy}
-                onClick={() => run(action.id)}
-              >
-                {action.label}
-              </Button>
-            </Hint>
-            {action.note && <span className="discover-note">{action.note}</span>}
-          </span>
-        ))}
-        {pageButtons.map((item) => (
-          <Button
-            key={item.id}
-            variant="secondary"
-            menu={item.items !== undefined}
-            disabled={item.disabled}
-            onClick={(event) => {
-              if (item.items) {
-                const rect = event.currentTarget.getBoundingClientRect();
-                setPageMenu({ x: rect.left, y: rect.bottom, items: item.items });
-              } else {
-                item.onSelect();
-              }
-            }}
-          >
-            {item.label}
-          </Button>
-        ))}
+        {actions.map((action) =>
+          folded && action.id === "open" ? (
+            openButton
+          ) : (
+            <span key={action.id} className="discover-table__action">
+              <Hint text={action.reason ?? undefined}>
+                <Button
+                  variant="secondary"
+                  disabled={action.disabled || busy}
+                  onClick={() => run(action.id)}
+                >
+                  {action.label}
+                </Button>
+              </Hint>
+              {action.note && <span className="discover-note">{action.note}</span>}
+            </span>
+          ),
+        )}
+        {folded && !openAction && openButton}
       </div>
 
       <div ref={rowsRef} className="discover-table__rows" onKeyDown={onRowKeys}>
@@ -297,13 +311,14 @@ export function BeatportTable<Row extends BeatportTrackRow>({
         />
       )}
 
-      {pageMenu && (
+      {folded && openMenu.open && openBox && (
         <TrackContextMenu
-          x={pageMenu.x}
-          y={pageMenu.y}
-          label="Open artist page"
-          items={pageMenu.items}
-          onClose={() => setPageMenu(null)}
+          x={openBox.left}
+          y={openBox.bottom}
+          anchor={openMenu.anchor}
+          label="Open"
+          items={openItems}
+          onClose={openMenu.close}
         />
       )}
 

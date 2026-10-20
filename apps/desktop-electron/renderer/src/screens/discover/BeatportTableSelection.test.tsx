@@ -159,21 +159,28 @@ describe("a table sorted by its own header", () => {
 });
 
 describe("the artist and label pages of one selected track", () => {
-  it("are visible buttons beside the actions, from the same items as the menu", () => {
+  it("are in one visible Open menu button in the bar, from the same items as the right-click menu (new D)", async () => {
     const open = vi.fn();
     renderTable(open);
     const bar = screen.getByRole("toolbar", { name: "Tracks this dig found: actions" });
     // Nothing selected: nothing to open.
-    expect(within(bar).queryByRole("button", { name: "Open artist page" })).toBeNull();
+    expect(within(bar).queryByRole("button", { name: "Open" })).toBeNull();
 
     fireEvent.click(screen.getAllByRole("row")[1]!.querySelector('[data-column="title"]')!);
-    fireEvent.click(within(bar).getByRole("button", { name: "Open label page" }));
+    // The pages are never separate buttons, so the bar keeps one line.
+    expect(within(bar).queryByRole("button", { name: "Open artist page" })).toBeNull();
+    expect(within(bar).queryByRole("button", { name: "Open label page" })).toBeNull();
+    const button = within(bar).getByRole("button", { name: "Open" });
+    expect(button).toHaveAttribute("aria-haspopup", "menu");
+    fireEvent.click(button);
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Open label page" }));
     expect(open).toHaveBeenCalledWith("label", beatportRef(7));
-    fireEvent.click(within(bar).getByRole("button", { name: "Open artist page" }));
+    fireEvent.click(within(bar).getByRole("button", { name: "Open" }));
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Open artist page" }));
     expect(open).toHaveBeenCalledWith("artist", nameRef("Artist"));
 
     // Two tracks have no single page to open.
     fireEvent.click(screen.getAllByRole("row")[2]!.querySelector('[data-column="title"]')!, { ctrlKey: true });
-    expect(within(bar).queryByRole("button", { name: "Open artist page" })).toBeNull();
+    expect(within(bar).queryByRole("button", { name: "Open" })).toBeNull();
   });
 });

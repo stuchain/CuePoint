@@ -710,10 +710,20 @@ describe("Results", () => {
 
     const [first, , third] = rowsOf("Tracks this dig found");
     fireEvent.click(first!);
-    // One track selected: its artist and label pages are buttons too, not only in the menu (C196).
-    expect(buttonsOf(bar)).toEqual([...names, "Open artist page", "Open label page"]);
+    // One track selected: its artist and label pages are visible too, not only in the right-click
+    // menu (C196), folded with Open on Beatport into one Open menu button, so the bar never wraps (new D).
+    expect(buttonsOf(bar)).toEqual(["Add to wantlist", "Add to a Beatport playlist…", "Open"]);
     expect(button("Add to wantlist")).toBeEnabled();
-    expect(button("Open on Beatport")).toBeEnabled();
+    expect(button("Open")).toHaveAttribute("aria-haspopup", "menu");
+    fireEvent.click(button("Open"));
+    const openMenu = await screen.findByRole("menu");
+    expect(within(openMenu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      "Open on Beatport",
+      "Open artist page",
+      "Open label page",
+    ]);
+    expect(within(openMenu).getByRole("menuitem", { name: "Open on Beatport" })).not.toHaveAttribute("aria-disabled", "true");
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     expect(bar).toHaveTextContent("1 selected");
     fireEvent.click(third!, { shiftKey: true });
     expect(bar).toHaveTextContent("3 selected");
@@ -874,7 +884,9 @@ describe("Results", () => {
     await openRun(1);
     await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
     fireEvent.click(rowsOf("Tracks this dig found")[0]!);
-    fireEvent.click(screen.getByRole("button", { name: "Open on Beatport" }));
+    // One track: Open on Beatport is the first entry of the bar's Open menu (new D).
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Open on Beatport" }));
     await waitFor(() => expect(bridge.openBeatportPage).toHaveBeenCalledWith(HIDDEN.rows[0]!.url));
   });
 
@@ -884,7 +896,9 @@ describe("Results", () => {
     await openRun(1);
     await waitFor(() => expect(rowsOf("Tracks this dig found").length).toBeGreaterThan(0), LOADED);
     fireEvent.click(rowsOf("Tracks this dig found")[0]!);
-    fireEvent.click(screen.getByRole("button", { name: "Open on Beatport" }));
+    // One track: Open on Beatport is the first entry of the bar's Open menu (new D).
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "Open on Beatport" }));
     expect(await screen.findByText(/CuePoint opens only pages on beatport\.com/)).toBeInTheDocument();
   });
 
@@ -1427,8 +1441,15 @@ describe("the wantlist", () => {
     );
     const notBought = WANTED.rows.findIndex((row) => row.bought_at === null);
     fireEvent.click(rowsOf("Wantlist")[notBought]!);
-    expect(buttonsOf(bar)).toEqual([...all, "Open artist page", "Open label page"]);
-    expect(enabled()).toEqual(all);
+    // One track: Open on Beatport and its artist and label pages fold into one Open menu (new D).
+    const folded = all.map((name) => (name === "Open on Beatport" ? "Open" : name));
+    expect(buttonsOf(bar)).toEqual(folded);
+    expect(
+      within(bar)
+        .getAllByRole("button")
+        .filter((button) => folded.includes(button.textContent ?? "") && !(button as HTMLButtonElement).disabled)
+        .map((button) => button.textContent),
+    ).toEqual(folded);
     const other = WANTED.rows.findIndex((row, index) => index !== notBought && row.bought_at === null);
     fireEvent.click(rowsOf("Wantlist")[other]!, { ctrlKey: true });
     expect(buttonsOf(bar)).toEqual(all);
