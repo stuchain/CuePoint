@@ -283,7 +283,7 @@ export function FilterBar({
     });
     if (!rowWraps(items)) return;
     const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
-    unfoldAt.current = row.clientWidth + (tagsRef.current?.offsetWidth ?? 0) + gap;
+    unfoldAt.current = row.clientWidth + Math.max(1, (tagsRef.current?.offsetWidth ?? 0) + gap);
     setTagsFolded(true);
   }, [onManageTags, tagsFolded, chipsOpen]);
   useLayoutEffect(measureRow, [measureRow, filters, smart]);

@@ -548,7 +548,7 @@ export function KeysTracks({
     if (next && !folded) {
       const gap = parseFloat(getComputedStyle(bar).columnGap) || 0;
       const room = Array.from(bar.querySelectorAll<HTMLElement>(".keys-tracks__fold")).reduce((sum, el) => sum + el.offsetWidth + gap, 0);
-      unfoldAt.current = width + room;
+      unfoldAt.current = width + Math.max(1, room);
     }
     if (next !== folded) setFolded(next);
   }, [folded]);
