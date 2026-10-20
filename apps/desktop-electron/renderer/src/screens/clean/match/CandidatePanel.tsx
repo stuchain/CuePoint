@@ -13,7 +13,7 @@
  * scored as it did, and which attempt is being looked at.
  *
  * The two decisions are pinned to the panel's foot (C242), so they never scroll out of reach:
- * **Use this match** accepts the picked candidate (which ticks the track) and **None of these**
+ * **Use this match** accepts the picked candidate (which ticks the track; a double-click on a candidate does the same) and **None of these**
  * leaves the track out (unticks it). Both are grey: the review's one main action is Sync. It
  * decides nothing but through its two callbacks. Up and Down move to the previous or next track,
  * from the tab (`ReviewTab.tsx`); Esc closes, here and there. Opening the panel puts the keyboard
@@ -141,19 +141,30 @@ function CandidateRow({
   inUse,
   picked,
   onPick,
+  onUse,
 }: {
   candidate: MatchCandidate;
   inUse: boolean;
   /** This candidate is the one the foot's Use this match would take. */
   picked: boolean;
   onPick: () => void;
+  /** A double-click: what Use this match does for this candidate. */
+  onUse: () => void;
 }) {
   const preview = useBeatportPreview({ kind: "candidate", id: candidate.id });
   const playing = preview.state === "playing";
   const label = [candidate.title, candidate.artists].filter(Boolean).join(" by ");
   const cover = useCandidateArtwork(candidate.id, "row");
   return (
-    <li className={`review-candidate${inUse ? " review-candidate--in-use" : ""}${picked ? " review-candidate--picked" : ""}`}>
+    <li
+      className={`review-candidate${inUse ? " review-candidate--in-use" : ""}${picked ? " review-candidate--picked" : ""}`}
+      data-candidate-id={candidate.id}
+      onDoubleClick={(event) => {
+        // The play button and the pick keep their own clicks.
+        if ((event.target as HTMLElement).closest("button, input")) return;
+        onUse();
+      }}
+    >
       <input
         type="radio"
         name="review-candidate"
@@ -386,7 +397,7 @@ export function CandidatePanel({
       </header>
 
       <div className="review-panel__scroll">
-        <p className="review-panel__hint">Up and Down move · Esc closes</p>
+        <p className="review-panel__hint">Up and Down move · Double-click uses a match · Esc closes</p>
 
         <section className="review-card" aria-label="Your track">
           <Art src={yourArt} />
@@ -433,6 +444,11 @@ export function CandidatePanel({
                 inUse={row.ticked && candidate.id === inUseId}
                 picked={candidate.id === pickedId}
                 onPick={() => setPicked(candidate.id)}
+                onUse={() => {
+                  if (busy || (row.ticked && candidate.id === inUseId)) return;
+                  setPicked(candidate.id);
+                  onUse(candidate.id);
+                }}
               />
             ))}
           </ul>

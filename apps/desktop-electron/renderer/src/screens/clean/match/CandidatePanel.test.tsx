@@ -209,6 +209,40 @@ describe("the candidates", () => {
     expect(props.onUse).not.toHaveBeenCalled();
   });
 
+  it("uses a candidate on a double-click, as Use this match would", async () => {
+    const props = renderPanel();
+    const list = await candidates();
+    const other = list.getAllByRole("radio").find((radio) => !radio.closest("li")!.textContent!.includes("In use"))!;
+    const id = Number(other.closest("li")!.getAttribute("data-candidate-id"));
+    await userEvent.dblClick(other.closest("li")!.querySelector(".review-candidate__facts")!);
+    expect(props.onUse).toHaveBeenCalledTimes(1);
+    expect(props.onUse).toHaveBeenCalledWith(id);
+  });
+
+  it("does nothing more on a double-click of the match in use, of a play button, or while busy", async () => {
+    const props = renderPanel();
+    const list = await candidates();
+    const inUse = list.getByText("In use").closest("li")!;
+    await userEvent.dblClick(inUse.querySelector(".review-candidate__facts")!);
+    const other = list.getAllByRole("listitem").find((item) => item !== inUse)!;
+    await userEvent.dblClick(within(other).getByRole("button", { name: /preview/ }));
+    expect(props.onUse).not.toHaveBeenCalled();
+  });
+
+  it("will not use a candidate on a double-click while a choice is being sent", async () => {
+    const props = renderPanel({ busy: true });
+    const list = await candidates();
+    for (const item of list.getAllByRole("listitem")) {
+      await userEvent.dblClick(item.querySelector(".review-candidate__facts")!);
+    }
+    expect(props.onUse).not.toHaveBeenCalled();
+  });
+
+  it("says a double-click uses a match", () => {
+    renderPanel();
+    expect(screen.getByText("Up and Down move · Double-click uses a match · Esc closes")).toBeInTheDocument();
+  });
+
   it("waits while a choice is being sent", async () => {
     renderPanel({ busy: true });
     await candidates();
