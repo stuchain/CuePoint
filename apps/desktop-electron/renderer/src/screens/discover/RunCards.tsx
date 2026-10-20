@@ -89,7 +89,7 @@ function CardTile({
         <GroupArt runId={runId} kind={card.kind} cardKey={card.key} hasArt={card.has_art} />
         <span className="discover-card__title">{card.name}</span>
         {card.kind === "chart" && card.curator && !card.name.includes(card.curator) && (
-          <span className="discover-card__curator">by {card.curator}</span>
+          <span className="discover-card__curator">{card.curator}</span>
         )}
         <span className="discover-card__counts">{cardCounts(card, mode)}</span>
       </button>

@@ -124,6 +124,13 @@ describe("a dig's results as rows of cards", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
+  it("names a chart's maker on its own, with no 'by' in front", async () => {
+    install({ getDiscoveryRunGroups: vi.fn(async () => value(GENRE)) });
+    renderRun();
+    const chart = await card(/^Chart A stranger/);
+    expect(chart.querySelector(".discover-card__curator")).toHaveTextContent(/^Stranger$/);
+  });
+
   it("says which row's count counts what", async () => {
     install();
     renderRun();
