@@ -43,6 +43,7 @@ import { Notice } from "../Notice";
 import { Select } from "../Select";
 import "../TextField.css";
 import {
+  ALL_WAV,
   KEY_STYLES,
   MAX_COMMENT_LENGTH,
   SAVE_FIELDS,
@@ -433,7 +434,9 @@ export function SaveToFilesDialog({
       size="large"
       closeDisabled={busy}
       closeReason={jobId ? "Press Stop first" : "Wait until it finishes"}
-      reason={phase === "ready" && state.reason ? state.reason : undefined}
+      // Why the button is greyed: one line above the footer. That WAV files are skipped is about the
+      // files, not the button, so it is a Notice in the body instead (item 10, as C131 for Export).
+      reason={phase === "ready" && state.reason && state.reason !== ALL_WAV ? state.reason : undefined}
       extraAction={
         !finished && phase === "ready" && !list
           ? { label: variant === "sync" ? "See every change" : "See changes", onClick: () => setView("changes") }
@@ -524,6 +527,7 @@ export function SaveToFilesDialog({
               />
               <span>Keep values already in the files</span>
             </label>
+            {phase === "ready" && state.reason === ALL_WAV && <Notice kind="info">{ALL_WAV}</Notice>}
           </>
         )}
 

@@ -353,8 +353,12 @@ describe("when Save is greyed", () => {
     });
     bridge.countTagPreview.mockResolvedValue({ files: 0, fields: {} });
     open({ count: 5 });
-    expect(await screen.findByText("WAV files are skipped (Rekordbox does not read their tags).")).toBeInTheDocument();
+    const note = await screen.findByText("WAV files are skipped (Rekordbox does not read their tags).");
     expect(screen.getByRole("button", { name: /^Nothing to sync$/ })).toBeDisabled();
+    // In the body, as a Notice, not floating right-aligned over the footer (item 10, as C131).
+    expect(note.closest(".cp-notice")).not.toBeNull();
+    expect(note.closest(".cp-modal__reason")).toBeNull();
+    expect(note.closest(".save-dialog")).not.toBeNull();
   });
 
   it("names why files were skipped instead of saying they hold the values", async () => {
