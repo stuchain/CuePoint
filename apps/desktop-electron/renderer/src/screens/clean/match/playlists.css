@@ -112,7 +112,9 @@
   margin-inline-end: auto;
 }
 
+/* Both lines sit at the left (item 11): the shared count pushes itself right (margin-inline-start:
+   auto), which centred this one between the edge and the Match button once tracks were ticked. */
 .playlists__choice {
-  margin-inline-end: auto;
+  margin-inline: 0 auto;
   color: var(--fg-primary);
 }

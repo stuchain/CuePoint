@@ -317,8 +317,10 @@ describe("the rows stay one line", () => {
   });
 
   it("keeps the footer's status at the left, beside the Match button at the right", () => {
-    expect(css).toMatch(/\.playlists__choice\s*\{[^}]*margin-inline-end:\s*auto/);
     expect(css).toMatch(/\.playlists__next\s*\{[^}]*margin-inline-end:\s*auto/);
+    // The ticked line is also a shared count, which pushes itself right; it must start at the left
+    // in both states, not jump to the middle once tracks are ticked (item 11).
+    expect(css).toMatch(/\.playlists__choice\s*\{[^}]*margin-inline:\s*0 auto/);
   });
 });
 
