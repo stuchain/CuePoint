@@ -7,6 +7,7 @@ import type { ActivityFeed } from "../../api/cuepointBridge.types";
 import {
   formatEventDetail,
   formatEventTime,
+  formatEventTone,
   formatEventType,
   groupByDay,
   sortNewestFirst,
@@ -136,7 +137,7 @@ export function ActivityPanel({ open, onClose }: ActivityPanelProps) {
                             {formatEventTime(event.created_at)}
                           </span>
                           {word && (
-                            <Badge tone="neutral" className="cp-activity__type">
+                            <Badge tone={formatEventTone(event.type)} className="cp-activity__type">
                               {word}
                             </Badge>
                           )}

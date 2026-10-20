@@ -12,6 +12,7 @@ import {
   formatDayHeading,
   formatEventDetail,
   formatEventTime,
+  formatEventTone,
   formatEventType,
   groupByDay,
   sortNewestFirst,
@@ -104,6 +105,17 @@ describe("groupByDay (STR-8)", () => {
 
   it("is empty for no events", () => {
     expect(groupByDay([])).toEqual([]);
+  });
+});
+
+describe("formatEventTone (item 8)", () => {
+  it("tints every category: information, or a warning for one that stopped or could not reach", () => {
+    expect(formatEventTone("library.imported")).toBe("info");
+    expect(formatEventTone("engine.started")).toBe("info");
+    expect(formatEventTone("clean.match.interrupted")).toBe("warning");
+    expect(formatEventTone("clean.tags.interrupted")).toBe("warning");
+    expect(formatEventTone("clean.files.unreachable")).toBe("warning");
+    for (const type of RECORDED_EVENT_TYPES) expect(["info", "warning"]).toContain(formatEventTone(type));
   });
 });
 

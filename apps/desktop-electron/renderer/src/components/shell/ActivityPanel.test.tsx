@@ -81,6 +81,25 @@ describe("ActivityPanel", () => {
     expect(screen.getByText(/Playlists: 4/)).toBeInTheDocument();
   });
 
+  it("draws a category as a tinted status chip, never the grey button-like box (item 8)", async () => {
+    getRecentActivity.mockResolvedValue(
+      feed({
+        events: [
+          event({ id: 1, summary: "Imported 120 tracks" }),
+          event({ id: 2, type: "clean.match.interrupted", summary: "Stopped matching" }),
+        ],
+        total: 2,
+      }),
+    );
+
+    render(<ActivityPanel open onClose={() => {}} />);
+
+    const imported = await screen.findByText("Import");
+    expect(imported).toHaveClass("cp-badge", "cp-badge--info", "cp-activity__type");
+    expect(imported).not.toHaveClass("cp-badge--neutral");
+    expect(screen.getByText("Match stopped")).toHaveClass("cp-badge", "cp-badge--warning");
+  });
+
   it("shows newest first even if the engine returned them out of order", async () => {
     getRecentActivity.mockResolvedValue(
       feed({

@@ -95,6 +95,22 @@ const EVENT_WORDS: Record<string, string> = {
 
 export const RECORDED_EVENT_TYPES: readonly string[] = Object.keys(EVENT_WORDS);
 
+/** The event types that stopped part-way or could not reach their files: a warning, not news. */
+const WARNING_EVENTS: ReadonlySet<string> = new Set([
+  "clean.match.interrupted",
+  "clean.files.unreachable",
+  "clean.tags.interrupted",
+]);
+
+/**
+ * The tone of an event's category chip (item 8): the tinted status chip, as "Done" is, never the
+ * grey neutral box that reads as a button. A category is information; one that stopped or could
+ * not reach its folder is a warning.
+ */
+export function formatEventTone(type: string): "info" | "warning" {
+  return WARNING_EVENTS.has(type) ? "warning" : "info";
+}
+
 /** The badge word for an event type, or "" when there is none (the summary stands alone). */
 export function formatEventType(type: string): string {
   return Object.hasOwn(EVENT_WORDS, type) ? EVENT_WORDS[type]! : "";
