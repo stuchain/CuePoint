@@ -621,6 +621,13 @@ body.prepare-resizing {
   align-items: center;
 }
 
+/* The entry buttons end just left of the time columns when those come last (option 3A), so a
+   click on Mix in, Mix out or Starts at opens it: the row's --entry-buttons-clear is the part of
+   those columns in view (entryButtonsRoom). The end cell is sticky; its margin is kept clear too. */
+.track-table__row > .track-table__end:has(> .prepare-row-buttons) {
+  margin-right: var(--entry-buttons-clear, 0px);
+}
+
 /* The words and the glyphs, drawn unseen and out of the flow so the end cell can be measured for
    both whichever is on show (entryButtonsRoom). */
 .prepare-row-buttons--measure {

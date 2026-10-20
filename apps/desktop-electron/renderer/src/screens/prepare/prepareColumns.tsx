@@ -13,9 +13,9 @@
  *
  * The table opens on #, Title, Artist, Key, BPM, Plays for and Mix in (C246). Fit (a dot
  * for whether the track mixes in from the one before), Mix out, Starts at, Transition and
- * Note are hidden until asked for (View, Columns…). The two times sit together, well left
- * of the selected row's buttons, which stick to the right edge and would cover a time cell
- * at the end of the row.
+ * Note are hidden until asked for (View, Columns…). The two times sit together; when the
+ * times end the row, the selected row's buttons end just left of them (option 3A), so a
+ * click on a time always reaches it.
  *
  * Mix in and Mix out are typed in place and a heading carries its chapter's
  * buttons (FLW-17, FLW-18): both through `prepareEditing`'s context.

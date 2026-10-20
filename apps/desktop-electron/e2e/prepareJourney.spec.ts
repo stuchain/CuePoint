@@ -314,10 +314,9 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
         (await readSet(win, setId)).entries.entries.find((entry: { position: number }) => entry.position === 0),
       ).toMatchObject({ in_seconds: 30, out_seconds: 270 });
       // A time the engine refuses is said on the facts line, by name, and the cell stays open.
-      // The row is still the focused one, so its buttons sit over the time columns: F2 starts the cell
-      // from the keyboard, and Tab moves on to Mix out.
-      await win.keyboard.press("F2");
-      await win.keyboard.press("Tab");
+      // The row is still the focused one: its buttons end left of the time columns (option 3A), so
+      // a click on Mix out opens it.
+      await row(win, "Warm One").getByRole("button", { name: /^Mix out for/ }).first().click();
       await win.getByRole("textbox", { name: /^Mix out for/ }).fill("0:10");
       await win.keyboard.press("Enter");
       await expect(facts(win)).toContainText("Not saved: An entry must come in before it goes out", {
@@ -350,22 +349,25 @@ test.describe("the whole of Phase 10 (PREP-12)", () => {
       // FLW-17: the entry buttons order the Set too. They are on the selected row only (DEC-249):
       // Move down and Move up put Warm Two back where it was.
       await at(win, row(win, "Warm Two"));
-      // The end cell stops at the scroll area's bar: its right edge is the area's, less the bar and border.
-      // A bar is forced on, as a Set of many rows has one: a reserved gutter with no bar in it is not
-      // taken out of what a sticky cell sticks to.
+      // The times end the row here (Mix in, Mix out, Starts at), so the end cell stops just left of
+      // Mix in (option 3A), and never past the scroll area's bar. A bar is forced on, as a Set of many
+      // rows has one: a reserved gutter with no bar in it is not taken out of what a sticky cell sticks to.
       const edge = await setTable(win).evaluate((scroll) => {
+        const endCell = scroll.querySelector(".track-table__row .track-table__end")!;
+        const firstTime = endCell.parentElement!.querySelector('[data-column="in"]')!.getBoundingClientRect().left;
+        const end = endCell.getBoundingClientRect().right;
         scroll.style.overflowY = "scroll";
-        const end = scroll.querySelector(".track-table__row .track-table__end")!.getBoundingClientRect();
         const area = scroll.getBoundingClientRect().right - (scroll.offsetWidth - scroll.clientWidth);
+        const endWithBar = endCell.getBoundingClientRect().right;
         scroll.style.overflowY = "";
-        return { end: end.right, area };
+        return { end, firstTime, area, endWithBar };
       });
-      expect(Math.abs(edge.end - edge.area)).toBeLessThan(1);
-      // The buttons sit over the selected row's last columns, which here are its times, so a time is
-      // started from the keyboard (F2); the buttons stand aside for the typing, and the field is what
-      // a click at its own centre reaches.
+      expect(Math.abs(edge.end - edge.firstTime)).toBeLessThan(1);
+      expect(edge.endWithBar).toBeLessThanOrEqual(edge.area + 1);
+      // A time cell on the selected row is not covered by the buttons (option 3A): its field is
+      // what a click at its own centre reaches, and the buttons stand aside for the typing.
       const mixIn = row(win, "Warm Two").getByRole("textbox", { name: /^Mix in for/ });
-      await win.keyboard.press("F2");
+      await row(win, "Warm Two").getByRole("button", { name: /^Mix in for/ }).click();
       await expect(mixIn).toBeVisible();
       expect(
         await mixIn.evaluate((field) => {

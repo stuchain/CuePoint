@@ -29,6 +29,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { waitForEngine } from "./engineReady";
+import { clickRowAt } from "./rowClick";
 import { NO_PLAYER, hasPlayer } from "./playerAvailable";
 import { WINDOWS_INNER, setInnerSize } from "./windowSizes";
 
@@ -404,6 +405,43 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       console.log("PREP-11 source panel whole rows:", source.whole);
       expect(source.whole, "the Suggestions the panel shows").toBeGreaterThanOrEqual(SOURCE_ROWS);
 
+      // --- Mix in on the focused row takes a mouse click (option 3A) ----------
+      // Mix in is the last column as the table opens, so the selected row's buttons end just left
+      // of it: a click of the mouse on the focused row's Mix in opens its field.
+      const entryRow = table.locator(".track-table__row").filter({ has: win.getByRole("button", { name: /^Mix in for/ }) }).nth(1);
+      // The row by its own Mix in's name: once the cell opens, the button the filter above reads is gone.
+      const mixInName = (await entryRow.getByRole("button", { name: /^Mix in for/ }).getAttribute("aria-label"))!;
+      await clickRowAt(win, entryRow);
+      const focusedRow = table.locator(".track-table__row").filter({ has: win.getByRole("button", { name: mixInName, exact: true }) });
+      const buttons = focusedRow.getByRole("group", { name: "Selected entries" });
+      await expect(buttons).toBeVisible();
+      const mixInBox = (await focusedRow.getByRole("button", { name: mixInName, exact: true }).boundingBox())!;
+      const buttonsBox = (await buttons.boundingBox())!;
+      expect(buttonsBox.x + buttonsBox.width, "the buttons end left of Mix in").toBeLessThanOrEqual(mixInBox.x + 1);
+      await win.waitForTimeout(600); // past a double-click's length, so this is a click of its own
+      // Just inside the cell's left edge, right beside the buttons: the Columns corner holds the
+      // scroll area's far right end.
+      const at = { x: mixInBox.x + 6, y: mixInBox.y + mixInBox.height / 2 };
+      expect(
+        await focusedRow.getByRole("button", { name: mixInName, exact: true }).evaluate(
+          (cell, point) => cell.contains(document.elementFromPoint(point.x, point.y)),
+          at,
+        ),
+        "Mix in is what is drawn beside the buttons",
+      ).toBe(true);
+      await win.mouse.click(at.x, at.y);
+      const field = table.getByRole("textbox", { name: mixInName.replace(/: .*$/, ""), exact: true });
+      await expect(field).toBeVisible();
+      await win.keyboard.press("Escape");
+      await expect(field).toHaveCount(0);
+      // Escape again lets go of the row, as the page was before this step.
+      await win.keyboard.press("Escape");
+      await expect(buttons).toHaveCount(0);
+      await table.evaluate((element) => {
+        element.scrollTop = 0;
+        element.scrollLeft = 0;
+      });
+
       // --- with the tempo and key lanes open (PREP-11) ------------------------
       await toggleView(win, "Tempo lane");
       await expect(win.getByRole("group", { name: "Tempo and key lanes" })).toBeVisible();
@@ -472,8 +510,9 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       // --- the row double-clicked is the row that plays -----------------------
       await setSidebar(win, false);
       let before = await measure(win, "Set entries");
-      if (!before.partial) {
-        // The rows fit the pane exactly (the layout can): scroll half a row so one is cut.
+      // The rows can fit the pane exactly, or the row cut can be a chapter heading, which plays
+      // nothing: scroll half a row at a time until an entry is cut.
+      for (let tries = 0; !before.partial && tries < 4; tries += 1) {
         await win.evaluate(() => {
           const table = document.querySelector<HTMLElement>('[role="table"][aria-label="Set entries"]')!;
           const row = table.querySelector<HTMLElement>(".track-table__row")!;
@@ -601,6 +640,9 @@ test.describe("the Prepare page at the default size (PREP-10)", () => {
       // The Library's selection bar is drawn over the table's bottom rows (option 1A) and lets the
       // pointer through for a double-click's length, so the second click lands on the same row.
       await expect(win.getByRole("toolbar", { name: "Selection" })).toHaveCount(0);
+      // Repeat-one again after the reload: the fixtures last a quarter of a second, and the next
+      // track would otherwise be current before the poll reads it.
+      await win.evaluate(() => (window as never as Bridge).cuepoint.player.setRepeat("one"));
       await win.mouse.dblclick(shown.partial!.x, shown.partial!.y);
       await expect.poll(() => currentTitle(win), { timeout: 30_000 }).toBe(shown.partial!.title);
     } finally {
