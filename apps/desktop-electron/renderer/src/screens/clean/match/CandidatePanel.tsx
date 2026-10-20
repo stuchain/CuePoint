@@ -7,7 +7,7 @@
  * year, and a play button to hear it); the name shows once, there. Under "Found on Beatport" is
  * **every candidate** the matcher scored, each with a radio to pick it, its title (the words that
  * differ from yours in orange), its artists, its facts line, why it was ruled out when it was and a
- * play button; the one the track is matched with is tinted green and marked **In use**. Below: a
+ * play button; the one the track is matched with has a green bar and an **In use** chip. Below: a
  * search box and **Search Beatport** (the in-app search, scored by the matcher like every other
  * result, with the sign-in or a failure said in words). **More** holds the rest: why a candidate
  * scored as it did, and which attempt is being looked at.
@@ -184,7 +184,11 @@ function CandidateRow({
         </p>
         {!candidate.guard_ok && <p className="review-candidate__why">{scoreLine(candidate)}</p>}
         {/* Inside the facts, so every play button stays in one column (C76). */}
-        {inUse && <p className="review-candidate__in-use-line"><span className="cp-quiet-ok">In use</span></p>}
+        {inUse && (
+          <p className="review-candidate__in-use-line">
+            <Badge tone="success">In use</Badge>
+          </p>
+        )}
       </div>
       <PlayButton
         aria-label={playing ? `Stop the preview of ${label}` : `Play the Beatport preview of ${label}`}

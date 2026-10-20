@@ -72,7 +72,10 @@ describe("the candidates", () => {
     expect(within(panel).getByText("Found on Beatport \u00b7 pick the right one")).toBeInTheDocument();
     const list = await candidates();
     expect(list.getAllByRole("listitem")).toHaveLength(2);
-    expect(list.getByText("In use")).toHaveClass("cp-quiet-ok");
+    // The one in use: a green bar and a green "In use" chip, not a tinted card (item 9b).
+    const inUse = list.getByText("In use");
+    expect(inUse).toHaveClass("cp-badge", "cp-badge--success");
+    expect(inUse.closest("li")).toHaveClass("review-candidate--in-use");
     // One radio per candidate, and no Use button on a candidate: the decision is in the foot (C242).
     expect(list.getAllByRole("radio")).toHaveLength(2);
     expect(list.queryByRole("button", { name: /^Use this/ })).toBeNull();
