@@ -297,7 +297,7 @@ describe("the scope (R4-4)", () => {
     expect(screen.queryByTestId("library-trail")).toBeNull();
   });
 
-  it("names a playlist, with the group it is in above it", () => {
+  it("names a playlist, with the group it is in above it, in the one crumb place (new E)", () => {
     const { container } = render(
       <LibraryHeader
         summary={SUMMARY}
@@ -311,14 +311,17 @@ describe("the scope (R4-4)", () => {
       />,
     );
     expect(container.querySelector(".cp-screen-header__display")).toHaveTextContent("Friday warm-up");
-    expect(container.querySelector(".cp-screen-header__crumb")).toBeNull();
+    // Above the title, where the Artist, Label and Similar pages put theirs; not on the facts line.
+    const crumb = container.querySelector(".cp-screen-header__crumb")!;
+    expect(crumb).toContainElement(screen.getByTestId("library-trail"));
     expect(screen.getByTestId("library-trail")).toHaveTextContent("Playlists");
+    expect(container.querySelector(".cp-screen-header__summary")).not.toHaveTextContent("Playlists");
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Library");
   });
 });
 
 describe("the path and folders (R7-4, R7-5)", () => {
-  it("shows the full path in the facts line, a chevron icon between the names", () => {
+  it("shows the full path above the title, a chevron icon between the names (new E)", () => {
     const { container } = render(
       <LibraryHeader
         summary={SUMMARY}
@@ -335,10 +338,10 @@ describe("the path and folders (R7-4, R7-5)", () => {
     expect(trail).toHaveTextContent("PlaylistsGigs 2026Summer");
     expect(trail.textContent).not.toContain("›");
     expect(trail.querySelectorAll("[data-icon='chevron-right-sm']")).toHaveLength(2);
-    expect(container.querySelector(".cp-screen-header__crumb")).toBeNull();
+    expect(container.querySelector(".cp-screen-header__crumb")).toContainElement(trail);
   });
 
-  it("keeps the trail on the facts line: the chevron is an in-line icon, not a block that breaks it (C220)", () => {
+  it("keeps the trail on one line: the chevron is an in-line icon, not a block that breaks it (C220)", () => {
     render(
       <LibraryHeader
         summary={SUMMARY}
@@ -392,7 +395,7 @@ describe("what the scope holds (K9)", () => {
     const summary = document.querySelector(".cp-screen-header__summary")!;
     const lead = summary.querySelector(".library-header__sr-only");
     expect(lead).toHaveTextContent("Friday warm-up:");
-    expect(summary.textContent?.startsWith("Friday warm-up: Playlists · 36 tracks")).toBe(true);
+    expect(summary.textContent?.startsWith("Friday warm-up: 36 tracks")).toBe(true);
   });
 
   it("no longer counts playlists", () => {

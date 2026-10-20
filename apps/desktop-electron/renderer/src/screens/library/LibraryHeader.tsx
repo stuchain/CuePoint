@@ -48,7 +48,7 @@ interface LibraryHeaderProps {
   summary: LibrarySummary | null;
   /** The scope's name: "All tracks", or the playlist's, Collection's or Set's. */
   scopeName?: string;
-  /** The trail to the scope ("Playlists", "Gigs 2026"), drawn in the facts line; none on All tracks. */
+  /** The trail to the scope ("Playlists", "Gigs 2026"), the crumb above the title; none on All tracks. */
   scopeTrail?: readonly string[];
   /** A folder is selected: its facts line says what it holds instead of "0 tracks" (R7-5). */
   folder?: { count: number; noun: "playlist" | "Collection" } | null;
@@ -266,6 +266,20 @@ export function LibraryHeader({
       <ScreenHeader
         title="Library"
         display={scopeName}
+        // The trail to the scope (Playlists, then the folders above it, C44) is the crumb above the
+        // title, the one place every page puts it (new E): Artist, Label and Similar do the same.
+        crumb={
+          scopeTrail.length > 0 ? (
+            <nav className="library-header__trail" aria-label="Where this is" data-testid="library-trail">
+              {scopeTrail.map((name, index) => (
+                <span key={`${index}-${name}`} className="library-header__trail-step">
+                  {index > 0 && <PixelIcon name="chevron-right-sm" className="cp-pixel-icon--text library-header__trail-arrow" />}
+                  {name}
+                </span>
+              ))}
+            </nav>
+          ) : undefined
+        }
         beside={
           level >= 2 ? undefined : (
             <>
@@ -278,18 +292,6 @@ export function LibraryHeader({
           <span key="scope" className="library-header__sr-only">
             {scopeName}:{" "}
           </span>,
-          // The trail to the scope leads the facts: Playlists, then the folders above it (C44).
-          scopeTrail.length > 0 ? (
-            <span key="trail" className="library-header__trail" data-testid="library-trail">
-              {scopeTrail.map((name, index) => (
-                <span key={`${index}-${name}`}>
-                  {index > 0 && <PixelIcon name="chevron-right-sm" className="cp-pixel-icon--text library-header__trail-arrow" />}
-                  {name}
-                </span>
-              ))}
-              <span className="library-header__sep"> · </span>
-            </span>
-          ) : null,
           ...parts.map((part, index) => (
           <span key={index}>
             {index > 0 && <span className="library-header__sep"> · </span>}

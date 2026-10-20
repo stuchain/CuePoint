@@ -113,12 +113,23 @@
   color: var(--fg-muted);
 }
 
-/* The trail to the scope, at the start of the facts line: names with a chevron between (C44). */
+/* The trail to the scope, the crumb above the title (new E): names with a chevron between (C44),
+   spaced as the Artist, Label and Similar pages' crumb is. */
 .library-header__trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
   color: var(--fg-muted);
 }
 
+.library-header__trail-step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  white-space: nowrap;
+}
+
 .library-header__trail-arrow {
-  margin-inline: var(--space-xs);
   vertical-align: middle;
 }
