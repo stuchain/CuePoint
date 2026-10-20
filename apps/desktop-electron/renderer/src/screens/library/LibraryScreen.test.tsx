@@ -3405,7 +3405,8 @@ describe("the filter bar saves a Smart Collection (ORG-12)", () => {
     expect(await screen.findByText("Smart Collection “Housey”")).toBeInTheDocument();
     // And the dialog is gone, rather than sitting over what it just made.
     expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
-  });
+    // A whole Library, a filter typed in and a dialog: past 5 s on the Intel Mac runner.
+  }, 15_000);
 
   it("produces the same tracks saved as it did unsaved", async () => {
     // The rules the table was asked with before saving, and the rules the
@@ -3432,7 +3433,7 @@ describe("the filter bar saves a Smart Collection (ORG-12)", () => {
     await waitFor(() => expect(bridge.saveSmartCollection).toHaveBeenCalled());
     const saved = bridge.saveSmartCollection.mock.calls[0][0] as { rules: unknown };
     expect(saved.rules).toEqual(asked);
-  });
+  }, 15_000);
 
   it("says what the engine said rather than closing as though it worked", async () => {
     install({

@@ -65,12 +65,13 @@ function view(
     onContinue?: (runId: number) => Promise<unknown>;
     continueBlocked?: string | null;
     lookup?: React.ReactNode;
+    tools?: DiscoverTools;
   } = {},
 ) {
   return (
     <ScaleProvider>
       <RunsView
-        tools={tools}
+        tools={props.tools ?? tools}
         runningJobId={null}
         runsVersion={props.runsVersion ?? 0}
         onNewSearch={() => {}}
@@ -192,11 +193,13 @@ describe("the Results list", () => {
   });
 
   it("stops offering 'Show all' once the engine's most are showing, and says so", async () => {
-    const max = OPTIONS.limits.max_runs;
+    // A small most keeps the list short: the rule is the same at 10 as at the engine's 200.
+    const max = 10;
+    const small = { ...tools, options: { ...OPTIONS, limits: { ...OPTIONS.limits, max_runs: max } } };
     const many = Array.from({ length: max }, (_, i) => ({ ...RUNS.runs[0]!, id: 1000 + i }));
     const list = vi.fn(async () => ({ value: { ...RUNS, runs: many, total: max + 50 }, refusal: null }));
     install(list);
-    render(view());
+    render(view({ tools: small }));
     const nav = await screen.findByRole("navigation", { name: "Past digs" });
     expect(within(nav).queryByRole("button", { name: /^Show all/ })).toBeNull();
     expect(within(nav).getByText(`Showing the newest ${max}`)).toBeInTheDocument();
