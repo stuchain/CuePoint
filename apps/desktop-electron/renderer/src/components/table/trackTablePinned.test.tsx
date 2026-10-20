@@ -6,6 +6,8 @@ import { ScaleProvider } from "../../tokens/ScaleContext";
 import { TrackTable } from "./TrackTable";
 import { inMemorySource } from "./trackTableSource";
 import { stickyFits, type TrackColumnDef } from "./trackTableLayout";
+import tableCss from "./TrackTable.css?raw";
+import { declarations, parseRules, stripComments } from "../../test/cssRules";
 
 interface Row {
   id: number;
@@ -61,5 +63,16 @@ describe("a table in a pane narrower than its pinned columns", () => {
     width = 900;
     const { container } = render(table());
     expect(container.querySelector(".track-table__header-cell-wrap--sticky")).not.toBeNull();
+  });
+});
+
+describe("a pinned cell's row line (new G)", () => {
+  it("draws the row's divider itself, which its fill would otherwise cover, so the line runs through Title", () => {
+    const rules = parseRules(stripComments(tableCss));
+    const sticky = rules.find((rule) => rule.selector === ".track-table__cell--sticky" && rule.context === "")!;
+    const row = rules.find((rule) => rule.selector === ".track-table__row" && rule.context === "")!;
+    const line = new Map(declarations(row.body)).get("box-shadow");
+    expect(line).toBe("inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-divider, var(--border-muted))");
+    expect(new Map(declarations(sticky.body)).get("box-shadow")).toBe(line);
   });
 });
