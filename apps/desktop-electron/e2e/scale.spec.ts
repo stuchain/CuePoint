@@ -110,6 +110,22 @@ async function openAt(win: Page, scale: number) {
     .toBe(String(scale));
 }
 
+// A page eases in (DEC-298): it holds two frames, then moves. Boxes read mid-move are a
+// sub-pixel off, so measure once the page has landed.
+async function settled(win: Page) {
+  await expect(win.locator('main.app-main[data-page-phase="hold"]')).toHaveCount(0);
+  // Endless ones (a spinner) never finish, nor do scroll-driven ones (the Settings
+  // headings below the fold); neither moves anything measured here.
+  await win.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.timeline === document.timeline && a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
+}
+
 /** Every element whose computed border width or shadow offset, blur or spread is not a whole pixel. */
 async function fractionalEdges(win: Page): Promise<string[]> {
   return win.evaluate(() => {
@@ -183,9 +199,11 @@ test.describe("the sizes (PAGES-14)", () => {
         await win.getByRole("link", { name: "Library", exact: true }).click();
         await expect(win.getByRole("table", { name: "Library tracks" })).toBeVisible({ timeout: 30_000 });
         await expect(win.locator(".library-screen .track-table__row").first()).toBeVisible({ timeout: 30_000 });
+        await settled(win);
         expect(await fractionalEdges(win), `Library: borders and shadows at ${edgeScale}×`).toEqual([]);
         await win.getByRole("link", { name: "Settings" }).click();
         await expect(win.getByLabel("Size of text and controls")).toBeVisible({ timeout: 30_000 });
+        await settled(win);
         expect(await fractionalEdges(win), `Settings: borders and shadows at ${edgeScale}×`).toEqual([]);
       }
 
@@ -204,6 +222,7 @@ test.describe("the sizes (PAGES-14)", () => {
             } else {
               await expect(win.getByLabel("Size of text and controls")).toBeVisible({ timeout: 30_000 });
             }
+            await settled(win);
             const spill = await win.evaluate(() => {
               const screen = [...document.querySelectorAll<HTMLElement>("main.app-main .screen")].find((el) => el.getClientRects().length > 0)!;
               return Math.max(
