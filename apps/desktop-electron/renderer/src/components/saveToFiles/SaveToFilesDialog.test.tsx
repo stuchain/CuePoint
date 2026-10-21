@@ -7,7 +7,7 @@
  * the ticked options; and a write that started can always be restored.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { LIBRARY_CHANGED_EVENT } from "../../api/libraryChanges";
@@ -279,9 +279,10 @@ describe("the footer total", () => {
     open();
     await ready();
     bridge.countTagPreview.mockClear();
-    await userEvent.click(screen.getByRole("checkbox", { name: "Year" }));
-    await userEvent.click(screen.getByRole("checkbox", { name: "BPM" }));
-    await userEvent.click(screen.getByRole("checkbox", { name: "Keep values already in the files" }));
+    // One burst: three clicks with no wait between them, however slow the machine.
+    fireEvent.click(screen.getByRole("checkbox", { name: "Year" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "BPM" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Keep values already in the files" }));
     await waitFor(() => expect(bridge.countTagPreview).toHaveBeenCalled());
     await new Promise((resolve) => setTimeout(resolve, 300));
     expect(bridge.countTagPreview).toHaveBeenCalledTimes(1);

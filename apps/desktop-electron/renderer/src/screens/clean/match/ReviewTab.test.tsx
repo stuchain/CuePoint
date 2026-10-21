@@ -330,7 +330,8 @@ describe("ticking", () => {
     renderTab();
     await loaded();
     const header = screen.getByRole("checkbox", { name: "Tick every track with a match" }) as HTMLInputElement;
-    expect(header.indeterminate).toBe(true);
+    // Half ticked is set in an effect React may run after the table shows.
+    await waitFor(() => expect(header.indeterminate).toBe(true));
     expect(header.checked).toBe(false);
     await userEvent.click(header);
     expect(bridge.setMatchTicks).toHaveBeenCalledWith({ ticked: true, scope: { playlist_id: 7 } });
