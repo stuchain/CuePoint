@@ -13,7 +13,8 @@
   --border-muted: #526a84;
   /* Table rows: a quieter line than the frames (C93). */
   --row-divider: #2e4360;
-  --hover-fill: #3a5577;
+  /* Muted text on it keeps 4.5:1 (answer 4, P67): one step darker than #3a5577, still 1.3:1 above a panel. */
+  --hover-fill: #324c6b;
   --border-control: #98c1d9;
   --tab-underline-color: #b673f0;
   --bevel-highlight: #98c1d9;

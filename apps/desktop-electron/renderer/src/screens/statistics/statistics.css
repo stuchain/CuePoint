@@ -381,8 +381,10 @@
   gap: var(--space-sm);
 }
 
+/* P65: an 8px square (--space-md) with no line; the colour is the whole mark. */
 .stacked__swatch {
   display: inline-block;
+  border: 0;
   width: var(--space-md);
   height: var(--space-md);
 }

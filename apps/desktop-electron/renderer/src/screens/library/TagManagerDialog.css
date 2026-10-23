@@ -47,8 +47,9 @@
 
 .cp-tag-manager__swatch {
   flex: 0 0 auto;
-  width: calc(8px * var(--scale));
-  height: calc(8px * var(--scale));
+  /* P65: one 8px square, no line; the colour is the whole mark. */
+  width: var(--space-md);
+  height: var(--space-md);
   border: 0;
 }
 

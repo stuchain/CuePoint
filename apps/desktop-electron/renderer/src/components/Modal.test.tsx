@@ -317,7 +317,8 @@ describe("the title", () => {
   });
 
   it("sets its body size, draws no line under the title or above the buttons (P11) and keeps no focus ring on the frame (T1, T2, T16)", () => {
-    expect(css).toMatch(/\.cp-modal__body\s*\{[^}]*font-size:\s*var\(--text-body\)/);
+    // P66: the dialog body is Inter at the control size (was --text-body).
+    expect(css).toMatch(/\.cp-modal__body\s*\{[^}]*font-size:\s*var\(--control-font-size\)/);
     expect(css).toMatch(/\.cp-modal:focus\s*\{[^}]*outline:\s*none/);
     expect(css).not.toMatch(/--border-width/);
     // P11: the header and the footer sit on the dialog's surface, no line either side of the body.
@@ -525,8 +526,9 @@ describe("Enter submits (C111)", () => {
 
 describe("Modal body look (C110, C67, C125, C121)", () => {
   const flat = css.replace(/\/\*[\s\S]*?\*\//g, "");
-  it("stacks the body 12 apart in prose line height, with a muted lead and no dead summary rule", () => {
-    expect(flat).toMatch(/\.cp-modal__body \{[^}]*display:\s*flex[^}]*flex-direction:\s*column[^}]*gap:\s*var\(--space-lg\)/);
+  // P66: sections are 16 apart (was 12); the footer carries 12 of padding above the buttons.
+  it("stacks the body 16 apart in prose line height, with a muted lead and no dead summary rule", () => {
+    expect(flat).toMatch(/\.cp-modal__body \{[^}]*display:\s*flex[^}]*flex-direction:\s*column[^}]*gap:\s*var\(--space-xl\)/);
     expect(flat).toMatch(/\.cp-modal__body \{[^}]*line-height:\s*var\(--line-height-prose\)/);
     expect(flat).toMatch(/\.cp-modal__lead \{[^}]*color:\s*var\(--fg-muted\)/);
     expect(flat).not.toMatch(/cp-modal__summary/);

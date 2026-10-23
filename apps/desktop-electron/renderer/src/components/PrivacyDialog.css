@@ -1,8 +1,9 @@
-/* Headings and short sentences. The Modal body puts the blocks 12 apart; inside a group they are 8. */
+/* Headings and short sentences. The Modal body sets the rhythm (P66): the blocks are 16 apart, and
+   this root takes the body's gap rather than its own; inside a group they are 8. */
 .privacy-dialog {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: inherit;
 }
 
 .privacy-dialog__group {

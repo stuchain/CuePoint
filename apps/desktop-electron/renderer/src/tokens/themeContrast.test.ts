@@ -113,6 +113,14 @@ describe.each([...BUILT_IN, ...CUSTOM])("contrast floors in %s", (name, t) => {
     }
   });
 
+  // Answer 4 (P67): Retro's hover fill was one step too light for muted text (3.99:1 while hovered); it is
+  // lifted one step so plain muted text keeps 4.5:1 on it. The other themes read muted text as
+  // --fg-muted-on-slab on their fills (tested below).
+  it("keeps muted text at 4.5:1 on Retro's hover fill", () => {
+    if (name !== "retro16") return;
+    expect(contrastRatio(t["fg-muted"]!, t["hover-fill"]!)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("puts the toolbar between the page and the panel (C94)", () => {
     if (!builtIn) return;
     const lum = (hex: string) => contrastRatio(hex, "#000000");
