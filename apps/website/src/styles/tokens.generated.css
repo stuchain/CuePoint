@@ -32,8 +32,10 @@
   --shadow-inset-deep: inset var(--bevel-size) var(--bevel-size) 0 rgba(0, 0, 0, 0.35);
   --control-border-width: var(--hairline);
   --control-height: 1.5625rem;
-  --control-font-size: var(--font-size-xs);
-  --control-font-weight: var(--font-weight-regular);
+  --font-control: var(--font-data);
+  --font-voice: var(--font-pixel-digits);
+  --control-font-size: 0.875rem;
+  --control-font-weight: var(--font-weight-medium);
   --hover-shade: color-mix(in srgb, var(--fg-primary) 14%, transparent);
   --press-shade: color-mix(in srgb, var(--bevel-shadow) 40%, transparent);
   --hover-border: var(--fg-muted);
@@ -84,7 +86,8 @@
   --font-size-page: var(--font-size-xl);
   --font-size-dialog: var(--font-size-lg);
   --font-size-section: var(--font-size-md);
-  --font-size-label: var(--font-size-xs);
+  --font-size-label: 0.8125rem;
+  --font-size-chip: var(--font-size-label);
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
