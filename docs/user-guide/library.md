@@ -190,7 +190,9 @@ The colors follow the Camelot wheel, one hue for each number, deeper for A and
 lighter for B, as in Mixed In Key; point at a chip for the key's name ("A
 minor"). The same chips are in Keys, Discover, Clean and Prepare. **Settings →
 Appearance → Tables → Color keys** (on to start with) turns them back into
-plain text. Rekordbox's key is never
+plain text, and **Keys written as** (Camelot, Musical or Both) changes the
+words on the chips ("8A", "Am" or "8A · Am") everywhere, the player bar's key
+included; files and exports keep their own notation. Rekordbox's key is never
 used, so a track with no confirmed match shows "—" in the Key column (point at
 the heading: *Keys come from Beatport matches*), and every
 key filter, count, check and export leaves it out. After a fresh import no track

@@ -28,7 +28,8 @@ as they are replaced.
 ## Terms
 
 - **Rekordbox file**: The `rekordbox.xml` you import: a file Rekordbox saved with its tracks and playlists.
-- **Key**: A track's musical key, shown in Camelot ("8A") with its name ("A
+- **Key**: A track's musical key, written in the notation chosen in Settings
+  (Camelot, "8A", by default; or Musical, "Am", or Both) with its name ("A
   minor") in Track details. It is the key you typed, or else the key of the
   track's confirmed Beatport match. Rekordbox's key is never used; a track with
   neither shows "—".

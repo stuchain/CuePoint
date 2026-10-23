@@ -29,7 +29,7 @@ narrows the table at once.
 ## Reading the counts
 
 - **The wheel.** The 24 keys as two rings, minor (A) inside and major (B)
-  outside, each with its track count written on it. With **Color keys** on, each key is drawn in its Camelot color, brighter
+  outside, each with its track count written on it. The key names follow **Keys written as** in Settings: the code ("8A") by default, the musical name ("Am") in **Musical**, and the code with a small musical name under it in **Both**; the middle of the popover's wheel does the same. With **Color keys** on, each key is drawn in its Camelot color, brighter
   the more tracks it holds (with it off, the wheel is violet, darker for more tracks). Each key's name, such as "8A, A minor, 12 tracks", includes
   its count, for a screen reader.
 - **The list.** The same counts in Camelot order (1A, 1B, 2A, and so on), with a

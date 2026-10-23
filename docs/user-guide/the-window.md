@@ -396,9 +396,12 @@ Medium if you never chose one.
 **Tables** holds two more choices. **Row density** is **Compact (26 px)** (the default) or
 **Roomy (32 px)**, at the default size: rows are as tall as the text size times the density, so a Compact
 Library shows many more tracks than before. **Color keys** (on) draws each key
-as a chip in its Camelot color; off, keys are plain text.
+as a chip in its Camelot color; off, keys are plain text. **Keys written as** is
+**Camelot (8A)** (the default), **Musical (Am)** or **Both (8A · Am)**: it changes how a key is
+written everywhere it is shown (tables, the wheel, the player bar, Prepare and Statistics) and
+nothing else, so files and exports keep their own notation and a chip keeps its Camelot color.
 
-**Reset appearance** sets Neo dark at the default size, Compact rows and colored keys at once, and the
+**Reset appearance** sets Neo dark at the default size, Compact rows, colored keys and Camelot keys at once, and the
 message that follows has **Undo**. Your custom themes are kept.
 
 ## Privacy and error reports

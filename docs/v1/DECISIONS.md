@@ -8289,3 +8289,106 @@ canvases blank. On the user's PC (144 Hz) the page and menus showed the same.
   stepped sample for every kind.
 
 **Decided with**: User (option A of the smoothness findings) · **Date**: 2026-10-20
+
+---
+
+## DEC-299 — UI Cohesion Pass: Tone, Type Roles and One Chrome (P1–P67; Amends DEC-297, DEC-298 Unchanged)
+
+**Status**: Accepted · **Related**: DEC-297, DEC-298, `changes/cohesion/COHESION.md`, `changes/cohesion/BUILD-SCOPE.md`
+
+**Context**: After the consistency audit (DEC-297) every page was correct but still read as a set of
+framed boxes: each panel, field, chip and menu had its own outline, the pixel face was on every
+control, and a bar, a popover and a dialog each had a slightly different chrome. A review of every
+screen produced 67 proposals (P1 to P67) in five rounds. The owner picked the recommended option
+(A) of every one, and "go with all recommended" for the open questions of the build plan.
+
+**Decision**:
+- **Tone instead of outlines (P1).** Three tones: the page, a raised panel and a sunken input.
+  A line is kept only where two equal tones meet: the page header, the sidebar's edge and the table
+  header. Panels, pane heads, Settings sections (no cards), chips, notices and dialogs lose their
+  frames.
+- **Type roles (P2, P47).** The pixel face is the voice: titles, navigation, headings, the Keys and
+  release-notes headings. Inter is the work: buttons, tabs, fields, hints, notice titles, chips,
+  headers, key chips and wheel labels. The type ladder has named sizes (page 22, dialog 16,
+  section 14, control 11, chip, label 10.5).
+- **Quiet controls (P3, P22, P35 to P38).** Toolbar buttons are transparent until hovered or
+  pressed and keep their words; icons use one colour; chevrons, links and the disabled look share
+  one rule (a disabled primary is a colour mix, never opacity).
+- **One chrome for floating things (P11, P12, P16, P55, P61 to P63, P66).** One popover shadow and
+  one dialog shadow (menus, filter lists, the wheel popover, hint tips, toasts, dialogs), one dialog
+  rhythm (16 / 4 / 8 / 12), sunken list areas, one notice, quiet close buttons.
+- **One of each control (P28 to P34, P48 to P54, P64, P65).** One row hover and one selected look; one
+  checkbox (14 px), a round radio, one chip box (18 px), one text field, one select, one search
+  field, one bar height (32), one filter chip, one play ring (18 px), one cover frame, frameless
+  swatches, one focus ring (2 px, inside on rows and menu items).
+- **Pages (P4, P7 to P9, P13 to P15, P17, P18, P20, P21, P23 to P27, P39 to P46, P56 to P60).** The
+  player bar, Keys (three panes sharing top and bottom), Prepare (one-pane side panel, lanes, chapter
+  bands), Settings, Track details (one quiet column), New dig, Discover, Statistics, Health and
+  Clean's Match step are recomposed from those parts; sliders are drawn, resize handles are 8 px,
+  charts use one ink, empty and loading states share one look.
+- **Themes carry the rules (P67).** Themes change colour only; Retro 16-bit's hover fill is lifted
+  one step so muted text keeps 4.5:1.
+- **New `:root` tokens:** `--status-dot`, `--shadow-raised`, `--shadow-popover`, `--shadow-sticky`,
+  `--font-size-figure`, `--font-control`, `--font-voice`, `--font-size-chip`, `--check-size`,
+  `--border-disabled`, and the page and dialog title sizes.
+- **Answers to the open questions** (23 Oct 2026): page title 22 and dialog title 16; keep the lines P1
+  names (page header, sidebar edge, table header) and remove frames only; Prepare's source sub-tabs
+  stay as they are; Retro's hover fill is lifted one step; one status dot per panel, on the first
+  line only; the sticky header shadow is always on; every `.cp-toolbar` is transparent; the
+  website stills are re-rendered at every push.
+- **Amends DEC-297:** D5 (pixel buttons, tabs and chips become Inter; full sentences stay Inter);
+  **D6 (the radio is round with a round dot, not a square with a square)**; **D9 (the bar above a
+  list is no longer a dark band: every `.cp-toolbar` is transparent, its buttons quiet)**; and DEC-297's
+  C16a (no popover shadows) and C16c (the player bar): popovers and dialogs now carry one shadow, and
+  the player bar keeps its size and shape but takes new chrome colours (hairline top, violet Play
+  only, a quiet right cluster).
+- Not changed: spacing ladder, button colour roles, 26 px rows, chip tints, glossary words, any
+  behaviour, the engine, Electron main and the preload.
+
+**Implications**:
+- Guard tests moved with a P id in the comment (never deleted): themeContrast, chromeLook,
+  libraryLines, trackTablePinned, scrollbars, Badge, Notice, Modal, playerBarLook, Button, focusRing,
+  disabledLook, sharedStyles and others. E2E measures moved the same way (`scrollbarProbe.ts`,
+  `playerBar.spec.ts`, `keys.spec.ts`, `visiblePlaces.spec.ts`).
+- The type changes widen text (Inter 11 medium against pixel 10): the Library filter row, Prepare's
+  source toolbar and the player's meta line are checked at 1024 px wide and 1.5x text size.
+- The website's synced tokens and stills are re-rendered with every push that changes a `:root`
+  rule.
+
+**Decided with**: User (P1 to P67, all recommended; open questions: "go with all recommended") · **Date**: 2026-10-23
+
+---
+
+## DEC-300 — Key Notation Is a Display Setting (Amends R4-2)
+
+**Status**: Accepted · **Related**: R4-2, DEC-201, DEC-299, `changes/cohesion/COHESION.md` (K1 to K3)
+
+**Context**: R4-2 drew every key as its Camelot code ("8A", never "Am"). DJs who think in note names
+asked for the other writing. The renderer already holds the 24 names (`camelot.ts`) and reads any
+notation (`camelotOf`), so no engine change is needed.
+
+**Decision**:
+- **K1** Settings › Appearance › Tables has a select **Keys written as**, after Color keys, with one
+  hint: "Everywhere a key is shown: tables, the wheel, the player, Prepare and Statistics. Files and
+  exports keep their own notation."
+- **K2** The choices are **Camelot (8A)** (the default), **Musical (Am)** (A♭m, F♯: minor gets an "m",
+  major is plain) and **Both (8A · Am)** (code, a middle dot, the name).
+- **K3** The Camelot wheel follows: Musical labels each wedge and the middle with the name; Both
+  writes the code with the name at 80% of its size under it. A chip keeps its Camelot colour in
+  every mode, and the long name ("A minor") stays in hints and screen-reader names.
+- Stored as `cuepoint-key-notation` (like Row density), read through `useKeyNotation()`, written on
+  the page as `data-key-notation` when not Camelot. Reset appearance puts it back to Camelot and its
+  Undo restores the choice.
+- **Display only.** Files, exports, Rekordbox, Beatport matching and the Library's key filter
+  values keep their own notation. The engine's `format_key` and `key_notation_of`
+  (`src/cuepoint/services/override_values.py`) are not used: the setting is renderer-only. No Python,
+  Electron main, preload or API changes.
+
+**Implications**:
+- `KeyChip` is the single place a chip is written; it, `WheelButton`, `CamelotWheel`, the wheel
+  popover's caption and the Library's Key quick filter read the one store (a
+  `useSyncExternalStore` subscription, cheap beside the virtualised tables).
+- Chips are wider in Musical and Both; the Keys counts list widens its chip column in Both. The
+  glossary's "Key" entry now says "the notation chosen in Settings (Camelot by default)".
+
+**Decided with**: User (K1 to K3, option A each) · **Date**: 2026-10-23
