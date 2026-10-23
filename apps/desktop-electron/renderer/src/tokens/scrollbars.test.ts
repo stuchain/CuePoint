@@ -66,6 +66,19 @@ describe("themed scrollbar", () => {
     }
   });
 
+  // P5: thin, always visible, no track fill; the thumb is the muted line colour and lights on hover.
+  it("draws a 6px bar on a transparent track with a muted thumb (P5)", () => {
+    const root = decls(":root");
+    expect(root["--scrollbar-size"]).toBe("calc(6px * var(--scale))");
+    expect(root["--scrollbar-inset"]).toBe("var(--hairline)");
+    expect(root["--scrollbar-track"]).toBe("transparent");
+    expect(decls("*::-webkit-scrollbar-track").background).toBe("var(--scrollbar-track)");
+    expect(decls("*::-webkit-scrollbar-corner").background).toBe("var(--scrollbar-track)");
+    expect(decls("*::-webkit-scrollbar-thumb").background).toBe("var(--border-muted)");
+    expect(decls("*::-webkit-scrollbar-thumb:hover").background).toBe("var(--border-control)");
+    expect(decls("*::-webkit-scrollbar-thumb:active").background).toBe("var(--accent-primary)");
+  });
+
   it("hides the arrow buttons and keeps the thumb grabbable", () => {
     expect(decls("*::-webkit-scrollbar-button").display).toBe("none");
     expect(decls("*::-webkit-scrollbar-thumb")["min-height"]).toContain("var(--scale)");

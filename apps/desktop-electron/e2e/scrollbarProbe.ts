@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 
 /**
- * The themed scrollbar (tokens/scrollbars.css) on one scroll container, and whether the page
+ * The themed scrollbar (tokens/scrollbars.css: 6 wide, a transparent track, an --border-muted thumb; P5) on one scroll container, and whether the page
  * itself scrolls. With `scale`, the interface is set to that scale for the probe and put back,
  * which grows a panel that fits at 1x until it overflows, so its bar width can be asserted.
  *
@@ -35,15 +35,15 @@ export async function probeScrollbar(page: Page, selector: string, options: { sc
         pageScrolls: doc.scrollHeight !== doc.clientHeight,
         thumb: getComputedStyle(el, "::-webkit-scrollbar-thumb").backgroundColor,
         track: getComputedStyle(el, "::-webkit-scrollbar-track").backgroundColor,
-        expectedThumb: resolve("--border-highlight"),
-        expectedTrack: resolve("--bg-toolbar"),
+        expectedThumb: resolve("--border-muted"),
+        expectedTrack: resolve("--scrollbar-track"),
         scrollbarColor: style.scrollbarColor,
         scrollbarWidth: style.scrollbarWidth,
         // The bar's own width: the rule's colours read back even when Chromium draws its
         // standard bar instead, but its width does not.
         barWidth:
           (el as HTMLElement).offsetWidth - el.clientWidth - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth),
-        expectedWidth: 8 * parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--scale")),
+        expectedWidth: 6 * parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--scale")),
       };
     });
   } finally {

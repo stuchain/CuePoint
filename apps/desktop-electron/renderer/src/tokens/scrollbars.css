@@ -6,30 +6,32 @@
  * `scrollbar-width` (scrollbar-color is inherited), so no stylesheet may set either; the one
  * exception is `scrollbar-width: none`, which hides a bar (scrollbars.test.ts holds this).
  *
- * Colours are theme tokens, so built-in and custom themes are covered. The thumb is the border
- * highlight on the toolbar track: 1.8:1 or more in every built-in theme.
+ * Colours are theme tokens, so built-in and custom themes are covered. The bar is thin and always
+ * visible (P5): a transparent track and a thumb in the muted line colour, the control line on hover.
  */
 :root {
   /* Square, like the buttons; "0" is the pixel look, a number of pixels would round the thumb. */
   --scrollbar-radius: 0;
-  /* 12px at the default 1.5x. Wider costs the Library its fourth whole row at 1280x773 (DEC-112). */
-  --scrollbar-size: calc(8px * var(--scale));
+  /* 9px at the default 1.5x (P5). Wider costs the Library its fourth whole row at 1280x773 (DEC-112). */
+  --scrollbar-size: calc(6px * var(--scale));
   /* The transparent edge that makes the thumb narrower than its track. */
-  --scrollbar-inset: calc(2px * var(--scale));
+  --scrollbar-inset: var(--hairline);
+  /* No track fill: the thumb floats on whatever surface scrolls (a token, so the guard reads a var()). */
+  --scrollbar-track: transparent;
 }
 
 *::-webkit-scrollbar {
   width: var(--scrollbar-size);
   height: var(--scrollbar-size);
-  background: var(--bg-toolbar);
+  background: var(--scrollbar-track);
 }
 
 *::-webkit-scrollbar-track {
-  background: var(--bg-toolbar);
+  background: var(--scrollbar-track);
 }
 
 *::-webkit-scrollbar-thumb {
-  background: var(--border-highlight);
+  background: var(--border-muted);
   border: var(--scrollbar-inset) solid transparent;
   background-clip: padding-box;
   border-radius: var(--scrollbar-radius);
@@ -38,7 +40,7 @@
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--border-light);
+  background: var(--border-control);
   background-clip: padding-box;
 }
 
@@ -52,5 +54,5 @@
 }
 
 *::-webkit-scrollbar-corner {
-  background: var(--bg-toolbar);
+  background: var(--scrollbar-track);
 }

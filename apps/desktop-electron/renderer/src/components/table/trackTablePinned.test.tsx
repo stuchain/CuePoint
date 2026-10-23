@@ -72,7 +72,8 @@ describe("a pinned cell's row line (new G)", () => {
     const sticky = rules.find((rule) => rule.selector === ".track-table__cell--sticky" && rule.context === "")!;
     const row = rules.find((rule) => rule.selector === ".track-table__row" && rule.context === "")!;
     const line = new Map(declarations(row.body)).get("box-shadow");
-    expect(line).toBe("inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-divider, var(--border-muted))");
+    // P5: the row line is the one --row-line token (the theme's row divider mixed towards the rows).
+    expect(line).toBe("inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-line)");
     expect(new Map(declarations(sticky.body)).get("box-shadow")).toBe(line);
   });
 });
