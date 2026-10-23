@@ -32,7 +32,8 @@ describe("type roles (T1, N2)", () => {
   });
   it("gives both empty states the body role", () => {
     expect(rule(inspector, ".cp-inspector__empty")).toContain("font-size: var(--text-body);");
-    expect(rule(emptyState, ".cp-empty-state__description")).toContain("font-size: var(--text-body);");
+    // P41: the empty state's sentence is the control size (11), muted; the Inspector's stays the body role.
+    expect(rule(emptyState, ".cp-empty-state__description")).toContain("font-size: var(--control-font-size);");
   });
 });
 

@@ -18,7 +18,7 @@
      shrink to the room right of it, and change as the tip is pulled in. */
   width: max-content;
   max-width: min(calc(360px * var(--scale)), calc(100vw - 8px));
-  padding: var(--space-xs) var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
   background: var(--bg-panel);
   border: var(--popover-border);
   box-shadow: var(--shadow-popover);
@@ -26,7 +26,8 @@
   /* Not inherited: inside the player's meta line that would be the data font. */
   font-family: var(--font-control);
   font-size: var(--control-font-size);
-  font-weight: var(--control-font-weight);
+  /* P39: the hint's sentence is regular weight; the control weight is for what you press. */
+  font-weight: var(--font-weight-regular);
   line-height: var(--line-height-body);
   white-space: normal;
   pointer-events: none;

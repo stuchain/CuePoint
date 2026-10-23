@@ -1,8 +1,12 @@
 .cp-loading {
   display: flex;
   align-items: center;
+  gap: var(--space-sm);
+  /* P44: centred in whatever is loading; the spinner stays. */
+  justify-content: center;
   color: var(--fg-muted);
-  font-size: var(--font-size-sm);
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
 }
 
 .cp-loading--centered {

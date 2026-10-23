@@ -9,6 +9,8 @@
   gap: var(--space-xs);
   padding-bottom: var(--space-md);
   border-bottom: var(--divider);
+  /* Content slides under the sticky header (P40): always on. */
+  box-shadow: var(--shadow-sticky);
   /* Divider to the first content: 12, for every page. */
   margin-bottom: var(--space-lg);
   background: var(--bg-app);

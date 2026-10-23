@@ -53,6 +53,7 @@
   z-index: 3;
   background: var(--bg-panel);
   border-bottom: var(--divider);
+  box-shadow: var(--shadow-sticky);
 }
 
 .track-table__header-cell-wrap {
@@ -188,6 +189,15 @@
 .track-table__sort {
   flex-shrink: 0;
   font-size: var(--font-size-xs);
+  color: var(--fg-muted);
+}
+
+/* The sorted column's heading, and the one under the pointer, are in the text colour; the arrow stays
+   a small muted mark (P43). aria-sort sits on the wrap (role columnheader). */
+.track-table__header-cell-wrap:is([aria-sort="ascending"], [aria-sort="descending"])
+  .track-table__header-cell:not(.track-table__header-cell--plain),
+.track-table__header-cell-wrap:hover .track-table__header-cell:not(.track-table__header-cell--plain):not(:disabled) {
+  color: var(--fg-primary);
 }
 
 .track-table__col-resizer {
@@ -518,8 +528,13 @@ body.track-table--resizing .track-table__row:hover:not(.track-table__row--select
   transform: translateY(-50%);
   z-index: 3;
   display: inline-flex;
-  color: var(--fg-muted);
+  /* P42: never hidden; 60% of muted at rest, full muted when the row is under the pointer. */
+  color: color-mix(in srgb, var(--fg-muted) 60%, transparent);
   pointer-events: none;
+}
+
+.track-table__row:hover .track-table__grip {
+  color: var(--fg-muted);
 }
 
 .track-table__row--grip > .track-table__cell:first-of-type {

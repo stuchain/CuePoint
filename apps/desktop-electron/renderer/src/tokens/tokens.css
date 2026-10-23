@@ -189,6 +189,9 @@
   /* One checkbox and radio box (P29): 14 at 1x. */
   /* A disabled control keeps its shape in a faint line (P38): the control line at 60%, never opacity. */
   --border-disabled: color-mix(in srgb, var(--border-control) 60%, transparent);
+  /* A sticky header over scrolling content (P40): a hairline in the row line, then a soft shadow
+     below that shows the rows sliding under it. Always on (open question 6). */
+  --shadow-sticky: 0 var(--hairline) 0 var(--row-line), 0 round(nearest, calc(6px * var(--scale)), 1px) round(nearest, calc(10px * var(--scale)), 1px) round(nearest, calc(-6px * var(--scale)), 1px) rgba(0, 0, 0, 0.6);
   --check-size: round(nearest, calc(14px * var(--scale)), 1px);
   --icon-size-sm: max(12px, round(down, calc(12px * var(--scale)), 12px));
   --icon-size-md: max(12px, round(down, calc(16px * var(--scale)), 12px));

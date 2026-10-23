@@ -19,7 +19,10 @@
   padding: 0 var(--space-lg) var(--space-xs);
   background: var(--bg-toolbar);
   border-top: var(--divider);
-  font-size: var(--font-size-xs);
+  /* P45: Inter at the label size, muted; the engine word alone takes a status colour. */
+  color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-size: var(--font-size-label);
   white-space: nowrap;
   overflow: hidden;
 }

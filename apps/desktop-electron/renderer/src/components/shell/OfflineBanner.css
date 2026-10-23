@@ -1,8 +1,8 @@
 /**
  * The offline banner, one row above the page (not above the sidebar or Inspector).
  *
- * A plain notice: the toolbar surface with a danger edge, so it reads as a
- * problem without being a filled block. Theme tokens only.
+ * A notice (P45): a danger bar over a faint danger tint, no framed row, so it reads as a problem
+ * without being a filled block. Theme tokens only.
  */
 .cp-offline {
   display: flex;
@@ -10,11 +10,12 @@
   justify-content: space-between;
   gap: var(--space-md);
   padding: var(--space-sm) var(--space-md);
-  background: var(--bg-toolbar);
-  border-bottom: var(--divider);
-  border-left: var(--tab-underline) solid var(--accent-danger);
+  background: color-mix(in srgb, var(--accent-danger) var(--notice-fill-mix), var(--bg-panel));
+  border: 0;
+  border-left: var(--notice-bar-width) solid var(--accent-danger);
   color: var(--fg-primary);
-  font-size: var(--font-size-sm);
+  font-family: var(--font-data);
+  font-size: var(--control-font-size);
 }
 
 .cp-offline__text {

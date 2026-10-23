@@ -173,8 +173,12 @@ body.cp-queue-resizing {
 .cp-queue__grip {
   flex: none;
   display: inline-flex;
-  color: var(--fg-muted);
+  color: color-mix(in srgb, var(--fg-muted) 60%, transparent);
   pointer-events: none;
+}
+
+.cp-queue__row:hover .cp-queue__grip {
+  color: var(--fg-muted);
 }
 
 .cp-queue__position,
