@@ -241,6 +241,11 @@
   background: var(--row-hover);
 }
 
+/* Never both a ring and a hover (P64): the keyboard's row draws the ring and keeps its own fill. */
+.track-table__row--cursor:not(.track-table__row--selected):hover {
+  background: none;
+}
+
 /* Selected (C4): a lighter fill and a thin accent bar on the left. The :hover pair is there
    because the hover rule above has the same weight and would otherwise win. */
 .track-table__row--selected,
@@ -396,6 +401,10 @@
 
 .track-table__row:hover .track-table__end {
   background: var(--row-hover);
+}
+
+.track-table__row--cursor:not(.track-table__row--selected):hover .track-table__end {
+  background: var(--bg-input);
 }
 
 .track-table__row--selected .track-table__end,

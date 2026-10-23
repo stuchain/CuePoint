@@ -112,7 +112,7 @@
 }
 
 .cp-playlist-pane__row:hover {
-  background: color-mix(in srgb, var(--bg-input) 60%, var(--bg-panel));
+  background: var(--row-hover);
 }
 
 .cp-playlist-pane__row:focus-visible {

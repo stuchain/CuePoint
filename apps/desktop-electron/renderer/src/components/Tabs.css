@@ -23,6 +23,11 @@
   cursor: pointer;
 }
 
+/* A tab is clipped by the strip, so its ring is drawn inside it (P64). */
+.cp-tabs__tab:focus-visible {
+  outline-offset: var(--focus-ring-offset-inset);
+}
+
 .cp-tabs__tab:hover:not(:disabled) {
   color: var(--fg-primary);
   background: var(--hover-fill);

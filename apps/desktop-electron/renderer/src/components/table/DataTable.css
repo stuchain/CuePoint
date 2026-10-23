@@ -80,8 +80,7 @@
  * on the `<ol>`, `cp-data-grid__item` on each `<li>` and `cp-data-grid__row` on the row's button; the
  * page names its columns once, in `--cp-data-grid-columns`, on the heading and on the row.
  *
- * The lists sit inside a card, which is already the `--bg-panel` colour that `--row-hover` is, so a
- * row there lights with `--hover-fill` instead.
+ * The lists sit inside a card; a row there lights with `--row-hover` like every other list (P28).
  */
 .cp-data-grid__head,
 .cp-data-grid__row {
@@ -123,7 +122,7 @@
 }
 
 .cp-data-grid__item:hover {
-  background: var(--hover-fill);
+  background: var(--row-hover);
 }
 
 .cp-data-grid__row {

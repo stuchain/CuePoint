@@ -183,12 +183,16 @@
 
   /* Pixel icons come in three sizes only (12 / 16 / 24 times the text size), each rounded down on
      its own to a multiple of the 12-unit grid so no art pixel is fractional (C136). */
+  /* One checkbox and radio box (P29): 14 at 1x. */
+  --check-size: round(nearest, calc(14px * var(--scale)), 1px);
   --icon-size-sm: max(12px, round(down, calc(12px * var(--scale)), 12px));
   --icon-size-md: max(12px, round(down, calc(16px * var(--scale)), 12px));
   --icon-size-lg: max(12px, round(down, calc(24px * var(--scale)), 12px));
 
-  /* One focus ring for every focusable control: violet, a square 2px line, the same offset. */
-  --focus-ring-offset: var(--focus-ring-width);
+  /* One focus ring for every focusable control: violet, a square 2px line, the same offset. The
+     ring sits flush on the control's edge (P64); an item inside a list or a pane uses the inset
+     offset, so its ring is never clipped by the pane. */
+  --focus-ring-offset: 0px;
   --focus-ring-offset-inset: calc(-1 * var(--focus-ring-width));
 
   /*
@@ -218,7 +222,7 @@
    * row hover (R3-14), reading measure (C214), tree indent (C40), box gap (C32), resizer hover
    * (C149), the inset of a row's end control (C84), the search field's width (C223).
    */
-  --row-hover: var(--bg-panel);
+  --row-hover: var(--hover-fill);
   --reading-width: 60ch;
   --tree-indent: calc(12px * var(--scale));
   --gap-box: var(--space-xl);

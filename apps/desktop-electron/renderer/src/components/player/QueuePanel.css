@@ -133,7 +133,7 @@ body.cp-queue-resizing {
 }
 
 .cp-queue__row:hover {
-  background: var(--hover-fill);
+  background: var(--row-hover);
 }
 
 .cp-queue__row:focus-visible {

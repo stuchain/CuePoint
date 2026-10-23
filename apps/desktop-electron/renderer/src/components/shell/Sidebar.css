@@ -279,7 +279,7 @@
 
 .cp-sidebar__link:hover {
   color: var(--fg-primary);
-  background: var(--hover-fill);
+  background: var(--row-hover);
 }
 
 .cp-sidebar__link--active,

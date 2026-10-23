@@ -28,18 +28,24 @@ describe("checkbox and radio marks", () => {
     expect(box).toMatch(/place-items:\s*center/);
   });
 
-  it("sizes the tick as a share of that track and the radio square as a whole-pixel 7px * scale (D6)", () => {
-    expect(ruleBody(':where(input[type="checkbox"])::before')).toMatch(/width:\s*100%[\s\S]*height:\s*100%/);
-    const square = ruleBody(':where(input[type="radio"])::before');
-    expect(square).toMatch(/width:\s*round\(nearest,\s*calc\(7px \* var\(--scale\)\),\s*1px\)/);
-    expect(square).toMatch(/height:\s*round\(nearest,\s*calc\(7px \* var\(--scale\)\),\s*1px\)/);
+  // P29: the box is one --check-size (14 at 1x), the tick is 60% of it and the radio dot is a round 50%
+  // (this amends D6's 7px square dot).
+  it("sizes the box as --check-size, the tick at 60% of the track and the radio dot round at 50% (P29)", () => {
+    expect(box).toMatch(/width:\s*var\(--check-size\)/);
+    expect(box).toMatch(/height:\s*var\(--check-size\)/);
+    expect(ruleBody(':where(input[type="checkbox"])::before')).toMatch(/width:\s*60%[\s\S]*height:\s*60%/);
+    const dot = ruleBody(':where(input[type="radio"])::before');
+    expect(dot).toMatch(/width:\s*50%/);
+    expect(dot).toMatch(/height:\s*50%/);
+    expect(dot).toMatch(/border-radius:\s*50%/);
+    expect(ruleBody(':where(input[type="radio"])')).toMatch(/border-radius:\s*50%/);
   });
 
-  it("draws a selected radio as an --accent-primary square in a 1px --accent-primary box, and an unselected one in --border-control", () => {
+  it("draws a selected radio as an --accent-primary dot in a 1px --accent-primary ring, and an unselected one in --border-control", () => {
     const checked = ruleBody(':where(input[type="radio"]):checked');
     expect(checked).toMatch(/color:\s*var\(--accent-primary\)/);
     expect(checked).toMatch(/border-color:\s*var\(--accent-primary\)/);
-    expect(box).toMatch(/border:\s*var\(--control-border-width\)\s+solid\s+var\(--border-control\)/);
+    expect(box).toMatch(/border:\s*var\(--hairline\)\s+solid\s+var\(--border-control\)/);
   });
 });
 

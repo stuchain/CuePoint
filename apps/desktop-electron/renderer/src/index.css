@@ -26,9 +26,9 @@ select {
 }
 
 /*
- * One square pixel checkbox and radio everywhere (area 80), not the browser's rounded, accent-
- * coloured control. A hairline box on the input colour; checked, the accent fill with a pixel
- * tick (a square for a radio, a dash for "some"). Hover is the one control hover (a firmer border
+ * One pixel checkbox and one round radio everywhere (area 80; P29), not the browser's accent-
+ * coloured control. A 14px hairline box on the input colour; checked, the accent fill with a pixel
+ * tick at 60% (a round dot at 50% for a radio, a dash for "some"). Hover is the one control hover (a firmer border
  * and a shade). A page may set a bigger width/height (a tick column, a card) or its own hit
  * area; the look follows the size. :where keeps all of it overridable.
  */
@@ -42,10 +42,10 @@ select {
   /* Explicit tracks, not auto ones: an auto track is as big as the (empty) content, so the
      mark's 100% / 40% would be a share of nothing and never draw. */
   grid-template: 100% / 100%;
-  width: var(--font-size-sm);
-  height: var(--font-size-sm);
+  width: var(--check-size);
+  height: var(--check-size);
   margin: 0;
-  border: var(--control-border-width) solid var(--border-control);
+  border: var(--hairline) solid var(--border-control);
   background: var(--bg-input);
   color: var(--fg-on-accent);
   vertical-align: middle;
@@ -59,8 +59,8 @@ select {
 }
 
 :where(input[type="checkbox"])::before {
-  width: 100%;
-  height: 100%;
+  width: 60%;
+  height: 60%;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='1 2 11 8' shape-rendering='crispEdges'%3E%3Cpath d='M10 2h2v1h-2zM9 3h2v1H9zM8 4h2v1H8zM1 5h2v1H1zM7 5h2v1H7zM1 6h2v1H1zM6 6h2v1H6zM2 7h2v1H2zM4 7h2v1H4zM3 8h4v1H3zM4 9h2v1H4z'/%3E%3C/svg%3E")
     center / contain no-repeat;
 }
@@ -82,8 +82,8 @@ select {
   background: var(--accent-fill);
 }
 
-/* A radio is not a smaller checkbox: checked, it keeps the empty box (a 1px --accent-primary
-   line) and puts a small --accent-primary square in the middle of it (a dot, in pixel terms),
+/* A radio is not a smaller checkbox: checked, it keeps the empty ring (a 1px --accent-primary
+   line) and puts a small round --accent-primary dot (half the box) in the middle of it (P29),
    where a checkbox fills in and draws the tick. Unselected, the box is --border-control (D6). */
 :where(input[type="radio"]):checked {
   border-color: var(--accent-primary);
@@ -91,9 +91,14 @@ select {
   color: var(--accent-primary);
 }
 
+:where(input[type="radio"]) {
+  border-radius: 50%;
+}
+
 :where(input[type="radio"])::before {
-  width: round(nearest, calc(7px * var(--scale)), 1px);
-  height: round(nearest, calc(7px * var(--scale)), 1px);
+  width: 50%;
+  height: 50%;
+  border-radius: 50%;
 }
 
 :where(input[type="checkbox"], input[type="radio"]):hover:not(:disabled) {

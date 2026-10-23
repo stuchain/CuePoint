@@ -79,4 +79,19 @@ describe("one focus ring (T16)", () => {
     const root = sheets["/src/index.css"] ?? "";
     expect(root).toMatch(/:where\(:focus-visible\)\s*\{[^}]*outline:\s*var\(--focus-ring-width\) solid var\(--focus-ring\)[^}]*outline-offset:\s*var\(--focus-ring-offset\)/);
   });
+
+  // P64: the ring sits flush on the control; items inside a pane or list draw it one width inside.
+  it("keeps the outside offset at 0 and the inset at minus one ring width (P64)", () => {
+    const tokens = sheets["/src/tokens/tokens.css"] ?? "";
+    expect(tokens).toMatch(/--focus-ring-offset:\s*0px;/);
+    expect(tokens).toMatch(/--focus-ring-offset-inset:\s*calc\(-1 \* var\(--focus-ring-width\)\)/);
+  });
+
+  // P28: one list hover, the --hover-fill step; never a hover under the keyboard's ring.
+  it("makes the one row hover --hover-fill and keeps it off the keyboard's row (P28, P64)", () => {
+    expect(sheets["/src/tokens/tokens.css"]).toMatch(/--row-hover:\s*var\(--hover-fill\)/);
+    expect(sheets["/src/components/table/TrackTable.css"]).toMatch(
+      /\.track-table__row--cursor:not\(\.track-table__row--selected\):hover\s*\{\s*background:\s*none/,
+    );
+  });
 });
