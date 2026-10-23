@@ -32,3 +32,31 @@ describe("Settings page CSS", () => {
     }
   });
 });
+
+describe("Settings without cards (P9, P17)", () => {
+  it("lays the sections on the page with a divider and 16 above each, not in a card (P9)", () => {
+    expect(body(".settings-page__sections")).toMatch(/gap:\s*0/);
+    const between = body(".settings-page__section + .settings-page__section");
+    expect(between).toMatch(/border-top:\s*var\(--divider\)/);
+    expect(between).toMatch(/padding-top:\s*var\(--space-xl\)/);
+    const card = body(".settings-page__section > .cp-card");
+    expect(card).toMatch(/padding:\s*0/);
+    expect(card).toMatch(/background:\s*transparent/);
+  });
+
+  it("draws a status line's dot with one ::before in the line's own colour (P17)", () => {
+    const dots = rules.filter((r) => r.selector.trim() === ".settings-status::before");
+    expect(dots).toHaveLength(1);
+    expect(dots[0]!.body).toMatch(/inline-size:\s*var\(--status-dot\)/);
+    expect(dots[0]!.body).toMatch(/block-size:\s*var\(--status-dot\)/);
+    expect(dots[0]!.body).toMatch(/background:\s*currentColor/);
+    expect(dots[0]!.body).toMatch(/color:\s*var\(--fg-muted\)/);
+    expect(body(".settings-status--success::before")).toMatch(/color:\s*var\(--success-text\)/);
+    expect(body(".settings-status--warning::before")).toMatch(/color:\s*var\(--warning-text\)/);
+    expect(body(".settings-status--danger::before")).toMatch(/color:\s*var\(--danger-text\)/);
+  });
+
+  it("puts the dot on the first status line of a panel only (open question 5)", () => {
+    expect(body(".settings-status ~ .settings-status::before")).toMatch(/content:\s*none/);
+  });
+});

@@ -59,11 +59,11 @@
   outline: var(--focus-ring-width) solid var(--focus-ring);
 }
 
-/* Section to section: 16. */
+/* Section to section: a divider with 16 either side (P9); the sections sit on the page, with no card. */
 .settings-page__sections {
   display: flex;
   flex-direction: column;
-  gap: var(--gap-box);
+  gap: 0;
   min-width: 0;
   /* Room below the last card, so About & updates can scroll up to the top (C124). */
   padding-bottom: 60vh;
@@ -91,6 +91,19 @@
 
 .settings-page__section:focus {
   outline: none;
+}
+
+.settings-page__section + .settings-page__section {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-xl);
+  border-top: var(--divider);
+}
+
+/* A section is not a card here (P9): the Panel inside it keeps its title row and body, and loses its
+   tone and its padding, so the section sits on the page. */
+.settings-page__section > .cp-card {
+  padding: 0;
+  background: transparent;
 }
 
 .settings-page__about {
@@ -184,6 +197,36 @@
 
 .settings-status:focus {
   outline: none;
+}
+
+/* The state as a dot before the words (P17): grey by default, the tone's colour where there is one. One
+   per panel, on its first line only: a later status line in the same body is plain words. */
+.settings-status::before {
+  content: "";
+  display: inline-block;
+  inline-size: var(--status-dot);
+  block-size: var(--status-dot);
+  margin-inline-end: var(--space-sm);
+  border-radius: 50%;
+  background: currentColor;
+  color: var(--fg-muted);
+  vertical-align: middle;
+}
+
+.settings-status ~ .settings-status::before {
+  content: none;
+}
+
+.settings-status--success::before {
+  color: var(--success-text);
+}
+
+.settings-status--warning::before {
+  color: var(--warning-text);
+}
+
+.settings-status--danger::before {
+  color: var(--danger-text);
 }
 
 .settings-status--success {

@@ -7,8 +7,14 @@
 
 .cp-more-about__toggle {
   min-width: 0;
+  /* The folds ("More about this", "Disk space") read as quiet control words (P17). */
+  color: var(--fg-muted);
   /* The arrow sits on the content edge, not inset by the button's own padding. */
   padding-inline-start: 0;
+}
+
+.cp-more-about__toggle:hover:not(:disabled) {
+  color: var(--fg-primary);
 }
 
 .cp-more-about__body {

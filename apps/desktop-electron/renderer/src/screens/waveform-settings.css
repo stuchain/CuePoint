@@ -54,8 +54,9 @@ fieldset.cp-waveform-settings__choice {
 .cp-waveform-settings__canvas {
   height: round(nearest, calc(66.67px * var(--scale)), 1px);
   max-width: 100%;
-  border: var(--divider);
-  background: var(--bg-panel);
+  /* No frame (P17): the canvas is its own tone. */
+  border: 0;
+  background: var(--bg-input);
 }
 
 /* Sentences, so Inter (D5, C55). */
@@ -83,6 +84,6 @@ fieldset.cp-waveform-settings__choice {
 
 .cp-waveform-settings__message {
   padding: var(--space-sm);
-  border: var(--divider);
+  border: 0;
   background: var(--bg-panel-alt);
 }
