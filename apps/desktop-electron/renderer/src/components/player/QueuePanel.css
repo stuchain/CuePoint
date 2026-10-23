@@ -73,6 +73,8 @@ body.cp-queue-resizing {
 /* The count after the name, grey and in the data face. */
 .cp-queue__count {
   color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-regular);
 }

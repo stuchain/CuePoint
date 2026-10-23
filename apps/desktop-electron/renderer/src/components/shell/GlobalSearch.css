@@ -56,6 +56,7 @@
   color: var(--fg-muted);
   font-family: var(--font-meta);
   font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
 }
 
 /* The count above stays put; this part alone scrolls, to a fixed height (C119). */

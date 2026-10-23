@@ -26,6 +26,11 @@
   gap: var(--space-sm);
   flex: none;
   white-space: nowrap;
+  /* "N selected" is the one count in the text colour (P52, P34): semibold, tabular. */
+  color: var(--fg-primary);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-semibold);
 }
 
 /* Narrow (Track details open), the buttons wrap to a second line instead of running over the count. */

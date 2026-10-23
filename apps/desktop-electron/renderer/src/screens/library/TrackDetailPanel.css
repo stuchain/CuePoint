@@ -445,13 +445,18 @@
 .cp-track-yours__tag {
   display: inline-flex;
   align-items: center;
-  gap: calc(2px * var(--scale));
-  padding: var(--hairline) var(--space-xs);
+  box-sizing: border-box;
+  block-size: var(--chip-height);
+  gap: var(--space-2xs);
+  padding: 0 var(--chip-pad);
   border: 0;
+  border-radius: 0;
   background: var(--bg-panel-alt);
   color: var(--fg-primary);
-  font-family: var(--font-data);
-  font-size: var(--font-size-xs);
+  font-family: var(--font-control);
+  font-size: var(--font-size-chip);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
 }
 
 .cp-track-yours__tag-icon {

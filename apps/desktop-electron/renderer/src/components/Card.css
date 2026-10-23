@@ -32,7 +32,9 @@
 .cp-card__unit {
   flex: none;
   color: var(--fg-muted);
+  font-family: var(--font-data);
   font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
   font-weight: var(--control-font-weight);
 }
 

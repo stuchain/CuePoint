@@ -8,7 +8,8 @@
   display: inline-flex;
   align-items: center;
   box-sizing: border-box;
-  padding: var(--space-2xs) var(--space-sm);
+  block-size: var(--chip-height);
+  padding: 0 var(--chip-pad);
   border: 0;
   border-radius: 0;
   background: color-mix(in srgb, var(--chip-tone) var(--chip-fill-mix), transparent);

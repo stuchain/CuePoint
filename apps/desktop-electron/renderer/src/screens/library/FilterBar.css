@@ -55,16 +55,20 @@
 
 /* A chip is the pixel face, like every chip (C24). */
 .cp-filter-bar__chip {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  box-sizing: border-box;
+  block-size: var(--chip-height);
   gap: var(--space-xs);
-  padding: var(--space-2xs) var(--space-xs);
+  padding: 0 var(--chip-pad);
   background: var(--bg-panel-alt);
   border: 0;
+  border-radius: 0;
   color: var(--fg-primary);
   font-family: var(--font-control);
   font-size: var(--font-size-chip);
   font-weight: var(--font-weight-semibold);
+  line-height: 1;
 }
 
 /* A chip that names one artist or label opens its page (DISCOVER-11). A word, not a glyph beside
@@ -86,10 +90,14 @@
 
 .cp-filter-bar__tag,
 .cp-filter-bar__star {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  box-sizing: border-box;
+  block-size: var(--chip-height);
   gap: var(--space-xs);
-  padding: var(--space-2xs) var(--space-xs);
+  padding: 0 var(--chip-pad);
+  border-radius: 0;
+  line-height: 1;
   background: var(--bg-panel-alt);
   /* A transparent line, so a chosen one can draw the violet line without moving (P6). */
   border: var(--hairline) solid transparent;

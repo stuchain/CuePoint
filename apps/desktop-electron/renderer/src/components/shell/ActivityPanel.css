@@ -38,6 +38,7 @@
   color: var(--fg-muted);
   font-family: var(--font-meta);
   font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
 }
 
 .cp-activity__list {
@@ -94,6 +95,7 @@
    cut with an ellipsis at its column's width (item 8). */
 .cp-activity__type {
   display: block;
+  line-height: var(--chip-height);
   justify-self: start;
   min-width: 0;
   max-width: 100%;

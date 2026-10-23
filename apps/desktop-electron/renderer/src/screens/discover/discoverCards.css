@@ -38,6 +38,11 @@
   gap: var(--space-md);
 }
 
+/* The row's count after its title is a figure (P34). */
+.discover-cards__row-head .discover-note {
+  font-variant-numeric: tabular-nums;
+}
+
 .discover-cards__row-title {
   font-family: var(--font-voice);
   margin: 0;
@@ -174,6 +179,7 @@
   color: var(--fg-muted);
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 

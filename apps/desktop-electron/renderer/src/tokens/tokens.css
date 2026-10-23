@@ -169,6 +169,9 @@
   /* P2/P47: labels, column headers and chips are 10.5 (rounded down so it never grows past the ladder). */
   --font-size-label: round(down, calc(10.5px * var(--scale)), 1px);
   --font-size-chip: var(--font-size-label);
+  /* One chip box (P30): 18 high, 6 either side, square. Status, key, filter, tag and Activity chips. */
+  --chip-height: round(nearest, calc(18px * var(--scale)), 1px);
+  --chip-pad: var(--space-sm);
   /* The four weights (TY19): a rule names one of these, never a number. */
   --font-weight-regular: 400;
   --font-weight-medium: 500;

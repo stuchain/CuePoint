@@ -7,17 +7,26 @@
   color: var(--key);
   background: color-mix(in srgb, var(--key) 18%, transparent);
   border-radius: 0;
-  --key-chip-pad: round(nearest, calc(5px * var(--scale)), 1px);
+  /* P30: the one chip box (18 high, 6 either side). */
+  --key-chip-pad: var(--chip-pad);
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  block-size: var(--chip-height);
   padding: 0 var(--key-chip-pad);
   /* P2: key codes are Inter semibold everywhere. */
   font-family: var(--font-data);
+  font-size: var(--font-size-chip);
   font-weight: var(--font-weight-semibold);
   font-variant-numeric: tabular-nums;
+  line-height: 1;
   white-space: nowrap;
 }
 
 :root[data-key-colours="off"] .key-chip {
   --key-chip-pad: 0px;
+  display: inline;
+  block-size: auto;
   color: inherit;
   background: none;
   padding: 0;

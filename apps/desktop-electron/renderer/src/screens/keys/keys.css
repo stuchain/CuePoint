@@ -346,7 +346,9 @@
 .keys-tracks__count {
   min-width: 0;
   overflow: hidden;
+  color: var(--fg-muted);
   font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
