@@ -11,7 +11,8 @@
   height: var(--player-detail-height);
   min-height: 0;
   overflow: hidden;
-  border-top: var(--border-width) solid var(--border-outline);
+  /* P57: a hairline in the row line, not a 2px outline. */
+  border-top: var(--hairline) solid var(--row-line);
   /* A table's bottom hairline is the line above this strip too: this border covers it, so the two
      are one line, not two. Nothing but a hairline of the page is covered when there is no table. */
   margin-top: calc(-1 * var(--hairline));
@@ -37,7 +38,8 @@
   padding: 0 var(--space-sm);
   overflow: hidden;
   color: var(--fg-muted);
-  font-size: var(--font-size-sm);
+  font-family: var(--font-control);
+  font-size: var(--font-size-label);
   text-align: center;
   pointer-events: none;
 }
@@ -58,9 +60,9 @@
   min-width: 0;
 }
 
-/* Paused, the strip is dimmed (R4-11); the full-width strip itself is not changed. */
+/* Paused, the strip is dimmed to 60% (R4-11, P57); the full-width strip itself is not changed. */
 .cp-detail-strip[data-playing="false"] .cp-detail-strip__canvas {
-  opacity: 0.45;
+  opacity: 0.6;
 }
 
 /* It fades only where scrolling may move (Settings, Motion, "Scrolling"). */

@@ -38,6 +38,8 @@
   background: transparent;
   color: var(--fg-primary);
   font: inherit;
+  /* P55: items are Inter at the control size. */
+  font-family: var(--font-control);
   font-size: var(--control-font-size);
   font-weight: var(--control-font-weight);
   text-align: left;
@@ -46,15 +48,16 @@
 }
 
 /* One highlight for both pointer and keyboard: hovering sets the active item,
-   so the menu never shows two "current" rows at once. */
+   so the menu never shows two "current" rows at once. The row under the pointer is a hover,
+   not a selection (P55). */
 .cp-track-menu__item--active:not([aria-disabled="true"]) {
-  background: var(--selected-row-background);
+  background: var(--row-hover);
   color: var(--fg-primary);
 }
 
 /* A parent whose list is showing keeps the same look while the pointer is in the list (area 81). */
 .cp-track-menu__item--open:not([aria-disabled="true"]) {
-  background: var(--selected-row-background);
+  background: var(--row-hover);
   color: var(--fg-primary);
 }
 
@@ -75,7 +78,7 @@
   padding-inline-start: var(--space-lg);
   color: var(--fg-muted);
   font-family: var(--font-data);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-label);
 }
 
 .cp-track-menu__item--active .cp-track-menu__shortcut {
@@ -86,9 +89,23 @@
 .cp-track-menu__heading {
   padding: var(--space-xs) var(--space-md) var(--space-2xs);
   color: var(--fg-muted);
+  font-family: var(--font-control);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-medium);
   white-space: nowrap;
+}
+
+/* Icons are muted; the text colour on the item under the pointer (P55). Danger stays red. */
+.cp-track-menu__item .cp-pixel-icon {
+  color: var(--fg-muted);
+}
+
+.cp-track-menu__item--active .cp-pixel-icon {
+  color: var(--fg-primary);
+}
+
+.cp-track-menu__item--danger:not([aria-disabled="true"]) .cp-pixel-icon {
+  color: var(--danger-text);
 }
 
 .cp-track-menu__separator {

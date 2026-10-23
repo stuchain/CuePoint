@@ -715,7 +715,9 @@ describe("its width (C204, D11)", () => {
   it("takes its width from the code, its border from the stylesheet, and has no shadow (D11)", () => {
     const rule = parseRules(stripComments(queueCss)).find((r) => r.selector === ".cp-queue")!;
     const decls = Object.fromEntries(declarations(rule.body));
-    expect(decls["border-left"]).toBe("var(--hairline) solid var(--border-muted)");
+    // P56: the panel's left edge is the one divider, on the toolbar tone.
+    expect(decls["border-left"]).toBe("var(--divider)");
+    expect(decls["background"]).toBe("var(--bg-toolbar)");
     expect(decls["box-shadow"]).toBeUndefined();
     expect(decls["width"]).toBeUndefined();
   });

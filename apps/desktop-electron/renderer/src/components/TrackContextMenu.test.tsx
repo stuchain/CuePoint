@@ -507,9 +507,11 @@ describe("a submenu inside a submenu (FLW-8)", () => {
       expect(body(".cp-track-menu__item")).toMatch(/font-size:\s*var\(--control-font-size\)/);
     });
 
-    it("highlights the current item with the selected-row look, not the accent", () => {
+    // P55: the row under the pointer is a hover (--row-hover), not the selected-row gradient.
+    it("highlights the current item with the row hover, not the selected-row look or the accent", () => {
       const active = body('.cp-track-menu__item--active:not([aria-disabled="true"])');
-      expect(active).toMatch(/background:\s*var\(--selected-row-background\)/);
+      expect(active).toMatch(/background:\s*var\(--row-hover\)/);
+      expect(active).not.toMatch(/selected-row-background/);
       expect(active).toMatch(/color:\s*var\(--fg-primary\)/);
       expect(active).not.toMatch(/accent-primary|fg-on-accent/);
     });
