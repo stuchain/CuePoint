@@ -38,19 +38,20 @@ describe("Tabs", () => {
     expect(screen.getByRole("tablist")).not.toHaveClass("cp-tabs--sub");
   });
 
-  it("draws the sub variant as one framed strip of equal parts, the picked one filled", () => {
+  it("draws the sub variant as one segmented slab of equal parts, the picked one raised (P13)", () => {
     render(<Tabs variant="sub" tabs={TABS} activeId="a" onChange={() => {}} />);
     expect(screen.getByRole("tablist")).toHaveClass("cp-tabs", "cp-tabs--sub");
     const sub = /\.cp-tabs--sub\s*\{([^}]*)\}/.exec(css)![1]!;
-    expect(sub).toMatch(/border:\s*var\(--control-border-width\) solid var\(--border-control\)/);
-    expect(sub).not.toMatch(/border-bottom:\s*0/);
+    // P13: a slab with no frame (was a framed strip).
+    expect(sub).toMatch(/background:\s*var\(--bg-panel-alt\)/);
+    expect(sub).toMatch(/border:\s*0/);
+    expect(sub).toMatch(/padding:\s*var\(--space-2xs\)/);
     expect(sub).toMatch(/width:\s*fit-content/);
-    // A hairline between the parts, so neighbours never run together; not in a zero-weight
-    // :where(), which the transparent border on every part outweighed, so it never showed (C260).
-    expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab \+ \.cp-tabs__tab:not\(\.cp-tabs__tab--active\)\s*\{[^}]*border-left-color:/);
+    // P13: no separators between the parts any more (they were a hairline, C260); the slab carries them.
+    expect(css).not.toMatch(/\.cp-tabs--sub \.cp-tabs__tab \+ \.cp-tabs__tab/);
     expect(css).not.toMatch(/:where\(\.cp-tabs__tab \+ \.cp-tabs__tab\)/);
     expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab\s*\{[^}]*padding:\s*0 var\(--space-sm\)/);
-    expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab--active\s*\{[^}]*background:\s*var\(--bg-selected\)/);
+    expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab--active\s*\{[^}]*background:\s*var\(--bg-panel\)/);
     expect(css).toMatch(/\.cp-tabs--sub \.cp-tabs__tab\s*\{[^}]*font-size:\s*var\(--font-size-xs\)/);
   });
 
@@ -73,12 +74,13 @@ describe("Tabs", () => {
     expect(active).not.toMatch(/font-weight/);
   });
 
-  it("draws an active sub-tab as the toggle's on look: selected fill, 1px accent line, regular weight (D1)", () => {
+  it("draws an active sub-tab raised: the page tone on the slab, a soft shadow, no accent line (P13)", () => {
     const rule = /\.cp-tabs--sub \.cp-tabs__tab--active\s*\{([^}]*)\}/.exec(css)![1]!;
-    expect(rule).toMatch(/background:\s*var\(--bg-selected\)/);
-    expect(rule).toMatch(/border-color:\s*var\(--accent-primary\)/);
+    expect(rule).toMatch(/background:\s*var\(--bg-panel\)/);
+    expect(rule).toMatch(/box-shadow:\s*var\(--shadow-raised\)/);
+    expect(rule).not.toMatch(/accent/);
     expect(rule).toMatch(/color:\s*var\(--fg-primary\)/);
-    expect(rule).toMatch(/font-weight:\s*var\(--font-weight-regular\)|font-weight:\s*var\(--control-font-weight\)/);
+    expect(rule).toMatch(/font-weight:\s*var\(--control-font-weight\)/);
   });
 
   it("pads every sub-tab --space-sm and starts the main strip flush with the page title (C33)", () => {

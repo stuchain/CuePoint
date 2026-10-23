@@ -124,6 +124,13 @@ describe("the rating", () => {
     expect(screen.getAllByRole("radio")).toHaveLength(5);
   });
 
+  it("draws the stars a step larger, medium (P13)", () => {
+    draw();
+    for (const radio of screen.getAllByRole("radio")) {
+      expect(radio.querySelector("[data-size]")).toHaveAttribute("data-size", "md");
+    }
+  });
+
   it("sets a rating of yours", async () => {
     draw();
 

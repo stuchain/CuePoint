@@ -316,8 +316,10 @@
 }
 
 .cp-track-yours__label {
+  /* The label look (P13). */
   color: var(--fg-muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
 }
 
 /* Every label here is stacked above its field, 4 apart, as Add a tag's is (new K): side labels
@@ -327,7 +329,11 @@
   flex-direction: column;
   gap: var(--space-xs);
   align-items: flex-start;
+  /* The rating, the notes and the tags each end in a divider (P13). */
+  padding-bottom: var(--space-md);
+  border-bottom: var(--divider);
 }
+
 
 .cp-track-yours__stars {
   display: flex;
@@ -353,7 +359,7 @@
 }
 
 .cp-track-yours__star--on {
-  color: var(--fg-primary);
+  color: var(--warning-text);
 }
 
 .cp-track-yours__star:focus-visible,
@@ -383,8 +389,9 @@
   min-height: var(--control-height);
   margin-left: var(--space-xs);
   padding: 0 var(--space-xs);
-  border: var(--control-border-width) solid var(--border-control);
-  background: var(--bg-input);
+  /* A quiet icon button (P13): no frame or fill until the pointer is over it. */
+  border: var(--control-border-width) solid transparent;
+  background: transparent;
   color: var(--fg-muted);
   font-family: var(--font-pixel-digits);
   font-size: var(--control-font-size);
@@ -393,10 +400,13 @@
   cursor: pointer;
 }
 
+.cp-track-yours__favorite:hover:not(:disabled) {
+  border-color: var(--border-control);
+  background: var(--hover-fill);
+}
+
 .cp-track-yours__favorite--on {
-  border-color: var(--accent-primary);
-  background: var(--bg-selected);
-  color: var(--fg-primary);
+  color: var(--accent-primary);
 }
 
 /* Notes and Tags: the label stacked above the control, as the rating's and Add a tag's (new K). */
@@ -405,6 +415,8 @@
   flex-direction: column;
   gap: var(--space-xs);
   min-width: 0;
+  padding-bottom: var(--space-md);
+  border-bottom: var(--divider);
 }
 
 .cp-track-yours__control {
@@ -542,8 +554,9 @@
   flex: none;
   width: calc(72px * var(--scale));
   height: calc(72px * var(--scale));
-  border: var(--hairline) solid var(--border-muted);
-  background: var(--bg-input);
+  /* No frame (P13): the picture sits on its slab. */
+  border: 0;
+  background: var(--bg-panel-alt);
   overflow: hidden;
 }
 

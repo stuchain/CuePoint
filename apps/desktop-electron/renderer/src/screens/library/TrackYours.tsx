@@ -176,7 +176,7 @@ export function TrackYours({
                 onClick={() => pick(star)}
                 onFocus={() => setFocusStar(star)}
               >
-                <PixelIcon name={star <= lit ? "star" : "star-outline"} size="sm" />
+                <PixelIcon name={star <= lit ? "star" : "star-outline"} size="md" />
               </button>
             ))}
           </div>

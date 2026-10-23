@@ -45,6 +45,8 @@
     inset var(--bevel-size-sm) var(--bevel-size-sm) 0 var(--bevel-shadow);
   --shadow-panel: round(down, calc(4px * var(--scale)), 1px) round(down, calc(4px * var(--scale)), 1px) 0 var(--border-shadow);
   --shadow-modal: round(down, calc(8px * var(--scale)), 1px) round(down, calc(8px * var(--scale)), 1px) 0 var(--border-shadow);
+  /* The picked part of a segmented strip lifts a hairline off its slab (P13). */
+  --shadow-raised: 0 var(--hairline) round(nearest, calc(2px * var(--scale)), 1px) rgba(0, 0, 0, 0.35);
   --shadow-badge: round(down, calc(2px * var(--scale)), 1px) round(down, calc(2px * var(--scale)), 1px) 0 var(--border-shadow);
   --shadow-inset-deep: inset var(--bevel-size) var(--bevel-size) 0 rgba(0, 0, 0, 0.35);
 

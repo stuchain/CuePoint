@@ -66,9 +66,9 @@ describe("the Library's shared lines", () => {
     expect(rule(detail, ".cp-track-detail .cp-track-detail__head")).toContain("background: var(--bg-toolbar)");
   });
 
-  it("draws the Yours stars like the table's: white filled, grey empty, a token apart (C104)", () => {
+  it("draws the Yours stars amber when filled, grey when empty, a token apart (C104, P13)", () => {
     expect(rule(detail, ".cp-track-yours__star")).toContain("color: var(--fg-muted)");
-    expect(rule(detail, ".cp-track-yours__star--on")).toContain("color: var(--fg-primary)");
+    expect(rule(detail, ".cp-track-yours__star--on")).toContain("color: var(--warning-text)"); // P13: amber (was the primary text)
     expect(rule(detail, ".cp-track-yours__stars")).toContain("gap: var(--space-2xs)");
     expect(rule(detail, ".cp-track-yours__group")).toContain("gap: var(--space-2xs)");
   });
@@ -83,11 +83,19 @@ describe("the Library's shared lines", () => {
     }
   });
 
-  it("draws Favorite on as D1 says: selected fill, accent border, primary text", () => {
+  it("draws Favorite as a quiet icon button, accent when on (P13; was D1's selected fill and accent border)", () => {
+    const off = rule(detail, ".cp-track-yours__favorite");
+    expect(off).toContain("background: transparent");
+    expect(off).toMatch(/border:\s*var\(--control-border-width\) solid transparent/);
     const on = rule(detail, ".cp-track-yours__favorite--on");
-    expect(on).toContain("background: var(--bg-selected)");
-    expect(on).toContain("border-color: var(--accent-primary)");
-    expect(on).toContain("color: var(--fg-primary)");
+    expect(on).toContain("color: var(--accent-primary)");
+    expect(on).not.toContain("background");
+  });
+
+  it("ends the rating, the notes and the tags with a divider (P13)", () => {
+    for (const selector of [".cp-track-yours__rating", ".cp-track-yours__row"]) {
+      expect(rule(detail, selector)).toContain("border-bottom: var(--divider)");
+    }
   });
 
   it("keeps no divider between the pane and the table: the main column has no left edge and the pane no right one (P1)", () => {
