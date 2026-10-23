@@ -41,10 +41,12 @@ describe("the strips above the Set (C251, C49, C259)", () => {
 });
 
 describe("a chapter's band (C250)", () => {
-  it("is the panel-alt band in the pixel face with no row divider, so it does not read as a data row", () => {
+  it("is the panel-tone band in the pixel face with no row divider of its own, so it does not read as a data row (P18)", () => {
     const band = rule(".track-table__row.prepare-heading");
-    expect(band).toMatch(/background:\s*var\(--bg-panel-alt\)/);
+    // P18: the band is the panel tone (was panel-alt); its cells draw the row line.
+    expect(band).toMatch(/background:\s*var\(--bg-panel\)/);
     expect(band).toMatch(/box-shadow:\s*none/);
+    expect(rule(".track-table__row.prepare-heading > .track-table__cell")).toMatch(/var\(--row-line\)/);
     // The pixel face is the chapter's label only, not the whole row.
     expect(band).not.toMatch(/font-family/);
     expect(rule(".prepare-heading__name")).toMatch(/font-family:\s*var\(--font-pixel\)/);
@@ -53,7 +55,9 @@ describe("a chapter's band (C250)", () => {
 
 describe("the source panel and its divider (C48, C149, C28)", () => {
   it("starts its content one --space-lg down in every state, level with the Set table's first row", () => {
-    expect(rule(".prepare-source")).toMatch(/padding:\s*var\(--space-lg\) var\(--space-md\) var\(--space-md\)/);
+    // P8: one pane at 12 all round (was 12 8 8), on the panel tone.
+    expect(rule(".prepare-source")).toMatch(/padding:\s*var\(--space-lg\);/);
+    expect(rule(".prepare-source")).toMatch(/background:\s*var\(--bg-panel\)/);
   });
 
   it("keeps the Suggestions toolbar band inside the table's frame, never past it (item 7)", () => {
@@ -71,6 +75,13 @@ describe("the source panel and its divider (C48, C149, C28)", () => {
   it("colours the divider's hover with the shared resizer token", () => {
     const hover = /\.prepare-layout__divider:hover,[^{]*\{([^}]*)\}/.exec(css)![1]!;
     expect(hover).toMatch(/background:\s*var\(--resizer-hover\)/);
+  });
+
+  it("draws the divider as nothing until it is reached, and the lane names as labels (P8, P18)", () => {
+    expect(rule(".prepare-layout__divider")).toMatch(/background:\s*transparent/);
+    expect(rule(".prepare-lanes__name")).toMatch(/font-size:\s*var\(--font-size-label\)/);
+    expect(rule(".prepare-lanes__name")).toMatch(/color:\s*var\(--fg-muted\)/);
+    expect(rule(".prepare-source__point")).toMatch(/color:\s*var\(--fg-muted\)/);
   });
 
   it("puts buttons in a row --space-md apart", () => {

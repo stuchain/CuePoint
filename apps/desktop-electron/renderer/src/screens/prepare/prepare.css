@@ -204,7 +204,8 @@
 
 .prepare-layout__divider {
   cursor: col-resize;
-  background: var(--border-muted);
+  /* Invisible until it is reached (P8): the panes' own tones are the edge. */
+  background: transparent;
 }
 
 /* Hidden while Track details are open (C226): the flex display above would show it anyway. */
@@ -298,7 +299,10 @@ body.prepare-resizing {
      tempo lane at 1.25): centred and clipped, the top half of "BPM" was cut off (C251). */
   justify-content: safe center;
   gap: calc(2px * var(--scale));
-  font-weight: var(--font-weight-bold);
+  /* The label look (P18): small, medium and muted, like every group label. */
+  color: var(--fg-muted);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-medium);
 }
 
 .prepare-lanes__range {
@@ -580,11 +584,16 @@ body.prepare-resizing {
 
 /* A chapter's heading is a row of the table (DEC-103), drawn as a band. */
 .track-table__row.prepare-heading {
-  background: var(--bg-panel-alt);
-  /* No row divider and the pixel face, so a band is not read as one more data row (C250). */
+  background: var(--bg-panel);
+  /* No row divider on the row itself and the pixel face, so a band is not read as one more data row
+     (C250); its cells draw the row line (P18). */
   box-shadow: none;
   font-weight: var(--font-weight-bold);
   cursor: default;
+}
+
+.track-table__row.prepare-heading > .track-table__cell {
+  box-shadow: inset 0 calc(-1 * var(--hairline)) 0 0 var(--row-line);
 }
 
 .prepare-heading__title {
@@ -861,9 +870,10 @@ body.prepare-resizing {
   gap: var(--space-md);
   min-width: 0;
   min-height: 0;
-  /* One top offset in every state, level with the Set table's first row (C48). */
-  padding: var(--space-lg) var(--space-md) var(--space-md);
+  /* One pane (P8): the panel tone, 12 all round, level with the Set table's first row (C48). */
+  padding: var(--space-lg);
   overflow: hidden;
+  background: var(--bg-panel);
 }
 
 /* Underline tabs (C11) as everywhere, in a narrow column: the strip's own hairline stays. */
@@ -936,7 +946,7 @@ body.prepare-resizing {
   min-width: 0;
   margin: 0;
   overflow: hidden;
-  color: var(--fg-primary);
+  color: var(--fg-muted);
   /* A sentence, so Inter (D5, C55). */
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
