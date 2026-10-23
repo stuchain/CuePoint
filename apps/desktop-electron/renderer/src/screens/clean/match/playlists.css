@@ -106,6 +106,9 @@
   flex: none;
   flex-wrap: wrap;
   justify-content: flex-end;
+  /* The between-tone under a divider (P25). */
+  background: var(--bg-between);
+  border-top: var(--divider);
   font-family: var(--font-data);
 }
 

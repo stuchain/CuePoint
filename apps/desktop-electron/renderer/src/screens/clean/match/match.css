@@ -239,10 +239,13 @@
   padding: var(--space-md);
 }
 
-/* The step's bottom bar: the facts of the review on the left, the main action on the right. */
+/* The step's bottom bar: the facts of the review on the left, the main action on the right. On the
+   between-tone under a divider (P25). */
 .review__footer {
   flex: none;
   justify-content: space-between;
+  background: var(--bg-between);
+  border-top: var(--divider);
 }
 
 .review__facts {
