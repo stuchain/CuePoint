@@ -7,6 +7,11 @@
   background: var(--bar-color, var(--chart-bar));
 }
 
+/* The leader of the list (P15); the colour of --chart-bar-lead is the theme's (P58), the plain bar until then. */
+.cp-rank-bar[data-lead] {
+  background: var(--bar-color, var(--chart-bar-lead, var(--chart-bar)));
+}
+
 .cp-rank-bar[data-empty] {
   min-width: 0;
 }

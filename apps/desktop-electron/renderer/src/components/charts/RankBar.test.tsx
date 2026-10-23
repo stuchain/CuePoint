@@ -22,4 +22,13 @@ describe("RankBar", () => {
     expect((container.firstElementChild as HTMLElement).style.getPropertyValue("--bar-color")).toBe("var(--key)");
     expect(css).toMatch(/background:\s*var\(--bar-color,\s*var\(--chart-bar\)\)/);
   });
+
+  it("marks the leader, the full-length bar, with data-lead, and nothing shorter (P15)", () => {
+    const { container, rerender } = render(<RankBar share={1} />);
+    const bar = container.querySelector(".cp-rank-bar") as HTMLElement;
+    expect(bar).toHaveAttribute("data-lead", "true");
+    rerender(<RankBar share={0.75} />);
+    expect(bar).not.toHaveAttribute("data-lead");
+    expect(css).toMatch(/\.cp-rank-bar\[data-lead\]\s*\{[^}]*--chart-bar-lead/);
+  });
 });

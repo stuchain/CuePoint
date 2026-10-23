@@ -157,6 +157,8 @@
   --font-size-md: calc(14px * var(--scale));
   --font-size-lg: calc(18px * var(--scale));
   --font-size-xl: calc(24px * var(--scale));
+  /* A figure read at a glance (P15): Statistics' four numbers. 26 times 1.5 is whole. */
+  --font-size-figure: calc(26px * var(--scale));
   /* Text roles: page 24 / dialog 18 / section 14 / label 10 bold muted. One weight. */
   --font-size-page: var(--font-size-xl);
   --font-size-dialog: var(--font-size-lg);

@@ -182,12 +182,13 @@
   gap: var(--space-xl);
 }
 
-/* Four numbers in one bordered strip. */
+/* Four numbers, each on a card of its own (P15), a box gap apart; no frame. */
 .library-figures {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(calc(160px * var(--scale)), 1fr));
+  gap: var(--gap-box);
   margin: 0;
-  border: var(--divider);
+  border: 0;
 }
 
 .library-figures__cell {
@@ -195,11 +196,7 @@
   flex-direction: column;
   gap: var(--space-2xs);
   padding: var(--space-lg);
-  border-left: var(--divider);
-}
-
-.library-figures__cell:first-child {
-  border-left: 0;
+  background: var(--bg-panel);
 }
 
 .library-figures dt,
@@ -208,14 +205,18 @@
 }
 
 .library-figures dt {
+  /* The label look (P15). */
   color: var(--fg-muted);
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
 }
 
-/* A figure read at a glance: the pixel face with data-face digits, so 126.7 never reads 186.7. */
+/* A figure read at a glance: Inter semibold in tabular figures, 26 (P15). */
 .library-figures__value {
-  font-family: var(--font-pixel-digits);
-  font-size: var(--font-size-xl);
-  font-weight: var(--weight-strong);
+  font-family: var(--font-data);
+  font-size: var(--font-size-figure);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
 }
 
 .library-figures__note {
@@ -258,16 +259,18 @@
 /* The legend is the list: swatch, label, count and the link on one line. */
 .health-card__row {
   display: grid;
-  grid-template-columns: var(--space-md) minmax(0, 1fr) 6ch minmax(max-content, 17ch);
+  grid-template-columns: var(--status-dot) minmax(0, 1fr) 6ch minmax(max-content, 17ch);
   align-items: center;
   gap: var(--space-md);
   min-height: var(--row-height);
   border-bottom: var(--divider);
 }
 
+/* The state as a dot (P24); the other swatches stay 8 px squares (P65). */
 .health-card__swatch {
-  width: var(--space-md);
-  height: var(--space-md);
+  width: var(--status-dot);
+  height: var(--status-dot);
+  border-radius: 50%;
 }
 
 .health-card__swatch--none {
@@ -275,6 +278,8 @@
 }
 
 .health-card__label {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -284,6 +289,8 @@
 .health-card__count {
   justify-self: end;
   color: var(--fg-muted);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
 }
 
 .health-card__count--warning {
@@ -297,6 +304,7 @@
 /* "Open in Library ›" never wraps. */
 .health-card__open {
   justify-self: end;
+  font-family: var(--font-data);
   white-space: nowrap;
 }
 
@@ -308,6 +316,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
+  font-family: var(--font-data);
 }
 
 /* The stacked bar: parts in the width of their counts, then the legend. */
@@ -320,8 +329,10 @@
 .stacked__bar {
   display: flex;
   width: 100%;
-  height: var(--space-lg);
+  /* A thin bar over the alt slab, in the status tones (P24). */
+  height: var(--space-xs);
   overflow: hidden;
+  background: var(--bg-panel-alt);
 }
 
 .stacked__part {
@@ -345,7 +356,7 @@
 }
 
 .stacked__part--neutral {
-  background: var(--fg-muted);
+  background: color-mix(in srgb, var(--fg-muted) 45%, transparent);
 }
 
 /* Not looked at yet: the muted text colour, softened, never the divider colour (C98). */
