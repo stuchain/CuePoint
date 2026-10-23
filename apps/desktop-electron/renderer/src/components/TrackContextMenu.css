@@ -11,8 +11,10 @@
   z-index: 60;
   min-width: calc(140px * var(--scale));
   padding: var(--space-xs);
-  border: var(--control-border-width) solid var(--border-control);
+  /* The one floating chrome (P12). */
+  border: var(--popover-border);
   background: var(--bg-panel);
+  box-shadow: var(--shadow-popover);
   outline: none;
   /*
    * Taller than the window is a menu whose last entries cannot be reached at
@@ -29,8 +31,8 @@
   display: flex;
   align-items: center;
   width: 100%;
-  /* A menu row is a list row: the one row height. */
-  min-height: var(--row-height);
+  /* A menu row is a list row: the one row height, and a hairline more (P12). */
+  min-height: calc(var(--row-height) + var(--hairline));
   padding: 0 var(--space-md);
   border: 0;
   background: transparent;
@@ -91,7 +93,7 @@
 .cp-track-menu__separator {
   height: 0;
   margin: var(--space-xs) 0;
-  border-top: var(--divider);
+  border-top: var(--hairline) solid var(--row-line);
 }
 
 /*
@@ -147,8 +149,9 @@
   overflow-y: auto;
   min-width: calc(140px * var(--scale));
   padding: var(--space-xs);
-  border: var(--control-border-width) solid var(--border-control);
+  border: var(--popover-border);
   background: var(--bg-panel);
+  box-shadow: var(--shadow-popover);
 }
 
 /* A tickable entry (K12): a fixed slot for the tick, so labels line up ticked or not. */

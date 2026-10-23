@@ -44,7 +44,9 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  border: var(--divider);
+  /* Sunken, not framed; rows part with the row line (P11). */
+  border: 0;
+  background: var(--bg-input);
 }
 
 .cp-activity__row {
@@ -55,7 +57,7 @@
   gap: var(--space-sm);
   align-items: baseline;
   padding: var(--space-xs) var(--space-sm);
-  border-bottom: var(--divider);
+  border-bottom: var(--hairline) solid var(--row-line);
   font-size: var(--text-body);
 }
 
@@ -63,15 +65,15 @@
   border-bottom: none;
 }
 
-/* A day heading (STR-8) above its rows; the rows' own borders do the rest. */
+/* A day heading (STR-8) above its rows: the muted label look, not a band (P11). */
 .cp-activity__day-heading {
   margin: 0;
   padding: var(--space-xs) var(--space-sm);
-  background: var(--bg-panel);
-  border-bottom: var(--divider);
+  background: transparent;
+  border-bottom: 0;
   color: var(--fg-muted);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
 }
 
 .cp-activity__rows {

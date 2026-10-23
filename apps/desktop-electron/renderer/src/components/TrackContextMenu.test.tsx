@@ -694,11 +694,12 @@ describe("placement (C106)", () => {
     }
   });
 
-  it("is one floating surface: 1px control border, even padding, 140 minimum, capped height", () => {
+  it("is one floating surface (P12): the popover border and shadow, even padding, 140 minimum, capped height", () => {
     const flat = stripComments(css);
     expect(flat).toMatch(/\.cp-track-menu \{[^}]*min-width:\s*calc\(140px \* var\(--scale\)\)/);
     expect(flat).toMatch(/\.cp-track-menu \{[^}]*padding:\s*var\(--space-xs\);/);
     expect(flat).toMatch(/\.cp-track-menu \{[^}]*max-height:\s*min\(60vh, calc\(480px \* var\(--scale\)\)\)/);
-    expect(flat).not.toMatch(/box-shadow/);
+    expect(flat).toMatch(/\.cp-track-menu \{[^}]*border:\s*var\(--popover-border\)/);
+    expect(flat).toMatch(/\.cp-track-menu \{[^}]*box-shadow:\s*var\(--shadow-popover\)/);
   });
 });

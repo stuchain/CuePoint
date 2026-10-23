@@ -1,11 +1,22 @@
-/* The one close button (area 6): the standard icon button at the control height, bordered. */
+/* The one close button (area 6): the standard icon button at the control height. Quiet (P11, P16):
+   no fill or frame, a muted icon; the fill and the frame come back on hover. */
 .cp-close {
   flex: none;
+  border-color: transparent;
+  background: transparent;
+  color: var(--fg-muted);
   width: var(--control-height-sm);
   min-width: var(--control-height-sm);
   min-height: var(--control-height-sm);
   height: var(--control-height-sm);
   padding: 0;
+}
+
+/* The same hover the quiet buttons have (Button.css), and none while disabled. */
+.cp-close:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--border-control);
+  background: var(--hover-fill);
+  color: var(--fg-primary);
 }
 
 /* Its hover-tip wrapper never gives up width in a tight row, so the box is never cut (C129). */

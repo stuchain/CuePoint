@@ -12,7 +12,8 @@
   counter-reset: first-steps;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  /* One panel-tone list, a divider between the steps (P16). */
+  background: var(--bg-panel);
 }
 
 .first-steps__item {
@@ -21,8 +22,11 @@
   gap: var(--space-md);
   counter-increment: first-steps;
   padding: var(--space-sm);
-  background: var(--bg-panel);
-  border: var(--hairline) solid var(--border-muted);
+  border-bottom: var(--divider);
+}
+
+.first-steps__item:last-child {
+  border-bottom: 0;
 }
 
 .first-steps__item::before {
@@ -98,8 +102,10 @@
   max-height: 70vh;
   overflow: auto;
   padding: var(--space-sm);
+  padding-block: var(--space-xs);
   background: var(--bg-panel);
-  border: var(--control-border-width) solid var(--border-control);
+  border: var(--popover-border);
+  box-shadow: var(--shadow-popover);
 }
 
 /* A step with two buttons (Import… and How do I get one?). */

@@ -27,7 +27,9 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  border: var(--divider);
+  /* Sunken, not framed; the table's rows part with the row line (P11). */
+  border: 0;
+  background: var(--bg-input);
 }
 
 /* The body font, not the pixel one, so the letter O and the digit 0 differ. */
@@ -35,11 +37,13 @@
   font-family: var(--font-data);
 }
 
-/* A group's name sits on a panel-coloured band; the shared table look does the rest. */
+/* A group's name is a muted label on the list, not a band (P11); the shared table look does the rest. */
 .cp-data-table thead th.shortcuts-dialog__group,
 .cp-data-table tbody th.shortcuts-dialog__group {
-  background: var(--bg-panel);
+  background: transparent;
+  color: var(--fg-muted);
   font-family: var(--font-pixel);
+  font-size: var(--font-size-label);
   text-align: left;
 }
 

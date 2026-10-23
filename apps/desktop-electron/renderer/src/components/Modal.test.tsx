@@ -316,12 +316,13 @@ describe("the title", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("sets its body size, uses the divider and keeps no focus ring on the frame (T1, T2, T16)", () => {
+  it("sets its body size, draws no line under the title or above the buttons (P11) and keeps no focus ring on the frame (T1, T2, T16)", () => {
     expect(css).toMatch(/\.cp-modal__body\s*\{[^}]*font-size:\s*var\(--text-body\)/);
     expect(css).toMatch(/\.cp-modal:focus\s*\{[^}]*outline:\s*none/);
     expect(css).not.toMatch(/--border-width/);
-    expect(css).toMatch(/border-bottom:\s*var\(--divider\)/);
-    expect(css).toMatch(/border-top:\s*var\(--divider\)/);
+    // P11: the header and the footer sit on the dialog's surface, no line either side of the body.
+    expect(css).toMatch(/border-bottom:\s*0;/);
+    expect(css).toMatch(/border-top:\s*0;/);
   });
 
   it("has one scroller, the body, which grows with the window (area 76)", () => {
@@ -531,8 +532,8 @@ describe("Modal body look (C110, C67, C125, C121)", () => {
     expect(flat).not.toMatch(/cp-modal__summary/);
   });
 
-  it("is framed by one 1px control border and keeps the dialog's soft shadow", () => {
-    expect(flat).toMatch(/\.cp-modal \{[^}]*border:\s*var\(--control-border-width\) solid var\(--border-control\)/);
+  it("has no frame and lifts off the page with the dialog shadow (P11)", () => {
+    expect(flat).toMatch(/\.cp-modal \{[^}]*border:\s*0;/);
     expect(flat).toMatch(/box-shadow:\s*var\(--shadow-dialog\)/);
   });
 });

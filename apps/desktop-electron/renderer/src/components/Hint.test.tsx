@@ -429,10 +429,10 @@ describe("Hint on hover", () => {
 });
 
 describe("the tip's look (C121, C212)", () => {
-  it("is drawn in the pixel face with data-face figures, inside one control-coloured line", async () => {
+  it("is drawn in the pixel face with data-face figures, on the one floating chrome (P12)", async () => {
     const css = (await import("./Hint.css?raw")).default as string;
     expect(css).toMatch(/\.cp-hint__tip\s*\{[^}]*font-family:\s*var\(--font-pixel-digits\)/);
-    expect(css).toMatch(/\.cp-hint__tip\s*\{[^}]*border:\s*var\(--control-border-width\) solid var\(--border-control\)/);
-    expect(css).not.toMatch(/box-shadow/);
+    expect(css).toMatch(/\.cp-hint__tip\s*\{[^}]*border:\s*var\(--popover-border\)/);
+    expect(css).toMatch(/\.cp-hint__tip\s*\{[^}]*box-shadow:\s*var\(--shadow-popover\)/);
   });
 });

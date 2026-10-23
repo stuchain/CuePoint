@@ -6,6 +6,7 @@ import tabs from "./Tabs.css?raw";
 import select from "./Select.css?raw";
 import modal from "./Modal.css?raw";
 import toast from "./Toast.css?raw";
+import hint from "./Hint.css?raw";
 import contextMenu from "./TrackContextMenu.css?raw";
 import suggest from "./SuggestInput.css?raw";
 import globalSearch from "./shell/GlobalSearch.css?raw";
@@ -31,6 +32,7 @@ const SHEETS: Record<string, string> = {
   Select: select,
   Modal: modal,
   Toast: toast,
+  Hint: hint,
   TrackContextMenu: contextMenu,
   SuggestInput: suggest,
   GlobalSearch: globalSearch,
@@ -46,8 +48,8 @@ const SHEETS: Record<string, string> = {
   prepare,
 };
 
-/** The sheets that hold a floating surface (WP5 turns the shadow on in each). */
-const POPOVER_SHEETS: string[] = [];
+/** The sheets that hold a floating surface: the menus, the wheel popover, the hint tip, the first-steps popover and the toast. */
+const POPOVER_SHEETS: string[] = ["TrackContextMenu", "WheelPopover", "FirstSteps", "Toast", "Hint"];
 
 const HEAVY = /--shadow-(panel|badge|bevel[a-z-]*|modal|inset-deep)\b/;
 

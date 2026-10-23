@@ -22,9 +22,10 @@
 .cp-toast {
   --toast-tone: var(--accent-info);
   padding: var(--space-md);
-  border: var(--control-border-width) solid var(--border-control);
-  border-left: var(--selected-bar-width) solid var(--toast-tone);
+  border: 0;
+  border-left: var(--notice-bar-width) solid var(--toast-tone);
   background: var(--bg-panel);
+  box-shadow: var(--shadow-popover);
   color: var(--fg-primary);
   /* The body size, like a dialog's words (area 88). */
   font-size: var(--text-body);

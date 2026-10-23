@@ -32,8 +32,9 @@
   width: 100%;
   /* No padding of its own: the field, the summary and the rows share one left edge. */
   padding: 0;
-  background: var(--bg-panel);
-  border: var(--control-border-width) solid var(--border-control);
+  /* Sunken, not framed (P11). */
+  background: var(--bg-input);
+  border: 0;
 }
 
 .cp-global-search__note {
@@ -86,7 +87,7 @@
   display: flex;
   align-items: stretch;
   gap: var(--space-sm);
-  border-bottom: var(--divider);
+  border-bottom: var(--hairline) solid var(--row-line);
 }
 
 .cp-global-search__row:last-child {

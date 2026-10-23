@@ -20,7 +20,8 @@
   max-width: min(calc(360px * var(--scale)), calc(100vw - 8px));
   padding: var(--space-xs) var(--space-sm);
   background: var(--bg-panel);
-  border: var(--control-border-width) solid var(--border-control);
+  border: var(--popover-border);
+  box-shadow: var(--shadow-popover);
   color: var(--fg-primary);
   /* Not inherited: inside the player's meta line that would be the data font. */
   font-family: var(--font-pixel-digits);

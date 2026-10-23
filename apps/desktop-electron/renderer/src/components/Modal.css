@@ -13,7 +13,8 @@
   /* Medium, a form; --small and --large are the other two. All scale with the text. */
   width: min(var(--modal-width, var(--modal-width-medium)), calc(100vw - 2 * var(--space-xl)));
   background: var(--bg-panel);
-  border: var(--control-border-width) solid var(--border-control);
+  /* One surface that lifts off the page with a shadow, no frame (P11). */
+  border: 0;
   box-shadow: var(--shadow-dialog);
   /* One scroller per dialog, the body: the dialog grows with its content up to the window's
      height, and title and buttons stay on screen. Nothing inside sets a max-height of its own. */
@@ -50,8 +51,9 @@
   box-sizing: border-box;
   min-height: var(--toolbar-height);
   padding: var(--space-xs) var(--space-lg);
-  border-bottom: var(--divider);
-  background: var(--overlay-header);
+  /* The title sits on the dialog's own surface: no band and no line under it (P11). */
+  border-bottom: 0;
+  background: transparent;
 }
 
 .cp-modal__title {
@@ -107,8 +109,9 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-md);
-  padding: var(--space-md) var(--space-lg);
-  border-top: var(--divider);
+  /* No line above it, and no top padding: the body's own 12 is the space above the buttons (P11). */
+  padding: 0 var(--space-lg) var(--space-md);
+  border-top: 0;
 }
 
 /* The extra action (Reset columns, Skip) is on the far left; the auto margin is the space

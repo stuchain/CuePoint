@@ -10,8 +10,10 @@
   width: calc(48 * 4px * var(--scale) + 2 * var(--space-lg) + 2 * var(--control-border-width));
   max-width: calc(100vw - 2 * var(--space-lg));
   padding: var(--space-lg);
+  padding-block: var(--space-xs);
   background: var(--bg-panel);
-  border: var(--control-border-width) solid var(--border-control);
+  border: var(--popover-border);
+  box-shadow: var(--shadow-popover);
   /*
    * Never taller than the window below the button: at the largest size the wheel
    * and its caption are taller than a laptop screen, so the popover scrolls (the
