@@ -227,18 +227,23 @@
 }
 
 /*
- * Expanded, the Search button is a field: thin border, darker inside, the way an input reads.
- * The collapsed rail keeps the entries' plain look (an icon alone).
+ * Expanded, the Search button is a field: sunken, darker inside, the way an input reads, with its
+ * frame only on hover and focus (P20). The collapsed rail keeps the entries' plain look (an icon alone).
  */
 .cp-sidebar__search--box {
   background: var(--bg-input);
-  border-color: var(--border-control);
+  border-color: transparent;
   border-width: var(--control-border-width);
 }
 
 .cp-sidebar__link.cp-sidebar__search--box:hover {
   background: var(--bg-input);
-  border-color: var(--fg-muted);
+  border-color: var(--hover-border);
+}
+
+/* The token focus ring stays; the line under it turns violet too. */
+.cp-sidebar__link.cp-sidebar__search--box:focus-visible {
+  border-color: var(--accent-primary);
 }
 
 /* "Search" is never cut: the shortcut chip goes first when the field is tight (see the container query). */
@@ -265,7 +270,8 @@
 /* The shortcut, muted at the field's right edge. */
 .cp-sidebar__search-keys {
   flex: none;
-  color: var(--fg-muted);
+  /* Fainter than the words, by colour not opacity (P20). */
+  color: color-mix(in srgb, var(--fg-muted) 70%, transparent);
   font-size: var(--font-size-xs);
   white-space: nowrap;
 }

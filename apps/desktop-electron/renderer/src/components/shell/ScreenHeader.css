@@ -129,6 +129,28 @@
   white-space: nowrap;
 }
 
+/* A picker beside the title is quiet (P21): no line until the pointer is over it or it has focus.
+   The token focus ring stays; the line under it turns violet. Disabled and error keep their own look. */
+.cp-screen-header__beside .cp-select__control:not(:disabled):not([aria-disabled="true"]):not(.cp-select__control--error) {
+  border-color: transparent;
+}
+
+.cp-screen-header__beside .cp-select__control:not(:disabled):not([aria-disabled="true"]):not(.cp-select__control--error):focus-visible {
+  border-color: var(--accent-primary);
+}
+
+.cp-screen-header__beside .cp-select--inline .cp-select__field:not(:has(> .cp-select__control:is(:disabled, [aria-disabled="true"]))) {
+  border-color: transparent;
+}
+
+.cp-screen-header__beside .cp-select--inline .cp-select__field:not(:has(> .cp-select__control:is(:disabled, [aria-disabled="true"]))):hover {
+  border-color: var(--hover-border);
+}
+
+.cp-screen-header__beside .cp-select--inline .cp-select__field:has(> .cp-select__control:focus-visible) {
+  border-color: var(--accent-primary);
+}
+
 /* The small divider before the Details toggle: one control high, in the line colour (C232). */
 .cp-details-divider {
   align-self: center;

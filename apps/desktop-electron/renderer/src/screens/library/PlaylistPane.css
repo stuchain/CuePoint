@@ -41,6 +41,13 @@
   background: transparent;
 }
 
+/* "from Rekordbox" is a label (P20): the muted size-and-weight of .cp-text-label (index.css). */
+.cp-playlist-pane__source {
+  color: var(--fg-muted);
+  font-size: var(--font-size-label);
+  font-weight: var(--weight-strong);
+}
+
 /* Both section titles are section headings (C57); both heads share one padding (C43). */
 .cp-playlist-pane__title {
   font-size: var(--font-size-section);

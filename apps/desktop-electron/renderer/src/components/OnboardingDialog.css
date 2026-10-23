@@ -153,8 +153,9 @@
   gap: var(--space-xs);
   min-width: 0;
   padding: var(--space-xs);
+  /* The picture sits on the sunken tone, with no frame (P26). */
   background: var(--bg-input);
-  border: var(--hairline) solid var(--border-muted);
+  border: 0;
 }
 
 .onboarding-dialog__caption {

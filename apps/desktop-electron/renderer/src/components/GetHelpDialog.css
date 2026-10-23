@@ -81,3 +81,15 @@
 .get-help-dialog__id {
   font-family: var(--font-mono);
 }
+
+/* The first button of the help-file row keeps its frame; the rest are quiet, the look of Button.css's
+   quiet bars (P26): their frame and fill come back on hover. */
+.get-help-dialog__file .cp-btn--secondary + .cp-btn--secondary {
+  border-color: transparent;
+  background: transparent;
+}
+
+.get-help-dialog__file .cp-btn--secondary + .cp-btn--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--border-control);
+  background: var(--hover-fill);
+}
