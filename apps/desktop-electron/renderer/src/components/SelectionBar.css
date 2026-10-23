@@ -1,10 +1,10 @@
 /*
- * The selection bar (C9, C215): 42 high at 1x, on the toolbar colour, directly above the list.
- * It carries no border; the list's own header divider is the line below it.
+ * The selection bar (C9, C215; P52): the toolbar height (32 at 1x), on the toolbar colour, directly
+ * above the list. It carries no border; the list's own header divider is the line below it.
  */
 :root {
   /* The bar's height, shared with the pages that make room for it (Discover's half tables). */
-  --selection-bar-height: round(nearest, calc(42px * var(--scale)), 1px);
+  --selection-bar-height: var(--toolbar-height);
 }
 
 .cp-selection-bar {
@@ -45,11 +45,15 @@
 }
 
 /*
- * Over a table's bottom rows (option 1A): a hairline rule on top and no shadow (C16a). For a
- * double-click's length after it appears the pointer goes through it to the row under it.
+ * Over a table's bottom rows (option 1A): lifted off them by the sticky shadow mirrored upward
+ * (P52, P40), not a divider. For a double-click's length after it appears the pointer goes through
+ * it to the row under it.
  */
 .cp-selection-bar--overlay {
-  border-top: var(--divider);
+  box-shadow:
+    0 calc(-1 * var(--hairline)) 0 var(--row-line),
+    0 calc(-1 * round(nearest, calc(6px * var(--scale)), 1px)) round(nearest, calc(10px * var(--scale)), 1px)
+      round(nearest, calc(-6px * var(--scale)), 1px) rgba(0, 0, 0, 0.6);
 }
 
 .cp-selection-bar--overlay[data-armed="false"] {

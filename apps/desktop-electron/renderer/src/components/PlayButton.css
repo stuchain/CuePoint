@@ -1,6 +1,6 @@
-/* The one row play button (area 12): 16px, round, an outline, the play mark inside it. */
+/* The one row play button (area 12; P53): 18px, round, a hairline ring, the play mark inside it. */
 .cp-play-btn {
-  --play-size: round(nearest, calc(16px * var(--scale)), 1px);
+  --play-size: round(nearest, calc(18px * var(--scale)), 1px);
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -9,7 +9,7 @@
   width: var(--play-size);
   height: var(--play-size);
   padding: 0;
-  border: var(--control-border-width) solid var(--border-control);
+  border: var(--hairline) solid var(--border-control);
   border-radius: 50%;
   background: transparent;
   color: var(--fg-muted);
@@ -23,12 +23,15 @@
 }
 
 .cp-play-btn:hover:not(:disabled):not([aria-disabled="true"]) {
-  border-color: var(--fg-primary);
+  border-color: var(--fg-muted);
+  background: var(--hover-fill);
   color: var(--fg-primary);
 }
 
+/* Playing: violet ring and mark on a 12% tint (a colour mix, not opacity). */
 .cp-play-btn--playing {
   border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
   color: var(--accent-primary);
 }
 

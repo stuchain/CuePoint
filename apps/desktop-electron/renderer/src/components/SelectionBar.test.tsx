@@ -38,8 +38,11 @@ describe("SelectionBar (C9, C215)", () => {
     expect(actions).not.toBeNull();
   });
 
-  it("is 42 high at 1x and scales, on the toolbar colour, with no border of its own", () => {
-    expect(css).toMatch(/--selection-bar-height:\s*round\(nearest, calc\(42px \* var\(--scale\)\), 1px\)/);
+  // P52: the bar is the toolbar height (32 at 1x), not 42; over rows it lifts with the sticky shadow, not a divider.
+  it("is the toolbar height and scales, on the toolbar colour, with no border of its own", () => {
+    expect(css).toMatch(/--selection-bar-height:\s*var\(--toolbar-height\)/);
+    expect(css).toMatch(/\.cp-selection-bar--overlay\s*\{[^}]*box-shadow:[^;]*calc\(-1 \* var\(--hairline\)\)/);
+    expect(css).not.toMatch(/\.cp-selection-bar--overlay\s*\{[^}]*border-top/);
     expect(css).toMatch(/\.cp-selection-bar\s*\{[^}]*min-height:\s*var\(--selection-bar-height\)/);
     expect(css).toMatch(/\.cp-selection-bar\s*\{[^}]*background:\s*var\(--bg-toolbar\)/);
   });
@@ -62,9 +65,10 @@ describe("SelectionBar over a table (option 1A)", () => {
     }
   });
 
-  it("is drawn with a hairline rule on top and no shadow, and lets the pointer through while unarmed", () => {
-    expect(css).toMatch(/\.cp-selection-bar--overlay\s*\{[^}]*border-top:\s*var\(--divider\)/);
-    expect(css).not.toMatch(/box-shadow/);
+  // P52: the overlay bar lifts with the sticky shadow mirrored upward instead of a hairline rule on top.
+  it("is drawn with an upward shadow and no rule, and lets the pointer through while unarmed", () => {
+    expect(css).toMatch(/\.cp-selection-bar--overlay\s*\{[^}]*box-shadow:/);
+    expect(css).not.toMatch(/border-top/);
     expect(css).toMatch(/\.cp-selection-bar--overlay\[data-armed="false"\]\s*\{[^}]*pointer-events:\s*none/);
   });
 

@@ -136,12 +136,11 @@
   object-fit: cover;
 }
 
-/* An artist is a round picture, centred on the card. */
+/* An artist is a picture centred on the card; like every cover it has no radius (P54). */
 .discover-card__art--artist {
   align-self: center;
   width: 72%;
   margin-top: var(--space-md);
-  border-radius: 50%;
 }
 
 /* An artist without one is a small round placeholder of the band's height. */

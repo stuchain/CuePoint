@@ -475,7 +475,8 @@
   width: calc(72px * var(--scale));
   height: calc(72px * var(--scale));
   object-fit: cover;
-  border: var(--control-border-width) solid var(--border-control);
+  /* No frame on a cover (P54). */
+  border: 0;
 }
 
 /* Every candidate: a radio to pick it, a play button, what it is called and who made it. They sit
@@ -526,11 +527,12 @@
   box-sizing: border-box;
   width: calc(36px * var(--scale));
   height: calc(36px * var(--scale));
-  border: var(--control-border-width) solid var(--border-control);
+  /* No frame on a cover (P54). */
+  border: 0;
   contain: strict;
 }
 
-/* The box draws the border, for the picture and the placeholder alike. */
+/* The box holds the size, for the picture and the placeholder alike. */
 .review-candidate__cover-box > .review-candidate__cover {
   display: block;
   box-sizing: border-box;

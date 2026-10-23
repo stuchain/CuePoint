@@ -41,7 +41,7 @@ describe("one chip box (P30)", () => {
     expect(body).toMatch(/border-radius:\s*0/);
   });
 
-  it("sets the chip face on the chip itself: the chip size and semibold", () => {
+  it("sets the chip face on the chip itself: the chip size and weight", () => {
     for (const [sheet, selector] of [
       ["/src/components/Badge.css", ".cp-badge"],
       ["/src/components/wheel/KeyChip.css", ".key-chip"],
@@ -50,7 +50,9 @@ describe("one chip box (P30)", () => {
     ] as const) {
       const body = rule(sheet, selector);
       expect(body, `${sheet} ${selector}`).toMatch(/font-size:\s*var\(--font-size-chip\)/);
-      expect(body, `${sheet} ${selector}`).toMatch(/font-weight:\s*var\(--font-weight-semibold\)/);
+      // P51: a filter chip's words are Inter medium; the other chips stay semibold (P30).
+      const weight = selector === ".cp-filter-bar__chip" ? "medium" : "semibold";
+      expect(body, `${sheet} ${selector}`).toMatch(new RegExp(`font-weight:\\s*var\\(--font-weight-${weight}\\)`));
     }
   });
 

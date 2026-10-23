@@ -6,7 +6,8 @@
   width: 100%;
   height: 100%;
   aspect-ratio: 1;
-  border: var(--hairline) solid var(--border-muted);
+  /* P54: no line; the alt tone with the glyph at 70% of muted. */
+  border: 0;
   background: var(--bg-panel-alt);
-  color: var(--fg-muted);
+  color: color-mix(in srgb, var(--fg-muted) 70%, transparent);
 }

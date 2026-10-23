@@ -69,7 +69,8 @@
   color: var(--fg-primary);
   font-family: var(--font-control);
   font-size: var(--font-size-chip);
-  font-weight: var(--font-weight-semibold);
+  /* P51: the words are Inter medium (the chip is the P30 chip; the cross is quiet until hovered). */
+  font-weight: var(--font-weight-medium);
   line-height: 1;
 }
 
