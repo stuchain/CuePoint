@@ -3,8 +3,8 @@
  * outside the virtualised track table, mirroring the Library table. Put `cp-data-table` on a
  * `<table>`; mark number cells `.num` and a chosen row `aria-selected="true"`.
  *
- * - header: the row height, on the toolbar colour, a pixel label in the muted colour, one
- *   `--border-muted` line below it, sticky;
+ * - header: the row height, on the panel colour, a pixel label in the muted colour, one
+ *   `--divider` line below it, sticky;
  * - rows: the row height, with the divider drawn inside the row so it never adds to the height;
  * - cells: `--space-sm` either side, ending in "…" when cut short;
  * - hover: `--row-hover`; selected: `--selected-row-background`.
@@ -25,8 +25,8 @@
   box-sizing: border-box;
   height: var(--row-height);
   padding: 0 var(--space-sm);
-  background: var(--bg-toolbar);
-  border-bottom: var(--hairline) solid var(--border-muted);
+  background: var(--bg-panel);
+  border-bottom: var(--divider);
   color: var(--fg-muted);
   font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
@@ -98,8 +98,8 @@
   box-sizing: border-box;
   min-height: var(--row-height);
   padding: 0 var(--space-sm);
-  background: var(--bg-toolbar);
-  border-bottom: var(--hairline) solid var(--border-muted);
+  background: var(--bg-panel);
+  border-bottom: var(--divider);
   color: var(--fg-muted);
   font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);

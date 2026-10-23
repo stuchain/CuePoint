@@ -90,9 +90,10 @@ describe("the Library's shared lines", () => {
     expect(on).toContain("color: var(--fg-primary)");
   });
 
-  it("keeps one divider: only the pane has a right edge, the main column has no left one", () => {
+  it("keeps no divider between the pane and the table: the main column has no left edge and the pane no right one (P1)", () => {
+    // P1: the pane is the panel tone beside the sunken table, so the two tones meet without a line.
     expect(strip(library)).not.toMatch(/library-screen__main[^{]*\{[^}]*border-left/);
-    expect(rule(pane, ".cp-library-pane")).toContain("border-right: var(--divider)");
+    expect(rule(pane, ".cp-library-pane")).toContain("border-right: 0");
   });
 
   it("keeps the pane's floor at 112px times the scale, capped at 45% of the body", () => {

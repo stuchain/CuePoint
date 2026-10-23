@@ -1,5 +1,5 @@
 /*
- * The one card (area 64), as Statistics drew it: a hairline box padded 12, a title row (the title
+ * The one card (area 64): a panel-tone box with no frame (P1) padded 12, a title row (the title
  * at the left, the unit or the one link at the far right) and the body 8 below.
  */
 .cp-card {
@@ -8,7 +8,8 @@
   gap: var(--space-md);
   min-width: 0;
   padding: var(--space-lg);
-  border: var(--divider);
+  border: 0;
+  background: var(--bg-panel);
 }
 
 .cp-card__head {

@@ -30,7 +30,8 @@
   /* The sections scroll inside (.cp-library-pane__scroll).
      Never sideways: a row's name is ellipsised and its count kept, so the pane has nothing to scroll. */
   overflow: hidden;
-  border-right: var(--divider);
+  /* No right edge (P1): the pane is the panel tone beside the sunken table. */
+  border-right: 0;
   background: var(--bg-panel);
 }
 

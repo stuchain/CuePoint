@@ -25,7 +25,7 @@
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  border-right: var(--divider);
+  border-right: 0;
   background: var(--bg-panel);
 }
 
@@ -37,8 +37,8 @@
   flex-wrap: wrap;
   gap: 0 var(--space-sm);
   padding: var(--space-sm);
-  border-bottom: var(--hairline) solid var(--border-muted);
-  background: var(--bg-toolbar);
+  border-bottom: var(--divider);
+  background: transparent;
 }
 
 /* Both section titles are section headings (C57); both heads share one padding (C43). */

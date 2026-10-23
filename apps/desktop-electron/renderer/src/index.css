@@ -488,8 +488,8 @@ details > summary:has(.cp-disclosure)::before {
   background: var(--accent-primary);
 }
 
-/* The bar above every list (D9): the toolbar fill, no border, one height, 8 in at the sides, and
-   nothing between it and the list below it. */
+/* The bar above every list (D9, amended by P1): no fill of its own, so it sits on whatever surface
+   holds it; no border, one height, 8 in at the sides, and nothing between it and the list below it. */
 .cp-toolbar {
   display: flex;
   align-items: center;
@@ -500,7 +500,7 @@ details > summary:has(.cp-disclosure)::before {
   padding-block: 0;
   padding-inline: var(--space-md);
   border: 0;
-  background: var(--bg-toolbar);
+  background: transparent;
 }
 
 /* Buttons in a row are 8 apart (C28). */

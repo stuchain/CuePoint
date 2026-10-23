@@ -24,7 +24,7 @@
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  border: var(--divider);
+  border: 0;
   background: var(--bg-input);
 }
 
@@ -51,7 +51,7 @@
   position: sticky;
   top: 0;
   z-index: 3;
-  background: var(--bg-toolbar);
+  background: var(--bg-panel);
   border-bottom: var(--divider);
 }
 
@@ -63,7 +63,7 @@
 .track-table__header-cell-wrap--sticky {
   position: sticky;
   z-index: 4;
-  background: var(--bg-toolbar);
+  background: var(--bg-panel);
 }
 
 /* A header with a hint is wrapped by `Hint`; the button still fills its cell. */
@@ -147,7 +147,7 @@
 
 .track-table__header-cell:not(:disabled):not([aria-disabled="true"]):not(.track-table__header-cell--plain):hover {
   color: var(--fg-primary);
-  background: color-mix(in srgb, var(--bg-panel) 30%, var(--bg-toolbar));
+  background: var(--hover-fill);
 }
 
 /* The Columns… button (K21): in a track of its own after the last column (the template adds
@@ -164,9 +164,8 @@
   box-sizing: border-box;
   height: 100%;
   padding: 0 var(--space-xs);
-  /* Solid, with a line on its left, so a heading scrolled under it is covered and not shown through (C69). */
-  background: var(--bg-toolbar);
-  border-left: var(--hairline) solid var(--border-muted);
+  /* Solid, in the header's own tone, so a heading scrolled under it is covered and not shown through (C69, P1). */
+  background: var(--bg-panel);
 }
 
 /* The same track in each row: sticky on the right like the button and in the row's own colour, so
@@ -184,7 +183,7 @@
 
 .track-table__header-cell-wrap--dragging {
   /* Dimmed by colour, not opacity: only a column being moved looks like this. */
-  background: var(--bg-panel);
+  background: var(--bg-panel-alt);
 }
 
 .track-table__sort {

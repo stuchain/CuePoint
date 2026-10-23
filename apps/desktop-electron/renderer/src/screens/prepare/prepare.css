@@ -278,8 +278,8 @@ body.prepare-resizing {
   padding: var(--space-sm);
   padding-top: var(--prepare-strip-pad);
   padding-bottom: calc(2px * var(--scale));
-  border-bottom: var(--control-border-width) solid var(--border-muted);
-  background: var(--bg-panel-alt);
+  border-bottom: var(--divider);
+  background: var(--bg-between);
 }
 
 .prepare-lanes__gutter {
@@ -375,8 +375,8 @@ body.prepare-resizing {
   padding-bottom: 0;
   /* The right waveform stops 8 (at 1x) short of the pane's edge (C49). */
   padding-right: var(--space-md);
-  border-bottom: var(--control-border-width) solid var(--border-muted);
-  background: var(--bg-panel-alt);
+  border-bottom: var(--divider);
+  background: var(--bg-between);
 }
 
 /* The name over its times, both inside the one row, so a narrow Set pane
@@ -433,7 +433,7 @@ body.prepare-resizing {
   flex: none;
   align-self: flex-start;
   padding: 0 var(--space-sm);
-  background: var(--bg-panel);
+  background: var(--bg-between);
   font-size: var(--font-size-xs);
   line-height: 1.2;
 }

@@ -113,7 +113,7 @@
   padding: var(--space-md);
   overflow-y: auto;
   background: var(--bg-panel);
-  border: var(--divider);
+  border: 0;
 }
 
 /* The one tree indent (C40): a child's icon sits 12 (at 1x) in from its parent's. */
@@ -315,6 +315,8 @@
 
 .keys-tracks__toolbar {
   flex: none;
+  /* The shared toolbar is transparent (P1), so the list's head takes the panel tone itself. */
+  background: var(--bg-panel);
 }
 
 .keys-tracks__heading {

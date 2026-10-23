@@ -1193,7 +1193,8 @@ describe("the Plays section, after review (STATS-05)", () => {
       const rule = grid.slice(at, grid.indexOf("}", at));
       expect(rule).toContain("position: sticky;");
       expect(rule).toContain("min-height: var(--row-height);");
-      expect(rule).toContain("background: var(--bg-toolbar);");
+      // P1: a table header is the panel tone with the divider under it, no longer the toolbar tone.
+      expect(rule).toContain("background: var(--bg-panel);");
       expect(rule).toContain("font-family: var(--font-pixel-digits);");
       // Neither page sheet draws a header look of its own any more.
       for (const sheet of [css, playsCss]) expect(sheet).not.toContain("var(--bg-toolbar)");
