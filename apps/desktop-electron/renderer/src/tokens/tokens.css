@@ -162,9 +162,10 @@
   --font-size-xl: calc(24px * var(--scale));
   /* A figure read at a glance (P15): Statistics' four numbers. 26 times 1.5 is whole. */
   --font-size-figure: calc(26px * var(--scale));
-  /* Text roles: page 24 / dialog 18 / section 14 / label 10 bold muted. One weight. */
-  --font-size-page: var(--font-size-xl);
-  --font-size-dialog: var(--font-size-lg);
+  /* Text roles (P47): page 22 / dialog 16 / section 14 / control 11 / label 10.5. The page and dialog
+     titles step down from 24 and 18 (answer 1); --font-size-xl and -lg stay for the few other uses. */
+  --font-size-page: round(nearest, calc(22px * var(--scale)), 1px);
+  --font-size-dialog: round(nearest, calc(16px * var(--scale)), 1px);
   --font-size-section: var(--font-size-md);
   /* P2/P47: labels, column headers and chips are 10.5 (rounded down so it never grows past the ladder). */
   --font-size-label: round(down, calc(10.5px * var(--scale)), 1px);

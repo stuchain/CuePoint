@@ -98,8 +98,9 @@ describe("one link (area 5)", () => {
 
 describe("text roles and the one legend (area 4)", () => {
   it("has page 24, dialog 18, section 14 and label 10.5 medium muted (P2)", () => {
-    expect(rootDecl(tokens, "--font-size-page")).toBe("var(--font-size-xl)");
-    expect(rootDecl(tokens, "--font-size-dialog")).toBe("var(--font-size-lg)");
+    // P47 with answer 1 (23 Oct 2026): the page title is 22 and the dialog title 16, each rounded to a whole pixel.
+    expect(rootDecl(tokens, "--font-size-page")).toBe("round(nearest, calc(22px * var(--scale)), 1px)");
+    expect(rootDecl(tokens, "--font-size-dialog")).toBe("round(nearest, calc(16px * var(--scale)), 1px)");
     expect(rootDecl(tokens, "--font-size-section")).toBe("var(--font-size-md)");
     // P2: 10.5 rounded down at the scale (10.5 times 1.5 is fractional).
     expect(rootDecl(tokens, "--font-size-label")).toBe("round(down, calc(10.5px * var(--scale)), 1px)");

@@ -74,7 +74,7 @@ describe("ScreenHeader", () => {
     expect(root).toMatch(/position:\s*sticky/);
     expect(root).toMatch(/border-bottom:\s*var\(--divider\)/);
     expect((css.match(/var\(--divider\)/g) ?? []).length).toBe(1);
-    expect(css).toMatch(/\.cp-screen-header__title,[\s\S]*?font-size:\s*var\(--font-size-xl\)/);
+    expect(css).toMatch(/\.cp-screen-header__title,[\s\S]*?font-size:\s*var\(--font-size-page\)/);
   });
 
   it("keeps its top margin when it sticks, like the Keys page did", () => {
@@ -190,5 +190,12 @@ describe("ScreenHeader", () => {
       expect(rule(".cp-screen-header__beside .cp-select__control")).toMatch(/text-overflow:\s*ellipsis/);
       expect(css).toMatch(/\.cp-screen-header__beside \.cp-select\b[^{]*\{\s*min-width:\s*0/);
     });
+  });
+});
+
+// P47 (answer 1): page titles are 22 with a hair of tracking; the voice face and weight are unchanged.
+describe("the page title type (P47)", () => {
+  it("is --font-size-page with 0.01em letter spacing", () => {
+    expect(css).toMatch(/\.cp-screen-header__title,[\s\S]*?letter-spacing:\s*0\.01em/);
   });
 });

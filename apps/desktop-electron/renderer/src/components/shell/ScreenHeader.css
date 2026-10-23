@@ -72,8 +72,9 @@
 .cp-screen-header__title,
 .cp-screen-header__display {
   font-family: var(--font-voice);
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-page);
   font-weight: var(--font-weight-bold);
+  letter-spacing: 0.01em;
   line-height: var(--toolbar-height);
   min-width: 0;
   overflow: hidden;

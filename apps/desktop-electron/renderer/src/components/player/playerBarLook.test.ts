@@ -187,3 +187,41 @@ function isAllowed(file: string, selector: string, name: string, value: string):
     value === "inherit"
   );
 }
+
+// P46: the seek and volume sliders are drawn: a 2px muted track and a 10px round thumb. The native
+// input still owns the keys, the drag and the value, and the picture over a waveform is untouched.
+describe("the sliders are drawn (P46)", () => {
+  const css = stripComments(playerBar);
+  const body = (selector: string) =>
+    parseRules(css)
+      .filter((r) => selectorList(r.selector).includes(selector))
+      .map((r) => r.body)
+      .join("\n");
+
+  it("strips the native look and sets the geometry once", () => {
+    const slider = body(".cp-player-bar__slider");
+    expect(slider).toMatch(/appearance:\s*none/);
+    expect(slider).toMatch(/background:\s*transparent/);
+    expect(slider).toMatch(/--slider-track:\s*round\(nearest,\s*calc\(2px \* var\(--scale\)\),\s*1px\)/);
+    expect(slider).toMatch(/--slider-thumb:\s*round\(nearest,\s*calc\(10px \* var\(--scale\)\),\s*1px\)/);
+    expect(css).not.toMatch(/accent-color/);
+  });
+
+  it("draws the track in the muted line and the thumb round in the accent, centred on the track", () => {
+    expect(body(".cp-player-bar__slider::-webkit-slider-runnable-track")).toMatch(/background:\s*var\(--border-muted\)/);
+    const thumb = body(".cp-player-bar__slider::-webkit-slider-thumb");
+    expect(thumb).toMatch(/border-radius:\s*50%/);
+    expect(thumb).toMatch(/background:\s*var\(--accent-primary\)/);
+    expect(thumb).toMatch(/margin-top:\s*round\(nearest,\s*calc\(\(var\(--slider-track\) - var\(--slider-thumb\)\) \/ 2\),\s*1px\)/);
+  });
+
+  it("makes the volume thumb muted and a disabled thumb --fg-disabled", () => {
+    expect(body(".cp-player-bar__slider--volume::-webkit-slider-thumb")).toMatch(/background:\s*var\(--fg-muted\)/);
+    expect(body(".cp-player-bar__slider:disabled::-webkit-slider-thumb")).toMatch(/background:\s*var\(--fg-disabled\)/);
+  });
+
+  it("leaves the drawn-waveform rules alone: the input stays transparent over the picture", () => {
+    expect(body(".cp-player-bar__wave--drawn .cp-player-bar__slider")).toMatch(/opacity:\s*0/);
+    expect(body(".cp-player-bar__wave--drawn .cp-player-bar__slider::-webkit-slider-runnable-track")).toMatch(/background:\s*transparent/);
+  });
+});

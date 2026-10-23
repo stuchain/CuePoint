@@ -228,16 +228,44 @@
   white-space: nowrap;
 }
 
+/*
+ * The seek and volume sliders (P46): a 2px track in the muted line and a 10px round thumb, the same
+ * geometry for both. The keys, the drag and the value are the native input's. The picture drawn over a
+ * waveform (--wave--drawn, below) keeps its own rules.
+ */
 .cp-player-bar__slider {
+  --slider-track: round(nearest, calc(2px * var(--scale)), 1px);
+  --slider-thumb: round(nearest, calc(10px * var(--scale)), 1px);
   flex: 1 1 auto;
   min-width: 0;
-  accent-color: var(--accent-primary);
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
   cursor: pointer;
+}
+
+.cp-player-bar__slider::-webkit-slider-runnable-track {
+  block-size: var(--slider-track);
+  background: var(--border-muted);
+}
+
+.cp-player-bar__slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  inline-size: var(--slider-thumb);
+  block-size: var(--slider-thumb);
+  margin-top: round(nearest, calc((var(--slider-track) - var(--slider-thumb)) / 2), 1px);
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent-primary);
 }
 
 .cp-player-bar__slider:disabled {
   cursor: default;
-  accent-color: var(--fg-disabled);
+}
+
+.cp-player-bar__slider:disabled::-webkit-slider-thumb {
+  background: var(--fg-disabled);
 }
 
 /*
@@ -292,9 +320,12 @@
 .cp-player-bar__wave--drawn .cp-player-bar__slider::-webkit-slider-thumb {
   appearance: none;
   -webkit-appearance: none;
-  width: 0;
-  height: 100%;
+  inline-size: 0;
+  block-size: 100%;
+  margin-top: 0;
   border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 /* The focus ring goes around the waveform, since the input itself is not seen. */
@@ -332,6 +363,15 @@
   flex: 0 0 auto;
   /* Follows the size: not capped to a few pixels at the larger sizes. */
   width: calc(56px * var(--scale));
+}
+
+/* The volume thumb is the muted word colour, so only the seek point is violet (P46). */
+.cp-player-bar__slider--volume::-webkit-slider-thumb {
+  background: var(--fg-muted);
+}
+
+.cp-player-bar__slider--volume:disabled::-webkit-slider-thumb {
+  background: var(--fg-disabled);
 }
 
 /* Narrow windows: the track text gives way first, then volume. The transport
