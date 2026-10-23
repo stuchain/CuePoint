@@ -12,6 +12,7 @@ import { ToastProvider } from "../components";
 import { NEO_DARK_EDITOR_COLORS, saveCustomTheme } from "../tokens/customThemes";
 import { DEFAULT_SCALE, SCALE_OPTIONS, scaleOptionLabel } from "../tokens/scale";
 import { resetKeyColoursForTests } from "../components/wheel/keyColourSetting";
+import { resetKeyNotationForTests } from "../components/wheel/keyNotationSetting";
 import { resetRowDensityForTests } from "../tokens/rowDensity";
 import { ScaleProvider } from "../tokens/ScaleContext";
 import { ThemeProvider } from "../tokens/ThemeContext";
@@ -43,7 +44,9 @@ afterEach(() => {
   delete document.documentElement.dataset.rowDensity;
   delete document.documentElement.dataset.keyColours;
   resetRowDensityForTests();
+  delete document.documentElement.dataset.keyNotation;
   resetKeyColoursForTests();
+  resetKeyNotationForTests();
 });
 
 describe("theme names", () => {
@@ -232,23 +235,29 @@ describe("custom themes", () => {
 describe("Tables", () => {
   const density = () => screen.getByRole("combobox", { name: "Row density" });
   const keys = () => screen.getByRole("checkbox", { name: "Color keys" });
+  const notation = () => screen.getByRole("combobox", { name: "Keys written as" });
 
   it("is part of Appearance, and Reset Appearance puts it back, Undo restores it", async () => {
     renderPanel();
     await userEvent.selectOptions(density(), "roomy");
     await userEvent.click(keys());
+    await userEvent.selectOptions(notation(), "both");
     expect(document.documentElement.dataset.rowDensity).toBe("roomy");
     expect(document.documentElement.dataset.keyColours).toBe("off");
+    expect(document.documentElement.dataset.keyNotation).toBe("both");
 
     await userEvent.click(screen.getByRole("button", { name: "Reset appearance" }));
     expect(density()).toHaveValue("compact");
     expect(keys()).toBeChecked();
     expect(document.documentElement.dataset.rowDensity).toBeUndefined();
     expect(document.documentElement.dataset.keyColours).toBeUndefined();
+    expect(notation()).toHaveValue("camelot");
+    expect(document.documentElement.dataset.keyNotation).toBeUndefined();
 
     await userEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(density()).toHaveValue("roomy");
     expect(keys()).not.toBeChecked();
+    expect(notation()).toHaveValue("both");
   });
 });
 

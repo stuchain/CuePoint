@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { act, render, screen } from "@testing-library/react";
 
 import { CAMELOT_CODES } from "./camelot";
+import { resetKeyNotationForTests, saveKeyNotation } from "./keyNotationSetting";
 import { KeyChip } from "./KeyChip";
 import chipCssRaw from "./KeyChip.css?raw";
 
@@ -44,6 +45,42 @@ describe("a key chip", () => {
   it("carries no inline style, so a table of them stays cheap", () => {
     render(<KeyChip value="3B" />);
     expect(screen.getByText("3B")).not.toHaveAttribute("style");
+  });
+});
+
+describe("Keys written as (K1 to K3)", () => {
+  afterEach(() => {
+    localStorage.clear();
+    delete document.documentElement.dataset.keyNotation;
+    resetKeyNotationForTests();
+  });
+
+  it("writes the musical name in Musical, with the same colour class and hint", () => {
+    saveKeyNotation("musical");
+    render(<KeyChip value="8A" />);
+    const chip = screen.getByText("Am");
+    expect(chip).toHaveClass("key-chip", "key-chip--8A");
+    expect(chip).toHaveAttribute("data-hint", "A minor");
+    expect(screen.queryByText("8A")).toBeNull();
+  });
+
+  it("writes both, code first, in Both", () => {
+    saveKeyNotation("both");
+    render(<KeyChip value="Am" />);
+    expect(screen.getByText("8A · Am")).toHaveClass("key-chip--8A");
+  });
+
+  it("follows a change at once, and leaves text that is not a key alone", () => {
+    render(
+      <>
+        <KeyChip value="12B" />
+        <KeyChip value="loud" />
+      </>,
+    );
+    expect(screen.getByText("12B")).toBeInTheDocument();
+    act(() => saveKeyNotation("musical"));
+    expect(screen.getByText("E")).toHaveClass("key-chip--12B");
+    expect(screen.getByText("loud")).toBeInTheDocument();
   });
 });
 

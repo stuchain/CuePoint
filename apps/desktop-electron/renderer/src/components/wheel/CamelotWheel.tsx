@@ -2,6 +2,8 @@ import { Fragment, useRef, useState, type CSSProperties, type KeyboardEvent, typ
 
 import { keyHint } from "./wheelLink";
 import { useKeyColours } from "./keyColourSetting";
+import { useKeyNotation } from "./keyNotationSetting";
+import type { KeyNotation } from "./keyNotationSetting";
 import { changedMark, useCountChanges } from "./useCountChanges";
 import {
   CAMELOT_CODES,
@@ -11,6 +13,7 @@ import {
   countedName,
   keyName,
   moveOnRing,
+  musicalName,
   segmentShape,
   tracksWord,
   type WheelMove,
@@ -65,6 +68,23 @@ function nameOf(code: string, relation: KeyRelation | undefined): string {
 }
 
 /**
+ * A key's words on the wheel (K1 to K3): the code, the musical name, or the code with the name as a
+ * small line after it. The wedge's label and the hole in the middle both use it.
+ */
+export function WheelKeyText({ code, notation }: { code: string; notation: KeyNotation }) {
+  if (notation === "musical") return <>{musicalName(code)}</>;
+  if (notation === "both") {
+    return (
+      <>
+        {code}
+        <span className="cp-wheel__musical">{musicalName(code)}</span>
+      </>
+    );
+  }
+  return <>{code}</>;
+}
+
+/**
  * The Camelot wheel's drawing (PAGES-10): 24 keys in two rings, A inside and B
  * outside, 12 at the top, each a smooth wedge with an even gap to its neighbours
  * (C2). Each is a button, cut to its wedge; the track's own key and the keys that
@@ -89,6 +109,8 @@ export function CamelotWheel({
   const [hovered, setHovered] = useState<string | null>(null);
   // Settings › Color keys: on, every wedge is its key's own colour; off, the wheel is violet.
   const [coloured] = useKeyColours();
+  // Settings › Keys written as: the labels and the centre follow it; the key's colour stays its code's.
+  const notation = useKeyNotation();
   const marks = useCountChanges(counts ?? NO_COUNTS);
   const biggest = counts ? Math.max(0, ...counts.values()) : 0;
 
@@ -106,7 +128,7 @@ export function CamelotWheel({
   const levelOf = (code: string) => (counts ? countLevel(counts.get(code) ?? 0, biggest) : 0);
 
   return (
-    <div className={`cp-wheel${counts ? " cp-wheel--counts" : " cp-wheel--keys"}${coloured ? " cp-wheel--coloured" : ""}`} role="group" aria-label="Keys" onKeyDown={onKeyDown}>
+    <div className={`cp-wheel${counts ? " cp-wheel--counts" : " cp-wheel--keys"}${coloured ? " cp-wheel--coloured" : ""}`} role="group" aria-label="Keys" data-notation={notation} onKeyDown={onKeyDown}>
       <svg className="cp-wheel__art" viewBox={`0 0 ${GRID_CELLS} ${GRID_CELLS}`} aria-hidden="true">
         {CAMELOT_CODES.map((code) => (
           <path
@@ -180,7 +202,7 @@ export function CamelotWheel({
               data-level={levelOf(code) || undefined}
               style={{ "--wheel-x": `${shape.label.x}%`, "--wheel-y": `${shape.label.y}%` } as CSSProperties}
             >
-              {code}
+              <WheelKeyText code={code} notation={notation} />
               {count !== null && (
                 <span className="cp-wheel__count" data-changed={changedMark(marks, code)}>
                   {compactCount(count)}

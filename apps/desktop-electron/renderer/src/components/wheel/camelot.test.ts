@@ -17,8 +17,10 @@ import {
   countedName,
   edgeInset,
   inSector,
+  keyLabel,
   keyName,
   moveOnRing,
+  musicalName,
   parseCode,
   sectorOf,
   sectorPoint,
@@ -307,5 +309,29 @@ describe("the words for counts (PAGES-16)", () => {
     expect(countedName("8A", 0, true)).toBe("8A, A minor, no tracks, chosen");
     expect(countedName("9A", 1, false, "adjacent")).toBe("9A, E minor, 1 track, mixes");
     expect(countedName("8A", 1, false, "same")).toBe("8A, A minor, 1 track, the key to mix with");
+  });
+});
+
+describe("keys written as Camelot, musical or both (K1 to K3)", () => {
+  it("names all 24 places as a musician writes them: minor with an m, major plain", () => {
+    const minors = ["A♭m", "E♭m", "B♭m", "Fm", "Cm", "Gm", "Dm", "Am", "Em", "Bm", "F♯m", "C♯m"];
+    const majors = ["B", "F♯", "D♭", "A♭", "E♭", "B♭", "F", "C", "G", "D", "A", "E"];
+    minors.forEach((name, index) => expect(musicalName(`${index + 1}A`)).toBe(name));
+    majors.forEach((name, index) => expect(musicalName(`${index + 1}B`)).toBe(name));
+    expect(CAMELOT_CODES.map(musicalName)).toEqual([...minors, ...majors]);
+  });
+
+  it("writes a key in the chosen notation", () => {
+    expect(keyLabel("8A", "camelot")).toBe("8A");
+    expect(keyLabel("8A", "musical")).toBe("Am");
+    expect(keyLabel("8A", "both")).toBe("8A · Am");
+    expect(keyLabel("1B", "both")).toBe("1B · B");
+    expect(keyLabel("11A", "musical")).toBe("F♯m");
+  });
+
+  it("leaves text that is not a place as it came, and keeps the long name", () => {
+    expect(musicalName("loud")).toBe("loud");
+    expect(keyLabel("loud", "both")).toBe("loud");
+    expect(keyName("8A")).toBe("A minor");
   });
 });

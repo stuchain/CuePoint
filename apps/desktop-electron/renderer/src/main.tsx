@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { applyKeyColours } from './components/wheel/keyColourSetting.ts'
+import { applyKeyNotation } from './components/wheel/keyNotationSetting.ts'
 import { applyRowDensity } from './tokens/rowDensity.ts'
 import { ErrorBoundary } from './reporting/ErrorBoundary.tsx'
 import { ErrorScreen } from './reporting/ErrorScreen.tsx'
@@ -19,6 +20,7 @@ async function start() {
   ])
   applyKeyColours()
   applyRowDensity()
+  applyKeyNotation()
   const root = createRoot(document.getElementById('root')!)
   try {
     const { default: App } = await import('./App.tsx')

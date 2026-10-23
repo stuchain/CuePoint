@@ -179,6 +179,22 @@
   font-weight: var(--font-weight-bold);
 }
 
+/* Keys written as Both (K1 to K3): the musical name is a small line under the code, 80% of its size. */
+.cp-wheel[data-notation="both"] .cp-wheel__label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cp-wheel__musical {
+  display: block;
+  font-size: round(down, calc(var(--font-size-xs) * 0.8), 1px);
+}
+
+.cp-wheel__center .cp-wheel__musical {
+  font-size: round(down, calc(var(--font-size-lg) * 0.8), 1px);
+}
+
 /* The hole in the middle: the key the wheel is lit for. */
 .cp-wheel__center {
   position: absolute;

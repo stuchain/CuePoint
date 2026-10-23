@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { resetKeyNotationForTests, saveKeyNotation } from "./keyNotationSetting";
 import { WheelButton } from "./WheelButton";
 
 describe("WheelButton", () => {
@@ -44,5 +45,25 @@ describe("WheelButton", () => {
       "title",
       "Show 10B on the Camelot wheel",
     );
+  });
+});
+
+describe("WheelButton with Keys written as (K1 to K3)", () => {
+  afterEach(() => {
+    localStorage.clear();
+    delete document.documentElement.dataset.keyNotation;
+    resetKeyNotationForTests();
+  });
+
+  it("writes the key in the chosen notation and keeps its name and colour", () => {
+    saveKeyNotation("musical");
+    const { unmount } = render(<WheelButton keyName="8A" />);
+    const button = screen.getByRole("button", { name: "Show 8A on the Camelot wheel" });
+    expect(button).toHaveTextContent("Am");
+    expect(button).toHaveClass("key-chip--8A");
+    unmount();
+    saveKeyNotation("both");
+    render(<WheelButton keyName="8A" />);
+    expect(screen.getByRole("button", { name: "Show 8A on the Camelot wheel" })).toHaveTextContent("8A · Am");
   });
 });

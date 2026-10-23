@@ -22,6 +22,7 @@ import { CamelotWheel } from "./CamelotWheel";
 import wheelCss from "./CamelotWheel.css?raw";
 import keysCss from "../../screens/keys/keys.css?raw";
 import { saveKeyColours } from "./keyColourSetting";
+import { resetKeyNotationForTests, saveKeyNotation } from "./keyNotationSetting";
 import { WheelButton } from "./WheelButton";
 import { WheelPopoverHost } from "./WheelPopoverHost";
 import { closeWheel, openWheel, toggleWheel } from "./wheelStore";
@@ -263,6 +264,24 @@ describe("which track it lights", () => {
     expect(segment("8A")).toHaveAttribute("aria-current", "true");
     expect(segment("3B")).not.toHaveAttribute("data-lit");
     expect(within(dialog()).getByText("Selected: Strobe · 8A")).toBeInTheDocument();
+  });
+
+  it("writes the caption and the centre in the chosen notation, leaving the names alone (K1)", async () => {
+    saveKeyNotation("both");
+    try {
+      install();
+      mount();
+      act(() => setSelectedTrack({ id: 5, key: "8A", title: "Strobe" }));
+      await openFromHeader();
+      await waitFor(() => expect(litCodes()).toContain("8A"));
+      expect(within(dialog()).getByText("Selected: Strobe · 8A · Am")).toBeInTheDocument();
+      expect(dialog().querySelector(".cp-wheel__center")).toHaveTextContent("8AAm");
+      expect(segment("8A")).toHaveAccessibleName("8A, A minor, this track's key");
+    } finally {
+      localStorage.clear();
+      delete document.documentElement.dataset.keyNotation;
+      resetKeyNotationForTests();
+    }
   });
 
   it("names the track's own key apart from the keys that mix with it", async () => {
@@ -635,5 +654,55 @@ describe("the wheel in counts mode (PAGES-16)", () => {
       expect(clip.split(",").length, code).toBeGreaterThanOrEqual(30);
       expect(document.querySelector(`[data-shape="${code}"]`)?.getAttribute("d"), code).toContain(" A");
     }
+  });
+});
+
+describe("the wheel with Keys written as (K1 to K3)", () => {
+  afterEach(() => {
+    localStorage.clear();
+    delete document.documentElement.dataset.keyNotation;
+    resetKeyNotationForTests();
+  });
+
+  const draw = (center?: string) =>
+    render(
+      <CamelotWheel
+        lit={new Map()}
+        focusCode="8A"
+        onFocusCode={() => undefined}
+        onPick={() => undefined}
+        center={center}
+      />,
+    );
+  const label = (container: HTMLElement, code: string) =>
+    container.querySelector<HTMLElement>(`[data-label-for="${code}"]`)!;
+
+  it("labels the wedges with the code in Camelot", () => {
+    const { container } = draw();
+    expect(container.querySelector(".cp-wheel")).toHaveAttribute("data-notation", "camelot");
+    expect(label(container, "8A")).toHaveTextContent("8A");
+    expect(label(container, "8A").querySelector(".cp-wheel__musical")).toBeNull();
+  });
+
+  it("labels the wedges with the musical name in Musical, and names the key the same", () => {
+    saveKeyNotation("musical");
+    const { container } = draw();
+    expect(label(container, "8A")).toHaveTextContent(/^Am$/);
+    expect(label(container, "5B")).toHaveTextContent(/^E♭$/);
+    expect(container.querySelector('[data-key="8A"]')).toHaveAttribute("aria-label", "8A, A minor");
+  });
+
+  it("writes the code and a small musical line under it in Both", () => {
+    saveKeyNotation("both");
+    const { container } = draw();
+    expect(container.querySelector(".cp-wheel")).toHaveAttribute("data-notation", "both");
+    expect(label(container, "8A")).toHaveTextContent("8AAm");
+    expect(label(container, "8A").querySelector(".cp-wheel__musical")).toHaveTextContent("Am");
+    expect(label(container, "12B").querySelector(".cp-wheel__musical")).toHaveTextContent("E");
+  });
+
+  it("styles the Both label as a column and the name at 80% of the code", () => {
+    expect(wheelCss).toMatch(/\.cp-wheel\[data-notation="both"\] \.cp-wheel__label \{[^}]*flex-direction: column;/);
+    expect(wheelCss).toMatch(/\.cp-wheel__musical \{[^}]*\* 0\.8\)/);
   });
 });

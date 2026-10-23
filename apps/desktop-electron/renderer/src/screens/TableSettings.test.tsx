@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { resetKeyColoursForTests } from "../components/wheel/keyColourSetting";
+import { KEY_NOTATION_STORAGE_KEY, resetKeyNotationForTests } from "../components/wheel/keyNotationSetting";
 import { ROW_DENSITY_STORAGE_KEY, resetRowDensityForTests } from "../tokens/rowDensity";
 import { TableSettings } from "./TableSettings";
 
@@ -11,7 +12,9 @@ beforeEach(() => {
   delete document.documentElement.dataset.rowDensity;
   delete document.documentElement.dataset.keyColours;
   resetRowDensityForTests();
+  delete document.documentElement.dataset.keyNotation;
   resetKeyColoursForTests();
+  resetKeyNotationForTests();
 });
 
 afterEach(() => localStorage.clear());
@@ -59,3 +62,30 @@ describe("Tables settings", () => {
     expect(onChange).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("Keys written as (K1 to K3)", () => {
+  const notation = () => screen.getByRole("combobox", { name: "Keys written as" });
+
+  it("is a select after Color keys, Camelot by default, with its three choices", () => {
+    render(<TableSettings />);
+    expect(notation()).toHaveValue("camelot");
+    const options = Array.from((notation() as HTMLSelectElement).options).map((o) => o.textContent);
+    expect(options).toEqual(["Camelot (8A)", "Musical (Am)", "Both (8A · Am)"]);
+    expect(keys().compareDocumentPosition(notation()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("says where it applies and what it leaves alone", () => {
+    render(<TableSettings />);
+    expect(screen.getByText(/Files and exports keep their own notation/)).toBeInTheDocument();
+  });
+
+  it("applies and remembers Musical, and says it was saved", async () => {
+    const onChange = vi.fn();
+    render(<TableSettings onChange={onChange} />);
+    await userEvent.selectOptions(notation(), "musical");
+    expect(document.documentElement.dataset.keyNotation).toBe("musical");
+    expect(localStorage.getItem(KEY_NOTATION_STORAGE_KEY)).toBe("musical");
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+});
+

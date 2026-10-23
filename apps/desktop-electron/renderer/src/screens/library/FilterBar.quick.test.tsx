@@ -12,6 +12,7 @@ import type {
   LibraryFilterVocabulary,
   LibraryQuickFacets,
 } from "../../api/cuepointBridge.types";
+import { resetKeyNotationForTests, saveKeyNotation } from "../../components/wheel/keyNotationSetting";
 import { FilterBar, type FilterSourceOption } from "./FilterBar";
 
 const field = (
@@ -196,6 +197,21 @@ describe("the quick filters (FLW-4)", () => {
     const list = within(screen.getByRole("dialog", { name: "Key" }));
     const lines = list.getAllByRole("checkbox").map((box) => box.closest("label")?.textContent);
     expect(lines).toEqual(["2A7", "8A12", "10A3", "No Beatport key: 5"]);
+  });
+
+  it("writes the keys in the chosen notation (K1), and the rule keeps the stored key", () => {
+    saveKeyNotation("musical");
+    try {
+      render(<Harness />);
+      fireEvent.click(screen.getByRole("button", { name: "Key" }));
+      const list = within(screen.getByRole("dialog", { name: "Key" }));
+      const lines = list.getAllByRole("checkbox").map((box) => box.closest("label")?.textContent);
+      expect(lines).toEqual(["E♭m7", "Am12", "Bm3", "No Beatport key: 5"]);
+    } finally {
+      localStorage.clear();
+      delete document.documentElement.dataset.keyNotation;
+      resetKeyNotationForTests();
+    }
   });
 
   it("turns a choice into a chip, and a second into one 'any of' chip", () => {

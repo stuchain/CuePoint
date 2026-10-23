@@ -1,5 +1,6 @@
 import { Fieldset, Select } from "../components";
 import { useKeyColours } from "../components/wheel/keyColourSetting";
+import { saveKeyNotation, useKeyNotation, type KeyNotation } from "../components/wheel/keyNotationSetting";
 import { useRowDensity, type RowDensity } from "../tokens/rowDensity";
 
 /** The two row heights at the default size (they follow the text size): 26 and 32 px. */
@@ -8,15 +9,23 @@ export const DENSITIES: readonly { value: RowDensity; label: string }[] = [
   { value: "roomy", label: "Roomy (32 px)" },
 ];
 
+/** How a key is written everywhere it is shown (K1 to K3); the long names carry their example. */
+const KEY_NOTATIONS: readonly { value: KeyNotation; label: string }[] = [
+  { value: "camelot", label: "Camelot (8A)" },
+  { value: "musical", label: "Musical (Am)" },
+  { value: "both", label: "Both (8A · Am)" },
+];
+
 /**
- * Settings → Appearance → Tables (R4-1, R4-2): how tall table rows are against
- * their text, and whether keys are drawn as Camelot-coloured chips. Both are
- * renderer preferences that apply at once; `onChange` is how the page shows its
+ * Settings → Appearance → Tables (R4-1, R4-2, K1): how tall table rows are against
+ * their text, whether keys are drawn as Camelot-coloured chips, and how keys are
+ * written. All are renderer preferences that apply at once; `onChange` is how the page shows its
  * saved tick.
  */
 export function TableSettings({ onChange }: { onChange?: () => void } = {}) {
   const [density, setDensity] = useRowDensity();
   const [coloured, setColoured] = useKeyColours();
+  const notation = useKeyNotation();
 
   return (
     // A group of named fields, so its name is the one sub-heading, not another field label (C58).
@@ -42,6 +51,17 @@ export function TableSettings({ onChange }: { onChange?: () => void } = {}) {
         />
         <span>Color keys</span>
       </label>
+      <Select
+        label="Keys written as"
+        width="standard"
+        value={notation}
+        onChange={(e) => {
+          saveKeyNotation(e.target.value as KeyNotation);
+          onChange?.();
+        }}
+        options={KEY_NOTATIONS.map((option) => ({ ...option }))}
+        hint="Everywhere a key is shown: tables, the wheel, the player, Prepare and Statistics. Files and exports keep their own notation."
+      />
     </Fieldset>
   );
 }

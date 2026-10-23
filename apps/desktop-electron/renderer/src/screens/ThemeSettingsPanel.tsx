@@ -14,6 +14,7 @@ import { DEFAULT_SCALE, scaleChoices, scaleName, screenAvailHeight, type ScaleFa
 import { DEFAULT_THEME, isCustomThemeId, type ThemeId } from "../tokens/theme";
 import { useTheme } from "../tokens/ThemeContext";
 import { useKeyColours } from "../components/wheel/keyColourSetting";
+import { saveKeyNotation, useKeyNotation } from "../components/wheel/keyNotationSetting";
 import { useRowDensity } from "../tokens/rowDensity";
 import { ResetToDefaults } from "./ResetToDefaults";
 import { TableSettings } from "./TableSettings";
@@ -86,6 +87,7 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
   const [saved, markSaved] = useSavedSignal();
   const [density, setDensity] = useRowDensity();
   const [coloured, setColoured] = useKeyColours();
+  const notation = useKeyNotation();
   // A link that asks for the size control gets it scrolled into view and focused, once.
   const focusedFor = useRef<string | null>(null);
   useEffect(() => {
@@ -171,19 +173,21 @@ export function ThemeSettingsPanel({ focusSizeToken = null }: { focusSizeToken?:
   };
 
   // SET-11. A custom theme is not touched; only which theme and size are in use,
-  // and the Tables choices (Compact rows, coloured keys).
+  // and the Tables choices (Compact rows, coloured keys, keys written as Camelot).
   const resetToDefaults = () => {
-    const before = { theme: activeThemeId, scale, density, coloured };
+    const before = { theme: activeThemeId, scale, density, coloured, notation };
     setTheme(DEFAULT_THEME);
     setScale(DEFAULT_SCALE);
     setDensity("compact");
     setColoured(true);
+    saveKeyNotation("camelot");
     markSaved();
     return () => {
       setTheme(before.theme);
       setScale(before.scale);
       setDensity(before.density);
       setColoured(before.coloured);
+      saveKeyNotation(before.notation);
       markSaved();
     };
   };

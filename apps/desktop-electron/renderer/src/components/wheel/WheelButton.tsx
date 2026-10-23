@@ -1,5 +1,7 @@
 import { Hint } from "../Hint";
+import { keyLabel } from "./camelot";
 import { camelotOf } from "./keyColour";
+import { useKeyNotation } from "./keyNotationSetting";
 import { toggleWheel, useWheelState } from "./wheelStore";
 import "./KeyChip.css";
 import "./WheelButton.css";
@@ -21,6 +23,7 @@ export function WheelButton({
   keyName?: string | null;
 } = {}) {
   const { open } = useWheelState();
+  const notation = useKeyNotation();
   const text = (keyName ?? "").trim();
   const code = camelotOf(text);
   const name = text ? `Show ${code ?? text} on the Camelot wheel` : "Camelot wheel";
@@ -36,7 +39,7 @@ export function WheelButton({
           aria-expanded={open}
           onClick={() => toggleWheel(source)}
         >
-          {code ?? (text || "—")}
+          {code ? keyLabel(code, notation) : text || "—"}
         </button>
       </Hint>
     </span>

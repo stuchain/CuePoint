@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 
 import { Button } from "../Button";
 import { MATCH_ON_BEATPORT } from "../../format/words";
-import { CamelotWheel } from "./CamelotWheel";
-import { parseCode } from "./camelot";
+import { CamelotWheel, WheelKeyText } from "./CamelotWheel";
+import { useKeyNotation } from "./keyNotationSetting";
+import { keyLabel, parseCode } from "./camelot";
 import { placeWheel } from "./wheelPlacement";
 import { keyRulesState, openMatching } from "./wheelLink";
 import { closeWheel, type WheelSource } from "./wheelStore";
@@ -26,6 +27,12 @@ function startingCode(key: string | null): string {
   return key !== null && parseCode(key) !== null ? key : "8A";
 }
 
+/** The hole in the middle: the track's key in the chosen notation (a text that is not a place is shown as it came). */
+function SubjectKey({ value }: { value: string }) {
+  const notation = useKeyNotation();
+  return parseCode(value) ? <WheelKeyText code={value} notation={notation} /> : <>{value}</>;
+}
+
 /**
  * The Camelot wheel as a popover next to its button (PAGES-10, DEC-133, K8).
  *
@@ -38,6 +45,7 @@ function startingCode(key: string | null): string {
 export function WheelPopover({ source, anchor, leaving = false, presenceRef }: WheelPopoverProps) {
   const navigate = useNavigate();
   const subject = useWheelSubject(source);
+  const notation = useKeyNotation();
   const subjectKey = subject ? subject.key : null;
   const lit = useCompatibleKeys(subjectKey);
   const [focusCode, setFocusCode] = useState(() => startingCode(subjectKey));
@@ -112,7 +120,7 @@ export function WheelPopover({ source, anchor, leaving = false, presenceRef }: W
     caption = "This track has no Beatport key yet";
     action = { label: MATCH_ON_BEATPORT, run: () => match(subject.id) };
   } else {
-    caption = `${who}: ${name} · ${subject.key}`;
+    caption = `${who}: ${name} · ${keyLabel(subject.key, notation)}`;
   }
 
   return (
@@ -132,7 +140,7 @@ export function WheelPopover({ source, anchor, leaving = false, presenceRef }: W
         focusCode={focusCode}
         onFocusCode={setFocusCode}
         onPick={pick}
-        center={subjectKey ?? undefined}
+        center={subjectKey ? <SubjectKey value={subjectKey} /> : undefined}
       />
       <p className="cp-wheel-pop__caption" role="status">
         {caption}

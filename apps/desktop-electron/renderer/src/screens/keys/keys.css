@@ -216,6 +216,11 @@
 }
 
 /* Selected is the tint and the bar, never bold (C82). */
+/* Keys written as Both (K1 to K3): the chip reads "10A · A♭m", so its column is wider. */
+:root[data-key-notation="both"] .keys-counts__row {
+  grid-template-columns: calc(9ch + 2 * var(--key-chip-pad, round(nearest, calc(5px * var(--scale)), 1px))) 9ch minmax(0, 1fr) 5ch;
+}
+
 .keys-counts__row[aria-pressed="true"] {
   background: var(--selected-row-background);
   background-origin: border-box;

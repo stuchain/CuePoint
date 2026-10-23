@@ -11,6 +11,7 @@ import { usePlayedTracks, resetPlayedTracksForTests } from "./playedTracks";
 import { resetPlayerStore } from "./playerStore";
 import { resetQueuePanelStateForTests, useQueueOpen } from "./queuePanelState";
 import { closeWheel, getWheelState } from "../wheel/wheelStore";
+import { resetKeyNotationForTests, saveKeyNotation } from "../wheel/keyNotationSetting";
 import { EMPTY_AUDIO_STATE } from "./playerFormat";
 import { WAVEFORM_DETAIL_STORAGE_KEY, resetWaveformDetailForTests } from "../waveform/waveformDetailSetting";
 
@@ -214,6 +215,21 @@ describe("what it shows", () => {
     render(<PlayerBar />);
     expect(await screen.findByText("Strobe")).toBeInTheDocument();
     expect(metaLine()).toHaveTextContent("deadmau5 · 8A · 128 BPM");
+  });
+
+  it("writes the key in the chosen notation (K1), the chip keeping its Camelot colour", async () => {
+    saveKeyNotation("musical");
+    try {
+      installBridge(snapshot());
+      render(<PlayerBar />);
+      expect(await screen.findByText("Strobe")).toBeInTheDocument();
+      expect(metaLine()).toHaveTextContent("deadmau5 · Am · 128 BPM");
+      expect(metaLine().querySelector(".key-chip--8A")).not.toBeNull();
+    } finally {
+      localStorage.clear();
+      delete document.documentElement.dataset.keyNotation;
+      resetKeyNotationForTests();
+    }
   });
 
   it("shows elapsed and total time", async () => {

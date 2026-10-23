@@ -17,6 +17,8 @@ import { Button } from "../../components/Button";
 import { formatBpm } from "../../components/format/bpm";
 import { Loading } from "../../components/Loading";
 import { TextField } from "../../components/TextField";
+import { keyLabel } from "../../components/wheel/camelot";
+import { useKeyNotation } from "../../components/wheel/keyNotationSetting";
 import { formatCount } from "../../format/counts";
 import { goTo } from "../../format/words";
 import { reportUnexpected } from "../../reporting/reporting";
@@ -240,6 +242,8 @@ function KeyList({
   onFiltersChange,
   onOpenKeys,
 }: ListProps & { onOpenKeys?: () => void }) {
+  // Keys written as (K1 to K3): the choice's words follow the setting; the filter's value is still the stored key.
+  const notation = useKeyNotation();
   if (!facets) {
     return loading ? <Loading what="keys" /> : <p className="cp-quick__note">Keys are not available.</p>;
   }
@@ -252,7 +256,7 @@ function KeyList({
       {facets.keys.map((entry) => (
         <Choice
           key={entry.value}
-          label={entry.value}
+          label={keyLabel(entry.value, notation)}
           count={entry.count}
           checked={chosen.some((value) => value.toLowerCase() === entry.value.toLowerCase())}
           onChange={() => onFiltersChange(toggleValue(filters, KEY_FIELD, entry.value))}

@@ -8,6 +8,7 @@
  */
 
 import { countNoun } from "../../format/counts";
+import type { KeyNotation } from "./keyNotationSetting";
 
 /** The wheel is drawn on a square of this many units; a unit is a whole CSS pixel count. */
 export const GRID_CELLS = 48;
@@ -59,6 +60,20 @@ export function keyName(code: string): string {
   return place.letter === "A"
     ? `${MINOR_NAMES[place.number - 1]} minor`
     : `${MAJOR_NAMES[place.number - 1]} major`;
+}
+
+/** A key as a musician writes it, "A♭m" or "B": a minor key gets an "m", a major key is plain. */
+export function musicalName(code: string): string {
+  const place = parseCode(code);
+  if (!place) return code;
+  return place.letter === "A" ? `${MINOR_NAMES[place.number - 1]}m` : MAJOR_NAMES[place.number - 1]!;
+}
+
+/** What a chip or label writes for a key (K1 to K3): the code, the musical name, or both. Display only. */
+export function keyLabel(code: string, notation: KeyNotation): string {
+  if (notation === "musical") return musicalName(code);
+  if (notation === "both") return parseCode(code) ? `${code} · ${musicalName(code)}` : code;
+  return code;
 }
 
 export type WheelMove = "left" | "right" | "up" | "down";
