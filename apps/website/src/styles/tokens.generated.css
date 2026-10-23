@@ -46,9 +46,15 @@
   --selected-bar-width: 0.125rem;
   --bg-selected: color-mix(in srgb, var(--accent-primary) 18%, var(--bg-input));
   --selected-row-background: linear-gradient( to right, var(--accent-primary) var(--selected-bar-width), var(--bg-selected) var(--selected-bar-width) );
-  --shadow-dialog: 0 5px 20px rgba(0, 0, 0, 0.45);
+  --shadow-popover: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --shadow-dialog: 0 15px 50px rgba(0, 0, 0, 0.45), 0 0 0 var(--hairline) color-mix(in srgb, var(--border-muted) 50%, transparent);
   --tab-underline: 0.125rem;
-  --divider: var(--hairline) solid var(--border-muted);
+  --divider-color: color-mix(in srgb, var(--border-muted) 70%, var(--bg-panel));
+  --divider: var(--hairline) solid var(--divider-color);
+  --row-line: color-mix(in srgb, var(--row-divider, var(--border-muted)) 60%, var(--bg-input));
+  --bg-between: color-mix(in srgb, var(--bg-panel) 60%, var(--bg-app));
+  --fg-muted-on-slab: color-mix(in srgb, var(--fg-muted) 80%, var(--fg-primary));
+  --popover-border: var(--hairline) solid color-mix(in srgb, var(--border-muted) 70%, transparent);
   --text-body: var(--font-size-xs);
   --text-label: var(--font-size-xs);
   --text-heading: var(--font-size-sm);
@@ -94,7 +100,9 @@
   --danger-text: color-mix(in srgb, var(--accent-danger) 60%, var(--fg-primary));
   --success-text: color-mix(in srgb, var(--accent-success) 60%, var(--fg-primary));
   --warning-text: color-mix(in srgb, var(--accent-warning) 60%, var(--fg-primary));
-  --chip-fill-mix: 20%;
+  --chip-fill-mix: 16%;
+  --notice-fill-mix: 8%;
+  --notice-bar-width: 0.25rem;
   --chip-text-mix: 35%;
   --modal-width-small: 28.125rem;
   --modal-width-medium: 40.625rem;
@@ -148,8 +156,9 @@
   --page-gutter-bottom: min(calc(12px * var(--scale)), 3.4cqi);
   --row-height: round(nearest, calc(var(--font-size-xs) * var(--row-density, 2.6)), 1px);
   --scrollbar-radius: 0;
-  --scrollbar-size: 0.625rem;
-  --scrollbar-inset: 0.1563rem;
+  --scrollbar-size: 0.4688rem;
+  --scrollbar-inset: var(--hairline);
+  --scrollbar-track: transparent;
 }
 
 :root,
