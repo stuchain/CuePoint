@@ -435,8 +435,9 @@
   align-items: center;
   gap: calc(2px * var(--scale));
   padding: var(--hairline) var(--space-xs);
-  border: var(--hairline) solid var(--border-muted);
-  background: var(--bg-input);
+  border: 0;
+  background: var(--bg-panel-alt);
+  color: var(--fg-primary);
   font-family: var(--font-data);
   font-size: var(--font-size-xs);
 }
@@ -444,14 +445,14 @@
 .cp-track-yours__tag-icon {
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
-  color: var(--fg-muted);
+  color: var(--fg-muted-on-slab);
 }
 
 .cp-track-yours__tag-remove {
   padding: 0;
   border: none;
   background: transparent;
-  color: var(--fg-muted);
+  color: var(--fg-muted-on-slab);
   font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
   line-height: 1;

@@ -75,7 +75,9 @@ describe("Notice styles", () => {
   it("has a tinted fill, a 3px bar, primary text and the --sm/--md padding", () => {
     expect(css).toMatch(/color-mix\(in srgb, var\(--notice-tone\)/);
     expect(css).toMatch(/border-left:[^;]*solid var\(--notice-tone\)/);
-    expect(css).toMatch(/calc\(3px \* var\(--scale\)\)/);
+    // P6: the bar is the --notice-bar-width token (3px scaled, rounded) and the box has no frame.
+    expect(css).toMatch(/border-left:\s*var\(--notice-bar-width\) solid/);
+    expect(css).toMatch(/border:\s*0;/);
     expect(css).toMatch(/padding:\s*var\(--space-sm\) var\(--space-md\)/);
     expect(css).toMatch(/color:\s*var\(--fg-primary\)/);
   });

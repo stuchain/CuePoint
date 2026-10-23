@@ -1,7 +1,6 @@
 /*
- * The one chip (status chips, counts, tags): a tinted fill, a 1px line and words, all from one
- * tone. The fill is the tone's colour at --chip-fill-mix over whatever it sits on, the line is
- * the colour, and the words are the colour lifted towards the theme's text colour so they read
+ * The one chip (status chips, counts, tags): a tinted fill and words, all from one tone, with no
+ * line (P6). The fill is the tone's colour at --chip-fill-mix over whatever it sits on, and the words are the colour lifted towards the theme's text colour so they read
  * at 4.5:1 in every theme (themeContrast.test.ts holds the pairs).
  */
 .cp-badge {
@@ -10,7 +9,7 @@
   align-items: center;
   box-sizing: border-box;
   padding: var(--space-2xs) var(--space-sm);
-  border: var(--hairline) solid var(--chip-tone);
+  border: 0;
   border-radius: 0;
   background: color-mix(in srgb, var(--chip-tone) var(--chip-fill-mix), transparent);
   color: var(--chip-text, color-mix(in srgb, var(--chip-tone) var(--chip-text-mix), var(--fg-primary)));
@@ -32,7 +31,6 @@
 .cp-badge--default,
 .cp-badge--neutral {
   --chip-tone: var(--fg-muted);
-  border-color: var(--border-control);
 }
 
 .cp-badge--success {

@@ -59,8 +59,9 @@
   align-items: center;
   gap: var(--space-xs);
   padding: var(--space-2xs) var(--space-xs);
-  background: var(--bg-input);
-  border: var(--hairline) solid var(--border-outline);
+  background: var(--bg-panel-alt);
+  border: 0;
+  color: var(--fg-primary);
   font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
 }
@@ -88,8 +89,9 @@
   align-items: center;
   gap: var(--space-xs);
   padding: var(--space-2xs) var(--space-xs);
-  background: var(--bg-input);
-  border: var(--hairline) solid var(--border-outline);
+  background: var(--bg-panel-alt);
+  /* A transparent line, so a chosen one can draw the violet line without moving (P6). */
+  border: var(--hairline) solid transparent;
   color: var(--fg-primary);
   font-family: var(--font-pixel-digits);
   font-size: var(--font-size-xs);
@@ -103,7 +105,7 @@
 }
 
 .cp-filter-bar__tag-count {
-  color: var(--fg-muted);
+  color: var(--fg-muted-on-slab);
   font-variant-numeric: tabular-nums;
 }
 

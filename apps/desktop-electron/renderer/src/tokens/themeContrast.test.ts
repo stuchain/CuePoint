@@ -258,7 +258,8 @@ describe.each(BUILT_IN)("text pairs in %s", (_name, t) => {
   ])("reads a %s chip's words at 4.5:1 on its tint over every surface", (_tone, token) => {
     const words = mixHex(t[token]!, t["fg-primary"]!, 35);
     for (const [name, colour] of [...surfaces, ["panel-alt", t["bg-panel-alt"]!] as [string, string]]) {
-      const fill = mixHex(t[token]!, colour, 20);
+      // P6: --chip-fill-mix is 16% (was 20%).
+      const fill = mixHex(t[token]!, colour, 16);
       expect(contrastRatio(words, fill), `${_tone} on ${name}`).toBeGreaterThanOrEqual(4.5);
     }
   });
