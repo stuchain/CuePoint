@@ -31,8 +31,9 @@
   /* The shell inset (C46): the same on both sides, and the same as the page's edge, the Track
      details close mark and the Activity button. Padding only; the bar's shape is untouched (C16c). */
   padding: var(--space-sm) var(--space-lg);
-  border-top: var(--border-width) solid var(--border-outline);
-  background: var(--bg-panel);
+  /* The toolbar tone under a hairline in the divider colour, like the page's other edges (P4). */
+  border-top: var(--hairline) solid var(--divider-color);
+  background: var(--bg-toolbar);
   min-width: 0;
   /* Dragging across the bar selects nothing (C9). */
   user-select: none;
@@ -113,7 +114,8 @@
   min-width: var(--hit-min);
   min-height: var(--hit-min);
   padding: 0;
-  border: var(--border-width) solid var(--border-outline);
+  /* The transport: a hairline in the control colour on the panel tone (P4). */
+  border: var(--hairline) solid var(--border-control);
   background: var(--bg-panel);
   color: var(--fg-primary);
   cursor: pointer;
@@ -135,8 +137,16 @@
 }
 
 .cp-player-bar__button--play {
-  /* The one control people aim at without looking. */
+  /* The one control people aim at without looking: the one violet fill in the bar (P4). */
   min-width: calc(var(--hit-min) * 1.25);
+  border-color: var(--accent-fill);
+  background: var(--accent-fill);
+  color: var(--fg-on-accent);
+}
+
+.cp-player-bar__button--play:hover:not(:disabled) {
+  background: var(--accent-fill);
+  background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
 }
 
 /* The other five (shuffle, repeat, queue, zoomed waveform, mute) are the standard control size;
@@ -146,6 +156,16 @@
   min-width: max(var(--control-height), 24px);
   min-height: max(var(--control-height), 24px);
   padding: 0 var(--space-xs);
+  /* Quiet (P22): no fill and no line until the pointer is over it. */
+  border-color: transparent;
+  background: transparent;
+  color: var(--fg-muted);
+}
+
+.cp-player-bar__button--standard:hover:not(:disabled) {
+  border-color: var(--border-control);
+  background: var(--hover-fill);
+  color: var(--fg-primary);
 }
 
 /* Their icons are the medium size, not the large one the transport uses. */
@@ -287,17 +307,17 @@
   gap: var(--space-md);
 }
 
-/* An engaged toggle is filled, not merely outlined: at a glance across a dark
-   room the difference has to survive, and colour alone would not. The fill is the one "on" fill
-   (C4), with the on-accent text on it. */
+/* An engaged toggle is the selected tint with the accent icon (P22): no solid fill, so Play is the
+   one violet block in the bar. */
 .cp-player-bar__button--on {
-  background: var(--accent-fill);
-  color: var(--fg-on-accent);
+  background: var(--bg-selected);
+  color: var(--accent-primary);
 }
 
 .cp-player-bar__button--on:hover:not(:disabled) {
-  background: var(--accent-fill);
+  background: var(--bg-selected);
   background-image: linear-gradient(var(--hover-shade), var(--hover-shade));
+  color: var(--accent-primary);
 }
 
 .cp-player-bar__volume {
@@ -326,8 +346,8 @@
   flex: 1 1 auto;
 }
 
-/* The queue count (BAR-2): a small square badge on the button's corner, hidden
-   by the markup at 0. */
+/* The queue count (BAR-2): a number beside the icon, hidden by the markup at 0. A span in the
+   button's own colour, not a badge (P22), so it reads in every theme. */
 .cp-player-bar__button {
   position: relative;
 }
@@ -337,23 +357,13 @@
   position: static;
   flex: none;
   margin-inline-start: var(--space-xs);
-  padding: 0 var(--space-xs);
   font-family: var(--font-data);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: inherit;
   pointer-events: none;
-  /* Readable on the bar: the accent fill with the on-accent text (C89), at least 4.5:1 in every
-     theme. Colour only; the badge keeps its box and its shadow (C16c). */
-  --chip-tone: var(--accent-fill);
-  --chip-text: var(--fg-on-accent);
-  background: var(--accent-fill);
-}
-
-/* On an engaged toggle the button is already the accent fill: the badge swaps the pair so it stays
-   a different colour from what it sits on. */
-.cp-player-bar__button--on .cp-player-bar__count {
-  --chip-tone: var(--fg-on-accent);
-  --chip-text: var(--accent-fill);
-  background: var(--fg-on-accent);
 }
 
 /* Repeat's state in words beside its icon (BAR-3). */

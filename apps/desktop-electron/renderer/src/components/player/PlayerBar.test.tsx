@@ -848,7 +848,9 @@ describe("the queue button's count (BAR-2)", () => {
     await screen.findByText("Strobe");
 
     expect(badge(container)).toHaveTextContent("3");
-    expect(badge(container)?.className).toContain("cp-badge");
+    // P22: the count is a plain span in the button's colour, not a Badge.
+    expect(badge(container)?.tagName).toBe("SPAN");
+    expect(badge(container)?.className).not.toContain("cp-badge");
   });
 
   it("is hidden at 0", async () => {

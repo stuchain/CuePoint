@@ -1,5 +1,4 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { Badge } from "../Badge";
 import { countNoun, formatCount } from "../../format/counts";
 import { Hint } from "../Hint";
 import { PixelIcon } from "../PixelIcon";
@@ -538,9 +537,9 @@ export function PlayerBar({
             >
               <PixelIcon name="queue" />
               {queueLength > 0 && (
-                <Badge className="cp-badge--player cp-player-bar__count" aria-hidden="true">
+                <span className="cp-player-bar__count cp-data" aria-hidden="true">
                   {formatCount(queueLength)}
-                </Badge>
+                </span>
               )}
             </button>
           </Hint>

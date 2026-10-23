@@ -22,12 +22,6 @@
   white-space: nowrap;
 }
 
-/* The player bar's queue badge keeps its bevelled look (C16c). */
-.cp-badge--player {
-  border: var(--border-width) solid var(--border-outline);
-  box-shadow: var(--shadow-badge);
-}
-
 .cp-badge--default,
 .cp-badge--neutral {
   --chip-tone: var(--fg-muted);

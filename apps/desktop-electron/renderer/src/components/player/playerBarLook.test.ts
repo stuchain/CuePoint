@@ -5,7 +5,6 @@ import { contrastRatio } from "../../tokens/themeDerivation";
 
 import playerBar from "./PlayerBar.css?raw";
 import tokensCss from "../../tokens/tokens.css?raw";
-import badgeCss from "../Badge.css?raw";
 
 /**
  * C16c: the player bar looks exactly as it did before the quieter-chrome sweep. This does not
@@ -25,16 +24,19 @@ function ruleDecls(css: string, selector: string): Record<string, string> {
 }
 
 describe("the player bar keeps its look", () => {
-  it("draws its buttons with the heavy border, the hit target and the panel fill", () => {
+  it("draws its transport buttons with a hairline control border, the hit target and the panel fill (P4)", () => {
     const button = ruleDecls(playerBar, ".cp-player-bar__button");
-    expect(button["border"]).toBe("var(--border-width) solid var(--border-outline)");
+    expect(button["border"]).toBe("var(--hairline) solid var(--border-control)");
     expect(button["min-width"]).toBe("var(--hit-min)");
     expect(button["min-height"]).toBe("var(--hit-min)");
     expect(button["background"]).toBe("var(--bg-panel)");
   });
 
-  it("draws the other five buttons at the standard control size, only the transport large", () => {
+  it("draws the other five buttons at the standard control size, only the transport large, and quiet (P22)", () => {
     const standard = ruleDecls(playerBar, ".cp-player-bar__button--standard");
+    expect(standard["background"]).toBe("transparent");
+    expect(standard["border-color"]).toBe("transparent");
+    expect(standard["color"]).toBe("var(--fg-muted)");
     expect(standard["min-width"]).toBe("max(var(--control-height), 24px)");
     expect(standard["min-height"]).toBe("max(var(--control-height), 24px)");
   });
@@ -60,21 +62,32 @@ describe("the player bar keeps its look", () => {
     expect(Object.fromEntries(declarations(hover!.body))["background"]).toBe("var(--hover-fill)");
   });
 
-  it("turns a toggle on with the accent fill and the on-accent text, and nothing else (C4)", () => {
+  it("fills Play with the accent and turns a toggle on with the selected tint and the accent icon (P4, P22)", () => {
+    const play = ruleDecls(playerBar, ".cp-player-bar__button--play");
+    expect(play["background"]).toBe("var(--accent-fill)");
+    expect(play["color"]).toBe("var(--fg-on-accent)");
+    expect(play["border-color"]).toBe("var(--accent-fill)");
     const on = ruleDecls(playerBar, ".cp-player-bar__button--on");
-    expect(on["background"]).toBe("var(--accent-fill)");
-    expect(on["color"]).toBe("var(--fg-on-accent)");
+    expect(on["background"]).toBe("var(--bg-selected)");
+    expect(on["color"]).toBe("var(--accent-primary)");
     expect(on["border"]).toBeUndefined();
     expect(on["box-shadow"]).toBeUndefined();
   });
 
-  it("draws the queue count in the accent fill with the on-accent text, and keeps its box (C89, C16c)", () => {
+  it("draws the queue count as semibold text in the button's own colour, with no fill (P22)", () => {
     const count = ruleDecls(playerBar, ".cp-player-bar__count");
-    expect(count["background"]).toBe("var(--accent-fill)");
-    expect(count["--chip-text"]).toBe("var(--fg-on-accent)");
+    expect(count["font-weight"]).toBe("var(--font-weight-semibold)");
+    expect(count["color"]).toBe("inherit");
+    expect(count["background"]).toBeUndefined();
+    expect(count["--chip-text"]).toBeUndefined();
     expect(count["border"]).toBeUndefined();
     expect(count["box-shadow"]).toBeUndefined();
-    expect(ruleDecls(badgeCss, ".cp-badge--player")["border"]).toBe("var(--border-width) solid var(--border-outline)");
+  });
+
+  it("puts the bar on the toolbar tone under a hairline in the divider colour (P4)", () => {
+    const bar = ruleDecls(playerBar, ".cp-player-bar");
+    expect(bar["background"]).toBe("var(--bg-toolbar)");
+    expect(bar["border-top"]).toBe("var(--hairline) solid var(--divider-color)");
   });
 
   it("holds the badge pair at 4.5:1 in every theme", () => {
@@ -92,12 +105,13 @@ describe("the player bar keeps its look", () => {
     expect(ruleDecls(playerBar, ".cp-player-bar__meta-fixed")["flex"]).toBe("none");
   });
 
-  it("keeps the structural tokens and the player badge shadow", () => {
+  // --shadow-badge stays defined: the website's synced tokens use it (Badge.astro, Button.astro); only the
+  // player badge that used it in the app is gone (P22).
+  it("keeps the structural tokens", () => {
     const tokens = stripComments(tokensCss);
     expect(tokens).toMatch(/--border-width:\s*round\(down, calc\(2px \* var\(--scale\)\), 1px\);/);
     expect(tokens).toMatch(/--hit-min:\s*calc\(44px \* var\(--scale\)\);/);
     expect(tokens).toMatch(/--shadow-badge:/);
-    expect(ruleDecls(badgeCss, ".cp-badge--player")["box-shadow"]).toBe("var(--shadow-badge)");
   });
 
   it("is styled only from components/player/", () => {

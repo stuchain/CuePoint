@@ -1,6 +1,7 @@
 /**
  * G6 T2 guard: one divider. A frame or rule between two things is `var(--divider)`; no sheet
- * spells `--border-width` itself, except the player bar (C16c) and the player badge.
+ * spells `--border-width` itself, except the player sheets (P4 moved the bar to hairlines, but they stay
+ * exempt, so no sheet is forced to spell it). The player badge is gone (P22).
  */
 import { describe, expect, it } from "vitest";
 
@@ -18,11 +19,6 @@ const EXEMPT_SHEETS = [
 /** Remaining uses elsewhere, each with its reason. A declaration is matched by its sheet and text. */
 export const BORDER_WIDTH_ALLOWLIST: ReadonlyArray<{ sheet: string; text: string; reason: string }> = [
   { sheet: "/src/tokens/tokens.css", text: "--border-width:", reason: "the token definition" },
-  {
-    sheet: "/src/components/Badge.css",
-    text: "border: var(--border-width) solid var(--border-outline)",
-    reason: ".cp-badge--player: the queue badge keeps its bevelled look (C16c)",
-  },
   {
     sheet: "/src/components/wheel/CamelotWheel.css",
     text: "stroke-width: var(--border-width)",
@@ -77,8 +73,10 @@ describe("one divider (T2)", () => {
     expect(stale).toEqual([]);
   });
 
-  it("leaves the player bar and badge on their own borders", () => {
-    expect(sheets["/src/components/player/PlayerBar.css"]).toMatch(/--border-width/);
-    expect(sheets["/src/components/Badge.css"]).toMatch(/\.cp-badge--player \{[^}]*--border-width/);
+  // P4: the player bar's top line and buttons are hairlines now, and the queue count is a span (P22), so
+  // the player sheets are exempt from the heavy border without being required to use it.
+  it("keeps the player bar's own sheet out of the heavy-border check, and the badge off it (P4, P22)", () => {
+    expect(sheets["/src/components/Badge.css"]).not.toMatch(/--border-width/);
+    expect(sheets["/src/components/Badge.css"]).not.toMatch(/cp-badge--player/);
   });
 });

@@ -23,10 +23,10 @@ describe("Badge", () => {
     expect(body).not.toMatch(/box-shadow/);
   });
 
-  it("keeps today's bevelled look only for the player bar's badge (C16c)", () => {
-    const body = rule(".cp-badge--player");
-    expect(body).toMatch(/box-shadow:\s*var\(--shadow-badge\)/);
-    expect(body).toMatch(/var\(--border-width\)/);
+  it("has no player-bar variant: the queue count is a span, not a badge (P22; was C16c's bevelled badge)", () => {
+    const code = stripComments(css);
+    expect(code).not.toContain("cp-badge--player");
+    expect(code).not.toMatch(/--shadow-badge|--border-width/);
   });
 
   it("tints its fill from the tone and reads its words from it, never a solid fill", () => {
