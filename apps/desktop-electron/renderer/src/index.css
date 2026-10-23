@@ -248,7 +248,8 @@ legend,
   background: none;
   color: var(--link);
   font: inherit;
-  /* P37/P2: a link is a control, so the control weight. */
+  /* P37/P2: a link is a control, so the control face and weight. */
+  font-family: var(--font-control);
   font-weight: var(--control-font-weight);
   text-decoration: none;
   cursor: pointer;
@@ -263,6 +264,7 @@ a[href]:where(:not([class])):hover {
 /* A bare <a href> in prose is the one link too. */
 a[href]:where(:not([class])) {
   color: var(--link);
+  font-family: var(--font-control);
   font-weight: var(--control-font-weight);
   text-decoration: none;
 }
@@ -274,7 +276,7 @@ a[href]:where(:not([class])) {
   display: inline-block;
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
-  margin-inline-start: var(--space-xs);
+  margin-inline-start: var(--space-2xs);
   vertical-align: middle;
   background: currentColor;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M4 3h2v1h-2zM5 4h2v1h-2zM6 5h2v1h-2zM5 6h2v1h-2zM4 7h2v1h-2z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
@@ -408,6 +410,11 @@ details[open] > summary::before {
 
 details > summary:has(.cp-disclosure)::before {
   display: none;
+}
+
+/* P36: the one fold chevron is small and muted. */
+.cp-disclosure {
+  color: var(--fg-muted);
 }
 
 /* Selected text is the accent over the page, with the text colour kept. */

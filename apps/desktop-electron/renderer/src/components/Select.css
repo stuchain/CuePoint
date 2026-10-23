@@ -76,9 +76,9 @@
 .cp-select__control:disabled,
 .cp-select__control[aria-disabled="true"] {
   color: var(--fg-disabled);
-  background: var(--bg-panel);
+  background: transparent;
   background-image: none;
-  border-color: var(--border-muted);
+  border-color: var(--border-disabled);
   cursor: default;
 }
 
@@ -97,8 +97,8 @@
 }
 
 .cp-select--inline .cp-select__field:has(> .cp-select__control:is(:disabled, [aria-disabled="true"])) {
-  border-color: var(--border-muted);
-  background: var(--bg-panel);
+  border-color: var(--border-disabled);
+  background: transparent;
 }
 
 .cp-select--inline .cp-select__field:has(> .cp-select__control:focus-visible) {

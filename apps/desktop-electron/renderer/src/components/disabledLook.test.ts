@@ -68,3 +68,47 @@ describe("one disabled look for every control (C2)", () => {
     }
   });
 });
+
+// P38: a disabled control keeps its shape in a faint line and grey words. The one exception to
+// "words are --fg-disabled" is the disabled primary, whose fill and words are colour mixes of the
+// accent (T6: greyed by colour, never by opacity). Nothing else may state its own disabled colour.
+describe("disabled colours (P38)", () => {
+  const rules = parseRules(stripComments(button)).filter((r) => selectorList(r.selector).some((s) => /:disabled|\[aria-disabled/.test(s)));
+
+  it("greys every secondary, quiet, write and danger button the same way: transparent, the faint line, grey words", () => {
+    const base = rules.find((r) => /^\.cp-btn:disabled/.test(r.selector.trim()));
+    expect(base?.body).toMatch(/background:\s*transparent/);
+    expect(base?.body).toMatch(/border-color:\s*var\(--border-disabled\)/);
+    expect(base?.body).toMatch(/color:\s*var\(--fg-disabled\)/);
+  });
+
+  it("allows one exception: the disabled primary is an accent mix on the panel, with mixed words", () => {
+    const exceptions = rules.filter((r) => /color:\s*color-mix\(/.test(r.body.replace(/background:[^;]*;/g, "").replace(/border-color:[^;]*;/g, "")));
+    expect(exceptions).toHaveLength(1);
+    const primary = exceptions[0]!;
+    expect(primary.selector).toContain(".cp-btn--primary:disabled");
+    expect(primary.body).toMatch(/background:\s*color-mix\(in srgb, var\(--accent-fill\) 22%, var\(--bg-panel\)\)/);
+    expect(primary.body).toMatch(/color:\s*color-mix\(in srgb, var\(--fg-on-accent\) 55%, var\(--bg-panel\)\)/);
+    expect(primary.body).not.toMatch(/opacity/);
+  });
+
+  it("defines the faint line as the control line at 60%, once", () => {
+    const tokens = stripComments(sheets["/src/tokens/tokens.css"] ?? "");
+    expect(tokens).toMatch(/--border-disabled:\s*color-mix\(in srgb, var\(--border-control\) 60%, transparent\)/);
+  });
+
+  it.each([["TextField", textField], ["Select", select], ["SearchField", searchField]])(
+    "%s follows the secondary rule when disabled: transparent with the faint line",
+    (_name, css) => {
+      const disabled = parseRules(stripComments(css)).filter(
+        (r) => /:disabled/.test(r.selector) && /color:\s*var\(--fg-disabled\)/.test(r.body) && /border-color/.test(r.body),
+      );
+      expect(disabled.length).toBeGreaterThan(0);
+      for (const rule of disabled) {
+        expect(rule.body).toMatch(/background:\s*transparent/);
+        expect(rule.body).toMatch(/border-color:\s*var\(--border-disabled\)/);
+      }
+    },
+  );
+});
+

@@ -91,10 +91,20 @@
 /* Greyed by colour, not by opacity (T6): the same panel look for every variant (C2). */
 .cp-btn:disabled:not(.cp-btn--loading),
 .cp-btn[aria-disabled="true"]:not(.cp-btn--loading) {
-  background: var(--bg-panel);
-  border-color: var(--border-muted);
+  background: transparent;
+  border-color: var(--border-disabled);
   color: var(--fg-disabled);
   cursor: default;
+}
+
+/* P38, the one documented exception to "disabled words are --fg-disabled" (disabledLook.test.ts): a
+   disabled main action is the accent fill mixed into the panel with its words mixed the same way, so
+   it still reads as the page's one primary. A colour mix, never opacity (T6). */
+.cp-btn--primary:disabled:not(.cp-btn--loading),
+.cp-btn--primary[aria-disabled="true"]:not(.cp-btn--loading) {
+  background: color-mix(in srgb, var(--accent-fill) 22%, var(--bg-panel));
+  border-color: transparent;
+  color: color-mix(in srgb, var(--fg-on-accent) 55%, var(--bg-panel));
 }
 
 .cp-btn--quiet:disabled:not(.cp-btn--loading),
@@ -131,6 +141,26 @@
   .cp-btn--secondary.cp-btn--sm:not(.cp-btn--framed):not([aria-pressed="true"]):hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--hover-fill);
   border-color: var(--border-control);
+}
+
+/* P35: an icon in a quiet control is muted and takes the text colour on hover; a greyed one keeps the
+   greyed words. */
+:where(.cp-toolbar, .cp-filter-bar, .cp-selection-bar, .cp-selection-actions, .discover-cards__bar,
+    .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
+    .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
+    .prepare-heading__buttons, .prepare-row-buttons)
+  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):not(:disabled):not([aria-disabled="true"]) .cp-btn__icon,
+.cp-btn--quiet:not(:disabled):not([aria-disabled="true"]) .cp-btn__icon {
+  color: var(--fg-muted);
+}
+
+:where(.cp-toolbar, .cp-filter-bar, .cp-selection-bar, .cp-selection-actions, .discover-cards__bar,
+    .discover-table__actions, .keys-tracks__toolbar, .cp-track-actions, .cp-notice,
+    .cp-column-picker__moves, .cp-collections__create, .cp-playlist-pane__head, .playlists__buttons,
+    .prepare-heading__buttons, .prepare-row-buttons)
+  .cp-btn--secondary:not(.cp-btn--framed):not([aria-pressed="true"]):hover:not(:disabled):not([aria-disabled="true"]) .cp-btn__icon,
+.cp-btn--quiet:hover:not(:disabled):not([aria-disabled="true"]) .cp-btn__icon {
+  color: var(--fg-primary);
 }
 
 /* Greyed, the same quiet buttons lose their panel fill and frame too, and keep the greyed words. */
@@ -189,7 +219,8 @@
 /* A menu button (area 63): its word, then the small chevron-down 8 away (the gap is 6 already). */
 .cp-btn__menu {
   display: inline-flex;
-  margin-inline-start: calc(var(--space-md) - var(--space-sm));
+  margin-inline-start: var(--space-xs);
+  color: var(--fg-muted);
 }
 
 .cp-btn__menu .cp-pixel-icon {

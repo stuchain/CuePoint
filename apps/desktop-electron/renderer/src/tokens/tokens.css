@@ -187,6 +187,8 @@
   /* Pixel icons come in three sizes only (12 / 16 / 24 times the text size), each rounded down on
      its own to a multiple of the 12-unit grid so no art pixel is fractional (C136). */
   /* One checkbox and radio box (P29): 14 at 1x. */
+  /* A disabled control keeps its shape in a faint line (P38): the control line at 60%, never opacity. */
+  --border-disabled: color-mix(in srgb, var(--border-control) 60%, transparent);
   --check-size: round(nearest, calc(14px * var(--scale)), 1px);
   --icon-size-sm: max(12px, round(down, calc(12px * var(--scale)), 12px));
   --icon-size-md: max(12px, round(down, calc(16px * var(--scale)), 12px));

@@ -122,8 +122,9 @@ describe("Button", () => {
       expect(rule.body).not.toMatch(/opacity/);
     }
     const body = rules.map((r) => r.body).join("\n");
-    expect(body).toMatch(/background:\s*var\(--bg-panel\)/);
-    expect(body).toMatch(/border-color:\s*var\(--border-muted\)/);
+    // P38: transparent with the faint line; the primary is the one mix (disabledLook.test.ts).
+    expect(body).toMatch(/background:\s*transparent/);
+    expect(body).toMatch(/border-color:\s*var\(--border-disabled\)/);
     expect(body).toMatch(/color:\s*var\(--fg-disabled\)/);
     expect(body).toMatch(/cursor:\s*default/);
   });
@@ -211,7 +212,7 @@ describe("Button", () => {
 
 describe("the quiet secondary button in bars, rows and cards (P3)", () => {
   const rules = parseRules(stripComments(css)).filter(
-    (r) => r.selector.includes(".cp-toolbar") && r.selector.includes(".cp-btn--secondary"),
+    (r) => r.selector.includes(".cp-toolbar") && r.selector.includes(".cp-btn--secondary") && !r.selector.includes(".cp-btn__icon"),
   );
   const rest = rules.filter((r) => !/:hover|:is\(:disabled/.test(r.selector));
   const hover = rules.filter((r) => /:hover/.test(r.selector));
@@ -239,3 +240,25 @@ describe("the quiet secondary button in bars, rows and cards (P3)", () => {
     expect(hover[0]!.body).toMatch(/border-color:\s*var\(--border-control\)/);
   });
 });
+
+// P35, P36: an icon in a quiet control is muted and takes the text colour on hover; a menu chevron is
+// the small muted mark four pixels (at 1x) after the word.
+describe("icon colour in quiet controls (P35, P36)", () => {
+  const rules = parseRules(stripComments(css));
+
+  it("mutes the icon of a quiet button and brightens it on hover, never while disabled", () => {
+    const muted = rules.find((r) => r.selector.includes(".cp-btn__icon") && !r.selector.includes(":hover"));
+    const hover = rules.find((r) => r.selector.includes(".cp-btn__icon") && r.selector.includes(":hover"));
+    expect(muted?.body).toMatch(/color:\s*var\(--fg-muted\)/);
+    expect(muted?.selector).toContain(":not(:disabled)");
+    expect(hover?.body).toMatch(/color:\s*var\(--fg-primary\)/);
+    expect(hover?.selector).toContain(":hover:not(:disabled)");
+  });
+
+  it("draws the menu chevron muted, --space-xs after the word", () => {
+    const menu = rules.find((r) => r.selector.trim() === ".cp-btn__menu");
+    expect(menu?.body).toMatch(/margin-inline-start:\s*var\(--space-xs\)/);
+    expect(menu?.body).toMatch(/color:\s*var\(--fg-muted\)/);
+  });
+});
+

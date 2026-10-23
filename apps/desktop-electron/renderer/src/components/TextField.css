@@ -50,8 +50,8 @@
 .cp-field__input:disabled,
 .cp-field__input[aria-disabled="true"] {
   color: var(--fg-disabled);
-  background: var(--bg-panel);
-  border-color: var(--border-muted);
+  background: transparent;
+  border-color: var(--border-disabled);
   cursor: default;
 }
 

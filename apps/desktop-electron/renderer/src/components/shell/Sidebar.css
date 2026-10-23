@@ -295,6 +295,11 @@
   outline-offset: var(--focus-ring-offset-inset);
 }
 
+/* P35: a rail icon is muted like its words, the text colour on hover, and the accent when current. */
+.cp-sidebar__link--active .cp-sidebar__icon {
+  color: var(--accent-primary);
+}
+
 .cp-sidebar__icon {
   display: inline-flex;
   align-items: center;
