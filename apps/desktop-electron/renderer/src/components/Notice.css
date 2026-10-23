@@ -13,7 +13,9 @@
   border-left: var(--notice-bar-width) solid var(--notice-tone);
   background: color-mix(in srgb, var(--notice-tone) var(--notice-fill-mix), var(--bg-panel));
   color: var(--fg-primary);
-  font-size: var(--text-body);
+  /* P62: the sentence is Inter at the control size. */
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
 }
 
 .cp-notice--info {
@@ -54,5 +56,6 @@
   border: 0;
   background: none;
   color: var(--danger-text);
+  font-family: var(--font-control);
   font-size: var(--font-size-xs);
 }

@@ -25,8 +25,9 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  border: var(--divider);
-  background: var(--bg-panel-alt);
+  /* P61: sunken and frameless. */
+  border: 0;
+  background: var(--bg-input);
 }
 
 .cp-picker__item {
@@ -35,16 +36,22 @@
   gap: var(--space-xs);
   width: 100%;
   min-height: var(--row-height);
-  padding: var(--space-xs) var(--space-sm);
+  padding: 0 var(--space-sm);
   border: 0;
   background: transparent;
   color: var(--fg-primary);
   font: inherit;
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
   text-align: left;
   cursor: pointer;
 }
 
-/* One highlight for pointer and keyboard, the menus' tint (area 81). */
+.cp-picker__item:hover:not(:disabled) {
+  background: var(--row-hover);
+}
+
+/* One highlight for pointer and keyboard: the chosen row (P61). */
 .cp-picker__item--active:not(:disabled) {
   background: var(--selected-row-background);
   color: var(--fg-primary);
@@ -74,7 +81,8 @@
   flex: 0 0 auto;
   color: var(--fg-muted);
   font-family: var(--font-control);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-label);
+  font-variant-numeric: tabular-nums;
 }
 
 .cp-picker__empty {

@@ -15,8 +15,9 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  /* P61: sunken and frameless. */
   background: var(--bg-input);
-  border: var(--hairline) solid var(--border-outline);
+  border: 0;
 }
 
 .cp-tag-manager__row {
@@ -25,12 +26,12 @@
   gap: var(--space-xs);
   width: 100%;
   min-height: var(--row-height);
-  padding: var(--space-xs) var(--space-sm);
+  padding: 0 var(--space-sm);
   border: none;
   background: transparent;
   color: var(--fg-primary);
   font-family: var(--font-control);
-  font-size: var(--font-size-xs);
+  font-size: var(--control-font-size);
   text-align: left;
   cursor: pointer;
 }
@@ -48,7 +49,7 @@
   flex: 0 0 auto;
   width: calc(8px * var(--scale));
   height: calc(8px * var(--scale));
-  border: var(--hairline) solid var(--border-outline);
+  border: 0;
 }
 
 .cp-tag-manager__name {
@@ -63,6 +64,7 @@
   color: var(--fg-muted);
   font-variant-numeric: tabular-nums;
   font-family: var(--font-meta);
+  font-size: var(--font-size-label);
 }
 
 .cp-tag-manager__note {

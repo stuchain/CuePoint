@@ -760,9 +760,9 @@ export function FilterBar({
           </div>
 
           {problem && (
-            <span className="cp-filter-bar__problem" role="alert">
+            <Notice kind="field-error" className="cp-filter-bar__problem">
               {problem}
-            </span>
+            </Notice>
           )}
         </div>
       )}

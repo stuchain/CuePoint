@@ -12,6 +12,8 @@
 
 .cp-update-item__text {
   color: var(--fg-muted);
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
 }
 
 /* The standard small button at the strip's own height; only its place is its own. */
@@ -25,4 +27,6 @@
 .cp-update-item__percent {
   flex: none;
   color: var(--fg-muted);
+  font-family: var(--font-control);
+  font-variant-numeric: tabular-nums;
 }

@@ -3,6 +3,7 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 import type { AppBuildInfo, UpdateState, WhatsNew as WhatsNewNotes } from "../api/cuepointBridge.types";
 import { appVersion, versionWords } from "../components/AboutDialog";
 import { Button } from "../components/Button";
+import { Notice } from "../components/Notice";
 import { ReasonLine } from "../components/ReasonLine";
 import { SettingsActions, SettingsHint, SettingsStatus } from "./SettingsParts";
 import { formatTimeOfDay } from "../format/dates";
@@ -78,7 +79,7 @@ function ReadyActions() {
   }
   if (flow.confirming) {
     return (
-      <div className="about-updates__ask" role="group" aria-label="Restart CuePoint">
+      <Notice kind="info" className="about-updates__ask" role="group" aria-label="Restart CuePoint">
         <p>
           {flow.unknown
             ? "CuePoint could not tell whether work is still running."
@@ -98,7 +99,7 @@ function ReadyActions() {
             Cancel
           </Button>
         </div>
-      </div>
+      </Notice>
     );
   }
   return (
@@ -154,7 +155,7 @@ export function AboutUpdatesSection({ actions }: { actions?: ReactNode } = {}) {
   return (
     <div className="about-updates">
       {/* The one place the version is written on this page: "Version 1.2.3 (build abc1234)" (C118). */}
-      <SettingsStatus data-testid="settings-version">
+      <SettingsStatus className="about-updates__version" data-testid="settings-version">
         {`Version ${versionWords(version ?? appVersion(build), build)}`}
         {isTestVersion(version) && " · test version"}
       </SettingsStatus>

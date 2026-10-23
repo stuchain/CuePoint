@@ -12,10 +12,20 @@
   gap: var(--space-md);
 }
 
-.about-updates__ask {
+/* The "restart" ask is an info Notice with the bar (P63); only the inside of its text is laid out here. */
+.about-updates__ask .cp-notice__text {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+}
+
+/* The version and the state are Inter and muted; the percent is a tabular figure (P63). */
+.about-updates .about-updates__version,
+.about-updates__state {
+  color: var(--fg-muted);
+  font-family: var(--font-control);
+  font-size: var(--control-font-size);
+  font-variant-numeric: tabular-nums;
 }
 
 /* A row of buttons: the first keeps its frame, the rest are quiet (P63), the look of Button.css's quiet

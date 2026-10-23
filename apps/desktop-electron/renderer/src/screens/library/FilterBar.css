@@ -40,10 +40,9 @@
   white-space: nowrap;
 }
 
+/* A problem with what was typed in the builder: the Notice's field error, one red Inter line (P62). */
 .cp-filter-bar__problem {
   align-self: center;
-  color: var(--danger-text);
-  font-size: var(--font-size-xs);
 }
 
 .cp-filter-bar__chips {
